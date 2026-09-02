@@ -480,3 +480,46 @@ async def test_node_changelog_parent(db: InfrahubDatabase, default_branch: Branc
     await car1_delete1.delete(db=db)
     assert car1_delete1.node_changelog.parent.node_id == person2.id
     assert car1_delete1.node_changelog.parent.node_kind == "TestPerson"
+
+
+async def test_secondary_changelog_names_the_hierarchy_children_relationship(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple: SchemaRoot
+) -> None:
+    """A hierarchy peer must be told that `children` moved, not that its own `parent` did."""
+    region = await Node.init(db=db, schema="LocationRegion", branch=default_branch)
+    await region.new(db=db, name="region-1")
+    await region.save(db=db)
+
+    site = await Node.init(db=db, schema="LocationSite", branch=default_branch)
+    await site.new(db=db, name="site-1", parent=region)
+    await site.save(db=db)
+
+    rack = await Node.init(db=db, schema="LocationRack", branch=default_branch)
+    await rack.new(db=db, name="rack-1", parent=site)
+    await rack.save(db=db)
+
+    getter = RelationshipChangelogGetter(db=db, branch=default_branch)
+    attached = await getter.get_changelogs(primary_changelog=rack.node_changelog)
+
+    assert [changelog.node_id for changelog in attached] == [site.id]
+    assert attached[0].node_kind == "LocationSite"
+    assert attached[0].relationships == {
+        "children": RelationshipCardinalityManyChangelog(
+            name="children",
+            peers=[RelationshipPeerChangelog(peer_id=rack.id, peer_kind="LocationRack", peer_status=DiffAction.ADDED)],
+        )
+    }
+
+    to_delete = await NodeManager.get_one(id=rack.id, db=db, raise_on_error=True)
+    await to_delete.delete(db=db)
+    detached = await getter.get_changelogs(primary_changelog=to_delete.node_changelog)
+
+    assert [changelog.node_id for changelog in detached] == [site.id]
+    assert detached[0].relationships == {
+        "children": RelationshipCardinalityManyChangelog(
+            name="children",
+            peers=[
+                RelationshipPeerChangelog(peer_id=rack.id, peer_kind="LocationRack", peer_status=DiffAction.REMOVED)
+            ],
+        )
+    }

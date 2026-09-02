@@ -582,6 +582,23 @@ class RelationshipChangelogGetter:
 
         return secondaries
 
+    def _peer_relationships(
+        self, peer_schema: MainSchemaTypes, rel_schema: RelationshipSchema
+    ) -> list[RelationshipSchema]:
+        """Return the peer's side of ``rel_schema``.
+
+        A hierarchy declares `parent` and `children` under one identifier, so only the mirrored
+        direction tells them apart. An unresolved direction keeps every candidate rather than guess.
+        """
+        candidates = peer_schema.get_relationships_by_identifier(id=rel_schema.get_identifier())
+        if len(candidates) < 2:
+            return candidates
+
+        mirrored = [
+            candidate for candidate in candidates if candidate.direction == rel_schema.direction.neighbor_direction
+        ]
+        return mirrored or candidates
+
     def _process_added_peers(
         self,
         peer_id: str,
@@ -590,17 +607,14 @@ class RelationshipChangelogGetter:
         rel_schema: RelationshipSchema,
         primary_changelog: NodeChangelog,
     ) -> list[NodeChangelog]:
-        secondaries: list[NodeChangelog] = []
-        peer_relation = peer_schema.get_relationship_by_identifier(id=str(rel_schema.identifier), raise_on_error=False)
-        if peer_relation:
-            node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
+        node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
+        for peer_relation in self._peer_relationships(peer_schema=peer_schema, rel_schema=rel_schema):
             if peer_relation.cardinality == RelationshipCardinality.ONE:
                 node_changelog.relationships[peer_relation.name] = RelationshipCardinalityOneChangelog(
                     name=peer_relation.name,
                     peer_id=primary_changelog.node_id,
                     peer_kind=primary_changelog.node_kind,
                 )
-                secondaries.append(node_changelog)
             elif peer_relation.cardinality == RelationshipCardinality.MANY:
                 node_changelog.relationships[peer_relation.name] = RelationshipCardinalityManyChangelog(
                     name=peer_relation.name,
@@ -612,9 +626,8 @@ class RelationshipChangelogGetter:
                         )
                     ],
                 )
-                secondaries.append(node_changelog)
 
-        return secondaries
+        return [node_changelog] if node_changelog.relationships else []
 
     def _process_removed_peers(
         self,
@@ -624,17 +637,14 @@ class RelationshipChangelogGetter:
         rel_schema: RelationshipSchema,
         primary_changelog: NodeChangelog,
     ) -> list[NodeChangelog]:
-        secondaries: list[NodeChangelog] = []
-        peer_relation = peer_schema.get_relationship_by_identifier(id=str(rel_schema.identifier), raise_on_error=False)
-        if peer_relation:
-            node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
+        node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
+        for peer_relation in self._peer_relationships(peer_schema=peer_schema, rel_schema=rel_schema):
             if peer_relation.cardinality == RelationshipCardinality.ONE:
                 node_changelog.relationships[peer_relation.name] = RelationshipCardinalityOneChangelog(
                     name=peer_relation.name,
                     peer_id_previous=primary_changelog.node_id,
                     peer_kind_previous=primary_changelog.node_kind,
                 )
-                secondaries.append(node_changelog)
             elif peer_relation.cardinality == RelationshipCardinality.MANY:
                 node_changelog.relationships[peer_relation.name] = RelationshipCardinalityManyChangelog(
                     name=peer_relation.name,
@@ -646,6 +656,5 @@ class RelationshipChangelogGetter:
                         )
                     ],
                 )
-                secondaries.append(node_changelog)
 
-        return secondaries
+        return [node_changelog] if node_changelog.relationships else []
