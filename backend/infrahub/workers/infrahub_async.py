@@ -237,7 +237,7 @@ class InfrahubWorkerAsync(BaseWorker):
 
         await set_git_global_setting("user.name", config.SETTINGS.git.user_name)
         await set_git_global_setting("user.email", config.SETTINGS.git.user_email)
-        await set_git_global_setting("safe.directory", "*", "--replace-all")
+        await set_git_global_setting("safe.directory", "*", replace_all=True)
         await set_git_global_setting("credential.usehttppath", "true")
         await set_git_global_setting("credential.helper", f"/usr/bin/env {config.SETTINGS.dev.git_credential_helper}")
         await apply_git_tls_config(settings=config.SETTINGS.git)

@@ -87,6 +87,23 @@ class TestGitGlobalSettings:
 
         assert await read_global_setting("user.name") == "Infrahub Test"
 
+    async def test_plain_set_leaves_duplicate_values_in_place(self, git_global_config: Path) -> None:
+        # git refuses to overwrite a key holding several values without --replace-all (exit status 5).
+        await add_global_setting("safe.directory", "/one")
+        await add_global_setting("safe.directory", "/two")
+
+        await set_git_global_setting("safe.directory", "*")
+
+        assert await read_all_global_settings("safe.directory") == ["/one", "/two"]
+
+    async def test_replace_all_collapses_duplicate_values(self, git_global_config: Path) -> None:
+        await add_global_setting("safe.directory", "/one")
+        await add_global_setting("safe.directory", "/two")
+
+        await set_git_global_setting("safe.directory", "*", replace_all=True)
+
+        assert await read_all_global_settings("safe.directory") == ["*"]
+
     async def test_unset_removes_the_key(self, git_global_config: Path) -> None:
         await set_git_global_setting("user.name", "Infrahub Test")
         await unset_git_global_setting("user.name")
