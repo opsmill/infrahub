@@ -89,7 +89,7 @@ GQL_STOP = "stop"
 ContextValue = Any | Callable[[HTTPConnection], Any]
 RootValue = Any
 
-subscription_tasks = set()
+subscription_tasks: set[asyncio.Task[None]] = set()
 
 
 class InfrahubGraphQLApp:

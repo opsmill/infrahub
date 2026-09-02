@@ -4,6 +4,10 @@ from typing import TYPE_CHECKING, assert_never
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.schema.schema_branch_computed.python_transform import (
+    IMPRECISE_READ_FIELDS,
+    derived_read_is_scopable,
+)
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -17,8 +21,12 @@ from .models import TargetSelection
 log = get_logger()
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
+
+    from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 GATHER_GRAPHQL_QUERY_SUBSCRIBERS = """
@@ -39,6 +47,32 @@ query GatherGraphQLQuerySubscribers($members: [ID!]) {
   }
 }
 """
+
+
+def reads_unscopable_derived_field(
+    readable_fields_by_kind: Mapping[str, set[str]],
+    schema_branch: SchemaBranch,
+) -> bool:
+    """Whether the query reads a computed field whose value is composed from a related peer.
+
+    Such a read cannot be narrowed: the change that moves the value lands on a peer the read set
+    never names, so the field-level match cannot see it, and the query has to fall back to every
+    target. A read whose value has no declared path, or on a kind absent from the schema, is
+    treated the same way -- conservatively, so scopability that cannot be verified widens rather
+    than raises.
+    """
+    for kind, fields in readable_fields_by_kind.items():
+        derived_reads = fields & IMPRECISE_READ_FIELDS
+        if not derived_reads:
+            continue
+        if not schema_branch.has(name=kind):
+            return True
+        node_schema = schema_branch.get(name=kind, duplicate=False)
+        if any(
+            not derived_read_is_scopable(node_schema=node_schema, field_name=field_name) for field_name in derived_reads
+        ):
+            return True
+    return False
 
 
 async def get_field_level_impacted_subscribers(
@@ -81,6 +115,10 @@ async def get_field_level_impacted_subscribers(
         only_has_unique_targets=query_report.only_has_unique_targets,
         traversed_kinds=query_report.traversed_kinds,
         readable_fields_by_kind=readable_fields_by_kind,
+        depends_on_everything=reads_unscopable_derived_field(
+            readable_fields_by_kind=readable_fields_by_kind,
+            schema_branch=query_schema_branch,
+        ),
     )
     assessment = classifier.assess(diff_summary=diff_summary)
 

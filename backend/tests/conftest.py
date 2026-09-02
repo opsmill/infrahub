@@ -45,6 +45,7 @@ from infrahub.core.schema.definitions.core import (
     core_account_token,
     core_generic_account,
     core_profile_schema_definition,
+    core_refresh_token,
     internal_external_identity,
 )
 from infrahub.core.schema.definitions.core.propose_change import core_proposed_change
@@ -356,7 +357,16 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session: None) ->
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
         return None
 
-    container = start_neo4j_container(NEO4J_IMAGE)
+    # Bound neo4j memory: the image auto-sizes heap/pagecache from HOST memory, so with
+    # several xdist workers the containers overcommit and get the host OOM-killed.
+    container = start_neo4j_container(
+        NEO4J_IMAGE,
+        extra_env={
+            "NEO4J_server_memory_heap_initial__size": "1g",
+            "NEO4J_server_memory_heap_max__size": "1g",
+            "NEO4J_server_memory_pagecache_size": "512m",
+        },
+    )
     request.addfinalizer(container.stop)
 
     return {
@@ -609,7 +619,7 @@ def do_data_schema(branch: Branch) -> None:
             core_profile_schema_definition,
             core_generic_account,
         ],
-        "nodes": [core_account_token, internal_external_identity],
+        "nodes": [core_account_token, core_refresh_token, internal_external_identity],
     }
 
     schema = SchemaRoot(**SCHEMA)

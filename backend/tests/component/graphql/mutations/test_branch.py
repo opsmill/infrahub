@@ -588,12 +588,62 @@ async def test_branch_update_description(
 
     branch4_updated = await Branch.get_by_name(db=db, name="branch4")
 
+    # The mutation publishes what it saved, so the cache reflects the committed description
+    cached_branch4 = registry.branch["branch4"]
+    assert cached_branch4.description == "testing"
+    assert cached_branch4.description == branch4_updated.description
+
     assert branch4.updated_at == branch4.created_at
     assert branch4_updated.description == "testing"
     assert branch4.updated_at
     assert branch4_updated.updated_at
     assert branch4_updated.updated_at > branch4.updated_at
     assert branch4_updated.updated_by == session_admin.account_id
+
+
+async def test_branch_update_leaves_an_unknown_branch_out_of_the_registry(
+    db: InfrahubDatabase, base_dataset_02: dict, session_admin: AccountSession, local_services: InfrahubServices
+) -> None:
+    """A branch this worker has never seen must stay out of the cache, so refresh_branches still creates it.
+
+    `Branch.get_by_name` does not load the schema, so caching it here would leave an entry that the sweep
+    treats as already present and never repairs.
+    """
+    branch5 = await create_branch(branch_name="branch5", db=db)
+    # Undo what create_branch cached: this stands in for a branch created on another worker
+    del registry.branch[branch5.name]
+
+    query = """
+    mutation {
+    BranchUpdate(
+        data: {
+        name: "branch5",
+        description: "testing"
+        }
+    ) {
+        ok
+    }
+    }
+    """
+
+    gql_params = await prepare_graphql_params(
+        db=db, branch=registry.default_branch, account_session=session_admin, service=local_services
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["BranchUpdate"]["ok"] is True
+
+    # The write still landed; only the cache was left for the sweep to populate
+    assert (await Branch.get_by_name(db=db, name="branch5")).description == "testing"
+    assert branch5.name not in registry.branch
 
 
 async def test_branch_merge_wrong_branch(

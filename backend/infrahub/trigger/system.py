@@ -11,12 +11,27 @@ from prefect.client.schemas.objects import StateType
 from infrahub.trigger.models import ChangeFlowRunStateAction, ProactiveEventTrigger, SystemTriggerDefinition
 from infrahub.webhook.constants import WEBHOOK_SEND_RETRY_DELAY_SECONDS
 
-# A proactive trigger keeps a per-run countdown: every expected event restarts it, and the
-# action fires when the countdown lapses. A run waiting out a retry backoff emits nothing at
-# all, so the window must outlast the longest configured backoff or every such wait is
-# mistaken for a dead process. The retry-wait transition is an expected event so the countdown
-# is anchored at the start of the silence it explains. The margin absorbs event-propagation
-# and scheduler jitter between the retry-wait transition and the resumed run's next heartbeat.
+# The two event sets below do opposite things. An event in `after` restarts the per-run countdown;
+# an event that is only expected satisfies the window instead, so it expires without firing and
+# the run is left unwatched. Ending the watch that way is only ever right for a finished run.
+ZOMBIE_WATCH_ENDING_EVENTS: set[str] = {
+    "prefect.flow-run.Completed",
+    "prefect.flow-run.Failed",
+    "prefect.flow-run.Cancelled",
+    "prefect.flow-run.Crashed",
+}
+
+# Every other expected event means the run is still alive and must renew the countdown. A retry
+# wait is silent for its whole duration -- the engine tears down its heartbeat thread before it
+# sleeps out the delay -- so the transition anchors the countdown at the start of that silence.
+ZOMBIE_WATCH_RENEWING_EVENTS: set[str] = {
+    "prefect.flow-run.heartbeat",
+    "prefect.flow-run.AwaitingRetry",
+}
+
+# The window must outlast the longest configured backoff or a legitimate retry wait is mistaken
+# for a dead process. The margin absorbs propagation and scheduler jitter before the resumed
+# run's first heartbeat.
 ZOMBIE_DETECTION_MARGIN = timedelta(seconds=60)
 ZOMBIE_HEARTBEAT_WINDOW = timedelta(seconds=WEBHOOK_SEND_RETRY_DELAY_SECONDS) + ZOMBIE_DETECTION_MARGIN
 
@@ -24,15 +39,8 @@ TRIGGER_CRASH_ZOMBIE_FLOWS = SystemTriggerDefinition(
     name="crash-zombie-flows",
     description="Crashes flow runs that have stopped sending heartbeats",
     trigger=ProactiveEventTrigger(
-        after={"prefect.flow-run.heartbeat"},
-        events={
-            "prefect.flow-run.heartbeat",
-            "prefect.flow-run.AwaitingRetry",
-            "prefect.flow-run.Completed",
-            "prefect.flow-run.Failed",
-            "prefect.flow-run.Cancelled",
-            "prefect.flow-run.Crashed",
-        },
+        after=ZOMBIE_WATCH_RENEWING_EVENTS,
+        events=ZOMBIE_WATCH_RENEWING_EVENTS | ZOMBIE_WATCH_ENDING_EVENTS,
         match={"prefect.resource.id": ["prefect.flow-run.*"]},
         for_each={"prefect.resource.id"},
         threshold=1,
