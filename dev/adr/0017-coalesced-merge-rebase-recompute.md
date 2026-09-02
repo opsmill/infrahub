@@ -33,7 +33,8 @@ affected derived value, reusing the existing per-family process flows and chunki
 
 A shared coordinator serves both operations; only the branch differs, merge recomputing on the
 destination branch and rebase on the user branch. The pass covers Jinja2 computed attributes,
-display labels, and human-friendly ids. It reuses the computed-attribute deriver and adds
+display labels, and human-friendly ids; Python transform computed attributes joined later, as the
+Neutral section records. It reuses the computed-attribute deriver and adds
 display-label and HFID derivers built from the dependency metadata already recorded on those
 definitions. It recomputes all affected readers on the correct branch, which never
 under-recomputes, and defers any source-branch redundancy skip.
@@ -49,8 +50,8 @@ under-recomputes, and defers any source-branch redundancy skip.
 
 ### Negative
 
-- The coalesced pass must itself drive the cross-node readers the suppressed per-node events used
-  to handle. A missed family or cross-node case silently under-recomputes.
+- The coalesced pass must itself drive the cross-node readers the per-node events it suppresses
+  used to handle. A missed family or cross-node case silently under-recomputes.
 - Display-label and HFID derivers had to be built, since no shared deriver existed for those
   families; they follow the computed-attribute pattern.
 - Recomputing all readers on the correct branch can redo readers already correct on the source
@@ -59,8 +60,8 @@ under-recomputes, and defers any source-branch redundancy skip.
 ### Neutral
 
 - Profile refresh stays on its own automations, outside this pass. Python-transform computed
-  attributes did too until IFC-3018 added them as a fourth family; a follow-up ADR records that
-  design.
+  attributes did too until they joined as a fourth family, which suppresses no per-node automation
+  of its own; `dev/knowledge/backend/merge-recompute.md` records that design.
 - Readers of a recompute write are handled by a schema-derived, depth-bounded chain submitter.
 
 ## Alternatives Considered
