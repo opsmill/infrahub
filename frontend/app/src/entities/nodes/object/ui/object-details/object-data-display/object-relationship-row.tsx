@@ -91,11 +91,15 @@ function RelationshipOneRow({
 
           {relationshipProperties && (
             <>
+              {relationshipProperties.is_protected && (
+                <LockIcon className="size-3.5 text-foreground-muted" />
+              )}
               <MetaDetailsTooltip
                 updatedAt={relationshipProperties.updated_at}
                 source={relationshipProperties.source}
                 owner={relationshipProperties.owner}
                 isProtected={relationshipProperties.is_protected}
+                triggerClassName="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                 header={
                   onClickMetadata && (
                     <div className="flex items-center justify-between border-b p-1 pt-0 pl-2">
@@ -119,9 +123,6 @@ function RelationshipOneRow({
                   )
                 }
               />
-              {relationshipProperties.is_protected && (
-                <LockIcon className="size-3.5 text-foreground-muted" />
-              )}
             </>
           )}
 
@@ -162,7 +163,7 @@ function RelationshipManyRow({
       objectKind={objectKind}
       value={
         <>
-          <dl className="flex flex-col">
+          <dl className="flex w-full flex-col">
             {relatedNodeEdges.map((edge) => {
               const relatedNode = edge.node;
               const edgeProperties = edge.properties;
@@ -170,22 +171,23 @@ function RelationshipManyRow({
               if (!relatedNode) return null;
 
               return (
-                <Row key={relatedNode.id}>
+                <Row key={relatedNode.id} className="group/edge w-full">
                   <Link to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}>
                     {getNodeLabel(relatedNode)}
                   </Link>
 
                   {edgeProperties && (
                     <>
+                      {edgeProperties.is_protected && (
+                        <LockIcon className="size-3.5 text-foreground-muted" />
+                      )}
                       <MetaDetailsTooltip
                         updatedAt={edgeProperties.updated_at}
                         source={edgeProperties.source}
                         owner={edgeProperties.owner}
                         isProtected={edgeProperties.is_protected}
+                        triggerClassName="opacity-0 transition-opacity group-hover/edge:opacity-100 focus-visible:opacity-100"
                       />
-                      {edgeProperties.is_protected && (
-                        <LockIcon className="size-3.5 text-foreground-muted" />
-                      )}
                     </>
                   )}
                 </Row>
