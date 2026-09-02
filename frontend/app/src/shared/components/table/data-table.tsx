@@ -11,7 +11,7 @@ import React from "react";
 
 import { Row } from "@/shared/components/container";
 import { StickyCellShadow } from "@/shared/components/table/sticky-cell-shadow";
-import { cellFooterStyle, cellsStyle } from "@/shared/components/table/style";
+import { COLUMN_MAX_WIDTH, cellFooterStyle, cellsStyle } from "@/shared/components/table/style";
 import { classNames } from "@/shared/utils/common";
 import { formatNumberDisplay } from "@/shared/utils/number";
 
@@ -37,13 +37,20 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
 }
 
 /**
- * The last two tracks belong to the identity and actions columns, so only the columns in between
- * get an `auto` track. `repeat()` requires a positive integer: once every field column is hidden
- * there is nothing in between, and emitting `repeat(0, auto)` would make the CSSOM reject the whole
- * declaration — collapsing the grid to one implicit column and splitting every row in two.
+ * `fit-content` keeps short columns shrink-to-fit while capping long ones. A bare `auto` track has
+ * no ceiling, so a single long value grows the column past the viewport — and because the first
+ * column is sticky, it then paints over the row action menu and the horizontal scrollbar.
+ *
+ * The last two tracks belong to the identity and actions columns, so only the columns in between get
+ * a capped track. `repeat()` requires a positive integer: with nothing in between, `repeat(0, …)`
+ * makes the CSSOM reject the whole declaration — collapsing the grid to one implicit column and
+ * splitting every row in two. Column visibility clamps to at least one field column, so this arm is
+ * unreachable from the picker; it stays for any surface that builds its own column set.
  */
 const defaultGridTemplateColumns = (columnCount: number) =>
-  columnCount <= 2 ? "1fr 2.5rem" : `repeat(${columnCount - 2}, auto) 1fr 2.5rem`;
+  columnCount <= 2
+    ? "1fr 2.5rem"
+    : `repeat(${columnCount - 2}, fit-content(${COLUMN_MAX_WIDTH})) 1fr 2.5rem`;
 
 export function DataTable<T extends NodeCore>({
   columnOrder,
@@ -90,8 +97,11 @@ export function DataTable<T extends NodeCore>({
 
   const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);
 
+  // `min-w-max` stops the grid from being squeezed into its scroll container.
+  // Without it the tracks compress until columns are unreadably narrow instead of
+  // keeping their width and letting the table scroll horizontally.
   return (
-    <div className="grid content-start" style={style} {...props}>
+    <div className="grid min-w-max content-start" style={style} {...props}>
       {allHeaders.map((header) => {
         return flexRender(header.column.columnDef.header, {
           ...header.getContext(),
@@ -120,7 +130,9 @@ export function DataTable<T extends NodeCore>({
         Array.from({ length: allHeaders.length }).map((_, index) => (
           <div
             key={index}
-            className={classNames(cellsStyle, cellFooterStyle, index === 0 && "left-0 z-10")}
+            // The whole footer bar has to outrank the sticky body cells, not just its
+            // first cell, or the last row's sticky action menu punches through it.
+            className={classNames(cellsStyle, cellFooterStyle, "z-10", index === 0 && "left-0")}
           >
             {index === 0 && (
               <>

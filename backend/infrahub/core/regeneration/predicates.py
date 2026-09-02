@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.constants import DiffAction
+from infrahub.core.schema.schema_branch_computed.python_transform import IMPRECISE_READ_FIELDS
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 
@@ -72,6 +73,11 @@ def relevant_node_changes(
     -- is excluded. `readable_fields_by_kind` maps each kind the query reads to the set of its
     attribute and relationship names that the query selects.
 
+    A read of a computed/derived field never intersects a change by name: the field that moved the
+    value is reported under a backing field the read set cannot name. A read set holding such a
+    field is therefore imprecise for its kind -- any change to that kind counts -- since narrowing
+    it away would leave the reader stale.
+
     Only entries marked unchanged are skipped, at both the node and the element level: a diff can
     carry a node purely as hierarchical context, and can hang an unchanged parent relationship off
     a node that did change, neither of which makes a reader stale. A removed node is deliberately
@@ -85,7 +91,8 @@ def relevant_node_changes(
         if not readable_fields:
             continue
         updated_fields = {element["name"] for element in node_diff["elements"] if not _is_unchanged(element["action"])}
-        if updated_fields & readable_fields:
+        imprecise_read = bool(readable_fields & IMPRECISE_READ_FIELDS)
+        if updated_fields and (imprecise_read or (updated_fields & readable_fields)):
             relevant_node_ids.append(node_diff["id"])
     return relevant_node_ids
 
