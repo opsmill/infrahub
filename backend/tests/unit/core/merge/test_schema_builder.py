@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import pytest
 
+from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.merge.schema_builder import MergedSchemaBuilder
-from infrahub.core.schema import AttributeSchema, NodeSchema
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 
@@ -14,6 +15,8 @@ TRUCK_KIND = "TestTruck"
 CODE_ATTR_ID = "attr-code"
 COLOR_ATTR_ID = "attr-color"
 CAR_NODE_ID = "node-car"
+OWNER_REL_ID = "rel-owner"
+PERSON_KIND = "TestPerson"
 
 PERMISSIVE = r".*"
 UPPERCASE_ONLY = r"^[A-Z]+$"
@@ -50,6 +53,16 @@ def _car_schema(
         name="Car",
         namespace="Test",
         attributes=attributes,
+        relationships=[
+            RelationshipSchema(
+                id=OWNER_REL_ID,
+                name="owner",
+                peer=PERSON_KIND,
+                identifier="car__person",
+                cardinality=RelationshipCardinality.ONE,
+                optional=True,
+            )
+        ],
         uniqueness_constraints=uniqueness_constraints,
     )
 
@@ -57,6 +70,7 @@ def _car_schema(
 def _branch(name: str, car: NodeSchema) -> SchemaBranch:
     branch = SchemaBranch(cache={}, name=name)
     branch.set(name=CAR_KIND, schema=car)
+    branch.set(name=PERSON_KIND, schema=NodeSchema(id="node-person", name="Person", namespace="Test"))
     return branch
 
 
@@ -187,6 +201,84 @@ class TestAttributesAddedAndRemoved:
         car = candidate.get(name=CAR_KIND)
         assert sorted(attribute.name for attribute in car.attributes) == ["code", "color"]
         assert _regex(candidate, "code") == UPPERCASE_ONLY
+
+
+class TestRenames:
+    """Test building the SchemaBranch when elements are renamed."""
+
+    def test_a_renamed_kind_lands_under_its_new_name(self) -> None:
+        ancestor = _branch("ancestor", _car_schema())
+        source = SchemaBranch(cache={}, name="source")
+        source.set(name="TestVehicle", schema=NodeSchema(id=CAR_NODE_ID, name="Vehicle", namespace="Test"))
+        destination = _branch("destination", _car_schema())
+
+        candidate = MergedSchemaBuilder().build(ancestor=ancestor, source=source, destination=destination)
+
+        assert candidate.has(name="TestVehicle")
+        assert not candidate.has(name=CAR_KIND)
+
+    def test_a_renamed_kind_keeps_an_untouched_destination_property(self) -> None:
+        ancestor = _branch("ancestor", _car_schema())
+        renamed = _car_schema()
+        renamed.name = "Vehicle"
+        source = SchemaBranch(cache={}, name="source")
+        source.set(name="TestVehicle", schema=renamed)
+        destination = _branch("destination", _car_schema(uniqueness_constraints=[["code__value"]]))
+
+        candidate = MergedSchemaBuilder().build(ancestor=ancestor, source=source, destination=destination)
+
+        assert candidate.get(name="TestVehicle").uniqueness_constraints == [["code__value"]]
+
+    def test_a_renamed_attribute_lands_under_its_new_name(self) -> None:
+        ancestor = _branch("ancestor", _car_schema())
+        renamed = _car_schema()
+        renamed.get_attribute(name="code").name = "reference"
+        source = _branch("source", renamed)
+        destination = _branch("destination", _car_schema())
+
+        candidate = MergedSchemaBuilder().build(ancestor=ancestor, source=source, destination=destination)
+
+        car = candidate.get(name=CAR_KIND)
+        assert sorted(attribute.name for attribute in car.attributes) == ["color", "reference"]
+
+    def test_a_renamed_relationship_lands_under_its_new_name(self) -> None:
+        """A relationship rename needs no migration, but the merged schema still has to carry it."""
+        ancestor = _branch("ancestor", _car_schema())
+        renamed = _car_schema()
+        renamed.get_relationship(name="owner").name = "driver"
+        source = _branch("source", renamed)
+        destination = _branch("destination", _car_schema())
+
+        candidate = MergedSchemaBuilder().build(ancestor=ancestor, source=source, destination=destination)
+
+        car = candidate.get(name=CAR_KIND)
+        assert sorted(relationship.name for relationship in car.relationships) == ["driver"]
+
+    def test_a_renamed_relationship_keeps_an_untouched_destination_property(self) -> None:
+        ancestor = _branch("ancestor", _car_schema())
+        renamed = _car_schema()
+        renamed.get_relationship(name="owner").name = "driver"
+        source = _branch("source", renamed)
+        narrowed = _car_schema()
+        narrowed.get_relationship(name="owner").optional = False
+        destination = _branch("destination", narrowed)
+
+        candidate = MergedSchemaBuilder().build(ancestor=ancestor, source=source, destination=destination)
+
+        assert candidate.get(name=CAR_KIND).get_relationship(name="driver").optional is False
+
+    def test_a_renamed_attribute_keeps_an_untouched_destination_property(self) -> None:
+        ancestor = _branch("ancestor", _car_schema(code_regex=PERMISSIVE))
+        renamed = _car_schema(code_regex=PERMISSIVE)
+        renamed.get_attribute(name="code").name = "reference"
+        source = _branch("source", renamed)
+        destination = _branch("destination", _car_schema(code_regex=UPPERCASE_ONLY))
+
+        candidate = MergedSchemaBuilder().build(ancestor=ancestor, source=source, destination=destination)
+
+        parameters = candidate.get(name=CAR_KIND).get_attribute(name="reference").parameters
+        assert isinstance(parameters, TextAttributeParameters)
+        assert parameters.regex == UPPERCASE_ONLY
 
 
 class TestKindsAddedAndRemoved:

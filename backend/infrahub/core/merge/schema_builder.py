@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from infrahub.core.models import HashableModelDiff
-    from infrahub.core.schema import MainSchemaTypes
+    from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 ELEMENT_COLLECTIONS = ("attributes", "relationships")
@@ -51,19 +51,39 @@ class MergedSchemaBuilder:
             if candidate.has(name=kind):
                 candidate.delete(name=kind)
 
+        candidate_names_by_id = self._names_by_id(candidate)
+
         for kind, node_diff in source_delta.changed.items():
-            if not candidate.has(name=kind) or not source.has(name=kind):
+            if not source.has(name=kind):
                 continue
-            node = candidate.get(name=kind)
+            source_node = source.get(name=kind, duplicate=False)
+            candidate_name = candidate_names_by_id.get(source_node.id) if source_node.id else None
+            if candidate_name is None and candidate.has(name=kind):
+                candidate_name = kind
+            if candidate_name is None:
+                continue
+
+            node = candidate.get(name=candidate_name)
             self._apply_node_diff(
                 node=node,
-                source_node=source.get(name=kind, duplicate=False),
+                source_node=source_node,
                 node_diff=node_diff,
                 keep_destination=keep_destination,
             )
+            if candidate_name != kind:
+                candidate.delete(name=candidate_name)
             candidate.set(name=kind, schema=node)
 
         return candidate
+
+    @staticmethod
+    def _names_by_id(schema: SchemaBranch) -> dict[str, str]:
+        names_by_id: dict[str, str] = {}
+        for name in schema.node_names + schema.generic_names:
+            element_id = schema.get(name=name, duplicate=False).id
+            if element_id:
+                names_by_id[element_id] = name
+        return names_by_id
 
     def _apply_node_diff(
         self,
@@ -77,7 +97,7 @@ class MergedSchemaBuilder:
                 self._apply_element_diff(
                     node=node,
                     source_node=source_node,
-                    collection=field_name,
+                    collection_name=field_name,
                     element_diff=field_diff,
                     keep_destination=keep_destination,
                 )
@@ -88,34 +108,48 @@ class MergedSchemaBuilder:
         self,
         node: MainSchemaTypes,
         source_node: MainSchemaTypes,
-        collection: str,
+        collection_name: str,
         element_diff: HashableModelDiff,
         keep_destination: dict[str, set[str]],
     ) -> None:
-        source_elements = {element.name: element for element in getattr(source_node, collection)}
+        source_elements = {element.name: element for element in getattr(source_node, collection_name)}
 
         if element_diff.removed:
             setattr(
                 node,
-                collection,
-                [element for element in getattr(node, collection) if element.name not in element_diff.removed],
+                collection_name,
+                [element for element in getattr(node, collection_name) if element.name not in element_diff.removed],
             )
 
-        existing_names = {element.name for element in getattr(node, collection)}
+        existing_names = {element.name for element in getattr(node, collection_name)}
         for name in element_diff.added:
             if name in source_elements and name not in existing_names:
-                getattr(node, collection).append(source_elements[name].duplicate())
+                getattr(node, collection_name).append(source_elements[name].duplicate())
 
         for name, property_diff in element_diff.changed.items():
             source_element = source_elements.get(name)
-            target_element = next((element for element in getattr(node, collection) if element.name == name), None)
-            if source_element is None or target_element is None or property_diff is None:
+            if source_element is None or property_diff is None:
+                continue
+            target_element = self._match_element(
+                elements=getattr(node, collection_name), element_id=source_element.id, name=name
+            )
+            if target_element is None:
                 continue
             for property_name in property_diff.changed:
                 if self._may_move(
                     element_id=target_element.id, property_name=property_name, keep_destination=keep_destination
                 ):
                     setattr(target_element, property_name, getattr(source_element, property_name))
+
+    @staticmethod
+    def _match_element(
+        elements: list[AttributeSchema | RelationshipSchema], element_id: str | None, name: str
+    ) -> AttributeSchema | RelationshipSchema | None:
+        if element_id:
+            for element in elements:
+                if element.id == element_id:
+                    return element
+        return next((element for element in elements if element.name == name), None)
 
     def _may_move(self, element_id: str | None, property_name: str, keep_destination: dict[str, set[str]]) -> bool:
         if element_id is None:

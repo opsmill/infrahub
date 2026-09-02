@@ -17,25 +17,14 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub import lock
-from infrahub.core import registry
-from infrahub.core.diff.coordinator import DiffCoordinator
-from infrahub.core.diff.diff_locker import DiffLocker
-from infrahub.core.diff.merger.merger import DiffMerger
-from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.merge.constraints import MergeConstraintValidator
-from infrahub.core.merge.graph_merger import GraphMerger
-from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.validators.constraint_merge import build_constraint_info_merger
-from infrahub.core.validators.determiner import build_constraint_validator_determiner
-from infrahub.core.validators.tasks import schema_validate_migrations
-from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import MergeConstraintsViolatedError
+from tests.helpers.merge import build_graph_merger, build_schema_analyzer, set_attribute_parameters
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
@@ -67,65 +56,10 @@ def _widget_schema() -> SchemaRoot:
     )
 
 
-async def _set_regex(db: InfrahubDatabase, branch: Branch, regex: str | None) -> None:
-    """Set ``code``'s regex on one branch, assigning the value rather than overlaying a schema.
-
-    An overlay cannot clear a property, so tests that need the branches to start from an unset regex
-    have to assign it directly.
-    """
-    schema = registry.schema.get_schema_branch(name=branch.name)
-    node_schema = schema.get(name=WIDGET_KIND)
-    parameters = node_schema.get_attribute(name="code").parameters
-    assert isinstance(parameters, TextAttributeParameters)
-    parameters.regex = regex
-    schema.set(name=WIDGET_KIND, schema=node_schema)
-    schema.process()
-    await registry.schema.update_schema_branch(db=db, branch=branch, schema=schema, limit=[WIDGET_KIND], update_db=True)
-    branch.update_schema_hash()
-    await branch.save(db=db)
-
-
 def _code_regex(schema: SchemaBranch) -> str | None:
     parameters = schema.get(name=WIDGET_KIND).get_attribute(name="code").parameters
     assert isinstance(parameters, TextAttributeParameters)
     return parameters.regex
-
-
-async def _build_schema_analyzer(
-    db: InfrahubDatabase, source_branch: Branch, destination_branch: Branch
-) -> MergeSchemaAnalyzer:
-    component_registry = get_component_registry()
-    return MergeSchemaAnalyzer(
-        db=db,
-        source_branch=source_branch,
-        destination_branch=destination_branch,
-        diff_repository=await component_registry.get_component(DiffRepository, db=db, branch=source_branch),
-        schema_manager=registry.schema,
-    )
-
-
-async def _build_graph_merger(db: InfrahubDatabase, source_branch: Branch, destination_branch: Branch) -> GraphMerger:
-    component_registry = get_component_registry()
-    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
-    return GraphMerger(
-        db=db,
-        source_branch=source_branch,
-        destination_branch=destination_branch,
-        diff_coordinator=await component_registry.get_component(DiffCoordinator, db=db, branch=source_branch),
-        diff_merger=await component_registry.get_component(DiffMerger, db=db, branch=source_branch),
-        diff_repository=diff_repository,
-        diff_locker=DiffLocker(),
-        schema_analyzer=await _build_schema_analyzer(
-            db=db, source_branch=source_branch, destination_branch=destination_branch
-        ),
-        constraint_validator=MergeConstraintValidator(
-            branch=source_branch,
-            diff_repository=diff_repository,
-            determiner=build_constraint_validator_determiner(db=db, branch=source_branch),
-            constraint_info_merger=build_constraint_info_merger(),
-            migration_validator=schema_validate_migrations,
-        ),
-    )
 
 
 class TestDestinationSchemaChange:
@@ -162,9 +96,13 @@ class TestDestinationSchemaChange:
         The write is legal under the branch's own schema, and the destination's own data satisfies its
         new regex, so neither side rejects anything in isolation.
         """
-        await _set_regex(db=db, branch=destination, regex=forked_regex)
+        await set_attribute_parameters(
+            db=db, branch=destination, node_kind=WIDGET_KIND, attribute_name="code", regex=forked_regex
+        )
         branch = await create_branch(db=db, branch_name=branch_name)
-        await _set_regex(db=db, branch=destination, regex=UPPERCASE_ONLY)
+        await set_attribute_parameters(
+            db=db, branch=destination, node_kind=WIDGET_KIND, attribute_name="code", regex=UPPERCASE_ONLY
+        )
 
         branch_widget = await NodeManager.get_one(db=db, id=widget.id, branch=branch, raise_on_error=True)
         branch_widget.get_attribute("code").value = BRANCH_VALUE
@@ -189,7 +127,7 @@ class TestDestinationSchemaChange:
             branch_name="dest-set-regex",
             forked_regex=None,
         )
-        graph_merger = await _build_graph_merger(
+        graph_merger = await build_graph_merger(
             db=db, source_branch=branch, destination_branch=default_branch_scope_class
         )
 
@@ -213,7 +151,7 @@ class TestDestinationSchemaChange:
             branch_name="dest-replace-regex",
             forked_regex=PERMISSIVE,
         )
-        graph_merger = await _build_graph_merger(
+        graph_merger = await build_graph_merger(
             db=db, source_branch=branch, destination_branch=default_branch_scope_class
         )
 
@@ -232,7 +170,7 @@ class TestDestinationSchemaChange:
             branch_name="candidate-replace-regex",
             forked_regex=PERMISSIVE,
         )
-        analyzer = await _build_schema_analyzer(
+        analyzer = await build_schema_analyzer(
             db=db, source_branch=branch, destination_branch=default_branch_scope_class
         )
 
@@ -243,12 +181,16 @@ class TestDestinationSchemaChange:
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, widget: Node
     ) -> None:
         """Each side validated its own data when it loaded the change."""
-        await _set_regex(db=db, branch=default_branch_scope_class, regex=PERMISSIVE)
+        await set_attribute_parameters(
+            db=db, branch=default_branch_scope_class, node_kind=WIDGET_KIND, attribute_name="code", regex=PERMISSIVE
+        )
         branch = await create_branch(db=db, branch_name="converged-edits")
         for target in (default_branch_scope_class, branch):
-            await _set_regex(db=db, branch=target, regex=UPPERCASE_ONLY)
+            await set_attribute_parameters(
+                db=db, branch=target, node_kind=WIDGET_KIND, attribute_name="code", regex=UPPERCASE_ONLY
+            )
 
-        analyzer = await _build_schema_analyzer(
+        analyzer = await build_schema_analyzer(
             db=db, source_branch=branch, destination_branch=default_branch_scope_class
         )
 
