@@ -104,10 +104,10 @@ def test_python_changes_on_file_path_within_an_unchanged_closure() -> None:
 
 
 def test_python_hashes_a_declared_manifest_entry_like_any_other_file() -> None:
-    """A closure carrying `.infrahub.yml` is only carrying it because `watch` named it.
+    """A manifest entry in the closure is hashed like any other file.
 
-    Nothing merges the manifest in on its own any more, so it gets no special treatment:
-    its blob is hashed and an edit to it moves the fingerprint.
+    `.infrahub.yml` reaches a closure only when `watch.files` names it, and it then carries
+    no exemption: its blob contributes to the digest and an edit to it moves the fingerprint.
     """
     closure = (".infrahub.yml", "transforms/report.py")
     blobs = {**PY_BLOBS, ".infrahub.yml": "sha-manifest"}

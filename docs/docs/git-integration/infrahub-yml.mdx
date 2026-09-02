@@ -144,7 +144,7 @@ generator_definitions:
 
 Declaring any `watch.files` entry also marks the definition's dependency closure as complete, which suppresses the conservative regenerate-on-any-change fallback that an incomplete Jinja2 auto-detection would otherwise trigger. On a Python Transformation or Generator, where auto-detection has no references to fail on, the declaration earns its precision the way described in the next section instead. See [the proposed changes overview](../proposed-changes/overview#understanding-artifact-regeneration) for what an incomplete closure means and how to resolve it.
 
-`.infrahub.yml` itself is not in any closure by default, so editing the manifest regenerates only the definitions whose own configuration the edit changed. Listing `.infrahub.yml` under `watch.files` is allowed and puts it in that definition's closure like any other file, which means every manifest edit - including one that only touches an unrelated entry, or only a comment - regenerates that definition.
+`.infrahub.yml` itself is not in any closure by default, so for a definition with a complete closure, editing the manifest regenerates only the definitions whose own configuration the edit changed. Listing `.infrahub.yml` under `watch.files` is allowed and puts it in that definition's closure like any other file, which means every manifest edit - including one that only touches an unrelated entry, or only a comment - regenerates that definition.
 
 #### Declaring `watch` with no extra files
 
