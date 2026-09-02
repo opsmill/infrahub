@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, PrivateAttr, computed_field, field_validator, model_validator
 
 from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality, RelationshipKind
+from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
@@ -16,6 +17,8 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+
+log = get_logger()
 
 
 class PropertyChangelog(BaseModel):
@@ -451,6 +454,30 @@ class ChangelogRelationshipMapper:
                 return self.cardinality_many_relationship
 
 
+def peer_relationships(peer_schema: MainSchemaTypes, rel_schema: RelationshipSchema) -> list[RelationshipSchema]:
+    """Return the peer's side of ``rel_schema``.
+
+    A hierarchy declares ``parent`` and ``children`` under one identifier, so only the mirrored
+    direction tells them apart. When no candidate mirrors the direction the whole set is returned
+    and logged: the answer is a guess, but dropping it would hide a change that did happen.
+    """
+    candidates = peer_schema.get_relationships_by_identifier(id=rel_schema.get_identifier())
+    mirrored = [candidate for candidate in candidates if candidate.direction == rel_schema.direction.neighbor_direction]
+    if mirrored:
+        return mirrored
+
+    if candidates:
+        log.warning(
+            "No peer relationship mirrors the direction, reporting every candidate",
+            peer_kind=peer_schema.kind,
+            identifier=rel_schema.get_identifier(),
+            direction=rel_schema.direction.value,
+            candidates=[candidate.name for candidate in candidates],
+        )
+
+    return candidates
+
+
 class RelationshipChangelogGetter:
     def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
         self._db = db
@@ -520,9 +547,10 @@ class RelationshipChangelogGetter:
                     primary_changelog=primary_changelog,
                 )
             )
+            previous_peer_schema = schema_branch.get(name=str(relationship.peer_kind_previous), duplicate=False)
             secondaries.extend(
                 self._process_removed_peers(
-                    peer_schema=peer_schema,
+                    peer_schema=previous_peer_schema,
                     peer_id=str(relationship.peer_id_previous),
                     peer_kind=str(relationship.peer_kind_previous),
                     rel_schema=rel_schema,
@@ -582,23 +610,6 @@ class RelationshipChangelogGetter:
 
         return secondaries
 
-    def _peer_relationships(
-        self, peer_schema: MainSchemaTypes, rel_schema: RelationshipSchema
-    ) -> list[RelationshipSchema]:
-        """Return the peer's side of ``rel_schema``.
-
-        A hierarchy declares `parent` and `children` under one identifier, so only the mirrored
-        direction tells them apart. An unresolved direction keeps every candidate rather than guess.
-        """
-        candidates = peer_schema.get_relationships_by_identifier(id=rel_schema.get_identifier())
-        if len(candidates) < 2:
-            return candidates
-
-        mirrored = [
-            candidate for candidate in candidates if candidate.direction == rel_schema.direction.neighbor_direction
-        ]
-        return mirrored or candidates
-
     def _process_added_peers(
         self,
         peer_id: str,
@@ -608,7 +619,7 @@ class RelationshipChangelogGetter:
         primary_changelog: NodeChangelog,
     ) -> list[NodeChangelog]:
         node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
-        for peer_relation in self._peer_relationships(peer_schema=peer_schema, rel_schema=rel_schema):
+        for peer_relation in peer_relationships(peer_schema=peer_schema, rel_schema=rel_schema):
             if peer_relation.cardinality == RelationshipCardinality.ONE:
                 node_changelog.relationships[peer_relation.name] = RelationshipCardinalityOneChangelog(
                     name=peer_relation.name,
@@ -638,7 +649,7 @@ class RelationshipChangelogGetter:
         primary_changelog: NodeChangelog,
     ) -> list[NodeChangelog]:
         node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
-        for peer_relation in self._peer_relationships(peer_schema=peer_schema, rel_schema=rel_schema):
+        for peer_relation in peer_relationships(peer_schema=peer_schema, rel_schema=rel_schema):
             if peer_relation.cardinality == RelationshipCardinality.ONE:
                 node_changelog.relationships[peer_relation.name] = RelationshipCardinalityOneChangelog(
                     name=peer_relation.name,
