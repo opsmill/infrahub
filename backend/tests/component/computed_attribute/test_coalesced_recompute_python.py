@@ -484,4 +484,5 @@ class TestCoalescedRecomputePythonRebase(CoalescedPythonTestBase):
 
         assert widened == []
         assert len(scoped) == 1
+        assert scoped[0]["parameters"]["computed_attribute_name"] == OWNER_ATTRIBUTE
         assert sorted(scoped[0]["parameters"]["object_ids"]) == sorted(dataset.car_ids)

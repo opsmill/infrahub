@@ -132,8 +132,7 @@ class IndexedPythonTargetResolver:
     attribute from inheriting the subscribers of changes that cannot affect it.
 
     Both caches live and die with the instance, and every flow run builds its own, so each level of
-    a chain gathers the index again. A process-wide cache would have to key on something that moves
-    when a transform query is edited, which the schema hash does not.
+    a chain gathers the index again.
     """
 
     def __init__(
