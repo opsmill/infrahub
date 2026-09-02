@@ -24,13 +24,18 @@ from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
+    from infrahub_sdk.node import InfrahubNode
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
 pytestmark = pytest.mark.shard_b
 
 DEVICE_KIND = "InfraDevice"
-DEVICE_NAME_ATTRIBUTE = "name"
+
+# The recompute flow names its run after the attribute it refreshes. The task API does not return
+# flow-run parameters, so the run name is what tells one attribute's runs from another's, and every
+# Python attribute of the schema shares one workflow.
+DEVICE_NAME_FLOW = "Process computed attribute for InfraDevice.name"
 
 # Enough devices that one flow per replayed node is unmistakable against one flow for the batch.
 MERGE_DEVICE_INSTANCES = (11, 12, 13, 14)
@@ -38,9 +43,7 @@ REBASE_DEVICE_INSTANCES = (21, 22, 23, 24)
 
 # The stack under test carries the coalesced pass unless the compose variable turns it off, which
 # is how the same value assertions run against both dispatch modes.
-COALESCED_PYTHON_RECOMPUTE = (
-    os.environ.get("INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE", "true").lower() != "false"
-)
+COALESCED_PYTHON_RECOMPUTE = os.environ.get("INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE", "true").lower() != "false"
 
 
 async def wait_for_all_tasks_to_be_completed(client: InfrahubClient) -> None:
@@ -66,21 +69,56 @@ async def load_schema_and_wait(client: InfrahubClient, schema: dict, *, branch: 
         assert await client.schema.in_sync()
 
 
-async def count_transform_runs(client: InfrahubClient, *, kind: str, attribute: str) -> int:
+async def count_transform_runs(client: InfrahubClient, *, flow_name: str) -> int:
     """Count the recompute flows of one attribute, so unrelated ones cannot move the number.
 
-    Every Python attribute of the schema shares one workflow, and an attribute whose transform the
-    repository does not carry is refreshed over its whole kind on every merge.
+    An attribute whose transform the repository does not carry is refreshed over its whole kind on
+    every merge, which would otherwise be counted here too.
     """
     tasks = await client.task.filter(filter=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM.name]))
-    return len(
-        [
-            task
-            for task in tasks
-            if (task.parameters or {}).get("computed_attribute_kind") == kind
-            and (task.parameters or {}).get("computed_attribute_name") == attribute
-        ]
+    return len([task for task in tasks if task.title == flow_name])
+
+
+async def create_device_and_wait(
+    client: InfrahubClient, *, site: InfrahubNode, instance: int, expected: str, branch: str | None = None
+) -> str:
+    """Create one device, then wait until its computed name lands before returning.
+
+    The name is the device's human-friendly id and is unique, so a second device created while
+    the first still carries no name violates the constraint.
+    """
+    device = await client.create(
+        kind=DEVICE_KIND, data={"device_type": "router", "instance": instance, "site": site}, branch=branch
     )
+    await device.save()
+
+    name = None
+    deadline = time.monotonic() + PREFECT_EVENT_WAIT_SECONDS
+    while time.monotonic() < deadline:
+        await sleep(1)
+        refreshed = await client.get(kind=DEVICE_KIND, id=device.id, branch=branch, include=["name"])
+        name = refreshed.name.value
+        if name == expected:
+            break
+
+    assert name == expected
+    return device.id
+
+
+async def wait_until_tasks_settle(client: InfrahubClient, *, seconds: int = PREFECT_EVENT_WAIT_SECONDS) -> None:
+    """Wait for the queue to drain, giving up at the deadline instead of blocking forever.
+
+    A task left in a non-terminal state must not hang the run: the assertions that follow are what
+    decide the outcome, and a count taken too early fails with a number to read.
+    """
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        pending = await client.task.count(
+            filters=TaskFilter(state=[TaskState.PENDING, TaskState.RUNNING, TaskState.SCHEDULED])
+        )
+        if pending == 0:
+            return
+        await sleep(1)
 
 
 async def device_names(client: InfrahubClient, device_ids: list[str], *, branch: str | None = None) -> list[str]:
@@ -98,7 +136,6 @@ async def wait_for_device_names(
     deadline = time.monotonic() + PREFECT_EVENT_WAIT_SECONDS
     while time.monotonic() < deadline:
         await sleep(1)
-        await wait_for_all_tasks_to_be_completed(client)
         names = await device_names(client, device_ids, branch=branch)
         if names == expected:
             break
@@ -524,30 +561,22 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         site = await client.get(kind="LocationSite", hfid=["sth"])
         branch = await client.branch.create(branch_name="coalesced-python-merge")
 
-        devices = []
-        for instance in MERGE_DEVICE_INSTANCES:
-            device = await client.create(
-                kind=DEVICE_KIND,
-                data={"device_type": "router", "instance": instance, "site": site},
-                branch=branch.name,
-            )
-            await device.save()
-            devices.append(device)
-
-        device_ids = [device.id for device in devices]
         expected = [f"swe-sth-router-{instance}" for instance in MERGE_DEVICE_INSTANCES]
-        assert await wait_for_device_names(client, device_ids, expected, branch=branch.name) == expected
+        device_ids = [
+            await create_device_and_wait(client, site=site, instance=instance, expected=name, branch=branch.name)
+            for instance, name in zip(MERGE_DEVICE_INSTANCES, expected, strict=True)
+        ]
 
-        runs_before = await count_transform_runs(client, kind=DEVICE_KIND, attribute=DEVICE_NAME_ATTRIBUTE)
+        await wait_until_tasks_settle(client)
+        runs_before = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW)
 
         merged = await client.branch.merge(branch_name=branch.name)
         assert merged
 
         assert await wait_for_device_names(client, device_ids, expected) == expected
+        await wait_until_tasks_settle(client)
 
-        runs_for_the_merge = (
-            await count_transform_runs(client, kind=DEVICE_KIND, attribute=DEVICE_NAME_ATTRIBUTE) - runs_before
-        )
+        runs_for_the_merge = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW) - runs_before
         if COALESCED_PYTHON_RECOMPUTE:
             assert runs_for_the_merge == 1
         else:
@@ -563,28 +592,22 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         site = await client.get(kind="LocationSite", hfid=["sth"])
         branch = await client.branch.create(branch_name="coalesced-python-rebase")
 
-        devices = []
-        for instance in REBASE_DEVICE_INSTANCES:
-            device = await client.create(
-                kind=DEVICE_KIND, data={"device_type": "router", "instance": instance, "site": site}
-            )
-            await device.save()
-            devices.append(device)
-
-        device_ids = [device.id for device in devices]
         expected = [f"swe-sth-router-{instance}" for instance in REBASE_DEVICE_INSTANCES]
-        assert await wait_for_device_names(client, device_ids, expected) == expected
+        device_ids = [
+            await create_device_and_wait(client, site=site, instance=instance, expected=name)
+            for instance, name in zip(REBASE_DEVICE_INSTANCES, expected, strict=True)
+        ]
 
-        runs_before = await count_transform_runs(client, kind=DEVICE_KIND, attribute=DEVICE_NAME_ATTRIBUTE)
+        await wait_until_tasks_settle(client)
+        runs_before = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW)
 
         rebased = await client.branch.rebase(branch_name=branch.name)
-        assert rebased.name == branch.name
+        assert rebased
 
         assert await wait_for_device_names(client, device_ids, expected, branch=branch.name) == expected
+        await wait_until_tasks_settle(client)
 
-        runs_for_the_rebase = (
-            await count_transform_runs(client, kind=DEVICE_KIND, attribute=DEVICE_NAME_ATTRIBUTE) - runs_before
-        )
+        runs_for_the_rebase = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW) - runs_before
         if COALESCED_PYTHON_RECOMPUTE:
             assert runs_for_the_rebase == 1
         else:
