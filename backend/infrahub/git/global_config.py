@@ -60,7 +60,9 @@ async def apply_git_tls_config(settings: GitSettings) -> None:
     command paths. Keys that are no longer configured are removed, so a value written by an earlier run
     cannot outlive its setting when the global gitconfig file is persisted between runs. Both keys are
     written with ``--replace-all`` because a persisted gitconfig may hold duplicate entries, and a plain set
-    refuses to overwrite multiple values and would leave the stale ones active.
+    refuses to overwrite multiple values and would leave the stale ones active. Infrahub owns both keys in the
+    managed gitconfig and rewrites them at every startup, so operators configure them through
+    ``git.tls_ca_file`` / ``git.tls_insecure``, not by editing the file.
     """
     if settings.tls_ca_file:
         await set_git_global_setting(GIT_HTTP_SSL_CA_INFO, settings.tls_ca_file, replace_all=True)

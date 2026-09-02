@@ -456,7 +456,7 @@ Disabling certificate validation is a bad security practice and is strongly disc
 
 :::
 
-If you absolutely need to disable certificate verification for testing purposes, set `INFRAHUB_GIT_TLS_INSECURE=true` on the task workers and restart your environment. The task worker sets `http.sslVerify` to `false` in its git configuration file, so git skips certificate validation for every HTTPS remote. This setting cannot be combined with `INFRAHUB_GIT_TLS_CA_FILE`.
+If you absolutely need to disable certificate verification for testing purposes, set `INFRAHUB_GIT_TLS_INSECURE=true` on the task workers and restart your environment. The task worker sets `http.sslVerify` to `false` in its git configuration file, so git skips certificate validation for every HTTPS remote. This setting cannot be combined with `INFRAHUB_GIT_TLS_CA_FILE`. Infrahub owns `http.sslVerify` and `http.sslCAInfo` in its git configuration file and rewrites them at every task-worker startup, so a value written into that file by hand does not survive a restart; use the setting instead.
 
 :::success Validation
 

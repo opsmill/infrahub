@@ -48,15 +48,15 @@ INFRAHUB_DB_PASSWORD=<strong-database-password>
 INFRAHUB_DB_TLS_ENABLED=true
 INFRAHUB_BROKER_TLS_ENABLED=true
 INFRAHUB_CACHE_TLS_ENABLED=true
-# CA bundle trusted by every outbound connection (git, database, broker, cache, webhooks, SSO...)
-INFRAHUB_TLS_CA_BUNDLE=/opt/infrahub/tls/ca-bundle.pem
+# Only when your infrastructure uses a private CA: mount the bundle and uncomment, see "Trust a private CA" below
+# INFRAHUB_TLS_CA_BUNDLE=/opt/infrahub/tls/ca-bundle.pem
 ```
 
 :::warning
 Never use default passwords or tokens in production. Generate strong unique values for each environment. You can generate UUIDs using the `uuidgen` command or an online UUID generator.
 :::
 
-If your infrastructure uses a private certificate authority, mount its bundle into the containers and point `INFRAHUB_TLS_CA_BUNDLE` at it. A component can override the bundle with its own `*_TLS_CA_FILE` or `*_TLS_CA_BUNDLE` setting. See [Trust a private CA](./private-ca.mdx) for the mount and verification steps.
+If your infrastructure uses a private certificate authority, mount its bundle into the containers, then set `INFRAHUB_TLS_CA_BUNDLE` to the mounted path. A component can override the bundle with its own `*_TLS_CA_FILE` or `*_TLS_CA_BUNDLE` setting. See [Trust a private CA](./private-ca.mdx) for the mount and verification steps.
 
 <ReferenceLink title="Complete configuration reference" url="/reference/configuration" />
 

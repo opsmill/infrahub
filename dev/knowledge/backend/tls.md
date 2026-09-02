@@ -61,6 +61,11 @@ reaching public services.
   Compose env anchor the API server also needs the file mounted, or it refuses to start.
 - **Persisted gitconfig.** `/opt/infrahub/.gitconfig` can outlive a container, so `apply_git_tls_config`
   unsets `http.sslCAInfo` / `http.sslVerify` when the settings are absent instead of leaving old values.
+  Infrahub owns those two keys the same way it already owns `user.name`, `user.email`, `safe.directory`
+  and `credential.*`: every task-worker startup rewrites them, so a hand edit to the file does not
+  survive a restart. The old Dockerfile recipe `git config --global http.sslVerify false` wrote
+  `/root/.gitconfig`, which the worker stopped reading when it started exporting `GIT_CONFIG_GLOBAL`
+  (1.6.0); `git.tls_insecure` replaces that recipe.
 - **`--global` lies in an exec shell.** The worker selects `/opt/infrahub/.gitconfig` by exporting
   `GIT_CONFIG_GLOBAL` in its own process; `docker compose exec task-worker git config --global ...` does
   not inherit it and reads `$HOME/.gitconfig`, which only holds what the Dockerfile baked in. Inspect
