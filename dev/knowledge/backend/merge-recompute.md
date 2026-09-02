@@ -19,7 +19,7 @@ merge / rebase
   -> CoalescedRecomputeSubmitter.submit(...)           (one process flow per target and source kind)
        -> computed_attribute_process_jinja2 / display-label-process-jinja2 / hfid-process
             -> render values, keep only the ones that changed
-            -> BulkRecomputeDispatcher.dispatch(writes, coalesced=True, recompute_depth)
+            -> BulkRecomputeDispatcher.dispatch(writes, recompute_depth)   (built for a coalesced pass)
                  -> BulkRecomputeWriter.write(...)         (bulk write, origin = recompute)
                  -> RecomputeChainSubmitter.submit(...)    (dispatch the next level for readers of the writes)
 ```
@@ -50,6 +50,8 @@ nothing that survives a process moves when a transform query is edited.
 
 While the switch is on, the two Python per-node automations still fire on `merge` and `rebase` events: the work happens twice, and nothing is missed. Gating those automations on the `live` origin is what removes the per-node fan-out.
 
+That duplicate is load-bearing in one place. When the derivation of this family raises, the pass logs it and drops the family rather than letting the failure cancel the three schema-derived ones, which is the only place here that does less work rather than more. It is safe only because those automations still cover it. IFC-3019 gates them, so the same change has to make that fallback widen to the whole kind instead of dropping the family. A component test on the built trigger definitions asserts the Python ones carry no origin match, and fails as soon as the gate lands.
+
 ## Node mutation origin
 
 Every node mutation event carries an `origin` label (`infrahub.node.origin`), one of:
@@ -69,7 +71,7 @@ The three families' cross-node triggers match only `live`, so `merge`, `rebase`,
 
 **Location:** `core/recompute/bulk_write.py` (`BulkRecomputeWriter`), driven through `core/recompute/dispatch.py` (`BulkRecomputeDispatcher`)
 
-The process flows render the new values, keep only the ones that differ from the stored value, and hand them to a `BulkRecomputeDispatcher` (wired by `build_bulk_recompute_dispatcher`). This is the single write path for all three families, on both the live and the coalesced side. The `coalesced` flag is the difference: a live single-node recompute passes `coalesced=False` (stamp `live`, let the emitted events carry any further readers), a merge, rebase, or chained level passes `coalesced=True` (stamp `recompute`, drive the next level here).
+The process flows render the new values, keep only the ones that differ from the stored value, and hand them to a `BulkRecomputeDispatcher` (wired by `build_bulk_recompute_dispatcher`). This is the single write path for all four families, on both the live and the coalesced side. The `coalesced` argument of the factory is the difference, and it is settled before the dispatcher exists: a live single-node recompute builds one with no chain (stamp `live`, let the emitted events carry any further readers), while a merge, rebase, or chained level builds one with a chain (stamp `recompute`, drive the next level here). Holding a chain is what makes a pass coalesced, so the two cannot disagree.
 
 The writer:
 
@@ -109,7 +111,7 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 | `core/merge/post_merge.py` | Merge: stamp `merge` origin, build and submit on the destination branch |
 | `core/branch/tasks.py` | Rebase: stamp `rebase` origin, build and submit on the user branch |
 | `events/constants.py` | `NodeMutationOrigin`, `NODE_ORIGIN_LABEL` |
-| `computed_attribute/tasks.py`, `display_labels/tasks.py`, `hfid/tasks.py` | The three process flows that render values and call `BulkRecomputeDispatcher.dispatch` |
+| `computed_attribute/tasks.py`, `display_labels/tasks.py`, `hfid/tasks.py` | The four process flows that render values and call `BulkRecomputeDispatcher.dispatch`, two of them in the computed-attribute module |
 
 ## See Also
 
