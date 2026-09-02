@@ -115,11 +115,10 @@ class GraphMerger:
 
         """
         candidate_schema = self.schema_analyzer.get_candidate_schema()
-        # Gate on the freshly-recomputed diff (same check the migration calculation uses) rather than
-        # the branch's cached schema-hash flag, so a schema change is never missed at merge time.
+        # Run constraint validations if the schemas of the two branches differ
         schema_diff_constraints = (
             await self.schema_analyzer.calculate_validations(target_schema=candidate_schema)
-            if await self.schema_analyzer.has_schema_changes()
+            if self.schema_analyzer.schemas_differ()
             else []
         )
         result = await self.constraint_validator.validate(

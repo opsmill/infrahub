@@ -79,6 +79,15 @@ class MergeSchemaAnalyzer:
 
         return self._common_ancestor_schema
 
+    def schemas_differ(self) -> bool:
+        """Whether the two branches hold different schemas.
+
+        Symmetric, so a change made on the destination after the fork counts. A branch keeps the
+        schema it forked with until it is rebased, so its hash only matches the destination's when
+        neither side has moved or both have converged on the same state.
+        """
+        return self.source_schema.get_hash() != self.destination_schema.get_hash()
+
     async def has_schema_changes(self) -> bool:
         diff_summary = await self.diff_repository.summary(
             base_branch_name=self.destination_branch.name,
