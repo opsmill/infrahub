@@ -101,8 +101,11 @@ CALL (field, retired_at) {
     SET edge_to_close.to = CASE
         WHEN edge_to_close.from > retired_at THEN edge_to_close.from
         ELSE retired_at
-    END
+    END,
+    edge_to_close.to_user_id = $user_id
+    RETURN count(edge_to_close) AS batch_closed_edges
 } IN TRANSACTIONS OF $batch_size ROWS
+RETURN sum(batch_closed_edges) AS edges_closed
 """
 )
 
@@ -144,12 +147,17 @@ class CloseUnretainedAgnosticFieldsQuery(Query):
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
         self.params["at"] = self.at.to_string()
         self.params["batch_size"] = self.batch_size
+        self.params["user_id"] = self.user_id
 
         self.add_to_query(_CLOSE_UNRETAINED_AGNOSTIC_FIELDS)
+        self.update_return_labels(["edges_closed"])
 
     def closed_edge_count(self) -> int:
         """How many global edges this run stamped shut. Zero means nothing was left to release."""
-        return sum(stat.properties_set or 0 for stat in self.stats.stats)
+        result = self.get_result()
+        if result is None:
+            return 0
+        return result.get_as_type("edges_closed", int)
 
 
 class DeleteDetachedAgnosticFieldsQuery(Query):

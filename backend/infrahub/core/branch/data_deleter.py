@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query.branch import (
     DeleteBranchAgnosticAttributesQuery,
@@ -40,7 +41,7 @@ class BranchDeleteResult:
 class BranchDataDeleterInterface(Protocol):
     """The database side of a branch delete."""
 
-    async def delete(self, branch: Branch) -> BranchDeleteResult: ...
+    async def delete(self, branch: Branch, user_id: str = SYSTEM_USER_ID) -> BranchDeleteResult: ...
 
 
 class LoggerInterface(Protocol):
@@ -62,7 +63,7 @@ class BranchDataDeleter:
         self.batch_size = batch_size
         self.log = log or get_logger()
 
-    async def delete(self, branch: Branch) -> BranchDeleteResult:
+    async def delete(self, branch: Branch, user_id: str = SYSTEM_USER_ID) -> BranchDeleteResult:
         """Remove the branch's data and then the branch itself.
 
         Returns whether the Branch object was actually deleted in case multiple processes try to
@@ -81,7 +82,7 @@ class BranchDataDeleter:
             branch.status = BranchStatus.DELETING
             await branch.save(db=self.db)
 
-        edges_removed = await self.delete_branch_data(branch_name=branch.name)
+        edges_removed = await self.delete_branch_data(branch_name=branch.name, user_id=user_id)
 
         query = await StandardNodeDeleteQuery.init(db=self.db, node=branch)
         await query.execute(db=self.db)
@@ -89,14 +90,14 @@ class BranchDataDeleter:
 
         return BranchDeleteResult(branch_deleted=branch_deleted, edges_removed=edges_removed)
 
-    async def delete_branch_data(self, branch_name: str) -> int:
+    async def delete_branch_data(self, branch_name: str, user_id: str = SYSTEM_USER_ID) -> int:
         """Remove a branch's data without requiring the branch itself to still exist.
 
         Returns the number of edges removed, so a caller whose own logging is the only thing the
         operator can see is able to report progress.
         """
         agnostic_edges_count = await self._delete_agnostic_peers(branch_name=branch_name)
-        await self._retire_agnostic_fields(branch_name=branch_name)
+        await self._retire_agnostic_fields(branch_name=branch_name, user_id=user_id)
         branch_edges_count = await self._delete_edges(branch_name=branch_name)
         return agnostic_edges_count + branch_edges_count
 
@@ -131,7 +132,7 @@ class BranchDataDeleter:
             )
         return edges_removed
 
-    async def _retire_agnostic_fields(self, branch_name: str) -> None:
+    async def _retire_agnostic_fields(self, branch_name: str, user_id: str) -> None:
         """Close the global edges of branch-agnostic fields this branch was the last to retain.
 
         The complement of the agnostic-peer hard-delete: that stage removes the peers of Nodes
@@ -144,7 +145,7 @@ class BranchDataDeleter:
         batch_size = min(self.batch_size, MAX_AGNOSTIC_PEER_BATCH_SIZE)
 
         query = await RetireBranchAgnosticFieldsQuery.init(
-            db=self.db, branch_name=branch_name, at=Timestamp(), batch_size=batch_size
+            db=self.db, branch_name=branch_name, at=Timestamp(), batch_size=batch_size, user_id=user_id
         )
         await query.execute(db=self.db)
 

@@ -50,8 +50,10 @@ CALL (field) {
       AND edge_to_close.status = "active"
       AND edge_to_close.from <= $at
       AND edge_to_close.to IS NULL
-    SET edge_to_close.to = $at
+    SET edge_to_close.to = $at, edge_to_close.to_user_id = $user_id
+    RETURN count(edge_to_close) AS batch_closed_edges
 } IN TRANSACTIONS OF $batch_size ROWS
+RETURN sum(batch_closed_edges) AS edges_closed
 """
 
 
@@ -82,11 +84,16 @@ class RetireBranchAgnosticFieldsQuery(Query):
         self.params["branch_name"] = self.branch_name
         self.params["at"] = self.at.to_string()
         self.params["batch_size"] = self.batch_size
+        self.params["user_id"] = self.user_id
 
         self.add_to_query(
             _RETIRE_UNRETAINED_FIELDS_OF_BRANCH % {"unretained_predicate": UNRETAINED_AGNOSTIC_FIELD_PREDICATE}
         )
+        self.update_return_labels(["edges_closed"])
 
     def closed_edge_count(self) -> int:
         """How many global edges this run stamped shut. Zero means every field is still retained somewhere."""
-        return self.stats.get_counter("properties_set")
+        result = self.get_result()
+        if result is None:
+            return 0
+        return result.get_as_type("edges_closed", int)
