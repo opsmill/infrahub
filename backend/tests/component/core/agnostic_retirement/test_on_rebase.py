@@ -9,7 +9,6 @@ through the real rebase flow, because that transaction is where the point lives.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import uuid4
 
 import pytest
 
@@ -40,6 +39,7 @@ from tests.component.core.agnostic_retirement.support import (
     delete_node,
 )
 from tests.helpers.agnostic_edges import (
+    TEST_ACTOR_ID,
     assert_attribute_retired_at,
     assert_relationship_retired_at,
     attribute_global_edges,
@@ -72,7 +72,7 @@ async def _rebase_branch(
     lock.initialize_lock(local_only=True)
     context = InfrahubContext.init(
         branch=default_branch,
-        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+        account=AccountSession(account_id=TEST_ACTOR_ID, auth_type=AuthType.NONE),
     )
     with (
         dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
@@ -142,11 +142,13 @@ class TestAgnosticRetirementOnRebase:
             "the rebase carried the deletion into the branch's view"
         )
         attribute_after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert_attribute_retired_at(after=attribute_after, before=attribute_before, at=rebase_at)
+        assert_attribute_retired_at(after=attribute_after, before=attribute_before, at=rebase_at, by=TEST_ACTOR_ID)
         relationship_after = await relationship_global_edges(
             db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER
         )
-        assert_relationship_retired_at(after=relationship_after, before=relationship_before, at=rebase_at)
+        assert_relationship_retired_at(
+            after=relationship_after, before=relationship_before, at=rebase_at, by=TEST_ACTOR_ID
+        )
 
     async def test_rebasing_releases_nothing_while_another_branch_retains_the_object(
         self,

@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, SYSTEM_USER_ID, HashableModelState, SchemaPathType
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, HashableModelState, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_attribute_remove import NodeAttributeRemoveMigration
@@ -31,6 +31,7 @@ from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
 from tests.helpers.agnostic_edges import (
+    TEST_ACTOR_ID,
     VertexMetadata,
     assert_attribute_retired_at,
     assert_relationship_retired_at,
@@ -92,7 +93,7 @@ async def _create_gadget(db: InfrahubDatabase, branch: Branch, name: str) -> Nod
 
 async def _delete(db: InfrahubDatabase, node_id: str, branch: Branch, at: Timestamp) -> None:
     to_delete = await NodeManager.get_one(db=db, id=node_id, branch=branch, raise_on_error=True)
-    await to_delete.delete(db=db, at=at)
+    await to_delete.delete(db=db, at=at, user_id=TEST_ACTOR_ID)
 
 
 async def _remove_attribute_from_schema(
@@ -101,6 +102,7 @@ async def _remove_attribute_from_schema(
     at: Timestamp,
     kind: str = WIDGET_KIND,
     attribute_name: str = ATTRIBUTE_NAME,
+    user_id: str = TEST_ACTOR_ID,
 ) -> MigrationResult:
     """Run the attribute-removal migration for a branch-agnostic attribute on `branch`."""
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
@@ -117,7 +119,7 @@ async def _remove_attribute_from_schema(
         new_node_schema=node_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=kind, field_name=attribute_name),
     )
-    return await migration.execute(migration_input=MigrationInput(db=db, at=at), branch=branch)
+    return await migration.execute(migration_input=MigrationInput(db=db, at=at, user_id=user_id), branch=branch)
 
 
 async def _create_beacon(db: InfrahubDatabase, branch: Branch, name: str, serial: int) -> Node:
@@ -127,7 +129,9 @@ async def _create_beacon(db: InfrahubDatabase, branch: Branch, name: str, serial
     return beacon
 
 
-async def _remove_relationship_from_schema(db: InfrahubDatabase, branch: Branch, at: Timestamp) -> MigrationResult:
+async def _remove_relationship_from_schema(
+    db: InfrahubDatabase, branch: Branch, at: Timestamp, user_id: str = TEST_ACTOR_ID
+) -> MigrationResult:
     """Run the relationship-removal migration for the widget's branch-agnostic relationship on `branch`.
 
     Both sides of the identifier are dropped from the registered schema first, which is what the schema
@@ -152,7 +156,7 @@ async def _remove_relationship_from_schema(db: InfrahubDatabase, branch: Branch,
             path_type=SchemaPathType.RELATIONSHIP, schema_kind=WIDGET_KIND, field_name=RELATIONSHIP_NAME
         ),
     )
-    return await migration.execute(migration_input=MigrationInput(db=db, at=at), branch=branch)
+    return await migration.execute(migration_input=MigrationInput(db=db, at=at, user_id=user_id), branch=branch)
 
 
 async def test_an_attribute_removed_from_the_schema_is_closed_when_no_branch_declares_it(
@@ -170,7 +174,7 @@ async def test_an_attribute_removed_from_the_schema_is_closed_when_no_branch_dec
     assert result.nbr_migrations_executed == 1
 
     after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
-    assert_attribute_retired_at(after=after, before=before, at=removed_at)
+    assert_attribute_retired_at(after=after, before=before, at=removed_at, by=TEST_ACTOR_ID)
 
     owning_edges = await attribute_owning_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
     assert sorted((edge.branch, edge.status, edge.to_time or "") for edge in owning_edges) == [
@@ -195,7 +199,7 @@ async def test_a_relationship_removed_from_the_schema_is_closed_when_no_branch_d
     assert result.nbr_migrations_executed == 1
 
     after = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
-    assert_relationship_retired_at(after=after, before=before, at=removed_at)
+    assert_relationship_retired_at(after=after, before=before, at=removed_at, by=TEST_ACTOR_ID)
     assert await NodeManager.get_one(db=db, id=gadget.id, branch=default_branch) is not None, (
         "the peer object is untouched; only the relationship between the two was released"
     )
@@ -283,7 +287,7 @@ async def test_one_removal_closes_only_the_objects_the_fork_cannot_reach(
     assert to_times(retained_after) == {None}
 
     retired_after = await attribute_global_edges(db=db, node_id=retired.id, attribute_name=ATTRIBUTE_NAME)
-    assert_attribute_retired_at(after=retired_after, before=retired_before, at=removed_at)
+    assert_attribute_retired_at(after=retired_after, before=retired_before, at=removed_at, by=TEST_ACTOR_ID)
 
     on_branch = await NodeManager.get_one(db=db, id=retained.id, branch=branch)
     assert on_branch is not None
@@ -331,7 +335,7 @@ async def test_a_relationship_is_closed_when_the_only_fork_reads_one_of_its_peer
     assert result.nbr_migrations_executed == 1
 
     after = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
-    assert_relationship_retired_at(after=after, before=before, at=removed_at)
+    assert_relationship_retired_at(after=after, before=before, at=removed_at, by=TEST_ACTOR_ID)
 
 
 async def test_an_attribute_removed_on_a_fork_is_closed_when_the_object_is_deleted_elsewhere(
@@ -359,7 +363,7 @@ async def test_an_attribute_removed_on_a_fork_is_closed_when_the_object_is_delet
     await _delete(db=db, node_id=widget.id, branch=default_branch, at=deleted_at)
 
     after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
-    assert_attribute_retired_at(after=after, before=before, at=deleted_at)
+    assert_attribute_retired_at(after=after, before=before, at=deleted_at, by=TEST_ACTOR_ID)
 
     owning_edges = await attribute_owning_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
     assert sorted((edge.branch, edge.status, edge.to_time or "") for edge in owning_edges) == sorted(
@@ -400,7 +404,7 @@ async def test_an_attribute_removed_from_the_schema_is_closed_when_the_only_fork
     assert result.nbr_migrations_executed == 1
 
     after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
-    assert_attribute_retired_at(after=after, before=before, at=removed_at)
+    assert_attribute_retired_at(after=after, before=before, at=removed_at, by=TEST_ACTOR_ID)
 
     owning_edges = await attribute_owning_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
     assert sorted((edge.branch, edge.status, edge.to_time or "") for edge in owning_edges) == sorted(
@@ -439,7 +443,7 @@ async def test_an_attribute_of_a_branch_agnostic_kind_is_closed_when_no_branch_d
     assert result.nbr_migrations_executed == 1
 
     after = await attribute_global_edges(db=db, node_id=beacon.id, attribute_name=ATTRIBUTE_NAME)
-    assert_attribute_retired_at(after=after, before=before, at=removed_at)
+    assert_attribute_retired_at(after=after, before=before, at=removed_at, by=TEST_ACTOR_ID)
 
 
 async def test_an_attribute_of_a_branch_agnostic_kind_stays_open_for_a_branch_that_forked_before(
@@ -488,7 +492,7 @@ async def test_removing_an_attribute_stamps_the_removal_time_on_its_vertex(
 
     after = await attribute_metadata(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
     assert after.updated_at == removed_at.to_string(), "the attribute vertex carries the removal time"
-    assert after.updated_by == SYSTEM_USER_ID
+    assert after.updated_by == TEST_ACTOR_ID, "the vertex stamp names the account the removal ran as"
     assert after.previous_updated_at == before.updated_at, "the pre-removal stamp is kept for a rollback"
     assert after.previous_updated_by == before.updated_by
 
@@ -519,7 +523,7 @@ async def test_removing_a_relationship_stamps_the_removal_time_on_its_vertex(
 
     after = await relationship_metadata(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
     assert after.updated_at == removed_at.to_string(), "the relationship vertex carries the removal time"
-    assert after.updated_by == SYSTEM_USER_ID
+    assert after.updated_by == TEST_ACTOR_ID, "the vertex stamp names the account the removal ran as"
     assert after.previous_updated_at == before.updated_at, "the pre-removal stamp is kept for a rollback"
     assert after.previous_updated_by == before.updated_by
 

@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 
 from tests.component.core.agnostic_retirement.support import delete_node
 from tests.helpers.agnostic_edges import (
+    TEST_ACTOR_ID,
     assert_attribute_retired_at,
     assert_relationship_retired_at,
     attribute_global_edges,
@@ -60,7 +61,7 @@ async def _merge_branch(db: InfrahubDatabase, default_branch: Branch, branch: Br
     await _update_branch_diff(db=db, default_branch=default_branch, branch=branch)
     component_registry = get_component_registry()
     diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
-    await diff_merger.merge_graph(at=at)
+    await diff_merger.merge_graph(at=at, user_id=TEST_ACTOR_ID)
 
 
 class TestAgnosticRetirementOnMerge:
@@ -116,11 +117,13 @@ class TestAgnosticRetirementOnMerge:
             "the merge carried the deletion to the default branch"
         )
         attribute_after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert_attribute_retired_at(after=attribute_after, before=attribute_before, at=merged_at)
+        assert_attribute_retired_at(after=attribute_after, before=attribute_before, at=merged_at, by=TEST_ACTOR_ID)
         relationship_after = await relationship_global_edges(
             db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER
         )
-        assert_relationship_retired_at(after=relationship_after, before=relationship_before, at=merged_at)
+        assert_relationship_retired_at(
+            after=relationship_after, before=relationship_before, at=merged_at, by=TEST_ACTOR_ID
+        )
 
     async def test_merging_the_deletion_releases_nothing_while_another_branch_retains_the_object(
         self,
@@ -184,7 +187,7 @@ class TestAgnosticRetirementOnMerge:
         assert await NodeManager.get_one(db=db, id=unretained.id, branch=default_branch) is None
 
         unretained_after = await attribute_global_edges(db=db, node_id=unretained.id, attribute_name="serial")
-        assert_attribute_retired_at(after=unretained_after, before=unretained_before, at=merged_at)
+        assert_attribute_retired_at(after=unretained_after, before=unretained_before, at=merged_at, by=TEST_ACTOR_ID)
         assert edge_summary(await attribute_global_edges(db=db, node_id=retained.id, attribute_name="serial")) == (
             edge_summary(retained_before)
         ), "its neighbor's release must not drag the retained node's fields shut with it"

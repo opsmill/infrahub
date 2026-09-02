@@ -29,6 +29,7 @@ from tests.component.core.agnostic_retirement.support import (
     delete_node,
 )
 from tests.helpers.agnostic_edges import (
+    TEST_ACTOR_ID,
     assert_attribute_retired_at,
     assert_relationship_retired_at,
     attribute_global_edges,
@@ -109,7 +110,7 @@ class TestAgnosticRetirementOnDelete:
         await delete_node(db=db, node_id=widget.id, branch=branch, at=deleted_at)
 
         after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert_attribute_retired_at(after=after, before=before, at=deleted_at)
+        assert_attribute_retired_at(after=after, before=before, at=deleted_at, by=TEST_ACTOR_ID)
 
     async def test_a_field_stays_open_while_the_default_branch_still_holds_the_object(
         self,
@@ -148,7 +149,7 @@ class TestAgnosticRetirementOnDelete:
         await delete_node(db=db, node_id=widget.id, branch=default_branch, at=deleted_at)
 
         after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert_attribute_retired_at(after=after, before=before, at=deleted_at)
+        assert_attribute_retired_at(after=after, before=before, at=deleted_at, by=TEST_ACTOR_ID)
 
     async def test_a_field_stays_open_for_a_branch_that_forked_between_creation_and_deletion(
         self,
@@ -202,7 +203,7 @@ class TestAgnosticRetirementOnDelete:
         await delete_node(db=db, node_id=widget.id, branch=second, at=last_delete)
 
         after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert_attribute_retired_at(after=after, before=before, at=last_delete)
+        assert_attribute_retired_at(after=after, before=before, at=last_delete, by=TEST_ACTOR_ID)
 
     async def test_an_attribute_that_accumulated_value_edges_is_closed_edge_for_edge(
         self,
@@ -232,7 +233,7 @@ class TestAgnosticRetirementOnDelete:
         await delete_node(db=db, node_id=widget.id, branch=default_branch, at=deleted_at)
 
         after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert_attribute_retired_at(after=after, before=before, at=deleted_at)
+        assert_attribute_retired_at(after=after, before=before, at=deleted_at, by=TEST_ACTOR_ID)
 
     async def test_a_repointed_relationship_is_closed_edge_for_edge(
         self,
@@ -273,7 +274,7 @@ class TestAgnosticRetirementOnDelete:
         await delete_node(db=db, node_id=widget.id, branch=default_branch, at=deleted_at)
 
         after = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
-        assert_relationship_retired_at(after=after, before=before, at=deleted_at)
+        assert_relationship_retired_at(after=after, before=before, at=deleted_at, by=TEST_ACTOR_ID)
 
     async def test_a_relationship_is_closed_when_its_peers_are_live_on_different_branches(
         self,
@@ -309,7 +310,7 @@ class TestAgnosticRetirementOnDelete:
         await delete_node(db=db, node_id=gadget.id, branch=default_branch, at=last_delete)
 
         after = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
-        assert_relationship_retired_at(after=after, before=before, at=last_delete)
+        assert_relationship_retired_at(after=after, before=before, at=last_delete, by=TEST_ACTOR_ID)
 
     async def test_a_field_removed_on_the_only_retaining_branch_is_closed_with_the_object(
         self,
@@ -331,7 +332,7 @@ class TestAgnosticRetirementOnDelete:
         await delete_node(db=db, node_id=widget.id, branch=default_branch, at=deleted_at)
 
         after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert_attribute_retired_at(after=after, before=before, at=deleted_at)
+        assert_attribute_retired_at(after=after, before=before, at=deleted_at, by=TEST_ACTOR_ID)
 
         owning_edges = await attribute_owning_edges(db=db, node_id=widget.id, attribute_name="serial")
         assert sorted((edge.branch, edge.status, edge.to_time or "") for edge in owning_edges) == [
@@ -365,7 +366,7 @@ class TestAgnosticRetirementOnDelete:
         await delete_node(db=db, node_id=gadget.id, branch=default_branch, at=deleted_at)
 
         after = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
-        assert_relationship_retired_at(after=after, before=before, at=deleted_at)
+        assert_relationship_retired_at(after=after, before=before, at=deleted_at, by=TEST_ACTOR_ID)
 
     async def test_a_retirement_failure_propagates_and_leaves_the_graph_untouched(
         self,
@@ -425,7 +426,7 @@ class TestAgnosticRetirementOnDelete:
         await delete_node(db=db, node_id=holder.id, branch=default_branch, at=deleted_at)
 
         after = await attribute_global_edges(db=db, node_id=holder.id, attribute_name="serial")
-        assert_attribute_retired_at(after=after, before=before, at=deleted_at)
+        assert_attribute_retired_at(after=after, before=before, at=deleted_at, by=TEST_ACTOR_ID)
         assert await pool_reservation_edges(db=db, pool_id=serial_pool.id, identifier=holder.id) == reserved_before, (
             "the reservation is never cleaned up on delete, and does not need to be"
         )
