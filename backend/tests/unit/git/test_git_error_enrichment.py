@@ -57,6 +57,25 @@ ENRICHMENT_CASES = [
         expected=RepositoryConnectionError,
     ),
     EnrichmentCase(
+        name="tls_untrusted_openssl",
+        stderr="fatal: unable to access 'https://git.example.com/demo.git/': "
+        "SSL certificate problem: unable to get local issuer certificate",
+        expected=RepositoryConnectionError,
+    ),
+    EnrichmentCase(
+        name="tls_untrusted_gnutls_legacy",
+        stderr="fatal: unable to access 'https://git.example.com/demo.git/': "
+        "server certificate verification failed. CAfile: none CRLfile: none",
+        expected=RepositoryConnectionError,
+    ),
+    EnrichmentCase(
+        # Wording of GnuTLS-backed curl 8.x, which is what the shipped image's git emits.
+        name="tls_untrusted_gnutls_current",
+        stderr="fatal: unable to access 'https://git.example.com/demo.git/': server verification failed: "
+        "certificate signer not trusted. (CAfile: /opt/infrahub/tls/ca-bundle.pem CRLfile: none)",
+        expected=RepositoryConnectionError,
+    ),
+    EnrichmentCase(
         name="authentication_failed",
         stderr="fatal: Authentication failed for 'https://gitlab.example.com/net/repo.git/'",
         expected=RepositoryCredentialsError,

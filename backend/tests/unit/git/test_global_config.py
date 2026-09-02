@@ -19,6 +19,7 @@ from git import Actor, Git, Repo
 from git.exc import GitCommandError
 
 from infrahub.config import GitSettings
+from infrahub.git.base import GIT_TLS_VERIFICATION_ERRORS
 from infrahub.git.global_config import (
     GIT_HTTP_SSL_CA_INFO,
     GIT_HTTP_SSL_VERIFY,
@@ -236,10 +237,10 @@ class TestGitTrustsTheConfiguredBundle:
         with pytest.raises(GitCommandError) as exc_info:
             Repo.clone_from(url, str(tmp_path / "clone"))
 
-        # OpenSSL- and GnuTLS-linked git builds word the failure differently; the product's error
-        # enrichment in infrahub.git.base matches the same two phrases.
+        # OpenSSL- and GnuTLS-linked git builds word the failure differently; assert with the same
+        # list the product's error enrichment matches so the two cannot drift apart.
         stderr = str(exc_info.value.stderr)
-        assert "SSL certificate problem" in stderr or "server certificate verification failed" in stderr
+        assert any(wording in stderr for wording in GIT_TLS_VERIFICATION_ERRORS), stderr
 
     async def test_clone_succeeds_with_the_configured_ca_file(
         self, git_global_config: Path, https_git_server: tuple[str, Path], tmp_path: Path
