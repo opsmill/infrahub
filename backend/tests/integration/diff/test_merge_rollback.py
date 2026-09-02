@@ -7,6 +7,7 @@ import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.graph_merger import GraphMerger
@@ -68,7 +69,7 @@ class BrokenGraphMerger:
         self.real_merge_graph = self.real_merger.diff_merger.merge_graph
         self.real_merger.diff_merger.merge_graph = self.merge_graph  # type: ignore
 
-    async def merge(self, at: Timestamp) -> None:
+    async def merge(self, at: Timestamp, user_id: str = SYSTEM_USER_ID) -> None:
         await self.real_merger.merge(at=at)
 
     async def merge_graph(self, at: Timestamp) -> Never:
@@ -83,7 +84,7 @@ class MidMergeFailureGraphMerger:
         self.real_merger = GraphMerger(*args, **kwargs)
         self.real_merger.diff_merger._bulk_merge_relationship_property_edges = self._fail_bulk_merge  # type: ignore
 
-    async def merge(self, at: Timestamp) -> None:
+    async def merge(self, at: Timestamp, user_id: str = SYSTEM_USER_ID) -> None:
         await self.real_merger.merge(at=at)
 
     async def _fail_bulk_merge(self, at: Timestamp, plan: MergeExclusionPlan) -> Never:
