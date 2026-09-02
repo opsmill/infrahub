@@ -4,8 +4,10 @@ import asyncio
 import functools
 import random
 import time
+from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
+from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Coroutine, TypeVar
 
 from neo4j import (
     READ_ACCESS,
@@ -599,36 +601,135 @@ def is_retriable_db_error(exc: BaseException) -> bool:
     return False
 
 
+_retry_owner: ContextVar[str | None] = ContextVar("retry_owner", default=None)
+
+
+@asynccontextmanager
+async def _claim_retry_ownership(name: str) -> AsyncIterator[bool]:
+    """Claim the right to replay failed database work for the duration of the scope.
+
+    Only the outermost claim retries. An inner one runs its work once and lets the error travel out
+    to the scope that already owns the replay, so layers that each retry independently cannot
+    multiply into `retry_limit` raised to the power of their nesting depth.
+
+    Args:
+        name: Label of the scope making the claim.
+
+    Yields:
+        Whether this scope owns the retry.
+
+    """
+    if _retry_owner.get() is not None:
+        yield False
+        return
+
+    token = _retry_owner.set(name)
+    try:
+        yield True
+    finally:
+        _retry_owner.reset(token)
+
+
+async def _run_retry_loop[T](name: str, func: Callable[[], Coroutine[Any, Any, T]]) -> T:
+    error = Exception()
+    for attempt in range(1, config.SETTINGS.database.retry_limit + 1):
+        try:
+            return await func()
+        except (TransientError, ClientError) as exc:
+            if not is_retriable_db_error(exc):
+                raise
+            if not await _wait_before_retry(exc=exc, attempt=attempt, name=name):
+                error = exc
+                break
+    raise error
+
+
+async def _wait_before_retry(exc: TransientError | ClientError, attempt: int, name: str) -> bool:
+    """Record a failed attempt and back off before the next one.
+
+    Args:
+        exc: Retriable error that ended the attempt.
+        attempt: Number of the attempt that just failed, counting from 1.
+        name: Label to record the failure against in the retry metric.
+
+    Returns:
+        Whether another attempt is allowed.
+
+    """
+    retry_limit = config.SETTINGS.database.retry_limit
+    base_delay = config.SETTINGS.database.retry_base_delay
+    max_delay = config.SETTINGS.database.retry_max_delay
+    jitter = random.uniform(0, config.SETTINGS.database.retry_jitter_max)
+    retry_time = min(base_delay * (2 ** (attempt - 1)) + jitter, max_delay)
+    log.error("Retry handler caught database error", exc_info=exc)
+    log.info(f"Retrying database transaction, attempt {attempt}/{retry_limit}", retry_time=retry_time)
+    log.debug("Database transaction failed", message=exc.message)
+    TRANSACTION_RETRIES.labels(name).inc()
+    await asyncio.sleep(retry_time)
+    return attempt < retry_limit
+
+
 def retry_db_transaction(
     name: str,
 ) -> Callable[[Callable[..., Coroutine[Any, Any, R]]], Callable[..., Coroutine[Any, Any, R]]]:
     def func_wrapper(func: Callable[..., Coroutine[Any, Any, R]]) -> Callable[..., Coroutine[Any, Any, R]]:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> R:
-            error = Exception()
-            for attempt in range(1, config.SETTINGS.database.retry_limit + 1):
-                try:
+            async with _claim_retry_ownership(name) as owns_retry:
+                if not owns_retry:
                     return await func(*args, **kwargs)
-                except (TransientError, ClientError) as exc:
-                    if not is_retriable_db_error(exc):
-                        raise
-                    base_delay = config.SETTINGS.database.retry_base_delay
-                    max_delay = config.SETTINGS.database.retry_max_delay
-                    jitter = random.uniform(0, config.SETTINGS.database.retry_jitter_max)
-                    retry_time = min(base_delay * (2 ** (attempt - 1)) + jitter, max_delay)
-                    log.exception("Retry handler caught database error")
-                    log.info(
-                        f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}",
-                        retry_time=retry_time,
-                    )
-                    log.debug("Database transaction failed", message=exc.message)
-                    TRANSACTION_RETRIES.labels(name).inc()
-                    await asyncio.sleep(retry_time)
-                    if attempt == config.SETTINGS.database.retry_limit:
-                        error = exc
-                        break
-            raise error
+                return await _run_retry_loop(name=name, func=functools.partial(func, *args, **kwargs))
 
         return wrapper
 
     return func_wrapper
+
+
+async def run_in_transaction_with_retry[T](
+    db: InfrahubDatabase,
+    name: str,
+    func: Callable[[InfrahubDatabase], Coroutine[Any, Any, T]],
+    lock_names: list[str] | None = None,
+    lock_metrics: bool = False,
+) -> T:
+    """Run `func` in a database transaction, replaying it when the database errors transiently.
+
+    The retried scope is the transaction and nothing else, so a replay never repeats work that an
+    earlier attempt already committed. Locks are held around the transaction rather than inside it,
+    and are released between attempts.
+
+    `func` runs once, without retrying, in either of two cases. When `db` already runs in a
+    transaction, because the transient error has already failed it and replaying on it raises
+    `TransactionError` instead; only whoever opened it can roll it back and start a new one. And
+    when an enclosing scope already owns the retry, so that nesting cannot multiply the attempts.
+
+    Args:
+        db: Database to run against.
+        name: Label to record failed attempts against in the retry metric.
+        func: Receives the transaction to run against and returns the result.
+        lock_names: Locks to hold for the duration of each attempt.
+        lock_metrics: Whether acquiring those locks is recorded in the lock metrics.
+
+    Returns:
+        Whatever `func` returns.
+
+    Raises:
+        TransientError: When every attempt ended in a retriable error.
+        ClientError: When every attempt ended in a retriable error.
+
+    """
+    if db.is_transaction:
+        async with lock.InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=lock_metrics):
+            return await func(db)
+
+    async def run_attempt() -> T:
+        async with (
+            lock.InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=lock_metrics),
+            db.start_transaction() as dbt,
+        ):
+            return await func(dbt)
+
+    async with _claim_retry_ownership(name) as owns_retry:
+        if not owns_retry:
+            return await run_attempt()
+        return await _run_retry_loop(name=name, func=run_attempt)
