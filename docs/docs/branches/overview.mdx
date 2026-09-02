@@ -77,6 +77,8 @@ Unlike Git where all content is branch-specific, Infrahub introduces a nuanced a
 You can define in the schema the branch behavior for a given node or attribute of a node.
 :::
 
+Because a branch-agnostic value is stored once for every branch, deleting the object that holds it on a single branch does not remove the value. It is released only once no branch can still read that object, which may happen through a delete, a merge, a rebase or a branch deletion — see [Deleting a branch-agnostic attribute or relationship](../schema/branch-awareness#deleting-a-branch-agnostic-attribute-or-relationship).
+
 ### The default branch
 
 The default branch (typically named `main`) in Infrahub has unique characteristics that distinguish it from other branches. It serves as the authoritative source of truth for your infrastructure and enforces stricter rules to maintain data integrity.
@@ -153,3 +155,4 @@ This approach means creating a branch has minimal overhead, and storage grows on
 - [Proposed Changes](../proposed-changes/overview.mdx)
 - [Immutable History](../immutable-history/overview.mdx)
 - [Schema](../schema/overview)
+- [Branch awareness](../schema/branch-awareness)

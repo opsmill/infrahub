@@ -301,6 +301,8 @@ A `branch_support="agnostic"` Attribute or Relationship writes all of its edges 
 
 The predicate lives once, in `core/query/agnostic_retention.py` (`UNRETAINED_AGNOSTIC_FIELD_PREDICATE`) — reuse it, don't re-derive it. Current call sites: `Node.delete`, `AttributeRemoveQuery`, `node_relationship_remove`, `DiffMerger.merge_graph`, branch rebase (`core/branch/tasks.py`), branch delete (`core/branch/data_deleter.py`), plus migration `m078` for the pre-existing backlog. Adding a seventh deletion path means adding a seventh call site.
 
+The `DiffMerger.merge_graph` call site is the one that writes outside its own branch: it closes global-branch edges inside the merge window, at the merge's `$at`. That is why the merge-failure range rollback covers the global branch as well as the target — see [merge-failure-recovery.md](merge-failure-recovery.md).
+
 ## Attribute Updates
 
 - Attributes are per-Node (not shared)

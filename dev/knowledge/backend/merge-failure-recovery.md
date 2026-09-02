@@ -1,6 +1,6 @@
 # Merge Failure Recovery
 
-> Part of: `dev/knowledge/backend/` | Related: [branch-status.md](branch-status.md), [merge-recompute.md](merge-recompute.md)
+> Part of: `dev/knowledge/backend/` | Related: [branch-status.md](branch-status.md), [merge-recompute.md](merge-recompute.md), [database-schema.md](database-schema.md)
 
 A branch merge into the default branch runs as a single database-level operation. If the worker
 running it dies mid-flight, the default branch is left partially merged and the branch stuck in
@@ -25,14 +25,19 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
   `infrahub recover merge` CLI in `cli/recover.py`): range-rollback the partial merge, reset any
   associated proposed change and then the branch to `OPEN`, release the stale merge lock, and lift
   the write protection. Idempotent.
-- **Range rollback** (`core/rollback.py`, `GraphRollbacker` with `RollbackScope.SINCE_TIMESTAMP`
-  and `restore_metadata=True`): reopen edges closed at/after the merge start and delete edges
-  created at/after it. Each pass runs as its own statement — chaining them into one statement
-  stacks planner Eager buffers and can exhaust the database's transaction memory pool on large
-  rollbacks — and each is a single label-less pass over the branch's edges: the `from`/`to`
-  range predicates cannot use the per-type relationship indexes, so type-scoped statements would
-  only multiply the full passes. Each pass also cleans up after its own edges — deleting newly
-  orphaned vertices in the same batch as the edge deletions that orphaned them, and restoring
+- **Range rollback** (`core/rollback.py`, `GraphRollbacker` with `RollbackScope.SINCE_TIMESTAMP`):
+  reopen edges closed at/after the merge start and delete edges created at/after it. Both passes
+  cover two branches (`core/query/rollback.py`, `_rollback_branches`): the target branch, where the
+  window follows the scope, and the global branch, where it is always the *exact* timestamp. A
+  global edge stamped at the merge `$at` was written by this merge, but a later global timestamp
+  came from an unrelated write on some other branch and has to survive — the global branch is
+  written by every branch, so a range there would over-revert. Each pass runs as its own
+  statement — chaining them into one statement stacks planner Eager buffers and can exhaust the
+  database's transaction memory pool on large rollbacks — and each is a single label-less pass over
+  those branches' edges: the `from`/`to` range predicates cannot use the per-type relationship
+  indexes, so type-scoped statements would only multiply the full passes. Each pass also cleans up
+  after its own edges — deleting newly orphaned vertices in the same batch as the edge deletions
+  that orphaned them, and restoring
   `previous_updated_at`/`previous_updated_by` no later than the edge reversal it belongs to (the
   delete pass restores in a transactional block that commits entirely before the first edge
   deletion). That ordering is what makes an interrupted rollback resumable: cleanup driven by ids
@@ -57,11 +62,15 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
    belongs to this merge. The recurring scan reconciles the volatile key against the durable branch
    status, which is reloaded at startup — so protection survives a restart or cache flush.
 
-3. **Every merge-window write is timestamp-uniform and target-scoped.** The bulk graph-merge queries
-   write only to `branch = $target_branch` and stamp every edge with the same merge timestamp `$at`.
-   The merge's start timestamp is persisted on the branch as `merge_started_at` at the `MERGING`
-   transition. Because all writes share one timestamp and one branch, a range query keyed on
-   `merge_started_at` and scoped to the default branch reverses exactly the merge's edges.
+3. **Every merge-window write is timestamp-uniform, and lands on the target branch or the global
+   branch.** The bulk graph-merge queries write only to `branch = $target_branch` and stamp every
+   edge with the same merge timestamp `$at`. The one writer outside the target branch is
+   branch-agnostic retirement (`DiffMerger._retire_agnostic_fields_of_deleted_nodes`), which closes
+   global-branch edges for the nodes whose deletion this merge carried over — also at the merge
+   `$at`. The merge's start timestamp is persisted on the branch as `merge_started_at` at the
+   `MERGING` transition. Because all writes share one timestamp, a range query keyed on
+   `merge_started_at` over the target branch, plus an exact-timestamp query over the global branch,
+   reverses exactly the merge's edges.
 
 4. **Only the graph merge and schema migrations write to the default branch during the window.** Both
    run at the merge `$at`. IPAM reconciliation is deliberately submitted *after* the `MERGED`
@@ -69,11 +78,14 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
    never leaves partial IPAM state for recovery to reverse. Repository (git) merges are also deferred
    past `MERGED`.
 
-5. **Vertex metadata carries a restorable previous value.** The range rollback restores
-   `updated_at`/`updated_by` on every vertex stamped inside the window from
-   `previous_updated_at`/`previous_updated_by`; a vertex stamped without a snapshot was new to the
-   branch, so restoring its NULL snapshot correctly resets its metadata to unset. The diff-merge
-   write path co-writes those `previous_*` fields (`core/diff/query/merge.py`,
+5. **Vertex metadata carries a restorable previous value.** The rollback restores
+   `updated_at`/`updated_by` from `previous_updated_at`/`previous_updated_by` on every endpoint
+   vertex whose `updated_at` equals the operation's *exact* timestamp — not the whole window, and
+   not varying with the scope. A vertex stamped without a snapshot was new to the branch, so
+   restoring its NULL snapshot correctly resets its metadata to unset. The exact match is also what
+   keeps the restore idempotent: a restored vertex no longer carries the timestamp, so a later pass
+   or a re-run cannot null what an earlier one put back. The diff-merge write path co-writes those
+   `previous_*` fields (`core/diff/query/merge.py`,
    `DiffMergeMetadataQuery`), and the schema-migration queries that bump vertex metadata do the
    same (e.g. `core/migrations/schema/attribute_kind_update.py`,
    `core/migrations/query/attribute_add.py`, `node_duplicate.py`, `node_remove.py`). This is what
@@ -89,12 +101,16 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
   detection's liveness signal breaks.
 - A merge-window writer starts writing to the default branch at a timestamp other than the merge
   `$at`, or before the `merge:protected` key is set — the range revert would miss or over-reach.
+- A merge-window writer starts writing to a branch other than the target or the global one, or
+  stamps global-branch edges at anything other than the merge `$at` — the rollback covers only
+  those two branches, and only the exact timestamp on the global one.
 - Any pre-`MERGED` step (a new follow-on, or IPAM/repository sync moved back before `MERGED`) starts
   mutating default-branch graph state — recovery would leave it partially applied.
-- A merge-window writer bumps vertex `updated_at`/`updated_by` without co-writing `previous_*` — the
-  window-based restore still fires on those vertices and writes whatever `previous_*` holds (unset,
-  or a leftover snapshot from an older operation), silently corrupting their metadata instead of
-  restoring it.
+- A merge-window writer bumps vertex `updated_at`/`updated_by` to the merge `$at` without
+  co-writing `previous_*` — the restore still fires on those vertices and writes whatever
+  `previous_*` holds (unset, or a leftover snapshot from an older operation), silently corrupting
+  their metadata instead of restoring it. Only a writer stamping a *different* timestamp is out of
+  the restore's reach.
 - The write block stops being immediately consistent (e.g. a per-worker cache instead of one shared
   key) — an unrelated write could interleave into the rollback window.
 
