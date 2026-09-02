@@ -41,6 +41,14 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE` | When enabled, only the generators and artifact definitions affected by a merge are re-executed; when disabled, every generator and artifact definition is re-executed. | boolean | True |
 | `INFRAHUB_MERGE_FAILURE_GRACE_PERIOD_SECONDS` | How long a branch may stay in MERGING with a dead merge-lock holder before it is flagged MERGE_FAILED. | integer | 180 |
 
+## Tls
+
+Global TLS defaults shared by every component that opens outbound TLS connections.
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_TLS_CA_BUNDLE` | File path to a CA cert or bundle in PEM format trusted by every component that opens outbound TLS connections: git, the HTTP client (webhooks, SSO, telemetry, task manager), the database, the message broker, the cache, S3 object storage, the trace exporter, log forwarding and LDAP. A component with its own `tls_ca_file` or `tls_ca_bundle` keeps that value, and a component with `tls_insecure` enabled is left alone. The bundle replaces the system trust store for the components it applies to, so include the public root certificates in the file when those components must keep reaching public services. When unset, each component uses the system trust store. | None | None |
+
 ## Api
 
 | Name | Description | Type | Default |
@@ -83,6 +91,8 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_GIT_GLOBAL_CONFIG_FILE` | The location of the git config file. This will be set as the system `GIT_CONFIG_GLOBAL` environment variable if the environment variable is not initially set | string | /opt/infrahub/.gitconfig |
 | `INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT` | Whether to allow explicit merge commits when infrahub merges branches | boolean | False |
 | `INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE` | When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. Requires delete_branch_after_merge to be enabled. | boolean | False |
+| `INFRAHUB_GIT_TLS_INSECURE` | Skip TLS certificate validation when git connects to HTTPS remotes, by setting `http.sslVerify` to false in the global git configuration. Test and development environments only; never enable in production. | boolean | False |
+| `INFRAHUB_GIT_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format used to verify the certificate of HTTPS git remotes, set as `http.sslCAInfo` in the global git configuration. Falls back to `tls.ca_bundle` when unset. | None | None |
 
 ## Dev
 

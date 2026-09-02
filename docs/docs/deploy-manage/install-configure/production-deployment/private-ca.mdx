@@ -1,0 +1,230 @@
+---
+title: Trust a private CA
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import ReferenceLink from "../../../../src/components/Card";
+
+This guide explains how to make Infrahub trust certificates issued by your organization's private certificate authority (CA). Once configured, every outbound TLS connection Infrahub opens, such as cloning a repository from an internal Git server, calling a webhook, reaching an SSO provider, or connecting to the database, the message broker and S3 object storage, trusts your CA without rebuilding the Infrahub Docker image.
+
+## What you'll accomplish
+
+By following this guide, you'll learn how to:
+
+- Prepare a CA bundle in PEM format
+- Mount the bundle into the Infrahub containers with Docker Compose, Docker or Helm
+- Point every component at the bundle with a single setting
+- Override the bundle for one component when it needs a different CA
+- Verify that git and the HTTP client trust your CA
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+- A running Infrahub instance deployed with Docker Compose, Docker or Helm
+- Your CA certificate chain in PEM format: the root certificate and every intermediate certificate
+- Command-line access to the host or cluster running Infrahub
+- For production deployments, a maintenance window, as the containers restart
+
+## How Infrahub resolves the CA bundle
+
+Infrahub picks the trust store of each outbound connection in this order:
+
+1. The component's `*_TLS_INSECURE` setting, when enabled: certificate validation is skipped and CA settings are ignored for that component.
+2. The component's own CA setting, such as `INFRAHUB_DB_TLS_CA_FILE` or `INFRAHUB_HTTP_TLS_CA_BUNDLE`.
+3. The global `INFRAHUB_TLS_CA_BUNDLE` setting.
+4. The system trust store of the container.
+
+A CA bundle replaces the system trust store for the components it applies to, it does not extend it. If a component must keep reaching services with publicly issued certificates, such as `github.com`, append the public root certificates to your bundle as shown in the first step.
+
+| Component | Connections | Component setting |
+|-----------|-------------|-------------------|
+| Git | Clone, fetch and push over HTTPS | `INFRAHUB_GIT_TLS_CA_FILE` |
+| HTTP client | Webhooks, SSO providers, telemetry, task manager, the Infrahub API reached by the task workers and the git credential helper | `INFRAHUB_HTTP_TLS_CA_BUNDLE` |
+| Database | Neo4j | `INFRAHUB_DB_TLS_CA_FILE` |
+| Message broker | RabbitMQ or NATS | `INFRAHUB_BROKER_TLS_CA_FILE` |
+| Cache | Redis or NATS | `INFRAHUB_CACHE_TLS_CA_FILE` |
+| Object storage | S3-compatible endpoint | `INFRAHUB_STORAGE_TLS_CA_FILE` |
+| Trace exporter | OTLP collector, when the exporter connection is encrypted | `INFRAHUB_TRACE_TLS_CA_BUNDLE` |
+| Log forwarding | Syslog destinations over TLS | `tls_ca_bundle` of the destination |
+| LDAP | Directory servers | `INFRAHUB_LDAP_TLS_CA_BUNDLE` |
+
+## Step 1: Prepare the CA bundle
+
+Concatenate your root and intermediate certificates into a single PEM file:
+
+```shell
+cat corporate-root-ca.pem corporate-intermediate-ca.pem > ca-bundle.pem
+```
+
+If Infrahub also connects to services with publicly issued certificates, append the public root certificates. On a Debian or Ubuntu host:
+
+```shell
+cat /etc/ssl/certs/ca-certificates.crt >> ca-bundle.pem
+```
+
+Check that the file parses as a certificate bundle:
+
+```shell
+openssl crl2pkcs7 -nocrl -certfile ca-bundle.pem | openssl pkcs7 -print_certs -noout
+```
+
+## Step 2: Mount the bundle into the containers
+
+Mount the bundle read-only into both the `infrahub-server` and `task-worker` containers. Every Infrahub process validates the configured path at startup, so a container that reads the setting without the file mounted refuses to start.
+
+<Tabs groupId="installation-method" queryString>
+<TabItem value="docker-compose" label="Docker Compose" default>
+
+Create a `docker-compose.override.yml` file next to your `docker-compose.yml`. Docker Compose merges it automatically and keeps the shipped `docker-compose.yml` untouched for upgrades. See the [Docker Compose documentation](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/) for details on merging files.
+
+```yaml title="docker-compose.override.yml"
+---
+services:
+  infrahub-server:
+    volumes:
+      - ./ca-bundle.pem:/opt/infrahub/tls/ca-bundle.pem:ro
+  task-worker:
+    volumes:
+      - ./ca-bundle.pem:/opt/infrahub/tls/ca-bundle.pem:ro
+```
+
+</TabItem>
+<TabItem value="docker" label="Docker">
+
+Add a bind mount to every `docker run` command that starts an Infrahub server or task worker container:
+
+```shell
+docker run \
+  -v "$(pwd)/ca-bundle.pem:/opt/infrahub/tls/ca-bundle.pem:ro" \
+  -e INFRAHUB_TLS_CA_BUNDLE=/opt/infrahub/tls/ca-bundle.pem \
+  registry.opsmill.io/opsmill/infrahub:latest
+```
+
+</TabItem>
+<TabItem value="helm" label="Helm">
+
+Store the bundle in a ConfigMap and mount it through the `extraVolumes` and `extraVolumeMounts` values of the server and the task worker:
+
+```shell
+kubectl create configmap infrahub-ca-bundle --from-file=ca-bundle.pem
+```
+
+```yaml title="values.yaml"
+infrahubServer:
+  infrahubServer:
+    extraVolumes:
+      - name: ca-bundle
+        configMap:
+          name: infrahub-ca-bundle
+    extraVolumeMounts:
+      - name: ca-bundle
+        mountPath: /opt/infrahub/tls
+        readOnly: true
+infrahubTaskWorker:
+  infrahubTaskWorker:
+    extraVolumes:
+      - name: ca-bundle
+        configMap:
+          name: infrahub-ca-bundle
+    extraVolumeMounts:
+      - name: ca-bundle
+        mountPath: /opt/infrahub/tls
+        readOnly: true
+```
+
+</TabItem>
+</Tabs>
+
+## Step 3: Configure the CA bundle
+
+Point Infrahub at the mounted file. The mount location is not detected automatically: the setting is the single source of truth for where the bundle is.
+
+<Tabs groupId="installation-method" queryString>
+<TabItem value="docker-compose" label="Docker Compose" default>
+
+Add the setting to the `.env` file next to your `docker-compose.yml`:
+
+```shell title=".env"
+INFRAHUB_TLS_CA_BUNDLE=/opt/infrahub/tls/ca-bundle.pem
+```
+
+</TabItem>
+<TabItem value="docker" label="Docker">
+
+Pass the setting with `-e INFRAHUB_TLS_CA_BUNDLE=/opt/infrahub/tls/ca-bundle.pem`, as shown in the mount step.
+
+</TabItem>
+<TabItem value="helm" label="Helm">
+
+Add the variable to the environment of both the server and the task worker:
+
+```yaml title="values.yaml"
+infrahubServer:
+  infrahubServer:
+    env:
+      INFRAHUB_TLS_CA_BUNDLE: /opt/infrahub/tls/ca-bundle.pem
+infrahubTaskWorker:
+  infrahubTaskWorker:
+    env:
+      INFRAHUB_TLS_CA_BUNDLE: /opt/infrahub/tls/ca-bundle.pem
+```
+
+</TabItem>
+</Tabs>
+
+To give one component a different CA, set its own setting alongside the global one. The component setting wins for that component, every other component keeps using the global bundle:
+
+```shell title=".env"
+INFRAHUB_TLS_CA_BUNDLE=/opt/infrahub/tls/ca-bundle.pem
+INFRAHUB_DB_TLS_CA_FILE=/opt/infrahub/tls/neo4j-ca.pem
+```
+
+To scope the bundle to git only, leave `INFRAHUB_TLS_CA_BUNDLE` unset and set `INFRAHUB_GIT_TLS_CA_FILE` instead.
+
+:::warning
+
+Do not combine a CA setting with the matching `*_TLS_INSECURE` setting: Infrahub refuses to start when both are set for git, the trace exporter or LDAP, and ignores the bundle for the other components.
+
+:::
+
+## Step 4: Restart and verify
+
+Restart the containers so they pick up the new mount and setting:
+
+```shell
+docker compose up -d
+```
+
+Confirm that the containers started. A wrong path fails fast with a message such as `tls.ca_bundle must be the path to an existing file`:
+
+```shell
+docker compose ps
+docker compose logs infrahub-server task-worker | grep -i "ca_bundle"
+```
+
+Confirm that the task worker configured git with the bundle:
+
+```shell
+docker compose exec task-worker git config --global --get http.sslCAInfo
+```
+
+The command prints the path of the bundle. Then add or refresh a repository hosted on your internal Git server, following [How to connect external Git repositories](../../../git-integration/connect-repository.mdx). The repository reaches the `Active` status instead of failing with `SSL verification failed`.
+
+To verify the HTTP client, trigger a webhook targeting an internal endpoint or log in through your SSO provider. A remaining `Unable to validate TLS certificate` error means the bundle is missing an intermediate certificate for that endpoint.
+
+:::success Validation
+
+Infrahub now trusts certificates issued by your private CA for every outbound connection, and the stock Docker image is used as-is.
+
+:::
+
+## Related resources
+
+- [Configuration reference](../../../reference/configuration.mdx) - Every `*_TLS_*` setting and its default
+- [How to connect external Git repositories](../../../git-integration/connect-repository.mdx) - Connecting repositories, including the git-specific TLS settings
+- [Production deployment](./overview.mdx) - Hardened configuration checklist
+- [How to configure Infrahub](../configure-infrahub.mdx) - Setting environment variables per deployment method
+
+<ReferenceLink title="Complete configuration reference" url="/reference/configuration" />

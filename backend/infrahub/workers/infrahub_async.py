@@ -1,4 +1,3 @@
-import asyncio
 import contextlib
 import logging
 import os
@@ -26,6 +25,7 @@ from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import InitializationError
 from infrahub.git import initialize_repositories_directory
+from infrahub.git.global_config import apply_git_tls_config, set_git_global_setting
 from infrahub.lock import initialize_lock
 from infrahub.services import InfrahubServices
 from infrahub.trace import configure_trace
@@ -235,27 +235,9 @@ class InfrahubWorkerAsync(BaseWorker):
             os.environ["GIT_CONFIG_GLOBAL"] = global_config_file
             self._logger.info(f"Set git config file to {global_config_file}")
 
-        await self._run_git_config_global(config.SETTINGS.git.user_name, setting_name="user.name")
-        await self._run_git_config_global(config.SETTINGS.git.user_email, setting_name="user.email")
-        await self._run_git_config_global("*", "--replace-all", setting_name="safe.directory")
-        await self._run_git_config_global("true", setting_name="credential.usehttppath")
-        await self._run_git_config_global(
-            f"/usr/bin/env {config.SETTINGS.dev.git_credential_helper}", setting_name="credential.helper"
-        )
-
-    async def _run_git_config_global(self, *args: str, setting_name: str) -> None:
-        proc = await asyncio.create_subprocess_exec(
-            "git",
-            "config",
-            "--global",
-            setting_name,
-            *args,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        _, stderr = await proc.communicate()
-        if proc.returncode != 0:
-            error_msg = stderr.decode("utf-8", errors="ignore").strip() or "unknown error"
-            self._logger.error(f"Failed to set git {setting_name}: %s", error_msg)
-        else:
-            self._logger.info(f"Git {setting_name} set")
+        await set_git_global_setting("user.name", config.SETTINGS.git.user_name)
+        await set_git_global_setting("user.email", config.SETTINGS.git.user_email)
+        await set_git_global_setting("safe.directory", "*", "--replace-all")
+        await set_git_global_setting("credential.usehttppath", "true")
+        await set_git_global_setting("credential.helper", f"/usr/bin/env {config.SETTINGS.dev.git_credential_helper}")
+        await apply_git_tls_config(settings=config.SETTINGS.git)

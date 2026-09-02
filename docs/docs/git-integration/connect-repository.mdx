@@ -425,57 +425,26 @@ Now that you have created your token, you can use it to connect your GitLab repo
 
 :::
 
-### Installing custom CA certificates
+### Connecting to a Git server with a private CA
 
-If your Git server uses a certificate signed by a custom Certificate Authority (CA) not recognized by default, you'll need to add your CA certificate to the Infrahub container.
+If your Git server presents a certificate signed by a private Certificate Authority (CA), point Infrahub at your CA bundle instead of rebuilding the Docker image:
 
-:::warning Maintenance consideration
+1. Save your CA certificate and every intermediate certificate in a single PEM file, such as `ca-bundle.pem`
+2. Mount the file read-only into the `infrahub-server` and `task-worker` containers, for example at `/opt/infrahub/tls/ca-bundle.pem`
+3. Set `INFRAHUB_TLS_CA_BUNDLE=/opt/infrahub/tls/ca-bundle.pem` so every component trusts the CA, or `INFRAHUB_GIT_TLS_CA_FILE=/opt/infrahub/tls/ca-bundle.pem` to scope it to git only
+4. Restart your environment
 
-This process requires building a custom Docker image, which you'll need to rebuild with each Infrahub release.
+The task worker writes the path into the global git configuration as `http.sslCAInfo` at startup, so every clone, fetch and push over HTTPS uses it. The mount and configuration steps for Docker Compose, Docker and Helm are detailed in [Trust a private CA](../deploy-manage/install-configure/production-deployment/private-ca.mdx).
+
+:::info Bundle contents
+
+The bundle replaces the system trust store for git. If Infrahub also connects to Git servers with publicly issued certificates, such as GitHub or GitLab, append the public root certificates to the bundle.
 
 :::
 
-Follow these steps to add your custom CA certificate:
-
-1. Save your CA certificate (and any intermediate certificates) in PEM format (such as `mycacertificate.crt`)
-2. Create a Dockerfile in the same directory as your certificate:
-
-```dockerfile
-ARG INFRAHUB_VERSION=latest
-FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_VERSION}
-
-COPY mycacertificate.crt /usr/local/share/ca-certificates/
-RUN update-ca-certificates
-```
-
-3. Build the Docker image:
-
-```shell
-INFRAHUB_VERSION=latest && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
-```
-
-<Tabs groupId="deployment" queryString>
-<TabItem value="Using Docker Compose" default>
-
-If you are using Docker Compose, you can override part of your existing `docker-compose.yml` file to use your custom image. See the official [Docker Compose documentation](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/#how-to-merge-multiple-compose-files) for more details.
-
-4. Create a `docker-compose.override.yml` file in the same directory as your `docker-compose.yml` file:
-
-```yaml
----
-services:
-  task-worker:
-    image: custom/infrahub:latest
-```
-
-5. Start your environment using the `docker compose` command.
-
-</TabItem>
-</Tabs>
-
 :::success Validation
 
-After restarting your environment, Infrahub should now trust your custom CA and be able to connect to Git servers using certificates signed by it.
+Run `docker compose exec task-worker git config --global --get http.sslCAInfo`: it prints the path of your bundle. Adding a repository hosted on your Git server now reaches the `Active` status instead of failing with `SSL verification failed`.
 
 :::
 
@@ -487,51 +456,11 @@ Disabling certificate validation is a bad security practice and is strongly disc
 
 :::
 
-:::warning Custom Docker Image
-
-This process requires building a custom Docker image, which you'll need to rebuild with each Infrahub release.
-
-:::
-
-If you absolutely need to disable certificate verification for testing purposes:
-
-1. Create a Dockerfile with the following content:
-
-```dockerfile
-ARG INFRAHUB_VERSION=latest
-FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_VERSION}
-
-RUN git config --global http.sslVerify "false"
-```
-
-2. Build the Docker image:
-
-```shell
-INFRAHUB_VERSION=latest && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
-```
-
-<Tabs groupId="deployment" queryString>
-<TabItem value="Using Docker Compose" default>
-
-If you are using Docker Compose, you can override part of your existing `docker-compose.yml` file to use your custom image. See the official [Docker Compose documentation](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/#how-to-merge-multiple-compose-files) for more details.
-
-3. Create a `docker-compose.override.yml` file in the same directory as your `docker-compose.yml` file:
-
-```yaml
----
-services:
-  task-worker:
-    image: custom/infrahub:latest
-```
-
-4. Start your environment using the `docker compose` command.
-
-</TabItem>
-</Tabs>
+If you absolutely need to disable certificate verification for testing purposes, set `INFRAHUB_GIT_TLS_INSECURE=true` on the task workers and restart your environment. The task worker sets `http.sslVerify` to `false` in the global git configuration, so git skips certificate validation for every HTTPS remote. This setting cannot be combined with `INFRAHUB_GIT_TLS_CA_FILE`.
 
 :::success Validation
 
-After restarting your environment, Infrahub should now connect to Git servers without validating SSL certificates.
+Run `docker compose exec task-worker git config --global --get http.sslVerify`: it prints `false`, and Infrahub connects to Git servers without validating their certificates.
 
 :::
 

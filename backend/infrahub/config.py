@@ -55,6 +55,27 @@ def default_append_git_suffix_domains() -> list[str]:
     return ["github.com", "gitlab.com"]
 
 
+def _validate_ca_bundle_file(setting_name: str, path: str) -> None:
+    """Fail at startup when a CA bundle setting does not point at a loadable PEM file.
+
+    Raises:
+        ValueError: When the path is not an existing file or the file is not a valid PEM bundle.
+
+    """
+    ca_path = Path(path)
+    try:
+        is_file = ca_path.is_file()
+    except OSError:
+        # Raised when the value is too long to be a path, e.g. a PEM certificate passed as a string.
+        is_file = False
+    if not is_file:
+        raise ValueError(f"{setting_name} must be the path to an existing file, got {path!r}")
+    try:
+        ssl.create_default_context(cafile=str(ca_path))
+    except ssl.SSLError as exc:
+        raise ValueError(f"Unable to load CA bundle for {setting_name} from {path}: {exc}") from exc
+
+
 class EnterpriseFeatures(StrEnum):
     PROPOSED_CHANGE_REQUIRE_APPROVAL = "proposed_change_require_approval"
     REVOKE_PROPOSED_CHANGE_APPROVALS = "revoke_proposed_change_approvals"
@@ -294,6 +315,15 @@ class S3StorageSettings(BaseSettings):
         default="",
         alias="AWS_S3_CUSTOM_DOMAIN",
         validation_alias=AliasChoices("INFRAHUB_STORAGE_CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN"),
+    )
+    tls_ca_file: str | None = Field(
+        default=None,
+        alias="AWS_CA_BUNDLE",
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_TLS_CA_FILE", "AWS_CA_BUNDLE"),
+        description=(
+            "File path to a CA cert or bundle in PEM format used to verify the certificate of the S3 endpoint. "
+            "Falls back to `tls.ca_bundle` when unset."
+        ),
     )
 
 
@@ -750,6 +780,29 @@ class GitSettings(BaseSettings):
         description="When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. "
         "Requires delete_branch_after_merge to be enabled.",
     )
+    tls_insecure: bool = Field(
+        default=False,
+        description=(
+            "Skip TLS certificate validation when git connects to HTTPS remotes, by setting `http.sslVerify` to "
+            "false in the global git configuration. Test and development environments only; never enable in "
+            "production."
+        ),
+    )
+    tls_ca_file: str | None = Field(
+        default=None,
+        description=(
+            "File path to a CA cert or bundle in PEM format used to verify the certificate of HTTPS git remotes, "
+            "set as `http.sslCAInfo` in the global git configuration. Falls back to `tls.ca_bundle` when unset."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        if self.tls_insecure and self.tls_ca_file is not None:
+            raise ValueError("git.tls_insecure cannot be combined with git.tls_ca_file; pick one.")
+        if self.tls_ca_file is not None:
+            _validate_ca_bundle_file(setting_name="git.tls_ca_file", path=self.tls_ca_file)
+        return self
 
     @model_validator(mode="after")
     def validate_sync_branch_names(self) -> Self:
@@ -760,6 +813,30 @@ class GitSettings(BaseSettings):
                 raise ValueError(
                     f"Invalid regex pattern for import_sync_branch_names: '{branch_filter}' — {exc}"
                 ) from exc
+        return self
+
+
+class TLSSettings(BaseSettings):
+    """Global TLS defaults shared by every component that opens outbound TLS connections."""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_TLS_")
+    ca_bundle: str | None = Field(
+        default=None,
+        description=(
+            "File path to a CA cert or bundle in PEM format trusted by every component that opens outbound TLS "
+            "connections: git, the HTTP client (webhooks, SSO, telemetry, task manager), the database, the message "
+            "broker, the cache, S3 object storage, the trace exporter, log forwarding and LDAP. A component with its "
+            "own `tls_ca_file` or `tls_ca_bundle` keeps that value, and a component with `tls_insecure` enabled is "
+            "left alone. The bundle replaces the system trust store for the components it applies to, so include the "
+            "public root certificates in the file when those components must keep reaching public services. When "
+            "unset, each component uses the system trust store."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_ca_bundle(self) -> Self:
+        if self.ca_bundle is not None:
+            _validate_ca_bundle_file(setting_name="tls.ca_bundle", path=self.ca_bundle)
         return self
 
 
@@ -1247,6 +1324,19 @@ class TraceSettings(BaseSettings):
         default=TraceTransportProtocol.GRPC, description="Protocol to be used for exporting traces"
     )
     exporter_endpoint: str | None = Field(default=None, description="OTLP endpoint for exporting traces")
+
+    @property
+    def uses_tls(self) -> bool:
+        """Whether the OTLP exporter connection is encrypted, as decided by the protocol-specific setting.
+
+        With grpc the ``insecure`` flag decides, with http/protobuf the endpoint URL scheme does. A CA bundle
+        only makes sense on an encrypted connection: on grpc it would otherwise switch a plaintext exporter to TLS.
+        """
+        if self.exporter_type is not TraceExporterType.OTLP:
+            return False
+        if self.exporter_protocol is TraceTransportProtocol.GRPC:
+            return not self.insecure
+        return bool(self.exporter_endpoint and self.exporter_endpoint.startswith("https://"))
 
     @model_validator(mode="after")
     def validate_tls_configuration(self) -> Self:
@@ -1810,6 +1900,10 @@ class ConfiguredSettings:
         return self.active_settings.main
 
     @property
+    def tls(self) -> TLSSettings:
+        return self.active_settings.tls
+
+    @property
     def api(self) -> ApiSettings:
         return self.active_settings.api
 
@@ -1891,6 +1985,7 @@ class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
     main: MainSettings = MainSettings()
+    tls: TLSSettings = TLSSettings()
     api: ApiSettings = ApiSettings()
     git: GitSettings = GitSettings()
     dev: DevelopmentSettings = DevelopmentSettings()
@@ -1915,6 +2010,37 @@ class Settings(BaseSettings):
     def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
         if self.git.delete_git_branch_after_merge and not self.main.delete_branch_after_merge:
             raise ValueError("'delete_git_branch_after_merge' requires 'delete_branch_after_merge' to be enabled")
+        return self
+
+    @model_validator(mode="after")
+    def apply_global_tls_ca_bundle(self) -> Self:
+        """Resolve the CA bundle each component ends up trusting.
+
+        A component-specific CA setting always wins. The global ``tls.ca_bundle`` only fills the components
+        that left theirs unset and still verify certificates, so every adapter keeps reading its own setting
+        and the resolved values are what shows up when inspecting the settings.
+        """
+        ca_bundle = self.tls.ca_bundle
+        if ca_bundle is None:
+            return self
+
+        components: list[tuple[BaseModel, str]] = [
+            (self.git, "tls_ca_file"),
+            (self.http, "tls_ca_bundle"),
+            (self.database, "tls_ca_file"),
+            (self.broker, "tls_ca_file"),
+            (self.cache, "tls_ca_file"),
+            (self.storage.s3, "tls_ca_file"),
+            (self.ldap, "tls_ca_bundle"),
+            *((destination, "tls_ca_bundle") for destination in self.log_forwarding.destinations),
+        ]
+        if self.trace.uses_tls:
+            components.append((self.trace, "tls_ca_bundle"))
+
+        for component, field_name in components:
+            if getattr(component, "tls_insecure", False) or getattr(component, field_name) is not None:
+                continue
+            setattr(component, field_name, ca_bundle)
         return self
 
     @property
