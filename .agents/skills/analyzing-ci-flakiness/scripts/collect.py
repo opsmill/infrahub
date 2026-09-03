@@ -61,11 +61,19 @@ BUCKETS: list[tuple[str, str]] = [
     ("runner-oom", r"Process completed with exit code 137|exit code: 137"),
     ("docker-network-pool-exhausted", r"all predefined address pools have been fully subnetted"),
     ("actions-download-429", r"Failed to download action .*429"),
-    # pytest summary is green (no "N failed") yet the process exits 1: a
-    # session-teardown/plugin abort, e.g. the testcontainers result reporting.
+    # One Prefect test server stopped answering, and every later test class fail-fasts on the
+    # remembered failure. Matched through "RuntimeError: " so that a test asserting on this
+    # message cannot tag a job by having its own source line printed in a traceback.
+    (
+        "prefect-task-manager-wedged",
+        r"RuntimeError: Prefect task manager setup already failed for http",
+    ),
+    # pytest summary is green (no "N failed" and no "N errors") yet the process exits 1: a
+    # session-teardown/plugin abort, e.g. the testcontainers result reporting. Errors have to be
+    # excluded too, or a fixture cascade ("474 passed, 11 errors") reads as a green session.
     (
         "pytest-green-exit-1",
-        r"=+ \d+ passed(?:(?!\d+ failed)[^\n])*=+[^\n]*\n(?:[^\n]*\n){0,3}[^\n]*Process completed with exit code 1\.",
+        r"=+ \d+ passed(?:(?!\d+ (?:failed|error))[^\n])*=+[^\n]*\n(?:[^\n]*\n){0,3}[^\n]*Process completed with exit code 1\.",
     ),
 ]
 
