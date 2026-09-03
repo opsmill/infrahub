@@ -19,8 +19,7 @@ import {
 } from "@/entities/nodes/columns/domain/rules/toggle-column";
 import type { FieldSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
 
-// Column changes are not undoable by Back: a checklist invites several toggles in a row, and a
-// history entry per toggle would bury the page the user arrived from.
+// A column change replaces the current history entry, so Back does not undo it.
 const columnNamesParser = parseAsArrayOf(parseAsString).withOptions({ history: "replace" });
 
 interface ColumnVisibility {
