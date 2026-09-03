@@ -117,9 +117,7 @@ class GraphMerger:
         candidate_schema = await self.schema_analyzer.get_candidate_schema()
         # Compare the two branch schemas so updates on either source or destination are considered.
         schema_diff_constraints = (
-            await self.schema_analyzer.calculate_validations(target_schema=candidate_schema)
-            if self.schema_analyzer.schemas_differ()
-            else []
+            await self.schema_analyzer.calculate_validations() if self.schema_analyzer.schemas_differ() else []
         )
         result = await self.constraint_validator.validate(
             candidate_schema=candidate_schema, schema_diff_constraints=schema_diff_constraints

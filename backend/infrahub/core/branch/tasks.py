@@ -207,7 +207,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         #  - Run all the migrations after the rebase
         schema_diff_constraints: list[SchemaUpdateConstraintInfo] = []
         if schema_analyzer.schemas_differ():
-            schema_diff_constraints = await schema_analyzer.calculate_validations(target_schema=candidate_schema)
+            schema_diff_constraints = await schema_analyzer.calculate_validations()
         merger = build_constraint_info_merger()
         constraints = merger.merge(candidate_schema, data_diff_constraints, schema_diff_constraints)
         if constraints:
@@ -250,7 +250,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 # the migrations it implies.
                 log.info("Running migrations")
                 rebased_schema = await registry.schema.load_schema_from_db(db=db, branch=user_branch)
-                migrations = await schema_analyzer.calculate_migrations(target_schema=rebased_schema)
+                migrations = await schema_analyzer.calculate_migrations()
                 # The schema migrations need a unique timestamp so that a rollback on failure will
                 # not try to erase changes made during the graph rebase and destroy the branch.
                 migration_at = rebase_at.add(microseconds=1)

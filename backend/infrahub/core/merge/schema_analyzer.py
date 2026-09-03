@@ -129,13 +129,22 @@ class MergeSchemaAnalyzer:
         return self.properties_kept_from_destination(enriched_diff)
 
     @staticmethod
-    def three_way_schema_diff(*, ancestor: SchemaBranch, source: SchemaBranch, destination: SchemaBranch) -> SchemaDiff:
-        """Everything either branch changed since they forked, from the ancestor's point of view."""
-        return ancestor.diff(other=source) + ancestor.diff(other=destination)
+    def three_way_schema_diff(*, source: SchemaBranch, destination: SchemaBranch, target: SchemaBranch) -> SchemaDiff:
+        """Everything either branch changed since they forked, keyed by the names the target uses.
+
+        Each side is compared with the schema the operation produces rather than with the ancestor:
+        what separates the destination from the target is the source's contribution, and what
+        separates the source from the target is the destination's. A diff is keyed by the names of
+        the schema it is compared with, so measuring from the ancestor would key each half by that
+        side's own names and a renamed element would be reported under two names, one of which the
+        target does not know; validation and migration calculation both resolve every kind and field
+        on the target.
+        """
+        return destination.diff(other=target) + source.diff(other=target)
 
     @staticmethod
     def schema_diff_constraints(
-        *, ancestor: SchemaBranch, source: SchemaBranch, destination: SchemaBranch, target_schema: SchemaBranch
+        *, source: SchemaBranch, destination: SchemaBranch, target_schema: SchemaBranch
     ) -> list[SchemaUpdateConstraintInfo]:
         """Constraints the schema comparison contributes, all unrestricted in scope.
 
@@ -143,7 +152,7 @@ class MergeSchemaAnalyzer:
         those are turned back into constraints where a checker exists for them; otherwise the check
         would only ever arrive node-scoped from the data diff.
         """
-        diff = MergeSchemaAnalyzer.three_way_schema_diff(ancestor=ancestor, source=source, destination=destination)
+        diff = MergeSchemaAnalyzer.three_way_schema_diff(source=source, destination=destination, target=target_schema)
         validation = SchemaUpdateValidationResult.init(diff=diff, schema=target_schema)
         validation.add_validator_for_migration(validator_map=CONSTRAINT_VALIDATOR_MAP)
         return validation.constraints
@@ -171,21 +180,30 @@ class MergeSchemaAnalyzer:
         return kept
 
     async def get_3ways_diff_schema(self) -> SchemaDiff:
+        """Both sides' changes, keyed by the names the candidate schema uses.
+
+        The candidate is the only target compared with here, never a schema loaded back from the
+        database after the operation: the candidate is built from the two registry schemas, so every
+        kind the registry knows is on both sides of each comparison. A schema loaded from the database
+        holds only what the database holds, and a kind absent from it would read as removed.
+        """
         return self.three_way_schema_diff(
-            ancestor=await self.get_common_ancestor_schema(),
             source=self.source_schema,
             destination=self.destination_schema,
+            target=await self.get_candidate_schema(),
         )
 
-    async def calculate_migrations(self, target_schema: SchemaBranch) -> list[SchemaUpdateMigrationInfo]:
-        diff_3way = await self.get_3ways_diff_schema()
-        validation = SchemaUpdateValidationResult.init(diff=diff_3way, schema=target_schema)
+    async def calculate_migrations(self) -> list[SchemaUpdateMigrationInfo]:
+        """Migrations both sides' changes imply, resolved against the candidate schema."""
+        validation = SchemaUpdateValidationResult.init(
+            diff=await self.get_3ways_diff_schema(), schema=await self.get_candidate_schema()
+        )
         return validation.migrations
 
-    async def calculate_validations(self, target_schema: SchemaBranch) -> list[SchemaUpdateConstraintInfo]:
+    async def calculate_validations(self) -> list[SchemaUpdateConstraintInfo]:
+        """Constraints both sides' changes imply, resolved against the candidate schema."""
         return self.schema_diff_constraints(
-            ancestor=await self.get_common_ancestor_schema(),
             source=self.source_schema,
             destination=self.destination_schema,
-            target_schema=target_schema,
+            target_schema=await self.get_candidate_schema(),
         )

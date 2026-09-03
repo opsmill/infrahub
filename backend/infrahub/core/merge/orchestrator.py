@@ -126,7 +126,7 @@ class BranchMergeOrchestrator:
                 # Scope for the post-merge derived-value refresh: what the merge changed on the destination.
                 schema_diff = pre_merge_state.destination_schema.diff(other=candidate_schema)
                 schema_updated_hash = candidate_schema.get_hash()
-                migrations = await self.schema_analyzer.calculate_migrations(target_schema=candidate_schema)
+                migrations = await self.schema_analyzer.calculate_migrations()
                 await self.schema_update_coordinator.execute(
                     branch=self.destination_branch,
                     origin_schema=pre_merge_state.destination_schema,

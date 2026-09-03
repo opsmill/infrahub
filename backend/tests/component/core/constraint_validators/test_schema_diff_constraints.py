@@ -92,7 +92,7 @@ async def test_both_schema_routes_survive_merging_with_the_data_diff(
 
     analyzer = await build_schema_analyzer(db=db, source_branch=branch, destination_branch=default_branch)
     candidate_schema = await analyzer.get_candidate_schema()
-    schema_constraints = await analyzer.calculate_validations(target_schema=candidate_schema)
+    schema_constraints = await analyzer.calculate_validations()
 
     determiner = build_constraint_validator_determiner(db=db, branch=branch)
     data_constraints = await determiner.get_constraints(schema_branch=candidate_schema, node_diffs=node_field_summaries)
@@ -107,20 +107,17 @@ async def test_both_schema_routes_survive_merging_with_the_data_diff(
     kind = _attribute_constraint(
         kind=CAR_KIND, field_name="color", property_name="kind", constraint_name="attribute.kind.update"
     )
-    hierarchical = SchemaUpdateConstraintInfo(
-        constraint_name="node.hierarchical.update",
-        path=SchemaPath(
-            path_type=SchemaPathType.NODE,
-            schema_kind="CoreGroup",
-            field_name="hierarchical",
-            property_name="hierarchical",
-        ),
-    )
 
-    assert set(schema_constraints) == {regex, kind, hierarchical}
+    # Exactly the two properties the branch changed. Each side is compared with the candidate rather
+    # than with the ancestor loaded from the database, so a core kind that does not round-trip through
+    # the database identically (CoreGroup's ``hierarchical``) no longer surfaces as a change of its own.
+    assert set(schema_constraints) == {regex, kind}
     assert {c.node_uuids for c in schema_constraints} == {None}
 
-    # merging constraints cannot drop a constraint or narrow its scope.
-    schema_side = {regex, kind, hierarchical}
+    # Merging cannot drop a schema-side constraint or narrow its scope. The data-diff side contributes
+    # further entries for the fields the branch touched, including checks on the edited SchemaAttribute
+    # nodes themselves; which of those it schedules is the determiner's concern, not this test's, so
+    # only the schema side is pinned exactly.
+    schema_side = {regex, kind}
     assert schema_side <= set(merged)
     assert {c.node_uuids for c in merged if c in schema_side} == {None}

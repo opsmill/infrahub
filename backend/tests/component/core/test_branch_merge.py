@@ -232,7 +232,7 @@ async def test_merge_update_schema(
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch2)
     await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
     schema_analyzer = await build_schema_analyzer(db=db, source_branch=branch2, destination_branch=default_branch)
-    migrations = await schema_analyzer.calculate_migrations(target_schema=schema_branch)
+    migrations = await schema_analyzer.calculate_migrations()
     assert sorted(migrations, key=lambda x: x.path.get_path()) == sorted(
         [
             SchemaUpdateMigrationInfo(
