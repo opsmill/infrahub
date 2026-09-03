@@ -553,7 +553,9 @@ async def test_query_NodeDeleteQuery(
 ) -> None:
     tags_before = await NodeManager.query(db=db, schema=InfrahubKind.TAG, branch=default_branch)
 
-    query = await NodeDeleteQuery.init(db=db, node=tag_blue_main, branch=default_branch, user_id="abcd")
+    query = await NodeDeleteQuery.init(
+        db=db, node=tag_blue_main, branch=default_branch, user_id="abcd", set_node_metadata=True
+    )
     await query.execute(db=db)
 
     tags_after = await NodeManager.query(db=db, schema=InfrahubKind.TAG, branch=default_branch)

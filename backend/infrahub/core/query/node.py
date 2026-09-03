@@ -590,6 +590,17 @@ class NodeDeleteQuery(NodeQuery):
     insert_return = False
     raise_error_if_empty = False
 
+    def __init__(self, *, set_node_metadata: bool, **kwargs) -> None:
+        """Delete a node, optionally moving the Node vertex's metadata.
+
+        Args:
+            set_node_metadata: Whether this deletion moves the Node vertex's ``updated_at`` /
+                ``updated_by``.
+
+        """
+        self.set_node_metadata = set_node_metadata
+        super().__init__(**kwargs)
+
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["user_id"] = self.user_id
         self.params["uuid"] = self.node_id
@@ -598,17 +609,17 @@ class NodeDeleteQuery(NodeQuery):
         self.params["at"] = self.at.to_string()
 
         if self.branch.is_global or self.branch.is_default:
-            # update the updated_at/by metadata on the Node if we're on the global or default branch
+            metadata_set = "SET n.updated_at = $at, n.updated_by = $user_id" if self.set_node_metadata else ""
             node_query_match = """
 MATCH (n:Node { uuid: $uuid })-[r:IS_PART_OF { branch_level: 1, status: "active" }]->(:Root)
 WHERE r.to IS NULL
-OPTIONAL MATCH (n)-[delete_edge:IS_PART_OF {status: "deleted", branch: $branch}]->(:Root)
+OPTIONAL MATCH (n)-[delete_edge:IS_PART_OF {status: "deleted", branch_level: 1}]->(:Root)
 WHERE delete_edge.from <= $at
 WITH n, r
 WHERE delete_edge IS NULL
-SET n.updated_at = $at, n.updated_by = $user_id
+%(metadata_set)s
 WITH n, r
-            """
+            """ % {"metadata_set": metadata_set}
         else:
             node_filter, node_filter_params = self.branch.get_query_filter_path(at=self.at, variable_name="r")
             node_query_match = """
@@ -646,17 +657,14 @@ class NodeUpdateMetadataQuery(NodeQuery):
     raise_error_if_empty = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
-        if not self.branch.is_default and not self.branch.is_global:
-            raise ValueError("NodeUpdateMetadataQuery can only be used on the default or global branch")
         self.params["uuid"] = self.node_id
-        self.params["branch"] = self.branch.name
         self.params["at"] = self.at.to_string()
         self.params["user_id"] = self.user_id
 
         query = """
 MATCH (n:Node { uuid: $uuid })-[r:IS_PART_OF { branch_level: 1, status: "active" }]->(:Root)
 WHERE r.to IS NULL
-OPTIONAL MATCH (n)-[delete_edge:IS_PART_OF {status: "deleted", branch: $branch}]->(:Root)
+OPTIONAL MATCH (n)-[delete_edge:IS_PART_OF {status: "deleted", branch_level: 1}]->(:Root)
 WHERE delete_edge.from <= $at
 WITH n, r
 WHERE delete_edge IS NULL
