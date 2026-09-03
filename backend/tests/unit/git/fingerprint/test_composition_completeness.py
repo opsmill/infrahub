@@ -54,8 +54,10 @@ BLOBS = {
     "generators/tags.py": "sha-gen",
 }
 
-# `watch` never becomes a fingerprint term of its own: it reaches the digest only through the
-# closure the builder derives from it, so it is proven end to end further down instead.
+# `watch` never becomes a fingerprint term of its own. It reaches the digest two ways: the
+# closure builder expands `watch.files` into the dependency list, and on a Python transform or
+# generator the presence of a declaration decides whether the commit id is folded in. The
+# closure path is the one proven end to end further down.
 DELEGATED_FIELDS = frozenset({"watch"})
 
 
@@ -415,12 +417,10 @@ def watch_chain_repo(tmp_path: Path) -> tuple[Path, str]:
 def test_watch_files_reaches_the_fingerprint_through_the_closure(
     case: WatchChainCase, watch_chain_repo: tuple[Path, str]
 ) -> None:
-    """Declaring a file under `watch.files` widens the real closure and moves the digest.
+    """Declaring a file under `watch.files` widens the dependency closure and moves the digest.
 
-    The closure builder derives the dependency list from the declaration and the composer
-    hashes that list, so the whole chain runs here. Both declarations are non-empty objects,
-    which keeps the commit-id fold out of both digests and leaves the declared file as the
-    only difference between them.
+    Both declarations are non-empty objects, which keeps the commit-id fold out of both
+    digests and leaves the declared file as the only difference between them.
     """
     worktree_root, commit = watch_chain_repo
     builder = build_default_closure_builder(logger=logging.getLogger(__name__))
