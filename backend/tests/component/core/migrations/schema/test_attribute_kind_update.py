@@ -19,14 +19,14 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
-from tests.component.core.migrations.schema.metadata_helpers import (
+from tests.db_snapshot import DbSnapshotter
+from tests.helpers.edge_timestamps import assert_edge_timestamps
+from tests.helpers.schema import load_schema
+from tests.helpers.vertex_metadata import (
     VertexMetadata,
     branch_edge_fingerprint,
     branch_metadata_fingerprint,
 )
-from tests.db_snapshot import DbSnapshotter
-from tests.helpers.edge_timestamps import assert_edge_timestamps
-from tests.helpers.schema import load_schema
 
 CAR_SCHEMA_TEXT = {
     "version": "1.0",

@@ -33,17 +33,17 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
-from tests.component.core.migrations.schema.metadata_helpers import (
-    VertexMetadata,
-    branch_edge_fingerprint,
-    branch_metadata_fingerprint,
-    get_node_vertex_metadata,
-)
 from tests.constants import TestKind
 from tests.db_snapshot import DbSnapshotter
 from tests.helpers.db_validation import validate_node_relationships
 from tests.helpers.edge_timestamps import assert_edge_timestamps
 from tests.helpers.schema import LOCATION_SCHEMA, load_schema
+from tests.helpers.vertex_metadata import (
+    VertexMetadata,
+    branch_edge_fingerprint,
+    branch_metadata_fingerprint,
+    get_node_vertex_metadata,
+)
 
 
 async def test_query_default_branch(
