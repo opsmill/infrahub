@@ -11,6 +11,7 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.merger.exclusion_plan import MergeExclusionPlanBuilder
 from infrahub.core.diff.merger.merger import DiffMerger
+from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.merge.constraints import MergeConstraintValidator
@@ -288,6 +289,54 @@ class TestDiffCoordinatorLocks:
         assert merge_diff.uuid == diff_result.uuid
         assert merge_diff.partner_uuid == diff_result.partner_uuid
         assert merge_diff.tracking_id == diff_result.tracking_id
+
+    async def test_diff_update_computes_when_lock_holder_saved_no_diff(
+        self, db: InfrahubDatabase, default_branch: Branch, branch_with_data: Branch
+    ) -> None:
+        """A held incremental lock is no promise that a diff was saved.
+
+        DiffTree and DiffTreeSummary queries take the incremental lock purely to wait out an
+        in-flight update, so an update that finds the lock held and then reads the stored diff can
+        find nothing there. Refreshing the diff of a proposed change whose diff has never been
+        computed used to raise ResourceNotFoundError, which the API returned as a 404 and the UI
+        showed as an error toast.
+        """
+        diff_branch = branch_with_data
+        diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
+        diff_locker = DiffLocker()
+        lock_held = asyncio.Event()
+        release_lock = asyncio.Event()
+
+        async def hold_incremental_lock_like_a_reader() -> None:
+            async with diff_locker.acquire_lock(
+                target_branch_name=default_branch.name, source_branch_name=diff_branch.name, is_incremental=True
+            ):
+                lock_held.set()
+                await release_lock.wait()
+
+        # a separate task, because the lock is reentrant within one context
+        reader = asyncio.create_task(hold_incremental_lock_like_a_reader())
+        await lock_held.wait()
+
+        update = asyncio.create_task(
+            diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+        )
+        # give the update time to see the held lock and start waiting on it
+        await asyncio.sleep(0.1)
+        release_lock.set()
+        diff_root = await update
+        await reader
+
+        # the shortcut for an update already in progress was taken, and found nothing stored
+        diff_coordinator.diff_repo.get_one.assert_awaited_once()
+        # so the diff was computed instead of the request failing
+        assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 1
+        assert diff_root.tracking_id == BranchTrackingId(name=diff_branch.name)
+        stored_diff = await diff_coordinator.diff_repo.get_one(
+            tracking_id=BranchTrackingId(name=diff_branch.name), diff_branch_name=diff_branch.name
+        )
+        assert stored_diff.uuid == diff_root.uuid
+        assert len(stored_diff.nodes) == 10
 
     async def test_proposed_change_linked_when_waiting_for_lock(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch

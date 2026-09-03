@@ -168,6 +168,35 @@ class DiffCoordinator:
         diff_root.proposed_change_id = proposed_change_id
         return proposed_change_id
 
+    async def _get_diff_stored_by_lock_holder(
+        self,
+        base_branch: Branch,
+        diff_branch: Branch,
+        tracking_id: BranchTrackingId,
+        proposed_change_id: str | None,
+    ) -> EnrichedDiffRootMetadata | None:
+        """Wait for the holder of the incremental lock and return the diff it stored, if any.
+
+        A held lock is no promise that a diff was saved: the DiffTree and DiffTreeSummary queries
+        take this lock purely to wait out an in-flight update. ``None`` means there is nothing to
+        reuse and the caller has to calculate the diff itself.
+        """
+        async with self.diff_locker.acquire_lock(
+            target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=True
+        ):
+            self.logger.info(f"Existing branch diff update for {base_branch.name} - {diff_branch.name} complete")
+            try:
+                diff_root = await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
+            except ResourceNotFoundError:
+                self.logger.info(f"No stored branch diff for {base_branch.name} - {diff_branch.name}")
+                return None
+            await self._link_diff_to_proposed_change(
+                diff_root=diff_root,
+                proposed_change_id=proposed_change_id,
+                diff_branch_name=diff_branch.name,
+            )
+            return diff_root
+
     async def update_branch_diff(
         self, base_branch: Branch, diff_branch: Branch, proposed_change_id: str | None = None
     ) -> EnrichedDiffRootMetadata:
@@ -188,16 +217,13 @@ class DiffCoordinator:
         )
         if existing_incremental_lock and await existing_incremental_lock.locked():
             self.logger.info(f"Branch diff update for {base_branch.name} - {diff_branch.name} already in progress")
-            async with self.diff_locker.acquire_lock(
-                target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=True
-            ):
-                self.logger.info(f"Existing branch diff update for {base_branch.name} - {diff_branch.name} complete")
-                diff_root = await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
-                await self._link_diff_to_proposed_change(
-                    diff_root=diff_root,
-                    proposed_change_id=proposed_change_id,
-                    diff_branch_name=diff_branch.name,
-                )
+            diff_root = await self._get_diff_stored_by_lock_holder(
+                base_branch=base_branch,
+                diff_branch=diff_branch,
+                tracking_id=tracking_id,
+                proposed_change_id=proposed_change_id,
+            )
+            if diff_root is not None:
                 return diff_root
         from_time = Timestamp(diff_branch.get_branched_from())
         to_time = Timestamp()
