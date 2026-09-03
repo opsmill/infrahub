@@ -20,8 +20,7 @@ export type AttributeSchema =
 
 /**
  * One schema field, whichever kind it is. Table and column code treats attributes and relationships
- * uniformly — both carry a `name` and a `label`, and both become a column — so it takes the union
- * rather than branching. Declare it once here; do not re-declare it per consumer.
+ * uniformly: both carry a `name` and a `label`, and both become a column.
  */
 export type FieldSchema = AttributeSchema | RelationshipSchema;
 

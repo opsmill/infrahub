@@ -71,6 +71,7 @@ export function RelationshipTable({
       : undefined;
 
   const columns = [
+    // No `fields`: this surface cannot reveal, so its defaults are already the whole candidate set.
     ...getObjectTableColumns(relationshipSchema, {
       headerProps: { isDisabled: true },
       identifierOverrideParams,

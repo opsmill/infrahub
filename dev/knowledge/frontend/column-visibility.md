@@ -29,20 +29,20 @@ entities/nodes/columns/
     └── columns-editor.tsx                  # searchable checklist + reset
 ```
 
-A `ColumnSurface` (`domain/model/column-surface.ts:20-27`) describes one table's column rules **as
-data** — its default-attribute and default-relationship rule functions, its field exclusions, its
-ordering, and whether it can reveal. The four concrete configs (`OBJECT_`, `RELATIONSHIP_`,
-`IP_ADDRESS_`, `IP_PREFIX_COLUMN_SURFACE`) live one layer out in `domain/rules/column-surfaces.ts`,
-because naming a surface means naming the rule functions it composes and `domain/model` is a pure
-leaf that may not reach into `domain/rules`. A surface is resolved from
-`ObjectTableContext.columnSurface` or named explicitly.
+A `ColumnSurface` (`domain/model/column-surface.ts::ColumnSurface`) describes one table's column
+rules **as data** — its default-attribute and default-relationship rule functions, its field
+exclusions, its ordering, and whether it can reveal. The four concrete configs (`OBJECT_`,
+`RELATIONSHIP_`, `IP_ADDRESS_`, `IP_PREFIX_COLUMN_SURFACE`) live one layer out in
+`domain/rules/column-surfaces.ts`, because naming a surface means naming the rule functions it
+composes and `domain/model` is a pure leaf that may not reach into `domain/rules`. A surface is
+resolved from `ObjectTableContext.columnSurface` or named explicitly.
 
 `ColumnSurface` deliberately carries **no identifier**. With nothing to branch on, a consumer cannot
 grow an `if (surface === "ipam")` — the refusal is structural, not a convention to remember.
 `RELATIONSHIP_COLUMN_SURFACE` is written as `{ ...OBJECT_COLUMN_SURFACE, canReveal: false }`
-(`column-surfaces.ts:31-34`) so that its one real difference from the object surface is the only
-thing visible. The two IPAM surfaces are spelled out in full instead: they differ in three of six
-members, and a spread would bury that.
+(`domain/rules/column-surfaces.ts::RELATIONSHIP_COLUMN_SURFACE`) so that its one real difference
+from the object surface is the only thing visible. The two IPAM surfaces are spelled out in full
+instead: they differ in three of six members, and a spread would bury that.
 
 ## Two named params, not one prefixed list
 
@@ -50,17 +50,18 @@ members, and a spread would bury that.
 ?hide_columns=description,status&show_columns=internal_note
 ```
 
-`QSP.HIDE_COLUMNS` / `QSP.SHOW_COLUMNS` (`shared/config/qsp.ts:7-8`), each a plain
-`parseAsArrayOf(parseAsString)` list (`use-column-visibility.ts:24`). Both absent means "the surface's
-default"; `reset()` removes both (`use-column-visibility.ts:117`).
+`QSP.HIDE_COLUMNS` / `QSP.SHOW_COLUMNS` (`shared/config/qsp.ts::QSP`), each a plain
+`parseAsArrayOf(parseAsString)` list (`ui/hooks/use-column-visibility.ts::columnNamesParser`). Both
+absent means "the surface's default"; `reset()` removes both
+(`ui/hooks/use-column-visibility.ts::useColumnVisibility`).
 
 A single param was tried first and rejected on **encoding**. One param needs a reveal prefix, and
 nuqs's `encodeQueryValue` rewrites `+` to `%2B` (it escapes `%`, `+`, space, `#`, `&`, `"`, `'`,
 backtick, `<`, `>` and control characters — see `node_modules/nuqs/dist/server.js`), so a `+name`
 token would reach the address bar percent-escaped. A JSON object form is worse: every quote becomes
-`%22`, exactly as the `filters` param already reads (`parseAsJson`, `nodes/filters/ui/hooks/use-filters.ts:11`).
-Two named params need no prefix convention and stay legible — and a legible, shareable link is the
-whole point of the feature.
+`%22`, exactly as the `filters` param already reads (`parseAsJson`,
+`nodes/filters/ui/hooks/use-filters.ts::useFilters`). Two named params need no prefix convention and
+stay legible — and a legible, shareable link is the whole point of the feature.
 
 ## Delta from the default, never an absolute list
 
@@ -69,16 +70,17 @@ surface's default, so a schema that later gains a column shows that column on an
 That is a deliberate product decision, not an oversight.
 
 `getColumnVisibilityState` drops any name the current `columnCandidates` does not contain
-(`get-column-visibility-state.ts:24-34`), which is what makes an old link safe across a schema
-change, a kind switch, and a relationship tab reading the same params against a different schema. It
-also drops a name that agrees with its default, so such a name counts towards neither the picker's
-badge nor its reset affordance.
+(`domain/rules/get-column-visibility-state.ts::getColumnVisibilityState`), which is what makes an
+old link safe across a schema change, a kind switch, and a relationship tab reading the same params
+against a different schema. It also drops a name that agrees with its default, so such a name counts
+towards neither the picker's badge nor its reset affordance.
 
 ## A kind switch clears the column params
 
-Switching kind clears both params outright (`object-table-schema-selector.tsx:31-34`, spread at both
-`setObjectTableQueryParams` call sites — `:82` and `:101` — beside the existing
-`removeFiltersNotInSchema` prune). Column choices are therefore discarded exactly as filters are.
+Switching kind clears both params outright (`CLEARED_COLUMN_PARAMS` in
+`nodes/object/ui/object-table/object-table-schema-selector.tsx::ObjectTableSchemaSelector`, spread
+at both `setObjectTableQueryParams` call sites there, beside the existing `removeFiltersNotInSchema`
+prune). Column choices are therefore discarded exactly as filters are.
 
 Carrying them across only *looks* kinder. `useColumnVisibility` writes back the **validated** lists,
 so a name the new kind has no column for is silently erased from the URL by the next hide the user
@@ -91,9 +93,9 @@ Branch switching is deliberately left alone, matching what filters already do.
 With `?hide_columns=x&show_columns=x` there is no param ordering to fall back on, so hiding wins:
 a link that says "hide this" must never put a column the sender meant to keep away on screen.
 
-The invariant lives in exactly one place. `getColumnVisibilityState` is the single trust boundary, and
-`getRevealedFields` takes the **finished state** rather than the raw params, so it can only read the
-answer that boundary already reached — it has no hide list to re-derive the rule from:
+The invariant lives in exactly one place. `getColumnVisibilityState` is the single trust boundary,
+and `getRevealedFields` takes the **finished state** rather than the raw params, so it can only read
+the answer that boundary already reached — it has no hide list to re-derive the rule from:
 
 ```ts
 const visibility = getColumnVisibilityState(hiddenNames, shownNames, columnCandidates);
@@ -109,21 +111,21 @@ reaches a react-query cache key, so ordering must not change the hash.
 ## At least one field column always survives
 
 If applying the hide list would leave no field column visible, the trust boundary drops **exactly
-one** hide entry — the one for the first column in `columnCandidates` display order that the hide list
-names (`keepOneFieldColumnVisible`, `get-column-visibility-state.ts:71-85`). That column returns to
-its default, which is necessarily visible, since only a default-visible column ever gets a `false`
-entry. Every other hide entry is kept, so as little of the request is discarded as possible. Display
-order, not param order, decides the survivor: the same set of names must always leave the same column
-standing, however the URL happens to spell it.
+one** hide entry — the one for the first column in `columnCandidates` display order that the hide
+list names (`domain/rules/get-column-visibility-state.ts::keepOneFieldColumnVisible`). That column
+returns to its default, which is necessarily visible, since only a default-visible column ever gets
+a `false` entry. Every other hide entry is kept, so as little of the request is discarded as
+possible. Display order, not param order, decides the survivor: the same set of names must always
+leave the same column standing, however the URL happens to spell it.
 
 It lives in the trust boundary because that is the only place that covers **both** ways zero columns
 can be asked for — the picker unchecking the last box, and a hand-written or stale `?hide_columns=`
 naming every column at once. In the picker it would leave the crafted URL unguarded; in the table it
-would leave the URL and the screen disagreeing. The picker still greys out the last remaining item,
+would leave the URL and the screen disagreeing. The picker still grays out the last remaining item,
 so the clamp is an invariant users never meet, not a second copy of that affordance.
 
-A surface offering nothing but default-hidden columns is returned untouched: there is no hide request
-to blame for the empty table, so there is none to relax.
+A surface offering nothing but default-hidden columns is returned untouched: there is no hide
+request to blame for the empty table, so there is none to relax.
 
 ## Reveal is object-list only
 
@@ -134,22 +136,24 @@ to blame for the empty table, so there is none to relax.
 | IPAM prefixes | yes | no (`canReveal: false`) |
 | Relationship tabs | yes | no (`canReveal: false`) |
 
-`canReveal: false` is implemented as **"candidates == defaults"** (`get-column-candidates.ts:43`), so the
-picker offers nothing to reveal and `show_columns` names are dropped by the trust boundary. There is
-no `if (isIpam)` anywhere.
+`canReveal: false` is implemented as **"candidates == defaults"**
+(`domain/rules/get-column-candidates.ts::getColumnCandidates`), so the picker offers nothing to
+reveal and `show_columns` names are dropped by the trust boundary. There is no `if (isIpam)`
+anywhere.
 
 Reveal needs three legs, and only the object list has all three:
 
 1. **A ColumnDef must exist** — `getObjectFieldsColumns` filters the field list through the list-view
    rules *before* any ColumnDef exists, so it takes an optional `fields` argument
-   (`nodes/object/ui/object-table/utils/get-object-table-columns.tsx:113-117`); when omitted, behaviour
-   is unchanged.
+   (`nodes/object/ui/object-table/utils/get-object-table-columns.tsx::getObjectFieldsColumns`); when
+   omitted, behavior is unchanged.
 2. **The field must be in the GraphQL selection set** — `getObjects` threads `revealedFields` into its
    injectable `getAttributesVisible` / `getRelationshipsVisible` overrides
-   (`nodes/object/domain/use-cases/get-objects.ts:46-55`), which take an optional
+   (`nodes/object/domain/use-cases/get-objects.ts::getObjects`), which take an optional
    `revealedNames?: ReadonlySet<string>` that opens the `display === "extra"` gate and **only** that
    gate — the attribute-kind whitelist and the relationship-kind switch still apply
-   (`get-attributes-visible-in-list-view.ts:15`, `get-relationships-visible-in-list-view.ts:14`).
+   (`nodes/object/domain/rules/get-attributes-visible-in-list-view.ts::getAttributesVisibleInListView`,
+   `nodes/object/domain/rules/get-relationships-visible-in-list-view.ts::getRelationshipsVisibleInListView`).
 3. **The react-query cache key must change** — see below.
 
 `get-object-relationships-from-api.ts` has no equivalent injectable seam, which is why relationship
@@ -160,7 +164,7 @@ tabs are hide-only.
 Reveal looks broken until you know where to point it, because **nothing in the demo dataset is
 hidden by default**. Every attribute on `InfraDevice` and friends is `display: "default"`, so the
 Columns popover there lists only already-visible fields and `show_columns` never appears. That is
-correct behaviour, not a bug — and it is the first thing to check before concluding the feature is
+correct behavior, not a bug — and it is the first thing to check before concluding the feature is
 half-wired.
 
 `show_columns` only has meaning where a *schema author* marked a field `display: "extra"`. Across
@@ -190,13 +194,14 @@ curl -s "http://localhost:8000/api/schema?branch=main" -H "X-INFRAHUB-KEY: $KEY"
 ## The IPAM `display: "extra"` divergence
 
 IPAM's **attribute** filters exclude only a hardcoded name list — they check neither `display` nor
-`kind` (`ipam/ip-addresses/domain/rules/get-ip-address-attributes-visible-in-list-view.ts:3`,
-`ipam/ip-prefixes/domain/rules/get-prefix-attributes-visible-in-list-view.ts:3-10`) — so `extra`
-attributes are **already visible** on IPAM tables.
+`kind`
+(`ipam/ip-addresses/domain/rules/get-ip-address-attributes-visible-in-list-view.ts::IP_ADDRESS_ATTRIBUTES_EXCLUDED_IN_LIST`,
+`ipam/ip-prefixes/domain/rules/get-prefix-attributes-visible-in-list-view.ts::PREFIX_ATTRIBUTES_EXCLUDED_IN_LIST`)
+— so `extra` attributes are **already visible** on IPAM tables.
 
 IPAM's **relationship** paths do delegate to `getRelationshipsVisibleInListView`
-(`get-ip-address-relationships-visible-in-list-view.ts:12`, and `IP_PREFIX_COLUMN_SURFACE` uses it
-directly), which **does** drop `extra`.
+(`ipam/ip-addresses/domain/rules/get-ip-address-relationships-visible-in-list-view.ts::getIpAddressRelationshipsVisibleInListView`,
+and `IP_PREFIX_COLUMN_SURFACE` uses it directly), which **does** drop `extra`.
 
 So "reveal would be a no-op on IPAM" is true for attributes and false for relationships. Both halves
 matter: do not "fix" one of them alone.
@@ -205,77 +210,108 @@ matter: do not "fix" one of them alone.
 
 `getRelationshipsVisibleInListView` deliberately **includes** resource-pool relationships so their
 data is fetched — "to get data from `_resource_from_pool` relationships but will be hidden in UI"
-(`get-relationships-visible-in-list-view.ts:21`). Only the *object* builder strips their columns
-(`get-object-table-columns.tsx:105`); neither IPAM builder does, so IPAM tables genuinely render
-them.
+(`nodes/object/domain/rules/get-relationships-visible-in-list-view.ts::getRelationshipsVisibleInListView`).
+Only the *object* builder strips their columns
+(`get-object-table-columns.tsx::getDefaultFieldsColumnSchemas`); neither IPAM builder does, so IPAM
+tables genuinely render them.
 
 Hence `excludeField: isFromResourcePoolRelationship` is set on the object surface
-(`column-surfaces.ts:20`) and inherited by the relationship surface through its spread, while the two
-IPAM surfaces use `excludeField: () => false` (`column-surfaces.ts:44`, `:53`). Excluding them on the
-IPAM surfaces would hide real columns from the picker — the intuitive reading is backwards.
+(`domain/rules/column-surfaces.ts::OBJECT_COLUMN_SURFACE`) and inherited by the relationship surface
+through its spread, while the two IPAM surfaces use `excludeField: () => false`
+(`column-surfaces.ts::IP_ADDRESS_COLUMN_SURFACE` and `::IP_PREFIX_COLUMN_SURFACE`). Excluding them
+on the IPAM surfaces would hide real columns from the picker — the intuitive reading is backwards.
 
 ## `objectQueryKeys.list` folds revealed field names
 
 A revealed field widens the GraphQL selection set, so it must be part of the query key or a reveal
 reads a page cached without that field — a column of empty cells that fills in on some later
 unrelated refetch. `objectQueryKeys.list` folds `revealedFields` in through a **conditional spread**
-(`nodes/object/ui/queries/object.query-keys.ts:57-63`), so the key stays byte-identical for callers
-that never reveal anything and no cache is invalidated on deploy. `getRevealedFields` sorts its
-output (`get-column-visibility-state.ts:92-95`) so the key does not depend on click order.
+(`nodes/object/ui/queries/object.query-keys.ts::objectQueryKeys`), so the key stays byte-identical
+for callers that never reveal anything and no cache is invalidated on deploy. `getRevealedFields`
+sorts its output (`domain/rules/get-column-visibility-state.ts::getRevealedFields`) so the key does
+not depend on click order.
 
 `objectQueryKeys.count` needs no equivalent: the count query selects no fields.
 
-`objectQueryKeys.detail` already folded field names in (`:66-72`) — `list` was the outlier, a
+`objectQueryKeys.detail` already folded field names in — `list` was the outlier, a
 pre-existing gap this feature had to fix rather than a gap it introduced.
 
 ## The column controls are opt-in, per table
 
 `ObjectTableProvider` takes `supportsColumnVisibility?: boolean`, defaulting to **false**
-(`nodes/object/ui/object-table/object-table-context.tsx:38`, `:43`). It is the table's declaration
-that it actually honours the two params — that it renders a `DataTable` with a `columnVisibility`
-state.
+(`nodes/object/ui/object-table/object-table-context.tsx::ObjectTableContextProps` and
+`::ObjectTableProvider`). It is the table's declaration that it actually honors the two params —
+that it renders a `DataTable` with a `columnVisibility` state.
 
 Both controls ask before offering anything: the toolbar gates `<ColumnsPicker>` on it
-(`objects-manager-toolbar.tsx:38-40`), and the column header's hide entry returns `null` without it
-(`object-table/cells/table-column-header.tsx:326-330`). The reader `useSupportsColumnVisibility()`
-(`object-table-context.tsx:143-145`) is non-throwing and falls back to `false`, because a header cell
-may render outside any provider — and no provider means no table claimed the capability, which is the
-same answer.
+(`nodes/object/ui/objects-manager-toolbar.tsx::ObjectsManagerToolbar`), and the column header's hide
+entry returns `null` without it (`object-table/cells/table-column-header.tsx::HideColumnMenuItem`).
+The reader `useSupportsColumnVisibility()` (`object-table-context.tsx::useSupportsColumnVisibility`)
+is non-throwing and falls back to `false`, because a header cell may render outside any provider —
+and no provider means no table claimed the capability, which is the same answer.
 
-`HideColumnMenuItem` also owns its own leading `<MenuSeparator />` (`table-column-header.tsx:334`)
+`HideColumnMenuItem` also owns its own leading `<MenuSeparator />`
+(`object-table/cells/table-column-header.tsx::HideColumnMenuItem`)
 rather than being wrapped in one, so gating it off cannot leave a dangling rule at the bottom of the
 menu.
 
 `ObjectsManagerToolbar` is rendered in 8 places, and only 3 managers opt in:
-`objects-manager.tsx:27`, `ip-address-manager.tsx:27` and `ip-prefix-manager.tsx:20`. There is no
-`showColumnsPicker` prop and no `ObjectsManagerToolbarProps` interface any more — an earlier revision
-had both, and they were the wrong shape.
+`objects-manager.tsx::ObjectsManager`, `ip-address-manager.tsx::IpAddressManager` and
+`ip-prefix-manager.tsx::IpPrefixManager`. There is no `showColumnsPicker` prop and no
+`ObjectsManagerToolbarProps` interface any more — an earlier revision had both, and they were the
+wrong shape.
 
 ### Why one capability, not a gate per surface
 
 The same defect surfaced **three** separate times: an inert control on a table that renders the
 shared toolbar or the shared column header without consuming `columnVisibility`. The two
-role-management pages were the first (their tables are `RoleTable` and friends). Proposed Changes was
-the third, and it arrived by a different route — `proposed-changes-manager.tsx:19` provides an
-`ObjectTableProvider`, and `proposed-changes-table.tsx:47` renders a `ListBox`, never a `DataTable`,
-while passing `schema` to five headers purely so they can sort.
+role-management pages were the first (their tables are `RoleTable` and friends). Proposed Changes
+was the third, and it arrived by a different route —
+`proposed-changes-manager.tsx::ProposedChangesManager` provides an `ObjectTableProvider`, and
+`proposed-changes-table.tsx::ProposedChangesTable` renders a `ListBox`, never a `DataTable`, while
+passing `schema` to five headers purely so they can sort.
 
 That last one is why gating on the presence of `schema` was the wrong fix: on this codebase `schema`
 on a header means *"this header can sort"*, not *"this table supports column visibility"*. One
-boolean the table declares makes the whole class of defect impossible, instead of fixing instances as
-they are found.
+boolean the table declares makes the whole class of defect impossible, instead of fixing instances
+as they are found.
 
-Relationship tabs get their own toolbar row instead (`relationships/ui/relationship-table/relationship-table-toolbar.tsx`),
+Relationship tabs get their own toolbar row instead
+(`relationships/ui/relationship-table/relationship-table-toolbar.tsx::RelationshipTableToolbar`),
 which takes `schema` as a prop and names `RELATIONSHIP_COLUMN_SURFACE` explicitly, because two of
 `RelationshipTable`'s three hosts render it without an `ObjectTableProvider`.
+
+### Relationship headers depend on `isDisabled` to stay off the object surface
+
+`useColumnSurface()` (`nodes/object/ui/object-table/object-table-context.tsx::useColumnSurface`) is
+non-throwing and falls back to `OBJECT_COLUMN_SURFACE`, and two of `RelationshipTable`'s three hosts
+render it with no `ObjectTableProvider` above them at all. Relationship headers avoid that fallback
+today only by accident of a different decision: `RelationshipTable` passes `headerProps:
+{ isDisabled: true }` into `getObjectTableColumns`
+(`relationships/ui/relationship-table/relationship-table.tsx::RelationshipTable`), and
+`TableColumnHeader` (`object-table/cells/table-column-header.tsx::TableColumnHeader`) short-circuits
+on that flag to `TableColumnHeaderSimple`, so no menu — and therefore no surface lookup — is ever
+mounted.
+
+Dropping `isDisabled` to enable header sorting on relationship tabs would silently resolve the
+object surface, whose `canReveal: true` would offer `display: "extra"` fields for reveal. The
+relationship fetch path never requests those fields: it has no injectable rule seam equivalent to
+the `getAttributesVisible` / `getRelationshipsVisible` overrides on
+`nodes/object/domain/use-cases/get-objects.ts::getObjects` (see [Reveal is object-list
+only](#reveal-is-object-list-only)). The picker would happily list the field, the URL would gain a
+`show_columns` entry, and the column would render permanently empty — the fetch leg simply is not
+there. So thread the surface in explicitly, the way `RelationshipTableToolbar` already does,
+*before* removing that flag.
 
 ## Three column ids the picker never offers
 
 `id`, `objectKind` and `actions` are synthesized outside the schema-derived middle section of the
-table (`get-object-table-columns.tsx:51`, `:84`; `get-object-actions-column.tsx:15`;
-`relationships/ui/relationship-table/get-relationship-actions-column.tsx:27`), so they are not
-schema fields at all. They are listed as `fixedColumnIds` on every surface and filtered out of the
-candidate list (`get-column-candidates.ts:48`), so they never reach the picker.
+table (`get-object-table-columns.tsx::getObjectIdentifierColumns` and `::getObjectGenericColumns`;
+`get-object-actions-column.tsx::getObjectActionsColumn`;
+`relationships/ui/relationship-table/get-relationship-actions-column.tsx::getRelationshipActionsColumn`),
+so they are not schema fields at all. They are listed as `fixedColumnIds` on every surface and
+filtered out of the candidate list (`domain/rules/get-column-candidates.ts::getColumnCandidates`),
+so they never reach the picker.
 
 Those three ids are also why the grid template is `repeat(columnCount - 2, auto) 1fr 2.5rem`: the
 last two tracks are the identity and actions columns. Hiding every field column leaves two headers,
@@ -294,17 +330,17 @@ fewer.
 
   **Hiding is free only for a column that was visible by default.** Hiding *a revealed* column pays
   the same cost — which is the one case the feature exists for: `hideColumn` drops the field from
-  `shown` rather than adding it to `hidden` (`toggle-column.ts:39-41`, and the comment above it says
-  so), `revealedFields` shrinks by one, the conditional spread in `objectQueryKeys.list` loses its
-  element, and the list restarts. Only a `hide_columns` write is free — that param never reaches the
-  key.
+  `shown` rather than adding it to `hidden` (`domain/rules/toggle-column.ts::hideColumn`, and the
+  comment above it says so), `revealedFields` shrinks by one, the conditional spread in
+  `objectQueryKeys.list` loses its element, and the list restarts. Only a `hide_columns` write is
+  free — that param never reaches the key.
 
 ## Known follow-ups (to be filed)
 
 1. **Column reordering** — promised in the ticket, not in this change.
 2. **Unify the three column builders** onto a shared field-column helper — gated on adding IPAM
    component tests first; both IPAM builders key special cells on attribute *name*, with no coverage.
-3. **Align IPAM attribute filtering** to `getAttributesVisibleInListView`. This is a behaviour change
+3. **Align IPAM attribute filtering** to `getAttributesVisibleInListView`. This is a behavior change
    that removes currently-visible columns, so it needs product sign-off.
 4. **Durable per-user column preferences** via the backend `preferences` entity, instead of URL-only
    state.
@@ -320,12 +356,14 @@ fewer.
    defines a `@theme` palette. `text-stone-400` and friends are the de-facto house pattern. Until the
    token layer lands, that guideline cannot be followed — applying it would silently drop styling.
 8. **`ip_prefix` is prepended without being filtered out of the spread**
-   (`get-ip-address-relationships-visible-in-list-view.ts:14-16`). It does **not** duplicate today:
+   (`ipam/ip-addresses/domain/rules/get-ip-address-relationships-visible-in-list-view.ts::getIpAddressRelationshipsVisibleInListView`).
+   It does **not** duplicate today:
    the prepend is followed by a spread of `getRelationshipsVisibleInListView(relationships)`, which
    drops `ip_prefix` because its `RelationshipKind` defaults to `Generic`. So the shape is safe only
    by accident — a schema that gave that relationship an accepted kind (`Attribute`, `Parent`, or
    `Hierarchy` with cardinality one) would emit it twice. The picker's candidate list is deduped
-   defensively against exactly that (`get-column-candidates.ts:53`), but the IPAM address builder has no
+   defensively against exactly that (`domain/rules/get-column-candidates.ts::getColumnCandidates`), but
+   the IPAM address builder has no
    such guard and would render two columns with the id `ip_prefix`. Filter the prefix relationship
    out of the spread instead of relying on its kind.
 

@@ -217,9 +217,8 @@ function SortableRelationshipColumnHeader({
 interface ColumnHeaderMenuProps {
   columnSchema: AttributeSchema | RelationshipSchema;
   /**
-   * The table's own schema. On this component it means only "this header can sort" — whether the
-   * hide entry is offered is decided by the table's `supportsColumnVisibility` capability, not by
-   * this prop.
+   * The table's own schema: both the sort and the hide entry act against it, so a header given none
+   * offers neither.
    */
   schema?: ModelSchema;
   className?: string;

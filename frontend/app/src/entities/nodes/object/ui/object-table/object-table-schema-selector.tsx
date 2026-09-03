@@ -47,6 +47,11 @@ export function ObjectTableSchemaSelector() {
   );
 
   const { baseSchema, selectedSchema } = useObjectTableContext();
+  // Column choices belong to the schema they were made under, so picking the kind already in view
+  // leaves them alone rather than throwing away work the user can still see.
+  const columnParamsForSwitchTo = (targetSchema: ModelSchema) =>
+    targetSchema.kind === selectedSchema.kind ? {} : CLEARED_COLUMN_PARAMS;
+
   const items = React.useMemo<ModelSchema[]>(() => {
     if (!isGenericSchema(baseSchema)) return [];
     const inheritingKind = baseSchema.used_by ?? [];
@@ -82,7 +87,7 @@ export function ObjectTableSchemaSelector() {
               setObjectTableQueryParams({
                 kind: null,
                 filters: pruned,
-                ...CLEARED_COLUMN_PARAMS,
+                ...columnParamsForSwitchTo(baseSchema),
               });
               setIsOpen(false);
             }}
@@ -101,7 +106,7 @@ export function ObjectTableSchemaSelector() {
                   setObjectTableQueryParams({
                     kind: schema.kind,
                     filters: pruned,
-                    ...CLEARED_COLUMN_PARAMS,
+                    ...columnParamsForSwitchTo(schema),
                   });
                   setIsOpen(false);
                 }}

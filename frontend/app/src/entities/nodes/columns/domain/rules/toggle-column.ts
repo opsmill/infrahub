@@ -26,10 +26,8 @@ export function toggleColumn(
 /**
  * Hides one column without knowing whether it is visible by default.
  *
- * Deliberately blind to the candidate list: the column-header entry point writes through this, and
- * it has no surface to resolve. Hiding a revealed column drops it from `shown` — the column is then
- * hidden by its own default — and any other column is named in `hidden`, which
- * `getColumnVisibilityState` drops later if the surface hides it by default anyway.
+ * A revealed column is hidden by dropping it from `shown`, so it falls back to its own default;
+ * any other column is named in `hidden`.
  */
 export function hideColumn(
   hidden: readonly string[],

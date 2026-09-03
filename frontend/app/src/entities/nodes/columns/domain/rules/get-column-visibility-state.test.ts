@@ -175,6 +175,26 @@ describe("getColumnVisibilityState", () => {
     // THEN
     expect(getVisibleNames(state, columnCandidates)).toEqual(["name"]);
   });
+
+  // A field named after an `Object.prototype` member is the one case where an inherited property can
+  // stand in for a departure the state never recorded, which would leave the table with no column.
+  it("keeps a column visible when the only default-hidden field is named `constructor`", () => {
+    // GIVEN a schema whose sole revealable field shares its name with an inherited property.
+    const schema = generateNodeSchema({
+      attributes: [
+        generateAttributeSchema({ name: "name", kind: "Text" }),
+        generateAttributeSchema({ name: "constructor", kind: "Text", display: "extra" }),
+      ],
+      relationships: [],
+    });
+    const columnCandidates = getColumnCandidates(schema, OBJECT_COLUMN_SURFACE);
+
+    // WHEN the only default-visible column is hidden, leaving nothing on screen.
+    const state = getColumnVisibilityState(["name"], [], columnCandidates);
+
+    // THEN the hide request is given back rather than believed to be covered by `constructor`.
+    expect(state).toEqual({});
+  });
 });
 
 describe("getRevealedFields", () => {
