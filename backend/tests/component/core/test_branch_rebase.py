@@ -12,6 +12,9 @@ from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
+from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.model.path import BranchTrackingId, ConflictSelection
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -21,6 +24,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import MigrationError, ValidationError
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_database
@@ -658,3 +662,95 @@ async def test_rebase_reports_duplicates_when_an_attribute_becomes_unique(
         "attribute.unique.update",
         ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value,
     }
+
+
+async def test_rebase_reports_a_narrowed_regex(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    workflow_local: WorkflowLocalExecution,
+    dependency_provider: Provider,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A regex replaced on the branch is checked against a destination value the old regex allowed."""
+    widget_kind = "TestingWidget"
+    await load_schema(db=db, schema=SchemaRoot(nodes=[_widget_with_code_regex(r".*")]), update_db=True)
+
+    widget = await Node.init(db=db, schema=widget_kind)
+    await widget.new(db=db, name="widget-one", code="lowercase")
+    await widget.save(db=db)
+
+    branch = await create_branch(db=db, branch_name="narrowed-regex-branch")
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(nodes=[_widget_with_code_regex(r"^[A-Z]+$")]),
+        branch_name=branch.name,
+        update_db=True,
+        limit=[widget_kind],
+    )
+
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
+        with pytest.raises(ValidationError) as exc_info:
+            await rebase_branch(branch=branch.name, context=context)
+
+    message = exc_info.value.message
+    assert set(re.findall(r"and node (\S+) ", message)) == {widget.id}
+    assert ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value in set(
+        re.findall(r"for constraint (\S+) ", message)
+    )
+    refused_branch = await Branch.get_by_name(db=db, name=branch.name)
+    assert refused_branch.branched_from == branch.branched_from
+
+
+async def test_rebase_is_refused_on_a_resolved_conflict(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    workflow_local: WorkflowLocalExecution,
+    dependency_provider: Provider,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A rebase refuses any conflict, resolved or not: a resolution is only ever applied by a merge.
+
+    Pins the limit rather than the behaviour one might expect, so that combining schemas with resolved
+    conflicts is understood to be a merge-only concern.
+    """
+    widget_kind = "TestingWidget"
+    await load_schema(db=db, schema=SchemaRoot(nodes=[_widget_with_code()]), update_db=True)
+    widget = await Node.init(db=db, schema=widget_kind)
+    await widget.new(db=db, name="widget-one", code="forked")
+    await widget.save(db=db)
+
+    branch = await create_branch(db=db, branch_name="resolved-conflict-branch")
+    on_main = await NodeManager.get_one(db=db, id=widget.id, branch=default_branch, raise_on_error=True)
+    on_main.get_attribute("code").value = "main"
+    await on_main.save(db=db)
+    on_branch = await NodeManager.get_one(db=db, id=widget.id, branch=branch, raise_on_error=True)
+    on_branch.get_attribute("code").value = "branch"
+    await on_branch.save(db=db)
+
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+    conflicts = [
+        conflict
+        async for _, conflict in diff_repository.get_all_conflicts_for_diff(
+            diff_branch_name=branch.name, tracking_id=BranchTrackingId(name=branch.name)
+        )
+    ]
+    assert len(conflicts) == 1
+    await diff_repository.update_conflict_by_id(conflict_id=conflicts[0].uuid, selection=ConflictSelection.BASE_BRANCH)
+
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
+        with pytest.raises(ValidationError, match="contains conflicts with the default branch that must be addressed"):
+            await rebase_branch(branch=branch.name, context=context)
+
+    refused_branch = await Branch.get_by_name(db=db, name=branch.name)
+    assert refused_branch.branched_from == branch.branched_from

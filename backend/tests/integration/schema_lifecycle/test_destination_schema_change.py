@@ -11,6 +11,7 @@ from infrahub_sdk import InfrahubClient
 from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -111,7 +112,16 @@ class TestMergeWhenMainAddedTheProperty(DestinationSchemaChangeBase):
             await client.execute_graphql(query=BRANCH_MERGE_MUTATION, variables={"branch": branch_2.name})
 
         assert "regex" in exc.value.message
+        assert offender.id in exc.value.message
         assert await _person_names_on_main(db=db, default_branch=default_branch) == ["John"]
+        # A refusal that dropped the object it refused over would pass the checks above. Counted rather than
+        # loaded: instantiating the node under the stricter regex would raise the very error under test.
+        assert (
+            await NodeManager.count(db=db, schema=PERSON_KIND, branch=branch_2, filters={"name__value": ILLEGAL_NAME})
+            == 1
+        ), "the refused merge left the offending object on the branch"
+        refused_branch = await Branch.get_by_name(db=db, name=branch_2.name)
+        assert refused_branch.status == BranchStatus.OPEN.value, "a refused merge reopens the branch"
 
 
 class TestMergeWhenMainReplacedTheProperty(DestinationSchemaChangeBase):
@@ -170,7 +180,16 @@ class TestMergeWhenMainReplacedTheProperty(DestinationSchemaChangeBase):
             await client.execute_graphql(query=BRANCH_MERGE_MUTATION, variables={"branch": branch_2.name})
 
         assert "regex" in exc.value.message
+        assert offender.id in exc.value.message
         assert await _person_names_on_main(db=db, default_branch=default_branch) == ["John"]
+        # A refusal that dropped the object it refused over would pass the checks above. Counted rather than
+        # loaded: instantiating the node under the stricter regex would raise the very error under test.
+        assert (
+            await NodeManager.count(db=db, schema=PERSON_KIND, branch=branch_2, filters={"name__value": ILLEGAL_NAME})
+            == 1
+        ), "the refused merge left the offending object on the branch"
+        refused_branch = await Branch.get_by_name(db=db, name=branch_2.name)
+        assert refused_branch.status == BranchStatus.OPEN.value, "a refused merge reopens the branch"
 
 
 class TestRebaseWhenMainReplacedTheProperty(DestinationSchemaChangeBase):

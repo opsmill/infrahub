@@ -12,6 +12,7 @@ from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.enum import ConstraintIdentifier
@@ -280,20 +281,46 @@ async def test_merge_update_schema(
     )
 
 
-def _widget_schema(code_unique: bool = False) -> SchemaRoot:
+def _widget_schema(
+    code_unique: bool = False, code_kind: str = "Text", code_optional: bool = True, code_regex: str | None = None
+) -> SchemaRoot:
     return SchemaRoot(
         nodes=[
             NodeSchema(
                 name="Widget",
                 namespace="Testing",
                 default_filter="name__value",
+                # The label must not read `code`, whose stored value stops parsing once the kind is narrowed
+                display_labels=["name__value"],
                 attributes=[
                     AttributeSchema(name="name", kind="Text"),
-                    AttributeSchema(name="code", kind="Text", optional=True, unique=code_unique),
+                    AttributeSchema(
+                        name="code",
+                        kind=code_kind,
+                        optional=code_optional,
+                        unique=code_unique,
+                        parameters=TextAttributeParameters(regex=code_regex) if code_kind == "Text" else None,
+                    ),
                 ],
             )
         ]
     )
+
+
+async def _fork_after_widget(
+    db: InfrahubDatabase, branch_name: str, code: str | None, code_regex: str | None = None
+) -> tuple[Node, Branch]:
+    """One widget on the destination, then a branch forked from it."""
+    lock.initialize_lock(local_only=True)
+    await load_schema(db=db, schema=_widget_schema(code_regex=code_regex), update_db=True)
+    widget = await Node.init(db=db, schema="TestingWidget")
+    await widget.new(db=db, name="widget-one", code=code)
+    await widget.save(db=db)
+    return widget, await create_branch(db=db, branch_name=branch_name)
+
+
+async def _load_on_branch(db: InfrahubDatabase, branch: Branch, schema: SchemaRoot) -> None:
+    await load_schema(db=db, schema=schema, branch_name=branch.name, update_db=True, limit=["TestingWidget"])
 
 
 async def test_merge_reports_duplicates_when_an_attribute_becomes_unique(
@@ -341,3 +368,75 @@ async def test_merge_reports_duplicates_when_an_attribute_becomes_unique(
 
     widgets = await NodeManager.query(db=db, schema=widget_kind, branch=default_branch)
     assert sorted(str(node.get_attribute("name").value) for node in widgets) == ["widget-one", "widget-two"]
+
+
+async def test_merge_reports_a_narrowed_attribute_kind(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    workflow_local: WorkflowLocalExecution,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A kind narrowed on the branch is checked against the destination's stored values."""
+    widget, branch = await _fork_after_widget(db=db, branch_name="narrowed-kind-merge-branch", code="not-a-number")
+    await _load_on_branch(db=db, branch=branch, schema=_widget_schema(code_kind="Number"))
+
+    graph_merger = await build_graph_merger(db=db, source_branch=branch, destination_branch=default_branch)
+    with pytest.raises(MergeConstraintsViolatedError) as exc_info:
+        await graph_merger.merge(at=Timestamp())
+
+    assert {(conflict.type, conflict.id) for conflict in exc_info.value.schema_conflicts} == {
+        ("attribute.kind.update", widget.id)
+    }
+    merged_code = registry.schema.get_node_schema(name="TestingWidget", branch=default_branch).get_attribute(
+        name="code"
+    )
+    assert merged_code.kind == "Text"
+
+
+async def test_merge_reports_a_newly_mandatory_attribute(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    workflow_local: WorkflowLocalExecution,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """An attribute made mandatory on the branch is checked against destination nodes that have no value."""
+    widget, branch = await _fork_after_widget(db=db, branch_name="mandatory-merge-branch", code=None)
+    await _load_on_branch(db=db, branch=branch, schema=_widget_schema(code_optional=False))
+
+    graph_merger = await build_graph_merger(db=db, source_branch=branch, destination_branch=default_branch)
+    with pytest.raises(MergeConstraintsViolatedError) as exc_info:
+        await graph_merger.merge(at=Timestamp())
+
+    assert {(conflict.type, conflict.id) for conflict in exc_info.value.schema_conflicts} == {
+        ("attribute.optional.update", widget.id)
+    }
+    merged_code = registry.schema.get_node_schema(name="TestingWidget", branch=default_branch).get_attribute(
+        name="code"
+    )
+    assert merged_code.optional is True
+
+
+async def test_merge_reports_a_narrowed_regex(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    workflow_local: WorkflowLocalExecution,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A regex replaced on the branch is checked against a destination value the old regex allowed."""
+    widget, branch = await _fork_after_widget(
+        db=db, branch_name="narrowed-regex-merge-branch", code="lowercase", code_regex=r".*"
+    )
+    await _load_on_branch(db=db, branch=branch, schema=_widget_schema(code_regex=r"^[A-Z]+$"))
+
+    graph_merger = await build_graph_merger(db=db, source_branch=branch, destination_branch=default_branch)
+    with pytest.raises(MergeConstraintsViolatedError) as exc_info:
+        await graph_merger.merge(at=Timestamp())
+
+    reported = {(conflict.type, conflict.id) for conflict in exc_info.value.schema_conflicts}
+    assert (ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value, widget.id) in reported
+    assert {conflict_id for _, conflict_id in reported} == {widget.id}
+    merged_code = registry.schema.get_node_schema(name="TestingWidget", branch=default_branch).get_attribute(
+        name="code"
+    )
+    assert isinstance(merged_code.parameters, TextAttributeParameters)
+    assert merged_code.parameters.regex == r".*"
