@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -305,26 +305,35 @@ class TestDiffCoordinatorLocks:
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
         diff_locker = DiffLocker()
         lock_held = asyncio.Event()
-        release_lock = asyncio.Event()
+        update_checked_lock = asyncio.Event()
 
         async def hold_incremental_lock_like_a_reader() -> None:
             async with diff_locker.acquire_lock(
                 target_branch_name=default_branch.name, source_branch_name=diff_branch.name, is_incremental=True
             ):
                 lock_held.set()
-                await release_lock.wait()
+                await update_checked_lock.wait()
 
         # a separate task, because the lock is reentrant within one context
         reader = asyncio.create_task(hold_incremental_lock_like_a_reader())
         await lock_held.wait()
 
-        update = asyncio.create_task(
-            diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+        incremental_lock = diff_locker.get_existing_lock(
+            target_branch_name=default_branch.name, source_branch_name=diff_branch.name, is_incremental=True
         )
-        # give the update time to see the held lock and start waiting on it
-        await asyncio.sleep(0.1)
-        release_lock.set()
-        diff_root = await update
+        assert incremental_lock is not None
+        lock_is_held = incremental_lock.locked
+
+        async def locked_then_let_reader_go() -> bool:
+            held = await lock_is_held()
+            update_checked_lock.set()
+            return held
+
+        # The reader lets go only once the update has read the lock as held, so the update takes
+        # the already-in-progress path whatever order the loop schedules the two in. A sleep here
+        # would leave the test asserting on whichever of them the loop happened to run first.
+        with patch.object(incremental_lock, "locked", new=locked_then_let_reader_go):
+            diff_root = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
         await reader
 
         # the shortcut for an update already in progress was taken, and found nothing stored
