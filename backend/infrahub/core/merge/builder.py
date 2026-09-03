@@ -25,6 +25,7 @@ from .post_merge import PostMergeDispatcher
 from .repository_merge_dispatcher import RepositoryMergeDispatcher
 from .rollback_handler import MergeRollbackHandler
 from .schema_analyzer import MergeSchemaAnalyzer
+from .schema_builder import MergedSchemaBuilder
 from .write_blocker import MergeWriteBlocker
 
 if TYPE_CHECKING:
@@ -65,6 +66,7 @@ async def build_branch_merge_orchestrator(
         destination_branch=destination_branch,
         diff_repository=diff_repository,
         schema_manager=registry.schema,
+        merged_schema_builder=MergedSchemaBuilder(),
     )
     constraint_validator = MergeConstraintValidator(
         branch=source_branch,

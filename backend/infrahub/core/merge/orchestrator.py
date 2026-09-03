@@ -116,7 +116,7 @@ class BranchMergeOrchestrator:
             changelog_collector = DiffChangelogCollector(diff=branch_diff, branch=self.source_branch, db=self.db)
             node_events = changelog_collector.collect_changelogs()
 
-            if await self.schema_analyzer.has_schema_changes():
+            if self.schema_analyzer.schemas_differ():
                 self.log.info("Applying schema migrations after merge")
                 # Schema nodes were already written by the graph merge; load that post-merge schema
                 # and apply only the migrations it implies. Rollback is deferred to the merge handler.

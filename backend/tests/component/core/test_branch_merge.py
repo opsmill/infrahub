@@ -1,34 +1,26 @@
+import pytest
+
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import HashableModelState, InfrahubKind, SchemaPathType
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.merger.merger import DiffMerger
-from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema import AttributeSchema
+from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
-
-
-async def _get_schema_analyzer(
-    db: InfrahubDatabase, source_branch: Branch, destination_branch: Branch
-) -> MergeSchemaAnalyzer:
-    component_registry = get_component_registry()
-    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
-    return MergeSchemaAnalyzer(
-        db=db,
-        source_branch=source_branch,
-        destination_branch=destination_branch,
-        diff_repository=diff_repository,
-        schema_manager=registry.schema,
-    )
+from infrahub.exceptions import MergeConstraintsViolatedError
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from tests.helpers.merge import build_graph_merger, build_schema_analyzer
+from tests.helpers.schema import load_schema
 
 
 async def test_merge_graph(
@@ -239,7 +231,7 @@ async def test_merge_update_schema(
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch2)
     await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
-    schema_analyzer = await _get_schema_analyzer(db=db, source_branch=branch2, destination_branch=default_branch)
+    schema_analyzer = await build_schema_analyzer(db=db, source_branch=branch2, destination_branch=default_branch)
     migrations = await schema_analyzer.calculate_migrations(target_schema=schema_branch)
     assert sorted(migrations, key=lambda x: x.path.get_path()) == sorted(
         [
@@ -286,3 +278,66 @@ async def test_merge_update_schema(
         ],
         key=lambda x: x.path.get_path(),
     )
+
+
+def _widget_schema(code_unique: bool = False) -> SchemaRoot:
+    return SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Widget",
+                namespace="Testing",
+                default_filter="name__value",
+                attributes=[
+                    AttributeSchema(name="name", kind="Text"),
+                    AttributeSchema(name="code", kind="Text", optional=True, unique=code_unique),
+                ],
+            )
+        ]
+    )
+
+
+async def test_merge_reports_duplicates_when_an_attribute_becomes_unique(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    workflow_local: WorkflowLocalExecution,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """Turning an attribute unique must be checked against nodes the branch never touched.
+
+    The branch carries no data change whatsoever, so the duplicates already sitting on the
+    destination are reachable only through the schema comparison between the two branches.
+    """
+    lock.initialize_lock(local_only=True)
+    widget_kind = "TestingWidget"
+    await load_schema(db=db, schema=_widget_schema(), update_db=True)
+
+    first_widget = await Node.init(db=db, schema=widget_kind)
+    await first_widget.new(db=db, name="widget-one", code="same-code")
+    await first_widget.save(db=db)
+
+    second_widget = await Node.init(db=db, schema=widget_kind)
+    await second_widget.new(db=db, name="widget-two", code="same-code")
+    await second_widget.save(db=db)
+
+    branch = await create_branch(db=db, branch_name="newly-unique-merge-branch")
+    await load_schema(
+        db=db,
+        schema=_widget_schema(code_unique=True),
+        branch_name=branch.name,
+        update_db=True,
+        limit=[widget_kind],
+    )
+
+    graph_merger = await build_graph_merger(db=db, source_branch=branch, destination_branch=default_branch)
+    with pytest.raises(MergeConstraintsViolatedError) as exc_info:
+        await graph_merger.merge(at=Timestamp())
+
+    assert {(conflict.type, conflict.id) for conflict in exc_info.value.schema_conflicts} == {
+        ("attribute.unique.update", first_widget.id),
+        ("attribute.unique.update", second_widget.id),
+        (ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value, first_widget.id),
+        (ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value, second_widget.id),
+    }
+
+    widgets = await NodeManager.query(db=db, schema=widget_kind, branch=default_branch)
+    assert sorted(str(node.get_attribute("name").value) for node in widgets) == ["widget-one", "widget-two"]

@@ -1,0 +1,1 @@
+Making an attribute unique, narrowing its kind, or making it mandatory is now validated against existing data when the branch is merged or rebased. Previously these schema changes were only checked when the schema was loaded, so a merge or rebase could accept data that violated them.

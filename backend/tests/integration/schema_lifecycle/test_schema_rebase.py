@@ -8,6 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
+from infrahub.core.merge.schema_builder import MergedSchemaBuilder
 from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
@@ -42,6 +43,7 @@ async def _build_schema_analyzer(
         destination_branch=destination_branch,
         diff_repository=diff_repository,
         schema_manager=registry.schema,
+        merged_schema_builder=MergedSchemaBuilder(),
     )
 
 

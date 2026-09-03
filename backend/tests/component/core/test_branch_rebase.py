@@ -1,3 +1,4 @@
+import re
 from uuid import uuid4
 
 import pytest
@@ -15,8 +16,10 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import MigrationError, ValidationError
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -475,3 +478,183 @@ async def test_failed_rebase_keeps_the_branch_data(
     rolled_back_branch = await Branch.get_by_name(db=db, name=branch.name)
     widgets = await NodeManager.query(db=db, schema=widget_kind, branch=rolled_back_branch)
     assert sorted(str(node.get_attribute("name").value) for node in widgets) == ["widget-on-branch", "widget-on-main"]
+
+
+def _widget_with_code_regex(code_regex: str | None) -> NodeSchema:
+    return NodeSchema(
+        name="Widget",
+        namespace="Testing",
+        default_filter="name__value",
+        attributes=[
+            AttributeSchema(name="name", kind="Text"),
+            AttributeSchema(
+                name="code", kind="Text", optional=True, parameters=TextAttributeParameters(regex=code_regex)
+            ),
+        ],
+    )
+
+
+def _widget_with_code(code_kind: str = "Text", code_optional: bool = True, code_unique: bool = False) -> NodeSchema:
+    return NodeSchema(
+        name="Widget",
+        namespace="Testing",
+        default_filter="name__value",
+        # The label must not read `code`, whose stored value stops parsing once the kind is narrowed
+        display_labels=["name__value"],
+        attributes=[
+            AttributeSchema(name="name", kind="Text"),
+            AttributeSchema(name="code", kind=code_kind, optional=code_optional, unique=code_unique),
+        ],
+    )
+
+
+async def test_rebase_reports_a_narrowed_attribute_kind(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    workflow_local: WorkflowLocalExecution,
+    dependency_provider: Provider,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """An attribute kind the stored data no longer satisfies stops the rebase.
+
+    The kind is gated on a migration rather than on a constraint, so both producers have to be
+    combined before the check reaches the rebase.
+    """
+    widget_kind = "TestingWidget"
+    await load_schema(db=db, schema=SchemaRoot(nodes=[_widget_with_code()]), update_db=True)
+
+    widget = await Node.init(db=db, schema=widget_kind)
+    await widget.new(db=db, name="widget", code="not-a-number")
+    await widget.save(db=db)
+
+    branch = await create_branch(db=db, branch_name="narrowed-kind-branch")
+
+    widget_on_branch = await NodeManager.get_one(db=db, id=widget.id, branch=branch, raise_on_error=True)
+    widget_on_branch.code.value = "still-not-a-number"
+    await widget_on_branch.save(db=db)
+
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(nodes=[_widget_with_code(code_kind="Number")]),
+        branch_name=branch.name,
+        update_db=True,
+        limit=[widget_kind],
+    )
+
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
+        with pytest.raises(ValidationError) as exc_info:
+            await rebase_branch(branch=branch.name, context=context)
+
+    assert exc_info.value.message == (
+        f"Attribute-level 'kind' constraint violation on schema '{widget_kind}'."
+        f" Node ({widget_kind}: {widget.id}) is not compliant."
+        " The error relates to field code='still-not-a-number'."
+        " for constraint attribute.kind.update code kind"
+        f" and node {widget.id} {widget_kind}"
+    )
+
+
+async def test_rebase_reports_a_newly_mandatory_attribute(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    workflow_local: WorkflowLocalExecution,
+    dependency_provider: Provider,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """An attribute turned mandatory while a node still has no value for it stops the rebase.
+
+    The node that still has no value is one the branch never edited, so the check only reaches it
+    because the schema comparison contributes the constraint at unrestricted scope.
+    """
+    widget_kind = "TestingWidget"
+    await load_schema(db=db, schema=SchemaRoot(nodes=[_widget_with_code()]), update_db=True)
+
+    empty_widget = await Node.init(db=db, schema=widget_kind)
+    await empty_widget.new(db=db, name="widget-without-code")
+    await empty_widget.save(db=db)
+
+    filled_widget = await Node.init(db=db, schema=widget_kind)
+    await filled_widget.new(db=db, name="widget-with-code", code="filled")
+    await filled_widget.save(db=db)
+
+    branch = await create_branch(db=db, branch_name="newly-mandatory-branch")
+
+    filled_on_branch = await NodeManager.get_one(db=db, id=filled_widget.id, branch=branch, raise_on_error=True)
+    filled_on_branch.code.value = "refilled"
+    await filled_on_branch.save(db=db)
+
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(nodes=[_widget_with_code(code_optional=False)]),
+        branch_name=branch.name,
+        update_db=True,
+        limit=[widget_kind],
+    )
+
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
+        with pytest.raises(ValidationError) as exc_info:
+            await rebase_branch(branch=branch.name, context=context)
+
+    assert exc_info.value.message == (
+        f"Attribute-level 'optional' constraint violation on schema '{widget_kind}'."
+        " Node (widget-without-code) is not compliant."
+        " for constraint attribute.optional.update code optional"
+        f" and node {empty_widget.id} {widget_kind}"
+    )
+
+
+async def test_rebase_reports_duplicates_when_an_attribute_becomes_unique(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    workflow_local: WorkflowLocalExecution,
+    dependency_provider: Provider,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """Turning an attribute unique must be checked against nodes the branch never touched.
+
+    The branch carries no data change whatsoever, so the duplicates already sitting on the
+    destination are reachable only through the schema comparison between the two branches.
+    """
+    widget_kind = "TestingWidget"
+    await load_schema(db=db, schema=SchemaRoot(nodes=[_widget_with_code()]), update_db=True)
+
+    first_widget = await Node.init(db=db, schema=widget_kind)
+    await first_widget.new(db=db, name="widget-one", code="same-code")
+    await first_widget.save(db=db)
+
+    second_widget = await Node.init(db=db, schema=widget_kind)
+    await second_widget.new(db=db, name="widget-two", code="same-code")
+    await second_widget.save(db=db)
+
+    branch = await create_branch(db=db, branch_name="newly-unique-branch")
+
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(nodes=[_widget_with_code(code_unique=True)]),
+        branch_name=branch.name,
+        update_db=True,
+        limit=[widget_kind],
+    )
+
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
+        with pytest.raises(ValidationError) as exc_info:
+            await rebase_branch(branch=branch.name, context=context)
+
+    message = exc_info.value.message
+    assert set(re.findall(r"and node (\S+) ", message)) == {first_widget.id, second_widget.id}
+    assert set(re.findall(r"for constraint (\S+) ", message)) == {
+        "attribute.unique.update",
+        ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value,
+    }

@@ -35,6 +35,7 @@ from infrahub.core.merge.recompute_coalescing import (
 )
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher, submit_full_regeneration
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
+from infrahub.core.merge.schema_builder import MergedSchemaBuilder
 from infrahub.core.merge.selective_regen.generator_diff_capturer import GeneratorTrackingGroupDiffCapturer
 from infrahub.core.merge.selective_regen.orchestrator import build_merge_selective_regeneration
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
@@ -166,6 +167,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             destination_branch=base_branch,
             diff_repository=diff_repository,
             schema_manager=registry.schema,
+            merged_schema_builder=MergedSchemaBuilder(),
         )
         schema_update_coordinator = SchemaUpdateCoordinator(
             db=db,
@@ -194,7 +196,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
 
-        candidate_schema = schema_analyzer.get_candidate_schema()
+        candidate_schema = await schema_analyzer.get_candidate_schema()
         determiner = build_constraint_validator_determiner(db=db, branch=user_branch, at=rebase_at)
         data_diff_constraints = await determiner.get_constraints(
             schema_branch=candidate_schema, node_diffs=node_diff_field_summaries
@@ -204,7 +206,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         #  - Run all the validations to ensure everything is correct before rebasing the branch
         #  - Run all the migrations after the rebase
         schema_diff_constraints: list[SchemaUpdateConstraintInfo] = []
-        if user_branch.schema_differs_from_default_branch:
+        if schema_analyzer.schemas_differ():
             schema_diff_constraints = await schema_analyzer.calculate_validations(target_schema=candidate_schema)
         merger = build_constraint_info_merger()
         constraints = merger.merge(candidate_schema, data_diff_constraints, schema_diff_constraints)
@@ -230,7 +232,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             # must not predate a schema update that landed while the pre-lock validation ran.
             migration_baseline_schema: SchemaBranch | None = None
             pre_rebase_schema: SchemaBranch | None = None
-            if user_branch.schema_differs_from_default_branch:
+            if schema_analyzer.schemas_differ():
                 migration_baseline_schema = (await schema_analyzer.get_common_ancestor_schema()).duplicate()
                 pre_rebase_schema = registry.schema.get_schema_branch(name=user_branch.name).duplicate()
 

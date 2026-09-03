@@ -213,15 +213,15 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         # Attribute
         attrs_diff = self._diff_element(
             other=other,
+            collection_name="attributes",
             get_func=BaseNodeSchema.get_attribute,
-            get_map_func=BaseNodeSchema.get_attributes_name_id_map,
             obj_type=AttributeSchema,
         )
         # Relationships
         rels_diff = self._diff_element(
             other=other,
+            collection_name="relationships",
             get_func=BaseNodeSchema.get_relationship,
-            get_map_func=BaseNodeSchema.get_relationship_name_id_map,
             obj_type=RelationshipSchema,
         )
 
@@ -235,8 +235,8 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     def _diff_element(
         self,
         other: Self,
+        collection_name: str,
         get_func: Callable,
-        get_map_func: Callable,
         obj_type: type[AttributeSchema | RelationshipSchema],
     ) -> HashableModelDiff:
         """The goal of this function is to reduce the amount of code duplicated between Attribute and Relationship to calculate a diff.
@@ -249,8 +249,8 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         """
         # Build a mapping between name and id for all element as well as the reverse mapping to make it easy to access the data
-        local_map: dict[str, str] = get_map_func(self)
-        other_map: dict[str, str] = get_map_func(other)
+        local_map: dict[str, str] = self.get_element_name_id_map(collection_name=collection_name)
+        other_map: dict[str, str] = other.get_element_name_id_map(collection_name=collection_name)
 
         reversed_map_local = dict(map(reversed, local_map.items()))
         reversed_map_other = dict(map(reversed, other_map.items()))
@@ -403,6 +403,23 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         for rel in self.relationships:
             name_id_map[rel.name] = INHERITED if rel.inherited else rel.id
         return name_id_map
+
+    def get_element_name_id_map(self, collection_name: str) -> dict[str, str]:
+        """The name-to-id map used to pair one element collection across two versions of a schema.
+
+        An inherited element has no id of its own, so it is keyed on the id it was inherited from,
+        or on ``INHERITED`` when even that is unknown. Anything comparing two schemas must pair
+        elements with this map, or it will disagree with the diff about which element is which.
+
+        Raises:
+            ValueError: When `collection_name` is not an element collection.
+
+        """
+        if collection_name == "attributes":
+            return self.get_attributes_name_id_map()
+        if collection_name == "relationships":
+            return self.get_relationship_name_id_map()
+        raise ValueError(f"{collection_name!r} is not an element collection")
 
     @property
     def has_parent_relationship(self) -> bool:
