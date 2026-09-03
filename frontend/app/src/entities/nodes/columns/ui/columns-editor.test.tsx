@@ -90,6 +90,33 @@ describe("ColumnsEditor", () => {
       .not.toBeInTheDocument();
   });
 
+  // A field named after an `Object.prototype` member is the one case where the tick can come from an
+  // inherited property instead of a departure the state actually recorded.
+  test("leaves a default-hidden column named `constructor` unmarked", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      attributes: [
+        generateAttributeSchema({ name: "name", label: "Name", kind: "Text", order_weight: 1000 }),
+        generateAttributeSchema({
+          name: "constructor",
+          label: "Constructor",
+          kind: "Text",
+          display: "extra",
+          order_weight: 2000,
+        }),
+      ],
+      relationships: [],
+    });
+
+    // WHEN
+    const component = await render(<ColumnsEditor schema={schema} />);
+
+    // THEN
+    await expect
+      .element(component.getByRole("menuitem", { name: "Constructor" }).getByText("visible"))
+      .not.toBeInTheDocument();
+  });
+
   test("hides a default-visible column by naming it in the hide param", async () => {
     // GIVEN
     const component = await render(<ColumnsEditor schema={objectSchema} />);

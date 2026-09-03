@@ -124,16 +124,8 @@ export function useObjectTableContext() {
 /**
  * The column surface of the table this component sits in, falling back to the object surface.
  *
- * Non-throwing, unlike `useObjectTableContext`: a table cell may render outside any provider, and
- * the object surface is the right reading of "no table said otherwise".
- *
- * The fallback is not merely theoretical. Two of `RelationshipTable`'s three hosts
- * (`ipam-details-relationship-page.tsx`, `repository-objects-manager.tsx`) render it with no
- * provider at all — which is why `relationship-table-toolbar.tsx` takes `schema` as a prop and
- * names its surface explicitly rather than reading it from here. Relationship headers reach this
- * fallback today only because they pass `isDisabled`, so they render `TableColumnHeaderSimple` and
- * never mount a menu. Drop that flag to enable header sorting and a relationship table's header
- * would silently resolve the OBJECT surface: thread the surface in before you do.
+ * Non-throwing: a table cell may render outside any provider, and the object surface is the right
+ * reading of "no table said otherwise".
  */
 export function useColumnSurface(): ColumnSurface {
   return React.use(ObjectTableContext)?.columnSurface ?? OBJECT_COLUMN_SURFACE;
@@ -142,9 +134,8 @@ export function useColumnSurface(): ColumnSurface {
 /**
  * Whether the table this component sits in honours the column-visibility params.
  *
- * Non-throwing, like `useColumnSurface`: a table cell may render outside any provider, and no
- * provider means no table claimed the capability. `false` is therefore the correct reading both
- * outside a provider and inside one that did not opt in.
+ * Non-throwing: `false` is the correct reading both outside any provider and inside one that did
+ * not opt in.
  */
 export function useSupportsColumnVisibility(): boolean {
   return React.use(ObjectTableContext)?.supportsColumnVisibility ?? false;

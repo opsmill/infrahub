@@ -1,14 +1,13 @@
-"""Column show/hide on /objects/InfraDevice (INFP-119).
+"""Column show/hide on /objects/InfraDevice.
 
 Covers the one thing the component tests cannot: that a pasted link carrying
 `?hide_columns=` round-trips through the real router and the real schema, and
 that the toolbar Columns picker puts the column back — clearing the param
 rather than pinning the table to today's default.
 
-Column visibility is URL state only (no mutations), so — like
-`test_object_header_sort.py` — the test runs as Admin against main with no
-throwaway branch. `data_sites` provides the demo devices (the schema default
-order starts at atl1-core1).
+Column visibility is URL state only, so the test mutates nothing and runs as
+Admin against main with no throwaway branch. `data_sites` provides the demo
+devices (the schema default order starts at atl1-core1).
 
 `exact=True` is load-bearing on every "Description" locator: InfraDevice also
 carries a `computed_description` attribute, whose "Computed Description" label

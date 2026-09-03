@@ -72,8 +72,10 @@ function keepOneFieldColumnVisible(
   visibility: ColumnVisibilityState,
   columnCandidates: ColumnCandidate[]
 ): ColumnVisibilityState {
+  // Own keys only: a field named after an `Object.prototype` member must never read as visible on a
+  // state that does not mention it.
   const isVisible = ({ name, isDefaultVisible }: ColumnCandidate) =>
-    name in visibility ? visibility[name] : isDefaultVisible;
+    Object.hasOwn(visibility, name) ? visibility[name] : isDefaultVisible;
   if (columnCandidates.some(isVisible)) return visibility;
 
   const survivor = columnCandidates.find(({ name }) => visibility[name] === false);

@@ -68,9 +68,10 @@ export function ColumnsEditor({ schema, surface }: ColumnsEditorProps) {
   };
 
   // The visibility state holds only the departures from the surface's defaults, so a column neither
-  // param names is showing exactly when its surface shows it by default.
+  // param names is showing exactly when its surface shows it by default — read as an own key, since a
+  // field named after an `Object.prototype` member must not inherit a departure it never had.
   const isColumnVisible = ({ name, isDefaultVisible }: ColumnCandidate) =>
-    name in columnVisibility ? columnVisibility[name] : isDefaultVisible;
+    Object.hasOwn(columnVisibility, name) ? columnVisibility[name] : isDefaultVisible;
   // `getColumnVisibilityState` refuses to hide the last field column, so unchecking it would write a
   // param the trust boundary immediately relaxes — a click with nothing to show for it. Greying the
   // item out says why instead of letting the user hunt for the reason.

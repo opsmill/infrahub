@@ -135,23 +135,26 @@ describe("getRelationshipsVisibleInListView", () => {
     expect(result).toEqual([visible, revealed]);
   });
 
-  it("should still exclude a cardinality-many generic relationship even when revealed", () => {
-    // GIVEN
+  it("should still exclude a generic relationship outside a resource pool even when revealed", () => {
+    // GIVEN a cardinality-one generic relationship, so cardinality cannot be what drops it.
     const visible = generateRelationshipSchema({
       name: "site",
       kind: "Attribute",
       cardinality: "one",
       display: "default",
     });
-    const genericMany = generateRelationshipSchema({
-      name: "members",
+    const genericOutsideAPool = generateRelationshipSchema({
+      name: "member",
       kind: "Generic",
-      cardinality: "many",
+      cardinality: "one",
       display: "extra",
     });
 
     // WHEN
-    const result = getRelationshipsVisibleInListView([visible, genericMany], new Set(["members"]));
+    const result = getRelationshipsVisibleInListView(
+      [visible, genericOutsideAPool],
+      new Set(["member"])
+    );
 
     // THEN
     expect(result).toEqual([visible]);
