@@ -59,7 +59,7 @@ CAR_KIND = "TestCar"
 PERSON_KIND = "TestPerson"
 NAME_ATTRIBUTE = "computed_desc_python"
 OWNER_ATTRIBUTE = "computed_desc_python_owner"
-UNGATHERED_ATTRIBUTE = "computed_desc_python_ungathered"
+MISSING_TRANSFORM_ATTRIBUTE = "computed_desc_python_missing"
 
 # Stands for a target the pass could not narrow, so every node of the kind is refreshed.
 WHOLE_KIND = "whole-kind"
@@ -86,16 +86,16 @@ def _schema_with_an_owner_reading_transform() -> SchemaRoot:
     return schema
 
 
-def _schema_with_an_ungathered_transform() -> SchemaRoot:
+def _schema_with_a_missing_transform() -> SchemaRoot:
     """The same schema, plus an attribute whose transform is absent from the database.
 
     The gather returns no read set for it, and neither does the schema-scoped backfill: it builds
-    its own candidates from the same gather.
+    its own candidates from the same gather, so neither side selects it.
     """
     schema = _schema_with_an_owner_reading_transform()
     car = next(node for node in schema.nodes if node.kind == CAR_KIND)
     attribute = deepcopy(car.get_attribute(name=OWNER_ATTRIBUTE))
-    attribute.name = UNGATHERED_ATTRIBUTE
+    attribute.name = MISSING_TRANSFORM_ATTRIBUTE
     attribute.computed_attribute = ComputedAttribute(
         kind=ComputedAttributeKind.TRANSFORM_PYTHON, transform="transform_missing"
     )
@@ -319,6 +319,37 @@ class TestCoalescedRecomputePython(CoalescedPythonTestBase):
 
         assert submissions == {OWNER_ATTRIBUTE: sorted(dataset.car_ids)}
 
+    async def test_a_pair_the_schema_pass_refreshes_is_dropped(
+        self,
+        dataset: PythonRecomputeDataset,
+        db: InfrahubDatabase,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        """A schema-changing merge refreshes this pair one whole kind at a time already.
+
+        Both sides read their candidates from the same gather and scope them with the same rules,
+        so what one selects is what the other drops.
+        """
+        submissions = await self._run_pass(
+            db=db,
+            recorder=workflow_recorder,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            changes=[
+                MergeChange(
+                    node_id=dataset.person_id,
+                    kind=PERSON_KIND,
+                    action="updated",
+                    changed_fields=frozenset({"name"}),
+                )
+            ],
+            schema_changed_elements=ChangedElementSet(changed_fields={PERSON_KIND: frozenset({"name"})}),
+        )
+
+        assert submissions == {}
+
 
 class TestCoalescedRecomputePythonDeletedPeer(CoalescedPythonTestBase):
     """A merged peer deletion still refreshes the readers of that peer.
@@ -365,27 +396,33 @@ class TestCoalescedRecomputePythonDeletedPeer(CoalescedPythonTestBase):
         assert submissions == {OWNER_ATTRIBUTE: sorted(deleted_peer_dataset.car_ids)}
 
 
-class TestCoalescedRecomputePythonUngatheredTransform(CoalescedPythonTestBase):
-    """An attribute the gather never returned is widened here, since nothing else refreshes it."""
+class TestCoalescedRecomputePythonMissingTransform(CoalescedPythonTestBase):
+    """An attribute whose transform is not in the database is left alone.
+
+    A repository that has not been loaded yet is the ordinary way to reach this. Nothing can
+    compute the attribute until the transform arrives, and the recompute that follows the transform
+    being created covers it then. Submitting for it here only produces flow runs that raise.
+    """
 
     @pytest.fixture(scope="class")
-    async def ungathered_dataset(
+    async def missing_transform_dataset(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
         client: InfrahubClient,
         admin_account: CoreAccount,
     ) -> PythonRecomputeDataset:
-        return await _seed(db=db, branch=default_branch, schema=_schema_with_an_ungathered_transform())
+        return await _seed(db=db, branch=default_branch, schema=_schema_with_a_missing_transform())
 
-    async def test_an_attribute_without_a_read_set_refreshes_its_whole_kind(
+    async def test_an_attribute_without_a_transform_submits_nothing(
         self,
-        ungathered_dataset: PythonRecomputeDataset,
+        missing_transform_dataset: PythonRecomputeDataset,
         db: InfrahubDatabase,
         workflow_recorder: WorkflowRecorder,
         default_branch: Branch,
         admin_account: CoreAccount,
     ) -> None:
+        """The attribute whose transform exists is still selected, and only that one."""
         submissions = await self._run_pass(
             db=db,
             recorder=workflow_recorder,
@@ -393,7 +430,7 @@ class TestCoalescedRecomputePythonUngatheredTransform(CoalescedPythonTestBase):
             admin_account=admin_account,
             changes=[
                 MergeChange(
-                    node_id=ungathered_dataset.person_id,
+                    node_id=missing_transform_dataset.person_id,
                     kind=PERSON_KIND,
                     action="updated",
                     changed_fields=frozenset({"name"}),
@@ -401,40 +438,7 @@ class TestCoalescedRecomputePythonUngatheredTransform(CoalescedPythonTestBase):
             ],
         )
 
-        assert submissions == {
-            OWNER_ATTRIBUTE: sorted(ungathered_dataset.car_ids),
-            UNGATHERED_ATTRIBUTE: WHOLE_KIND,
-        }
-
-    async def test_a_pair_the_schema_pass_never_gathered_is_not_dropped(
-        self,
-        ungathered_dataset: PythonRecomputeDataset,
-        db: InfrahubDatabase,
-        workflow_recorder: WorkflowRecorder,
-        default_branch: Branch,
-        admin_account: CoreAccount,
-    ) -> None:
-        """The backfill of a schema-changing merge covers the gathered pair, and only that one.
-
-        Both read sets are imprecise to the scoper, so the gathered flag is all that separates them.
-        """
-        submissions = await self._run_pass(
-            db=db,
-            recorder=workflow_recorder,
-            default_branch=default_branch,
-            admin_account=admin_account,
-            changes=[
-                MergeChange(
-                    node_id=ungathered_dataset.person_id,
-                    kind=PERSON_KIND,
-                    action="updated",
-                    changed_fields=frozenset({"name"}),
-                )
-            ],
-            schema_changed_elements=ChangedElementSet(changed_fields={PERSON_KIND: frozenset({"name"})}),
-        )
-
-        assert submissions == {UNGATHERED_ATTRIBUTE: WHOLE_KIND}
+        assert submissions == {OWNER_ATTRIBUTE: sorted(missing_transform_dataset.car_ids)}
 
 
 class TestCoalescedRecomputePythonRebase(CoalescedPythonTestBase):

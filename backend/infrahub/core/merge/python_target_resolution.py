@@ -50,8 +50,8 @@ if TYPE_CHECKING:
 class PythonAttributeReadSet:
     """One Python transform computed attribute and the schema elements its query reads.
 
-    ``gathered`` is ``False`` when the transform behind the attribute was never returned by the
-    gather, which is what tells the coverage decision that no other pass knows about this pair.
+    ``gathered`` is ``False`` when the gather failed outright, so nothing is known about any pair
+    and none of them may be dropped as covered by another pass.
     """
 
     kind: str
