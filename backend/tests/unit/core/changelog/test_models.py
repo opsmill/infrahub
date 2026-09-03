@@ -124,8 +124,9 @@ HIERARCHY_PEER_SCHEMA = NodeSchema(
     ],
 )
 
-# A hierarchical node whose own children relationship uses a different identifier, so it holds
-# only one side under `parent__child`.
+# A node that inherits a hierarchy but declares its own `children` under another identifier keeps
+# only `parent` under `parent__child`, because the generated `children` is then skipped. Schema
+# validation accepts it.
 ONE_SIDED_PEER_SCHEMA = NodeSchema(
     name="Room",
     namespace="Loc",
