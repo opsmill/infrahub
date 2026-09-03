@@ -42,6 +42,7 @@ Backend-only. Production code under `backend/infrahub/core/`, tests mirroring it
 | US4 | FR-005 | 5 | Repair migration — **optional**, repairs already-damaged graphs |
 | US5 | FR-009 | 6 | Rollback reach for globally-published merge writes |
 | — | FR-006 | 7 | Knowledge-doc correction |
+| US2 (retirement) | FR-010 | 8 | Retirement stamps Node and field vertices |
 
 ---
 
@@ -118,10 +119,11 @@ the default branch and assert value and metadata are both unchanged.
   would report a mismatch against a Node vertex no default-branch reader can see. No cell reaches this
   shape today; a Phase 3+ delete cell would. The `:Node` arm should return `None` when no level-1
   `IS_PART_OF` exists at all.
-- **Open — belongs to FR-004 / Phase 5.** The retirement closes level-1 edges on *field* vertices without
-  stamping those vertices' own `updated_at` / `updated_by`, so a retired Attribute or Relationship vertex
-  disagrees with the recompute. No cell covers it yet: the mismatch #2 delete-on-default cell asserts the
-  Node vertex only.
+- **Open — now FR-010, T077-T083.** The retirement closes level-1 edges on Node and field vertices
+  without stamping their `updated_at` / `updated_by`. First recorded here as belonging to FR-004, which
+  was wrong: FR-004 is scoped to the peer stamps in `core/query/relationship.py` and never touches the
+  retirement queries. No cell covers it yet — the mismatch #2 delete-on-default cell asserts the Node
+  vertex only.
 
 ---
 
@@ -199,13 +201,33 @@ Phases 3–5 (critique P2).
 ### FR-004 — Relationship peer guard (spec sub-task 4)
 
 - [ ] T039 [P] [US2] Add to `backend/tests/component/core/test_relationship_metadata.py`: create an agnostic relationship between two aware nodes that exist only on a feature branch, assert neither peer's vertex metadata changed
-- [ ] T040 [P] [US2] Add the split-peer edge case: an agnostic relationship where one peer is on the default branch and the other only on a branch — assert exactly one peer is stamped
+- [ ] T040 [P] [US2] Add the split-peer edge case: an agnostic relationship where one peer is on the default branch and the other only on a branch — assert the peer that is visible on the default branch is stamped and the other is not. A peer is stamped for a change to the relationship it holds, never for a *release* of one (see FR-010)
 - [ ] T041 [US2] In `backend/infrahub/core/query/relationship.py`, replace the bare `SET s.updated_at` / `SET d.updated_at` in `RelationshipCreateQuery.query_init`, `RelationshipDeleteQuery.query_init` and `RelationshipDeleteAllQuery.query_init` with the guard already used by `RelationshipUpdatePropertyQuery`: require a level-1 active `IS_RELATED` **and** a level-1 active `IS_PART_OF` on the peer
 - [ ] T042 [US2] Leave the `rl` (Relationship vertex) stamp in the delete queries on its existing gate — the relationship's own branch level is the correct gate for its own vertex, and applying the peer guard to it would reintroduce an under-set (plan D5, critique E2)
 - [ ] T043 [US2] Run `EXPLAIN` on the three modified relationship queries per Constitution V and record the plans; confirm only the aware-peer case adds an `OPTIONAL MATCH`, since `RelationshipCreateQuery.add_source_match_to_query` already proves a level-1 `IS_PART_OF` for level-1 peers
 - [ ] T044 [US2] Run `uv run pytest backend/tests/query_benchmark/ -k relationship` before and after T041 and record the delta for SC-003. A measurable regression means the guard is in the wrong place — revert this sub-task alone rather than weakening it
 
-**Checkpoint**: FR-003 and FR-004 complete — spec sub-tasks 3 and 4. Commit each separately.
+### FR-010 — Retirement writes vertex metadata (spec sub-task 8)
+
+Releasing a branch-agnostic field closes its global edges at branch level 1, but stamps nothing.
+`updated_at` / `updated_by` are to be set on the Node and field vertices whenever they take a global
+write, so a release has to move them like any other level-1 write. Reachable today:
+`BuiltinIPPrefix.resource_pool` and `InternalIPPrefixAvailable.resource_pool` are branch-agnostic
+relationships on branch-aware kinds, so deleting the last prefix holding a pool value releases it at
+level 1 and records nothing.
+
+Four call sites close these edges and all four must agree, or the invariant holds on some deletion
+paths and not others.
+
+- [ ] T077 [P] [US2] Add cells to `backend/tests/component/core/test_vertex_metadata_invariant.py` for the final delete of a branch-aware object holding an agnostic relationship: assert the deleted object's Node vertex **and** its Relationship vertex match the recompute afterwards, and that the peer on the far side does not move
+- [ ] T078 [US2] In `backend/infrahub/core/query/node_agnostic_retirement.py`, stamp `updated_at` / `updated_by` on the field vertices the run closes and on the Node vertices owning them. **Co-write `previous_updated_at` / `previous_updated_by`**: this query runs inside the merge window at the merge `$at` (`DiffMerger._retire_agnostic_fields_of_deleted_nodes`), and a merge-window writer that bumps `updated_at` without the snapshot makes the range rollback restore garbage — see `dev/knowledge/backend/merge-failure-recovery.md`
+- [ ] T079 [US2] Same for `backend/infrahub/core/query/branch_agnostic_retirement.py`, whose writes are batched `IN TRANSACTIONS`, so the stamp has to happen inside the same `CALL` as the edge close
+- [ ] T080 [US2] Same for the shared `CLOSE_UNRETAINED_AGNOSTIC_FIELDS` fragment in `backend/infrahub/core/query/agnostic_field_closure.py`; both consumers already carry `$user_id` in their params
+- [ ] T081 [US2] Restrict the `:Node` arm of `recompute_vertex_metadata` to links the vertex owns. It matches `(v)-[link]-(field)` undirected, so a peer on the far side of a retired relationship currently gets a recomputed `updated_at` the write path is not meant to produce
+- [ ] T082 [US2] Decide whether the repair migration must back-date the same stamps for graphs whose edges were closed before this landed, and record the answer — it back-dates closures to the moment reachability was lost, so a stamp would have to use that time, not the upgrade's. Overlaps FR-005
+- [ ] T083 [US2] Run `EXPLAIN` on the modified retirement queries per Constitution V and record the plans
+
+**Checkpoint**: FR-003, FR-004 and FR-010 complete — spec sub-tasks 3, 4 and 8. Commit each separately.
 
 ---
 
