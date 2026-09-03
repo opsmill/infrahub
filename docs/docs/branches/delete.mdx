@@ -25,11 +25,11 @@ Once deleted, a branch no longer exists and cannot be interacted with.
 
 If the branch was linked to a Git repository, the deletion is propagated to Git. If the remote deletion fails, a log entry is available under the repository view in Infrahub.
 
-Deleting a branch can also release branch-agnostic values that the branch was the last to read — including [resource pool](../resource-manager/overview.mdx) allocations, which return to the pool. See [Deleting a branch-agnostic attribute or relationship](../schema/branch-awareness.mdx#deleting-a-branch-agnostic-attribute-or-relationship).
+Deleting a branch can also release branch-agnostic values that the branch was the last to read — including [resource pool](../resource-manager/overview.mdx) allocations, which return to the pool. See [Branch-agnostic data](./branch-agnostic-data.mdx).
 
 ## Related
 
 - [Branches](./overview.mdx) — branch lifecycle and concepts
 - [Merge a branch](./merge.mdx) — common predecessor to deletion
-- [Branch awareness](../schema/branch-awareness.mdx) — when deleting a branch releases a branch-agnostic value
+- [Branch-agnostic data](./branch-agnostic-data.mdx) — when deleting a branch releases a branch-agnostic value
 - [Configuration](../reference/configuration.mdx) — `delete_branch_after_merge` and `delete_git_branch_after_merge` settings

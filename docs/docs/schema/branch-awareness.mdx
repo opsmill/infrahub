@@ -58,49 +58,11 @@ By default, if a specific value is not defined:
   - **branch-agnostic** only if both models on each end of the relationship are **branch-agnostic**. If either model is **branch-aware** the relationship will be set as **branch-aware**.
   - **branch-local** if either model, on each end of the relationship, is **branch-local**.
 
-## Deleting a branch-agnostic attribute or relationship
+## Deleting branch-agnostic data
 
-To release a branch-agnostic attribute or relationship for good, the field has to be unreachable from **every** branch. There are two ways for a branch to lose its reach:
+A branch-agnostic attribute or relationship stores its value once and shares it with every branch, instead of keeping a copy per branch. Deleting the object that holds the field on one branch therefore does not release the value: it stays reserved for as long as any branch can still reach the object, and a later delete, merge, rebase, branch deletion, or schema change may be what finally releases it.
 
-- **The object is gone.** No branch holds a live object for the field any more.
-- **The schema no longer declares the field.** Removing the attribute or relationship from the schema releases the value without deleting any object.
-
-A single branch that still reaches the field is enough to keep the value reserved, whichever of the two is in play.
-
-### What releases the value
-
-Infrahub re-checks every branch at each operation that could have removed the field's last reader. Any of them can turn out to be the one that releases it:
-
-- **Deleting the object** on the last branch that still held it live.
-- **Merging the branch the deletion was made on**, which carries that deletion to the target branch. Merging a branch that still *reads* the object releases nothing: the branch survives its own merge and goes on reading the object exactly as before.
-- **Rebasing a branch past the deletion**, which replays it on a base where the object is already gone, so the branch stops reading it.
-- **Deleting a branch** that was still reading the object.
-- **Removing the attribute or relationship from the schema**, once no branch declares the field any more.
-
-None of these releases the value unconditionally. Each one re-evaluates every branch, and only the operation that leaves no reader at all closes the value out.
-
-### Why deleting on one branch is not enough
-
-A branch-agnostic attribute or relationship on a **branch-aware** node stores its value once and shares that single value with every branch, instead of keeping a copy per branch. The object's existence is per branch, but the value behind it is not, so deleting the object on one branch cannot release the value: the object may still be accessible on another branch and so its branch-agnostic fields must also remain accessible.
-
-Infrahub therefore keeps the value reserved for as long as **any** branch can still reach the object, and releases it as soon as none can.
-
-### Which branches still count
-
-A branch still counts if the object is live on it under that branch's own view of history — including a branch created *before* the deletion, because at its point of divergence the object was still there. Such a branch goes on reading the object and its branch-agnostic values exactly as before, and nothing about the deletion is visible on it.
-
-A branch created *after* the deletion stops counting only if the deletion had already reached the branch it forked from — then the object was gone at its point of divergence. A branch that forks from somewhere the deletion has not reached, such as the default branch while the deletion still exists only on a feature branch, reads the object as live and counts like any other reader.
-
-### What counts as gone
-
-- An **attribute** is released when no branch holds its object.
-- A **relationship** is released when no branch holds **both** of its peers. Only one peer has to go — a relationship left with a single peer is already unreachable as a relationship, so it is released even while the remaining peer is live.
-
-On the default branch with no other branch open, there is nothing to defer to: deleting the object, or removing the attribute or relationship from the schema, releases the value as part of the same operation. The same applies to an object that only ever existed on one branch: deleting it there releases the value immediately, because no other branch could read it.
-
-:::note
-Values held by a resource pool follow the same rule. An allocated [resource pool](../resource-manager/overview) value stays allocated while any branch can still read the object it was allocated to, and returns to the pool once the value is released.
-:::
+See [Branch-agnostic data](../branches/branch-agnostic-data.mdx) for the full rule.
 
 ## Restrictions
 
@@ -110,4 +72,5 @@ The `branch` property cannot be updated on a Node, Generic, Attribute, or Relati
 
 - [Schema migration](./migration) — Restrictions on properties that can be changed after initial load
 - [Branches](../branches/overview) — How branching works in Infrahub
+- [Branch-agnostic data](../branches/branch-agnostic-data.mdx) — When a branch-agnostic value is released
 - [Resource manager](../resource-manager/overview) — Pools that allocate values to attributes and relationships

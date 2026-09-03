@@ -212,7 +212,7 @@ The query shows the IP address is allocated in the test branch, preventing dupli
 
 Because an allocation is reserved across every branch, deleting the object it was allocated to on one branch does not necessarily return the resource to the pool. For a delete to return it, the object has to be gone from **every** branch that can still read it. This includes any branch created while the object was active on the default branch.
 
-The resource returns to the pool as soon as no branch can reach the object, whether that happens through the delete itself or through a later merge, rebase or branch deletion. Removing the allocated attribute or relationship from the schema releases it too, without deleting any object — again only once no branch still declares the field. See [Deleting a branch-agnostic attribute or relationship](../schema/branch-awareness#deleting-a-branch-agnostic-attribute-or-relationship) for the full rule.
+The resource returns to the pool as soon as no branch can reach the object, whether that happens through the delete itself or through a later merge, rebase or branch deletion. Removing the allocated attribute or relationship from the schema releases it too, without deleting any object — again only once no branch still declares the field. See [Branch-agnostic data](../branches/branch-agnostic-data.mdx) for the full rule.
 
 ## Idempotent allocation
 
@@ -327,4 +327,4 @@ Resource Manager exposes full functionality through GraphQL APIs:
 - [Generator Documentation](../generators/overview) - Automate configurations with allocated resources
 - [GraphQL Documentation](../development-resources/graphql/overview) - Learn about Infrahub's GraphQL interface
 - [IPAM](../ipam/overview.mdx) - IP address management data model and schema
-- [Branch awareness](../schema/branch-awareness) - How branch-agnostic values are reserved and released across branches
+- [Branch-agnostic data](../branches/branch-agnostic-data.mdx) - How branch-agnostic values are reserved and released across branches
