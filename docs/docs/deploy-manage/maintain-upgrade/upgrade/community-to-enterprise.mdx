@@ -8,7 +8,7 @@ import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
 
 # Migrate from Community to Enterprise <EnterpriseBadge />
 
-This guide describes how to convert an existing Infrahub Community deployment into an Infrahub Enterprise deployment **in place**, preserving the existing graph database, Git repositories, and Prefect flow run history.
+This guide describes how to convert an existing Infrahub Community deployment into an Infrahub Enterprise deployment **in place**, preserving the existing graph database, object storage, and Prefect flow run history.
 
 The procedure covers the two container-based deployment methods — Docker Compose and Helm on Kubernetes. Both follow the same shape: swap the Community images for the Enterprise images while keeping every data volume attached, then run `infrahub upgrade` against the existing databases.
 
@@ -20,7 +20,7 @@ Infrahub Enterprise also supports [bare metal installations](../../install-confi
 
 ## What changes during the migration
 
-The data layers — Neo4j, Redis, RabbitMQ or NATS, the Prefect PostgreSQL database, and the API server's Git working directory — are reused. What changes is the container images and the process each one runs:
+The data layers — Neo4j, Redis, RabbitMQ or NATS, and the Prefect PostgreSQL database — are reused. The task workers' Git working directory is not one of them: no volume backs it in either deployment method, so it is discarded with the old containers and repopulated by re-cloning the remote repositories after the swap. What changes is the container images and the process each one runs:
 
 | Component | Before | After |
 |---|---|---|
@@ -38,9 +38,9 @@ The data layers — Neo4j, Redis, RabbitMQ or NATS, the Prefect PostgreSQL datab
 
 The task worker changes type, but the Prefect work pool keeps the name `infrahub-worker`, so any externally registered flows continue to route to it.
 
-The pool itself has to be recreated, because a Prefect work pool is typed and an `infrahubentasync` worker cannot poll an `infrahubasync` pool. Infrahub Enterprise sets `INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE` to `infrahubentasync`, and both `infrahub upgrade` and the primary server's startup recreate the pool with that type. Running `infrahub upgrade` after the swap — a required step in both procedures below — is what guarantees the pool is retyped before the new workers start polling.
+A Prefect work pool is typed, and a worker whose type does not match its pool's type is an unsupported combination — Prefect logs a `Worker type mismatch!` warning for it and its behavior is undefined. The Enterprise deployment addresses both sides of that pairing: it starts the workers with `--type infrahubentasync`, and it sets `INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE` to `infrahubentasync` so that the work pool setup run by `infrahub upgrade` and by the primary server's startup uses the Enterprise worker type. Running `infrahub upgrade` after the swap — a required step in both procedures below — applies the task manager configuration before the new workers start polling. After the migration, confirm the pairing came out right by checking that the workers registered as `InfrahubEntWorkerAsync`, as shown in [Verify the migration](#verify-the-migration).
 
-`infrahub upgrade` runs its full six-step pipeline, not only the task manager step. Because the prerequisites keep the version unchanged, Step 1/6 reports no pending database migrations; Step 5/6 is the step that retypes the work pool. See [what the upgrade does](./overview.mdx#what-the-upgrade-does) for the whole pipeline and the output to expect.
+`infrahub upgrade` runs its full six-step pipeline, not only the task manager step. Because the prerequisites keep the version unchanged, Step 1/6 reports no pending database migrations; Step 5/6 is the task manager step that applies the work pool configuration. See [what the upgrade does](./overview.mdx#what-the-upgrade-does) for the whole pipeline and the output to expect.
 
 :::info Licensing
 
@@ -61,7 +61,7 @@ No separate Neo4j license key is required when using the bundled deployment. Inf
 
 Before starting, confirm the following:
 
-1. **Your target Enterprise version matches your current Community version.** Check the running version via `curl https://<your-infrahub-host>/api/config | jq .` or by inspecting the running image tag. Do not combine an edition swap with a version upgrade in a single step.
+1. **Your target Enterprise version matches your current Community version.** Check the running version via `curl -H "X-INFRAHUB-KEY: <api-token>" https://<your-infrahub-host>/api/info | jq .version` — the `/api/info` endpoint requires authentication — or by inspecting the running image tag. Do not combine an edition swap with a version upgrade in a single step.
 2. **A database backup exists and you have verified that it can be restored.** Take a recent `neo4j-admin database dump` or an equivalent volume snapshot with the database stopped or paused. The Enterprise edition rewrites license metadata in the store on first boot, and a rollback past that point requires the dump. See [Backup and restore](../database-backup/backup-and-restore.mdx).
 3. **The name that binds your deployment to its data is recorded and does not change.** For Helm this is the release name; for Docker Compose it is the project name. Reusing it is what guarantees the existing volumes, service DNS entries, and credentials are picked up by the Enterprise deployment. The tabs below cover each case.
 4. **The existing configuration is in source control.** You will be replacing the Compose file or restructuring the values file; keep the original so you can revert to it.
@@ -82,16 +82,16 @@ cp docker-compose.yml docker-compose.community.yml
 curl https://infrahub.opsmill.io/enterprise/1.10.6 > docker-compose.yml
 ```
 
-Replace `1.10.6` with the version reported by `/api/config`. Fetching `https://infrahub.opsmill.io/enterprise` without a version returns the latest release, which would combine the edition swap with a version upgrade.
+Replace `1.10.6` with the version reported by `/api/info`. Fetching `https://infrahub.opsmill.io/enterprise` without a version returns the latest release, which would combine the edition swap with a version upgrade.
 
 You can append a sizing preset — `?size=small`, `?size=medium`, `?size=large` — to configure replica counts and Neo4j memory settings for your hardware. See [Install Infrahub Enterprise](../../install-configure/install/enterprise.mdx) for the sizing table.
 
-### Configuration that carries over
+**Configuration reused from Community:**
 
-Environment variable names are identical between editions, so an existing `.env` file or Compose override file applies unchanged. The Enterprise Compose file adds two variables specific to Enterprise features, both empty by default:
+Environment variable names are identical between editions, so an existing `.env` file or Compose override file applies unchanged. The Enterprise Compose file adds an `x-infrahub-config-enterprise` block with three variables:
 
-- `INFRAHUB_POLICY_REQUIRED_PROPOSED_CHANGE_APPROVALS`
-- `INFRAHUB_POLICY_REVOKE_PROPOSED_CHANGE_APPROVALS`
+- `INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE`, defaulting to `infrahubentasync` — the variable behind the [work pool switch](#how-the-work-pool-is-switched).
+- `INFRAHUB_POLICY_REQUIRED_PROPOSED_CHANGE_APPROVALS` and `INFRAHUB_POLICY_REVOKE_PROPOSED_CHANGE_APPROVALS`, which the Community Compose file already defines with the same defaults (`0` and `false`), so they change nothing until you set them.
 
 It also adds a `task-manager-background-svc` service, which starts fresh and holds no persistent state of its own.
 
@@ -134,7 +134,7 @@ infrahubTaskWorker:
 ```yaml
 infrahub:
   global:
-    infrahubTag: "1.9.3"  # set to your current Infrahub version
+    infrahubTag: "1.10.6"  # set to your current Infrahub version
 
   infrahubServer:
     replicas: 2
@@ -157,10 +157,10 @@ infrahub:
     global:
       prefect:
         image:
-          prefectTag: "1.9.3"  # set to your current Infrahub version
+          prefectTag: "1.10.6"  # set to your current Infrahub version
 ```
 
-### Pin the Infrahub version
+**Pin the Infrahub version:**
 
 `global.infrahubTag` is an override, not a required value. Left unset, the image tag defaults to the chart's `appVersion` — chart `4.18.0` declares `appVersion: "1.10.6"`, so it deploys Infrahub 1.10.6.
 
@@ -169,15 +169,15 @@ The chart version and the `appVersion` move independently, so choosing a chart v
 ```yaml
 infrahub:
   global:
-    infrahubTag: "1.9.3"          # pins infrahub-server and infrahub-task-worker
+    infrahubTag: "1.10.6"         # pins infrahub-server and infrahub-task-worker
   prefect-server:
     global:
       prefect:
         image:
-          prefectTag: "1.9.3"     # pins the Prefect server container
+          prefectTag: "1.10.6"    # pins the Prefect server container
 ```
 
-### Choose a chart version
+**Choose a chart version:**
 
 The chart version is separate from the image tags above, and is set with `--version` on the `helm upgrade` command rather than in the values file. Pin it explicitly — without `--version`, Helm resolves the latest published chart, which changes more than the edition.
 
@@ -282,7 +282,7 @@ Review the dry-run output for:
 
 ### Announce a maintenance window
 
-Expect 5–10 minutes of API unavailability while the Infrahub server containers are recreated. If you run the bundled Neo4j, it also restarts to switch editions during this window.
+Expect a few minutes of API unavailability while the Infrahub server containers are recreated. If you run the bundled Neo4j, it also restarts to switch editions during this window.
 
 Add time for the [Neo4j store format migration](#migrate-the-neo4j-store-to-the-block-format) if you convert the store in the same window. That conversion is offline and its duration scales with the size of the graph, so measure it against a copy of your data before committing to a window length.
 
@@ -304,14 +304,14 @@ docker compose -p infrahub up -d
 
 :::danger Never pass `-v` to `docker compose down`
 
-`docker compose down -v` deletes the named volumes, which destroys the graph database, the Git working directory, and the Prefect flow run history. The migration requires `docker compose down` with no flags.
+`docker compose down -v` deletes the named volumes, which destroys the graph database, the object storage, and the Prefect flow run history. The migration requires `docker compose down` with no flags. The Git working directory is not affected either way — it has no volume behind it and is re-cloned from the remote repositories after the swap.
 
 :::
 
 Expected behavior:
 
 - The `database` service restarts on the Neo4j Enterprise image, attached to the same `database_data` volume. Neo4j rewrites license metadata in the store on this first boot.
-- `infrahub upgrade` runs its six-step pipeline. Step 5/6 recreates the `infrahub-worker` pool with the `infrahubentasync` type. See [what the upgrade does](./overview.mdx#what-the-upgrade-does) for the output to expect.
+- `infrahub upgrade` runs its six-step pipeline. Step 5/6 is the task manager step, which applies the work pool configuration for the `infrahub-worker` pool. See [what the upgrade does](./overview.mdx#what-the-upgrade-does) for the output to expect.
 - The `task-manager-background-svc` service starts for the first time.
 - Task workers register against the `infrahub-worker` pool as `InfrahubEntWorkerAsync`.
 
@@ -334,14 +334,14 @@ kubectl -n <namespace> exec deploy/<release-name>-infrahub-server -- infrahub up
 
 Helm replaces the chart on the existing release. Expected behavior during the rollout:
 
-- The `infrahub-server` Deployment rolls. Old Community pods drain as new Enterprise pods become Ready. On a single-replica setup expect roughly 30–60 seconds of HTTP 502 errors through the ingress.
+- The `infrahub-server` Deployment rolls. Old Community pods drain as new Enterprise pods become Ready. On a single-replica setup expect a brief period of HTTP 502 errors through the ingress.
 - The `infrahub-task-worker` Deployment rolls. The worker registers against the same `infrahub-worker` pool with the new `InfrahubEntWorkerAsync` type — any flows running at the moment of the swap may need to be triggered again.
 - The `prefect-server` Deployment rolls. Flow run history in PostgreSQL is preserved.
-- The first Enterprise server pod may crash once or twice with `ServiceUnavailable` against Neo4j if Neo4j is restarting. The `wait-for-prefect` init container plus the Kubernetes restart policy resolve any transient connection failure within about 60 seconds.
+- The first Enterprise server pod may crash once or twice with `ServiceUnavailable` against Neo4j if Neo4j is restarting. The Kubernetes restart policy resolves any transient connection failure shortly after Neo4j accepts connections again.
 
-Run `infrahub upgrade` once the server Deployment reports Ready. Step 5/6 recreates the `infrahub-worker` pool with the `infrahubentasync` type. See [what the upgrade does](./overview.mdx#what-the-upgrade-does) for the output to expect.
+Run `infrahub upgrade` once the server Deployment reports Ready. Step 5/6 is the task manager step, which applies the work pool configuration for the `infrahub-worker` pool. See [what the upgrade does](./overview.mdx#what-the-upgrade-does) for the output to expect.
 
-### Watch the rollout
+**Watch the rollout:**
 
 ```bash
 watch -n 2 kubectl -n <namespace> get pods
@@ -391,7 +391,7 @@ A `store` value starting with `record-aligned` means the `neo4j` database is sti
 
 ### Convert the store
 
-The [`infrahub-backup` CLI](https://docs.infrahub.app/backup/) is the supported path. Restoring a backup recreates the databases, and the `--migrate-format` flag on `restore` migrates the Neo4j store format as part of that restore, so the conversion rides along with a backup you should be taking anyway:
+The [`infrahub-backup` CLI](https://docs.infrahub.app/backup/) is the supported path. Restoring a backup recreates the databases, and the `--migrate-format` flag on `restore` migrates the Neo4j store format as part of that restore, so the conversion happens during a backup you should be taking anyway:
 
 ```bash
 # Take a fresh backup of the migrated Enterprise deployment
@@ -429,7 +429,7 @@ The procedure is:
 5. Point Infrahub at the new endpoint via `INFRAHUB_DB_ADDRESS`.
 6. Convert the store to the `block` format, as described in [Migrate the Neo4j store to the block format](#migrate-the-neo4j-store-to-the-block-format). A restored store keeps the `aligned` format it had on Community.
 
-This can happen before, simultaneously with, or after the edition swap — Infrahub Enterprise runs against Neo4j Community. The performance and high-availability benefits of Infrahub Enterprise that depend on Neo4j Enterprise features (online backups, causal clustering, and advanced indexing) only apply once Neo4j is also on the Enterprise edition.
+This can happen before, simultaneously with, or after the edition swap — Infrahub Enterprise runs against Neo4j Community. The performance and high-availability benefits of Infrahub Enterprise that depend on Neo4j Enterprise features (online backups, clustering, and advanced indexing) only apply once Neo4j is also on the Enterprise edition.
 
 If you want to defer the Neo4j edition switch, you can temporarily run the Infrahub Enterprise containers against Neo4j Community. The application will function; you will not get the scale-out database properties. Consider using this opportunity to move your external Neo4j to the bundled deployment, as described in [Neo4j deployment and licensing](#neo4j-deployment-and-licensing).
 
