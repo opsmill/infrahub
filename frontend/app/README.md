@@ -9,7 +9,7 @@ pnpm start              # Start dev server
 pnpm dev                # Start dev server with devtools
 pnpm build              # Production build
 pnpm test               # Unit tests (Vitest)
-pnpm biome:fix          # Format and lint
+pnpm -w biome:fix       # Format and lint (workspace-wide, script lives at the root)
 ```
 
 ## Architecture
