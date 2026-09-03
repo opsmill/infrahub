@@ -72,8 +72,8 @@ class BrokenGraphMerger:
     async def merge(self, at: Timestamp, user_id: str = SYSTEM_USER_ID) -> None:
         await self.real_merger.merge(at=at)
 
-    async def merge_graph(self, at: Timestamp) -> Never:
-        await self.real_merge_graph(at=at)
+    async def merge_graph(self, at: Timestamp, user_id: str = SYSTEM_USER_ID) -> None:
+        await self.real_merge_graph(at=at, user_id=user_id)
         raise ValueError("This is broken on purpose")
 
 
