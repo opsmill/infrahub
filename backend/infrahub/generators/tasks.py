@@ -79,7 +79,11 @@ async def run_generator(model: RequestGeneratorRun) -> None:
         try:
             await add_tags(branches=[model.branch_name], nodes=node_ids)
         except Exception:
-            get_run_logger().warning("Failed to tag the generator run", exc_info=True)
+            get_run_logger().warning(
+                f"Failed to tag the run of generator '{model.generator_definition.definition_name}' "
+                f"for target '{model.target_name}'",
+                exc_info=True,
+            )
 
     try:
         generator_class = generator_definition.load_class(
