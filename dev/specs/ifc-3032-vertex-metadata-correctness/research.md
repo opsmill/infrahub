@@ -146,7 +146,7 @@ of edges it does not modify, and does **not** touch `previous_updated_at/by`.
 **Rationale**: A second run recomputes the same values from the same edges, so no property changes.
 Touching `previous_updated_*` would break this: the second run would snapshot the first run's result
 and report changed vertices. The `previous_*` pair exists to let a merge-failure rollback restore
-pre-merge values (`backend/tests/component/core/migrations/schema/metadata_helpers.py` documents this);
+pre-merge values (`backend/tests/helpers/vertex_metadata.py` documents this);
 a repair migration has no rollback partner and must leave it alone.
 
 ## R8 — Where the relationship peer guard already exists
@@ -176,7 +176,7 @@ it cannot be tested without a database — ruling out unit tests. It does not sp
 not need functional or integration-Docker tests. Constitution IV names component tests as the level
 for "small scope, may use database". Existing anchors to extend:
 
-- `backend/tests/component/core/migrations/schema/metadata_helpers.py` — `VertexMetadata`,
+- `backend/tests/helpers/vertex_metadata.py` — `VertexMetadata`,
   `get_node_vertex_metadata`, `get_attribute_vertex_metadata`
 - `backend/tests/component/core/migrations/graph/test_050.py` — the m050 pattern, including the
   agnostic/aware test schemas the SC-001 matrix needs for mismatch #2

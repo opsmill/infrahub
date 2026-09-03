@@ -53,11 +53,11 @@ can agree with each other while both being wrong (critique E1).
 
 **⚠️ CRITICAL**: No user story work can begin until T001–T004 are complete.
 
-- [ ] T001 Add a `recompute_vertex_metadata()` helper to `backend/tests/component/core/migrations/schema/metadata_helpers.py` implementing the recompute table in `contracts/vertex-metadata-invariant.md`: per-vertex `created_at` / `updated_at` from level-1 edges, and `created_by` / `updated_by` from the `from_user_id` / `to_user_id` of the edge that supplied each timestamp
+- [ ] T001 Add a `recompute_vertex_metadata()` helper to `backend/tests/helpers/vertex_metadata.py` implementing the recompute table in `contracts/vertex-metadata-invariant.md`: per-vertex `created_at` / `updated_at` from level-1 edges, and `created_by` / `updated_by` from the `from_user_id` / `to_user_id` of the edge that supplied each timestamp
 - [ ] T002 In the same helper module, restrict the `:Node` recompute to vertices holding an **active** `branch_level = 1` `IS_PART_OF` edge, while keeping the uuid-wide `min(from)` for `created_at` so a surviving twin still reports the original creation time (contract § Scope of the `:Node` rows)
-- [ ] T003 [P] Add a twin-aware node-metadata helper to `backend/tests/component/core/migrations/schema/metadata_helpers.py` — `get_node_vertex_metadata` asserts exactly one Node vertex per uuid and explicitly defers duplicate cases to the caller, which FR-002's twin pin needs (critique E8)
+- [ ] T003 [P] Add a twin-aware node-metadata helper to `backend/tests/helpers/vertex_metadata.py` — `get_node_vertex_metadata` asserts exactly one Node vertex per uuid and explicitly defers duplicate cases to the caller, which FR-002's twin pin needs (critique E8)
 - [ ] T004 Add an assertion helper that compares a vertex's stored metadata against `recompute_vertex_metadata()` and reports the mismatched field, so SC-001 assertions never hard-code a timestamp
-- [ ] T005 [P] Extend `backend/tests/component/core/migrations/graph/test_050.py`'s schema fixtures, or add a sibling fixture module, providing a **branch-aware kind with a branch-agnostic attribute** — mismatch #2 has no live instance and every one of its SC-001 cells needs it (Constitution IV permits a new inline schema only when no fixture suffices; none does)
+- [ ] T005 [P] Provide a **branch-aware kind with a branch-agnostic attribute** for mismatch #2 and every one of its SC-001 cells. Satisfied by reuse: `tests/helpers/schema/agnostic_retirement.py`'s `AgnosticretireWidget` is an aware kind declaring both an agnostic attribute (`serial`) and an agnostic relationship (`gadget`), so it also supplies the mismatch #1 shape. `tests/helpers/schema/branch_support_mismatch.py` registers it alongside the agnostic-kind schemas, which have no live instance
 
 **Checkpoint**: the oracle exists and is shared. Story phases can begin.
 
@@ -78,11 +78,11 @@ the default branch and assert value and metadata are both unchanged.
 
 ### Tests for User Story 2
 
-- [ ] T006 [P] [US2] Add `backend/tests/component/core/test_vertex_metadata_invariant.py` with the SC-001 Mechanism A skeleton: parametrised over the four mismatches × {create, update, delete} × {default, user} write branch, asserting against `recompute_vertex_metadata()`
+- [ ] T006 [P] [US2] Add `backend/tests/component/core/test_vertex_metadata_invariant.py` with the SC-001 Mechanism A skeleton: a `Mismatch` enum, and one parametrised cell per written runner × {default, user} write branch, asserting against `recompute_vertex_metadata()`. Cells for unwritten mismatch/operation pairs are not generated — the remaining ones are tracked by the tasks below, not by skips
 - [ ] T007 [P] [US2] In that module, add the mismatch #3 update cells (`CoreReadOnlyRepository.ref` / `.commit`): update on a feature branch, assert the default-branch read shows the unchanged value **and** unchanged `updated_at` / `updated_by`. Expected to fail before T012
 - [ ] T008 [P] [US2] Add the FR-002 delete pin: delete a node on the default branch, change an agnostic field from a branch created before the delete, assert no bump
 - [ ] T009 [US2] Add the FR-002 twin pin using the T003 twin-aware helper: with a kind-migrated twin pair present, assert only the vertex holding an active level-1 `IS_PART_OF` is considered
-- [ ] T010 [P] [US2] Add the FR-008 delete cells: delete an **aware** node carrying an agnostic attribute from a feature branch, assert the default-branch `updated_at` advanced. Expected to fail before T014
+- [ ] T010 [P] [US2] Add the FR-008 delete cells for an **aware** node carrying an agnostic attribute: deleting from the default branch records the deletion on the Node vertex, deleting from a feature branch leaves it untouched. Both arms assert against the recompute
 - [ ] T011 [P] [US2] Add the FR-008 over-set pin: delete an **agnostic** node carrying an aware attribute from a feature branch, assert the default-branch `updated_at` did **not** move
 
 ### Implementation for User Story 2
@@ -94,6 +94,34 @@ the default branch and assert value and metadata are both unchanged.
 - [ ] T016 [US2] Run `uv run pytest -x backend/tests/component/core/test_vertex_metadata_invariant.py backend/tests/component/core/test_node_manager_prefetch_metadata.py backend/tests/component/core/test_node_manager_delete.py` and confirm T007–T011 now pass with no regression
 
 **Checkpoint**: FR-001, FR-002 and FR-008 complete — spec sub-task 1. Commit before proceeding.
+
+### Recorded after the rebase onto `retire-agnostic-edges-ifc-2843-to-user-id`
+
+- [X] Retirement closures recorded no actor. `RetireNodeAgnosticFieldsQuery`,
+  `RetireBranchAgnosticFieldsQuery` and the shared `CLOSE_UNRETAINED_AGNOSTIC_FIELDS` fragment closed
+  level-1 edges with `SET e.to = $at` and no `to_user_id`, unlike every other closure in the codebase —
+  and unlike the edge contract `dev/knowledge/backend/database-schema.md` already documents. That left
+  the recompute deriving `updated_by = None` for a default-branch delete of an aware node carrying an
+  agnostic attribute, and the production read path (`NodeListGetInfoQuery`, `RelationshipGetPeerQuery`)
+  reading the same null. **Fixed on the base**, not in this slice: `retire-agnostic-edges-ifc-2843-to-user-id`
+  threads `user_id` through the closures, the `m078` repair migration, and the merge / rebase /
+  branch-delete callers. This slice now consumes it.
+- Discovered while fixing the above, and also resolved on the base: `closed_edge_count` on both batched
+  closures read Neo4j's `properties_set`, which was right only while a closure stamped exactly one
+  property, so stamping `to_user_id` doubled it (`m078`'s repair test: 27 expected, 54 reported). The
+  base returns `count(edge_to_close)` from inside the `CALL … IN TRANSACTIONS` and sums it, counting
+  edges rather than inferring them from a property arity.
+- **Open — the recompute's `:Node` scope rule.** `recompute_vertex_metadata` returns `None` only when
+  *both* derived timestamps are null. A node created and deleted entirely on one feature branch has no
+  level-1 `IS_PART_OF`, so its `created` is null, but its agnostic attribute's `HAS_ATTRIBUTE` link is
+  level-1, so `updated` is not — the helper answers for a vertex the contract puts out of scope, and
+  would report a mismatch against a Node vertex no default-branch reader can see. No cell reaches this
+  shape today; a Phase 3+ delete cell would. The `:Node` arm should return `None` when no level-1
+  `IS_PART_OF` exists at all.
+- **Open — belongs to FR-004 / Phase 5.** The retirement closes level-1 edges on *field* vertices without
+  stamping those vertices' own `updated_at` / `updated_by`, so a retired Attribute or Relationship vertex
+  disagrees with the recompute. No cell covers it yet: the mismatch #2 delete-on-default cell asserts the
+  Node vertex only.
 
 ---
 
@@ -208,7 +236,7 @@ vertex matches the recompute; run it again and assert zero changes.
 
 ### Implementation for User Story 4
 
-- [ ] T051 [US4] Create `backend/infrahub/core/migrations/graph/m077_repair_vertex_metadata.py`, following the m050 structure: three `Query` subclasses ordered Attribute, then Relationship, then Node, batched `IN TRANSACTIONS`
+- [ ] T051 [US4] Create `backend/infrahub/core/migrations/graph/m079_repair_vertex_metadata.py`, following the m050 structure: three `Query` subclasses ordered Attribute, then Relationship, then Node, batched `IN TRANSACTIONS`
 - [ ] T052 [US4] Implement the recompute in Cypher matching `contracts/vertex-metadata-invariant.md`, with m050's `IS NULL` guard **dropped** so wrong values are corrected as well as NULLs filled
 - [ ] T053 [US4] Extend the derivation to `created_by` / `updated_by`, taking the `from_user_id` (or `to_user_id`, where a `to` supplied the winning timestamp) of the edge that produced each timestamp — m050 never set these, and SC-001 asserts on them
 - [ ] T054 [US4] Scope the sweep with `field.branch_support <> n.branch_support`, read from properties already stored on the vertices — no schema load, since a graph migration may run against a database predating the current models (research R5)
@@ -340,7 +368,8 @@ release gate, so deferring Phase 6 means deferring FR-005 to a follow-up ticket 
 it silently. SC-003 (T044) is a check, not a gate — but a measurable regression is evidence the guard
 is misplaced, not a reason to lower the bar.
 
-**Migration number**: Phase 6 creates `m077_repair_vertex_metadata.py` — `m076_heal_missing_attribute_rows`
-is the highest present on this branch's base. If Phase 6 is deferred, re-check the highest number when
-it is picked up; if it is taken now, re-check before merge, since a migration landing on the base first
-forces a renumber (the `rebase-current-branch` skill handles this).
+**Migration number**: Phase 6 creates `m079_repair_vertex_metadata.py`. The base carries
+`m077_delete_orphaned_account_children` and `m078_retire_agnostic_property_edges` at `GRAPH_VERSION`
+78 — 077 was briefly claimed by both until the base renumbered the second to 078. Re-check the highest
+number before merge; a migration landing on the base first forces a renumber (the
+`rebase-current-branch` skill handles this).

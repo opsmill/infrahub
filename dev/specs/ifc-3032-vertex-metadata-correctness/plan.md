@@ -58,7 +58,7 @@ correction, and a cross-product test suite over 4 live branch-support mismatches
 | **I. Schema-Driven Integrity** | No schema-layer change. The repair migration alters only derived properties, never data or constraints, and reads `branch_support` already persisted on each vertex rather than loading a schema — correct for a graph migration that may run against a database predating current models | PASS |
 | **II. Branch-Safe by Default** | The principle this feature restores. FR-009 extends it to the recovery path: a rollback reaching only one of the two branches a merge wrote to is itself branch-unsafe. Every gate becomes an explicit `branch_level` test; edge activity resolution (`branch_level DESC, from DESC, status ASC`) is untouched; soft-delete semantics preserved. FR-006 documents the cross-branch side effect as the principle requires — replacing a statement that is currently wrong | PASS — remediates a violation |
 | **III. Type Safety & Explicit Contracts** | New Python is a predicate over existing typed objects. Cypher parameters stay bound (`$param`), never interpolated. The repair migration follows the existing `Query` + frozen-dataclass `get_data()` pattern | PASS |
-| **IV. Test Discipline** | SC-001's matrix is the coverage this area lacks. Component level is correct — the invariant is a claim about what a Cypher read returns after a Cypher write, so it cannot be unit-tested, and it spans no services. Existing fixtures reused (`metadata_helpers.py`, the `test_050.py` schemas) per the reuse rule; a new inline schema is added only for mismatch #2, which has no live instance | PASS |
+| **IV. Test Discipline** | SC-001's matrix is the coverage this area lacks. Component level is correct — the invariant is a claim about what a Cypher read returns after a Cypher write, so it cannot be unit-tested, and it spans no services. Existing fixtures reused (`tests/helpers/vertex_metadata.py`, `tests/helpers/schema/agnostic_retirement.py`'s `AgnosticretireWidget` for the aware-kind mismatches) per the reuse rule; new inline schemas are added only for the agnostic-kind mismatches, which have no live instance | PASS |
 | **V. Query Performance & Efficiency** | SC-003 guards this explicitly. The FR-004 peer guard adds at most one `OPTIONAL MATCH` in the aware-peer case; `RelationshipCreateQuery` already proves a level-1 `IS_PART_OF` for level-1 peers. `EXPLAIN` on the modified relationship queries is required. The repair migration is scoped to mismatched kinds and batched `IN TRANSACTIONS`, matching m050 | PASS |
 | **VI. Security & Input Boundaries** | No new input surface. All Cypher parameterised. Metadata is provenance data, and correcting it strengthens the audit trail the Security Standards section requires | PASS |
 | **VII. Simplicity & Maintainability** | Every gate reuses a value its own code path already computes; no new abstraction, no helper extracted for a single caller. FR-004 copies the guard shape from `RelationshipUpdatePropertyQuery`, which already does it right, rather than inventing a second pattern. The two value-correctness questions the investigation surfaced are filed as separate defects rather than absorbed into scope | PASS |
@@ -105,13 +105,13 @@ backend/infrahub/core/
     ├── schema/
     │   └── node_remove.py               # FR-007 — NodeRemoveMigrationQueryIn / QueryOut
     └── graph/
-        └── m077_repair_vertex_metadata.py   # FR-005 — new; re-check the number before merge
+        └── m079_repair_vertex_metadata.py   # FR-005 — new; 077 and 078 are taken on the base
 
 backend/tests/component/core/
 ├── test_vertex_metadata_invariant.py    # SC-001 — the cross-product suite (new)
 ├── test_relationship_metadata.py        # FR-004
 ├── migrations/
-│   ├── schema/metadata_helpers.py       # extended with the recompute oracle
+│   └── (helpers moved to tests/helpers/vertex_metadata.py)
 │   └── graph/                           # FR-005 repair + SC-002 idempotency
 
 dev/knowledge/backend/database-schema.md # FR-006
@@ -325,7 +325,7 @@ metadata; a node deleted on the default branch is not bumped from a pre-delete b
 active twin of a migrated pair is considered; an agnostic relationship with one peer off the default
 branch stamps exactly one peer.
 
-Reuse `backend/tests/component/core/migrations/schema/metadata_helpers.py` (`VertexMetadata`,
+Reuse `backend/tests/helpers/vertex_metadata.py` (`VertexMetadata`,
 `get_node_vertex_metadata`, `get_attribute_vertex_metadata`), extending it with the recompute helper.
 
 Two specifics the helpers force:
