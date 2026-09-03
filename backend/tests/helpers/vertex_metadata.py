@@ -79,10 +79,10 @@ async def get_attribute_vertex_metadata(
 async def branch_metadata_fingerprint(db: InfrahubDatabase, branch_name: str) -> list[tuple]:
     """Snapshot the user-timestamp metadata of every Node/Attribute/Relationship vertex on a branch.
 
-    The vertex-metadata analogue of ``branch_edge_fingerprint``: two snapshots compare equal only when
-    every vertex's ``updated_at``/``updated_by`` and ``previous_updated_at``/``previous_updated_by`` are
-    identical, so an empty diff between a pre-change and a post-rollback snapshot proves the rollback
-    restored the metadata that a schema migration or merge bumped (and cleared the snapshot).
+    Two snapshots compare equal only when every vertex's ``updated_at``/``updated_by`` and
+    ``previous_updated_at``/``previous_updated_by`` are identical, so an empty diff between a
+    pre-change and a post-rollback snapshot proves the rollback restored the metadata that a schema
+    migration or merge bumped, and cleared the snapshot it took.
     """
     results = await db.execute_query(
         query=(

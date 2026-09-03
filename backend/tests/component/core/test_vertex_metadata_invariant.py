@@ -167,8 +167,42 @@ async def _widget_delete(db: InfrahubDatabase, default_branch: Branch, write_bra
     )
 
 
+async def _widget_update(db: InfrahubDatabase, default_branch: Branch, write_branch: str) -> None:
+    """Change the agnostic ``serial`` of an aware widget, then read it on the default branch.
+
+    An agnostic attribute writes on the global branch whichever branch the writer is on, so the new
+    value is what every branch reads and the object's metadata has to move with it. Writing from a
+    feature branch and writing on the default branch are the same level-1 write here, and both arms
+    assert the move.
+    """
+    widget = await Node.init(db=db, schema=WIDGET_KIND, branch=default_branch)
+    await widget.new(db=db, name=f"updated-widget-{write_branch}", serial=1)
+    await widget.save(db=db, user_id=CREATOR)
+
+    before = await get_vertex_user_metadata(db=db, element_id=widget.db_id)
+    assert before.updated_by == CREATOR
+
+    branch = await _write_branch(db=db, default_branch=default_branch, write_branch=write_branch)
+    on_write_branch = await NodeManager.get_one(db=db, branch=branch, id=widget.get_id(), raise_on_error=True)
+    on_write_branch.get_attribute(name="serial").value = 2
+    await on_write_branch.save(db=db, user_id=UPDATER)
+    assert "serial" in on_write_branch.node_changelog.updated_fields
+
+    on_default = await NodeManager.get_one(db=db, branch=default_branch, id=widget.get_id(), raise_on_error=True)
+    assert on_default.get_attribute(name="serial").value == 2, "an agnostic attribute is read by every branch"
+
+    after = await assert_vertex_metadata_matches_recompute(
+        db=db, element_id=on_default.db_id, description=f"{WIDGET_KIND} {widget.get_id()}"
+    )
+    assert after.updated_by == UPDATER
+    assert before.updated_at is not None
+    assert after.updated_at is not None
+    assert after.updated_at > before.updated_at
+
+
 CELL_RUNNERS = {
     (Mismatch.AGNOSTIC_NODE_AWARE_ATTRIBUTE, "update"): _repository_update,
+    (Mismatch.AWARE_NODE_AGNOSTIC_ATTRIBUTE, "update"): _widget_update,
     (Mismatch.AWARE_NODE_AGNOSTIC_ATTRIBUTE, "delete"): _widget_delete,
 }
 
