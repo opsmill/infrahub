@@ -64,10 +64,9 @@
   --info: var(--color-sky-700);
   --info-surface: --alpha(var(--color-sky-500) / 15%);
 
-  /* Diff status is deliberately NOT the status palette. The set has four members read relative to
-     one another in a single viewport, and "removed" is a successful operation, not an error —
-     mapping it to --danger makes every deletion in a proposed change look like a failure. Seeded
-     from the shades already in use, so this indirection moves no pixels. */
+  /* Diff status is its own family, not the status palette. Use these for anything in a diff view:
+     the four members are read against each other in one viewport, and a removal is a successful
+     operation, so --danger is the wrong token for it. */
   --diff-added: var(--color-green-700);
   --diff-added-surface: --alpha(var(--color-green-500) / 15%);
   --diff-removed: var(--color-rose-700);
@@ -89,7 +88,7 @@
 
   /* The 1px top highlight that makes a small control read as raised: count badges, outline
      buttons, checkbox cards. Light needs a near-white catch and dark a barely-there one, so no
-     single literal serves both — which is why each call site used to carry its own dark: twin. */
+     single literal serves both, so use this token rather than a literal plus a dark: variant. */
   --raised-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9);
 
   --popover: --alpha(var(--color-stone-100) / 70%);
@@ -170,8 +169,7 @@
   --success-surface: --alpha(var(--color-green-500) / 15%);
   --success-strong: var(--color-green-500);
 
-  /* amber-300, not -400: amber-400 reads far brighter than rose-400 at the same step, and the
-     dark amber foregrounds already in the codebase sit predominantly at -300. */
+  /* Dark amber sits at -300: -400 reads far brighter than rose-400 at the same step. */
   --warning: var(--color-amber-300);
   --warning-surface: --alpha(var(--color-amber-400) / 20%);
   --warning-strong: var(--color-amber-400);

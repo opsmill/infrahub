@@ -93,12 +93,10 @@ to a token:
   always-dark code viewer) needs values readable on that surface; a token that flips with the theme
   is unreadable in one mode.
 - **Identical sibling controls take identical tokens**, and a token added to `theme.css` needs a
-  consumer in the same PR. The one exception is a **deliberately seeded family** — a complete set
-  (`--success`/`--warning`/`--info`, `--diff-*`) added ahead of the migration that will consume it,
-  where landing the vocabulary first is what makes that migration mechanical instead of a design
-  exercise. Seeding is only honest when the family is complete, its values are derived from the
-  call sites it will replace, and the consuming ticket exists. A single unconsumed token is still
-  dead code.
+  consumer in the same PR. A **complete family** may be seeded ahead of the migration that will
+  consume it — that is what turns the migration into mechanical work rather than a design exercise.
+  Seed one only when all three hold: the family is complete, its values come from the call sites it
+  will replace, and the consuming ticket exists. A lone unconsumed token is dead code.
 
 ## Arbitrary values
 
@@ -145,7 +143,7 @@ grep -rn "noTailwindArbitraryValue:" src | sed 's/.*noTailwindArbitraryValue: //
 
 ### Suppression syntax depends on where the class sits
 
-Both of these gotchas cost real debugging time, and neither fails loudly:
+Neither of these failure modes is loud, so follow them exactly:
 
 - **The `biome-ignore` must be the comment immediately before the node.** Wrapping a long reason
   onto a second comment line silently voids the suppression — the diagnostic stays and nothing

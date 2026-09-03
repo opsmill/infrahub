@@ -61,35 +61,39 @@ because `.dark` has no business overriding a dimension:
 
 | Token | Utility | What it encodes |
 |---|---|---|
-| `--text-xxs` | `text-xxs` | One step below `text-xs`, for dense metadata. Deliberately carries **no** `--text-xxs--line-height`, so it stays a pure font-size swap |
+| `--text-xxs` | `text-xxs` | One step below `text-xs`, for dense metadata. Carries **no** `--text-xxs--line-height`: adding one changes every existing call site |
 | `--detail-label-width` | — (helper) | The term column of a definition-style row; read from inside a surviving `minmax()` |
 | `--grid-template-columns-detail-row` | `grid-cols-detail-row` | That column plus `auto` |
 | `--height-page-body` / `-tabs` | `h-page-body` / `h-page-body-tabs` | Viewport minus the page chrome; the `-tabs` variant for shells with their own tab row |
 | `--inset-filter-tab` | `-top-filter-tab` | Offset of the labelled tab above a filter popover |
-| `--animate-skeleton` | `animate-skeleton` | Skeleton pulse, with its own keyframes so it does not depend on the CI-disabled `tailwindcss-animate` plugin |
+| `--animate-skeleton` | `animate-skeleton` | Skeleton pulse. Owns its keyframes, so it works with `tailwindcss-animate` disabled (as it is under CI) |
 
 ### Status, diff and accent families
 
-`--danger` is no longer alone. The status families broadly follow one recipe — foreground `-700`
-light, `-surface` as `--alpha(-500 / 15%)` light, `-strong` one step hotter than the foreground —
-but the dark values are tuned per family rather than mechanical, so **read `theme.css` rather than
-deriving them**. Two deliberate deviations exist today: `--warning` is `amber-300` in dark (its own
-dark twins in the codebase were `-300` far more often than `-400`, and `amber-400` reads far
-brighter than `rose-400` at the same step), and `--success-surface` stays
-`--alpha(green-500 / 15%)` in dark rather than moving to `-400 / 20%`.
+Four status families, each with a foreground, a `-surface` tint, and where it exists a `-strong`
+fill one step hotter than the foreground:
 
-- `--success` (green), `--warning` (amber, plus `--warning-border`), `--info` (sky), `--danger`
-  (rose, plus `--danger-strong`).
-- **Amber, not yellow, is warning**: the two hues mean the same thing in this codebase and differ
-  only by the age of the code. **Sky, not blue or cyan, is info**: cyan collides with `--accent`
-  and `--ring`, blue with `--active`.
-- `--accent-surface` / `--accent-strong` / `--accent-foreground` are the companions to `--accent`.
-  The legacy `custom-blue` ramp is not a rival palette — `custom-blue-700` *is* `#087895` *is*
-  `--accent`; the ramp is the untokenized source, with four shades doing one job.
-- **`--diff-*` is deliberately not the status palette.** `--diff-added` / `-removed` / `-updated` /
-  `-conflict` (each with a `-surface`) form a set read relative to itself in one viewport, and
-  "removed" is a *successful* operation. Mapping a deletion to `--danger` makes every removal in a
-  proposed change look like a failure.
+| Family | Hue | Extra members |
+|---|---|---|
+| `--success` | green | `-surface`, `-strong` |
+| `--warning` | amber | `-surface`, `-strong`, `-border` |
+| `--info` | sky | `-surface` |
+| `--danger` | rose | `-surface`, `-strong` |
+
+The light values follow one recipe — foreground `-700`, `-surface` as `--alpha(-500 / 15%)`. The
+dark values are tuned per family, so **take every value from `theme.css`; do not derive it.**
+
+Pick the hue by role, not by appearance:
+
+- Warning is amber. Do not reach for yellow.
+- Info is sky. Cyan belongs to `--accent` and `--ring`; blue-violet belongs to `--active`.
+- Brand is `--accent`, with `--accent-surface` for a pale tint, `--accent-strong` for a saturated
+  fill, and `--accent-foreground` for text on that fill.
+
+**Diff status is its own family, not the status palette.** Use `--diff-added` / `-removed` /
+`-updated` / `-conflict` (each with a `-surface`) for anything in a diff view. Its members are read
+against each other in one viewport, and a removal is a successful operation — so `--danger` is the
+wrong token for it, and retuning error states must not restyle diffs.
 
 ## How dark mode switches on
 
