@@ -25,7 +25,7 @@ Infrahub re-checks every branch at each operation that could have removed the fi
 - **Deleting a branch** that was still reading the object.
 - **Removing the attribute or relationship from the schema**, once no branch declares the field any more.
 
-None of these releases the value unconditionally. Each one re-evaluates every branch, and only the operation that leaves no reader at all closes the value out.
+None of these releases the value unconditionally. Each one re-evaluates every branch, and only the operation that leaves no reader at all releases the value.
 
 ## Which branches still count
 
@@ -50,4 +50,4 @@ Values held by a resource pool follow the same rule. An allocated [resource pool
 - [Branches](./overview.mdx) — branch lifecycle and concepts
 - [Delete a branch](./delete.mdx) — branch deletion as a release trigger
 - [Schema migration](../schema/migration.mdx) — removing an attribute or relationship from the schema
-- [Resource manager](../resource-manager/overview.mdx) — pools that allocate values to attributes and relationships
+- [Resource Manager](../resource-manager/overview.mdx) — pools that allocate values to attributes and relationships
