@@ -19,8 +19,8 @@ interface ColumnsPickerProps {
  * The badge counts the departures from the surface's default column set rather than the hidden
  * columns: revealing a column customizes the view just as much as hiding one.
  *
- * Only departures with a column on screen are counted, so a param naming a field this schema does
- * not have shows nothing here.
+ * Only departures naming a column this surface offers are counted, so a param naming a field the
+ * schema does not have shows nothing here.
  */
 export function ColumnsPicker({ schema, surface }: ColumnsPickerProps) {
   const { customizedColumnCount } = useColumnVisibility(schema, surface);

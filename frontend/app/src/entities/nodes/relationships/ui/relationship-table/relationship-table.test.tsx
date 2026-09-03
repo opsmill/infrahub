@@ -160,10 +160,7 @@ describe("RelationshipTable columns", () => {
     await expect.element(component.getByText("Internal note")).not.toBeInTheDocument();
   });
 
-  // The clamp in the trust boundary can only give a hide entry back for a column the surface
-  // considers a candidate. Under a surface that can reveal, the revealed `internal_note` counts as
-  // the one surviving column — yet this table builds no column for it, so every field column would
-  // vanish. That the header below survives is what proves `canReveal: false` reached this table.
+  // With every rendered field column hidden, the table hands one back rather than rendering none.
   test("keeps a field column when the params ask to hide every one it renders", async () => {
     // GIVEN a link hiding both default columns while revealing the extra one
     seedColumnsInUrl({ hidden: "name,description", shown: "internal_note" });
