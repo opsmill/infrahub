@@ -373,3 +373,62 @@ class TestKindsAddedAndRemoved:
         candidate = MergedSchemaBuilder().build(ancestor=ancestor, source=source, destination=destination)
 
         assert not candidate.has(name=TRUCK_KIND)
+
+
+class TestBothSidesChangedTheSameElement:
+    """Two properties of one element, one changed per side, is not a conflict: both have to land."""
+
+    @pytest.fixture(scope="class")
+    def ancestor(self) -> SchemaBranch:
+        return _branch("ancestor", _car_schema())
+
+    def test_two_properties_of_one_attribute(self, ancestor: SchemaBranch) -> None:
+        source = _branch("source", _car_schema(code_optional=False))
+        destination = _branch("destination", _car_schema(code_regex=UPPERCASE_ONLY))
+
+        candidate = MergedSchemaBuilder().build(ancestor=ancestor, source=source, destination=destination)
+
+        code = candidate.get(name=CAR_KIND).get_attribute(name="code")
+        assert code.optional is False
+        assert _regex(candidate, "code") == UPPERCASE_ONLY
+
+    def test_two_properties_of_one_relationship(self, ancestor: SchemaBranch) -> None:
+        described = _car_schema()
+        described.get_relationship(name="owner").description = "Who drives it"
+        source = _branch("source", described)
+        reordered = _car_schema()
+        reordered.get_relationship(name="owner").order_weight = 5000
+        destination = _branch("destination", reordered)
+
+        candidate = MergedSchemaBuilder().build(ancestor=ancestor, source=source, destination=destination)
+
+        owner = candidate.get(name=CAR_KIND).get_relationship(name="owner")
+        assert owner.description == "Who drives it"
+        assert owner.order_weight == 5000
+
+    def test_a_destination_rename_with_a_source_change_on_the_same_attribute(self, ancestor: SchemaBranch) -> None:
+        """The mirror of the source-side rename: the element is matched by id, whichever side renamed it."""
+        source = _branch("source", _car_schema(code_regex=UPPERCASE_ONLY))
+        renamed = _car_schema()
+        renamed.get_attribute(name="code").name = "reference"
+        destination = _branch("destination", renamed)
+
+        candidate = MergedSchemaBuilder().build(ancestor=ancestor, source=source, destination=destination)
+
+        car = candidate.get(name=CAR_KIND)
+        assert sorted(attribute.name for attribute in car.attributes) == ["color", "reference"]
+        parameters = car.get_attribute(name="reference").parameters
+        assert isinstance(parameters, TextAttributeParameters)
+        assert parameters.regex == UPPERCASE_ONLY
+
+    def test_a_destination_kind_rename_with_a_source_change_on_the_kind(self) -> None:
+        ancestor = _branch("ancestor", _car_schema())
+        source = _branch("source", _car_schema(code_regex=UPPERCASE_ONLY))
+        destination = _renamed_kind_branch("destination")
+
+        candidate = MergedSchemaBuilder().build(ancestor=ancestor, source=source, destination=destination)
+
+        assert not candidate.has(name=CAR_KIND)
+        parameters = candidate.get(name="TestVehicle").get_attribute(name="code").parameters
+        assert isinstance(parameters, TextAttributeParameters)
+        assert parameters.regex == UPPERCASE_ONLY

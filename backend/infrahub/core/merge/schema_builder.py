@@ -73,10 +73,13 @@ class MergedSchemaBuilder:
                 node_diff=node_diff,
                 keep_destination=keep_destination,
             )
-            if candidate_name != kind:
+            # The node's name moved with the other node-level properties if the source renamed the
+            # kind, so the kind it now spells is where it belongs. A kind the destination renamed keeps
+            # the destination's name: the source did not change it, so nothing moved.
+            if node.kind != candidate_name:
                 candidate.delete(name=candidate_name)
-                self._carry_generated_kinds(candidate=candidate, source=source, kind=kind)
-            candidate.set(name=kind, schema=node)
+                self._carry_generated_kinds(candidate=candidate, source=source, kind=node.kind)
+            candidate.set(name=node.kind, schema=node)
 
         return candidate
 
