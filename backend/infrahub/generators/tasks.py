@@ -42,9 +42,7 @@ if TYPE_CHECKING:
 async def run_generator(model: RequestGeneratorRun) -> None:
     client = get_client()
 
-    # The instance id is only known once the repository is initialized, so accumulate the related
-    # node ids and tag once in `finally`. add_tags can delete existing tags if these tags are not synced
-    # with what's actually in Prefect
+    # Each tag update replaces the whole set, so collect the related node ids and send them in one update.
     node_ids = [model.target_id]
     try:
         repository = await get_initialized_repo(
@@ -77,7 +75,11 @@ async def run_generator(model: RequestGeneratorRun) -> None:
         generator_instance = await _define_instance(model=model, client=client)
         node_ids.append(generator_instance.id)
     finally:
-        await add_tags(branches=[model.branch_name], nodes=node_ids)
+        # Tagging is best-effort observability: it must not fail the run or mask a setup error.
+        try:
+            await add_tags(branches=[model.branch_name], nodes=node_ids)
+        except Exception:
+            get_run_logger().warning("Failed to tag the generator run", exc_info=True)
 
     try:
         generator_class = generator_definition.load_class(
