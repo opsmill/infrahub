@@ -56,6 +56,27 @@ async def load_schema(
     graphql_registry.clear_cache()
 
 
+async def apply_schema_update(db: InfrahubDatabase, schema: SchemaRoot, branch_name: str | None = None) -> None:
+    """Apply a schema change the way the schema-load API does: by diff against the branch's current schema.
+
+    Unlike `load_schema`, which upserts every kind it is given, this honours the two things only a
+    diff can express: a kind or element with ``state: absent`` is removed, and an element carrying the
+    ``id`` of an existing one is renamed rather than replaced. Migrations are not run.
+    """
+    branch_name = branch_name or registry.default_branch
+    branch_schema = registry.schema.get_schema_branch(name=branch_name)
+    candidate = branch_schema.duplicate()
+    candidate.load_schema(schema=schema)
+    candidate.process()
+    diff = branch_schema.diff(other=candidate)
+    candidate.validate_node_deletions(diff=diff)
+    await registry.schema.update_schema_branch(schema=candidate, db=db, branch=branch_name, diff=diff, update_db=True)
+    branch = registry.get_branch_from_registry(branch_name)
+    branch.update_schema_hash()
+    await branch.save(db=db)
+    graphql_registry.clear_cache()
+
+
 test_generics: list[GenericSchema] = [SNOW_TASK, INTERFACE, INTERFACE_HOLDER]
 test_nodes: list[NodeSchema] = [
     CAR,

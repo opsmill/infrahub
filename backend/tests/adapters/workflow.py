@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import ValidatorConclusion
 from infrahub.services.adapters.workflow import InfrahubWorkflow
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 
 if TYPE_CHECKING:
@@ -65,3 +66,26 @@ class WorkflowRecorder(InfrahubWorkflow):
 
     def get_submit_calls_for(self, workflow: WorkflowDefinition) -> list[dict[str, Any]]:
         return [call for call in self.submit_calls if call["workflow"] == workflow]
+
+
+class WorkflowAwaitedOnly(WorkflowLocalExecution):
+    """Run the workflows a caller awaits inline; only record the ones it fires and forgets.
+
+    A merge or rebase awaits its schema migrations but submits its post-processing, and that
+    post-processing reaches for an API server a component test does not run. Executing the former and
+    recording the latter lets a test drive the whole flow and still inspect the migrated data.
+    """
+
+    def __init__(self) -> None:
+        self.submit_calls: list[dict[str, Any]] = []
+
+    async def submit_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        context: InfrahubContext | EventContext | None = None,
+        parameters: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
+    ) -> WorkflowInfo:
+        self.submit_calls.append({"workflow": workflow, "parameters": parameters or {}, "tags": tags or []})
+        return WorkflowInfo(id=uuid.uuid4())

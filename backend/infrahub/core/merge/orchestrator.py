@@ -127,9 +127,16 @@ class BranchMergeOrchestrator:
                 schema_diff = pre_merge_state.destination_schema.diff(other=candidate_schema)
                 schema_updated_hash = candidate_schema.get_hash()
                 migrations = await self.schema_analyzer.calculate_migrations()
+                # The migrations cover both sides of the fork, so their baseline is the common ancestor,
+                # the last schema that still holds every element either side has since changed or
+                # removed. The destination's own pre-merge schema lacks what the destination removed and
+                # already carries what it renamed, so a destination-side migration measured from it
+                # either cannot find its previous version or has nothing left to do for the rows the
+                # merge just landed. Migrations skip rows already in their target shape, so re-running
+                # the destination's own changes over its data is a no-op, as it is on rebase.
                 await self.schema_update_coordinator.execute(
                     branch=self.destination_branch,
-                    origin_schema=pre_merge_state.destination_schema,
+                    origin_schema=(await self.schema_analyzer.get_common_ancestor_schema()).duplicate(),
                     rollback_schema=pre_merge_state.destination_schema,
                     candidate_schema=candidate_schema,
                     at=merge_at,

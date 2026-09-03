@@ -72,7 +72,7 @@ from infrahub.git import InfrahubRepository
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_workflow
-from tests.adapters.workflow import WorkflowRecorder
+from tests.adapters.workflow import WorkflowAwaitedOnly, WorkflowRecorder
 from tests.conftest import TestHelper
 from tests.helpers.constants import (
     PREFECT_EVENTS_PROACTIVE_GRANULARITY,
@@ -3029,6 +3029,21 @@ def workflow_recorder(dependency_provider: Provider) -> Generator[WorkflowRecord
     config.OVERRIDE.workflow = recorder
     with dependency_provider.scope(build_workflow, lambda: recorder):
         yield recorder
+    config.OVERRIDE.workflow = original
+
+
+@pytest.fixture
+def workflow_awaited_only(dependency_provider: Provider) -> Generator[WorkflowAwaitedOnly, None, None]:
+    """Run the workflows a flow awaits (schema migrations) inline; only record the ones it submits.
+
+    A merge or rebase submits its post-processing, which reaches for an API server these tests do not
+    run, so `workflow_local` would hang on it while `workflow_recorder` would skip the migrations.
+    """
+    original = config.OVERRIDE.workflow
+    workflow = WorkflowAwaitedOnly()
+    config.OVERRIDE.workflow = workflow
+    with dependency_provider.scope(build_workflow, lambda: workflow):
+        yield workflow
     config.OVERRIDE.workflow = original
 
 
