@@ -10,7 +10,7 @@ from infrahub.git.fingerprint.hasher import FingerprintHasher, canonical_json
 from infrahub.git.fingerprint.registry import FingerprintKind, FingerprintRegistry
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Sequence
 
     from git import Repo
     from infrahub_sdk.schema.repository import InfrahubWatchConfig
@@ -236,8 +236,8 @@ class FingerprintComposer:
             watch_required=watch_required,
         )
 
-    def _closure_term(self, dependencies: Iterable[str]) -> str:
-        pairs = self._blob_resolver.resolve(list(dependencies))
+    def _closure_term(self, dependencies: Sequence[str]) -> str:
+        pairs = self._blob_resolver.resolve(dependencies)
         return canonical_json([[path, blob_sha] for path, blob_sha in pairs])
 
 

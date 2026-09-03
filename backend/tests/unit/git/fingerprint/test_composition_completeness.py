@@ -61,101 +61,91 @@ BLOBS = {
 DELEGATED_FIELDS = frozenset({"watch"})
 
 
-def _seed_upstream(registry: FingerprintRegistry, *, kind: FingerprintKind, name: str, fingerprint: str) -> None:
-    registry.register(kind=kind, name=name, fingerprint=fingerprint)
+# One baseline set of fingerprint inputs per kind. The digest builders and the watch-chain
+# composers both start from these, so a field added to one path cannot go missing from the other.
+JINJA2_INPUTS: dict[str, Any] = {
+    "name": TRANSFORMATION_NAME,
+    "query_name": QUERY_NAME,
+    "dependencies": ("templates/report.j2",),
+    "dependencies_complete": True,
+    "watch": InfrahubWatchConfig(files=[]),
+    "template_path": "templates/report.j2",
+}
+
+PYTHON_INPUTS: dict[str, Any] = {
+    "name": TRANSFORMATION_NAME,
+    "query_name": QUERY_NAME,
+    "dependencies": ("transforms/report.py",),
+    "dependencies_complete": True,
+    "watch": InfrahubWatchConfig(files=[]),
+    "file_path": "transforms/report.py",
+    "class_name": "Report",
+    "convert_query_response": False,
+}
+
+GENERATOR_INPUTS: dict[str, Any] = {
+    "name": "tags",
+    "query_name": QUERY_NAME,
+    "dependencies": ("generators/tags.py",),
+    "dependencies_complete": True,
+    "watch": InfrahubWatchConfig(files=[]),
+    "parameters": {"name": "name__value"},
+    "file_path": "generators/tags.py",
+    "class_name": "Generator",
+    "convert_query_response": False,
+    "target_group_id": "group-1",
+}
+
+ARTIFACT_INPUTS: dict[str, Any] = {
+    "name": "device-config",
+    "transformation_name": TRANSFORMATION_NAME,
+    "parameters": {"name": "name__value"},
+    "content_type": "text/plain",
+    "artifact_name": "device-config",
+    "target_group_id": "group-1",
+}
 
 
-def _jinja2_digest(**overrides: Any) -> str:
+def _registry_with_query(overrides: dict[str, Any]) -> FingerprintRegistry:
     registry = FingerprintRegistry()
-    _seed_upstream(
-        registry,
+    registry.register(
         kind=FingerprintKind.QUERY,
         name=QUERY_NAME,
         fingerprint=overrides.pop("query_fingerprint", UPSTREAM_FINGERPRINT),
     )
-    inputs: dict[str, Any] = {
-        "name": TRANSFORMATION_NAME,
-        "query_name": QUERY_NAME,
-        "dependencies": ("templates/report.j2",),
-        "dependencies_complete": True,
-        "watch": InfrahubWatchConfig(files=[]),
-        "template_path": "templates/report.j2",
-    }
-    inputs.update(overrides)
+    return registry
+
+
+def _jinja2_digest(**overrides: Any) -> str:
+    registry = _registry_with_query(overrides)
     return build_composer(blob_shas=BLOBS, registry=registry).compose_transformation(
-        Jinja2TransformationFingerprintInput(**inputs)
+        Jinja2TransformationFingerprintInput(**{**JINJA2_INPUTS, **overrides})
     )
 
 
 def _python_digest(**overrides: Any) -> str:
-    registry = FingerprintRegistry()
-    _seed_upstream(
-        registry,
-        kind=FingerprintKind.QUERY,
-        name=QUERY_NAME,
-        fingerprint=overrides.pop("query_fingerprint", UPSTREAM_FINGERPRINT),
-    )
-    inputs: dict[str, Any] = {
-        "name": TRANSFORMATION_NAME,
-        "query_name": QUERY_NAME,
-        "dependencies": ("transforms/report.py",),
-        "dependencies_complete": True,
-        "watch": InfrahubWatchConfig(files=[]),
-        "file_path": "transforms/report.py",
-        "class_name": "Report",
-        "convert_query_response": False,
-    }
-    inputs.update(overrides)
+    registry = _registry_with_query(overrides)
     return build_composer(blob_shas=BLOBS, registry=registry).compose_transformation(
-        PythonTransformationFingerprintInput(**inputs)
+        PythonTransformationFingerprintInput(**{**PYTHON_INPUTS, **overrides})
     )
 
 
 def _generator_digest(**overrides: Any) -> str:
-    registry = FingerprintRegistry()
-    _seed_upstream(
-        registry,
-        kind=FingerprintKind.QUERY,
-        name=QUERY_NAME,
-        fingerprint=overrides.pop("query_fingerprint", UPSTREAM_FINGERPRINT),
-    )
-    inputs: dict[str, Any] = {
-        "name": "tags",
-        "query_name": QUERY_NAME,
-        "dependencies": ("generators/tags.py",),
-        "dependencies_complete": True,
-        "watch": InfrahubWatchConfig(files=[]),
-        "parameters": {"name": "name__value"},
-        "file_path": "generators/tags.py",
-        "class_name": "Generator",
-        "convert_query_response": False,
-        "target_group_id": "group-1",
-    }
-    inputs.update(overrides)
+    registry = _registry_with_query(overrides)
     return build_composer(blob_shas=BLOBS, registry=registry).compose_generator_definition(
-        GeneratorDefinitionFingerprintInput(**inputs)
+        GeneratorDefinitionFingerprintInput(**{**GENERATOR_INPUTS, **overrides})
     )
 
 
 def _artifact_digest(**overrides: Any) -> str:
     registry = FingerprintRegistry()
-    _seed_upstream(
-        registry,
+    registry.register(
         kind=FingerprintKind.TRANSFORMATION,
         name=TRANSFORMATION_NAME,
         fingerprint=overrides.pop("transformation_fingerprint", UPSTREAM_FINGERPRINT),
     )
-    inputs: dict[str, Any] = {
-        "name": "device-config",
-        "transformation_name": TRANSFORMATION_NAME,
-        "parameters": {"name": "name__value"},
-        "content_type": "text/plain",
-        "artifact_name": "device-config",
-        "target_group_id": "group-1",
-    }
-    inputs.update(overrides)
     return build_composer(blob_shas=BLOBS, registry=registry).compose_artifact_definition(
-        ArtifactDefinitionFingerprintInput(**inputs)
+        ArtifactDefinitionFingerprintInput(**{**ARTIFACT_INPUTS, **overrides})
     )
 
 
@@ -315,20 +305,16 @@ def _generator_config(watch: InfrahubWatchConfig) -> InfrahubGeneratorDefinition
     )
 
 
+def _closure_inputs(baseline: dict[str, Any], closure: ClosureResult, watch: InfrahubWatchConfig) -> dict[str, Any]:
+    """The baseline inputs with the closure-derived fields replaced by a real closure build."""
+    return {**baseline, "dependencies": closure.dependencies, "dependencies_complete": closure.complete, "watch": watch}
+
+
 def _compose_python_from_closure(
     composer: FingerprintComposer, closure: ClosureResult, watch: InfrahubWatchConfig
 ) -> str:
     return composer.compose_transformation(
-        PythonTransformationFingerprintInput(
-            name=TRANSFORMATION_NAME,
-            query_name=QUERY_NAME,
-            dependencies=closure.dependencies,
-            dependencies_complete=closure.complete,
-            watch=watch,
-            file_path="transforms/report.py",
-            class_name="Report",
-            convert_query_response=False,
-        )
+        PythonTransformationFingerprintInput(**_closure_inputs(PYTHON_INPUTS, closure, watch))
     )
 
 
@@ -336,14 +322,7 @@ def _compose_jinja2_from_closure(
     composer: FingerprintComposer, closure: ClosureResult, watch: InfrahubWatchConfig
 ) -> str:
     return composer.compose_transformation(
-        Jinja2TransformationFingerprintInput(
-            name=TRANSFORMATION_NAME,
-            query_name=QUERY_NAME,
-            dependencies=closure.dependencies,
-            dependencies_complete=closure.complete,
-            watch=watch,
-            template_path="templates/report.j2",
-        )
+        Jinja2TransformationFingerprintInput(**_closure_inputs(JINJA2_INPUTS, closure, watch))
     )
 
 
@@ -351,18 +330,7 @@ def _compose_generator_from_closure(
     composer: FingerprintComposer, closure: ClosureResult, watch: InfrahubWatchConfig
 ) -> str:
     return composer.compose_generator_definition(
-        GeneratorDefinitionFingerprintInput(
-            name="tags",
-            query_name=QUERY_NAME,
-            dependencies=closure.dependencies,
-            dependencies_complete=closure.complete,
-            watch=watch,
-            parameters={"name": "name__value"},
-            file_path="generators/tags.py",
-            class_name="Generator",
-            convert_query_response=False,
-            target_group_id="group-1",
-        )
+        GeneratorDefinitionFingerprintInput(**_closure_inputs(GENERATOR_INPUTS, closure, watch))
     )
 
 
