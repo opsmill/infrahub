@@ -61,19 +61,16 @@ BUCKETS: list[tuple[str, str]] = [
     ("runner-oom", r"Process completed with exit code 137|exit code: 137"),
     ("docker-network-pool-exhausted", r"all predefined address pools have been fully subnetted"),
     ("actions-download-429", r"Failed to download action .*429"),
-    # The memoized Prefect task-manager setup (backend/tests/helpers/task_manager.py)
-    # hit its 180s timeout against a Prefect test server once, and every later test
-    # class fail-fasts on the remembered failure. One wedged server, hundreds of
-    # cascaded ERRORs -- count the incident, not the casualties.
+    # One Prefect test server stopped answering, and every later test class fail-fasts on the
+    # remembered failure. Matched through "RuntimeError: " so that a test asserting on this
+    # message cannot tag a job by having its own source line printed in a traceback.
     (
         "prefect-task-manager-wedged",
-        r"Prefect task manager setup (?:already )?failed for http",
+        r"RuntimeError: Prefect task manager setup already failed for http",
     ),
-    # pytest summary is green (no "N failed" and no "N error(s)") yet the process
-    # exits 1: a session-teardown/plugin abort, e.g. testcontainers result
-    # reporting. The negative lookahead must exclude errors too: "474 passed,
-    # 11 errors" summaries otherwise mis-tag whole fixture-cascade jobs (all 23
-    # tags in the 2026-08-24..09-03 window were such mis-tags).
+    # pytest summary is green (no "N failed" and no "N errors") yet the process exits 1: a
+    # session-teardown/plugin abort, e.g. the testcontainers result reporting. Errors have to be
+    # excluded too, or a fixture cascade ("474 passed, 11 errors") reads as a green session.
     (
         "pytest-green-exit-1",
         r"=+ \d+ passed(?:(?!\d+ (?:failed|error))[^\n])*=+[^\n]*\n(?:[^\n]*\n){0,3}[^\n]*Process completed with exit code 1\.",
