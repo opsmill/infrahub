@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub import config
 from infrahub.core.branch.data_deleter import MAX_AGNOSTIC_PEER_BATCH_SIZE
 from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult
 
@@ -40,7 +41,10 @@ class Migration078(ArbitraryMigration):
     name: str = "078_retire_agnostic_property_edges"
     description: str = "Release the branch-agnostic attribute and relationship values no branch can still read"
     minimum_version: int = 77
-    batch_size: int = MAX_AGNOSTIC_PEER_BATCH_SIZE
+
+    @property
+    def batch_size(self) -> int:
+        return min(config.SETTINGS.database.query_size_limit, MAX_AGNOSTIC_PEER_BATCH_SIZE)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         """Always clean: a repair the graph cannot complete must not fail the upgrade."""
