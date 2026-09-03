@@ -1279,7 +1279,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         branch = self.get_branch_based_on_support_type()
 
-        delete_query = await RelationshipDeleteAllQuery.init(
+        rel_delete_query = await RelationshipDeleteAllQuery.init(
             db=db,
             node_id=self.get_id(),
             branch=branch,
@@ -1287,9 +1287,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             at=delete_at,
             branch_agnostic=branch.name == GLOBAL_BRANCH_NAME,
         )
-        await delete_query.execute(db=db)
+        await rel_delete_query.execute(db=db)
 
-        deleted_relationships_changelogs = delete_query.get_deleted_relationships_changelog(self._schema)
+        deleted_relationships_changelogs = rel_delete_query.get_deleted_relationships_changelog(self._schema)
         for relationship_changelog in deleted_relationships_changelogs:
             node_changelog.add_relationship(relationship_changelog=relationship_changelog)
 
@@ -1298,9 +1298,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         elif self._schema.branch == BranchSupportType.AWARE:
             needs_metadata_update = False
         else:
-            needs_metadata_update = any(
+            relationships_deleted_at_level_1 = branch.hierarchy_level == 1 and bool(rel_delete_query.get_data())
+            has_agnostic_attribute = any(
                 self._schema.get_field(name=name).branch == BranchSupportType.AGNOSTIC for name in self._attributes
             )
+            needs_metadata_update = has_agnostic_attribute or relationships_deleted_at_level_1
 
         query = await NodeDeleteQuery.init(
             db=db,
