@@ -58,7 +58,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
 
-validated_database = {}
+validated_database: dict[str, bool] = {}
 R = TypeVar("R")
 
 log = get_logger()
@@ -577,6 +577,12 @@ async def get_db(retry: int = 0) -> AsyncDriver:
             )
         address_resolver = build_address_resolver(members=members, default_port=config.SETTINGS.database.port)
 
+    pool_connection_kwargs: dict[str, int] = {}
+    if config.SETTINGS.database.max_connection_lifetime is not None:
+        pool_connection_kwargs["max_connection_lifetime"] = config.SETTINGS.database.max_connection_lifetime
+    if config.SETTINGS.database.liveness_check_timeout is not None:
+        pool_connection_kwargs["liveness_check_timeout"] = config.SETTINGS.database.liveness_check_timeout
+
     driver = AsyncGraphDatabase.driver(
         config.SETTINGS.database.database_uri,
         auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
@@ -590,6 +596,7 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         ],
         notifications_min_severity=NotificationMinimumSeverity.WARNING,
         max_connection_pool_size=config.SETTINGS.database.max_connection_pool_size,
+        **pool_connection_kwargs,
     )
 
     if config.SETTINGS.database.database_name not in validated_database:

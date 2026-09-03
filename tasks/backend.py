@@ -69,6 +69,40 @@ def _component_shard_targets(shard: str) -> str:
     return " ".join(f"{COMPONENT_TEST_DIRECTORY}/{path}" for path in COMPONENT_TEST_SHARDS[shard])
 
 
+INTEGRATION_TEST_DIRECTORY = f"{MAIN_DIRECTORY}/tests/integration"
+
+# Integration test shards run by CI in parallel jobs (see backend-tests-integration).
+# Directories listed here run under their named shard; everything else falls into the
+# catch-all shard, which ignores exactly the directories assigned below so new test
+# directories are picked up automatically. The partition is verified by
+# backend.validate-integration-shards. Shard contents are sized from measured durations,
+# rebalance when they drift apart.
+INTEGRATION_TEST_SHARDS: dict[str, list[str]] = {
+    "a": ["schema_lifecycle", "git"],
+}
+INTEGRATION_TEST_CATCHALL_SHARD = "b"
+
+
+def _integration_shard_targets(shard: str) -> str:
+    """Build the pytest path arguments for an integration test shard.
+
+    The catch-all shard must be expressed with --ignore flags only: pytest drops an
+    explicit child path when an ancestor path is also passed positionally.
+
+    Raises:
+        ValueError: If the shard name is unknown.
+
+    """
+    if shard == INTEGRATION_TEST_CATCHALL_SHARD:
+        ignored = [path for paths in INTEGRATION_TEST_SHARDS.values() for path in paths]
+        ignore_args = " ".join(f"--ignore={INTEGRATION_TEST_DIRECTORY}/{path}" for path in ignored)
+        return f"{INTEGRATION_TEST_DIRECTORY} {ignore_args}"
+    if shard not in INTEGRATION_TEST_SHARDS:
+        valid_shards = ", ".join([*INTEGRATION_TEST_SHARDS, INTEGRATION_TEST_CATCHALL_SHARD])
+        raise ValueError(f"Unknown integration test shard '{shard}', expected one of: {valid_shards}")
+    return " ".join(f"{INTEGRATION_TEST_DIRECTORY}/{path}" for path in INTEGRATION_TEST_SHARDS[shard])
+
+
 # ----------------------------------------------------------------------------
 # Formatting tasks
 # ----------------------------------------------------------------------------
@@ -212,14 +246,56 @@ def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | N
 
 
 @task(optional=["database"])
-def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
-    """Run backend integration tests."""
+def test_integration(context: Context, database: str = INFRAHUB_DATABASE, shard: str | None = None) -> Result | None:
+    """Run backend integration tests, optionally restricted to a single shard."""
+    targets = _integration_shard_targets(shard) if shard else INTEGRATION_TEST_DIRECTORY
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {targets}"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd=}")
         return execute_command(context=context, command=f"{exec_cmd}")
+
+
+@task
+def validate_integration_shards(context: Context) -> None:
+    """Verify that the integration test shards cover the full integration test suite exactly once.
+
+    Raises:
+        RuntimeError: If test collection fails or the shards do not partition the full suite.
+
+    """
+
+    def collect(targets: str) -> list[str]:
+        result = execute_command(
+            context=context,
+            command=f"uv run pytest --collect-only -qq -p no:cacheprovider --neo4j {targets}",
+            hide=True,
+        )
+        if result is None:
+            raise RuntimeError(f"Failed to collect tests for: {targets}")
+        return [line for line in result.stdout.splitlines() if line.startswith(f"{INTEGRATION_TEST_DIRECTORY}/")]
+
+    with context.cd(ESCAPED_REPO_PATH):
+        full_suite = sorted(collect(INTEGRATION_TEST_DIRECTORY))
+        all_shards = [*INTEGRATION_TEST_SHARDS, INTEGRATION_TEST_CATCHALL_SHARD]
+        sharded = sorted(test for shard in all_shards for test in collect(_integration_shard_targets(shard)))
+
+    if full_suite != sharded:
+        full_set = set(full_suite)
+        shard_set = set(sharded)
+        missing = sorted(full_set - shard_set)
+        duplicated = sorted({test for test in sharded if sharded.count(test) > 1} | (shard_set - full_set))
+        msg = f"Integration test shards do not match the full suite ({len(sharded)} vs {len(full_suite)} tests)."
+        if missing:
+            msg += f"\nMissing from all shards ({len(missing)}): " + ", ".join(missing[:10])
+        if duplicated:
+            msg += f"\nCollected more than once ({len(duplicated)}): " + ", ".join(duplicated[:10])
+        raise RuntimeError(msg)
+
+    print(
+        f" - [{NAMESPACE}] Integration test shards are consistent ({len(full_suite)} tests across {len(all_shards)} shards)"
+    )
 
 
 @task(optional=["database"])

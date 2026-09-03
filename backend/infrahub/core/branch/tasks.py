@@ -104,6 +104,7 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
             log.info(f"No migrations detected for branch '{obj.name}'")
             obj.graph_version = GRAPH_VERSION
             await obj.save(db=db)
+            registry.refresh_cached_branch(obj)
             return
 
         # Branch status will remain as so if the migration process fails
@@ -111,6 +112,7 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
         if obj.status != BranchStatus.NEED_UPGRADE_REBASE:
             obj.status = BranchStatus.NEED_UPGRADE_REBASE
             await obj.save(db=db)
+            registry.refresh_cached_branch(obj)
 
         try:
             log.info(f"Running migrations for branch '{obj.name}'")
@@ -123,6 +125,7 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
             obj.status = BranchStatus.OPEN
         obj.graph_version = GRAPH_VERSION
         await obj.save(db=db)
+        registry.refresh_cached_branch(obj)
 
     if send_events:
         event_context = context.to_event_context()

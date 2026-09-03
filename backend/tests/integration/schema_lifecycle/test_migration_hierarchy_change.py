@@ -187,13 +187,13 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         assert rels_by_name["parent"].peer == "LocationMetro"
         assert rels_by_name["children"].peer == "LocationGeneric"
 
-        country_schema = db.schema.get(name="LocationCountry", branch=branch_1, duplicate=False)
+        country_schema = db.schema.get_node_schema(name="LocationCountry", branch=branch_1, duplicate=False)
         assert country_schema.parent == ""  # noqa: PLC1901
         assert country_schema.children == "LocationMetro"
-        metro_schema = db.schema.get(name="LocationMetro", branch=branch_1, duplicate=False)
+        metro_schema = db.schema.get_node_schema(name="LocationMetro", branch=branch_1, duplicate=False)
         assert metro_schema.parent == "LocationCountry"
         assert metro_schema.children == "LocationSite"
-        site_schema = db.schema.get(name="LocationSite", branch=branch_1, duplicate=False)
+        site_schema = db.schema.get_node_schema(name="LocationSite", branch=branch_1, duplicate=False)
         assert site_schema.parent == "LocationMetro"
         assert site_schema.children == ""  # noqa: PLC1901
 

@@ -302,8 +302,11 @@ jobs:
     needs:
       - files-changed
       - prepare-environment
-    runs-on: "ubuntu-latest"
-    timeout-minutes: 5
+    # mypy is single-threaded, so extra cores do not help it; only a faster core
+    # does. The arm64 runners have a higher per-core throughput than the x64
+    # ones and are free for public repositories.
+    runs-on: "ubuntu-24.04-arm"
+    timeout-minutes: 15
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v7"
@@ -327,6 +330,8 @@ jobs:
         run: "uv run ruff format --check --diff --exclude python_sdk ."
       - name: "Linting: ty check"
         run: "uv run ty check ."
+      - name: "Linting: mypy"
+        run: "uv run invoke backend.mypy"
 
   markdown-lint:
     if: |
@@ -470,7 +475,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "infrahub-testcontainers-check"]
     strategy:
       fail-fast: false
       matrix:
@@ -514,7 +519,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "backend-tests-unit", "infrahub-testcontainers-check"]
     strategy:
       fail-fast: false
       matrix:
@@ -580,7 +585,13 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "backend-tests-unit", "infrahub-testcontainers-check"]
+    strategy:
+      fail-fast: false
+      matrix:
+        # Shard contents live in INTEGRATION_TEST_SHARDS in tasks/backend.py; keep this
+        # list in sync with it (the catch-all shard runs everything not named there).
+        shard: [a, b]
     runs-on:
       group: "huge-runners"
     timeout-minutes: 30
@@ -608,17 +619,18 @@ jobs:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
-      - name: "Mypy Tests"
-        run: "uv run invoke backend.mypy"
-      - name: "Integration Tests"
-        run: "uv run invoke backend.test-integration"
+      - name: "Validate integration test shards"
+        if: matrix.shard == 'b'
+        run: "uv run invoke backend.validate-integration-shards"
+      - name: "Integration Tests (${{ matrix.shard }})"
+        run: "uv run invoke backend.test-integration --shard ${{ matrix.shard }}"
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          flag-name: backend-integration
+          flag-name: backend-integration-${{ matrix.shard }}
           parallel: true
 
   backend-tests-functional:
@@ -627,7 +639,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "backend-tests-unit", "infrahub-testcontainers-check"]
     runs-on:
       group: "huge-runners"
     timeout-minutes: 30
@@ -655,8 +667,6 @@ jobs:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
-      - name: "Mypy Tests"
-        run: "uv run invoke backend.mypy"
       - name: "Functional Tests"
         run: "uv run invoke backend.test-functional"
       - name: "Coveralls : Functional Tests"
@@ -675,7 +685,7 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       (needs.files-changed.outputs.backend == 'true' ||
       needs.files-changed.outputs.testcontainers == 'true')
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "backend-tests-unit"]
     strategy:
       fail-fast: false
       matrix:
@@ -1106,6 +1116,7 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - backend-tests-unit
       - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
@@ -1218,6 +1229,7 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - backend-tests-unit
       - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
@@ -1297,6 +1309,7 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - backend-tests-unit
       - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
@@ -1314,6 +1327,7 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - backend-tests-unit
       - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
@@ -1405,5 +1419,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,frontend-unit,backend-component-graphql,backend-component-core-diff,backend-component-core-schema,backend-component-other"
+          carryforward: "backend-unit,backend-integration-a,backend-integration-b,frontend-unit,backend-component-graphql,backend-component-core-diff,backend-component-core-schema,backend-component-other"
           parallel-finished: true

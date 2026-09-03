@@ -190,7 +190,7 @@ class RelationshipQuery(Query):
 
         self.rel = rel
         self.rel_id = rel_id
-        self.schema = schema or self.rel.schema
+        self.schema = schema or self.rel.schema  # type: ignore[misc]  # self.rel is type[Relationship] | Relationship | None
 
         if not branch and inspect.isclass(rel) and not hasattr(rel, "branch"):
             raise ValueError("Either an instance of Relationship or a valid branch must be provided.")
@@ -414,7 +414,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params["rel_node_id"] = self.rel_id or (self.rel.id if self.rel else None)
+        self.params["rel_node_id"] = self.rel_id or (self.rel.id if self.rel else None)  # type: ignore[misc]  # self.rel is type[Relationship] | Relationship | None
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["user_id"] = self.user_id
@@ -576,7 +576,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         rel_filter, rel_params = self.branch.get_query_filter_path(at=self.at, variable_name="edge")
-        self.params["rel_id"] = self.rel_id or self.rel.id
+        self.params["rel_id"] = self.rel_id or self.rel.id  # type: ignore[misc]  # self.rel is type[Relationship] | Relationship | None
         self.params["branch"] = self.branch.name
         self.params["rel_prop"] = self.get_relationship_properties_dict(
             status=RelationshipStatus.DELETED, user_id=self.user_id
