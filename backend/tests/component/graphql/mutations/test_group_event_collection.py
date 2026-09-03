@@ -1,6 +1,12 @@
+import pytest
+
 from infrahub.auth.session import AccountSession
+from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
@@ -184,3 +190,88 @@ async def test_node_mutation_to_group_event(
     assert len(orphan_group_event.members) == 1
     assert EventNode(id=person_id, kind="TestPerson") in orphan_group_event.members
     assert len(orphan_group_event.ancestors) == 0
+
+
+@pytest.fixture
+async def tracking_group_schema(
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, standard_group_schema: None
+) -> None:
+    """Register a second group kind, so group-to-group enrolment can be exercised across two kinds."""
+    schema = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="TrackingGroup",
+                namespace="Test",
+                inherit_from=[InfrahubKind.GENERICGROUP],
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            )
+        ]
+    )
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+async def test_group_enrolled_into_group_only_emits_event_for_enclosing_group(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    tracking_group_schema: None,
+    session_first_account: AccountSession,
+) -> None:
+    """Enrolling a group into another group reports the enclosing group as the one that gained a member.
+
+    The enrolled group gains nothing, so it must not be reported as having gained a member itself. The two
+    groups are of different kinds, which is how a repository import enrols one group into another.
+    """
+    enclosing_group = await Node.init(db=db, schema="TestTrackingGroup", branch=default_branch)
+    await enclosing_group.new(db=db, name="enclosing_group")
+    await enclosing_group.save(db=db)
+    enrolled_group = await Node.init(db=db, schema="CoreStandardGroup", branch=default_branch)
+    await enrolled_group.new(db=db, name="enrolled_group")
+    await enrolled_group.save(db=db)
+
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, service=service, account_session=session_first_account
+    )
+
+    update_query = """
+    mutation($group: String!, $member: String!) {
+        TestTrackingGroupUpdate(data:
+            {
+                id: $group,
+                members: [{id: $member}]
+            }
+        ) {
+            ok
+        }
+    }
+    """
+    result = await graphql(
+        schema=gql_params.schema,
+        source=update_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"group": enclosing_group.get_id(), "member": enrolled_group.get_id()},
+    )
+
+    assert not result.errors
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    member_added_events = [event for event in memory_event.events if isinstance(event, GroupMemberAddedEvent)]
+    assert [event.node_id for event in member_added_events] == [enclosing_group.get_id()]
+    assert member_added_events[0].members == [EventNode(id=enrolled_group.get_id(), kind="CoreStandardGroup")]
+    assert member_added_events[0].kind == "TestTrackingGroup"
+
+    node_updated_events = [event for event in memory_event.events if isinstance(event, NodeUpdatedEvent)]
+    assert [event.node_id for event in node_updated_events] == [enclosing_group.get_id()]
+
+    assert len(memory_event.events) == 2
+
+    reloaded_enclosing = await NodeManager.get_one(db=db, id=enclosing_group.get_id(), prefetch_relationships=True)
+    reloaded_enrolled = await NodeManager.get_one(db=db, id=enrolled_group.get_id(), prefetch_relationships=True)
+    assert list(await reloaded_enclosing.members.get_peers(db=db)) == [enrolled_group.get_id()]
+    # Both group kinds read the one stored membership through the same relationship, so it is visible
+    # from either side and cannot say which group gained a member: only the mutation says that.
+    assert list(await reloaded_enrolled.members.get_peers(db=db)) == [enclosing_group.get_id()]

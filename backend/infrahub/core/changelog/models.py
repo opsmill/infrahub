@@ -591,7 +591,7 @@ class RelationshipChangelogGetter:
         primary_changelog: NodeChangelog,
     ) -> list[NodeChangelog]:
         secondaries: list[NodeChangelog] = []
-        peer_relation = peer_schema.get_relationship_by_identifier(id=str(rel_schema.identifier), raise_on_error=False)
+        peer_relation = peer_schema.get_reverse_relationship(relationship=rel_schema)
         if peer_relation:
             node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
             if peer_relation.cardinality == RelationshipCardinality.ONE:
@@ -625,7 +625,7 @@ class RelationshipChangelogGetter:
         primary_changelog: NodeChangelog,
     ) -> list[NodeChangelog]:
         secondaries: list[NodeChangelog] = []
-        peer_relation = peer_schema.get_relationship_by_identifier(id=str(rel_schema.identifier), raise_on_error=False)
+        peer_relation = peer_schema.get_reverse_relationship(relationship=rel_schema)
         if peer_relation:
             node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
             if peer_relation.cardinality == RelationshipCardinality.ONE:

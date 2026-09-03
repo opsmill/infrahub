@@ -11,7 +11,12 @@ from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import ConfigDict, ValidationError, field_validator
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
-from infrahub.core.constants import HashableModelState, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import (
+    HashableModelState,
+    RelationshipCardinality,
+    RelationshipDirection,
+    RelationshipKind,
+)
 from infrahub.core.models import HashableModel, HashableModelDiff
 
 from .attribute_schema import AttributeSchema, get_attribute_schema_class_for_kind
@@ -384,6 +389,31 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
                 rels.append(item)
 
         return rels
+
+    def get_reverse_relationship(self, relationship: RelationshipSchema) -> RelationshipSchema | None:
+        """Return the relationship on this schema that traverses back along the provided relationship.
+
+        Sharing an identifier is not enough: two kinds can both declare the same identifier on the same
+        side, and a single kind can declare both sides of it. The peer must point the opposite way, and a
+        bidirectional relationship is never its own reverse because both sides are stored asymmetrically.
+
+        Returns None when this schema declares no relationship pointing back.
+        """
+        expected_direction = relationship.direction.neighbor_direction
+
+        for candidate in self.get_relationships_by_identifier(id=relationship.get_identifier()):
+            # A peer has to point the opposite way, which rules out every candidate on the same side.
+            # Both sides of a bidirectional pair share BIDIR, so there the name is the only thing that
+            # separates a real peer from the relationship we started on: an identical name means two
+            # kinds inherited the same relationship from a common generic (CoreGroup.members on both
+            # CoreStandardGroup and CoreGeneratorGroup), not two sides of one relationship.
+            if candidate.direction != expected_direction or (
+                candidate.direction == RelationshipDirection.BIDIR and candidate.name == relationship.name
+            ):
+                continue
+            return candidate
+
+        return None
 
     def get_relationships_of_kind(self, relationship_kinds: Iterable[RelationshipKind]) -> list[RelationshipSchema]:
         return [r for r in self.relationships if r.kind in relationship_kinds]
