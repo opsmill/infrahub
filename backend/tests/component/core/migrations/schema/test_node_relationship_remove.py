@@ -31,7 +31,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
-from tests.component.core.migrations.schema.metadata_helpers import (
+from tests.helpers.vertex_metadata import (
     VertexMetadata,
     branch_edge_fingerprint,
     branch_metadata_fingerprint,

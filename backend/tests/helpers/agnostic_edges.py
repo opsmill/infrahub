@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.node import Node
 from tests.helpers.schema.agnostic_retirement import GADGET_KIND, WIDGET_KIND
+from tests.helpers.vertex_metadata import VertexMetadata
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -61,16 +62,6 @@ class EdgeState:
     @property
     def is_active(self) -> bool:
         return self.status == "active"
-
-
-@dataclass(frozen=True)
-class VertexMetadata:
-    """The audit stamps a write leaves on a vertex, and the snapshot a rollback would restore from."""
-
-    updated_at: str | None
-    updated_by: str | None
-    previous_updated_at: str | None
-    previous_updated_by: str | None
 
 
 def open_edges(edges: list[EdgeState]) -> list[EdgeState]:

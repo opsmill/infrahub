@@ -39,8 +39,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from infrahub.dependencies.registry import get_component_registry
-from tests.component.core.migrations.schema.metadata_helpers import branch_edge_fingerprint, branch_metadata_fingerprint
 from tests.helpers.schema import load_schema
+from tests.helpers.vertex_metadata import branch_edge_fingerprint, branch_metadata_fingerprint
 
 BRANCH_USER_ID = "branch_user"
 

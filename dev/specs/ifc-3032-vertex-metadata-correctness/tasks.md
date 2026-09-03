@@ -54,11 +54,11 @@ can agree with each other while both being wrong (critique E1).
 
 **⚠️ CRITICAL**: No user story work can begin until T001–T004 are complete.
 
-- [ ] T001 Add a `recompute_vertex_metadata()` helper to `backend/tests/helpers/vertex_metadata.py` implementing the recompute table in `contracts/vertex-metadata-invariant.md`: per-vertex `created_at` / `updated_at` from level-1 edges, and `created_by` / `updated_by` from the `from_user_id` / `to_user_id` of the edge that supplied each timestamp
-- [ ] T002 In the same helper module, restrict the `:Node` recompute to vertices holding an **active** `branch_level = 1` `IS_PART_OF` edge, while keeping the uuid-wide `min(from)` for `created_at` so a surviving twin still reports the original creation time (contract § Scope of the `:Node` rows)
-- [ ] T003 [P] Add a twin-aware node-metadata helper to `backend/tests/helpers/vertex_metadata.py` — `get_node_vertex_metadata` asserts exactly one Node vertex per uuid and explicitly defers duplicate cases to the caller, which FR-002's twin pin needs (critique E8)
-- [ ] T004 Add an assertion helper that compares a vertex's stored metadata against `recompute_vertex_metadata()` and reports the mismatched field, so SC-001 assertions never hard-code a timestamp
-- [ ] T005 [P] Provide a **branch-aware kind with a branch-agnostic attribute** for mismatch #2 and every one of its SC-001 cells. Satisfied by reuse: `tests/helpers/schema/agnostic_retirement.py`'s `AgnosticretireWidget` is an aware kind declaring both an agnostic attribute (`serial`) and an agnostic relationship (`gadget`), so it also supplies the mismatch #1 shape. `tests/helpers/schema/branch_support_mismatch.py` registers it alongside the agnostic-kind schemas, which have no live instance
+- [X] T001 Add a `recompute_vertex_metadata()` helper to `backend/tests/helpers/vertex_metadata.py` implementing the recompute table in `contracts/vertex-metadata-invariant.md`: per-vertex `created_at` / `updated_at` from level-1 edges, and `created_by` / `updated_by` from the `from_user_id` / `to_user_id` of the edge that supplied each timestamp
+- [X] T002 In the same helper module, keep the `:Node` recompute **total**: derive `created_at` from the uuid-wide `min(from)` over `branch_level = 1` `IS_PART_OF` edges so a surviving twin still reports the original creation time, and answer for any vertex carrying a level-1 edge — including one whose own existence is branch-local, so a stamp that no level-1 write justifies is reported rather than hidden. Scoping the derivation to vertices holding an active level-1 `IS_PART_OF`, as this task first read, would make the oracle silent on exactly the vertices the create-path gate has to be judged on (contract § Scope of the `:Node` rows)
+- [X] T003 [P] Add a twin-aware node-metadata helper to `backend/tests/helpers/vertex_metadata.py` — `get_node_vertex_metadata` asserts exactly one Node vertex per uuid and explicitly defers duplicate cases to the caller, which FR-002's twin pin needs (critique E8)
+- [X] T004 Add an assertion helper that compares a vertex's stored metadata against `recompute_vertex_metadata()` and reports the mismatched field, so SC-001 assertions never hard-code a timestamp
+- [X] T005 [P] Provide a **branch-aware kind with a branch-agnostic attribute** for mismatch #2 and every one of its SC-001 cells. Satisfied by reuse: `tests/helpers/schema/agnostic_retirement.py`'s `AgnosticretireWidget` is an aware kind declaring both an agnostic attribute (`serial`) and an agnostic relationship (`gadget`), so it also supplies the mismatch #1 shape. `tests/helpers/schema/branch_support_mismatch.py` registers it alongside the agnostic-kind schemas, which have no live instance
 
 **Checkpoint**: the oracle exists and is shared. Story phases can begin.
 
@@ -79,20 +79,20 @@ the default branch and assert value and metadata are both unchanged.
 
 ### Tests for User Story 2
 
-- [ ] T006 [P] [US2] Add `backend/tests/component/core/test_vertex_metadata_invariant.py` with the SC-001 Mechanism A skeleton: a `Mismatch` enum, and one parametrised cell per written runner × {default, user} write branch, asserting against `recompute_vertex_metadata()`. Cells for unwritten mismatch/operation pairs are not generated — the remaining ones are tracked by the tasks below, not by skips
-- [ ] T007 [P] [US2] In that module, add the mismatch #3 update cells (`CoreReadOnlyRepository.ref` / `.commit`): update on a feature branch, assert the default-branch read shows the unchanged value **and** unchanged `updated_at` / `updated_by`. Expected to fail before T012
-- [ ] T008 [P] [US2] Add the FR-002 delete pin: delete a node on the default branch, change an agnostic field from a branch created before the delete, assert no bump
-- [ ] T009 [US2] Add the FR-002 twin pin using the T003 twin-aware helper: with a kind-migrated twin pair present, assert only the vertex holding an active level-1 `IS_PART_OF` is considered
-- [ ] T010 [P] [US2] Add the FR-008 delete cells for an **aware** node carrying an agnostic attribute: deleting from the default branch records the deletion on the Node vertex, deleting from a feature branch leaves it untouched. Both arms assert against the recompute
-- [ ] T011 [P] [US2] Add the FR-008 over-set pin: delete an **agnostic** node carrying an aware attribute from a feature branch, assert the default-branch `updated_at` did **not** move
+- [X] T006 [P] [US2] Add `backend/tests/component/core/test_vertex_metadata_invariant.py` with the SC-001 Mechanism A skeleton: a `Mismatch` enum, and one parametrised cell per written runner × {default, user} write branch, asserting against `recompute_vertex_metadata()`. Cells for unwritten mismatch/operation pairs are not generated — the remaining ones are tracked by the tasks below, not by skips
+- [X] T007 [P] [US2] In that module, add the mismatch #3 update cells (`CoreReadOnlyRepository.ref` / `.commit`): update on a feature branch, assert the default-branch read shows the unchanged value **and** unchanged `updated_at` / `updated_by`. Expected to fail before T012
+- [X] T008 [P] [US2] Add the FR-002 delete pin: delete a node on the default branch, change an agnostic field from a branch created before the delete, assert no bump
+- [X] T009 [US2] Add the FR-002 twin pin using the T003 twin-aware helper: with a kind-migrated twin pair present, assert only the vertex holding an active level-1 `IS_PART_OF` is considered
+- [X] T010 [P] [US2] Add the FR-008 delete cells for an **aware** node carrying an agnostic attribute: deleting from the default branch records the deletion on the Node vertex, deleting from a feature branch leaves it untouched. Both arms assert against the recompute
+- [X] T011 [P] [US2] Add the FR-008 over-set pin: delete an **agnostic** node carrying an aware attribute from a feature branch, assert the default-branch `updated_at` did **not** move
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] In `backend/infrahub/core/node/__init__.py::Node._update`, replace the `self.get_branch_based_on_support_type()` gate with a per-changed-field decision: stamp the Node vertex when **any** field recorded on the `NodeChangelog` has `get_branch_based_on_support_type().hierarchy_level == 1` (plan D1, research R1/R2)
-- [ ] T013 [US2] In `backend/infrahub/core/node/__init__.py::Node._save_metadata`, pass the **default** branch to `NodeUpdateMetadataQuery` instead of the node's support branch, so the existing delete-edge guard looks on the branch where deletions and kind migrations are recorded (plan D2)
-- [ ] T014 [US2] In `backend/infrahub/core/query/node.py::NodeDeleteQuery`, replace the `if self.branch.is_global or self.branch.is_default` gate with the same per-deleted-field decision: stamp the Node vertex when any deleted field wrote a `branch_level = 1` edge (FR-008, plan D1b, research R11)
-- [ ] T015 [US2] In `backend/infrahub/core/node/__init__.py::Node.delete`, stop letting the single `self.get_branch_based_on_support_type()` result decide the Node-vertex gate. Leave the branch it passes to `RelationshipDeleteAllQuery` alone — that is a separate concern handled by FR-004
-- [ ] T016 [US2] Run `uv run pytest -x backend/tests/component/core/test_vertex_metadata_invariant.py backend/tests/component/core/test_node_manager_prefetch_metadata.py backend/tests/component/core/test_node_manager_delete.py` and confirm T007–T011 now pass with no regression
+- [X] T012 [US2] In `backend/infrahub/core/node/__init__.py::Node._update`, replace the `self.get_branch_based_on_support_type()` gate with a per-changed-field decision: stamp the Node vertex when **any** field recorded on the `NodeChangelog` has `get_branch_based_on_support_type().hierarchy_level == 1` (plan D1, research R1/R2)
+- [X] T013 [US2] In `backend/infrahub/core/node/__init__.py::Node._save_metadata`, pass the **default** branch to `NodeUpdateMetadataQuery` instead of the node's support branch, so the existing delete-edge guard looks on the branch where deletions and kind migrations are recorded (plan D2)
+- [X] T014 [US2] In `backend/infrahub/core/query/node.py::NodeDeleteQuery`, replace the `if self.branch.is_global or self.branch.is_default` gate with the same per-deleted-field decision: stamp the Node vertex when any deleted field wrote a `branch_level = 1` edge (FR-008, plan D1b, research R11)
+- [X] T015 [US2] In `backend/infrahub/core/node/__init__.py::Node.delete`, stop letting the single `self.get_branch_based_on_support_type()` result decide the Node-vertex gate. Leave the branch it passes to `RelationshipDeleteAllQuery` alone — that is a separate concern handled by FR-004
+- [X] T016 [US2] Run `uv run pytest -x backend/tests/component/core/test_vertex_metadata_invariant.py backend/tests/component/core/test_node_manager_prefetch_metadata.py backend/tests/component/core/test_node_manager_delete.py` and confirm T007–T011 now pass with no regression
 
 **Checkpoint**: FR-001, FR-002 and FR-008 complete — spec sub-task 1. Commit before proceeding.
 
@@ -112,13 +112,12 @@ the default branch and assert value and metadata are both unchanged.
   property, so stamping `to_user_id` doubled it (`m078`'s repair test: 27 expected, 54 reported). The
   base returns `count(edge_to_close)` from inside the `CALL … IN TRANSACTIONS` and sums it, counting
   edges rather than inferring them from a property arity.
-- **Open — the recompute's `:Node` scope rule.** `recompute_vertex_metadata` returns `None` only when
-  *both* derived timestamps are null. A node created and deleted entirely on one feature branch has no
-  level-1 `IS_PART_OF`, so its `created` is null, but its agnostic attribute's `HAS_ATTRIBUTE` link is
-  level-1, so `updated` is not — the helper answers for a vertex the contract puts out of scope, and
-  would report a mismatch against a Node vertex no default-branch reader can see. No cell reaches this
-  shape today; a Phase 3+ delete cell would. The `:Node` arm should return `None` when no level-1
-  `IS_PART_OF` exists at all.
+- [X] **T002's wording was the defect, not the derivation.** The task specified restricting the `:Node`
+  recompute to vertices holding an active level-1 `IS_PART_OF`. Implemented literally, that makes
+  `recompute_vertex_metadata` return `None` for a node created and deleted entirely on one feature
+  branch — which removes any way to assert that such a node correctly carries no level-1-derived
+  metadata, and hides the create path stamping a vertex no level-1 write justifies, which is the
+  defect FR-003 exists to fix. The derivation stays total and T002 now describes it.
 - **Open — now FR-010, T077-T083.** The retirement closes level-1 edges on Node and field vertices
   without stamping their `updated_at` / `updated_by`. First recorded here as belonging to FR-004, which
   was wrong: FR-004 is scoped to the peer stamps in `core/query/relationship.py` and never touches the
@@ -140,7 +139,7 @@ on the default branch and assert both the new value and matching metadata.
 
 ### Tests for User Story 1
 
-- [ ] T017 [P] [US1] In `backend/tests/component/core/test_vertex_metadata_invariant.py`, add the mismatch #2 update cells using the T005 fixture: update the agnostic attribute on a feature branch, assert the default-branch read shows the new value **and** advanced `updated_at` / `updated_by`
+- [X] T017 [P] [US1] In `backend/tests/component/core/test_vertex_metadata_invariant.py`, add the mismatch #2 update cells using the T005 fixture: update the agnostic attribute on a feature branch, assert the default-branch read shows the new value **and** advanced `updated_at` / `updated_by`
 - [ ] T018 [P] [US1] Add the mismatch #1 update cells (`BuiltinIPPrefix.resource_pool`, an agnostic relationship on an aware node)
 - [ ] T019 [P] [US1] Add the mismatch #4 update cells (`CoreGenericRepository.internal_status`, `CoreRepository.commit`), asserting the metadata matches whichever level the **update** path writes — the create/update split for `local`-on-`agnostic` is a separate defect (spec Out of Scope), and the oracle is edge-derived so it is correct either way
 - [ ] T020 [US1] Add the mixed-update edge case: touch both an aware and an agnostic field on an aware node from a branch in one save, assert the default-branch `updated_at` advances
@@ -226,6 +225,8 @@ paths and not others.
 - [ ] T081 [US2] Restrict the `:Node` arm of `recompute_vertex_metadata` to links the vertex owns. It matches `(v)-[link]-(field)` undirected, so a peer on the far side of a retired relationship currently gets a recomputed `updated_at` the write path is not meant to produce
 - [ ] T082 [US2] Decide whether the repair migration must back-date the same stamps for graphs whose edges were closed before this landed, and record the answer — it back-dates closures to the moment reachability was lost, so a stamp would have to use that time, not the upgrade's. Overlaps FR-005
 - [ ] T083 [US2] Run `EXPLAIN` on the modified retirement queries per Constitution V and record the plans
+- [ ] T084 [P] [US2] Widen `branch_metadata_fingerprint` in `backend/tests/helpers/vertex_metadata.py` to include the vertices a branch reaches only over `-global-` edges. It matches edges carrying the requested branch name, so a rollback that changes the metadata of a branch-agnostic field is invisible to it — which is exactly the metadata a retirement stamp will start moving
+- [ ] T085 [P] [US2] Widen `branch_edge_fingerprint` in the same module to carry `branch_level`, `from_user_id` and `to_user_id`. It keys on endpoints, timestamps and status only, so two snapshots compare equal across a change to an edge's level or to who opened or closed it, and the retirement stamps `to_user_id`
 
 **Checkpoint**: FR-003, FR-004 and FR-010 complete — spec sub-tasks 3, 4 and 8. Commit each separately.
 

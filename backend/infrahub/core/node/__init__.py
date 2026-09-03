@@ -1197,10 +1197,18 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             )
             self._set_updated_at(update_at)
             self._set_updated_by(user_id)
-            update_branch = self.get_branch_based_on_support_type()
-            if update_branch.is_default or update_branch.is_global:
-                await self._save_metadata(db=db, branch=update_branch)
+            if self._changed_fields_reach_the_default_branch(node_changelog=node_changelog):
+                await self._save_metadata(db=db)
         return node_changelog
+
+    def _changed_fields_reach_the_default_branch(self, node_changelog: NodeChangelog) -> bool:
+        """Whether any changed field wrote to the default or global branch."""
+        if self._branch.is_default or self._branch.is_global:
+            return True
+        return any(
+            self._schema.get_field(name=name).branch == BranchSupportType.AGNOSTIC
+            for name in node_changelog.updated_fields
+        )
 
     async def _add_parent_to_changelog(
         self, db: InfrahubDatabase, node_changelog: NodeChangelog, processed_relationships: list[str]
@@ -1231,10 +1239,15 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return self
 
-    async def _save_metadata(self, db: InfrahubDatabase, branch: Branch) -> None:
+    async def _save_metadata(self, db: InfrahubDatabase) -> None:
+        """Refresh the Node vertex's ``updated_at`` / ``updated_by``."""
         if user_id := self._get_updated_by():
             update_metadata_query = await NodeUpdateMetadataQuery.init(
-                db=db, branch=branch, node_id=self.get_id(), user_id=user_id, at=self._get_updated_at()
+                db=db,
+                branch=self._branch,
+                node_id=self.get_id(),
+                user_id=user_id,
+                at=self._get_updated_at(),
             )
             await update_metadata_query.execute(db=db)
 
@@ -1245,7 +1258,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         node_changelog = NodeChangelog(
             node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label(db=db)
         )
-        # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
             if deleted_attribute := await attr.delete(db=db, at=delete_at, user_id=user_id):
@@ -1267,7 +1279,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         branch = self.get_branch_based_on_support_type()
 
-        delete_query = await RelationshipDeleteAllQuery.init(
+        rel_delete_query = await RelationshipDeleteAllQuery.init(
             db=db,
             node_id=self.get_id(),
             branch=branch,
@@ -1275,13 +1287,30 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             at=delete_at,
             branch_agnostic=branch.name == GLOBAL_BRANCH_NAME,
         )
-        await delete_query.execute(db=db)
+        await rel_delete_query.execute(db=db)
 
-        deleted_relationships_changelogs = delete_query.get_deleted_relationships_changelog(self._schema)
+        deleted_relationships_changelogs = rel_delete_query.get_deleted_relationships_changelog(self._schema)
         for relationship_changelog in deleted_relationships_changelogs:
             node_changelog.add_relationship(relationship_changelog=relationship_changelog)
 
-        query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at, user_id=user_id)
+        if self._branch.is_default or self._branch.is_global:
+            needs_metadata_update = True
+        elif self._schema.branch == BranchSupportType.AWARE:
+            needs_metadata_update = False
+        else:
+            relationships_deleted_at_level_1 = branch.hierarchy_level == 1 and bool(rel_delete_query.get_data())
+            has_agnostic_attribute = any(
+                self._schema.get_field(name=name).branch == BranchSupportType.AGNOSTIC for name in self._attributes
+            )
+            needs_metadata_update = has_agnostic_attribute or relationships_deleted_at_level_1
+
+        query = await NodeDeleteQuery.init(
+            db=db,
+            node=self,
+            at=delete_at,
+            user_id=user_id,
+            set_node_metadata=needs_metadata_update,
+        )
         await query.execute(db=db)
 
         retirement_query = await RetireNodeAgnosticFieldsQuery.init(
