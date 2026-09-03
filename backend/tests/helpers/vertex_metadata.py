@@ -157,7 +157,12 @@ async def recompute_vertex_metadata(db: InfrahubDatabase, element_id: str) -> Ve
     """Derive what ``element_id``'s metadata should be from the level-1 edges around it.
 
     Returns ``None`` for a vertex with no ``branch_level = 1`` edge at all, which has no presence a
-    default-branch reader could see and so nothing to say about.
+    default-branch reader could see and so nothing to say about. A vertex that carries such an edge
+    is answered for, including one whose own existence is branch-local, so that a stamp no level-1
+    write justifies is reported rather than hidden.
+
+    A ``:Node``'s creation event is read across every vertex sharing its uuid, so the vertex a kind
+    migration leaves behind still reports the original creation time rather than the migration's.
     """
     query = """
 MATCH (v) WHERE elementId(v) = $element_id

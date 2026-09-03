@@ -56,11 +56,6 @@ async def _write_branch(db: InfrahubDatabase, default_branch: Branch, write_bran
     return await create_branch(branch_name="metadata-writer", db=db)
 
 
-# ---------------------------------------------------------------------------
-# The cross-product of a branch-support mismatch, an operation and a write branch
-# ---------------------------------------------------------------------------
-
-
 class Mismatch(Enum):
     """A kind whose branch support disagrees with that of one of its fields."""
 
