@@ -63,7 +63,7 @@ TAG = PythonAttributeReadSet(
 )
 # The transform query could not be analyzed at all.
 UNKNOWN = PythonAttributeReadSet(kind=OWNER, attribute_name="digest", read_set=TransformReadSet.imprecise())
-# The gather never returned this transform, so no other pass knows about this attribute either.
+# The gather failed, so nothing is known about this attribute and no other pass knows it either.
 UNGATHERED = PythonAttributeReadSet(
     kind=OWNER, attribute_name="hash", read_set=TransformReadSet.imprecise(), gathered=False
 )

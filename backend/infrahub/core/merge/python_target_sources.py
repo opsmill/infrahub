@@ -29,13 +29,15 @@ if TYPE_CHECKING:
 
 
 class DatabasePythonReadSetSource:
-    """Read sets for every Python transform computed attribute declared on a branch.
+    """Read sets for every Python transform computed attribute whose transform exists.
 
     The schema is what says which attributes exist; the analyzed transform queries are what says
-    what each of them reads. Whatever the queries cannot supply, every attribute the schema declares
-    still gets an entry, so the resolver widens it instead of skipping it. That holds for a single
-    transform the gather did not find and for a gather that failed outright: it resolves its peers
-    strictly, and one missing peer would otherwise take the whole pass down with it.
+    what each of them reads. An attribute whose query could not be mapped still gets an entry, so
+    the resolver widens it rather than skipping it.
+
+    An attribute whose transform is not in the database gets none. Nothing can compute it until the
+    transform arrives, and the recompute that follows the transform being created is what covers it
+    then, so selecting it here only submits work that raises.
     """
 
     def __init__(self, db: InfrahubDatabase, component: InfrahubComponent) -> None:
@@ -62,7 +64,17 @@ class DatabasePythonReadSetSource:
             gathered_items = await gather_python_transform_attributes(db=self.db, branch_name=branch)
         except Exception:
             log.exception("Widening every Python computed attribute on %s: the read-set gather failed", branch)
-            gathered_items = []
+            return [
+                PythonAttributeReadSet(
+                    kind=kind,
+                    attribute_name=attribute.name,
+                    read_set=TransformReadSet.imprecise(),
+                    gathered=False,
+                )
+                for kind, attributes in attributes_per_kind.items()
+                for attribute in attributes
+            ]
+
         gathered_read_sets = {
             (
                 item.computed_attribute.kind,
@@ -76,11 +88,11 @@ class DatabasePythonReadSetSource:
             PythonAttributeReadSet(
                 kind=kind,
                 attribute_name=attribute.name,
-                read_set=gathered_read_sets.get((kind, attribute.name), TransformReadSet.imprecise()),
-                gathered=(kind, attribute.name) in gathered_read_sets,
+                read_set=gathered_read_sets[kind, attribute.name],
             )
             for kind, attributes in attributes_per_kind.items()
             for attribute in attributes
+            if (kind, attribute.name) in gathered_read_sets
         ]
 
 
