@@ -669,8 +669,10 @@ async def test_sync_continues_after_branch_pull_failure(
     assert repo.get_commit_value(branch_name="branch02", remote=False) != str(remote_commit_branch02)
 
     # A branch failure surfaces as an error once all branches have been processed.
-    expected_message = f"Unable to synchronize the following branches of repository {repo.name}: branch01"
-    with pytest.raises(RepositoryError, match=re.escape(expected_message)):
+    expected_prefix = re.escape(
+        f"Unable to synchronize the following branches of repository {repo.name}: branch01 (step=collection):"
+    )
+    with pytest.raises(RepositoryError, match=expected_prefix):
         await _sync(repo)
 
     assert repo.get_commit_value(branch_name="branch02", remote=False) == str(remote_commit_branch02)
