@@ -49,11 +49,20 @@ Make `match` cover the whole stable message (anchor with `^...$` where practical
 
 ## GraphQL error assertions
 
-Assert on the exact message with `==`, not substring checks with `in`. Vague checks hide regressions when error wording changes. The full-message-over-fragment preference applies to any exception assertion, not just GraphQL; with `pytest.raises` express it through an anchored `match` (above) rather than `==`.
+Assert on the exact message with `==`, not substring checks with `in`. Vague checks hide regressions when error wording changes. This covers a query result's `errors` list too, not only raised exceptions:
+
+```python
+# ❌ passes for any error — or, when data is also empty, for none at all
+assert result.errors or result.data["edges"] == []
+# ✅ pins exactly what the API returned
+assert [error.message for error in result.errors] == ["You do not have the permission to update this preference"]
+```
+
+The full-message-over-fragment preference applies to any exception assertion, not just GraphQL; with `pytest.raises` express it through an anchored `match` (above) rather than `==`.
 
 ## Assert exact expectations
 
-Exact-match is not only for error messages. Assert the exact collection (full set/dict equality, not `in`/`issubset`), never mere non-emptiness (`!= frozenset()`, `len() > 0`), and a positive count where the number matters (so a run that silently measures zero fails). A denial test must also reload the target and assert nothing changed. Pin literal expected values — never compute the expectation with the same serializer/library the implementation calls. Full guidance in `dev/guidelines/backend/testing.md` §"Assert exact expectations".
+Exact-match is not only for error messages. Assert the exact collection (full set/dict equality, not `in`/`issubset`), never mere non-emptiness (`!= frozenset()`, `len() > 0`), and a positive count where the number matters (so a run that silently measures zero fails). Never `or` two acceptable outcomes in one assertion — if you cannot say which one the system produces, you do not yet know the behavior under test. A denial test must also reload the target and assert nothing changed. Pin literal expected values — never compute the expectation with the same serializer/library the implementation calls. Full guidance in `dev/guidelines/backend/testing.md` §"Assert exact expectations".
 
 ## Don't test the framework
 
