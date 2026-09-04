@@ -3,16 +3,24 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.3.0
     hooks:
+      # gh-aw owns its lock files and .gitattributes byte for byte, down to the
+      # trailing spaces in their banner and the missing final newline. Normalising
+      # them here only makes the next `gh aw compile` undo it.
       - id: trailing-whitespace
+        exclude: ^\.github/workflows/.*\.lock\.yml$
       - id: check-ast
       - id: check-case-conflict
       - id: check-merge-conflict
       - id: check-toml
       - id: check-yaml
       - id: end-of-file-fixer
+<<<<<<< HEAD
         # Generator output, committed byte-exact. These generators emit no trailing newline, so
         # appending one here would guarantee a mismatch against what CI regenerates.
         exclude: ^(schema/schema\.graphql|schema/openapi\.json|docs/docs/reference/configuration\.mdx)$
+=======
+        exclude: ^(schema/schema\.graphql|schema/openapi\.json|\.gitattributes|\.github/workflows/.*\.lock\.yml)$
+>>>>>>> stable
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.

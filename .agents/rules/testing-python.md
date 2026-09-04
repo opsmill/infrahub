@@ -84,3 +84,7 @@ Do not reference issue numbers, GitHub URLs, or Jira tickets in test names, docs
 ## Schema fixtures
 
 Check `backend/tests/helpers/schema/` before defining test schemas inline. Use `deepcopy` to derive variants from existing helpers rather than writing new schemas from scratch.
+
+## Generate protocols for test schemas
+
+The typing rules in `python-typing.md` apply to tests too. When a test drives an SDK client with kind strings, node attribute access resolves to un-narrowable unions and tempts a new `type: ignore`, `cast()`, or `getattr()`. The way to avoid introducing one is to generate the protocol classes for the test schema and type the nodes against them, so the real types flow through. `tests/e2e` deliberately opts out via a ty override — do not copy that pattern into new tests.

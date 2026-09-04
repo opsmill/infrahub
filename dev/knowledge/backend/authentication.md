@@ -82,7 +82,7 @@ An account owns three kinds of bookkeeping node in the `Internal` namespace, eac
 | `InternalAccountToken` | `account__token` |
 | `InternalRefreshToken` | `account__refreshtoken` |
 
-All three are declared on the account side with `on_delete=CASCADE`, so a delete takes them with it. All three must be, not just the ones that cause visible trouble: a mandatory relationship that is not cascaded becomes a blocking dependent, and a refresh token exists for every account that has ever logged in, which would make those accounts impossible to delete.
+All three are declared on the account side with `on_delete=CASCADE`, so a delete takes them with it. All three must be cascaded, not just the ones that cause visible trouble: a mandatory relationship that is not cascaded becomes a blocking dependent, and a refresh token exists for every account that has ever logged in, which would make those accounts impossible to delete.
 
 These three are the only mandatory relationships declared on any `Internal` kind, which is why `NodeDeleteValidator` can resolve peers without excluding the namespace at all. The `Internal` exclusion remains on the public GraphQL relationship query, where it keeps bookkeeping nodes out of the API.
 

@@ -279,7 +279,6 @@ class MergeFailureRecoverer:
             target_branch=self.default_branch,
             at=Timestamp(merge_started_at),
             scope=RollbackScope.SINCE_TIMESTAMP,
-            restore_metadata=True,
         )
 
     async def _reset_branch(self, branch: Branch) -> None:
