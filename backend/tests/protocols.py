@@ -116,6 +116,7 @@ class CoreGenericAccount(CoreNode):
     account_type: Enum
     status: Dropdown
     tokens: RelationshipManager[InternalAccountToken]
+    refresh_tokens: RelationshipManager[InternalRefreshToken]
     external_identities: RelationshipManager[InternalExternalIdentity]
 
 

@@ -86,6 +86,7 @@ class QueryImpactClassifier:
     depends_on_everything: bool = False
 
     def assess(self, diff_summary: list[NodeDiff]) -> ImpactAssessment:
+<<<<<<< ours
         if self.depends_on_everything or not self.only_has_unique_targets:
             # A changed node cannot be traced back to the targets reading it: the query answers from
             # an unbounded set, or reads a derived value moved by a peer the read set cannot name.
@@ -93,6 +94,25 @@ class QueryImpactClassifier:
                 self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind)
             )
             return EveryTarget() if has_relevant_change else ChangedNodes(node_ids=[])
+=======
+        changed_node_ids = self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind)
+        if self._must_widen(diff_summary=diff_summary, changed_node_ids=changed_node_ids):
+            return EveryTarget()
+
+        return ChangedNodes(node_ids=changed_node_ids)
+
+    def _must_widen(self, *, diff_summary: list[NodeDiff], changed_node_ids: list[str]) -> bool:
+        if self.depends_on_everything:
+            # The read surface cannot be pinned to specific kinds: the change that moves the derived
+            # value can land on a peer the read set never names. Widen unconditionally rather than
+            # risk leaving the reader stale.
+            return True
+
+        if not self.only_has_unique_targets:
+            # A changed node cannot be traced back to the targets reading it: the query answers from
+            # an unbounded set.
+            return bool(changed_node_ids)
+>>>>>>> theirs
 
         root_fields_by_kind = {
             kind: fields for kind, fields in self.readable_fields_by_kind.items() if kind not in self.traversed_kinds

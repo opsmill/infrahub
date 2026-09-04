@@ -10,18 +10,25 @@ to. Code that gives up on a Prefect call then asks every registered server for t
 its threads (SIGUSR1) and prints the tail of its log. pytest captures that as part of the failing
 test, so the report travels with the failure into the CI log.
 
+Only code that knows it is waiting on Prefect can report the wedge itself; pytest-timeout kills
+everything else from the outside, wherever it happens to be. ``timeout_diagnostics_section``
+covers that case, so a test the timeout killed carries the same report.
+
 Nothing here raises: it runs on a path that is already failing, and a broken diagnostic must not
 replace the original error.
 """
 
 from __future__ import annotations
 
+import io
 import signal
 import sys
 import time
 import traceback
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, TextIO
+
+import pytest
 
 if TYPE_CHECKING:
     import subprocess  # noqa: S404 - the server being reported on is a subprocess
@@ -35,6 +42,9 @@ LOG_TAIL_LINES = 300
 # synchronously from the signal handler, so this only covers signal delivery.
 STACK_DUMP_TIMEOUT_SECONDS = 2.0
 STACK_DUMP_POLL_SECONDS = 0.05
+
+# How pytest-timeout words the failure it raises: ``pytest.fail("Timeout >%ss" % timeout)``.
+TIMEOUT_MESSAGE_PREFIX = "Timeout >"
 
 
 @dataclass(frozen=True)
@@ -80,6 +90,34 @@ def dump_prefect_test_server_diagnostics(reason: str, stream: TextIO | None = No
     except Exception:  # noqa: BLE001 - a broken diagnostic must not replace the failure it reports on
         print("Failed to report on the Prefect test server:", file=out)
         traceback.print_exc(file=out)
+
+
+def timeout_diagnostics_section(nodeid: str, when: str, exception: BaseException | None) -> tuple[str, str] | None:
+    """A report section on every registered server, for a test pytest-timeout killed. Else ``None``.
+
+    Attach it to the test report rather than printing it: under xdist a worker's own stdout goes
+    nowhere, and only what the report carries reaches the CI log.
+
+    Any other failure is left alone. The report costs the server a signal, the run a two second
+    wait and the log three hundred lines, which only a suspected wedge earns.
+
+    The message is the only mark pytest-timeout leaves on the failure, so a test failing itself
+    with one that opens the same way would be reported on too. That is the right way round to be
+    wrong: a false positive costs an already-failing test two seconds and a log tail, and the
+    server survives being asked what it is doing, while matching on the plugin's own frames
+    instead would stop reporting the day its internals change — silently, and back to a wedge
+    that CI cannot describe.
+    """
+    if not isinstance(exception, pytest.fail.Exception) or not str(exception).startswith(TIMEOUT_MESSAGE_PREFIX):
+        return None
+
+    out = io.StringIO()
+    reason = f"{nodeid} was killed by pytest-timeout during {when}: {exception}"
+    dump_prefect_test_server_diagnostics(reason, stream=out)
+    reported = out.getvalue()
+    if not reported:
+        return None
+    return f"Prefect test server diagnostics ({when})", reported
 
 
 def _dump_server(server: PrefectTestServerProcess, out: TextIO) -> None:

@@ -50,6 +50,7 @@ import threading
 import time
 
 from neo4j import Driver, GraphDatabase
+from neo4j.exceptions import DriverError
 
 NEO4J_HOST = os.environ.get("NEO4J_HOST", "127.0.0.1")
 NEO4J_PORT = int(os.environ.get("NEO4J_PORT", "7687"))
@@ -253,13 +254,16 @@ def main() -> None:
     )
     try:
         driver.verify_connectivity()
-    except OSError as exc:
+    except (OSError, DriverError) as exc:
+        # verify_connectivity raises the driver's own ServiceUnavailable/DriverError when it
+        # cannot reach the server, not only a socket-level OSError.
         log(f"cannot reach Neo4j through the proxy: {type(exc).__name__}: {exc}")
         log(
             "is Neo4j running? e.g. docker run --rm -p 7687:7687 "
             "-e NEO4J_AUTH=neo4j/secretpassword neo4j:2026.05.0-community"
         )
         proxy.stop()
+        driver.close()
         return
 
     log(f"--- Phase 1: warming a pool of {POOL_SIZE} connections ---")

@@ -230,7 +230,7 @@ ASSESS_CASES = [
         expected=EveryTarget(),
     ),
     # A query that reads a derived value composed from a peer the read set cannot name cannot be
-    # narrowed, so any relevant change widens to every target, and no relevant change selects nothing.
+    # narrowed, so any change widens to every target.
     AssessCase(
         name="depends_on_everything_relevant_change_widens",
         only_has_unique_targets=True,
@@ -240,12 +240,12 @@ ASSESS_CASES = [
         expected=EveryTarget(),
     ),
     AssessCase(
-        name="depends_on_everything_unread_change_selects_nothing",
+        name="depends_on_everything_peer_kind_change_widens",
         only_has_unique_targets=True,
-        diff_summary=[node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["description"])],
-        readable_fields_by_kind={"TestDevice": {"name"}},
+        diff_summary=[node_diff(node_id="owner1", kind="TestOwner", branch=BRANCH, field_names=["name"])],
+        readable_fields_by_kind={"TestCar": {"display_label"}},
         depends_on_everything=True,
-        expected=ChangedNodes(node_ids=[]),
+        expected=EveryTarget(),
     ),
 ]
 
