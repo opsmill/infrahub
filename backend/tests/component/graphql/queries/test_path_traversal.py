@@ -45,6 +45,22 @@ query Traverse($data: PathTraversalInput!) {
 """
 
 
+PATH_TRAVERSAL_RELATIONSHIP_QUERY = """
+query Traverse($data: PathTraversalInput!) {
+  InfrahubPathTraversal(data: $data) {
+    count
+    paths {
+      depth
+      hops {
+        node { id kind }
+        relationship { from_rel from_label to_rel to_label kind }
+      }
+    }
+  }
+}
+"""
+
+
 async def _run_resolver(
     *,
     db: InfrahubDatabase,
@@ -454,6 +470,83 @@ class TestPathTraversalResolver:
         )
         assert errors is not None
         assert errors[0].message == "Source and destination nodes must be different"
+
+
+async def test_resolver_names_each_end_of_a_hierarchy_hop(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    hierarchical_location_data: dict[str, Node],
+) -> None:
+    # One shared identifier, two sides: the child holds `parent`, the parent `children`.
+    region = hierarchical_location_data["europe"]
+    site = hierarchical_location_data["paris"]
+    default_branch.update_schema_hash()
+
+    variables = {
+        "data": {
+            "source_id": site.id,
+            "destination_id": region.id,
+            "max_depth": 1,
+            "max_paths": 10,
+        }
+    }
+
+    data, errors = await _run_resolver(
+        db=db,
+        branch=default_branch,
+        session=session_admin,
+        variables=variables,
+        source=PATH_TRAVERSAL_RELATIONSHIP_QUERY,
+    )
+
+    assert errors is None
+    assert data is not None
+    result = data["InfrahubPathTraversal"]
+    assert result["count"] == 1
+    hops = result["paths"][0]["hops"]
+    assert [hop["node"]["id"] for hop in hops] == [site.id, region.id]
+    assert hops[0]["relationship"] is None
+    assert hops[1]["relationship"] == {
+        "from_rel": "parent",
+        "from_label": "Parent",
+        "to_rel": "children",
+        "to_label": "Children",
+        "kind": "Hierarchy",
+    }
+
+    reverse_variables = {
+        "data": {
+            "source_id": region.id,
+            "destination_id": site.id,
+            "max_depth": 1,
+            "max_paths": 10,
+        }
+    }
+
+    reverse_data, reverse_errors = await _run_resolver(
+        db=db,
+        branch=default_branch,
+        session=session_admin,
+        variables=reverse_variables,
+        source=PATH_TRAVERSAL_RELATIONSHIP_QUERY,
+    )
+
+    assert reverse_errors is None
+    assert reverse_data is not None
+    reverse_result = reverse_data["InfrahubPathTraversal"]
+    assert reverse_result["count"] == 1
+    reverse_hops = reverse_result["paths"][0]["hops"]
+    assert [hop["node"]["id"] for hop in reverse_hops] == [region.id, site.id]
+    assert reverse_hops[0]["relationship"] is None
+    assert reverse_hops[1]["relationship"] == {
+        "from_rel": "children",
+        "from_label": "Children",
+        "to_rel": "parent",
+        "to_label": "Parent",
+        "kind": "Hierarchy",
+    }
 
 
 async def test_resolver_respects_session_permissions(

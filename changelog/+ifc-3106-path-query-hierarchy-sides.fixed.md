@@ -1,0 +1,1 @@
+In graph traversal results (path and dependency modes), both ends of a hierarchy edge were reported as `parent`. Each end now reports its own side (`children` on the parent end); when the hierarchy does not pin its parent and children kinds, the sides are a consistent best guess.

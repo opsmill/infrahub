@@ -462,7 +462,7 @@ def peer_relationships(peer_schema: MainSchemaTypes, rel_schema: RelationshipSch
     and logged: the answer is a guess, but dropping it would hide a change that did happen.
     """
     candidates = peer_schema.get_relationships_by_identifier(id=rel_schema.get_identifier())
-    mirrored = [candidate for candidate in candidates if candidate.direction == rel_schema.direction.neighbor_direction]
+    mirrored = [candidate for candidate in candidates if candidate.mirrors(rel_schema)]
     if mirrored:
         return mirrored
 
