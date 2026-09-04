@@ -177,9 +177,8 @@ class DiffCoordinator:
     ) -> EnrichedDiffRootMetadata | None:
         """Wait for the holder of the incremental lock and return the diff it stored, if any.
 
-        A held lock is no promise that a diff was saved: the DiffTree and DiffTreeSummary queries
-        take this lock purely to wait out an in-flight update. ``None`` means there is nothing to
-        reuse and the caller has to calculate the diff itself.
+        Readers take the same lock to wait out an in-flight update, so a held lock is no promise
+        that a diff was saved: ``None`` means there is nothing to reuse.
         """
         async with self.diff_locker.acquire_lock(
             target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=True
