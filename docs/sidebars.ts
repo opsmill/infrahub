@@ -235,7 +235,12 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       link: { type: 'generated-index', slug: 'branches-and-change-control' },
       items: [
-        { type: 'doc', id: 'immutable-history/overview', label: 'Immutable History' },
+        {
+          type: 'category',
+          label: 'Immutable History',
+          link: { type: 'doc', id: 'immutable-history/overview' }, // hub
+          items: ['immutable-history/query-historical-data'],
+        },
         {
           type: 'category',
           label: 'Branches',
