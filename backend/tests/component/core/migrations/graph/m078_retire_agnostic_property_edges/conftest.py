@@ -1,7 +1,7 @@
 """Fixtures for the branch-agnostic repair migration.
 
-No current code path produces the shapes under test, so they are built with raw Cypher and read back
-edge by edge rather than through the node manager, which would hide the states being pinned down.
+No current code path produces the shapes under test, so they are built with raw Cypher, and every
+reader here reports individual edge states rather than a resolved object view.
 """
 
 from __future__ import annotations
