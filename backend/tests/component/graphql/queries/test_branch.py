@@ -1369,3 +1369,28 @@ class TestBranchSchemaDivergence(TestInfrahubApp):
             assert fields["has_schema_changes"]["deprecationReason"] == HAS_SCHEMA_CHANGES_DEPRECATION_REASON
             assert fields["schema_differs_from_default_branch"]["isDeprecated"] is False
             assert fields["schema_differs_from_default_branch"]["deprecationReason"] is None
+
+
+class TestBranchOffsetWithoutLimit(TestInfrahubApp):
+    async def test_offset_without_limit_is_rejected(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+    ) -> None:
+        """An unbounded read with a SKIP bypasses the query size limit, so the pair is refused."""
+        query = """
+        query {
+            InfrahubBranch(offset: 1) {
+                edges { node { name { value } } }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+
+        result = await graphql(
+            schema=gql_params.schema, source=query, context_value=gql_params.context, root_value=None
+        )
+
+        assert result.errors
+        assert result.errors[0].message == "offset requires limit"

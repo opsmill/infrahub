@@ -4,9 +4,12 @@ import pytest
 from infrahub_sdk.exceptions import TimestampFormatError
 from pydantic import ValidationError as PydanticValidationError
 
+from infrahub import config
+from infrahub.constants.enums import OrderByField, OrderDirection
 from infrahub.core.branch import Branch
 from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
@@ -14,6 +17,8 @@ from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.standard import StandardNodeOrdering
+from infrahub.core.query.branch import BranchNodeGetListQuery
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -540,3 +545,61 @@ async def test_get_list_with_offset(db: InfrahubDatabase, default_branch: Branch
     assert len(offset_branches) == total - 3, (
         f"offset=3 should skip 3 branches, expected {total - 3} but got {len(offset_branches)}"
     )
+
+
+async def test_get_list_unpaged_reads_every_branch_once(
+    db: InfrahubDatabase, default_branch: Branch, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An unpaged read is chunked, so a tied sort key must not repeat or drop a branch."""
+    monkeypatch.setattr(config.SETTINGS.database, "query_size_limit", 3)
+
+    tied_created_at = Timestamp().to_string()
+    created_names = {f"unpaged-{index:02d}" for index in range(10)}
+    for name in sorted(created_names):
+        await Branch(name=name, created_at=tied_created_at, branched_from=tied_created_at).save(db=db)
+
+    ordering = StandardNodeOrdering(order_by=OrderByField.CREATED_AT, direction=OrderDirection.DESC)
+    expected_names = created_names | {default_branch.name, GLOBAL_BRANCH_NAME}
+
+    first_names = [branch.name for branch in await Branch.get_list(db=db, limit=None, node_ordering=ordering)]
+    second_names = [branch.name for branch in await Branch.get_list(db=db, limit=None, node_ordering=ordering)]
+
+    assert sorted(first_names) == sorted(expected_names)
+    assert first_names == second_names
+
+
+async def test_get_list_query_orders_by_a_total_key(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """The timestamp sort keys are not unique, so the id has to follow them to make the order total."""
+    id_tiebreaker = f"{db.get_id_function_name()}(n)"
+
+    created_at_query = await BranchNodeGetListQuery.init(
+        db=db,
+        node_class=Branch,
+        node_ordering=StandardNodeOrdering(order_by=OrderByField.CREATED_AT, direction=OrderDirection.DESC),
+    )
+    updated_at_query = await BranchNodeGetListQuery.init(
+        db=db,
+        node_class=Branch,
+        node_ordering=StandardNodeOrdering(order_by=OrderByField.UPDATED_AT, direction=OrderDirection.ASC),
+    )
+    assert created_at_query.order_by == ["n.created_at DESC", id_tiebreaker]
+    assert updated_at_query.order_by == ["n.updated_at ASC", id_tiebreaker]
+
+
+async def test_get_list_filters_on_sync_with_git(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """The filter is what the cross-branch repository status read narrows its row set with."""
+    syncing_names = {"sync-on-1", "sync-on-2"}
+    non_syncing_names = {"sync-off-1"}
+    for name in sorted(syncing_names | non_syncing_names):
+        await Branch(name=name, sync_with_git=name in syncing_names, branched_from=Timestamp().to_string()).save(db=db)
+
+    async def names_for(sync_with_git: bool | None) -> set[str]:
+        branches = await Branch.get_list(
+            db=db, branch_filters=BranchListFilters(sync_with_git=sync_with_git), exclude_global=True
+        )
+        return {branch.name for branch in branches}
+
+    # The default branch syncs with git; the global branch is excluded from all three reads.
+    assert await names_for(True) == syncing_names | {default_branch.name}
+    assert await names_for(False) == non_syncing_names
+    assert await names_for(None) == syncing_names | non_syncing_names | {default_branch.name}

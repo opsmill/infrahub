@@ -153,7 +153,7 @@ backend/infrahub/
 ├── graphql/
 │   ├── schema.py                             # [A] InfrahubBaseQuery.InfrahubRepositoryBranchStatus
 │   ├── queries/
-│   │   ├── branch.py                         # [A] sync_with_git argument on InfrahubBranchQueryList
+│   │   ├── branch.py                         # [A] reject offset without limit; no new argument
 │   │   └── repository_branch_status/
 │   │       ├── __init__.py                   # [A] empty, per dev/knowledge/backend/package-init-files.md
 │   │       ├── field.py                      # [A] composition root: build_attribute_source, resolver instance, Field
@@ -176,7 +176,7 @@ backend/tests/
 │   ├── core/query/
 │   │   └── test_repository_branch_attributes.py   # [B] primitive: inheritance, rebase, own_value, 5 vs 200 query count
 │   ├── graphql/queries/
-│   │   ├── test_branch.py                    # [A] sync_with_git filter on InfrahubBranch
+│   │   ├── test_branch.py                    # [A] offset without limit is rejected
 │   │   └── test_repository_branch_status.py  # [A] membership, paging, permissions, not-found, zero bus sends; [B] filters, inheritance, FR-008
 │   ├── computed_attribute/
 │   │   └── test_gather.py                    # [C] branches[branch.name] resolves for every non-global branch
@@ -238,8 +238,10 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
 
 ### Increment A: contract stub (first PR, needs GraphQL schema sign-off)
 
-1. `BranchListFilters.sync_with_git`, the Cypher condition, the argument on `InfrahubBranchQueryList`;
-   test in `test_branch.py`.
+1. `BranchListFilters.sync_with_git` and the Cypher condition, tested through `Branch.get_list` in
+   the core `test_branch.py`. No argument on `InfrahubBranchQueryList`: the resolver reads through
+   `Branch.get_list`, nothing queries `InfrahubBranch`, and exposing it there would be public API
+   with no caller (research.md, Decision 5, reversed).
 2. `Branch.get_list` accepts `limit=None` and reads all rows through the base chunked path.
 3. GraphQL types in `graphql/types/repository_branch_status.py`; resolver, wiring and field in
    `graphql/queries/repository_branch_status/`; registration on `InfrahubBaseQuery` importing
@@ -261,9 +263,8 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
    without a role grant, paging and count, ordering, `ref` dispatch, zero bus sends. Unit tests for
    `paging.py`. The 5-branch and 200-branch fixtures are one module-scoped fixture built with
    `Branch(...).save()` and shared with the increment B and C test files.
-9. Changelog fragment for the `sync_with_git` argument on `InfrahubBranch`. It is a user-visible
-   GraphQL change and ships in this increment, so the fragment does too; the query itself stays
-   unlogged while its values are fabricated.
+9. Changelog fragment for the `offset`-without-`limit` rejection, the only user-visible change the
+   foundational phase makes; the query itself stays unlogged while its values are fabricated.
 10. Hand the frontend team `contracts/graphql-repository-branch-status.md`. The card is built without
     the git-derived drift column for now.
 
@@ -313,7 +314,7 @@ C depends on B's reader. The frontend card depends only on A.
 
 ### Governance sign-off needed before A merges
 
-- GraphQL schema modification: new root field `InfrahubRepositoryBranchStatus` and its three types;
-  new `sync_with_git` argument on `InfrahubBranch`.
+- GraphQL schema modification: new root field `InfrahubRepositoryBranchStatus` and its three types.
+  `InfrahubBranch` is not modified; the foundational phase changes no SDL at all.
 - Everything else in the spec's Governance table is ruled out (no migration, no dependency, no CI
   change, no new permission).

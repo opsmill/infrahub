@@ -95,6 +95,8 @@ async def infrahub_branch_resolver(
         raise ValidationError("limit must be >= 1")
     if isinstance(offset, int) and offset < 0:
         raise ValidationError("offset must be >= 0")
+    if offset is not None and limit is None:
+        raise ValidationError("offset requires limit")
 
     node_ordering = standard_node_ordering_from_order_input(order)
 

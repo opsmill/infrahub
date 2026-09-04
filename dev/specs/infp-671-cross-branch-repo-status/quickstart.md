@@ -31,7 +31,7 @@ uv run invoke schema.validate-graphqlschema
 ### A1. The query exists and the frontend can generate types
 
 1. `uv run invoke schema.generate-graphqlschema`; `git diff --stat schema/schema.graphql` shows the
-   new root field and three types and the `sync_with_git` argument on `InfrahubBranch`.
+   new root field and three types. `InfrahubBranch` is unchanged: T007 was dropped.
 2. `cd frontend/app && pnpm codegen` succeeds and `git diff --stat src/shared/api/graphql/generated/`
    shows the new types.
 

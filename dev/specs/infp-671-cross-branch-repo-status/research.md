@@ -199,13 +199,22 @@ anonymous read path reaches the same checks.
 ## Decision 5: Add `sync_with_git` to the branch list filters
 
 **Decision**: `infrahub.core.branch.filters::BranchListFilters` gains `sync_with_git: bool | None =
-None`; `infrahub.core.query.branch::BranchNodeGetListQuery._build_raw_filter` emits
-`n.sync_with_git = $filter_sync_with_git` when set; `infrahub.graphql.queries.branch::InfrahubBranchQueryList`
-gains a `sync_with_git=Boolean()` argument passed through by `infrahub_branch_resolver`.
+None`, and `infrahub.core.query.branch::BranchNodeGetListQuery._build_raw_filter` emits
+`n.sync_with_git = $filter_sync_with_git` when set.
 
-**Rationale**: FR-002's row-set criterion and the spec's "reused plumbing" consequence. Exposing it on
-the existing branch query is the same three lines and gives the frontend the same filter on the
-branches page. This is a GraphQL schema change and needs sign-off with the new query.
+**Rationale**: FR-002's row-set criterion and the spec's "reused plumbing" consequence. The resolver
+reads through `Branch.get_list`, so the dataclass field and the Cypher condition are what it needs.
+No GraphQL schema change, and no sign-off.
+
+**Reversed during implementation**: this decision originally also gave
+`infrahub.graphql.queries.branch::InfrahubBranchQueryList` a `sync_with_git=Boolean()` argument, on
+the rationale that it was "the same three lines and gives the frontend the same filter on the
+branches page". That was speculative: no frontend code queries `InfrahubBranch` at all, the Branches
+card is fed by `InfrahubRepositoryBranchStatus`, and the resolver never issues the GraphQL query. It
+would have been permanent public API surface with no caller, and in practice its only effect was to
+give the phase's test a GraphQL-level way to exercise the two changes above. Dropped. A filter on the
+branches page is a real product idea, but it needs its own ticket and its own consumer, not a ride
+along on this feature.
 
 ---
 
@@ -332,9 +341,10 @@ lives under IFC; INFP is JPD and carries product planning only, linked to the ep
 
 ## Decision 10: Documentation and changelog
 
-- Increment A: `changelog/+branch-list-sync-with-git-filter.added.md` for the `sync_with_git` argument
-  on `InfrahubBranch`, which is a user-visible GraphQL change and ships in this increment. No fragment
-  for the query itself: while its values are fabricated it is a preview surface, not a feature.
+- Increment A: one `fixed` fragment for the `offset`-without-`limit` rejection that ships with the
+  foundational phase, which is that phase's only user-visible change once Decision 5's GraphQL
+  argument is dropped. No fragment for the query itself: while its values are fabricated it is a
+  preview surface, not a feature.
 - Increment B: `changelog/+repository-branch-status-query.added.md`; a short section in
   `docs/docs/git-integration/branch-synchronization.mdx` showing the query; the cross-branch grouped
   read written up in `dev/knowledge/backend/query-pattern.md` and the in-resolver enforcement in
