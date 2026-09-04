@@ -86,14 +86,14 @@ policy in `infrahub.api.admission.retry_policy` is about load shedding and is no
 desired behaviour and the spec's governance table already anticipates the shared-path change);
 message `Meta.expiration` (rejected: it bounds delivery, not the caller's wait).
 
-**Pre-existing defect on the same call path, carried here deliberately**: `infrahub.api.file::get_file`
-never calls `InfrahubResponse.raise_for_status()`, so an `RPCErrorResponse` deserialises into an empty
-`GitFileGetResponse` and the endpoint returns HTTP 200 with an empty body. An earlier draft of this
-research left it as a separate issue. It is now in scope, as T032, because bounding the wait on this
-exact call path would otherwise leave that endpoint incoherent: 504 on a hang and 200 on a worker-side
-error. It lands in the same reviewed pull request as the bounded wait (Phase B1) rather than being
-folded into a feature commit, and it is recorded as a deviation from the PRD's stated scope in
-`spec.md`.
+**Observation, out of scope**: `infrahub.api.file::get_file` never calls
+`InfrahubResponse.raise_for_status()`, so an `RPCErrorResponse` deserialises into an empty
+`GitFileGetResponse` and the endpoint returns HTTP 200 with an empty body. Its own issue, not this
+feature's. Note that the bounded wait makes it more visible rather than causing it: after Phase B1
+that endpoint answers 504 on a hang while still answering 200 on a worker-side error. An interim
+draft of this plan fixed it inside Phase B1 on proximity grounds; that was reversed on 2026-09-04
+because the defect is unrelated to commit visibility and the PRD scopes this shared-path change to
+the bounded wait alone. Sequence the separate ticket immediately after Phase B1.
 
 ## Warm-up when the answering worker has no clone
 

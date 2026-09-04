@@ -218,9 +218,16 @@ No new entities. The data model is unchanged.
 
 ## Deviations from the source PRD
 
-Recorded here rather than left implicit, so a reviewer comparing this spec against the PRD finds each
-departure named with its reason. Three independent reviews flagged the first two on 2026-09-04.
+Every point at which this specification departs from the PRD, with the reason. Anything not listed
+here should match the PRD.
 
+- **PRD FR-015's non-interleaving MUST is narrowed.** The PRD says the check "MUST NOT interleave with other git operations on the same local copy". FR-019 confines that to the steps which modify the local copy and requires the remote listing to hold no lock at all. Reason: git applies no network timeout by default, so holding the repository lock across `ls-remote` lets an unreachable remote block that repository's imports for an unbounded period. The listing changes nothing locally, which is what makes moving it out safe.
+- **PRD's "concurrency limit of one, cancelling new runs" is replaced.** FR-025 uses a per-repository claim key instead. Reason: the Prefect limit is per deployment, so one repository's on-demand run would cancel another's. The consequence is stated in FR-025 and in the quickstart: a duplicate request may be admitted, submit a run, and that run then finds the claim and exits without contacting the remote. One check does remote work; ten concurrent callers do not all receive one task id.
+- **No total commit count at all.** PRD FR-008 requires "no total count unless requested", its edge case calls the total optional, and its reader module includes it. FR-024 removes it from the response contract entirely. Resolved with the PRD author on 2026-09-03: a count since the repository's origin is seldom what a user needs, and an unused field still costs a full pass over the history the first time anything selects it.
+- **PRD FR-016's verification narrows from every worker to one.** FR-020 keeps the requirement and tests it on a single worker, because what protects the commit is its own worktree acting as a reachability root, which is identical on every worker rather than a property of the fleet.
+- **The warm-up trigger is not a named protocol.** The PRD's design constraints require it declared as a protocol in the reader's own vocabulary with the publisher wired at the entry point. It is inline in the log reader instead. Reason: the property that constraint protected, single-flight behaviour testable without patching, is delivered by a recording cache and `WorkflowRecorder` in T044.
+- **The unavailable path and warm-up triggering sit on the worker, not in the API-layer read client.** The PRD assigns both to its "Git read client". The answering worker is what knows whether it holds a clone, which the PRD's own FR-011 implies, so detection and the collapsed trigger live there and the client is left as RPC plus timeout.
+- **A read-write branch not synchronised with Git is absent from the branch list** rather than present and un-drifted. The PRD's edge case says such a branch "must not be reported as drift"; excluding it from the row set satisfies that and matches the sibling card's rows, which a differing row set would not line up with.
 - **The remote-branch mapping is extracted** into `infrahub.git.branch_mapping`, with the existing
   private method delegating to it. The PRD says the commit log reader should take its ref as an
   explicit parameter "without refactoring it". Deliberate override: the API server cannot call a
@@ -229,17 +236,19 @@ departure named with its reason. Three independent reviews flagged the first two
   default-branch case that [INFP-670](https://opsmill.atlassian.net/browse/INFP-670) is fixing. The
   extracted copy takes all three inputs as required parameters, which is what keeps it free of the
   `or registry.default_branch` fallback that PRD is removing. Coordination recorded on that epic.
-- **An unrelated defect on the same call path is fixed here**: `infrahub.api.file::get_file` does not
-  raise for an error reply, so a worker-side failure becomes HTTP 200 with an empty body. The PRD's
-  only shared-path item is the bounded RPC wait. Deliberate override: bounding that wait without this
-  fix leaves the endpoint incoherent, answering 504 on a hang and 200 on a worker error. It lands in
-  the same reviewed pull request as the bounded wait, not folded into a feature commit.
 - **Two configuration settings, not one.** The PRD scopes configuration to "one new interval knob".
   The bounded wait needs a timeout setting as well. Both are in the governance table below, and the
   timeout is the one that changes behaviour for existing callers.
-- **A new graph query.** The PRD's module list has none, treating the drift path as purely
-  git-derived. `RepositoryBranchValuesQuery` exists because FR-004 bounds the database query count as
-  well as the worker request count, which the PRD did not. It has its own governance row below.
+- **A new graph query, reading per-branch values the PRD assigned to the sibling.** The PRD's module
+  list has none, treating this feature's drift path as purely git-derived and giving every
+  graph-resolved per-branch value to the sibling PRD. `RepositoryBranchValuesQuery` reads the tracked
+  commit and ref per branch here. Two reasons: FR-004 bounds the database query count as well as the
+  worker request count, which the PRD did not, and a drift row cannot say a branch has drifted
+  without the value it drifted from. What stays with the sibling is the card itself, its row
+  rendering, its other graph-resolved values such as import status, and the cross-repository query
+  with server-side filtering, ordering and paging. This query is the single-repository primitive that
+  epic widens rather than a second implementation of it, and that boundary needs confirming with the
+  IFC-3104 owner before its own pull request lands, not after. It has its own governance row below.
 - **Two PRD-agreed unit tests land as component tests.** The commit log reader and the bounded RPC
   wait both do real I/O, against a clone and against a bus adapter respectively, so they are pinned
   at component level. The pure classification they wrap keeps its unit tests, which is where the
@@ -257,7 +266,8 @@ departure named with its reason. Three independent reviews flagged the first two
 - Automatic action on a rewritten ref.
 - Import-error status, global operational status, and gating merges on branch state (the other [INFP-671](https://opsmill.atlassian.net/browse/INFP-671) candidates, and [INFP-670](https://opsmill.atlassian.net/browse/INFP-670)).
 - Extra columns on the global branches view.
-- The branch row set itself and its Infrahub-side values, which belong to the sibling PRD. User Story 3 adds a column to that card, it does not build it.
+- The Branches card itself: its row rendering, and the graph-resolved values on it beyond the tracked commit and ref, such as import status. Those belong to the sibling PRD, and User Story 3 adds a column to that card rather than building it. The exception, recorded under Deviations, is that this feature does read the tracked commit and ref per branch, because a drift row cannot report drift without the value it drifted from.
+- The cross-repository branch-status query with server-side filtering, ordering, counting and paging. The single-repository per-branch read built here is the primitive that query extends.
 - Filtering, ordering or counting branches by drift. Not achievable while the remote head is read live rather than stored.
 - Storing a per-branch remote head. Revisit when one request per page proves insufficient in practice, or when drift needs to become a server-side filter, order or count.
 - A commit count badge. A count relative to the default branch (commits on this branch not on the default branch) might be useful later, but the commit view is not split along that line in this slice.

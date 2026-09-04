@@ -143,7 +143,6 @@ backend/tests/
 ├── unit/git/                                                     # NEW  ref-format validation, including a "-" prefixed ref
 ├── unit/errors/                                                  # existing suites gain WORKER_TIMEOUT via parametrisation
 ├── unit/workflows/test_catalogue.py                              # existing, picks up new definitions
-├── component/api/                                                # NEW  get_file surfaces a worker error as its catalogued status
 ├── component/git/                                                # NEW  FR-002 stored-node delta independent of history length
 ├── component/core/query/test_repository_branch_values.py         # NEW  per-branch resolution, inheritance, query count at 5 vs 200 branches
 ├── component/graphql/queries/test_repository_git_state.py        # NEW  resolvers, permission, laziness
@@ -152,6 +151,7 @@ backend/tests/
 ├── component/message_bus/operations/git/test_commit_log.py       # NEW  handler on FileRepo fixtures, NOT_CLONED path
 ├── component/message_bus/operations/git/test_branch_heads.py     # NEW
 ├── component/git/test_check_refs.py                              # NEW  due check, ls-remote only when idle, lock scope
+├── integration/git/test_repository_commits_query.py              # NEW  GraphQL query end to end through a real worker read, plus laziness
 └── integration/git/test_readonly_refs_check.py                   # NEW  Gogs: advance, force-push, tag move, tag delete
 
 schema/schema.graphql                                             # REGEN
@@ -225,11 +225,12 @@ Ordered for the fastest frontend hand-off. Each phase is independently reviewabl
 - `InfrahubMessageBus.rpc(timeout=...)` across the three adapters, `BrokerSettings.rpc_timeout`,
   `WorkerTimeoutError`, `WORKER_TIMEOUT` catalogue entry and payload, formatter case, regenerated
   error-catalogue artefacts, component test with `BusRPCMock` that never replies.
-- `InfrahubResponse.raise_for_status()` in `infrahub.api.file::get_file`, which today lets an
-  `RPCErrorResponse` deserialise into an empty body and answers HTTP 200. Without it this pull
-  request leaves that endpoint incoherent: 504 on a hang, 200 on a worker-side error. It belongs
-  here because this is already the reviewed change to that call path. Component test asserting the
-  error reply surfaces as its catalogued status.
+- Not included: the `get_file` / `raise_for_status()` defect. Bounding the wait does leave that
+  endpoint temporarily incoherent (504 on a hang, 200 on a worker-side error), and an earlier draft
+  of this plan fixed it here on the grounds that this is already the reviewed change to that call
+  path. It is unrelated to commit visibility and the PRD scopes this shared-path change to the
+  bounded wait alone, so it now has its own ticket. Sequence that ticket immediately after this
+  phase to close the window.
 
 ### Phase B2: worker read path
 
@@ -371,6 +372,7 @@ determinism logic, no test and no documentation entry.
 
 | Item | Handling |
 | --- | --- |
+| `get_file` ignores `RPCErrorResponse` and returns 200 with an empty body | Pre-existing, and made more visible by the bounded wait since a hang now returns 504 while a worker-side error still returns 200. Its own ticket, not fixed here; sequence it after Phase B1 |
 | IFC-3104 owns a paginated, filterable branch-status query and the periodic-sync refactor over the same per-branch data | The single-repository query built here is the primitive both need. That epic extends it (many repositories, server-side filters, ordering, paging) instead of writing a second one; coordination recorded on the epic |
 | The per-branch resolution the new query must reproduce is subtle: the read-write `commit` attribute is branch-local on a branch-agnostic node, so its creation edge sits on the global branch and a never-imported branch inherits the origin branch's fork-point value | Pinned by tests before the resolver uses it (inheritance, post-import, post-rebase), so a regression changes a test rather than silently changing what every branch reports |
 | A cold worker for an idle read-only repository stays cold until a read triggers warm-up | By design (spec edge case); the `NOT_CLONED` state plus warm-up covers it |

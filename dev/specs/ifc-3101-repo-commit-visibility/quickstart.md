@@ -52,8 +52,9 @@ uv run pytest backend/tests/unit/git/state/test_classification.py backend/tests/
 
 1. Timeout, shared-path PR: stop every task worker, run the commit-view query. Expected within
    `INFRAHUB_BROKER_RPC_TIMEOUT` seconds (default 30): a `WORKER_TIMEOUT` error with
-   `http_status 504` and `data.retry_after_seconds`. Also confirm `GET /api/file/...` now fails with
-   504 instead of hanging.
+   `http_status 504` and `data.retry_after_seconds`. `GET /api/file/...` inherits the same bound and
+   now fails with 504 instead of hanging; its separate defect, where a worker-side *error* still
+   returns 200, is a different ticket and is not asserted here.
 
 2. Behind: using the `FileRepo` fixture (`backend/tests/helpers/file_repo.py`), add the repository,
    let the first import finish, then push two commits to the fixture remote and wait one sync tick.
