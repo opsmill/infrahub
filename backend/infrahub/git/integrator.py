@@ -482,10 +482,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             except PydanticValidationError as exc:
                 for error in exc.errors():
                     locations = [str(error_location) for error_location in error["loc"]]
-                    log.error(f"  {'/'.join(locations)} | {error['msg']} ({error['type']})")
+                    # Validation feedback for the user's repository config, reported one line per
+                    # error: a traceback would repeat identically for each and adds nothing.
+                    log.error(f"  {'/'.join(locations)} | {error['msg']} ({error['type']})")  # noqa: TRY400
                 continue
             except ValidationError as exc:
-                log.error(exc.message)
+                # Same user-facing config validation feedback as above: the message is the whole
+                # actionable content, so no traceback.
+                log.error(exc.message)  # noqa: TRY400
                 continue
 
             closure = closure_builder.build(
@@ -664,10 +668,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             except PydanticValidationError as exc:
                 for error in exc.errors():
                     locations = [str(error_location) for error_location in error["loc"]]
-                    log.error(f"  {'/'.join(locations)} | {error['msg']} ({error['type']})")
+                    # Validation feedback for the user's repository config, reported one line per
+                    # error: a traceback would repeat identically for each and adds nothing.
+                    log.error(f"  {'/'.join(locations)} | {error['msg']} ({error['type']})")  # noqa: TRY400
                 continue
             except ValidationError as exc:
-                log.error(exc.message)
+                # Same user-facing config validation feedback as above: the message is the whole
+                # actionable content, so no traceback.
+                log.error(exc.message)  # noqa: TRY400
                 continue
 
             local_artifact_defs[artdef.name] = artdef
@@ -836,7 +844,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         try:
             data = yaml.safe_load(config_file_content)
         except yaml.YAMLError as exc:
-            log.error(f"Unable to load the configuration file in YAML format {config_file_name}: {exc}")
+            log.exception(f"Unable to load the configuration file in YAML format {config_file_name}: {exc}")
             raise RepositoryConfigurationError(
                 identifier=self.name,
                 message=f"Repository '{self.name}' has an invalid configuration file '{config_file_name}'. "
@@ -851,7 +859,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             log.info(f"Successfully parsed {config_file_name}")
             return configuration
         except PydanticValidationError as exc:
-            log.error(f"Unable to load the configuration file {config_file_name}, the format is not valid: {exc}")
+            log.exception(f"Unable to load the configuration file {config_file_name}, the format is not valid: {exc}")
             raise RepositoryConfigurationError(
                 identifier=self.name,
                 message=f"Repository '{self.name}' has an invalid configuration file '{config_file_name}'. "
@@ -973,7 +981,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     relative_path=str(commit_wt.directory),
                 )
             except InfrahubSdkError as exc:
-                log.error(f"Query '{query_config.name}': {exc}")
+                log.exception(f"Query '{query_config.name}': {exc}")
                 raise
 
         return local_queries
@@ -1594,7 +1602,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )
 
         except Exception as exc:
-            log.error(
+            log.exception(
                 f"An error occurred while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} "
             )
             raise
@@ -1634,7 +1642,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )
 
         except Exception as exc:
-            log.error(
+            log.exception(
                 f"An error occurred while processing the PythonTransform {transform.name} from {file_path} : {exc} "
             )
             raise
@@ -1922,14 +1930,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         except ModuleNotFoundError as exc:
             error_msg = "Unable to load the check file"
-            log.error(error_msg)
+            log.exception(error_msg)
             raise CheckError(
                 repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
             ) from exc
 
         except AttributeError as exc:
             error_msg = f"Unable to find the class {class_name}"
-            log.error(error_msg)
+            log.exception(error_msg)
             raise CheckError(
                 repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
             ) from exc
@@ -1994,14 +2002,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             return await transform.run(data=data)
         except ModuleNotFoundError as exc:
             error_msg = f"Unable to load the transform file {location}"
-            log.error(error_msg)
+            log.exception(error_msg)
             raise TransformError(
                 repository_name=self.name, commit=commit, location=location, message=error_msg
             ) from exc
 
         except AttributeError as exc:
             error_msg = f"Unable to find the class {class_name} in {location}"
-            log.error(error_msg)
+            log.exception(error_msg)
             raise TransformError(
                 repository_name=self.name, commit=commit, location=location, message=error_msg
             ) from exc

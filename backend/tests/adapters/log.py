@@ -23,4 +23,9 @@ class FakeLogger:
         """Send a critical event."""
 
     def exception(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
-        """Send an exception event."""
+        """Send an exception event.
+
+        Recorded alongside the error events because an exception event is emitted at error level -
+        it only adds the active exception's traceback to the record.
+        """
+        self.error_logs.append(event)

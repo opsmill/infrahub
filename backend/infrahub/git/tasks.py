@@ -1214,7 +1214,7 @@ async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
         log_entries = check_run.log_entries
     except CheckError as exc:
         log.warning("The check failed to run")
-        log.error(exc.message)
+        log.exception(exc.message)
         log_entries = f"FATAL Error/n:{exc.message}"
 
     check = None

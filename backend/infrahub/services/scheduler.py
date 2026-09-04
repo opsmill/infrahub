@@ -87,8 +87,8 @@ class InfrahubScheduler:
             try:
                 await schedule.function(self.service)
             # Keep-alive: a failing recurring task must not kill the scheduler loop
-            except Exception as exc:  # noqa: BLE001
-                self.service.log.error(str(exc))
+            except Exception as exc:
+                self.service.log.exception(str(exc))
             for _ in range(schedule.interval):
                 if not self.running:
                     return
