@@ -2,24 +2,17 @@
 title: Immutable history
 ---
 
-Infrahub preserves previous values and relationships as your infrastructure data changes. Earlier
-versions remain available for queries, so you can inspect what existed at a specific time, compare
-changes across a period, and trace how an object or relationship changed.
+Infrahub preserves previous values and relationships as your infrastructure data changes. Earlier versions remain available for queries, so you can inspect what existed at a specific time, compare changes across a period, and trace how an object or relationship changed.
 
-This is useful for troubleshooting incidents, reviewing the effect of a change, answering audit
-questions, and understanding how topology or dependencies evolved. When you specify a timestamp,
-Infrahub returns the values and relationships that were valid at that time.
+This is useful for troubleshooting incidents, reviewing the effect of a change, answering audit questions, and understanding how topology or dependencies evolved. When you specify a timestamp, Infrahub returns the objects, attribute values, relationships, and schema that were valid at that time.
 
 ## What you can do with immutable history
 
-- Query objects and relationships as they existed at a specific point in time.
+- Query objects, attributes, relationships, and the schema as they existed at a specific point in time.
 - Compare two timestamps to identify which objects, attributes, or relationships changed.
-- Trace a change to the account that made it and the time it happened, through [object
-  metadata](../objects/metadata.mdx).
-- Preserve the history available before a branch was created while recording changes made on that
-  branch.
-- Use previous infrastructure data for troubleshooting, audits, security investigations, and
-  post-incident analysis.
+- Trace a change to the account that made it and the time it happened, through [object metadata](../objects/metadata.mdx).
+- Preserve the history available before a branch was created while recording changes made on that branch.
+- Use previous infrastructure data for troubleshooting, audits, security investigations, and post-incident analysis.
 
 For example, you can answer questions such as:
 
@@ -29,68 +22,45 @@ For example, you can answer questions such as:
 
 ## Historical data and the Activity log answer different questions
 
-The Activity log records operations: which objects were affected, when a change occurred, who made
-it, and the sequence of actions.
+The Activity log records operations: which object was changed, when that change occurred and who made it, and the sequence of actions.
 
-Immutable history preserves the versions of data produced by those changes. If you need to know who
-changed an interface and when, use the [Activity
-log](../deploy-manage/run-observe/activity-log.mdx). If you need to know which interfaces,
-addresses, and relationships existed at 14:00 during an incident, query the data for that timestamp.
+Immutable history preserves the versions of data produced by those changes. If you need to know who changed an interface and when, use the [Activity log](../deploy-manage/run-observe/activity-log.mdx). If you need to know which interfaces, addresses, and relationships existed at 14:00 during an incident, query the data for that timestamp.
 
-When you specify a timestamp, Infrahub returns the values and relationships that were valid then, so
-you query that data directly rather than reconstructing it from a backup and the changes recorded
-after it.
+When you specify a timestamp, Infrahub returns the objects, attribute values, and relationships that were valid then, so you query that data directly rather than reconstructing it from a backup and the changes recorded after it.
 
 ## How Infrahub preserves history
 
-Each change in Infrahub creates a new version instead of modifying the previous value in place.
-Every version is associated with a timestamp, and earlier values remain available for queries that
-specify an earlier time.
+Each change in Infrahub creates a new version instead of modifying the previous value in place. Every version is associated with a timestamp, and earlier values remain available for queries that specify an earlier time.
 
-History is tracked at the attribute level. When one field changes, Infrahub records the new value
-for that field alone. This makes it possible to identify the specific attributes that changed
-between two timestamps.
+History is recorded at four levels: objects, attributes, relationships, and the schema.
 
-Relationships are versioned as well. A query for a specific timestamp therefore returns both the
-attribute values and the object relationships that were valid at that time. This is important for
-topology and dependency questions where the connections between objects are part of the answer.
+An object records the period during which it existed, so a query for an earlier time returns objects that have since been deleted and omits objects that did not yet exist. Attributes are versioned individually — when one field changes, Infrahub records a new value for that field alone, which is what makes it possible to identify the specific fields that changed between two timestamps. Relationships are versioned the same way, so a query for a past time returns the connections between objects as they stood then rather than the current ones. This matters for topology and dependency questions, where the connections are part of the answer.
 
-The schema is versioned the same way. If the schema changed after the timestamp you request,
-Infrahub loads the schema as it was at that point, so the query sees the attributes and
-relationships the schema defined then rather than the ones it defines now.
+The schema is versioned as well. If the schema changed after the timestamp you request, Infrahub loads the schema as it was at that point, so the query sees the attributes and relationships the schema defined then rather than the ones it defines now.
 
-A graph that stores validity times for both its values and its relationships is a **temporal
-graph**. The period during which each value and connection applied is part of the stored data, which
-is why you can answer a question about past topology with a query.
-
-Deleting a branch is the exception. Infrahub removes the data and history recorded on that branch,
-and that history is not recoverable. Versions on the default branch are unaffected.
+A graph that stores validity times for both its values and its relationships is a **temporal graph**. The period during which each value and connection applied is part of the stored data, which is why you can answer a question about past topology with a query.
 
 ## How branches use immutable history
 
-When you create a branch, it starts from the data and history available on the default branch at its
-branch point. Changes made on that branch create new versions there without changing the data on the
-default branch.
+When you create a branch, it starts from the data and history available on the default branch at its branch point. Changes made on that branch create new versions there without changing the data on the default branch, so you can develop and review several changes independently while retaining the history needed to compare and merge them. See [Branches](../branches/overview.mdx) for the branch creation, diff, and merge workflow.
 
-You can therefore develop and review multiple changes independently while retaining the history
-needed to compare and merge them. See [Branches](../branches/overview.mdx) for the branch creation,
-diff, and merge workflow.
+Three branch operations change which history remains available, and each one affects what a historical query can return.
+
+**Merging** records the merged changes on the default branch with the timestamp of the merge, not the timestamps they had on the branch. If someone creates an object on a branch on Monday and the branch merges on Friday, the default branch shows that object as created on Friday. The default branch's history therefore holds the result of the branch rather than the sequence of changes that produced it, and those intermediate versions stay readable on the branch itself for as long as the branch exists.
+
+**Rebasing** moves the timestamps of changes made on a branch up to the rebase time, so a change recorded on the branch before a rebase is no longer readable at its original timestamp.
+
+**Deleting a branch** removes the data and history recorded on it permanently. Versions on the default branch are unaffected, and the [Activity log](../deploy-manage/run-observe/activity-log.mdx) still records the operations that were performed on the branch, but the versions themselves cannot be recovered. If a branch's history matters for an audit or an investigation, read it before the branch is deleted.
 
 ## Query data at a specific time
 
-By default, queries return the latest data on the selected branch. Set a time when you need the
-values and relationships that were valid at an earlier timestamp. You can specify a time through the
-web interface, GraphQL API, REST API, and Python SDK.
+By default, queries return the latest data on the selected branch. Set a time when you need the state of the data at an earlier time. You can specify a time through the web interface, GraphQL API, REST API, and Python SDK.
 
-See [Query historical data](./query-historical-data.mdx) for the available interfaces, comparing two
-timestamps, supported time formats, and branch history limits.
+See [Query historical data](./query-historical-data.mdx) for the available interfaces, comparing two timestamps, supported time formats, and branch history limits.
 
 ## Related
 
-- [Query historical data](./query-historical-data.mdx) — read the graph at an earlier timestamp,
-  and compare two timestamps to see what changed
+- [Query historical data](./query-historical-data.mdx) — read the graph at an earlier timestamp, and compare two timestamps to see what changed
 - [Branches](../branches/overview.mdx) — how branches diverge, share history, and merge
-- [Proposed Changes](../proposed-changes/overview.mdx) — compare a branch with its base, with
-  review, validation, and checks
-- [Activity log](../deploy-manage/run-observe/activity-log.mdx) — which operations occurred, when,
-  and by whom
+- [Proposed Changes](../proposed-changes/overview.mdx) — compare a branch with its base, with review, validation, and checks
+- [Activity log](../deploy-manage/run-observe/activity-log.mdx) — which operations occurred, when, and by whom
