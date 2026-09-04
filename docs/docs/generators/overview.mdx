@@ -278,6 +278,17 @@ When `true`, the Generator runs again after the branch has been merged.
 
 When `false`, the Generator will not run after the branch has been merged.
 
+## Running a Generator from events
+
+When an artifact generated in the same proposed change reads the Generator's output, run the Generator on the branch before the proposed change instead of in its pipeline, where the two run concurrently (see [Ordering between Generators and artifacts](../proposed-changes/overview#ordering-between-generators-and-artifacts)). Chain two event rules:
+
+1. A [node trigger rule](../events/event-rules#configure-a-node-trigger-rule) matches the mutation that creates the input data and fires a group action that adds the object to the Generator definition's target group.
+2. A [group trigger rule](../events/event-rules#configure-a-group-trigger-rule) on that group matches the member-added event and fires a [Generator action](../events/event-actions#configure-a-generator-action) that runs the Generator against the new member.
+
+The Generator action's definition must target the same group the rule watches; Infrahub rejects the run otherwise. Create both rules on the default branch and set `branch_scope` to `other_branches`, so the chain fires on branches where a proposed change will review the result: rules are read from the default branch only, and a rule created on another branch never fires (see [where trigger rules are stored and evaluated](../events/event-rules#where-trigger-rules-are-stored-and-evaluated)).
+
+Set `execute_in_proposed_change: false` and `execute_after_merge: false` on the Generator. The two flags do not apply to event-triggered runs, so leaving them `true` runs the Generator both from the event and in the pipeline.
+
 ## Video guides
 
 The video series below dives into the concept of Generators and services, exploring their significance, structure, and how they can streamline processes for teams. Whether you're a developer or just curious about automation in IT, the series provides a comprehensive understanding of Generators and their applications.

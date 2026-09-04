@@ -117,6 +117,14 @@ Generators are Python-only, and Infrahub does not analyze imports, so auto-detec
 
 Learn more about [Generators](../generators/overview).
 
+### Ordering between Generators and artifacts
+
+Within a proposed change, Generator runs and artifact generation start at the same time, and neither waits for the other. The pipeline also selects which artifact definitions to process from the branch diff as it was when the pipeline started. An artifact whose Transformation reads data a Generator creates during the same proposed change can therefore render before that data exists, and which of the two finishes first varies from run to run.
+
+After a merge the order is enforced: Infrahub waits for each Generator to finish, then regenerates the artifacts built from the objects that Generator created or changed. Only the pipeline inside the proposed change runs both concurrently.
+
+To review correct artifacts on a proposed change, run the Generator on the branch before the pipeline starts: set `execute_in_proposed_change: false` on the Generator and run it through an [event rule](../events/event-rules) when its input data is created on the branch, then open the proposed change once the Generator has finished. [Running a Generator from events](../generators/overview#running-a-generator-from-events) describes the setup. On a proposed change that is already open, re-running the checks regenerates the artifacts from the branch as it stands.
+
 ## Conflict management
 
 In Infrahub, conflicts occur when the same infrastructure object is modified differently in both the source and target branches. Unlike traditional text-based version control systems, Infrahub's conflict detection operates at the data level, identifying specific attribute conflicts within objects.
