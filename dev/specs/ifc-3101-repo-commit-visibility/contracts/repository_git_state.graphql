@@ -1,0 +1,175 @@
+# GraphQL Contract: repository git state
+# Feature: IFC-3101
+# Registered on infrahub.graphql.schema::InfrahubBaseQuery / InfrahubBaseMutation
+# Wire names are snake_case (the schema is built with auto_camelcase=False).
+# Keep every description on a single line; the SDL printer dedents multi-line
+# descriptions differently across graphql-core versions.
+
+"How the remote head relates to the commit Infrahub has imported on the request branch."
+enum RepositoryGitCondition {
+  IN_SYNC
+  BEHIND
+  REWRITTEN
+  NO_REMOTE
+  NOT_TRACKED
+  UNAVAILABLE
+}
+
+"Explicit state of one commit relative to the imported commit and the remote head."
+enum RepositoryCommitState {
+  HEAD
+  IMPORTED
+  PENDING
+  HISTORY
+  UNRELATED
+}
+
+"Why no git-derived answer was produced."
+enum RepositoryGitUnavailableReason {
+  NOT_CLONED
+  NOT_IMPLEMENTED
+}
+
+"A commit read live from a worker's local clone. Never persisted."
+type RepositoryCommit {
+  "Full commit hash. The row identity; a later hash-keyed outcome store joins on it."
+  hash: String!
+  "First 7 characters of the hash."
+  short_hash: String!
+  "First line of the commit message."
+  summary: String!
+  "Full commit message."
+  message: String!
+  author_name: String!
+  authored_at: DateTime!
+  committed_at: DateTime!
+  state: RepositoryCommitState!
+}
+
+type RepositoryCommitNode {
+  node: RepositoryCommit!
+}
+
+"Set when condition is UNAVAILABLE. Distinct from an error: the request succeeded, git had no answer yet."
+type RepositoryGitUnavailable {
+  reason: RepositoryGitUnavailableReason!
+  "Human-readable explanation safe to display."
+  message: String!
+  "Task id of the warm-up that was started, when one was."
+  warm_up_task_id: String
+}
+
+"Commit log of a repository as seen from the request branch, newest first."
+type RepositoryCommits {
+  repository_id: String!
+  "The Infrahub branch the answer was computed for."
+  branch_name: String!
+  "Remote branch or tracked ref whose history is listed. Null when the branch tracks nothing, matching RepositoryBranchDrift.git_ref."
+  git_ref: String
+  condition: RepositoryGitCondition!
+  "Commit Infrahub has imported on this branch, from the repository's commit attribute."
+  imported_commit: String
+  "Head of the remote branch or tracked ref as last fetched by the answering worker."
+  remote_head: String
+  "Number of commits between imported_commit and remote_head. Only set when condition is BEHIND."
+  pending_count: Int
+  "When the answering worker last fetched from the remote. Null before the first fetch."
+  fetched_at: DateTime
+  "When the remote was last checked for movement. Read-only repositories only; null for read-write, where fetched_at already carries it."
+  checked_at: DateTime
+  unavailable: RepositoryGitUnavailable
+  edges: [RepositoryCommitNode!]!
+}
+
+"Drift of one Infrahub branch of a repository."
+type RepositoryBranchDrift {
+  branch_name: String!
+  "Remote branch or tracked ref compared for this branch. Null when the branch is not tracked."
+  git_ref: String
+  tracked_commit: String
+  "Latest remote commit. Null when there is no remote counterpart or the branch is not tracked."
+  remote_head: String
+  condition: RepositoryGitCondition!
+}
+
+type RepositoryBranchDriftNode {
+  node: RepositoryBranchDrift!
+}
+
+"Drift for every branch of a repository, produced by a single worker request."
+type RepositoryBranchDrifts {
+  repository_id: String!
+  fetched_at: DateTime
+  "When the remote was last checked for movement. Read-only repositories only."
+  checked_at: DateTime
+  "Set when the whole column is unavailable; the branch rows themselves come from elsewhere and still render."
+  unavailable: RepositoryGitUnavailable
+  edges: [RepositoryBranchDriftNode!]!
+}
+
+extend type Query {
+  "Paged commit log for a repository on the request branch. Requires view permission on the repository."
+  InfrahubRepositoryCommits(
+    repository_id: String!
+    "Page size, 1 to 100. Default 10."
+    limit: Int
+    "Default 0."
+    offset: Int
+  ): RepositoryCommits!
+
+  "Per-branch drift for a repository. Requires view permission on the repository."
+  InfrahubRepositoryBranchDrift(repository_id: String!): RepositoryBranchDrifts!
+}
+
+"Result of scheduling an on-demand refs check for a read-only repository."
+type InfrahubReadOnlyRepositoryCheckRefs {
+  ok: Boolean
+  task: TaskInfo
+}
+
+extend type Mutation {
+  "Check the remote refs of a read-only repository now. Visibility only: never imports, never moves the tracked commit."
+  InfrahubReadOnlyRepositoryCheckRefs(data: IdentifierInput!): InfrahubReadOnlyRepositoryCheckRefs
+}
+
+# ---------------------------------------------------------------------------
+# Example: commit view, first page (the frontend request)
+#
+# query RepositoryCommits($id: String!, $limit: Int, $offset: Int) {
+#   InfrahubRepositoryCommits(repository_id: $id, limit: $limit, offset: $offset) {
+#     branch_name git_ref condition imported_commit remote_head pending_count
+#     fetched_at checked_at unavailable { reason message warm_up_task_id }
+#     edges { node { hash short_hash summary author_name authored_at state } }
+#   }
+# }
+#
+# Example: drift column
+#
+# query RepositoryBranchDrift($id: String!) {
+#   InfrahubRepositoryBranchDrift(repository_id: $id) {
+#     fetched_at checked_at unavailable { reason message }
+#     edges { node { branch_name tracked_commit remote_head condition } }
+#   }
+# }
+#
+# Example: on-demand check
+#
+# mutation { InfrahubReadOnlyRepositoryCheckRefs(data: { id: "..." }) { ok task { id } } }
+#
+# ---------------------------------------------------------------------------
+# Error contract (FR-012). The retry hint lives here, on the catalogued error,
+# and not on RepositoryGitUnavailable: when no worker answers within the bound
+# the query fails rather than returning an UNAVAILABLE result, so a consumer
+# never has two places to look for it.
+#
+# {
+#   "errors": [{
+#     "message": "No worker answered git.commit_log.get within 30 seconds",
+#     "path": ["InfrahubRepositoryCommits"],
+#     "extensions": {
+#       "code": "WORKER_TIMEOUT",
+#       "http_status": 504,
+#       "data": { "operation": "git.commit_log.get", "timeout_seconds": 30, "retry_after_seconds": 30 }
+#     }
+#   }]
+# }
