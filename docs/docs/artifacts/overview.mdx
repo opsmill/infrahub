@@ -86,12 +86,25 @@ For step-by-step instructions, see [Composing artifact content](./content-compos
 
 ## When artifacts regenerate
 
-An artifact is the cached output of a Transformation, so Infrahub regenerates it when its inputs change. Four kinds of change trigger regeneration or cleanup:
+An artifact is the cached output of a Transformation, so Infrahub regenerates it when its inputs change. Regeneration always happens inside a generation pass over an artifact definition, and four things start a pass:
 
-- **The target's data changes** — a node read by the artifact's GraphQL query is modified, so that target's artifact is regenerated.
-- **A new target joins the group** — an artifact is generated for the new member; existing artifacts are left untouched.
-- **A target leaves the group** — the former member's artifact is deleted on the next generation pass over the definition (for example after the change merges), so no stale artifact is left behind.
-- **The definition's code or configuration changes** — when a proposed change commits to a linked repository, Infrahub regenerates an artifact only if the change touches that definition's GraphQL query, its Transformation's [dependency closure](../transformations/overview#dependency-tracking-and-regeneration), or the artifact definition itself. An unrelated commit — a README edit, or a helper no Transformation uses — regenerates nothing, once the Transformation is precise enough to say so: a Python Transformation that has not declared [`watch`](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch) regenerates on every commit, because Infrahub cannot rule out a dependency it has no way to see.
+- **A proposed change pipeline runs.** Artifacts are regenerated on the source branch, for the definitions and targets the change affects.
+- **A branch is merged.** Infrahub regenerates the artifacts the merge affected, on the target branch. Set [`INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE`](../reference/configuration) to `false` to regenerate every definition after every merge instead.
+- **An artifact definition is created or updated.** Every current member of the target group is regenerated, on the branch where the definition changed. Importing a repository commit that changes the definition has the same effect.
+- **You request a pass.** In the UI, **Generate** on an artifact definition runs a pass over every member, and **Re-generate** on a single artifact runs a pass limited to that artifact. The same is available through `POST /api/artifact/generate/{artifact_definition_id}`, with an optional `nodes` list of artifact IDs to limit the pass, and through the Python SDK or the `artifact_generate` Ansible module. An entry that matches no existing artifact selects nothing, so a request that lists target node IDs instead regenerates nothing.
+
+Inside a pass, four kinds of change decide what is regenerated or cleaned up:
+
+- **The target's data changed**: a node read by the artifact's GraphQL query is modified, so that target's artifact is regenerated.
+- **A new target joined the group**: an artifact is generated for the new member, and existing artifacts are left untouched.
+- **A target left the group**: the former member's artifact is deleted, so no stale artifact is left behind. Only a full pass deletes it. A pass limited to specific artifacts leaves artifacts outside that scope alone.
+- **The definition's code or configuration changed**: when a proposed change commits to a linked repository, Infrahub regenerates an artifact only if the change touches that definition's GraphQL query, its Transformation's [dependency closure](../transformations/overview#dependency-tracking-and-regeneration), or the artifact definition itself. An unrelated commit, a README edit or a helper no Transformation uses, regenerates nothing, once the Transformation is precise enough to say so: a Python Transformation that has not declared [`watch`](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch) regenerates on every commit, because Infrahub cannot rule out a dependency it has no way to see.
+
+:::info What does not start a pass
+
+Changing data, or adding and removing group members, does not regenerate an artifact on its own, on any branch. Artifact definitions are also not available as an [event action](../events/event-actions), so an event rule cannot start a pass either. After a change on the default branch, either request a pass, or make the change on a branch and merge it.
+
+:::
 
 Every regeneration decision during a proposed change is recorded in the pipeline's task log, naming the file, query, or field that triggered it. See [Understanding artifact regeneration](../proposed-changes/overview#understanding-artifact-regeneration).
 
