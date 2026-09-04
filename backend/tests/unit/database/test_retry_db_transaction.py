@@ -168,3 +168,81 @@ class TestRetryDbTransactionExponentialBackoff:
         decorated = retry_db_transaction(name="test_wraps")(my_original_function)
         assert decorated.__name__ == "my_original_function"  # type: ignore[attr-defined]
         assert decorated.__doc__ == "My docstring."  # type: ignore[attr-defined]
+
+
+@pytest.fixture
+def _set_zero_delay_retries() -> Generator[None, None, None]:
+    original_retry_limit = config.SETTINGS.database.retry_limit
+    original_base_delay = config.SETTINGS.database.retry_base_delay
+    original_jitter_max = config.SETTINGS.database.retry_jitter_max
+
+    config.SETTINGS.database.retry_limit = 3
+    config.SETTINGS.database.retry_base_delay = 0.0
+    config.SETTINGS.database.retry_jitter_max = 0.0
+    yield
+    config.SETTINGS.database.retry_limit = original_retry_limit
+    config.SETTINGS.database.retry_base_delay = original_base_delay
+    config.SETTINGS.database.retry_jitter_max = original_jitter_max
+
+
+class _RetriableWork:
+    """Async callable that fails with a retriable error a fixed number of times, then succeeds."""
+
+    def __init__(self, failures: int) -> None:
+        self._failures = failures
+        self.calls = 0
+
+    async def run(self) -> str:
+        self.calls += 1
+        if self.calls <= self._failures:
+            raise _make_transient_error("no available threads to serve this request")
+        return "ok"
+
+
+@pytest.mark.usefixtures("_set_zero_delay_retries")
+class TestRetryOwnership:
+    """Only the outermost retry scope replays.
+
+    Layers that each retried independently multiplied into `retry_limit` raised to their nesting
+    depth, which piles attempts onto a database already reporting that it cannot serve them.
+    """
+
+    async def test_nested_scopes_share_one_budget_of_attempts(self) -> None:
+        work = _RetriableWork(failures=99)
+        inner = retry_db_transaction(name="nested_inner")(work.run)
+        outer = retry_db_transaction(name="nested_outer")(inner)
+
+        with pytest.raises(TransientError, match=r"^no available threads to serve this request$"):
+            await outer()
+
+        assert work.calls == 3
+
+    async def test_inner_scope_hands_the_error_to_the_owner(self) -> None:
+        work = _RetriableWork(failures=1)
+        inner = retry_db_transaction(name="handoff_inner")(work.run)
+        outer = retry_db_transaction(name="handoff_outer")(inner)
+
+        assert await outer() == "ok"
+        assert work.calls == 2
+
+    async def test_one_failure_is_counted_once_under_the_owning_label(self) -> None:
+        inner_before = TRANSACTION_RETRIES.labels("counted_inner")._value.get()
+        outer_before = TRANSACTION_RETRIES.labels("counted_outer")._value.get()
+
+        work = _RetriableWork(failures=1)
+        inner = retry_db_transaction(name="counted_inner")(work.run)
+        outer = retry_db_transaction(name="counted_outer")(inner)
+
+        assert await outer() == "ok"
+
+        assert TRANSACTION_RETRIES.labels("counted_inner")._value.get() == inner_before
+        assert TRANSACTION_RETRIES.labels("counted_outer")._value.get() == outer_before + 1
+
+    async def test_ownership_is_released_after_the_scope_returns(self) -> None:
+        succeeding = _RetriableWork(failures=0)
+        await retry_db_transaction(name="released_first")(succeeding.run)()
+
+        later = _RetriableWork(failures=1)
+
+        assert await retry_db_transaction(name="released_second")(later.run)() == "ok"
+        assert later.calls == 2
