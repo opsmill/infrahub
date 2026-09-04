@@ -94,11 +94,10 @@ pool id.
 
 ### `Branch`
 
-Not modified. Read for its metadata only — from `registry.branch` at the runtime enforcement
-points, and from the database in the migration, which runs in an upgrade process where the
-registry may never have been populated. The registry is a maintained cache: it is refreshed on
-branch create, merge, rebase and delete via a broadcast message, adds branches it does not yet
-know, and has a scheduled sweep behind that.
+Not modified. Read for its metadata only, and read **in-query** from `(:Branch)` vertices at every
+enforcement point including the migration (revised 2026-08-17 — the predicate derives the fork
+windows in Cypher, so no branch list is marshalled through Python). That also means the predicate
+works in an upgrade process where no registry has been populated.
 
 | Field | Role in the predicate |
 |---|---|
@@ -221,7 +220,7 @@ Covered without enumeration. The predicate anchors on the `:Node`, `:Attribute` 
 automatically — unlike the per-kind `Kind|ProfileKind|TemplateKind` pattern the schema migrations
 must follow.
 
-## Orphan shapes repaired by `m076`
+## Orphan shapes repaired by `m078`
 
 | # | Shape | Origin | Repair | Reported as |
 |---|---|---|---|---|

@@ -61,7 +61,7 @@ time-close-only rule, and the requirement that retention be judged per branch.
 
 **Primary Dependencies**: Neo4j 2026.05 (driver 6.2), Pydantic 2.12 — no new dependencies
 
-**Storage**: Neo4j graph. New graph migration `m076`; `GRAPH_VERSION` 75 → 76
+**Storage**: Neo4j graph. New graph migration `m078`; `GRAPH_VERSION` 77 → 78
 (`backend/infrahub/core/graph/__init__.py:1`)
 
 **Testing**: pytest 9.0 — unit (`backend/tests/unit/`), component
@@ -90,8 +90,8 @@ Target branch `release-1.11`; reaches `develop` through the normal release merge
 
 | Principle | Assessment | Verdict |
 |---|---|---|
-| **I. Schema-Driven Integrity** | No schema-layer change. `m076` is a graph migration with no schema surface; no generated files affected. | ✅ Pass |
-| **II. Branch-Safe by Default** | The feature *is* this principle. Cross-branch side effects on branch-agnostic data are the subject, explicitly documented (FR-019) and tested. Merge **and** rebase behaviour specified before completion (FR-006, FR-007). Every branch evaluated under its own filter with isolation intact (FR-012). Soft-delete governs all runtime paths — retirement is a time-close (FR-013). **One deviation**: `m076` hard-deletes vertices with no linked node. See Complexity Tracking. | ⚠️ Pass with justified deviation |
+| **I. Schema-Driven Integrity** | No schema-layer change. `m078` is a graph migration with no schema surface; no generated files affected. | ✅ Pass |
+| **II. Branch-Safe by Default** | The feature *is* this principle. Cross-branch side effects on branch-agnostic data are the subject, explicitly documented (FR-019) and tested. Merge **and** rebase behaviour specified before completion (FR-006, FR-007). Every branch evaluated under its own filter with isolation intact (FR-012). Soft-delete governs all runtime paths — retirement is a time-close (FR-013). **One deviation**: `m078` hard-deletes vertices with no linked node. See Complexity Tracking. | ⚠️ Pass with justified deviation |
 | **III. Type Safety & Explicit Contracts** | Query results exposed via `get_data()` returning a frozen dataclass, never raw Neo4j records. No API contract change. *(Revised: the branch-window dataclasses and the injected `Protocol` are gone — the windows are derived in Cypher and each query is self-sufficient.)* | ✅ Pass |
 | **IV. Test Discipline** | Component coverage per enforcement point, migration fixtures per orphan shape, pure predicate logic unit-tested. Graph migration with no schema surface → the integration-Docker requirement for schema migrations does not apply. No frontend surface → no Playwright requirement. No mocks. *(Revised: with no injected collaborator there is no double to record; the predicate is exercised through component tests asserting graph shape, and each guarantee is mutation-checked.)* | ✅ Pass |
 | **V. Query Performance & Efficiency** | Candidate sets diff- and query-bounded rather than swept; predicate anchored on graph labels so indexes apply; migration batched; all Cypher parameterised; `EXPLAIN` required on the new query. Uniqueness validation — on the merge/schema-check hot path and the active target of separate perf work — deliberately untouched. | ✅ Pass |
@@ -109,7 +109,7 @@ frozen dataclass) is retained.
 Per `AGENTS.md` **Boundaries → Ask First**, this feature crosses one gate that requires
 maintainer sign-off before implementation begins:
 
-- **Database schema or migration change** — `m076` plus a `GRAPH_VERSION` bump. It mutates
+- **Database schema or migration change** — `m078` plus a `GRAPH_VERSION` bump. It mutates
   existing customer data during upgrade, including **hard-deleting** `Attribute` and
   `Relationship` vertices that have no linked node vertex.
 
@@ -118,18 +118,18 @@ workflow change, no auth change.
 
 **Status (2026-08-17)**: sign-off requested; decision **deferred**, gate still open. The shared
 predicate and the runtime enforcement points touch no migration and proceed. The repair migration
-(`m076`, the `GRAPH_VERSION` bump, and the hard-delete) stays blocked until the gate is signed off.
+(`m078`, the `GRAPH_VERSION` bump, and the hard-delete) stays blocked until the gate is signed off.
 
 **Status (2026-08-25): signed off — gate closed.** The maintainer approved the repair migration,
 the `GRAPH_VERSION` bump, and the irreversible hard-delete of `Attribute` / `Relationship` vertices
 carrying no linked node vertex. Slice 5 (R06) is unblocked.
 
-Two numbers in this gate's description were stale at sign-off time and the approval covers the
-corrected ones, per T058: the migration is **`m077`**, not `m076` (the `m076` slot is occupied by
-`m076_heal_missing_attribute_rows`), and the version bump is **76 -> 77**, not 75 -> 76
-(`GRAPH_VERSION` is already 76 on the base branch). The substance of what was approved — one
-additive graph migration that closes unretained global edges and hard-deletes node-less
-`Attribute` / `Relationship` vertices, announcing its irreversibility first — is unchanged.
+The migration number moved twice while this feature was in flight, because the base branch took
+each slot first: `m076` (as originally planned), then `m077` (T058), then **`m078`** (T062), with
+the version bump following it from 75 → 76 to 76 → 77 to **77 → 78**. Every number in this plan
+now reads `m078` / 77 → 78, the shipped one. The substance of what was approved — one additive graph
+migration that closes unretained global edges and hard-deletes node-less `Attribute` /
+`Relationship` vertices, announcing its irreversibility first — never changed.
 
 ## Project Structure
 
@@ -142,8 +142,11 @@ specs/ifc-2843-retire-agnostic-edges/
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output
 ├── quickstart.md        # Phase 1 output
+├── alignment-check.md   # PRD-vs-artifact reconciliation
 ├── contracts/           # Phase 1 output — internal component contracts
 │   └── retirement-component.md
+├── critiques/
+│   └── critique-20260812.md
 ├── checklists/
 │   └── requirements.md
 └── tasks.md             # Phase 2 output (/speckit-tasks — NOT created here)
@@ -153,36 +156,40 @@ specs/ifc-2843-retire-agnostic-edges/
 
 ```text
 backend/infrahub/core/
-├── graph/__init__.py                      # GRAPH_VERSION 75 → 76                    (edit)
+├── graph/__init__.py                      # GRAPH_VERSION 77 → 78                     (edit)
 ├── query/
 │   ├── agnostic_retention.py              # shared retention predicate fragment       (new)
+│   ├── agnostic_field_closure.py          # predicate + close, for the schema paths   (new)
 │   ├── node_agnostic_retirement.py        # RetireNodeAgnosticFieldsQuery             (new)
-│   └── branch.py                          # existing agnostic cleanup queries         (read)
-├── node/__init__.py                        # Node.delete → invoke retirement          (edit)
+│   └── branch_agnostic_retirement.py      # RetireBranchAgnosticFieldsQuery           (new)
+├── node/__init__.py                       # Node.delete → invoke retirement           (edit)
 ├── branch/
 │   ├── data_deleter.py                    # branch deletion → bounded form            (edit)
 │   └── tasks.py                           # rebase_branch → base-branch deletions     (edit)
 ├── diff/merger/merger.py                  # merge → deleted-node candidates           (edit)
 └── migrations/
-    ├── graph/m076_retire_agnostic_property_edges.py                                   (new)
-    ├── graph/__init__.py                  # register m076                             (edit)
-    └── query/
-        └── attribute_remove.py            # close the global edges in the same query  (edit)
+    ├── graph/m078_retire_agnostic_property_edges/   # __init__, migration, queries    (new)
+    ├── query/attribute_remove.py          # close the global edges in the same query  (edit)
+    └── schema/node_relationship_remove.py # same, for the relationship side           (edit)
 
-backend/tests/component/
-├── core/
-│   └── test_agnostic_retirement.py        # enforcement-point behaviour               (new)
-├── query/test_node_agnostic_retirement_query.py     # graph shape, per-query          (new)
-└── migrations/test_m076_retire_agnostic_property_edges.py                             (new)
+backend/tests/
+├── helpers/agnostic_edges.py              # builders, edge readers, shared assertions (new)
+├── helpers/schema/agnostic_retirement.py  # the widget/gadget/beacon schema           (new)
+└── component/
+    ├── core/agnostic_retirement/          # one module per enforcement point          (new)
+    ├── core/migrations/schema/test_agnostic_field_removal.py                          (new)
+    ├── core/migrations/graph/m078_retire_agnostic_property_edges/                     (new)
+    └── query/test_node_agnostic_retirement_query.py  # graph shape, per-query         (new)
 
-docs/docs/                                  # deletion semantics for agnostic fields   (edit)
-changelog/                                  # towncrier fragment                       (new)
+docs/docs/                                 # deletion semantics for agnostic fields    (edit)
+changelog/                                 # towncrier fragment                        (new)
 ```
 
-**Structure Decision**: Backend-only, following the existing `core/` layout. The new
-`core/agnostic/` package holds the two components the PRD names; the query goes in the existing
-`core/query/` package alongside `branch.py`, whose agnostic cleanup queries are the direct
-precedent. No new top-level directory, no frontend or SDK path touched.
+**Structure Decision**: Backend-only, following the existing `core/` layout. Everything lives in
+the existing `core/query/` package alongside `branch.py`, whose agnostic cleanup queries are the
+direct precedent — the 2026-08-17 revision dropped the `core/agnostic/` package the PRD named,
+along with the component, protocol, adapter and window builder it was to hold (see Complexity
+Tracking). No new package, no new top-level directory, no frontend or SDK path touched.
 
 ## Design Overview
 
@@ -274,7 +281,7 @@ enforcement point constructs the one it needs.
 | 4 | Branch deletion | `core/branch/data_deleter.py` — beside `_delete_agnostic_peers`, before `_delete_edges` | fork-point-bounded query | delete time | FR-008 |
 | 5 | Attribute removal | `migrations/schema/node_attribute_remove.py` | the removed field | migration time | FR-010 |
 | 6 | Relationship removal | `migrations/schema/node_relationship_remove.py` | the removed field | migration time | FR-010 |
-| — | Repair migration | `migrations/graph/m076_*.py` | unbounded, batched | migration run time | FR-016 |
+| — | Repair migration | `migrations/graph/m078_*/queries.py` | unbounded, batched | migration run time | FR-016 |
 
 Points 2, 3 and 4 are **re-evaluation points, not release triggers** (FR-009). Each runs the
 same predicate and acts only on its result; none of them may assume its own occurrence releases
@@ -334,7 +341,7 @@ actually commits:
   failure. The graph is never committed in the illegal shape.
 - **Swallowing** commits a node that is gone still holding a live branch-agnostic value — precisely
   the orphan shape this feature exists to eliminate — and nothing a user or an operator can invoke
-  repairs it, because `m076` runs only at upgrade. That is not "today's behaviour preserved"; it is
+  repairs it, because `m078` runs only at upgrade. That is not "today's behaviour preserved"; it is
   today's bug re-introduced by the code written to fix it.
 
 The runtime path can only work this way, which is worth stating because it looks like an
@@ -349,7 +356,7 @@ with no branch to read retention under there is no retention picture to judge, a
 the safe direction, while closing on partial information is data loss. This is the "must
 over-execute, not under-execute" rule applied to a reservation, and it is the only place it applies.
 
-`m076` keeps its own non-fatal reporting (FR-016), and that is *not* the same principle applied
+`m078` keeps its own non-fatal reporting (FR-016), and that is *not* the same principle applied
 through a different mechanism: the migration has no caller transaction to roll back and no user
 operation to abort, so accumulating into `MigrationResult` is simply the correct shape there.
 
@@ -456,17 +463,17 @@ rather than a shared substrate followed by six integrations.
    Measure at **two open-branch counts** (a low one and a realistic-high one, e.g. 3 and 100),
    because the predicate's filter grows with branch count and a three-branch fixture is not
    evidence about a real deployment.
-5. `m076` + `GRAPH_VERSION` bump, once the Ask-First gate is signed off.
+5. `m078` + `GRAPH_VERSION` bump, once the Ask-First gate is signed off.
 6. Documentation + changelog.
 
-`m076` is deliberately late despite being P1: it is the unbounded form of a query that must
+`m078` is deliberately late despite being P1: it is the unbounded form of a query that must
 already be proven correct, and it is the one step that mutates customer data.
 
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |---|---|---|
-| **Principle II** — `m076` hard-deletes `Attribute` / `Relationship` vertices with no linked node vertex, where the constitution permits hard-delete only for branch deletion itself | A vertex with no linked node cannot be reached, diffed, or time-travelled to. A time-close would leave permanent garbage with no reader, and would not remove it from any future scan. | Time-closing them instead: leaves unreachable vertices in the graph forever with no path to ever remove them. Mitigating factor: these vertices were *produced by* branch deletions predating the existing agnostic-peer cleanup, and `BranchDataDeleter._delete_agnostic_peers` already `DETACH DELETE`s exactly this shape at branch-deletion time. The migration completes an operation the system already performs — late rather than newly — so this is arguably inside the existing exemption rather than a new one. |
+| **Principle II** — `m078` hard-deletes `Attribute` / `Relationship` vertices with no linked node vertex, where the constitution permits hard-delete only for branch deletion itself | A vertex with no linked node cannot be reached, diffed, or time-travelled to. A time-close would leave permanent garbage with no reader, and would not remove it from any future scan. | Time-closing them instead: leaves unreachable vertices in the graph forever with no path to ever remove them. Mitigating factor: these vertices were *produced by* branch deletions predating the existing agnostic-peer cleanup, and `BranchDataDeleter._delete_agnostic_peers` already `DETACH DELETE`s exactly this shape at branch-deletion time. The migration completes an operation the system already performs — late rather than newly — so this is arguably inside the existing exemption rather than a new one. |
 
 The original plan also tracked a `core/agnostic/` package holding a retirement component and a
 window builder as a Principle VII deviation. That package is not part of the revised design and the
@@ -495,7 +502,7 @@ catch a specific silent failure:
   retirement no-op, and for a reason the plan had wrong: the ordinary agnostic delete already both
   tombstones the global edges and stamps `to` on the superseded active ones, so nothing is left to
   close. The enforcement point does run against such nodes; it simply finds nothing.
-- **`m076` re-run** (component) — running the migration twice is safe and the second run reports
+- **`m078` re-run** (component) — running the migration twice is safe and the second run reports
   zero. An interrupted upgrade must be resumable, as `m075` is.
 
 ## Deferred decisions
@@ -511,10 +518,10 @@ catch a specific silent failure:
   existing tracking id. Widening `DiffCoordinator.update_branch_diff`'s return type to expose both
   diffs is the larger change and that method has other callers, so the read wins. No longer open —
   the rebase task is fully specified.
-- **`m076` batching**: adopt the existing `MAX_AGNOSTIC_PEER_BATCH_SIZE = 500` cap. Each row can
+- **`m078` batching**: adopt the existing `MAX_AGNOSTIC_PEER_BATCH_SIZE = 500` cap. Each row can
   drag an unbounded number of peer vertices into the transaction, which is precisely why that cap
   exists in `data_deleter.py`. The migration must be safe to re-run.
-- **`m076` irreversibility**: it hard-deletes vertices, and for those vertices there is nothing to
+- **`m078` irreversibility**: it hard-deletes vertices, and for those vertices there is nothing to
   roll back *to* — no rollback will be built. Instead, state the irreversibility in the upgrade
   documentation and in the migration's own console output before it begins, so the operator's
   pre-upgrade backup is an informed decision rather than an assumed one.
@@ -522,7 +529,7 @@ catch a specific silent failure:
 ## Phase 1 artifacts
 
 - [data-model.md](./data-model.md) — graph entities, edge states, the predicate's evaluation
-  rules, and the orphan shapes `m076` repairs
+  rules, and the orphan shapes `m078` repairs
 - [contracts/retirement-component.md](./contracts/retirement-component.md) — internal component
   contracts (no external API surface exists for this feature)
 - [quickstart.md](./quickstart.md) — runnable validation of every acceptance scenario

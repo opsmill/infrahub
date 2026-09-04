@@ -60,17 +60,29 @@ second retirement run reporting a non-zero count is the symptom of having missed
 
 ## Run the tests
 
-```bash
-# Unit — pure predicate logic, no database, runs in seconds
-uv run pytest backend/tests/unit/core/agnostic/
+Every suite is component-tier — the predicate is Cypher, so there is nothing to test without a
+database.
 
-# Component — query graph shape, enforcement points, migration fixtures
+```bash
+# Enforcement points: node delete, merge, rebase, branch delete
 uv run pytest -x -v backend/tests/component/core/agnostic_retirement/
-uv run pytest -x -v backend/tests/component/query/test_agnostic_retirement_query.py
-uv run pytest -x -v backend/tests/component/migrations/test_m076_retire_agnostic_property_edges.py
+
+# The query's own graph shape
+uv run pytest -x -v backend/tests/component/query/test_node_agnostic_retirement_query.py
+
+# Schema field removal
+uv run pytest -x -v backend/tests/component/core/migrations/schema/test_agnostic_field_removal.py
+
+# The repair migration
+uv run pytest -x -v backend/tests/component/core/migrations/graph/m078_retire_agnostic_property_edges/
 
 # Everything for this feature
-uv run pytest backend/tests/unit/core/agnostic/ backend/tests/component -k agnostic
+uv run pytest \
+  backend/tests/component/core/agnostic_retirement/ \
+  backend/tests/component/query/test_node_agnostic_retirement_query.py \
+  backend/tests/component/core/migrations/schema/test_agnostic_field_removal.py \
+  backend/tests/component/core/migrations/graph/m078_retire_agnostic_property_edges/ \
+  backend/tests/component/core/node/test_branch_agnostic_edges.py
 ```
 
 ## Validation matrix
@@ -102,7 +114,7 @@ Four further checks exist to catch specific silent failures:
 |---|---|
 | Allocate → delete → allocate again | The same value is returned. Guards a three-edge pool dependency no other test covers — though re-allocation turns out not to depend on retirement; see data-model.md §"Pool interaction" |
 | Delete a truly branch-agnostic *node* | Edges closed exactly once; retirement is a no-op. Pins the out-of-scope boundary |
-| Run `m076` twice | Second run reports zero; an interrupted upgrade is resumable |
+| Run `m078` twice | Second run reports zero; an interrupted upgrade is resumable |
 
 ### Repair migration (User Story 2)
 
@@ -119,7 +131,7 @@ Run the migration directly against hand-built fixtures rather than through a ful
 orphan shapes cannot be produced by the current code paths (that is the point of the migration),
 so they must be built with raw Cypher.
 
-⚠️ **`m076` is irreversible.** It hard-deletes `Attribute` / `Relationship` vertices that have no
+⚠️ **`m078` is irreversible.** It hard-deletes `Attribute` / `Relationship` vertices that have no
 linked node vertex, and for those vertices there is nothing to roll back *to*. The migration
 announces this before it begins; operators need a pre-upgrade backup, and that must be an informed
 decision rather than an assumed one.
@@ -247,7 +259,7 @@ uv run invoke backend.test-unit
 /pre-ci
 ```
 
-`m076` bumps `GRAPH_VERSION`, so `uv run invoke docs.validate` must pass — CI fails on any stale
+`m078` bumps `GRAPH_VERSION`, so `uv run invoke docs.validate` must pass — CI fails on any stale
 generated doc. A towncrier fragment under `changelog/` is required: freed pool values becoming
 allocatable again is user-visible behaviour.
 

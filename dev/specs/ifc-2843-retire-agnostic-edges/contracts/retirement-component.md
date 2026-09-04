@@ -167,9 +167,11 @@ GRAPH_VERSION    : 77 -> 78
   and hard-deletes `Attribute` / `Relationship` vertices with no linked node vertex at all.
 - Derives its stamp **per candidate** rather than using the run time: the owner's latest effective
   deletion time where one is derivable, otherwise the latest `to` among the vertex's closed owning
-  edges — the moment the field stopped being reachable. Only where neither is derivable is a
-  candidate skipped. Stamping everything with upgrade time would land the close inside the window of
-  every branch forked before the upgrade, which FR-014 forbids.
+  edges — the moment the field stopped being reachable. Only where neither is derivable does it fall
+  back to the upgrade's own time, and FR-014 still holds there: a candidate with no owner departure
+  and no closed owning edge on record is one no branch resolves as live, so the close shifts no
+  branch's view. Stamping everything with upgrade time *by default* would land the close inside the
+  window of every branch forked before the upgrade, which FR-014 forbids.
 - Batches its writes.
 - Reports both counts to the upgrade log.
 - Returns `MigrationResult(errors=[...])` on unrepairable state; never raises, never fails the

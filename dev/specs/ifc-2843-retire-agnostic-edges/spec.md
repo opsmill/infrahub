@@ -115,8 +115,11 @@ each operation.
     or the repair migration runs, **Then** the surviving vertex keeps its value.
 11. **Given** a node created and deleted on branch `B`, **When** `B` is rebased, **Then**
     the invariant still holds and no vertex is left with open global edges.
-12. **Given** a value freed by retirement, **When** the pool next allocates, **Then** that
-    value is allocatable again.
+12. **Given** an allocated value whose holder has been deleted, **When** the pool next allocates,
+    **Then** that value is allocatable again and retirement has not stood in the way of it.
+    (Amended 2026-08-18 with SC-007: the original read "a value freed by retirement ... is
+    allocatable again", which measurement disproved — deletion frees the value regardless of
+    retirement, so the original scenario held without the feature and validated nothing.)
 
 ---
 
@@ -215,11 +218,14 @@ each is independently developable, testable, and demonstrable.
   while branches still hold the object live.
 - **Same-UUID node copies.** Name, namespace, and inheritance changes leave several node
   vertices sharing one UUID, each pointing at the *same* `Attribute` vertex over its own
-  global edge, with the superseded vertex's edge closed as it is duplicated. Candidate
-  traversal must therefore start from **open, active** global `HAS_ATTRIBUTE` /
-  `IS_RELATED` edges, which excludes superseded copies for free. Traversing by
-  reachability instead would close a shared vertex's value edges and strip a live object's
-  value — the failure would only surface after the pre-migration branches were cleaned up.
+  global edge, with the superseded vertex's edge closed as it is duplicated. Protection here
+  belongs to the retention predicate, which reads **every** node vertex linked to the field and
+  retains it while any of them is live on some branch (FR-011); a superseded copy therefore
+  cannot cost a live object its value. The candidate anchor is a separate concern: starting from
+  open, active global edges at the runtime enforcement points buys selectivity and idempotence,
+  and the repair migration deliberately widens it to closed-but-active edges (FR-011a) without
+  weakening the protection. (Amended 2026-08-17 with FR-011: the original attributed same-UUID
+  protection to the anchor, which testing disproved.)
 - **Shared attribute values.** `AttributeValue` vertices are de-duplicated by value, so
   retirement must never delete one that any other attribute still references. Deleting one
   left with no references at all is permitted but not required.
@@ -318,14 +324,17 @@ each is independently developable, testable, and demonstrable.
   1. the owner's latest effective deletion time where one is derivable from its existence edges;
   2. otherwise the latest `to` among the vertex's already-closed owning edges — the case a schema
      field removal leaves behind, where the owner is still live;
-  3. where neither is derivable the candidate MUST be left alone, not stamped with the run time.
+  3. where neither is derivable the run time is the fallback, and only there.
 
   At the runtime enforcement points the caller's own timestamp already satisfies (1). *Verify:
   build two orphans deleted at different times, run the repair pass once, and assert each carries
   its own stamp and not the run time.* (Amended 2026-08-17, replacing "the migration run time only
-  where none does": stamping the run time would land the close inside the window of every branch
-  forked before the upgrade, which FR-014 forbids, and the no-stamp case coincides with the
-  hard-delete case where the stamp is moot.)
+  where none does": stamping the run time *by default* would land the close inside the window of
+  every branch forked before the upgrade, which FR-014 forbids. Amended again 2026-09-04, replacing
+  clause 3's "the candidate MUST be left alone": the shipped migration falls back to the run time
+  rather than skipping, and FR-014 still holds there — a candidate with neither an owner departure
+  nor a closed owning edge on record is one no branch resolves as live, so that close shifts no
+  branch's view.)
 - **FR-016**: The repair migration MUST close the global property edges **and the owning
   `HAS_ATTRIBUTE` / `IS_RELATED` edges** of vertices that no branch retains, including the
   half-closed shapes of FR-002a via the widened anchor of FR-011a, and MUST hard-delete
