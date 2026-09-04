@@ -1,3 +1,4 @@
+import re
 from unittest.mock import patch
 
 from prefect.settings import PREFECT_API_DATABASE_CONNECTION_URL, temporary_settings
@@ -6,6 +7,13 @@ from typer.testing import CliRunner
 from infrahub.cli import app
 
 runner = CliRunner()
+
+ANSI_STYLE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _plain(output: str) -> str:
+    """Strip the ANSI styling Rich adds when the terminal, or the CI runner, advertises colors."""
+    return ANSI_STYLE.sub("", output)
 
 
 def test_main_app() -> None:
@@ -29,8 +37,8 @@ def test_server_app() -> None:
 def test_db_reset_help() -> None:
     result = runner.invoke(app, ["db", "reset", "--help"])
     assert result.exit_code == 0
-    assert "--yes-graph" in result.stdout
-    assert "--yes-task-manager" in result.stdout
+    assert "--yes-graph" in _plain(result.stdout)
+    assert "--yes-task-manager" in _plain(result.stdout)
 
 
 def test_db_reset_without_any_configured_database() -> None:
