@@ -1,10 +1,10 @@
-"""Guard that every field of a repository manifest entry is accounted for in its fingerprint.
+"""Guard that every part of a repository manifest is accounted for in the fingerprints.
 
 The fingerprint is the signal that a definition's inputs changed. An output-affecting manifest
 field that never reaches the composition is a silent under-regeneration: the definition renders
-differently and nothing notices. These tests pin the classification of every manifest field, so
-adding a field to a repository config model fails here until it is either folded in or recorded
-as not affecting the output.
+differently and nothing notices. These tests pin the classification at both levels - the
+top-level sections of the manifest, and the fields of each definition entry - so adding either
+fails here until it is folded in or recorded as not affecting the output.
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ from infrahub_sdk.schema.repository import (
     InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
     InfrahubRepositoryArtifactDefinitionConfig,
+    InfrahubRepositoryConfig,
     InfrahubWatchConfig,
 )
 
@@ -38,7 +39,7 @@ from infrahub.git.fingerprint.registry import FingerprintKind, FingerprintRegist
 from tests.unit.git.fingerprint.conftest import build_composer
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
 
     from pydantic import BaseModel
 
@@ -239,6 +240,55 @@ DEFINITION_KINDS = [
         excluded={"name": NOT_AN_INPUT},
     ),
 ]
+
+
+# The definition entries above cover the fields *inside* a manifest section. A whole new
+# section is the other way a manifest can grow, and nothing in those per-entry checks would
+# notice one, so every top-level section is classified here as well.
+SECTIONS_WITH_A_DEFINITION_KIND: dict[str, type[BaseModel]] = {
+    "jinja2_transforms": InfrahubJinja2TransformConfig,
+    "python_transforms": InfrahubPythonTransformConfig,
+    "generator_definitions": InfrahubGeneratorDefinitionConfig,
+    "artifact_definitions": InfrahubRepositoryArtifactDefinitionConfig,
+}
+
+SECTIONS_FOLDED_ELSEWHERE = {
+    "queries": "the rendered query text is fingerprinted on its own and every definition folds that in",
+    "graphql_fragments": "fragment definitions are inlined into the rendered query text before it is fingerprinted",
+}
+
+LOADED_INTO_THE_GRAPH = "loaded into the graph as data; never read while producing a definition's output"
+
+SECTIONS_NOT_AN_INPUT = {
+    "check_definitions": "a check reports on a proposed change and renders no artifact or generator output",
+    "schemas": LOADED_INTO_THE_GRAPH,
+    "objects": LOADED_INTO_THE_GRAPH,
+    "menus": LOADED_INTO_THE_GRAPH,
+}
+
+
+def test_every_manifest_section_is_classified() -> None:
+    """Each top-level manifest section reaches a fingerprint, or is recorded as not an input.
+
+    A new section is the shape `graphql_fragments` had when it was added: a whole block of
+    manifest that the per-entry checks below cannot see.
+    """
+    classifications: list[Mapping[str, Any]] = [
+        SECTIONS_WITH_A_DEFINITION_KIND,
+        SECTIONS_FOLDED_ELSEWHERE,
+        SECTIONS_NOT_AN_INPUT,
+    ]
+    classified = {section for classification in classifications for section in classification}
+
+    assert classified == set(InfrahubRepositoryConfig.model_fields)
+    # A section classified twice would still satisfy the equality above while contradicting itself.
+    assert len(classified) == sum(len(classification) for classification in classifications)
+
+
+def test_every_section_with_a_definition_kind_has_its_fields_proven() -> None:
+    """A section said to be covered entry-by-entry really has a definition kind below."""
+    proven = {kind.config_model for kind in DEFINITION_KINDS}
+    assert proven == set(SECTIONS_WITH_A_DEFINITION_KIND.values())
 
 
 @pytest.mark.parametrize("kind", DEFINITION_KINDS, ids=lambda kind: kind.name)
