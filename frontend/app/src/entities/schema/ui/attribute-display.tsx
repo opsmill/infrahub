@@ -90,7 +90,7 @@ const ChoicesRow = ({
   return (
     <div className="grow space-y-1">
       {choices.map((choice) => {
-        const color = choice.color === "" ? "#f1f1f1" : choice.color;
+        const color = choice.color === "" ? "var(--content-strong)" : choice.color;
         return (
           <Accordion
             key={choice.name}

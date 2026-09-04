@@ -5,6 +5,7 @@ import { classNames } from "@/shared/utils/common";
 
 export function GroupCard({ className, ...props }: CardProps) {
   return (
+    // biome-ignore lint/nursery/noTailwindArbitraryValue: calc: clamps a panel to the smaller of a fixed max and the viewport; no single token expresses it
     <Card className={classNames("max-h-[min(47rem,calc(100vh-6rem))]", className)} {...props} />
   );
 }

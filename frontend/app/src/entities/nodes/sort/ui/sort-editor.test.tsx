@@ -93,29 +93,26 @@ describe("SortEditor", () => {
       field: "status__label",
       property: "label",
     },
-  ])("labels the read-only $field sub-property sort", async ({
-    kind,
-    attribute,
-    label,
-    field,
-    property,
-  }) => {
-    // GIVEN
-    const schema = generateNodeSchema({
-      order_by: [field],
-      attributes: [generateAttributeSchema({ name: attribute, label, kind })],
-      relationships: [],
-    });
-    const expectedLabel = `${label}${PEER_LABEL_SEPARATOR}${property}`;
+  ])(
+    "labels the read-only $field sub-property sort",
+    async ({ kind, attribute, label, field, property }) => {
+      // GIVEN
+      const schema = generateNodeSchema({
+        order_by: [field],
+        attributes: [generateAttributeSchema({ name: attribute, label, kind })],
+        relationships: [],
+      });
+      const expectedLabel = `${label}${PEER_LABEL_SEPARATOR}${property}`;
 
-    // WHEN
-    const component = await render(<SortEditor schema={schema} />);
+      // WHEN
+      const component = await render(<SortEditor schema={schema} />);
 
-    // THEN
-    await expect
-      .element(component.getByRole("button", { name: `${expectedLabel} Sort field` }))
-      .toBeVisible();
-  });
+      // THEN
+      await expect
+        .element(component.getByRole("button", { name: `${expectedLabel} Sort field` }))
+        .toBeVisible();
+    }
+  );
 
   test("changes the sort field from a row", async () => {
     // GIVEN

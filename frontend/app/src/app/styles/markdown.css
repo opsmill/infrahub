@@ -20,7 +20,7 @@
 
 /* Links */
 .markdown a {
-  color: #0969da;
+  color: var(--accent);
 }
 
 .markdown a:hover {
@@ -42,13 +42,13 @@
   margin: 0.67em 0;
   padding-bottom: 0.3em;
   font-size: 2rem;
-  border-bottom: 1px solid hsla(210, 18%, 87%, 1);
+  border-bottom: 1px solid var(--border);
 }
 
 .markdown h2 {
   padding-bottom: 0.3em;
   font-size: 1.5rem;
-  border-bottom: 1px solid hsla(210, 18%, 87%, 1);
+  border-bottom: 1px solid var(--border);
 }
 
 .markdown h3 {
@@ -65,21 +65,21 @@
 
 .markdown h6 {
   font-size: 0.85rem;
-  color: #656d76;
+  color: var(--foreground-muted);
 }
 
 .markdown hr {
   box-sizing: content-box;
   overflow: hidden;
-  border-bottom: 1px solid hsla(210, 18%, 87%, 1);
+  border-bottom: 1px solid var(--border);
   height: 0.25em;
   margin: 24px 0;
-  background-color: #e5e7eb;
+  background-color: var(--border);
 }
 
 .markdown blockquote {
-  color: #656d76;
-  border-left: 0.25em solid #e5e7eb;
+  color: var(--foreground-muted);
+  border-left: 0.25em solid var(--border);
   padding: 0 1em;
 }
 
@@ -90,8 +90,8 @@
 .markdown pre {
   padding: 16px;
   overflow: auto;
-  color: #1f2328;
-  background-color: #f6f8fa;
+  color: var(--foreground);
+  background-color: var(--content-muted);
   border-radius: 6px;
 }
 
@@ -104,7 +104,7 @@
 .markdown code {
   padding: 0.2em 0.4em;
   margin: 0;
-  background-color: rgba(175, 184, 193, 0.2);
+  background-color: var(--content-strong);
   border-radius: 6px;
   display: inline;
   white-space: pre-wrap;
@@ -129,13 +129,13 @@
 .markdown th,
 .markdown td {
   padding: 6px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
 }
 
 /* Miscellaneous */
 .markdown mark {
-  background-color: #fff8c5;
-  color: #1f2328;
+  background-color: var(--marked);
+  color: var(--foreground);
 }
 
 .markdown small {

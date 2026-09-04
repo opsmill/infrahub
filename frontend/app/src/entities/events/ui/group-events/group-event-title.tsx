@@ -19,7 +19,7 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactEl
               <Link
                 key={id}
                 to={constructPath(`/objects/${kind}/${id}`)}
-                className="max-w-[150px] shrink-0 truncate"
+                className="max-w-37.5 shrink-0 truncate"
               >
                 <NodeLabel key={id} id={id} branch={props.branch} />
               </Link>
@@ -58,7 +58,7 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactEl
               <Link
                 key={id}
                 to={constructPath(`/objects/${kind}/${id}`)}
-                className="max-w-[150px] shrink-0 truncate"
+                className="max-w-37.5 shrink-0 truncate"
               >
                 <NodeLabel key={id} id={id} branch={props.branch} />
               </Link>
@@ -95,7 +95,7 @@ export const GroupEventTitle = (props: GroupEvent) => {
   return (
     <div className="flex w-full flex-wrap items-center gap-1 text-sm">
       {account_id ? (
-        <span className="max-w-[200px] shrink-0 truncate">
+        <span className="max-w-50 shrink-0 truncate">
           <NodeLabel id={account_id} kind="CoreAccount" branch={props.branch} />
         </span>
       ) : (

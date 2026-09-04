@@ -24,6 +24,7 @@ function SchemaLayout() {
   const templates = useAtomValue(templateSchemasAtom);
 
   return (
+    // biome-ignore lint/nursery/noTailwindArbitraryValue: calc: derived from the parent's height, so the value is not a constant
     <Content.Card className="h-[calc(100%-1rem)]">
       <Content.CardTitle
         title="Schema"

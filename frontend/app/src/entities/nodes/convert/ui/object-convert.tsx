@@ -29,7 +29,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
   const [isOpen, setIsOpen] = useState(false);
 
   if (isPending) {
-    return <LoadingIndicator className="h-[calc(100vh-10.5rem)]" />;
+    return <LoadingIndicator className="h-page-body" />;
   }
 
   if (error) {

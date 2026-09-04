@@ -32,7 +32,7 @@ export const PopoverContent = ({
         align={align}
         sideOffset={sideOffset}
         className={classNames(
-          "z-50 max-w-[100vw] rounded-md border bg-popover p-2 text-sm shadow-xl outline-hidden backdrop-blur-lg",
+          "z-50 max-w-screen rounded-md border bg-popover p-2 text-sm shadow-xl outline-hidden backdrop-blur-lg",
           "data-[state=open]:fade-in-0 data-[state=open]:animate-in",
           "data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out",
           "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",

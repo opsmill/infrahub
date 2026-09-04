@@ -88,7 +88,7 @@ const ResourceAllocationPageSkeleton = () => {
   const { resourcePoolId } = useParams();
 
   return (
-    <Card className="sticky right-0 ml-1 w-full min-w-[450px] max-w-[606px]">
+    <Card className="sticky right-0 ml-1 w-full min-w-112.5 max-w-151.5">
       <CardContent>
         <div className="flex items-center gap-1 pb-2">
           <h3 className="font-semibold">Allocated resources</h3>
