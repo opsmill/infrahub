@@ -3,6 +3,9 @@ description: Classifies newly opened issues with a component (group/*) and, for 
 on:
   issues:
     types: [opened]
+  # Lets a maintainer re-run classification on one issue, and is what
+  # `gh aw trial` needs to exercise this workflow without merging it.
+  workflow_dispatch:
   github-app:
     client-id: ${{ secrets.GH_AW_APP_ID }}
     private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
