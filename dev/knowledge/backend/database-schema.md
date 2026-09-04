@@ -384,7 +384,7 @@ These filters apply to *any* query whose contract mentions "active" or "current"
 
 Neo4j rejects some writes with errors that are safe to replay on a fresh transaction (a lock contention deadlock, or an entity that a concurrent transaction removed mid-statement). Infrahub retries these at the transaction layer with the `retry_db_transaction` decorator.
 
-`retry_db_transaction(name=...)` wraps an `async` method that owns its transaction. On a retriable error — `is_retriable_db_error` accepts `TransientError` (deadlock, lock timeout) and `EntityNotFound`, nothing else — it re-runs the whole method after an exponential backoff with jitter, configured by the `INFRAHUB_DB_RETRY_*` settings; a non-retriable error propagates immediately.
+`retry_db_transaction(name=...)` wraps an `async` method that owns its transaction. On a retriable error — `is_retriable_db_error` accepts `TransientError` (deadlock, lock timeout) and `ClientError` with code `Neo.ClientError.Statement.EntityNotFound`, nothing else — it re-runs the whole method after an exponential backoff with jitter, configured by the `INFRAHUB_DB_RETRY_*` settings; a non-retriable error propagates immediately.
 
 **A new session escapes the caller's transaction.** `start_transaction()` carries the current session forward, but `start_session()` builds a fresh session straight from the driver — writes made through it commit on their own, whatever transaction the caller holds, so a caller rollback keeps them. Code handed a `db` runs its queries on that `db`; a helper that opens per-task sessions for concurrency must fall back to running sequentially on the caller's `db` when `db.is_transaction`.
 
