@@ -265,9 +265,25 @@ def test_check_connectivity_ignores_cwd_git_pointer(tmp_path: Path, monkeypatch:
     InfrahubRepository.check_connectivity(name="test", url=f"file://{source_dir}")
 
 
-def test_raise_if_branches_failed_empty_list_does_not_raise() -> None:
-    repo = InfrahubRepository(id=UUIDT.new(), name="test-repo")
-    repo.raise_if_branches_failed([])
+@pytest.fixture
+def stub_repo() -> InfrahubRepository:
+    # Spell out all fields that carry positional defaults in Field() so mypy sees them.
+    return InfrahubRepository(
+        id=UUIDT.new(),
+        name="test-repo",
+        default_branch_name=None,
+        location=None,
+        has_origin=False,
+        cache_repo=None,
+        is_read_only=False,
+        internal_status="active",
+        reinitialized=False,
+        infrahub_branch_name=None,
+    )
+
+
+def test_raise_if_branches_failed_empty_list_does_not_raise(stub_repo: InfrahubRepository) -> None:
+    stub_repo.raise_if_branches_failed([])
 
 
 @dataclass
@@ -304,17 +320,17 @@ class RaiseBranchesCase:
     ],
     ids=lambda c: c.name,
 )
-def test_raise_if_branches_failed_error_message(case: RaiseBranchesCase) -> None:
-    repo = InfrahubRepository(id=UUIDT.new(), name="test-repo")
+def test_raise_if_branches_failed_error_message(stub_repo: InfrahubRepository, case: RaiseBranchesCase) -> None:
     with pytest.raises(RepositoryError, match=rf"^{re.escape(case.expected_message)}$"):
-        repo.raise_if_branches_failed(case.failed_imports)
+        stub_repo.raise_if_branches_failed(case.failed_imports)
 
 
-def test_raise_if_branches_failed_logs_structured_fields(caplog: pytest.LogCaptureFixture) -> None:
-    repo = InfrahubRepository(id=UUIDT.new(), name="test-repo")
+def test_raise_if_branches_failed_logs_structured_fields(
+    stub_repo: InfrahubRepository, caplog: pytest.LogCaptureFixture
+) -> None:
     failed = FailedImport(branch_name="branch01", step=ImportStep.COLLECTION, reason="schema validation failed")
     with caplog.at_level(logging.WARNING, logger="infrahub.tasks"), pytest.raises(RepositoryError):
-        repo.raise_if_branches_failed([failed])
+        stub_repo.raise_if_branches_failed([failed])
     assert len(caplog.records) == 1
     attrs = vars(caplog.records[0])
     assert attrs["branch"] == "branch01"
