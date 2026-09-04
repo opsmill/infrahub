@@ -86,9 +86,15 @@ class QueryImpactClassifier:
     depends_on_everything: bool = False
 
     def assess(self, diff_summary: list[NodeDiff]) -> ImpactAssessment:
-        if self.depends_on_everything or not self.only_has_unique_targets:
+        if self.depends_on_everything:
+            # The read surface cannot be pinned to specific kinds: the change that moves the derived
+            # value can land on a peer the read set never names. Widen unconditionally rather than
+            # risk leaving the reader stale.
+            return EveryTarget()
+
+        if not self.only_has_unique_targets:
             # A changed node cannot be traced back to the targets reading it: the query answers from
-            # an unbounded set, or reads a derived value moved by a peer the read set cannot name.
+            # an unbounded set.
             has_relevant_change = bool(
                 self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind)
             )

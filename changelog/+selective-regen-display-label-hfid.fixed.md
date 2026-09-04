@@ -1,1 +1,0 @@
-Artifacts and Generators whose query reads an object's display label or human-friendly ID are now regenerated when a change to a backing field moves that value, instead of being skipped and left stale after a merge.

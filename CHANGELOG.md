@@ -11,6 +11,17 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.11.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.2) - 2026-09-03
+
+### Fixed
+
+- In Account settings → Preferences, the date format and timezone fields now preview the value that saving would produce, including the organisation default that takes over when a personal override is cleared. The information icon describes the value you are about to save rather than the one already stored. ([#10200](https://github.com/opsmill/infrahub/issues/10200))
+- An SSO user's account can be deleted without leaving broken data behind. Deleting an account now also removes its external identities, its API tokens and its refresh tokens, which were left behind before. The ones left by an earlier release are removed on upgrade. ([#10304](https://github.com/opsmill/infrahub/issues/10304))
+- Deleting a branch now purges its settled tasks, so a new branch created with the same name no longer inherits the deleted branch's completed tasks. ([#10474](https://github.com/opsmill/infrahub/issues/10474))
+- A branch that cannot be refreshed into a worker's in-memory registry no longer aborts the periodic branch refresh. The failure is logged and the remaining branches are still refreshed.
+- Artifacts and Generators whose query reads an object's display label or human-friendly ID are now regenerated when a change to a backing field moves that value, instead of being skipped and left stale after a merge.
+- Update the in-memory cache for branches after a branch change is saved to prevent the cache diverging from the database. The BranchUpdate mutation and the Prefect task to run database migrations against a branch are both fixed.
+
 ## [Infrahub - v1.11.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.1) - 2026-08-31
 
 ### Added

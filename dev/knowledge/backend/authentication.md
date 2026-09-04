@@ -72,6 +72,22 @@ Emission goes through the `AutoCreateEventEmitter` ABC. Two implementations exis
 
 See [Events System](events.md) for the broader event architecture and [`docs/docs/reference/infrahub-events/group.mdx`](../../../docs/docs/reference/infrahub-events/group.mdx) for full event payload shapes.
 
+## Account Lifecycle and Internal Children
+
+An account owns three kinds of bookkeeping node in the `Internal` namespace, each with a mandatory `account` relationship:
+
+| Kind | Identifier |
+|------|------------|
+| `InternalExternalIdentity` | `account__external_identity` |
+| `InternalAccountToken` | `account__token` |
+| `InternalRefreshToken` | `account__refreshtoken` |
+
+All three are declared on the account side with `on_delete=CASCADE`, so a delete takes them with it. All three must be, not just the ones that cause visible trouble: a mandatory relationship that is not cascaded becomes a blocking dependent, and a refresh token exists for every account that has ever logged in, which would make those accounts impossible to delete.
+
+These three are the only mandatory relationships declared on any `Internal` kind, which is why `NodeDeleteValidator` can resolve peers without excluding the namespace at all. The `Internal` exclusion remains on the public GraphQL relationship query, where it keeps bookkeeping nodes out of the API.
+
+The cascade is why the SSO login path does not handle an identity whose account is gone: it cannot happen, and repairing data during a login would hide the inconsistency.
+
 ## Configuration
 
 User-facing keys live under `security.*` in `config.py`:
