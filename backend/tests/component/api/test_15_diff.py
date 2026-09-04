@@ -10,7 +10,12 @@ from infrahub.core.diff.payload_builder import get_display_labels, get_display_l
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreGenericRepository
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.git.models import GitDiffNamesOnlyResponse
+from infrahub.workflows.catalogue import GIT_REPOSITORIES_DIFF_NAMES_ONLY
+from tests.adapters.workflow import WorkflowRecorder
 
 
 async def test_get_display_labels_per_kind(
@@ -252,3 +257,52 @@ async def test_diff_files_anonymous_access(
         response = client.get("/api/diff/files?branch=branch3")
 
     assert response.status_code == 200 if allow_anonymous_access else 401
+
+
+async def test_diff_files_reports_repository_identity_and_files(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    create_test_admin: Node,
+    repos_in_main: dict[str, Node],
+    workflow_recorder: WorkflowRecorder,
+) -> None:
+    """The endpoint groups the changed files under their repository, named by its display label."""
+    workflow_recorder.execute_results[GIT_REPOSITORIES_DIFF_NAMES_ONLY.name] = GitDiffNamesOnlyResponse(
+        files_changed=["readme.md"], files_removed=[], files_added=[]
+    )
+
+    branch2 = await create_branch(branch_name="branch2", db=db)
+
+    repo01 = await NodeManager.get_one(
+        db=db,
+        id=repos_in_main["repo01"].id,
+        kind=CoreGenericRepository,
+        branch=branch2,
+        raise_on_error=True,
+    )
+    repo01.commit.value = "dddddddddd"
+    # Node.save stamps its own timestamp, so the write and both range boundaries are spaced
+    # explicitly to keep them off the same microsecond, where a boundary becomes a sort-order tie.
+    base = Timestamp()
+    await repo01.save(db=db, at=base.add(seconds=20))
+
+    query = f"branch=branch2&time_from={base.add(seconds=10).to_string()}&time_to={base.add(seconds=30).to_string()}"
+
+    with client:
+        response = client.get(f"/api/diff/files?{query}", headers=admin_headers)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "branch2": {
+            repo01.id: {
+                "branch": "branch2",
+                "id": repo01.id,
+                "display_name": "repo01",
+                "commit_from": "aaaaaaaaaaa",
+                "commit_to": "dddddddddd",
+                "files": [{"branch": "branch2", "location": "readme.md", "action": "updated"}],
+            }
+        }
+    }

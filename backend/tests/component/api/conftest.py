@@ -16,6 +16,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_database, build_message_bus, build_workflow
+from tests.adapters.workflow import WorkflowRecorder
 from tests.conftest import TestHelper
 from tests.helpers.task_manager import setup_task_manager_once
 
@@ -59,6 +60,16 @@ async def workflow_local(dependency_provider: Provider) -> AsyncGenerator[Workfl
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()
     await setup_task_manager_once()
+    config.OVERRIDE.workflow = workflow
+    with dependency_provider.scope(build_workflow, lambda: workflow):
+        yield workflow
+    config.OVERRIDE.workflow = original
+
+
+@pytest.fixture
+def workflow_recorder(dependency_provider: Provider) -> Generator[WorkflowRecorder, None, None]:
+    original = config.OVERRIDE.workflow
+    workflow = WorkflowRecorder()
     config.OVERRIDE.workflow = workflow
     with dependency_provider.scope(build_workflow, lambda: workflow):
         yield workflow

@@ -6,11 +6,9 @@ from typing import TYPE_CHECKING
 
 from typing_extensions import Self
 
-from infrahub.core.constants import (
-    DiffAction,
-    InfrahubKind,
-)
+from infrahub.core.constants import DiffAction
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreGenericRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import DiffFromRequiredOnDefaultBranchError, DiffRangeValidationError
 
@@ -25,7 +23,6 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
     from ..branch import Branch
-    from ..node import Node
 
 
 class BranchDiffer:
@@ -141,7 +138,8 @@ class BranchDiffer:
     async def get_files_repository(
         self,
         branch_name: str,
-        repository: Node,
+        repository: CoreGenericRepository,
+        repository_display_label: str,
         commit_from: str,
         commit_to: str,
     ) -> list[FileDiffElement]:
@@ -150,7 +148,7 @@ class BranchDiffer:
 
         model = GitDiffNamesOnly(
             repository_id=repository.id,
-            repository_name=repository.name.value,  # type: ignore[attr-defined]
+            repository_name=repository.name.value,
             repository_kind=repository.get_kind(),
             first_commit=commit_from,
             second_commit=commit_to,
@@ -172,7 +170,8 @@ class BranchDiffer:
                     FileDiffElement(
                         branch=branch_name,
                         location=filename,
-                        repository=repository,
+                        repository_id=repository.id,
+                        repository_display_label=repository_display_label,
                         action=diff_action,
                         commit_to=commit_to,
                         commit_from=commit_from,
@@ -188,13 +187,13 @@ class BranchDiffer:
         repos_to = {
             repo.id: repo
             for repo in await NodeManager.query(
-                schema=InfrahubKind.GENERICREPOSITORY, db=self.db, branch=branch, at=self.diff_to
+                schema=CoreGenericRepository, db=self.db, branch=branch, at=self.diff_to
             )
         }
         repos_from = {
             repo.id: repo
             for repo in await NodeManager.query(
-                schema=InfrahubKind.GENERICREPOSITORY, db=self.db, branch=branch, at=self.diff_from
+                schema=CoreGenericRepository, db=self.db, branch=branch, at=self.diff_from
             )
         }
 
@@ -203,15 +202,27 @@ class BranchDiffer:
         repo_ids_common = set(repos_to.keys()) & set(repos_from.keys())
 
         for repo_id in repo_ids_common:
-            if repos_to[repo_id].commit.value == repos_from[repo_id].commit.value:  # type: ignore[attr-defined]
+            commit_from = repos_from[repo_id].commit.value
+            commit_to = repos_to[repo_id].commit.value
+
+            # A repository without a commit at one end of the range has no tree to compare against,
+            # so there is no file diff to report for it.
+            if not commit_from or not commit_to:
                 continue
+
+            if commit_from == commit_to:
+                continue
+
+            # Resolved here rather than inside the gathered coroutines, which share one database session.
+            repository_display_label = await repos_to[repo_id].get_display_label(db=self.db)
 
             tasks.append(
                 self.get_files_repository(
                     branch_name=branch.name,
                     repository=repos_to[repo_id],
-                    commit_from=repos_from[repo_id].commit.value,  # type: ignore[attr-defined]
-                    commit_to=repos_to[repo_id].commit.value,  # type: ignore[attr-defined]
+                    repository_display_label=repository_display_label,
+                    commit_from=commit_from,
+                    commit_to=commit_to,
                 )
             )
 
