@@ -2,7 +2,6 @@ import { Link } from "react-router";
 
 import InfrahubWithTextLogo from "@/assets/Infrahub-SVG-hori.svg";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import {
   Sidebar,
   SidebarContent,
@@ -14,6 +13,7 @@ import {
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
+import { useConstructPath } from "@/entities/navigation/ui/hooks/use-construct-path";
 import { SearchAnywhere } from "@/entities/navigation/ui/search-anywhere/search-anywhere";
 import { SidebarMenu } from "@/entities/navigation/ui/sidebar/sidebar-menu";
 import { AccountMenu } from "@/entities/user-profile/ui/account-menu";
@@ -39,7 +39,9 @@ export function AppSidebar() {
   );
 }
 
-function AppSidebarHeader() {
+export function AppSidebarHeader() {
+  const constructPath = useConstructPath();
+
   return (
     <div className="relative h-8 transition-[height] duration-200 ease-linear group-data-[state=collapsed]:h-17.5">
       <Link
