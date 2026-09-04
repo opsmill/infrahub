@@ -1,4 +1,5 @@
 import pytest
+from prefect.server.database.configurations import AioSqliteConfiguration, AsyncPostgresConfiguration
 from prefect.settings import PREFECT_API_DATABASE_CONNECTION_URL, temporary_settings
 
 from infrahub.cli.db_commands.reset import (
@@ -8,6 +9,7 @@ from infrahub.cli.db_commands.reset import (
     get_task_manager_database_dialect,
     is_graph_database_configured,
     mask_connection_url_password,
+    task_manager_database,
 )
 from infrahub.config import DatabaseSettings
 
@@ -96,3 +98,18 @@ class TestGetConfiguredTaskManagerDatabaseUrl:
         connection_url = "postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect"
         with temporary_settings(updates={PREFECT_API_DATABASE_CONNECTION_URL: connection_url}):
             assert get_configured_task_manager_database_url() == connection_url
+
+
+class TestTaskManagerDatabase:
+    def test_binds_each_interface_to_its_own_url(self) -> None:
+        """Prefect pins the first database configuration per process; every later URL must still win."""
+        sqlite_url = "sqlite+aiosqlite:////tmp/first.db"
+        postgres_url = "postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect"
+
+        with task_manager_database(connection_url=sqlite_url) as sqlite_db:
+            assert isinstance(sqlite_db.database_config, AioSqliteConfiguration)
+            assert sqlite_db.database_config.connection_url == sqlite_url
+
+        with task_manager_database(connection_url=postgres_url) as postgres_db:
+            assert isinstance(postgres_db.database_config, AsyncPostgresConfiguration)
+            assert postgres_db.database_config.connection_url == postgres_url

@@ -55,7 +55,7 @@ from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.utils import count_nodes
+from infrahub.core.utils import count_nodes, delete_all_nodes
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import DatabaseType
@@ -72,7 +72,6 @@ from .db_commands.reset import (
     get_task_manager_database_dialect,
     is_graph_database_configured,
     mask_connection_url_password,
-    reset_graph_database,
     reset_task_manager_database,
     task_manager_database,
 )
@@ -520,7 +519,7 @@ async def reset_cmd(
                     console.print("[yellow]Task manager database: skipped.[/yellow]")
 
             if dbdriver is not None and reset_graph:
-                await reset_graph_database(db=dbdriver)
+                await delete_all_nodes(db=dbdriver)
                 console.print(f"[green]Graph database reset: {vertex_count} vertices deleted.[/green]")
 
             if task_db is not None and reset_task_manager:

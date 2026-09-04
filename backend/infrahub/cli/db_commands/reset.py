@@ -18,8 +18,6 @@ from prefect.server.utilities.database import get_dialect
 from prefect.settings import PREFECT_API_DATABASE_CONNECTION_URL, get_current_settings, temporary_settings
 from sqlalchemy.exc import ArgumentError
 
-from infrahub.database import DatabaseType
-
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
@@ -29,15 +27,6 @@ if TYPE_CHECKING:
     from prefect.server.database.query_components import BaseQueryComponents
 
     from infrahub.config import DatabaseSettings
-    from infrahub.database import InfrahubDatabase
-
-GRAPH_RESET_BATCH_SIZE = 10_000
-"""Vertices detached and deleted per transaction.
-
-Each batch commits on its own, so a graph of any size can be wiped without a single transaction
-having to hold every deleted vertex and edge in the heap.
-"""
-
 
 GRAPH_DATABASE_CONNECTION_FIELDS = frozenset(
     {"db_type", "protocol", "username", "password", "address", "port", "database"}
@@ -50,31 +39,6 @@ class TaskManagerDatabaseDialect(StrEnum):
 
     POSTGRESQL = "postgresql"
     SQLITE = "sqlite"
-
-
-async def reset_graph_database(db: InfrahubDatabase, batch_size: int = GRAPH_RESET_BATCH_SIZE) -> None:
-    """Delete every vertex and edge of the graph database.
-
-    Indexes and constraints are left in place: the server recreates the indexes idempotently on
-    startup, and constraints are an operator's opt-in choice rather than data.
-
-    Args:
-        db: Database connection; must not be inside an explicit transaction, because Neo4j only
-            accepts ``CALL ... IN TRANSACTIONS`` in an auto-commit query.
-        batch_size: Number of vertices deleted per transaction on Neo4j. Memgraph does not support
-            batched transactions and deletes everything in one statement.
-
-    """
-    if db.db_type is DatabaseType.MEMGRAPH:
-        query = "MATCH (n) DETACH DELETE n"
-    else:
-        query = """
-MATCH (n)
-CALL (n) {
-    DETACH DELETE n
-} IN TRANSACTIONS OF %(batch_size)s ROWS
-""" % {"batch_size": batch_size}
-    await db.execute_query(query=query, name="reset_graph_database")
 
 
 def is_graph_database_configured(database_settings: DatabaseSettings) -> bool:
