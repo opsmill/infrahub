@@ -24,7 +24,7 @@ Working from the [Data Importer](https://docs.infrahub.app/skills/skills-referen
 
 The rows are translated into the same object YAML format documented on [Load data using YAML file](./load-from-yaml).
 
-Your assistant then checks its own output against the object-file rules and confirms every relationship reference resolves, before it contacts a server. Only once that passes does it create a fresh branch, run `infrahubctl object validate` against it to catch schema-resolution errors, and then `infrahubctl object load` to put the objects on the branch. Your assistant hands that branch back to you and never merges it.
+Your assistant then checks its own output against the object-file rules and confirms every relationship reference it can — checking against the batch's own files and any live objects it already looked up — before it contacts a server. When only local schema files are available, it can confirm that references within the batch line up, but it can't tell whether a reference to an object that only exists live on the server is valid; that still needs a server-side check. Only once the local check passes does it create a fresh branch, run `infrahubctl object validate` against it to catch schema-resolution errors — including any reference that still doesn't resolve — and then `infrahubctl object load` to put the objects on the branch. Your assistant hands that branch back to you and never merges it.
 
 Where a column maps to nothing in your schema, your assistant stops and asks rather than guessing.
 
@@ -42,7 +42,7 @@ Your assistant maps each column to a schema attribute or relationship and writes
 
 ```yaml title="objects/001-devices.yml"
 # Generated from inventory.csv
-# sha256: 3f2a9c1e...  generated: 2026-08-13T10:04:00Z
+# sha256: <hash of inventory.csv>  generated: <UTC timestamp>
 ---
 apiVersion: infrahub.app/v1
 kind: Object
@@ -71,7 +71,7 @@ Review the loaded objects in the web interface, then open a Proposed Change to m
 
 An unmapped column stops the import instead of guessing at a match. Resolve the mismatch — rename the column, or add the attribute to your schema — and run it again, rather than working around it. Check the branch name before merging; `csv-import-YYYYMMDD-HHMM` is the default, not a required format.
 
-Loading is not transactional across files. If one file in a large batch fails partway through, the branch already has the earlier files applied. Discard the branch and run it again with a fresh name rather than repairing the partial state by hand.
+Loading is not transactional across files. If one file in a large batch fails partway through, the branch already has the earlier files applied. [Delete the branch](../branches/delete.mdx) and run it again with a fresh name rather than repairing the partial state by hand.
 
 ## Related
 

@@ -35,10 +35,16 @@ Claude Code detects the skills and loads the relevant one on its own. On the oth
 
 ## 2. Install the Infrahub Skills
 
-The installer copies the skills into your project, so run it from the repository where your Infrahub schema, object files, and Python components are kept.
+The installer copies the skills into your project by default, so run it from the repository where your Infrahub schema, object files, and Python components are kept. It detects your assistant and places the skills in the directory it reads from — `.claude/skills/` for Claude Code, `.agents/skills/` for most other supported assistants:
 
 ```bash
 npx skills add opsmill/infrahub-skills
+```
+
+Confirm where it landed, and that `infrahub-common` is among them:
+
+```bash
+npx skills list
 ```
 
 In Claude Code, you can install them as a plugin instead:
@@ -48,15 +54,15 @@ In Claude Code, you can install them as a plugin instead:
 /plugin install infrahub@opsmill
 ```
 
-To copy them in manually:
+To copy them in manually, place them in the same directory your assistant would use above (`.agents/skills/` for most assistants, `.claude/skills/` for Claude Code):
 
 ```bash
 git clone https://github.com/opsmill/infrahub-skills.git
-cp -r infrahub-skills/skills /path/to/your-project/
+cp -r infrahub-skills/skills/* /path/to/your-project/.agents/skills/
 rm -rf infrahub-skills
 ```
 
-Keep `skills/infrahub-common/` whichever route you take. It holds the shared reference material the other skills depend on.
+Keep the `infrahub-common` skill directory, wherever your installer placed it. It holds the shared reference material the other skills depend on.
 
 ## 3. Connect the MCP server
 
