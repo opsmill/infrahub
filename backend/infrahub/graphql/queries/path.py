@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, Field, InputObjectType, Int, List, NonNull, ObjectType, String
@@ -9,20 +8,24 @@ from graphql import GraphQLError
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
+from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
 from infrahub.graph_traversal.executor import PathTraversalExecutor
 from infrahub.graph_traversal.planning.models import TerminalById, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
 from infrahub.graph_traversal.runner import DefaultQueryRunner
+from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.node import Node
-    from infrahub.core.schema import MainSchemaTypes
+    from infrahub.core.schema import MainSchemaTypes, RelationshipSchema
     from infrahub.graph_traversal.results import PathData
     from infrahub.graphql.initialization import GraphqlContext
+
+log = get_logger()
 
 
 MAX_PATHS = 100
@@ -192,47 +195,100 @@ def _node_payload(node_id: str, kind: str, labels_map: dict[str, dict[str, Any]]
     }
 
 
+def _get_schema_or_none(graphql_context: GraphqlContext, kind: str) -> MainSchemaTypes | None:
+    try:
+        return graphql_context.db.schema.get(name=kind, branch=graphql_context.branch, duplicate=False)
+    except SchemaNotFoundError:
+        return None
+
+
+def _candidate_relationships(
+    schema: MainSchemaTypes, identifier: str, other_kind: str, other_schema: MainSchemaTypes | None
+) -> list[RelationshipSchema]:
+    """Relationships declared under ``identifier``, narrowed to those whose peer covers the other endpoint."""
+    candidates = schema.get_relationships_by_identifier(id=identifier)
+    other_kinds = {other_kind}
+    if isinstance(other_schema, NodeSchema):
+        other_kinds.update(other_schema.inherit_from)
+    matching = [candidate for candidate in candidates if candidate.peer in other_kinds]
+    return matching or candidates
+
+
+def select_hop_relationships(
+    *,
+    from_schema: MainSchemaTypes | None,
+    to_schema: MainSchemaTypes | None,
+    from_kind: str,
+    to_kind: str,
+    identifier: str,
+) -> tuple[RelationshipSchema | None, RelationshipSchema | None]:
+    """Pick the relationship each end of a hop holds for ``identifier``.
+
+    A hierarchy declares ``parent`` and ``children`` under one identifier, one per end of an
+    edge, so the two ends must mirror each other's direction. Candidates on each end are
+    narrowed by peer kind first, then paired by mirrored direction. When several mirrored
+    pairs remain (a self-referential hierarchy), the first pair is a guess between
+    schema-equivalent sides; the schema alone cannot tell the ends apart.
+    """
+    from_candidates = (
+        _candidate_relationships(schema=from_schema, identifier=identifier, other_kind=to_kind, other_schema=to_schema)
+        if from_schema
+        else []
+    )
+    to_candidates = (
+        _candidate_relationships(schema=to_schema, identifier=identifier, other_kind=from_kind, other_schema=from_schema)
+        if to_schema
+        else []
+    )
+
+    pairs = [
+        (from_rel, to_rel)
+        for from_rel in from_candidates
+        for to_rel in to_candidates
+        if from_rel.direction.neighbor_direction == to_rel.direction
+    ]
+    if not pairs:
+        return (
+            from_candidates[0] if from_candidates else None,
+            to_candidates[0] if to_candidates else None,
+        )
+    if len(pairs) > 1:
+        log.warning(
+            "Several relationship pairs mirror each other for this hop, keeping the first one",
+            from_kind=from_kind,
+            to_kind=to_kind,
+            identifier=identifier,
+        )
+    return pairs[0]
+
+
 def _resolve_relationship(
     graphql_context: GraphqlContext, identifier: str, from_kind: str, to_kind: str
 ) -> dict[str, str]:
     """Project a hop's relationship identifier into bidirectional API fields.
 
-    Look up the schema for both endpoints and find the RelationshipSchema with
-    the given identifier on each side. Falls back to the identifier when schema
-    lookup fails (e.g. legacy data or unknown kinds).
+    Falls back to the identifier when schema lookup fails (e.g. legacy data or
+    unknown kinds).
     """
-    from_rel_name = identifier
-    from_label = identifier
-    to_rel_name = identifier
-    to_label = identifier
+    from_rel, to_rel = select_hop_relationships(
+        from_schema=_get_schema_or_none(graphql_context=graphql_context, kind=from_kind),
+        to_schema=_get_schema_or_none(graphql_context=graphql_context, kind=to_kind),
+        from_kind=from_kind,
+        to_kind=to_kind,
+        identifier=identifier,
+    )
+
     kind = ""
-
-    with contextlib.suppress(SchemaNotFoundError):
-        from_schema: MainSchemaTypes = graphql_context.db.schema.get(
-            name=from_kind, branch=graphql_context.branch, duplicate=False
-        )
-        from_rel = from_schema.get_relationship_by_identifier(id=identifier, raise_on_error=False)
-        if from_rel is not None:
-            from_rel_name = from_rel.name
-            from_label = from_rel.label or from_rel.name
-            kind = from_rel.kind.value if hasattr(from_rel.kind, "value") else str(from_rel.kind)
-
-    with contextlib.suppress(SchemaNotFoundError):
-        to_schema: MainSchemaTypes = graphql_context.db.schema.get(
-            name=to_kind, branch=graphql_context.branch, duplicate=False
-        )
-        to_rel = to_schema.get_relationship_by_identifier(id=identifier, raise_on_error=False)
-        if to_rel is not None:
-            to_rel_name = to_rel.name
-            to_label = to_rel.label or to_rel.name
-            if not kind:
-                kind = to_rel.kind.value if hasattr(to_rel.kind, "value") else str(to_rel.kind)
+    if from_rel is not None:
+        kind = from_rel.kind.value
+    elif to_rel is not None:
+        kind = to_rel.kind.value
 
     return {
-        "from_rel": from_rel_name,
-        "from_label": from_label,
-        "to_rel": to_rel_name,
-        "to_label": to_label,
+        "from_rel": from_rel.name if from_rel else identifier,
+        "from_label": (from_rel.label or from_rel.name) if from_rel else identifier,
+        "to_rel": to_rel.name if to_rel else identifier,
+        "to_label": (to_rel.label or to_rel.name) if to_rel else identifier,
         "kind": kind,
     }
 
