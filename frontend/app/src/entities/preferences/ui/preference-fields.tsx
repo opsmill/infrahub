@@ -133,17 +133,9 @@ export function DateFormatField({
           />
         </div>
         <div className="min-w-0 flex-1 truncate">
-<<<<<<< ours
-          {selected && (
-            <p id={exampleId} className="truncate text-foreground-muted text-xs">
-              Example: {example(selected)}
-            </p>
-          )}
-=======
-          <p id={exampleId} className="truncate text-gray-500 text-xs">
+          <p id={exampleId} className="truncate text-foreground-muted text-xs">
             Example: {example}
           </p>
->>>>>>> theirs
         </div>
         {message && <SourceInfo message={message} />}
       </Row>
