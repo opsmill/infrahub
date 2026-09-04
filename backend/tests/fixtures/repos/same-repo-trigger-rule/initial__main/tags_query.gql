@@ -1,0 +1,11 @@
+query tags_query {
+  BuiltinTag {
+    edges {
+      node {
+        name {
+          value
+        }
+      }
+    }
+  }
+}

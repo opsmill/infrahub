@@ -47,6 +47,12 @@ async def load_infrastructure_schema(db: InfrahubDatabase) -> None:
     await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)
 
 
+@pytest.fixture(scope="session")
+def git_repo_same_repo_trigger_rule(git_sources_dir: Path) -> FileRepo:
+    """Repository whose objects reference a generator definition declared in the same repository."""
+    return FileRepo(name="same-repo-trigger-rule", sources_directory=git_sources_dir)
+
+
 class TestInfrahubClient:
     @pytest.fixture(scope="class")
     async def workflow_local(self, prefect_test_fixture: None) -> AsyncGenerator[WorkflowLocalExecution, None]:
@@ -365,6 +371,50 @@ class TestInfrahubClient:
             await client.get(kind=CoreCheckDefinition, id=check.id)
         with pytest.raises(NodeNotFoundError):
             await client.get(kind=InfrahubKind.USERVALIDATOR, id=validator.id)
+
+    @pytest.fixture
+    async def repo_trigger_rule(
+        self,
+        test_client: InfrahubTestClient,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        git_repo_same_repo_trigger_rule: FileRepo,
+        git_repos_dir: Path,
+    ) -> InfrahubRepository:
+        obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
+        await obj.new(
+            db=db,
+            name=git_repo_same_repo_trigger_rule.name,
+            description="trigger rule test repository",
+            location="git@github.com:mock/trigger-rule.git",
+        )
+        await obj.save(db=db)
+
+        return await InfrahubRepository.new(
+            id=obj.id,
+            name=git_repo_same_repo_trigger_rule.name,
+            location=git_repo_same_repo_trigger_rule.path,
+            client=client,
+        )
+
+    async def test_import_resolves_trigger_rules_referencing_generator_definition(
+        self, db: InfrahubDatabase, client: InfrahubClient, repo_trigger_rule: InfrahubRepository
+    ) -> None:
+        """A first import must resolve trigger-rule objects against a same-repo generator definition.
+
+        The generator action's mandatory ``generator`` relationship points at a generator
+        definition that the import creates from the ``generator_definitions`` section, so on an
+        empty graph the objects have to be reconciled around the definitions for the action and
+        the trigger rule that references it to resolve.
+        """
+        await repo_trigger_rule.import_objects_from_files(infrahub_branch_name="main")  # type: ignore[call-overload]
+
+        generator_definition = await client.get(kind="CoreGeneratorDefinition", name__value="tags_generator")
+        action = await client.get(kind="CoreGeneratorAction", name__value="run-tags-generator")
+        assert action.generator.id == generator_definition.id
+
+        trigger = await client.get(kind="CoreNodeTriggerRule", name__value="trigger-tags-generator-update")
+        assert trigger.action.id == action.id
 
 
 class TestGetMissingFile(TestInfrahubApp):
