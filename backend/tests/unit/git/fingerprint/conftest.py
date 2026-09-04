@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from infrahub.git.fingerprint.composer import FingerprintComposer
@@ -8,6 +10,26 @@ from infrahub.git.fingerprint.registry import FingerprintRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+
+@dataclass
+class NonCanonicalPathCase:
+    name: str
+    value: str
+
+
+NON_CANONICAL_PATH_CASES = [
+    NonCanonicalPathCase(name="leading_slash", value="/transforms/report.py"),
+    NonCanonicalPathCase(name="leading_dot_slash", value="./transforms/report.py"),
+    NonCanonicalPathCase(name="backslash_separator", value="transforms\\report.py"),
+    NonCanonicalPathCase(name="trailing_slash", value="transforms/report.py/"),
+]
+
+
+def expected_rejection(*, field: str, value: str) -> str:
+    """The anchored pattern matching the rejection raised for a non-canonical path."""
+    message = f"{field} {value!r} is not in canonical form; it must satisfy canonicalize_path(p) == p"
+    return f"^{re.escape(message)}$"
 
 
 class StaticBlobResolver:

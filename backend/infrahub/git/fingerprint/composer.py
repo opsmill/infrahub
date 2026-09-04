@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, assert_never
 
+from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 from infrahub.git.fingerprint.blob_resolver import GitBlobResolver
 from infrahub.git.fingerprint.hasher import FingerprintHasher, canonical_json
 from infrahub.git.fingerprint.registry import FingerprintKind, FingerprintRegistry
@@ -52,6 +53,22 @@ def fold_commit_id(
     return None
 
 
+def require_canonical_path(*, field: str, value: str) -> None:
+    """Reject a path that is not already in canonical repo-relative form.
+
+    Two spellings of the same file hash to two different digests, so a caller that skips the
+    conversion produces a spurious regeneration wave that nothing else would catch. The
+    non-canonical spelling is refused rather than corrected here: it means the value was read
+    from the wrong place, and silently fixing it hides that.
+
+    Raises:
+        ValueError: If ``value`` is not in canonical form.
+
+    """
+    if canonicalize_path(value) != value:
+        raise ValueError(f"{field} {value!r} is not in canonical form; it must satisfy canonicalize_path(p) == p")
+
+
 @dataclass(frozen=True, kw_only=True)
 class QueryFingerprintInput:
     name: str
@@ -68,6 +85,9 @@ class PythonTransformationFingerprintInput:
     file_path: str
     class_name: str
     convert_query_response: bool
+
+    def __post_init__(self) -> None:
+        require_canonical_path(field="file_path", value=self.file_path)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -102,6 +122,9 @@ class GeneratorDefinitionFingerprintInput:
     class_name: str
     convert_query_response: bool
     target_group_id: str | None
+
+    def __post_init__(self) -> None:
+        require_canonical_path(field="file_path", value=self.file_path)
 
 
 class FingerprintComposer:

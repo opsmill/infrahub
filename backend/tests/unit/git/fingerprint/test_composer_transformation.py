@@ -10,7 +10,12 @@ from infrahub.git.fingerprint.composer import (
     PythonTransformationFingerprintInput,
 )
 from infrahub.git.fingerprint.registry import FingerprintKind, FingerprintRegistry
-from tests.unit.git.fingerprint.conftest import build_composer
+from tests.unit.git.fingerprint.conftest import (
+    NON_CANONICAL_PATH_CASES,
+    NonCanonicalPathCase,
+    build_composer,
+    expected_rejection,
+)
 
 PY_BLOBS = {"transforms/report.py": "sha-report"}
 J2_BLOBS = {"templates/report.j2": "sha-template"}
@@ -120,6 +125,13 @@ def test_python_hashes_a_declared_manifest_entry_like_any_other_file() -> None:
         )
 
     assert digest(blobs) != digest({**blobs, ".infrahub.yml": "sha-manifest-edited"})
+
+
+@pytest.mark.parametrize("case", NON_CANONICAL_PATH_CASES, ids=lambda case: case.name)
+def test_python_rejects_a_non_canonical_file_path(case: NonCanonicalPathCase) -> None:
+    """Two spellings of the same entry point must not be able to reach two different digests."""
+    with pytest.raises(ValueError, match=expected_rejection(field="file_path", value=case.value)):
+        _python_input(file_path=case.value)
 
 
 def test_python_folds_commit_id_only_when_watch_absent() -> None:

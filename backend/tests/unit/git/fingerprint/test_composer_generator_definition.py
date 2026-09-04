@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import pytest
 from infrahub_sdk.schema.repository import InfrahubWatchConfig
 
 from infrahub.git.fingerprint.composer import GeneratorDefinitionFingerprintInput
 from infrahub.git.fingerprint.registry import FingerprintKind, FingerprintRegistry
-from tests.unit.git.fingerprint.conftest import build_composer
+from tests.unit.git.fingerprint.conftest import (
+    NON_CANONICAL_PATH_CASES,
+    NonCanonicalPathCase,
+    build_composer,
+    expected_rejection,
+)
 
 BLOBS = {"generators/tags.py": "sha-gen"}
 
@@ -93,3 +99,9 @@ def test_hashes_a_declared_manifest_entry_like_any_other_file() -> None:
     base = _digest(blobs=blobs, dependencies=closure)
     manifest_edited = _digest(blobs={**blobs, ".infrahub.yml": "sha-manifest-edited"}, dependencies=closure)
     assert base != manifest_edited
+
+
+@pytest.mark.parametrize("case", NON_CANONICAL_PATH_CASES, ids=lambda case: case.name)
+def test_rejects_a_non_canonical_file_path(case: NonCanonicalPathCase) -> None:
+    with pytest.raises(ValueError, match=expected_rejection(field="file_path", value=case.value)):
+        _input(file_path=case.value)

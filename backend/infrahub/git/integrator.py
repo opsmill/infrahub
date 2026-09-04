@@ -1403,7 +1403,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             transforms.extend(
                 await self.get_python_transforms(
                     module=module,
-                    file_path=file_info.relative_path_file,
                     transform=transform,
                     dependencies=list(closure.dependencies),
                     dependencies_complete=closure.complete,
@@ -1607,7 +1606,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def get_python_transforms(
         self,
         module: types.ModuleType,
-        file_path: str,
         transform: InfrahubPythonTransformConfig,
         dependencies: list[str],
         dependencies_complete: bool,
@@ -1615,6 +1613,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         log = get_run_logger()
         if transform.class_name not in dir(module):
             return []
+
+        # The manifest-declared path is the only source for `file_path`: the dependency closure
+        # and the fingerprint are both keyed on it, and a path derived from the filesystem
+        # instead can resolve outside the worktree and turn absolute.
+        file_path = str(transform.file_path)
 
         transforms = []
         transform_class = getattr(module, transform.class_name)
