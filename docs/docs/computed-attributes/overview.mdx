@@ -1,13 +1,45 @@
 ---
 title: Computed attributes
+description: What a computed attribute is, when to use it, and how Infrahub recalculates it as your data changes.
 ---
 
-The computed attributes feature enables the dynamic calculation of attribute values based on user-defined logic.
+A computed attribute is a read-only `Text` or `URL` value calculated from data already modeled in Infrahub. Use a computed attribute where that value should stay synchronized with the attributes and relationships it is built from, rather than being entered and maintained separately.
 
-Currently, Infrahub supports two main types of computed attributes:
+Define the calculation in the schema as a Jinja2 template, or reference a Python Transformation where the calculation needs cardinality-many relationships, nested relationships, or logic a template cannot express.
 
-* **Jinja2** – Lightweight, but limited in relationship handling.
-* **Python** – More flexible and powerful, but requires async execution.
+## When to use a computed attribute
+
+Computed attributes fit values that can be calculated from data you already model:
+
+- **Produce a name or identifier in the pattern another system requires.** Where a tool or a process reads a hostname, a circuit ID, an interface description, or a URL and expects a particular pattern, compute that string from the attributes and relationships holding the data it encodes — a device name from its site, role, and index, for example.
+- **Include data from a related object in a description.** An interface description can name the peer device, the circuit, and the role at the other end of the link. Connect the interface to a different peer, and Infrahub recalculates the description from the new relationship.
+- **Combine several modeled values into one string.** A circuit description can list its endpoints and their locations; a URL can combine an environment with an object identifier.
+- **Compute more than one string from the same data.** A node can carry several computed attributes — one name for network operations, another for asset or finance reporting — each calculated from the same attributes and relationships.
+
+Modeling site, role, platform, index, and status as separate attributes and relationships keeps each value available to query on its own, and lets you compute whatever combined string a person or a downstream system needs to read.
+
+## Choose the right derived value
+
+Infrahub provides several ways to represent an object using data from its attributes and relationships. Choose the mechanism based on how the value will be used.
+
+| You need | Use |
+|---|---|
+| A readable representation of an object in Infrahub lists, selectors, breadcrumbs, and diffs | [`display_label`](../schema/display_label.mdx) |
+| A stable, unique way to identify or reference an object across systems | [`human_friendly_id`](../schema/nodes-and-attributes.mdx#human-friendly-identifier-hfid) |
+| A Text or URL attribute calculated from modeled data that automation, integrations, or users need to query as an attribute | Computed attribute |
+
+Use a computed attribute when the generated value needs to exist as part of the object and be available to queries, automation, or integrations.
+
+## Choose between Jinja2 and Python {#choosing-between-jinja2-and-python}
+
+Use Jinja2 when the value can be calculated from attributes on the same object and direct cardinality-one relationships. Use a Python Transformation when the calculation needs more complex logic, cardinality-many relationships, or nested relationships.
+
+| | Jinja2 | Python Transformation |
+|---|---|---|
+| **Use when** | The value can be calculated from attributes and direct cardinality-one relationships | The calculation needs more complex logic, cardinality-many relationships, or nested relationships |
+| **Relationship support** | Direct relationships only; cardinality `many` is not supported | No equivalent relationship restriction |
+| **Mandatory attribute support** | Supported | Not supported; the attribute must be optional |
+| **Execution** | A change on the object itself is recalculated as part of the same update; a change on a related object is processed asynchronously | Runs asynchronously on workers |
 
 ::::info Limitations
 
@@ -17,34 +49,36 @@ Computed attributes have some inherent restrictions due to system constraints an
 
 ::::
 
-## Choosing between Jinja2 and Python
+## When Infrahub recalculates a value
 
-| Computed Attribute Kind | Mandatory Attribute Support | Relationship Constraints                                 | Complexity Handling                   |
-|-------------------------|-----------------------------|----------------------------------------------------------|---------------------------------------|
-| **Jinja2**              | ✅ Supported                | Cannot use `many` cardinality; only direct relationships | Best for straightforward operations   |
-| **Python**              | ❌ Not supported            | No restrictions                                          | Suitable for complex logic            |
+Infrahub recalculates a computed attribute when data used by its calculation changes. The inputs Infrahub tracks, and when the updated value becomes available, depend on whether the attribute uses Jinja2 or a Python Transformation.
+
+- **Jinja2** — Infrahub tracks the attributes and direct relationships referenced by the template. When one of those inputs changes, Infrahub recalculates the computed value. Changes to inputs on the same node are recalculated as part of the same update; changes to data on a related object are processed asynchronously. A template that references a path the schema does not have, or the attribute itself, is rejected when the schema loads.
+- **Python** — Infrahub uses the Transformation's GraphQL query to determine which data changes can affect the computed value. When matching data changes, Infrahub schedules the Transformation on a worker and updates the computed attribute when the task completes.
+
+When you change a Python Transformation, Infrahub recomputes the attributes that use it.
 
 ## Jinja2 computed attributes {#jinja-computed-attribute}
 
-Users can input a concise Jinja2 template directly within the schema definition. Any change to any field used to compute the value will automatically update it.
+Define a Jinja2 computed attribute directly on the attribute in your node schema.
 
-Use Jinja2 when the calculation logic is straightforward and concise.
+Use Jinja2 when the calculation is concise and depends only on attributes on the same object or direct cardinality-one relationships.
 
 ### Restrictions
 
 ::::warning
 
-* Jinja2 computed attributes **cannot** reference relationships with cardinality `many`.
-* Only **direct** relationships can be used (i.e., a relationship of a relationship is not accessible).
-* A computed attribute can only be inherited from one generic, as the order of operations would be unclear if the same computed attribute was defined on multiple generics.
+* Jinja2 computed attributes cannot reference relationships with cardinality `many`.
+* Only direct relationships are available; a relationship of a relationship cannot be referenced.
+* A computed attribute can be inherited from only one generic, because Infrahub cannot determine the evaluation order if multiple generics define the same computed attribute.
 
 ::::
 
-### How to add a Jinja2 computed attribute
+### Add a Jinja2 computed attribute
 
-To create a Jinja2 computed attribute everything happens directly in the schema definition. Refer to this guide to find further information about [Schema Creation](../learn/tutorials/build-your-first-schema).
+Everything happens in the schema definition. See [Schema Creation](../learn/tutorials/build-your-first-schema) for how to build and load a schema.
 
-In the following example we will create a computed attribute `description` for our `NetworkDevice` node. The value will be dynamically generated by combining the device's role with the name of its associated site.
+This example calculates a `description` for a `NetworkDevice` from the device's role and the name of its related site.
 
 ```yaml
 ---
@@ -98,13 +132,11 @@ For more information, please consult the [SDK Templating Reference]($(base_url)p
 
 :::
 
-You can now load this schema into your Infrahub instance. For more details, refer to the [Schema Creation Guide](../learn/tutorials/build-your-first-schema).
+After loading the schema, Infrahub calculates the `description` attribute from the values referenced by the template.
 
-### How to test Jinja2 computed attributes locally
+### Test Jinja2 computed attributes locally
 
-When developing Jinja2 computed attributes, it can be difficult to get the filter syntax right, especially if you need to push the schema every time to test a change. Instead, you can test your Jinja2 computed attribute logic locally using Pytest and the `Jinja2Template` class from the Infrahub Python SDK.
-
-Example:
+Test Jinja2 calculation logic locally with Pytest and the `Jinja2Template` class from the Infrahub Python SDK before loading the updated schema. This validates formatting, filters, and edge cases independently of the schema-loading workflow.
 
 ```python
 import pytest
@@ -125,33 +157,35 @@ async def test_intf_index(intf_name, expected):
     assert rendered == expected
 ```
 
-This approach allows you to quickly iterate and validate your computed attribute logic without needing to push changes to the schema. Adjust the template and test cases as needed to cover different scenarios.
+Add test cases for the input formats and boundary conditions your template needs to support.
 
 ## Python computed attributes {#python-computed-attribute}
 
-Python computed attributes leverage Infrahub's [Python Transformation](../transformations/overview) feature. Users can define which Transformation to apply directly within the schema. The computation of the value is delegated to workers as asynchronous tasks, which may cause the value to take a few seconds to update.
+A Python computed attribute uses a [Python Transformation](../transformations/overview) to calculate the value. Reference the Transformation from the schema, then define the GraphQL query and Python logic in a linked repository.
 
-Python scripts do not have the limitations of Jinja2 computed attributes and can include more complex logic, including relationships with cardinality `many` and nested relationships.
+Use Python when the calculation needs cardinality-many relationships, nested relationships, or logic that cannot be expressed cleanly in Jinja2.
 
-Keep Python Transformations straightforward to avoid impacting system performance.
+Python computed attributes run asynchronously on Infrahub workers, so the updated value may not appear immediately after a dependent value changes.
 
 ### Restrictions
 
 ::::warning
 
-* Mandatory attributes **cannot** use Python computed attributes.
-* Complex scripts **may impact system performance**.
+* Python computed attributes cannot be mandatory.
+* Python computed attributes run as asynchronous Transformations. Consider the amount of data queried and the work performed by the Transformation when designing the calculation.
 
 ::::
 
-### How to add a Python computed attribute
+### Add a Python computed attribute
 
-Creating a Python computed attribute is a two-step process:
+Creating a Python computed attribute has four parts:
 
-1. Add the attribute to the schema.
-2. Prepare a Python Transformation to implement the logic.
+1. Add the computed attribute to the schema and reference the Transformation.
+2. Create the GraphQL query that provides the Transformation inputs.
+3. Create the Python Transformation that returns the computed string.
+4. Register the query and Transformation in `.infrahub.yml`.
 
-In the following example we will create a computed attribute `description` for our `InfraCircuit` node. The value will be a combination of all endpoints locations.
+This example calculates a `description` for an `InfraCircuit` from its endpoints and their locations.
 
 #### Add the attribute to the schema
 
@@ -215,7 +249,7 @@ nodes:
         kind: Attribute
 ```
 
-Once completed, you can load this schema into Infrahub.
+Load this schema into Infrahub.
 
 :::note
 
@@ -227,7 +261,7 @@ You can specify a Transformation that doesn't yet exist in Infrahub, and the att
 
 Please refer to the [Python Transformation guide](../learn/tutorials/transformations/build-a-python-transformation) for further details.
 
-1. First we prepare a GraphQL query that returns the data we need
+1. Create a GraphQL query that returns the data required by the Transformation.
 
 :::warning
 
@@ -271,7 +305,7 @@ query CircuitDescriptionQuery($id: ID!) {
 }
 ```
 
-2. Next, the Python script that implements the logic
+2. Create the Python Transformation and return the computed value as a string.
 
 ```python title="computed_circuit_description.py"
 from infrahub_sdk.transforms import InfrahubTransform
@@ -300,7 +334,7 @@ Make sure that the script returns a string!
 
 :::
 
-3. Tie everything together into `.infrahub.yml` file
+3. Register the query and Transformation in `.infrahub.yml`.
 
 ```yaml title=".infrahub.yml"
 ---
@@ -314,7 +348,7 @@ queries:
     file_path: computed_circuit_description.gql
 ```
 
-At this stage you should be able to test your Transformation using `infrahubctl`
+Test the Transformation with `infrahubctl` before loading it into Infrahub.
 
 :::note
 
@@ -326,12 +360,19 @@ To create a meaningful test, you may want to create: two sites, one circuit, and
 "site1::endpoint-a <- circuit1 -> site2::endpoint-b"
 ```
 
-4. Load the Transformation in Infrahub
+4. Commit the Transformation files to a Git repository and connect the repository to Infrahub.
 
-You need to commit these files to a Git repository and link the repository to Infrahub. Please refer to the [adding a repository to Infrahub](../git-integration/connect-repository) guide.
+See [adding a repository to Infrahub](../git-integration/connect-repository).
 
 :::success
 
 The circuit's description is now automatically computed (this process may take a few seconds). Any changes to related attributes (i.e., endpoint name) will trigger a reevaluation and update the value accordingly.
 
 :::
+
+## Related
+
+- [Display labels](../schema/display_label.mdx) — the readable representation of an object across the web interface and GraphQL
+- [Human-friendly identifier](../schema/nodes-and-attributes.mdx#human-friendly-identifier-hfid) — referencing an object uniquely across systems
+- [Transformations](../transformations/overview) — the Python Transformations a computed attribute can call
+- [Create and load schema](../schema/create-and-load) — loading a schema that defines a computed attribute
