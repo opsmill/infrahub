@@ -101,13 +101,13 @@ def _requested_python_transform_attribute(*, node_schema: NodeSchema, attribute_
 
     Every caller submits one flow per attribute, so the flow must recompute that one only.
     """
-    for attribute in node_schema.attributes:
-        if (
-            attribute.name == attribute_name
-            and attribute.computed_attribute
-            and attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON
-        ):
-            return attribute.computed_attribute
+    attribute = node_schema.get_attribute_or_none(name=attribute_name)
+    if (
+        attribute
+        and attribute.computed_attribute
+        and attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON
+    ):
+        return attribute.computed_attribute
     return None
 
 
