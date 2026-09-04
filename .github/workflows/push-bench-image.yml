@@ -21,13 +21,13 @@ jobs:
             runner: ubuntu-24.04-arm
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         id: login
         with:
           registry: ${{ vars.HARBOR_HOST }}
@@ -36,7 +36,7 @@ jobs:
 
       - name: Set docker image meta data
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: |
             ${{ vars.HARBOR_HOST }}/opsmill/bench
@@ -44,7 +44,7 @@ jobs:
             org.opencontainers.image.source=opsmill/bench
 
       - name: Build and push by digest
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         id: push
         with:
           context: utilities/benchmark
@@ -64,7 +64,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: bench-digests-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
           path: /tmp/digests/*
@@ -76,17 +76,17 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: /tmp/digests
           pattern: bench-digests-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ${{ vars.HARBOR_HOST }}
           username: ${{ secrets.HARBOR_USERNAME }}
@@ -94,7 +94,7 @@ jobs:
 
       - name: Set docker image meta data
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: |
             ${{ vars.HARBOR_HOST }}/opsmill/bench
