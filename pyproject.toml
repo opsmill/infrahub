@@ -488,6 +488,13 @@ exclude = [
     "examples",
 ]
 
+# Vendored agent-skill scripts (installed via skills-lock.json) are third-party
+# content and must not be linted against the project's ruleset. extend-exclude is
+# used (not exclude) so it survives the CLI `--exclude` override CI passes.
+extend-exclude = [
+    ".agents/skills",
+]
+
 
 [tool.ruff.lint]
 preview = true
@@ -1250,6 +1257,9 @@ python-version = "3.12"
 [tool.ty.src]
 exclude = [
     "python_sdk/**",
+    # Vendored agent-skill scripts (installed via skills-lock.json) are
+    # third-party content and must not be type-checked against the project.
+    ".agents/skills/**",
 ]
 
 [[tool.ty.overrides]]
