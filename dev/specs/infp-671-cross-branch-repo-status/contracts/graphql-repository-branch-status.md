@@ -195,5 +195,9 @@ slice (`frontend/app/src/entities/repository/api/`), as `get-repository-group-fr
 
 ## Companion change on the existing branch query
 
-`InfrahubBranch` gains a `sync_with_git: Boolean` argument with the same semantics as the row-set
-criterion above.
+`InfrahubBranch` gains a `sync_with_git__value: Boolean` argument with the same semantics as the
+row-set criterion above. The `__value` suffix matches its sibling filters (`name__value`,
+`status__value`), which all name a value-wrapped field on the branch node.
+
+Its default ordering also changes from database id to branch name ascending, so an unordered
+`InfrahubBranch` read and this query's default `order_rows` agree.

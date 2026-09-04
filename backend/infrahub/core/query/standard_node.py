@@ -181,12 +181,22 @@ class StandardNodeGetListQuery(Query):
         self.add_to_query(query)
 
         self.return_labels = ["n"]
+        # `created_at` and `updated_at` are not unique, so each needs the id as a tiebreaker: an
+        # unpaged read is served in SKIP/LIMIT chunks, and tied rows would otherwise be free to
+        # land in a different chunk on each re-execution. A node written between two chunks still
+        # shifts the rows after it, which no ordering can fix without cursor-based paging.
+        id_tiebreaker = f"{db.get_id_function_name()}(n)"
         match self.node_ordering.order_by:
             case OrderByField.ID:
-                self.order_by = [f"{db.get_id_function_name()}(n)"]
+                self.order_by = [f"{id_tiebreaker} {self.node_ordering.direction.value}"]
+            case OrderByField.NAME:
+                # Only some standard nodes carry a name, so this arm keeps the id tiebreaker even
+                # though a name is unique where one exists: without it the nodes that have none
+                # would tie on null and chunk arbitrarily.
+                self.order_by = [f"n.name {self.node_ordering.direction.value}", id_tiebreaker]
             case OrderByField.CREATED_AT:
-                self.order_by = [f"n.created_at {self.node_ordering.direction.value}"]
+                self.order_by = [f"n.created_at {self.node_ordering.direction.value}", id_tiebreaker]
             case OrderByField.UPDATED_AT:
-                self.order_by = [f"n.updated_at {self.node_ordering.direction.value}"]
+                self.order_by = [f"n.updated_at {self.node_ordering.direction.value}", id_tiebreaker]
             case _:
                 assert_never(self.node_ordering.order_by)

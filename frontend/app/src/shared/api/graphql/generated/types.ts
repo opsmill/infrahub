@@ -37648,6 +37648,7 @@ export type QueryInfrahubBranchArgs = {
   order?: InputMaybe<MetadataOrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   status__value?: InputMaybe<BranchStatus>;
+  sync_with_git__value?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 

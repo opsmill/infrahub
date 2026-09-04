@@ -10,6 +10,8 @@ from infrahub.core.query.standard_node import StandardNodeGetListQuery
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from infrahub.core.constants.database import DatabaseEdgeType
     from infrahub.database import InfrahubDatabase
 
@@ -267,52 +269,34 @@ class BranchNodeGetListQuery(StandardNodeGetListQuery):
             self._branch_filter_params[param_name] = [status.value for status in self.branch_filters.statuses]
             conditions.append(f"n.status IN ${param_name}")
 
+        if self.branch_filters.sync_with_git is not None:
+            param_name = "filter_sync_with_git"
+            self._branch_filter_params[param_name] = self.branch_filters.sync_with_git
+            conditions.append(f"n.sync_with_git = ${param_name}")
+
         if self.branch_filters.created_by_id:
             param_name = "filter_created_by"
             self._branch_filter_params[param_name] = self.branch_filters.created_by_id
             conditions.append(f"n.created_by = ${param_name}")
 
-        # Branched from (rebase timestamp) filters (with NULL check)
-        if self.branch_filters.branched_from_after:
-            param_name = "filter_branched_from_after"
-            self._branch_filter_params[param_name] = Timestamp(
-                self.branch_filters.branched_from_after.isoformat()
-            ).to_string()
-            conditions.append(f"(n.branched_from IS NOT NULL AND n.branched_from > ${param_name})")
-
-        if self.branch_filters.branched_from_before:
-            param_name = "filter_branched_from_before"
-            self._branch_filter_params[param_name] = Timestamp(
-                self.branch_filters.branched_from_before.isoformat()
-            ).to_string()
-            conditions.append(f"(n.branched_from IS NOT NULL AND n.branched_from < ${param_name})")
-
-        if self.branch_filters.created_at_after:
-            param_name = "filter_created_at_after"
-            self._branch_filter_params[param_name] = Timestamp(
-                self.branch_filters.created_at_after.isoformat()
-            ).to_string()
-            conditions.append(f"(n.created_at IS NOT NULL AND n.created_at > ${param_name})")
-
-        if self.branch_filters.created_at_before:
-            param_name = "filter_created_at_before"
-            self._branch_filter_params[param_name] = Timestamp(
-                self.branch_filters.created_at_before.isoformat()
-            ).to_string()
-            conditions.append(f"(n.created_at IS NOT NULL AND n.created_at < ${param_name})")
-
-        if self.branch_filters.updated_at_after:
-            param_name = "filter_updated_at_after"
-            self._branch_filter_params[param_name] = Timestamp(
-                self.branch_filters.updated_at_after.isoformat()
-            ).to_string()
-            conditions.append(f"(n.updated_at IS NOT NULL AND n.updated_at > ${param_name})")
-
-        if self.branch_filters.updated_at_before:
-            param_name = "filter_updated_at_before"
-            self._branch_filter_params[param_name] = Timestamp(
-                self.branch_filters.updated_at_before.isoformat()
-            ).to_string()
-            conditions.append(f"(n.updated_at IS NOT NULL AND n.updated_at < ${param_name})")
+        for property_name, bound, comparison, value in (
+            ("branched_from", "after", ">", self.branch_filters.branched_from_after),
+            ("branched_from", "before", "<", self.branch_filters.branched_from_before),
+            ("created_at", "after", ">", self.branch_filters.created_at_after),
+            ("created_at", "before", "<", self.branch_filters.created_at_before),
+            ("updated_at", "after", ">", self.branch_filters.updated_at_after),
+            ("updated_at", "before", "<", self.branch_filters.updated_at_before),
+        ):
+            if value:
+                conditions.append(
+                    self._timestamp_condition(
+                        property_name=property_name, bound=bound, comparison=comparison, value=value
+                    )
+                )
 
         return " AND ".join(conditions) if conditions else ""
+
+    def _timestamp_condition(self, property_name: str, bound: str, comparison: str, value: datetime) -> str:
+        param_name = f"filter_{property_name}_{bound}"
+        self._branch_filter_params[param_name] = Timestamp(value.isoformat()).to_string()
+        return f"(n.{property_name} IS NOT NULL AND n.{property_name} {comparison} ${param_name})"
