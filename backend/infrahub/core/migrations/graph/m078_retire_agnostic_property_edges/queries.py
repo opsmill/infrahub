@@ -127,8 +127,8 @@ class CloseUnretainedAgnosticFieldsQuery(Query):
     Unbounded: every branch-agnostic field in the graph is a candidate, which is what clears a
     backlog no runtime path can reach. Each candidate is stamped with the time it stopped being
     reachable rather than with the run time; where the graph records no such time the run time is
-    the fallback, and the graph then also records no owner departure, so no branch resolves the
-    owner as live and the close shifts no branch's view.
+    the fallback. Every candidate is already unretained on every branch by the time it is stamped,
+    so the close shifts no branch's view whichever stamp it carries.
 
     The writes are batched, so this query cannot run inside an explicit transaction. A failure part
     way through leaves the earlier batches closed, which a re-run completes: retention does not come

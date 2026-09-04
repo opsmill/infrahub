@@ -332,9 +332,9 @@ each is independently developable, testable, and demonstrable.
   where none does": stamping the run time *by default* would land the close inside the window of
   every branch forked before the upgrade, which FR-014 forbids. Amended again 2026-09-04, replacing
   clause 3's "the candidate MUST be left alone": the shipped migration falls back to the run time
-  rather than skipping, and FR-014 still holds there — a candidate with neither an owner departure
-  nor a closed owning edge on record is one no branch resolves as live, so that close shifts no
-  branch's view.)
+  rather than skipping, and FR-014 still holds there because retention is settled before the stamp
+  is derived — a candidate only reaches clause 3 once no branch retains it, so no branch's view of
+  the field changes whichever stamp the close carries.)
 - **FR-016**: The repair migration MUST close the global property edges **and the owning
   `HAS_ATTRIBUTE` / `IS_RELATED` edges** of vertices that no branch retains, including the
   half-closed shapes of FR-002a via the widened anchor of FR-011a, and MUST hard-delete

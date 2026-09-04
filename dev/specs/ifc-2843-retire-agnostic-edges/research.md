@@ -166,8 +166,9 @@ gives that `to`, and the latest of those across every branch and every linked no
 moment the field stopped being reachable anywhere. Only branch-deletion orphans have no existence
 edge at all, and those have no linked node vertex either, so the migration hard-deletes the vertex
 and the stamp is moot. A candidate whose stamp is nonetheless not derivable falls back to the
-upgrade's own time: with no owner departure and no closed owning edge recorded, no branch resolves
-the owner as live, so that close shifts no branch's view. Deriving the stamp per candidate is
+upgrade's own time, which is safe because retention is settled before the stamp is derived: no
+branch retains the field by then, so that close shifts no branch's view. Deriving the stamp per
+candidate is
 what keeps FR-014 intact on upgrade: stamping run time would land every close inside the window of
 every branch forked before the upgrade, which is exactly what FR-014 forbids.
 
