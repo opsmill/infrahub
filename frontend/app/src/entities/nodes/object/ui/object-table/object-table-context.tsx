@@ -4,6 +4,8 @@ import React from "react";
 import { QSP } from "@/shared/config/qsp";
 import { uniqueItemsArray } from "@/shared/utils/array";
 
+import type { ColumnSurface } from "@/entities/nodes/columns/domain/model/column-surface";
+import { OBJECT_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/rules/column-surfaces";
 import { type Filter, FilterSchema } from "@/entities/nodes/filters/domain/model/filter";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
@@ -17,6 +19,14 @@ export type ObjectTableContextProps = {
   baseSchema: ModelSchema;
   selectedSchema: ModelSchema;
   permission: Permission;
+  columnSurface: ColumnSurface;
+  /**
+   * Whether this table actually honours the column-visibility params. Only a table rendering
+   * `DataTable` with a `columnVisibility` state does; the toolbar and the column headers are shared
+   * with tables that render their own columns and would ignore a hide, so both controls ask here
+   * before offering anything. Off unless a manager opts in.
+   */
+  supportsColumnVisibility: boolean;
 };
 
 export const ObjectTableContext = React.createContext<ObjectTableContextProps | null>(null);
@@ -24,9 +34,13 @@ export const ObjectTableContext = React.createContext<ObjectTableContextProps | 
 export const ObjectTableProvider = ({
   children,
   schema,
+  columnSurface = OBJECT_COLUMN_SURFACE,
+  supportsColumnVisibility = false,
 }: {
   children?: React.ReactNode;
   schema: ModelSchema;
+  columnSurface?: ColumnSurface;
+  supportsColumnVisibility?: boolean;
 }) => {
   const [{ filters, kind: kindInQsp }, setObjectTableQueryParams] = useQueryStates(
     {
@@ -85,6 +99,8 @@ export const ObjectTableProvider = ({
               baseSchema: schema,
               selectedSchema,
               permission,
+              columnSurface,
+              supportsColumnVisibility,
             }}
           >
             {children}
@@ -103,4 +119,24 @@ export function useObjectTableContext() {
   }
 
   return context;
+}
+
+/**
+ * The column surface of the table this component sits in, falling back to the object surface.
+ *
+ * Non-throwing: a table cell may render outside any provider, and the object surface is the right
+ * reading of "no table said otherwise".
+ */
+export function useColumnSurface(): ColumnSurface {
+  return React.use(ObjectTableContext)?.columnSurface ?? OBJECT_COLUMN_SURFACE;
+}
+
+/**
+ * Whether the table this component sits in honours the column-visibility params.
+ *
+ * Non-throwing: `false` is the correct reading both outside any provider and inside one that did
+ * not opt in.
+ */
+export function useSupportsColumnVisibility(): boolean {
+  return React.use(ObjectTableContext)?.supportsColumnVisibility ?? false;
 }

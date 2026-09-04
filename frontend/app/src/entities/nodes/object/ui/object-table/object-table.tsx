@@ -2,6 +2,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
+import { useColumnVisibility } from "@/entities/nodes/columns/ui/hooks/use-column-visibility";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { getObjectActionsColumn } from "@/entities/nodes/object/ui/object-table/utils/get-object-actions-column";
@@ -11,8 +12,12 @@ import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-
 import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
 
 export const ObjectTable = () => {
-  const { filters, selectedSchema, permission } = useObjectTableContext();
+  const { filters, selectedSchema, permission, columnSurface } = useObjectTableContext();
   const { customSort } = useSort(selectedSchema);
+  const { columnVisibility, revealedFields, columnSchemas } = useColumnVisibility(
+    selectedSchema,
+    columnSurface
+  );
 
   const { data: count } = useObjectsCount({
     objectKind: selectedSchema.kind!,
@@ -23,13 +28,17 @@ export const ObjectTable = () => {
     schema: selectedSchema,
     filters,
     sort: customSort,
+    revealedFields,
   });
 
   if (error) {
     return <ErrorScreen message={error.message} />;
   }
 
-  const columns = [...getObjectTableColumns(selectedSchema), getObjectActionsColumn(permission)];
+  const columns = [
+    ...getObjectTableColumns(selectedSchema, { fields: columnSchemas }),
+    getObjectActionsColumn(permission),
+  ];
   const flatData = data?.pages.flat() ?? [];
 
   return (
@@ -41,6 +50,7 @@ export const ObjectTable = () => {
     >
       <DataTable
         columns={columns}
+        columnVisibility={columnVisibility}
         count={count}
         data={flatData}
         isLoading={isPending || isFetchingNextPage}

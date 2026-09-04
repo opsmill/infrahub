@@ -61,6 +61,62 @@ describe("objectQueryKeys", () => {
     expect(result).toEqual(["objects", "branchName", params.atDate, "RandomKind", filters, sort]);
   });
 
+  it("returns query key for list unchanged when revealedFields is absent or empty, so existing caches stay valid", () => {
+    // GIVEN
+    const filters: Filter[] = [{ name: "include_available", value: "true" }];
+    const sort: Sort[] = [{ field: "name__value", direction: "ASC" }];
+    const params = {
+      branchName: "branchName",
+      atDate: new Date("2024-01-01"),
+      objectKind: "RandomKind",
+      filters,
+      sort,
+    };
+
+    // WHEN
+    const withoutRevealedFields = objectQueryKeys.list(params);
+    const withEmptyRevealedFields = objectQueryKeys.list({ ...params, revealedFields: [] });
+
+    // THEN
+    expect(withoutRevealedFields).toEqual([
+      "objects",
+      "branchName",
+      params.atDate,
+      "RandomKind",
+      filters,
+      sort,
+    ]);
+    expect(withEmptyRevealedFields).toEqual(withoutRevealedFields);
+  });
+
+  it("returns query key for list including revealedFields, so a revealed column never reads a page fetched without it", () => {
+    // GIVEN
+    const filters: Filter[] = [{ name: "include_available", value: "true" }];
+    const sort: Sort[] = [{ field: "name__value", direction: "ASC" }];
+    const params = {
+      branchName: "branchName",
+      atDate: new Date("2024-01-01"),
+      objectKind: "RandomKind",
+      filters,
+      sort,
+      revealedFields: ["internal_note"],
+    };
+
+    // WHEN
+    const result = objectQueryKeys.list(params);
+
+    // THEN
+    expect(result).toEqual([
+      "objects",
+      "branchName",
+      params.atDate,
+      "RandomKind",
+      filters,
+      sort,
+      ["internal_note"],
+    ]);
+  });
+
   it("returns query key for count without sort, since sort never changes the row count", () => {
     // GIVEN
     const filters: Filter[] = [{ name: "include_available", value: "true" }];

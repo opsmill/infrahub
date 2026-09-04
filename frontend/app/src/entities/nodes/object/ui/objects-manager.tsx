@@ -24,7 +24,7 @@ export function ObjectsManager({ schema }: ObjectsTableManagerProps) {
   }
 
   return (
-    <ObjectTableProvider schema={schema}>
+    <ObjectTableProvider schema={schema} supportsColumnVisibility>
       <ObjectsManagerToolbar />
       <ObjectTable />
     </ObjectTableProvider>
