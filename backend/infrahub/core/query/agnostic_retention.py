@@ -13,9 +13,8 @@ A `:Relationship` needs two qualifying field edges rather than one, because a re
 peer is not a relationship. A `:Relationship` must also have two distinct active peers to be
 considered active.
 
-The winner lookups are OPTIONAL CALL subqueries and the peers are counted conditionally rather than
-filtered so that a field with no live edge on a branch reaches the end of the predicate carrying a
-count of zero -- a plain CALL or MATCH would drop its row instead.
+A candidate that no branch holds live still reaches the end of the predicate, carrying a live-peer
+count of zero, rather than being dropped along the way.
 
 Assumption: every branch forks from the default branch. A branch-of-branch feature would not extend
 this logic.

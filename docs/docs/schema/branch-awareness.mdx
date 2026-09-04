@@ -60,7 +60,7 @@ By default, if a specific value is not defined:
 
 ## Deleting branch-agnostic data
 
-A branch-agnostic attribute or relationship stores its value once and shares it with every branch, instead of keeping a copy per branch. Deleting the object that holds the field on one branch therefore does not release the value: it stays reserved for as long as any branch can still reach the object, and a later delete, merge, rebase, branch deletion, or schema change may be what finally releases it.
+A branch-agnostic attribute or relationship stores its value once and shares it with every branch, instead of keeping a copy per branch. Deleting the object that holds the field on one branch therefore does not always release the value: it stays reserved for as long as any branch can still reach the object, and a later delete, merge, rebase, branch deletion, or schema change may be what finally releases it. Where no other branch can reach the object — deleting on the default branch with no other branch open, or deleting an object that only ever existed on one branch — the delete releases the value as part of the same operation.
 
 See [Branch-agnostic data](../branches/branch-agnostic-data.mdx) for the full rule.
 

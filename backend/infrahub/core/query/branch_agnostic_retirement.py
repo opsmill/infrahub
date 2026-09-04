@@ -92,7 +92,7 @@ class RetireBranchAgnosticFieldsQuery(Query):
         self.update_return_labels(["edges_closed"])
 
     def closed_edge_count(self) -> int:
-        """How many global edges this run stamped shut. Zero means every field is still retained somewhere."""
+        """How many global edges this run stamped shut."""
         result = self.get_result()
         if result is None:
             return 0

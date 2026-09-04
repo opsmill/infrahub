@@ -1,16 +1,14 @@
 """Every damaged shape the repair migration handles, in one graph, repaired in one run.
 
-The shapes are built together rather than one per test because that is how a real upgrade meets
-them: a single pass over a graph holding all of them at once, where a candidate bound too widely
-would take a neighbouring shape with it. The run happens once, the whole graph is verified, the run
-happens again, and the same verification has to hold -- which is what makes the second pass a
-statement about idempotency rather than a separate scenario.
+One graph holds all the shapes at once, so a candidate bound too widely shows up as damage to a
+neighbouring shape. The run happens once, the whole graph is verified, the run happens again, and
+the same verification has to hold -- the second pass is the idempotency claim.
 
 Shapes are keyed by field-vertex uuid rather than by owner, because a kind change leaves two node
-vertices on one uuid and a reader that starts from the owner would see that vertex's edges twice.
+vertices on one uuid and a reader starting from the owner would see that vertex's edges twice.
 
-Retention lives in its own module: it needs a branch, and a branch forked into this graph would read
-every object here that is still live, leaving the migration nothing to repair.
+This graph carries no branch: a branch forked into it would read every object here that is still
+live, leaving the migration nothing to repair. Retention is covered separately.
 """
 
 from __future__ import annotations

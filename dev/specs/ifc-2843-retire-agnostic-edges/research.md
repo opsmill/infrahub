@@ -165,14 +165,16 @@ derivable from the graph — per branch, `status: "deleted"` gives the edge's `f
 gives that `to`, and the latest of those across every branch and every linked node vertex is the
 moment the field stopped being reachable anywhere. Only branch-deletion orphans have no existence
 edge at all, and those have no linked node vertex either, so the migration hard-deletes the vertex
-and the stamp is moot — which is why no run-time fallback is needed, and why a candidate whose
-stamp cannot be derived is left open (over-reserving) instead. Deriving the stamp per candidate is
+and the stamp is moot. A candidate whose stamp is nonetheless not derivable falls back to the
+upgrade's own time, which is safe because retention is settled before the stamp is derived: no
+branch retains the field by then, so that close shifts no branch's view. Deriving the stamp per
+candidate is
 what keeps FR-014 intact on upgrade: stamping run time would land every close inside the window of
 every branch forked before the upgrade, which is exactly what FR-014 forbids.
 
-## R7 — Migration `m076` shape
+## R7 — Migration `m078` shape
 
-**Decision**: `ArbitraryMigration` with `minimum_version: int = 75`, batching via
+**Decision**: `ArbitraryMigration` with `minimum_version: int = 77`, batching via
 `IN TRANSACTIONS OF n ROWS`, reporting both counts through `get_migration_console()`, and
 returning `MigrationResult(errors=[...])` **without raising** for unrepairable state.
 
@@ -182,8 +184,9 @@ required element: a read query to find work, per-item `try`/`except` so one fail
 hide the rest, `console.log` progress reporting, and accumulating `errors` into the
 `MigrationResult` rather than raising — exactly FR-016's "MUST NOT fail the upgrade".
 
-`GRAPH_VERSION = 75` lives at `backend/infrahub/core/graph/__init__.py:1`; bumping it to 76 is a
-one-line change. `MAX_AGNOSTIC_PEER_BATCH_SIZE = 500` in `data_deleter.py` is the precedent for
+`GRAPH_VERSION` lives at `backend/infrahub/core/graph/__init__.py:1`; bumping it 77 → 78 is a
+one-line change. (This decision originally named `m076` from graph version 75; the base branch took
+that slot and then `m077`, so the shipped migration is `m078` — see plan.md §Ask-First Gate.) `MAX_AGNOSTIC_PEER_BATCH_SIZE = 500` in `data_deleter.py` is the precedent for
 capping a batch whose rows each drag unbounded peers into the transaction — the same cap applies
 here.
 
@@ -223,7 +226,7 @@ polished, so a failed gate is discovered early rather than at the end.
 | Branch-window set builder | Unit, no DB | Pure function of branch metadata (R2) |
 | Retirement component | Unit, recording double behind a `Protocol` | Testing rule forbids mocks; `BranchDataDeleterInterface` is the in-repo precedent for the protocol shape |
 | Retirement query (incl. two-peer form) | Component | Graph-shape assertions need a database |
-| `m076` fixtures | Component | Hand-built orphan shapes |
+| `m078` fixtures | Component | Hand-built orphan shapes |
 | Enforcement points | Component (behaviour) | No separate unit suites per the PRD |
 
 **Existing asset** (withdrawn 2026-08-17): an uncommitted
@@ -393,7 +396,7 @@ Findings:
 - **A plan compiled before index sampling completes degrades.** Immediately after the dataset was
   loaded, the same six queries planned as full index scans (`WHERE branch IS NOT NULL`) with
   zero-row estimates throughout; they replanned into the seeks above once sampling caught up and the
-  query caches were cleared. `m076` runs right after an upgrade, on exactly such a database, so the
+  query caches were cleared. `m078` runs right after an upgrade, on exactly such a database, so the
   first pass may plan worse than the table shows. Reconfirmed on the 2026-08-17 re-measurement, which
   had to be discarded and re-run: the pass taken immediately after the reload seeded the node-id bound
   with a `NodeIndexScan` over all 25,000 indexed nodes instead of a two-key seek (25,114 db hits

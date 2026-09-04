@@ -103,13 +103,13 @@ Resolved by splitting the anchor by caller, since the two callers have genuinely
 ### Files updated
 
 `spec.md`, `plan.md`, `data-model.md`, `contracts/retirement-component.md`, `quickstart.md`,
-`tasks.md` (7 tasks added: T009a, T010a, T012a, T012b, T031a, T040a, and T014/T042 revised).
+`tasks.md` (6 tasks added: T009a, T010a, T012a, T012b, T031a, T040a; T014 and T042 revised).
 
 ### Carried forward for maintainer input
 
 - The critique's open question **P1** is now partly answered and partly sharpened: the still-linked
   shape is confirmed at ~6,400 nodes; the detached shape remains unmeasured. The hard-delete branch
-  of `m076` is still needed, but its Complexity Tracking justification can no longer lean on
-  "dominant shape".
+  of the repair migration (shipped as `m078`) is still needed, but its Complexity Tracking
+  justification can no longer lean on "dominant shape".
 - The declined validator-filtering Expected Behavior item needs explicit acceptance, since the
   filed issue asks for it.

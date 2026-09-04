@@ -457,7 +457,7 @@ async def _close_global_edges_by_hand(db: InfrahubDatabase, node_id: str, attrib
         query="""
         MATCH (n:Node { uuid: $uuid })-[:HAS_ATTRIBUTE]-(a:Attribute { name: $attr })
         MATCH (a)-[e]-()
-        WHERE e.branch = $global_branch AND e.status = "active" AND e.to IS NULL
+        WHERE e.branch = $global_branch AND e.status = "active" AND e.to IS NULL AND e.from <= $at
         SET e.to = $at
         """,
         params={"uuid": node_id, "attr": attribute_name, "global_branch": GLOBAL_BRANCH_NAME, "at": at.to_string()},
@@ -504,6 +504,7 @@ async def test_range_scoped_rollback_leaves_global_edges_closed_at_another_times
         db=db, node_id=widget.id, attribute_name=AGNOSTIC_ATTRIBUTE_NAME, at=someone_else_at
     )
     closed = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=AGNOSTIC_ATTRIBUTE_NAME)
+    assert open_edges(closed) == [], "precondition: the other writer's closure left no open global edge"
 
     await GraphRollbacker(db=db).rollback(
         target_branch=default_branch,
