@@ -16,7 +16,14 @@ repos:
       - id: end-of-file-fixer
         # Generator output, committed byte-exact. These generators emit no trailing newline, so
         # appending one here would guarantee a mismatch against what CI regenerates.
-        exclude: ^(schema/schema\.graphql|schema/openapi\.json|docs/docs/reference/configuration\.mdx|\.gitattributes|\.github/workflows/.*\.lock\.yml)$
+        exclude: |
+          (?x)^(
+            schema/schema\.graphql|
+            schema/openapi\.json|
+            docs/docs/reference/configuration\.mdx|
+            \.gitattributes|
+            \.github/workflows/.*\.lock\.yml
+          )$
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
