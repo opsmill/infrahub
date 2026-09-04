@@ -123,7 +123,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
   );
 
   return (
-    <div className="flex h-[calc(100vh-14rem)] flex-col overflow-hidden">
+    <div className="flex h-page-body-tabs flex-col overflow-hidden">
       <header className="flex items-center gap-2 border-b px-4 py-2">
         <DiffFilter
           branch={branchName}

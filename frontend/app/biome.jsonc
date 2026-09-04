@@ -104,7 +104,49 @@
         "useUniqueElementIds": "off"
       },
       "nursery": {
-        "useExhaustiveSwitchCases": "off"
+        "useExhaustiveSwitchCases": "off",
+        "noTailwindArbitraryValue": {
+          "level": "error",
+          "options": {
+            "attributes": [
+              "activeClassName",
+              "activeLinkClassName",
+              "breakClassName",
+              "breakLinkClassName",
+              "calendarClassName",
+              "containerClassName",
+              "contentClass",
+              "enter",
+              "enterFrom",
+              "enterTo",
+              "iconClassName",
+              "keyClassName",
+              "labelClassName",
+              "leave",
+              "leaveFrom",
+              "leaveTo",
+              "leftClassName",
+              "loadingClassName",
+              "nextClassName",
+              "nextLinkClassName",
+              "pageClassName",
+              "pageLinkClassName",
+              "popperClassName",
+              "preClassName",
+              "previousClassName",
+              "previousLinkClassName",
+              "rightClassName",
+              "scrollBarClassName",
+              "textareaClassName",
+              "valueClassName",
+              "wrapperClass",
+              "wrapperClassName"
+            ],
+            // Helpers that exist in this tree, plus tv: packages/ui is built on
+            // tailwind-variants, so it is the one name likely to arrive here later.
+            "functions": ["classNames", "clsx", "cva", "twMerge", "tv"]
+          }
+        }
       },
       "performance": {
         "noAccumulatingSpread": "off",

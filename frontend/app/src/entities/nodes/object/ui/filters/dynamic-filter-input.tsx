@@ -34,7 +34,7 @@ export function DynamicFilterInput({ fieldSchema, value, onChange }: DynamicFilt
             onChange={onChange}
             defaultOpen={true}
             fitTriggerWidth={false}
-            className="min-w-[132px]"
+            className="min-w-33"
           />
         );
       }
@@ -79,7 +79,7 @@ export function DynamicFilterInput({ fieldSchema, value, onChange }: DynamicFilt
           value={value ?? null}
           onChange={onChange}
           defaultOpen
-          className="min-w-[132px]"
+          className="min-w-33"
         />
       );
     }

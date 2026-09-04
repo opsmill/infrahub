@@ -69,7 +69,7 @@ const rows: DemoRow[] = [
 // outgrow.
 const renderTable = (columnDefs: ColumnDef<DemoRow>[], data: DemoRow[]) =>
   render(
-    <div className="w-[600px] overflow-x-auto">
+    <div className="w-150 overflow-x-auto">
       <DataTable columns={columnDefs} data={data} />
     </div>
   );
@@ -150,7 +150,7 @@ describe("DataTable first column overflow", () => {
   test("keeps the sticky footer above the sticky row actions", async () => {
     // GIVEN a table that renders its count footer
     await render(
-      <div className="w-[600px] overflow-x-auto">
+      <div className="w-150 overflow-x-auto">
         <DataTable columns={columns} data={rows} count={rows.length} />
       </div>
     );

@@ -38,7 +38,7 @@ exports[`fix ts error`] = {
       [354, 22, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
       [356, 32, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
     ],
-    "src/entities/diff/ui/node-diff/index.tsx:1012795905": [
+    "src/entities/diff/ui/node-diff/index.tsx:3540906801": [
       [87, 8, 15, "tsc: Type \'unknown\' is not assignable to type \'Date\'.", "140489382"],
       [133, 31, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
     ],
@@ -47,17 +47,17 @@ exports[`fix ts error`] = {
       [49, 22, 17, "tsc: Property \'diff_branch_label\' does not exist on type \'DiffConflict\'. Did you mean \'diff_branch_value\'?", "1869793242"],
       [83, 29, 12, "tsc: Cannot find name \'DataConflict\'.", "3642611779"]
     ],
-    "src/entities/diff/ui/node-diff/node.tsx:3075633910": [
-      [94, 21, 13, "tsc: Binding element \'property_type\' implicitly has an \'any\' type.", "324947141"],
-      [102, 20, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
-      [106, 20, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"],
-      [142, 22, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
-      [146, 22, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"]
+    "src/entities/diff/ui/node-diff/node.tsx:705716299": [
+      [95, 21, 13, "tsc: Binding element \'property_type\' implicitly has an \'any\' type.", "324947141"],
+      [103, 20, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
+      [107, 20, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"],
+      [143, 22, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
+      [147, 22, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"]
     ],
-    "src/entities/events/ui/filters/global-filter.tsx:2521722326": [
+    "src/entities/events/ui/filters/global-filter.tsx:1888441879": [
       [53, 45, 5, "tsc: Type \'ReactNode\' is not assignable to type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "173467459"]
     ],
-    "src/entities/events/ui/filters/global-kind-filter.tsx:749058434": [
+    "src/entities/events/ui/filters/global-kind-filter.tsx:2796836867": [
       [38, 45, 5, "tsc: Type \'ReactNode\' is not assignable to type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "173467459"]
     ],
     "src/entities/ipam/ip-addresses/ui/ip-address-table.tsx:2853785502": [
@@ -72,7 +72,7 @@ exports[`fix ts error`] = {
     "src/entities/nodes/convert/ui/convert-form.tsx:3998917862": [
       [42, 6, 8, "tsc: Type \'{}\' is not assignable to type \'Record<string, ConvertFieldMapping>\'.\\n  Index signature for type \'string\' is missing in type \'{}\'.", "1301887866"]
     ],
-    "src/entities/nodes/object/ui/filters/dynamic-filter-input.tsx:2989982206": [
+    "src/entities/nodes/object/ui/filters/dynamic-filter-input.tsx:1346039134": [
       [115, 25, 9, "tsc: Argument of type \'\\"NodeKind\\"\' is not assignable to parameter of type \'never\'.", "2512581423"]
     ],
     "src/entities/nodes/object/ui/object-details/action-buttons/details-buttons.tsx:818414044": [
@@ -114,7 +114,7 @@ exports[`fix ts error`] = {
     "src/entities/proposed-changes/ui/action-button/pc-review-button.tsx:69324143": [
       [39, 22, 5, "tsc: Type \'NoInfer<ProposedChangeAvailableActions> | undefined\' is not assignable to type \'PcActionsContextType\'.\\n  Type \'undefined\' is not assignable to type \'PcActionsContextType\'.", "189936718"]
     ],
-    "src/entities/proposed-changes/ui/proposed-change-details.tsx:323668549": [
+    "src/entities/proposed-changes/ui/proposed-change-details.tsx:1285861626": [
       [70, 59, 5, "tsc: Argument of type \'null | string | undefined\' is not assignable to parameter of type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "195031250"],
       [202, 18, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
     ],
@@ -236,14 +236,14 @@ exports[`fix ts error`] = {
     "src/pages/ipam/ipam-layout.tsx:380745861": [
       [38, 71, 5, "tsc: \'error\' is of type \'unknown\'.", "165548477"]
     ],
-    "src/pages/resource-manager/resource-allocation-details.tsx:4142650931": [
+    "src/pages/resource-manager/resource-allocation-details.tsx:1663248053": [
       [78, 35, 4, "tsc: Type \'{ values: ResourceAllocatedNode; link: string; }[]\' is not assignable to type \'tRow[]\'.\\n  Type \'{ values: ResourceAllocatedNode; link: string; }\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'ResourceAllocatedNode\' is not assignable to type \'Record<string, string | number | tRowValue>\'.\\n        Index signature for type \'string\' is missing in type \'ResourceAllocatedNode\'.", "2088305148"]
     ],
     "src/pages/resource-manager/resource-pool-details.tsx:1673813627": [
       [157, 72, 4, "tsc: Property \'node\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
     ],
-    "src/shared/components/editor/json/json-editor.tsx:1301116350": [
-      [45, 49, 20, "tsc: Argument of type \'Grammar | undefined\' is not assignable to parameter of type \'Grammar\'.\\n  Type \'undefined\' is not assignable to type \'Grammar\'.", "2776531305"]
+    "src/shared/components/editor/json/json-editor.tsx:3842784607": [
+      [46, 49, 20, "tsc: Argument of type \'Grammar | undefined\' is not assignable to parameter of type \'Grammar\'.\\n  Type \'undefined\' is not assignable to type \'Grammar\'.", "2776531305"]
     ],
     "src/shared/components/errors/error-boundary-app.tsx:3236611445": [
       [5, 24, 5, "tsc: Type \'unknown\' is not assignable to type \'Error\'.", "165548477"]

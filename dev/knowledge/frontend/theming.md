@@ -37,6 +37,64 @@ Paired tokens follow the `X` / `X-surface` convention (`--danger` / `--danger-su
 `--active` / `--active-surface`): the bare name is the foreground/stroke, `-surface` is the tinted
 background behind it.
 
+### Theme-varying vs theme-invariant: `@theme inline` vs `@theme`
+
+The distinction matters and gets this wrong silently, so it is worth stating plainly:
+
+| Form | Emits the custom property? | Generates a utility? | Use it for |
+|---|---|---|---|
+| `:root`/`.dark` + `--color-x: var(--x)` in `@theme inline` | yes, from `:root`/`.dark` | yes | anything whose **value differs per theme** |
+| plain `@theme { --height-page-body: … }` | yes | yes | **theme-invariant** scales — dimensions, timings, type steps |
+| plain `:root { --x: … }` alone | yes | **no** | a helper var read from inside a `calc()`, with no utility of its own |
+
+**The trap:** putting a theme-varying value in a plain `@theme` block bakes it into the utility at
+build time, and the `.dark` override becomes dead CSS. Nothing fails — the class is still emitted,
+the markup still looks right, and only the rendered pixels are wrong in one theme. A theme-varying
+token must be declared in `:root` **and** `.dark`, then bridged through `@theme inline`.
+`count-badge.test.tsx` guards exactly this for `--inset-shadow-raised`, by comparing the computed
+inset layer between themes rather than the class string.
+
+### Non-colour token families
+
+`theme.css` is not colour-only. A plain `@theme` block at the end holds the theme-invariant scales,
+because `.dark` has no business overriding a dimension:
+
+| Token | Utility | What it encodes |
+|---|---|---|
+| `--text-xxs` | `text-xxs` | One step below `text-xs`, for dense metadata. Carries **no** `--text-xxs--line-height`: adding one changes every existing call site |
+| `--detail-label-width` | — (helper) | The term column of a definition-style row; read from inside a surviving `minmax()` |
+| `--grid-template-columns-detail-row` | `grid-cols-detail-row` | That column plus `auto` |
+| `--height-page-body` / `-tabs` | `h-page-body` / `h-page-body-tabs` | Viewport minus the page chrome; the `-tabs` variant for shells with their own tab row |
+| `--inset-filter-tab` | `-top-filter-tab` | Offset of the labelled tab above a filter popover |
+| `--animate-skeleton` | `animate-skeleton` | Skeleton pulse. Owns its keyframes, so it works with `tailwindcss-animate` disabled (as it is under CI) |
+
+### Status, diff and accent families
+
+Four status families, each with a foreground, a `-surface` tint, and where it exists a `-strong`
+fill one step hotter than the foreground:
+
+| Family | Hue | Extra members |
+|---|---|---|
+| `--success` | green | `-surface`, `-strong` |
+| `--warning` | amber | `-surface`, `-strong`, `-border` |
+| `--info` | sky | `-surface` |
+| `--danger` | rose | `-surface`, `-strong` |
+
+The light values follow one recipe — foreground `-700`, `-surface` as `--alpha(-500 / 15%)`. The
+dark values are tuned per family, so **take every value from `theme.css`; do not derive it.**
+
+Pick the hue by role, not by appearance:
+
+- Warning is amber. Do not reach for yellow.
+- Info is sky. Cyan belongs to `--accent` and `--ring`; blue-violet belongs to `--active`.
+- Brand is `--accent`, with `--accent-surface` for a pale tint, `--accent-strong` for a saturated
+  fill, and `--accent-foreground` for text on that fill.
+
+**Diff status is its own family, not the status palette.** Use `--diff-added` / `-removed` /
+`-updated` / `-conflict` (each with a `-surface`) for anything in a diff view. Its members are read
+against each other in one viewport, and a removal is a successful operation — so `--danger` is the
+wrong token for it, and retuning error states must not restyle diffs.
+
 ## How dark mode switches on
 
 The `dark` class on `document.documentElement` is the only switch. The primitives live in the

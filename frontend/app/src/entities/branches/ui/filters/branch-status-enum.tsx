@@ -29,7 +29,7 @@ export const BranchStatusEnum = ({
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
-      <ComboboxTrigger ref={ref} className="min-w-[180px]">
+      <ComboboxTrigger ref={ref} className="min-w-45">
         {value ? <BranchStatusBadge status={value} showOpen /> : null}
       </ComboboxTrigger>
 
