@@ -114,6 +114,14 @@ ASSESS_CASES = [
         readable_fields_by_kind={"TestDevice": {"name", "peers"}},
     ),
     AssessCase(
+        name="a_traversed_kind_the_query_reads_no_field_from_is_skipped",
+        only_has_unique_targets=True,
+        diff_summary=[node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["name"])],
+        expected=ChangedNodes(node_ids=["dev1"]),
+        traversed_kinds={"TestInterface"},
+        readable_fields_by_kind={"TestDevice": {"name"}},
+    ),
+    AssessCase(
         name="without_unique_targets_relevant_change_widens",
         only_has_unique_targets=False,
         diff_summary=[node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["name"])],
@@ -199,10 +207,6 @@ ASSESS_CASES = [
         reached_paths_by_kind={"TestInterface": (INTERFACE_PATH,)},
         expected=EveryTarget(),
     ),
-    # display_label / human_friendly_id are computed: a read records the computed field name, but a
-    # change to the backing field that moves the value is reported under the backing field's name.
-    # Such a read must be treated as imprecise for its kind -- any change to the kind is relevant --
-    # or the reader is left stale.
     AssessCase(
         name="unique_targets_display_label_root_change_narrows_to_that_node",
         only_has_unique_targets=True,
@@ -223,11 +227,15 @@ ASSESS_CASES = [
         readable_fields_by_kind={"TestDevice": {"display_label"}},
     ),
     AssessCase(
-        name="unique_targets_display_label_read_through_a_relationship_widens",
+        name="unique_targets_display_label_related_change_narrows_to_the_reached_change",
         only_has_unique_targets=True,
         diff_summary=[node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["name"])],
         readable_fields_by_kind={"TestDevice": {"name"}, "TestInterface": {"display_label"}},
-        expected=EveryTarget(),
+        reached_paths_by_kind={"TestInterface": (INTERFACE_PATH,)},
+        expected=RelationshipReachedChanges(
+            direct_member_node_ids=[],
+            reached=[ReachedChange(node_ids=["intf1"], paths=(INTERFACE_PATH,))],
+        ),
     ),
     # A query that reads a derived value composed from a peer the read set cannot name cannot be
     # narrowed, so any change widens to every target.
@@ -264,3 +272,26 @@ def test_assess(case: AssessCase) -> None:
     assessment = classifier.assess(diff_summary=case.diff_summary)
 
     assert assessment == case.expected
+
+
+def test_a_kind_both_read_at_a_root_and_traversed_loses_its_direct_membership() -> None:
+    # A kind present in traversed_kinds is excluded from the roots, so its own changed node is mapped
+    # back through the chain and never counted as a direct member. Nothing recovers the dropped
+    # root readers, which is why the overlap can only be handled by widening upstream, not narrowed.
+    classifier = QueryImpactClassifier(
+        query_branch=BRANCH,
+        only_has_unique_targets=True,
+        traversed_kinds={"TestInterface"},
+        readable_fields_by_kind={"TestDevice": {"name", "interfaces"}, "TestInterface": {"description"}},
+        reached_paths_by_kind={"TestInterface": (INTERFACE_PATH,)},
+    )
+
+    assessment = classifier.assess(
+        diff_summary=[node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"])]
+    )
+
+    assert assessment == RelationshipReachedChanges(
+        direct_member_node_ids=[],
+        reached=[ReachedChange(node_ids=["intf1"], paths=(INTERFACE_PATH,))],
+    )
+    assert "intf1" not in assessment.direct_member_node_ids
