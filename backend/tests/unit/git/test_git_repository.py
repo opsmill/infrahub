@@ -315,9 +315,8 @@ def test_raise_if_branches_failed_error_message(case: RaiseBranchesCase) -> None
 def test_raise_if_branches_failed_logs_structured_fields(caplog: pytest.LogCaptureFixture) -> None:
     repo = InfrahubRepository(id=UUIDT.new(), name="test-repo")
     failed = FailedImport(branch_name="branch01", step=ImportStep.COLLECTION, reason="schema validation failed")
-    with caplog.at_level(logging.WARNING, logger="infrahub.tasks"):
-        with pytest.raises(RepositoryError):
-            repo.raise_if_branches_failed([failed])
+    with caplog.at_level(logging.WARNING, logger="infrahub.tasks"), pytest.raises(RepositoryError):
+        repo.raise_if_branches_failed([failed])
     assert len(caplog.records) == 1
     attrs = vars(caplog.records[0])
     assert attrs["branch"] == "branch01"
