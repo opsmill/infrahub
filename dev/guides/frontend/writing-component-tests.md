@@ -374,6 +374,23 @@ describe("List Component", () => {
 });
 ```
 
+## The suite runs as a dev build
+
+Vitest serves the app through Vite in dev mode, so `import.meta.env.DEV` is `true` in every
+component test — including tests of a production build's behaviour. Any code branching on it takes
+the dev branch here and cannot be exercised the other way from a component test. E2E is the layer
+that runs a real build (the docker stack), so that is where the production branch is observable.
+
+Put policy that depends on the environment in a pure function under `domain/rules/` and unit-test
+its branches directly; leave the component test to prove the wiring. When a component test can
+only reach one branch, say which one and why in the test, and state the precondition rather than
+assuming it:
+
+```ts
+// Vitest serves through Vite in dev mode, so the dev branch is the only one reachable here.
+expect(systemPrefersDark()).toBe(false); // stated, so a passing assertion cannot be a coincidence
+```
+
 ## Troubleshooting
 
 ### `mockClear is not a function` in CI

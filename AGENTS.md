@@ -151,12 +151,14 @@ checkout.
 - `schema/schema.graphql` - GraphQL schema of the Core Schema
 - `schema/openapi.json` - OpenAPI schema for the REST API
 - `docs/docs/reference/{infrahub-cli,schema,infrahub-events}/`, `docs/docs/reference/{dotinfrahub,message-bus-events,configuration}.mdx` – Reference docs rendered from backend source (CLI, schema, events, repository config, message-bus events, configuration)
+- `docker-compose.yml` – The root compose file's env block is rendered from the backend settings
 
 Regenerate backend (offline): `uv run invoke backend.generate`
 Export GraphQL schema: `uv run invoke schema.generate-graphqlschema`
 Export OpenAPI schema: `uv run invoke schema.generate-jsonschema`
 Regenerate frontend types (offline, reads local schema files): `cd frontend/app && pnpm codegen`
 Regenerate reference docs (offline): `uv run invoke docs.generate`
+Regenerate the root compose env block: `uv run invoke release.gen-config-env --update-docker-file` (without the flag it renders nothing)
 
 CI validates that all generated files are committed — the `validate-generated-documentation` job runs `uv run invoke docs.validate` and fails when a generated doc is stale. After changing event classes, schema models, CLI commands, or config, regenerate and commit the affected files. See `dev/knowledge/backend/code-generation.md` for the full pipeline.
 
