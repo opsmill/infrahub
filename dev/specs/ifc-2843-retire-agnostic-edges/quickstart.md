@@ -102,7 +102,7 @@ uv run pytest \
 | 9 | Schema removal with a branch that forked beforehand | Deferred; field still readable on that branch |
 | 10 | Kind or inheritance change, then run every enforcement point and the migration | Surviving vertex **keeps** its value |
 | 11 | Create and delete on `B`, then rebase `B` | Invariant holds; no vertex left with open global edges |
-| 12 | Value freed by retirement, then allocate from the pool | Value is allocatable again |
+| 12 | Delete the holder of an allocated value, then allocate from the pool | Value is allocatable again, and retirement has not stood in the way of it (per the amended SC-007, deletion frees it regardless) |
 
 Scenarios **4, 6, 9 and 10 are the negative cases** — they are what a naive implementation
 breaks, in the opposite direction from the positive ones. Treat a run in which only the positive
@@ -260,8 +260,9 @@ uv run invoke backend.test-unit
 ```
 
 `m078` bumps `GRAPH_VERSION`, so `uv run invoke docs.validate` must pass — CI fails on any stale
-generated doc. A towncrier fragment under `changelog/` is required: freed pool values becoming
-allocatable again is user-visible behaviour.
+generated doc. A towncrier fragment under `changelog/` is required, and it should cite the
+uniqueness-validation failures the upgrade clears — *not* pool re-allocation, which SC-007 records
+as already working without this feature.
 
 ## Manual smoke check
 
