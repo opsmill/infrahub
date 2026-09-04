@@ -35,6 +35,17 @@ describe("LinkTab", () => {
     expect(link?.className).toMatch(/border-custom-blue-600/);
   });
 
+  test("stays active when the target URL carries query params", async () => {
+    // GIVEN
+    const tab = <LinkTab to="/parent/data?branch=feature-1">Data</LinkTab>;
+
+    // WHEN
+    const component = await renderAt("/parent/data", tab);
+
+    // THEN
+    expect(component.container.querySelector("a")?.className).toMatch(/border-custom-blue-600/);
+  });
+
   test("does not apply active border when URL does not match", async () => {
     const component = await renderAt("/parent/files", <LinkTab to="/parent/data">Data</LinkTab>);
     const link = component.container.querySelector("a");
