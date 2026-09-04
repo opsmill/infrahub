@@ -34,7 +34,7 @@ Choose the right base class in `backend/infrahub/core/migrations/shared.py`:
 
 ## Migrations run at the current timestamp
 
-Every entry point builds `MigrationInput` with `at` = now — the upgrade CLI, branch rebase, and the schema-migration batch. All stored edges were written earlier, so a migration query never encounters an edge whose `from` lies after `$at`: a `from <= $at` guard against future-dated edges is dead code here, and test data that can only exist at a historical `at` exercises nothing the migration can reach.
+Each caller supplies `MigrationInput.at` for its operation: the graph upgrade and branch-version runner use a fresh timestamp, while rebases derive it from the diff timestamp and schema-migration batches forward `message.at`. Keep `from <= $at` predicates and historical-`at` tests whenever the migration query is time-scoped.
 
 ## Steps
 
