@@ -158,6 +158,7 @@ async def delete_all_nodes(db: InfrahubDatabase, batch_size: int = DELETE_ALL_NO
         The records returned by the delete query, always empty.
 
     """
+    params: dict[str, Any] = {}
     if db.db_type is DatabaseType.MEMGRAPH or db.is_transaction:
         query = """
         MATCH (n)
@@ -168,10 +169,11 @@ async def delete_all_nodes(db: InfrahubDatabase, batch_size: int = DELETE_ALL_NO
         MATCH (n)
         CALL (n) {
             DETACH DELETE n
-        } IN TRANSACTIONS OF %(batch_size)s ROWS
-        """ % {"batch_size": batch_size}
+        } IN TRANSACTIONS OF $batch_size ROWS
+        """
+        params["batch_size"] = batch_size
 
-    return await db.execute_query(query=query, params={}, name="delete_all_nodes")
+    return await db.execute_query(query=query, params=params, name="delete_all_nodes")
 
 
 def extract_field_filters(field_name: str, filters: dict) -> dict[str, Any]:
