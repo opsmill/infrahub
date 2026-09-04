@@ -2,6 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import createClient, { type Middleware } from "openapi-fetch";
 
 import { PRIORITY_HEADER, resolvePriority } from "@/shared/api/priority";
+import { retryingFetch } from "@/shared/api/rate-limit/retrying-fetch";
 import type { paths } from "@/shared/api/rest/types.generated";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 
@@ -18,7 +19,10 @@ export const queryClient = new QueryClient({
   },
 });
 
-export const apiClient = createClient<paths>({ baseUrl: INFRAHUB_API_SERVER_URL });
+export const apiClient = createClient<paths>({
+  baseUrl: INFRAHUB_API_SERVER_URL,
+  fetch: retryingFetch,
+});
 
 // Store cloned requests for retry purposes
 const requestClones = new WeakMap<Request, Request>();
@@ -59,7 +63,7 @@ export const authMiddleware: Middleware = {
       const newToken = await queryClient.fetchQuery(refreshAccessTokenQueryOptions());
 
       clonedRequest.headers.set("Authorization", `Bearer ${newToken.access_token}`);
-      return fetch(clonedRequest);
+      return retryingFetch(clonedRequest);
     } catch (error) {
       console.error("Token refresh failed:", error);
       redirectToLogin();

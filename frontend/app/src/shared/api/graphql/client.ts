@@ -14,6 +14,7 @@ import { ERROR_CODES } from "@/shared/api/errors";
 import { handleGraphQLErrors, hasCatalogueCode } from "@/shared/api/graphql/error-handling";
 import type { GraphQLRequestContext, GraphQLResult } from "@/shared/api/graphql/types";
 import { DEFAULT_PRIORITY, PRIORITY_HEADER } from "@/shared/api/priority";
+import { retryingFetch } from "@/shared/api/rate-limit/retrying-fetch";
 import { queryClient } from "@/shared/api/rest/client";
 import { CONFIG } from "@/shared/config/config";
 
@@ -64,6 +65,7 @@ function createGraphqlClient(branch?: string | null, date?: Date | null): Client
   return new Client({
     url: CONFIG.GRAPHQL_URL(branch, date),
     preferGetMethod: false,
+    fetch: retryingFetch,
     fetchOptions: {
       headers: {
         [PRIORITY_HEADER]: DEFAULT_PRIORITY,

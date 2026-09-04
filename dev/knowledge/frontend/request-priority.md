@@ -62,6 +62,33 @@ state) are left **undeclared**, so they inherit the `high` default even though t
 an interval — they carry data a user is actively watching and must not be shed. Tests assert
 their `high`-ness explicitly and that none is declared `low` (FR-005).
 
+## What happens when a request is shed
+
+A shed request is answered `429 Too Many Requests` with a `Retry-After` hint
+([ADR 0007](../../adr/0007-adaptive-retry-after-under-load.md)). The frontend honours it in the
+transport, not in the query cache: `retryingFetch` (`shared/api/rate-limit/retrying-fetch.ts`)
+wraps `fetch` for all four injection points above, so a shed request is replayed below the auth
+layer and below TanStack Query — which keeps `retry: false`, because a 429 is the only status
+worth replaying and only the transport can still read the header.
+
+The policy lives in `shared/api/rate-limit/policy.ts`, the browser counterpart of the SDK's
+`infrahub_sdk/rate_limit.py`: at most 3 retries inside a 15s window. An advised wait is a floor,
+never a ceiling — jitter is added on top, so the page-load burst of shed requests de-synchronises
+and no retry lands before the server said it could. A wait that would run past the window ends the
+retries instead, because a person is waiting on the response. With no advice, the delay is a
+full-jitter exponential backoff from 300ms.
+
+`GET`/`HEAD`/`OPTIONS` is always replayable. Anything else is replayed only when the body carries
+Infrahub's shed envelope (`{"errors": [{"extensions": {"code": 429}}]}`), which is what proves the
+admission layer answered before the handler ran. A 429 from an ingress or CDN in front of the API
+carries no such guarantee, so a mutation is not replayed against one.
+
+Once the retries are spent, the 429 surfaces as an ordinary error. On the GraphQL side it is
+recognised before the error catalogue (`shared/api/rate-limit/shed-envelope.ts`): the shed
+envelope's `code` is an integer HTTP status rather than a catalogue identifier, so without that
+branch it collapses into `UNDEFINED_ERROR` and asks a developer to register a code that must never
+be registered.
+
 ## Backend note (CORS)
 
 Two additive backend changes let cross-origin frontends (dev/split-host) send the header:
