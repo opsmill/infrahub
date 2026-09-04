@@ -12,9 +12,12 @@
 
 # ----------------------------------
 # GROUP
+# Which component owns the issue, exactly one per issue. A description that
+# says "not applied by automation" marks a label the triage workflows must
+# never apply (they are also absent from the workflows' allowlists).
 # ----------------------------------
 - name: "group/backend"
-  description: "API server, GraphQL, task worker, git agent, database, Python code"
+  description: "API server, GraphQL, task worker (Prefect), database, Python code"
   color: "b60205"
 
 - name: "group/frontend"
@@ -22,11 +25,11 @@
   color: "353755"
 
 - name: "group/ux-design"
-  description: "Issue related to design or UX"
+  description: "Design or UX work. Human-applied, not applied by automation"
   color: "3380ff"
 
 - name: "group/sync-engine"
-  description: "The external synchronization engine specifically"
+  description: "The infrahub-sync project, a separate repo (opsmill/infrahub-sync): filed here, belongs there"
   color: "05b259"
 
 - name: "group/ci"
@@ -34,7 +37,7 @@
   color: "f25009"
 
 - name: "group/schema"
-  description: "The core schema definitions themselves"
+  description: "Legacy, superseded by category/schema-lifecycle. Kept for old issues, not applied by automation"
   color: "fbceb1"
 
 # ----------------------------------

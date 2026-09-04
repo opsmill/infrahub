@@ -35,12 +35,12 @@ safe-outputs:
     # enforcement boundary, so it must be a closed set. rest.issues.addLabels
     # CREATES a label that does not exist, so a wildcard would let one
     # hallucinated name become a real repository label. Mirror the group/* and
-    # category/* entries of .github/labels.yml here, minus group/ux-design
-    # (human-applied). A label missing from this list is silently not applied.
+    # category/* entries of .github/labels.yml here, minus the human-only ones
+    # (group/ux-design, legacy group/schema). A label missing from this list is
+    # silently not applied.
     allowed:
       - group/backend
       - group/frontend
-      - group/schema
       - group/sync-engine
       - group/ci
       - category/scaling

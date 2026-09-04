@@ -15,7 +15,9 @@ workspace) — the same registry that provisions the labels on GitHub. Read that
 file and use the `description` of each `group/*` and `category/*` entry as its
 definition. Do not rely on a from-memory idea of what a label means.
 
-`group/ux-design` is the one exception: it is applied by humans, never by you.
+A label whose description says it is not applied by automation (today
+`group/ux-design` and the legacy `group/schema`) is never yours to apply. Issues
+carrying one already have their component axis filled, leave them alone.
 
 ## What is already handled without you
 
