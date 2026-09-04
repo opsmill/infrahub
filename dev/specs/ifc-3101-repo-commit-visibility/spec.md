@@ -104,7 +104,7 @@ An operator opens a repository's branch list and sees, for each branch, the comm
 - **A worker misses a convergence notification** (restarting, or down at the time) and serves older data than its peers until the next movement. Covered by the freshness statement rather than by guaranteeing delivery.
 - **Freshly scaled-up worker, idle repository.** Convergence is movement-driven, so a new worker can stay cold indefinitely for a repository with no upstream activity until a read triggers a warm-up.
 - **Branch present in Infrahub with no remote counterpart** (created before the repository was added). No remote head exists to compare against.
-- **Branch not synchronised with Git.** On a read-write repository the branch is not part of the branch list's row set at all. A mismatch there would legitimately mean the branch needs rebasing, not that an import failed.
+- **Branch not synchronised with Git.** On a read-write repository the branch is not part of the branch list's row set at all. A mismatch there would legitimately mean the branch needs rebasing, not that an import failed. The commit view needs the same rule for the same reason: such a branch may still share a name with a real remote branch, and mapping it through unconditionally would report it as behind when Infrahub deliberately never imports it. It is reported as not tracked, not as drifted, on both surfaces (FR-006, FR-021).
 - **Branch that has never imported.** Its tracked commit is the value its origin branch held at the fork point, which is the commit that branch genuinely runs. Not an error state, and not reported as drift on its own.
 - **Remote refs check fails for one repository** (authentication rejected, DNS failure, remote deleted, remote hanging). Recorded with the repository and the reason, the cycle continues with the other repositories, and the failed repository is retried on the next cycle rather than being treated as checked. A repository failing every cycle keeps reporting its last known state with an unchanged freshness stamp, which is the signal that something is wrong.
 - **Staleness.** The log reflects the last time a worker updated its local copy, not the remote right now. Bounded by the relevant interval per repository kind, and stated rather than implied to be live.
@@ -154,7 +154,7 @@ An operator opens a repository's branch list and sees, for each branch, the comm
 
 #### Presentation
 
-- **FR-024**: The commit view MUST NOT display a total commit count for the branch and MUST rely on paging alone. The total number of commits since a repository's origin is seldom what a user needs, and computing it costs a separate pass over the whole history. No total is offered in the response contract either: an unused field would still carry that cost the first time anything selected it, and a nullable field can be added without breaking consumers if a caller ever needs one. _Verify_: assert no total is rendered, and that no counting operation exists in the read path.
+- **FR-024**: The commit view MUST NOT display a total commit count for the branch and MUST rely on paging alone. The total number of commits since a repository's origin is seldom what a user needs, and computing it costs a separate pass over the whole history. No total is offered in the response contract either: an unused field would still carry that cost the first time anything selected it, and a nullable field can be added without breaking consumers if a caller ever needs one. _Verify_: assert no total is rendered, and that no pass over the whole history exists anywhere in the read path. The bounded `imported..head` count FR-006 requires is not a total and is unaffected.
 
 #### Operating the read-only check
 
@@ -205,7 +205,7 @@ No new entities. The data model is unchanged.
 - Local copies carry full history. No shallow or single-branch cloning exists today, so a log is available for both repository kinds, including a read-only repository pinned to a ref.
 - Fleet convergence via broadcast remains the mechanism that makes workers consistent. This work triggers it for a new case rather than replacing it, and accepts that it is best-effort; the freshness statement covers the gap.
 - Convergence carries the currently-imported commit rather than the new head, so the step that makes workers consistent cannot become the step that moves the pin forward.
-- A worktree checked out at a commit protects that commit from garbage collection, which is what makes forcing tag updates safe. This is asserted by FR-020 rather than assumed, and MUST be validated during planning against how worktrees and collection actually behave in the git module before the read-only check ships. The failure mode is losing the commit Infrahub is running.
+- A worktree checked out at a commit protects that commit from garbage collection, which is what makes forcing tag updates safe. This is asserted by FR-020 rather than assumed. Validated during planning and recorded in research.md: the detached worktree at `commits/<sha>` is a reachability root, nothing in the backend runs `git gc` or `git worktree prune`, and the worker's global git config does not touch `gc.auto`, so only git's opportunistic auto-gc runs and it respects worktree roots. FR-020 still tests it, because the failure mode is losing the commit Infrahub is running.
 - Paging is by page size and offset, matching the existing convention for lists in the product.
 - The commit view is a new area of the repository page. The drift column extends the Branches card delivered by the sibling PRD rather than replacing it. If that card does not exist yet, User Story 3 has no rows to annotate.
 - The Branches card obtains the drift column through a second request, settled during planning: the drift data is exposed as its own top-level query rather than fanned out from the card's resolver. Either option satisfied FR-022, and the requirement that survives is that the rows never depend on the drift column. Recorded for the sibling PRD to consume rather than re-decide.
@@ -249,10 +249,16 @@ here should match the PRD.
   with server-side filtering, ordering and paging. This query is the single-repository primitive that
   epic widens rather than a second implementation of it, and that boundary needs confirming with the
   IFC-3104 owner before its own pull request lands, not after. It has its own governance row below.
-- **Two PRD-agreed unit tests land as component tests.** The commit log reader and the bounded RPC
-  wait both do real I/O, against a clone and against a bus adapter respectively, so they are pinned
-  at component level. The pure classification they wrap keeps its unit tests, which is where the
-  logic the PRD wanted covered actually lives.
+- **Classification runs on the worker, not in the API business layer.** The PRD assigns "Commit visibility comparison" to the API layer. It lives in `git/state/classification.py` and executes on the worker beside the git reads that feed it. The property the PRD was protecting, pure logic reachable and testable without a message bus, is preserved: the module has no I/O and its own unit tests.
+- **Four requirements and three success criteria have no PRD counterpart.** FR-026, FR-027 and FR-028, and SC-012, SC-013 and SC-014, were added after the dual-lens critique: they cover operating the read-only check as a background job an operator can live with, accessibility of the commit states, and the degradation behaviour the PRD left implicit. Additions rather than departures, listed here so this register accounts for every difference in both directions.
+- **Three test-tier changes.** Two of the PRD's agreed unit tests, the commit log reader and the
+  bounded RPC wait, land as component tests: both do real I/O, against a clone and against a bus
+  adapter respectively. The pure classification they wrap keeps its unit tests, which is where the
+  logic the PRD wanted covered actually lives. The PRD's integration-level handler tests also land at
+  component level, still against a real `FileRepo` clone, so the substance is preserved at a cheaper
+  tier. The PRD's integration-level GraphQL check is not moved: an interim draft downgraded it and it
+  is restored at integration level, because a recording double cannot show that the real transport is
+  also lazy.
 - **The multi-worker test is not built.** Reasoning and revisit trigger in
   `checklists/requirements.md`.
 
@@ -289,7 +295,7 @@ Using the "Ask First" list from the project's agent instructions.
 | GraphQL schema modifications | Requires sign-off. Additive read field or fields, an on-demand trigger for the read-only check, plus one error catalogue code and typed payload. |
 | New dependencies | None. |
 | CI/CD workflow changes | None. |
-| Authentication / authorization changes | Ruled out. Reuses the existing repository view permission; no new permission. |
+| Authentication / authorization changes | Ruled out. No new permission and no new access surface. The two queries reuse the existing repository view permission; the on-demand refs-check mutation gates on update permission for the concrete kind, exactly as `ReadOnlyRepositoryImportLastCommit` already does. |
 
 Additional items with comparable reach:
 

@@ -15,8 +15,9 @@ an in-memory value object, a wire message, a cache key, an enum or a configurati
 | `Branch` (registry) | `sync_with_git` | n/a | Selects the drift list's row set for the read-write kind; a branch with `sync_with_git = false` is excluded rather than shown as drifted |
 
 Source of the per-branch values: `RepositoryBranchValuesQuery` (below). The existing
-`infrahub.git.utils::get_repositories_commit_per_branch` is not used by this feature and is not
-modified by it.
+`infrahub.git.utils::get_repositories_commit_per_branch` is not the drift resolver's source and is
+not modified by this feature. It is still used, unchanged, for one purpose: the read-only refs-check
+cycle calls it to enumerate the repositories to check.
 
 ### Per-branch resolution this feature must reproduce
 
