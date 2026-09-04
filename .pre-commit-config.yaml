@@ -14,13 +14,9 @@ repos:
       - id: check-toml
       - id: check-yaml
       - id: end-of-file-fixer
-<<<<<<< HEAD
         # Generator output, committed byte-exact. These generators emit no trailing newline, so
         # appending one here would guarantee a mismatch against what CI regenerates.
-        exclude: ^(schema/schema\.graphql|schema/openapi\.json|docs/docs/reference/configuration\.mdx)$
-=======
-        exclude: ^(schema/schema\.graphql|schema/openapi\.json|\.gitattributes|\.github/workflows/.*\.lock\.yml)$
->>>>>>> stable
+        exclude: ^(schema/schema\.graphql|schema/openapi\.json|docs/docs/reference/configuration\.mdx|\.gitattributes|\.github/workflows/.*\.lock\.yml)$
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
