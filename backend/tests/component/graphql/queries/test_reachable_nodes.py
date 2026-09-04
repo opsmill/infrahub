@@ -51,21 +51,86 @@ async def car_with_owner_and_driver(
     return car, owner, driver
 
 
+REACHABLE_NODES_RELATIONSHIP_QUERY = """
+query Reach($data: ReachableNodesInput!) {
+  InfrahubReachableNodes(data: $data) {
+    count
+    dependencies {
+      node { id kind }
+      path {
+        hops {
+          node { id kind }
+          relationship { from_rel from_label to_rel to_label kind }
+        }
+      }
+    }
+  }
+}
+"""
+
+
 async def _run_resolver(
     *,
     db: InfrahubDatabase,
     branch: Branch,
     session: AccountSession,
     variables: dict,
+    source: str = REACHABLE_NODES_QUERY,
 ) -> tuple[dict | None, list | None]:
     gql_params = await prepare_graphql_params(db=db, branch=branch, account_session=session)
     result = await graphql(
         schema=gql_params.schema,
-        source=REACHABLE_NODES_QUERY,
+        source=source,
         context_value=gql_params.context,
         variable_values=variables,
     )
     return result.data, list(result.errors) if result.errors else None
+
+
+async def test_resolver_names_each_end_of_a_hierarchy_hop(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    hierarchical_location_data: dict[str, Node],
+) -> None:
+    # One shared identifier, two sides: the child holds `parent`, the parent `children`.
+    region = hierarchical_location_data["europe"]
+    site = hierarchical_location_data["paris"]
+    default_branch.update_schema_hash()
+
+    variables = {
+        "data": {
+            "source_id": site.id,
+            "target_kinds": ["LocationRegion"],
+            "max_depth": 1,
+        }
+    }
+
+    data, errors = await _run_resolver(
+        db=db,
+        branch=default_branch,
+        session=session_admin,
+        variables=variables,
+        source=REACHABLE_NODES_RELATIONSHIP_QUERY,
+    )
+
+    assert errors is None
+    assert data is not None
+    result = data["InfrahubReachableNodes"]
+    assert result["count"] == 1
+    dependency = result["dependencies"][0]
+    assert dependency["node"]["id"] == region.id
+    hops = dependency["path"]["hops"]
+    assert [hop["node"]["id"] for hop in hops] == [site.id, region.id]
+    assert hops[0]["relationship"] is None
+    assert hops[1]["relationship"] == {
+        "from_rel": "parent",
+        "from_label": "Parent",
+        "to_rel": "children",
+        "to_label": "Children",
+        "kind": "Hierarchy",
+    }
 
 
 async def test_resolver_short_circuits_when_no_route_to_target_kind(

@@ -205,13 +205,17 @@ def _get_schema_or_none(graphql_context: GraphqlContext, kind: str) -> MainSchem
 def _candidate_relationships(
     schema: MainSchemaTypes, identifier: str, other_kind: str, other_schema: MainSchemaTypes | None
 ) -> list[RelationshipSchema]:
-    """Relationships declared under ``identifier``, narrowed to those whose peer covers the other endpoint."""
+    """Relationships declared under ``identifier``, narrowed to those whose peer covers the other endpoint.
+
+    A peer naming the other endpoint's exact kind beats one covering it through a generic.
+    """
     candidates = schema.get_relationships_by_identifier(id=identifier)
     other_kinds = {other_kind}
     if isinstance(other_schema, NodeSchema):
         other_kinds.update(other_schema.inherit_from)
     matching = [candidate for candidate in candidates if candidate.peer in other_kinds]
-    return matching or candidates
+    exact = [candidate for candidate in matching if candidate.peer == other_kind]
+    return exact or matching or candidates
 
 
 def select_hop_relationships(
@@ -225,10 +229,10 @@ def select_hop_relationships(
     """Pick the relationship each end of a hop holds for ``identifier``.
 
     Both ends of an edge share one identifier, like a hierarchy's ``parent`` and
-    ``children``, so candidates are narrowed by peer kind and paired by mirrored
-    direction. The pick is exact when one mirrored pair remains. When peers cover
-    both ends, as when they default to the hierarchy generic, the schema cannot
-    tell the ends apart: the first pair is kept, a deterministic guess.
+    ``children``, so candidates are narrowed by peer kind, exact kind first, and
+    paired by mirrored direction. The pick is exact when one mirrored pair remains.
+    When every peer stays on the hierarchy generic, the schema cannot tell the
+    ends apart: the first pair is kept, a deterministic guess.
     """
     from_candidates = (
         _candidate_relationships(schema=from_schema, identifier=identifier, other_kind=to_kind, other_schema=to_schema)
@@ -245,6 +249,15 @@ def select_hop_relationships(
 
     pairs = [(from_rel, to_rel) for from_rel in from_candidates for to_rel in to_candidates if from_rel.mirrors(to_rel)]
     if not pairs:
+        if from_candidates and to_candidates:
+            log.warning(
+                "No relationship pair mirrors for this hop, reporting the first candidates",
+                from_kind=from_kind,
+                to_kind=to_kind,
+                identifier=identifier,
+                from_candidates=[candidate.name for candidate in from_candidates],
+                to_candidates=[candidate.name for candidate in to_candidates],
+            )
         return (
             from_candidates[0] if from_candidates else None,
             to_candidates[0] if to_candidates else None,
@@ -255,6 +268,8 @@ def select_hop_relationships(
             from_kind=from_kind,
             to_kind=to_kind,
             identifier=identifier,
+            kept=(pairs[0][0].name, pairs[0][1].name),
+            candidates=[(from_rel.name, to_rel.name) for from_rel, to_rel in pairs],
         )
     return pairs[0]
 
@@ -418,7 +433,15 @@ async def path_traversal_resolver(
     )
 
     relationship_cache: dict[tuple[str, str, str], dict[str, str]] = {}
-    paths = [_path_data_to_result(p, labels_map, graphql_context, relationship_cache) for p in path_data_list]
+    paths = [
+        _path_data_to_result(
+            path_data=p,
+            labels_map=labels_map,
+            graphql_context=graphql_context,
+            relationship_cache=relationship_cache,
+        )
+        for p in path_data_list
+    ]
 
     return {
         "paths": paths,
