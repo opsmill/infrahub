@@ -11,8 +11,6 @@ from infrahub.git.fingerprint.hasher import FingerprintHasher, canonical_json
 from infrahub.git.fingerprint.registry import FingerprintKind, FingerprintRegistry
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from git import Repo
     from infrahub_sdk.schema.repository import InfrahubWatchConfig
 
@@ -54,12 +52,11 @@ def fold_commit_id(
 
 
 def require_canonical_path(*, field: str, value: str) -> None:
-    """Reject a path that is not already in canonical repo-relative form.
+    """Require ``value`` to already satisfy ``canonicalize_path(value) == value``.
 
     Two spellings of the same file hash to two different digests, so a caller that skips the
-    conversion produces a spurious regeneration wave that nothing else would catch. The
-    non-canonical spelling is refused rather than corrected here: it means the value was read
-    from the wrong place, and silently fixing it hides that.
+    conversion produces a spurious regeneration wave that nothing else would catch. The value
+    is never normalized here; it is rejected.
 
     Raises:
         ValueError: If ``value`` is not in canonical form.
@@ -259,7 +256,7 @@ class FingerprintComposer:
             watch_required=watch_required,
         )
 
-    def _closure_term(self, dependencies: Sequence[str]) -> str:
+    def _closure_term(self, dependencies: tuple[str, ...]) -> str:
         pairs = self._blob_resolver.resolve(dependencies)
         return canonical_json([[path, blob_sha] for path, blob_sha in pairs])
 

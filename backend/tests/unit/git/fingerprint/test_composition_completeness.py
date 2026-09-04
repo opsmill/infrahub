@@ -270,8 +270,8 @@ SECTIONS_NOT_AN_INPUT = {
 def test_every_manifest_section_is_classified() -> None:
     """Each top-level manifest section reaches a fingerprint, or is recorded as not an input.
 
-    A new section is the shape `graphql_fragments` had when it was added: a whole block of
-    manifest that the per-entry checks below cannot see.
+    A wholly new section is invisible to the per-entry checks below, which only ever read the
+    fields of the entry models they are given.
     """
     classifications: list[Mapping[str, Any]] = [
         SECTIONS_WITH_A_DEFINITION_KIND,
