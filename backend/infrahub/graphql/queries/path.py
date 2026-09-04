@@ -236,7 +236,9 @@ def select_hop_relationships(
         else []
     )
     to_candidates = (
-        _candidate_relationships(schema=to_schema, identifier=identifier, other_kind=from_kind, other_schema=from_schema)
+        _candidate_relationships(
+            schema=to_schema, identifier=identifier, other_kind=from_kind, other_schema=from_schema
+        )
         if to_schema
         else []
     )
