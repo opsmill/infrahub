@@ -44,6 +44,7 @@ jobs:
       release: ${{ steps.changes.outputs.release_all }}
       frontend: ${{ steps.changes.outputs.frontend_all }}
       e2e: ${{ steps.changes.outputs.e2e_all }}
+      demo: ${{ steps.changes.outputs.demo_files }}
       python: ${{ steps.changes.outputs.python_all }}
       javascript: ${{ steps.changes.outputs.javascript_all }}
       yaml: ${{ steps.changes.outputs.yaml_all }}
@@ -97,6 +98,8 @@ jobs:
         run: "uv sync --all-groups"
       - name: "Linting: yamllint"
         run: "uv run yamllint -s ."
+      - name: "Validate huge-runner gate wiring"
+        run: "uv run invoke ci.validate-huge-runner-gate"
 
   frontend-lint:
     defaults:
@@ -513,13 +516,60 @@ jobs:
           flag-name: backend-unit
           parallel: true
 
+  # ------------------------------------------ Huge-runner gate ------------------------------------------
+  huge-runner-gate:
+    name: Gate for huge-runner jobs
+    if: always() && !cancelled()
+    needs:
+      - prepare-environment
+      - files-changed
+      - yaml-lint
+      - frontend-lint
+      - frontend-validate-openapi-types
+      - frontend-validate-error-catalogue
+      - frontend-validate-graphql-types
+      - validate-observability-standalone
+      - python-lint
+      - markdown-lint
+      - action-lint
+      - infrahub-uv-check
+      - infrahub-testcontainers-check
+      - backend-testcontainers-unit
+      - infrahub-testcontainers-uv-check
+      - backend-tests-unit
+      - backend-validate-generated
+      - frontend-tests
+      - graphql-schema
+      - json-schema
+      - validate-docker-compose-env-vars
+      - documentation
+      - validate-generated-documentation
+      - validate-dev-guideline-links
+      - validate-documentation-style
+      - validate-release-notes-style
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PUSH_DEBOUNCE_SECONDS: 600
+    steps:
+      - name: Fail when a GitHub-hosted check failed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "Skipping the huge-runner jobs, these checks did not pass:"
+          jq -r 'to_entries[] | select(.value.result != "success" and .value.result != "skipped") | "  \(.key): \(.value.result)"' <<< "$NEEDS"
+          exit 1
+      - name: Debounce push events
+        if: github.event_name == 'push'
+        run: sleep "$PUSH_DEBOUNCE_SECONDS"
+
   backend-tests-component:
     if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
+      !cancelled() &&
+      needs.huge-runner-gate.result == 'success' &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "backend-tests-unit", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "huge-runner-gate"]
     strategy:
       fail-fast: false
       matrix:
@@ -581,11 +631,10 @@ jobs:
 
   backend-tests-integration:
     if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
+      !cancelled() &&
+      needs.huge-runner-gate.result == 'success' &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "backend-tests-unit", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "huge-runner-gate"]
     strategy:
       fail-fast: false
       matrix:
@@ -635,11 +684,10 @@ jobs:
 
   backend-tests-functional:
     if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
+      !cancelled() &&
+      needs.huge-runner-gate.result == 'success' &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "backend-tests-unit", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "huge-runner-gate"]
     runs-on:
       group: "huge-runners"
     timeout-minutes: 30
@@ -680,12 +728,11 @@ jobs:
 
   backend-docker-integration:
     if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
+      !cancelled() &&
+      needs.huge-runner-gate.result == 'success' &&
       (needs.files-changed.outputs.backend == 'true' ||
       needs.files-changed.outputs.testcontainers == 'true')
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "backend-tests-unit"]
+    needs: ["prepare-environment", "files-changed", "huge-runner-gate"]
     strategy:
       fail-fast: false
       matrix:
@@ -1114,14 +1161,10 @@ jobs:
     needs:
       - prepare-environment
       - files-changed
-      - yaml-lint
-      - python-lint
-      - backend-tests-unit
-      - infrahub-testcontainers-check
+      - huge-runner-gate
     if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
+      !cancelled() &&
+      needs.huge-runner-gate.result == 'success' &&
       needs.files-changed.outputs.e2e == 'true'
     runs-on:
       group: huge-runners
@@ -1225,16 +1268,11 @@ jobs:
   E2E-testing-invoke-demo-start:
     needs:
       - prepare-environment
-      - frontend-lint
       - files-changed
-      - yaml-lint
-      - python-lint
-      - backend-tests-unit
-      - infrahub-testcontainers-check
+      - huge-runner-gate
     if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
+      !cancelled() &&
+      needs.huge-runner-gate.result == 'success' &&
       github.base_ref == 'stable' &&
       needs.files-changed.outputs.e2e == 'true'
     runs-on:
@@ -1305,17 +1343,13 @@ jobs:
   # ------------------------------------------ E2E version upgrade ------------------------------------------------
   E2E-testing-version-upgrade:
     needs:
-      - frontend-lint
       - files-changed
-      - yaml-lint
-      - python-lint
-      - backend-tests-unit
-      - infrahub-testcontainers-check
+      - huge-runner-gate
     if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      (needs.files-changed.outputs.e2e == 'true' ||
+      !cancelled() &&
+      needs.huge-runner-gate.result == 'success' &&
+      (needs.files-changed.outputs.backend == 'true' ||
+      needs.files-changed.outputs.demo == 'true' ||
       needs.files-changed.outputs.version_upgrade_workflow == 'true')
     uses: ./.github/workflows/version-upgrade.yml
 
@@ -1323,16 +1357,11 @@ jobs:
   backend-benchmark:
     needs:
       - prepare-environment
-      - frontend-lint
       - files-changed
-      - yaml-lint
-      - python-lint
-      - backend-tests-unit
-      - infrahub-testcontainers-check
+      - huge-runner-gate
     if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
+      !cancelled() &&
+      needs.huge-runner-gate.result == 'success' &&
       needs.files-changed.outputs.backend == 'true'
     runs-on:
       group: huge-runners

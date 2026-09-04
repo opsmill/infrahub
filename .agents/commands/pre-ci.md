@@ -133,6 +133,9 @@ Steps 2–4 are CI's `python-lint` job verbatim, and repo-wide — the `invoke` 
 
 1. `uv run yamllint -s .` — CI's `yaml-lint` job. Call it directly, not via
    `uv run invoke lint`, which bundles unrelated steps.
+2. `uv run invoke ci.validate-huge-runner-gate` — the `yaml-lint` job's second step. Every
+   huge-runner job in `ci.yml` must depend on `huge-runner-gate`, and the gate on every
+   GitHub-hosted job; this fails when a new job is not wired in.
 
 ---
 
