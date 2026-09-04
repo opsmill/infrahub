@@ -479,8 +479,7 @@ async def test_resolver_names_each_end_of_a_hierarchy_hop(
     session_admin: AccountSession,
     hierarchical_location_data: dict[str, Node],
 ) -> None:
-    # Both ends of a hierarchy edge share one identifier, but each end holds
-    # its own side: the child holds `parent`, the parent holds `children`.
+    # One shared identifier, two sides: the child holds `parent`, the parent `children`.
     region = hierarchical_location_data["europe"]
     site = hierarchical_location_data["paris"]
     default_branch.update_schema_hash()
