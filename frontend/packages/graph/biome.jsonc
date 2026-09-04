@@ -1,0 +1,16 @@
+{
+  "$schema": "../../node_modules/@biomejs/biome/configuration_schema.json",
+  // Shared formatter, assist and lint configuration lives in ../../biome.jsonc.
+  "extends": "//",
+  "files": {
+    "includes": ["!dist", "!storybook-static"]
+  },
+  "linter": {
+    "rules": {
+      "performance": {
+        // src/index.ts is the package's public API; re-exporting is the point.
+        "noBarrelFile": "off"
+      }
+    }
+  }
+}

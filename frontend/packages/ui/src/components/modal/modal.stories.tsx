@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-
 import { useState } from "react";
 
 import { Button } from "../button/button";
@@ -27,8 +26,8 @@ export const Default: Story = {
   render: (args) => (
     <Modal {...args}>
       <div className="flex flex-col gap-3 p-3">
-        <h2 className="text-base font-medium text-foreground">Confirm action</h2>
-        <p className="text-sm text-foreground-muted">
+        <h2 className="font-medium text-base text-foreground">Confirm action</h2>
+        <p className="text-foreground-muted text-sm">
           This is a typical modal body. It can contain any content.
         </p>
         <div className="flex justify-end gap-2">
@@ -55,7 +54,7 @@ function NestedModal({ depth = ROOT_DEPTH }: { depth?: number }) {
         aria-label={`Modal level ${depth + NEXT_LEVEL}`}
       >
         <div className="flex flex-col gap-3 p-3">
-          <p className="text-sm text-foreground-muted">Level {depth + NEXT_LEVEL}</p>
+          <p className="text-foreground-muted text-sm">Level {depth + NEXT_LEVEL}</p>
           <NestedModal depth={depth + NEXT_LEVEL} />
         </div>
       </Modal>

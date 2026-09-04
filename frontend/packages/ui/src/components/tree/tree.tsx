@@ -1,15 +1,14 @@
-import type React from "react";
-
 import { ChevronRightIcon } from "lucide-react";
+import type React from "react";
 import {
   Tree as AriaTree,
-  type TreeProps as AriaTreeProps,
   TreeItem as AriaTreeItem,
   TreeItemContent as AriaTreeItemContent,
   type TreeItemContentProps as AriaTreeItemContentProps,
   type TreeItemProps as AriaTreeItemProps,
   TreeLoadMoreItem as AriaTreeLoadMoreItem,
   type TreeLoadMoreItemProps as AriaTreeLoadMoreItemProps,
+  type TreeProps as AriaTreeProps,
   Button,
 } from "react-aria-components";
 import { cn } from "tailwind-variants";
@@ -54,8 +53,8 @@ export function TreeItem({ className, ...props }: TreeItemProps) {
         className,
         cn(
           focusVisibleStyle,
-          "cursor-pointer rounded-md border border-transparent text-sm text-subtle hover:bg-highlight hover:text-highlight-foreground",
-        ),
+          "cursor-pointer rounded-md border border-transparent text-sm text-subtle hover:bg-highlight hover:text-highlight-foreground"
+        )
       )}
       {...props}
     />
@@ -82,7 +81,7 @@ export function TreeItemContent({ onExpandedChange, children, ...props }: TreeIt
                 onPress={onExpandedChange}
                 className={cn(
                   "inline-flex size-8 shrink-0 items-center justify-center duration-200",
-                  isExpanded && "rotate-90",
+                  isExpanded && "rotate-90"
                 )}
               >
                 <ChevronRightIcon className="size-4" />

@@ -1,6 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-
 import { Button } from "@infrahub/ui";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Minus, Plus } from "lucide-react";
 
 import { Toolbar } from "./toolbar";

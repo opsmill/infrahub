@@ -123,6 +123,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Check formatting and linting (Biome)
+        # Run from the pnpm workspace root: one Biome config now covers the app
+        # and frontend/packages/*, so this single check gates the whole frontend.
+        working-directory: ./frontend
         run: pnpm exec biome ci .
       - name: Check unused exports (Knip)
         run: pnpm knip

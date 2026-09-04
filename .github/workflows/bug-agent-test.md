@@ -256,7 +256,7 @@ uv run invoke lint
 
 **Frontend** (if applicable):
 ```bash
-cd frontend/app && pnpm exec biome check --write .
+cd frontend && pnpm exec biome check --write .
 ```
 
 ### Step 9: Commit test files

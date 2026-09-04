@@ -94,7 +94,7 @@ See `tests/e2e/README.md` for the suite architecture and data fixtures.
 ```bash
 uv run invoke format                  # Format all Python code
 uv run invoke lint                    # Lint all Python code
-cd frontend/app && pnpm biome:fix     # Format/lint frontend
+cd frontend && pnpm biome:fix         # Format/lint frontend (app + packages/*)
 uv run invoke docs.lint               # Lint documentation
 ```
 
