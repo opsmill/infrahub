@@ -1,0 +1,262 @@
+# yamllint disable rule:truthy rule:line-length
+# Proof-of-concept for the bug pipeline's E2E proof runs: on a pipeline PR that
+# adds an e2e reproduction test, run exactly that test and verify the phase
+# contract -- the test MUST fail on its assertion before the fix
+# (AGENT_FIX_COMPLETE absent from the PR body) and MUST pass after it. Each run
+# publishes its screenshot to the bug-pipeline-assets branch and embeds it in
+# the PR description between the E2E_PROOF markers.
+name: bug-e2e-proof
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [stable]
+    paths:
+      - "tests/e2e/**"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: bug-e2e-proof-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  proof:
+    # PoC guard: only the experiment branch. Production would key on ai-bug-pipeline-*.
+    if: startsWith(github.event.pull_request.head.ref, 'poc-e2e-proof')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Determine phase and target test
+        id: phase
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          if [[ "$PR_BODY" == *"AGENT_FIX_COMPLETE"* ]]; then
+            PHASE=green
+          else
+            PHASE=red
+          fi
+          TEST_FILES=$(git diff --name-only --diff-filter=AM "$BASE_SHA"...HEAD -- 'tests/e2e/**/test_*.py' | grep -v /tutorial/ || true)
+          COUNT=$(echo "$TEST_FILES" | grep -c . || true)
+          if [ "$COUNT" != "1" ]; then
+            echo "::error::Expected exactly one new/modified e2e test file, found $COUNT: $TEST_FILES"
+            exit 1
+          fi
+          echo "phase=$PHASE" >> "$GITHUB_OUTPUT"
+          echo "test_file=$TEST_FILES" >> "$GITHUB_OUTPUT"
+          echo "Phase: $PHASE / Test: $TEST_FILES" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+      - name: Install dependencies
+        run: uv sync --all-groups
+      - name: Install Playwright browsers
+        run: uv run playwright install --with-deps chromium
+      - name: Install tini
+        run: sudo apt-get update && sudo apt-get install -y tini
+
+      # RED runs on a test-only PR (code-identical to the base branch), so a
+      # published image stands in for a build. GREEN must contain the fix, so it
+      # always builds.
+      - name: Select image (red -- pull published)
+        if: steps.phase.outputs.phase == 'red'
+        run: |
+          echo "INFRAHUB_TESTING_DOCKER_IMAGE=docker.io/opsmill/infrahub" >> "$GITHUB_ENV"
+          echo "INFRAHUB_TESTING_IMAGE_VER=1.11.0" >> "$GITHUB_ENV"
+          echo "INFRAHUB_TESTING_DOCKER_PULL=true" >> "$GITHUB_ENV"
+      - name: Build image (green)
+        if: steps.phase.outputs.phase == 'green'
+        run: |
+          uv run invoke dev.build
+          echo "INFRAHUB_TESTING_IMAGE_VER=local" >> "$GITHUB_ENV"
+          echo "INFRAHUB_TESTING_DOCKER_PULL=false" >> "$GITHUB_ENV"
+
+      - name: Run the reproduction test
+        id: run
+        run: |
+          set +e
+          exec_status=0
+          tini -s -g -- uv run pytest -c tests/e2e/pytest.ini "${{ steps.phase.outputs.test_file }}" --screenshot on || exec_status=$?
+          echo "exit_code=$exec_status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Verdict
+        id: verdict
+        env:
+          PHASE: ${{ steps.phase.outputs.phase }}
+          TEST_FILE: ${{ steps.phase.outputs.test_file }}
+        run: |
+          uv run python - <<'EOF'
+          import os
+          import xml.etree.ElementTree as ET
+
+          phase = os.environ["PHASE"]
+          verdict, reason = "inconclusive", "junit report missing"
+          try:
+              root = ET.parse("playwright-junit.xml").getroot()
+              cases = list(root.iter("testcase"))
+              failures = [c for c in cases if c.find("failure") is not None]
+              errors = [c for c in cases if c.find("error") is not None]
+              if not cases:
+                  reason = "no test collected"
+              elif errors:
+                  reason = f"{len(errors)} error(s) during setup/teardown -- infrastructure, not the bug"
+              elif phase == "red":
+                  if len(cases) == 1 and len(failures) == 1:
+                      f = failures[0].find("failure")
+                      msg = (f.get("message") or "") + (f.text or "")
+                      if "AssertionError" in msg:
+                          verdict, reason = "red_confirmed", f"test failed on its assertion: {(f.get('message') or '')[:160]}"
+                      else:
+                          reason = f"test failed but not on an assertion: {(f.get('message') or '')[:160]}"
+                  elif not failures:
+                      reason = "test passed but the fix is not applied yet -- it does not reproduce the bug"
+                  else:
+                      reason = f"expected exactly one failing test, got {len(failures)} of {len(cases)}"
+              else:
+                  if len(cases) == 1 and not failures:
+                      verdict, reason = "green_confirmed", "reproduction test passes with the fix applied"
+                  else:
+                      reason = f"{len(failures)} failure(s) -- the fix does not make the reproduction pass"
+          except FileNotFoundError:
+              pass
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write(f"verdict={verdict}\n")
+              fh.write(f"reason={reason}\n")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
+              fh.write(f"**Verdict:** `{verdict}` -- {reason}\n")
+          print(f"{verdict}: {reason}")
+          EOF
+
+      - name: Collect screenshot
+        id: shot
+        env:
+          PHASE: ${{ steps.phase.outputs.phase }}
+        run: |
+          set -euo pipefail
+          NAME=$([ "$PHASE" = "red" ] && echo before || echo after)
+          PNG=$(find test-results -name '*.png' -print0 2>/dev/null | xargs -0 ls -t 2>/dev/null | head -1 || true)
+          if [ -n "$PNG" ]; then
+            cp "$PNG" "/tmp/$NAME.png"
+            echo "name=$NAME" >> "$GITHUB_OUTPUT"
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out assets branch
+        if: steps.shot.outputs.found == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: bug-pipeline-assets
+          path: .proof-assets
+
+      - name: Publish screenshot to assets branch
+        id: assets
+        if: steps.shot.outputs.found == 'true'
+        env:
+          NAME: ${{ steps.shot.outputs.name }}
+        run: |
+          set -euo pipefail
+          cd .proof-assets
+          mkdir -p "pr-$PR_NUMBER"
+          cp "/tmp/$NAME.png" "pr-$PR_NUMBER/$NAME.png"
+          git config user.name "bug-e2e-proof"
+          git config user.email "bug-e2e-proof@users.noreply.github.com"
+          git add "pr-$PR_NUMBER/$NAME.png"
+          git commit -m "proof: $NAME screenshot for PR #$PR_NUMBER" || exit 0
+          git push origin HEAD:bug-pipeline-assets
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Embed proof in PR description
+        if: always() && steps.phase.outputs.phase != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PHASE: ${{ steps.phase.outputs.phase }}
+          VERDICT: ${{ steps.verdict.outputs.verdict }}
+          REASON: ${{ steps.verdict.outputs.reason }}
+          ASSET_SHA: ${{ steps.assets.outputs.sha }}
+          ASSET_NAME: ${{ steps.shot.outputs.name }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          uv run python - <<'EOF'
+          import json
+          import os
+          import re
+          import subprocess
+
+          repo = os.environ["REPO"]
+          pr = os.environ["PR_NUMBER"]
+          phase = os.environ["PHASE"].upper()
+          verdict = os.environ.get("VERDICT") or "inconclusive"
+          reason = os.environ.get("REASON") or ""
+          sha = os.environ.get("ASSET_SHA") or ""
+          name = os.environ.get("ASSET_NAME") or ""
+          run_url = os.environ["RUN_URL"]
+
+          icon = {"red_confirmed": "✅", "green_confirmed": "✅"}.get(verdict, "⚠️")
+          lines = [f"{icon} `{verdict}` -- {reason} ([run]({run_url}))"]
+          if sha and name:
+              lines.append("")
+              lines.append(f"![{name}](https://raw.githubusercontent.com/{repo}/{sha}/pr-{pr}/{name}.png)")
+          section = "\n".join(lines)
+
+          body = subprocess.run(
+              ["gh", "api", f"repos/{repo}/pulls/{pr}", "--jq", ".body"],
+              check=True, capture_output=True, text=True,
+          ).stdout
+          begin, end = f"<!-- E2E_PROOF:{phase}:BEGIN -->", f"<!-- E2E_PROOF:{phase}:END -->"
+          block = f"{begin}\n{section}\n{end}"
+          pattern = re.compile(re.escape(begin) + r".*?" + re.escape(end), re.DOTALL)
+          new_body = pattern.sub(block, body) if pattern.search(body) else body.rstrip() + "\n\n" + block + "\n"
+
+          subprocess.run(
+              ["gh", "api", "--method", "PATCH", f"repos/{repo}/pulls/{pr}",
+               "-f", f"body={new_body}"],
+              check=True, capture_output=True, text=True,
+          )
+          print(f"PR body updated for phase {phase}")
+          EOF
+
+      - name: Gate on the phase contract
+        env:
+          PHASE: ${{ steps.phase.outputs.phase }}
+          VERDICT: ${{ steps.verdict.outputs.verdict }}
+          REASON: ${{ steps.verdict.outputs.reason }}
+        run: |
+          case "$PHASE:$VERDICT" in
+            red:red_confirmed|green:green_confirmed)
+              echo "Phase contract satisfied: $VERDICT" ;;
+            *)
+              echo "::error::Phase contract NOT satisfied ($PHASE): $VERDICT -- $REASON"
+              exit 1 ;;
+          esac
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: bug-e2e-proof-${{ github.event.pull_request.number }}-${{ steps.phase.outputs.phase }}-${{ github.run_attempt }}
+          path: |
+            test-results/
+            playwright-junit.xml
