@@ -149,6 +149,19 @@ AMBIGUOUS_HOP_CASES = [
         ],
         hops=[("TestingArea", "TestingZone"), ("TestingZone", "TestingArea")],
     ),
+    AmbiguousHopCase(
+        name="self_referencing_kind_with_one_pinned_side",
+        nodes=[_location_variant(name="Area", parent="TestingArea", children="")],
+        hops=[("TestingArea", "TestingArea")],
+    ),
+    AmbiguousHopCase(
+        name="two_kinds_pinning_each_other_as_children",
+        nodes=[
+            _location_variant(name="Building", parent=None, children="TestingFloor"),
+            _location_variant(name="Floor", parent=None, children="TestingBuilding"),
+        ],
+        hops=[("TestingBuilding", "TestingFloor"), ("TestingFloor", "TestingBuilding")],
+    ),
 ]
 
 
