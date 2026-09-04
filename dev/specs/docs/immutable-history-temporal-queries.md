@@ -264,6 +264,13 @@ neighbouring pages such as `docs/docs/branches/overview.mdx` are written as sing
 These are grouped by who can decide them. None of these are writing problems. Each needs a decision
 or a confirmation from a person.
 
+Each item below states the question and who can answer it. A handover comment on pull request 10334
+covers the same items in more depth. For each one it sets out the available options with their
+trade-offs, how the item could be checked, and what to do with each possible answer. That comment
+stays readable on the pull request after it is merged. Read it alongside this section rather than
+instead of it: this document records why the pages are shaped as they are, and the comment records
+what to do next.
+
 ### Items that need an engineer
 
 **Open item 1. Is the base of the comparison in `DiffTree` working correctly?**
