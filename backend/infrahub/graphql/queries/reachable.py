@@ -163,7 +163,12 @@ async def reachable_nodes_resolver(
         {
             "node": _node_payload(node_id=n.node.uuid, kind=n.node.kind, labels_map=labels_map),
             "depth": n.depth,
-            "path": _path_data_to_result(n.path, labels_map, graphql_context, relationship_cache),
+            "path": _path_data_to_result(
+                path_data=n.path,
+                labels_map=labels_map,
+                graphql_context=graphql_context,
+                relationship_cache=relationship_cache,
+            ),
         }
         for n in reachable_data
     ]

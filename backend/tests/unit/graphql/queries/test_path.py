@@ -103,6 +103,31 @@ def test_select_hop_relationships(location_schema_branch: SchemaBranch, case: Ho
     assert (from_rel.name, to_rel.name) == (case.expected_from, case.expected_to)
 
 
+def test_two_level_hierarchy_names_both_ends() -> None:
+    # The top's parent peer and the leaf's children peer both fall back to the
+    # generic; only the exact peer preference keeps the pick out of the guess.
+    building = _location_variant(name="Building", parent="", children="TestingFloor")
+    floor = _location_variant(name="Floor", parent="TestingBuilding", children="")
+    schema_branch = _processed_branch(nodes=[building, floor])
+
+    expectations = {
+        ("TestingBuilding", "TestingFloor"): ("children", "parent"),
+        ("TestingFloor", "TestingBuilding"): ("parent", "children"),
+    }
+    for (from_kind, to_kind), expected in expectations.items():
+        from_rel, to_rel = select_hop_relationships(
+            from_schema=schema_branch.get(name=from_kind, duplicate=False),
+            to_schema=schema_branch.get(name=to_kind, duplicate=False),
+            from_kind=from_kind,
+            to_kind=to_kind,
+            identifier="parent__child",
+        )
+
+        assert from_rel is not None
+        assert to_rel is not None
+        assert (from_rel.name, to_rel.name) == expected
+
+
 @dataclass
 class AmbiguousHopCase:
     name: str
