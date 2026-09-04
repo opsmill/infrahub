@@ -193,11 +193,10 @@ Consuming the types: pull `develop`, run `pnpm codegen` in `frontend/app`, then 
 with the `graphql()` tag from `@/shared/api/graphql/client` in the `api/` layer of the repository entity
 slice (`frontend/app/src/entities/repository/api/`), as `get-repository-group-from-api.ts` does.
 
-## Companion change on the existing branch query
+## No companion change on the existing branch query
 
-`InfrahubBranch` gains a `sync_with_git__value: Boolean` argument with the same semantics as the
-row-set criterion above. The `__value` suffix matches its sibling filters (`name__value`,
-`status__value`), which all name a value-wrapped field on the branch node.
-
-Its default ordering also changes from database id to branch name ascending, so an unordered
-`InfrahubBranch` read and this query's default `order_rows` agree.
+`InfrahubBranch` is unchanged by this feature. An earlier draft of this contract gave it a
+`sync_with_git` filter argument; that was dropped, because nothing queries `InfrahubBranch` to build
+this feature. The row set is narrowed inside the resolver, which calls `Branch.get_list` in Python
+with `BranchListFilters(sync_with_git=...)`. The Branches card reads
+`InfrahubRepositoryBranchStatus` and gets its branches in that response.

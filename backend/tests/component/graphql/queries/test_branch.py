@@ -1371,98 +1371,11 @@ class TestBranchSchemaDivergence(TestInfrahubApp):
             assert fields["schema_differs_from_default_branch"]["deprecationReason"] is None
 
 
-class TestBranchSyncWithGitFilter(TestInfrahubApp):
-    """The branch set is small and fully owned here, so the filter can be asserted exactly.
-
-    A class of its own is what makes that possible: the database is emptied once per class, not
-    once per test, so a shared class would carry every branch its earlier tests created.
-    """
-
-    @pytest.fixture(scope="class")
-    async def branches(self, db: InfrahubDatabase, default_branch: Branch) -> dict[str, bool]:
-        branches = {"sync-on-1": True, "sync-on-2": True, "sync-off-1": False}
-        for name, sync_with_git in branches.items():
-            await Branch(name=name, sync_with_git=sync_with_git, branched_from=Timestamp().to_string()).save(db=db)
-        return branches
-
-    async def test_filter_splits_the_branch_list_and_count_follows(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        branches: dict[str, bool],
-        service: InfrahubServices,
-    ) -> None:
-        query = """
-        query($sync_with_git__value: Boolean) {
-            InfrahubBranch(sync_with_git__value: $sync_with_git__value) {
-                count
-                edges {
-                    node { name { value } sync_with_git { value } }
-                }
-            }
-        }
-        """
-        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
-
-        async def run(variable_values: dict[str, bool]) -> tuple[set[str], int]:
-            result = await graphql(
-                schema=gql_params.schema,
-                source=query,
-                context_value=gql_params.context,
-                root_value=None,
-                variable_values=variable_values,
-            )
-            assert result.errors is None
-            assert result.data
-            edges = result.data["InfrahubBranch"]["edges"]
-            return {edge["node"]["name"]["value"] for edge in edges}, result.data["InfrahubBranch"]["count"]
-
-        # The default branch syncs with git, and the global branch is always excluded.
-        syncing_names = {name for name, sync_with_git in branches.items() if sync_with_git} | {default_branch.name}
-        non_syncing_names = {name for name, sync_with_git in branches.items() if not sync_with_git}
-
-        syncing, syncing_count = await run({"sync_with_git__value": True})
-        assert syncing == syncing_names
-        assert syncing_count == len(syncing_names)
-
-        non_syncing, non_syncing_count = await run({"sync_with_git__value": False})
-        assert non_syncing == non_syncing_names
-        assert non_syncing_count == len(non_syncing_names)
-
-        unfiltered, unfiltered_count = await run({})
-        assert unfiltered == syncing_names | non_syncing_names
-        assert unfiltered_count == len(syncing_names | non_syncing_names)
-
-    async def test_unordered_query_returns_branches_by_name(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        branches: dict[str, bool],
-        service: InfrahubServices,
-    ) -> None:
-        query = """
-        query {
-            InfrahubBranch {
-                edges { node { name { value } } }
-            }
-        }
-        """
-        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
-
-        result = await graphql(
-            schema=gql_params.schema, source=query, context_value=gql_params.context, root_value=None
-        )
-
-        assert result.errors is None
-        assert result.data
-        names = [edge["node"]["name"]["value"] for edge in result.data["InfrahubBranch"]["edges"]]
-        assert names == sorted([*branches, default_branch.name])
-
+class TestBranchOffsetWithoutLimit(TestInfrahubApp):
     async def test_offset_without_limit_is_rejected(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        branches: dict[str, bool],
         service: InfrahubServices,
     ) -> None:
         """An unbounded read with a SKIP bypasses the query size limit, so the pair is refused."""

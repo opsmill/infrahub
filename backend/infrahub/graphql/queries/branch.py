@@ -28,14 +28,14 @@ def standard_node_ordering_from_order_input(order: MetadataOrderInput | None = N
         order: Optional ordering specification from GraphQL input.
 
     Returns:
-        StandardNodeOrdering with the specified field and direction, or ascending branch name.
+        StandardNodeOrdering with the specified field and direction, or defaults to ID with no direction.
 
     Raises:
         ValidationError: when both `created_at` and `updated_at` are specified.
 
     """
     if order is None or not order.node_metadata:
-        return StandardNodeOrdering(order_by=OrderByField.NAME, direction=OrderDirection.ASC)
+        return StandardNodeOrdering()
 
     created_at = getattr(order.node_metadata, "created_at", None)
     updated_at = getattr(order.node_metadata, "updated_at", None)
@@ -49,7 +49,7 @@ def standard_node_ordering_from_order_input(order: MetadataOrderInput | None = N
     if updated_at:
         return StandardNodeOrdering(order_by=OrderByField.UPDATED_AT, direction=OrderDirection(updated_at.value))
 
-    return StandardNodeOrdering(order_by=OrderByField.NAME, direction=OrderDirection.ASC)
+    return StandardNodeOrdering()
 
 
 async def branch_resolver(
@@ -83,7 +83,6 @@ async def infrahub_branch_resolver(
     partial_match: bool = False,
     order: MetadataOrderInput | None = None,
     status__value: str | None = None,
-    sync_with_git__value: bool | None = None,
     node_metadata__created_by__id: str | None = None,
     branched_from__after: datetime | None = None,
     branched_from__before: datetime | None = None,
@@ -107,7 +106,6 @@ async def infrahub_branch_resolver(
         ids=ids,
         partial_match=partial_match,
         status=BranchStatus(status__value) if status__value else None,
-        sync_with_git=sync_with_git__value,
         created_by_id=node_metadata__created_by__id,
         branched_from_after=branched_from__after,
         branched_from_before=branched_from__before,
@@ -169,10 +167,6 @@ InfrahubBranchQueryList = Field(
         InfrahubBranchStatus,
         required=False,
         description="Filter branches by status (e.g., OPEN, NEED_REBASE).",
-    ),
-    sync_with_git__value=Boolean(
-        required=False,
-        description="Filter branches by whether they are extended to Git.",
     ),
     node_metadata__created_by__id=ID(
         required=False,

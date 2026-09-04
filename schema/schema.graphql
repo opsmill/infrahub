@@ -25658,8 +25658,6 @@ type Query {
     partial_match: Boolean = false
     """Filter branches by status (e.g., OPEN, NEED_REBASE)."""
     status__value: BranchStatus
-    """Filter branches by whether they are extended to Git."""
-    sync_with_git__value: Boolean
   ): InfrahubBranchType!
   InfrahubEffectivePreferences: EffectivePreferencesType!
   InfrahubEvent(

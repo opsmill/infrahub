@@ -9,6 +9,7 @@ from infrahub.constants.enums import OrderByField, OrderDirection
 from infrahub.core.branch import Branch
 from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
@@ -581,12 +582,24 @@ async def test_get_list_query_orders_by_a_total_key(db: InfrahubDatabase, defaul
         node_class=Branch,
         node_ordering=StandardNodeOrdering(order_by=OrderByField.UPDATED_AT, direction=OrderDirection.ASC),
     )
-    name_query = await BranchNodeGetListQuery.init(
-        db=db,
-        node_class=Branch,
-        node_ordering=StandardNodeOrdering(order_by=OrderByField.NAME, direction=OrderDirection.ASC),
-    )
-
     assert created_at_query.order_by == ["n.created_at DESC", id_tiebreaker]
     assert updated_at_query.order_by == ["n.updated_at ASC", id_tiebreaker]
-    assert name_query.order_by == ["n.name ASC", id_tiebreaker]
+
+
+async def test_get_list_filters_on_sync_with_git(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """The filter is what the cross-branch repository status read narrows its row set with."""
+    syncing_names = {"sync-on-1", "sync-on-2"}
+    non_syncing_names = {"sync-off-1"}
+    for name in sorted(syncing_names | non_syncing_names):
+        await Branch(name=name, sync_with_git=name in syncing_names, branched_from=Timestamp().to_string()).save(db=db)
+
+    async def names_for(sync_with_git: bool | None) -> set[str]:
+        branches = await Branch.get_list(
+            db=db, branch_filters=BranchListFilters(sync_with_git=sync_with_git), exclude_global=True
+        )
+        return {branch.name for branch in branches}
+
+    # The default branch syncs with git; the global branch is excluded from all three reads.
+    assert await names_for(True) == syncing_names | {default_branch.name}
+    assert await names_for(False) == non_syncing_names
+    assert await names_for(None) == syncing_names | non_syncing_names | {default_branch.name}

@@ -189,11 +189,6 @@ class StandardNodeGetListQuery(Query):
         match self.node_ordering.order_by:
             case OrderByField.ID:
                 self.order_by = [f"{id_tiebreaker} {self.node_ordering.direction.value}"]
-            case OrderByField.NAME:
-                # Only some standard nodes carry a name, so this arm keeps the id tiebreaker even
-                # though a name is unique where one exists: without it the nodes that have none
-                # would tie on null and chunk arbitrarily.
-                self.order_by = [f"n.name {self.node_ordering.direction.value}", id_tiebreaker]
             case OrderByField.CREATED_AT:
                 self.order_by = [f"n.created_at {self.node_ordering.direction.value}", id_tiebreaker]
             case OrderByField.UPDATED_AT:
