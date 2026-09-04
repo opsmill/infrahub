@@ -12,7 +12,7 @@ vi.mock("@/entities/navigation/ui/queries/get-menu.query");
 
 /**
  * Shorter than the two menu sections need, so the flex column has to take height away from
- * one of them. Reproduces #10158: a laptop-height window, or a large screen zoomed in.
+ * one of them: a laptop-height window, or a large screen zoomed in.
  */
 const SHORT_SIDEBAR_HEIGHT = 320;
 
