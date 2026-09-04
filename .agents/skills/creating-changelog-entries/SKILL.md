@@ -89,7 +89,10 @@ uv run towncrier create -c "Migrated the frontend build to pnpm workspaces" +pnp
   number or a `+`-prefixed slug, because `issue_format` turns a bare name straight into a GitHub
   issue URL: `IFC-2747.fixed.md` ships a link to an issue that does not exist. The `+` marks the
   entry as an orphan and suppresses the link, so `+ifc-2546-lorem-ipsum.changed.md` is valid — but
-  the ticket ID never appears in the output, so spend the slug on a description instead.
+  the ticket ID never appears in the output, so spend the slug on a description instead. Use a bare
+  issue number only when the release note should link that GitHub issue; a change merely related to
+  an issue — a follow-up, a separate fix found along the way — takes an orphan `+slug`, and the slug
+  carries no metadata, so there is nothing to "fix" in an orphan name that lacks an issue ID.
 - **Hand-writing the fragment file.** Use `towncrier create` so the name and location are correct.
 - **Placing it in a sub-package directory** (e.g. `backend/changelog/`) instead of the configured fragments directory.
 - **Describing the implementation.** "Refactored the auth-token cache layer" → instead say what the user sees: "Fixed users being unexpectedly logged out".
