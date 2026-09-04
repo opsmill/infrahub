@@ -90,6 +90,14 @@ class _Selection:
     precise: bool
 
 
+@dataclass(frozen=True)
+class _SubscriberQuery:
+    """One reader lookup: the ids it runs over, on one branch."""
+
+    branch: str
+    node_ids: frozenset[str]
+
+
 @dataclass
 class _Accumulator:
     kind: str
@@ -144,7 +152,7 @@ class IndexedPythonTargetResolver:
         self.read_set_source = read_set_source
         self.subscriber_source = subscriber_source
         self._read_sets: dict[str, list[PythonAttributeReadSet]] = {}
-        self._subscriber_cache: dict[tuple[str, frozenset[str]], list[SubscriberRef]] = {}
+        self._subscriber_cache: dict[_SubscriberQuery, list[SubscriberRef]] = {}
 
     async def resolve(
         self,
@@ -247,10 +255,11 @@ class IndexedPythonTargetResolver:
         return cached
 
     async def _subscribers_for(self, *, branch: str, node_ids: frozenset[str]) -> list[SubscriberRef]:
-        cached = self._subscriber_cache.get((branch, node_ids))
+        query = _SubscriberQuery(branch=branch, node_ids=node_ids)
+        cached = self._subscriber_cache.get(query)
         if cached is None:
             cached = await self.subscriber_source.subscribers(node_ids=sorted(node_ids), branch=branch)
-            self._subscriber_cache[branch, node_ids] = cached
+            self._subscriber_cache[query] = cached
         return cached
 
 
