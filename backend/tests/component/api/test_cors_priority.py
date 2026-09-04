@@ -11,7 +11,11 @@ from infrahub.api.admission.observers import AdmissionMetricsObserver, SlotPoolM
 from infrahub.api.admission.priority import Priority
 from infrahub.api.admission.retry_policy import RetryAfterPolicy
 from infrahub.api.admission.slot_pool import PrioritySlotPool
-from infrahub.config import default_cors_allow_headers, default_cors_allow_methods
+from infrahub.config import (
+    default_cors_allow_headers,
+    default_cors_allow_methods,
+    default_cors_expose_headers,
+)
 
 _ORIGIN = "https://frontend.example"
 
@@ -44,11 +48,12 @@ def _shed_everything_controller() -> AdmissionController:
     )
 
 
-def _build_app() -> FastAPI:
-    """App wired like the server: CORS from the shipped defaults, admission outermost.
+def _build_app(*, cors_outermost: bool = True) -> FastAPI:
+    """App wired like the server: CORS from the shipped defaults, wrapping the admission gate.
 
-    A shed-everything controller proves the preflight is not gated by admission: were it not
-    exempt it would be classified MEDIUM and shed with a 429 that carries no CORS headers.
+    A shed-everything controller means every non-exempt request is answered with a 429.
+    ``cors_outermost=False`` puts the gate outside CORS instead, which is what proves the
+    preflight exemption holds on its own rather than because CORS answered first.
     """
     app = FastAPI()
 
@@ -56,28 +61,40 @@ def _build_app() -> FastAPI:
     async def work() -> dict[str, bool]:
         return {"ok": True}
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[_ORIGIN],
-        allow_methods=default_cors_allow_methods(),
-        allow_headers=default_cors_allow_headers(),
-        allow_credentials=True,
-    )
+    def add_cors() -> None:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=[_ORIGIN],
+            allow_methods=default_cors_allow_methods(),
+            allow_headers=default_cors_allow_headers(),
+            allow_credentials=True,
+            expose_headers=default_cors_expose_headers(),
+        )
+
     # Publish the controller/kill-switch on app.state as the startup lifespan does, then register
-    # the gate last so it is outermost, mirroring the production middleware stack.
+    # the middlewares in the production order (last registered is outermost).
     app.state.admission_controller = _shed_everything_controller()
     app.state.admission_enabled = True
+
+    if not cors_outermost:
+        add_cors()
+        app.add_middleware(AdmissionMiddleware)
+        return app
+
     app.add_middleware(AdmissionMiddleware)
+    add_cors()
     return app
 
 
 async def test_cors_preflight_allows_x_priority() -> None:
     """A cross-origin preflight succeeds and x-priority is in the allow-headers, even under shedding.
 
-    The 200 proves the preflight bypasses the (shed-everything) admission gate; the allow-headers
-    value proves the shipped default lets a cross-origin browser send X-Priority.
+    The gate is placed outside CORS here so the 200 can only mean the preflight bypassed the
+    (shed-everything) admission gate; the allow-headers value proves the shipped default lets a
+    cross-origin browser send X-Priority.
     """
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=_build_app()), base_url="http://test") as client:
+    app = _build_app(cors_outermost=False)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         response = await client.options(
             "/work",
             headers={
@@ -97,3 +114,19 @@ async def test_non_preflight_request_is_still_shed() -> None:
         response = await client.post("/work", headers={"Origin": _ORIGIN, "X-Priority": "low"})
 
     assert response.status_code == 429
+
+
+async def test_shed_response_is_readable_cross_origin() -> None:
+    """A shed 429 carries the CORS headers a browser needs to hand the response to the client.
+
+    Without the allow-origin the browser blocks the response outright and the client sees an
+    opaque network error; without retry-after in the expose-list it can read the status but not
+    the wait the server advised, and falls back to guessing one.
+    """
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=_build_app()), base_url="http://test") as client:
+        response = await client.post("/work", headers={"Origin": _ORIGIN, "X-Priority": "low"})
+
+    assert response.status_code == 429
+    assert response.headers["retry-after"]
+    assert response.headers["access-control-allow-origin"] == _ORIGIN
+    assert "retry-after" in response.headers["access-control-expose-headers"].lower()

@@ -22,6 +22,7 @@ from infrahub.config import (
     StorageSettings,
     UserInfoMethod,
     default_cors_allow_headers,
+    default_cors_expose_headers,
     load,
 )
 from tests.conftest import TestHelper
@@ -49,6 +50,11 @@ def test_load_sso_config(helper: TestHelper) -> None:
 def test_default_cors_allow_headers_includes_x_priority() -> None:
     """The shipped CORS allow-list lets cross-origin browsers send the X-Priority header."""
     assert "x-priority" in default_cors_allow_headers()
+
+
+def test_default_cors_expose_headers_includes_retry_after() -> None:
+    """The shipped CORS expose-list lets cross-origin browsers read the shed Retry-After hint."""
+    assert "retry-after" in default_cors_expose_headers()
 
 
 # no inf/nan values allowed for backpressure settings

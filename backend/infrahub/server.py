@@ -223,7 +223,6 @@ app.add_middleware(
     buckets=[0.1, 0.25, 0.5],
     skip_paths=["/health"],
 )
-app.add_middleware(InfrahubCORSMiddleware)
 app.add_middleware(
     ConditionalGZipMiddleware,
     minimum_size=100_000,
@@ -236,10 +235,16 @@ app.add_middleware(
     ),
 )
 
-# Registered last so it is the outermost middleware: load is shed before any downstream work
-# runs. Its controller and kill-switch are built during startup (see app_initialization) and read
-# from app.state per request, so the middleware itself builds nothing and depends on no settings.
+# Registered second to last so that only CORS sits outside it: load is shed before any downstream
+# work runs. Its controller and kill-switch are built during startup (see app_initialization) and
+# read from app.state per request, so the middleware itself builds nothing and depends on no
+# settings.
 app.add_middleware(AdmissionMiddleware)
+
+# Outside admission, so a shed response still carries the CORS headers a cross-origin browser needs
+# to read it at all: without them the browser blocks the 429 and the client sees an opaque network
+# error instead of the Retry-After hint. Adds no request work beyond header handling.
+app.add_middleware(InfrahubCORSMiddleware)
 
 app.add_exception_handler(ForwardableError, log_forwarding_exception_handler)
 app.add_exception_handler(Error, generic_api_exception_handler)

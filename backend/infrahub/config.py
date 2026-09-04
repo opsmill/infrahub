@@ -51,6 +51,10 @@ def default_cors_allow_headers() -> list[str]:
     return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with", "x-priority"]
 
 
+def default_cors_expose_headers() -> list[str]:
+    return ["retry-after"]
+
+
 def default_append_git_suffix_domains() -> list[str]:
     return ["github.com", "gitlab.com"]
 
@@ -566,6 +570,10 @@ class ApiSettings(BaseSettings):
     cors_allow_headers: list[str] = Field(
         default_factory=default_cors_allow_headers,
         description="The list of non-standard HTTP headers allowed in requests from the browser",
+    )
+    cors_expose_headers: list[str] = Field(
+        default_factory=default_cors_expose_headers,
+        description="The list of response headers a browser may read on a cross-origin response",
     )
     cors_allow_credentials: bool = Field(
         default=True, description="If True, cookies will be allowed to be included in cross-site HTTP requests"

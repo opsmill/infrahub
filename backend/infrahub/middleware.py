@@ -14,6 +14,7 @@ class InfrahubCORSMiddleware(CORSMiddleware):
         kwargs["allow_credentials"] = config.SETTINGS.api.cors_allow_credentials
         kwargs["allow_methods"] = config.SETTINGS.api.cors_allow_methods
         kwargs["allow_headers"] = config.SETTINGS.api.cors_allow_headers
+        kwargs["expose_headers"] = config.SETTINGS.api.cors_expose_headers
 
         super().__init__(app, *args, **kwargs)
 
