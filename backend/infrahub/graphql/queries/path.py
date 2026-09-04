@@ -224,13 +224,11 @@ def select_hop_relationships(
 ) -> tuple[RelationshipSchema | None, RelationshipSchema | None]:
     """Pick the relationship each end of a hop holds for ``identifier``.
 
-    A hierarchy declares ``parent`` and ``children`` under one identifier, one per end of an
-    edge, so the two ends must mirror each other's direction. Candidates on each end are
-    narrowed by peer kind first, then paired by mirrored direction. The pick is exact only
-    when narrowing leaves a single mirrored pair. When several pairs remain — both ends
-    declare both sides with peers that cover each other, as with peers defaulting to the
-    hierarchy generic — the schema alone cannot tell the ends apart and the first pair is
-    kept, a deterministic guess.
+    Both ends of an edge share one identifier, like a hierarchy's ``parent`` and
+    ``children``, so candidates are narrowed by peer kind and paired by mirrored
+    direction. The pick is exact when one mirrored pair remains. When peers cover
+    both ends, as when they default to the hierarchy generic, the schema cannot
+    tell the ends apart: the first pair is kept, a deterministic guess.
     """
     from_candidates = (
         _candidate_relationships(schema=from_schema, identifier=identifier, other_kind=to_kind, other_schema=to_schema)
@@ -300,9 +298,8 @@ def _path_data_to_result(
 ) -> dict[str, Any]:
     """Project one path into the API shape.
 
-    ``relationship_cache`` is request-scoped: the same (identifier, from kind, to kind)
-    triple always resolves to the same payload, and caching it keeps the ambiguous-pair
-    warning to one line per triple per request.
+    ``relationship_cache`` is request-scoped: a hop triple always resolves to the same
+    payload, and caching keeps the ambiguous-pair warning to one line per triple.
     """
     start_node_payload = _node_payload(
         node_id=path_data.start_node.uuid, kind=path_data.start_node.kind, labels_map=labels_map

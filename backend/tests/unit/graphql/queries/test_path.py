@@ -5,13 +5,28 @@ from dataclasses import dataclass
 
 import pytest
 
-from infrahub.core.schema import RelationshipSchema, SchemaRoot
+from infrahub.core.schema import NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.graphql.queries.path import select_hop_relationships
 from tests.constants import TestKind
 from tests.helpers.schema import CONTINENT, COUNTRY, LOCATION, SITE
 
 PLAIN_IDENTIFIER = "country__managed_site"
+
+
+def _location_variant(name: str, parent: str | None, children: str | None) -> NodeSchema:
+    node = deepcopy(CONTINENT)
+    node.name = name
+    node.parent = parent
+    node.children = children
+    return node
+
+
+def _processed_branch(nodes: list[NodeSchema]) -> SchemaBranch:
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(generics=[deepcopy(LOCATION)], nodes=nodes))
+    schema_branch.process()
+    return schema_branch
 
 
 @pytest.fixture
@@ -24,12 +39,7 @@ def location_schema_branch() -> SchemaBranch:
     site.relationships.append(
         RelationshipSchema(name="managed_by", peer=TestKind.COUNTRY, identifier=PLAIN_IDENTIFIER, optional=True)
     )
-    schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(
-        schema=SchemaRoot(generics=[deepcopy(LOCATION)], nodes=[deepcopy(CONTINENT), country, site])
-    )
-    schema_branch.process()
-    return schema_branch
+    return _processed_branch(nodes=[deepcopy(CONTINENT), country, site])
 
 
 @dataclass
@@ -93,25 +103,37 @@ def test_select_hop_relationships(location_schema_branch: SchemaBranch, case: Ho
     assert (from_rel.name, to_rel.name) == (case.expected_from, case.expected_to)
 
 
-def test_loose_hierarchy_keeps_a_deterministic_mirrored_pair() -> None:
-    # Both kinds leave parent/children unset, so both peers default to the
-    # hierarchy generic and both ends keep both candidates: the schema cannot
-    # tell the ends apart. The guess is the same pair in both hop directions,
-    # so one direction names the ends swapped — known limit until hops carry
-    # the edge orientation.
-    area = deepcopy(CONTINENT)
-    area.name = "Area"
-    area.parent = None
-    area.children = None
-    zone = deepcopy(CONTINENT)
-    zone.name = "Zone"
-    zone.parent = None
-    zone.children = None
-    schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(generics=[deepcopy(LOCATION)], nodes=[area, zone]))
-    schema_branch.process()
+@dataclass
+class AmbiguousHopCase:
+    name: str
+    nodes: list[NodeSchema]
+    hops: list[tuple[str, str]]
 
-    for from_kind, to_kind in (("TestingArea", "TestingZone"), ("TestingZone", "TestingArea")):
+
+AMBIGUOUS_HOP_CASES = [
+    AmbiguousHopCase(
+        name="self_referencing_kind",
+        nodes=[_location_variant(name="Area", parent="TestingArea", children="TestingArea")],
+        hops=[("TestingArea", "TestingArea")],
+    ),
+    AmbiguousHopCase(
+        name="two_kinds_under_a_loose_generic",
+        nodes=[
+            _location_variant(name="Area", parent=None, children=None),
+            _location_variant(name="Zone", parent=None, children=None),
+        ],
+        hops=[("TestingArea", "TestingZone"), ("TestingZone", "TestingArea")],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", AMBIGUOUS_HOP_CASES, ids=[case.name for case in AMBIGUOUS_HOP_CASES])
+def test_ambiguous_hierarchy_keeps_a_deterministic_mirrored_pair(case: AmbiguousHopCase) -> None:
+    # The schema cannot tell the ends apart, so the guess is the same pair in
+    # every hop direction: for two distinct kinds, one direction is swapped.
+    schema_branch = _processed_branch(nodes=case.nodes)
+
+    for from_kind, to_kind in case.hops:
         from_rel, to_rel = select_hop_relationships(
             from_schema=schema_branch.get(name=from_kind, duplicate=False),
             to_schema=schema_branch.get(name=to_kind, duplicate=False),
@@ -137,28 +159,3 @@ def test_unknown_end_falls_back_to_first_declaration(location_schema_branch: Sch
     assert from_rel is not None
     assert from_rel.name == "parent"
     assert to_rel is None
-
-
-def test_self_referencing_hierarchy_reports_a_mirrored_pair() -> None:
-    # Both ends declare both sides with self peers: the schema cannot tell the
-    # ends apart, but the answer must stay one edge (a parent side and a
-    # children side), picked deterministically.
-    area = deepcopy(CONTINENT)
-    area.name = "Area"
-    area.parent = "TestingArea"
-    area.children = "TestingArea"
-    schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(generics=[deepcopy(LOCATION)], nodes=[area]))
-    schema_branch.process()
-
-    from_rel, to_rel = select_hop_relationships(
-        from_schema=schema_branch.get(name="TestingArea", duplicate=False),
-        to_schema=schema_branch.get(name="TestingArea", duplicate=False),
-        from_kind="TestingArea",
-        to_kind="TestingArea",
-        identifier="parent__child",
-    )
-
-    assert from_rel is not None
-    assert to_rel is not None
-    assert (from_rel.name, to_rel.name) == ("parent", "children")
