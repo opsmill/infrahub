@@ -51,7 +51,7 @@ First, verify the agent is on a safe branch and understand the current git state
 
 When `commit` IS provided, run any project-specific prep first, then delegate the actual commit + push to the `commit` skill so branch discipline, secret hygiene, and message conventions stay in one place:
 
-1. If the project defines fast validation commands (formatters, linters), run them first. Discover them from the project's own context — `AGENTS.md`/`CLAUDE.md`/`CONTRIBUTING.md`, a `Makefile`/`Taskfile`/`justfile`, `package.json` scripts, `pyproject.toml`/`tox.ini`, or a `pre-commit` config. If the project defines none, skip this step.
+1. If the project defines fast validation commands (formatters, linters), run them first. Discover them from the project's own context — `AGENTS.md`/`CLAUDE.md`/`CONTRIBUTING.md`, a `Makefile`/`Taskfile`/`justfile`, `package.json` scripts, `pyproject.toml`/`tox.ini`, or a `prek.toml` config. If the project defines none, skip this step.
 
 2. If the project checks in generated artefacts (GraphQL schemas, OpenAPI clients, generated SDK types, protobufs) and their sources were modified, regenerate them using the project's documented commands and include the regenerated files — CI commonly fails on stale generated artefacts.
 
@@ -59,7 +59,7 @@ When `commit` IS provided, run any project-specific prep first, then delegate th
    - Refuse to commit on protected or placeholder branches and, if needed, propose a conventional feature branch name (`feat/…`, `fix/…`, etc.) for user approval before creating it.
    - Stage changes safely (explicit paths, secret-pattern warnings).
    - Draft a conventional-commit message and confirm it with the user.
-   - Run pre-commit hooks (no `--no-verify`); fix violations and create a new commit on hook failure.
+   - Run prek hooks (no `--no-verify`); fix violations and create a new commit on hook failure.
    - Push the branch upstream (`git push -u origin <branch>` on first push).
 
    Do not duplicate any of that logic inline here. If the user has additional commit-message guidance specific to this PR (e.g., spec or issue reference, conventional-commit scope), pass it along when invoking the skill.
