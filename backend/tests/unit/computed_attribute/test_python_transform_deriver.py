@@ -8,6 +8,8 @@ import pytest
 
 from infrahub.computed_attribute.scoping import ComputedAttributeRef, PythonTransformDependencyDeriver
 from infrahub.core.constants import ComputedAttributeKind
+from infrahub.core.schema.derived_path import DerivedPathResolver
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.core.schema.schema_branch_computed.python_transform import (
     IMPRECISE_READ_FIELDS,
@@ -15,6 +17,14 @@ from infrahub.core.schema.schema_branch_computed.python_transform import (
 )
 from tests.helpers.schema.car import CAR
 from tests.helpers.schema.person import PERSON
+
+
+def _scopable_resolver() -> DerivedPathResolver:
+    branch = SchemaBranch(cache={}, name="test")
+    branch.set(name=CAR.kind, schema=CAR)
+    branch.set(name=PERSON.kind, schema=PERSON)
+    return DerivedPathResolver(schema_branch=branch)
+
 
 if TYPE_CHECKING:
     from infrahub.core.schema import NodeSchema
@@ -251,8 +261,8 @@ SCOPABLE_CASES = [
         expected=False,
     ),
     ScopableCase(
-        name="display_labels_crossing_a_relationship",
-        node_schema=_car_with(display_labels=["owner__name__value"]),
+        name="display_label_path_crossing_a_relationship",
+        node_schema=_car_with(display_label="owner__name__value"),
         field_name="display_label",
         expected=False,
     ),
@@ -270,7 +280,7 @@ SCOPABLE_CASES = [
     ),
     ScopableCase(
         name="display_label_without_a_definition",
-        node_schema=_car_with(display_label=None, display_labels=None),
+        node_schema=_car_with(display_label=None),
         field_name="display_label",
         expected=False,
     ),
@@ -285,9 +295,12 @@ SCOPABLE_CASES = [
 
 @pytest.mark.parametrize("case", SCOPABLE_CASES, ids=[c.name for c in SCOPABLE_CASES])
 def test_derived_read_is_scopable(case: ScopableCase) -> None:
-    assert derived_read_is_scopable(node_schema=case.node_schema, field_name=case.field_name) is case.expected
+    result = derived_read_is_scopable(
+        path_resolver=_scopable_resolver(), node_schema=case.node_schema, field_name=case.field_name
+    )
+    assert result is case.expected
 
 
 def test_derived_read_is_scopable_rejects_a_plain_field() -> None:
     with pytest.raises(ValueError, match=r"^name is not a derived node property of TestingCar$"):
-        derived_read_is_scopable(node_schema=CAR, field_name="name")
+        derived_read_is_scopable(path_resolver=_scopable_resolver(), node_schema=CAR, field_name="name")

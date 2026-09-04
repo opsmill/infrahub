@@ -7,11 +7,13 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from infrahub.core.schema import AttributeSchema  # noqa: TC001
+from infrahub.core.schema.derived_path import ScopedToReadingKind
 
 if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Mapping
 
     from infrahub.core.schema import MainSchemaTypes, NodeSchema
+    from infrahub.core.schema.derived_path import DerivedPathResolver
 
 # Reads of these computed/derived fields cannot be mapped back to a precise set of backing
 # schema elements, so any change to the kind read through them can move the value: editing a
@@ -20,7 +22,9 @@ if TYPE_CHECKING:
 IMPRECISE_READ_FIELDS = frozenset({"display_label", "human_friendly_id"})
 
 
-def derived_read_is_scopable(*, node_schema: MainSchemaTypes, field_name: str) -> bool:
+def derived_read_is_scopable(
+    *, path_resolver: DerivedPathResolver, node_schema: MainSchemaTypes, field_name: str
+) -> bool:
     """Whether a derived read on a kind can be held against that kind alone.
 
     A derived path that crosses a relationship reads a peer's attribute, so a schema change to
@@ -33,8 +37,9 @@ def derived_read_is_scopable(*, node_schema: MainSchemaTypes, field_name: str) -
     if not paths:
         return False
 
-    attribute_names = set(node_schema.attribute_names)
-    return all(path.split("__", maxsplit=1)[0] in attribute_names for path in paths)
+    return all(
+        isinstance(path_resolver.resolve(reading_schema=node_schema, path=path), ScopedToReadingKind) for path in paths
+    )
 
 
 @dataclass

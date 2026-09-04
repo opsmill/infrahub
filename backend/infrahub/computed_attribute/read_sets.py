@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core.schema.derived_path import DerivedPathResolver
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.core.schema.schema_branch_computed.python_transform import (
     IMPRECISE_READ_FIELDS,
@@ -37,4 +38,8 @@ def derived_reads_are_scopable(*, schema_branch: SchemaBranch, kind: str, read_f
         return False
 
     node_schema = schema_branch.get(name=kind, duplicate=False)
-    return all(derived_read_is_scopable(node_schema=node_schema, field_name=field_name) for field_name in derived_reads)
+    path_resolver = DerivedPathResolver(schema_branch=schema_branch)
+    return all(
+        derived_read_is_scopable(path_resolver=path_resolver, node_schema=node_schema, field_name=field_name)
+        for field_name in derived_reads
+    )
