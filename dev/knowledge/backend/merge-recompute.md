@@ -4,7 +4,7 @@
 
 A live edit recomputes derived values one node at a time (see [computed-attributes.md](computed-attributes.md)). A merge or rebase can change many nodes at once, so it uses a different path: one coalesced recompute for the whole change set, written in bulk, then chained to any value that reads what was written.
 
-This covers three derived-value families: Jinja2 computed attributes, display labels, and human-friendly ids. Python-transform computed attributes and profile refresh are not part of this coalesced pass; they are dispatched by their own automations, though the Python transforms process their fan-out as batches persisted through the same bulk writer (see [computed-attributes.md](computed-attributes.md)). Generator and artifact regeneration on merge takes its own selective path, described in [selective-merge-regeneration.md](selective-merge-regeneration.md).
+This covers three derived-value families: Jinja2 computed attributes, display labels, and human-friendly ids. Python-transform computed attributes join the pass when `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE` is on, which is the default, described in [The Python transform family](#the-python-transform-family) below. Profile refresh is not part of the pass; it is dispatched by its own automations. Generator and artifact regeneration on merge takes its own selective path, described in [selective-merge-regeneration.md](selective-merge-regeneration.md).
 
 ## Why a separate path
 
@@ -19,12 +19,38 @@ merge / rebase
   -> CoalescedRecomputeSubmitter.submit(...)           (one process flow per target and source kind)
        -> computed_attribute_process_jinja2 / display-label-process-jinja2 / hfid-process
             -> render values, keep only the ones that changed
-            -> BulkRecomputeDispatcher.dispatch(writes, coalesced=True, recompute_depth)
+            -> BulkRecomputeDispatcher.dispatch(writes, recompute_depth)   (built for a coalesced pass)
                  -> BulkRecomputeWriter.write(...)         (bulk write, origin = recompute)
                  -> RecomputeChainSubmitter.submit(...)    (dispatch the next level for readers of the writes)
 ```
 
 The builder, submitter, and coordinator live in `core/merge/recompute_coalescing.py`. The build step is pure, so it is unit and component testable without a database or a worker. A merge recomputes on the destination branch; a rebase recomputes on the user branch.
+
+## The Python transform family
+
+**Location:** `core/merge/python_target_resolution.py` (the narrowing), `core/merge/python_target_sources.py` (the database and client sources)
+
+A Python transform declares no dependency graph. What it reads is only known from its GraphQL query, and which nodes read a given node is only known from the query groups those nodes subscribed to when they last computed. Both are database facts, so this family is derived behind an interface (`PythonTargetResolver`) instead of from the schema branch the builder holds. `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE` selects the real resolver or an inert one.
+
+The derivation applies the same per-action rules as the other families: a created node is its own target, an update selects the readers of the changed fields and, when the updated node is of the target kind, that node itself, a deletion selects the readers too. On top of that:
+
+- **Read sets come from the analyzed transform queries.** A field the query does not read selects nothing. Imprecision is held per kind, so a query reading a derived field of one kind still rejects an unread field of another.
+- **Readers come from the query-group subscriber index**, one union query per set of changed ids, never one per changed node.
+- **A deleted node id is resolved in a lookup of its own.** Sharing one with live ids empties the whole result, which would drop the readers of the live changes. A deleted node holds no open membership edge any more, so its own lookup answers nothing; a reader that pointed at it is carried by its own relationship update, which the change set holds.
+- **Every signal that cannot be narrowed widens to the whole target kind**, and is logged. An undeterminable read set and a failed reader lookup both widen. One case is not a signal of that sort: an attribute whose transform is missing from the database is left out of the pass entirely. Nothing can compute it until the transform arrives, the recompute that follows the transform being created is what covers it then, and the schema-scoped backfill leaves it out for the same reason, since both build their candidates from the same gather. Widening it instead submits flows that raise `Unable to fetch transform`. A gather that fails outright is different: nothing is known about any attribute, so all of them widen. A widened target carries no node ids and goes to `trigger_update_python_computed_attributes` instead of `computed_attribute_process_transform`; the `whole_kind` flag is what carries that case to the submission planner, since chunking an empty id set would produce no submission at all.
+- **A schema-changing merge already refreshes what its own scope selects**, one whole kind at a time, through `SchemaUpdatedEvent`. Those pairs are dropped here, decided by the same scoper both sides run over candidates from the same gather. Only a pair the gather returned may be dropped; one it missed keeps an imprecise read set and stays in the pass. The send is checked: `PostMergeDispatcher` scopes the pass only after the schema event went out. What nothing checks is that `computed_attribute_setup_python` reached its submission. That flow has no retry, so a failure there leaves the dropped pairs stale until the next change touches them.
+
+Two costs come with this family, both on the coalesced path only. The read-set index is read after
+`wait_for_schema_to_converge`, which scans the worker keys in the cache; the order is deliberate,
+because a worker behind on the schema declares no Python attribute and reordering would read as
+nothing to do. And the index is rebuilt for every flow run, including the levels of a chain, since
+nothing that survives a process moves when a transform query is edited.
+
+`process_transform` recomputes the one attribute it is asked for. A kind with several Python attributes gets one submission per attribute, so processing the whole kind per submission would run each transform once per attribute.
+
+While the switch is on, the two Python per-node automations still fire on `merge` and `rebase` events: the work happens twice, and nothing is missed. Gating those automations on the `live` origin is what removes the per-node fan-out.
+
+That duplicate is load-bearing in one place. When the derivation of this family raises, the pass logs it and drops the family rather than letting the failure cancel the three schema-derived ones, which is the only place here that does less work rather than more. It is safe only because those automations still cover it. Gating them on the `live` origin removes that cover, so the same change has to make that fallback widen to the whole kind instead of dropping the family. A component test on the built trigger definitions asserts the Python ones carry no origin match, and fails as soon as the gate lands.
 
 ## Node mutation origin
 
@@ -45,7 +71,7 @@ The three families' cross-node triggers match only `live`, so `merge`, `rebase`,
 
 **Location:** `core/recompute/bulk_write.py` (`BulkRecomputeWriter`), driven through `core/recompute/dispatch.py` (`BulkRecomputeDispatcher`)
 
-The process flows render the new values, keep only the ones that differ from the stored value, and hand them to a `BulkRecomputeDispatcher` (wired by `build_bulk_recompute_dispatcher`). This is the single write path for all three families, on both the live and the coalesced side. The `coalesced` flag is the difference: a live single-node recompute passes `coalesced=False` (stamp `live`, let the emitted events carry any further readers), a merge, rebase, or chained level passes `coalesced=True` (stamp `recompute`, drive the next level here).
+The process flows render the new values, keep only the ones that differ from the stored value, and hand them to a `BulkRecomputeDispatcher` (wired by `build_bulk_recompute_dispatcher`). This is the single write path for all four families, on both the live and the coalesced side. The `coalesced` argument of the factory is the difference, and it is settled before the dispatcher exists: a live single-node recompute builds one with no chain (stamp `live`, let the emitted events carry any further readers), while a merge, rebase, or chained level builds one with a chain (stamp `recompute`, drive the next level here). Holding a chain is what makes a pass coalesced, so the two cannot disagree.
 
 The writer:
 
@@ -76,14 +102,16 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 
 | File | What |
 |------|------|
-| `core/merge/recompute_coalescing.py` | `CoalescedRecomputeBuilder`, `CoalescedRecomputeSubmitter`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter`, `max_recompute_chain_depth` |
+| `core/merge/recompute_coalescing.py` | `CoalescedRecomputeBuilder`, `CoalescedRecomputeSubmitter`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter`, `PythonTargetResolver`, `max_recompute_chain_depth` |
+| `core/merge/python_target_resolution.py` | `IndexedPythonTargetResolver`: maps a change signature to the affected Python `(kind, attribute)` pairs and their node ids |
+| `core/merge/python_target_sources.py` | The read-set and subscriber sources behind that resolver, and the factory the switch selects |
 | `display_labels/scoping.py`, `hfid/scoping.py` | `derive_display_label_targets` / `derive_hfid_targets`: the builder's derivation step, mapping a changed `(kind, field)` set to the display-label and HFID values it affects (computed attributes use `computed_attribute/scoping.py`) |
 | `core/recompute/bulk_write.py` | `BulkRecomputeWriter`, `AttributeValueWrite`, `WrittenNode` |
 | `core/recompute/dispatch.py` | `BulkRecomputeDispatcher`, `build_bulk_recompute_dispatcher` (bulk write, then chain on a coalesced pass) |
 | `core/merge/post_merge.py` | Merge: stamp `merge` origin, build and submit on the destination branch |
 | `core/branch/tasks.py` | Rebase: stamp `rebase` origin, build and submit on the user branch |
 | `events/constants.py` | `NodeMutationOrigin`, `NODE_ORIGIN_LABEL` |
-| `computed_attribute/tasks.py`, `display_labels/tasks.py`, `hfid/tasks.py` | The three process flows that render values and call `BulkRecomputeDispatcher.dispatch` |
+| `computed_attribute/tasks.py`, `display_labels/tasks.py`, `hfid/tasks.py` | The four process flows that render values and call `BulkRecomputeDispatcher.dispatch`, two of them in the computed-attribute module |
 
 ## See Also
 

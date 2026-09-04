@@ -1,11 +1,42 @@
+from copy import deepcopy
 from typing import Any
 
-from infrahub.computed_attribute.tasks import _partition_transform_results
+from infrahub.computed_attribute.tasks import _partition_transform_results, _requested_python_transform_attribute
+from infrahub.core.constants import ComputedAttributeKind
 from infrahub.core.recompute.bulk_write import AttributeValueWrite
+from infrahub.core.schema import NodeSchema
+from infrahub.core.schema.computed_attribute import ComputedAttribute
+from tests.helpers.schema import TSHIRT
 
 
 def _write(node_id: str, value: Any) -> AttributeValueWrite:
     return AttributeValueWrite(node_id=node_id, field="desc", value=value)
+
+
+def _two_python_attributes() -> NodeSchema:
+    """A kind carrying two Python computed attributes, plus a Jinja2 one."""
+    node_schema = deepcopy(TSHIRT)
+    slogan = deepcopy(node_schema.get_attribute(name="pitch"))
+    slogan.name = "slogan"
+    slogan.computed_attribute = ComputedAttribute(kind=ComputedAttributeKind.TRANSFORM_PYTHON, transform="TShirtSlogan")
+    node_schema.attributes.append(slogan)
+    return node_schema
+
+
+def test_only_the_requested_python_attribute_is_selected() -> None:
+    """A kind with two attributes would otherwise run its transform twice per submission."""
+    node_schema = _two_python_attributes()
+
+    pitch = _requested_python_transform_attribute(node_schema=node_schema, attribute_name="pitch")
+    slogan = _requested_python_transform_attribute(node_schema=node_schema, attribute_name="slogan")
+
+    assert pitch is not None
+    assert pitch.transform == "TShirtPitch"
+    assert slogan is not None
+    assert slogan.transform == "TShirtSlogan"
+    # The flow only knows how to run a transform, and a name off the kind is nobody's work.
+    assert _requested_python_transform_attribute(node_schema=node_schema, attribute_name="description") is None
+    assert _requested_python_transform_attribute(node_schema=node_schema, attribute_name="missing") is None
 
 
 def test_partition_transform_results_persists_only_string_values() -> None:

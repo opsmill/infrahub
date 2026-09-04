@@ -152,7 +152,9 @@ async def gather_trigger_computed_attribute_python(
 
     repositories = await get_repositories_commit_per_branch(db=db)
 
-    all_computed_attributes: dict[str, dict[str, PythonTransformComputedAttribute]] = defaultdict(dict)
+    # Keyed by attribute and by transform: an attribute gets its own automation even when it shares
+    # a transform, and a branch that repoints the attribute keeps a definition of its own.
+    all_computed_attributes: dict[tuple[str, str], dict[str, PythonTransformComputedAttribute]] = defaultdict(dict)
     for branch in list(registry.branch.values()):
         if branch.is_global:
             continue
@@ -161,7 +163,8 @@ async def gather_trigger_computed_attribute_python(
             db=db, branch_name=branch.name, repositories=repositories
         )
         for computed_attribute in computed_attributes:
-            all_computed_attributes[computed_attribute.name][branch.name] = computed_attribute
+            key = (computed_attribute.computed_attribute.key_name, computed_attribute.name)
+            all_computed_attributes[key][branch.name] = computed_attribute
 
     for branches in all_computed_attributes.values():
         branches_with_diff_from_main = []

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core.merge.python_target_sources import build_python_target_resolver
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
@@ -34,10 +35,11 @@ class BulkRecomputeDispatcher:
         *,
         db: InfrahubDatabase,
         writer: BulkRecomputeWriter,
-        chain: RecomputeChainSubmitter,
+        chain: RecomputeChainSubmitter | None,
     ) -> None:
         self._db = db
         self._writer = writer
+        # Holding a chain is what makes a pass coalesced, so there is no second flag to disagree.
         self._chain = chain
 
     async def dispatch(
@@ -46,7 +48,6 @@ class BulkRecomputeDispatcher:
         writes: list[AttributeValueWrite],
         branch_name: str,
         context: EventContext,
-        coalesced: bool,
         recompute_depth: int,
     ) -> None:
         if not writes:
@@ -61,18 +62,25 @@ class BulkRecomputeDispatcher:
             branch=branch,
             writes=writes,
             context=context,
-            origin=NodeMutationOrigin.RECOMPUTE if coalesced else NodeMutationOrigin.LIVE,
+            origin=NodeMutationOrigin.RECOMPUTE if self._chain else NodeMutationOrigin.LIVE,
         )
-        if coalesced:
+        if self._chain is not None:
             await self._chain.submit(written=written, branch=branch_name, context=context, depth=recompute_depth)
 
 
-async def build_bulk_recompute_dispatcher(schema_branch: SchemaBranch) -> BulkRecomputeDispatcher:
-    """Wire a bulk recompute dispatcher from the flow-level dependencies."""
+async def build_bulk_recompute_dispatcher(*, schema_branch: SchemaBranch, coalesced: bool) -> BulkRecomputeDispatcher:
+    """Wire a bulk recompute dispatcher from the flow-level dependencies.
+
+    Only a coalesced pass drives a next level, and only that chain needs an API client and the
+    read-set index behind it, so a live pass is not made to build either.
+    """
     db = await get_database()
     writer = BulkRecomputeWriter(db=db, event_service=await get_event_service())
-    chain = RecomputeChainSubmitter(
-        builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-        submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
-    )
+    chain = None
+    if coalesced:
+        chain = RecomputeChainSubmitter(
+            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
+            submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
+            python_resolver=await build_python_target_resolver(db=db),
+        )
     return BulkRecomputeDispatcher(db=db, writer=writer, chain=chain)
