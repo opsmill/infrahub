@@ -1,7 +1,8 @@
 """Fixtures for the branch-agnostic repair migration.
 
-No current code path produces the shapes under test, so they are built with raw Cypher, and every
-reader here reports individual edge states rather than a resolved object view.
+No current code path produces the shapes under test, so they are built with raw Cypher. The readers
+here report raw vertex identities, existence and counts rather than a resolved object view; the
+edge-state readers the assertions also use live in the shared branch-agnostic test helpers.
 """
 
 from __future__ import annotations
