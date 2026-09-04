@@ -86,9 +86,14 @@ policy in `infrahub.api.admission.retry_policy` is about load shedding and is no
 desired behaviour and the spec's governance table already anticipates the shared-path change);
 message `Meta.expiration` (rejected: it bounds delivery, not the caller's wait).
 
-**Observation, out of scope**: `infrahub.api.file::get_file` never calls
-`InfrahubResponse.raise_for_status()`, so an `RPCErrorResponse` deserialises into an empty
-`GitFileGetResponse` and the endpoint returns HTTP 200 with an empty body. Worth a separate issue.
+**Pre-existing defect on the same call path, carried here deliberately**: `infrahub.api.file::get_file`
+never calls `InfrahubResponse.raise_for_status()`, so an `RPCErrorResponse` deserialises into an empty
+`GitFileGetResponse` and the endpoint returns HTTP 200 with an empty body. An earlier draft of this
+research left it as a separate issue. It is now in scope, as T032, because bounding the wait on this
+exact call path would otherwise leave that endpoint incoherent: 504 on a hang and 200 on a worker-side
+error. It lands in the same reviewed pull request as the bounded wait (Phase B1) rather than being
+folded into a feature commit, and it is recorded as a deviation from the PRD's stated scope in
+`spec.md`.
 
 ## Warm-up when the answering worker has no clone
 
@@ -126,17 +131,24 @@ clone (`get_git_repo_main()`), read-only and with no fetch:
 
 - head: `origin/<branch>` for read-write; `origin/<ref>` then `<ref>` for read-only (the same
   fallback order as `InfrahubReadOnlyRepository.update_latest_commit`, without its fetch).
+- resolvability, first: does the clone hold an object for `imported_commit`? If not, the condition is
+  `ORPHANED` and no ancestry test is attempted. This ordering is required, not stylistic:
+  `Repo.is_ancestor` raises `GitCommandError` on an unresolvable rev rather than returning `False`,
+  so testing ancestry first would turn the PRD's "imported commit no longer reachable at all" edge
+  case into an exception instead of a reported state.
 - relationship: `Repo.is_ancestor(imported, head)`; `False` means `REWRITTEN`.
 - pending count: `git rev-list --count <imported>..<head>`, only when `BEHIND` and selected.
 - page: `Repo.iter_commits(head, max_count=limit, skip=offset)`. No total: FR-024 drops it from the
   contract, so no counting pass over the whole history exists in the read path at all.
 - per-commit state: `HEAD` if hash equals head, else `IMPORTED` if hash equals imported, else
   `PENDING` when the commit is not an ancestor of imported (`Repo.is_ancestor(commit, imported)` is
-  false) and the condition is `BEHIND`, else `HISTORY`; under `REWRITTEN` every non-head commit is
-  `UNRELATED`. When head equals imported, that commit is `IMPORTED` and the top-level `condition`
+  false) and the condition is `BEHIND`, else `HISTORY`; under `REWRITTEN` and `ORPHANED` every
+  non-head commit is `UNRELATED`, and under `ORPHANED` the imported commit does not appear in the
+  page at all, only in the top-level `imported_commit`. When head equals imported, that commit is `IMPORTED` and the top-level `condition`
   is `IN_SYNC`; the two hashes at the top level let the UI draw both markers.
 
-Classification is a pure function over frozen dataclasses in `infrahub.git.commit_log` (new module),
+Classification is a pure function over frozen dataclasses in `infrahub.git.state` (new subpackage:
+`models.py` for the dataclasses, `classification.py` for the functions),
 unit-tested without a repository.
 
 **Rationale**: No commit listing or ancestry code exists in `backend/infrahub/` today
@@ -376,7 +388,7 @@ mutation `InfrahubReadOnlyRepositoryCheckRefs`, all registered on
 `infrahub.graphql.types.repository` (new), enums wrapped with `graphene.Enum.from_enum` from
 `InfrahubStringEnum` classes in `infrahub.core.constants`
 (`RepositoryGitCondition`, `RepositoryCommitState`, `RepositoryGitUnavailableReason`). Pagination
-is flat `limit` / `offset` with `edges { node }` and an optional `count`, matching
+is flat `limit` / `offset` with `edges { node }` and no total of any kind (FR-024), otherwise matching
 `infrahub.graphql.queries.task::Tasks`. Expensive fields are gated on selection with
 `infrahub.graphql.field_extractor::extract_graphql_fields`, the way `queries.task::_build_fetch_options`
 does. Descriptions are single-line (the SDL printer warning in `infrahub.graphql.types.preferences`).

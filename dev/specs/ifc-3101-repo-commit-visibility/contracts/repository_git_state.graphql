@@ -10,6 +10,7 @@ enum RepositoryGitCondition {
   IN_SYNC
   BEHIND
   REWRITTEN
+  ORPHANED
   NO_REMOTE
   NOT_TRACKED
   UNAVAILABLE

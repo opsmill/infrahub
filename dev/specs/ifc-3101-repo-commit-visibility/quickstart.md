@@ -45,7 +45,7 @@ uv run invoke dev.build && uv run invoke dev.start   # full stack with at least 
 Backend tests for this phase:
 
 ```bash
-uv run pytest backend/tests/unit/git/test_commit_log.py backend/tests/component/graphql/queries/test_repository_git_state.py
+uv run pytest backend/tests/unit/git/state/test_classification.py backend/tests/component/graphql/queries/test_repository_git_state.py
 ```
 
 ## Phase B: bounded RPC and the real read path
@@ -62,7 +62,10 @@ uv run pytest backend/tests/unit/git/test_commit_log.py backend/tests/component/
 
 3. Rewritten: amend the fixture remote's tip and force-push. Expected after the next tick:
    `condition: REWRITTEN`, `pending_count: null`, no row `PENDING`, the imported hash absent from
-   `edges` and present only in `imported_commit`.
+   `edges` and present only in `imported_commit`. Then push the imported commit out of reach
+   entirely (force-push, then prune and collect the fixture remote and the worker's clone so the
+   object is genuinely gone). Expected: `condition: ORPHANED`, `pending_count: null`, no error, and
+   the hash still reported in `imported_commit` so the user can see which commit went missing.
 
 4. Not cloned: start a second worker with an empty repositories directory and route the read to it
    (or delete its clone directory). Expected: `condition: UNAVAILABLE`,

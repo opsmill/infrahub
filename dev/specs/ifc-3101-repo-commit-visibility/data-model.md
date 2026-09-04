@@ -50,6 +50,7 @@ card's row set so the drift column lines up with its rows.
 | `IN_SYNC` | `in_sync` | remote head equals the imported commit |
 | `BEHIND` | `behind` | imported commit is an ancestor of the head; `pending_count` is set |
 | `REWRITTEN` | `rewritten` | imported commit is not an ancestor of the head (rebase, force-push, moved tag); no pending count |
+| `ORPHANED` | `orphaned` | the imported commit's object is not present at all, so it cannot be placed in any history. A stronger form of `REWRITTEN`: there, the commit exists and has been left behind; here, the clone cannot resolve the hash. Decided before any ancestry call, because `Repo.is_ancestor` on an unresolvable hash raises rather than returning `False`. No pending count, and the imported marker has nowhere to sit |
 | `NO_REMOTE` | `no_remote` | the branch or ref has no counterpart on the remote |
 | `NOT_TRACKED` | `not_tracked` | nothing imported on this Infrahub branch, and nothing inherited from its origin. Read-write branches not synchronised with Git are excluded from the row set instead of carrying this condition |
 | `UNAVAILABLE` | `unavailable` | no git-derived answer; see `RepositoryGitUnavailable` |
@@ -62,7 +63,11 @@ card's row set so the drift column lines up with its rows.
 | `IMPORTED` | `imported` | the commit Infrahub has imported |
 | `PENDING` | `pending` | ancestor of the head, not an ancestor of the imported commit; only under `BEHIND` |
 | `HISTORY` | `history` | ancestor of the imported commit; already imported content |
-| `UNRELATED` | `unrelated` | cannot be related to the imported commit (`REWRITTEN`, `NOT_TRACKED`) |
+| `UNRELATED` | `unrelated` | cannot be related to the imported commit (`REWRITTEN`, `ORPHANED`, `NOT_TRACKED`) |
+
+No `RepositoryCommitState` member is needed for the orphaned case: an unresolvable commit cannot
+appear in the log at all, so there is no row to label. The condition carries the answer, and
+`imported_commit` still reports the hash the graph holds so a user can see which commit went missing.
 
 Precedence when one commit qualifies for several states: `IMPORTED` over `HEAD` (when head equals
 imported, `condition` is `IN_SYNC` and the top-level `remote_head` and `imported_commit` carry the
@@ -103,7 +108,7 @@ RepositoryBranchValue          one returned row, from get_data()
 assertions readable in tests, and it is how support tells "this branch imported this commit" from
 "this branch inherited it".
 
-### `infrahub.git.commit_log` (new module, pure, no I/O)
+### `infrahub.git.state` (new subpackage: `models.py` for the dataclasses, `classification.py` for the pure functions, no I/O in either)
 
 ```text
 CommitEntry
@@ -119,6 +124,9 @@ CommitEntry
 GitStateFacts                  what the worker measured on the clone
   head: str | None
   imported: str | None
+  imported_resolvable: bool | None   whether the imported hash names an object the clone holds.
+                                     Measured BEFORE any ancestry call, because is_ancestor on an
+                                     unresolvable hash raises rather than returning False
   imported_is_ancestor_of_head: bool | None
   pending_count: int | None
   tracked: bool                False when nothing is imported or inherited on this branch
@@ -190,16 +198,29 @@ GitReadOnlyRepositoryCheckRefs
   refs: list[TrackedRef]   TrackedRef: infrahub_branch_name, infrahub_branch_id, ref, commit
 ```
 
-## Reader seam (`infrahub.graphql.queries.repository_git_state`)
+## Reader seam (`infrahub.git.state`, not the resolver module)
+
+The protocol lives in the git domain beside its production implementation, after
+`git/fingerprint/blob_resolver.py` and `task_manager/flow_run/`. The resolver reaches it through a
+factory and `InfrahubServices` is not touched. It returns the frozen dataclasses above, never a
+message-bus `*ResponseData` model: registering a message pair before its handler breaks
+`test_message_command_overlap`, so the wire models do not exist yet in the phase the protocol ships.
 
 ```text
-RepositoryGitStateReader (Protocol)
-  async commits(request: CommitLogRequest) -> GitCommitLogGetResponseData
-  async branch_heads(request: BranchHeadsRequest) -> GitBranchHeadsGetResponseData
+RepositoryGitStateReader (Protocol)              git/state/reader.py
+  async commits(request: CommitLogRequest) -> CommitLogResult
+  async branch_heads(request: BranchHeadsRequest) -> BranchDriftResult
 
-WorkerRepositoryGitStateReader   wraps service.message_bus.rpc(..., timeout=...)   (Phase B)
-                                 Until the worker handlers land, the seam's placeholder answers
-                                 UNAVAILABLE / NOT_IMPLEMENTED. No sample-data implementation.
+UnavailableRepositoryGitStateReader              git/state/reader.py
+                                 Answers UNAVAILABLE / NOT_IMPLEMENTED. The placeholder until the
+                                 worker read lands. No sample-data implementation.
+BusRepositoryGitStateReader                      git/state/bus_reader.py
+                                 Wraps message_bus.rpc(..., timeout=...) and maps the reply onto the
+                                 dataclasses. The only module in the read path knowing a routing key.
+Recording / Failing doubles                      backend/tests/helpers/repository_git_state.py
+
+build_repository_git_state_reader(...)           git/state/factory.py
+                                 The only place an implementation is chosen or a setting is read.
 ```
 
 ## Cache keys (`service.cache`, `set(..., not_exists=True)`)
@@ -256,11 +277,13 @@ Stability `evolving`. Registered in `infrahub.errors.catalogue::CATALOGUE`, buil
 ## State transitions of `condition` for one repository branch
 
 ```text
-UNAVAILABLE(NOT_CLONED) --warm-up completes, next read--> IN_SYNC | BEHIND | REWRITTEN | NO_REMOTE | NOT_TRACKED
+UNAVAILABLE(NOT_CLONED) --warm-up completes, next read--> IN_SYNC | BEHIND | REWRITTEN | ORPHANED | NO_REMOTE | NOT_TRACKED
 IN_SYNC   --push to remote, fetch seen-->  BEHIND
 BEHIND    --import runs-->                 IN_SYNC
 BEHIND    --force-push / rebase-->         REWRITTEN
 REWRITTEN --import of the new head-->      IN_SYNC
+REWRITTEN --old commit collected upstream and locally--> ORPHANED
+ORPHANED  --import of the new head-->      IN_SYNC
 NOT_TRACKED --first import-->              IN_SYNC
 ```
 

@@ -28,8 +28,9 @@ worker read and the refs check.
 
 **Language/Version**: Python 3.14 (backend), TypeScript 5.9 / React 19.2 (frontend)
 **Primary Dependencies**: graphene (existing), GitPython 3.1.61 (existing; `Repo.is_ancestor`,
-`Repo.iter_commits`, `git.rev_list`), Prefect via `infrahub.workflows` (existing), RabbitMQ or NATS
-message bus (existing), TanStack Query v5 and gql.tada (existing)
+`Repo.iter_commits`, `git.rev_list`), Prefect via `infrahub.workflows` (existing), the RabbitMQ
+message bus (existing; the NATS adapter is edited for signature parity only and is not a supported
+driver, see research.md), TanStack Query v5 and gql.tada (existing)
 **Storage**: none new. Four short-lived cache keys in the existing `service.cache`: warm-up
 collapsing, the refs-check due marker, the in-flight guard, and the last-checked timestamp
 **Testing**: pytest unit (`backend/tests/unit/`), component with testcontainers
@@ -58,7 +59,7 @@ remains.
 | --- | --- | --- |
 | I. Schema-Driven Integrity | PASS | No node, attribute or migration. Generated files are regenerated, never edited: `schema/schema.graphql`, frontend GraphQL types, error-catalogue artefacts, configuration reference. |
 | II. Branch-Safe by Default | PASS | Every answer is computed for `graphql_context.branch`: the imported commit is the branch-local or branch-aware `commit`, the read-only `ref` is branch-aware, and the remote branch is mapped through `_get_mapped_remote_branch`. Nothing is written, so merge behaviour is unchanged (SC-011). |
-| III. Type Safety & Explicit Contracts | PASS | SDL defined before implementation (`contracts/`); frozen dataclasses in `infrahub.git.commit_log`; Pydantic message models at the bus boundary; `RepositoryGitStateReader` protocol; frontend uses gql.tada-derived types. |
+| III. Type Safety & Explicit Contracts | PASS | SDL defined before implementation (`contracts/`); frozen dataclasses in `infrahub.git.state.models`; Pydantic message models at the bus boundary; `RepositoryGitStateReader` protocol returning those dataclasses, never a wire model; frontend uses gql.tada-derived types. |
 | IV. Test Discipline | PASS | Unit tests for classification; component tests for the per-branch query, resolvers, permission denial, laziness, RPC timeout, handlers; integration tests for behind, rewritten, tag move, lock serialisation; e2e for the Commits tab. Test adapters (`BusRecorder`, `WorkflowRecorder`, `RecordingLockRegistry`) instead of mocks. |
 | V. Query Performance & Efficiency | PASS | Worker cost per page is constant in history length (`iter_commits` with skip and at most `limit` ancestry checks). Graph side: the drift list reads every branch's tracked values in one parameterised query (`core/query/repository.py`), so the query count is independent of branch count, asserted by instrumentation at 5 and 200 branches. The existing per-branch sync helper is left untouched; IFC-3104 refactors it onto the same query. |
 | VI. Security & Input Boundaries | PASS | `limit` bounded to 1..100 and `offset` non-negative in the resolver; repository view permission enforced imperatively (the analyzer cannot see custom queries); timeout error message names the operation only, never the worker or paths; credentials for `ls-remote` come from the worker's existing git config, never from the message. |
@@ -93,7 +94,8 @@ specs/ifc-3101-repo-commit-visibility/
 ├── contracts/
 │   ├── repository_git_state.graphql     # GraphQL SDL, examples, error contract
 │   └── message_bus.md                   # RPC pairs, rpc timeout, reused broadcast
-├── checklists/requirements.md
+├── checklists/requirements.md           # spec quality gate, plus the recorded decisions and deviations
+├── critiques/                           # dual-lens critique output, archived against the draft it reviewed
 └── tasks.md                             # Phase 2 output (/speckit-tasks, not created here)
 ```
 
@@ -109,11 +111,19 @@ backend/infrahub/
 ├── errors/{catalogue,payloads}.py                # EDIT  WORKER_TIMEOUT, WorkerTimeoutData
 ├── graphql/error_formatter.py                    # EDIT  payload case for WORKER_TIMEOUT
 ├── graphql/types/repository.py                   # NEW   graphene types and enums from contracts/
-├── graphql/queries/repository_git_state.py       # NEW   two resolvers, RepositoryGitStateReader, Worker reader
+├── graphql/queries/repository_git_state.py       # NEW   two resolvers only; the reader lives under git/state/
 ├── graphql/queries/__init__.py                   # EDIT  export
 ├── graphql/mutations/repository.py               # EDIT  ReadOnlyRepositoryCheckRefs
 ├── graphql/schema.py                             # EDIT  register query fields and mutation
-├── git/commit_log.py                             # NEW   pure classification over frozen dataclasses
+├── git/state/models.py                           # NEW   frozen dataclasses: requests, results, CommitEntry, GitStateFacts
+├── git/state/classification.py                   # NEW   pure classification, no I/O
+├── git/state/reader.py                           # NEW   RepositoryGitStateReader protocol + Unavailable implementation
+├── git/state/factory.py                          # NEW   build_repository_git_state_reader, the only wiring point
+├── git/state/bus_reader.py                       # NEW   BusRepositoryGitStateReader, the only module knowing a routing key
+├── git/state/log_reader.py                       # NEW   every git read against an existing clone; both handlers are thin over it
+├── git/state/cache_keys.py                       # NEW   prefix + the four key builders, shared by resolver and flows
+├── git/branch_mapping.py                         # NEW   extracted remote-branch mapping, required parameters, no fallback
+├── git/base.py                                   # EDIT  _get_mapped_remote_branch delegates to branch_mapping
 ├── git/models.py                                 # EDIT  GitRepositoryWarmUp, GitReadOnlyRepositoryCheckRefs
 ├── git/tasks.py                                  # EDIT  warm_up_git_repository, check_read_only_repositories_refs,
 │                                                 #       check_read_only_repository_refs
@@ -121,15 +131,20 @@ backend/infrahub/
 ├── message_bus/messages/git_commit_log_get.py    # NEW
 ├── message_bus/messages/git_branch_heads_get.py  # NEW
 ├── message_bus/messages/__init__.py              # EDIT  MESSAGE_MAP, RESPONSE_MAP, PRIORITY_MAP
-├── message_bus/operations/git/commit_log.py      # NEW   handler
-├── message_bus/operations/git/branch_heads.py    # NEW   handler
+├── message_bus/operations/git/commit_log.py      # NEW   shallow handler: unpack, delegate to log_reader, reply
+├── message_bus/operations/git/branch_heads.py    # NEW   shallow handler, same shape
 ├── message_bus/operations/__init__.py            # EDIT  COMMAND_MAP
 └── services/adapters/message_bus/{__init__,rabbitmq,nats,local}.py   # EDIT  rpc(timeout=...)
 
 backend/tests/
-├── unit/git/test_commit_log.py                                   # NEW
+├── helpers/repository_git_state.py                               # NEW  Recording and Failing reader doubles
+├── unit/git/state/test_classification.py                         # NEW  parametrised, no fixtures
+├── unit/git/state/test_bus_reader.py                             # NEW  routing key, timeout, reply mapping
+├── unit/git/                                                     # NEW  ref-format validation, including a "-" prefixed ref
 ├── unit/errors/                                                  # existing suites gain WORKER_TIMEOUT via parametrisation
 ├── unit/workflows/test_catalogue.py                              # existing, picks up new definitions
+├── component/api/                                                # NEW  get_file surfaces a worker error as its catalogued status
+├── component/git/                                                # NEW  FR-002 stored-node delta independent of history length
 ├── component/core/query/test_repository_branch_values.py         # NEW  per-branch resolution, inheritance, query count at 5 vs 200 branches
 ├── component/graphql/queries/test_repository_git_state.py        # NEW  resolvers, permission, laziness
 ├── component/graphql/mutations/test_repository.py                # EDIT  check-refs mutation with WorkflowRecorder
@@ -181,8 +196,9 @@ Ordered for the fastest frontend hand-off. Each phase is independently reviewabl
   `InfrahubReadOnlyRepositoryCheckRefs` registered.
 - Resolvers do the real Infrahub-side work: load the repository on the request branch, enforce view
   (queries) or update (mutation) permission with `define_object_permission_from_branch`, read the
-  imported commit and the branch or ref, validate `limit` and `offset`, gate `count` and
-  `pending_count` on selection with `extract_graphql_fields`.
+  imported commit and the branch or ref, validate `limit` and `offset`, gate `pending_count` on
+  selection with `extract_graphql_fields`. There is no `count` field to gate: FR-024 removes the
+  total from the contract entirely.
 - `RepositoryBranchValuesQuery` in `core/query/repository.py`: one statement returning the
   branch-resolved `commit`, and `ref` for the read-only kind, for one repository across an explicit
   branch list, with an explicit attribute-name set and a frozen-dataclass `get_data()`. It unwinds a
@@ -217,10 +233,12 @@ Ordered for the fastest frontend hand-off. Each phase is independently reviewabl
 
 ### Phase B2: worker read path
 
-- `infrahub.git.commit_log` pure classification; `GitCommitLogGet` and `GitBranchHeadsGet` message
-  pairs; handlers that never clone, never lock, never fetch; `NOT_CLONED` reply with collapsed
-  warm-up via cache `not_exists` and `GIT_REPOSITORY_WARM_UP`; `WorkerRepositoryGitStateReader`
-  replaces the placeholder.
+- `infrahub.git.state.classification` pure classification; `infrahub.git.state.log_reader` owning
+  every git read against the clone plus the availability check and the collapsed warm-up, so both
+  handlers stay shallow; `GitCommitLogGet` and `GitBranchHeadsGet` message pairs; handlers that never
+  clone, never lock, never fetch; `NOT_CLONED` reply with collapsed warm-up via cache `not_exists`
+  and `GIT_REPOSITORY_WARM_UP`; `BusRepositoryGitStateReader` replaces the placeholder through the
+  factory, which is the only edit any consumer sees.
 - The git work in both handlers runs in `asyncio.to_thread`. GitPython drives subprocesses
   synchronously, and one page is a head resolution, an ancestry check, up to `limit` per-commit
   ancestry checks and a paged walk. On the handler's event loop that stalls every other message the
@@ -235,7 +253,7 @@ Ordered for the fastest frontend hand-off. Each phase is independently reviewabl
 **Sizing note (why there is no sample reader).** Measured against the existing git file read, which is
 the template: the message pair is 27 lines, its handler is 36, and registration is four one-line
 entries plus one command-map line. The git work itself is five calls, four of which already exist in
-the git module minus their fetches (head resolution, ancestry, paged iteration, a count, a
+the git module minus their fetches (head resolution, ancestry, paged iteration, a pending count, a
 `FETCH_HEAD` stat), and the classification is pure logic that needs unit tests either way. A
 deterministic sample reader would cost a comparable amount, plus a determinism test, a configuration
 setting, a public configuration-reference entry, a compose mapping and its own removal, all of it

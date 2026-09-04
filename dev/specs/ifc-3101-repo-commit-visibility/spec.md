@@ -98,7 +98,7 @@ An operator opens a repository's branch list and sees, for each branch, the comm
 
 - **Repository with no commits.** The tracked commit is optional; the log is empty and there is no imported commit to mark.
 - **Tracked ref rebased or force-pushed.** The imported commit is no longer an ancestor of the head. Reported as rewritten, never as behind, and never with a pending count that would be meaningless.
-- **Imported commit no longer reachable on the remote at all.** A stronger form of the above; the marker has nowhere to sit and must resolve to a defined state rather than being silently absent.
+- **Imported commit no longer reachable on the remote at all.** A stronger form of the above; the marker has nowhere to sit. Reported as its own condition, orphaned, and determined before any ancestry test, because asking whether an unresolvable hash is an ancestor fails rather than answering no (FR-006).
 - **Non-linear history.** Merge commits break any assumption that everything below the imported marker was imported, which is why per-commit state is delivered by the system rather than inferred from list position.
 - **Tag moved upstream while a worker has the old commit checked out.** Updating the tag must not leave the imported commit unreachable.
 - **A worker misses a convergence notification** (restarting, or down at the time) and serves older data than its peers until the next movement. Covered by the freshness statement rather than by guaranteeing delivery.
@@ -108,7 +108,7 @@ An operator opens a repository's branch list and sees, for each branch, the comm
 - **Branch that has never imported.** Its tracked commit is the value its origin branch held at the fork point, which is the commit that branch genuinely runs. Not an error state, and not reported as drift on its own.
 - **Remote refs check fails for one repository** (authentication rejected, DNS failure, remote deleted, remote hanging). Recorded with the repository and the reason, the cycle continues with the other repositories, and the failed repository is retried on the next cycle rather than being treated as checked. A repository failing every cycle keeps reporting its last known state with an unchanged freshness stamp, which is the signal that something is wrong.
 - **Staleness.** The log reflects the last time a worker updated its local copy, not the remote right now. Bounded by the relevant interval per repository kind, and stated rather than implied to be live.
-- **Very long history and very many branches.** Paging is mandatory and the total is optional; drift for all branches is produced together regardless of branch count.
+- **Very long history and very many branches.** Paging is mandatory and no total is offered at all (FR-024); drift for all branches is produced together regardless of branch count.
 - **Concurrent first reads of an uncloned repository.** Every read returns promptly with the not-yet-available state and exactly one warm-up starts.
 - **No worker available or worker too slow.** The request returns within a bounded time with a recognisable error that tells the caller when to retry, rather than hanging.
 - **The drift column is unavailable while the branch rows are not.** The branch list renders the rows and reports the drift column's own state.
@@ -124,7 +124,7 @@ An operator opens a repository's branch list and sees, for each branch, the comm
 - **FR-003**: System MUST report, per Infrahub branch, both the commit it has imported and the latest commit available on the remote branch or tracked ref. _Verify_: advance a fixture remote without importing; assert both values are returned and differ.
 - **FR-004**: System MUST produce the remote head for every branch of a repository in a single request to a worker, and MUST read Infrahub's per-branch tracked values in a number of database queries that does not grow with branch count. _Verify_: instrument worker requests and database queries; assert exactly one worker request, and an identical query count, for a repository with 5 and with 200 branches.
 - **FR-005**: System MUST attach an explicit state to each returned commit (for example imported, pending, head) rather than requiring the consumer to infer it from position in the list. _Verify_: assert the state is populated for a non-linear history where position alone would be misleading.
-- **FR-006**: System MUST distinguish a repository that is behind its remote from one whose remote history has been rewritten, determined by whether the imported commit is still an ancestor of the current head, and MUST report the number of pending commits only in the former case. _Verify_: rebase and force-push a fixture remote; assert the rewritten condition is reported and no pending count is presented.
+- **FR-006**: System MUST distinguish a repository that is behind its remote from one whose remote history has been rewritten, determined by whether the imported commit is still an ancestor of the current head, and MUST report the number of pending commits only in the former case. It MUST further distinguish both from the case where the imported commit's object cannot be resolved at all, which is reported as its own orphaned condition and MUST be determined before any ancestry test is attempted, since an unresolvable hash makes that test fail rather than answer. _Verify_: rebase and force-push a fixture remote; assert the rewritten condition is reported and no pending count is presented. Separately, point the imported commit at a hash the clone does not hold; assert the orphaned condition is reported, no pending count is presented, and no error is raised.
 - **FR-007**: System MUST convey how fresh the returned git data is, as the point in time the underlying local copy was last updated. For a read-only repository it MUST also convey when the remote was last checked for movement, because a repository whose remote has been quiet reports an old update time even though it was checked moments ago, and presenting only the latter would misrepresent it as stale. _Verify_: assert the response carries the update timestamp and that it changes after a fetch; separately assert that a read-only repository whose remote has not moved reports a recent check time after a check cycle, with the update time unchanged.
 - **FR-008**: System MUST compute only what the caller selected: no worker request is made when no git-derived field is requested. _Verify_: instrument worker requests; assert zero for an Infrahub-side-only selection.
 - **FR-009**: Users MUST be able to read a commit log for any repository they can already view, with no additional permission. _Verify_: a user with repository read access succeeds; a user without it is denied by the existing path.
@@ -208,13 +208,44 @@ No new entities. The data model is unchanged.
 - A worktree checked out at a commit protects that commit from garbage collection, which is what makes forcing tag updates safe. This is asserted by FR-020 rather than assumed, and MUST be validated during planning against how worktrees and collection actually behave in the git module before the read-only check ships. The failure mode is losing the commit Infrahub is running.
 - Paging is by page size and offset, matching the existing convention for lists in the product.
 - The commit view is a new area of the repository page. The drift column extends the Branches card delivered by the sibling PRD rather than replacing it. If that card does not exist yet, User Story 3 has no rows to annotate.
-- Whether the Branches card obtains the drift column in a second request or through fan-out from the same request is a design decision for planning, settled jointly with the sibling PRD. Either satisfies FR-022; the requirement is that the rows never depend on the drift column.
+- The Branches card obtains the drift column through a second request, settled during planning: the drift data is exposed as its own top-level query rather than fanned out from the card's resolver. Either option satisfied FR-022, and the requirement that survives is that the rows never depend on the drift column. Recorded for the sibling PRD to consume rather than re-decide.
 - The drift list's row set matches the Branches card's: branches synchronised with Git for read-write repositories, every branch for read-only repositories, excluding merged and deleting branches and the global branch. A drift column whose rows differed from the card's would not line up with it.
 - Infrahub's per-branch tracked values for one repository are read in a single database query rather than one per branch. That query reproduces the existing per-branch resolution exactly, including the inheritance that makes a never-imported branch report its origin branch's fork-point value; it does not change what any branch reports.
 - The not-yet-available state and the rewritten-ref condition are presented as distinct states of the commit view without introducing a new repository status value. Their exact visual treatment follows the frontend design canvas.
 - The design canvas needs three matching updates: the commit-count badge is dropped (FR-024), the freshness line carries a check time as well as an update time for read-only repositories (FR-007), and read-only repositories gain a "check remote now" action whose placement the canvas should settle (FR-015).
 - Commit visibility follows the access rules that already govern repositories. No new permission and no new access surface.
 - A rewritten ref is reported, not resolved. No automatic action is taken on it.
+
+## Deviations from the source PRD
+
+Recorded here rather than left implicit, so a reviewer comparing this spec against the PRD finds each
+departure named with its reason. Three independent reviews flagged the first two on 2026-09-04.
+
+- **The remote-branch mapping is extracted** into `infrahub.git.branch_mapping`, with the existing
+  private method delegating to it. The PRD says the commit log reader should take its ref as an
+  explicit parameter "without refactoring it". Deliberate override: the API server cannot call a
+  private instance method and must never build a repository object, so it needs the rule as a
+  function; and restating the rule in the resolver would leave two copies to drift on precisely the
+  default-branch case that [INFP-670](https://opsmill.atlassian.net/browse/INFP-670) is fixing. The
+  extracted copy takes all three inputs as required parameters, which is what keeps it free of the
+  `or registry.default_branch` fallback that PRD is removing. Coordination recorded on that epic.
+- **An unrelated defect on the same call path is fixed here**: `infrahub.api.file::get_file` does not
+  raise for an error reply, so a worker-side failure becomes HTTP 200 with an empty body. The PRD's
+  only shared-path item is the bounded RPC wait. Deliberate override: bounding that wait without this
+  fix leaves the endpoint incoherent, answering 504 on a hang and 200 on a worker error. It lands in
+  the same reviewed pull request as the bounded wait, not folded into a feature commit.
+- **Two configuration settings, not one.** The PRD scopes configuration to "one new interval knob".
+  The bounded wait needs a timeout setting as well. Both are in the governance table below, and the
+  timeout is the one that changes behaviour for existing callers.
+- **A new graph query.** The PRD's module list has none, treating the drift path as purely
+  git-derived. `RepositoryBranchValuesQuery` exists because FR-004 bounds the database query count as
+  well as the worker request count, which the PRD did not. It has its own governance row below.
+- **Two PRD-agreed unit tests land as component tests.** The commit log reader and the bounded RPC
+  wait both do real I/O, against a clone and against a bus adapter respectively, so they are pinned
+  at component level. The pure classification they wrap keeps its unit tests, which is where the
+  logic the PRD wanted covered actually lives.
+- **The multi-worker test is not built.** Reasoning and revisit trigger in
+  `checklists/requirements.md`.
 
 ## Out of Scope
 
