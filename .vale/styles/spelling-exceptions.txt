@@ -31,6 +31,7 @@ Buildkite
 cAdvisor
 Ceph
 changelog
+chatbot
 conftest
 Conftest
 cron
@@ -66,6 +67,7 @@ datetime
 default_branch
 default_filter
 Delinea
+denormalized
 Dependabot
 dev
 Diataxis
@@ -267,7 +269,9 @@ toolchain
 tooltip
 Towncrier
 traceback
+tracebacks
 Traefik
+triages
 TypeScript
 uniqueness_constraints
 unoptimized
@@ -322,5 +326,7 @@ Starlette
 stderr
 stdin
 stdout
+Streamable
+streamable
 syslog
 Syslog

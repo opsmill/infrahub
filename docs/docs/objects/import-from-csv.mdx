@@ -1,0 +1,80 @@
+---
+title: Import data from CSV
+description: Prompt an AI coding assistant to translate a CSV or TSV export into Infrahub object YAML, then load it the same way as any other object file.
+---
+
+Prompt an AI coding assistant to translate a CSV or TSV export into Infrahub object YAML. Your assistant writes the file, creates a branch, validates and loads it, and hands the branch back for you to review.
+
+:::info Prerequisite
+
+Requires an AI coding assistant with the [Infrahub Skills](../overview/build-with-ai/setup.mdx) installed. Without the MCP server or `infrahubctl` configured, your assistant works from local schema files instead, which is less accurate about your live schema.
+
+:::
+
+## What it does
+
+Working from the [Data Importer](https://docs.infrahub.app/skills/skills-reference/importing-data) skill, your assistant takes a CSV or TSV export — one file, a folder, or one large denormalized sheet — and checks its columns against your schema before writing anything. It tries these sources in order and uses the first one available:
+
+| Source | Requires | What it sees |
+|---|---|---|
+| MCP server | The [MCP server](../overview/build-with-ai/setup.mdx) connected to your instance | Live, branch-specific state — including dropdown choices and HFIDs added on a feature branch |
+| `infrahubctl schema export` | `infrahubctl` configured against your instance | The live schema, not branch-specific unless you pass `--branch` |
+| `/api/schema` REST endpoint | Network access to the instance's API | The same live schema as the CLI export |
+| Local `schemas/*.yml` files | Nothing — works with no connection to any instance | Whatever is on disk, which can lag what's actually deployed |
+
+The rows are translated into the same object YAML format documented on [Load data using YAML file](./load-from-yaml).
+
+Your assistant then checks its own output against the object-file rules and confirms every relationship reference it can — checking against the batch's own files and any live objects it already looked up — before it contacts a server. When only local schema files are available, it can confirm that references within the batch line up, but it can't tell whether a reference to an object that only exists live on the server is valid; that still needs a server-side check. Only once the local check passes does it create a fresh branch, run `infrahubctl object validate` against it to catch schema-resolution errors — including any reference that still doesn't resolve — and then `infrahubctl object load` to put the objects on the branch. Your assistant hands that branch back to you and never merges it.
+
+Where a column maps to nothing in your schema, your assistant stops and asks rather than guessing.
+
+## Worked example
+
+### 1. Provide the file
+
+```text title="Example prompt"
+Import this inventory.csv into Infrahub.
+```
+
+### 2. Review the generated object YAML
+
+Your assistant maps each column to a schema attribute or relationship and writes one numbered object file per kind, each carrying a provenance comment:
+
+```yaml title="objects/001-devices.yml"
+# Generated from inventory.csv
+# sha256: <hash of inventory.csv>  generated: <UTC timestamp>
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: NetworkDevice
+  data:
+    - name: sw01-svc01
+      site: Stonehenge Visitor Centre
+```
+
+### 3. Your assistant creates the branch, validates, and loads
+
+```bash
+infrahubctl branch create csv-import-20260813-1004
+infrahubctl object validate objects/ --branch csv-import-20260813-1004
+infrahubctl object load objects/ --branch csv-import-20260813-1004
+```
+
+You do not run these yourself. Your assistant runs them in this order, and only after its own local check passes. `infrahubctl object validate` catches schema-resolution errors — a kind that does not exist, a reference that does not resolve — before anything loads. The branch is named `csv-import-YYYYMMDD-HHMM` by default.
+
+### 4. Review the diff and open a Proposed Change
+
+Review the loaded objects in the web interface, then open a Proposed Change to merge the branch into `main`. See [Proposed Changes](../proposed-changes/overview) for the review workflow.
+
+## What to watch for
+
+An unmapped column stops the import instead of guessing at a match. Resolve the mismatch — rename the column, or add the attribute to your schema — and run it again, rather than working around it. Check the branch name before merging; `csv-import-YYYYMMDD-HHMM` is the default, not a required format.
+
+Loading is not transactional across files. If one file in a large batch fails partway through, the branch already has the earlier files applied. [Delete the branch](../branches/delete.mdx) and run it again with a fresh name rather than repairing the partial state by hand.
+
+## Related
+
+- [Load data using YAML file](./load-from-yaml) — The object YAML format and the `infrahubctl object load` command behind this workflow: same format, same load command, with only the writing automated
+- [Set up your AI assistant](../overview/build-with-ai/setup.mdx) — Install the Infrahub Skills and connect the MCP server
+- [Data Importer skill reference](https://docs.infrahub.app/skills/skills-reference/importing-data) — Full column-mapping and fallback-order behavior
