@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any
 
-from attr import dataclass
+from attr import Factory, dataclass
 
 from infrahub.components import ComponentType
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
@@ -11,6 +11,7 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
+from infrahub.telemetry.resources import RESOURCE_READ_FAILURES, ProcessResources, WorkerResourceReading
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -21,6 +22,16 @@ if TYPE_CHECKING:
 PRIMARY_API_SERVER = "workers:primary:api_server"
 WORKER_MATCH = re.compile(r":worker:([^:]+)")
 
+# Single owner of the resource-key layout: the writer f-string, the list-keys glob
+# and the parse regex are all derived from this prefix so they cannot drift apart.
+RESOURCE_KEY_PREFIX = "workers:resources:"
+RESOURCE_COMPONENT_MATCH = re.compile(re.escape(RESOURCE_KEY_PREFIX) + r"([^:]+):worker:")
+
+# The per-process resource read can transiently fail (a psutil hiccup, a momentary
+# hostname-lookup failure); a few immediate retries cover that before the reading
+# is written as null and the failure logged for traceability.
+RESOURCE_READ_MAX_ATTEMPTS = 3
+
 log = get_logger()
 
 
@@ -30,6 +41,7 @@ class InfrahubComponent:
     db: InfrahubDatabase
     message_bus: InfrahubMessageBus
     component_type: ComponentType
+    process_resources: ProcessResources = Factory(ProcessResources)
 
     @classmethod
     async def new(
@@ -115,11 +127,63 @@ class InfrahubComponent:
                 value=Timestamp().to_string(),
                 expires=KVTTL.FIFTEEN,
             )
+            await self.cache.set(
+                key=f"{RESOURCE_KEY_PREFIX}{component}:worker:{WORKER_IDENTITY}",
+                value=self._read_own_resources().model_dump_json(),
+                expires=KVTTL.FIFTEEN,
+            )
         if self.component_type == ComponentType.API_SERVER:
             await self._set_primary_api_server()
         await self.cache.set(
             key=f"workers:worker:{WORKER_IDENTITY}", value=Timestamp().to_string(), expires=KVTTL.TWO_HOURS
         )
+
+    def _read_own_resources(self) -> WorkerResourceReading:
+        """Read this process's resource allocation, retrying a transient failure.
+
+        A read that still fails after its retries is logged with the component and
+        the failing source, then reported as a null-valued reading so a worker that
+        silently stops reporting resources leaves a trace rather than only an
+        aggregate undercount.
+        """
+        last_error: Exception | None = None
+        for _ in range(RESOURCE_READ_MAX_ATTEMPTS):
+            try:
+                return self.process_resources.read()
+            except RESOURCE_READ_FAILURES as exc:
+                last_error = exc
+
+        log.warning(
+            "Unable to read process resource allocation for telemetry; reporting null",
+            component_type=self.component_type.name,
+            worker_id=WORKER_IDENTITY,
+            error=str(last_error),
+        )
+        return WorkerResourceReading.failed()
+
+    async def read_worker_resources(self) -> dict[str, dict[str, WorkerResourceReading]]:
+        """Return the latest worker resource readings grouped by component and host.
+
+        Readings that fail to parse are skipped; the several processes of one host
+        report identical values, so a later reading for a host simply overwrites
+        the earlier one.
+        """
+        keys = await self.cache.list_keys(filter_pattern=f"{RESOURCE_KEY_PREFIX}*")
+        values = await self.cache.get_values(keys=keys)
+
+        grouped: dict[str, dict[str, WorkerResourceReading]] = {}
+        for key, value in zip(keys, values, strict=False):
+            if value is None:
+                continue
+            match = RESOURCE_COMPONENT_MATCH.search(key)
+            if not match:
+                continue
+            try:
+                reading = WorkerResourceReading.model_validate_json(value)
+            except ValueError:
+                continue
+            grouped.setdefault(match.group(1), {})[reading.host] = reading
+        return grouped
 
     async def _set_primary_api_server(self) -> None:
         result = await self.cache.set(
