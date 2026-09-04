@@ -21,6 +21,7 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 * `showmigration`: Show detailed information about a specific...
 * `check-inheritance`: Check the database for any vertices with...
 * `reset-deployment-id`: Reset the internal deployment_id on the...
+* `reset`: Delete all data from the databases...
 * `check-duplicate-schema-fields`: Check for any duplicate schema attributes...
 * `update-core-schema`: Reload the internal core schema definition...
 * `constraint`: Manage Database Constraints.
@@ -129,6 +130,37 @@ $ infrahub db reset-deployment-id [OPTIONS] [CONFIG_FILE]
 
 * `--deployment-id TEXT`: Set an explicit UUID instead of generating a random one.
 * `-y, --yes`: Skip the confirmation prompt.
+* `--help`: Show this message and exit.
+
+## `infrahub db reset`
+
+Delete all data from the databases configured in this environment.
+
+The graph database is reset when its connection is configured, through INFRAHUB_DB_* settings
+or the `database` section of the configuration file: every vertex and edge is removed, indexes
+and constraints are kept. The task manager (Prefect) database is reset when
+PREFECT_API_DATABASE_CONNECTION_URL is set: every table is dropped and recreated empty. A
+database that is not configured is skipped, and each configured one is confirmed separately
+unless its --yes flag is given. Each Infrahub container only knows its own database, so run the
+command in the infrahub-server container to reset the graph and in the task-manager container
+to reset the task manager. Stop the Infrahub server and task workers first and start them
+again afterwards: on startup the server initializes the empty databases exactly as on a first
+installation.
+
+**Usage**:
+
+```console
+$ infrahub db reset [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `--yes-graph`: Reset the graph database without asking for confirmation.
+* `--yes-task-manager`: Reset the task manager database without asking for confirmation.
 * `--help`: Show this message and exit.
 
 ## `infrahub db check-duplicate-schema-fields`
