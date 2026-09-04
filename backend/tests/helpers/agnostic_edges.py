@@ -426,4 +426,5 @@ async def relationship_metadata(db: InfrahubDatabase, node_id: str, identifier: 
         """,
         params={"node_id": node_id, "identifier": identifier},
     )
+    assert len(results) == 1, f"Expected a single {identifier} relationship for {node_id}, found {len(results)}"
     return VertexMetadata(**dict(results[0]))
