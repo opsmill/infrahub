@@ -1,1 +1,1 @@
-Fixed the path query naming both ends of a hierarchy edge `parent`; the parent end now reports its own `children` relationship.
+In graph traversal results (path and dependency modes), both ends of a hierarchy edge were reported as `parent`; the parent end now reports its own `children` relationship.

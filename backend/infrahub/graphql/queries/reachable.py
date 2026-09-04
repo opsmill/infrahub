@@ -158,11 +158,12 @@ async def reachable_nodes_resolver(
 
     source_info = _node_payload(node_id=source_node.id, kind=source_node.get_kind(), labels_map=labels_map)
 
+    relationship_cache: dict[tuple[str, str, str], dict[str, str]] = {}
     dependencies = [
         {
             "node": _node_payload(node_id=n.node.uuid, kind=n.node.kind, labels_map=labels_map),
             "depth": n.depth,
-            "path": _path_data_to_result(n.path, labels_map, graphql_context),
+            "path": _path_data_to_result(n.path, labels_map, graphql_context, relationship_cache),
         }
         for n in reachable_data
     ]

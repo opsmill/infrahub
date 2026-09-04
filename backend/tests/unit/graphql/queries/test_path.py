@@ -93,6 +93,52 @@ def test_select_hop_relationships(location_schema_branch: SchemaBranch, case: Ho
     assert (from_rel.name, to_rel.name) == (case.expected_from, case.expected_to)
 
 
+def test_loose_hierarchy_keeps_a_deterministic_mirrored_pair() -> None:
+    # Both kinds leave parent/children unset, so both peers default to the
+    # hierarchy generic and both ends keep both candidates: the schema cannot
+    # tell the ends apart. The guess is the same pair in both hop directions,
+    # so one direction names the ends swapped — known limit until hops carry
+    # the edge orientation.
+    area = deepcopy(CONTINENT)
+    area.name = "Area"
+    area.parent = None
+    area.children = None
+    zone = deepcopy(CONTINENT)
+    zone.name = "Zone"
+    zone.parent = None
+    zone.children = None
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(generics=[deepcopy(LOCATION)], nodes=[area, zone]))
+    schema_branch.process()
+
+    for from_kind, to_kind in (("TestingArea", "TestingZone"), ("TestingZone", "TestingArea")):
+        from_rel, to_rel = select_hop_relationships(
+            from_schema=schema_branch.get(name=from_kind, duplicate=False),
+            to_schema=schema_branch.get(name=to_kind, duplicate=False),
+            from_kind=from_kind,
+            to_kind=to_kind,
+            identifier="parent__child",
+        )
+
+        assert from_rel is not None
+        assert to_rel is not None
+        assert (from_rel.name, to_rel.name) == ("parent", "children")
+
+
+def test_unknown_end_falls_back_to_first_declaration(location_schema_branch: SchemaBranch) -> None:
+    from_rel, to_rel = select_hop_relationships(
+        from_schema=location_schema_branch.get(name=TestKind.SITE, duplicate=False),
+        to_schema=None,
+        from_kind=TestKind.SITE,
+        to_kind="TestingUnknown",
+        identifier="parent__child",
+    )
+
+    assert from_rel is not None
+    assert from_rel.name == "parent"
+    assert to_rel is None
+
+
 def test_self_referencing_hierarchy_reports_a_mirrored_pair() -> None:
     # Both ends declare both sides with self peers: the schema cannot tell the
     # ends apart, but the answer must stay one edge (a parent side and a

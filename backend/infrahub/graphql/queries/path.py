@@ -226,9 +226,11 @@ def select_hop_relationships(
 
     A hierarchy declares ``parent`` and ``children`` under one identifier, one per end of an
     edge, so the two ends must mirror each other's direction. Candidates on each end are
-    narrowed by peer kind first, then paired by mirrored direction. When several mirrored
-    pairs remain (a self-referential hierarchy), the first pair is a guess between
-    schema-equivalent sides; the schema alone cannot tell the ends apart.
+    narrowed by peer kind first, then paired by mirrored direction. The pick is exact only
+    when narrowing leaves a single mirrored pair. When several pairs remain — both ends
+    declare both sides with peers that cover each other, as with peers defaulting to the
+    hierarchy generic — the schema alone cannot tell the ends apart and the first pair is
+    kept, a deterministic guess.
     """
     from_candidates = (
         _candidate_relationships(schema=from_schema, identifier=identifier, other_kind=to_kind, other_schema=to_schema)
@@ -243,12 +245,7 @@ def select_hop_relationships(
         else []
     )
 
-    pairs = [
-        (from_rel, to_rel)
-        for from_rel in from_candidates
-        for to_rel in to_candidates
-        if from_rel.direction.neighbor_direction == to_rel.direction
-    ]
+    pairs = [(from_rel, to_rel) for from_rel in from_candidates for to_rel in to_candidates if from_rel.mirrors(to_rel)]
     if not pairs:
         return (
             from_candidates[0] if from_candidates else None,
@@ -296,8 +293,17 @@ def _resolve_relationship(
 
 
 def _path_data_to_result(
-    path_data: PathData, labels_map: dict[str, dict[str, Any]], graphql_context: GraphqlContext
+    path_data: PathData,
+    labels_map: dict[str, dict[str, Any]],
+    graphql_context: GraphqlContext,
+    relationship_cache: dict[tuple[str, str, str], dict[str, str]],
 ) -> dict[str, Any]:
+    """Project one path into the API shape.
+
+    ``relationship_cache`` is request-scoped: the same (identifier, from kind, to kind)
+    triple always resolves to the same payload, and caching it keeps the ambiguous-pair
+    warning to one line per triple per request.
+    """
     start_node_payload = _node_payload(
         node_id=path_data.start_node.uuid, kind=path_data.start_node.kind, labels_map=labels_map
     )
@@ -305,12 +311,16 @@ def _path_data_to_result(
     previous_kind = path_data.start_node.kind
     for hop in path_data.hops:
         node_payload = _node_payload(node_id=hop.node.uuid, kind=hop.node.kind, labels_map=labels_map)
-        relationship_payload = _resolve_relationship(
-            graphql_context=graphql_context,
-            identifier=hop.relationship_identifier,
-            from_kind=previous_kind,
-            to_kind=hop.node.kind,
-        )
+        cache_key = (hop.relationship_identifier, previous_kind, hop.node.kind)
+        relationship_payload = relationship_cache.get(cache_key)
+        if relationship_payload is None:
+            relationship_payload = _resolve_relationship(
+                graphql_context=graphql_context,
+                identifier=hop.relationship_identifier,
+                from_kind=previous_kind,
+                to_kind=hop.node.kind,
+            )
+            relationship_cache[cache_key] = relationship_payload
         hops.append({"node": node_payload, "relationship": relationship_payload})
         previous_kind = hop.node.kind
 
@@ -410,7 +420,8 @@ async def path_traversal_resolver(
         node_id=destination_node.id, kind=destination_node.get_kind(), labels_map=labels_map
     )
 
-    paths = [_path_data_to_result(p, labels_map, graphql_context) for p in path_data_list]
+    relationship_cache: dict[tuple[str, str, str], dict[str, str]] = {}
+    paths = [_path_data_to_result(p, labels_map, graphql_context, relationship_cache) for p in path_data_list]
 
     return {
         "paths": paths,
