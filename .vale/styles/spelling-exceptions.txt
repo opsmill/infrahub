@@ -268,7 +268,9 @@ toolchain
 tooltip
 Towncrier
 traceback
+tracebacks
 Traefik
+triages
 TypeScript
 uniqueness_constraints
 unoptimized
@@ -323,5 +325,7 @@ Starlette
 stderr
 stdin
 stdout
+Streamable
+streamable
 syslog
 Syslog
