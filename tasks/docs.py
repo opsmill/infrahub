@@ -297,6 +297,19 @@ def _generate_infrahub_schema_documentation() -> None:
         print(f"Docs saved to: {output_label}")
 
 
+def _scalar_type_from_any_of(schema: dict) -> str | None:
+    """Return the JSON type of an optional scalar field, or None when the schema is not one.
+
+    Pydantic renders ``str | None`` as ``anyOf: [{type: string}, {type: null}]`` with no ``type`` key,
+    so callers reading ``schema["type"]`` see nothing. Only a single non-null option qualifies; unions
+    of several scalar types and object references are left to the caller.
+    """
+    types = [option["type"] for option in schema.get("anyOf", []) if option.get("type") not in (None, "null")]
+    if len(types) == 1:
+        return types[0]
+    return None
+
+
 def _extract_nested_parameters(
     prop_schema: dict,
     model_fields: dict,
@@ -331,7 +344,8 @@ def _extract_nested_parameters(
     for nested_name, orig_nested_schema in prop_schema.get("properties", {}).items():
         nested_schema = orig_nested_schema
 
-        # Handle anyOf for optional nested objects
+        # Handle anyOf: an optional nested object is resolved through its $ref, an optional scalar
+        # (``str | None``) keeps its row with the type of the non-null option.
         if "anyOf" in nested_schema:
             for option in nested_schema["anyOf"]:
                 if "$ref" in option:
@@ -343,7 +357,10 @@ def _extract_nested_parameters(
                     nested_schema = ref_schema
                     break
             else:
-                continue
+                scalar_type = _scalar_type_from_any_of(nested_schema)
+                if scalar_type is None:
+                    continue
+                nested_schema = {**nested_schema, "type": scalar_type}
 
         # Resolve $ref inside the property if present
         nested_type = nested_schema.get("type")
@@ -424,7 +441,7 @@ def _process_section_parameters(
     """
     parameters = []
     for param_name, param_schema in section_schema["properties"].items():
-        param_type = param_schema.get("type")
+        param_type = param_schema.get("type") or _scalar_type_from_any_of(param_schema)
         if param_type == "array":
             items = param_schema.get("items", {})
             array_type = items.get("type")

@@ -387,6 +387,7 @@ const sidebars: SidebarsConfig = {
               link: { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/overview' },
               items: [
                 { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/high-availability', label: 'High availability' },
+                { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/private-ca', label: 'Private CA' },
               ],
             },
             // Configure Infrahub (PR 4)

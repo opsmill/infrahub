@@ -1,0 +1,1 @@
+Added the `INFRAHUB_TLS_CA_BUNDLE` setting, a CA bundle trusted by every component that opens outbound TLS connections, including git repositories and S3 object storage, so Infrahub can run against a private certificate authority without a custom Docker image; git also gained `INFRAHUB_GIT_TLS_CA_FILE` and `INFRAHUB_GIT_TLS_INSECURE`.

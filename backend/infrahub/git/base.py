@@ -45,6 +45,14 @@ if TYPE_CHECKING:
 
 log = get_logger("infrahub.git")
 
+# stderr fragments git prints when the HTTPS remote's certificate cannot be verified, one per TLS
+# backend libcurl may be built against: OpenSSL, older GnuTLS, and GnuTLS since curl 8.x.
+GIT_TLS_VERIFICATION_ERRORS = (
+    "SSL certificate problem",
+    "server certificate verification failed",
+    "server verification failed",
+)
+
 
 class RepoFileInformation(BaseModel):
     filename: str
@@ -1138,7 +1146,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             "The requested URL returned error: 5xx" (git http.c) plus
             "RPC failed; HTTP 5xx" (git remote-curl.c).
           - not-a-repo / missing: "Repository not found", "does not appear to be a git".
-          - TLS: "SSL certificate problem", "server certificate verification failed".
+          - TLS: the wordings in ``GIT_TLS_VERIFICATION_ERRORS``, one per libcurl TLS backend
+            ("SSL certificate problem" for OpenSSL, "server certificate verification failed"
+            for older GnuTLS, "server verification failed" for GnuTLS since curl 8.x).
           - credentials: "Authentication failed for", "could not read Username".
         These are stable user-facing git/curl strings, but keyed on text — revisit them if
         git or libcurl change their wording.
@@ -1178,7 +1188,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 ),
             ) from error
 
-        if "SSL certificate problem" in error.stderr or "server certificate verification failed" in error.stderr:
+        if any(err in error.stderr for err in GIT_TLS_VERIFICATION_ERRORS):
             raise RepositoryConnectionError(
                 identifier=name, message=f"SSL verification failed for {name}, please validate the certificate chain."
             ) from error
