@@ -3,8 +3,13 @@ description: Classifies newly opened issues with a component (group/*) and, for 
 on:
   issues:
     types: [opened]
-  # Lets a maintainer re-run classification on one issue, and is what
-  # `gh aw trial` needs to exercise this workflow without merging it.
+  # Required by `gh aw trial`, which is the only way to exercise this workflow
+  # before it reaches the default branch (issue events always run the default
+  # branch's copy). A dispatch needs an issue to work on: safe-outputs targets
+  # the triggering item, which on this event comes only from the `aw_context`
+  # input, so a bare run from the Actions UI has nothing to classify. Either let
+  # `gh aw trial --trigger-context <issue-url>` inject it, or pass it by hand as
+  # {"item_type":"issue","item_number":<n>}.
   workflow_dispatch:
   github-app:
     client-id: ${{ secrets.GH_AW_APP_ID }}
