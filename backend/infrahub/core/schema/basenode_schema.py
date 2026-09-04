@@ -215,14 +215,12 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
             other=other,
             get_func=BaseNodeSchema.get_attribute,
             get_map_func=BaseNodeSchema.get_attributes_name_id_map,
-            obj_type=AttributeSchema,
         )
         # Relationships
         rels_diff = self._diff_element(
             other=other,
             get_func=BaseNodeSchema.get_relationship,
             get_map_func=BaseNodeSchema.get_relationship_name_id_map,
-            obj_type=RelationshipSchema,
         )
 
         if attrs_diff.has_diff:
@@ -237,7 +235,6 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         other: Self,
         get_func: Callable,
         get_map_func: Callable,
-        obj_type: type[AttributeSchema | RelationshipSchema],
     ) -> HashableModelDiff:
         """The goal of this function is to reduce the amount of code duplicated between Attribute and Relationship to calculate a diff.
 
@@ -273,15 +270,15 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         # Process element b
         for name in sorted(present_both):
-            local_element: obj_type = get_func(self, name=name)
-            other_element: obj_type = get_func(other, name=name)
+            local_element = get_func(self, name=name)
+            other_element = get_func(other, name=name)
             element_diff = local_element.diff(other_element)
             if element_diff.has_diff:
                 elements_diff.changed[name] = element_diff
 
         for element_id in shared_ids:
-            local_element: obj_type = get_func(self, name=reversed_map_local[element_id])
-            other_element: obj_type = get_func(other, name=reversed_map_other[element_id])
+            local_element = get_func(self, name=reversed_map_local[element_id])
+            other_element = get_func(other, name=reversed_map_other[element_id])
             element_diff = local_element.diff(other_element)
             if element_diff.has_diff:
                 elements_diff.changed[reversed_map_local[element_id]] = element_diff
