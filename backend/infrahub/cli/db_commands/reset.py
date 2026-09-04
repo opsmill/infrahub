@@ -29,7 +29,19 @@ if TYPE_CHECKING:
     from infrahub.config import DatabaseSettings
 
 GRAPH_DATABASE_CONNECTION_FIELDS = frozenset(
-    {"db_type", "protocol", "username", "password", "address", "port", "database"}
+    {
+        "db_type",
+        "protocol",
+        "username",
+        "password",
+        "address",
+        "port",
+        "database",
+        "policy",
+        "tls_enabled",
+        "tls_insecure",
+        "tls_ca_file",
+    }
 )
 """The ``DatabaseSettings`` fields that identify which graph database a process talks to."""
 
