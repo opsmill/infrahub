@@ -107,7 +107,7 @@ One toolchain covers the whole `frontend/` pnpm workspace: **Biome**, configured
 | Config | Role |
 |---|---|
 | `frontend/biome.jsonc` | Shared formatter, import sorting, and lint rules; extends the `ultracite` presets |
-| `frontend/app/biome.jsonc` | App-relative ignores (generated GraphQL/REST types, Playwright output) |
+| `frontend/app/biome.jsonc` | App-relative ignores (generated GraphQL/REST types, Playwright output) and the app-only `noTailwindArbitraryValue` rule |
 | `frontend/packages/{ui,graph}/biome.jsonc` | `noBarrelFile` off — `src/index.ts` is each package's public API |
 
 Run it from the workspace root, never from a single member:
