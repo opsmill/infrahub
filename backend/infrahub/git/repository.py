@@ -27,9 +27,25 @@ from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
+    from git import Repo
     from infrahub_sdk.client import InfrahubClient
 
 log = get_logger()
+
+
+def _describe_push_rejection(summary: str) -> str:
+    """Prefix a per-ref push rejection summary with the likely reason the remote refused it.
+
+    The matched substrings come from the per-ref status line of ``git push``: a rejected
+    ref is not a failed command, so no ``GitCommandError`` is raised and the stderr-based
+    error enrichment never sees the rejection.
+    """
+    lowered = summary.lower()
+    if any(marker in lowered for marker in ("hook declined", "protected branch", "permission denied", "not allowed")):
+        return f"the remote refused the update (for example missing push permission or branch protection): {summary}"
+    if any(marker in lowered for marker in ("non-fast-forward", "fetch first")):
+        return f"the remote branch has commits that are missing locally (non-fast-forward): {summary}"
+    return summary
 
 
 @dataclass
@@ -307,7 +323,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             if push_info.flags & push_info.ERROR:
                 raise RepositoryError(
                     identifier=self.name,
-                    message=f"Unable to push the branch {remote_branch} to the remote for repository {self.name}: {push_info.summary.strip()}",
+                    message=(
+                        f"Unable to push the branch {remote_branch} to the remote for repository {self.name}: "
+                        f"{_describe_push_rejection(summary=push_info.summary.strip())}"
+                    ),
                 )
 
         return True
@@ -317,14 +336,18 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         After the rebase we need to resync the data
 
+        On any failure the destination worktree is reset to its pre-merge commit. Before the push
+        has succeeded this leaves local git, the graph and the remote consistent at the pre-merge
+        state, so a later merge attempt can re-derive the merge. If recording the merge fails after
+        a successful push, the reset leaves the local clone trailing the remote instead, a state
+        the periodic synchronization repairs by pulling the pushed merge commit and recording it.
+
         Raises:
-            ValueError: When no worktree exists for the destination branch.
-            RepositoryError: When the underlying ``git merge`` command fails.
+            RepositoryError: When no worktree exists for the destination branch, when the
+                underlying ``git merge`` command fails, or when the remote rejects the push.
 
         """
         repo = self.get_git_repo_worktree(identifier=dest_branch)
-        if not repo:
-            raise ValueError(f"Unable to identify the worktree for the branch : {dest_branch}")
 
         commit_before = str(repo.head.commit)
         commit = self.get_commit_value(branch_name=source_branch, remote=False)
@@ -343,12 +366,46 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         if commit_after == commit_before:
             return False
 
-        self.create_commit_worktree(commit_after)
-        await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
         if self.has_origin and push_remote:
-            await self.push(branch_name=dest_branch)
+            pushed = False
+            try:
+                await self.push(branch_name=dest_branch)
+                pushed = True
+            finally:
+                if not pushed:
+                    # Left on the unpushed merge commit, a retry would find nothing to merge
+                    # and return before ever reaching the push again.
+                    self._reset_to_pre_merge_commit(repo=repo, dest_branch=dest_branch, commit_before=commit_before)
+
+        recorded = False
+        try:
+            self.create_commit_worktree(commit_after)
+            await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
+            recorded = True
+        finally:
+            if not recorded:
+                # Trailing the remote is a state the periodic synchronization repairs by pulling
+                # and recording the missing commit; a worktree left on a merge commit that is
+                # recorded nowhere is never revisited.
+                self._reset_to_pre_merge_commit(repo=repo, dest_branch=dest_branch, commit_before=commit_before)
 
         return str(commit_after)
+
+    def _reset_to_pre_merge_commit(self, repo: Repo, dest_branch: str, commit_before: str) -> None:
+        """Best-effort reset of a merge destination worktree while recovering from a failed merge.
+
+        This never raises: the failure being recovered from is the one that explains why the merge
+        was not delivered, and it must propagate unmasked.
+        """
+        try:
+            repo.git.reset("--hard", commit_before)
+        except GitCommandError:
+            log.exception(
+                f"Failed to reset the worktree of branch {dest_branch} to {commit_before} while recovering "
+                "from a failed merge; manual reconciliation may be required before the merge can be retried.",
+                repository=self.name,
+                branch=dest_branch,
+            )
 
     async def rebase(
         self, branch_name: str, source_branch: str = "main", push_remote: bool = True
