@@ -95,6 +95,8 @@ Architecture Decision Records in [adr/](adr/):
 
 ## Current Guides
 
+- [testing-against-the-ai-dc-solution.md](guides/testing-against-the-ai-dc-solution.md) - Read before testing against a realistic, large-scale dataset, or when the work involves the AI/DC solution
+
 Backend guides in [guides/backend/](guides/backend/):
 
 - [creating-events.md](guides/backend/creating-events.md) - How to create new events
