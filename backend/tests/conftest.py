@@ -21,7 +21,9 @@ from infrahub_sdk.uuidt import UUIDT
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 from prefect import settings as prefect_settings
+from pydantic import SecretStr
 from testcontainers.core.container import DockerContainer
+from testcontainers.core.network import Network
 from testcontainers.core.waiting_utils import wait_for_logs
 
 from infrahub import config, lock
@@ -80,6 +82,7 @@ from tests.helpers.constants import (
     PORT_NATS,
     PORT_PREFECT,
     PORT_REDIS,
+    PORT_REDIS_SENTINEL,
 )
 from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
 from tests.helpers.file_repo import FileRepo
@@ -437,6 +440,83 @@ def redis(redis_container: dict[int, int] | None, reload_settings_before_each_mo
         config.SETTINGS.cache.password = ""
 
         return redis_container
+
+    return None
+
+
+@pytest.fixture(scope="module")
+def redis_url(
+    redis_container: dict[int, int] | None, reload_settings_before_each_module: None
+) -> dict[int, int] | None:
+    """Configure the cache through a redis:// connection URL pointing at the single-node container."""
+    if redis_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.Redis:
+        config.SETTINGS.cache.url = SecretStr(f"redis://localhost:{redis_container[PORT_REDIS]}/0")
+        return redis_container
+
+    return None
+
+
+# NOTE: This fixture needs to run before initialize_lock_fixture which is guaranteed to run after as it has a module scope.
+@pytest.fixture(scope="session")
+def redis_sentinel_container(
+    request: pytest.FixtureRequest, load_settings_before_session: None
+) -> dict[int, int] | None:
+    """Bring up a minimal Sentinel topology (1 master, 1 sentinel) on a shared Docker network.
+
+    The sentinel resolves the master through the network alias and returns its container IP to
+    clients; that IP is reachable from the host on a Linux bridge network (the CI environment).
+    """
+    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.Redis:
+        return None
+
+    network = Network().create()
+    request.addfinalizer(network.remove)
+
+    master = DockerContainer(image="redis:8.4.0").with_network(network).with_network_aliases("redis-master")
+    master.start()
+    wait_for_logs(master, "Ready to accept connections tcp")
+    request.addfinalizer(master.stop)
+
+    sentinel_config = (
+        f"port {PORT_REDIS_SENTINEL}\n"
+        "sentinel resolve-hostnames yes\n"
+        f"sentinel monitor mymaster redis-master {PORT_REDIS} 1\n"
+        "sentinel down-after-milliseconds mymaster 5000\n"
+    )
+    # A list command is passed straight through to Docker as the Cmd array; the testcontainers
+    # stub only types it as str, hence the suppression.
+    sentinel_command = [
+        "sh",
+        "-c",
+        f"printf '%s' '{sentinel_config}' > /tmp/sentinel.conf && exec redis-sentinel /tmp/sentinel.conf",
+    ]
+    sentinel = (
+        DockerContainer(image="redis:8.4.0")
+        .with_network(network)
+        .with_network_aliases("redis-sentinel")
+        .with_exposed_ports(PORT_REDIS_SENTINEL)
+        .with_command(sentinel_command)  # ty: ignore[invalid-argument-type]
+    )
+    sentinel.start()
+    wait_for_logs(sentinel, r"\+monitor master mymaster")  # emitted once the master is resolved and monitored
+    request.addfinalizer(sentinel.stop)
+
+    return {PORT_REDIS_SENTINEL: get_exposed_port(sentinel, PORT_REDIS_SENTINEL)}
+
+
+@pytest.fixture(scope="module")
+def redis_sentinel(
+    redis_sentinel_container: dict[int, int] | None, reload_settings_before_each_module: None
+) -> dict[int, int] | None:
+    """Configure the cache through a redis+sentinel:// URL pointing at the Sentinel topology."""
+    if (
+        redis_sentinel_container
+        and INFRAHUB_USE_TEST_CONTAINERS
+        and config.SETTINGS.cache.driver == config.CacheDriver.Redis
+    ):
+        port = redis_sentinel_container[PORT_REDIS_SENTINEL]
+        config.SETTINGS.cache.url = SecretStr(f"redis+sentinel://localhost:{port}/mymaster")
+        return redis_sentinel_container
 
     return None
 

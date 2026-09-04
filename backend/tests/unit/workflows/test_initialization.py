@@ -66,6 +66,22 @@ class ConnectionStringCase:
         ),
         pytest.param(
             ConnectionStringCase(
+                name="plain_bare_ipv6_address_bracketed",
+                cache_kwargs={"address": "::1", "database": 2},
+                expected_url="redis://[::1]:6379/2",
+            ),
+            id="plain_bare_ipv6_address_bracketed",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="plain_bracketed_ipv6_address_kept",
+                cache_kwargs={"address": "[2001:db8::2]", "password": "secret"},
+                expected_url="redis://:secret@[2001:db8::2]:6379/0",
+            ),
+            id="plain_bracketed_ipv6_address_kept",
+        ),
+        pytest.param(
+            ConnectionStringCase(
                 name="tls_defaults",
                 cache_kwargs={"address": "redis.internal", "tls_enabled": True},
                 expected_url="rediss://redis.internal:6379/0",
@@ -133,6 +149,46 @@ class ConnectionStringCase:
                 expected_url="redis://redis.internal:6379/0",
             ),
             id="tls_disabled_ignores_tls_options",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_single_node",
+                cache_kwargs={"url": "redis://cache:6380/2"},
+                expected_url="redis://cache:6380/2",
+            ),
+            id="url_single_node",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_single_node_with_auth",
+                cache_kwargs={"url": "redis://user:secret@cache:6379/0"},
+                expected_url="redis://user:secret@cache:6379/0",
+            ),
+            id="url_single_node_with_auth",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_single_node_passed_through_verbatim",
+                cache_kwargs={"url": "rediss://cache:6379?ssl_cert_reqs=none&ssl_check_hostname=false"},
+                expected_url="rediss://cache:6379?ssl_cert_reqs=none&ssl_check_hostname=false",
+            ),
+            id="url_single_node_passed_through_verbatim",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_sentinel_passed_through",
+                cache_kwargs={"url": "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster/1"},
+                expected_url="redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster/1",
+            ),
+            id="url_sentinel_passed_through",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_sentinel_tls_and_auth_passed_through",
+                cache_kwargs={"url": "rediss+sentinel://user:secret@sentinel-a:26379/mymaster"},
+                expected_url="rediss+sentinel://user:secret@sentinel-a:26379/mymaster",
+            ),
+            id="url_sentinel_tls_and_auth_passed_through",
         ),
     ],
 )

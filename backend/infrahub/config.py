@@ -17,6 +17,7 @@ from pydantic import (
     EmailStr,
     Field,
     PrivateAttr,
+    SecretStr,
     ValidationError,
     computed_field,
     field_validator,
@@ -486,8 +487,16 @@ class BrokerSettings(BaseSettings):
         return self.port or default_ports[self.tls_enabled]
 
 
+# Scalar connection settings that a configured INFRAHUB_CACHE_URL supersedes.
+CACHE_URL_SUPERSEDED_FIELDS = frozenset(
+    {"address", "port", "database", "username", "password", "tls_enabled", "tls_insecure", "tls_ca_file"}
+)
+
+
 class CacheSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_CACHE_")
+    # hide_input_in_errors keeps a connection URL (which may embed credentials) out of any
+    # ValidationError raised for this section.
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_CACHE_", hide_input_in_errors=True)
     address: str = "localhost"
     port: int | None = Field(
         default=None, ge=1, le=65535, description="Specified if running on a non default port (6379)"
@@ -496,6 +505,20 @@ class CacheSettings(BaseSettings):
     driver: CacheDriver = CacheDriver.Redis
     username: str = ""
     password: str = ""
+    url: SecretStr | None = Field(
+        default=None,
+        description=(
+            "Full Redis connection URL, authoritative over the scalar connection settings when set. "
+            "Supports the redis://, rediss://, redis+sentinel:// and rediss+sentinel:// schemes; the "
+            "Sentinel schemes accept a comma-separated list of members and a master group name, e.g. "
+            "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster. TLS is tuned with the redis-py "
+            "query parameters ssl_cert_reqs, ssl_check_hostname and ssl_ca_certs; on a Sentinel URL these "
+            "ssl_* options are shared with the Sentinel daemon connections, so ?ssl_cert_reqs=none (or "
+            "?ssl_ca_certs=/path/ca.pem for a private CA) covers the whole topology. The Sentinel daemons "
+            "can be authenticated separately with the sentinel_username and sentinel_password query "
+            "parameters. See the high availability guide for details. Ignored when driver is not redis."
+        ),
+    )
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
@@ -520,6 +543,39 @@ class CacheSettings(BaseSettings):
         if self.driver == CacheDriver.NATS:
             return self.port or 4222
         return self.port or default_ports
+
+    @model_validator(mode="after")
+    def validate_url(self) -> Self:
+        # The URL is only consulted by the Redis driver, so it is neither applied to nor parsed as a
+        # Redis URL for any other driver.
+        if self.url is None or self.driver != CacheDriver.Redis:
+            return self
+
+        # The URL supersedes the scalar settings rather than being mutually exclusive with them:
+        # the shipped Compose files set every scalar connection variable unconditionally
+        # (INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_CACHE_ADDRESS:-cache} and so on), so rejecting the
+        # combination would make INFRAHUB_CACHE_URL unusable in a Docker deployment. A scalar left
+        # at its default carries no intent and is passed over silently; one set to something else is
+        # reported so an operator can see which of their settings the URL is overriding.
+        fields = type(self).model_fields
+        superseded = sorted(
+            name
+            for name in self.model_fields_set & CACHE_URL_SUPERSEDED_FIELDS
+            if getattr(self, name) != fields[name].get_default()
+        )
+        if superseded:
+            log.warning(
+                "INFRAHUB_CACHE_URL is set and supersedes the scalar cache connection settings",
+                superseded_settings=[f"INFRAHUB_CACHE_{name.upper()}" for name in superseded],
+            )
+
+        # Imported lazily to keep this low-level settings module free of the services package.
+        from infrahub.services.adapters.cache.connection import validate_redis_url  # noqa: PLC0415
+
+        # Raises a ValueError, which pydantic surfaces as a validation error; the message never
+        # echoes the URL, so credentials embedded in it are not leaked.
+        validate_redis_url(self.url.get_secret_value())
+        return self
 
 
 class WorkflowSettings(BaseSettings):
@@ -1890,6 +1946,10 @@ class ConfiguredSettings:
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
+    # hide_input_in_errors keeps provided secrets (e.g. a cache connection URL) out of the
+    # input echoed by a ValidationError raised while loading any nested section.
+    model_config = SettingsConfigDict(hide_input_in_errors=True)
+
     main: MainSettings = MainSettings()
     api: ApiSettings = ApiSettings()
     git: GitSettings = GitSettings()
@@ -1897,7 +1957,10 @@ class Settings(BaseSettings):
     http: HTTPSettings = HTTPSettings()
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()
-    cache: CacheSettings = CacheSettings()
+    # Built via a factory so the default is constructed when Settings is instantiated (at load
+    # time) rather than at class-definition time; its URL validator imports the redis connection
+    # builder, which must not be pulled in while this settings module is still importing.
+    cache: CacheSettings = Field(default_factory=CacheSettings)
     workflow: WorkflowSettings = WorkflowSettings()
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
     logging: LoggingSettings = LoggingSettings()
