@@ -43,7 +43,7 @@ GRAPH_DATABASE_CONNECTION_FIELDS = frozenset(
         "tls_ca_file",
     }
 )
-"""The ``DatabaseSettings`` fields that identify which graph database a process talks to."""
+"""Graph database settings that identify which database a process talks to, as opposed to tuning knobs."""
 
 
 class TaskManagerDatabaseDialect(StrEnum):
@@ -115,21 +115,18 @@ def get_task_manager_database_dialect(connection_url: str) -> TaskManagerDatabas
 
 @contextmanager
 def task_manager_database(connection_url: str) -> Iterator[PrefectDBInterface]:
-    """Provide the Prefect database interface bound to ``connection_url``.
+    """Provide the task manager database interface bound to ``connection_url``.
 
-    Prefect caches the first database configuration it builds for the lifetime of the process and
-    reuses it for every later ``provide_database_interface`` call, whatever the current settings
-    say. The dialect-specific components are therefore built here from ``connection_url`` and
-    installed explicitly for the duration of the block, and the URL is installed as a temporary
-    setting alongside them so that everything resolving the database from settings agrees. Keep
-    the block open while the interface is used: the Alembic upgrade behind ``create_db`` runs in a
-    worker thread that resolves the database on its own.
+    Prefect (3.x) keeps reusing the first database configuration built in a process, whatever its
+    settings say afterwards, so the dialect-specific configuration for ``connection_url`` is
+    installed explicitly for the duration of the block. Keep the block open while the interface is
+    used: the schema upgrade runs in a worker thread that resolves the database on its own.
 
     Args:
         connection_url: SQLAlchemy URL of the task manager database.
 
     Yields:
-        The Prefect database interface for that URL.
+        The database interface for that URL.
 
     Raises:
         ValueError: When the URL cannot be parsed or names an engine Prefect does not support.
@@ -160,12 +157,8 @@ def task_manager_database(connection_url: str) -> Iterator[PrefectDBInterface]:
 async def reset_task_manager_database(task_db: PrefectDBInterface) -> None:
     """Drop every table of the task manager database and recreate the schema empty.
 
-    Same procedure as ``prefect server database reset``: the tables are reflected and dropped
-    directly instead of being downgraded migration by migration, then the Alembic migrations are
-    replayed from scratch.
-
     Args:
-        task_db: Prefect database interface, as provided by ``task_manager_database``.
+        task_db: Database interface bound to the task manager database.
 
     """
     await task_db.drop_db()
