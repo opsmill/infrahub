@@ -587,6 +587,22 @@ allow-dunder-method-names = [
 
 [tool.ruff.lint.per-file-ignores]
 
+".github/scripts/**.py" = [
+    # CI helper scripts: not a package, junit XML input is produced by our own
+    # pytest run, and subprocess only ever invokes the gh CLI with fixed argv.
+    "INP001",   # File is part of an implicit namespace package
+    "S314",     # Using `xml` to parse untrusted data
+    "S404",     # `subprocess` module is possibly insecure
+    "S405",     # `xml.etree` methods are vulnerable to XML attacks
+    "S603",     # `subprocess` call: check for execution of untrusted input
+    "S607",     # Starting a process with a partial executable path
+]
+
+".github/scripts/tests/**.py" = [
+    "PLR2004",  # Magic value used in comparison
+    "S101",     # Use of assert detected
+]
+
 "backend/infrahub/**.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
