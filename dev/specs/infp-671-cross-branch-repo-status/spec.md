@@ -36,7 +36,7 @@ A developer or infrastructure manager opens a connected repository. The Branches
 
 **Independent Test**: Load a repository with a dozen branches where one branch has a failed import on its own branch. Open the repository page. All branches appear with their own status and commit in one request, and the failing branch is identifiable without navigating away.
 
-**Delivery**: The Branches card and its pytest-playwright test under `tests/e2e/branches/` are delivered by the frontend team under INFP-671, built against `contracts/graphql-repository-branch-status.md`. This backend slice is complete when the query and the sync refactor land with their component tests. The constitution's end-to-end requirement attaches to the card, not to this slice.
+**Delivery**: The Branches card and its pytest-playwright test are delivered by the frontend team under IFC-3130, built against `contracts/graphql-repository-branch-status.md`. The test directory is the frontend team's call: `tests/e2e/repository/` is the closer fit for a repository-page card than `tests/e2e/branches/`. This backend slice is complete when the query and the sync refactor land with their component tests. The constitution's end-to-end requirement attaches to the card, not to this slice.
 
 **Acceptance Scenarios**:
 

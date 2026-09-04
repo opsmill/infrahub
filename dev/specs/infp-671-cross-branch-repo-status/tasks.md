@@ -13,17 +13,27 @@ deliverable: a live, typed GraphQL query the frontend team builds against while 
 
 ## Suggested delivery scope
 
-Each phase heading below carries one of these markers. Work the phases in this order; each scope
-is one reviewed pull request.
+Each phase heading below carries its pull request number. Work the phases in this order; each row
+is one reviewed pull request with one Jira task behind it.
 
-| Marker | Phases | Pull request | Delivers |
+| PR | Phases | Jira | Delivers |
 | --- | --- | --- | --- |
-| **[MVP: PR 1]** | 1, 2, 3 (T001 to T032, including T030a) | Increment A, needs GraphQL schema **and** authorization sign-off | Live typed query for the frontend team; fabricated attribute values behind the real contract |
-| **[PR 2]** | 4 (T033 to T047, including T045a and T045b) | Increment B | True values, real attribute filters, stub deleted, changelog, docs, knowledge docs, benchmark |
-| **[PR 3]** | 5 (T048 to T056, including T052a) | Increment C | Periodic sync bounded by `1 + ceil(N / 100)` queries |
-| **[Wrap-up]** | 6 (T057 to T060) | Small follow-up or folded into PR 3 | Spec sweep, manual check, ticket notes, final validation |
+| **PR 1** | 1, 2 (T001 to T013) | [IFC-3125](https://opsmill.atlassian.net/browse/IFC-3125) | Branch-list plumbing: `sync_with_git` filter, unpaged `Branch.get_list`, total-ordered standard-node reads, shared fixtures |
+| **PR 2** | 3 (T014 to T032, including T030a) | [IFC-3126](https://opsmill.atlassian.net/browse/IFC-3126) | Increment A. Live typed query for the frontend team; fabricated attribute values behind the real contract |
+| **PR 3** | 4 (T033 to T047, including T045a and T045b) | [IFC-3127](https://opsmill.atlassian.net/browse/IFC-3127) | Increment B. True values, real attribute filters, stub deleted, changelog, docs, knowledge docs, benchmark |
+| **PR 4** | 5 (T048 to T056, including T052a) | [IFC-3128](https://opsmill.atlassian.net/browse/IFC-3128) | Increment C. Periodic sync bounded by `1 + ceil(N / 100)` queries |
+| **PR 5** | 6 (T057 to T060) | [IFC-3129](https://opsmill.atlassian.net/browse/IFC-3129) | Spec sweep, Confluence PRD correction, manual check, final validation. Foldable into PR 4 |
 
-Stop and validate at the end of each scope before starting the next. PR 3 may be opened while PR 2
+Delivery epic: [IFC-3104](https://opsmill.atlassian.net/browse/IFC-3104). Also under it, and not
+backend PRs: [IFC-3130](https://opsmill.atlassian.net/browse/IFC-3130) the Branches card and its
+end-to-end test, [IFC-3131](https://opsmill.atlassian.net/browse/IFC-3131) the manual validation pass,
+and [IFC-3132](https://opsmill.atlassian.net/browse/IFC-3132) writing that pass's instructions.
+
+Phase 2 is its own pull request rather than part of increment A because T009 changes `ORDER BY` for
+every standard-node list in the product. That belongs in front of a reviewer looking at ordering, not
+buried in a thirty-task repository-query review.
+
+Stop and validate at the end of each scope before starting the next. PR 4 may be opened while PR 3
 is in review, but merges after it.
 
 ## Format: `[ID] [P?] [Story] Description`
@@ -74,7 +84,7 @@ say so rather than bend the rule.
 
 ---
 
-## Phase 1: Setup [MVP: PR 1]
+## Phase 1: Setup [PR 1]
 
 **Purpose**: Package skeletons and required reading so every later task starts from the same base.
 
@@ -85,7 +95,7 @@ say so rather than bend the rule.
 
 ---
 
-## Phase 2: Foundational (Blocking Prerequisites) [MVP: PR 1]
+## Phase 2: Foundational (Blocking Prerequisites) [PR 1]
 
 **Purpose**: Changes to existing branch-list plumbing that both user stories and the shared test
 fixture depend on. All of these are behaviour-preserving for existing callers.
@@ -109,7 +119,7 @@ backend/tests/component/core/test_branch.py` passes.
 
 ---
 
-## Phase 3: User Story 1, Increment A: contract stub (Priority: P1) [MVP: PR 1]
+## Phase 3: User Story 1, Increment A: contract stub (Priority: P1) [PR 2]
 
 **Goal**: Ship the complete `InfrahubRepositoryBranchStatus` contract on `develop` so the frontend
 team can run `pnpm codegen` and build the Branches card against a live query. Repository lookup,
@@ -156,7 +166,7 @@ generated frontend types match the SDL. Quickstart scenarios A1 through A7.
 
 - [ ] T030a [P] [US1] Add `changelog/+branch-list-sync-with-git-filter.added.md` with the `creating-changelog-entries` skill, describing the `sync_with_git` argument on the `InfrahubBranch` query as it landed (grep the diff for the exact argument name first). This increment ships a user-visible GraphQL change, so it needs a fragment even though the new query itself stays unlogged while its values are fabricated
 - [ ] T031 [US1] Run `/pre-ci` for the changed areas, then open the increment A pull request requesting GraphQL schema sign-off (new root field and three types, `sync_with_git` on `InfrahubBranch`) and authorization sign-off (the permission check moves into the resolver because the checker pipeline cannot see a hand-written root field, and this is the first read requiring a decision covering both the default branch and other branches; spec.md, Governance Gates). The PR description states the release rule, links `contracts/graphql-repository-branch-status.md`, lists the arguments the stub accepts but ignores, and names the blast radius of T009: the id tiebreaker changes `ORDER BY` for every standard-node list ordering by `created_at` or `updated_at`, not only the branch read, so list the standard-node surfaces it touches and the test run that covers them
-- [ ] T032 [US1] Handoff: post `contracts/graphql-repository-branch-status.md` to the frontend team with the codegen instructions in its final section, state that the card is built without the git-derived drift column for now, announce the stub window to the team, and create a Jira subtask under INFP-671 titled "Remove InfrahubRepositoryBranchStatus stub" so the stub cannot outlive the frontend work. Ask the frontend team which e2e directory the card's test belongs in: the spec says `tests/e2e/branches/`, but `tests/e2e/repository/` exists and is the closer fit for a repository-page card
+- [ ] T032 [US1] Handoff: post `contracts/graphql-repository-branch-status.md` to the frontend team with the codegen instructions in its final section, state that the card is built without the git-derived drift column for now, announce the stub window to the team, and create a Jira task under the delivery epic IFC-3104 titled "Remove InfrahubRepositoryBranchStatus stub" so the stub cannot outlive the frontend work. Delivery work lives under IFC; INFP is JPD and holds product planning only, already linked to the epic. Ask the frontend team which e2e directory the card's test belongs in: the spec says `tests/e2e/branches/`, but `tests/e2e/repository/` exists and is the closer fit for a repository-page card
 
 **Checkpoint**: The frontend team can build the Branches card. Quickstart A1 through A7 pass.
 `uv run pytest backend/tests/unit/graphql/queries/test_repository_branch_status.py
@@ -164,7 +174,7 @@ backend/tests/component/graphql/queries/test_repository_branch_status.py` is gre
 
 ---
 
-## Phase 4: User Story 1, Increment B: graph read (Priority: P1) [PR 2]
+## Phase 4: User Story 1, Increment B: graph read (Priority: P1) [PR 3]
 
 **Goal**: Replace the fabricated values with the real per-branch attribute read through the core
 primitive; make the attribute-value filters real; pin inheritance, rebase and the query-count
@@ -207,7 +217,7 @@ contract change.
 
 ---
 
-## Phase 5: User Story 2: the periodic sync stops querying per branch (Priority: P2) [PR 3]
+## Phase 5: User Story 2: the periodic sync stops querying per branch (Priority: P2) [PR 4]
 
 **Goal**: `get_repositories_commit_per_branch` reads every repository's `commit` and
 `internal_status` for every branch through the reader in fixed chunks, bounded by
@@ -236,11 +246,11 @@ parallel with the rest of Phase 4.
 
 ---
 
-## Phase 6: Polish and Cross-Cutting Concerns [Wrap-up]
+## Phase 6: Polish and Cross-Cutting Concerns [PR 5]
 
 - [ ] T057 [P] Grep `dev/specs/infp-671-cross-branch-repo-status/` for every figure and identifier the implementation may have changed (`40`, `100`, `1 + ceil(N / 100)`, per-page query counts, module and class names) and update every file that repeats a stale value in one commit (AGENTS.md, Always Do). Then update the source PRD in Confluence, which still carries the pre-analysis wording on FR-001 (anchors on "id or HFID", which cannot resolve), FR-010 (`ceil(N / chunk_size)`, missing the repository-node read) and FR-014 (own value defined against the selected attributes). Leaving it stale means the product source of truth contradicts what shipped
 - [ ] T058 [P] Perform the manual dev-stack check from quickstart.md (`uv run invoke dev.start`, load demo schema and data, run the example document at `http://localhost:8000/graphql`, create a `sync_with_git: false` branch and confirm it disappears from the read-write repository's rows)
-- [ ] T059 Create a Jira subtask under INFP-671 titled "Branches card pytest-playwright E2E test", assigned to the frontend team, referencing `contracts/graphql-repository-branch-status.md` and the e2e directory settled in T032. A subtask, not a note: the constitution requires an E2E test for a user-facing feature, this slice defers it to the card, and the deferral is only acceptable while something tracks it. Separately, note on INFP-671 that Python SDK exposure of `InfrahubRepositoryBranchStatus` is a follow-up
+- [ ] T059 Confirm the card's pytest-playwright E2E test is tracked on IFC-3130 (Branches card on the repository page), which carries it in scope, and that the directory settled in T032 is recorded there. The constitution requires an E2E test for a user-facing feature and this slice defers it to the card, so the deferral holds only while that issue does. Separately, file Python SDK exposure of `InfrahubRepositoryBranchStatus` as a follow-up under IFC-3104. Nothing goes under INFP: that is JPD, for product planning, and its link to the epic is the connection
 - [ ] T060 Final `uv run invoke docs.validate` and `uv run invoke schema.validate-graphqlschema` on the merged tree, confirming no generated file is stale after the three increments
 
 ---

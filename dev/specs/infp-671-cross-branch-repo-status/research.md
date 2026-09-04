@@ -285,7 +285,8 @@ description while the stub is live. That description is API-facing, so it names 
 the delivery increment: both are meaningless to a schema consumer, and `.agents/rules/code-doc-style.md`
 keeps spec vocabulary out of anything a reader encounters without the spec. Every developer stack built
 from `develop` shows these values during the stub window, so the window is announced to the team and
-the stub's removal is tracked as its own Jira subtask under INFP-671.
+the stub's removal is tracked as its own Jira task under the delivery epic IFC-3104. Delivery work
+lives under IFC; INFP is JPD and carries product planning only, linked to the epic.
 
 ---
 
