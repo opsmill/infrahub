@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import pytest
 from prefect.events.schemas.events import Event, RelatedResource, Resource
 from prefect.settings import PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES, temporary_settings
+from pydantic import ValidationError
 
 from infrahub.events.limits import (
     MAX_RUN_CONTEXT_RESOURCES,
@@ -100,3 +101,36 @@ def test_event_on_the_budget_survives_the_prefect_run_context_append(
 
         assert len(event.related) <= get_prefect_max_related_resources()
         Event.model_validate(event.model_dump())
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in SURVIVAL_CASES])
+def test_event_on_the_maximum_is_rejected_after_the_prefect_run_context_append(
+    case: SurvivalCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An event emitted on the maximum is refused once Prefect has enlarged it.
+
+    This is the failure the budget exists to prevent, and the control that proves the reservation
+    does real work: an event that leaves on the maximum has no room for the in-place run-context
+    append, so the enlarged event lands above the limit and no longer validates. Building the same
+    event on the budget instead is what the companion test shows still validates.
+    """
+    monkeypatch.setenv(ENV_VAR, str(case.configured_max))
+    with temporary_settings({PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES: case.configured_max}):
+        event = Event(
+            event="infrahub.node.updated",
+            resource=Resource({"prefect.resource.id": "infrahub.node.abc"}),
+            related=[
+                RelatedResource(
+                    {"prefect.resource.id": f"infrahub.node.{index}", "prefect.resource.role": "infrahub.related.node"}
+                )
+                for index in range(get_prefect_max_related_resources())
+            ],
+        )
+        event.related += [
+            RelatedResource({"prefect.resource.id": f"prefect.tag.{index}", "prefect.resource.role": "tag"})
+            for index in range(MAX_RUN_CONTEXT_RESOURCES)
+        ]
+
+        assert len(event.related) > get_prefect_max_related_resources()
+        with pytest.raises(ValidationError, match=rf"The maximum number of related resources is {case.configured_max}"):
+            Event.model_validate(event.model_dump())
