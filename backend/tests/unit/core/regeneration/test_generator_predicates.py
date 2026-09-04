@@ -20,16 +20,14 @@ DEFINITION_ID = "22222222-2222-2222-2222-222222222222"
 OTHER_ID = "33333333-3333-3333-3333-333333333333"
 REPOSITORY_ID = "44444444-4444-4444-4444-444444444444"
 
-# What a generator's closure holds when nothing is declared: its own source file plus the
-# repository manifest. Files sitting beside the source are not in it.
+# What a generator's closure holds when nothing is declared: its own source file. Files
+# sitting beside the source are not in it.
 AUTO_DETECTED_CLOSURE = [
-    ".infrahub.yml",
     "generators/a/a.py",
 ]
 
 # What the closure grows to once the author declares the containing directory in `watch.files`.
 WATCHED_DIRECTORY_CLOSURE = [
-    ".infrahub.yml",
     "generators/a/__init__.py",
     "generators/a/a.py",
     "generators/a/helpers.py",

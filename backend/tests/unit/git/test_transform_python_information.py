@@ -1,10 +1,22 @@
+import logging
+import types
+from dataclasses import dataclass
+from pathlib import Path
+from uuid import UUID
+
+import pytest
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreTransformPython
 from infrahub_sdk.schema import AttributeSchemaAPI, NodeSchemaAPI, RelationshipSchemaAPI
 from infrahub_sdk.schema.main import AttributeKind, RelationshipCardinality, RelationshipKind
+from infrahub_sdk.schema.repository import InfrahubPythonTransformConfig
 
+from infrahub.core.constants import RepositoryInternalStatus
+from infrahub.git import InfrahubRepository
 from infrahub.git.integrator import InfrahubRepositoryIntegrator, TransformPythonInformation
+
+REPOSITORY_ID = UUID("bd1a2a1d-0dcb-4c9d-b1f8-1a2ec2b4a3f4")
 
 TRANSFORM_PYTHON_SCHEMA = NodeSchemaAPI(
     name="TransformPython",
@@ -111,6 +123,69 @@ class TestTransformPythonInformation:
             description="A useful transform",
         )
         assert info.description == "A useful transform"
+
+
+def _make_repository() -> InfrahubRepository:
+    return InfrahubRepository(
+        id=REPOSITORY_ID,
+        name="test-repo",
+        location="git@github.com:mock/test-repo.git",
+        default_branch_name="main",
+        has_origin=True,
+        cache_repo=None,
+        is_read_only=False,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+        infrahub_branch_name=None,
+        reinitialized=False,
+    )
+
+
+class _StubTransform:
+    query = "test-query"
+    timeout = 10
+
+
+@dataclass
+class DeclaredPathCase:
+    name: str
+    declared: str
+    expected: str
+
+
+DECLARED_PATH_CASES = [
+    DeclaredPathCase(name="plain_relative_path", declared="transforms/test.py", expected="transforms/test.py"),
+    DeclaredPathCase(name="dot_slash_prefixed_path", declared="./transforms/test.py", expected="transforms/test.py"),
+]
+
+
+class TestGetPythonTransforms:
+    @pytest.mark.parametrize("case", DECLARED_PATH_CASES, ids=lambda case: case.name)
+    async def test_file_path_comes_from_the_manifest(
+        self, monkeypatch: pytest.MonkeyPatch, case: DeclaredPathCase
+    ) -> None:
+        """The built information carries the manifest-declared path, always repo-relative.
+
+        The dependency closure and the fingerprint are both keyed on the manifest path. A path
+        derived from the filesystem instead is resolved against the worktree and falls back to
+        an absolute one when that resolution fails, so the two sides would silently disagree.
+        """
+        monkeypatch.setattr("infrahub.git.integrator.get_run_logger", lambda: logging.getLogger("test"))
+
+        module = types.ModuleType("transforms.test")
+        module.TestTransform = _StubTransform  # type: ignore[attr-defined]
+
+        transforms = await InfrahubRepositoryIntegrator.get_python_transforms.fn(
+            _make_repository(),
+            module=module,
+            transform=InfrahubPythonTransformConfig(
+                name="test", file_path=Path(case.declared), class_name="TestTransform"
+            ),
+            dependencies=["transforms/test.py"],
+            dependencies_complete=True,
+        )
+
+        assert [transform.file_path for transform in transforms] == [case.expected]
+        assert [transform.repository for transform in transforms] == [str(REPOSITORY_ID)]
 
 
 class TestComparePythonTransform:
