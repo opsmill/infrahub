@@ -283,9 +283,7 @@ class RaiseBranchesCase:
         RaiseBranchesCase(
             name="single_failure",
             failed_imports=[
-                FailedImport(
-                    branch_name="branch01", step=ImportStep.COLLECTION, reason="schema validation failed"
-                ),
+                FailedImport(branch_name="branch01", step=ImportStep.COLLECTION, reason="schema validation failed"),
             ],
             expected_message=(
                 "Unable to synchronize the following branches of repository test-repo:"
