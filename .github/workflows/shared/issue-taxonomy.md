@@ -21,17 +21,21 @@ carrying one already have their component axis filled, leave them alone.
 
 ## What is already handled without you
 
-**`type/*`** comes from the issue form (`labels:` in the template). It is the
-one axis decided without judgement, so never add or second-guess one.
+**`type/*`** is never yours to add or second-guess. It comes from the issue
+form, so an issue opened outside the form (by an integration, or by hand) will
+have none — do not read a missing `type/bug` as "not a bug", judge that from
+the body.
 
 Both classification axes are yours: `group/*` when the issue is missing one,
 `category/*` always — no form field captures it.
 
-The form's Component dropdown, when the body has one, is the reporter's own
-claim about the area. Treat it as evidence, not as the answer: it is
-multi-select, it offers options broader than any one label (*Python SDK*,
-*Not Sure*), and reporters often guess. The body's actual symptoms win when
-they disagree with it.
+A `Component` section in the body is the reporter's own claim about the area,
+and it comes in two shapes. The form's dropdown is coarse: multi-select, with
+options broader than any one label (*Python SDK*, *Not Sure*), and reporters
+guess. Issues opened outside the form often carry precise free text instead
+("Task Worker / Proposed change pipeline"), which is usually the best single
+signal you have. Weigh it accordingly, but the body's symptoms still decide
+when the two genuinely disagree.
 
 ## 1. Component — `group/*`, exactly one, only if missing
 
@@ -51,8 +55,17 @@ Pick the **single best** primary category:
 - **One primary category.** Many bugs touch two areas. Pick where the fix belongs.
   A slow diff on a large branch is `category/scaling` if volume is the trigger and
   `category/branching` if the diff is wrong regardless of size.
+- **A proposed-change pipeline bug takes the category of the stage that misbehaved**,
+  not `category/branching`. Reserve `category/branching` for the branch and
+  proposed-change lifecycle itself: creating, diffing, rebasing, merging, conflict
+  handling, merge gates. A generator or artifact that ran in the wrong order inside
+  the pipeline is `category/generators-artifacts`.
 - **`category/error-reporting` is the last resort.** If something is genuinely broken
   *and* reported badly, categorise the breakage.
+- **Internal transport and orchestration defects have no category yet.** A message-bus
+  broadcast that does not fan out, or a workflow submitted without waiting, is not
+  `category/api` (that axis is the API surface) and not `category/tasks` (that is the
+  task list and run lifecycle). Apply `group/*` alone.
 - **Pure rendering/layout bugs get no category.** Overflowing text, cropped elements,
   broken responsive behaviour: apply `group/frontend` alone.
 - **If no category clearly fits, apply none.** A missing label is cheap to add later,

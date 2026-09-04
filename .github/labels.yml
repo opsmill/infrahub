@@ -62,7 +62,7 @@
   color: "1d76db"
 
 - name: "category/tasks"
-  description: "Task manager and Prefect workflow lifecycle: stuck runs, missing or incorrect tasks in the list"
+  description: "Task manager run lifecycle: stuck runs, wrong or missing tasks in the task list"
   color: "1d76db"
 
 - name: "category/generators-artifacts"
@@ -70,7 +70,7 @@
   color: "1d76db"
 
 - name: "category/api"
-  description: "GraphQL/REST semantics: queries, filters, mutations, events, webhooks, response shape"
+  description: "GraphQL/REST surface: queries, filters, mutations, response shape, API events, webhooks"
   color: "1d76db"
 
 - name: "category/error-reporting"
