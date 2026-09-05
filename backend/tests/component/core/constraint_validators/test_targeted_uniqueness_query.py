@@ -158,6 +158,68 @@ class TestTargetedUniquenessQuery:
 
         assert violations == []
 
+    async def test_composite_group_narrows_with_a_conjunctive_prefilter(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        car_person_schema: object,
+    ) -> None:
+        """Every constraint element must be required up front, before any per-candidate work."""
+        schema = registry.schema.get("TestCar", branch=branch)
+        elements = [_rel_element(schema, "owner"), _attr_element(schema, "nbr_seats")]
+
+        query = await TargetedUniquenessValidationQuery.init(
+            db=db,
+            branch=branch,
+            kind="TestCar",
+            constraint_elements=elements,
+            node_uuids=["changed-car"],
+        )
+        rendered_query = query.get_query()
+
+        # both elements are required by the single narrowing step ...
+        assert "(:Relationship {name: $rel_identifier_0})" in rendered_query
+        assert "(:Node {uuid: value_0})" in rendered_query
+        assert (
+            "MATCH (candidate)-[:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name_1})"
+            "-[:HAS_VALUE]->(:AttributeValueIndexed {value: value_1})" in rendered_query
+        )
+        # ... and no element is singled out as a population-wide anchor
+        assert "anchor_peer" not in rendered_query
+        # candidates are never collected as nodes, only their uuids at the end
+        assert "collect(DISTINCT candidate)" not in rendered_query
+        assert "collect(DISTINCT candidate.uuid) AS partner_uuids" in rendered_query
+
+    async def test_prefilter_is_independent_of_element_order(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        car_person_schema: object,
+    ) -> None:
+        """Reordering a constraint group must not change which element the query leads with."""
+        schema = registry.schema.get("TestCar", branch=branch)
+        owner = _rel_element(schema, "owner")
+        seats = _attr_element(schema, "nbr_seats")
+
+        rendered = []
+        for elements in ([owner, seats], [seats, owner]):
+            query = await TargetedUniquenessValidationQuery.init(
+                db=db,
+                branch=branch,
+                kind="TestCar",
+                constraint_elements=elements,
+                node_uuids=["changed-car"],
+            )
+            rendered.append(query.get_query())
+
+        for text in rendered:
+            # exactly one narrowing step, and no element promoted to a population-wide anchor
+            assert text.count("WITH DISTINCT candidate") == 1
+            assert "anchor_peer" not in text
+            # both elements are required by that step, whichever order they were declared in
+            assert "(:Relationship {name: $rel_identifier_" in text
+            assert "(:AttributeValueIndexed {value: value_" in text
+
     async def test_relationship_only_collision_and_missing_peer(
         self,
         db: InfrahubDatabase,

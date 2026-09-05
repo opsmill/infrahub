@@ -26,12 +26,21 @@ class TargetedUniquenessViolation:
 class TargetedUniquenessValidationQuery(Query):
     """Find uniqueness violations for a set of changed nodes.
 
-    For one uniqueness constraint group, resolve the changed nodes' current value for a first
-    element only, probe the whole population for other nodes sharing that value, and drop every
-    changed node with no match. Each subsequent element is resolved only for the changed nodes
-    that still have live matches, and each candidate set shrinks by comparing the candidates'
-    current value for that element. A changed node is reported only if at least one other node
-    still shares its full value tuple after the last element.
+    For one uniqueness constraint group, resolve the changed nodes' current values, then narrow the
+    population with a single conjunctive pre-filter: a candidate must have an edge to *every* one of
+    those values before any per-candidate work happens. Surviving candidate rows are streamed
+    through the per-element current-value comparisons and only the final collision partners are
+    collected. A changed node is reported only if at least one other node shares its full value
+    tuple after the last element.
+
+    The pre-filter deliberately carries no branch or time predicate, so it matches any edge that
+    ever existed. That makes it a necessary-but-not-sufficient condition: it can only shrink the
+    candidate set, never decide membership. Each surviving candidate's current value is still
+    resolved under the normal branch/time rules before it counts as a collision.
+
+    Requiring all values at once, rather than anchoring on one element and filtering afterwards,
+    keeps peak memory proportional to the surviving candidates instead of to the population sharing
+    any single value. It also leaves the choice of which value to seek first to the query planner.
 
     Values are compared as stored in the graph: enum values in their raw form and null attribute
     values as the null sentinel, so two nulls collide. A node without a live value for an element
@@ -106,18 +115,6 @@ CALL (%(source_var)s) {
     def _is_large_type(self, element: SchemaAttributePath) -> bool:
         return element.attribute_schema is not None and is_large_attribute_type(element.attribute_schema.kind)
 
-    def _anchor_element_index(self) -> int:
-        """Pick the element whose population probe anchors the query.
-
-        The anchor is the only population-wide MATCH, so prefer an element whose value can be
-        found through an index: any relationship element (peer uuid) or any attribute whose kind
-        has an indexed value label. Fall back to the first element when none qualifies.
-        """
-        for index, element in enumerate(self.constraint_elements):
-            if not self._is_large_type(element):
-                return index
-        return 0
-
     def _render_value_resolution(
         self, source_var: str, element: SchemaAttributePath, index: int, value_var: str, branch_filter: str
     ) -> tuple[str, dict[str, Any]]:
@@ -191,73 +188,60 @@ CALL (%(source_var)s) {
         }
         return query, {rel_identifier_var: relationship_schema.get_identifier()}
 
-    def _render_anchor_probe(
-        self, element: SchemaAttributePath, index: int, value_var: str, matches_var: str, branch_filter: str
-    ) -> str:
-        """Render the population-wide probe for the anchor element.
+    def _render_prefilter(self, branch_filter: str) -> str:
+        """Render the single population-wide narrowing step.
 
-        The MATCH is historical (any edge ever created), so each candidate's current value is
-        re-resolved and compared before it counts as a match.
+        Requires a candidate to have an edge to every one of the changed node's constraint values
+        at once. The patterns carry no branch or time predicate, so they match any edge that ever
+        existed -- this only shrinks the candidate set, it never decides membership. Which value the
+        planner seeks first is left to it; every value vertex reachable here is index-backed.
         """
-        if element.attribute_schema is not None:
-            attr_value_label = (
-                GraphAttributeValueNode.get_default_label()
-                if self._is_large_type(element)
-                else GraphAttributeValueIndexedNode.get_default_label()
-            )
-            anchor_match = (
-                "MATCH (candidate:%(kind)s)-[:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name_%(index)s})"
-                "-[:HAS_VALUE]->(av:%(attr_value_label)s)\n"
-                "    WHERE av.value = %(value_var)s AND candidate.uuid <> changed.uuid"
-            ) % {
-                "kind": self.kind,
-                "index": index,
-                "attr_value_label": attr_value_label,
-                "value_var": value_var,
-            }
-        else:
-            query_arrows = self.get_query_arrows(direction=element.active_relationship_schema.direction)
-            anchor_match = (
-                "MATCH (candidate:%(kind)s)%(lstart)s[:IS_RELATED]%(lend)s"
-                "(:Relationship {name: $rel_identifier_%(index)s})%(rstart)s[:IS_RELATED]%(rend)s(anchor_peer:Node)\n"
-                "    WHERE anchor_peer.uuid = %(value_var)s AND candidate.uuid <> changed.uuid"
-            ) % {
-                "kind": self.kind,
-                "index": index,
-                "lstart": query_arrows.left.start,
-                "lend": query_arrows.left.end,
-                "rstart": query_arrows.right.start,
-                "rend": query_arrows.right.end,
-                "value_var": value_var,
-            }
+        patterns: list[str] = []
+        for index, element in enumerate(self.constraint_elements):
+            head = f"(candidate:{self.kind})" if index == 0 else "(candidate)"
+            if element.attribute_schema is not None:
+                attr_value_label = (
+                    GraphAttributeValueNode.get_default_label()
+                    if self._is_large_type(element)
+                    else GraphAttributeValueIndexedNode.get_default_label()
+                )
+                patterns.append(
+                    "    MATCH %(head)s-[:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name_%(index)s})"
+                    "-[:HAS_VALUE]->(:%(attr_value_label)s {value: value_%(index)s})"
+                    % {"head": head, "index": index, "attr_value_label": attr_value_label}
+                )
+            else:
+                query_arrows = self.get_query_arrows(direction=element.active_relationship_schema.direction)
+                patterns.append(
+                    "    MATCH %(head)s%(lstart)s[:IS_RELATED]%(lend)s"
+                    "(:Relationship {name: $rel_identifier_%(index)s})"
+                    "%(rstart)s[:IS_RELATED]%(rend)s(:Node {uuid: value_%(index)s})"
+                    % {
+                        "head": head,
+                        "index": index,
+                        "lstart": query_arrows.left.start,
+                        "lend": query_arrows.left.end,
+                        "rstart": query_arrows.right.start,
+                        "rend": query_arrows.right.end,
+                    }
+                )
 
         candidate_liveness = self._render_liveness_check(
             source_var="candidate", alias="candidate_is_live", branch_filter=branch_filter
         )
-        candidate_resolution, _ = self._render_value_resolution(
-            source_var="candidate",
-            element=element,
-            index=index,
-            value_var=f"cand_value_{index}",
-            branch_filter=branch_filter,
-        )
+        value_args = ", ".join(f"value_{index}" for index in range(len(self.constraint_elements)))
         return """
-CALL (changed, %(value_var)s) {
-    %(anchor_match)s
-    WITH DISTINCT candidate, %(value_var)s
+CALL (changed, %(value_args)s) {
+%(patterns)s
+    WHERE candidate.uuid <> changed.uuid
+    WITH DISTINCT candidate
     %(candidate_liveness)s
-    %(candidate_resolution)s
-    WITH candidate, cand_value_%(index)s, %(value_var)s
-    WHERE cand_value_%(index)s = %(value_var)s
-    RETURN collect(DISTINCT candidate) AS %(matches_var)s
+    RETURN candidate
 }
         """ % {
-            "value_var": value_var,
-            "anchor_match": anchor_match,
+            "value_args": value_args,
+            "patterns": "\n".join(patterns),
             "candidate_liveness": candidate_liveness,
-            "candidate_resolution": candidate_resolution,
-            "index": index,
-            "matches_var": matches_var,
         }
 
     def _render_reduction_probe(
@@ -265,14 +249,12 @@ CALL (changed, %(value_var)s) {
         element: SchemaAttributePath,
         index: int,
         value_var: str,
-        previous_matches_var: str,
-        matches_var: str,
         branch_filter: str,
         carried_vars: list[str],
     ) -> str:
         """Render the filter keeping only surviving candidates whose current value still matches.
 
-        The candidate list is unwound in the outer scope, so only the per-candidate value
+        Candidate rows remain streamed in the outer scope, so only the per-candidate value
         resolution needs a subquery. A changed node whose candidates are all eliminated produces
         no row for the final aggregation, which is what removes it.
         """
@@ -285,17 +267,13 @@ CALL (changed, %(value_var)s) {
         )
         carried = ", ".join(carried_vars)
         return """
-UNWIND %(previous_matches_var)s AS candidate
 %(candidate_resolution)s
 WITH %(carried)s, candidate, cand_value_%(index)s
 WHERE cand_value_%(index)s = %(value_var)s
-WITH %(carried)s, collect(DISTINCT candidate) AS %(matches_var)s
         """ % {
-            "previous_matches_var": previous_matches_var,
             "value_var": value_var,
             "candidate_resolution": candidate_resolution,
             "index": index,
-            "matches_var": matches_var,
             "carried": carried,
         }
 
@@ -304,19 +282,12 @@ WITH %(carried)s, collect(DISTINCT candidate) AS %(matches_var)s
         self.params.update(branch_params)
         self.params["node_uuids"] = self.node_uuids
 
-        anchor_index = self._anchor_element_index()
-        probe_order = [anchor_index] + [
-            index for index in range(len(self.constraint_elements)) if index != anchor_index
-        ]
-
         query_parts = [
             "MATCH (changed:Node)\nWHERE changed.uuid IN $node_uuids",
             self._render_liveness_check(source_var="changed", alias="changed_is_live", branch_filter=branch_filter),
         ]
         resolved_value_vars: list[str] = []
-        matches_var = ""
-        for step, element_index in enumerate(probe_order):
-            element = self.constraint_elements[element_index]
+        for element_index, element in enumerate(self.constraint_elements):
             value_var = f"value_{element_index}"
             resolution, element_params = self._render_value_resolution(
                 source_var="changed",
@@ -329,42 +300,26 @@ WITH %(carried)s, collect(DISTINCT candidate) AS %(matches_var)s
             query_parts.append(resolution)
             resolved_value_vars.append(value_var)
 
-            previous_matches_var = matches_var
-            matches_var = f"matches_{step}"
-            if step == 0:
-                query_parts.append(
-                    self._render_anchor_probe(
-                        element=element,
-                        index=element_index,
-                        value_var=value_var,
-                        matches_var=matches_var,
-                        branch_filter=branch_filter,
-                    )
-                )
-            else:
-                query_parts.append(
-                    self._render_reduction_probe(
-                        element=element,
-                        index=element_index,
-                        value_var=value_var,
-                        previous_matches_var=previous_matches_var,
-                        matches_var=matches_var,
-                        branch_filter=branch_filter,
-                        carried_vars=["changed", *resolved_value_vars],
-                    )
-                )
-            carried_vars = ["changed", *resolved_value_vars, matches_var]
+        query_parts.append(self._render_prefilter(branch_filter=branch_filter))
+
+        carried_vars = ["changed", *resolved_value_vars]
+        for element_index, element in enumerate(self.constraint_elements):
             query_parts.append(
-                "WITH %(carried_vars)s\nWHERE size(%(matches_var)s) > 0"
-                % {"carried_vars": ", ".join(carried_vars), "matches_var": matches_var}
+                self._render_reduction_probe(
+                    element=element,
+                    index=element_index,
+                    value_var=f"value_{element_index}",
+                    branch_filter=branch_filter,
+                    carried_vars=carried_vars,
+                )
             )
 
         element_values = ", ".join(f"value_{index}" for index in range(len(self.constraint_elements)))
         query_parts.append(
+            "WITH changed, %(element_values)s, collect(DISTINCT candidate.uuid) AS partner_uuids\n"
             "RETURN changed.uuid AS changed_uuid,\n"
             "    [%(element_values)s] AS element_values,\n"
-            "    [candidate IN %(matches_var)s | candidate.uuid] AS partner_uuids"
-            % {"element_values": element_values, "matches_var": matches_var}
+            "    partner_uuids" % {"element_values": element_values}
         )
 
         self.add_to_query("\n".join(query_parts))
