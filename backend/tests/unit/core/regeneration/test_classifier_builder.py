@@ -18,7 +18,7 @@ QUERY_BRANCH = "test/builder"
 
 @dataclass
 class _FakeAnalyzedQuery:
-    """Satisfies the AnalyzedQuery protocol structurally; the build call site checks conformance."""
+    """A minimal analyzed read surface to build a classifier from."""
 
     requested_read: dict[str, ObjectAccess]
     only_has_unique_targets: bool = True

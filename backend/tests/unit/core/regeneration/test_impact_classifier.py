@@ -274,10 +274,10 @@ def test_assess(case: AssessCase) -> None:
     assert assessment == case.expected
 
 
-def test_a_kind_both_read_at_a_root_and_traversed_loses_its_direct_membership() -> None:
-    """A kind read at a root but also traversed loses its direct-target membership.
+def test_a_read_kind_that_is_also_traversed_loses_its_direct_membership() -> None:
+    """A kind a query reads and also reaches through a relationship loses its direct-target membership.
 
-    So an overlapping root-read peer can only be widened upstream, not narrowed.
+    An overlapping such peer can therefore only be widened upstream, not narrowed.
     """
     classifier = QueryImpactClassifier(
         query_branch=BRANCH,

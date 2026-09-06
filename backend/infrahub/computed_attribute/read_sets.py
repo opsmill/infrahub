@@ -36,8 +36,9 @@ def transform_read_set_from_query_report(
 def derived_reads_are_scopable(*, schema_branch: SchemaBranch, kind: str, derived_reads: frozenset[str]) -> bool:
     """Whether every one of a kind's derived field reads can be held against that kind alone.
 
-    ``derived_reads`` are the kind's imprecise reads, already filtered by the caller, so an absent
-    kind is the only reason the reads cannot be resolved.
+    ``derived_reads`` are the kind's imprecise reads, already filtered by the caller. False when the
+    kind is absent from the branch, or when any of its derived reads is composed from a relationship
+    peer's attribute rather than the kind's own.
     """
     if not schema_branch.has(name=kind):
         return False

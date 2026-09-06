@@ -19,9 +19,9 @@ class AnalyzedQuery(Protocol):
     """The read surface an analyzed GraphQL query exposes for impact classification.
 
     ``requested_read`` maps each read kind to the attributes and relationships the query reads off
-    it; ``traversed_kinds`` are the kinds reached only through a relationship, and
-    ``relationship_reached_paths_by_kind`` the chains back from each to a root. ``only_has_unique_targets``
-    is true when the query pins one object per root.
+    it; ``traversed_kinds`` are the kinds reached through a relationship, including any also read at
+    a root, so the overlap stays visible; ``relationship_reached_paths_by_kind`` the chains back from
+    each to a root. ``only_has_unique_targets`` is true when the query pins one object per root.
     """
 
     @property
