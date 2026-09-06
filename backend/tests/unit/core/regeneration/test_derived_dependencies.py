@@ -60,11 +60,18 @@ def _node(
     )
 
 
-def _generic(name: str, *, attributes: tuple[str, ...] = ("name",), used_by: tuple[str, ...] = ()) -> GenericSchema:
+def _generic(
+    name: str,
+    *,
+    attributes: tuple[str, ...] = ("name",),
+    relationships: tuple[RelationshipSchema, ...] = (),
+    used_by: tuple[str, ...] = (),
+) -> GenericSchema:
     return GenericSchema(
         name=name,
         namespace="Test",
         attributes=[AttributeSchema(name=attribute, kind="Text") for attribute in attributes],
+        relationships=list(relationships),
         used_by=list(used_by),
     )
 
@@ -75,9 +82,16 @@ GRANDPARENT = _node("Grandparent")
 GENERIC_MAKER = _generic("GenericMaker", used_by=("TestMakerB", "TestMakerA"))
 MAKER_A = _node("MakerA")
 MAKER_B = _node("MakerB")
+# A generic reached mid-chain: its own relationship is the intermediate the derived read depends on.
+GENERIC_CONTACT = _generic(
+    "GenericContact",
+    relationships=(_rel(name="parent", peer="TestGrandparent", identifier="contact__parent"),),
+    used_by=("TestContactB", "TestContactA"),
+)
 
 READER_OWNER_REL = _rel(name="owner", peer="TestOwner", identifier="reader__owner")
 READER_MAKER_REL = _rel(name="maker", peer="TestGenericMaker", identifier="reader__maker")
+READER_CONTACT_REL = _rel(name="contact", peer="TestGenericContact", identifier="reader__contact")
 
 READER_OWNER_HOP = RelationshipHop(
     node_kind="TestReader",
@@ -89,9 +103,19 @@ READER_MAKER_HOP = RelationshipHop(
     relationship_identifier="reader__maker",
     relationship_direction=RelationshipDirection.OUTBOUND,
 )
+READER_CONTACT_HOP = RelationshipHop(
+    node_kind="TestReader",
+    relationship_identifier="reader__contact",
+    relationship_direction=RelationshipDirection.OUTBOUND,
+)
 OWNER_PARENT_HOP = RelationshipHop(
     node_kind="TestOwner",
     relationship_identifier="owner__parent",
+    relationship_direction=RelationshipDirection.OUTBOUND,
+)
+CONTACT_PARENT_HOP = RelationshipHop(
+    node_kind="TestGenericContact",
+    relationship_identifier="contact__parent",
     relationship_direction=RelationshipDirection.OUTBOUND,
 )
 
@@ -101,6 +125,7 @@ BASE_SCHEMAS: dict[str, MainSchemaTypes] = {
     "TestGenericMaker": GENERIC_MAKER,
     "TestMakerA": MAKER_A,
     "TestMakerB": MAKER_B,
+    "TestGenericContact": GENERIC_CONTACT,
 }
 
 
@@ -144,7 +169,7 @@ RESOLVE_CASES = [
         expected_widen=False,
     ),
     ResolveCase(
-        name="multi_hop_resolves_with_the_full_reversed_chain",
+        name="multi_hop_resolves_the_backing_attribute_and_the_intermediate_relationship",
         reader=_node("Reader", relationships=(READER_OWNER_REL,), human_friendly_id=["owner__parent__name__value"]),
         readable_fields_by_kind={"TestReader": {"human_friendly_id"}},
         expected_peers=(
@@ -152,6 +177,38 @@ RESOLVE_CASES = [
                 kind="TestGrandparent",
                 field_name="name",
                 path=ReachedPath(hops=(OWNER_PARENT_HOP, READER_OWNER_HOP)),
+                reading_kind="TestReader",
+            ),
+            PeerDependency(
+                kind="TestOwner",
+                field_name="parent",
+                path=ReachedPath(hops=(READER_OWNER_HOP,)),
+                reading_kind="TestReader",
+            ),
+        ),
+        expected_widen=False,
+    ),
+    ResolveCase(
+        name="a_generic_intermediate_relationship_expands_to_its_implementations",
+        reader=_node("Reader", relationships=(READER_CONTACT_REL,), human_friendly_id=["contact__parent__name__value"]),
+        readable_fields_by_kind={"TestReader": {"human_friendly_id"}},
+        expected_peers=(
+            PeerDependency(
+                kind="TestGrandparent",
+                field_name="name",
+                path=ReachedPath(hops=(CONTACT_PARENT_HOP, READER_CONTACT_HOP)),
+                reading_kind="TestReader",
+            ),
+            PeerDependency(
+                kind="TestContactA",
+                field_name="parent",
+                path=ReachedPath(hops=(READER_CONTACT_HOP,)),
+                reading_kind="TestReader",
+            ),
+            PeerDependency(
+                kind="TestContactB",
+                field_name="parent",
+                path=ReachedPath(hops=(READER_CONTACT_HOP,)),
                 reading_kind="TestReader",
             ),
         ),

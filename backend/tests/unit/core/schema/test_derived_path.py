@@ -79,21 +79,25 @@ BASE_SCHEMAS: dict[str, MainSchemaTypes] = {
 
 READER_OWNER_HOP = DerivedPathHop(
     owner_kind="TestReader",
+    relationship_name="owner",
     relationship_identifier="reader__owner",
     relationship_direction=RelationshipDirection.OUTBOUND,
 )
 READER_MAKER_HOP = DerivedPathHop(
     owner_kind="TestReader",
+    relationship_name="maker",
     relationship_identifier="reader__maker",
     relationship_direction=RelationshipDirection.OUTBOUND,
 )
 OWNER_PARENT_HOP = DerivedPathHop(
     owner_kind="TestOwner",
+    relationship_name="parent",
     relationship_identifier="owner__parent",
     relationship_direction=RelationshipDirection.OUTBOUND,
 )
 READER_PARENT_HOP = DerivedPathHop(
     owner_kind="TestReader",
+    relationship_name="parent",
     relationship_identifier="parent__child",
     relationship_direction=RelationshipDirection.OUTBOUND,
 )

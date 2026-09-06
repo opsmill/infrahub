@@ -13,11 +13,13 @@ if TYPE_CHECKING:
 class DerivedPathHop:
     """One relationship crossed while following a derived path, from the kind that owns it.
 
-    ``owner_kind`` owns ``relationship_identifier``; ``relationship_direction`` is that
-    relationship's direction on the owner. Hops are reported in walk order, reading kind first.
+    ``owner_kind`` owns the relationship; ``relationship_name`` is the name a diff reports its
+    change under, ``relationship_identifier`` and ``relationship_direction`` map that change back.
+    Hops are reported in walk order, reading kind first.
     """
 
     owner_kind: str
+    relationship_name: str
     relationship_identifier: str
     relationship_direction: RelationshipDirection
 
@@ -77,6 +79,7 @@ class DerivedPathResolver:
             hops.append(
                 DerivedPathHop(
                     owner_kind=current_kind,
+                    relationship_name=relationship.name,
                     relationship_identifier=relationship.identifier,
                     relationship_direction=relationship.direction,
                 )

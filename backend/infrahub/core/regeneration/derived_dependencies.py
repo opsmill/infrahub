@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from infrahub.core.schema import MainSchemaTypes
+    from infrahub.core.schema.derived_path import DerivedPathHop
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 
@@ -104,13 +105,15 @@ class DerivedFieldDependencyResolver:
         return peers, widen
 
     def _resolve_path(self, *, reading_schema: MainSchemaTypes, path: str) -> tuple[list[PeerDependency], bool]:
-        """Map one derived-value path to the peers a change on them moves it through.
+        """Map one derived-value path to every peer a change on which moves it.
 
         A path scoped to the reading kind's own attribute yields no peer and does not widen -- a
         same-kind change is already relevant through the imprecise-read rule. A path reaching a peer
-        yields one dependency per concrete peer kind, carrying the relationship chain reversed so the
-        hop nearest the peer resolves first. A path that cannot be followed to a backing attribute
-        widens.
+        yields the backing attribute on the final peer, plus each intermediate relationship the chain
+        crosses: re-pointing a relationship past the reading kind moves the value just as a change to
+        the backing attribute does. The reading kind's own first hop is covered by its imprecise read,
+        so intermediates start at the second hop. A path that cannot be followed to a backing
+        attribute widens.
         """
         resolution = self.path_resolver.resolve(reading_schema=reading_schema, path=path)
         match resolution:
@@ -119,23 +122,47 @@ class DerivedFieldDependencyResolver:
             case Unresolvable():
                 return [], True
             case ReachesPeer(backing_field=field_name, peer_kinds=peer_kinds, hops=hops):
-                reached = ReachedPath(
-                    hops=tuple(
-                        reversed(
-                            [
-                                RelationshipHop(
-                                    node_kind=hop.owner_kind,
-                                    relationship_identifier=hop.relationship_identifier,
-                                    relationship_direction=hop.relationship_direction,
-                                )
-                                for hop in hops
-                            ]
-                        )
+                reading_kind = reading_schema.kind
+                peers = [
+                    PeerDependency(
+                        kind=kind, field_name=field_name, path=self._reached_path(hops), reading_kind=reading_kind
                     )
-                )
-                return [
-                    PeerDependency(kind=kind, field_name=field_name, path=reached, reading_kind=reading_schema.kind)
                     for kind in peer_kinds
-                ], False
+                ]
+                for index in range(1, len(hops)):
+                    hop = hops[index]
+                    reached = self._reached_path(hops[:index])
+                    peers.extend(
+                        PeerDependency(
+                            kind=kind, field_name=hop.relationship_name, path=reached, reading_kind=reading_kind
+                        )
+                        for kind in self._concrete_kinds(hop.owner_kind)
+                    )
+                return peers, False
             case _ as unreachable:
                 assert_never(unreachable)
+
+    def _reached_path(self, hops: tuple[DerivedPathHop, ...]) -> ReachedPath:
+        """The chain that maps a change on the kind ``hops`` end at back to the reading member.
+
+        Reversed so the hop nearest that kind resolves first.
+        """
+        return ReachedPath(
+            hops=tuple(
+                reversed(
+                    [
+                        RelationshipHop(
+                            node_kind=hop.owner_kind,
+                            relationship_identifier=hop.relationship_identifier,
+                            relationship_direction=hop.relationship_direction,
+                        )
+                        for hop in hops
+                    ]
+                )
+            )
+        )
+
+    def _concrete_kinds(self, kind: str) -> tuple[str, ...]:
+        """The concrete kinds a change on ``kind`` is reported against: a generic's implementations."""
+        schema = self._node_schema(kind)
+        return schema.concrete_kinds if schema is not None else (kind,)
