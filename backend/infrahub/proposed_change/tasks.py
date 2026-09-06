@@ -49,7 +49,7 @@ from infrahub.core.merge.constraints import build_merge_constraint_result, gathe
 from infrahub.core.protocols import CoreDataCheck, CoreGenericAccount, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.regeneration.definitions import GATHER_ARTIFACT_DEFINITIONS, parse_artifact_definitions
-from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
+from infrahub.core.regeneration.impact import FieldLevelImpactResolver
 from infrahub.core.regeneration.members import (
     map_subscriber_ids_by_member,
     run_generator,
@@ -755,6 +755,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     log = get_run_logger()
     client = get_client()
     client.request_context = context.to_request_context()
+    impact_resolver = FieldLevelImpactResolver(db=await get_database(), client=client)
 
     artifact_definition = await client.get(
         kind=CoreArtifactDefinition,
@@ -810,13 +811,12 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-    selection = await get_field_level_impacted_subscribers(
+    selection = await impact_resolver.resolve(
         query_payload=model.artifact_definition.query_payload,
         diff_summary=diff_summary,
         query_branch=model.source_branch,
         subscriber_kind=InfrahubKind.ARTIFACT,
         every_target=list(artifacts_by_member.values()),
-        client=client,
     )
     impacted_artifacts = selection.ids
     if selection.widened:
@@ -1052,6 +1052,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     log = get_run_logger()
     client = get_client()
     client.request_context = context.to_request_context()
+    impact_resolver = FieldLevelImpactResolver(db=await get_database(), client=client)
 
     proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
 
@@ -1100,13 +1101,12 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     requested_instances = 0
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-    selection = await get_field_level_impacted_subscribers(
+    selection = await impact_resolver.resolve(
         query_payload=model.generator_definition.query_payload,
         diff_summary=diff_summary,
         query_branch=model.source_branch,
         subscriber_kind=InfrahubKind.GENERATORINSTANCE,
         every_target=list(instance_by_member.values()),
-        client=client,
     )
     definition_name = model.generator_definition.definition_name
     impacted_instances = selection.ids

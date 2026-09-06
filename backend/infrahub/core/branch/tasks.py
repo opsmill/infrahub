@@ -577,7 +577,9 @@ async def _build_post_merge_regeneration_dispatcher(
     generator_output = GeneratorCascadeOutput(capturer=output_capturer)
     return PostMergeRegenerationDispatcher(
         workflow=get_workflow(),
-        planner=build_merge_selective_regeneration(client=get_client(), log=log, generator_output=generator_output),
+        planner=build_merge_selective_regeneration(
+            db=db, client=get_client(), log=log, generator_output=generator_output
+        ),
         summary_cache=DiffSummaryCache(
             cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
         ),

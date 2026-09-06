@@ -241,6 +241,7 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppWithoutLocalWorkflow):
 
     async def test_relevant_kind_change_selects_matching_definitions(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         admin_account: CoreAccount,
@@ -267,6 +268,7 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppWithoutLocalWorkflow):
         dispatcher = PostMergeRegenerationDispatcher(
             workflow=workflow_recorder,
             planner=build_merge_selective_regeneration(
+                db=db,
                 client=client,
                 log=logging.getLogger("test"),
                 generator_output=GeneratorCascadeOutput(capturer=capturer),
