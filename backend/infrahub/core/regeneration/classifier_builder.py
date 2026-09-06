@@ -81,28 +81,23 @@ class QueryClassifierBuilder:
             already_traversed = peer.kind in traversed_kinds
             read_at_root = peer.kind in readable_fields_by_kind and not already_traversed
             if read_at_root or (already_traversed and peer.kind not in reached_paths_by_kind):
-                # The query already reaches this peer with no chain that narrows -- read at a root, or
-                # traversed without a resolvable path -- so the derived chain alone would miss readers.
                 widen = True
                 continue
             if peer.reading_kind in traversed_kinds:
-                # The reading kind is itself relationship-reached, so the peer chain stops at it; carry
-                # it on through each of the reading kind's chains to reach the root members.
                 reading_paths = reached_paths_by_kind.get(peer.reading_kind)
                 if not reading_paths:
-                    # The reading kind is reached but its own chain to the root is unknown, so the peer
-                    # cannot be mapped to a member either.
                     widen = True
                     continue
                 peer_paths = tuple(
                     ReachedPath(hops=peer.path.hops + reading_path.hops) for reading_path in reading_paths
                 )
             else:
-                # The reading kind is a root, so the peer chain already lands on the reading member.
                 peer_paths = (peer.path,)
             merged_traversed.add(peer.kind)
             merged_readable.setdefault(peer.kind, set()).add(peer.field_name)
-            merged_reached[peer.kind] = merged_reached.get(peer.kind, ()) + peer_paths
+            # Two derived reads can resolve to the same peer path; keep each once so the member
+            # resolver does not repeat a lookup.
+            merged_reached[peer.kind] = tuple(dict.fromkeys(merged_reached.get(peer.kind, ()) + peer_paths))
 
         return QueryImpactClassifier(
             query_branch=self._query_branch,

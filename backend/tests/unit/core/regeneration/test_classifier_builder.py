@@ -245,6 +245,19 @@ FOLD_CASES = [
             depends_on_everything=True,
         ),
     ),
+    FoldCase(
+        name="two_reads_sharing_a_peer_path_keep_it_once",
+        readable_fields_by_kind={"TestReader": {"human_friendly_id"}},
+        traversed_kinds=set(),
+        reached_paths_by_kind={},
+        dependencies=DerivedFieldDependencies(peers=(OWNER_PEER, OWNER_PEER), widen=False),
+        expected=_classifier(
+            traversed_kinds={"TestOwner"},
+            readable_fields_by_kind={"TestReader": {"human_friendly_id"}, "TestOwner": {"name"}},
+            reached_paths_by_kind={"TestOwner": (ReachedPath(hops=(OWNER_HOP,)),)},
+            depends_on_everything=False,
+        ),
+    ),
 ]
 
 
