@@ -89,8 +89,8 @@ at that path** (`development/docker-compose.yml`), so replicas share nothing. An
 Layout under `directory_root` (`get_repositories_directory() / str(repository.id)`):
 
 - `main`: the primary clone.
-- `branch`: worktrees for branches.
-- `commit`: worktrees for individual commits.
+- `branches`: worktrees for branches.
+- `commits`: worktrees for individual commits.
 - `temp`: worktrees for commits pending validation.
 
 The `main` directory name is literal and unrelated to any branch name.
