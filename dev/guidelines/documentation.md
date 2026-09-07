@@ -97,7 +97,7 @@ agents with a job to finish.
 - Link to topic/explanation docs for background information (in guides)
 - Link to guides for task instructions (in topics)
 - Define technical terms on first use
-- Before citing a specific test as verifying a scenario (a spec table, a status doc), confirm that test function actually exists in the change or repo — label not-yet-written coverage as planned/unverified instead of naming a test that isn't there
+- Before citing a concrete name — a test function, a flow or automation's registered name, a config key, a file path — grep for it and copy it verbatim: a near-miss name sends the reader (and every grep) to nothing. Label not-yet-written coverage as planned/unverified instead of naming a test that isn't there
 
 ### Don't
 

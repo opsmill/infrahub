@@ -18,10 +18,10 @@ def _noop_flow() -> None:
 async def test_purge_removes_settled_tasks_of_a_deleted_branch_but_leaves_running_ones(
     prefect_client: PrefectClient,
 ) -> None:
-    """A deleted branch's settled tasks are removed so a same-named branch starts with none.
+    """A deleted branch's settled tasks are removed so completed tasks no longer surface.
 
     In-flight work keeps the same branch tag while it runs, so only settled runs are purged; a
-    running run is left untouched.
+    running run is left untouched. Cleanup is best-effort and follows the committed deletion.
     """
     branch_name = f"task-leak-branch-{uuid4()}"
     branch_tag = WorkflowTag.BRANCH.render(identifier=branch_name)

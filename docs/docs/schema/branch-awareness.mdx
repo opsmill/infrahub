@@ -58,6 +58,12 @@ By default, if a specific value is not defined:
   - **branch-agnostic** only if both models on each end of the relationship are **branch-agnostic**. If either model is **branch-aware** the relationship will be set as **branch-aware**.
   - **branch-local** if either model, on each end of the relationship, is **branch-local**.
 
+## Deleting branch-agnostic data
+
+A branch-agnostic attribute or relationship stores its value once and shares it with every branch, instead of keeping a copy per branch. Deleting the object that holds the field on one branch therefore does not release the value: it stays reserved for as long as any branch can still reach the object, and a later delete, merge, rebase, branch deletion, or schema change may be what finally releases it.
+
+See [Branch-agnostic data](../branches/branch-agnostic-data.mdx) for the full rule.
+
 ## Restrictions
 
 The `branch` property cannot be updated on a Node, Generic, Attribute, or Relationship after the schema is first loaded. Plan your branch support strategy before the initial schema load.
@@ -66,3 +72,5 @@ The `branch` property cannot be updated on a Node, Generic, Attribute, or Relati
 
 - [Schema migration](./migration) — Restrictions on properties that can be changed after initial load
 - [Branches](../branches/overview) — How branching works in Infrahub
+- [Branch-agnostic data](../branches/branch-agnostic-data.mdx) — When a branch-agnostic value is released
+- [Resource manager](../resource-manager/overview) — Pools that allocate values to attributes and relationships

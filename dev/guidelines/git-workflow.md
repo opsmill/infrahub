@@ -12,7 +12,7 @@ Git workflow and commit conventions for the project.
   that should ship the change — `stable` when the affected code is released and the change can ship
   in a patch release, `develop` when the code only exists there or the change can wait for the next
   minor. A fix that changes observable behavior (which branch an event fires on, a value that is no
-  longer accepted) defaults to `develop` with a release-notes flag — shipping it in a patch release
+  longer accepted) defaults to `develop` with a changelog fragment — shipping it in a patch release
   is a deliberate call for an urgent fix, not the default
 - **Repo-tooling/lint/CI-config changes:** target `develop` if the diff also edits runtime source —
   converting call sites, changing behavior a new lint rule now gates — since what the code emits at
