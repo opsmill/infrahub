@@ -225,3 +225,31 @@ After that the `.pth` carries all three paths and both `uv run python` and `uv r
 **Baseline established after the fix**: `uv run pytest backend/tests/unit/event/
 backend/tests/unit/core/merge/test_submit_coalesced_recompute.py` → **59 passed**. That is the
 number the change must preserve, plus its new cases.
+
+## R9. Follow-up: is the empty-string value a regression? (no)
+
+Raised during CI reconcile, because dropping the parse guard (R5) means a value the old code
+tolerated might now stop the process. The sharpest case is an **empty** value — `VAR=` in a compose
+file, or `VAR=${SOMEVAR}` with `SOMEVAR` unset — which reads as "not configured" rather than
+"misconfigured", and which the old `int("")` → `ValueError` → fallback path handled silently.
+
+Measured, per behaviour, with the variable set to the empty string:
+
+| Call | Old code | New code |
+|---|---|---|
+| `get_prefect_max_related_resources()` | returns `500` | raises `ValidationError` |
+| `prefect.settings.get_current_settings()` | **raises `ValidationError`** | same |
+| `Event(...)` construction (Prefect's own validator) | **raises `ValidationError`** | same |
+
+**Conclusion: not a regression.** With an empty value Prefect itself is globally unusable — the
+settings accessor and `Event` construction both fail regardless of Infrahub. The old fallback was
+therefore an illusion: it returned 500 and then every single event emission raised anyway, one
+event at a time, inside the `except Exception` that swallows emission errors. The new behaviour
+converts that into one explicit failure at startup.
+
+That is strictly the better failure mode, and it is the same argument as R5: this module exists to
+remove silent event loss, and "Prefect is misconfigured so every event silently dies" is precisely
+the silence being removed. No code change taken.
+
+Note the repository sets this variable in exactly one place — `development/Dockerfile:129`, to a
+valid `500` — so no shipped configuration reaches this path.
