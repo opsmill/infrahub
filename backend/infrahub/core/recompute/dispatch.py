@@ -41,6 +41,7 @@ class BulkRecomputeDispatcher:
         self._writer = writer
         # Holding a chain is what makes a pass coalesced, so there is no second flag to disagree.
         self._chain = chain
+        self._origin = NodeMutationOrigin.RECOMPUTE if chain is not None else NodeMutationOrigin.LIVE
 
     async def dispatch(
         self,
@@ -62,7 +63,7 @@ class BulkRecomputeDispatcher:
             branch=branch,
             writes=writes,
             context=context,
-            origin=NodeMutationOrigin.RECOMPUTE if self._chain else NodeMutationOrigin.LIVE,
+            origin=self._origin,
         )
         if self._chain is not None:
             await self._chain.submit(written=written, branch=branch_name, context=context, depth=recompute_depth)
