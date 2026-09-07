@@ -26,6 +26,7 @@ from infrahub.workflows.catalogue import (
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
 )
 from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.workflow_override import override_workflow
@@ -138,9 +139,11 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppWithoutLocalWorkflow):
         sdk_client = InfrahubClient(config=sdk_config)
         original_client = service._client
         service._client = sdk_client
-        with dependency_provider.scope(build_client, lambda: sdk_client):
-            yield sdk_client
-        service._client = original_client
+        try:
+            with override_dependency(build_client, lambda: sdk_client, dependency_provider=dependency_provider):
+                yield sdk_client
+        finally:
+            service._client = original_client
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:

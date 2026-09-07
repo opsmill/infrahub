@@ -21,6 +21,7 @@ from infrahub.server import app
 from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_CHECK
 from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.workflow_override import override_workflow
 
@@ -150,9 +151,11 @@ class ArtifactRegenTestBase(TestInfrahubAppWithoutLocalWorkflow):
         sdk_client = InfrahubClient(config=sdk_config)
         original_client = service._client
         service._client = sdk_client
-        with dependency_provider.scope(build_client, lambda: sdk_client):
-            yield sdk_client
-        service._client = original_client
+        try:
+            with override_dependency(build_client, lambda: sdk_client, dependency_provider=dependency_provider):
+                yield sdk_client
+        finally:
+            service._client = original_client
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:

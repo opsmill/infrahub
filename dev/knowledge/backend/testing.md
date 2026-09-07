@@ -435,13 +435,11 @@ on `get_current_settings().api.url`; anything else cached against a Prefect serv
 
 ### Swapping the Workflow Adapter for a Test Double
 
-Every class-scoped fixture that installs a `WorkflowLocalExecution` or a `WorkflowRecorder` goes
-through `tests/helpers/workflow_override.py::override_workflow`. It sets both places a lookup can
-come from — `config.OVERRIDE.workflow` and the `build_workflow` override in the dependency
-provider — and puts the *previous* values back in a `finally`. Do not hand-roll a class-scoped swap
-with `dependency_provider.scope`: that context manager pops its override instead of restoring the
-one it replaced, and neither it nor `config.OVERRIDE` is restored when the fixture is finalised
-through an exception, so the double leaks into whatever the next class builds.
+Every workflow double goes in through `tests/helpers/workflow_override.py::override_workflow`, which
+sets both places a lookup can come from — `config.OVERRIDE.workflow` and the `build_workflow`
+override in the dependency provider — and puts the *previous* values back in a `finally`. Every other
+dependency goes in through `tests/helpers/dependency_override.py::override_dependency`, which does
+the same for one provider entry.
 
 Never swap a dependency in with `dependency_provider.scope`, not even around a single call. It pops
 its override instead of restoring the one it replaced, and it pops only when the block ends
@@ -463,7 +461,7 @@ subclass that swaps in a different adapter must do the same for the app to see i
 
 ### Functional Tests with `TestInfrahubApp`
 
-`TestInfrahubApp` provides a `memory_cache` fixture (class-scoped) that injects a `MemoryCache` via `dependency_provider.scope(build_cache, ...)`. Use it in functional tests to pre-fill and assert on cache state:
+`TestInfrahubApp` provides a class-scoped `memory_cache` fixture that injects a `MemoryCache`. Use it in functional tests to pre-fill and assert on cache state:
 
 ```python
 from tests.helpers.test_app import TestInfrahubApp
