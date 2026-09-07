@@ -443,17 +443,18 @@ with `dependency_provider.scope`: that context manager pops its override instead
 one it replaced, and neither it nor `config.OVERRIDE` is restored when the fixture is finalised
 through an exception, so the double leaks into whatever the next class builds.
 
-A per-test swap of any dependant (`build_workflow`, `build_database`, `build_cache`, …) goes through
-`tests/helpers/dependency_override.py::override_dependency` when anything can raise inside the block —
-a `pytest.raises` around the call under test, or an assertion inside it. `dependency_provider.scope`
-pops its override on the statement after its `yield`, with no `finally`, so an exception thrown
-through it leaves the double installed for the rest of the xdist worker process. The next class on
-that worker whose app resolves `get_workflow()` before its own override is in place then starts with
-a `WorkflowRecorder` as its workflow and every one of its tests errors at `client` setup with
-`These tests are currently meant to run with a local worker`; which class that is depends on how
-xdist split the suite, so the failure moves between runs while the message stays the same. A
-`dependency_provider.scope` whose body cannot raise is still fine: it leaves `config.OVERRIDE.workflow`
-alone, so once it pops, lookups fall back to the adapter the class installed.
+Never swap a dependency in with `dependency_provider.scope`, not even around a single call. It pops
+its override instead of restoring the one it replaced, and it pops only when the block ends
+normally, so an exception thrown through it — a `pytest.raises` around the call under test included
+— leaves the double installed for the rest of the xdist worker process.
+
+That is worth recognising in CI, because the failure surfaces far from its cause: the next class on
+the worker whose app resolves its workflow before its own override is in place starts with a
+`WorkflowRecorder`, and every one of its tests errors at `client` setup with `These tests are
+currently meant to run with a local worker`. Which class that is depends on how xdist split the
+suite, so the victim moves between runs while the message stays the same. A function-scoped autouse
+fixture in `tests/conftest.py` now fails the test that leaves an override behind and puts the
+provider back, so a leak is attributed to its source instead.
 
 The app built by `test_client` resolves its workflow once, during `lifespan`. pytest orders autouse
 fixtures by name, so `service` (and with it `test_client`) would otherwise run before
