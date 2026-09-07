@@ -11,6 +11,7 @@ from infrahub.core.merge.selective_regen.fallbacks import repositories_forcing_f
 from infrahub.core.merge.selective_regen.gate import DefinitionGate
 from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResolver
 from infrahub.core.merge.selective_regen.models import GateResult, LoadedDefinition
+from infrahub.core.regeneration.members import run_generator
 from infrahub.core.regeneration.models import TargetSelection
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 
@@ -151,7 +152,9 @@ class _StubSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition, Re
         return self._member_ids
 
     def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
-        return not subscriber_id or regenerate_all_members or subscriber_id in impacted
+        return run_generator(
+            instance_id=subscriber_id, regenerate_all_members=regenerate_all_members, impacted_instances=impacted
+        )
 
     def _build_request(
         self, *, definition: ProposedChangeGeneratorDefinition, target_branch: str, members: list[str]
