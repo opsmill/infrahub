@@ -104,6 +104,7 @@ hardcoding
 hfid
 HFIDs
 hostname
+hostnames
 Http
 human_friendly_id
 id_token

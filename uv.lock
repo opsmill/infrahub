@@ -110,7 +110,7 @@ wheels = [
 
 [[package]]
 name = "apprise"
-version = "1.10.0"
+version = "1.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -121,9 +121,9 @@ dependencies = [
     { name = "requests-oauthlib" },
     { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2f/74/9c16829d3e7e45ce7daf1b704687fa4fde7ea00d72eafe8de18c72bf5995/apprise-1.10.0.tar.gz", hash = "sha256:b768f32d99e45ed5f4c3eef1f67903e803c97f97ba61a531a5d0a45d40df90a8", size = 2188611, upload-time = "2026-04-26T14:23:51.928Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/44/5965c245998c72022297e2b515d9594281a97ed1442b3fa022c2c2324102/apprise-1.13.1.tar.gz", hash = "sha256:e7689dda71aaf739244d6c8690de13cb1361b8d0a79980fb48bb397455ca0bdd", size = 2520230, upload-time = "2026-08-31T02:12:01.472Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/69/f9/177a73589d34e676d10bc4c6a8328710e28af5907234e9f25bb149a04eec/apprise-1.10.0-py3-none-any.whl", hash = "sha256:e685303d3568bb7a057d6ddeafd27ee12fff183ca36483ad4bacc0b9b4efa82c", size = 1632292, upload-time = "2026-04-26T14:23:49.28Z" },
+    { url = "https://files.pythonhosted.org/packages/45/7d/6852bd3fc2eb48fa432cb22f5df11d1c902137dcecab93e0d8319b8c8e16/apprise-1.13.1-py3-none-any.whl", hash = "sha256:2ded6d00562dd2ae9eb6f1e6cc8d3fb66e06f7ede6efac0ad029031b633780f4", size = 1826431, upload-time = "2026-08-31T02:11:58.263Z" },
 ]
 
 [[package]]
@@ -1612,8 +1612,8 @@ requires-dist = [
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.44.0" },
     { name = "opentelemetry-instrumentation-aio-pika", specifier = "==0.65b0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.65b0" },
-    { name = "prefect", specifier = "==3.7.5" },
-    { name = "prefect-redis", specifier = "==0.2.14" },
+    { name = "prefect", git = "https://github.com/fatih-acar/prefect.git?branch=feat%2Fredis-sentinel-on-22211" },
+    { name = "prefect-redis", git = "https://github.com/fatih-acar/prefect.git?subdirectory=src%2Fintegrations%2Fprefect-redis&branch=feat%2Fredis-sentinel-on-22211" },
     { name = "prometheus-client", specifier = ">=0.25,<0.26" },
     { name = "puremagic", specifier = ">=1.30,<2" },
     { name = "pyarrow", marker = "extra == 'object-transfer'", specifier = ">=14" },
@@ -2922,8 +2922,8 @@ wheels = [
 
 [[package]]
 name = "prefect"
-version = "3.7.5"
-source = { registry = "https://pypi.org/simple" }
+version = "3.6.24+21992.ge0ca906b1"
+source = { git = "https://github.com/fatih-acar/prefect.git?branch=feat%2Fredis-sentinel-on-22211#e0ca906b16cc99113693c4683fbcb858b58fe826" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
@@ -2983,22 +2983,14 @@ dependencies = [
     { name = "websockets" },
     { name = "whenever", marker = "python_full_version >= '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a0/b4/ba44a2263940b53db323d059770e005aac959d272ba2025ad6fc7de10cba/prefect-3.7.5.tar.gz", hash = "sha256:e2838fa80562bfb7e27e67ea63c7b13d6fdead8052dbe76eb394c6b919ef3dcd", size = 13881122, upload-time = "2026-06-18T22:39:17.378Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0d/30/e9c5ad5f3fd17f7309bcd9bab6af5cb5811ae3b50d7d0fd15a3ea899f5e0/prefect-3.7.5-py3-none-any.whl", hash = "sha256:214837b7cb1e10f8fec59018253cd8ef65c8b394b7df29c511b645b0ff5e4478", size = 14766992, upload-time = "2026-06-18T22:39:14.383Z" },
-]
 
 [[package]]
 name = "prefect-redis"
-version = "0.2.14"
-source = { registry = "https://pypi.org/simple" }
+version = "0.2.1.dev21993+ge0ca906b1"
+source = { git = "https://github.com/fatih-acar/prefect.git?subdirectory=src%2Fintegrations%2Fprefect-redis&branch=feat%2Fredis-sentinel-on-22211#e0ca906b16cc99113693c4683fbcb858b58fe826" }
 dependencies = [
     { name = "prefect" },
     { name = "redis" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/98/a3/ddea50bf9ab561709b1cc7ff66913453aa7f93aa47a83b661c4fcfc2bf00/prefect_redis-0.2.14.tar.gz", hash = "sha256:f1dbcbe2539c931202c5d0863cfc32d738b0966dff98a54afec495a09c5af4c2", size = 64031, upload-time = "2026-08-04T17:57:16.249Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f3/43/a0a709837c3904e522a2ce335fc527897289304151570b3243ae8c8d4224/prefect_redis-0.2.14-py3-none-any.whl", hash = "sha256:6cc2d476ac349badf3892e8ab62ca089ecfe72767cda4b0e19af300ca16c7ee4", size = 39843, upload-time = "2026-08-04T17:57:15.041Z" },
 ]
 
 [[package]]
@@ -3394,7 +3386,7 @@ wheels = [
 
 [[package]]
 name = "pydocket"
-version = "0.20.3"
+version = "0.24.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "burner-redis" },
@@ -3411,9 +3403,9 @@ dependencies = [
     { name = "tzdata", marker = "sys_platform == 'win32'" },
     { name = "uncalled-for" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/41/4e/4994a407ae4e7561e84881b1edda8fedb58e7078c693845bdd1b66a73765/pydocket-0.20.3.tar.gz", hash = "sha256:ecf923cbcc8f7f26c7e76cad03a03d179536e4d947f322a89e9cc899a2631f72", size = 381244, upload-time = "2026-05-19T13:42:50.165Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b7/6b/a87c6e3fd197807f630af4270aa2ce8f4c1fca4e43bba783f273d298d646/pydocket-0.24.1.tar.gz", hash = "sha256:477d77be1fcfd10ee0c2d0b8aa8c6e97851b9c7f39bb6f2b4e6d42e9b4d6e95a", size = 430759, upload-time = "2026-08-10T19:50:03.368Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c5/18/2cf2fcabdc99c858401b7a44b7577e7a3002648048bb4d77517c22d8264d/pydocket-0.20.3-py3-none-any.whl", hash = "sha256:ba009b53270c5e677175def464fed2137d6289a9c9f57f376885f6c27f24a466", size = 110356, upload-time = "2026-05-19T13:42:47.816Z" },
+    { url = "https://files.pythonhosted.org/packages/a7/05/4e3b902bc0ca407188aa5fe38af49be634487aec242a77287103242e11b2/pydocket-0.24.1-py3-none-any.whl", hash = "sha256:1faa6c3d566f1f0431e35dfa12db4ccee515d945b913b516ee3e6279afb9e789", size = 130249, upload-time = "2026-08-10T19:50:01.627Z" },
 ]
 
 [[package]]
@@ -4489,11 +4481,11 @@ wheels = [
 
 [[package]]
 name = "uncalled-for"
-version = "0.3.2"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b5/82/345cc927f7fbdae6065e7768759932fcc827fc20b29b45dfbafa2f1f7da4/uncalled_for-0.3.2.tar.gz", hash = "sha256:89f5dbcd71e2b8f47c030b1fa302e6cce2ec795d1ac565eeb6525c5fe55cb8a2", size = 50032, upload-time = "2026-05-06T13:38:25.204Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6b/5a/92ce0b3ea5481915f55da994c2c2c5f7a3c09949afde196ee89f8ab961aa/uncalled_for-0.4.0.tar.gz", hash = "sha256:335b95bd2422332ec210d518f314a16e4c640921c39fc8bf2ad095bd3538f4af", size = 56979, upload-time = "2026-08-10T14:51:46.247Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/25/2c87754f3a9e692315f7b811244090e68f362979fc8886b3fbd2985a1d8c/uncalled_for-0.3.2-py3-none-any.whl", hash = "sha256:0ff60b142c7d1f8070bde9d42afaa70aedc77dcc10998c227687e9c15713418e", size = 11444, upload-time = "2026-05-06T13:38:24.025Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/40/97cec87c077eb3291fc7905e6633e08b7ca593c57d30238444bcb6bb3d53/uncalled_for-0.4.0-py3-none-any.whl", hash = "sha256:16c4bb3337532e4bd5569adc192285976f3ad5305402256d34c67a12b5c968bd", size = 15502, upload-time = "2026-08-10T14:51:45.068Z" },
 ]
 
 [[package]]
