@@ -225,6 +225,10 @@ Ordered for the fastest frontend hand-off. Each phase is independently reviewabl
 - `InfrahubMessageBus.rpc(timeout=...)` across the three adapters, `BrokerSettings.rpc_timeout`,
   `WorkerTimeoutError`, `WORKER_TIMEOUT` catalogue entry and payload, formatter case, regenerated
   error-catalogue artefacts, component test with `BusRPCMock` that never replies.
+- Timeout bookkeeping, which the bound makes newly reachable: expiry discards its correlation entry
+  so abandoned futures cannot accumulate, and both adapters' reply callbacks ignore a correlation id
+  they no longer hold. A worker answering after the bound becomes an ordinary event rather than a
+  `KeyError` inside the callback.
 - Not included: the `get_file` / `raise_for_status()` defect. Bounding the wait does leave that
   endpoint temporarily incoherent (504 on a hang, 200 on a worker-side error), and an earlier draft
   of this plan fixed it here on the grounds that this is already the reviewed change to that call

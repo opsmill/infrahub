@@ -26,8 +26,9 @@ uv run invoke dev.build && uv run invoke dev.start   # full stack with at least 
 2. Run the commit-view query from `contracts/repository_git_state.graphql` against any existing
    repository id on `main`. Expected: `condition: UNAVAILABLE`,
    `unavailable.reason: NOT_IMPLEMENTED`, empty `edges`, no error, and the Infrahub-side fields
-   populated: `branch_name`, `git_ref`, and `imported_commit` equal to the repository's `commit`
-   attribute on that branch.
+   populated, each checked against its own source: `branch_name` is the Infrahub branch queried,
+   `git_ref` is the remote branch or tracked ref the branch resolves (a ref name, not a hash), and
+   `imported_commit` equals the repository's `commit` attribute on that branch.
 
 3. Run the drift query against a repository with several branches. Expected: one row per branch in
    the row set, each carrying the tracked commit its own branch resolves, with `remote_head` null and
@@ -56,30 +57,42 @@ uv run pytest backend/tests/unit/git/state/test_classification.py backend/tests/
    now fails with 504 instead of hanging; its separate defect, where a worker-side *error* still
    returns 200, is a different ticket and is not asserted here.
 
-2. Behind: using the `FileRepo` fixture (`backend/tests/helpers/file_repo.py`), add the repository,
-   let the first import finish, then push two commits to the fixture remote and wait one sync tick.
+2. Behind: using the `FileRepo` fixture (`backend/tests/helpers/file_repo.py`), add the repository
+   and let the first import finish. Do **not** then push and wait for a sync tick: for a read-write
+   repository that tick imports the new commits, so the state you were trying to observe is gone
+   before you query. Pick one of two setups instead. Either pause `GIT_REPOSITORIES_SYNC` before
+   pushing and drive a single `RefreshGitFetch` by hand, so the worker's `origin/<branch>` advances
+   with no import; or run the scenario on a read-only repository pinned to that branch, where the
+   refs check advances the remote-tracking ref and by design never imports. Then push two commits.
    Expected: `condition: BEHIND`, `pending_count: 2`, the two new commits `PENDING`, the imported
    commit `IMPORTED`, the newest `HEAD`.
 
-3. Rewritten: amend the fixture remote's tip and force-push. Expected after the next tick:
-   `condition: REWRITTEN`, `pending_count: null`, no row `PENDING`, the imported hash absent from
-   `edges` and present only in `imported_commit`. Then push the imported commit out of reach
-   entirely (force-push, then prune and collect the fixture remote and the worker's clone so the
-   object is genuinely gone). Expected: `condition: ORPHANED`, `pending_count: null`, no error, and
-   the hash still reported in `imported_commit` so the user can see which commit went missing.
+3. Rewritten: the imported commit must stop being an ancestor of the head, which amending the tip
+   does not achieve - an amended commit keeps its parent, so the imported commit below it is still
+   reachable and the answer is `BEHIND`. Rewrite at or below the imported commit instead:
+   `git reset --hard <imported>~1` on the fixture remote, commit something new, and force-push.
+   Expected: `condition: REWRITTEN`, `pending_count: null`, no row `PENDING`, the imported hash
+   absent from `edges` and present only in `imported_commit`.
 
-4. Not cloned: start a second worker with an empty repositories directory and route the read to it
+4. Orphaned: do not try to garbage-collect the imported object away. FR-020 exists precisely because
+   its commit worktree is a reachability root, so on a worker that imported it the object cannot be
+   collected - that guarantee and this procedure cannot both hold. Produce the state directly
+   instead: seed the repository's `commit` attribute with a well-formed hash the clone has never
+   held. Expected: `condition: ORPHANED`, `pending_count: null`, no error, and the hash still
+   reported in `imported_commit` so a user can see which commit went missing.
+
+5. Not cloned: start a second worker with an empty repositories directory and route the read to it
    (or delete its clone directory). Expected: `condition: UNAVAILABLE`,
    `unavailable.reason: NOT_CLONED`, a `warm_up_task_id`, and exactly one `git_repository_warm_up`
    task in the task list even when the query is fired ten times concurrently. The next read after the
    task completes returns commits.
 
-5. Freshness: `fetched_at` changes after a fetch on the answering worker. For a read-only
+6. Freshness: `fetched_at` changes after a fetch on the answering worker. For a read-only
    repository, `checked_at` advances after a check cycle even when the remote has not moved, while
    `fetched_at` stays put; `answered_by` is absent from the payload and the worker identity appears
    in the API server log against the request id instead.
 
-6. Trimmed fields: assert the schema exposes no `count`, no `author_email` and no `answered_by`, so a
+7. Trimmed fields: assert the schema exposes no `count`, no `author_email` and no `answered_by`, so a
    consumer cannot come to depend on them.
 
 Tests:

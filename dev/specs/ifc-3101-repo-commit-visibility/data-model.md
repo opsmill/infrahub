@@ -70,9 +70,17 @@ No `RepositoryCommitState` member is needed for the orphaned case: an unresolvab
 appear in the log at all, so there is no row to label. The condition carries the answer, and
 `imported_commit` still reports the hash the graph holds so a user can see which commit went missing.
 
-Precedence when one commit qualifies for several states: `IMPORTED` over `HEAD` (when head equals
-imported, `condition` is `IN_SYNC` and the top-level `remote_head` and `imported_commit` carry the
-same hash so both markers can be drawn), then `HEAD`, then `PENDING` / `HISTORY` / `UNRELATED`.
+Precedence when one commit qualifies for several states, applied in this order:
+
+1. The condition decides first. Under `REWRITTEN` and `ORPHANED` every commit other than the head is
+   `UNRELATED`, including one that is still an ancestor of the imported commit and would otherwise
+   read as `HISTORY`. A rewritten ref shares history with the old one far more often than not, so
+   without this rule those shared ancestors have two valid labels and the UI varies by
+   implementation.
+2. `IMPORTED` over `HEAD`. When head equals imported, `condition` is `IN_SYNC` and the top-level
+   `remote_head` and `imported_commit` carry the same hash, so both markers can still be drawn from
+   the header rather than from the row.
+3. Then `HEAD`, then `PENDING` / `HISTORY`.
 
 ### `RepositoryGitUnavailableReason`
 
@@ -288,5 +296,8 @@ ORPHANED  --import of the new head-->      IN_SYNC
 NOT_TRACKED --first import-->              IN_SYNC
 ```
 
-The read-only refs check can move a branch from `IN_SYNC` to `BEHIND` or `REWRITTEN`; it can never
-move it to `IN_SYNC`, because it never writes the tracked commit (FR-016).
+The read-only refs check never writes the tracked commit (FR-016), so it can never move a branch to
+`IN_SYNC` *by importing*. It can still cause `IN_SYNC` to be reported: if the remote ref is reset
+back to the commit Infrahub already holds, the next check observes head equal to imported and the
+condition is `IN_SYNC` with nothing written. The invariant is about what Infrahub runs, not about
+which conditions the check can surface.

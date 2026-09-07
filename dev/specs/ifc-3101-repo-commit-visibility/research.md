@@ -113,7 +113,18 @@ read. The cache `not_exists` flag (`infrahub.services.adapters.cache::InfrahubCa
 existing distributed set-if-absent and collapses concurrent triggers across workers with no new
 primitive. `RefreshGitFetch` handled by `infrahub.message_bus.operations.git.repository::fetch`
 already clones-if-missing, fetches, and resets with `update_commit_value=False`; it is the
-established convergence broadcast and needs no change. For read-write repositories the every-minute
+established convergence broadcast and needs no change for this feature's purposes.
+
+One caveat to carry into implementation, found during review on 2026-09-07: that handler calls
+`get_initialized_repo` *before* taking the repository lock, and only the hard reset runs inside it
+(`operations/git/repository.py`, the `get_initialized_repo` call precedes the
+`lock.registry.get(...)` block whose own comment explains the reset must not interleave). So a cold
+worker receiving the broadcast clones outside the lock, concurrently with any other git operation on
+that repository. This is pre-existing behaviour on the read-write path, but this feature newly
+triggers the broadcast for read-only repositories, so FR-019's no-interleaving guarantee covers only
+the steps *this* flow performs, not the clone a receiving worker may do. Either move the
+initialisation inside that handler's lock or state the exposure; it is not this feature's to fix
+silently, and the guarantee should not be read as broader than it is. For read-write repositories the every-minute
 `GIT_REPOSITORIES_SYNC` already broadcasts unconditionally, so a cold worker also warms within a
 minute without our help; read-only repositories rely on the new flow.
 
@@ -140,7 +151,7 @@ clone (`get_git_repo_main()`), read-only and with no fetch:
 - pending count: `git rev-list --count <imported>..<head>`, only when `BEHIND` and selected.
 - page: `Repo.iter_commits(head, max_count=limit, skip=offset)`. No total: FR-024 drops it from the
   contract, so no counting pass over the whole history exists in the read path at all.
-- per-commit state: `HEAD` if hash equals head, else `IMPORTED` if hash equals imported, else
+- per-commit state: `IMPORTED` if hash equals imported, else `HEAD` if hash equals head, else
   `PENDING` when the commit is not an ancestor of imported (`Repo.is_ancestor(commit, imported)` is
   false) and the condition is `BEHIND`, else `HISTORY`; under `REWRITTEN` and `ORPHANED` every
   non-head commit is `UNRELATED`, and under `ORPHANED` the imported commit does not appear in the
@@ -278,7 +289,12 @@ network call holds no lock:
    body returns the recorded run id and performs no remote work (FR-025). Released in a `finally`.
 2. Resolve the tracked refs and read the local `origin/<ref>` or tag SHA. No lock: this reads git's
    own consistent object store.
-3. `git ls-remote origin <ref>` on the main clone, **outside** the repository lock (credentials come
+3. `git ls-remote origin -- refs/heads/<ref> refs/tags/<ref>` on the main clone, **outside** the
+   repository lock, then apply the same branch-then-tag precedence as step 2 to pick the answer. The
+   refs must be fully qualified: a bare `<ref>` matches every namespace, so a repository whose
+   tracked name exists as both a branch and a tag returns two lines and the check cannot tell which
+   one moved. Precedence is what makes the remote answer comparable to the local one; querying both
+   in a single invocation keeps it to one network round trip. (Credentials come
    from the worker's global git config exactly as for `fetch`; the ref is validated with
    `git check-ref-format --allow-onelevel` first, and the subprocess carries git's low-speed abort
    settings). If unchanged, stop: a refs listing and nothing more (FR-018).
@@ -432,7 +448,19 @@ Convergence assumes the worker fetch broadcast reaches every worker, which is wh
 adapter provides: each git worker declares an exclusive `worker-events-{WORKER_IDENTITY}` queue bound
 to the broadcast routing keys. That is the supported deployment and the one this feature targets.
 
-An unrelated gap in the alternative NATS adapter was noticed while verifying this and filed as
-[opsmill/infrahub#10514](https://github.com/opsmill/infrahub/issues/10514). That driver is not in use
-and is not currently supported, so it places no requirement on this feature: no caveat in the user
-documentation, no constraint on the design, and nothing to fix here.
+A gap in the NATS adapter was noticed while verifying this and filed as
+[opsmill/infrahub#10514](https://github.com/opsmill/infrahub/issues/10514): `refresh.git.*` is not
+among the stream subjects used for worker delivery, so the convergence broadcast does not reliably
+reach every worker on that driver.
+
+**Corrected 2026-09-07.** An earlier draft of this section dismissed that as irrelevant on the
+grounds that NATS "is not in use and is not currently supported". That is wrong as a statement about
+the shipped product: `BrokerDriver.NATS` exists in `config.py` and
+`INFRAHUB_BROKER_DRIVER` is published in the configuration reference as accepting `nats`. A customer
+can therefore select a driver on which FR-017, and with it SC-009, silently does not hold.
+
+This feature does not fix #10514 and does not design around it. What follows from the correction is
+narrower and is in scope: the convergence guarantee is **explicitly scoped to the RabbitMQ driver**,
+where each git worker declares its own exclusive `worker-events-{WORKER_IDENTITY}` queue bound to the
+broadcast routing keys, and the user documentation for the read-only check must carry that caveat
+rather than implying convergence is driver-independent. Recorded against T088.
