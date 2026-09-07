@@ -163,7 +163,6 @@ Use `frozen=True` unless you have a specific reason to mutate instances (e.g., b
 
 ### Persisted `StandardNode` fields use `Optional[X]`, not `X | None`
 
-<!-- Extracted from dev/specs/infp-46-dark-theme-completion on 2026-08-24 -->
 
 A nullable field on a `StandardNode` subclass must be annotated `Optional[X]`. `X | None` is not
 equivalent here — `StandardNode.guess_field_type` inspects the annotation to decide how to persist

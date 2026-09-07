@@ -28,7 +28,7 @@ Before recording a failure on a stacked PR as inherited or pre-existing, check w
 ultimate base already fixes it:
 
 ```bash
-git log origin/develop --oneline -- <failing file>   # is there a fix the stack never saw?
+git log HEAD..origin/develop --oneline -- <failing file>   # fixes the stack's head never saw
 git diff HEAD origin/develop -- <failing file>
 ```
 

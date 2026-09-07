@@ -115,7 +115,7 @@ setting to `config.py` makes the committed compose file stale. Two traps:
   reports failure for an *uncommitted* regeneration exactly as it does for a stale one. Commit
   the regenerated file, then re-run it.
 
-The `update-compose-file-and-chart` workflow regenerates it with `-u` on a schedule, and
+The `update-compose-file-and-chart` workflow regenerates it with `-u` during a release cut, and
 `ci.yml` runs the validation, so a stale file fails CI rather than drifting quietly. Prose that
 describes which compose files carry a given variable goes stale on the same regeneration —
 `dev/knowledge/frontend/theming.md` once claimed the root file had no dark-theme passthrough
@@ -138,7 +138,6 @@ after generation had added one.
 
 ## Keep generated GraphQL descriptions single-line
 
-<!-- Extracted from dev/specs/infp-46-dark-theme-completion on 2026-08-24 -->
 
 A description passed to `Enum.from_enum` (or any GraphQL type built in
 `backend/infrahub/graphql/types/`) must stay on one line. `graphql-core`'s SDL printer dedents
