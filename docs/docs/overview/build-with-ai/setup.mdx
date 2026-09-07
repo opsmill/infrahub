@@ -47,20 +47,7 @@ Confirm where it landed, and that `infrahub-common` is among them:
 npx skills list
 ```
 
-In Claude Code, you can install them as a plugin instead:
-
-```text
-/plugin marketplace add opsmill/claude-marketplace
-/plugin install infrahub@opsmill
-```
-
-To copy them in manually, place them in the same directory your assistant would use above (`.agents/skills/` for most assistants, `.claude/skills/` for Claude Code):
-
-```bash
-git clone https://github.com/opsmill/infrahub-skills.git
-cp -r infrahub-skills/skills/* /path/to/your-project/.agents/skills/
-rm -rf infrahub-skills
-```
+If you cannot run `npx`, or want Claude Code's plugin marketplace for a global install, see [other installation methods](https://docs.infrahub.app/skills/installation-setup#installation).
 
 Keep the `infrahub-common` skill directory, wherever your installer placed it. It holds the shared reference material the other skills depend on.
 
