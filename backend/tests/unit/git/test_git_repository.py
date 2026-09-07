@@ -1,8 +1,10 @@
 import logging
 import re
 from collections.abc import Iterator
+from contextlib import nullcontext as does_not_raise
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -282,28 +284,34 @@ def stub_repo() -> InfrahubRepository:
     )
 
 
-def test_raise_if_branches_failed_empty_list_does_not_raise(stub_repo: InfrahubRepository) -> None:
-    stub_repo.raise_if_branches_failed([])
-
-
 @dataclass
 class RaiseBranchesCase:
     name: str
     failed_imports: list[FailedImport]
-    expected_message: str
+    expectation: Any
 
 
 @pytest.mark.parametrize(
     "case",
     [
         RaiseBranchesCase(
+            name="empty_list_does_not_raise",
+            failed_imports=[],
+            expectation=does_not_raise(),
+        ),
+        RaiseBranchesCase(
             name="single_failure",
             failed_imports=[
                 FailedImport(branch_name="branch01", step=ImportStep.COLLECTION, reason="schema validation failed"),
             ],
-            expected_message=(
-                "Unable to synchronize the following branches of repository test-repo:"
-                " branch01 (step=collection): schema validation failed"
+            expectation=pytest.raises(
+                RepositoryError,
+                match=rf"^{
+                    re.escape(
+                        'Unable to synchronize the following branches of repository test-repo:'
+                        ' branch01 (step=collection): schema validation failed'
+                    )
+                }$",
             ),
         ),
         RaiseBranchesCase(
@@ -312,16 +320,21 @@ class RaiseBranchesCase:
                 FailedImport(branch_name="branch01", step=ImportStep.COLLECTION, reason="error 1"),
                 FailedImport(branch_name="branch02", step=ImportStep.IMPORT, reason="error 2"),
             ],
-            expected_message=(
-                "Unable to synchronize the following branches of repository test-repo:"
-                " branch01 (step=collection): error 1; branch02 (step=import): error 2"
+            expectation=pytest.raises(
+                RepositoryError,
+                match=rf"^{
+                    re.escape(
+                        'Unable to synchronize the following branches of repository test-repo:'
+                        ' branch01 (step=collection): error 1; branch02 (step=import): error 2'
+                    )
+                }$",
             ),
         ),
     ],
     ids=lambda c: c.name,
 )
-def test_raise_if_branches_failed_error_message(stub_repo: InfrahubRepository, case: RaiseBranchesCase) -> None:
-    with pytest.raises(RepositoryError, match=rf"^{re.escape(case.expected_message)}$"):
+def test_raise_if_branches_failed(stub_repo: InfrahubRepository, case: RaiseBranchesCase) -> None:
+    with case.expectation:
         stub_repo.raise_if_branches_failed(case.failed_imports)
 
 
