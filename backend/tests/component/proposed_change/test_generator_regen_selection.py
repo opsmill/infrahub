@@ -22,7 +22,7 @@ from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_CHECK
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.schema import load_schema
-from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.workflow_override import override_workflow
 
 from .conftest import make_node_diff
@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
     from tests.adapters.cache import MemoryCache
     from tests.adapters.message_bus import BusSimulator
     from tests.helpers.test_client import InfrahubTestClient
@@ -94,7 +95,7 @@ GENERATOR_SCHEMA = SchemaRoot(
 )
 
 
-class GeneratorRegenTestBase(TestInfrahubAppBase):
+class GeneratorRegenTestBase(TestInfrahubAppWithoutLocalWorkflow):
     """Shared harness for the generator-regeneration selection-gate component tests.
 
     Provides the application wiring every scenario needs - a recording workflow backend so
@@ -123,7 +124,9 @@ class GeneratorRegenTestBase(TestInfrahubAppBase):
             yield recorder
 
     @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
+    async def service(
+        self, workflow_local: WorkflowLocalExecution, test_client: InfrahubTestClient
+    ) -> InfrahubServices:
         return app.state.service
 
     @pytest.fixture(scope="class")

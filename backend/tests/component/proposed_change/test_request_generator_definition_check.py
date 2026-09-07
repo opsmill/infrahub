@@ -24,7 +24,7 @@ from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import RUN_GENERATOR_AS_CHECK
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.schema import load_schema
-from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.workflow_override import override_workflow
 
 from .conftest import QUERY_NON_UNIQUE_TARGETS, QUERY_UNIQUE_TARGETS, make_node_diff
@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
     from tests.adapters.cache import MemoryCache
     from tests.adapters.message_bus import BusSimulator
     from tests.helpers.test_client import InfrahubTestClient
@@ -179,7 +180,7 @@ GENERATOR_DISPATCH_CASES = [
 ]
 
 
-class TestRequestGeneratorDefinitionCheck(TestInfrahubAppBase):
+class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
     @pytest.fixture(scope="class", autouse=True)
     async def workflow_recorder(
         self,
@@ -190,7 +191,9 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppBase):
             yield recorder
 
     @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
+    async def service(
+        self, workflow_local: WorkflowLocalExecution, test_client: InfrahubTestClient
+    ) -> InfrahubServices:
         return app.state.service
 
     @pytest.fixture(scope="class")

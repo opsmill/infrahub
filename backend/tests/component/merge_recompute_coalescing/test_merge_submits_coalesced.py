@@ -16,7 +16,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.workers.dependencies import build_cache, build_database, build_event_service, build_workflow
+from infrahub.workers.dependencies import build_cache, build_database, build_event_service
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     DISPLAY_LABELS_PROCESS_JINJA2,
@@ -33,6 +33,7 @@ from tests.helpers.merge_recompute.dataset import (
     seed_branch,
 )
 from tests.helpers.schema import load_schema
+from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
     from fast_depends import Provider
@@ -80,7 +81,7 @@ async def test_merge_submits_one_coalesced_recompute_per_target(
     with (
         dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
         dependency_provider.scope(build_event_service, lambda: event_recorder),
-        dependency_provider.scope(build_workflow, lambda: workflow_recorder),
+        override_workflow(workflow_recorder, dependency_provider=dependency_provider),
         dependency_provider.scope(build_cache, lambda: cache),
     ):
         await merge_branch(branch=seeded.branch_name, context=context)
@@ -137,7 +138,7 @@ async def test_rebase_submits_one_coalesced_recompute_per_target(
     with (
         dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
         dependency_provider.scope(build_event_service, lambda: event_recorder),
-        dependency_provider.scope(build_workflow, lambda: workflow_recorder),
+        override_workflow(workflow_recorder, dependency_provider=dependency_provider),
         dependency_provider.scope(build_cache, lambda: cache),
     ):
         await rebase_branch(branch=seeded.branch_name, context=context, send_events=True)
@@ -199,7 +200,7 @@ async def test_merge_delete_peer_coalesces_reader_recompute_by_own_id(
     with (
         dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
         dependency_provider.scope(build_event_service, lambda: event_recorder),
-        dependency_provider.scope(build_workflow, lambda: recorder),
+        override_workflow(recorder, dependency_provider=dependency_provider),
         dependency_provider.scope(build_cache, lambda: cache),
     ):
         await merge_branch(branch=branch.name, context=context)

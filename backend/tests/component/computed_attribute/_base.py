@@ -17,8 +17,7 @@ from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedA
 from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  used in dataclass field
 from infrahub.server import app
 from tests.adapters.workflow import WorkflowRecorder
-from tests.helpers.task_manager import setup_task_manager_once
-from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
@@ -29,6 +28,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.events.models import EventContext
     from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
     from infrahub.workflows.models import WorkflowDefinition
 
 
@@ -124,7 +124,7 @@ class ScopedRecomputeCase:
     expected_submitted: set[str]
 
 
-class ScopedRecomputeTestBase(TestInfrahubAppBase):
+class ScopedRecomputeTestBase(TestInfrahubAppWithoutLocalWorkflow):
     """Fixtures and helpers shared by the Jinja2 and Python scoped recompute tests.
 
     Subclasses set ``WORKFLOW`` to the recompute trigger workflow whose submissions
@@ -139,12 +139,11 @@ class ScopedRecomputeTestBase(TestInfrahubAppBase):
         prefect: Generator[str, None, None],
         dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
-        await setup_task_manager_once()
         with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
             yield recorder
 
     @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: Any) -> InfrahubServices:
+    async def service(self, workflow_local: WorkflowLocalExecution, test_client: Any) -> InfrahubServices:
         return app.state.service
 
     @pytest.fixture(autouse=True)

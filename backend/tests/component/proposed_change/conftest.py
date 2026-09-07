@@ -21,7 +21,7 @@ from infrahub.server import app
 from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_CHECK
 from tests.adapters.workflow import WorkflowRecorder
-from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreAccount
     from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
     from tests.adapters.cache import MemoryCache
     from tests.adapters.message_bus import BusSimulator
     from tests.helpers.test_client import InfrahubTestClient
@@ -101,7 +102,7 @@ def make_node_diff(
     )
 
 
-class ArtifactRegenTestBase(TestInfrahubAppBase):
+class ArtifactRegenTestBase(TestInfrahubAppWithoutLocalWorkflow):
     """Shared harness for the artifact-regeneration selection-gate component tests.
 
     Provides the application wiring every scenario needs - a recording workflow
@@ -126,7 +127,9 @@ class ArtifactRegenTestBase(TestInfrahubAppBase):
             yield recorder
 
     @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
+    async def service(
+        self, workflow_local: WorkflowLocalExecution, test_client: InfrahubTestClient
+    ) -> InfrahubServices:
         return app.state.service
 
     @pytest.fixture(scope="class")

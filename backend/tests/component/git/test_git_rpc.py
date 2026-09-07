@@ -31,11 +31,12 @@ from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_client, build_message_bus, build_workflow
+from infrahub.workers.dependencies import build_client, build_message_bus
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_DIFF_NAMES_ONLY, GIT_REPOSITORIES_MERGE
 from tests.adapters.lock import LockTimeline, RecordingImporter, RecordingLockRegistry
 from tests.adapters.message_bus import BusSimulator
 from tests.helpers.test_client import dummy_async_request
+from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -159,7 +160,7 @@ async def test_git_rpc_merge(
     with (
         dependency_provider.scope(build_client, lambda: client),
         dependency_provider.scope(build_message_bus, lambda: bus_simulator),
-        dependency_provider.scope(build_workflow, lambda: workflow),
+        override_workflow(workflow, dependency_provider=dependency_provider),
     ):
         context = InfrahubContext(
             branch=BranchContext(name=branch01.name, id=branch01.id),
@@ -289,7 +290,7 @@ class TestPullReadOnly:
 
         with (
             dependency_provider.scope(build_message_bus, lambda: self.recorder),
-            dependency_provider.scope(build_workflow, lambda: self.workflow),
+            override_workflow(self.workflow, dependency_provider=dependency_provider),
             dependency_provider.scope(build_client, lambda: self.client),
         ):
             self.commit = str(UUIDT())

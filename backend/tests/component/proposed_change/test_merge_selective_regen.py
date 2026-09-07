@@ -27,7 +27,7 @@ from infrahub.workflows.catalogue import (
 )
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.schema import load_schema
-from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.workflow_override import override_workflow
 
 from .conftest import make_node_diff
@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
     from tests.adapters.cache import MemoryCache
     from tests.adapters.message_bus import BusSimulator
     from tests.helpers.test_client import InfrahubTestClient
@@ -93,7 +94,7 @@ query GetDevice($ids: [ID!]!) {
 """
 
 
-class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
+class TestMergeSelectiveRegenSelection(TestInfrahubAppWithoutLocalWorkflow):
     """The post-merge dispatcher selects only the definitions a merge diff touches, against a live graph.
 
     Drives ``PostMergeRegenerationDispatcher.dispatch`` directly with a recording workflow backend and
@@ -114,7 +115,9 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
             yield recorder
 
     @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
+    async def service(
+        self, workflow_local: WorkflowLocalExecution, test_client: InfrahubTestClient
+    ) -> InfrahubServices:
         return app.state.service
 
     @pytest.fixture(scope="class")
