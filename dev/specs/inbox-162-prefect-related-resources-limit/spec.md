@@ -105,9 +105,11 @@ single environment variable, and assert Infrahub reports the configured value.
 - **A non-positive configured value** (`0`, a negative number) — a value Prefect could not
   meaningfully enforce. Infrahub falls back to the documented default rather than deriving a
   nonsensical budget, preserving the module's existing defensive behaviour.
-- **A malformed configured value** (non-numeric) — Infrahub falls back to the documented default
-  rather than raising, so a typo in an operator's environment degrades to safe behaviour instead
-  of breaking event emission or startup.
+- **A malformed configured value** (non-numeric) — rejected at startup by Prefect's own settings
+  validation, before any Infrahub code runs. Infrahub adds no fallback here: a typo now fails
+  loudly instead of silently selecting a wrong ceiling, which is the same class of silence this
+  change exists to remove. This is an intentional change from today's behaviour, where a malformed
+  value was quietly treated as 500.
 - **The configured maximum is very small** (1, 20) — the derived budget and submission chunk size
   are already floored at 1 by the existing helpers; that behaviour is unchanged.
 - **The setting changes during process lifetime** (a test override, a settings context) — the
@@ -129,7 +131,12 @@ single environment variable, and assert Infrahub reports the configured value.
   Prefect — both environment-variable names Prefect accepts for it, and Prefect's own
   configuration sources.
 - **FR-005**: The system MUST fall back to the documented default (100) when the configured value
-  is absent, non-positive, or unreadable, without raising and without breaking event emission.
+  is absent or non-positive, without raising and without breaking event emission.
+- **FR-005a**: A configured value that is not a number MUST be rejected at startup rather than
+  silently substituted. Prefect itself refuses to construct its settings from such a value, so the
+  process cannot start — which is the correct outcome: a misconfiguration that used to be silently
+  replaced by a wrong ceiling is now impossible to miss. Infrahub MUST NOT add a fallback that
+  masks it.
 - **FR-006**: The system MUST leave the shipped image's configured value untouched, so deployments
   running the shipped image keep their current event capacity exactly.
 - **FR-007**: The derived related-resource budget, the submission chunk size, and the run-context
