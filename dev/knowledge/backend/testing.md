@@ -422,8 +422,6 @@ async def test_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
     assert "expected message" in caplog.text
 ```
 
-This matches the pattern used in `test_webhook_header.py` and `test_models.py`.
-
 ### Prefect Server State Outlives the Test Class
 
 The Prefect test server is session-scoped — one per xdist worker — while the database and the
@@ -453,13 +451,16 @@ depend on `prefect` therefore falls back to the harness server, even in a proces
 container is running — `component/api/conftest.py::workflow_local` and
 `TestInfrahubApp.workflow_local` sit on opposite sides of this line.
 
-**Never memoize server-side registration per process.** `setup_task_manager` registers blocks,
-worker pools, deployments and builtin triggers against whichever server is current, so a
-process-wide "already done" flag lets the first server's setup satisfy fixtures pointing at the
-second. The second server then has no deployments, and `setup_triggers` raises `KeyError` on the
-empty deployment mapping rather than failing anywhere near the cause.
-`tests/helpers/task_manager.py` keys its memo on `get_current_settings().api.url` for this reason;
-anything else cached against a Prefect server needs the same treatment.
+**Tests register the task manager through `setup_task_manager_once()`, never the raw
+`setup_task_manager()`.** The raw call redoes every block, worker pool, deployment and builtin
+trigger against the current server with no timeout of its own; under CI load it hangs until
+pytest-timeout kills the whole class. The helper runs the registration once per server, bounded,
+and fails fast for that server afterwards.
+
+**Never memoize server-side registration per process.** The registration goes to whichever server is
+current, so a process-wide "already done" flag lets the first server's setup satisfy fixtures pointing
+at the second, which then has no deployments and fails far from the cause. The helper keys its memo
+on `get_current_settings().api.url`; anything else cached against a Prefect server needs the same key.
 
 ### Swapping the Workflow Adapter for a Test Double
 
