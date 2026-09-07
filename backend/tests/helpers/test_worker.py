@@ -1,5 +1,4 @@
 import asyncio
-import inspect
 from typing import Any, AsyncGenerator
 from uuid import UUID
 
@@ -9,8 +8,6 @@ from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.filters import WorkPoolFilter, WorkPoolFilterId
 from prefect.client.schemas.objects import FlowRun, StateType, WorkPool
-from prefect.events.worker import EventsWorker
-from prefect.logging.handlers import APILogWorker
 from prefect.results import _default_storages
 from prefect.workers.base import BaseWorkerResult
 
@@ -123,10 +120,8 @@ class TestWorkerInfrahubAsync(TestInfrahubAppWithoutLocalWorkflow):
         stop.set()
         await lifecycle_task
 
-        # Clear local worker instances to avoid issues with multiple test classes running in the same pytest worker
-        for drained in (EventsWorker.drain_all(), APILogWorker.drain_all()):
-            if inspect.isawaitable(drained):
-                await drained
+        # The Prefect queue services are unpinned by `prefect_class`, which tears down after this
+        # fixture and while its server is still up; see tests/helpers/prefect_services.py.
 
         # Clear local worker result storage cache
         _default_storages.clear()
