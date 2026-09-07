@@ -11,7 +11,6 @@ from .definition_selector.artifact_selector import ArtifactSelector
 from .definition_selector.generator_selector import GeneratorSelector
 from .fallbacks import repositories_forcing_full_regeneration
 from .gate import DefinitionGate
-from .impacted import ImpactedSubscriberResolver
 from .models import CascadeRole, PlannedRegeneration, SelectiveRegenerationPlan
 from .participant import CascadeSource, CascadeTerminal
 
@@ -149,7 +148,7 @@ def build_merge_selective_regeneration(
     its output capture is built once at the composition root and injected here.
     """
     gate = DefinitionGate(log=log)
-    impacted_resolver = ImpactedSubscriberResolver(resolver=FieldLevelImpactResolver(db=db, client=client))
+    impacted_resolver = FieldLevelImpactResolver(db=db, client=client)
     return MergeSelectiveRegeneration(
         participants=[
             CascadeSource(

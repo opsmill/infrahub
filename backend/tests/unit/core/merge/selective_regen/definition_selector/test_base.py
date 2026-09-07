@@ -102,7 +102,7 @@ class _StubImpactedResolver(ImpactedSubscriberResolver):
         *,
         query_payload: str,
         diff_summary: list[NodeDiff],
-        target_branch: str,
+        query_branch: str,
         subscriber_kind: str,
         every_target: list[str],
     ) -> TargetSelection:
