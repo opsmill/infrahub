@@ -463,13 +463,17 @@ anything else cached against a Prefect server needs the same treatment.
 
 ### Swapping the Workflow Adapter for a Test Double
 
-Every fixture that installs a `WorkflowLocalExecution` or a `WorkflowRecorder` goes through
-`tests/helpers/workflow_override.py::override_workflow`. It sets both places a lookup can come
-from — `config.OVERRIDE.workflow` and the `build_workflow` override in the dependency provider — and
-puts the *previous* values back in a `finally`. Do not hand-roll it with `dependency_provider.scope`:
-that context manager pops its override instead of restoring the one it replaced, and neither it nor
-`config.OVERRIDE` is restored when the fixture is finalised through an exception, so the double
-leaks into whatever the next class builds.
+Every class-scoped fixture that installs a `WorkflowLocalExecution` or a `WorkflowRecorder` goes
+through `tests/helpers/workflow_override.py::override_workflow`. It sets both places a lookup can
+come from — `config.OVERRIDE.workflow` and the `build_workflow` override in the dependency
+provider — and puts the *previous* values back in a `finally`. Do not hand-roll a class-scoped swap
+with `dependency_provider.scope`: that context manager pops its override instead of restoring the
+one it replaced, and neither it nor `config.OVERRIDE` is restored when the fixture is finalised
+through an exception, so the double leaks into whatever the next class builds.
+
+A `dependency_provider.scope(build_workflow, …)` that opens and closes around a single test, next
+to the other scoped dependencies, is fine as it is: it leaves `config.OVERRIDE.workflow` alone, so
+once it pops, lookups fall back to the adapter the class installed.
 
 The app built by `test_client` resolves its workflow once, during `lifespan`. pytest orders autouse
 fixtures by name, so `service` (and with it `test_client`) would otherwise run before
