@@ -5,14 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, assert_never
 
-from infrahub.git.closure_builder.post_processing import MANIFEST_PATH
+from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 from infrahub.git.fingerprint.blob_resolver import GitBlobResolver
 from infrahub.git.fingerprint.hasher import FingerprintHasher, canonical_json
 from infrahub.git.fingerprint.registry import FingerprintKind, FingerprintRegistry
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
-
     from git import Repo
     from infrahub_sdk.schema.repository import InfrahubWatchConfig
 
@@ -53,21 +51,19 @@ def fold_commit_id(
     return None
 
 
-class ClosurePathSelector:
-    """Select the dependency paths that contribute to a fingerprint's hashed closure.
+def require_canonical_path(*, field: str, value: str) -> None:
+    """Require ``value`` to already satisfy ``canonicalize_path(value) == value``.
 
-    The manifest is excluded even though it is merged into every definition's stored
-    dependencies: its blob changes on any unrelated or comment-only edit, which would churn
-    every definition's fingerprint. Its output-affecting fields are folded in separately as
-    parsed scalars, so dropping its bytes keeps the fingerprint stable against manifest
-    noise while remaining sensitive to the fields that actually matter.
+    Two spellings of the same file hash to two different digests, so a caller that skips the
+    conversion produces a spurious regeneration wave that nothing else would catch. The value
+    is never normalized here; it is rejected.
+
+    Raises:
+        ValueError: If ``value`` is not in canonical form.
+
     """
-
-    def __init__(self, *, excluded_paths: frozenset[str]) -> None:
-        self._excluded_paths = excluded_paths
-
-    def select(self, dependencies: Iterable[str]) -> list[str]:
-        return [path for path in dependencies if path not in self._excluded_paths]
+    if canonicalize_path(value) != value:
+        raise ValueError(f"{field} {value!r} is not in canonical form; it must satisfy canonicalize_path(p) == p")
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -83,8 +79,12 @@ class PythonTransformationFingerprintInput:
     dependencies: tuple[str, ...]
     dependencies_complete: bool
     watch: InfrahubWatchConfig | None
+    file_path: str
     class_name: str
     convert_query_response: bool
+
+    def __post_init__(self) -> None:
+        require_canonical_path(field="file_path", value=self.file_path)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -115,9 +115,13 @@ class GeneratorDefinitionFingerprintInput:
     dependencies_complete: bool
     watch: InfrahubWatchConfig | None
     parameters: dict[str, Any]
+    file_path: str
     class_name: str
     convert_query_response: bool
     target_group_id: str | None
+
+    def __post_init__(self) -> None:
+        require_canonical_path(field="file_path", value=self.file_path)
 
 
 class FingerprintComposer:
@@ -133,13 +137,11 @@ class FingerprintComposer:
         hasher: FingerprintHasher,
         blob_resolver: BlobResolver,
         registry: FingerprintRegistry,
-        closure_selector: ClosurePathSelector,
         commit: str,
     ) -> None:
         self._hasher = hasher
         self._blob_resolver = blob_resolver
         self._registry = registry
-        self._closure_selector = closure_selector
         self._commit = commit
 
     @property
@@ -161,6 +163,10 @@ class FingerprintComposer:
         ]
         match inputs:
             case PythonTransformationFingerprintInput():
+                # The closure is a sorted set of paths, so it cannot say which of them is the
+                # entry point: when `watch` names a directory, moving the entry point to another
+                # file already in that directory leaves the closure identical.
+                terms.append(f"file_path={inputs.file_path}")
                 terms.append(f"class_name={inputs.class_name}")
                 terms.append(f"convert_query_response={inputs.convert_query_response}")
                 # A Python transform's dependencies are auto-detected as its source file alone,
@@ -210,6 +216,7 @@ class FingerprintComposer:
             f"query_fingerprint={query_fingerprint or ''}",
             f"closure={self._closure_term(inputs.dependencies)}",
             f"parameters={canonical_json(inputs.parameters)}",
+            f"file_path={inputs.file_path}",
             f"class_name={inputs.class_name}",
             f"convert_query_response={inputs.convert_query_response}",
             f"target_group_id={inputs.target_group_id}",
@@ -249,9 +256,8 @@ class FingerprintComposer:
             watch_required=watch_required,
         )
 
-    def _closure_term(self, dependencies: Iterable[str]) -> str:
-        hashed_paths = self._closure_selector.select(dependencies)
-        pairs = self._blob_resolver.resolve(hashed_paths)
+    def _closure_term(self, dependencies: tuple[str, ...]) -> str:
+        pairs = self._blob_resolver.resolve(dependencies)
         return canonical_json([[path, blob_sha] for path, blob_sha in pairs])
 
 
@@ -261,6 +267,5 @@ def build_fingerprint_composer(*, repo: Repo, commit: str) -> FingerprintCompose
         hasher=FingerprintHasher(),
         blob_resolver=GitBlobResolver(repo=repo, commit=commit),
         registry=FingerprintRegistry(),
-        closure_selector=ClosurePathSelector(excluded_paths=frozenset({MANIFEST_PATH})),
         commit=commit,
     )

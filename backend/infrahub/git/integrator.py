@@ -64,6 +64,7 @@ from infrahub.exceptions import (
     TransformError,
 )
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
+from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 from infrahub.git.closure_builder.dispatcher import build_default_closure_builder
 from infrahub.git.fingerprint.composer import (
     ArtifactDefinitionFingerprintInput,
@@ -1239,6 +1240,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     dependencies_complete=definition.closure.complete,
                     watch=definition.config.watch,
                     parameters=definition.config.parameters,
+                    file_path=canonicalize_path(str(definition.config.file_path)),
                     class_name=definition.config.class_name,
                     convert_query_response=definition.config.convert_query_response,
                     target_group_id=await self._resolve_target_group_id(
@@ -1401,7 +1403,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             transforms.extend(
                 await self.get_python_transforms(
                     module=module,
-                    file_path=file_info.relative_path_file,
                     transform=transform,
                     dependencies=list(closure.dependencies),
                     dependencies_complete=closure.complete,
@@ -1434,6 +1435,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     dependencies=tuple(transform.dependencies),
                     dependencies_complete=transform.dependencies_complete,
                     watch=transform.watch,
+                    file_path=canonicalize_path(transform.file_path),
                     class_name=transform.class_name,
                     convert_query_response=transform.convert_query_response,
                 )
@@ -1604,7 +1606,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def get_python_transforms(
         self,
         module: types.ModuleType,
-        file_path: str,
         transform: InfrahubPythonTransformConfig,
         dependencies: list[str],
         dependencies_complete: bool,
@@ -1612,6 +1613,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         log = get_run_logger()
         if transform.class_name not in dir(module):
             return []
+
+        # The manifest-declared path is the only source for `file_path`: the dependency closure
+        # and the fingerprint are both keyed on it, and a path derived from the filesystem
+        # instead can resolve outside the worktree and turn absolute.
+        file_path = str(transform.file_path)
 
         transforms = []
         transform_class = getattr(module, transform.class_name)

@@ -108,10 +108,9 @@ class TestWatchConfigImport(TestInfrahubApp):
         assert watched.dependencies_complete.value is True
 
         # The watched directory is expanded recursively and unioned with the auto-detected
-        # closure (the manifest and the template itself); the partials are present even though
-        # nothing in the template references them.
+        # closure (the template itself); the partials are present even though nothing in the
+        # template references them.
         assert set(watched.dependencies.value) == {
-            ".infrahub.yml",
             "templates/report.j2",
             "templates/partials/helper.j2",
             "templates/partials/extra.j2",

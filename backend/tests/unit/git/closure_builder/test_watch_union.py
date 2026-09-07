@@ -246,6 +246,29 @@ def test_entry_matching_no_tracked_file_is_warned_and_keeps_completeness(
     assert "utils/config.yml" in caplog.text
 
 
+def test_a_closure_that_stays_empty_is_never_trusted(tmp_path: Path) -> None:
+    """An empty closure stays incomplete even though the user declared watch files.
+
+    An empty closure names no file, so no change can ever intersect it and the definition
+    would stop regenerating for good instead of falling back to regenerating on any file
+    change. Auto-detection finding nothing and every declared entry matching nothing is a
+    broken declaration, not a closed list.
+    """
+    repo = _init_repo(tmp_path)
+    _write(tmp_path, "utils/config.yaml", "")
+    _track(repo, "utils/config.yaml")
+
+    result = union_watch_files(
+        result=ClosureResult(dependencies=(), complete=True, unresolved=()),
+        transform_config=_config(watch=["utils/config.yml"]),
+        worktree_root=tmp_path,
+        logger=LOGGER,
+    )
+
+    assert result.dependencies == ()
+    assert result.complete is False
+
+
 def test_entry_beginning_with_dash_is_treated_as_a_path(tmp_path: Path) -> None:
     """A watch entry starting with `-` is a path, not a git option.
 

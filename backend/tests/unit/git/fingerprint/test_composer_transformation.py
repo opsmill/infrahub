@@ -5,25 +5,30 @@ from dataclasses import dataclass
 import pytest
 from infrahub_sdk.schema.repository import InfrahubWatchConfig
 
-from infrahub.git.closure_builder.post_processing import MANIFEST_PATH
 from infrahub.git.fingerprint.composer import (
     Jinja2TransformationFingerprintInput,
     PythonTransformationFingerprintInput,
 )
 from infrahub.git.fingerprint.registry import FingerprintKind, FingerprintRegistry
-from tests.unit.git.fingerprint.conftest import build_composer
+from tests.unit.git.fingerprint.conftest import (
+    NON_CANONICAL_PATH_CASES,
+    NonCanonicalPathCase,
+    build_composer,
+    expected_rejection,
+)
 
-PY_BLOBS = {"transforms/report.py": "sha-report", MANIFEST_PATH: "sha-manifest"}
-J2_BLOBS = {"templates/report.j2": "sha-template", MANIFEST_PATH: "sha-manifest"}
+PY_BLOBS = {"transforms/report.py": "sha-report"}
+J2_BLOBS = {"templates/report.j2": "sha-template"}
 
 
 def _python_input(**overrides: object) -> PythonTransformationFingerprintInput:
     defaults: dict[str, object] = {
         "name": "report",
         "query_name": "q",
-        "dependencies": (MANIFEST_PATH, "transforms/report.py"),
+        "dependencies": ("transforms/report.py",),
         "dependencies_complete": True,
         "watch": InfrahubWatchConfig(files=[]),
+        "file_path": "transforms/report.py",
         "class_name": "Report",
         "convert_query_response": False,
     }
@@ -35,7 +40,7 @@ def _jinja2_input(**overrides: object) -> Jinja2TransformationFingerprintInput:
     defaults: dict[str, object] = {
         "name": "report",
         "query_name": "q",
-        "dependencies": (MANIFEST_PATH, "templates/report.j2"),
+        "dependencies": ("templates/report.j2",),
         "dependencies_complete": True,
         "watch": InfrahubWatchConfig(files=[]),
         "template_path": "templates/report.j2",
@@ -84,15 +89,49 @@ def test_python_changes_on_class_name_and_convert_query_response() -> None:
     assert base != digest(convert_query_response=True)
 
 
-def test_python_excludes_manifest_blob_from_closure() -> None:
-    def digest(blobs: dict[str, str]) -> str:
+def test_python_changes_on_file_path_within_an_unchanged_closure() -> None:
+    """Moving the entry point between two files already in the closure moves the fingerprint.
+
+    A transform whose `watch` names its directory carries every file in that directory, so
+    repointing `file_path` at a sibling leaves the closure and every blob sha identical.
+    """
+    blobs = {**PY_BLOBS, "transforms/sibling.py": "sha-sibling"}
+    closure = ("transforms/report.py", "transforms/sibling.py")
+
+    def digest(file_path: str) -> str:
         registry = FingerprintRegistry()
         _seed_query(registry)
-        return build_composer(blob_shas=blobs, registry=registry).compose_transformation(_python_input())
+        return build_composer(blob_shas=blobs, registry=registry).compose_transformation(
+            _python_input(dependencies=closure, file_path=file_path)
+        )
 
-    base = digest(PY_BLOBS)
-    manifest_edited = digest({**PY_BLOBS, MANIFEST_PATH: "sha-manifest-edited"})
-    assert base == manifest_edited
+    assert digest("transforms/report.py") != digest("transforms/sibling.py")
+
+
+def test_python_hashes_a_declared_manifest_entry_like_any_other_file() -> None:
+    """A manifest entry in the closure is hashed like any other file.
+
+    `.infrahub.yml` reaches a closure only when `watch.files` names it, and it then carries
+    no exemption: its blob contributes to the digest and an edit to it moves the fingerprint.
+    """
+    closure = (".infrahub.yml", "transforms/report.py")
+    blobs = {**PY_BLOBS, ".infrahub.yml": "sha-manifest"}
+
+    def digest(blob_shas: dict[str, str]) -> str:
+        registry = FingerprintRegistry()
+        _seed_query(registry)
+        return build_composer(blob_shas=blob_shas, registry=registry).compose_transformation(
+            _python_input(dependencies=closure)
+        )
+
+    assert digest(blobs) != digest({**blobs, ".infrahub.yml": "sha-manifest-edited"})
+
+
+@pytest.mark.parametrize("case", NON_CANONICAL_PATH_CASES, ids=lambda case: case.name)
+def test_python_rejects_a_non_canonical_file_path(case: NonCanonicalPathCase) -> None:
+    """Two spellings of the same entry point must not be able to reach two different digests."""
+    with pytest.raises(ValueError, match=expected_rejection(field="file_path", value=case.value)):
+        _python_input(file_path=case.value)
 
 
 def test_python_folds_commit_id_only_when_watch_absent() -> None:
@@ -145,15 +184,6 @@ def test_jinja2_changes_on_template_path_and_closure() -> None:
     base = digest(blobs=J2_BLOBS)
     assert base != digest(blobs=J2_BLOBS, template_path="templates/other.j2")
     assert base != digest(blobs={**J2_BLOBS, "templates/report.j2": "sha-template-edited"})
-
-
-def test_jinja2_excludes_manifest_blob_from_closure() -> None:
-    def digest(blobs: dict[str, str]) -> str:
-        registry = FingerprintRegistry()
-        _seed_query(registry)
-        return build_composer(blob_shas=blobs, registry=registry).compose_transformation(_jinja2_input())
-
-    assert digest(J2_BLOBS) == digest({**J2_BLOBS, MANIFEST_PATH: "sha-manifest-edited"})
 
 
 @dataclass
