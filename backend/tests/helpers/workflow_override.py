@@ -22,9 +22,8 @@ def override_workflow[WorkflowT: InfrahubWorkflow](
 ) -> Iterator[WorkflowT]:
     """Route both workflow lookups to ``workflow`` for the duration of the block.
 
-    The provider's own ``scope`` drops the override it replaced instead of restoring it, and
-    neither it nor ``config.OVERRIDE`` is put back when the block is left through an exception,
-    so a leftover double could reach whatever the tests build next.
+    Both lookups go back to their previous values when the block ends, normally or through an
+    exception, and an override that did not exist before is removed.
 
     Args:
         workflow: The adapter every workflow lookup should return inside the block.

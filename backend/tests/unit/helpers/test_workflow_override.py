@@ -1,9 +1,10 @@
 from collections.abc import Iterator
 
 import pytest
-from fast_depends import Provider
+from fast_depends import Depends, Provider, inject
 
 from infrahub import config
+from infrahub.services.adapters.workflow import InfrahubWorkflow
 from infrahub.workers.dependencies import build_workflow
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.workflow_override import override_workflow
@@ -22,8 +23,11 @@ def no_global_override() -> Iterator[None]:
     config.OVERRIDE.workflow = original
 
 
-def resolved(provider: Provider) -> object:
-    return provider.overrides[build_workflow].call()
+def resolved(provider: Provider) -> InfrahubWorkflow:
+    def lookup(workflow: InfrahubWorkflow = Depends(build_workflow)) -> InfrahubWorkflow:  # noqa: B008
+        return workflow
+
+    return inject(lookup, dependency_provider=provider)()
 
 
 def test_override_is_removed_when_there_was_none_before(provider: Provider) -> None:
