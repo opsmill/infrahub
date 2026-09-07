@@ -60,11 +60,25 @@ branch is not `main`, an empty remote, and a remote with branches but a detached
 ## Pure check
 
 ```python
-def ensure_branch_exists(refs: RemoteRefs, branch_name: str, repository_name: str) -> None
+def ensure_branch_exists(
+    refs: RemoteRefs, branch_name: str, repository_name: str, location: str
+) -> None
 ```
 
-Raises `RepositoryInvalidBranchError(identifier=repository_name, branch_name=branch_name, location=..., message=...)`
-when `branch_name not in refs.branches`. Messages, verbatim:
+Raises `RepositoryInvalidBranchError(identifier=repository_name, branch_name=branch_name, location=location, message=...)`
+when `branch_name not in refs.branches`.
+
+`location` is the remote URL. It is a **required** positional parameter of
+`RepositoryInvalidBranchError` (`infrahub/exceptions.py`), which is why it is a parameter here rather
+than something the checker can derive: `RemoteRefs` deliberately holds no URL, since it models what
+the remote reported, not how it was reached. The caller passes `message.repository_location`, the
+same value it gave `list_remote_refs`.
+
+Both messages below are supplied explicitly, so `location` never appears in the operator-facing text;
+it is passed because the exception's constructor requires it and because its default message uses it
+when no explicit `message` is given.
+
+Messages, verbatim:
 
 | Condition | Message |
 |---|---|
@@ -84,9 +98,11 @@ configuration and produces no error, warning or log line.
 
 1. `refs = list_remote_refs(name=..., url=...)`; a `RepositoryError` here is
    mapped exactly as today (`ERROR_CONNECTION`, `ERROR_CRED`, else `ERROR`).
-2. If `message.default_branch` is set, `ensure_branch_exists(refs, message.default_branch, message.repository_name)`;
+2. If `message.default_branch` is set,
+   `ensure_branch_exists(refs, message.default_branch, message.repository_name, message.repository_location)`;
    `RepositoryInvalidBranchError` is mapped to `success=False`, `message=exc.message`,
-   `operational_status=ERROR`.
+   `operational_status=ERROR`. The fourth argument is the same `repository_location` passed to
+   `list_remote_refs` in step 1.
 3. Reply as today.
 
 ## Mutation outcome

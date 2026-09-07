@@ -2,7 +2,21 @@
 
 No `NEEDS CLARIFICATION` markers remain. The spec resolved the two product questions (reject at
 connect time; report the skipped branch in the task log). This document records what the codebase
-investigation found and the technical decisions it drives. Locations are cited as `module::symbol`.
+investigation found and the technical decisions it drives.
+
+**How to read the code references.** Locations are cited as `module::symbol` where a symbol exists,
+and some claims additionally cite a line number. **This is a point-in-time verification record, not a
+navigation aid**: it is evidence that a specific fact was checked against `develop` at the commit this
+spec set landed on, and the line numbers are part of that evidence. Every one of them was re-verified
+at that commit. They will go stale as soon as PR 2 lands, and that is expected rather than a defect
+to fix — the symbols stay valid, and the whole point of the decisions below is that most of the cited
+code is deleted.
+
+This is the opposite of the standard applied to `dev/knowledge/backend/`. A knowledge page is meant
+to stay true, so T068a treats stale line numbers there as something to correct. `tasks.md` follows the
+same rule for a different reason, citing sites by symbol only, because a task is read while the code
+is moving under it. A Phase 0 record is neither: it is a dated snapshot, and stripping its line
+numbers would make its verification unreproducible without making anything more current.
 
 ## Verified state of the code
 

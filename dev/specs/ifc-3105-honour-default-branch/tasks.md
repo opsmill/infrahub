@@ -28,9 +28,10 @@ internal docs under `dev/`, user docs under `docs/docs/`, changelog fragments un
 ## PR breakdown
 
 Four PRs. The boundaries follow the dependency rules below, not task count. Two of them are forced:
-T009-T028 cannot be split, because making `default_branch` and `internal_status` required breaks 57
-construction sites across 23 test files in one go; and the plan requires the code and the docs
-describing it to ship together so a revert is clean.
+T009-T028 cannot be split, because making `default_branch` and `internal_status` required reaches 64
+construction sites across 23 test files in one go (see plan.md Scale/Scope for the grep that
+reproduces the count); and the plan requires the code and the docs describing it to ship together so
+a revert is clean.
 
 | PR | Tasks | Scope | Review weight |
 |---|---|---|---|
@@ -92,7 +93,7 @@ plan's widest-blast-radius risk) is caught by a list rather than by review.
 - [ ] T002 [P] Record the migration worklist in `dev/specs/ifc-3105-honour-default-branch/call-sites.md` from `grep -rn "get_initialized_repo\|InfrahubRepository.init\|InfrahubRepository.new\|InfrahubRepository(\|InfrahubReadOnlyRepository(" backend/infrahub backend/tests`. Four lists, each ticked off as its task lands:
   1. **16** production `get_initialized_repo` call sites (`await get_initialized_repo(` — do not count the `def` or the internal `_get_initialized_repo` delegation)
   2. **14** direct factory call sites outside `git/repository.py`, including the 5 that need their Infrahub branch named explicitly per research.md D4
-  3. the **23** test files that construct a repository object directly (57 sites)
+  3. the **23** test files that construct a repository object (64 sites: 61 through `.init(`/`.new(`, 3 direct instantiation). Use the grep in plan.md Scale/Scope verbatim — a narrower pattern gives a smaller number and a false sense of completeness
   4. the test call sites of the two methods whose contract changes, which no construction grep finds: `grep -rn "check_connectivity\|validate_remote_branch" backend/tests`. T047 removes the first and T055 changes the second's return type, so their existing tests break or become dead and need porting, not just re-constructing
 
 **Checkpoint**: Baseline recorded; every site that must change is enumerated.
@@ -214,11 +215,11 @@ repository was created.
 
 ### Implementation for User Story 3
 
-- [ ] T046 [US3] Create `backend/infrahub/git/remote_refs.py`: frozen `RemoteRefs(default_branch: str | None, branches: frozenset[str])`, `list_remote_refs(name, url)` running `git ls-remote --symref <url> HEAD refs/heads/*` from a neutral working directory and parsing line by line (`ref: refs/heads/<name>\tHEAD` sets the default; `<sha>\trefs/heads/<name>` adds a branch; other lines ignored), and `ensure_branch_exists(refs, branch_name, repository_name)` raising `RepositoryInvalidBranchError`. A `GitCommandError` goes to the existing static classifier with no branch name and nothing is parsed
+- [ ] T046 [US3] Create `backend/infrahub/git/remote_refs.py`: frozen `RemoteRefs(default_branch: str | None, branches: frozenset[str])`, `list_remote_refs(name, url)` running `git ls-remote --symref <url> HEAD refs/heads/*` from a neutral working directory and parsing line by line (`ref: refs/heads/<name>\tHEAD` sets the default; `<sha>\trefs/heads/<name>` adds a branch; other lines ignored), and `ensure_branch_exists(refs, branch_name, repository_name, location)` raising `RepositoryInvalidBranchError(identifier=repository_name, branch_name=branch_name, location=location, message=...)`. `location` is the remote URL and is **required**: `RepositoryInvalidBranchError.__init__` takes it as a required positional parameter, and `RemoteRefs` deliberately holds no URL. A `GitCommandError` goes to the existing static classifier with no branch name and nothing is parsed
 - [ ] T047 [US3] Remove `check_connectivity` from `backend/infrahub/git/base.py`; the static error classifier it delegated to stays on the base. Its one production caller is `message_bus/operations/git/repository.py::connectivity` (T050) and its one test is `backend/tests/unit/git/test_git_repository.py::test_check_connectivity_ignores_cwd_git_pointer`; delete that test only once T045 has ported its assertion to `test_remote_refs.py`, so the behaviour is never uncovered
 - [ ] T048 [P] [US3] Add `default_branch: str | None = None` to `backend/infrahub/message_bus/messages/git_repository_connectivity.py`
 - [ ] T049 [US3] `backend/infrahub/repositories/create_repository.py::RepositoryFinalizer.post_create`: set `default_branch` on the connectivity message from `obj.default_branch.value` for the read-write kind only, leaving it `None` for read-only. `ValidateRepositoryConnectivity` in `backend/infrahub/graphql/mutations/repository.py` keeps sending `None`, so trunk edits after connection stay unvalidated (US3 scenario 5)
-- [ ] T050 [US3] `backend/infrahub/message_bus/operations/git/repository.py::connectivity`: call `list_remote_refs`, mapping a `RepositoryError` exactly as today (`ERROR_CONNECTION`, `ERROR_CRED`, else `ERROR`); when `message.default_branch` is set, call `ensure_branch_exists` and map `RepositoryInvalidBranchError` to `success=False`, `message=exc.message`, `operational_status=ERROR`; reply as today
+- [ ] T050 [US3] `backend/infrahub/message_bus/operations/git/repository.py::connectivity`: call `list_remote_refs`, mapping a `RepositoryError` exactly as today (`ERROR_CONNECTION`, `ERROR_CRED`, else `ERROR`); when `message.default_branch` is set, call `ensure_branch_exists(refs, message.default_branch, message.repository_name, message.repository_location)` — the same `repository_location` given to `list_remote_refs` — and map `RepositoryInvalidBranchError` to `success=False`, `message=exc.message`, `operational_status=ERROR`; reply as today
 - [ ] T051 [US3] ⭐ **Evidence for FR-007 and SC-003.** Add the connect-time cases to `backend/tests/integration/git/test_git_live_remote.py` against a Gogs remote whose default branch is `master` and which has no `main`: the create mutation is rejected with the exact operator-facing message, no repository remains afterwards, a retry with the trunk set to `master` succeeds and synchronises, and an unreachable remote still reports the existing connectivity error rather than a trunk message
 - [ ] T052 [P] [US3] Document the connect-time rejection and its message in `docs/docs/git-integration/connect-repository.mdx`, and add the trunk-edit limitation the spec's edge cases and quickstart's SC-005 table both point at this page for: a trunk edited after connection is not validated, nothing re-clones or reconciles branches imported under the old mapping, and the value is served from cache for a short interval after the edit
 - [ ] T053 [P] [US3] Add `changelog/+ifc-3105-connect-time-trunk-validation.added.md`
@@ -300,7 +301,7 @@ Then push a commit to `main` and assert the next cycle records the warning again
 - T012 → T013–T021 (call sites) and T025–T028 (test migration)
 - T022–T024 (carrier removal) after T021
 - T029–T033 and T033a after T012; T006a after T014 and T018 (it exercises those call sites); T034 after every call site lands
-- Nothing in the suite runs green between T009 and T028: the required fields break 57 construction
+- Nothing in the suite runs green between T009 and T028: the required fields reach 64 construction
   sites across 23 test files. Treat T009–T028 as one landing
 
 ### Parallel Opportunities

@@ -43,7 +43,23 @@ to that branch rather than one per minute.
 **Project Type**: Web service (backend-only change in this feature).
 **Performance Goals**: One additional GraphQL read per read-write repository construction, amortised by the existing 30 s factory cache; two per repository per minute on the periodic sync. No new Cypher. Connect-time check adds no round trip (same `ls-remote` invocation, wider pattern).
 **Constraints**: No new persistent state in the graph; the skipped-branch warning is reported once at connect and thereafter by a synchronisation run that either imported something or saw the skipped branch's remote head move, because a warning on every cycle would add roughly 1,440 linked tasks a day to a repository with a standing collision. The advance check reads the worker's own remote-tracking refs before the fetch, so it is per worker and a single push may be reported once per worker. Trunk edits after connection remain unvalidated. Message models are internal, but the generated `message-bus-events.mdx` must be regenerated. `GitFileGet.branch_name` is a required new field, which assumes API and task workers are upgraded together; no in-flight message compatibility across versions is required. Existing mypy `disable_error_code` entries for `infrahub.git.base` and `infrahub.git.repository` stay as they are; no new suppressions. The code and the docs describing it ship in one PR so a revert is clean.
-**Scale/Scope**: **30 production call sites** across `git/`, `artifacts/`, `transformations/`, `generators/`, `computed_attribute/`, `proposed_change/`, `message_bus/operations/git/` and `webhook/`: **16 `get_initialized_repo` callers** and **14 direct factory callers** outside `git/repository.py` (the two inside it are the factory delegating to the classes). Five of the direct callers need their Infrahub branch named explicitly rather than taken from a model field (research.md D4). Plus two new modules inside `git/` holding symbols moved off the classes; two message models; one flow signature; one knowledge page; two user-doc pages; three changelog fragments. Tests carry the larger share: making `default_branch` and `internal_status` required breaks **57 direct construction sites across 23 test files**, many of which pass `client=None` or a stub client that cannot serve the resolver's graph read. That migration is its own task, decided per file (construct directly with explicit values for unit tests, or supply a client that answers the resolver).
+**Scale/Scope**: **30 production call sites** across `git/`, `artifacts/`, `transformations/`, `generators/`, `computed_attribute/`, `proposed_change/`, `message_bus/operations/git/` and `webhook/`: **16 `get_initialized_repo` callers** and **14 direct factory callers** outside `git/repository.py` (the two inside it are the factory delegating to the classes). Five of the direct callers need their Infrahub branch named explicitly rather than taken from a model field (research.md D4). Plus two new modules inside `git/` holding symbols moved off the classes; two message models; one flow signature; one knowledge page; two user-doc pages; three changelog fragments. Tests carry the larger share: making `default_branch` and `internal_status` required, and
+`infrahub_branch_name` a required factory parameter, reaches **64 construction sites across 23 test
+files**, many of which pass `client=None` or a stub client that cannot serve the resolver's graph
+read. That migration is its own task, decided per file (construct directly with explicit values for
+unit tests, or supply a client that answers the resolver).
+
+The criterion for that count, so it can be reproduced and so a different number is recognised as a
+different question rather than a contradiction:
+
+```bash
+grep -rn "InfrahubRepository(\|InfrahubReadOnlyRepository(\|InfrahubRepository\.init(\|InfrahubRepository\.new(\|InfrahubReadOnlyRepository\.init(\|InfrahubReadOnlyRepository\.new(" backend/tests
+```
+
+64 sites in 23 files, of which 61 go through `.init(`/`.new(` (21 files) and 3 are direct
+instantiation (2 files). Verified against `develop` at the commit this spec set landed on. Narrower
+patterns give smaller answers — `.init(`/`.new(` alone gives 61 in 21 — which is why the expression is
+stated rather than the number alone.
 
 ## Constitution Check
 
@@ -82,10 +98,18 @@ specs/ifc-3105-honour-default-branch/   (symlink: specs -> dev/specs)
 │   ├── connect-time-trunk-validation.md     # message field, ls-remote listing, pure check, exact messages
 │   └── sync-task-log.md                     # SyncReport, warning text, the two carriers and the node-link rule
 ├── checklists/
-│   └── requirements.md                      # already present
+│   └── requirements.md                      # spec-quality checklist plus the running amendment log
+├── critiques/                               # point-in-time critique records, superseded by later
+│   ├── critique-20260903-143257.md          #   rounds and by checklists/requirements.md. Historical
+│   ├── critique-20260904-094130.md          #   evidence, not current design: statuses and figures
+│   └── critique-20260904-104854.md          #   inside them were true only on their own date
 ├── spec.md                                  # already present
 └── tasks.md                                 # Phase 2 output (NOT created by /speckit-plan)
 ```
+
+Two more files land in this directory during Phase 1 of implementation and are not present yet:
+`baseline.md` (T001, the pre-change test baseline) and `call-sites.md` (T002, the migration
+worklists).
 
 ### Source Code (repository root)
 

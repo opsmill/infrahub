@@ -127,7 +127,11 @@ touches repository instance state, and the connect path that uses them holds no 
 | `default_branch` | `str \| None` | The branch `HEAD` points at, from the `ref: refs/heads/<name>\tHEAD` line. `None` when the remote has no `HEAD` (empty repository) or `HEAD` is detached. |
 | `branches` | `frozenset[str]` | Short names of every `refs/heads/*` entry. |
 
-Pure check: `ensure_branch_exists(refs: RemoteRefs, branch_name: str, repository_name: str) -> None`
+Pure check: `ensure_branch_exists(refs: RemoteRefs, branch_name: str, repository_name: str, location: str) -> None`
+
+`location` is the remote URL, required because `RepositoryInvalidBranchError.__init__` takes it as a
+required positional parameter. `RemoteRefs` holds no URL by design, so the caller supplies it from
+`message.repository_location`.
 raises `RepositoryInvalidBranchError` when `branch_name not in refs.branches`.
 
 ## Synchronisation report (task-log warning, D6)
