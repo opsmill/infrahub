@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
 
     from infrahub.core.query_group.subscribers import SubscriberRef
+    from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubComponent
 
@@ -44,17 +45,24 @@ class DatabasePythonReadSetSource:
         self.db = db
         self.component = component
 
+    def _declared_attributes(self, *, branch: str) -> dict[str, list[AttributeSchema]]:
+        return registry.schema.get_schema_branch(name=branch).computed_attributes.get_python_attributes_per_node()
+
     async def read_sets(self, *, branch: str) -> list[PythonAttributeReadSet]:
-        # A worker behind on the schema declares no Python attribute, which reads as nothing to do.
-        await wait_for_schema_to_converge(
-            branch_name=branch, component=self.component, db=self.db, log=get_run_logger()
-        )
         if not registry.schema.has_schema_branch(name=branch):
             # The kinds of an unregistered branch are unknown, so there is nothing to widen to.
             # Every active branch is registered when the registry loads, so this stays unreached.
             log.warning("Skipping the Python computed attributes of %s: no schema is registered for it", branch)
             return []
 
+        # Before the wait, which costs its full timeout whenever no worker publishes a schema hash.
+        if not self._declared_attributes(branch=branch):
+            return []
+
+        # A worker behind on the schema declares no Python attribute, which reads as nothing to do.
+        await wait_for_schema_to_converge(
+            branch_name=branch, component=self.component, db=self.db, log=get_run_logger()
+        )
         schema_branch = registry.schema.get_schema_branch(name=branch)
         attributes_per_kind = schema_branch.computed_attributes.get_python_attributes_per_node()
         if not attributes_per_kind:

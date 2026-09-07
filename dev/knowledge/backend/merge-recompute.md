@@ -40,11 +40,13 @@ The derivation applies the same per-action rules as the other families: a create
 - **Every signal that cannot be narrowed widens to the whole target kind**, and is logged. An undeterminable read set and a failed reader lookup both widen. One case is not a signal of that sort: an attribute whose transform is missing from the database is left out of the pass entirely. Nothing can compute it until the transform arrives, the recompute that follows the transform being created is what covers it then, and the schema-scoped backfill leaves it out for the same reason, since both build their candidates from the same gather. Widening it instead submits flows that raise `Unable to fetch transform`. A gather that fails outright is different: nothing is known about any attribute, so all of them widen. A widened target carries no node ids and goes to `trigger_update_python_computed_attributes` instead of `computed_attribute_process_transform`; the `whole_kind` flag is what carries that case to the submission planner, since chunking an empty id set would produce no submission at all.
 - **A schema-changing merge already refreshes what its own scope selects**, one whole kind at a time, through `SchemaUpdatedEvent`. Those pairs are dropped here, decided by the same scoper both sides run over candidates from the same gather. Only a pair the gather returned may be dropped; one it missed keeps an imprecise read set and stays in the pass. The send is checked: `PostMergeDispatcher` scopes the pass only after the schema event went out. What nothing checks is that `computed_attribute_setup_python` reached its submission. That flow has no retry, so a failure there leaves the dropped pairs stale until the next change touches them.
 
-Two costs come with this family, both on the coalesced path only. The read-set index is read after
-`wait_for_schema_to_converge`, which scans the worker keys in the cache; the order is deliberate,
-because a worker behind on the schema declares no Python attribute and reordering would read as
-nothing to do. And the index is rebuilt for every flow run, including the levels of a chain, since
-nothing that survives a process moves when a transform query is edited.
+Two costs come with this family, both on the coalesced path only. A branch that declares no Python
+attribute returns before `wait_for_schema_to_converge`, so it pays none of that wait, which costs
+its full timeout whenever no worker publishes a schema hash. A branch that declares one waits, then
+reads its read sets from the converged registry, because a worker behind on the schema reports
+fewer attributes than the branch holds. The early return trusts the local registry on "declares
+none". And the index is rebuilt for every flow run, including the levels of a chain, since nothing
+that survives a process moves when a transform query is edited.
 
 `process_transform` recomputes the one attribute it is asked for. A kind with several Python attributes gets one submission per attribute, so processing the whole kind per submission would run each transform once per attribute.
 
