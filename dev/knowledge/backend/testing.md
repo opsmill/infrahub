@@ -305,7 +305,9 @@ Container (session)
 
 ### Schema Fixtures
 
-**Always prefer existing schema fixtures** over creating new ones. The codebase provides several reusable schema fixtures in `backend/tests/conftest.py`:
+Registered schemas come from fixtures in `backend/tests/conftest.py`. The rules for deriving a
+variant (`deepcopy` an unregistered one, never edit a shared one, promote only what several modules
+need) are in `dev/guidelines/backend/testing.md` §"Test Schemas".
 
 | Fixture | Description |
 |---------|-------------|
@@ -317,66 +319,11 @@ Container (session)
 
 When several tests share an expensive schema/data load, group them in a class and use the
 `_scope_class` variant with `@pytest.fixture(scope="class")` fixtures for the data; methods run in
-definition order and may build on accumulated state. See `TestNumberPoolAllocation` in
-`backend/tests/component/core/resource_manager/test_number_pool.py`.
+definition order and may build on accumulated state.
 
-**When to use existing fixtures:**
-
-```python
-# GOOD: Use existing fixture directly
-async def test_my_feature(db: InfrahubDatabase, car_person_schema: SchemaBranch):
-    # car_person_schema provides TestCar, TestPerson with relationships
-    ...
-```
-
-**When you need additional schema elements:**
-
-1. **Live update within the test** - Use `deepcopy` to modify an unregistered schema fixture:
+JSON schemas under `backend/tests/fixtures/schemas/` load through the test helper:
 
 ```python
-from copy import deepcopy
-
-async def test_with_custom_constraint(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    car_person_schema_unregistered: SchemaRoot,
-):
-    # Copy and modify the schema
-    custom_schema = deepcopy(car_person_schema_unregistered)
-    custom_schema.nodes[0].uniqueness_constraints = [["name__value", "color__value"]]
-
-    # Register the modified schema
-    registry.schema.register_schema(schema=custom_schema, branch=default_branch.name)
-    ...
-```
-
-2. **Update the base fixture** - If the modification is broadly useful, add it to `backend/tests/conftest.py`:
-
-```python
-# In conftest.py - add a new reusable fixture
-@pytest.fixture
-async def car_person_schema_with_extra_attr(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
-) -> SchemaBranch:
-    schema = deepcopy(car_person_schema_unregistered)
-    schema.nodes[0].attributes.append(
-        AttributeSchema(name="year", kind="Number", optional=True)
-    )
-    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
-```
-
-**Avoid:**
-
-- Creating inline schema dictionaries when existing fixtures suffice
-- Duplicating schema definitions across test files
-- Defining schemas in test files that could be shared fixtures
-
-**Schema files in `backend/tests/fixtures/schemas/`:**
-
-For JSON-based schemas, use the helper methods:
-
-```python
-# Load schema from fixtures directory
 schema_dict = helper.schema_file("infra_simple_01.json")
 await client.schema.load(schemas=[schema_dict])
 ```
