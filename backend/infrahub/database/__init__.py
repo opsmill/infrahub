@@ -690,7 +690,6 @@ async def run_in_transaction_with_retry[T](
     name: str,
     func: Callable[[InfrahubDatabase], Coroutine[Any, Any, T]],
     lock_names: list[str] | None = None,
-    lock_metrics: bool = False,
 ) -> T:
     """Run `func` in a database transaction, replaying it when the database errors transiently.
 
@@ -708,7 +707,6 @@ async def run_in_transaction_with_retry[T](
         name: Label to record failed attempts against in the retry metric.
         func: Receives the transaction to run against and returns the result.
         lock_names: Locks to hold for the duration of each attempt.
-        lock_metrics: Whether acquiring those locks is recorded in the lock metrics.
 
     Returns:
         Whatever `func` returns.
@@ -719,12 +717,17 @@ async def run_in_transaction_with_retry[T](
 
     """
     if db.is_transaction:
-        async with lock.InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=lock_metrics):
+        # Claim the retry here too: a scope below this one must not replay on a transaction it has
+        # no way to roll back and reopen.
+        async with (
+            _claim_retry_ownership(name),
+            lock.InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False),
+        ):
             return await func(db)
 
     async def run_attempt() -> T:
         async with (
-            lock.InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=lock_metrics),
+            lock.InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False),
             db.start_transaction() as dbt,
         ):
             return await func(dbt)

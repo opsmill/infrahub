@@ -5,14 +5,20 @@ from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from neo4j import AsyncGraphDatabase
 from neo4j.exceptions import ClientError, TransientError
 
 from infrahub import config
-from infrahub.database import retry_db_transaction
+from infrahub.database import (
+    InfrahubDatabase,
+    InfrahubDatabaseMode,
+    retry_db_transaction,
+    run_in_transaction_with_retry,
+)
 from infrahub.database.metrics import TRANSACTION_RETRIES
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator, Generator
 
 
 @pytest.fixture
@@ -185,6 +191,17 @@ def _set_zero_delay_retries() -> Generator[None, None, None]:
     config.SETTINGS.database.retry_jitter_max = original_jitter_max
 
 
+@pytest.fixture
+async def transaction_mode_db() -> AsyncGenerator[InfrahubDatabase, None]:
+    """A database in transaction mode, standing in for one a caller opened and owns.
+
+    Nothing here runs a query, so the driver never opens a connection.
+    """
+    driver = AsyncGraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "unused"))
+    yield InfrahubDatabase(driver=driver, mode=InfrahubDatabaseMode.TRANSACTION)
+    await driver.close()
+
+
 class _RetriableWork:
     """Async callable that fails with a retriable error a fixed number of times, then succeeds."""
 
@@ -246,3 +263,20 @@ class TestRetryOwnership:
 
         assert await retry_db_transaction(name="released_second")(later.run)() == "ok"
         assert later.calls == 2
+
+    async def test_a_caller_owned_transaction_claims_the_retry(self, transaction_mode_db: InfrahubDatabase) -> None:
+        """Entering a transaction the caller owns has to claim the retry as well as decline it.
+
+        Replaying on that transaction can only raise a transaction-state error, so the failure has
+        to reach the caller who is able to roll it back and open a new one.
+        """
+        work = _RetriableWork(failures=1)
+        nested = retry_db_transaction(name="claimed_by_transaction_owner")(work.run)
+
+        async def run_nested(_: InfrahubDatabase) -> str:
+            return await nested()
+
+        with pytest.raises(TransientError, match=r"^no available threads to serve this request$"):
+            await run_in_transaction_with_retry(db=transaction_mode_db, name="transaction_owner", func=run_nested)
+
+        assert work.calls == 1
