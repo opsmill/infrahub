@@ -3035,9 +3035,11 @@ def workflow_local(dependency_provider: Provider) -> Generator[WorkflowLocalExec
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()
     config.OVERRIDE.workflow = workflow
-    with dependency_provider.scope(build_workflow, lambda: workflow):
-        yield workflow
-    config.OVERRIDE.workflow = original
+    try:
+        with dependency_provider.scope(build_workflow, lambda: workflow):
+            yield workflow
+    finally:
+        config.OVERRIDE.workflow = original
 
 
 @pytest.fixture
@@ -3046,9 +3048,11 @@ def workflow_recorder(dependency_provider: Provider) -> Generator[WorkflowRecord
     original = config.OVERRIDE.workflow
     recorder = WorkflowRecorder()
     config.OVERRIDE.workflow = recorder
-    with dependency_provider.scope(build_workflow, lambda: recorder):
-        yield recorder
-    config.OVERRIDE.workflow = original
+    try:
+        with dependency_provider.scope(build_workflow, lambda: recorder):
+            yield recorder
+    finally:
+        config.OVERRIDE.workflow = original
 
 
 @pytest.fixture

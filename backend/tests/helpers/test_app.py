@@ -317,9 +317,11 @@ class TestInfrahubApp(TestInfrahubAppBase):
         workflow = WorkflowLocalExecution()
         await setup_task_manager_once()
         config.OVERRIDE.workflow = workflow
-        with dependency_provider.scope(build_workflow, lambda: workflow):
-            yield workflow
-        config.OVERRIDE.workflow = original
+        try:
+            with dependency_provider.scope(build_workflow, lambda: workflow):
+                yield workflow
+        finally:
+            config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class", autouse=True)
     async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
@@ -335,9 +337,11 @@ class TestInfrahubAppWithoutLocalWorkflow(TestInfrahubAppBase):
         workflow = WorkflowLocalExecution()
         await setup_task_manager_once()
         config.OVERRIDE.workflow = workflow
-        with dependency_provider.scope(build_workflow, lambda: workflow):
-            yield workflow
-        config.OVERRIDE.workflow = original
+        try:
+            with dependency_provider.scope(build_workflow, lambda: workflow):
+                yield workflow
+        finally:
+            config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class")
     async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
