@@ -430,7 +430,9 @@ eleven.
 
 - **Phase 1 (Setup)**: no dependencies. T001 gates Phase 2
 - **Phase 2 (Foundational)**: blocks all three stories. Internally: 2.1 → 2.2 → 2.3 → 2.4 → 2.6, with
-  2.5 branching off 2.1 and mergeable either side of checkpoint 2A
+  2.5 branching off 2.1. Only part of 2.5 is free of that chain: T021, T022 and T097 may merge either
+  side of checkpoint 2A, while T023 and T024 edit files 2.3 and 2.4 create and therefore land with
+  them or after
 - **Phase 3 (US1, P1)**: needs checkpoint 2A. Block 3.5 needs nothing else
 - **Phase 4 (US2, P2)**: needs checkpoint 2A. Does not need Phase 3
 - **Phase 5 (US3, P3)**: needs checkpoint 2B and block 3.1

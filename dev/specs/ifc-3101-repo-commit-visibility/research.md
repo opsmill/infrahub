@@ -115,12 +115,12 @@ primitive. `RefreshGitFetch` handled by `infrahub.message_bus.operations.git.rep
 already clones-if-missing, fetches, and resets with `update_commit_value=False`; it is the
 established convergence broadcast and needs no change for this feature's purposes.
 
-One caveat to carry into implementation, found during review on 2026-09-07: that handler calls
-`get_initialized_repo` *before* taking the repository lock, and only the hard reset runs inside it
-(`operations/git/repository.py`, the `get_initialized_repo` call precedes the
-`lock.registry.get(...)` block whose own comment explains the reset must not interleave). So a cold
-worker receiving the broadcast clones outside the lock, concurrently with any other git operation on
-that repository. This is pre-existing behaviour on the read-write path, but this feature newly
+One caveat to carry into implementation, found during review on 2026-09-07: in
+`operations/git/repository.py` that handler calls `get_initialized_repo` *before* entering the
+`lock.registry.get(...)` block. The fetch and the reset or pull are all inside the lock; the
+initialisation is the single step outside it, and initialisation is what clones when the directory is
+missing. So a cold worker receiving the broadcast clones concurrently with any other git operation on
+that repository, while every subsequent step is serialised as intended. This is pre-existing behaviour on the read-write path, but this feature newly
 triggers the broadcast for read-only repositories, so FR-019's no-interleaving guarantee covers only
 the steps *this* flow performs, not the clone a receiving worker may do. Either move the
 initialisation inside that handler's lock or state the exposure; it is not this feature's to fix
