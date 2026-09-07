@@ -607,6 +607,10 @@ def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
     """
     target_count = (
         len(schema_branch.computed_attributes.get_jinja2_target_map())
+        + sum(
+            len(attributes)
+            for attributes in schema_branch.computed_attributes.get_python_attributes_per_node().values()
+        )
         + len(schema_branch.display_labels.get_template_nodes())
         + len(schema_branch.hfids.get_template_nodes())
     )
