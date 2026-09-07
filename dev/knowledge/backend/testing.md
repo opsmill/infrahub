@@ -305,9 +305,10 @@ Container (session)
 
 ### Schema Fixtures
 
-Registered schemas come from fixtures in `backend/tests/conftest.py`. The rules for deriving a
-variant (`deepcopy` an unregistered one, never edit a shared one, promote only what several modules
-need) are in `dev/guidelines/backend/testing.md` §"Test Schemas".
+Registered schemas come from fixtures in `backend/tests/conftest.py`. Derive a variant the way
+`dev/guidelines/backend/testing.md` §"Test Schemas" prescribes for the `tests/helpers/schema/`
+constants: `deepcopy` the unregistered fixture, never edit a shared one, and promote to
+`conftest.py` only what several modules need.
 
 | Fixture | Description |
 |---------|-------------|
