@@ -234,6 +234,10 @@ async def process_transform(
             f"for computed attribute '{computed_attribute_name}'"
         )
 
+    # Built first: resolving it after the transforms would discard a completed batch.
+    # `coalesced` stays a parameter; a live whole-kind refresh sends ids too.
+    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch, coalesced=coalesced)
+
     repo = await get_initialized_repo(
         client=client,
         repository_id=transform.repository_id,
@@ -267,8 +271,6 @@ async def process_transform(
     for skipped_id, reason in skipped:
         log.warning(f"Skipping recompute of '{computed_attribute_name}' for node {skipped_id}: {reason}")
 
-    # Coalesced origin must not be inferred from `object_ids`: a live whole-kind refresh sends ids too.
-    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch, coalesced=coalesced)
     await dispatcher.dispatch(
         writes=writes,
         branch_name=branch_name,
