@@ -569,6 +569,9 @@ ignorelist = [
     "type",
 ]
 
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"infrahub.workflows.initialization.setup_task_manager".msg = "Only the application's own startup calls the raw setup. Tests use tests.helpers.task_manager.setup_task_manager_once(), which runs it once per Prefect server and bounds it with a timeout."
+
 [tool.ruff.lint.isort]
 known-first-party = ["infrahub"]
 

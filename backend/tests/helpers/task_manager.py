@@ -41,7 +41,7 @@ from collections.abc import Awaitable, Callable
 
 from prefect.settings import get_current_settings
 
-from infrahub.workflows.initialization import setup_task_manager
+from infrahub.workflows.initialization import setup_task_manager  # noqa: TID251 - the helper wraps the raw setup
 from tests.helpers.prefect_diagnostics import dump_prefect_test_server_diagnostics
 
 # Ceiling for one setup attempt. It has to stay under the 300s pytest timeout, so that a wedged
