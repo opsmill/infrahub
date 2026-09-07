@@ -254,5 +254,7 @@ class TestGeneratorDefinitionRunReportsFailingMember(TestInfrahubAppBase):
         # The result names the one failed member and its error, reporting the healthy member as
         # succeeded, rather than collapsing into an opaque failure.
         assert state.is_failed()
-        failure_detail = f"{_FAILING_MEMBER} ({dataset[_FAILING_ID]}): {_member_failure_message(_FAILING_MEMBER)}"
-        assert state.message == f"1 of 2 generators failed, 1 succeeded: {failure_detail}"
+        assert state.message == (
+            "1 of 2 generators failed, 1 succeeded: "
+            f"member-beta ({dataset[_FAILING_ID]}): generator run failed for member-beta"
+        )
