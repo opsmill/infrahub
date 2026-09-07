@@ -33,9 +33,9 @@ class Migration078(ArbitraryMigration):
     Retention is judged across every branch, so a value any branch can still read is left open and
     released later by the runtime enforcement points. Each close is stamped with the time the field
     stopped being reachable rather than with the upgrade's own time, which keeps it out of the fork
-    window of every branch older than the upgrade. Where the graph records no such time it also
-    records no owner departure, so no branch resolves the owner as live and the upgrade's own time
-    closes the field without shifting any branch's view. A second run reports zero repairs.
+    window of every branch older than the upgrade. Where the graph records no such time the
+    upgrade's own time is the fallback, which shifts no branch's view either: a field only reaches
+    the stamp once no branch retains it. A second run reports zero repairs.
     """
 
     name: str = "078_retire_agnostic_property_edges"

@@ -17,7 +17,7 @@ class NodeAgnosticRetirementResult:
     """What one retirement run over a set of nodes changed."""
 
     edges_closed: int
-    """Global edges given a `to` timestamp. Zero means every field is still retained somewhere."""
+    """How many global edges this run gave a `to` timestamp."""
 
 
 _RETIRE_UNRETAINED_FIELDS_OF_NODES = """
