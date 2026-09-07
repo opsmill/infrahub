@@ -49,6 +49,15 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'overview/next-steps', label: 'Next Steps' },
           ],
         },
+        {
+          type: 'category',
+          label: 'Build with AI',
+          link: { type: 'doc', id: 'overview/build-with-ai/index' }, // hub
+          items: [
+            { type: 'doc', id: 'overview/build-with-ai/setup', label: 'Set up your AI assistant' },
+            { type: 'doc', id: 'overview/build-with-ai/working-with-ai', label: 'Work with your assistant' },
+          ],
+        },
         'faq/faq',
       ],
     },
@@ -115,6 +124,7 @@ const sidebars: SidebarsConfig = {
           label: 'Schema operations',
           link: { type: 'generated-index' },
           items: [
+            { type: 'doc', id: 'schema/build-your-schema', label: 'Build your schema with AI' },
             { type: 'doc', id: 'schema/create-and-load', label: 'Create and load schema' },
             { type: 'doc', id: 'schema/migration', label: 'Schema migration' },
             { type: 'doc', id: 'schema/marketplace/index', label: 'Marketplace' },
@@ -152,6 +162,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'objects/create-objects', label: 'Create objects' },
             { type: 'doc', id: 'objects/manage-from-cli', label: 'Manage objects with infrahubctl' },
             { type: 'doc', id: 'objects/load-from-yaml', label: 'Load data using YAML file' },
+            { type: 'doc', id: 'objects/import-from-csv', label: 'Import data from CSV' },
             { type: 'doc', id: 'objects/convert-object-kind', label: 'Convert object kind' },
             { type: 'doc', id: 'objects/metadata', label: 'Metadata & lineage' },
           ],
@@ -225,6 +236,7 @@ const sidebars: SidebarsConfig = {
             'graph-traversal/query-with-graphql',
           ],
         },
+        { type: 'doc', id: 'schema/analyze-your-data', label: 'Analyze your data' },
       ],
     },
 
