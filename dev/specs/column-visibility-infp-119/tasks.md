@@ -12,9 +12,11 @@ description: "Task list for user-controlled column visibility in list views"
 tests for the pure rules. TDD throughout: each rule and component test was written first and
 confirmed failing before its implementation.
 
-**Organization**: Grouped by the order the work was executed. The rules, the table seam, and the
-reveal plumbing are genuinely independent and ran concurrently; everything touching the UI waits on
-the hook, which is the one funnel in the graph.
+**Organization**: Grouped by the order the work was executed. The table seam (Phase 2) is genuinely
+independent of everything else. The rules (Phase 1) and the reveal plumbing (Phase 3) touch disjoint
+files but are *not* independent: T014 calls the two-argument form of the list-view rules, which only
+exists after T004, so T003/T004 ran in the first wave for that reason. Everything touching the UI
+waits on the hook, which is the one funnel in the graph.
 
 **Status**: All tasks complete. Recorded after the fact, including the two review rounds and the
 bot-review round, because what those rounds changed is the most useful part of the record.
@@ -42,8 +44,9 @@ bot-review round, because what those rounds changed is the most useful part of t
   surface is the only one that excludes resource-pool relationships — the shared rule *includes*
   them so their data is fetched, and only the object builder strips their columns.
 - [x] **T003** *(RED)* → **T004** *(GREEN)* Reveal opt-in on the two list-view rules: an optional set
-  of revealed names that opens the `display: "extra"` gate and only that gate. All eight existing
-  callers unaffected because the parameter is optional.
+  of revealed names that opens the `display: "extra"` gate and only that gate. Every existing caller
+  is unaffected because the parameter is optional — nine modules reference the two rules, several
+  through default parameters rather than direct calls.
 - [x] **T005** *(RED)* → **T006** *(GREEN)* `getColumnCandidates`: schema plus surface to the list the
   picker may offer, deduped, with fixed ids stripped and `canReveal: false` collapsing candidates to
   defaults. No branching on the surface.
@@ -57,11 +60,11 @@ bot-review round, because what those rounds changed is the most useful part of t
 ## Phase 2 — The shared table seam (concurrent with Phase 1)
 
 - [x] **T011** *(RED)* → **T012** *(GREEN)* `DataTable` accepts `columnVisibility` and passes it into
-  the table state. Six component tests, no mocks. The most valuable of them asserts the grid track
+  the table state. Seven component tests, no mocks. The most valuable of them asserts the grid track
   count against the visible column count — a phantom track misaligns every row and is otherwise
   invisible.
 
-## Phase 3 — Reveal plumbing, object list only (concurrent with Phases 1–2)
+## Phase 3 — Reveal plumbing, object list only (after T004; concurrent with Phase 2)
 
 - [x] **T013** Builder takes an optional resolved field list; omitted, behavior is unchanged.
 - [x] **T014** Revealed names travel into the request through the fetch's existing injectable rule
@@ -80,7 +83,7 @@ bot-review round, because what those rounds changed is the most useful part of t
 
 - [x] **T017** *(RED)* → **T018** *(GREEN)* The checklist: searchable, marks fields carrying an active
   sort or filter and keeps them selectable, disables the last visible column, and offers reset only
-  when a param is present. Fourteen component tests including every delta-from-default case.
+  when a param is present. Twenty-four component tests, including every delta-from-default case.
 - [x] **T019** The toolbar trigger with a badge counting departures, reveals included.
 
 ## Phase 6 — Wiring the four surfaces

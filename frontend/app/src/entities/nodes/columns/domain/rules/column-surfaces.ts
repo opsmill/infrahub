@@ -33,8 +33,8 @@ export const RELATIONSHIP_COLUMN_SURFACE: ColumnSurface = {
   canReveal: false,
 };
 
-// The two IPAM surfaces are spelled out in full rather than spread from the object surface: they
-// differ from it in three of six members, and a spread would bury that behind two overrides.
+// The two IPAM surfaces are spelled out in full rather than spread: they override most of what they
+// would inherit, so a spread would read as a small adjustment to something it barely shares.
 export const IP_ADDRESS_COLUMN_SURFACE: ColumnSurface = {
   fixedColumnIds: FIXED_COLUMN_IDS,
   getDefaultAttributes: getIpAddressAttributesVisibleInListView,

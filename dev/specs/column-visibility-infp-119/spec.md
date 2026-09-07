@@ -42,7 +42,8 @@
 - Q: What if the user hides every column? → A: Refuse. Keep one field column visible, enforced where
   URL input is validated so a hand-written link cannot bypass it.
 - Q: Should switching object kind keep the column params? → A: No — clear them, matching what the
-  kind switcher already does for filters.
+  kind switcher already does for filters. Re-selecting the kind already in view is not a switch and
+  clears nothing.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -135,7 +136,10 @@ A user sorts by a column, then hides it.
   validation has dropped every name it carried, which would otherwise leave an uncleanable param.
 - **FR-007**: The number of departures is shown on the control, counting reveals as well as hides.
 - **FR-008**: The row's identity, kind, and actions columns are never hidable.
-- **FR-009**: At least one field column always remains visible.
+- **FR-009**: A hide request never empties the table. If applying it would leave no field column
+  visible, one hide entry is dropped — the first in display order — so a column returns to its
+  default. A surface whose every candidate is hidden *by default* is out of scope for this rule:
+  there is no hide entry to give back, and nothing has been hidden.
 - **FR-010**: Hiding a column never discards its sort or filter, and the picker marks fields
   carrying either.
 - **FR-011**: Two entry points write identical state: a toolbar control and a header-menu action.
@@ -159,8 +163,8 @@ A user sorts by a column, then hides it.
   preserves it.
 - **SC-002**: A pasted link reproduces the sender's column set on a different session.
 - **SC-003**: A `display: "extra"` attribute reaches the screen with values, without a schema change.
-- **SC-004**: No input — control or hand-written URL — produces a table with zero field columns or a
-  hidden identity column.
+- **SC-004**: No hide request — from the control or a hand-written URL — produces a table with zero
+  field columns, and no input hides the identity column.
 - **SC-005**: A link written against an older schema still renders, dropping only names that no
   longer exist.
 - **SC-006**: No user's cached data is invalidated by the deploy: a request that reveals nothing

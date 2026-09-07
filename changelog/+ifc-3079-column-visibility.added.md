@@ -1,6 +1,7 @@
 Choose which columns a list view shows. Every schema-driven table — the object list, relationship
-tabs, and the IPAM address and prefix lists — now has a **Columns** control in its toolbar, plus a
-**Hide column** shortcut in each column's header menu.
+tabs, and the IPAM address and prefix lists — now has a **Columns** control. Wherever column headers
+offer a menu, that menu also carries a **Hide column** shortcut; relationship tabs have read-only
+headers, so there the Columns control is the way.
 
 Your choice lives in the URL, so a reload keeps it and the link can be shared with a colleague who
 will see the same view. On the object list you can also reveal attributes the schema marks as

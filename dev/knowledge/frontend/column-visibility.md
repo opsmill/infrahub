@@ -42,7 +42,8 @@ grow an `if (surface === "ipam")` — the refusal is structural, not a conventio
 `RELATIONSHIP_COLUMN_SURFACE` is written as `{ ...OBJECT_COLUMN_SURFACE, canReveal: false }`
 (`domain/rules/column-surfaces.ts::RELATIONSHIP_COLUMN_SURFACE`) so that its one real difference
 from the object surface is the only thing visible. The two IPAM surfaces are spelled out in full
-instead: they differ in three of six members, and a spread would bury that.
+instead: the address surface overrides five of the six members and the prefix surface four, so a
+spread would read as a small adjustment to something it barely shares.
 
 ## Two named params, not one prefixed list
 
@@ -77,10 +78,14 @@ towards neither the picker's badge nor its reset affordance.
 
 ## A kind switch clears the column params
 
-Switching kind clears both params outright (`CLEARED_COLUMN_PARAMS` in
-`nodes/object/ui/object-table/object-table-schema-selector.tsx::ObjectTableSchemaSelector`, spread
+Switching to a *different* kind clears both params (`CLEARED_COLUMN_PARAMS` in
+`nodes/object/ui/object-table/object-table-schema-selector.tsx::ObjectTableSchemaSelector`, applied
 at both `setObjectTableQueryParams` call sites there, beside the existing `removeFiltersNotInSchema`
 prune). Column choices are therefore discarded exactly as filters are.
+
+Re-selecting the kind already in view clears nothing: the clear is conditional on the target kind
+differing from the one on screen. Choosing your current kind from a picker is not a request to throw
+away the columns you just chose.
 
 Carrying them across only *looks* kinder. `useColumnVisibility` writes back the **validated** lists,
 so a name the new kind has no column for is silently erased from the URL by the next hide the user
@@ -313,12 +318,13 @@ so they are not schema fields at all. They are listed as `fixedColumnIds` on eve
 filtered out of the candidate list (`domain/rules/get-column-candidates.ts::getColumnCandidates`),
 so they never reach the picker.
 
-Those three ids are also why the grid template is `repeat(columnCount - 2, auto) 1fr 2.5rem`: the
-last two tracks are the identity and actions columns. Hiding every field column leaves two headers,
-and `repeat(0, auto)` is invalid CSS — the CSSOM would reject the whole declaration and collapse the
-grid to one implicit column, doubling the height of every row. `defaultGridTemplateColumns`
-(`shared/components/table/data-table.tsx`) therefore drops the `repeat()` entirely at two columns or
-fewer.
+Those three ids are also why the grid template repeats over `columnCount - 2` tracks before a final
+`1fr 2.5rem`: the last two tracks are the identity and actions columns. Hiding every field column
+leaves two headers, and `repeat(0, …)` is invalid CSS — the CSSOM rejects the whole declaration,
+collapsing the grid to one implicit column and doubling the height of every row.
+`defaultGridTemplateColumns` (`shared/components/table/data-table.tsx`) therefore drops the
+`repeat()` entirely at two columns or fewer. Read the current track function from that file rather
+than from here; it changed once already when column truncation landed.
 
 ## Known limitations
 

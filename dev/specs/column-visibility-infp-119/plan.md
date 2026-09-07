@@ -92,12 +92,15 @@ frontend/app/src/shared/
 ├── components/table/data-table.tsx               # + columnVisibility, + empty-grid guard
 └── config/qsp.ts                                 # + the two param keys
 
+frontend/app/src/entities/schema/domain/model/schema.ts        # + the shared FieldSchema union
+
 frontend/app/src/entities/nodes/object/
 ├── domain/rules/get-attributes-visible-in-list-view.ts        # + optional reveal opt-in
 ├── domain/rules/get-relationships-visible-in-list-view.ts     # + optional reveal opt-in
 ├── domain/use-cases/get-objects.ts                            # + revealedFields into the request
 ├── ui/queries/object.query-keys.ts                            # + revealedFields into the list key
 ├── ui/object-table/utils/get-object-table-columns.tsx         # + an options object with fields
+├── ui/object-table/object-table.tsx                           # all three reveal legs + the map
 ├── ui/object-table/object-table-context.tsx                   # + surface and capability
 ├── ui/object-table/object-table-schema-selector.tsx           # clear the params on a kind change
 ├── ui/object-table/cells/table-column-header.tsx              # + the hide action
@@ -112,7 +115,11 @@ frontend/app/src/entities/nodes/relationships/ui/relationship-table/
 tests/e2e/objects/test_object_columns.py          # NEW — the link round-trip
 ```
 
-## Phase 2 hand-off
+Also changed, outside the feature proper: `frontend/app/AGENTS.md` (registers the knowledge page),
+`dev/knowledge/frontend/entities-structure.md` (registers the entity), and
+`frontend/app/.betterer.results` (re-anchors one pre-existing error whose line an edit shifted).
+
+## The three legs a reveal needs
 
 Reveal needs three legs and only the object list has all three, which is why the other surfaces are
 hide-only rather than merely unfinished:
