@@ -166,6 +166,27 @@ Note `group_action.py` imports the budget helper but, per issue #10127, does not
 own related list — that is the separate defect the issue is primarily about, explicitly out of
 scope here (see spec "Out of Scope").
 
+**Correction — this consumer list was incomplete, and CI caught it.** The table above was built by
+searching for *importers of the limits helpers*. That misses a second, invisible class of consumer:
+tests that drive the limit by setting the **environment variable string**, without importing
+anything from `limits.py`. Exactly one existed, in the functional suite:
+
+```text
+backend/tests/functional/computed_attributes/test_computed_attribute_task_optimization.py
+  test_trigger_update_python_computed_attributes_chunks_and_tags_submissions
+  → monkeypatch.setenv("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "4")
+```
+
+It forces the maximum to 4 so the chunk size becomes 2 and three nodes split into `[2, 1]`. Per R4
+that `setenv` no longer reaches the value, so the chunk size stayed at the default and the assertion
+got `[3]`. `backend-tests-functional` went red on the first CI run; migrating the test to
+`temporary_settings` fixed it.
+
+**The lesson is about the search, not the fix.** When a module changes *where* it reads a value
+from, grep for the **configuration key itself** across the whole repo — not just for importers of
+the code that reads it. A repo-wide grep for both variable names has since been run; that test was
+the only remaining case, and no production code sets either name outside `development/Dockerfile`.
+
 ## R7. Behaviour delta summary
 
 | Deployment | Before | After |
