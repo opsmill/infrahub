@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -67,15 +68,21 @@ def _member_failure_message(target_name: str) -> str:
 
 
 class WorkflowRecorderFailingMember(WorkflowRecorder):
-    """Records every workflow call and raises for the generator runs whose target is selected to fail.
+    """Records every workflow call and raises for the generator runs whose target is selected to fail or cancel.
 
-    Simulates a single target-group member's generator run raising while the others succeed, without
-    running the real generator body.
+    Simulates individual target-group members' generator runs raising while the others succeed, without
+    running the real generator body. A selected member either raises an ordinary error or is cancelled.
     """
 
     def __init__(self) -> None:
         super().__init__()
         self.failing_target_ids: set[str] = set()
+        self.cancelled_target_ids: set[str] = set()
+
+    def reset(self) -> None:
+        super().reset()
+        self.failing_target_ids = set()
+        self.cancelled_target_ids = set()
 
     async def execute_workflow(
         self,
@@ -96,8 +103,12 @@ class WorkflowRecorderFailingMember(WorkflowRecorder):
         )
         if workflow == REQUEST_GENERATOR_RUN:
             model = (parameters or {})["model"]
-            if isinstance(model, RequestGeneratorRun) and model.target_id in self.failing_target_ids:
-                raise RuntimeError(_member_failure_message(model.target_name))
+            if isinstance(model, RequestGeneratorRun):
+                if model.target_id in self.cancelled_target_ids:
+                    # asyncio.gather discards this instance's message, so none is set here.
+                    raise asyncio.CancelledError
+                if model.target_id in self.failing_target_ids:
+                    raise RuntimeError(_member_failure_message(model.target_name))
         return result
 
 
@@ -258,3 +269,29 @@ class TestGeneratorDefinitionRunReportsFailingMember(TestInfrahubAppBase):
             "1 of 2 generators failed, 1 succeeded: "
             f"member-beta ({dataset[_FAILING_ID]}): generator run failed for member-beta"
         )
+
+    async def test_a_cancelled_member_propagates_the_cancellation(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+        workflow_recorder: WorkflowRecorderFailingMember,
+    ) -> None:
+        workflow_recorder.cancelled_target_ids = {dataset[_FAILING_ID]}
+
+        # The cancellation propagates out of the definition run rather than being dropped by the
+        # failure filter and letting the run report success.
+        with pytest.raises(asyncio.CancelledError):
+            await request_generator_definition_run(
+                model=self._model(dataset, default_branch.name),
+                context=self._context(admin_account, default_branch),
+                return_state=True,
+            )
+
+        # Both members are dispatched, so the cancellation is one target's.
+        dispatched = {
+            call["parameters"]["model"].target_id
+            for call in workflow_recorder.get_execute_calls_for(REQUEST_GENERATOR_RUN)
+        }
+        assert dispatched == {dataset[_HEALTHY_ID], dataset[_FAILING_ID]}

@@ -256,6 +256,11 @@ async def request_generator_definition_run(
 
     # Let every member run and report each outcome, rather than aborting on the first failure.
     results = await asyncio.gather(*tasks, return_exceptions=True)
+    # A cancelled member is a BaseException, not an Exception, so propagate the cancellation
+    # instead of letting it slip past the failure filter below and count as a success.
+    for result in results:
+        if isinstance(result, asyncio.CancelledError):
+            raise result
     failures = [
         (target_id, target_name, result)
         for (target_id, target_name), result in zip(members, results, strict=True)
