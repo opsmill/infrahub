@@ -105,7 +105,7 @@ say so rather than bend the rule.
 **Purpose**: Changes to existing branch-list plumbing that both user stories and the shared test
 fixture depend on. All of these are behaviour-preserving for existing callers.
 
-**CRITICAL**: T005 through T009 must be complete before Phase 3 starts; T010 and T011 must be
+**CRITICAL**: T005, T006, T008 and T009 must be complete before Phase 3 starts; T011 must be
 complete before any Phase 3 test task starts.
 
 - [X] T005 Add `sync_with_git: bool | None = None` to `BranchListFilters` in `backend/infrahub/core/branch/filters.py`, documented as "None means no constraint"
@@ -279,7 +279,7 @@ parallel with the rest of Phase 4.
 ### Phase dependencies
 
 - **Phase 1 (Setup)**: no dependencies
-- **Phase 2 (Foundational)**: T005 to T007 in sequence (filter, Cypher, GraphQL argument); T008 then T009; T010 and T011 after their code tasks. Blocks Phase 3
+- **Phase 2 (Foundational)**: T005 then T006 (filter, then Cypher); T008 then T009; T011 after its code tasks. T007, T009a, T009b and T010 are dropped. Blocks Phase 3
 - **Phase 3 (US1, increment A)**: T014 to T022 all parallel after Phase 2; T023 after T014 to T022; T024 after T023; T025 after T024; T026 after T025; T027 parallel with T023 onward; T012 and T013 any time after Phase 2 and before T028; T028 to T030 after T026; T031 after all tests; T032 after T031 merges
 - **Phase 4 (US1, increment B)**: T033 then T034 then T035 then T036; T037 to T039 after T036; T040 and T041 after T036 (parallel with T037 to T039); T042 and T043 after T039; T044, T045, T045a and T045b parallel after T039 (T045b needs only T033); T046 after T043; T047 last
 - **Phase 5 (US2)**: T048 any time; T049 after T036 (the reader), independent of T037 to T047; T050 to T052 after T049; T052a after T052; T053 after T051; T054 and T055 parallel after T049; T056 last

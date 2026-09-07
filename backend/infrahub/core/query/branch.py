@@ -282,11 +282,7 @@ class BranchNodeGetListQuery(StandardNodeGetListQuery):
         return " AND ".join(conditions) if conditions else ""
 
     def _build_timestamp_filters(self) -> list[str]:
-        """Build the timestamp range conditions.
-
-        Split out of the caller only to keep it under the statement limit; the conditions belong to
-        the same WHERE clause.
-        """
+        """Return the timestamp range conditions for the same WHERE clause the caller assembles."""
         conditions: list[str] = []
 
         # Branched from (rebase timestamp) filters (with NULL check)
