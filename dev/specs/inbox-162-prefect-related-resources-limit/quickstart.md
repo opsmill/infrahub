@@ -2,6 +2,17 @@
 
 All commands run from the repository root.
 
+## Prerequisite
+
+In a fresh worktree the `python_sdk` submodule is empty, which makes the editable install skip its
+path mapping and every `infrahub.*` import fail with `No module named 'infrahub_sdk'`. Fix the
+environment once before anything below (see research.md R8):
+
+```bash
+git submodule update --init python_sdk
+uv sync --all-groups --reinstall-package infrahub-server
+```
+
 ## 1. The defect, before the fix
 
 Show that Infrahub's ceiling and Prefect's enforced ceiling disagree when nothing is configured:
