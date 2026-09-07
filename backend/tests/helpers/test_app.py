@@ -322,7 +322,6 @@ class TestInfrahubApp(TestInfrahubAppBase):
     async def service(
         self, workflow_local: WorkflowLocalExecution, test_client: InfrahubTestClient
     ) -> InfrahubServices:
-        # pytest orders autouse fixtures by name, so the app has to be told to wait for its workflow
         return app.state.service
 
 
