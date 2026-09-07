@@ -35,14 +35,22 @@ a revert is clean.
 
 | PR | Tasks | Scope | Review weight |
 |---|---|---|---|
-| **1. Spec artifacts** | T001, T002, T070, T072, plus the `dev/specs/ifc-3105-honour-default-branch/` directory itself | Docs and tracker only: the spec set, the baseline and call-site worklists, the `infp-546` Story 6 correction, the three filed follow-ups | Small. No code, no CI risk |
-| **2. The trunk is resolved once (US1 + US2)** | T003-T044, T006a and T033a included, plus T068a | The defect fix and its enforcement: the resolver, the object contract, all 16 `get_initialized_repo` call sites, the 14 direct factory callers (5 needing an explicit branch), carrier removal, the 23-file test migration, the evidence tests | Large and atomic. ~20 source files, ~25 test files |
+| **1. Spec artifacts** | T070, plus the `dev/specs/ifc-3105-honour-default-branch/` directory itself | Docs only: the spec set and the `infp-546` Story 6 correction | Small. No code, no CI risk |
+| **2. The trunk is resolved once (US1 + US2)** | T001, T002, T003-T044, T006a and T033a included, plus T068a | The defect fix and its enforcement: the baseline and worklists, the resolver, the object contract, all 16 `get_initialized_repo` call sites, the 14 direct factory callers (5 needing an explicit branch), the 23-file test migration, the evidence tests | Large and atomic. ~20 source files, ~25 test files |
 | **3. Connect-time trunk validation (US3)** | T045-T053 | `git/remote_refs.py`, the connectivity message field, the flow, the Gogs integration test, `connect-repository.mdx` | Medium. One new module, one message field, one flow branch |
 | **4. Skipped-branch task log (US4)** | T054-T067, T054a and T057a included, plus T068 | `BranchSkipReason`, `SyncReport`, the pre-fetch head capture, the two carriers and the sync carrier's two triggers, the component and functional coverage, `overview.mdx` | Medium. Confined to `git/{repository,models,sync,tasks}.py` |
 
-**T071 is deliberately not in PR 1.** It is a Confluence and Jira edit, and gating a docs-only PR on
-an external tracker change stalls it for no benefit. It rides with T073 instead, where the same
-reasoning gets written for the PR description.
+**T071 and T072 are deliberately not in PR 1.** Both are tracker work that produces no repo artifact,
+so neither can be "in" a PR. T071 (the PRD amendment) rides with T073, where the same reasoning gets
+written for the PR description. T072 (three follow-ups to file) happens whenever, and the sooner the
+better while the findings are fresh — note that its first item belongs on the existing INFP-672 card
+rather than as a new ticket.
+
+**T001 and T002 open PR 2, not PR 1.** They were originally scoped to PR 1, which was wrong on both
+counts. T001's baseline records the git suites' pass/fail counts so T005 is provably a new failure;
+that comparison is only valid against the base PR 2 is actually built on, so taking it in an earlier
+PR against an earlier base proves nothing. T002's worklist is ticked off *as* the tasks in PR 2 land,
+so it belongs in the PR that consumes it. They are PR 2's first two commits.
 
 PRs 3 and 4 are independent of each other and both only need PR 2 merged, so they can be open for
 review at the same time. PR 3 also edits `git/base.py` (T047 removes `check_connectivity`), which

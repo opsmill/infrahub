@@ -166,19 +166,28 @@ As a developer writing or running a unit test against repository business logic,
 
 ### User Story 6 — Substitutable global dependencies (Priority: P3)
 
-As a developer writing tests for repository behavior, I need to be able to supply the dependencies the class needs (default branch name, SDK client) at construction time, so that I don't have to monkey-patch global singletons.
+As a developer writing tests for repository behavior, I need to be able to supply the dependencies the class needs (SDK client, branch-name mapping) at construction time, so that I don't have to monkey-patch global singletons.
 
-**Why this priority**: This unlocks cleaner tests but is gated on Stories 3–5 being in place. Doing it earlier would risk a wider blast radius. The optional-injection approach makes it backwards compatible.
+> **Amended: the default-branch half of this story is superseded by IFC-3105.** This story originally
+> planned an optional default-branch constructor parameter falling back to `registry.default_branch`.
+> IFC-3105 makes the trunk a **required** field on the read-write kind and deletes the optional field
+> and the fallback outright, so that parameter cannot be built as described and its testability goal
+> is already met — a required field is injectable with no global to patch. What remains here is the
+> SDK-client work, which is untouched, plus the `BranchNameMapper` extraction IFC-3105 handed over
+> (FR-009a). Expect to rebase on whichever of the two lands second; IFC-3105 edits `git/base.py` and
+> `git/repository.py` heavily.
 
-**Pull-request shape**: One pull request for the optional default-branch constructor parameter (with a falls-back-to-the-global default). One pull request for the SDK-client initialization move out of the property accessor. Two pull requests total.
+**Why this priority**: This unlocks cleaner tests but is gated on Stories 3–5 being in place. Doing it earlier would risk a wider blast radius.
 
-**Independent Test**: The base class accepts an optional default-branch override at construction time (falling back to the existing global when omitted). The SDK client is initialized in a way that does not mutate model state from inside a property accessor. Existing tests continue to pass; at least one new test exercises injection without patching globals.
+**Pull-request shape**: One pull request for the SDK-client initialization move out of the property accessor. One pull request for the `BranchNameMapper` extraction, which can only open once IFC-3105 has landed the three hooks it collapses. Two pull requests total.
+
+**Independent Test**: The SDK client is initialized in a way that does not mutate model state from inside a property accessor. The read-only kind's identity branch mapping is supplied by an injected collaborator rather than by three overridden methods. Existing tests continue to pass; at least one new test exercises injection without patching globals.
 
 **Acceptance Scenarios**:
 
-1. **Given** a test that needs a non-default branch name, **When** it constructs a repository, **Then** it can pass the branch name directly without touching any global.
+1. **Given** a test that needs a non-default trunk, **When** it constructs a read-write repository, **Then** it passes the trunk directly without touching any global — satisfied by IFC-3105's required field, not by work in this spec.
 2. **Given** a freshly constructed repository, **When** the SDK client accessor is read twice, **Then** the object's internal state is not mutated by the read.
-3. **Given** any existing caller, **When** the constructor change ships, **Then** the call site still compiles and behaves identically.
+3. **Given** the read-only repository kind, **When** it is constructed, **Then** its identity branch mapping comes from an injected `BranchNameMapper` and the base class declares no mapping hooks.
 
 ---
 
@@ -202,7 +211,8 @@ As a developer writing tests for repository behavior, I need to be able to suppl
 - **FR-006**: A read-only protocol type and a full repository protocol type MUST be defined in the module and re-exported from the existing repository module's public surface. They MUST describe only the methods their respective consumers need.
 - **FR-007**: A `RepositoryFileImporter` collaborator MUST exist and own the per-type import lifecycle for at least one object type initially, with the existing integrator method delegating to it. The collaborator MUST be designed so that additional object types are added by registering a handler with it.
 - **FR-008**: For each workflow-decorated method on the integrator class, a plain async implementation MUST exist, and the workflow-decorated entry point MUST live in the workflow module and delegate to it. The public method name on the integrator MUST remain unchanged.
-- **FR-009**: The base class MUST accept an optional default-branch override at construction time. When omitted, the existing global lookup MUST be used. No existing call site is required to change.
+- **FR-009**: ~~The base class MUST accept an optional default-branch override at construction time. When omitted, the existing global lookup MUST be used. No existing call site is required to change.~~ **SUPERSEDED by IFC-3105** (`dev/specs/ifc-3105-honour-default-branch/`), which makes the trunk a **required** field on the read-write kind and deletes both the optional field and the `or registry.default_branch` fallback this requirement depends on. An optional parameter with a silent global fallback is the exact shape that caused the defect IFC-3105 fixes, so this requirement must not be implemented as written. Its testability goal is met for free once IFC-3105 lands: a required constructor field is injectable by definition, with no global to patch. Replaced by FR-009a.
+- **FR-009a**: The three branch-mapping hooks IFC-3105 introduces on the repository base (`_get_mapped_remote_branch`, `_get_mapped_target_branch`, `_resolve_worktree_identifier`) SHOULD be collapsed into a single injected `BranchNameMapper` collaborator: a trunk-mapping implementation for the read-write kind and an identity one for the read-only kind. IFC-3105 declared them as three abstract hooks and explicitly deferred this, because the collaborator means a new required constructor parameter threaded through factories that a bug fix was already reshaping, for no behavioural gain. It is behaviour-preserving structural work, which is this spec's remit rather than that one's. *Verify:* the read-only kind's identity mapping is expressed by the injected collaborator rather than by three overridden methods, and the hooks are gone from the base.
 - **FR-010**: The SDK client MUST NOT be lazily initialized inside a property accessor that mutates the model's persisted fields. Initialization MUST occur via the standard model-construction lifecycle or an explicit configure call.
 - **FR-011**: Every pull request in this work MUST be independently mergeable: the full backend test suite and the expanded integration suite MUST both pass at its tip.
 - **FR-012**: Every pull request in this work MUST be independently revertable: reverting any single merged pull request MUST leave the codebase in a working, deployable state, with no later pull request relying on it to compile, pass tests, or behave correctly.
