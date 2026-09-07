@@ -4,7 +4,7 @@
 
 When a branch merges, the follow-up re-runs generators and regenerates artifacts. The blanket behavior ran every Generator and regenerated every artifact for every member regardless of what the merge changed, which on a real dataset spawned thousands of tasks. This path narrows that work to the definitions and members the merge actually affected. The guiding rule is that over-execution is acceptable but under-execution is not: whenever the affected set cannot be determined with confidence, the path regenerates everything for that merge.
 
-This covers generator definitions and artifact definitions. Jinja2 computed attributes, display labels, and human-friendly ids take the separate coalesced path in [merge-recompute.md](merge-recompute.md); Python-transform computed attributes and profile refresh are not part of either.
+This covers generator definitions and artifact definitions. Jinja2 computed attributes, display labels, human-friendly ids and Python-transform computed attributes take the separate coalesced path in [merge-recompute.md](merge-recompute.md); profile refresh is not part of either.
 
 The behavior is gated by `selective_execution_after_merge` (env `INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE`), enabled by default. Disabling it restores the blanket path exactly.
 
