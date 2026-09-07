@@ -328,7 +328,10 @@ Container (session)
 
 ### Schema Fixtures
 
-**Always prefer existing schema fixtures** over creating new ones. The codebase provides several reusable schema fixtures in `backend/tests/conftest.py`:
+Registered schemas come from fixtures in `backend/tests/conftest.py`. Derive a variant the way
+`dev/guidelines/backend/testing.md` §"Test Schemas" prescribes for the `tests/helpers/schema/`
+constants: `deepcopy` the unregistered fixture, never edit a shared one, and promote to
+`conftest.py` only what several modules need.
 
 | Fixture | Description |
 |---------|-------------|
@@ -340,66 +343,11 @@ Container (session)
 
 When several tests share an expensive schema/data load, group them in a class and use the
 `_scope_class` variant with `@pytest.fixture(scope="class")` fixtures for the data; methods run in
-definition order and may build on accumulated state. See `TestNumberPoolAllocation` in
-`backend/tests/component/core/resource_manager/test_number_pool.py`.
+definition order and may build on accumulated state.
 
-**When to use existing fixtures:**
-
-```python
-# GOOD: Use existing fixture directly
-async def test_my_feature(db: InfrahubDatabase, car_person_schema: SchemaBranch):
-    # car_person_schema provides TestCar, TestPerson with relationships
-    ...
-```
-
-**When you need additional schema elements:**
-
-1. **Live update within the test** - Use `deepcopy` to modify an unregistered schema fixture:
+JSON schemas under `backend/tests/fixtures/schemas/` load through the test helper:
 
 ```python
-from copy import deepcopy
-
-async def test_with_custom_constraint(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    car_person_schema_unregistered: SchemaRoot,
-):
-    # Copy and modify the schema
-    custom_schema = deepcopy(car_person_schema_unregistered)
-    custom_schema.nodes[0].uniqueness_constraints = [["name__value", "color__value"]]
-
-    # Register the modified schema
-    registry.schema.register_schema(schema=custom_schema, branch=default_branch.name)
-    ...
-```
-
-2. **Update the base fixture** - If the modification is broadly useful, add it to `backend/tests/conftest.py`:
-
-```python
-# In conftest.py - add a new reusable fixture
-@pytest.fixture
-async def car_person_schema_with_extra_attr(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
-) -> SchemaBranch:
-    schema = deepcopy(car_person_schema_unregistered)
-    schema.nodes[0].attributes.append(
-        AttributeSchema(name="year", kind="Number", optional=True)
-    )
-    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
-```
-
-**Avoid:**
-
-- Creating inline schema dictionaries when existing fixtures suffice
-- Duplicating schema definitions across test files
-- Defining schemas in test files that could be shared fixtures
-
-**Schema files in `backend/tests/fixtures/schemas/`:**
-
-For JSON-based schemas, use the helper methods:
-
-```python
-# Load schema from fixtures directory
 schema_dict = helper.schema_file("infra_simple_01.json")
 await client.schema.load(schemas=[schema_dict])
 ```
@@ -445,8 +393,6 @@ async def test_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
     assert "expected message" in caplog.text
 ```
 
-This matches the pattern used in `test_webhook_header.py` and `test_models.py`.
-
 ### Prefect Server State Outlives the Test Class
 
 The Prefect test server is session-scoped — one per xdist worker — while the database and the
@@ -476,13 +422,16 @@ depend on `prefect` therefore falls back to the harness server, even in a proces
 container is running — `component/api/conftest.py::workflow_local` and
 `TestInfrahubApp.workflow_local` sit on opposite sides of this line.
 
-**Never memoize server-side registration per process.** `setup_task_manager` registers blocks,
-worker pools, deployments and builtin triggers against whichever server is current, so a
-process-wide "already done" flag lets the first server's setup satisfy fixtures pointing at the
-second. The second server then has no deployments, and `setup_triggers` raises `KeyError` on the
-empty deployment mapping rather than failing anywhere near the cause.
-`tests/helpers/task_manager.py` keys its memo on `get_current_settings().api.url` for this reason;
-anything else cached against a Prefect server needs the same treatment.
+**Tests register the task manager through `setup_task_manager_once()`, never the raw
+`setup_task_manager()`.** The raw call redoes every block, worker pool, deployment and builtin
+trigger against the current server with no timeout of its own; under CI load it hangs until
+pytest-timeout kills the whole class. The helper runs the registration once per server, bounded,
+and fails fast for that server afterwards.
+
+**Never memoize server-side registration per process.** The registration goes to whichever server is
+current, so a process-wide "already done" flag lets the first server's setup satisfy fixtures pointing
+at the second, which then has no deployments and fails far from the cause. The helper keys its memo
+on `get_current_settings().api.url`; anything else cached against a Prefect server needs the same key.
 
 ### Swapping the Workflow Adapter for a Test Double
 

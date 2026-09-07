@@ -63,7 +63,9 @@ Also see `dev/knowledge/backend/query-pattern.md` for the Query class pattern us
 
 ## Testing
 
-See `dev/knowledge/backend/testing.md` for detailed testing infrastructure documentation.
+See `dev/knowledge/backend/testing.md` for the test infrastructure; read it before writing a
+class-scoped fixture, anything that touches Prefect (task manager setup, the two test servers), or
+a test that swaps in an adapter.
 
 ## Boundaries
 
