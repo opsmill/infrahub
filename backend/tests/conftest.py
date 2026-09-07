@@ -145,6 +145,27 @@ def dependency_provider() -> Provider:
     return provider
 
 
+@pytest.fixture(autouse=True)
+def _dependency_overrides_are_restored() -> Generator[None, None, None]:
+    """Fail the test that leaves a dependency override behind, and put the provider back."""
+    overrides_before = dict(provider.overrides)
+    workflow_before = config.OVERRIDE.workflow
+    yield
+    left_behind = sorted(
+        getattr(key, "__name__", repr(key)) for key in provider.overrides.keys() - overrides_before.keys()
+    )
+    workflow_changed = config.OVERRIDE.workflow is not workflow_before
+    if not left_behind and not workflow_changed:
+        return
+    provider.overrides.clear()
+    provider.overrides.update(overrides_before)
+    config.OVERRIDE.workflow = workflow_before
+    pytest.fail(
+        f"the test left dependency overrides behind (put back now): provider={left_behind}, "
+        f"config.OVERRIDE.workflow changed={workflow_changed}"
+    )
+
+
 @pytest.fixture(scope="module")
 async def db(
     neo4j: dict[int, int] | None, memgraph: dict[int, int] | None, reload_settings_before_each_module: None

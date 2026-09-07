@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from infrahub import config
 from infrahub.workers.dependencies import build_workflow
+from tests.helpers.dependency_override import override_dependency
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -34,14 +35,9 @@ def override_workflow[WorkflowT: InfrahubWorkflow](
 
     """
     previous_workflow = config.OVERRIDE.workflow
-    previous_dependant = dependency_provider.overrides.get(build_workflow)
     config.OVERRIDE.workflow = workflow
-    dependency_provider.override(build_workflow, lambda: workflow)
     try:
-        yield workflow
+        with override_dependency(build_workflow, lambda: workflow, dependency_provider=dependency_provider):
+            yield workflow
     finally:
         config.OVERRIDE.workflow = previous_workflow
-        if previous_dependant is None:
-            dependency_provider.overrides.pop(build_workflow, None)
-        else:
-            dependency_provider.overrides[build_workflow] = previous_dependant
