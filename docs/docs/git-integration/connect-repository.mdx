@@ -430,8 +430,8 @@ Now that you have created your token, you can use it to connect your GitLab repo
 If your Git server presents a certificate signed by a private Certificate Authority (CA), point Infrahub at your CA bundle instead of rebuilding the Docker image:
 
 1. Save your CA certificate and every intermediate certificate in a single PEM file, such as `ca-bundle.pem`
-2. Mount the file read-only into the `infrahub-server` and `task-worker` containers, for example at `/opt/infrahub/tls/ca-bundle.pem`
-3. Set `INFRAHUB_TLS_CA_BUNDLE=/opt/infrahub/tls/ca-bundle.pem` so every component trusts the CA, or `INFRAHUB_GIT_TLS_CA_FILE=/opt/infrahub/tls/ca-bundle.pem` to scope it to git only
+2. Mount the file read-only into the `infrahub-server` and `task-worker` containers, for example at `/opt/infrahub/tls/ca-bundle.pem`, or skip the mount and pass the PEM text through the setting in the next step
+3. Set `INFRAHUB_TLS_CA_BUNDLE=/opt/infrahub/tls/ca-bundle.pem` so every component trusts the CA, or `INFRAHUB_GIT_TLS_CA_FILE=/opt/infrahub/tls/ca-bundle.pem` to scope it to git only; both settings also accept the PEM text itself
 4. Restart your environment
 
 The task worker writes the path as `http.sslCAInfo` into its git configuration file at startup (`INFRAHUB_GIT_GLOBAL_CONFIG_FILE`, default `/opt/infrahub/.gitconfig`), so every clone, fetch and push over HTTPS uses it. The mount and configuration steps for Docker Compose, Docker and Helm are detailed in [Trust a private CA](../deploy-manage/install-configure/production-deployment/private-ca.mdx).
@@ -456,7 +456,7 @@ Disabling certificate validation is a bad security practice and is strongly disc
 
 :::
 
-If you absolutely need to disable certificate verification for testing purposes, set `INFRAHUB_GIT_TLS_INSECURE=true` on the task workers and restart your environment. The task worker sets `http.sslVerify` to `false` in its git configuration file, so git skips certificate validation for every HTTPS remote. This setting cannot be combined with `INFRAHUB_GIT_TLS_CA_FILE`. Infrahub owns `http.sslVerify` and `http.sslCAInfo` in its git configuration file and rewrites them at every task-worker startup, so a value written into that file by hand does not survive a restart; use the setting instead.
+If you absolutely need to disable certificate verification for testing purposes, set `INFRAHUB_GIT_TLS_INSECURE=true` on the task workers and restart your environment. The task worker sets `http.sslVerify` to `false` in its git configuration file, so git skips certificate validation for every HTTPS remote. It takes precedence over `INFRAHUB_GIT_TLS_CA_FILE`, so a configured bundle can stay in place while verification is switched off. Infrahub owns `http.sslVerify` and `http.sslCAInfo` in its git configuration file and rewrites them at every task-worker startup, so a value written into that file by hand does not survive a restart; use the setting instead.
 
 :::success Validation
 

@@ -11,7 +11,9 @@ reads the global setting directly or skips the registration step silently falls 
 
 For each component, the first rule that applies wins:
 
-1. The component's `tls_insecure` is enabled: no verification, every CA setting is ignored.
+1. The component's `tls_insecure` is enabled: no verification, every CA setting is ignored. Git, the
+   cache, the broker, the database and HTTP accept both settings together; the trace exporter and LDAP
+   reject the combination.
 2. The component's own `tls_ca_file` / `tls_ca_bundle`.
 3. The global `tls.ca_bundle` (`INFRAHUB_TLS_CA_BUNDLE`).
 4. The container's system trust store.
@@ -37,7 +39,7 @@ reaching public services.
 | Git credential helper | `http.tls_*` | `git_credential/helper.py::build_client_config` (own process, spawned by git) |
 | Git | `git.tls_ca_file`, `git.tls_insecure` | `git/global_config.py::apply_git_tls_config` writes `http.sslCAInfo` / `http.sslVerify` into the global gitconfig at task-worker startup |
 | Neo4j | `database.tls_ca_file` | `database/__init__.py` (`TrustCustomCAs`) |
-| Cache (Redis, NATS) | `cache.tls_ca_file` | `services/adapters/cache/` |
+| Cache (Redis, NATS) | `cache.tls_ca_file` | `services/adapters/cache/`, and `workflows/initialization.py::build_cache_connection_string` for the Redis URL handed to Prefect |
 | Broker (RabbitMQ, NATS) | `broker.tls_ca_file` | `services/adapters/message_bus/` |
 | S3 object storage | `storage.s3.tls_ca_file` (alias `AWS_CA_BUNDLE`) | `storage.py::InfrahubS3ObjectStorage` passes `verify=` to boto3; inherits the global bundle only when `use_ssl` is on |
 | OTLP trace exporter | `trace.tls_ca_bundle` | `trace.py`; inherits the global bundle only when `TraceSettings.uses_tls` |
@@ -46,9 +48,15 @@ reaching public services.
 
 ## Traps
 
-- **Path or PEM text.** `http`, `ldap` and the syslog destinations accept inline PEM content; git, boto3,
-  Neo4j and Redis only take a path. The global setting is path-only and validated as an existing,
-  loadable file for that reason.
+- **Path or PEM text, but consumers see a path.** Every CA setting accepts a file path or the PEM text
+  itself. `infrahub/config.py::_resolve_ca_bundle_setting` runs in each section validator: a path must
+  exist and load, PEM text is validated and written by `infrahub/tls/bundle.py::materialize_pem_text` to
+  `$TMPDIR/infrahub-tls/ca-bundle-<sha256[:32]>.pem`, and the setting is replaced by that path. The
+  content-hash name means every process, the credential-helper subprocess included, converges on the
+  same file without coordination. Log-forwarding destinations are the one field left as typed: their
+  Enterprise consumer accepts both forms and the fixed test fixtures point at host paths.
+- **Detection is by marker, not by existence.** `is_pem_text` looks for the `-----BEGIN` marker; a typo in a path
+  therefore fails as "must be the path to an existing file" instead of being parsed as PEM.
 - **gRPC trace exporter.** Passing a CA bundle to the gRPC exporter switches it from plaintext to TLS,
   so the global bundle is only copied into `trace` when the exporter connection is already encrypted.
 - **Plaintext S3 endpoint.** boto3 ignores `verify=` when `use_ssl` is off, so `S3StorageSettings` rejects an
@@ -80,8 +88,9 @@ reaching public services.
 
 ## Adding an outbound component
 
-1. Give its settings section a `tls_ca_file` (path) or `tls_ca_bundle` (path or PEM) field and, when the
-   client supports it, a `tls_insecure` flag.
+1. Give its settings section a `tls_ca_file` or `tls_ca_bundle` field plus, when the client supports it,
+   a `tls_insecure` flag, and resolve the field in the section's `model_validator` through
+   `_resolve_ca_bundle_setting` so the consumer only ever sees a path.
 2. Register the field in `Settings.apply_global_tls_ca_bundle`.
 3. Extend `tests/unit/config/test_tls_settings.py` and the component table in the private CA guide under
    `docs/docs/deploy-manage/install-configure/production-deployment/`.

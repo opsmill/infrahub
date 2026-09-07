@@ -47,7 +47,7 @@ Global TLS defaults shared by every component that opens outbound TLS connection
 
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
-| `INFRAHUB_TLS_CA_BUNDLE` | File path to a CA cert or bundle in PEM format trusted by every component that opens outbound TLS connections: git, the HTTP client (webhooks, SSO, telemetry, task manager), the database, the message broker, the cache, S3 object storage, the trace exporter, log forwarding and LDAP. A component with its own `tls_ca_file` or `tls_ca_bundle` keeps that value, and a component with `tls_insecure` enabled or a plaintext connection (S3 with `use_ssl` disabled, a trace exporter without TLS) is left alone. The bundle replaces the system trust store for the components it applies to, so include the public root certificates in the file when those components must keep reaching public services. When unset, each component uses the system trust store. | string | None |
+| `INFRAHUB_TLS_CA_BUNDLE` | File path to a CA cert or bundle in PEM format, or the PEM text itself, trusted by every component that opens outbound TLS connections: git, the HTTP client (webhooks, SSO, telemetry, task manager), the database, the message broker, the cache, S3 object storage, the trace exporter, log forwarding and LDAP. PEM text is written to a file under the system temporary directory at startup, so components that only read a file can use it. A component with its own `tls_ca_file` or `tls_ca_bundle` keeps that value, and a component with `tls_insecure` enabled or a plaintext connection (S3 with `use_ssl` disabled, a trace exporter without TLS) is left alone. The bundle replaces the system trust store for the components it applies to, so include the public root certificates in the file when those components must keep reaching public services. When unset, each component uses the system trust store. | string | None |
 
 ## Api
 
@@ -91,8 +91,8 @@ Global TLS defaults shared by every component that opens outbound TLS connection
 | `INFRAHUB_GIT_GLOBAL_CONFIG_FILE` | The location of the git config file. This will be set as the system `GIT_CONFIG_GLOBAL` environment variable if the environment variable is not initially set | string | /opt/infrahub/.gitconfig |
 | `INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT` | Whether to allow explicit merge commits when infrahub merges branches | boolean | False |
 | `INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE` | When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. Requires delete_branch_after_merge to be enabled. | boolean | False |
-| `INFRAHUB_GIT_TLS_INSECURE` | Skip TLS certificate validation when git connects to HTTPS remotes, by setting `http.sslVerify` to false in the global git configuration. Test and development environments only; never enable in production. | boolean | False |
-| `INFRAHUB_GIT_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format used to verify the certificate of HTTPS git remotes, set as `http.sslCAInfo` in the global git configuration. Falls back to `tls.ca_bundle` when unset. | string | None |
+| `INFRAHUB_GIT_TLS_INSECURE` | Skip TLS certificate validation when git connects to HTTPS remotes, by setting `http.sslVerify` to false in the global git configuration. Takes precedence over `tls_ca_file`, which may stay configured. Test and development environments only; never enable in production. | boolean | False |
+| `INFRAHUB_GIT_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format, or the PEM text itself, used to verify the certificate of HTTPS git remotes, set as `http.sslCAInfo` in the global git configuration. Falls back to `tls.ca_bundle` when unset. | string | None |
 
 ## Dev
 
@@ -128,7 +128,7 @@ The HTTP settings control how Infrahub interacts with external HTTP servers. Thi
 | `INFRAHUB_DB_POLICY` | Routing policy for database connections | string | None |
 | `INFRAHUB_DB_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
 | `INFRAHUB_DB_TLS_INSECURE` | Indicates if TLS certificates are verified | boolean | False |
-| `INFRAHUB_DB_TLS_CA_FILE` | File path to CA cert or bundle in PEM format | string | None |
+| `INFRAHUB_DB_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format, or the PEM text itself. | string | None |
 | `INFRAHUB_DB_QUERY_SIZE_LIMIT` | The max number of records to fetch in a single query before performing internal pagination. | integer | 5000 |
 | `INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY` | Maximum number of level to search in a hierarchy. | integer | 5 |
 | `INFRAHUB_DB_RETRY_LIMIT` | Maximum number of times a transient issue in a transaction should be retried. | integer | 3 |
@@ -151,7 +151,7 @@ Configuration settings for the message bus.
 |------|-------------|------|---------|
 | `INFRAHUB_BROKER_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
 | `INFRAHUB_BROKER_TLS_INSECURE` | Indicates if TLS certificates are verified | boolean | False |
-| `INFRAHUB_BROKER_TLS_CA_FILE` | File path to CA cert or bundle in PEM format | string | None |
+| `INFRAHUB_BROKER_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format, or the PEM text itself. | string | None |
 | `INFRAHUB_BROKER_USERNAME` | None | string | infrahub |
 | `INFRAHUB_BROKER_PASSWORD` | None | string | infrahub |
 | `INFRAHUB_BROKER_ADDRESS` | None | string | localhost |
@@ -175,7 +175,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_CACHE_PASSWORD` | None | string |  |
 | `INFRAHUB_CACHE_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
 | `INFRAHUB_CACHE_TLS_INSECURE` | Indicates if TLS certificates are verified | boolean | False |
-| `INFRAHUB_CACHE_TLS_CA_FILE` | File path to CA cert or bundle in PEM format | string | None |
+| `INFRAHUB_CACHE_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format, or the PEM text itself. | string | None |
 | `INFRAHUB_CACHE_CLEAN_UP_DEADLOCKS_INTERVAL_MINS` | Age threshold in minutes: locks older than this and owned by inactive workers are deleted by the cleanup task. | integer | 15 |
 | `INFRAHUB_CACHE_INIT_LOCK_TTL_MINS` | Time-to-live in minutes for the global initialization locks. If a worker dies while holding one, the lock auto-expires after this period so Infrahub can recover on its own. Only enforced with the Redis cache driver. | integer | 20 |
 
@@ -379,7 +379,7 @@ LDAP authentication configuration.
 | `INFRAHUB_STORAGE_DEFAULT_ACL` | None | string | private |
 | `INFRAHUB_STORAGE_QUERYSTRING_AUTH` | None | boolean | False |
 | `INFRAHUB_STORAGE_CUSTOM_DOMAIN` | None | string |  |
-| `INFRAHUB_STORAGE_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format used to verify the certificate of the S3 endpoint. Falls back to `tls.ca_bundle` when unset. Cannot be combined with `use_ssl=false`. | string | None |
+| `INFRAHUB_STORAGE_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format, or the PEM text itself, used to verify the certificate of the S3 endpoint. Falls back to `tls.ca_bundle` when unset. Cannot be combined with `use_ssl=false`. | string | None |
 
 ## Trace
 
@@ -387,7 +387,7 @@ LDAP authentication configuration.
 |------|-------------|------|---------|
 | `INFRAHUB_TRACE_ENABLE` | None | boolean | False |
 | `INFRAHUB_TRACE_INSECURE` | Connect to the OTLP endpoint without TLS. Applies to the grpc protocol only; for http/protobuf the endpoint URL scheme decides. Implied off when `tls_ca_bundle` is set. | boolean | True |
-| `INFRAHUB_TRACE_TLS_CA_BUNDLE` | Path to a PEM-encoded certificate authority bundle used to verify the OTLP collector's TLS certificate, for a collector using a private or self-signed certificate. Supported by both exporter protocols; with http/protobuf the endpoint must use https://. Checked at startup. | string | None |
+| `INFRAHUB_TRACE_TLS_CA_BUNDLE` | Path to a PEM-encoded certificate authority bundle, or the PEM text itself, used to verify the OTLP collector's TLS certificate, for a collector using a private or self-signed certificate. Supported by both exporter protocols; with http/protobuf the endpoint must use https://. Checked at startup. | string | None |
 | `INFRAHUB_TRACE_TLS_INSECURE` | Skip TLS certificate validation when exporting traces. Supported by the http/protobuf protocol only, and only with an https:// endpoint; the grpc client cannot skip validation, use `tls_ca_bundle` there. Test and development environments only; never enable in production. | boolean | False |
 | `INFRAHUB_TRACE_EXPORTER_TYPE` | Type of exporter to be used for tracing | string (console, otlp) | console |
 | `INFRAHUB_TRACE_EXPORTER_PROTOCOL` | Protocol to be used for exporting traces | string (grpc, http/protobuf) | grpc |
@@ -420,7 +420,7 @@ LDAP authentication configuration.
 | `FORMAT` | Syslog format standard. | string (rfc5424, rfc3164) | rfc5424 |
 | `TCP_FRAMING` | TCP framing method (newline or octet-counting). | string (newline, octet-counting) | newline |
 | `TLS_ENABLED` | Enable TLS encryption for TCP connections. | boolean | False |
-| `TLS_CA_BUNDLE` | Path or PEM string for CA bundle to validate syslog server certificate. | string | None |
+| `TLS_CA_BUNDLE` | File path to a CA bundle in PEM format, or the PEM text itself, to validate the syslog server certificate. | string | None |
 | `QUEUE_SIZE` | Maximum number of messages in the per-destination queue. | integer | 10000 |
 | `MAX_RECONNECT_INTERVAL` | Maximum reconnection backoff interval in seconds. | integer | 60 |
 | `SHUTDOWN_DRAIN_TIMEOUT` | Seconds to wait for queue drain on graceful shutdown. | integer | 10 |

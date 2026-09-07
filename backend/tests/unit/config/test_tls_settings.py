@@ -13,6 +13,14 @@ CA_BUNDLE = str(TEST_DATA_DIR / "ca-bundle.pem")
 OTHER_BUNDLE = str(TEST_DATA_DIR / "ca-bundle-4096.pem")
 
 
+@pytest.fixture
+def materialized_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Redirect materialized PEM bundles into the test's temporary directory."""
+    directory = tmp_path / "infrahub-tls"
+    monkeypatch.setattr("infrahub.tls.bundle.MATERIALIZED_BUNDLE_DIRECTORY", directory)
+    return directory
+
+
 class TestTLSSettings:
     def test_unset_by_default(self) -> None:
         assert TLSSettings().ca_bundle is None
@@ -21,20 +29,43 @@ class TestTLSSettings:
         assert TLSSettings(ca_bundle=CA_BUNDLE).ca_bundle == CA_BUNDLE
 
     def test_missing_file_is_rejected_at_load(self, tmp_path: Path) -> None:
-        with pytest.raises(ValidationError, match=r"tls.ca_bundle must be the path to an existing file"):
+        with pytest.raises(ValidationError, match=r"tls.ca_bundle: must be the path to an existing file or PEM text"):
             TLSSettings(ca_bundle=str(tmp_path / "missing.pem"))
 
-    def test_pem_content_is_rejected(self) -> None:
-        # Unlike the per-component HTTP and LDAP settings the global bundle feeds git, boto3 and the
-        # database driver, which only take a path, so inline PEM content is not accepted.
+    def test_pem_text_is_written_to_a_file(self, materialized_directory: Path) -> None:
+        # git, boto3, the Neo4j driver and redis-py only take a path, so inline PEM text is written to a
+        # file named after its content and the setting holds that path once loaded.
         pem_content = Path(CA_BUNDLE).read_text(encoding="utf-8")
-        with pytest.raises(ValidationError, match="must be the path to an existing file"):
-            TLSSettings(ca_bundle=pem_content)
+
+        settings = TLSSettings.model_validate({"ca_bundle": pem_content})
+
+        materialized = Path(settings.ca_bundle or "")
+        assert materialized.parent == materialized_directory
+        assert materialized.name.startswith("ca-bundle-")
+        assert materialized.suffix == ".pem"
+        assert materialized.read_text(encoding="utf-8") == pem_content.strip() + "\n"
+
+    def test_pem_text_with_escaped_newlines_is_accepted(self, materialized_directory: Path) -> None:
+        # Environment files cannot always carry real line breaks.
+        escaped = Path(CA_BUNDLE).read_text(encoding="utf-8").strip().replace("\n", "\\n")
+
+        settings = TLSSettings.model_validate({"ca_bundle": escaped})
+
+        assert (
+            Path(settings.ca_bundle or "").read_text(encoding="utf-8")
+            == Path(CA_BUNDLE).read_text(encoding="utf-8").strip() + "\n"
+        )
+
+    def test_pem_text_that_is_not_a_certificate_is_rejected(self, materialized_directory: Path) -> None:
+        with pytest.raises(ValidationError, match=r"tls.ca_bundle: the value is not a valid PEM certificate bundle"):
+            TLSSettings.model_validate({"ca_bundle": "-----BEGIN CERTIFICATE-----\nnope\n-----END CERTIFICATE-----"})
+        # Nothing is written before the text has been validated.
+        assert not materialized_directory.exists()
 
     def test_file_that_is_not_a_certificate_is_rejected(self, tmp_path: Path) -> None:
         bad_bundle = tmp_path / "bad.pem"
         bad_bundle.write_text("not a certificate", encoding="utf-8")
-        with pytest.raises(ValidationError, match=r"Unable to load CA bundle for tls.ca_bundle"):
+        with pytest.raises(ValidationError, match=r"tls.ca_bundle: unable to load the CA bundle"):
             TLSSettings(ca_bundle=str(bad_bundle))
 
     def test_unreadable_file_is_reported_as_a_configuration_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -43,7 +74,7 @@ class TestTLSSettings:
             raise PermissionError("Permission denied")
 
         monkeypatch.setattr(ssl, "create_default_context", fake)
-        with pytest.raises(ValidationError, match=r"Unable to load CA bundle for tls.ca_bundle"):
+        with pytest.raises(ValidationError, match=r"tls.ca_bundle: unable to load the CA bundle"):
             TLSSettings.model_validate({"ca_bundle": CA_BUNDLE})
 
 
@@ -57,12 +88,15 @@ class TestGitTLSSettings:
         assert GitSettings(tls_ca_file=CA_BUNDLE).tls_ca_file == CA_BUNDLE
 
     def test_missing_ca_file_is_rejected(self, tmp_path: Path) -> None:
-        with pytest.raises(ValidationError, match=r"git.tls_ca_file must be the path to an existing file"):
+        with pytest.raises(ValidationError, match=r"git.tls_ca_file: must be the path to an existing file or PEM text"):
             GitSettings(tls_ca_file=str(tmp_path / "missing.pem"))
 
-    def test_insecure_and_ca_file_cannot_be_combined(self) -> None:
-        with pytest.raises(ValidationError, match=r"git.tls_insecure cannot be combined with git.tls_ca_file"):
-            GitSettings(tls_insecure=True, tls_ca_file=CA_BUNDLE)
+    def test_insecure_wins_over_a_configured_ca_file(self) -> None:
+        # Switching verification off temporarily must not require dropping the bundle.
+        settings = GitSettings.model_validate({"tls_insecure": True, "tls_ca_file": CA_BUNDLE})
+
+        assert settings.tls_insecure is True
+        assert settings.tls_ca_file == CA_BUNDLE
 
     def test_unreadable_ca_file_is_reported_as_a_configuration_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # Tests run as root, so chmod cannot make the file unreadable; fail the loader the way the OS would.
@@ -70,7 +104,7 @@ class TestGitTLSSettings:
             raise PermissionError("Permission denied")
 
         monkeypatch.setattr(ssl, "create_default_context", fake)
-        with pytest.raises(ValidationError, match=r"Unable to load CA bundle for git.tls_ca_file"):
+        with pytest.raises(ValidationError, match=r"git.tls_ca_file: unable to load the CA bundle"):
             GitSettings.model_validate({"tls_ca_file": CA_BUNDLE})
 
 
@@ -133,15 +167,15 @@ class TestGlobalCaBundleResolution:
                 "tls": {"ca_bundle": CA_BUNDLE},
                 "git": {"tls_ca_file": OTHER_BUNDLE},
                 "http": {"tls_ca_bundle": OTHER_BUNDLE},
-                "database": {"tls_ca_file": "/etc/infrahub/neo4j-ca.pem"},
-                "storage": {"s3": {"INFRAHUB_STORAGE_TLS_CA_FILE": "/etc/infrahub/s3-ca.pem"}},
+                "database": {"tls_ca_file": OTHER_BUNDLE},
+                "storage": {"s3": {"INFRAHUB_STORAGE_TLS_CA_FILE": OTHER_BUNDLE}},
             }
         )
 
         assert settings.git.tls_ca_file == OTHER_BUNDLE
         assert settings.http.tls_ca_bundle == OTHER_BUNDLE
-        assert settings.database.tls_ca_file == "/etc/infrahub/neo4j-ca.pem"
-        assert settings.storage.s3.tls_ca_file == "/etc/infrahub/s3-ca.pem"
+        assert settings.database.tls_ca_file == OTHER_BUNDLE
+        assert settings.storage.s3.tls_ca_file == OTHER_BUNDLE
         # Components without their own setting still get the global one.
         assert settings.broker.tls_ca_file == CA_BUNDLE
         assert settings.cache.tls_ca_file == CA_BUNDLE
@@ -223,3 +257,65 @@ class TestGlobalCaBundleResolution:
         Settings.model_validate({"tls": {"ca_bundle": CA_BUNDLE}})
 
         assert Settings().http.tls_ca_bundle is None
+
+
+class TestPemTextAcrossComponents:
+    """Every CA setting accepts PEM text and holds the materialized file's path once loaded."""
+
+    @pytest.mark.parametrize(
+        ("section", "settings_key", "attribute"),
+        [
+            pytest.param("git", "tls_ca_file", "tls_ca_file", id="git"),
+            pytest.param("http", "tls_ca_bundle", "tls_ca_bundle", id="http"),
+            pytest.param("database", "tls_ca_file", "tls_ca_file", id="database"),
+            pytest.param("broker", "tls_ca_file", "tls_ca_file", id="broker"),
+            pytest.param("cache", "tls_ca_file", "tls_ca_file", id="cache"),
+            pytest.param("trace", "tls_ca_bundle", "tls_ca_bundle", id="trace"),
+        ],
+    )
+    def test_component_pem_text_becomes_a_path(
+        self, materialized_directory: Path, section: str, settings_key: str, attribute: str
+    ) -> None:
+        pem_content = Path(CA_BUNDLE).read_text(encoding="utf-8")
+
+        settings = Settings.model_validate({section: {settings_key: pem_content}})
+
+        resolved = Path(getattr(getattr(settings, section), attribute))
+        assert resolved.parent == materialized_directory
+        assert resolved.read_text(encoding="utf-8") == pem_content.strip() + "\n"
+
+    def test_s3_pem_text_becomes_a_path(self, materialized_directory: Path) -> None:
+        pem_content = Path(CA_BUNDLE).read_text(encoding="utf-8")
+
+        settings = Settings.model_validate({"storage": {"s3": {"INFRAHUB_STORAGE_TLS_CA_FILE": pem_content}}})
+
+        assert Path(settings.storage.s3.tls_ca_file or "").parent == materialized_directory
+
+    def test_ldap_pem_text_becomes_a_path_when_tls_is_enabled(self, materialized_directory: Path) -> None:
+        pem_content = Path(CA_BUNDLE).read_text(encoding="utf-8")
+
+        settings = Settings.model_validate({"ldap": {"tls_enabled": True, "tls_ca_bundle": pem_content}})
+
+        assert Path(settings.ldap.tls_ca_bundle or "").parent == materialized_directory
+
+    def test_global_pem_text_reaches_every_component_as_the_same_path(self, materialized_directory: Path) -> None:
+        pem_content = Path(CA_BUNDLE).read_text(encoding="utf-8")
+
+        settings = Settings.model_validate({"tls": {"ca_bundle": pem_content}})
+
+        materialized = settings.tls.ca_bundle
+        assert materialized is not None
+        assert Path(materialized).parent == materialized_directory
+        assert settings.git.tls_ca_file == materialized
+        assert settings.database.tls_ca_file == materialized
+        assert settings.broker.tls_ca_file == materialized
+        assert settings.cache.tls_ca_file == materialized
+        assert settings.storage.s3.tls_ca_file == materialized
+        assert settings.http.tls_ca_bundle == materialized
+        # One bundle, one file: every section points at the same materialized file.
+        assert len(list(materialized_directory.iterdir())) == 1
+
+    @pytest.mark.parametrize("section", ["database", "broker", "cache"])
+    def test_component_missing_file_is_rejected_at_load(self, section: str, tmp_path: Path) -> None:
+        with pytest.raises(ValidationError, match=rf"{section}.tls_ca_file: must be the path to an existing file"):
+            Settings.model_validate({section: {"tls_ca_file": str(tmp_path / "missing.pem")}})

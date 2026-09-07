@@ -36,6 +36,8 @@ Infrahub picks the trust store of each outbound connection in this order:
 3. The global `INFRAHUB_TLS_CA_BUNDLE` setting.
 4. The system trust store of the container.
 
+Every CA setting accepts either the path of a PEM file or the PEM text itself. Infrahub writes PEM text to a file named after its content under the system temporary directory (`TMPDIR`, `/tmp` by default) at startup, so components that only read a file, such as git, use it too. Literal `\n` sequences in place of line breaks are accepted, for tooling that cannot pass multi-line values.
+
 A CA bundle replaces the system trust store for the components it applies to, it does not extend it. If a component must keep reaching services with publicly issued certificates, such as `github.com`, append the public root certificates to your bundle as shown in the first step.
 
 | Component | Connections | Component setting |
@@ -72,7 +74,7 @@ openssl crl2pkcs7 -nocrl -certfile ca-bundle.pem | openssl pkcs7 -print_certs -n
 
 ## Step 2: Mount the bundle into the containers
 
-Mount the bundle read-only into both the `infrahub-server` and `task-worker` containers. Every Infrahub process validates the configured path at startup, so a container that reads the setting without the file mounted refuses to start.
+Skip this step if you pass the PEM text through the setting itself, as shown in the next step. Otherwise mount the bundle read-only into both the `infrahub-server` and `task-worker` containers. Every Infrahub process validates the configured path at startup, so a container that reads the setting without the file mounted refuses to start.
 
 <Tabs groupId="installation-method" queryString>
 <TabItem value="docker-compose" label="Docker Compose" default>
@@ -174,6 +176,14 @@ infrahubTaskWorker:
 </TabItem>
 </Tabs>
 
+To avoid the mount, set the variable to the PEM text instead of a path, for example from a Kubernetes Secret exposed as an environment variable:
+
+```shell title=".env"
+INFRAHUB_TLS_CA_BUNDLE="-----BEGIN CERTIFICATE-----
+MIIB...
+-----END CERTIFICATE-----"
+```
+
 To give one component a different CA, set its own setting alongside the global one. The component setting wins for that component, every other component keeps using the global bundle:
 
 ```shell title=".env"
@@ -185,7 +195,7 @@ To scope the bundle to git only, leave `INFRAHUB_TLS_CA_BUNDLE` unset and set `I
 
 :::warning
 
-Do not combine a CA setting with the matching `*_TLS_INSECURE` setting: Infrahub refuses to start when both are set for git, the trace exporter or LDAP, and ignores the bundle for the other components. Infrahub also refuses to start when you set `INFRAHUB_STORAGE_TLS_CA_FILE` on a plaintext S3 endpoint (`INFRAHUB_STORAGE_USE_SSL=false`), and the global bundle skips components whose connection is plaintext.
+When a CA setting and the matching `*_TLS_INSECURE` setting are both set, the insecure setting wins and the bundle is ignored, so verification can be switched off temporarily without dropping the bundle. The trace exporter and LDAP are the exception and refuse to start with both set. Infrahub also refuses to start when you set `INFRAHUB_STORAGE_TLS_CA_FILE` on a plaintext S3 endpoint (`INFRAHUB_STORAGE_USE_SSL=false`), and the global bundle skips components whose connection is plaintext.
 
 :::
 
@@ -210,7 +220,7 @@ Confirm that the task worker configured git with the bundle. Infrahub writes its
 docker compose exec task-worker git config --file /opt/infrahub/.gitconfig --get http.sslCAInfo
 ```
 
-The command prints the path of the bundle. Then add or refresh a repository hosted on your internal Git server, following [How to connect external Git repositories](../../../git-integration/connect-repository.mdx). The repository reaches the `Active` status instead of failing with `SSL verification failed`.
+The command prints the path of the bundle, or the path of the file Infrahub wrote under the temporary directory when the setting holds PEM text. Then add or refresh a repository hosted on your internal Git server, following [How to connect external Git repositories](../../../git-integration/connect-repository.mdx). The repository reaches the `Active` status instead of failing with `SSL verification failed`.
 
 To verify the HTTP client, trigger a webhook targeting an internal endpoint or log in through your SSO provider. A remaining `Unable to validate TLS certificate` error means the bundle is missing an intermediate certificate for that endpoint.
 

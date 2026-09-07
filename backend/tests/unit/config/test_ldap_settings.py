@@ -67,7 +67,9 @@ class TestLDAPTLS:
 
     def test_enabled_with_invalid_ca_bundle_is_rejected(self) -> None:
         bogus_pem = "-----BEGIN CERTIFICATE-----\nnot a real cert\n-----END CERTIFICATE-----"
-        with pytest.raises(ValidationError, match=r"Unable to load LDAP CA bundle"):
+        with pytest.raises(
+            ValidationError, match=r"ldap.tls_ca_bundle: the value is not a valid PEM certificate bundle"
+        ):
             LDAPSettings(tls_enabled=True, tls_ca_bundle=bogus_pem)
 
 

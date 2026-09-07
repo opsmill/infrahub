@@ -18,7 +18,7 @@ from cryptography.x509.oid import NameOID
 from git import Actor, Git, Repo
 from git.exc import GitCommandError
 
-from infrahub.config import GitSettings
+from infrahub.config import GitSettings, Settings
 from infrahub.git.base import GIT_TLS_VERIFICATION_ERRORS
 from infrahub.git.global_config import (
     GIT_HTTP_SSL_CA_INFO,
@@ -309,6 +309,25 @@ class TestGitTrustsTheConfiguredBundle:
         clone = Repo.clone_from(url, str(tmp_path / "clone"))
 
         assert (Path(clone.working_dir) / "README.md").read_text(encoding="utf-8") == "private CA test\n"
+
+    async def test_clone_succeeds_with_the_global_bundle_given_as_pem_text(
+        self,
+        git_global_config: Path,
+        https_git_server: tuple[str, Path],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # The operator ships the PEM text in INFRAHUB_TLS_CA_BUNDLE; Infrahub writes it to a file and git
+        # is pointed at that file through the resolved git settings.
+        url, ca_path = https_git_server
+        monkeypatch.setattr("infrahub.tls.bundle.MATERIALIZED_BUNDLE_DIRECTORY", tmp_path / "infrahub-tls")
+        settings = Settings.model_validate({"tls": {"ca_bundle": ca_path.read_text(encoding="utf-8")}})
+        await apply_git_tls_config(settings=settings.git)
+
+        clone = Repo.clone_from(url, str(tmp_path / "clone"))
+
+        assert (Path(clone.working_dir) / "README.md").exists()
+        assert (await read_global_setting(GIT_HTTP_SSL_CA_INFO) or "").startswith(str(tmp_path / "infrahub-tls"))
 
     async def test_clone_succeeds_when_verification_is_disabled(
         self, git_global_config: Path, https_git_server: tuple[str, Path], tmp_path: Path

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import boto3
@@ -7,6 +8,9 @@ import pytest
 
 from infrahub.config import S3StorageSettings, StorageDriver, StorageSettings
 from infrahub.storage import InfrahubObjectStorage, InfrahubS3ObjectStorage
+
+# Settings validate CA paths at load, so the settings-level test needs a real bundle.
+CA_BUNDLE = str(Path(__file__).parent / "test_data" / "ca-bundle.pem")
 
 
 class _StubS3Resource:
@@ -104,12 +108,12 @@ def test_storage_settings_ca_file_reaches_the_driver(captured_resource_kwargs: d
                 "AWS_S3_ENDPOINT_URL": "s3.internal.example.com",
                 "AWS_ACCESS_KEY_ID": "some_id",
                 "AWS_SECRET_ACCESS_KEY": "secret_key",
-                "INFRAHUB_STORAGE_TLS_CA_FILE": "/etc/infrahub/ca.pem",
+                "INFRAHUB_STORAGE_TLS_CA_FILE": CA_BUNDLE,
             }
         ),
     )
 
     InfrahubObjectStorage(settings=settings)
 
-    assert captured_resource_kwargs["verify"] == "/etc/infrahub/ca.pem"
+    assert captured_resource_kwargs["verify"] == CA_BUNDLE
     assert captured_resource_kwargs["endpoint_url"] == "https://s3.internal.example.com"

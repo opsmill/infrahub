@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import re
-import ssl
 import sys
 import tomllib
 from dataclasses import dataclass
@@ -28,7 +27,7 @@ from typing_extensions import Self
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
 from infrahub.log import get_logger
-from infrahub.tls.context_builder import TlsContextBuilder
+from infrahub.tls.bundle import resolve_ca_bundle
 
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
@@ -55,26 +54,22 @@ def default_append_git_suffix_domains() -> list[str]:
     return ["github.com", "gitlab.com"]
 
 
-def _validate_ca_bundle_file(setting_name: str, path: str) -> None:
-    """Fail at startup when a CA bundle setting does not point at a loadable PEM file.
+def _resolve_ca_bundle_setting(setting_name: str, value: str) -> str:
+    """Validate a CA bundle setting at startup and return the file every consumer can read.
+
+    The value is either the path of an existing PEM file or the PEM text itself. Text is written to a
+    file under the system temporary directory, so git, boto3, the Neo4j driver and redis-py, which only
+    take a path, can use it; once loaded, every CA setting therefore holds a path.
 
     Raises:
-        ValueError: When the path is not an existing file, the file cannot be read, or the file is not a valid PEM
-            bundle.
+        ValueError: When the path does not exist or cannot be read, the content is not a PEM bundle, or
+            the text cannot be written to disk.
 
     """
-    ca_path = Path(path)
     try:
-        is_file = ca_path.is_file()
-    except OSError:
-        # Raised when the value is too long to be a path, e.g. a PEM certificate passed as a string.
-        is_file = False
-    if not is_file:
-        raise ValueError(f"{setting_name} must be the path to an existing file, got {path!r}")
-    try:
-        ssl.create_default_context(cafile=str(ca_path))
-    except (OSError, ssl.SSLError) as exc:
-        raise ValueError(f"Unable to load CA bundle for {setting_name} from {path}: {exc}") from exc
+        return resolve_ca_bundle(value)
+    except ValueError as exc:
+        raise ValueError(f"{setting_name}: {exc}") from exc
 
 
 class EnterpriseFeatures(StrEnum):
@@ -322,8 +317,8 @@ class S3StorageSettings(BaseSettings):
         alias="AWS_CA_BUNDLE",
         validation_alias=AliasChoices("INFRAHUB_STORAGE_TLS_CA_FILE", "AWS_CA_BUNDLE"),
         description=(
-            "File path to a CA cert or bundle in PEM format used to verify the certificate of the S3 endpoint. "
-            "Falls back to `tls.ca_bundle` when unset. Cannot be combined with `use_ssl=false`."
+            "File path to a CA cert or bundle in PEM format, or the PEM text itself, used to verify the certificate "
+            "of the S3 endpoint. Falls back to `tls.ca_bundle` when unset. Cannot be combined with `use_ssl=false`."
         ),
     )
 
@@ -340,6 +335,8 @@ class S3StorageSettings(BaseSettings):
                 "storage.s3.tls_ca_file cannot be combined with storage.s3.use_ssl=false, because the CA bundle "
                 "would be silently ignored on a plaintext endpoint. Enable use_ssl or drop the CA setting."
             )
+        if self.tls_ca_file is not None:
+            self.tls_ca_file = _resolve_ca_bundle_setting("storage.s3.tls_ca_file", self.tls_ca_file)
         return self
 
 
@@ -369,7 +366,10 @@ class DatabaseSettings(BaseSettings):
     policy: str | None = Field(default=None, description="Routing policy for database connections")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
-    tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
+    tls_ca_file: str | None = Field(
+        default=None,
+        description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
+    )
     query_size_limit: int = Field(
         default=5_000,
         ge=1,
@@ -444,6 +444,12 @@ class DatabaseSettings(BaseSettings):
         ),
     )
 
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        if self.tls_ca_file is not None:
+            self.tls_ca_file = _resolve_ca_bundle_setting("database.tls_ca_file", self.tls_ca_file)
+        return self
+
     @property
     def address_members(self) -> list[str]:
         """All members defined in the address setting, in 'host[:port]' format."""
@@ -508,7 +514,10 @@ class BrokerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
-    tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
+    tls_ca_file: str | None = Field(
+        default=None,
+        description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
+    )
     username: str = "infrahub"
     password: str = "infrahub"
     address: str = "localhost"
@@ -523,6 +532,12 @@ class BrokerSettings(BaseSettings):
     )
     virtualhost: str = Field(default="/", description="The virtual host to connect to")
     driver: BrokerDriver = BrokerDriver.RabbitMQ
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        if self.tls_ca_file is not None:
+            self.tls_ca_file = _resolve_ca_bundle_setting("broker.tls_ca_file", self.tls_ca_file)
+        return self
 
     @property
     def service_port(self) -> int:
@@ -544,7 +559,10 @@ class CacheSettings(BaseSettings):
     password: str = ""
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
-    tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
+    tls_ca_file: str | None = Field(
+        default=None,
+        description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
+    )
     clean_up_deadlocks_interval_mins: int = Field(
         default=15,
         ge=1,
@@ -559,6 +577,12 @@ class CacheSettings(BaseSettings):
             "Only enforced with the Redis cache driver."
         ),
     )
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        if self.tls_ca_file is not None:
+            self.tls_ca_file = _resolve_ca_bundle_setting("cache.tls_ca_file", self.tls_ca_file)
+        return self
 
     @property
     def service_port(self) -> int:
@@ -800,24 +824,23 @@ class GitSettings(BaseSettings):
         default=False,
         description=(
             "Skip TLS certificate validation when git connects to HTTPS remotes, by setting `http.sslVerify` to "
-            "false in the global git configuration. Test and development environments only; never enable in "
-            "production."
+            "false in the global git configuration. Takes precedence over `tls_ca_file`, which may stay configured. "
+            "Test and development environments only; never enable in production."
         ),
     )
     tls_ca_file: str | None = Field(
         default=None,
         description=(
-            "File path to a CA cert or bundle in PEM format used to verify the certificate of HTTPS git remotes, "
-            "set as `http.sslCAInfo` in the global git configuration. Falls back to `tls.ca_bundle` when unset."
+            "File path to a CA cert or bundle in PEM format, or the PEM text itself, used to verify the certificate "
+            "of HTTPS git remotes, set as `http.sslCAInfo` in the global git configuration. Falls back to "
+            "`tls.ca_bundle` when unset."
         ),
     )
 
     @model_validator(mode="after")
     def validate_tls_configuration(self) -> Self:
-        if self.tls_insecure and self.tls_ca_file is not None:
-            raise ValueError("git.tls_insecure cannot be combined with git.tls_ca_file; pick one.")
         if self.tls_ca_file is not None:
-            _validate_ca_bundle_file(setting_name="git.tls_ca_file", path=self.tls_ca_file)
+            self.tls_ca_file = _resolve_ca_bundle_setting("git.tls_ca_file", self.tls_ca_file)
         return self
 
     @model_validator(mode="after")
@@ -839,9 +862,11 @@ class TLSSettings(BaseSettings):
     ca_bundle: str | None = Field(
         default=None,
         description=(
-            "File path to a CA cert or bundle in PEM format trusted by every component that opens outbound TLS "
-            "connections: git, the HTTP client (webhooks, SSO, telemetry, task manager), the database, the message "
-            "broker, the cache, S3 object storage, the trace exporter, log forwarding and LDAP. A component with its "
+            "File path to a CA cert or bundle in PEM format, or the PEM text itself, trusted by every component "
+            "that opens outbound TLS connections: git, the HTTP client (webhooks, SSO, telemetry, task manager), the "
+            "database, the message broker, the cache, S3 object storage, the trace exporter, log forwarding and "
+            "LDAP. PEM text is written to a file under the system temporary directory at startup, so components "
+            "that only read a file can use it. A component with its "
             "own `tls_ca_file` or `tls_ca_bundle` keeps that value, and a component with `tls_insecure` enabled or "
             "a plaintext connection (S3 with `use_ssl` disabled, a trace exporter without TLS) is left alone. The "
             "bundle replaces the system trust store for the components it applies to, so include the "
@@ -853,7 +878,7 @@ class TLSSettings(BaseSettings):
     @model_validator(mode="after")
     def validate_ca_bundle(self) -> Self:
         if self.ca_bundle is not None:
-            _validate_ca_bundle_file(setting_name="tls.ca_bundle", path=self.ca_bundle)
+            self.ca_bundle = _resolve_ca_bundle_setting("tls.ca_bundle", self.ca_bundle)
         return self
 
 
@@ -872,16 +897,10 @@ class HTTPSettings(BaseSettings):
     )
 
     @model_validator(mode="after")
-    def set_tls_context(self) -> Self:
-        try:
-            # Validate that the context can be created, we want to raise this error during application start
-            # instead of running into issues later when we first try to use the tls context.
-            TlsContextBuilder.build(
-                insecure=self.tls_insecure, ca_bundle=self.tls_ca_bundle, force_verify=bool(self.tls_ca_bundle)
-            )
-        except ssl.SSLError as exc:
-            raise ValueError(f"Unable load CA bundle from {self.tls_ca_bundle}: {exc}") from exc
-
+    def validate_tls_configuration(self) -> Self:
+        # Resolve at startup so an unusable bundle fails the process instead of the first outbound request.
+        if self.tls_ca_bundle is not None:
+            self.tls_ca_bundle = _resolve_ca_bundle_setting("http.tls_ca_bundle", self.tls_ca_bundle)
         return self
 
 
@@ -1319,7 +1338,7 @@ class TraceSettings(BaseSettings):
     tls_ca_bundle: str | None = Field(
         default=None,
         description=(
-            "Path to a PEM-encoded certificate authority bundle used to verify the OTLP "
+            "Path to a PEM-encoded certificate authority bundle, or the PEM text itself, used to verify the OTLP "
             "collector's TLS certificate, for a collector using a private or self-signed "
             "certificate. Supported by both exporter protocols; with http/protobuf the "
             "endpoint must use https://. Checked at startup."
@@ -1385,10 +1404,7 @@ class TraceSettings(BaseSettings):
                 f"would be silently ignored on a plaintext connection. Use an https:// endpoint, or drop {tls_setting}."
             )
         if self.tls_ca_bundle is not None:
-            try:
-                ssl.create_default_context(cafile=self.tls_ca_bundle)
-            except (ssl.SSLError, OSError) as exc:
-                raise ValueError(f"Unable to load trace CA bundle from {self.tls_ca_bundle}: {exc}") from exc
+            self.tls_ca_bundle = _resolve_ca_bundle_setting("trace.tls_ca_bundle", self.tls_ca_bundle)
         return self
 
 
@@ -1427,7 +1443,8 @@ class LogForwardingDestination(BaseModel):
     )
     tls_enabled: bool = Field(default=False, description="Enable TLS encryption for TCP connections.")
     tls_ca_bundle: str | None = Field(
-        default=None, description="Path or PEM string for CA bundle to validate syslog server certificate."
+        default=None,
+        description="File path to a CA bundle in PEM format, or the PEM text itself, to validate the syslog server certificate.",
     )
     queue_size: int = Field(default=10000, ge=1, description="Maximum number of messages in the per-destination queue.")
     max_reconnect_interval: int = Field(
@@ -1836,12 +1853,8 @@ class LDAPSettings(BaseSettings):
             return self
         if self.tls_insecure and self.tls_ca_bundle is not None:
             raise ValueError("ldap.tls_insecure cannot be combined with ldap.tls_ca_bundle; pick one.")
-        try:
-            TlsContextBuilder.build(
-                insecure=self.tls_insecure, ca_bundle=self.tls_ca_bundle, force_verify=bool(self.tls_ca_bundle)
-            )
-        except ssl.SSLError as exc:
-            raise ValueError(f"Unable to load LDAP CA bundle from {self.tls_ca_bundle}: {exc}") from exc
+        if self.tls_ca_bundle is not None:
+            self.tls_ca_bundle = _resolve_ca_bundle_setting("ldap.tls_ca_bundle", self.tls_ca_bundle)
         return self
 
     @model_validator(mode="after")
