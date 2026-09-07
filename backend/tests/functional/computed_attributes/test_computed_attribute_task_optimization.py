@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from fast_depends import dependency_provider
+from prefect.settings import PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES, temporary_settings
 
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
@@ -96,18 +97,21 @@ class TestComputedAttributeTaskOptimization(TestInfrahubApp):
         client: InfrahubClient,
         context: EventContext,
         prefect_test_fixture: None,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """An oversized fan-out splits into bounded submissions, each carrying the branch tag.
 
         Branch-filtered task queries match on that tag, and only creation tags reliably
         survive in-flow tag updates.
         """
-        # Limit 4 -> chunk size 2, so three nodes already split into [2, 1].
-        monkeypatch.setenv("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "4")
-
+        # Limit 4 -> chunk size 2, so three nodes already split into [2, 1]. The limit has to be
+        # driven through temporary_settings rather than the environment: Prefect builds its
+        # settings once at import, so a later monkeypatch.setenv never reaches the value
+        # get_submission_chunk_size() reads.
         recorder = WorkflowRecorder()
-        with dependency_provider.scope(build_workflow, lambda: recorder):
+        with (
+            temporary_settings({PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES: 4}),
+            dependency_provider.scope(build_workflow, lambda: recorder),
+        ):
             await trigger_update_python_computed_attributes(
                 branch_name=default_branch.name,
                 computed_attribute_name="test-attribute",
