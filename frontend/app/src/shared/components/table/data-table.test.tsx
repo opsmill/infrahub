@@ -260,7 +260,9 @@ const visibilityColumns: Array<ColumnDef<VisibilityRow, unknown>> = [
   }),
 ];
 
-const visibilityRows: Array<VisibilityRow> = [{ id: "device-1", name: "atl1-core1", __typename: "InfraDevice" }];
+const visibilityRows: Array<VisibilityRow> = [
+  { id: "device-1", name: "atl1-core1", __typename: "InfraDevice" },
+];
 
 describe("DataTable column visibility", () => {
   test("renders a header for every column when no visibility state is given", async () => {
@@ -269,7 +271,11 @@ describe("DataTable column visibility", () => {
 
     // WHEN
     const component = await render(
-      <DataTable columns={visibilityColumns} data={visibilityRows} columnVisibility={columnVisibility} />
+      <DataTable
+        columns={visibilityColumns}
+        data={visibilityRows}
+        columnVisibility={columnVisibility}
+      />
     );
 
     // THEN
@@ -285,7 +291,11 @@ describe("DataTable column visibility", () => {
 
     // WHEN
     const component = await render(
-      <DataTable columns={visibilityColumns} data={visibilityRows} columnVisibility={columnVisibility} />
+      <DataTable
+        columns={visibilityColumns}
+        data={visibilityRows}
+        columnVisibility={columnVisibility}
+      />
     );
 
     // THEN
@@ -300,7 +310,11 @@ describe("DataTable column visibility", () => {
 
     // WHEN
     const component = await render(
-      <DataTable columns={visibilityColumns} data={visibilityRows} columnVisibility={columnVisibility} />
+      <DataTable
+        columns={visibilityColumns}
+        data={visibilityRows}
+        columnVisibility={columnVisibility}
+      />
     );
 
     // THEN
@@ -369,7 +383,11 @@ describe("DataTable column visibility", () => {
 
     // WHEN
     const component = await render(
-      <DataTable columns={visibilityColumns} data={visibilityRows} columnVisibility={columnVisibility} />
+      <DataTable
+        columns={visibilityColumns}
+        data={visibilityRows}
+        columnVisibility={columnVisibility}
+      />
     );
 
     // THEN
