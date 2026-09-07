@@ -3,6 +3,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
+from prefect.settings import PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES, temporary_settings
 
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import (
@@ -98,6 +99,34 @@ def test_truncation_drops_peer_entries_not_node_scoped_entries() -> None:
     ]
     assert relationship_entries
     assert len(related) == get_related_resource_budget()
+
+
+@pytest.mark.parametrize(
+    "configured_max",
+    [
+        # Prefect's own default, what a deployment that does not set the limit gets. Infrahub used
+        # to assume 500 here, truncate to a budget derived from it, and hand Prefect an event it
+        # silently refused.
+        pytest.param(100, id="prefect_default"),
+        # What the Infrahub image sets, so this pins the shipped deployment's behaviour unchanged.
+        pytest.param(500, id="image_maximum"),
+    ],
+)
+def test_truncation_tracks_the_configured_maximum(configured_max: int) -> None:
+    """Truncation must follow the maximum Prefect enforces, whatever it is set to.
+
+    The budget is recomputed under the same override rather than compared against a literal: a
+    hardcoded 80 or 450 would keep passing even if the cap stopped tracking the setting, which is
+    the regression this test exists to catch.
+    """
+    event = _make_event(peer_count=LARGE_PEER_COUNT)
+
+    with temporary_settings({PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES: configured_max}):
+        related = event.get_related()
+
+        assert get_prefect_max_related_resources() == configured_max
+        assert len(related) == get_related_resource_budget()
+        assert len(related) <= configured_max
 
 
 @pytest.mark.parametrize("peer_count", [SMALL_PEER_COUNT, LARGE_PEER_COUNT])
