@@ -341,10 +341,9 @@ lives under IFC; INFP is JPD and carries product planning only, linked to the ep
 
 ## Decision 10: Documentation and changelog
 
-- Increment A: one `fixed` fragment for the `offset`-without-`limit` rejection that ships with the
-  foundational phase, which is that phase's only user-visible change once Decision 5's GraphQL
-  argument is dropped. No fragment for the query itself: while its values are fabricated it is a
-  preview surface, not a feature.
+- Increment A: no fragment. Once Decision 5's GraphQL argument is dropped the foundational phase is
+  core-internal, and the query itself is a preview surface while its values are fabricated, not a
+  feature.
 - Increment B: `changelog/+repository-branch-status-query.added.md`; a short section in
   `docs/docs/git-integration/branch-synchronization.mdx` showing the query; the cross-branch grouped
   read written up in `dev/knowledge/backend/query-pattern.md` and the in-resolver enforcement in

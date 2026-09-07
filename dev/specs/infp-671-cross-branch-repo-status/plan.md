@@ -153,8 +153,7 @@ backend/infrahub/
 ├── graphql/
 │   ├── schema.py                             # [A] InfrahubBaseQuery.InfrahubRepositoryBranchStatus
 │   ├── queries/
-│   │   ├── branch.py                         # [A] reject offset without limit; no new argument
-│   │   └── repository_branch_status/
+│   │   └── repository_branch_status/         # branch.py is NOT touched: no argument, no ordering change
 │   │       ├── __init__.py                   # [A] empty, per dev/knowledge/backend/package-init-files.md
 │   │       ├── field.py                      # [A] composition root: build_attribute_source, resolver instance, Field
 │   │       ├── resolver.py                   # [A] RepositoryBranchStatusResolver: validation, lookup, rows, page assembly
@@ -176,7 +175,6 @@ backend/tests/
 │   ├── core/query/
 │   │   └── test_repository_branch_attributes.py   # [B] primitive: inheritance, rebase, own_value, 5 vs 200 query count
 │   ├── graphql/queries/
-│   │   ├── test_branch.py                    # [A] offset without limit is rejected
 │   │   └── test_repository_branch_status.py  # [A] membership, paging, permissions, not-found, zero bus sends; [B] filters, inheritance, FR-008
 │   ├── computed_attribute/
 │   │   └── test_gather.py                    # [C] branches[branch.name] resolves for every non-global branch
@@ -263,8 +261,9 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
    without a role grant, paging and count, ordering, `ref` dispatch, zero bus sends. Unit tests for
    `paging.py`. The 5-branch and 200-branch fixtures are one module-scoped fixture built with
    `Branch(...).save()` and shared with the increment B and C test files.
-9. Changelog fragment for the `offset`-without-`limit` rejection, the only user-visible change the
-   foundational phase makes; the query itself stays unlogged while its values are fabricated.
+9. No changelog fragment for the foundational phase: it is core-internal, since the two
+   `InfrahubBranch` changes it once carried were both dropped. The query itself stays unlogged while
+   its values are fabricated.
 10. Hand the frontend team `contracts/graphql-repository-branch-status.md`. The card is built without
     the git-derived drift column for now.
 

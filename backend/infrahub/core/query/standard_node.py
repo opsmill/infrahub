@@ -181,14 +181,12 @@ class StandardNodeGetListQuery(Query):
         self.add_to_query(query)
 
         self.return_labels = ["n"]
-        # `created_at` and `updated_at` are not unique, so each needs the id as a tiebreaker: an
-        # unpaged read is served in SKIP/LIMIT chunks, and tied rows would otherwise be free to
-        # land in a different chunk on each re-execution. A node written between two chunks still
-        # shifts the rows after it, which no ordering can fix without cursor-based paging.
+        # An unpaged read is served in SKIP/LIMIT chunks, so a tied timestamp needs the id after it
+        # or the rows sharing it are free to land in a different chunk on each re-execution.
         id_tiebreaker = f"{db.get_id_function_name()}(n)"
         match self.node_ordering.order_by:
             case OrderByField.ID:
-                self.order_by = [f"{id_tiebreaker} {self.node_ordering.direction.value}"]
+                self.order_by = [id_tiebreaker]
             case OrderByField.CREATED_AT:
                 self.order_by = [f"n.created_at {self.node_ordering.direction.value}", id_tiebreaker]
             case OrderByField.UPDATED_AT:

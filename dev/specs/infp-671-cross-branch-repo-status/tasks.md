@@ -23,8 +23,8 @@ over the five PRs rather than at the end.
 
 | PR | Phases | Jira | Delivers |
 | --- | --- | --- | --- |
-| **PR 1** | 1, 2 (T001 to T011, including T009a; T007 and T009b dropped) | [IFC-3125](https://opsmill.atlassian.net/browse/IFC-3125) | Branch-list plumbing: `BranchListFilters.sync_with_git`, unpaged `Branch.get_list`, total-ordered standard-node reads, `offset` guard. No GraphQL schema change |
-| **PR 2** | 3 (T012 to T032, including T030a) | [IFC-3126](https://opsmill.atlassian.net/browse/IFC-3126) | Increment A. Live typed query for the frontend team; fabricated attribute values behind the real contract; the shared test fixtures |
+| **PR 1** | 1, 2 (T001 to T011; T007, T009a, T009b and T010 dropped) | [IFC-3125](https://opsmill.atlassian.net/browse/IFC-3125) | Core branch-list plumbing only: `BranchListFilters.sync_with_git`, unpaged `Branch.get_list`, total-ordered standard-node reads. No GraphQL change of any kind |
+| **PR 2** | 3 (T012 to T032; T030a dropped) | [IFC-3126](https://opsmill.atlassian.net/browse/IFC-3126) | Increment A. Live typed query for the frontend team; fabricated attribute values behind the real contract; the shared test fixtures |
 | **PR 3** | 4 (T033 to T047, including T045a and T045b) | [IFC-3127](https://opsmill.atlassian.net/browse/IFC-3127) | Increment B. True values, real attribute filters, stub deleted, changelog, docs, knowledge docs, benchmark |
 | **PR 4** | 5 (T048 to T056, including T052a) | [IFC-3128](https://opsmill.atlassian.net/browse/IFC-3128) | Increment C. Periodic sync bounded by `1 + ceil(N / 100)` queries |
 | **PR 5** | 6 (T057 to T060) | [IFC-3129](https://opsmill.atlassian.net/browse/IFC-3129) | Spec sweep, Confluence PRD correction, manual check, final validation. Foldable into PR 4 |
@@ -112,10 +112,10 @@ complete before any Phase 3 test task starts.
 - [X] T006 In `BranchNodeGetListQuery._build_raw_filter` in `backend/infrahub/core/query/branch.py`, emit `n.sync_with_git = $filter_sync_with_git` when the filter is not `None`, binding the parameter through `self._branch_filter_params` like the existing status filter (parameterised, never interpolated)
 - ~~T007 Add a `sync_with_git` argument to `InfrahubBranchQueryList` and pass it through `infrahub_branch_resolver` into `BranchListFilters`.~~ **Dropped. Do not implement.** Nothing in this feature reads it. The resolver (T023) calls `Branch.get_list` in Python with `BranchListFilters(sync_with_git=...)`; it never issues an `InfrahubBranch` GraphQL query, and the Branches card (IFC-3130) is fed by `InfrahubRepositoryBranchStatus`. `InfrahubBranch` has no consumer anywhere in the repository outside its own tests, so this argument would have been permanent public API surface added for no caller, and the only thing it demonstrably did was give T010 a GraphQL-level way to exercise T005 and T006. `spec.md` never asked for it: FR-002, FR-003 and the "Reused plumbing" note all say the filter is missing from the **branch list filters**, meaning the `BranchListFilters` dataclass. The argument was introduced at planning time (`plan.md`, `research.md`), not derived from a requirement. Test T005 and T006 through `Branch.get_list` instead
 - [X] T008 Widen `Branch.get_list` to `limit: int | None = 1000` in `backend/infrahub/core/branch/models.py` so `None` means unpaged: the underlying `BranchNodeGetListQuery` omits its `LIMIT` and is executed through the base `Query.query_with_size_limit` chunked path. Confirm `StandardNodeGetListQuery` in `backend/infrahub/core/query/standard_node.py` tolerates `limit=None` and adjust its `query_init` if it does not
-- [X] T009 In `StandardNodeGetListQuery.query_init` in `backend/infrahub/core/query/standard_node.py`, append the id function (`db.get_id_function_name()` applied to `n`) as a tiebreaker after the `created_at` and `updated_at` `ORDER BY` arms, so the chunked unpaged read in T008 iterates a total order. Today those two arms have no tiebreaker (verified during task generation). Run `backend/tests/component/graphql/queries/test_order.py` to confirm existing ordering tests still pass
-- [X] T009a Reject `offset` without `limit` in `infrahub_branch_resolver`, alongside the existing bounds checks. That pair reaches the `if self.limit or self.offset` arm of `Query.execute`, which issues one `SKIP`-ed query with no `LIMIT` and never consults `database.query_size_limit`. Correct the `Branch.get_list` docstring, which claims offset is ignored when `limit` is `None`
+- [X] T009 In `StandardNodeGetListQuery.query_init` in `backend/infrahub/core/query/standard_node.py`, append the id function (`db.get_id_function_name()` applied to `n`) as a tiebreaker after the `created_at` and `updated_at` `ORDER BY` arms, so the chunked unpaged read in T008 iterates a total order. Today those two arms have no tiebreaker (verified during task generation). Leave the `ID` arm exactly as it is: it silently drops `node_ordering.direction`, which is worth fixing but is not this feature's business. Run `backend/tests/component/graphql/queries/test_order.py` to confirm existing ordering tests still pass
+- ~~T009a Reject `offset` without `limit` in `infrahub_branch_resolver`.~~ **Dropped, but the bug is real: file it separately.** `infrahub_branch_resolver` defaults `limit` to `None`, and `Query.execute` branches on `if self.limit or self.offset`, so `InfrahubBranch(offset: 10)` with no `limit` issues one `SKIP`-ed query with no `LIMIT` and never consults `database.query_size_limit`. That is an unbounded read reachable from the live API today, and it predates this feature. Fixing it here would mean this phase touching `InfrahubBranch` for a reason unrelated to the cross-branch read, which is exactly what got T007 dropped. The hazard is recorded in the `Branch.get_list` docstring, since T008 is what makes `limit=None` a supported argument
 - ~~T009b Add `OrderByField.NAME` and default `standard_node_ordering_from_order_input` to name ascending instead of database id.~~ **Dropped for the same reason as T007.** This feature orders its rows with `order_rows` (T018) in Python, over rows the resolver already holds; changing the default ordering of a different query it never calls does nothing for it, and it is a user-visible behaviour change to an existing query with no consumer asking for it. "So the two defaults agree" is tidiness, not a requirement. If the branch list should sort by name, that is its own ticket with its own justification
-- [X] T010 [P] Component test in `backend/tests/component/graphql/queries/test_branch.py`: `offset` without `limit` returns the T009a `ValidationError`. This is the only `InfrahubBranch` change in this phase, so it is the only GraphQL-level test it earns
+- ~~T010 [P] Component test in `backend/tests/component/graphql/queries/test_branch.py`.~~ **Dropped with T007 and T009a.** This phase changes nothing about `InfrahubBranch`, so it earns no test there; `backend/tests/component/graphql/queries/test_branch.py` is untouched. Everything this phase adds is pinned by T011 at the level the resolver actually calls it
 - [X] T011 [P] Component tests in `backend/tests/component/core/test_branch.py`: `Branch.get_list(branch_filters=BranchListFilters(sync_with_git=...))` returns only syncing branches for `True`, only non-syncing for `False`, and both for `None`, which is how the T023 resolver calls it and therefore where T005 and T006 are pinned; with `config.SETTINGS.database.query_size_limit` lowered to 3 and 10 branches saved, `Branch.get_list(limit=None, node_ordering=<created_at desc>)` returns all 10 exactly once and in a stable order across two calls (pins T008 and T009 together); and the generated `order_by` of `BranchNodeGetListQuery` carries the id tiebreaker after both the `created_at` and `updated_at` sort keys, which is the assertion that fails without T009
 T012 and T013 were written here first and have been moved to Phase 3, where their first consumer
 lives. Both are pure forward declarations: PR 1 exercises neither, so shipping them here would land
@@ -125,10 +125,11 @@ run. Their constraint (a module using the branch fixture must not also request t
 Landing them with T028 means the first commit that adds them also runs them.
 
 **Checkpoint**: `BranchListFilters` carries `sync_with_git` and the Cypher honours it; unpaged branch
-reads are total-ordered; `offset` without `limit` is refused. The GraphQL schema is untouched by this
-phase.
-`uv run pytest backend/tests/component/graphql/queries/test_branch.py
-backend/tests/component/core/test_branch.py` passes.
+reads are total-ordered. This phase is core-only: it touches no GraphQL resolver, no SDL, no
+generated file, and nothing outside what the T023 resolver calls. `git diff` against the base must
+show no change under `backend/infrahub/graphql/` beyond the empty package `__init__.py`.
+`uv run pytest backend/tests/component/core/test_branch.py
+backend/tests/component/graphql/queries/test_order.py` passes.
 
 ---
 
@@ -182,7 +183,7 @@ commit that first runs them. Write them before T028, which is their first consum
 
 ### Changelog, handoff and gate
 
-- [ ] T030a [P] [US1] Add one `fixed` changelog fragment with the `creating-changelog-entries` skill for the T009a change shipped in PR 1: `InfrahubBranch` now rejects `offset` without `limit` rather than serving one unbounded read that bypassed the query size limit. That is the only user-visible change PR 1 makes, since T007 and T009b were dropped. The new query itself stays unlogged while its values are fabricated
+- ~~T030a [P] [US1] Changelog fragment for the `InfrahubBranch` changes shipped in PR 1.~~ **Dropped: PR 1 makes no user-visible change.** With T007, T009a and T009b all gone it is core-internal only, so it needs no fragment (`AGENTS.md` asks for `housekeeping` at most, and the epic's own fragment in T044 covers the feature). The new query itself stays unlogged while its values are fabricated
 - [ ] T031 [US1] Run `/pre-ci` for the changed areas, then open the increment A pull request requesting GraphQL schema sign-off (new root field and three types; `InfrahubBranch` is unchanged) and authorization sign-off (the permission check moves into the resolver because the checker pipeline cannot see a hand-written root field, and this is the first read requiring a decision covering both the default branch and other branches; spec.md, Governance Gates). The PR description states the release rule, links `contracts/graphql-repository-branch-status.md`, lists the arguments the stub accepts but ignores, and names the blast radius of T009: the id tiebreaker changes `ORDER BY` for every standard-node list ordering by `created_at` or `updated_at`, not only the branch read, so list the standard-node surfaces it touches and the test run that covers them
 - [ ] T032 [US1] Handoff: post `contracts/graphql-repository-branch-status.md` to the frontend team with the codegen instructions in its final section, state that the card is built without the git-derived drift column for now, announce the stub window to the team, and create a Jira task under the delivery epic IFC-3104 titled "Remove InfrahubRepositoryBranchStatus stub" so the stub cannot outlive the frontend work. Delivery work lives under IFC; INFP is JPD and holds product planning only, already linked to the epic. Ask the frontend team which e2e directory the card's test belongs in: the spec says `tests/e2e/branches/`, but `tests/e2e/repository/` exists and is the closer fit for a repository-page card
 
@@ -279,7 +280,7 @@ parallel with the rest of Phase 4.
 
 - **Phase 1 (Setup)**: no dependencies
 - **Phase 2 (Foundational)**: T005 to T007 in sequence (filter, Cypher, GraphQL argument); T008 then T009; T010 and T011 after their code tasks. Blocks Phase 3
-- **Phase 3 (US1, increment A)**: T014 to T022 all parallel after Phase 2; T023 after T014 to T022; T024 after T023; T025 after T024; T026 after T025; T027 parallel with T023 onward; T012 and T013 any time after Phase 2 and before T028; T028 to T030 after T026; T030a any time after T007; T031 after all tests and T030a; T032 after T031 merges
+- **Phase 3 (US1, increment A)**: T014 to T022 all parallel after Phase 2; T023 after T014 to T022; T024 after T023; T025 after T024; T026 after T025; T027 parallel with T023 onward; T012 and T013 any time after Phase 2 and before T028; T028 to T030 after T026; T031 after all tests; T032 after T031 merges
 - **Phase 4 (US1, increment B)**: T033 then T034 then T035 then T036; T037 to T039 after T036; T040 and T041 after T036 (parallel with T037 to T039); T042 and T043 after T039; T044, T045, T045a and T045b parallel after T039 (T045b needs only T033); T046 after T043; T047 last
 - **Phase 5 (US2)**: T048 any time; T049 after T036 (the reader), independent of T037 to T047; T050 to T052 after T049; T052a after T052; T053 after T051; T054 and T055 parallel after T049; T056 last
 - **Phase 6**: after all three increments merge
@@ -315,7 +316,7 @@ Parallel group 1 (different files, no shared state):
   T022 permissions.py                        backend/infrahub/graphql/queries/repository_branch_status/permissions.py
 
 Then sequential: T023 resolver class, T024 field.py composition root, T025 registration, T026 regeneration.
-Parallel with T023 onward: T027 unit tests, T030a changelog fragment.
+Parallel with T023 onward: T027 unit tests.
 After T026, parallel: T028, T029, T030 (same file, coordinate by class; or one implementer).
 ```
 
