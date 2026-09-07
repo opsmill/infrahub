@@ -435,16 +435,18 @@ on `get_current_settings().api.url`; anything else cached against a Prefect serv
 
 ### Swapping the Workflow Adapter for a Test Double
 
-Every workflow double goes in through `tests/helpers/workflow_override.py::override_workflow`, which
+Swap a workflow double in through `tests/helpers/workflow_override.py::override_workflow`, which
 sets both places a lookup can come from — `config.OVERRIDE.workflow` and the `build_workflow`
-override in the dependency provider — and puts the *previous* values back in a `finally`. Every other
-dependency goes in through `tests/helpers/dependency_override.py::override_dependency`, which does
-the same for one provider entry.
+override in the dependency provider — and puts the *previous* values back in a `finally`. Swap any
+other dependency through `tests/helpers/dependency_override.py::override_dependency`, which does the
+same for one provider entry.
 
-Never swap a dependency in with `dependency_provider.scope`, not even around a single call. It pops
-its override instead of restoring the one it replaced, and it pops only when the block ends
-normally, so an exception thrown through it — a `pytest.raises` around the call under test included
-— leaves the double installed for the rest of the xdist worker process.
+Do not reach for `dependency_provider.scope` in new code. It pops its override instead of restoring
+the one it replaced, and it pops only when the block ends normally, so an exception thrown through
+it — a `pytest.raises` around the call under test included — leaves the double installed for the
+rest of the xdist worker process. Per-test `scope()` calls still exist across the suite and the
+guard below covers what they leak, but a fixture at class scope or wider outlives that guard, so a
+swap at that scope has to use the helpers.
 
 That is worth recognising in CI, because the failure surfaces far from its cause: the next class on
 the worker whose app resolves its workflow before its own override is in place starts with a

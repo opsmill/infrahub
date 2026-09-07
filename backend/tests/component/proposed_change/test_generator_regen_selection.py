@@ -29,7 +29,7 @@ from tests.helpers.workflow_override import override_workflow
 from .conftest import make_node_diff
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator
 
     from fast_depends import Provider
 
@@ -105,10 +105,10 @@ class GeneratorRegenTestBase(TestInfrahubAppWithoutLocalWorkflow):
     ``run_generators`` and read back the set of generator definitions dispatched for a check.
 
     The ``workflow_recorder``, ``service`` and ``client`` fixtures override the base ones on
-    purpose: the base ``client`` fixture assumes a ``WorkflowLocalExecution`` backend (it asserts
-    on it) and would execute the dispatched checks, whereas these tests install a
-    ``WorkflowRecorder`` so the dispatch itself is the observable under test. The base class also
-    does not provide a ``service`` fixture at all (only the local-execution subclasses do).
+    purpose: the base ``client`` fixture would execute the dispatched checks, whereas these tests
+    install a ``WorkflowRecorder`` so the dispatch itself is the observable under test. The
+    recorder takes over the workflow lookup only once the app has been built, so the app keeps the
+    ``WorkflowLocalExecution`` backend it is asserted on.
 
     Subclasses supply their own schema and dataset inline. Each dataset must expose
     ``proposed_change_id``, ``repository_id``, ``repository_name`` and ``source_branch`` so the
@@ -118,7 +118,7 @@ class GeneratorRegenTestBase(TestInfrahubAppWithoutLocalWorkflow):
     @pytest.fixture(scope="class", autouse=True)
     async def workflow_recorder(
         self,
-        prefect: Generator[str, None, None],
+        service: InfrahubServices,
         dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
         with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:

@@ -31,7 +31,7 @@ from tests.helpers.workflow_override import override_workflow
 from .conftest import QUERY_NON_UNIQUE_TARGETS, QUERY_UNIQUE_TARGETS, make_node_diff
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator
 
     from fast_depends import Provider
 
@@ -185,7 +185,7 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
     @pytest.fixture(scope="class", autouse=True)
     async def workflow_recorder(
         self,
-        prefect: Generator[str, None, None],
+        service: InfrahubServices,
         dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
         with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:

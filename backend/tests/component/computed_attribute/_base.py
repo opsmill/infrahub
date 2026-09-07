@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, AsyncGenerator, ClassVar, Generator
+from typing import TYPE_CHECKING, Any, AsyncGenerator, ClassVar
 
 import pytest
 
@@ -136,7 +136,7 @@ class ScopedRecomputeTestBase(TestInfrahubAppWithoutLocalWorkflow):
     @pytest.fixture(scope="class", autouse=True)
     async def workflow_recorder(
         self,
-        prefect: Generator[str, None, None],
+        service: InfrahubServices,
         dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
         with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:

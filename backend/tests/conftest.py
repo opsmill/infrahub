@@ -80,6 +80,7 @@ from tests.helpers.constants import (
     PORT_PREFECT,
     PORT_REDIS,
 )
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.prefect_services import prefect_api_target
@@ -151,17 +152,21 @@ def _dependency_overrides_are_restored() -> Generator[None, None, None]:
     overrides_before = dict(provider.overrides)
     workflow_before = config.OVERRIDE.workflow
     yield
-    left_behind = sorted(
-        getattr(key, "__name__", repr(key)) for key in provider.overrides.keys() - overrides_before.keys()
+    # Identity, not key presence: re-pointing an entry that a wider-scoped fixture owns leaves the
+    # key in place and would otherwise pass unnoticed.
+    changed = sorted(
+        getattr(key, "__name__", repr(key))
+        for key in provider.overrides.keys() | overrides_before.keys()
+        if provider.overrides.get(key) is not overrides_before.get(key)
     )
     workflow_changed = config.OVERRIDE.workflow is not workflow_before
-    if not left_behind and not workflow_changed:
+    if not changed and not workflow_changed:
         return
     provider.overrides.clear()
     provider.overrides.update(overrides_before)
     config.OVERRIDE.workflow = workflow_before
     pytest.fail(
-        f"the test left dependency overrides behind (put back now): provider={left_behind}, "
+        f"the test left dependency overrides behind (put back now): provider={changed}, "
         f"config.OVERRIDE.workflow changed={workflow_changed}"
     )
 
@@ -181,13 +186,13 @@ async def db(
     async def _db(singleton: bool = True) -> InfrahubDatabase:
         return await build_database(singleton=False)
 
-    with provider.scope(build_database, _db):
+    with override_dependency(build_database, _db, dependency_provider=provider):
         driver = await get_database()
         await add_indexes(db=driver)
-
-        yield driver
-
-        await driver.close()
+        try:
+            yield driver
+        finally:
+            await driver.close()
 
 
 @pytest.fixture(scope="class")
