@@ -19,7 +19,7 @@ from infrahub.core.merge.selective_regen.orchestrator import build_merge_selecti
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.server import app
-from infrahub.workers.dependencies import build_client, build_workflow
+from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import (
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_GENERATOR_DEFINITION_RUN,
@@ -28,6 +28,7 @@ from infrahub.workflows.catalogue import (
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.workflow_override import override_workflow
 
 from .conftest import make_node_diff
 
@@ -109,12 +110,8 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
         prefect: Generator[str, None, None],
         dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
-        original = config.OVERRIDE.workflow
-        recorder = WorkflowRecorder()
-        config.OVERRIDE.workflow = recorder
-        with dependency_provider.scope(build_workflow, lambda: recorder):
+        with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
             yield recorder
-        config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class", autouse=True)
     async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
