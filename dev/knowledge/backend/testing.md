@@ -187,6 +187,28 @@ Two consequences worth remembering:
   releases — scopes are sorted largest-first, so which modules run concurrently can change on an
   upgrade. Tests must not depend on what else is or is not running.
 
+### One process, several Prefect servers
+
+A test process does not keep one Prefect server. The session-scoped `prefect_test_fixture` starts
+an ephemeral one for the whole session, and the `prefect` (module) and `prefect_class` (class)
+fixtures start a **container of their own** and re-point `PREFECT_API_URL` at it for that scope.
+Each orchestration client a test builds reads the setting when it is built, so it follows.
+
+Prefect's background queue services do not. `EventsWorker` and `APILogWorker` are process-wide
+`QueueService` singletons, memoized on `hash((cls, *args))`, and `EventsWorker.instance()` passes
+no API URL in that key; the websocket and orchestration clients it builds in `_lifespan` read
+`PREFECT_API_URL` once. Left alone it therefore stays bound to the first server of the process,
+and every event after that goes to a server the process has moved off — silently while that server
+is up, then as a wall of `Service 'EventsWorker' failed to process item` once it is torn down. The
+backlog is expensive too: a stale queue drains at about one event per 60s client request timeout,
+and `prefect_test_harness` ends the session in `drain_workers()`, which blocks with no timeout.
+
+`prefect` and `prefect_class` handle this through `prefect_api_target()` from
+`tests/helpers/prefect_services.py`, which drains the queue services on **both** sides of the
+change of server: on the way in while the old URL still resolves, so queued items reach the server
+they were meant for, and on the way out before the new container is stopped. Anything else that
+re-points `PREFECT_API_URL` must go through it rather than calling `temporary_settings` directly.
+
 Within a single module or class, however, pytest runs tests in definition order and
 `--dist loadscope` keeps the whole scope on one worker — so the sequential, stateful `test_stepNN`
 pattern used across `backend/tests/integration/` (and in component migration suites) is deliberate
@@ -269,6 +291,7 @@ Test data and fixture files:
 | `test_client.py` | HTTP test client wrapper |
 | `utils.py` | Container utilities |
 | `constants.py` | Port numbers, image names |
+| `prefect_services.py` | Rebinds Prefect's process-wide queue services when the test process changes Prefect server (`prefect_api_target`). See [One process, several Prefect servers](#one-process-several-prefect-servers). |
 | `file_repo.py` | Builds throwaway on-disk Git "remote" repos from `repos/` fixtures (`FileRepo`). The remotes accept pushes to their checked-out branch, so tests exercise push and write-back like a hosted remote would. |
 
 ### Test Data (`backend/tests/test_data/`)
