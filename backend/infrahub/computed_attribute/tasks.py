@@ -51,8 +51,6 @@ from .scoping import (
 from .transform_recompute import TransformRecomputeSubmitter
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import NodeSchema
-    from infrahub.core.schema.computed_attribute import ComputedAttribute
     from infrahub.core.schema.schema_branch_computed import TransformReadSet
     from infrahub.database import InfrahubDatabase
     from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
@@ -94,21 +92,6 @@ def _resolve_changed_elements(
     if changed_elements is None:
         return None
     return ChangedElementSet.from_payload(changed_elements)
-
-
-def _requested_python_transform_attribute(*, node_schema: NodeSchema, attribute_name: str) -> ComputedAttribute | None:
-    """The named Python transform computed attribute of a kind, or None when the kind declares none.
-
-    Every caller submits one flow per attribute, so the flow must recompute that one only.
-    """
-    attribute = node_schema.get_attribute_or_none(name=attribute_name)
-    if (
-        attribute
-        and attribute.computed_attribute
-        and attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON
-    ):
-        return attribute.computed_attribute
-    return None
 
 
 async def _transform_value_for_node(
@@ -210,9 +193,8 @@ async def process_transform(
     client.request_context = context.to_request_context()
 
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
-    node_schema = schema_branch.get_node(name=node_kind, duplicate=False)
-    transform_attribute = _requested_python_transform_attribute(
-        node_schema=node_schema, attribute_name=computed_attribute_name
+    transform_attribute = schema_branch.computed_attributes.get_python_transform_attribute(
+        node_kind, computed_attribute_name
     )
     if not transform_attribute:
         log.warning(f"'{node_kind}' has no Python computed attribute named '{computed_attribute_name}'")
