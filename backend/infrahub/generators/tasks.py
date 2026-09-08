@@ -273,5 +273,5 @@ async def request_generator_definition_run(
     details = "; ".join(f"{target_name} ({target_id}): {error}" for target_id, target_name, error in failures)
     return Failed(
         message=f"{len(failures)} of {len(results)} generators failed, {succeeded} succeeded: {details}",
-        error=ExceptionGroup("generator run failures", [error for *_, error in failures]),
+        data=ExceptionGroup("generator run failures", [error for *_, error in failures]),
     )

@@ -273,6 +273,11 @@ class TestGeneratorDefinitionRunReportsFailingMember(TestInfrahubAppBase):
             f"member-beta ({dataset[_FAILING_ID]}): generator run failed for member-beta"
         )
 
+        # The failure stays recoverable: the state re-raises the member's error inside an ExceptionGroup.
+        with pytest.raises(ExceptionGroup) as exc_info:
+            await state.result(raise_on_failure=True)
+        assert [str(error) for error in exc_info.value.exceptions] == [_member_failure_message(_FAILING_MEMBER)]
+
     async def test_a_cancelled_member_propagates_the_cancellation(
         self,
         dataset: dict[str, Any],
@@ -345,6 +350,14 @@ class TestGeneratorDefinitionRunReportsFailingMember(TestInfrahubAppBase):
         assert set(state.message.removeprefix(prefix).split("; ")) == {
             f"{_HEALTHY_MEMBER} ({dataset[_HEALTHY_ID]}): {_member_failure_message(_HEALTHY_MEMBER)}",
             f"{_FAILING_MEMBER} ({dataset[_FAILING_ID]}): {_member_failure_message(_FAILING_MEMBER)}",
+        }
+
+        # Every member's error is recoverable from the state as an ExceptionGroup.
+        with pytest.raises(ExceptionGroup) as exc_info:
+            await state.result(raise_on_failure=True)
+        assert {str(error) for error in exc_info.value.exceptions} == {
+            _member_failure_message(_HEALTHY_MEMBER),
+            _member_failure_message(_FAILING_MEMBER),
         }
 
     async def test_all_members_succeeding_reports_completed(
