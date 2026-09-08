@@ -120,8 +120,8 @@ class TestWorkerInfrahubAsync(TestInfrahubAppWithoutLocalWorkflow):
         stop.set()
         await lifecycle_task
 
-        # The Prefect queue services are unpinned by `prefect_class`, which tears down after this
-        # fixture and while its server is still up; see tests/helpers/prefect_services.py.
+        # No drain here — the queue services are unpinned at the server-change boundary, while the
+        # server is still up.
 
         # Clear local worker result storage cache
         _default_storages.clear()
