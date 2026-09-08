@@ -71,7 +71,6 @@ from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_workflow
 from tests.adapters.workflow import WorkflowRecorder
 from tests.conftest import TestHelper
 from tests.helpers.constants import (
@@ -84,6 +83,7 @@ from tests.helpers.file_repo import FileRepo
 from tests.helpers.prefect_diagnostics import register_prefect_test_server, timeout_diagnostics_section
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import find_available_prefect_port
+from tests.helpers.workflow_override import override_workflow
 from tests.test_data import dataset01 as ds01
 
 COMPONENT_TESTS_DIR = Path(__file__).parent
@@ -3032,23 +3032,15 @@ async def prefix_pool_01(
 
 @pytest.fixture
 def workflow_local(dependency_provider: Provider) -> Generator[WorkflowLocalExecution, None, None]:
-    original = config.OVERRIDE.workflow
-    workflow = WorkflowLocalExecution()
-    config.OVERRIDE.workflow = workflow
-    with dependency_provider.scope(build_workflow, lambda: workflow):
+    with override_workflow(WorkflowLocalExecution(), dependency_provider=dependency_provider) as workflow:
         yield workflow
-    config.OVERRIDE.workflow = original
 
 
 @pytest.fixture
 def workflow_recorder(dependency_provider: Provider) -> Generator[WorkflowRecorder, None, None]:
     """Record workflow submissions instead of running them."""
-    original = config.OVERRIDE.workflow
-    recorder = WorkflowRecorder()
-    config.OVERRIDE.workflow = recorder
-    with dependency_provider.scope(build_workflow, lambda: recorder):
+    with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
         yield recorder
-    config.OVERRIDE.workflow = original
 
 
 @pytest.fixture

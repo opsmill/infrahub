@@ -18,6 +18,19 @@ class MemoryInfrahubEvent(InfrahubEventService):
         self.events.append(event)
 
 
+class FailingInfrahubEvent(MemoryInfrahubEvent):
+    """Raises on the events of a given type, which are not recorded, and records the rest."""
+
+    def __init__(self, failing_kind: type[InfrahubEvent]) -> None:
+        super().__init__()
+        self.failing_kind = failing_kind
+
+    async def send(self, event: InfrahubEvent) -> None:
+        if isinstance(event, self.failing_kind):
+            raise RuntimeError(f"{type(event).__name__} rejected")
+        await super().send(event=event)
+
+
 class RecordingAutoCreateEventEmitter(AutoCreateEventEmitter):
     """Records the auto-group audit events emitted during one assignment."""
 

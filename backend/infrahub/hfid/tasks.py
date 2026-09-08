@@ -70,12 +70,11 @@ async def process_hfid(
         if rendered_hfid != node.hfid_value:
             writes.append(AttributeValueWrite(node_id=node.node_id, field=HFID_FIELD, value=rendered_hfid))
 
-    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
+    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch, coalesced=object_ids is not None)
     await dispatcher.dispatch(
         writes=writes,
         branch_name=branch_name,
         context=context,
-        coalesced=object_ids is not None,
         recompute_depth=recompute_depth,
     )
 
