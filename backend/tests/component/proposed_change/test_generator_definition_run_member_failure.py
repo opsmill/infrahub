@@ -218,9 +218,12 @@ class TestGeneratorDefinitionRunReportsFailingMember(TestInfrahubAppBase):
             _FAILING_ID: failing.id,
         }
 
-    def _model(self, dataset: dict[str, Any], branch: str) -> RequestGeneratorDefinitionRun:
+    def _model(
+        self, dataset: dict[str, Any], branch: str, target_members: list[str] | None = None
+    ) -> RequestGeneratorDefinitionRun:
         return RequestGeneratorDefinitionRun(
             branch=branch,
+            target_members=target_members or [],
             generator_definition=ProposedChangeGeneratorDefinition(
                 definition_id=dataset[_DEFINITION_ID],
                 definition_name="tag-generator",
@@ -295,3 +298,73 @@ class TestGeneratorDefinitionRunReportsFailingMember(TestInfrahubAppBase):
             for call in workflow_recorder.get_execute_calls_for(REQUEST_GENERATOR_RUN)
         }
         assert dispatched == {dataset[_HEALTHY_ID], dataset[_FAILING_ID]}
+
+    async def test_only_the_selected_members_are_run(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+        workflow_recorder: WorkflowRecorderFailingMember,
+    ) -> None:
+        state = await request_generator_definition_run(
+            model=self._model(dataset, default_branch.name, target_members=[dataset[_HEALTHY_ID]]),
+            context=self._context(admin_account, default_branch),
+            return_state=True,
+        )
+
+        # Only the selected member runs; the other group member is skipped entirely.
+        dispatched = {
+            call["parameters"]["model"].target_id
+            for call in workflow_recorder.get_execute_calls_for(REQUEST_GENERATOR_RUN)
+        }
+        assert dispatched == {dataset[_HEALTHY_ID]}
+        assert state.is_completed()
+        assert state.message == "Successfully run 1 generators"
+
+    async def test_every_failing_member_is_reported(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+        workflow_recorder: WorkflowRecorderFailingMember,
+    ) -> None:
+        workflow_recorder.failing_target_ids = {dataset[_HEALTHY_ID], dataset[_FAILING_ID]}
+
+        state = await request_generator_definition_run(
+            model=self._model(dataset, default_branch.name),
+            context=self._context(admin_account, default_branch),
+            return_state=True,
+        )
+
+        # Every failed member is named; member order in the group is not guaranteed, so compare the set.
+        assert state.is_failed()
+        prefix = "2 of 2 generators failed, 0 succeeded: "
+        assert state.message.startswith(prefix)
+        assert set(state.message.removeprefix(prefix).split("; ")) == {
+            f"{_HEALTHY_MEMBER} ({dataset[_HEALTHY_ID]}): {_member_failure_message(_HEALTHY_MEMBER)}",
+            f"{_FAILING_MEMBER} ({dataset[_FAILING_ID]}): {_member_failure_message(_FAILING_MEMBER)}",
+        }
+
+    async def test_all_members_succeeding_reports_completed(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+        workflow_recorder: WorkflowRecorderFailingMember,
+    ) -> None:
+        state = await request_generator_definition_run(
+            model=self._model(dataset, default_branch.name),
+            context=self._context(admin_account, default_branch),
+            return_state=True,
+        )
+
+        dispatched = {
+            call["parameters"]["model"].target_id
+            for call in workflow_recorder.get_execute_calls_for(REQUEST_GENERATOR_RUN)
+        }
+        assert dispatched == {dataset[_HEALTHY_ID], dataset[_FAILING_ID]}
+        assert state.is_completed()
+        assert state.message == "Successfully run 2 generators"
