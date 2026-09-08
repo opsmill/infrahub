@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from infrahub_sdk import Config, InfrahubClient
 
-from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
@@ -20,13 +19,15 @@ from infrahub.generators.models import (
 )
 from infrahub.generators.tasks import request_generator_definition_run
 from infrahub.server import app
-from infrahub.workers.dependencies import build_client, build_workflow
+from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import REQUEST_GENERATOR_RUN
 from tests.adapters.workflow import WorkflowRecorder
 from tests.constants.kind import TAG as TAG_KIND
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema import load_schema
 from tests.helpers.schema.tag import TAG
 from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
@@ -125,12 +126,9 @@ class TestGeneratorDefinitionRunReportsFailingMember(TestInfrahubAppBase):
         prefect: Generator[str, None, None],
         dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorderFailingMember, None]:
-        original = config.OVERRIDE.workflow
         recorder = WorkflowRecorderFailingMember()
-        config.OVERRIDE.workflow = recorder
-        with dependency_provider.scope(build_workflow, lambda: recorder):
+        with override_workflow(recorder, dependency_provider=dependency_provider):
             yield recorder
-        config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class", autouse=True)
     async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
@@ -154,9 +152,11 @@ class TestGeneratorDefinitionRunReportsFailingMember(TestInfrahubAppBase):
         )
         original_client = service._client
         service._client = sdk_client
-        with dependency_provider.scope(build_client, lambda: sdk_client):
-            yield sdk_client
-        service._client = original_client
+        try:
+            with override_dependency(build_client, lambda: sdk_client, dependency_provider=dependency_provider):
+                yield sdk_client
+        finally:
+            service._client = original_client
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorderFailingMember) -> None:
