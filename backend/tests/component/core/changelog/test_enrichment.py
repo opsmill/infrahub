@@ -5,7 +5,10 @@ These tests run the real save / diff-collect paths against a live database and a
 human-friendly identifiers that land on the changelog.
 """
 
+from collections.abc import AsyncGenerator
 from typing import Any
+
+import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -106,6 +109,43 @@ async def _merge_car_owned_by_person(
     return diff, branch, owner, car
 
 
+@pytest.fixture
+async def cascade_delete_cars(default_branch: Branch, car_person_schema: SchemaBranch) -> AsyncGenerator[None, None]:
+    """Make the person-to-cars relationship cascade on delete for the test, then restore it."""
+    cars = (
+        registry.schema.get_schema_branch(name=default_branch.name)
+        .get(name="TestPerson", duplicate=False)
+        .get_relationship("cars")
+    )
+    original_on_delete = cars.on_delete
+    cars.on_delete = RelationshipDeleteBehavior.CASCADE
+    yield
+    cars.on_delete = original_on_delete
+
+
+@pytest.fixture
+async def one_directional_schema(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, data_schema: None
+) -> AsyncGenerator[None, None]:
+    """Register the one-directional schema on the default branch and restore the prior schema afterward."""
+    snapshot = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+    registry.schema.register_schema(schema=SchemaRoot(**_ONE_DIRECTIONAL_SCHEMA), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    await default_branch.save(db=db)
+    yield
+    registry.schema.set_schema_branch(name=default_branch.name, schema=snapshot)
+    default_branch.update_schema_hash()
+    await default_branch.save(db=db)
+
+
+@pytest.fixture
+async def restore_default_schema(default_branch: Branch, car_person_schema: None) -> AsyncGenerator[None, None]:
+    """Restore the default branch schema after a test drops a kind from it in place."""
+    snapshot = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+    yield
+    registry.schema.set_schema_branch(name=default_branch.name, schema=snapshot)
+
+
 async def test_mutation_enriches_the_mutated_nodes_own_relationships(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -178,30 +218,20 @@ async def test_mutation_changelog_survives_label_reader_failure(
 async def test_unresolvable_peer_falls_back_to_placeholder(
     db: InfrahubDatabase,
     default_branch: Branch,
+    cascade_delete_cars: None,
     car_accord_main: Node,
     car_prius_main: Node,
     person_john_main: Node,
 ) -> None:
-    cars_relationship = (
-        registry.schema.get_schema_branch(name=default_branch.name)
-        .get(name="TestPerson", duplicate=False)
-        .get_relationship("cars")
-    )
-    original_on_delete = cars_relationship.on_delete
-    cars_relationship.on_delete = RelationshipDeleteBehavior.CASCADE
-
     car_ids = {car_accord_main.id, car_prius_main.id}
-    try:
-        deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[person_john_main])
-        assert {node.id for node in deleted} == {person_john_main.id, *car_ids}
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[person_john_main])
+    assert {node.id for node in deleted} == {person_john_main.id, *car_ids}
 
-        secondaries = await RelationshipChangelogGetter(
-            db=db,
-            branch=default_branch,
-            label_loader=node_label_loader(db=db, branch=default_branch, node_loader=NodeManager.get_many),
-        ).get_changelogs(primary_changelog=person_john_main.node_changelog)
-    finally:
-        cars_relationship.on_delete = original_on_delete
+    secondaries = await RelationshipChangelogGetter(
+        db=db,
+        branch=default_branch,
+        label_loader=node_label_loader(db=db, branch=default_branch, node_loader=NodeManager.get_many),
+    ).get_changelogs(primary_changelog=person_john_main.node_changelog)
     car_secondaries = [secondary for secondary in secondaries if secondary.node_id in car_ids]
     assert len(car_secondaries) == len(car_ids)
 
@@ -303,13 +333,8 @@ async def test_merge_changelog_reports_deleted_node_hfid(
 async def test_merge_fills_peer_hfid_for_a_peer_that_did_not_change(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
-    data_schema: None,
+    one_directional_schema: None,
 ) -> None:
-    registry.schema.register_schema(schema=SchemaRoot(**_ONE_DIRECTIONAL_SCHEMA), branch=default_branch.name)
-    default_branch.update_schema_hash()
-    await default_branch.save(db=db)
-
     owner = await Node.init(db=db, schema="ZzzOwner", branch=default_branch)
     await owner.new(db=db, name="Alice")
     await owner.save(db=db)
@@ -348,13 +373,8 @@ async def test_merge_fills_peer_hfid_for_a_peer_that_did_not_change(
 async def test_merge_tolerates_dropped_kind_referencing_an_unchanged_peer(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
-    data_schema: None,
+    one_directional_schema: None,
 ) -> None:
-    registry.schema.register_schema(schema=SchemaRoot(**_ONE_DIRECTIONAL_SCHEMA), branch=default_branch.name)
-    default_branch.update_schema_hash()
-    await default_branch.save(db=db)
-
     owner = await Node.init(db=db, schema="ZzzOwner", branch=default_branch)
     await owner.new(db=db, name="Alice")
     await owner.save(db=db)
@@ -373,18 +393,14 @@ async def test_merge_tolerates_dropped_kind_referencing_an_unchanged_peer(
     diff = await diff_repository.get_one(diff_branch_name=branch.name)
 
     # A schema migration drops the item's kind; its owner is unchanged and so absent from the diff.
-    default_schema_snapshot = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
     registry.schema.get_schema_branch(name=branch.name).delete(name="ZzzItem")
     registry.schema.get_schema_branch(name=default_branch.name).delete(name="ZzzItem")
-    try:
-        changelogs = await DiffChangelogCollector(
-            diff=diff,
-            db=db,
-            branch=branch,
-            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many),
-        ).collect_changelogs()
-    finally:
-        registry.schema.set_schema_branch(name=default_branch.name, schema=default_schema_snapshot)
+    changelogs = await DiffChangelogCollector(
+        diff=diff,
+        db=db,
+        branch=branch,
+        label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many),
+    ).collect_changelogs()
 
     item_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == item.id)
     owner_rel = item_changelog.relationships["owner"]
@@ -398,25 +414,20 @@ async def test_merge_tolerates_kind_deleted_in_migration(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_simplified_proposed_change_schema: SchemaBranch,
-    car_person_schema: None,
+    restore_default_schema: None,
 ) -> None:
     diff, branch, owner, car = await _merge_car_owned_by_person(db, default_branch, "merge_kind_deleted")
 
     owner_hfid = await owner.get_hfid(db=db)
-    # A schema migration in the merge drops the car's kind, so its schema no longer resolves on
-    # either branch. Snapshot the default schema to restore it once the assertions are done.
-    default_schema_snapshot = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+    # A schema migration in the merge drops the car's kind, so its schema no longer resolves on either branch.
     registry.schema.get_schema_branch(name=branch.name).delete(name="TestCar")
     registry.schema.get_schema_branch(name=default_branch.name).delete(name="TestCar")
-    try:
-        changelogs = await DiffChangelogCollector(
-            diff=diff,
-            db=db,
-            branch=branch,
-            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many),
-        ).collect_changelogs()
-    finally:
-        registry.schema.set_schema_branch(name=default_branch.name, schema=default_schema_snapshot)
+    changelogs = await DiffChangelogCollector(
+        diff=diff,
+        db=db,
+        branch=branch,
+        label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many),
+    ).collect_changelogs()
 
     by_id = {changelog.node_id: changelog for _, changelog in changelogs}
     # The node whose kind is gone still yields a changelog, only without its HFID.
