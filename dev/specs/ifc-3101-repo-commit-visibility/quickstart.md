@@ -53,9 +53,12 @@ uv run pytest backend/tests/unit/git/state/test_classification.py backend/tests/
 
 1. Timeout, shared-path PR: stop every task worker, run the commit-view query. Expected within
    `INFRAHUB_BROKER_RPC_TIMEOUT` seconds (default 30): a `WORKER_TIMEOUT` error with
-   `http_status 504` and `data.retry_after_seconds`. `GET /api/file/...` inherits the same bound and
-   now fails with 504 instead of hanging; its separate defect, where a worker-side *error* still
-   returns 200, is a different ticket and is not asserted here.
+   `http_status 504` and `data.retry_after_seconds`. Run the drift query with the workers still
+   stopped and expect the opposite: no error, every branch row present with its Infrahub-side values,
+   `remote_head` null, and `unavailable.reason: TIMEOUT` on the column alone. `GET /api/file/...`
+   inherits the same bound and now fails with 504 instead of hanging; its separate defect, where a
+   worker-side *error* still returns 200, is a different ticket and is not asserted here. Adding a
+   repository while the workers are stopped must still leave no repository behind (T099).
 
 2. Behind: using the `FileRepo` fixture (`backend/tests/helpers/file_repo.py`), add the repository
    and let the first import finish. Do **not** then push and wait for a sync tick: for a read-write

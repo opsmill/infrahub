@@ -60,7 +60,7 @@ remains.
 | I. Schema-Driven Integrity | PASS | No node, attribute or migration. Generated files are regenerated, never edited: `schema/schema.graphql`, frontend GraphQL types, error-catalogue artefacts, configuration reference. |
 | II. Branch-Safe by Default | PASS | Every answer is computed for `graphql_context.branch`: the imported commit is the branch-local or branch-aware `commit`, the read-only `ref` is branch-aware, and the remote branch is mapped through `_get_mapped_remote_branch`. Nothing is written, so merge behaviour is unchanged (SC-011). |
 | III. Type Safety & Explicit Contracts | PASS | SDL defined before implementation (`contracts/`); frozen dataclasses in `infrahub.git.state.models`; Pydantic message models at the bus boundary; `RepositoryGitStateReader` protocol returning those dataclasses, never a wire model; frontend uses gql.tada-derived types. |
-| IV. Test Discipline | PASS | Unit tests for classification; component tests for the per-branch query, resolvers, permission denial, laziness, RPC timeout, handlers; integration tests for behind, rewritten, tag move, lock serialisation; e2e for the Commits tab. Test adapters (`BusRecorder`, `WorkflowRecorder`, `RecordingLockRegistry`) instead of mocks. |
+| IV. Test Discipline | PASS | Unit tests for classification; component tests for the per-branch query, resolvers, permission denial, laziness, RPC timeout, handlers; integration tests for behind, rewritten, tag move, lock serialisation, and the broadcast binding that makes convergence per-worker; e2e for the Commits tab. Test adapters (`BusRecorder`, `WorkflowRecorder`, `RecordingLockRegistry`) instead of mocks. FR-017 is covered as three deterministic links rather than a multi-worker fixture, per `checklists/requirements.md`. |
 | V. Query Performance & Efficiency | PASS | Worker cost per page is constant in history length (`iter_commits` with skip and at most `limit` ancestry checks). Graph side: the drift list reads every branch's tracked values in one parameterised query (`core/query/repository.py`), so the query count is independent of branch count, asserted by instrumentation at 5 and 200 branches. The existing per-branch sync helper is left untouched; IFC-3104 refactors it onto the same query. |
 | VI. Security & Input Boundaries | PASS | `limit` bounded to 1..100 and `offset` non-negative in the resolver; repository view permission enforced imperatively (the analyzer cannot see custom queries); timeout error message names the operation only, never the worker or paths; credentials for `ls-remote` come from the worker's existing git config, never from the message. |
 | VII. Simplicity & Maintainability | PASS | Reuses `GitFileGet`, `RefreshGitFetch`, `WorkflowDefinition` cron with `CANCEL_NEW`, cache `not_exists`, `define_object_permission_from_branch`, and `get_repositories_commit_per_branch` for the refs-check flow's repository list. The reader protocol earns its place by keeping the message-bus dependency out of the resolver, and its second and third implementations are the test doubles. The one new abstraction, `RepositoryBranchValuesQuery`, is required by Principle V rather than anticipated: it follows the existing Query-class pattern, has a caller in this feature, and a second in IFC-3104. No sample-data path, no throwaway setting. No new dependency. |
@@ -74,11 +74,15 @@ GraphQL query and mutation surface (`InfrahubRepositoryCommits`, `InfrahubReposi
 
 The GraphQL half is definitional rather than a choice: the feature is two new queries and a mutation,
 so the schema necessarily changes. `BrokerSettings.rpc_timeout` is the part of the sign-off with
-substance, because it changes behaviour for callers this feature does not add:
-`infrahub.api.file::get_file` and `ValidateRepositoryConnectivity` go from an unbounded wait to a
-failure at 30 seconds. That is the intended shared-path change, 30 seconds is the agreed default, and
-a worker slow enough to have previously answered late will now return a catalogued 504 instead. It
-lands as its own reviewed pull request (Phase B1).
+substance, because it changes behaviour for all three callers this feature does not add, which go
+from an unbounded wait to a failure at 30 seconds. That is the intended shared-path change and 30
+seconds is the agreed default. For two of them a worker slow enough to have previously answered late
+now returns a catalogued 504 instead: `infrahub.api.file::get_file` and
+`ValidateRepositoryConnectivity`. The third needs code, not just acceptance:
+`InfrahubRepositoryCreate` deletes the repository it just created when the connectivity RPC reports
+failure, and a `WorkerTimeoutError` misses that branch, so the timeout has to be routed into the
+same delete-and-raise path (T099) or a slow remote leaves an uncloned repository behind a 504. All
+of it lands as its own reviewed pull request (Phase B1).
 
 ## Project Structure
 
@@ -134,6 +138,7 @@ backend/infrahub/
 ├── message_bus/operations/git/commit_log.py      # NEW   shallow handler: unpack, delegate to log_reader, reply
 ├── message_bus/operations/git/branch_heads.py    # NEW   shallow handler, same shape
 ├── message_bus/operations/__init__.py            # EDIT  COMMAND_MAP
+├── repositories/create_repository.py             # EDIT  route WorkerTimeoutError into the existing delete-and-raise path
 └── services/adapters/message_bus/{__init__,rabbitmq,nats,local}.py   # EDIT  rpc(timeout=...)
 
 backend/tests/
@@ -152,7 +157,8 @@ backend/tests/
 ├── component/message_bus/operations/git/test_branch_heads.py     # NEW
 ├── component/git/test_check_refs.py                              # NEW  due check, ls-remote only when idle, lock scope
 ├── integration/git/test_repository_commits_query.py              # NEW  GraphQL query end to end through a real worker read, plus laziness
-└── integration/git/test_readonly_refs_check.py                   # NEW  Gogs: advance, force-push, tag move, tag delete
+├── integration/git/test_readonly_refs_check.py                   # NEW  Gogs: advance, force-push, tag move, tag delete
+└── integration/services/adapters/message_bus/test_rabbitmq.py    # EDIT  refresh.git.* binding on the per-worker exclusive queue
 
 schema/schema.graphql                                             # REGEN
 schema/error-catalogue.json                                       # REGEN

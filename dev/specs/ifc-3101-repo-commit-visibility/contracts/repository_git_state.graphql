@@ -25,10 +25,14 @@ enum RepositoryCommitState {
   UNRELATED
 }
 
+# TIMEOUT is producible by InfrahubRepositoryBranchDrift only. The commit log has
+# nothing to show without a worker answer, so it fails with WORKER_TIMEOUT instead;
+# the drift query has graph-resolved rows worth returning without the remote head.
 "Why no git-derived answer was produced."
 enum RepositoryGitUnavailableReason {
   NOT_CLONED
   NOT_IMPLEMENTED
+  TIMEOUT
 }
 
 "A commit read live from a worker's local clone. Never persisted."
@@ -158,10 +162,16 @@ extend type Mutation {
 # mutation { InfrahubReadOnlyRepositoryCheckRefs(data: { id: "..." }) { ok task { id } } }
 #
 # ---------------------------------------------------------------------------
-# Error contract (FR-012). The retry hint lives here, on the catalogued error,
-# and not on RepositoryGitUnavailable: when no worker answers within the bound
-# the query fails rather than returning an UNAVAILABLE result, so a consumer
-# never has two places to look for it.
+# Error contract (FR-012), for InfrahubRepositoryCommits. When no worker answers
+# within the bound that query fails rather than returning an UNAVAILABLE result,
+# and the retry hint lives here on the catalogued error rather than on
+# RepositoryGitUnavailable, so a consumer never has two places to look for it.
+#
+# InfrahubRepositoryBranchDrift does not fail on a timeout: its rows are
+# graph-resolved and still render, with the column reporting
+# UNAVAILABLE / TIMEOUT (FR-022, SC-012). That column carries no retry hint,
+# because the consumer polls while the state is unavailable rather than
+# scheduling a retry from a hint.
 #
 # {
 #   "errors": [{

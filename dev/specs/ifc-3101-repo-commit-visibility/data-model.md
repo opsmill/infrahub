@@ -87,7 +87,8 @@ Precedence when one commit qualifies for several states, applied in this order:
 | Member | Value | Meaning |
 | --- | --- | --- |
 | `NOT_CLONED` | `not_cloned` | the answering worker has no local copy; a warm-up was triggered |
-| `NOT_IMPLEMENTED` | `not_implemented` | Phase A placeholder while the worker read path is not wired; removed in Phase B |
+| `NOT_IMPLEMENTED` | `not_implemented` | the worker read path is not wired for this query yet. Stops being produced by the commit log at T046 and by the drift column at T079, and stays in the schema after that: it is published to consumers at checkpoint 2A, and removing a member of a published enum breaks them |
+| `TIMEOUT` | `timeout` | no worker answered the drift read within the bound. Produced by `InfrahubRepositoryBranchDrift` only, whose rows are graph-resolved and still render (FR-022, SC-012). The commit log has nothing to show without a worker answer and raises `WORKER_TIMEOUT` instead (FR-012), which is also where the retry hint lives |
 
 ## Value objects (frozen dataclasses)
 

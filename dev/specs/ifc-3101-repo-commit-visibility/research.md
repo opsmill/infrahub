@@ -448,19 +448,21 @@ Convergence assumes the worker fetch broadcast reaches every worker, which is wh
 adapter provides: each git worker declares an exclusive `worker-events-{WORKER_IDENTITY}` queue bound
 to the broadcast routing keys. That is the supported deployment and the one this feature targets.
 
+Fan-out is a property of that topology rather than of timing: N workers means N exclusive queues, each
+bound to `refresh.git.*` on a topic exchange, so no competing-consumer draw decides who receives a
+broadcast. T098 asserts the binding, which is what lets this feature discharge FR-017 without a
+multi-worker fixture (see `checklists/requirements.md`).
+
 A gap in the NATS adapter was noticed while verifying this and filed as
 [opsmill/infrahub#10514](https://github.com/opsmill/infrahub/issues/10514): `refresh.git.*` is not
 among the stream subjects used for worker delivery, so the convergence broadcast does not reliably
 reach every worker on that driver.
 
-**Corrected 2026-09-07.** An earlier draft of this section dismissed that as irrelevant on the
-grounds that NATS "is not in use and is not currently supported". That is wrong as a statement about
-the shipped product: `BrokerDriver.NATS` exists in `config.py` and
-`INFRAHUB_BROKER_DRIVER` is published in the configuration reference as accepting `nats`. A customer
-can therefore select a driver on which FR-017, and with it SC-009, silently does not hold.
-
-This feature does not fix #10514 and does not design around it. What follows from the correction is
-narrower and is in scope: the convergence guarantee is **explicitly scoped to the RabbitMQ driver**,
-where each git worker declares its own exclusive `worker-events-{WORKER_IDENTITY}` queue bound to the
-broadcast routing keys, and the user documentation for the read-only check must carry that caveat
-rather than implying convergence is driver-independent. Recorded against T088.
+**Settled 2026-09-08 by Patrick Ogenstad**: NATS is not in use, so it is out of scope here in every
+sense. This feature does not fix #10514, does not design around it, and does not carry a driver caveat
+into the user documentation for the read-only check. The NATS adapter is touched only for signature
+parity on `rpc(timeout=...)`. An earlier draft of this section argued the caveat should ship on the
+grounds that `BrokerDriver.NATS` exists in `config.py` and `INFRAHUB_BROKER_DRIVER` is published as
+accepting `nats`; that argument is recorded here rather than acted on, so a future reader who does
+put NATS into use knows FR-017 and SC-009 are the requirements to re-examine and #10514 is the issue
+to close first.

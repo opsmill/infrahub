@@ -222,7 +222,7 @@ Every point at which this specification departs from the PRD, with the reason. A
 here should match the PRD.
 
 - **PRD FR-015's non-interleaving MUST is narrowed.** The PRD says the check "MUST NOT interleave with other git operations on the same local copy". FR-019 confines that to the steps which modify the local copy and requires the remote listing to hold no lock at all. Reason: git applies no network timeout by default, so holding the repository lock across `ls-remote` lets an unreachable remote block that repository's imports for an unbounded period. The listing changes nothing locally, which is what makes moving it out safe.
-- **PRD's "concurrency limit of one, cancelling new runs" is replaced.** FR-025 uses a per-repository claim key instead. Reason: the Prefect limit is per deployment, so one repository's on-demand run would cancel another's. The consequence is stated in FR-025 and in the quickstart: a duplicate request may be admitted, submit a run, and that run then finds the claim and exits without contacting the remote. One check does remote work; ten concurrent callers do not all receive one task id.
+- **PRD's "concurrency limit of one, cancelling new runs" is split rather than replaced.** The Prefect limit is kept where it works, on the scheduled cycle flow, which does want a slow tick to cancel the next one. FR-025 adds a per-repository claim key for the per-repository flow, because the Prefect limit is per deployment and would let one repository's on-demand run cancel another's. The consequence is stated in FR-025 and in the quickstart: a duplicate request may be admitted, submit a run, and that run then finds the claim and exits without contacting the remote. One check does remote work; ten concurrent callers do not all receive one task id.
 - **No total commit count at all.** PRD FR-008 requires "no total count unless requested", its edge case calls the total optional, and its reader module includes it. FR-024 removes it from the response contract entirely. Resolved with the PRD author on 2026-09-03: a count since the repository's origin is seldom what a user needs, and an unused field still costs a full pass over the history the first time anything selects it.
 - **PRD FR-016's verification narrows from every worker to one.** FR-020 keeps the requirement and tests it on a single worker, because what protects the commit is its own worktree acting as a reachability root, which is identical on every worker rather than a property of the fleet.
 - **The warm-up trigger is not a named protocol.** The PRD's design constraints require it declared as a protocol in the reader's own vocabulary with the publisher wired at the entry point. It is inline in the log reader instead. Reason: the property that constraint protected, single-flight behaviour testable without patching, is delivered by a recording cache and `WorkflowRecorder` in T044.
@@ -251,6 +251,26 @@ here should match the PRD.
   IFC-3104 owner before its own pull request lands, not after. It has its own governance row below.
 - **Classification runs on the worker, not in the API business layer.** The PRD assigns "Commit visibility comparison" to the API layer. It lives in `git/state/classification.py` and executes on the worker beside the git reads that feed it. The property the PRD was protecting, pure logic reachable and testable without a message bus, is preserved: the module has no I/O and its own unit tests.
 - **Three requirements and three success criteria have no PRD counterpart.** FR-026, FR-027 and FR-028, and SC-012, SC-013 and SC-014, were added after the dual-lens critique: they cover operating the read-only check as a background job an operator can live with, accessibility of the commit states, and the degradation behaviour the PRD left implicit. Additions rather than departures, listed here so this register accounts for every difference in both directions.
+- **FR-003's "latest" is narrowed to what the answering worker has seen.** PRD FR-003 says "the latest
+  commit available on the remote branch or tracked ref", which reads as a live remote value. FR-003
+  says the latest the answering worker has seen. This follows from the PRD's own decision that the
+  read path never fetches, so it is a clarification rather than a change of intent, but it does change
+  what the requirement promises and is recorded here rather than left to inference.
+- **FR-006 turns the unreachable imported commit into a MUST.** The PRD has it only as an edge case,
+  saying the marker "must resolve to a defined state rather than being silently absent". FR-006 names
+  that state, `ORPHANED`, and adds a requirement the PRD does not have: it MUST be determined before
+  any ancestry test, because an unresolvable hash makes that test raise rather than answer. An
+  addition, and the ordering half is a genuinely new obligation on the implementation.
+- **FR-007 requires a second freshness value the PRD does not.** The PRD asks only for when the local
+  copy was last updated. FR-007 also requires, for read-only repositories, when the remote was last
+  checked, because a repository whose remote has been quiet reports an old update time even though it
+  was checked moments ago. A fourth addition alongside FR-026 to FR-028.
+- **The authorization gate is answered more narrowly than the PRD answers it.** The PRD rules it out
+  flat, on the grounds that the feature reuses the existing repository view permission and adds no new
+  permission. Both halves of that are true and are kept, but the gate table here declines to call it
+  "no new access surface", because the refs-check mutation is a new GraphQL operation. It is covered by
+  the schema gate instead, and gates on update permission for the concrete kind exactly as
+  `ReadOnlyRepositoryImportLastCommit` already does.
 - **Three test-tier changes.** Two of the PRD's agreed unit tests, the commit log reader and the
   bounded RPC wait, land as component tests: both do real I/O, against a clone and against a bus
   adapter respectively. The pure classification they wrap keeps its unit tests, which is where the

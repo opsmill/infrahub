@@ -51,9 +51,16 @@ async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass
 `timeout=None` means `config.SETTINGS.broker.rpc_timeout`. Expiry raises
 `infrahub.exceptions::WorkerTimeoutError(operation=<routing key>, timeout_seconds=...)`, catalogued
 as `WORKER_TIMEOUT`. Implemented in `rabbitmq.py`, `nats.py` (both wrap the reply future) and
-`local.py` (`BusSimulator.rpc` accepts and ignores it). Existing callers (`infrahub.api.file::get_file`,
-`ValidateRepositoryConnectivity`) inherit the default bound; that is the intended shared-path change
-and lands in its own pull request.
+`local.py` (`BusSimulator.rpc` accepts and ignores it). Three existing callers inherit the default
+bound, which is the intended shared-path change and lands in its own pull request:
+`infrahub.api.file::get_file` and `ValidateRepositoryConnectivity` need nothing beyond the bound,
+while `InfrahubRepositoryCreate` needs the timeout routed into the delete-and-raise path its
+connectivity check already has for a failure verdict (T099), or a slow remote leaves an uncloned
+repository behind a 504.
+
+Whether a timeout reaches the client as an error is a resolver decision, not an adapter one:
+`InfrahubRepositoryCommits` lets it propagate, `InfrahubRepositoryBranchDrift` catches it and reports
+`UNAVAILABLE / TIMEOUT` on the column while still returning its graph-resolved rows.
 
 ## Reused unchanged: `refresh.git.fetch`
 
