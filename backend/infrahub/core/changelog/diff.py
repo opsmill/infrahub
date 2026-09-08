@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Sequence
 
@@ -19,6 +20,8 @@ from .models import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from infrahub.core.branch import Branch
     from infrahub.core.diff.model.path import (
         EnrichedDiffAttribute,
@@ -30,6 +33,8 @@ if TYPE_CHECKING:
     from infrahub.core.models import SchemaUpdateMigrationInfo
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.database import InfrahubDatabase
+
+    from .enrichment import NodeLabelLoader
 
 
 @dataclass
@@ -45,12 +50,15 @@ class DiffChangelogCollector:
         diff: EnrichedDiffRoot,
         branch: Branch,
         db: InfrahubDatabase,
+        label_loader: NodeLabelLoader,
         migration_tracker: MigrationTracker | None = None,
     ) -> None:
         self._diff = diff
         self._branch = branch
         self._db = db
+        self._label_loader = label_loader
         self._diff_nodes: dict[str, NodeInDiff]
+        self._node_hfids: dict[str, list[str] | None] = {}
         self.migration = migration_tracker or MigrationTracker()
 
     def _populate_diff_nodes(self) -> None:
@@ -70,8 +78,17 @@ class DiffChangelogCollector:
             rel_schema = schema.get_relationship(name=relationship_name)
             return rel_schema.peer
 
+    def _peer_hfid(self, peer_id: str) -> list[str] | None:
+        """Return a peer's HFID when it is among the changed nodes already loaded for this diff.
+
+        A changed relationship is symmetric, so a peer referenced here is normally a changed node
+        itself and its HFID comes for free from the batch; a peer outside the diff keeps None.
+        """
+        return self._node_hfids.get(peer_id)
+
     def _process_node(self, node: EnrichedDiffNode) -> NodeChangelog:
         node_changelog = NodeChangelog(node_id=node.uuid, node_kind=node.kind, display_label=node.label)
+        node_changelog.hfid = self._node_hfids.get(node.uuid)
         try:
             schema = self._db.schema.get(node_changelog.node_kind, branch=self._branch, duplicate=False)
         except SchemaNotFoundError:
@@ -80,10 +97,30 @@ class DiffChangelogCollector:
         for attribute in node.attributes:
             self._process_node_attribute(node=node_changelog, attribute=attribute, schema=schema)
 
+        if node_changelog.hfid is None and node.action == DiffAction.REMOVED:
+            # A removed node is gone when the batch load runs, but the diff still records its HFID;
+            # recover it so removed nodes report it like directly-deleted ones.
+            node_changelog.hfid = self._hfid_from_diff(node_changelog)
+
         for relationship in node.relationships:
             self._process_node_relationship(node=node_changelog, relationship=relationship)
 
         return node_changelog
+
+    @staticmethod
+    def _hfid_from_diff(node_changelog: NodeChangelog) -> list[str] | None:
+        """Recover a node's HFID from the human-friendly-id attribute the diff carries for it."""
+        attribute = node_changelog.attributes.get("human_friendly_id")
+        if attribute is None:
+            return None
+        raw = attribute.value if attribute.value is not None else attribute.value_previous
+        if not isinstance(raw, str):
+            return None
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            return None
+        return parsed if isinstance(parsed, list) else None
 
     def _process_node_attribute(
         self, node: NodeChangelog, attribute: EnrichedDiffAttribute, schema: MainSchemaTypes | None
@@ -156,6 +193,9 @@ class DiffChangelogCollector:
                                 node_kind=node.node_kind,
                                 relationship_name=relationship.name,
                             )
+                            # The peer's display label is already carried by the diff, no load needed.
+                            changelog_rel.peer_display_label = entry.peer_label
+                            changelog_rel.peer_hfid = self._peer_hfid(peer_id=rel_prop.new_value)
                         if rel_prop.previous_value:
                             changelog_rel.peer_id_previous = rel_prop.previous_value
                             changelog_rel.peer_kind_previous = self.get_peer_kind(
@@ -201,6 +241,8 @@ class DiffChangelogCollector:
                 peer_kind=self.get_peer_kind(
                     peer_id=peer.peer_id, node_kind=node.node_kind, relationship_name=relationship.name
                 ),
+                peer_display_label=peer.peer_label,
+                peer_hfid=self._peer_hfid(peer_id=peer.peer_id),
                 peer_status=peer.action,
             )
             for peer_prop in peer.properties:
@@ -228,14 +270,58 @@ class DiffChangelogCollector:
 
         node.add_relationship(relationship_changelog=changelog_rel)
 
-    def collect_changelogs(self) -> Sequence[tuple[DiffAction, NodeChangelog]]:
+    async def collect_changelogs(self) -> Sequence[tuple[DiffAction, NodeChangelog]]:
+        """Build a changelog for every changed node in the diff, filled with each node's HFID.
+
+        Every changed node's HFID is resolved in a single batched load, since the diff itself does
+        not carry it.
+
+        Returns:
+            One (action, changelog) pair per changed node that has recorded changes.
+
+        """
         self._populate_diff_nodes()
-        changelogs = [
-            (node.action, self._process_node(node=node))
-            for node in self._diff.nodes
-            if node.action != DiffAction.UNCHANGED
+        changed_nodes = [node for node in self._diff.nodes if node.action != DiffAction.UNCHANGED]
+        # A node whose kind was dropped by a schema migration in the merge has no schema to resolve
+        # labels against; leave it out of the load so one such node cannot fail the whole batch.
+        labelable_ids = [
+            node.uuid for node in changed_nodes if self._db.schema.has(name=node.kind, branch=self._branch)
         ]
-        return [(action, node_changelog) for action, node_changelog in changelogs if node_changelog.has_changes]
+        self._node_hfids = await self._label_loader.load_hfids(labelable_ids)
+        changelogs = [(node.action, self._process_node(node=node)) for node in changed_nodes]
+        changelogs = [(action, node_changelog) for action, node_changelog in changelogs if node_changelog.has_changes]
+        await self._resolve_external_peer_hfids([node_changelog for _, node_changelog in changelogs])
+        return changelogs
+
+    def _peer_entries(
+        self, changelogs: list[NodeChangelog]
+    ) -> Iterator[RelationshipCardinalityOneChangelog | RelationshipPeerChangelog]:
+        """Yield every relationship-peer holder across the changelogs (one-cardinality and each many-peer)."""
+        for changelog in changelogs:
+            for relationship in changelog.relationships.values():
+                if isinstance(relationship, RelationshipCardinalityOneChangelog):
+                    yield relationship
+                elif isinstance(relationship, RelationshipCardinalityManyChangelog):
+                    yield from relationship.peers
+
+    def _needs_external_hfid(self, peer: RelationshipCardinalityOneChangelog | RelationshipPeerChangelog) -> bool:
+        """True for a referenced peer whose HFID the changed-node load did not already resolve."""
+        return peer.peer_hfid is None and peer.peer_id not in self._node_hfids
+
+    async def _resolve_external_peer_hfids(self, changelogs: list[NodeChangelog]) -> None:
+        """Fill the HFID of relationship peers that are referenced but not themselves changed nodes.
+
+        A changed relationship is usually symmetric, so most peers are changed nodes already loaded;
+        this resolves the rest so a peer's HFID does not depend on whether the peer also changed.
+        """
+        peers = list(self._peer_entries(changelogs))
+        external_ids = [peer.peer_id for peer in peers if peer.peer_id and self._needs_external_hfid(peer)]
+        if not external_ids:
+            return
+        peer_hfids = await self._label_loader.load_hfids(external_ids)
+        for peer in peers:
+            if peer.peer_hfid is None and peer.peer_id in peer_hfids:
+                peer.peer_hfid = peer_hfids[peer.peer_id]
 
 
 def _keep_branch_update(diff_property: EnrichedDiffProperty) -> bool:
