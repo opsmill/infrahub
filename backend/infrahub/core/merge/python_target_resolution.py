@@ -347,23 +347,25 @@ def _select(*, signature: ChangeSignature, attribute: PythonAttributeReadSet) ->
             leaving a value stale.
 
     """
+    if signature.action not in {CREATED, UPDATED, DELETED}:
+        raise ValueError(f"Unknown change action: {signature.action!r}")
+
+    if attribute.read_set.depends_on_everything:
+        # Nothing is known about what the query reads, so any change may reach it.
+        return _Widen()
+
+    if not attribute.pinned:
+        # No field filter holds for an unpinned query, and a creation is not its own target only.
+        # The read set carries the fields the query selects, never the ones it only filters on, so
+        # a change to a filtered field moves a node into or out of the result while the members
+        # already in it stay untouched. Which nodes read it cannot be established either way.
+        return _Widen() if signature.kind in attribute.read_set.read_kinds else None
+
     if signature.action == CREATED:
-        if attribute.read_set.depends_on_everything or (
-            not attribute.pinned and signature.kind in attribute.read_set.read_kinds
-        ):
-            # A creation reaches readers no lookup can name: an unanalyzable query may read the new
-            # node, and an unpinned one takes it into the result set of members that did not change.
-            return _Widen()
         # A created node subscribes to no query group yet, so it can only be its own target.
         return _Narrow(self_ids=True, reader_lookup=False, precise=True) if attribute.kind == signature.kind else None
 
-    if signature.action not in {UPDATED, DELETED}:
-        raise ValueError(f"Unknown change action: {signature.action!r}")
-
-    selection = _select_reader(signature=signature, read_set=attribute.read_set, target_kind=attribute.kind)
-    if not attribute.pinned and isinstance(selection, _Narrow) and selection.reader_lookup:
-        return _Widen()
-    return selection
+    return _select_reader(signature=signature, read_set=attribute.read_set, target_kind=attribute.kind)
 
 
 def _select_reader(*, signature: ChangeSignature, read_set: TransformReadSet, target_kind: str) -> _Selection | None:
