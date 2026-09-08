@@ -97,7 +97,7 @@
     "tailwind-merge": "catalog:",
     "tailwindcss-animate": "^1.0.7",
     "unidiff": "^1.0.4",
-    "zod": "^4.4.3"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@betterer/cli": "6.0.0-alpha.1",
