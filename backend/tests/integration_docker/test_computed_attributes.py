@@ -43,7 +43,11 @@ REBASE_DEVICE_INSTANCES = (21, 22, 23, 24)
 
 # The stack under test carries the coalesced pass unless the compose variable turns it off, which
 # is how the same value assertions run against both dispatch modes.
-COALESCED_PYTHON_RECOMPUTE = os.environ.get("INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE", "true").lower() != "false"
+# The same false spellings Pydantic accepts for the setting the stack is started with.
+FALSE_VALUES = {"0", "off", "f", "false", "n", "no"}
+COALESCED_PYTHON_RECOMPUTE = (
+    os.environ.get("INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE", "true").strip().lower() not in FALSE_VALUES
+)
 
 
 async def wait_for_all_tasks_to_be_completed(client: InfrahubClient) -> None:
@@ -123,11 +127,11 @@ async def create_device_and_wait(
     return device.id
 
 
-async def wait_until_tasks_settle(client: InfrahubClient, *, seconds: int = PREFECT_EVENT_WAIT_SECONDS) -> None:
+async def wait_until_tasks_settle(client: InfrahubClient, *, seconds: int = PREFECT_EVENT_WAIT_SECONDS) -> bool:
     """Wait for the queue to drain, giving up at the deadline instead of blocking forever.
 
-    A task left in a non-terminal state must not hang the run: the assertions that follow are what
-    decide the outcome, and a count taken too early fails with a number to read.
+    A task left in a non-terminal state must not hang the run. Returns whether the queue drained, so
+    a caller reading a count across this point can assert it measured a settled queue.
     """
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
@@ -135,8 +139,9 @@ async def wait_until_tasks_settle(client: InfrahubClient, *, seconds: int = PREF
             filters=TaskFilter(state=[TaskState.PENDING, TaskState.RUNNING, TaskState.SCHEDULED])
         )
         if pending == 0:
-            return
+            return True
         await sleep(1)
+    return False
 
 
 async def device_names(client: InfrahubClient, device_ids: list[str], *, branch: str | None = None) -> list[str]:
@@ -571,10 +576,10 @@ class TestComputedAttributes(TestInfrahubDockerClient):
     async def test_merge_recomputes_created_devices_in_one_dispatch(self, client: InfrahubClient) -> None:
         """A merged branch that built devices refreshes them once, not once per device.
 
-        Every created node is replayed on the destination, and the per-node automation answered
-        each replay with its own flow. The coalesced pass submits one flow for the whole batch.
-        The branch already computed the values, so nothing is written; what changes is the number
-        of transforms executed to find that out, and the values have to survive either way.
+        Every created node is replayed on the destination and the coalesced pass submits one flow
+        for the whole batch. The branch already computed the values, so nothing is written; what is
+        measured is the number of transforms executed to find that out, and the values have to
+        survive either way.
         """
         site = await client.get(kind="LocationSite", hfid=["sth"])
         branch = await client.branch.create(branch_name="coalesced-python-merge")
@@ -585,7 +590,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
             for instance, name in zip(MERGE_DEVICE_INSTANCES, expected, strict=True)
         ]
 
-        await wait_until_tasks_settle(client)
+        assert await wait_until_tasks_settle(client), "the queue never drained, so the baseline count is not a baseline"
         runs_before = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW)
 
         merged = await client.branch.merge(branch_name=branch.name)
@@ -619,7 +624,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
             for instance, name in zip(REBASE_DEVICE_INSTANCES, expected, strict=True)
         ]
 
-        await wait_until_tasks_settle(client)
+        assert await wait_until_tasks_settle(client), "the queue never drained, so the baseline count is not a baseline"
         runs_before = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW)
 
         rebased = await client.branch.rebase(branch_name=branch.name)
