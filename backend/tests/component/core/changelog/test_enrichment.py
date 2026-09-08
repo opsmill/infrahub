@@ -425,7 +425,7 @@ async def test_merge_tolerates_kind_deleted_in_migration(
     assert by_id[owner.id].hfid == owner_hfid
 
 
-async def test_rebase_remaps_renamed_attribute_in_changelog(
+async def test_collector_applies_a_rename_migration_to_the_changelog(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_simplified_proposed_change_schema: SchemaBranch,
@@ -446,6 +446,7 @@ async def test_rebase_remaps_renamed_attribute_in_changelog(
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
     diff = await diff_repository.get_one(diff_branch_name=branch.name)
 
+    # The migration a rebase would produce when an attribute is renamed on the destination branch.
     rename = SchemaUpdateMigrationInfo(
         migration_name="attribute.name.update",
         path=SchemaPath(
@@ -461,6 +462,6 @@ async def test_rebase_remaps_renamed_attribute_in_changelog(
     ).collect_changelogs()
 
     person_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == person.id)
-    # The rebase migration renamed the attribute; the changelog reports the new name.
+    # The rename migration remaps the attribute, so the changelog reports the new name.
     assert "stature" in person_changelog.attributes
     assert "height" not in person_changelog.attributes
