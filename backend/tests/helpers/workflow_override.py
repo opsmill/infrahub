@@ -27,7 +27,7 @@ def override_workflow[WorkflowT: InfrahubWorkflow](
 
     Args:
         workflow: The adapter every workflow lookup should return inside the block.
-        dependency_provider: The provider the dependency injection resolves ``build_workflow`` through.
+        dependency_provider: The provider the dependency injection resolves the workflow lookup through.
 
     Yields:
         ``workflow`` itself.
