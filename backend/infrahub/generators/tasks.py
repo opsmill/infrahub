@@ -78,7 +78,7 @@ async def run_generator(model: RequestGeneratorRun) -> None:
         # Tagging is best-effort observability: it must not fail the run or mask a setup error.
         try:
             await add_tags(branches=[model.branch_name], nodes=node_ids)
-        except Exception:
+        except Exception:  # noqa: BLE001
             get_run_logger().warning(
                 f"Failed to tag the run of generator '{model.generator_definition.definition_name}' "
                 f"for target '{model.target_name}'",
