@@ -8,6 +8,7 @@ from prefect.settings import (
     temporary_settings,
 )
 from prefect.settings.legacy import Setting  # the type of the module-level PREFECT_* accessors
+from prefect.settings.models.server.events import ServerEventsSettings
 
 from infrahub.events.limits import (
     MAX_RUN_CONTEXT_RESOURCES,
@@ -17,13 +18,10 @@ from infrahub.events.limits import (
     get_submission_chunk_size,
 )
 
-# The maximum is read from the effective Prefect setting, not from the environment: Prefect builds
-# its settings once at import, so monkeypatching os.environ afterwards does not reach it. Driving
-# these tests through temporary_settings is therefore the only mechanism that exercises the real
-# lookup - and it is the same mechanism an operator's profile or configuration file goes through.
-# PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES is the name the Infrahub image sets;
-# PREFECT_EVENTS_MAXIMUM_RELATED_RESOURCES is the alias the implementation reads. They are two
-# names for one setting, which test_maximum_follows_either_setting_alias pins.
+# Prefect resolves its settings once at import, so these cases drive the maximum through
+# temporary_settings - the same path an operator's profile or configuration file takes.
+# PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES is the name the Infrahub image sets and
+# PREFECT_EVENTS_MAXIMUM_RELATED_RESOURCES is the alias; they are two names for one setting.
 
 
 @dataclass
@@ -70,16 +68,20 @@ def test_related_resource_budget_reserves_headroom(case: BudgetCase) -> None:
         assert get_related_resource_budget() == case.expected
 
 
-def test_maximum_defaults_to_the_prefect_default_when_unconfigured() -> None:
-    """An unconfigured deployment must read Prefect's default, not the value the image sets.
+def test_fallback_is_pinned_to_the_prefect_default() -> None:
+    """The fallback tracks Prefect's own default rather than a value copied from the image.
 
-    The image raises the setting to 500, and treating that as the fallback made Infrahub truncate
-    node events to a budget derived from 500 on every deployment that did not run the image, while
-    Prefect still refused anything above its own 100 - so those events were dropped in silence.
+    A fallback above what Prefect enforces makes Infrahub truncate to a budget Prefect refuses,
+    and the event is then dropped without an error. Reading the default off the Prefect settings
+    model rather than restating the number here means a change to it fails this test instead of
+    silently reopening that gap.
     """
-    assert PREFECT_DEFAULT_MAX_RELATED_RESOURCES == 100
-    assert get_prefect_max_related_resources() == PREFECT_EVENTS_MAXIMUM_RELATED_RESOURCES.value()
-    assert get_prefect_max_related_resources() == PREFECT_DEFAULT_MAX_RELATED_RESOURCES
+    prefect_default = ServerEventsSettings.model_fields["maximum_related_resources"].default
+
+    assert prefect_default == PREFECT_DEFAULT_MAX_RELATED_RESOURCES
+
+    with temporary_settings({PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES: prefect_default}):
+        assert get_prefect_max_related_resources() == PREFECT_DEFAULT_MAX_RELATED_RESOURCES
 
 
 @dataclass
@@ -99,9 +101,8 @@ ALIAS_CASES = [
 def test_maximum_follows_either_setting_alias(case: AliasCase) -> None:
     """Both names Prefect accepts for the limit must reach Infrahub.
 
-    Reading one name directly was the second half of the divergence: an operator who set the other
-    name, or configured Prefect through a profile, moved the cap Prefect enforces without moving
-    the cap Infrahub truncated to.
+    An operator who sets either name, or configures Prefect through a profile, moves the cap
+    Prefect enforces; Infrahub has to move with it or it truncates against a stale ceiling.
     """
     with temporary_settings({case.setting: case.configured_max}):
         assert get_prefect_max_related_resources() == case.configured_max

@@ -48,7 +48,9 @@ Expect `500 450 250` — identical before and after the change.
 
 ## 3. The alias and Prefect's own settings are honoured
 
-Only the second of these works before the fix; both work after:
+Neither of these yields its configured value before the fix; both work after. The old code read one
+environment variable straight from `os.environ`, so it missed the alias name (research.md R7) and
+missed Prefect's own settings entirely (research.md R4) — both fell through to the old fallback:
 
 ```bash
 PREFECT_EVENTS_MAXIMUM_RELATED_RESOURCES=250 uv run python -c "

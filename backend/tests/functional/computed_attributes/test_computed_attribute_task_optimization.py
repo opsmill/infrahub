@@ -103,10 +103,8 @@ class TestComputedAttributeTaskOptimization(TestInfrahubApp):
         Branch-filtered task queries match on that tag, and only creation tags reliably
         survive in-flow tag updates.
         """
-        # Limit 4 -> chunk size 2, so three nodes already split into [2, 1]. The limit has to be
-        # driven through temporary_settings rather than the environment: Prefect builds its
-        # settings once at import, so a later monkeypatch.setenv never reaches the value
-        # get_submission_chunk_size() reads.
+        # Limit 4 -> chunk size 2, so three nodes split into [2, 1]. Prefect resolves its settings
+        # once at import, so the limit has to be overridden at runtime.
         recorder = WorkflowRecorder()
         with (
             temporary_settings({PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES: 4}),
