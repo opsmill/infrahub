@@ -40,38 +40,50 @@ if TYPE_CHECKING:
     flow_run_name="Run generator {model.generator_definition.definition_name}",
 )
 async def run_generator(model: RequestGeneratorRun) -> None:
-    await add_tags(branches=[model.branch_name], nodes=[model.target_id])
-
     client = get_client()
 
-    repository = await get_initialized_repo(
-        client=client,
-        repository_id=model.repository_id,
-        name=model.repository_name,
-        repository_kind=model.repository_kind,
-        commit=model.commit,
-    )
+    # Each tag update replaces the whole set, so collect the related node ids and send them in one update.
+    node_ids = [model.target_id]
+    try:
+        repository = await get_initialized_repo(
+            client=client,
+            repository_id=model.repository_id,
+            name=model.repository_name,
+            repository_kind=model.repository_kind,
+            commit=model.commit,
+        )
 
-    generator_definition = InfrahubGeneratorDefinitionConfig(
-        name=model.generator_definition.definition_name,
-        class_name=model.generator_definition.class_name,
-        file_path=model.generator_definition.file_path,
-        parameters=model.generator_definition.parameters,
-        query=model.generator_definition.query_name,
-        targets=model.generator_definition.group_id,
-        convert_query_response=model.generator_definition.convert_query_response,
-        execute_in_proposed_change=model.generator_definition.execute_in_proposed_change,
-        execute_after_merge=model.generator_definition.execute_after_merge,
-    )
+        generator_definition = InfrahubGeneratorDefinitionConfig(
+            name=model.generator_definition.definition_name,
+            class_name=model.generator_definition.class_name,
+            file_path=model.generator_definition.file_path,
+            parameters=model.generator_definition.parameters,
+            query=model.generator_definition.query_name,
+            targets=model.generator_definition.group_id,
+            convert_query_response=model.generator_definition.convert_query_response,
+            execute_in_proposed_change=model.generator_definition.execute_in_proposed_change,
+            execute_after_merge=model.generator_definition.execute_after_merge,
+        )
 
-    commit_worktree = repository.get_commit_worktree(commit=model.commit)
+        commit_worktree = repository.get_commit_worktree(commit=model.commit)
 
-    file_info = extract_repo_file_information(
-        full_filename=commit_worktree.directory / generator_definition.file_path,
-        repo_directory=repository.directory_root,
-        worktree_directory=commit_worktree.directory,
-    )
-    generator_instance = await _define_instance(model=model, client=client)
+        file_info = extract_repo_file_information(
+            full_filename=commit_worktree.directory / generator_definition.file_path,
+            repo_directory=repository.directory_root,
+            worktree_directory=commit_worktree.directory,
+        )
+        generator_instance = await _define_instance(model=model, client=client)
+        node_ids.append(generator_instance.id)
+    finally:
+        # Tagging is best-effort observability: it must not fail the run or mask a setup error.
+        try:
+            await add_tags(branches=[model.branch_name], nodes=node_ids)
+        except Exception:
+            get_run_logger().warning(
+                f"Failed to tag the run of generator '{model.generator_definition.definition_name}' "
+                f"for target '{model.target_name}'",
+                exc_info=True,
+            )
 
     try:
         generator_class = generator_definition.load_class(

@@ -15,6 +15,7 @@ from infrahub.core.initialization import create_account
 from infrahub.webhook.tasks import webhook_process
 from infrahub.workers.dependencies import build_http_service
 from tests.adapters.http import MemoryHTTP
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.permissions import define_permissions
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -97,7 +98,7 @@ class TestWebhookRetry(TestInfrahubApp):
             response=httpx.Response(request=httpx.Request(method="POST", url=WEBHOOK_TARGET_URL), status_code=200),
         )
 
-        with dependency_provider.scope(build_http_service, lambda: http):
+        with override_dependency(build_http_service, lambda: http, dependency_provider=dependency_provider):
             before = {str(run.id) for run in await read_send_runs(flow_run_querier)}
             await webhook_process(
                 webhook_id=webhook1.id,
@@ -211,7 +212,7 @@ class TestWebhookRetry(TestInfrahubApp):
             input_data={"data": {"id": str(settled_branch_send_run.id)}},
             query={"ok": None, "task": {"id": None}},
         )
-        with dependency_provider.scope(build_http_service, lambda: http):
+        with override_dependency(build_http_service, lambda: http, dependency_provider=dependency_provider):
             result = await branch_operator_client.execute_graphql(query=mutation.render())
 
         assert result["InfrahubTaskRetry"]["ok"] is True

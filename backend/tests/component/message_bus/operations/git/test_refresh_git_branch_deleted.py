@@ -6,6 +6,7 @@ from infrahub.message_bus import messages
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
 from infrahub.workers.dependencies import build_message_bus
 from tests.conftest import TestHelper
+from tests.helpers.dependency_override import override_dependency
 
 
 async def test_branch_deleted(
@@ -28,7 +29,7 @@ async def test_branch_deleted(
 
     routing_key = ROUTING_KEY_MAP[type(message)]
     bus_simulator = await helper.get_message_bus_simulator()
-    with dependency_provider.scope(build_message_bus, lambda: bus_simulator):
+    with override_dependency(build_message_bus, lambda: bus_simulator, dependency_provider=dependency_provider):
         await bus_simulator.publish(message=message, routing_key=routing_key)
 
     local_branches = git_fixture_repo.get_branches_from_local(include_worktree=False)
