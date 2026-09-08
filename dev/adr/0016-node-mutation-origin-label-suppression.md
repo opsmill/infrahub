@@ -42,7 +42,7 @@ event whatever the origin: profile refresh, user action rules, and webhooks.
 
 - Action rules and webhooks keep working across merge and rebase; nothing is silently broken by
   dropping events.
-- The three families are dispatched exactly once, by the coalesced pass, with no
+- The four families are dispatched exactly once, by the coalesced pass, with no
   double-processing.
 - The label is an explicit, matchable signal. It is cleaner than deriving origin from event
   lineage (`meta.parent` / `meta.ancestors`), which Prefect cannot match on.
