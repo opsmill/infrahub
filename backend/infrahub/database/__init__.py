@@ -462,7 +462,7 @@ class InfrahubDatabase:
         try:
             return await session.run(query=auto_commit_query, parameters=params)
         except ServiceUnavailable as exc:
-            log.error("Database Service unavailable", error=str(exc))
+            log.exception("Database Service unavailable", error=str(exc))
             raise DatabaseError(message="Unable to connect to the database") from exc
 
     def render_list_comprehension(self, items: str, item_name: str) -> str:
