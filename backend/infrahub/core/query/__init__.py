@@ -392,6 +392,18 @@ class QueryStat:
         return cls(**data)
 
 
+PAGINATION_LIMIT_PARAM = "query_limit"
+PAGINATION_OFFSET_PARAM = "query_offset"
+
+
+@dataclass(frozen=True)
+class RenderedQuery:
+    """A query's text together with every parameter that text refers to."""
+
+    text: str
+    params: dict[str, Any]
+
+
 class Query:
     name: str = "base-query"
     type: QueryType
@@ -514,17 +526,11 @@ class Query:
         if with_clause:
             self.add_to_query(f"WITH {with_clause}")
 
-    def get_query(
-        self,
-        var: bool = False,
-        inline: bool = False,
-        limit: int | None = None,
-        offset: int | None = None,
-    ) -> str:
-        # Make a local copy of the _query_lines
-        limit = limit or self.limit
-        offset = offset or self.offset
+    def render(self, limit: int | None = None, offset: int | None = None) -> RenderedQuery:
+        limit = self.limit if limit is None else limit
+        offset = self.offset if offset is None else offset
         tmp_query_lines = self.query_lines.copy()
+        params = dict(self.params)
 
         if self.insert_return:
             tmp_query_lines.append("RETURN " + ",".join(self.return_labels))
@@ -532,20 +538,34 @@ class Query:
         if self.order_by:
             tmp_query_lines.append("ORDER BY " + ",".join(self.order_by))
 
-        if offset and self.insert_limit:
-            tmp_query_lines.append(f"SKIP {offset}")
+        # Bound as parameters rather than literals, a zero offset included, so every page of a
+        # paginated query shares one text, and with it one cached plan. A zero limit is no bound,
+        # the same reading `execute()` gives it when choosing how to run.
+        if offset is not None and self.insert_limit:
+            params[PAGINATION_OFFSET_PARAM] = offset
+            tmp_query_lines.append(f"SKIP ${PAGINATION_OFFSET_PARAM}")
 
         if limit and self.insert_limit:
-            tmp_query_lines.append(f"LIMIT {limit}")
+            params[PAGINATION_LIMIT_PARAM] = limit
+            tmp_query_lines.append(f"LIMIT ${PAGINATION_LIMIT_PARAM}")
 
-        query_str = "\n".join(tmp_query_lines)
+        return RenderedQuery(text="\n".join(tmp_query_lines), params=params)
+
+    def get_query(
+        self,
+        var: bool = False,
+        inline: bool = False,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> str:
+        rendered = self.render(limit=limit, offset=offset)
 
         if var and not inline:
-            return "\n" + self.get_params_for_shell() + "\n\n" + query_str
+            return "\n" + self.get_params_for_shell(params=rendered.params) + "\n\n" + rendered.text
         if var and inline:
-            return self.insert_variables_in_query(query=query_str, variables=self.params)
+            return self.insert_variables_in_query(query=rendered.text, variables=rendered.params)
 
-        return query_str
+        return rendered.text
 
     def get_count_query(self, var: bool = False) -> str:
         tmp_query_lines = self.query_lines.copy()
@@ -584,28 +604,30 @@ class Query:
 
         return query
 
-    def get_params_for_shell(self) -> str:
+    def get_params_for_shell(self, params: dict[str, Any] | None = None) -> str:
+        params = self.params if params is None else params
         if config.SETTINGS.database.db_type.value == "memgraph":
-            return ujson.dumps(self.params)
+            return ujson.dumps(params)
 
-        return self._get_params_for_neo4j_shell()
+        return self._get_params_for_neo4j_shell(params=params)
 
-    def _get_params_for_neo4j_shell(self) -> str:
+    @staticmethod
+    def _get_params_for_neo4j_shell(params: dict[str, Any]) -> str:
         """Generate string to define some parameters in Neo4j browser interface.
 
         It's especially useful to later execute a query that includes some variables.
 
         The params string must be executed on its own window in Neo4j, before executing the query.
         """
-        params = []
+        rendered = []
 
-        for key, value in self.params.items():
+        for key, value in params.items():
             if isinstance(value, int | list):
-                params.append(f"{key}: {str(value)}")
+                rendered.append(f"{key}: {str(value)}")
             else:
-                params.append(f'{key}: "{value}"')
+                rendered.append(f'{key}: "{value}"')
 
-        return ":params { " + ", ".join(params) + " }"
+        return ":params { " + ", ".join(rendered) + " }"
 
     @trace.get_tracer(__name__).start_as_current_span("Query.execute")
     async def execute(self, db: InfrahubDatabase, timeout_seconds: float | None = None) -> Self:
@@ -615,13 +637,13 @@ class Query:
         if config.SETTINGS.miscellaneous.print_query_details:
             self.print(include_var=True)
 
-        query_str = self.get_query()
+        rendered = self.render()
 
         if self.type == QueryType.READ:
             if self.limit or self.offset:
                 results = await db.execute_query(
-                    query=query_str,
-                    params=self.params,
+                    query=rendered.text,
+                    params=rendered.params,
                     name=self.name,
                     context=self.get_context(),
                     type=self.type,
@@ -632,8 +654,8 @@ class Query:
 
         elif self.type == QueryType.WRITE:
             results, metadata = await db.execute_query_with_metadata(
-                query=query_str,
-                params=self.params,
+                query=rendered.text,
+                params=rendered.params,
                 name=self.name,
                 context=self.get_context(),
                 type=self.type,
@@ -645,7 +667,7 @@ class Query:
             raise ValueError(f"unknown value for {self.type}")
 
         if not results and self.raise_error_if_empty:
-            raise QueryError(query=query_str, params=self.params)
+            raise QueryError(query=rendered.text, params=rendered.params)
 
         clean_labels = cleanup_return_labels(self.return_labels)
         self.results = [QueryResult(data=result, labels=clean_labels) for result in results]
@@ -659,9 +681,10 @@ class Query:
         results: list[Record] = []
         remaining = True
         while remaining:
+            rendered = self.render(limit=query_limit, offset=offset)
             offset_results, metadata = await db.execute_query_with_metadata(
-                query=self.get_query(limit=query_limit, offset=offset),
-                params=self.params,
+                query=rendered.text,
+                params=rendered.params,
                 name=self.name,
                 context=self.get_context(),
                 type=self.type,
