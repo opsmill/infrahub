@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub import config, lock
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.changelog.diff import DiffChangelogCollector
+from infrahub.core.changelog.builder import build_diff_changelog_collector
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.registry import registry
 from infrahub.core.schema.update_coordinator import MigrationExecutor
@@ -113,8 +113,10 @@ class BranchMergeOrchestrator:
                 diff_branch_name=self.source_branch.name,
                 tracking_id=BranchTrackingId(name=self.source_branch.name),
             )
-            changelog_collector = DiffChangelogCollector(diff=branch_diff, branch=self.source_branch, db=self.db)
-            node_events = changelog_collector.collect_changelogs()
+            changelog_collector = build_diff_changelog_collector(
+                diff=branch_diff, db=self.db, branch=self.source_branch
+            )
+            node_events = await changelog_collector.collect_changelogs()
 
             if await self.schema_analyzer.has_schema_changes():
                 self.log.info("Applying schema migrations after merge")
