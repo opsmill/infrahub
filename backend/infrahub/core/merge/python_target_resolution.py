@@ -16,8 +16,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from infrahub.computed_attribute.scoping import (
     ComputedAttributeRef,
-    PythonTransformDependencyDeriver,
-    RecomputeScoper,
+    scope_python_transforms,
 )
 from infrahub.core.constants import ComputedAttributeKind
 from infrahub.log import get_logger
@@ -296,16 +295,7 @@ def _covered_by_schema_pass(
     transforms it could gather, so a pair it never gathered is a pair it never submits.
     """
     candidates = [attribute for attribute in read_sets if attribute.gathered]
-    scoper = RecomputeScoper(
-        derivers={
-            ComputedAttributeKind.TRANSFORM_PYTHON: PythonTransformDependencyDeriver(
-                read_sets={
-                    (branch, attribute.kind, attribute.attribute_name): attribute.read_set for attribute in candidates
-                }
-            )
-        }
-    )
-    report = scoper.scope(
+    report = scope_python_transforms(
         candidate_attributes=[
             ComputedAttributeRef(
                 branch=branch,
@@ -315,6 +305,7 @@ def _covered_by_schema_pass(
             )
             for attribute in candidates
         ],
+        read_sets={(branch, attribute.kind, attribute.attribute_name): attribute.read_set for attribute in candidates},
         changed_elements=changed_elements,
     )
     return {(ref.kind, ref.attribute_name) for ref in report.selected}
