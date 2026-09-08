@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-
 import { ReactFlowProvider } from "@xyflow/react";
 
 import { Toolbar } from "../toolbar/toolbar";
