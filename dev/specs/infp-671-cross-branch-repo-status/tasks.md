@@ -34,12 +34,16 @@ backend PRs: [IFC-3130](https://opsmill.atlassian.net/browse/IFC-3130) the Branc
 end-to-end test, [IFC-3131](https://opsmill.atlassian.net/browse/IFC-3131) the manual validation pass,
 and [IFC-3132](https://opsmill.atlassian.net/browse/IFC-3132) writing that pass's instructions.
 
-Phase 2 was split into its own pull request because T009 changed `ORDER BY` for every standard-node
-list in the product, which belonged in front of a reviewer looking at ordering rather than buried in
-a thirty-task repository-query review. **T009 is now dropped, so that reason is gone**: Phase 2 is
-three small core changes whose only consumer is the Phase 3 resolver. Whether it stays a standalone
-PR or folds into increment A is a delivery decision to make against the actual diff, not something
-this plan should pre-empt.
+Phase 2 was originally split out because T009 changed `ORDER BY` for every standard-node list in the
+product, which belonged in front of a reviewer looking at ordering. T009 is now dropped, so Phase 2
+is three small core changes whose only consumer is the Phase 3 resolver, and folding it into
+increment A was considered.
+
+**It stays its own PR.** Every PR here targets the integration branch rather than `develop`, so
+merging Phase 2 ships nothing and the epic's real review gate is the integration merge; a 73-line
+core change with green checks is a checkpoint there, not a gate. Keeping it separate also means
+increment A's diff is purely the query work, instead of carrying unrelated plumbing through the
+review that actually matters.
 
 Stop and validate at the end of each scope before starting the next. PR 4 may be opened while PR 3
 is in review, but merges after it.
