@@ -54,12 +54,12 @@ def test_first_page_shares_the_text_of_the_pages_after_it(paged_query: PagedQuer
     assert first_page.params["query_offset"] == 0
 
 
-def test_zero_bounds_are_bounds_not_absence(paged_query: PagedQuery) -> None:
-    rendered = paged_query.render(limit=0, offset=0)
+def test_zero_limit_is_no_bound(paged_query: PagedQuery) -> None:
+    rendered = paged_query.render(limit=0, offset=2)
 
-    assert rendered.text.endswith("SKIP $query_offset\nLIMIT $query_limit")
-    assert rendered.params["query_offset"] == 0
-    assert rendered.params["query_limit"] == 0
+    assert rendered.text.endswith("SKIP $query_offset")
+    assert "LIMIT" not in rendered.text
+    assert rendered.params == {"uuid": "5ffa45d4", "query_offset": 2}
 
 
 def test_unset_bounds_render_no_clauses(paged_query: PagedQuery) -> None:
