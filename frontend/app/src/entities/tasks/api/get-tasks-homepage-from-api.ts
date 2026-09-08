@@ -1,7 +1,7 @@
 import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 
 const GET_TASKS_HOMEPAGE = graphql(`
-  query GET_TASKS_HOMEPAGE($limit: NonNegativeInt, $branchName: String!, $states: [StateType]) {
+  query GET_TASKS_HOMEPAGE($limit: PositiveInteger, $branchName: String!, $states: [StateType]) {
     InfrahubTask(limit: $limit, branch: $branchName, state: $states) {
       count
       edges {

@@ -17,24 +17,24 @@ from graphql.language.ast import (
 from infrahub.exceptions import ValidationError
 
 
-class NonNegativeInt(Scalar):
-    """A GraphQL scalar that validates non-negative integer values.
+class PositiveInteger(Scalar):
+    """A GraphQL scalar for pagination arguments such as `limit` and `offset`.
 
     It accepts integers >= 0 (and whole-number floats, matching the built-in Int
     scalar) and rejects negative, fractional or non-integer values by raising
     ValidationError, which the executor wraps with the argument type name and
-    source location.
+    source location. Zero is allowed because `offset: 0` is the first page.
     """
 
     @staticmethod
     def serialize(value: int | None) -> int | None:
         """Serialize the value for output."""
-        return NonNegativeInt._validate(value)
+        return PositiveInteger._validate(value)
 
     @staticmethod
     def parse_value(value: Any) -> int | None:
         """Parse a value supplied through query variables."""
-        return NonNegativeInt._validate(value)
+        return PositiveInteger._validate(value)
 
     @staticmethod
     def parse_literal(node: ValueNode, _variables: dict[str, Any] | None = None) -> int | None:
@@ -45,7 +45,7 @@ class NonNegativeInt(Scalar):
 
         """
         if isinstance(node, IntValueNode):
-            return NonNegativeInt._validate(int(node.value))
+            return PositiveInteger._validate(int(node.value))
         raise ValidationError("Value must be a non-negative integer")
 
     @staticmethod

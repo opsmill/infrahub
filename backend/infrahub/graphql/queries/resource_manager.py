@@ -18,7 +18,7 @@ from infrahub.core.query.resource_manager import (
 )
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.graphql.scalars import NonNegativeInt
+from infrahub.graphql.scalars import PositiveInteger
 from infrahub.pools.number import NumberUtilizationGetter
 
 if TYPE_CHECKING:
@@ -347,8 +347,8 @@ InfrahubResourcePoolAllocated = Field(
     PoolAllocated,
     pool_id=String(required=True),
     resource_id=String(required=True),
-    limit=NonNegativeInt(required=False),
-    offset=NonNegativeInt(required=False),
+    limit=PositiveInteger(required=False),
+    offset=PositiveInteger(required=False),
     resolver=PoolAllocated.resolve,
     required=True,
 )

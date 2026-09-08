@@ -2,8 +2,8 @@ import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/c
 
 export const GET_TASK_LIST = graphql(`
   query GET_TASK_LIST(
-    $offset: NonNegativeInt
-    $limit: NonNegativeInt
+    $offset: PositiveInteger
+    $limit: PositiveInteger
     $search: String
     $branchName: String
     $state: [StateType]

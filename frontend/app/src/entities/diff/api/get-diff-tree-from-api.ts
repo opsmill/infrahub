@@ -2,7 +2,7 @@ import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/c
 import type { BranchContextParams, PaginationParams } from "@/shared/api/types";
 
 const DIFF_TREE_QUERY = graphql(`
-  query GET_DIFF_TREE($branchName: String, $filters: DiffTreeQueryFilters, $limit: NonNegativeInt, $offset: NonNegativeInt, $proposedChangeId: String) {
+  query GET_DIFF_TREE($branchName: String, $filters: DiffTreeQueryFilters, $limit: PositiveInteger, $offset: PositiveInteger, $proposedChangeId: String) {
     DiffTree(branch: $branchName, filters: $filters, include_parents: true, limit: $limit, offset: $offset, proposed_change_id: $proposedChangeId) {
       nodes {
         uuid

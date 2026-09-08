@@ -7,7 +7,7 @@ import "gql.tada";
 declare module "gql.tada" {
   interface setupSchema {
     scalars: {
-      NonNegativeInt: number;
+      PositiveInteger: number;
     };
   }
 }

@@ -7,7 +7,7 @@ from graphene import Field, Int, List, NonNull, ObjectType, String
 from infrahub.core.constants import INTERNAL_NAMESPACE
 from infrahub.core.query.relationship import RelationshipGetByIdentifierQuery
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.graphql.scalars import NonNegativeInt
+from infrahub.graphql.scalars import PositiveInteger
 from infrahub.graphql.types import RelationshipNode
 
 if TYPE_CHECKING:
@@ -79,8 +79,8 @@ Relationship = Field(
     Relationships,
     ids=List(NonNull(String), required=True),
     excluded_namespaces=List(String),
-    limit=NonNegativeInt(required=False),
-    offset=NonNegativeInt(required=False),
+    limit=PositiveInteger(required=False),
+    offset=PositiveInteger(required=False),
     resolver=Relationships.resolve,
     required=True,
 )
