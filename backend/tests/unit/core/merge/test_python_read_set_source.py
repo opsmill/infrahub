@@ -7,7 +7,7 @@ unresolved transform drops its own attribute, while a failed analysis widens all
 
 from __future__ import annotations
 
-from infrahub.core.merge.python_target_sources import DatabasePythonReadSetSource, DeclaredAttribute
+from infrahub.core.merge.python_target_sources import AnalyzedRead, DatabasePythonReadSetSource, DeclaredAttribute
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from tests.adapters.python_target_sources import (
     FailingAnalyzedPythonReadSets,
@@ -20,10 +20,11 @@ DEVICE = "TestingDevice"
 SUMMARY = DeclaredAttribute(kind=DEVICE, attribute_name="summary")
 DIGEST = DeclaredAttribute(kind=DEVICE, attribute_name="digest")
 SUMMARY_READS = TransformReadSet(read_kinds=frozenset({DEVICE}), read_fields={DEVICE: frozenset({"name"})})
+SUMMARY_READ = AnalyzedRead(read_set=SUMMARY_READS, pinned=True)
 
 
 def _source(
-    *, declared: list[DeclaredAttribute], analyzed: dict[DeclaredAttribute, TransformReadSet] | None = None
+    *, declared: list[DeclaredAttribute], analyzed: dict[DeclaredAttribute, AnalyzedRead] | None = None
 ) -> DatabasePythonReadSetSource:
     return DatabasePythonReadSetSource(
         declared_attributes=StaticDeclaredPythonAttributes(declared=declared),
@@ -32,7 +33,7 @@ def _source(
 
 
 async def test_an_analyzed_attribute_keeps_its_read_set() -> None:
-    source = _source(declared=[SUMMARY], analyzed={SUMMARY: SUMMARY_READS})
+    source = _source(declared=[SUMMARY], analyzed={SUMMARY: SUMMARY_READ})
 
     read_sets = await source.read_sets(branch=BRANCH)
 
@@ -47,7 +48,7 @@ async def test_an_attribute_the_analysis_skipped_is_left_out() -> None:
     Nothing can render its value until the transform arrives, and the recompute that follows the
     transform being created is what covers it then.
     """
-    source = _source(declared=[SUMMARY, DIGEST], analyzed={SUMMARY: SUMMARY_READS})
+    source = _source(declared=[SUMMARY, DIGEST], analyzed={SUMMARY: SUMMARY_READ})
 
     read_sets = await source.read_sets(branch=BRANCH)
 

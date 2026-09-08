@@ -51,12 +51,18 @@ class PythonAttributeReadSet:
 
     ``gathered`` is ``False`` when the gather failed outright, so nothing is known about any pair
     and none of them may be dropped as covered by another pass.
+
+    ``pinned`` is ``False`` when the query root is not restricted to a single object. The read set
+    still says what the query reads, which is what the schema-scoped backfill decides on; what an
+    unpinned root costs is the reader lookup, since a node enters or leaves the result set without
+    touching the members already in it.
     """
 
     kind: str
     attribute_name: str
     read_set: TransformReadSet
     gathered: bool = True
+    pinned: bool = True
 
 
 class PythonReadSetSource(Protocol):
@@ -214,7 +220,9 @@ class IndexedPythonTargetResolver:
         target_ids = set(accumulator.self_ids)
         whole_kind = accumulator.whole_kind
         if whole_kind:
-            log.info("Widening the recompute of %s to its whole kind: the read set is undeterminable", identity)
+            # The cause is logged where it was found: an unmappable or unpinned query by the
+            # read-set source, a failed reader lookup below.
+            log.info("Widening the recompute of %s to its whole kind", identity)
         else:
             for node_ids in accumulator.lookups:
                 try:
@@ -340,13 +348,22 @@ def _select(*, signature: ChangeSignature, attribute: PythonAttributeReadSet) ->
 
     """
     if signature.action == CREATED:
+        if attribute.read_set.depends_on_everything or (
+            not attribute.pinned and signature.kind in attribute.read_set.read_kinds
+        ):
+            # A creation reaches readers no lookup can name: an unanalyzable query may read the new
+            # node, and an unpinned one takes it into the result set of members that did not change.
+            return _Widen()
         # A created node subscribes to no query group yet, so it can only be its own target.
         return _Narrow(self_ids=True, reader_lookup=False, precise=True) if attribute.kind == signature.kind else None
 
     if signature.action not in {UPDATED, DELETED}:
         raise ValueError(f"Unknown change action: {signature.action!r}")
 
-    return _select_reader(signature=signature, read_set=attribute.read_set, target_kind=attribute.kind)
+    selection = _select_reader(signature=signature, read_set=attribute.read_set, target_kind=attribute.kind)
+    if not attribute.pinned and isinstance(selection, _Narrow) and selection.reader_lookup:
+        return _Widen()
+    return selection
 
 
 def _select_reader(*, signature: ChangeSignature, read_set: TransformReadSet, target_kind: str) -> _Selection | None:
