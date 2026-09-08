@@ -293,8 +293,11 @@ class DiffChangelogCollector:
             node.uuid for node in changed_nodes if self._db.schema.has(name=node.kind, branch=self._branch)
         ]
         self._node_hfids = await self._label_loader.load_hfids(labelable_ids)
-        changelogs = [(node.action, self._process_node(node=node)) for node in changed_nodes]
-        changelogs = [(action, node_changelog) for action, node_changelog in changelogs if node_changelog.has_changes]
+        changelogs = [
+            (node.action, node_changelog)
+            for node in changed_nodes
+            if (node_changelog := self._process_node(node=node)).has_changes
+        ]
         await self._resolve_external_peer_hfids([node_changelog for _, node_changelog in changelogs])
         return changelogs
 
