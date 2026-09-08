@@ -511,3 +511,37 @@ async def test_an_unpinned_query_still_ignores_a_kind_it_never_reads() -> None:
 
     assert targets == []
     assert subscribers.calls == []
+
+
+async def test_a_created_node_of_an_unpinned_attribute_kind_is_its_own_target() -> None:
+    """An unpinned query that never reads the owner kind still leaves the new node to compute.
+
+    Nothing moves for the members already in the result, since the query does not read this kind,
+    so the created node is the exact target and no lookup is needed.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(branch=BRANCH, changes=[MergeChange(node_id="o1", kind=OWNER, action="created")])
+
+    assert _identities(targets) == [(OWNER, "roster")]
+    assert targets[0].whole_kind is False
+    assert targets[0].precise is True
+    assert targets[0].reader_lookups == frozenset(
+        {ReaderLookup(source_kind=OWNER, filter_key=SELF_FILTER, source_node_ids=frozenset({"o1"}))}
+    )
+    assert subscribers.calls == []
+
+
+async def test_an_updated_node_of_an_unpinned_attribute_kind_selects_nothing() -> None:
+    """Its value is built from the query data, and a kind the query never reads is not that."""
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(
+        branch=BRANCH,
+        changes=[MergeChange(node_id="o1", kind=OWNER, action="updated", changed_fields=frozenset({"name"}))],
+    )
+
+    assert targets == []
+    assert subscribers.calls == []

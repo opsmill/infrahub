@@ -354,15 +354,17 @@ def _select(*, signature: ChangeSignature, attribute: PythonAttributeReadSet) ->
         # Nothing is known about what the query reads, so any change may reach it.
         return _Widen()
 
-    if not attribute.pinned:
-        # No field filter holds for an unpinned query, and a creation is not its own target only.
-        # The read set carries the fields the query selects, never the ones it only filters on, so
-        # a change to a filtered field moves a node into or out of the result while the members
-        # already in it stay untouched. Which nodes read it cannot be established either way.
-        return _Widen() if signature.kind in attribute.read_set.read_kinds else None
+    if not attribute.pinned and signature.kind in attribute.read_set.read_kinds:
+        # No field filter holds for an unpinned query, whatever the action. The read set carries
+        # the fields the query selects, never the ones it only filters on, so a change to a
+        # filtered field moves a node into or out of the result while the members already in it
+        # stay untouched. Which nodes read it cannot be established either way.
+        return _Widen()
 
     if signature.action == CREATED:
-        # A created node subscribes to no query group yet, so it can only be its own target.
+        # A created node subscribes to no query group yet, so it can only be its own target. This
+        # holds for an unpinned query the changed kind falls outside of: nothing the query reads
+        # moved, so the new node's own value is all there is to compute.
         return _Narrow(self_ids=True, reader_lookup=False, precise=True) if attribute.kind == signature.kind else None
 
     return _select_reader(signature=signature, read_set=attribute.read_set, target_kind=attribute.kind)
@@ -379,9 +381,6 @@ def _select_reader(*, signature: ChangeSignature, read_set: TransformReadSet, ta
     readers for. The reverse lookup finds it only through the query group it subscribed to on its
     last successful compute, so a node that never computed would stay stale.
     """
-    if read_set.depends_on_everything:
-        return _Widen()
-
     if signature.kind not in read_set.read_kinds:
         return None
 
