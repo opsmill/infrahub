@@ -134,13 +134,6 @@ class ScopedRecomputeTestBase(TestInfrahubAppWithoutLocalWorkflow):
     WORKFLOW: ClassVar[WorkflowDefinition]
 
     @pytest.fixture(scope="class", autouse=True)
-<<<<<<< HEAD
-    async def task_manager(self, prefect: Generator[str, None, None]) -> None:
-        await setup_task_manager_once()
-
-    @pytest.fixture(scope="class", autouse=True)
-    async def service(self, task_manager: None, test_client: Any) -> InfrahubServices:
-=======
     async def workflow_recorder(
         self,
         service: InfrahubServices,
@@ -151,17 +144,7 @@ class ScopedRecomputeTestBase(TestInfrahubAppWithoutLocalWorkflow):
 
     @pytest.fixture(scope="class", autouse=True)
     async def service(self, workflow_local: WorkflowLocalExecution, test_client: Any) -> InfrahubServices:
->>>>>>> origin/stable
         return app.state.service
-
-    @pytest.fixture(scope="class", autouse=True)
-    async def workflow_recorder(
-        self,
-        dependency_provider: Provider,
-        service: InfrahubServices,
-    ) -> AsyncGenerator[WorkflowRecorder, None]:
-        with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
-            yield recorder
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:
