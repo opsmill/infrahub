@@ -456,10 +456,12 @@ suite, so the victim moves between runs while the message stays the same. A func
 fixture in `tests/conftest.py` now fails the test that leaves an override behind and puts the
 provider back, so a leak is attributed to its source instead.
 
-The app built by `test_client` resolves its workflow once, during `lifespan`. pytest orders autouse
-fixtures by name, so `service` (and with it `test_client`) would otherwise run before
-`workflow_local`; `TestInfrahubApp.service` therefore depends on `workflow_local` explicitly, and a
-subclass that swaps in a different adapter must do the same for the app to see it.
+The app built by `test_client` resolves its workflow once, during `lifespan`, so the order the
+fixtures run in decides what the app gets. pytest orders autouse fixtures by name, which is not a
+thing to rely on: declare the order instead. `TestInfrahubApp.service` takes `workflow_local` as a
+parameter so the app is built under it, and a class that installs a second double on top — a
+recorder it wants the test body to see — takes `service` as a parameter so it takes over only once
+the app is built.
 
 ### Functional Tests with `TestInfrahubApp`
 
