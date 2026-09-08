@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.account import ObjectPermission
 from infrahub.exceptions import InitializationError, PermissionDeniedError
+from infrahub.log import get_logger
 from infrahub.permissions.constants import PermissionDecisionFlag
 
 from .kind_dispatch import REPOSITORY_KIND_POLICIES
@@ -13,6 +14,8 @@ if TYPE_CHECKING:
     from infrahub.permissions.manager import PermissionManager
 
     from .kind_dispatch import RepositoryKindPolicy
+
+log = get_logger()
 
 _CORE_NAMESPACE = "Core"
 
@@ -56,6 +59,10 @@ class RepositoryBranchStatusPermissionGuard:
             return self.context.active_permissions
         except InitializationError as exc:
             # A request that carries no loaded permissions holds no grant, which is a denial.
+            log.warning(
+                "No permission manager was loaded for the request, "
+                "treating the repository branch status read as a denial"
+            )
             raise PermissionDeniedError from exc
 
 

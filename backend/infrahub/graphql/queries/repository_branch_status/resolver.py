@@ -7,6 +7,7 @@ from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.node.standard import StandardNodeOrdering
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.queries.branch import standard_node_ordering_from_order_input
@@ -47,8 +48,8 @@ class RepositoryBranchStatusResolver:
         root: dict,  # noqa: ARG002
         info: GraphQLResolveInfo,
         id: str,
-        limit: int = 40,
-        offset: int = 0,
+        limit: int | None = 40,
+        offset: int | None = 0,
         name__value: str | None = None,
         partial_match: bool = False,
         status__value: str | None = None,
@@ -63,12 +64,14 @@ class RepositoryBranchStatusResolver:
             root: Parent value, unused for a root field.
             info: GraphQL resolution info, carrying the request context and the field selection.
             id: UUID or name of the repository.
-            limit: Page size.
-            offset: Number of rows to skip.
+            limit: Page size. An explicit null is rejected rather than falling back to the default.
+            offset: Number of rows to skip. An explicit null is rejected rather than falling back to
+                the default.
             name__value: Branch name filter.
             partial_match: Match `name__value` as a substring rather than exactly.
             status__value: Branch status filter.
-            order: Ordering over branch node metadata; the default order applies when omitted.
+            order: Ordering over branch node metadata; the default order applies when it expresses
+                no ordering.
             sync_status__value: Accepted, not applied yet.
             internal_status__value: Accepted, not applied yet.
             own_values_only: Accepted, not applied yet; widens the attributes read.
@@ -77,16 +80,17 @@ class RepositoryBranchStatusResolver:
             The payload the GraphQL types consume: `edges`, and `count` when it was selected.
 
         Raises:
-            ValidationError: If `limit` is below 1, if `offset` is negative, if `order` is
-                contradictory, or if the repository's kind is not supported.
+            ValidationError: If `limit` is null or below 1, if `offset` is null or negative, if
+                `order` is contradictory, or if the repository's kind is not supported.
             NodeNotFoundError: If `id` resolves to no repository.
             PermissionDeniedError: If the caller may not view the repository's kind across both the
                 default branch and other branches.
 
         """
-        if limit < 1:
+        # A nullable Int argument with a default still reaches here as None for an explicit null.
+        if limit is None or limit < 1:
             raise ValidationError("limit must be >= 1")
-        if offset < 0:
+        if offset is None or offset < 0:
             raise ValidationError("offset must be >= 0")
 
         node_ordering = standard_node_ordering_from_order_input(order)
@@ -139,7 +143,8 @@ class RepositoryBranchStatusResolver:
             )
             for branch in branches
         ]
-        if order is None:
+        # An `order` argument can be present yet express no ordering, e.g. an empty input object.
+        if node_ordering == StandardNodeOrdering():
             rows = order_rows(rows=rows)
 
         result: dict[str, Any] = {}

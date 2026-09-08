@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -28,10 +29,11 @@ def build_attribute_payload(
     if value is None:
         return None
 
+    # The GraphQL attribute types expose updated_at as a DateTime, which refuses a string.
     payload: dict[str, Any] = {
         "id": value.attribute_id,
         "value": value.value,
-        "updated_at": value.updated_at,
+        "updated_at": Timestamp(value.updated_at).to_datetime() if value.updated_at else None,
         "is_default": None,
         "is_protected": None,
         "is_from_profile": None,

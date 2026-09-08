@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
+from graphene import DateTime
 
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositorySyncStatus
@@ -41,6 +43,7 @@ def _value(
     value: str | None,
     branch_name: str = "branch-1",
     own_value: bool = True,
+    updated_at: str | None = "2026-01-02T03:04:05.000000Z",
 ) -> RepositoryBranchAttributeValue:
     return RepositoryBranchAttributeValue(
         repository_id=REPOSITORY_ID,
@@ -49,7 +52,7 @@ def _value(
         attribute_id=f"{branch_name}-{attribute_name}",
         value=value,
         own_value=own_value,
-        updated_at="2026-01-02T03:04:05.000000Z",
+        updated_at=updated_at,
     )
 
 
@@ -251,7 +254,7 @@ class TestBuildAttributePayload:
         assert payload == {
             "id": "branch-1-commit",
             "value": "abc123",
-            "updated_at": "2026-01-02T03:04:05.000000Z",
+            "updated_at": datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC),
             "is_default": None,
             "is_protected": None,
             "is_from_profile": None,
@@ -259,6 +262,24 @@ class TestBuildAttributePayload:
             "source": None,
             "owner": None,
         }
+
+    def test_updated_at_is_a_datetime_the_graphql_type_accepts(self) -> None:
+        payload = build_attribute_payload(
+            value=_value(attribute_name="commit", value="abc123"),
+            attribute_schema=_generic_repository_attribute(name="commit"),
+        )
+
+        assert payload is not None
+        assert DateTime.serialize(payload["updated_at"]) == "2026-01-02T03:04:05+00:00"
+
+    def test_absent_updated_at_yields_none(self) -> None:
+        payload = build_attribute_payload(
+            value=_value(attribute_name="commit", value="abc123", updated_at=None),
+            attribute_schema=_generic_repository_attribute(name="commit"),
+        )
+
+        assert payload is not None
+        assert payload["updated_at"] is None
 
     def test_dropdown_payload_carries_the_schema_label_and_colour(self) -> None:
         payload = build_attribute_payload(

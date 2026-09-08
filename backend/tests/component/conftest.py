@@ -3164,10 +3164,10 @@ async def branch_aware_node_with_agnostic_attrs_schema(default_branch: Branch, d
 
 @dataclass(frozen=True)
 class RepositoryBranchStatusBranches:
-    """Names of the branches saved once for the cross-branch repository status tests."""
+    """The branches saved once for the cross-branch repository status tests."""
 
     default_branch: Branch
-    """Default branch, the only branch the fixture creates data on."""
+    """Default branch."""
 
     query_branch_name: str
     """Non-default branch that carries a schema branch, so queries can execute against it."""
@@ -3176,7 +3176,7 @@ class RepositoryBranchStatusBranches:
     """Five syncing, non-terminal branches, for the small-scale reads."""
 
     two_hundred: tuple[str, ...]
-    """Two hundred syncing, non-terminal branches, for the query-cost reads."""
+    """Two hundred syncing, non-terminal branches, so the branch set is larger than one page."""
 
     non_syncing: str
     """Branch saved with `sync_with_git=False`."""
@@ -3209,16 +3209,16 @@ async def repository_branch_status_branches(db: InfrahubDatabase) -> RepositoryB
 
     The fixture owns the whole database for the module: it wipes it, creates the root node, the default
     branch, the global branch and the core schema itself. A module that consumes it must therefore not
-    also request `default_branch`, `empty_database` or any of the schema fixtures, since those run per
-    test or per class and would wipe the branches this one saved. No repository node is created here;
-    a test that writes repository values creates its own so the writes cannot leak into another test
-    sharing the database.
+    also request any narrower-scoped fixture that wipes the database or installs a schema, since those
+    run per test or per class and would wipe the branches this one saved. No repository node is created
+    here; a test that writes repository values creates its own so the writes cannot leak into another
+    test sharing the database.
 
     Args:
         db: Database connection instance.
 
     Returns:
-        The names of every branch saved, grouped by the property that makes each interesting.
+        Every branch saved, grouped by the property that makes each interesting.
 
     """
     registry.delete_all()

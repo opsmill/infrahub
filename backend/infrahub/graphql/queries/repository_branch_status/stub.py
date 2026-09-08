@@ -1,8 +1,9 @@
 """Temporary source of placeholder repository attribute values.
 
-The values served here are fabricated from the branch name so they stay stable across
-requests while the query is built against. It is replaced by the source that resolves the
-values from the graph, and this module is deleted at that point.
+The values served here are fabricated from the branch name so that they stay stable across
+requests, which lets the query around them be built and tested before the graph read exists.
+A source that resolves the values from the graph will take over, and this module will be
+deleted at that point.
 """
 
 from __future__ import annotations

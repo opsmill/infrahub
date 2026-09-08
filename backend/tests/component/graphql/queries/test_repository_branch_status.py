@@ -115,6 +115,58 @@ query($id: String!, $limit: Int) {
 }
 """
 
+UPDATED_AT_QUERY = """
+query($id: String!, $limit: Int, $name: String) {
+  InfrahubRepositoryBranchStatus(id: $id, limit: $limit, name__value: $name) {
+    edges {
+      node {
+        name
+        commit { value updated_at }
+        sync_status { value updated_at }
+        internal_status { value updated_at }
+      }
+    }
+  }
+}
+"""
+
+EMPTY_ORDER_QUERY = """
+query($id: String!, $limit: Int) {
+  InfrahubRepositoryBranchStatus(id: $id, limit: $limit, order: {}) {
+    edges {
+      node { name }
+    }
+  }
+}
+"""
+
+EMPTY_NODE_METADATA_ORDER_QUERY = """
+query($id: String!, $limit: Int) {
+  InfrahubRepositoryBranchStatus(id: $id, limit: $limit, order: {node_metadata: {}}) {
+    edges {
+      node { name }
+    }
+  }
+}
+"""
+
+CONTRADICTORY_ORDER_QUERY = """
+query($id: String!, $limit: Int) {
+  InfrahubRepositoryBranchStatus(
+    id: $id
+    limit: $limit
+    order: {node_metadata: {created_at: ASC, updated_at: ASC}}
+  ) {
+    edges {
+      node { name }
+    }
+  }
+}
+"""
+
+# The placeholder source dates every value at 2026-01-01T00:00:00Z; graphene renders it in this shape.
+EXPECTED_UPDATED_AT = "2026-01-01T00:00:00+00:00"
+
 
 @dataclass(frozen=True)
 class PermissionGrant:
@@ -143,6 +195,54 @@ PERMISSION_GRANTS = (
 )
 
 DENIAL_MESSAGE = "You do not have the following permission: object:Core:Repository:view:allow_all"
+READ_ONLY_DENIAL_MESSAGE = "You do not have the following permission: object:Core:ReadOnlyRepository:view:allow_all"
+
+
+@dataclass(frozen=True)
+class SingleKindCase:
+    """A caller granted view on exactly one repository kind, querying one of the two kinds."""
+
+    name: str
+    """Identifier of the case, also used as the pytest id."""
+
+    granted_kind_name: str
+    """Repository kind name the caller is granted view on, within the Core namespace."""
+
+    query_read_only_repository: bool
+    """Whether the query targets the read-only repository rather than the read-write one."""
+
+    denial_message: str | None
+    """Exact error message the caller receives, or None when the caller is expected to see rows."""
+
+
+SINGLE_KIND_NAMES = ("Repository", "ReadOnlyRepository")
+
+SINGLE_KIND_CASES = (
+    SingleKindCase(
+        name="read-write-grant-on-read-write-repository",
+        granted_kind_name="Repository",
+        query_read_only_repository=False,
+        denial_message=None,
+    ),
+    SingleKindCase(
+        name="read-write-grant-on-read-only-repository",
+        granted_kind_name="Repository",
+        query_read_only_repository=True,
+        denial_message=READ_ONLY_DENIAL_MESSAGE,
+    ),
+    SingleKindCase(
+        name="read-only-grant-on-read-only-repository",
+        granted_kind_name="ReadOnlyRepository",
+        query_read_only_repository=True,
+        denial_message=None,
+    ),
+    SingleKindCase(
+        name="read-only-grant-on-read-write-repository",
+        granted_kind_name="ReadOnlyRepository",
+        query_read_only_repository=False,
+        denial_message=DENIAL_MESSAGE,
+    ),
+)
 
 
 @dataclass(frozen=True)
@@ -162,6 +262,8 @@ class InvalidPagingCase:
 INVALID_PAGING_CASES = (
     InvalidPagingCase(name="limit-below-one", variables={"limit": 0}, message="limit must be >= 1"),
     InvalidPagingCase(name="negative-offset", variables={"offset": -1}, message="offset must be >= 0"),
+    InvalidPagingCase(name="explicit-null-limit", variables={"limit": None}, message="limit must be >= 1"),
+    InvalidPagingCase(name="explicit-null-offset", variables={"offset": None}, message="offset must be >= 0"),
 )
 
 
@@ -226,6 +328,32 @@ async def matrix_sessions(
             group_name=f"rbs-{grant.name}-group",
         )
         sessions[grant.name] = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=account.id)
+    return sessions
+
+
+@pytest.fixture(scope="module")
+async def single_kind_sessions(
+    db: InfrahubDatabase, repository_branch_status_branches: RepositoryBranchStatusBranches
+) -> Mapping[str, AccountSession]:
+    """One session per repository kind, each granted view on that kind alone."""
+    sessions: dict[str, AccountSession] = {}
+    for kind_name in SINGLE_KIND_NAMES:
+        slug = f"rbs-only-{kind_name.lower()}"
+        account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+        await account.new(db=db, name=slug, account_type="User", password=f"{slug}-password")
+        await account.save(db=db)
+        await define_permissions(
+            account=account,
+            db=db,
+            object_permissions=[
+                ObjectPermission(
+                    namespace="Core", name=kind_name, action="view", decision=PermissionDecision.ALLOW_ALL.value
+                )
+            ],
+            role_name=f"{slug}-role",
+            group_name=f"{slug}-group",
+        )
+        sessions[kind_name] = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=account.id)
     return sessions
 
 
@@ -481,6 +609,71 @@ class TestRepositoryBranchStatusRows:
             branches.by_status[BranchStatus.NEED_REBASE],
         ]
 
+    async def test_an_order_argument_expressing_no_ordering_keeps_the_default_order(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+        repository, _ = repositories
+        variables: dict[str, Any] = {"id": repository.id, "limit": 5}
+
+        omitted = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=NAMES_ONLY_QUERY,
+            variables=variables,
+            account_session=reader_session,
+        )
+        empty_order = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=EMPTY_ORDER_QUERY,
+            variables=variables,
+            account_session=reader_session,
+        )
+        empty_node_metadata = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=EMPTY_NODE_METADATA_ORDER_QUERY,
+            variables=variables,
+            account_session=reader_session,
+        )
+
+        assert omitted.errors is None
+        assert empty_order.errors is None
+        assert empty_node_metadata.errors is None
+        assert _names(omitted) == [branches.default_branch.name, *branches.five[:4]]
+        assert _names(empty_order) == _names(omitted)
+        assert _names(empty_node_metadata) == _names(omitted)
+
+    async def test_contradictory_order_is_rejected(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+        repository, _ = repositories
+
+        result = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=CONTRADICTORY_ORDER_QUERY,
+            variables={"id": repository.id, "limit": 5},
+            account_session=reader_session,
+        )
+
+        assert result.data is None
+        assert result.errors
+        assert len(result.errors) == 1
+        assert result.errors[0].message == "Only one of 'created_at' or 'updated_at' can be specified for ordering."
+
     async def test_name_filter_exact_and_partial(
         self,
         db: InfrahubDatabase,
@@ -503,6 +696,18 @@ class TestRepositoryBranchStatusRows:
         assert exact.data
         assert exact.data["InfrahubRepositoryBranchStatus"]["count"] == 1
         assert _names(exact) == [branches.five[2]]
+
+        prefix_of_several_names = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=ROWS_QUERY,
+            variables={"id": repository.id, "limit": 1000, "name": "rbs-five-0"},
+            account_session=reader_session,
+        )
+        assert prefix_of_several_names.errors is None
+        assert prefix_of_several_names.data
+        assert prefix_of_several_names.data["InfrahubRepositoryBranchStatus"]["count"] == 0
+        assert _names(prefix_of_several_names) == []
 
         partial = await _run(
             db=db,
@@ -703,6 +908,33 @@ class TestRepositoryBranchStatusRows:
         assert node["sync_status"]["color"].startswith("#")
         assert node["internal_status"]["value"] == "active"
 
+    async def test_updated_at_is_returned_as_a_timestamp(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+        repository, _ = repositories
+
+        result = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=UPDATED_AT_QUERY,
+            variables={"id": repository.id, "limit": 5, "name": branches.default_branch.name},
+            account_session=reader_session,
+        )
+
+        assert result.errors is None
+        assert len(_nodes(result)) == 1
+        node = _nodes(result)[0]
+        assert node["commit"]["updated_at"] == EXPECTED_UPDATED_AT
+        assert node["sync_status"]["updated_at"] == EXPECTED_UPDATED_AT
+        assert node["internal_status"]["updated_at"] == EXPECTED_UPDATED_AT
+        assert node["commit"]["value"]
+
     async def test_two_calls_return_identical_values(
         self,
         db: InfrahubDatabase,
@@ -786,6 +1018,40 @@ class TestRepositoryBranchStatusPermissions:
         assert len(result.errors) == 1
         assert result.errors[0].message == DENIAL_MESSAGE
 
+    @pytest.mark.parametrize("case", SINGLE_KIND_CASES, ids=lambda case: case.name)
+    @pytest.mark.parametrize("on_default_branch", [True, False], ids=["default-branch", "user-branch"])
+    async def test_a_grant_on_one_kind_does_not_cover_the_other_kind(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        single_kind_sessions: Mapping[str, AccountSession],
+        default_permission_backend: None,
+        case: SingleKindCase,
+        on_default_branch: bool,
+    ) -> None:
+        branches = repository_branch_status_branches
+        repository = repositories[1] if case.query_read_only_repository else repositories[0]
+        branch_name = branches.default_branch.name if on_default_branch else branches.query_branch_name
+
+        result = await _run(
+            db=db,
+            branch_name=branch_name,
+            source=NAMES_ONLY_QUERY,
+            variables={"id": repository.id, "limit": 5},
+            account_session=single_kind_sessions[case.granted_kind_name],
+        )
+
+        if case.denial_message is None:
+            assert result.errors is None
+            assert _names(result) == [branches.default_branch.name, *branches.five[:4]]
+            return
+
+        assert result.data is None
+        assert result.errors
+        assert len(result.errors) == 1
+        assert result.errors[0].message == case.denial_message
+
     @pytest.mark.parametrize("on_default_branch", [True, False], ids=["default-branch", "user-branch"])
     async def test_denial_runs_no_database_query(
         self,
@@ -793,6 +1059,7 @@ class TestRepositoryBranchStatusPermissions:
         repository_branch_status_branches: RepositoryBranchStatusBranches,
         repositories: tuple[CoreRepository, CoreReadOnlyRepository],
         matrix_sessions: Mapping[str, AccountSession],
+        reader_session: AccountSession,
         default_permission_backend: None,
         on_default_branch: bool,
     ) -> None:
@@ -818,6 +1085,23 @@ class TestRepositoryBranchStatusPermissions:
         assert result.errors
         assert result.errors[0].message == DENIAL_MESSAGE
         assert sum(counting_db.query_counts.values()) == 0
+
+        # The same counter behind an allowed caller must move, so the zero above cannot be a
+        # counter that never saw the resolver.
+        allowed_params = await prepare_graphql_params(db=db, branch=branch_name, account_session=reader_session)
+        allowed_params.context.db = counting_db
+
+        allowed_result = await graphql(
+            schema=allowed_params.schema,
+            source=NAMES_ONLY_QUERY,
+            context_value=allowed_params.context,
+            root_value=None,
+            variable_values={"id": repository.id, "limit": 5},
+        )
+
+        assert allowed_result.errors is None
+        assert _names(allowed_result) == [branches.default_branch.name, *branches.five[:4]]
+        assert sum(counting_db.query_counts.values()) > 0
 
     @pytest.mark.parametrize("on_default_branch", [True, False], ids=["default-branch", "user-branch"])
     async def test_anonymous_session_with_a_granted_role_returns_rows(
