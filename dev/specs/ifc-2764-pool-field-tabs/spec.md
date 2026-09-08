@@ -63,17 +63,20 @@ Having chosen a pool, the user can see what that pool would produce on its own, 
 
 ### User Story 4 - Return to an object and find its allocation intact (Priority: P4)
 
-A user reopens an object whose value was allocated from a pool. The form opens on the pool mode, shows which pool it came from, and does not offer to re-cut an allocation that already exists.
+A user reopens an object whose value was allocated from a pool. The form shows the object that was allocated, notes which pool it came from, and lets the user look at the pool mode — or leave the form entirely alone — without altering anything.
 
-**Why this priority**: With an explicit two-way choice, opening on the wrong side actively misinforms the user about where a value came from — a failure mode that did not exist when the pool was merely a button.
+**Why this priority**: An existing allocation is a real object. Opening on the pool mode hid it: that mode exists to *stage* an allocation, so for a resolved one it showed an empty pool picker, no overrides, and no sign of the allocated value. Worse, merely visiting the other mode used to blank the field and mark it changed, so saving destroyed the allocation.
 
-**Independent Test**: Open an object with a pool-allocated value and confirm the pool mode is active, the pool is named, and neither override is offered.
+**Independent Test**: Open an object with a pool-allocated value; confirm the value mode is active, the allocated object is shown, and the pool is named. Visit the pool mode, return, save, and confirm the allocation is untouched.
 
 **Acceptance Scenarios**:
 
-1. **Given** an object whose value came from a pool, **When** the form opens, **Then** the pool mode is active and names the pool.
+1. **Given** an object whose value came from a pool, **When** the form opens, **Then** the value mode is active, the allocated object is shown, and the field is badged with the pool it came from.
 2. **Given** a value inherited from a profile or a template, **When** the form opens, **Then** the value mode is active and its provenance is indicated as it is today.
-3. **Given** an allocation that has already been resolved, **When** the pool mode renders, **Then** no override is offered, because an existing allocation's kind and mask cannot be changed.
+3. **Given** an allocation that has already been resolved, **When** the pool mode renders, **Then** no override is offered, because an existing allocation's type and mask cannot be changed.
+4. **Given** an existing value, **When** the user switches mode and switches back without choosing anything, **Then** the field holds exactly the value it opened with.
+5. **Given** an existing value the user has not altered, **When** the form is saved, **Then** nothing is submitted for that field.
+6. **Given** an existing pool-allocated value, **When** the user switches to the pool mode and picks a different pool, **Then** a fresh allocation is staged and replaces the old one on save.
 
 ---
 
@@ -120,16 +123,19 @@ A maintainer can determine, and prove by test, exactly when a pool and each over
 - **FR-009**: The change MUST NOT alter *whether* a pool is offered for any field; only how the choice is presented.
 - **FR-010**: A field that cannot use a pool MUST render exactly as it does today.
 - **FR-011**: For a field pointing at a generic kind, the pool MUST be reachable without the user first choosing a kind, and any kind picker used for choosing an existing object MUST NOT appear alongside the pool.
-- **FR-012**: Switching between the two modes MUST discard the value staged in the abandoned mode.
-- **FR-013**: The pool MUST occupy its own line, with the prefix-length and target-kind overrides sharing the line beneath it.
+- **FR-012**: Switching between the two modes MUST discard whatever was staged in the abandoned mode and return the field to the value it held when the form opened.
+- **FR-013**: The pool MUST occupy its own line, with the prefix-length and type overrides sharing the line beneath it, and that line MUST take no space when neither override applies.
 - **FR-014**: Each override MUST carry a visible label and an explanation naming the pool's default and stating that leaving the control alone keeps that default.
-- **FR-015**: The target-kind override MUST be offered only when an override is meaningful: the allocation is still pending, the pool is an IP pool, and more than one kind is possible.
+- **FR-015**: The type override MUST be offered only when an override is meaningful: the allocation is still pending, the pool is an IP pool, and more than one type is possible.
 - **FR-016**: A field the user may not edit MUST NOT permit either mode to be used, including the pool.
-- **FR-017**: The mode active when a form opens MUST reflect where the existing value actually came from.
+- **FR-017**: A form MUST open on the value mode, whatever the value's provenance, and MUST indicate that provenance beside the field's label. The pool mode exists to stage a new allocation, not to display an existing one: for a resolved allocation it has no controls to offer, so opening there would hide the allocated value instead of showing it.
 - **FR-018**: A resolved allocation MUST NOT offer either override.
 - **FR-019**: The two-way choice MUST be visually subordinate to the field's own label, so that the label remains the primary separation between fields.
-- **FR-020**: A harness MUST exist that makes every row of the availability matrix reachable by hand locally, and every row MUST be asserted by automated tests.
-- **FR-021**: Shared test and documentation helpers that encode the previous presentation MUST be updated, including regenerating any documentation imagery that shows the affected fields.
+- **FR-020**: Only the *secondary* controls in a mode carry labels; each mode's primary control is named by its own tab, and MUST show a placeholder when empty so an unfilled control is not mistaken for a broken or disabled one.
+- **FR-021**: Visiting a mode without choosing anything MUST NOT alter the field, and MUST NOT cause anything to be submitted for it.
+- **FR-022**: A user MUST be able to replace an existing allocation by choosing a different pool from the pool mode.
+- **FR-023**: A harness MUST exist that makes every row of the availability matrix reachable by hand locally, and every row MUST be asserted by automated tests.
+- **FR-024**: Shared test and documentation helpers that encode the previous presentation MUST be updated, including regenerating any documentation imagery that shows the affected fields.
 
 ### Key Entities
 
@@ -148,8 +154,9 @@ A maintainer can determine, and prove by test, exactly when a pool and each over
 - **SC-004**: For any pool-backed field, a user can state what the pool would produce by default without changing anything.
 - **SC-005**: Every row of the availability matrix is reachable by hand in a local instance and asserted by an automated test.
 - **SC-006**: No field the user may not edit exposes a usable pool control.
-- **SC-007**: Reopening an object with a pool-allocated value shows its provenance correctly on first render.
-- **SC-008**: The change introduces no regression in the existing automated gates.
+- **SC-007**: Reopening an object with a pool-allocated value shows, on first render and without any interaction, both the allocated value and the pool it came from.
+- **SC-008**: Opening an object, looking at both modes of a field, and saving leaves that object byte-identical.
+- **SC-009**: The change introduces no regression in the existing automated gates.
 
 ## Assumptions
 
@@ -157,6 +164,25 @@ A maintainer can determine, and prove by test, exactly when a pool and each over
 - Target-kind override for values allocated via object templates is out of scope and tracked separately (IFC-3135), because a template stores only a reference to the pool and has nowhere to record an override.
 - Renaming the existing public prefix-length input field is out of scope and tracked separately (IFC-2945).
 - Tightening validation on the previously-unvalidated prefix-pool kind input is accepted as a deliberate behaviour change; that path had no test coverage and an unrelated kind could not have produced a usable object.
-- The two modes are mutually exclusive by nature, so discarding the abandoned mode's staged value on a switch is correct rather than lossy.
+- The two modes are mutually exclusive by nature, so discarding the abandoned mode's *staged* value on a switch is correct. Discarding the field's *existing* value is not, which is why a switch restores what the form opened with rather than emptying the field.
 - Documentation imagery showing these fields will change, and regenerating it is part of the work rather than a follow-up.
-- Existing behaviour already delivered on this branch (kind override plumbing, server-side validation, the first migrated field, the local trial schema) is treated as the current baseline; remaining work is the other fields, the plumbing that blocks them, and the harness.
+- Existing behaviour already delivered on this branch is treated as the current baseline; remaining work is the harness (FR-023) and the shared e2e/documentation helpers (FR-024).
+
+## Deviations and known issues
+
+- **FR-009 is not held exactly.** Converging the two pool channels made the gate a union
+  (`a from-pool relationship exists` **or** `matching pools were prefetched`), so availability
+  only ever *widens*, in one case: a template schema with zero matching pools now shows the
+  mode with an empty pool list. Accepted because the alternative — gating on the relationship
+  alone — would have removed the pool from every plain node form, since those relationships
+  exist only on object-template schemas. IP fields already behave this way.
+- **A pre-existing form defect sits underneath FR-012/FR-021.** The shared form's mount-time
+  `reset(defaultValues)` discards react-hook-form's field registry, so a later programmatic
+  value change updates the form's values but does not notify the rendered control until
+  something else re-renders it. Submitted data is unaffected — it is read from the values, which
+  is why FR-021 holds and was verified end-to-end — but a control can briefly display a stale
+  value, and it makes one unrelated pre-existing test flaky under parallel load. Out of scope
+  here; it belongs to the shared form component and wants its own ticket.
+- **The type override's own placeholder is the pool's default type, not "Select a type".** That
+  is deliberate under FR-020: the default is the one piece of information that makes the override
+  comprehensible, and a generic prompt would displace it.

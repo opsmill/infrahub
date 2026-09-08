@@ -47,7 +47,7 @@ an override works you get an `Infra` kind back and can tell the difference at a 
 
 1. Click the **From pool** tab.
 2. Pick *IFC-2764 demo address pool*.
-3. Under **Kind to allocate**, pick `Loopback Address`.
+3. Under **Type to allocate**, pick `Loopback Address`.
 4. Name the object and save.
 
 **You should see**: the linked object is an **`InfraLoopbackAddress`**. The pool's default is
@@ -55,7 +55,7 @@ an override works you get an `Infra` kind back and can tell the difference at a 
 
 ### Case 2: no override means the pool decides
 
-Same as case 1, but leave **Kind to allocate** alone.
+Same as case 1, but leave **Type to allocate** alone.
 
 **You should see**: an **`IpamIPAddress`** — the pool's default. This is why the control shows
 the default as its placeholder: empty means "let the pool decide".
