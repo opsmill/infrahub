@@ -4,18 +4,20 @@ from infrahub.core.changelog.enrichment import NodeLabelLoader, NodeLabels
 
 
 class RecordingReader:
-    """Test double for NodeLabelReader: returns preset labels and records the IDs it was asked for."""
+    """Test double for NodeLabelReader: returns preset labels and records each method's IDs separately."""
 
     def __init__(self, labels: dict[str, NodeLabels]) -> None:
         self._labels = labels
-        self.calls: list[list[str]] = []
+        self.label_calls: list[list[str]] = []
+        self.hfid_calls: list[list[str]] = []
 
     async def load_labels(self, node_ids: list[str]) -> dict[str, NodeLabels]:
-        self.calls.append(node_ids)
+        self.label_calls.append(node_ids)
         return {node_id: self._labels[node_id] for node_id in node_ids if node_id in self._labels}
 
     async def load_hfids(self, node_ids: list[str]) -> dict[str, list[str] | None]:
-        return {node_id: labels.hfid for node_id, labels in (await self.load_labels(node_ids)).items()}
+        self.hfid_calls.append(node_ids)
+        return {node_id: self._labels[node_id].hfid for node_id in node_ids if node_id in self._labels}
 
 
 class FailingReader:
@@ -33,7 +35,7 @@ async def test_load_labels_deduplicates_sorts_and_drops_empty_ids() -> None:
 
     result = await NodeLabelLoader(reader=reader).load_labels(["b", "", "a", "a", "b"])
 
-    assert reader.calls == [["a", "b"]]
+    assert reader.label_calls == [["a", "b"]]
     assert result == {"a": NodeLabels("A", ["a"]), "b": NodeLabels("B", ["b"])}
 
 
@@ -43,7 +45,7 @@ async def test_load_labels_on_empty_input_never_reads() -> None:
     result = await NodeLabelLoader(reader=reader).load_labels(["", ""])
 
     assert result == {}
-    assert reader.calls == []
+    assert reader.label_calls == []
 
 
 async def test_load_labels_holds_only_the_nodes_the_reader_found() -> None:
@@ -60,6 +62,8 @@ async def test_load_hfids_projects_only_the_hfid() -> None:
     result = await NodeLabelLoader(reader=reader).load_hfids(["a", "b"])
 
     assert result == {"a": ["a", "x"], "b": None}
+    assert reader.hfid_calls == [["a", "b"]]
+    assert reader.label_calls == []
 
 
 async def test_load_labels_degrades_to_empty_when_the_reader_fails() -> None:
