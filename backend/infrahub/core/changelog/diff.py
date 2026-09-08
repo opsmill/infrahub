@@ -74,7 +74,12 @@ class DiffChangelogCollector:
         try:
             return self.get_node(node_id=peer_id).kind
         except KeyError:
-            schema = self._db.schema.get(node_kind, branch=self._branch, duplicate=False)
+            try:
+                schema = self._db.schema.get(node_kind, branch=self._branch, duplicate=False)
+            except SchemaNotFoundError:
+                # The node's kind was dropped by a schema migration, so an unchanged peer's kind
+                # cannot be resolved from the schema; degrade as the attribute path does.
+                return "n/a"
             rel_schema = schema.get_relationship(name=relationship_name)
             return rel_schema.peer
 

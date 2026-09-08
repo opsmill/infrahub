@@ -345,6 +345,55 @@ async def test_merge_fills_peer_hfid_for_a_peer_that_did_not_change(
     assert owner_rel.peer_hfid == owner_hfid
 
 
+async def test_merge_tolerates_dropped_kind_referencing_an_unchanged_peer(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    data_schema: None,
+) -> None:
+    registry.schema.register_schema(schema=SchemaRoot(**_ONE_DIRECTIONAL_SCHEMA), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    await default_branch.save(db=db)
+
+    owner = await Node.init(db=db, schema="ZzzOwner", branch=default_branch)
+    await owner.new(db=db, name="Alice")
+    await owner.save(db=db)
+
+    branch = await create_branch(db=db, branch_name="oneway_drop")
+    item = await Node.init(db=db, schema="ZzzItem", branch=branch)
+    await item.new(db=db, name="Gadget", owner={"id": owner.id})
+    await item.save(db=db)
+
+    component_registry = get_component_registry()
+    coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
+    await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    await merger.merge_graph(at=Timestamp())
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+    diff = await diff_repository.get_one(diff_branch_name=branch.name)
+
+    # A schema migration drops the item's kind; its owner is unchanged and so absent from the diff.
+    default_schema_snapshot = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+    registry.schema.get_schema_branch(name=branch.name).delete(name="ZzzItem")
+    registry.schema.get_schema_branch(name=default_branch.name).delete(name="ZzzItem")
+    try:
+        changelogs = await DiffChangelogCollector(
+            diff=diff,
+            db=db,
+            branch=branch,
+            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many),
+        ).collect_changelogs()
+    finally:
+        registry.schema.set_schema_branch(name=default_branch.name, schema=default_schema_snapshot)
+
+    item_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == item.id)
+    owner_rel = item_changelog.relationships["owner"]
+    assert isinstance(owner_rel, RelationshipCardinalityOneChangelog)
+    assert owner_rel.peer_id == owner.id
+    # The dropped kind cannot resolve the unchanged peer's kind, so it degrades instead of failing.
+    assert owner_rel.peer_kind == "n/a"
+
+
 async def test_merge_tolerates_kind_deleted_in_migration(
     db: InfrahubDatabase,
     default_branch: Branch,
