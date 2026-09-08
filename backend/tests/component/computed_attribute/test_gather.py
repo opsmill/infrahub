@@ -15,6 +15,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.merge.python_target_resolution import DisabledPythonTargetResolver
+from infrahub.core.merge.python_target_sources import build_python_target_resolver
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
@@ -428,12 +430,14 @@ async def test_python_triggers_keep_every_origin_when_the_pass_is_disabled(
 ) -> None:
     """Disabling the coalesced pass hands merge and rebase back to the per-node automations.
 
-    One setting decides both halves, so the system can never sit with the filter applied and
-    nothing left to recompute a replayed change.
+    One setting decides both halves, so both are asked for at the same flip. The combination to
+    keep out is the filter applied while the pass derives nothing: a replayed change would then be
+    recomputed by neither route.
     """
     monkeypatch.setattr(config.SETTINGS.main, "coalesce_python_recompute_after_merge", False)
 
     triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+    resolver = await build_python_target_resolver(db=db)
 
     # Named, so that a gather returning nothing cannot satisfy the assertions below.
     assert [trigger.name for trigger in triggers] == ["TestCar_computed_desc_python"]
@@ -441,6 +445,9 @@ async def test_python_triggers_keep_every_origin_when_the_pass_is_disabled(
 
     for trigger in [*triggers, *trigger_queries]:
         assert NODE_ORIGIN_LABEL not in trigger.trigger.match
+
+    assert isinstance(resolver, DisabledPythonTargetResolver)
+    assert await resolver.resolve(changes=[], branch=default_branch.name, schema_changed_elements=None) == []
 
 
 @dataclass
