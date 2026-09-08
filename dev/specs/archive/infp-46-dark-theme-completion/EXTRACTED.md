@@ -17,8 +17,7 @@
 
 ## Guidelines Updated
 
-- `dev/guidelines/backend/python.md` (Data Structures — persisted `StandardNode` fields use
-  `Optional[X]`)
+None. One candidate was dropped during review — see below.
 
 ## Not extracted, and why
 
@@ -37,6 +36,12 @@ mistake the research for the built system:
   R1 predicted this separation would happen when the flag is removed; it happened earlier.
 - **R2, the three-step precedence with a `"system"` choice.** Never shipped. `ResolvedTheme` is
   `"light" | "dark"` and the pre-paint script reads only the resolved mirror.
+- **R5's `Optional[X]` constraint.** Extracted first, then withdrawn: it is obsolete. The source
+  comment it came from reads "until Python 3.14", and this project runs 3.14, where the two
+  spellings are the same object. `StandardNode.guess_field_type` accepts both regardless
+  (`annotation_origin in (Union, UnionType)`), covered by
+  `backend/tests/unit/core/node/test_standard.py::test_guess_field_type_resolves_both_nullable_syntaxes`.
+  The research had inverted the comment's meaning.
 - **R2 / R4 / R7 mechanics, and R8.** Already in `dev/knowledge/frontend/theming.md`.
 - `plan.md`, `tasks.md`, `quickstart.md`, `alignment-check.md`, `critiques/`, `checklists/` —
   execution artefacts, no durable knowledge.

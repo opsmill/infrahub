@@ -161,22 +161,6 @@ Dataclasses are appropriate when you need:
 
 Use `frozen=True` unless you have a specific reason to mutate instances (e.g., builder pattern, accumulating results during iteration).
 
-### Persisted `StandardNode` fields use `Optional[X]`, not `X | None`
-
-
-A nullable field on a `StandardNode` subclass must be annotated `Optional[X]`. `X | None` is not
-equivalent here — `StandardNode.guess_field_type` inspects the annotation to decide how to persist
-and rehydrate the value, and does not recognise the union form. Python 3.14 has not changed this.
-
-```python
-class Preference(StandardNode):
-    date_format: Optional[DateFormat] = None  # correct
-    timezone: Optional[str] = None            # correct
-    # timezone: str | None = None             # persisted wrong
-```
-
-This applies only to persisted `StandardNode` models. Everywhere else, prefer `X | None`.
-
 ### Avoid Plain Dictionaries
 
 Regardless of which approach you use, avoid untyped dictionaries for structured data:

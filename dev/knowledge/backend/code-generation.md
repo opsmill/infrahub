@@ -138,7 +138,6 @@ after generation had added one.
 
 ## Keep generated GraphQL descriptions single-line
 
-
 A description passed to `Enum.from_enum` (or any GraphQL type built in
 `backend/infrahub/graphql/types/`) must stay on one line. `graphql-core`'s SDL printer dedents
 multi-line descriptions differently across versions, so a wrapped description makes the generated
