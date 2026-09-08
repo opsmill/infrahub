@@ -118,7 +118,7 @@ jobs:
         with:
           package_json_file: frontend/package.json
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: 24
           cache: pnpm
@@ -151,7 +151,7 @@ jobs:
         with:
           package_json_file: frontend/package.json
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: 24
           cache: pnpm
@@ -194,7 +194,7 @@ jobs:
         with:
           package_json_file: frontend/package.json
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: 24
           cache: pnpm
@@ -235,7 +235,7 @@ jobs:
         with:
           package_json_file: frontend/package.json
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: 24
           cache: pnpm
@@ -893,7 +893,7 @@ jobs:
         with:
           package_json_file: frontend/package.json
       - name: Install NodeJS
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v7.0.0
         with:
           # https://github.com/microsoft/playwright/issues/41000
           node-version: 24.15.0
@@ -1019,7 +1019,7 @@ jobs:
         with:
           submodules: true
       - name: Install NodeJS
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: 24
           cache: 'npm'
@@ -1057,7 +1057,7 @@ jobs:
         with:
           submodules: true
       - name: Install NodeJS
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: 24
           cache: 'npm'
