@@ -600,7 +600,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
 
         expected_runs = 1 if COALESCED_PYTHON_RECOMPUTE else len(MERGE_DEVICE_INSTANCES)
         await wait_for_transform_runs(client, flow_name=DEVICE_NAME_FLOW, at_least=runs_before + expected_runs)
-        await wait_until_tasks_settle(client)
+        assert await wait_until_tasks_settle(client), "the queue never drained, so the count is premature"
 
         runs_for_the_merge = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW) - runs_before
         if COALESCED_PYTHON_RECOMPUTE:
@@ -634,7 +634,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
 
         expected_runs = 1 if COALESCED_PYTHON_RECOMPUTE else len(REBASE_DEVICE_INSTANCES)
         await wait_for_transform_runs(client, flow_name=DEVICE_NAME_FLOW, at_least=runs_before + expected_runs)
-        await wait_until_tasks_settle(client)
+        assert await wait_until_tasks_settle(client), "the queue never drained, so the count is premature"
 
         runs_for_the_rebase = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW) - runs_before
         if COALESCED_PYTHON_RECOMPUTE:
