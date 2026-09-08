@@ -304,10 +304,7 @@ class DiffChangelogCollector:
         """Yield every relationship-peer holder across the changelogs (one-cardinality and each many-peer)."""
         for changelog in changelogs:
             for relationship in changelog.relationships.values():
-                if isinstance(relationship, RelationshipCardinalityOneChangelog):
-                    yield relationship
-                elif isinstance(relationship, RelationshipCardinalityManyChangelog):
-                    yield from relationship.peers
+                yield from relationship.peer_entries()
 
     def _needs_external_hfid(self, peer: RelationshipCardinalityOneChangelog | RelationshipPeerChangelog) -> bool:
         """True for a referenced peer whose HFID the changed-node load did not already resolve."""

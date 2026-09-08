@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Self, cast
+from typing import TYPE_CHECKING, Any, Self, Sequence, cast
 from uuid import UUID
 
 from pydantic import BaseModel, Field, PrivateAttr, computed_field, field_validator, model_validator
@@ -132,6 +132,10 @@ class RelationshipCardinalityOneChangelog(BaseModel):
     def parent(self) -> ChangelogRelatedNode | None:
         return self._parent
 
+    def peer_entries(self) -> Sequence[RelationshipCardinalityOneChangelog | RelationshipPeerChangelog]:
+        """Return the peer-carrying entries this relationship holds."""
+        return [self]
+
     @computed_field
     def cardinality(self) -> str:
         return "one"
@@ -192,6 +196,10 @@ class RelationshipCardinalityManyChangelog(BaseModel):
     @computed_field
     def cardinality(self) -> str:
         return "many"
+
+    def peer_entries(self) -> Sequence[RelationshipCardinalityOneChangelog | RelationshipPeerChangelog]:
+        """Return the peer-carrying entries this relationship holds."""
+        return self.peers
 
     def add_new_peer(self, relationship: Relationship) -> None:
         properties: dict[str, PropertyChangelog] = {}
