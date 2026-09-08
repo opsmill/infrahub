@@ -527,8 +527,8 @@ class Query:
             self.add_to_query(f"WITH {with_clause}")
 
     def render(self, limit: int | None = None, offset: int | None = None) -> RenderedQuery:
-        limit = limit or self.limit
-        offset = offset or self.offset
+        limit = self.limit if limit is None else limit
+        offset = self.offset if offset is None else offset
         tmp_query_lines = self.query_lines.copy()
         params = dict(self.params)
 
@@ -538,13 +538,13 @@ class Query:
         if self.order_by:
             tmp_query_lines.append("ORDER BY " + ",".join(self.order_by))
 
-        # Bound as parameters rather than literals so every page of a paginated query shares
-        # one text, and with it one cached plan.
-        if offset and self.insert_limit:
+        # Bound as parameters rather than literals, zero included, so every page of a paginated
+        # query shares one text, and with it one cached plan.
+        if offset is not None and self.insert_limit:
             params[PAGINATION_OFFSET_PARAM] = offset
             tmp_query_lines.append(f"SKIP ${PAGINATION_OFFSET_PARAM}")
 
-        if limit and self.insert_limit:
+        if limit is not None and self.insert_limit:
             params[PAGINATION_LIMIT_PARAM] = limit
             tmp_query_lines.append(f"LIMIT ${PAGINATION_LIMIT_PARAM}")
 

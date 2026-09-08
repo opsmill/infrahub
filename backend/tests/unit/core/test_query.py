@@ -46,12 +46,28 @@ def test_every_page_of_a_query_shares_one_text(paged_query: PagedQuery) -> None:
     assert second_page.params["query_offset"] == 200
 
 
-def test_first_page_has_no_skip_clause(paged_query: PagedQuery) -> None:
-    rendered = paged_query.render(limit=100, offset=0)
+def test_first_page_shares_the_text_of_the_pages_after_it(paged_query: PagedQuery) -> None:
+    first_page = paged_query.render(limit=100, offset=0)
+    second_page = paged_query.render(limit=100, offset=100)
+
+    assert first_page.text == second_page.text
+    assert first_page.params["query_offset"] == 0
+
+
+def test_zero_bounds_are_bounds_not_absence(paged_query: PagedQuery) -> None:
+    rendered = paged_query.render(limit=0, offset=0)
+
+    assert rendered.text.endswith("SKIP $query_offset\nLIMIT $query_limit")
+    assert rendered.params["query_offset"] == 0
+    assert rendered.params["query_limit"] == 0
+
+
+def test_unset_bounds_render_no_clauses(paged_query: PagedQuery) -> None:
+    rendered = paged_query.render()
 
     assert "SKIP" not in rendered.text
-    assert "query_offset" not in rendered.params
-    assert rendered.text.endswith("LIMIT $query_limit")
+    assert "LIMIT" not in rendered.text
+    assert rendered.params == {"uuid": "5ffa45d4"}
 
 
 def test_query_rendering_its_own_bounds_gets_no_clauses_or_parameters() -> None:
