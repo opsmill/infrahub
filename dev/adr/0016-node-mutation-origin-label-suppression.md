@@ -31,8 +31,10 @@ so their per-node flows fire only on `live` events; the coalesced pass becomes t
 dispatcher for merge and rebase. The bulk writer stamps `recompute` on its own writes so a
 chained recompute does not re-enter the per-node path either.
 
-Families that are not coalesced in this pass keep receiving every event whatever the origin:
-Python-transform computed attributes, profile refresh, user action rules, and webhooks.
+Python-transform computed attributes joined the suppression later, behind
+`INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE`: their two per-node automations carry the
+`live`-only match while that setting is on. Families that are not coalesced keep receiving every
+event whatever the origin: profile refresh, user action rules, and webhooks.
 
 ## Consequences
 
