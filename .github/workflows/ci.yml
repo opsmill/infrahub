@@ -360,7 +360,9 @@ jobs:
 
   action-lint:
     if: needs.files-changed.outputs.github_workflows == 'true'
-    needs: ["files-changed"]
+    needs:
+      - files-changed
+      - prepare-environment
     runs-on: "ubuntu-latest"
     timeout-minutes: 5
     steps:
@@ -375,6 +377,23 @@ jobs:
         shell: bash
         env:
           SHELLCHECK_OPTS: --exclude=SC2086 --exclude=SC2046 --exclude=SC2004 --exclude=SC2129
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      # zizmor is a standalone static analyzer, so only the dev group is needed;
+      # building the project itself would make a cheap lint job slow.
+      - name: Install dependencies
+        run: "uv sync --only-group dev"
+      # Fails when a `uses:` reference is not pinned to a full commit SHA.
+      # See .github/zizmor.yml for the policy and the audits still to enable.
+      - name: "Linting: zizmor"
+        run: "uv run zizmor --no-progress --config .github/zizmor.yml .github/workflows/"
 
   infrahub-uv-check:
     if: |
