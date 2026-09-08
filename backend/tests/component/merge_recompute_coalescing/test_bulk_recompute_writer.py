@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from prefect import flow
 
 from infrahub.core.manager import NodeManager
+from infrahub.core.merge.python_target_resolution import DisabledPythonTargetResolver
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
     RECOMPUTE_CHAIN_DEPTH_FLOOR,
@@ -57,14 +58,19 @@ def _dispatcher(
     event_service: InfrahubEventService,
     workflow: InfrahubWorkflow,
     schema_branch: SchemaBranch,
+    coalesced: bool = True,
 ) -> BulkRecomputeDispatcher:
+    chain = None
+    if coalesced:
+        chain = RecomputeChainSubmitter(
+            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
+            submitter=CoalescedRecomputeSubmitter(workflow=workflow),
+            python_resolver=DisabledPythonTargetResolver(),
+        )
     return BulkRecomputeDispatcher(
         db=db,
         writer=BulkRecomputeWriter(db=db, event_service=event_service),
-        chain=RecomputeChainSubmitter(
-            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-            submitter=CoalescedRecomputeSubmitter(workflow=workflow),
-        ),
+        chain=chain,
     )
 
 
@@ -319,7 +325,6 @@ async def test_dispatch_returns_without_writing_when_branch_is_gone(
             writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="ignored")],
             branch_name="branch-that-was-deleted",
             context=_event_context(),
-            coalesced=True,
             recompute_depth=0,
         )
 
@@ -352,7 +357,11 @@ async def test_dispatch_live_path_stamps_live_and_does_not_chain(
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
     dispatcher = _dispatcher(
-        db=db, event_service=event_recorder, workflow=workflow_recorder, schema_branch=schema_branch
+        db=db,
+        event_service=event_recorder,
+        workflow=workflow_recorder,
+        schema_branch=schema_branch,
+        coalesced=False,
     )
 
     @flow(name="test-dispatch-live")
@@ -361,7 +370,6 @@ async def test_dispatch_live_path_stamps_live_and_does_not_chain(
             writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="live label")],
             branch_name=default_branch.name,
             context=_event_context(),
-            coalesced=False,
             recompute_depth=0,
         )
 
@@ -404,6 +412,7 @@ async def test_chain_self_terminates_on_a_cyclic_schema(
         submissions = await RecomputeChainSubmitter(
             builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
             submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+            python_resolver=DisabledPythonTargetResolver(),
         ).submit(
             written=written,
             branch=default_branch.name,
@@ -425,6 +434,7 @@ async def test_chain_self_terminates_on_a_cyclic_schema(
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        python_resolver=DisabledPythonTargetResolver(),
     ).submit(
         written=written,
         branch=default_branch.name,
@@ -450,6 +460,7 @@ async def test_chain_coalesces_the_next_level_into_one_submission(
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        python_resolver=DisabledPythonTargetResolver(),
     ).submit(
         written=written,
         branch=default_branch.name,
@@ -480,6 +491,7 @@ async def test_chain_dispatches_nothing_when_no_values_were_written(
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        python_resolver=DisabledPythonTargetResolver(),
     ).submit(
         written=[],
         branch=default_branch.name,
@@ -508,6 +520,7 @@ async def test_chain_stops_at_the_depth_bound(
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        python_resolver=DisabledPythonTargetResolver(),
     ).submit(
         written=written,
         branch=default_branch.name,
@@ -536,6 +549,7 @@ async def test_chain_bound_scales_with_the_schema_so_deep_chains_are_not_truncat
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        python_resolver=DisabledPythonTargetResolver(),
     ).submit(
         written=written,
         branch=default_branch.name,

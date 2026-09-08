@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Mapping
 
     from infrahub.core.schema import MainSchemaTypes, NodeSchema
+    from infrahub.core.schema.computed_attribute import ComputedAttribute
 
 # Reads of these computed/derived fields cannot be mapped back to a precise set of backing
 # schema elements, so any change to the kind read through them can move the value: editing a
@@ -131,6 +132,13 @@ class PythonTransformRegistry:
 
     def get_attributes_per_node(self) -> dict[str, list[AttributeSchema]]:
         return self._map
+
+    def get_transform_attribute(self, node_kind: str, name: str) -> ComputedAttribute | None:
+        """The named Python transform computed attribute of a kind, or None when the kind has none."""
+        for attribute in self._map.get(node_kind, []):
+            if attribute.name == name:
+                return attribute.computed_attribute
+        return None
 
     @property
     def attributes_by_transform(self) -> dict[str, list[PythonDefinition]]:
