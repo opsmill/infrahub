@@ -426,7 +426,10 @@ container is running — `component/api/conftest.py::workflow_local` and
 `setup_task_manager()`.** The raw call redoes every block, worker pool, deployment and builtin
 trigger against the current server with no timeout of its own; under CI load it hangs until
 pytest-timeout kills the whole class. The helper runs the registration once per server, bounded,
-and fails fast for that server afterwards.
+and fails fast for that server afterwards. It remembers a timed-out server the moment its ceiling is
+hit, before cancelling the registration: Prefect answers the cancellation with a shielded Crashed
+state write to the same server, which against a wedged one blocks for minutes, so the helper does
+not wait for it.
 
 **Never memoize server-side registration per process.** The registration goes to whichever server is
 current, so a process-wide "already done" flag lets the first server's setup satisfy fixtures pointing
