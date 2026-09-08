@@ -121,8 +121,9 @@ class PythonTransformTarget:
 def _restrict_to_live_origin(event_trigger: EventTrigger) -> None:
     """Leave merge, rebase and recompute replays to the coalesced pass when it owns them.
 
-    One setting gates both halves. With the filter applied and the pass disabled, nothing
-    would recompute a replayed change.
+    One setting gates both halves, so the filter is never applied while the pass is disabled. The
+    setting is read when the automation is built, not when the event arrives, so flipping it takes
+    effect on the next reconcile of these two trigger types and not on the next restart.
     """
     if config.SETTINGS.main.coalesce_python_recompute_after_merge:
         event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
