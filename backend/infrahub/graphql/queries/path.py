@@ -7,6 +7,7 @@ from graphql import GraphQLError
 
 from infrahub import config
 from infrahub.core import registry
+from infrahub.core.constants import RelationshipDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import SchemaNotFoundError
@@ -29,6 +30,9 @@ log = get_logger()
 
 
 MAX_PATHS = 100
+
+# (relationship identifier, from kind, to kind, direction stored on the from end)
+type _RelationshipCacheKey = tuple[str, str, str, RelationshipDirection]
 
 
 class PathNodeType(ObjectType):
@@ -203,10 +207,20 @@ def _get_schema_or_none(graphql_context: GraphqlContext, kind: str) -> MainSchem
 
 
 def _candidate_relationships(
-    schema: MainSchemaTypes, identifier: str, other_kind: str, other_schema: MainSchemaTypes | None
+    schema: MainSchemaTypes,
+    identifier: str,
+    other_kind: str,
+    other_schema: MainSchemaTypes | None,
+    direction: RelationshipDirection | None,
 ) -> list[RelationshipSchema]:
-    """Relationships declared under ``identifier``, narrowed to those whose peer covers the other endpoint."""
+    """Relationships declared under ``identifier``, narrowed to this end of the edge.
+
+    ``direction`` is what the stored edge says, so it outranks the peer kinds and is applied
+    first. Either filter keeps the wider set when it matches nothing.
+    """
     candidates = schema.get_relationships_by_identifier(id=identifier)
+    if direction is not None:
+        candidates = [candidate for candidate in candidates if candidate.direction == direction] or candidates
     other_kinds = {other_kind}
     if isinstance(other_schema, NodeSchema):
         other_kinds.update(other_schema.inherit_from)
@@ -221,25 +235,39 @@ def select_hop_relationships(
     from_kind: str,
     to_kind: str,
     identifier: str,
+    from_direction: RelationshipDirection | None = None,
+    to_direction: RelationshipDirection | None = None,
 ) -> tuple[RelationshipSchema | None, RelationshipSchema | None]:
     """Pick the relationship each end of a hop holds for ``identifier``.
 
     Both ends of an edge share one identifier, like a hierarchy's ``parent`` and
-    ``children``, so candidates are narrowed by peer kind, paired by mirrored
-    direction, and the pairs are ranked by how many of their peers name the other
-    end's exact kind. The pick is unambiguous when a single pair mirrors, or when
-    a single pair pins both peer kinds. Anything less is a deterministic guess
-    with a logged warning: a peer left on the hierarchy generic covers both ends,
-    so the schema cannot tell them apart.
+    ``children``, so the identifier alone cannot name one end. The directions the edge is
+    stored with name both ends exactly; the peer kinds only break a tie between several
+    declarations sharing one direction.
+
+    Without those directions, or when they match no declaration, the ends are told apart
+    from the schema alone: candidates are paired by mirrored direction, then ranked by how
+    many peers name the other end's exact kind. That pick is a deterministic guess with a
+    logged warning unless a single pair mirrors or a single pair pins both peer kinds.
     """
     from_candidates = (
-        _candidate_relationships(schema=from_schema, identifier=identifier, other_kind=to_kind, other_schema=to_schema)
+        _candidate_relationships(
+            schema=from_schema,
+            identifier=identifier,
+            other_kind=to_kind,
+            other_schema=to_schema,
+            direction=from_direction,
+        )
         if from_schema
         else []
     )
     to_candidates = (
         _candidate_relationships(
-            schema=to_schema, identifier=identifier, other_kind=from_kind, other_schema=from_schema
+            schema=to_schema,
+            identifier=identifier,
+            other_kind=from_kind,
+            other_schema=from_schema,
+            direction=to_direction,
         )
         if to_schema
         else []
@@ -280,7 +308,11 @@ def select_hop_relationships(
 
 
 def _resolve_relationship(
-    graphql_context: GraphqlContext, identifier: str, from_kind: str, to_kind: str
+    graphql_context: GraphqlContext,
+    identifier: str,
+    from_kind: str,
+    to_kind: str,
+    from_direction: RelationshipDirection,
 ) -> dict[str, str]:
     """Project a hop's relationship identifier into bidirectional API fields.
 
@@ -293,6 +325,8 @@ def _resolve_relationship(
         from_kind=from_kind,
         to_kind=to_kind,
         identifier=identifier,
+        from_direction=from_direction,
+        to_direction=from_direction.neighbor_direction,
     )
 
     kind = ""
@@ -314,12 +348,13 @@ def _path_data_to_result(
     path_data: PathData,
     labels_map: dict[str, dict[str, Any]],
     graphql_context: GraphqlContext,
-    relationship_cache: dict[tuple[str, str, str], dict[str, str]],
+    relationship_cache: dict[_RelationshipCacheKey, dict[str, str]],
 ) -> dict[str, Any]:
     """Project one path into the API shape.
 
-    ``relationship_cache`` is request-scoped: a hop triple always resolves to the same
-    payload, and caching keeps the ambiguous-pair warning to one line per triple.
+    ``relationship_cache`` is request-scoped, and caching keeps the ambiguous-pair warning to
+    one line per key. The direction is part of the key because a self-referential hierarchy
+    walks one hop triple in both directions, to a different pair of names each way.
     """
     start_node_payload = _node_payload(
         node_id=path_data.start_node.uuid, kind=path_data.start_node.kind, labels_map=labels_map
@@ -328,7 +363,7 @@ def _path_data_to_result(
     previous_kind = path_data.start_node.kind
     for hop in path_data.hops:
         node_payload = _node_payload(node_id=hop.node.uuid, kind=hop.node.kind, labels_map=labels_map)
-        cache_key = (hop.relationship_identifier, previous_kind, hop.node.kind)
+        cache_key = (hop.relationship_identifier, previous_kind, hop.node.kind, hop.from_direction)
         relationship_payload = relationship_cache.get(cache_key)
         if relationship_payload is None:
             relationship_payload = _resolve_relationship(
@@ -336,6 +371,7 @@ def _path_data_to_result(
                 identifier=hop.relationship_identifier,
                 from_kind=previous_kind,
                 to_kind=hop.node.kind,
+                from_direction=hop.from_direction,
             )
             relationship_cache[cache_key] = relationship_payload
         hops.append({"node": node_payload, "relationship": relationship_payload})
@@ -437,7 +473,7 @@ async def path_traversal_resolver(
         node_id=destination_node.id, kind=destination_node.get_kind(), labels_map=labels_map
     )
 
-    relationship_cache: dict[tuple[str, str, str], dict[str, str]] = {}
+    relationship_cache: dict[_RelationshipCacheKey, dict[str, str]] = {}
     paths = [
         _path_data_to_result(
             path_data=p,

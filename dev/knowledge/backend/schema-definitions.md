@@ -90,7 +90,31 @@ schema. A hierarchical node carries two relationships under the identifier `pare
 
 `get_relationship_by_identifier()` therefore cannot resolve a hierarchy. It returns whichever side
 is declared first. Use `get_relationships_by_identifier()` instead and select the side whose
-`direction` equals the local relationship's `direction.neighbor_direction`.
+`direction` equals the local relationship's `direction.neighbor_direction`. That rule needs one
+known side: it names the peer's declaration from the local one.
+
+#### Naming both sides of one edge
+
+When neither side is known — a graph traversal that only has the two kinds and the identifier —
+the schema alone is not enough. Two kinds under a loose hierarchy, or a kind that is its own
+parent and children, declare the same mirrored pair, so pairing the declarations by
+`RelationshipSchema.mirrors()` leaves more than one answer and any pick is a guess.
+
+Read the direction back from the graph instead. The two `IS_RELATED` edges around the
+`Relationship` vertex are stored in the direction of the relationship: an end points its edge at
+that vertex for `OUTBOUND` and for `BIDIR`, and away from it for `INBOUND`. The orientation of
+both edges therefore names both ends:
+
+| First edge | Second edge | Local side | Peer side |
+|---|---|---|---|
+| `node → rel` | `rel → peer` | `OUTBOUND` | `INBOUND` |
+| `rel → node` | `peer → rel` | `INBOUND` | `OUTBOUND` |
+| `node → rel` | `peer → rel` | `BIDIR` | `BIDIR` |
+
+A Cypher `CASE` over `startNode()` reads it — `database/validation.py` and the traversal
+projection in `graph_traversal/_cypher.py` both do. Narrow the candidates by that direction
+first and by peer kind second; keep the mirror pairing as the fallback for an orientation the
+schema no longer matches.
 
 ### Branch Support Auto-Determination
 

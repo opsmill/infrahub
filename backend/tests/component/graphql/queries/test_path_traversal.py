@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -547,6 +548,87 @@ async def test_resolver_names_each_end_of_a_hierarchy_hop(
         "to_label": "Parent",
         "kind": "Hierarchy",
     }
+
+
+@dataclass
+class HierarchyPathCase:
+    name: str
+    node_ids: list[str]
+    relationships: list[dict[str, str]]
+    shortest_paths_only: bool
+
+
+async def test_resolver_names_each_end_of_a_self_referential_hierarchy_hop(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    self_referential_hierarchy_data: dict[str, Node],
+) -> None:
+    # Both ends declare `parent` and `children` with the same peer kind, so only the
+    # direction the edge is stored with tells them apart.
+    root = self_referential_hierarchy_data["root"]
+    middle = self_referential_hierarchy_data["middle"]
+    leaf = self_referential_hierarchy_data["leaf"]
+
+    upward = {
+        "from_rel": "parent",
+        "from_label": "Parent",
+        "to_rel": "children",
+        "to_label": "Children",
+        "kind": "Hierarchy",
+    }
+    downward = {
+        "from_rel": "children",
+        "from_label": "Children",
+        "to_rel": "parent",
+        "to_label": "Parent",
+        "kind": "Hierarchy",
+    }
+    cases = [
+        HierarchyPathCase(
+            name="one_hop_up", node_ids=[leaf.id, middle.id], relationships=[upward], shortest_paths_only=True
+        ),
+        HierarchyPathCase(
+            name="one_hop_down", node_ids=[middle.id, leaf.id], relationships=[downward], shortest_paths_only=True
+        ),
+        HierarchyPathCase(
+            name="two_hops_up",
+            node_ids=[leaf.id, middle.id, root.id],
+            relationships=[upward, upward],
+            shortest_paths_only=True,
+        ),
+        HierarchyPathCase(
+            name="two_hops_down_all_paths",
+            node_ids=[root.id, middle.id, leaf.id],
+            relationships=[downward, downward],
+            shortest_paths_only=False,
+        ),
+    ]
+
+    for case in cases:
+        data, errors = await _run_resolver(
+            db=db,
+            branch=default_branch,
+            session=session_admin,
+            variables={
+                "data": {
+                    "source_id": case.node_ids[0],
+                    "destination_id": case.node_ids[-1],
+                    "max_depth": len(case.relationships),
+                    "shortest_paths_only": case.shortest_paths_only,
+                }
+            },
+            source=PATH_TRAVERSAL_RELATIONSHIP_QUERY,
+        )
+
+        assert errors is None, case.name
+        assert data is not None
+        result = data["InfrahubPathTraversal"]
+        assert result["count"] == 1, case.name
+        hops = result["paths"][0]["hops"]
+        assert [hop["node"]["id"] for hop in hops] == case.node_ids, case.name
+        assert [hop["relationship"] for hop in hops] == [None, *case.relationships], case.name
 
 
 async def test_resolver_respects_session_permissions(

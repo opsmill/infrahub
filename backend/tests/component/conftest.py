@@ -2255,6 +2255,52 @@ async def _build_hierarchical_location_data(db: InfrahubDatabase, branch: Branch
 
 
 @pytest.fixture
+async def self_referential_hierarchy_data(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> dict[str, Node]:
+    """A kind that is its own parent and children, plus a root, a middle and a leaf of it.
+
+    Both ends of a hop declare the same mirrored pair with the same peer kind, so the
+    schema alone cannot say which end holds `parent` and which holds `children`.
+    """
+    SCHEMA: dict[str, Any] = {
+        "generics": [
+            {
+                "name": "Container",
+                "namespace": "Nested",
+                "default_filter": "name__value",
+                "display_label": "name__value",
+                "hierarchical": True,
+                "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "Folder",
+                "namespace": "Nested",
+                "default_filter": "name__value",
+                "display_label": "name__value",
+                "inherit_from": ["NestedContainer"],
+                "parent": "NestedFolder",
+                "children": "NestedFolder",
+            }
+        ],
+    }
+    registry.schema.register_schema(schema=SchemaRoot(**SCHEMA), branch=default_branch.name)
+    default_branch.update_schema_hash()
+
+    nodes: dict[str, Node] = {}
+    parent_id: str | None = None
+    for name in ("root", "middle", "leaf"):
+        folder = await Node.init(db=db, branch=default_branch, schema="NestedFolder")
+        await folder.new(db=db, name=name, parent=parent_id)
+        await folder.save(db=db)
+        nodes[name] = folder
+        parent_id = folder.id
+    return nodes
+
+
+@pytest.fixture
 async def hierarchical_location_data_thing(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
 ) -> dict[str, Node]:

@@ -1,0 +1,1 @@
+Graph traversal results (path and dependency modes) named the two ends of a hierarchy hop from the schema alone, so a hierarchy that left its `parent` or `children` peer on the generic, or a kind that is its own parent and children, reported the ends swapped in one hop direction. Each end is now named from the direction the edge is stored with.
