@@ -45,8 +45,8 @@ from .scoping import (
     ChangedElementSet,
     ComputedAttributeRef,
     Jinja2DependencyDeriver,
-    PythonTransformDependencyDeriver,
     RecomputeScoper,
+    scope_python_transforms,
 )
 from .transform_recompute import TransformRecomputeSubmitter
 
@@ -594,11 +594,9 @@ async def computed_attribute_setup_python(
             if event_name != BranchDeletedEvent.event_name and branch == branch_name
         ]
 
-        scoper = RecomputeScoper(
-            derivers={ComputedAttributeKind.TRANSFORM_PYTHON: PythonTransformDependencyDeriver(read_sets=read_sets)}
-        )
-        report = scoper.scope(
+        report = scope_python_transforms(
             candidate_attributes=candidate_attributes,
+            read_sets=read_sets,
             changed_elements=changed_element_set,
         )
 
