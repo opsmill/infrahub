@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from infrahub_sdk import Config, InfrahubClient
 
-from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
@@ -23,10 +22,11 @@ from infrahub.proposed_change.branch_diff import set_diff_summary_cache
 from infrahub.proposed_change.models import RequestArtifactDefinitionCheck
 from infrahub.proposed_change.tasks import validate_artifacts_generation
 from infrahub.server import app
-from infrahub.workers.dependencies import build_client, build_workflow
+from infrahub.workers.dependencies import build_client
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
@@ -71,12 +71,8 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         prefect: Generator[str, None, None],
         dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
-        original = config.OVERRIDE.workflow
-        recorder = WorkflowRecorder()
-        config.OVERRIDE.workflow = recorder
-        with dependency_provider.scope(build_workflow, lambda: recorder):
+        with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
             yield recorder
-        config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class", autouse=True)
     async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:

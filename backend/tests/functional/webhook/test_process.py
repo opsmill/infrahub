@@ -12,6 +12,7 @@ from infrahub.webhook.tasks import convert_node_to_webhook, webhook_process
 from infrahub.workers.dependencies import build_http_service
 from infrahub.workflows.constants import WorkflowTag
 from tests.adapters.http import MemoryHTTP
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.test_app import TestInfrahubApp
 
 from .conftest import BRANCH_CREATED_PAYLOAD, only_new_run, read_send_runs
@@ -116,7 +117,7 @@ class TestWebhookProcess(TestInfrahubApp):
             url="https://url.mock",
             response=httpx.Response(request=httpx.Request(method="GET", url="https://url.mock"), status_code=200),
         )
-        with dependency_provider.scope(build_http_service, lambda: http):
+        with override_dependency(build_http_service, lambda: http, dependency_provider=dependency_provider):
             before = {str(run.id) for run in await read_send_runs(flow_run_querier)}
             await webhook_process(
                 webhook_id=webhook1.id,
@@ -150,7 +151,7 @@ class TestWebhookProcess(TestInfrahubApp):
         )
 
         with (
-            dependency_provider.scope(build_http_service, lambda: http),
+            override_dependency(build_http_service, lambda: http, dependency_provider=dependency_provider),
             caplog.at_level(logging.INFO, logger="prefect.task_runs"),
             caplog.at_level(logging.INFO, logger="prefect.flow_runs"),
         ):
@@ -188,7 +189,7 @@ class TestWebhookProcess(TestInfrahubApp):
 
         with (
             pytest.raises(RuntimeError, match=r"^boom$"),
-            dependency_provider.scope(build_http_service, lambda: http),
+            override_dependency(build_http_service, lambda: http, dependency_provider=dependency_provider),
         ):
             await webhook_process(
                 webhook_id=webhook1.id,
