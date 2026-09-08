@@ -181,15 +181,12 @@ class StandardNodeGetListQuery(Query):
         self.add_to_query(query)
 
         self.return_labels = ["n"]
-        # An unpaged read is served in SKIP/LIMIT chunks, so a tied timestamp needs the id after it
-        # or the rows sharing it are free to land in a different chunk on each re-execution.
-        id_tiebreaker = f"{db.get_id_function_name()}(n)"
         match self.node_ordering.order_by:
             case OrderByField.ID:
-                self.order_by = [id_tiebreaker]
+                self.order_by = [f"{db.get_id_function_name()}(n)"]
             case OrderByField.CREATED_AT:
-                self.order_by = [f"n.created_at {self.node_ordering.direction.value}", id_tiebreaker]
+                self.order_by = [f"n.created_at {self.node_ordering.direction.value}"]
             case OrderByField.UPDATED_AT:
-                self.order_by = [f"n.updated_at {self.node_ordering.direction.value}", id_tiebreaker]
+                self.order_by = [f"n.updated_at {self.node_ordering.direction.value}"]
             case _:
                 assert_never(self.node_ordering.order_by)

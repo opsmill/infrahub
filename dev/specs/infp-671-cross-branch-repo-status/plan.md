@@ -228,7 +228,7 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
 | Permission enforced in the resolver rather than the checker pipeline | The analyzer ignores hand-written root fields and the pipeline never requires `ALLOW_ALL` | A new pipeline checker keyed on one root field name is more machinery for one query; revisit if a second cross-branch query appears |
 | `Branch.get_list(limit=None)` widening | The resolver must read every in-scope branch before attribute filters apply | Passing a large literal limit is an arbitrary cap; a preceding count query adds a statement to every page |
 | E2E test deferred to the Branches card (Principle IV deviation) | The user-facing surface is the card, owned by the frontend team and built against this contract | An E2E test that only fires a GraphQL document adds nothing over the component tests. Accepted only because T059 opens a tracked subtask carrying the requirement; without that it is an unrecorded miss against a MUST |
-| Id tiebreaker added to `StandardNodeGetListQuery` | The unpaged chunked branch read is only correct over a total order, and metadata ordering has none today | Ordering the branch read differently from every other standard-node list would leave the shared defect in place for the next caller. The cost is that this feature changes shared machinery, so T031 names the blast radius in the PR |
+| ~~Id tiebreaker added to `StandardNodeGetListQuery`~~ **reversed during implementation** | Claimed the unpaged chunked read is only correct over a total order | Both preconditions are unreachable: `query_size_limit` defaults to 5000 against a 200-branch scale, so there is one chunk and no boundary, and `created_at` is per-instance at microsecond precision, so ties do not occur. `spec.md` asks for neither and says no repository is expected to exceed the query size limit. `StandardNodeGetListQuery` is left untouched, which also means this feature changes no shared machinery |
 
 ---
 
@@ -254,8 +254,10 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
    call; the root field description carries "(preview: attribute values are placeholders, not yet read
    from the graph)" while the stub is live. The description is API-facing, so it names neither the
    ticket nor the increment (`.agents/rules/code-doc-style.md`).
-6. Confirm `StandardNodeGetListQuery` adds an id tiebreaker when ordering by `created_at` or
-   `updated_at`, so the unpaged chunked branch read stays a total order; add one if missing.
+6. Leave `StandardNodeGetListQuery` alone. An earlier revision added an id tiebreaker to its
+   timestamp `ORDER BY` arms for the unpaged chunked read; that guards a scenario needing both
+   more than `query_size_limit` (5000) branches and a microsecond-precision timestamp collision,
+   and this feature's scale is 200.
 7. Regenerate `schema/schema.graphql`; run `pnpm codegen`; commit both.
 8. Component tests for membership per kind, not-found, permission matrix including anonymous with and
    without a role grant, paging and count, ordering, `ref` dispatch, zero bus sends. Unit tests for
