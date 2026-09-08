@@ -67,6 +67,14 @@ UNKNOWN = PythonAttributeReadSet(kind=OWNER, attribute_name="digest", read_set=T
 UNGATHERED = PythonAttributeReadSet(
     kind=OWNER, attribute_name="hash", read_set=TransformReadSet.imprecise(), gathered=False
 )
+# Reads the device name, but its query root is not pinned to one object, so query-group
+# membership cannot name its readers.
+UNPINNED = PythonAttributeReadSet(
+    kind=OWNER,
+    attribute_name="roster",
+    read_set=TransformReadSet(read_kinds=frozenset({DEVICE}), read_fields={DEVICE: frozenset({"name"})}),
+    pinned=False,
+)
 
 
 def _resolver(
@@ -414,3 +422,60 @@ async def test_the_read_set_index_is_fetched_once_per_pass() -> None:
     await resolver.resolve(branch=BRANCH, changes=[change])
 
     assert read_set_source.calls == [BRANCH]
+
+
+async def test_an_unpinned_query_widens_instead_of_resolving_its_readers() -> None:
+    """Query-group membership records what the last run read, so it cannot name these readers."""
+    subscribers = RecordingSubscriberSource(subscribers={"d1": [("o1", OWNER)]})
+    resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(
+        branch=BRANCH,
+        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"name"}))],
+    )
+
+    assert _identities(targets) == [(OWNER, "roster")]
+    assert targets[0].whole_kind is True
+    assert targets[0].precise is False
+    assert subscribers.calls == []
+
+
+async def test_an_unpinned_query_keeps_the_read_set_the_schema_pass_scopes_on() -> None:
+    """The pinning restriction must not make the schema pass look like it covers the attribute.
+
+    The schema change here touches a kind the query never reads, so the backfill refreshes nothing
+    for it. Dropping it as covered would leave nothing to recompute it at all.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(
+        branch=BRANCH,
+        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"name"}))],
+        schema_changed_elements=ChangedElementSet(changed_fields={SITE: frozenset({"name"})}),
+    )
+
+    assert _identities(targets) == [(OWNER, "roster")]
+    assert targets[0].whole_kind is True
+
+
+async def test_a_created_node_widens_an_unpinned_query() -> None:
+    """A created node enters the result set of an unpinned query without touching its members."""
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(branch=BRANCH, changes=[MergeChange(node_id="d1", kind=DEVICE, action="created")])
+
+    assert _identities(targets) == [(OWNER, "roster")]
+    assert targets[0].whole_kind is True
+
+
+async def test_a_created_node_widens_an_undeterminable_read_set() -> None:
+    """What an unanalyzable query reads is unknown, so a creation can reach it like any change."""
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[UNKNOWN], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(branch=BRANCH, changes=[MergeChange(node_id="d1", kind=DEVICE, action="created")])
+
+    assert _identities(targets) == [(OWNER, "digest")]
+    assert targets[0].whole_kind is True

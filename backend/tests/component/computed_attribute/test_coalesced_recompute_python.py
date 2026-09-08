@@ -242,8 +242,7 @@ class TestCoalescedRecomputePython(CoalescedPythonTestBase):
     ) -> None:
         """Every created car is one submission per attribute, not one per node.
 
-        This is the merge shape: a branch that built new nodes, replayed on the destination. The
-        per-node automations answered it with one flow per created node.
+        This is the merge shape: a branch that built new nodes, replayed on the destination.
         """
         submissions = await self._run_pass(
             db=db,
@@ -595,6 +594,41 @@ class TestCoalescedRecomputePythonUnpinnedQuery(CoalescedPythonTestBase):
                     changed_fields=frozenset({"name"}),
                 )
             ],
+        )
+
+        assert submissions == {
+            NAME_ATTRIBUTE: sorted(unpinned_dataset.car_ids),
+            OWNER_ATTRIBUTE: WHOLE_KIND,
+        }
+
+    async def test_an_unpinned_query_survives_a_schema_change_it_does_not_read(
+        self,
+        unpinned_dataset: PythonRecomputeDataset,
+        db: InfrahubDatabase,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        """The restriction must not make the schema pass look like it covers the attribute.
+
+        The schema pass maps the same query without the restriction, so a change to a kind the
+        query never reads selects nothing there. Dropping the pair as covered would leave the
+        gated automations as the only other path, and they ignore a replayed change.
+        """
+        submissions = await self._run_pass(
+            db=db,
+            recorder=workflow_recorder,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            changes=[
+                MergeChange(
+                    node_id=unpinned_dataset.car_ids[0],
+                    kind=CAR_KIND,
+                    action="updated",
+                    changed_fields=frozenset({"name"}),
+                )
+            ],
+            schema_changed_elements=ChangedElementSet(changed_fields={PERSON_KIND: frozenset({"height"})}),
         )
 
         assert submissions == {

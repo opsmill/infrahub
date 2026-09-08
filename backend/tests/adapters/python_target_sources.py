@@ -12,9 +12,8 @@ if TYPE_CHECKING:
 
     from infrahub.computed_attribute.scoping import ChangedElementSet
     from infrahub.core.merge.python_target_resolution import PythonAttributeReadSet
-    from infrahub.core.merge.python_target_sources import DeclaredAttribute
+    from infrahub.core.merge.python_target_sources import AnalyzedRead, DeclaredAttribute
     from infrahub.core.merge.recompute_coalescing import AffectedTarget, MergeChange
-    from infrahub.core.schema.schema_branch_computed import TransformReadSet
 
 
 class StaticPythonReadSetSource:
@@ -133,11 +132,11 @@ class StaticDeclaredPythonAttributes:
 class StaticAnalyzedPythonReadSets:
     """Serves a fixed read-set map for the attributes whose query could be analyzed."""
 
-    def __init__(self, analyzed: dict[DeclaredAttribute, TransformReadSet]) -> None:
+    def __init__(self, analyzed: dict[DeclaredAttribute, AnalyzedRead]) -> None:
         self.configured_analyzed = analyzed
         self.calls: list[str] = []
 
-    async def analyzed(self, *, branch: str) -> dict[DeclaredAttribute, TransformReadSet]:
+    async def analyzed(self, *, branch: str) -> dict[DeclaredAttribute, AnalyzedRead]:
         self.calls.append(branch)
         return self.configured_analyzed
 
@@ -148,6 +147,6 @@ class FailingAnalyzedPythonReadSets:
     def __init__(self) -> None:
         self.calls: list[str] = []
 
-    async def analyzed(self, *, branch: str) -> dict[DeclaredAttribute, TransformReadSet]:
+    async def analyzed(self, *, branch: str) -> dict[DeclaredAttribute, AnalyzedRead]:
         self.calls.append(branch)
         raise RuntimeError("gather rejected")

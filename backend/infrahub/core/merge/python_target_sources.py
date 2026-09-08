@@ -44,14 +44,22 @@ class DeclaredPythonAttributes(Protocol):
     async def declared(self, *, branch: str) -> list[DeclaredAttribute]: ...
 
 
+@dataclass(frozen=True)
+class AnalyzedRead:
+    """What one transform query reads, and whether its root is restricted to a single object."""
+
+    read_set: TransformReadSet
+    pinned: bool
+
+
 class AnalyzedPythonReadSets(Protocol):
-    """The read set of every attribute whose transform query could be resolved and analyzed.
+    """The read of every attribute whose transform query could be resolved and analyzed.
 
     An attribute missing from the result has no transform to compute it. Raises whatever the
     resolution raises, so the caller decides what a failure costs.
     """
 
-    async def analyzed(self, *, branch: str) -> dict[DeclaredAttribute, TransformReadSet]: ...
+    async def analyzed(self, *, branch: str) -> dict[DeclaredAttribute, AnalyzedRead]: ...
 
 
 class SchemaDeclaredPythonAttributes:
@@ -87,24 +95,23 @@ class SchemaDeclaredPythonAttributes:
 
 
 class GatheredPythonReadSets:
-    """The read sets, mapped from the transform queries the gather resolved and analyzed.
+    """The reads, mapped from the transform queries the gather resolved and analyzed.
 
-    A query whose root is not pinned to a single object gets an imprecise read set. Readers come
-    from query-group membership, which records what the last run read: when any number of objects
-    can answer the query, a node enters or leaves the result set without anything changing on the
-    nodes already in it, so a created node is invisible to the existing subscribers and a deleted
-    one leaves no membership behind. The schema-scoped backfill maps the same queries without this
-    restriction: it refreshes whole kinds and never resolves a reader.
+    Every query is mapped the same way the schema-scoped backfill maps it, so both sides scope a
+    schema change on the same read set. A root that is not restricted to a single object is carried
+    as a separate fact, because what it costs is the reader lookup and not the mapping: readers come
+    from query-group membership, which records what the last run read, so a node enters or leaves the
+    result set without anything changing on the members already in it.
     """
 
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
-    async def analyzed(self, *, branch: str) -> dict[DeclaredAttribute, TransformReadSet]:
+    async def analyzed(self, *, branch: str) -> dict[DeclaredAttribute, AnalyzedRead]:
         schema_branch = registry.schema.get_schema_branch(name=branch)
         gathered = await gather_python_transform_attributes(db=self.db, branch_name=branch)
 
-        read_sets: dict[DeclaredAttribute, TransformReadSet] = {}
+        reads: dict[DeclaredAttribute, AnalyzedRead] = {}
         for item in gathered:
             attribute = DeclaredAttribute(
                 kind=item.computed_attribute.kind, attribute_name=item.computed_attribute.attribute.name
@@ -116,10 +123,11 @@ class GatheredPythonReadSets:
                     attribute.kind,
                     attribute.attribute_name,
                 )
-                read_sets[attribute] = TransformReadSet.imprecise()
-                continue
-            read_sets[attribute] = transform_read_set_from_query_report(report=report, schema_branch=schema_branch)
-        return read_sets
+            reads[attribute] = AnalyzedRead(
+                read_set=transform_read_set_from_query_report(report=report, schema_branch=schema_branch),
+                pinned=report.only_has_unique_targets,
+            )
+        return reads
 
 
 class DatabasePythonReadSetSource:
@@ -159,7 +167,10 @@ class DatabasePythonReadSetSource:
 
         return [
             PythonAttributeReadSet(
-                kind=attribute.kind, attribute_name=attribute.attribute_name, read_set=analyzed[attribute]
+                kind=attribute.kind,
+                attribute_name=attribute.attribute_name,
+                read_set=analyzed[attribute].read_set,
+                pinned=analyzed[attribute].pinned,
             )
             for attribute in declared
             if attribute in analyzed
