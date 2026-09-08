@@ -115,7 +115,7 @@ def fetch_job_log(repo: str, job_id: int, log_path: Path) -> None:
     collection retries.
     """
     res = subprocess.run(  # noqa: S603
-        ["gh", "api", f"repos/{repo}/actions/jobs/{job_id}/logs"],  # noqa: S607
+        ["gh", "api", f"repos/{repo}/actions/jobs/{job_id}/logs", "--allow-escape-sequences"],  # noqa: S607
         capture_output=True,
         text=True,
         errors="replace",

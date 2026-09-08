@@ -80,6 +80,10 @@ Never add a marker, attribute, or `type: ignore` to production code so a test ca
 
 Every test in an xdist worker shares one interpreter. Change `logging` levels/handlers/filters, `structlog` config, module-level registries/singletons, class attributes (your own or a third-party library's), `sys.path`/`sys.modules` or env vars only through a save/restore fixture (change it, `yield`, restore it), or `monkeypatch` where it applies. Never call an application startup routine such as `infrahub.log.configure_logging` from a test — it owns the whole process and undoes nothing, so it reconfigures every later test in the worker. Install only the piece under test and remove it after the `yield`. See `dev/guidelines/backend/testing.md` §"Leave process-global state as you found it".
 
+## Prefect task manager setup
+
+Never call `setup_task_manager()` from a test or fixture; call `tests.helpers.task_manager.setup_task_manager_once()`. The raw setup re-registers every block, pool, deployment and trigger against the worker's Prefect server with no timeout, and under CI load that hangs until pytest-timeout kills the whole class. The helper runs it once per server URL, bounded, and fails fast for that server afterwards. The only test allowed to call the raw function is the one that tests the setup itself. Mechanism in `dev/knowledge/backend/testing.md` §"Prefect Testing Patterns".
+
 ## A regression guard must be shown to bite
 
 Before trusting a test that pins a fix or an optimization, run it against the code without the change (revert it, or reintroduce the old call) and watch it fail — a guard that passes on both sides asserts nothing, and several have. State the check in the PR ("fails with X when the fix is reverted"). A `strict=True` xfail swallows every assertion in its body, so it holds only the expected failure; invariants that must hold today go in a passing test.

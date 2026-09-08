@@ -53,6 +53,7 @@ from tests.helpers.agnostic_edges import (
     relationship_vertex_uuid,
     to_times,
 )
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema.agnostic_retirement import (
     AGNOSTIC_RETIREMENT_SCHEMA,
     GADGET_KIND,
@@ -74,12 +75,13 @@ async def _rebase_branch(
         branch=default_branch,
         account=AccountSession(account_id=TEST_ACTOR_ID, auth_type=AuthType.NONE),
     )
+    # The rollback test raises through this block, so the doubles have to come off on an exception too.
     with (
-        dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
+        override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
         # Lambdas rather than the bare classes: fast_depends reads the callable's return annotation,
         # and a class used as the factory resolves to `None` and fails its validation.
-        dependency_provider.scope(build_workflow, lambda: WorkflowRecorder()),  # noqa: PLW0108
-        dependency_provider.scope(build_cache, lambda: MemoryCache()),  # noqa: PLW0108
+        override_dependency(build_workflow, lambda: WorkflowRecorder(), dependency_provider=dependency_provider),  # noqa: PLW0108
+        override_dependency(build_cache, lambda: MemoryCache(), dependency_provider=dependency_provider),  # noqa: PLW0108
     ):
         await rebase_branch(branch=branch.name, context=context, send_events=False)
     return await Branch.get_by_name(db=db, name=branch.name)

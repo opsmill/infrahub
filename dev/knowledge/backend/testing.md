@@ -189,6 +189,28 @@ Two consequences worth remembering:
   releases — scopes are sorted largest-first, so which modules run concurrently can change on an
   upgrade. Tests must not depend on what else is or is not running.
 
+### One process, several Prefect servers
+
+A test process does not keep one Prefect server. The session-scoped `prefect_test_fixture` starts
+an ephemeral one for the whole session, and the `prefect` (module) and `prefect_class` (class)
+fixtures start a **container of their own** and re-point `PREFECT_API_URL` at it for that scope.
+Each orchestration client a test builds reads the setting when it is built, so it follows.
+
+Prefect's background queue services do not. `EventsWorker` and `APILogWorker` are process-wide
+`QueueService` singletons, memoized on `hash((cls, *args))`, and `EventsWorker.instance()` passes
+no API URL in that key; the websocket and orchestration clients it builds in `_lifespan` read
+`PREFECT_API_URL` once. Left alone it therefore stays bound to the first server of the process,
+and every event after that goes to a server the process has moved off — silently while that server
+is up, then as a wall of `Service 'EventsWorker' failed to process item` once it is torn down. The
+backlog is expensive too: a stale queue drains at about one event per 60s client request timeout,
+and `prefect_test_harness` ends the session in `drain_workers()`, which blocks with no timeout.
+
+`prefect` and `prefect_class` handle this through `prefect_api_target()` from
+`tests/helpers/prefect_services.py`, which drains the queue services on **both** sides of the
+change of server: on the way in while the old URL still resolves, so queued items reach the server
+they were meant for, and on the way out before the new container is stopped. Anything else that
+re-points `PREFECT_API_URL` must go through it rather than calling `temporary_settings` directly.
+
 Within a single module or class, however, pytest runs tests in definition order and
 `--dist loadscope` keeps the whole scope on one worker — so the sequential, stateful `test_stepNN`
 pattern used across `backend/tests/integration/` (and in component migration suites) is deliberate
@@ -292,6 +314,7 @@ Test data and fixture files:
 | `test_client.py` | HTTP test client wrapper |
 | `utils.py` | Container utilities |
 | `constants.py` | Port numbers, image names |
+| `prefect_services.py` | Rebinds Prefect's process-wide queue services when the test process changes Prefect server (`prefect_api_target`). See [One process, several Prefect servers](#one-process-several-prefect-servers). |
 | `file_repo.py` | Builds throwaway on-disk Git "remote" repos from `repos/` fixtures (`FileRepo`). The remotes accept pushes to their checked-out branch, so tests exercise push and write-back like a hosted remote would. |
 
 ### Test Data (`backend/tests/test_data/`)
@@ -328,7 +351,10 @@ Container (session)
 
 ### Schema Fixtures
 
-**Always prefer existing schema fixtures** over creating new ones. The codebase provides several reusable schema fixtures in `backend/tests/conftest.py`:
+Registered schemas come from fixtures in `backend/tests/conftest.py`. Derive a variant the way
+`dev/guidelines/backend/testing.md` §"Test Schemas" prescribes for the `tests/helpers/schema/`
+constants: `deepcopy` the unregistered fixture, never edit a shared one, and promote to
+`conftest.py` only what several modules need.
 
 | Fixture | Description |
 |---------|-------------|
@@ -340,66 +366,11 @@ Container (session)
 
 When several tests share an expensive schema/data load, group them in a class and use the
 `_scope_class` variant with `@pytest.fixture(scope="class")` fixtures for the data; methods run in
-definition order and may build on accumulated state. See `TestNumberPoolAllocation` in
-`backend/tests/component/core/resource_manager/test_number_pool.py`.
+definition order and may build on accumulated state.
 
-**When to use existing fixtures:**
-
-```python
-# GOOD: Use existing fixture directly
-async def test_my_feature(db: InfrahubDatabase, car_person_schema: SchemaBranch):
-    # car_person_schema provides TestCar, TestPerson with relationships
-    ...
-```
-
-**When you need additional schema elements:**
-
-1. **Live update within the test** - Use `deepcopy` to modify an unregistered schema fixture:
+JSON schemas under `backend/tests/fixtures/schemas/` load through the test helper:
 
 ```python
-from copy import deepcopy
-
-async def test_with_custom_constraint(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    car_person_schema_unregistered: SchemaRoot,
-):
-    # Copy and modify the schema
-    custom_schema = deepcopy(car_person_schema_unregistered)
-    custom_schema.nodes[0].uniqueness_constraints = [["name__value", "color__value"]]
-
-    # Register the modified schema
-    registry.schema.register_schema(schema=custom_schema, branch=default_branch.name)
-    ...
-```
-
-2. **Update the base fixture** - If the modification is broadly useful, add it to `backend/tests/conftest.py`:
-
-```python
-# In conftest.py - add a new reusable fixture
-@pytest.fixture
-async def car_person_schema_with_extra_attr(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
-) -> SchemaBranch:
-    schema = deepcopy(car_person_schema_unregistered)
-    schema.nodes[0].attributes.append(
-        AttributeSchema(name="year", kind="Number", optional=True)
-    )
-    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
-```
-
-**Avoid:**
-
-- Creating inline schema dictionaries when existing fixtures suffice
-- Duplicating schema definitions across test files
-- Defining schemas in test files that could be shared fixtures
-
-**Schema files in `backend/tests/fixtures/schemas/`:**
-
-For JSON-based schemas, use the helper methods:
-
-```python
-# Load schema from fixtures directory
 schema_dict = helper.schema_file("infra_simple_01.json")
 await client.schema.load(schemas=[schema_dict])
 ```
@@ -445,8 +416,6 @@ async def test_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
     assert "expected message" in caplog.text
 ```
 
-This matches the pattern used in `test_webhook_header.py` and `test_models.py`.
-
 ### Prefect Server State Outlives the Test Class
 
 The Prefect test server is session-scoped — one per xdist worker — while the database and the
@@ -476,13 +445,43 @@ depend on `prefect` therefore falls back to the harness server, even in a proces
 container is running — `component/api/conftest.py::workflow_local` and
 `TestInfrahubApp.workflow_local` sit on opposite sides of this line.
 
-**Never memoize server-side registration per process.** `setup_task_manager` registers blocks,
-worker pools, deployments and builtin triggers against whichever server is current, so a
-process-wide "already done" flag lets the first server's setup satisfy fixtures pointing at the
-second. The second server then has no deployments, and `setup_triggers` raises `KeyError` on the
-empty deployment mapping rather than failing anywhere near the cause.
-`tests/helpers/task_manager.py` keys its memo on `get_current_settings().api.url` for this reason;
-anything else cached against a Prefect server needs the same treatment.
+**Tests register the task manager through `setup_task_manager_once()`, never the raw
+`setup_task_manager()`.** The raw call redoes every block, worker pool, deployment and builtin
+trigger against the current server with no timeout of its own; under CI load it hangs until
+pytest-timeout kills the whole class. The helper runs the registration once per server, bounded,
+and fails fast for that server afterwards.
+
+**Never memoize server-side registration per process.** The registration goes to whichever server is
+current, so a process-wide "already done" flag lets the first server's setup satisfy fixtures pointing
+at the second, which then has no deployments and fails far from the cause. The helper keys its memo
+on `get_current_settings().api.url`; anything else cached against a Prefect server needs the same key.
+
+### Swapping the Workflow Adapter for a Test Double
+
+Every class-scoped fixture that installs a `WorkflowLocalExecution` or a `WorkflowRecorder` goes
+through `tests/helpers/workflow_override.py::override_workflow`. It sets both places a lookup can
+come from — `config.OVERRIDE.workflow` and the `build_workflow` override in the dependency
+provider — and puts the *previous* values back in a `finally`. Do not hand-roll a class-scoped swap
+with `dependency_provider.scope`: that context manager pops its override instead of restoring the
+one it replaced, and neither it nor `config.OVERRIDE` is restored when the fixture is finalised
+through an exception, so the double leaks into whatever the next class builds.
+
+A per-test swap of any dependant (`build_workflow`, `build_database`, `build_cache`, …) goes through
+`tests/helpers/dependency_override.py::override_dependency` when anything can raise inside the block —
+a `pytest.raises` around the call under test, or an assertion inside it. `dependency_provider.scope`
+pops its override on the statement after its `yield`, with no `finally`, so an exception thrown
+through it leaves the double installed for the rest of the xdist worker process. The next class on
+that worker whose app resolves `get_workflow()` before its own override is in place then starts with
+a `WorkflowRecorder` as its workflow and every one of its tests errors at `client` setup with
+`These tests are currently meant to run with a local worker`; which class that is depends on how
+xdist split the suite, so the failure moves between runs while the message stays the same. A
+`dependency_provider.scope` whose body cannot raise is still fine: it leaves `config.OVERRIDE.workflow`
+alone, so once it pops, lookups fall back to the adapter the class installed.
+
+The app built by `test_client` resolves its workflow once, during `lifespan`. pytest orders autouse
+fixtures by name, so `service` (and with it `test_client`) would otherwise run before
+`workflow_local`; `TestInfrahubApp.service` therefore depends on `workflow_local` explicitly, and a
+subclass that swaps in a different adapter must do the same for the app to see it.
 
 ### Functional Tests with `TestInfrahubApp`
 

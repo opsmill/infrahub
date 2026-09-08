@@ -5,7 +5,7 @@ import os
 import sys
 import tempfile
 import time
-from contextlib import ExitStack, contextmanager
+from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, AsyncGenerator, Generator, TypeVar
@@ -20,7 +20,6 @@ from infrahub_sdk.branch import BranchData
 from infrahub_sdk.uuidt import UUIDT
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
-from prefect import settings as prefect_settings
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
@@ -83,6 +82,7 @@ from tests.helpers.constants import (
 )
 from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.prefect_services import prefect_api_target
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_prefect_server_container
@@ -537,14 +537,7 @@ def prefect(
     else:
         server_api_url = f"http://localhost:{PORT_PREFECT}/api"
 
-    with ExitStack() as stack:
-        stack.enter_context(
-            prefect_settings.temporary_settings(
-                updates={
-                    prefect_settings.PREFECT_API_URL: server_api_url,
-                }
-            )
-        )
+    with prefect_api_target(server_api_url):
         yield server_api_url
 
 
@@ -558,14 +551,7 @@ def prefect_class(
     else:
         server_api_url = f"http://localhost:{PORT_PREFECT}/api"
 
-    with ExitStack() as stack:
-        stack.enter_context(
-            prefect_settings.temporary_settings(
-                updates={
-                    prefect_settings.PREFECT_API_URL: server_api_url,
-                }
-            )
-        )
+    with prefect_api_target(server_api_url):
         yield server_api_url
 
 
