@@ -175,6 +175,7 @@ class TestWebhookProcess(TestInfrahubApp):
         payload = http.posts[0].json
         assert payload is not None
         delivered = payload["data"]
+        assert delivered["display_label"] == "Jesko"
         assert delivered["hfid"] == ["Jesko"]
         owner = delivered["relationships"]["owner"]
         assert owner["peer_display_label"] == "John"
