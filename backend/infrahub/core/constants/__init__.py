@@ -241,6 +241,30 @@ class RepositoryOperationalStatus(InfrahubStringEnum):
     ONLINE = "online"
 
 
+class RepositoryGitCondition(InfrahubStringEnum):
+    IN_SYNC = "in_sync"
+    BEHIND = "behind"
+    REWRITTEN = "rewritten"
+    ORPHANED = "orphaned"
+    NO_REMOTE = "no_remote"
+    NOT_TRACKED = "not_tracked"
+    UNAVAILABLE = "unavailable"
+
+
+class RepositoryCommitState(InfrahubStringEnum):
+    HEAD = "head"
+    IMPORTED = "imported"
+    PENDING = "pending"
+    HISTORY = "history"
+    UNRELATED = "unrelated"
+
+
+class RepositoryGitUnavailableReason(InfrahubStringEnum):
+    NOT_CLONED = "not_cloned"
+    NOT_IMPLEMENTED = "not_implemented"
+    TIMEOUT = "timeout"
+
+
 class DiffAction(InfrahubStringEnum):
     ADDED = "added"
     REMOVED = "removed"

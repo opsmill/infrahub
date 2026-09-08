@@ -12,6 +12,7 @@ from .preferences import (
 from .proposed_change import ProposedChangeAvailableActions
 from .reachable import InfrahubReachableNodes
 from .relationship import Relationship
+from .repository_git_state import InfrahubRepositoryBranchDrift, InfrahubRepositoryCommits
 from .resource_manager import InfrahubResourcePoolAllocated, InfrahubResourcePoolUtilization
 from .search import InfrahubSearchAnywhere
 from .status import InfrahubStatus
@@ -30,6 +31,8 @@ __all__ = [
     "InfrahubInfo",
     "InfrahubPathTraversal",
     "InfrahubReachableNodes",
+    "InfrahubRepositoryBranchDrift",
+    "InfrahubRepositoryCommits",
     "InfrahubResourcePoolAllocated",
     "InfrahubResourcePoolUtilization",
     "InfrahubSearchAnywhere",

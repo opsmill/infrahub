@@ -35,6 +35,12 @@ uv run invoke dev.build && uv run invoke dev.start   # full stack with at least 
    the column's unavailable state set. Switch to another Infrahub branch and confirm the commit-view
    answer follows it.
 
+   The rows arrive with the per-branch graph query, which is its own pull request. Until it lands,
+   the drift query answers with the repository id and the column's unavailable state and no rows at
+   all: the resolver has no per-branch tracked commit to put in a row, and inventing one from the
+   request branch's value would report the wrong commit for every other branch. Run this step
+   against the per-branch-query pull request, not against the contract one.
+
 4. Permission: run the query as a user without `Core/Repository/view` (see
    `backend/tests/component/graphql/auth/`). Expected: `PERMISSION_DENIED`, identical to querying
    `CoreRepository` directly.

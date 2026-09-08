@@ -17,11 +17,16 @@ Read this before reasoning about which remote branches get imported or why a git
   the mapped default. The skip happens in `validate_remote_branch` (which logs
   "Ignoring import of mismatched default branch" and returns `False`), *not* in
   `_get_mapped_target_branch`.
-- The reverse mapping — from an Infrahub branch name to the remote git branch — is
-  `_get_mapped_remote_branch`. Any git operation that names a remote ref (`pull`, `push`) must
-  route the branch name through it: when the repository's default branch differs from Infrahub's,
-  the remote has no branch named after the Infrahub default, and the raw name fails with
-  "couldn't find remote ref".
+- The reverse mapping — from an Infrahub branch name to the remote git branch — is the pure
+  function `get_mapped_remote_branch` in `backend/infrahub/git/branch_mapping.py`. Any git
+  operation that names a remote ref (`pull`, `push`) must route the branch name through it: when
+  the repository's default branch differs from Infrahub's, the remote has no branch named after
+  the Infrahub default, and the raw name fails with "couldn't find remote ref".
+  `InfrahubRepositoryBase._get_mapped_remote_branch` is the instance-method wrapper that supplies
+  the repository's own `default_branch` and `registry.default_branch`; code that has no repository
+  object — the API server, which must never build one — calls the function directly. The function
+  takes all three inputs as required parameters, so no caller can fall back to Infrahub's default
+  branch by omitting the repository's trunk.
 - `git.import_sync_branch_names` (settings) is a list of names or regex patterns selecting which
   other remote branches are imported during sync; branches created in Infrahub with
   `sync_with_git` are imported regardless.

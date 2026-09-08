@@ -9905,6 +9905,7 @@ type Mutation {
   InfrahubIPAddressPoolGetResource(data: IPAddressPoolGetResourceInput!): IPAddressPoolGetResource
   InfrahubIPPrefixPoolGetResource(data: IPPrefixPoolGetResourceInput!): IPPrefixPoolGetResource
   InfrahubProfilesRefresh(context: ContextInput, data: ProfilesRefreshInput!): InfrahubProfilesRefresh
+  InfrahubReadOnlyRepositoryCheckRefs(data: IdentifierInput!): ReadOnlyRepositoryCheckRefs
   InfrahubReadOnlyRepositoryImportLastCommit(data: IdentifierInput!): ReadOnlyRepositoryImportLastCommit
   InfrahubRecomputeComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeRecomputeInput!): RecomputeComputedAttribute
   InfrahubRepositoryConnectivity(data: IdentifierInput!): ValidateRepositoryConnectivity
@@ -25706,6 +25707,20 @@ type Query {
   InfrahubPermissions: AccountPermissionsEdges!
   """Find all nodes of specified kinds reachable from a source node"""
   InfrahubReachableNodes(data: ReachableNodesInput!): ReachableNodesResultType!
+  """
+  Per-branch drift for a repository. Requires view permission on the repository.
+  """
+  InfrahubRepositoryBranchDrift(repository_id: String!): RepositoryBranchDrifts!
+  """
+  Paged commit log for a repository on the request branch. Requires view permission on the repository.
+  """
+  InfrahubRepositoryCommits(
+    """Page size, 1 to 100. Default 10."""
+    limit: Int
+    """Default 0."""
+    offset: Int
+    repository_id: String!
+  ): RepositoryCommits!
   InfrahubResourcePoolAllocated(limit: Int, offset: Int, pool_id: String!, resource_id: String!): PoolAllocated!
   InfrahubResourcePoolUtilization(pool_id: String!): PoolUtilization!
   InfrahubSearchAnywhere(case_sensitive: Boolean, limit: Int, partial_match: Boolean, q: String!): NodeEdges!
@@ -26550,6 +26565,11 @@ type ReachableNodesResultType {
   source: PathNodeType!
 }
 
+type ReadOnlyRepositoryCheckRefs {
+  ok: Boolean
+  task: TaskInfo
+}
+
 type ReadOnlyRepositoryImportLastCommit {
   ok: Boolean
   task: TaskInfo
@@ -26649,6 +26669,142 @@ type RelationshipRemove {
 type Relationships {
   count: Int!
   edges: [RelationshipNode!]!
+}
+
+"""Drift of one Infrahub branch of a repository."""
+type RepositoryBranchDrift {
+  branch_name: String!
+  condition: RepositoryGitCondition!
+  """
+  Remote branch or tracked ref compared for this branch. Null when the branch is not tracked.
+  """
+  git_ref: String
+  """
+  Latest remote commit. Null when there is no remote counterpart or the branch is not tracked.
+  """
+  remote_head: String
+  tracked_commit: String
+}
+
+type RepositoryBranchDriftNode {
+  node: RepositoryBranchDrift!
+}
+
+"""
+Drift for every branch of a repository, produced by a single worker request.
+"""
+type RepositoryBranchDrifts {
+  """
+  When the remote was last checked for movement. Read-only repositories only.
+  """
+  checked_at: DateTime
+  edges: [RepositoryBranchDriftNode!]!
+  fetched_at: DateTime
+  repository_id: String!
+  """
+  Set when the whole column is unavailable; the branch rows themselves come from elsewhere and still render.
+  """
+  unavailable: RepositoryGitUnavailable
+}
+
+"""A commit read live from a worker's local clone. Never persisted."""
+type RepositoryCommit {
+  author_name: String!
+  authored_at: DateTime!
+  committed_at: DateTime!
+  """
+  Full commit hash. The row identity; a later hash-keyed outcome store joins on it.
+  """
+  hash: String!
+  """Full commit message."""
+  message: String!
+  """First 7 characters of the hash."""
+  short_hash: String!
+  state: RepositoryCommitState!
+  """First line of the commit message."""
+  summary: String!
+}
+
+type RepositoryCommitNode {
+  node: RepositoryCommit!
+}
+
+"""
+Explicit state of one commit relative to the imported commit and the remote head.
+"""
+enum RepositoryCommitState {
+  HEAD
+  HISTORY
+  IMPORTED
+  PENDING
+  UNRELATED
+}
+
+"""
+Commit log of a repository as seen from the request branch, newest first.
+"""
+type RepositoryCommits {
+  """The Infrahub branch the answer was computed for."""
+  branch_name: String!
+  """
+  When the remote was last checked for movement. Read-only repositories only; null for read-write, where fetched_at already carries it.
+  """
+  checked_at: DateTime
+  condition: RepositoryGitCondition!
+  edges: [RepositoryCommitNode!]!
+  """
+  When the answering worker last fetched from the remote. Null before the first fetch.
+  """
+  fetched_at: DateTime
+  """
+  Remote branch or tracked ref whose history is listed. Null when the branch tracks nothing, matching RepositoryBranchDrift.git_ref.
+  """
+  git_ref: String
+  """
+  Commit Infrahub has imported on this branch, from the repository's commit attribute.
+  """
+  imported_commit: String
+  """
+  Number of commits between imported_commit and remote_head. Only set when condition is BEHIND.
+  """
+  pending_count: Int
+  """
+  Head of the remote branch or tracked ref as last fetched by the answering worker.
+  """
+  remote_head: String
+  repository_id: String!
+  unavailable: RepositoryGitUnavailable
+}
+
+"""
+How the remote head relates to the commit Infrahub has imported on the request branch.
+"""
+enum RepositoryGitCondition {
+  BEHIND
+  IN_SYNC
+  NOT_TRACKED
+  NO_REMOTE
+  ORPHANED
+  REWRITTEN
+  UNAVAILABLE
+}
+
+"""
+Set when condition is UNAVAILABLE. Distinct from an error: the request succeeded, git had no answer yet.
+"""
+type RepositoryGitUnavailable {
+  """Human-readable explanation safe to display."""
+  message: String!
+  reason: RepositoryGitUnavailableReason!
+  """Task id of the warm-up that was started, when one was."""
+  warm_up_task_id: String
+}
+
+"""Why no git-derived answer was produced."""
+enum RepositoryGitUnavailableReason {
+  NOT_CLONED
+  NOT_IMPLEMENTED
+  TIMEOUT
 }
 
 type RequiredStringValueField {
