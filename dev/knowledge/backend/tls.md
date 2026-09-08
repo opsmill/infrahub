@@ -53,8 +53,8 @@ reaching public services.
   exist and load, PEM text is validated and written by `infrahub/tls/bundle.py::materialize_pem_text` to
   `$TMPDIR/infrahub-tls/ca-bundle-<sha256[:32]>.pem`, and the setting is replaced by that path. The
   content-hash name means every process, the credential-helper subprocess included, converges on the
-  same file without coordination. Log-forwarding destinations are the one field left as typed: their
-  Enterprise consumer accepts both forms and the fixed test fixtures point at host paths.
+  same file without coordination. Log-forwarding destinations follow the same rule, one validator per
+  destination.
 - **Detection is by marker, not by existence.** `is_pem_text` looks for the `-----BEGIN` marker; a typo in a path
   therefore fails as "must be the path to an existing file" instead of being parsed as PEM.
 - **gRPC trace exporter.** Passing a CA bundle to the gRPC exporter switches it from plaintext to TLS,

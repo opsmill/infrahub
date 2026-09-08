@@ -1473,6 +1473,10 @@ class LogForwardingDestination(BaseModel):
     def validate_tls_protocol(self) -> Self:
         if self.tls_enabled and self.protocol == SyslogProtocol.UDP:
             raise ValueError("TLS is only supported with TCP protocol, not UDP.")
+        if self.tls_ca_bundle is not None:
+            self.tls_ca_bundle = _resolve_ca_bundle_setting(
+                f"log_forwarding.destinations[{self.name}].tls_ca_bundle", self.tls_ca_bundle
+            )
         return self
 
 

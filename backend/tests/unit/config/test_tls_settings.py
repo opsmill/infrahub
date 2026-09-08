@@ -298,6 +298,41 @@ class TestPemTextAcrossComponents:
 
         assert Path(settings.ldap.tls_ca_bundle or "").parent == materialized_directory
 
+    def test_log_forwarding_destination_pem_text_becomes_a_path(self, materialized_directory: Path) -> None:
+        pem_content = Path(CA_BUNDLE).read_text(encoding="utf-8")
+
+        settings = Settings.model_validate(
+            {
+                "log_forwarding": {
+                    "destinations": [
+                        {
+                            "name": "siem",
+                            "host": "logs.example.com",
+                            "protocol": "tcp",
+                            "tls_enabled": True,
+                            "tls_ca_bundle": pem_content,
+                        }
+                    ]
+                }
+            }
+        )
+
+        assert Path(settings.log_forwarding.destinations[0].tls_ca_bundle or "").parent == materialized_directory
+
+    def test_destination_missing_file_is_rejected_at_load(self, tmp_path: Path) -> None:
+        with pytest.raises(
+            ValidationError, match=r"log_forwarding.destinations\[siem\].tls_ca_bundle: must be the path to an existing"
+        ):
+            Settings.model_validate(
+                {
+                    "log_forwarding": {
+                        "destinations": [
+                            {"name": "siem", "host": "logs.example.com", "tls_ca_bundle": str(tmp_path / "missing.pem")}
+                        ]
+                    }
+                }
+            )
+
     def test_global_pem_text_reaches_every_component_as_the_same_path(self, materialized_directory: Path) -> None:
         pem_content = Path(CA_BUNDLE).read_text(encoding="utf-8")
 
