@@ -479,3 +479,35 @@ async def test_a_created_node_widens_an_undeterminable_read_set() -> None:
 
     assert _identities(targets) == [(OWNER, "digest")]
     assert targets[0].whole_kind is True
+
+
+async def test_an_unpinned_query_widens_on_a_field_it_reads_without_selecting() -> None:
+    """A filter argument never reaches the read set, so an unread field can still move members.
+
+    An unpinned query filtering on one field and selecting another takes a node into or out of its
+    result when that filter field changes, and no field filter here can see it.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(
+        branch=BRANCH,
+        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"colour"}))],
+    )
+
+    assert _identities(targets) == [(OWNER, "roster")]
+    assert targets[0].whole_kind is True
+
+
+async def test_an_unpinned_query_still_ignores_a_kind_it_never_reads() -> None:
+    """Widening on any read kind must not become widening on every merge."""
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(
+        branch=BRANCH,
+        changes=[MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"name"}))],
+    )
+
+    assert targets == []
+    assert subscribers.calls == []
