@@ -7,6 +7,7 @@ from fast_depends import dependency_provider
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.protocols import CoreGeneratorDefinition
 from tests.constants import TestKind
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -127,7 +128,7 @@ class TestMutationGenerator(TestInfrahubApp):
         person_john.name.value = "Bill"
         await person_john.save(allow_upsert=True)
 
-        with dependency_provider.scope(build_client, lambda: client):
+        with override_dependency(build_client, lambda: client, dependency_provider=dependency_provider):
             await _run_generators(
                 branch_name="branch1",
                 node_ids=[person_john.id],

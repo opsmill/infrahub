@@ -41,6 +41,7 @@ from infrahub.workers.dependencies import (
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
 from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.diagnostics import dump_event_loop_closed_diagnostic
 from tests.helpers.events import query_events_by_name
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
@@ -103,7 +104,7 @@ class TestInfrahubAppBase(TestInfrahub):
         _ = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution(), message_bus=bus)
         config.OVERRIDE.message_bus = bus
         try:
-            with dependency_provider.scope(build_message_bus, lambda: bus):
+            with override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider):
                 yield bus
         finally:
             config.OVERRIDE.message_bus = original
@@ -116,7 +117,7 @@ class TestInfrahubAppBase(TestInfrahub):
         cache = MemoryCache()
         config.OVERRIDE.cache = cache
         try:
-            with dependency_provider.scope(build_cache, lambda: cache):
+            with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
                 yield cache
         finally:
             config.OVERRIDE.cache = original
@@ -162,7 +163,7 @@ class TestInfrahubAppBase(TestInfrahub):
         # rebuilds them against the current db_class.
         clear_singletons()
 
-        with dependency_provider.scope(build_database, _db):
+        with override_dependency(build_database, _db, dependency_provider=dependency_provider):
             try:
                 async with lifespan(app):
                     yield InfrahubTestClient(app=app, base_url="http://testserver")
@@ -200,7 +201,7 @@ class TestInfrahubAppBase(TestInfrahub):
         )
 
         service._client = sdk_client
-        with dependency_provider.scope(build_client, lambda: sdk_client):
+        with override_dependency(build_client, lambda: sdk_client, dependency_provider=dependency_provider):
             yield sdk_client
 
     @pytest.fixture(scope="class")

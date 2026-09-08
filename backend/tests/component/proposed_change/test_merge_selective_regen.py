@@ -26,8 +26,9 @@ from infrahub.workflows.catalogue import (
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
 )
 from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema import load_schema
-from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.workflow_override import override_workflow
 
 from .conftest import make_node_diff
@@ -43,6 +44,7 @@ if TYPE_CHECKING:
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
     from tests.adapters.cache import MemoryCache
     from tests.adapters.message_bus import BusSimulator
     from tests.helpers.test_client import InfrahubTestClient
@@ -93,7 +95,7 @@ query GetDevice($ids: [ID!]!) {
 """
 
 
-class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
+class TestMergeSelectiveRegenSelection(TestInfrahubAppWithoutLocalWorkflow):
     """The post-merge dispatcher selects only the definitions a merge diff touches, against a live graph.
 
     Drives ``PostMergeRegenerationDispatcher.dispatch`` directly with a recording workflow backend and
@@ -107,14 +109,16 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
     @pytest.fixture(scope="class", autouse=True)
     async def workflow_recorder(
         self,
-        prefect: Generator[str, None, None],
+        service: InfrahubServices,
         dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
         with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
             yield recorder
 
     @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
+    async def service(
+        self, workflow_local: WorkflowLocalExecution, test_client: InfrahubTestClient
+    ) -> InfrahubServices:
         return app.state.service
 
     @pytest.fixture(scope="class")
@@ -135,9 +139,11 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
         sdk_client = InfrahubClient(config=sdk_config)
         original_client = service._client
         service._client = sdk_client
-        with dependency_provider.scope(build_client, lambda: sdk_client):
-            yield sdk_client
-        service._client = original_client
+        try:
+            with override_dependency(build_client, lambda: sdk_client, dependency_provider=dependency_provider):
+                yield sdk_client
+        finally:
+            service._client = original_client
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:

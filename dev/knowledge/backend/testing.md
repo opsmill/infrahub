@@ -435,34 +435,37 @@ on `get_current_settings().api.url`; anything else cached against a Prefect serv
 
 ### Swapping the Workflow Adapter for a Test Double
 
-Every class-scoped fixture that installs a `WorkflowLocalExecution` or a `WorkflowRecorder` goes
-through `tests/helpers/workflow_override.py::override_workflow`. It sets both places a lookup can
-come from — `config.OVERRIDE.workflow` and the `build_workflow` override in the dependency
-provider — and puts the *previous* values back in a `finally`. Do not hand-roll a class-scoped swap
-with `dependency_provider.scope`: that context manager pops its override instead of restoring the
-one it replaced, and neither it nor `config.OVERRIDE` is restored when the fixture is finalised
-through an exception, so the double leaks into whatever the next class builds.
+Swap a workflow double in through `tests/helpers/workflow_override.py::override_workflow`, which
+sets both places a lookup can come from — `config.OVERRIDE.workflow` and the `build_workflow`
+override in the dependency provider — and puts the *previous* values back in a `finally`. Swap any
+other dependency through `tests/helpers/dependency_override.py::override_dependency`, which does the
+same for one provider entry.
 
-A per-test swap of any dependant (`build_workflow`, `build_database`, `build_cache`, …) goes through
-`tests/helpers/dependency_override.py::override_dependency` when anything can raise inside the block —
-a `pytest.raises` around the call under test, or an assertion inside it. `dependency_provider.scope`
-pops its override on the statement after its `yield`, with no `finally`, so an exception thrown
-through it leaves the double installed for the rest of the xdist worker process. The next class on
-that worker whose app resolves `get_workflow()` before its own override is in place then starts with
-a `WorkflowRecorder` as its workflow and every one of its tests errors at `client` setup with
-`These tests are currently meant to run with a local worker`; which class that is depends on how
-xdist split the suite, so the failure moves between runs while the message stays the same. A
-`dependency_provider.scope` whose body cannot raise is still fine: it leaves `config.OVERRIDE.workflow`
-alone, so once it pops, lookups fall back to the adapter the class installed.
+Do not reach for `dependency_provider.scope` in new code. It pops its override instead of restoring
+the one it replaced, and it pops only when the block ends normally, so an exception thrown through
+it — a `pytest.raises` around the call under test included — leaves the double installed for the
+rest of the xdist worker process. Per-test `scope()` calls still exist across the suite and the
+guard below covers what they leak, but a fixture at class scope or wider outlives that guard, so a
+swap at that scope has to use the helpers.
 
-The app built by `test_client` resolves its workflow once, during `lifespan`. pytest orders autouse
-fixtures by name, so `service` (and with it `test_client`) would otherwise run before
-`workflow_local`; `TestInfrahubApp.service` therefore depends on `workflow_local` explicitly, and a
-subclass that swaps in a different adapter must do the same for the app to see it.
+That is worth recognising in CI, because the failure surfaces far from its cause: the next class on
+the worker whose app resolves its workflow before its own override is in place starts with a
+`WorkflowRecorder`, and every one of its tests errors at `client` setup with `These tests are
+currently meant to run with a local worker`. Which class that is depends on how xdist split the
+suite, so the victim moves between runs while the message stays the same. A function-scoped autouse
+fixture in `tests/conftest.py` now fails the test that leaves an override behind and puts the
+provider back, so a leak is attributed to its source instead.
+
+The app built by `test_client` resolves its workflow once, during `lifespan`, so the order the
+fixtures run in decides what the app gets. pytest orders autouse fixtures by name, which is not a
+thing to rely on: declare the order instead. `TestInfrahubApp.service` takes `workflow_local` as a
+parameter so the app is built under it, and a class that installs a second double on top — a
+recorder it wants the test body to see — takes `service` as a parameter so it takes over only once
+the app is built.
 
 ### Functional Tests with `TestInfrahubApp`
 
-`TestInfrahubApp` provides a `memory_cache` fixture (class-scoped) that injects a `MemoryCache` via `dependency_provider.scope(build_cache, ...)`. Use it in functional tests to pre-fill and assert on cache state:
+`TestInfrahubApp` provides a class-scoped `memory_cache` fixture that injects a `MemoryCache`. Use it in functional tests to pre-fill and assert on cache state:
 
 ```python
 from tests.helpers.test_app import TestInfrahubApp
