@@ -18280,6 +18280,38 @@ export type InfrahubRelationshipMetadata = {
   updated_by: Maybe<CoreGenericAccount>;
 };
 
+export type InfrahubRepositoryBranchStatus = {
+  __typename: 'InfrahubRepositoryBranchStatus';
+  /** Fork point from the default branch; inherited rows resolve as of this time */
+  branched_from: Scalars['String']['output'];
+  /** Imported commit as this branch resolves it */
+  commit: Maybe<TextAttribute>;
+  /** Defined on CoreGenericRepository, present for both kinds */
+  internal_status: Maybe<Dropdown>;
+  is_default: Scalars['Boolean']['output'];
+  /** Branch name; joins the repository's per-branch attribute edges */
+  name: Scalars['String']['output'];
+  /** CoreReadOnlyRepository only; null for CoreRepository */
+  ref: Maybe<TextAttribute>;
+  status: BranchStatus;
+  /** Import status as this branch resolves it (defined on CoreGenericRepository, present for both kinds) */
+  sync_status: Maybe<Dropdown>;
+  /** Always true on CoreRepository, which selects on it; varies per row on CoreReadOnlyRepository, whose row set is every branch */
+  sync_with_git: Scalars['Boolean']['output'];
+};
+
+export type InfrahubRepositoryBranchStatusEdge = {
+  __typename: 'InfrahubRepositoryBranchStatusEdge';
+  node: InfrahubRepositoryBranchStatus;
+};
+
+export type InfrahubRepositoryBranchStatusType = {
+  __typename: 'InfrahubRepositoryBranchStatusType';
+  /** Number of rows after all filters, before limit and offset */
+  count: Scalars['Int']['output'];
+  edges: Array<InfrahubRepositoryBranchStatusEdge>;
+};
+
 /**
  * Write preferences for one writable scope, USER or GLOBAL.
  *
@@ -25690,6 +25722,8 @@ export type Query = {
   InfrahubPermissions: AccountPermissionsEdges;
   /** Find all nodes of specified kinds reachable from a source node */
   InfrahubReachableNodes: ReachableNodesResultType;
+  /** Status of one repository as seen from every relevant branch, one row per branch. Resolved entirely from the graph; never contacts a task worker. Requires view permission on the repository's kind covering both the default and non-default branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER). (preview: attribute values are placeholders, not yet read from the graph) */
+  InfrahubRepositoryBranchStatus: InfrahubRepositoryBranchStatusType;
   InfrahubResourcePoolAllocated: PoolAllocated;
   InfrahubResourcePoolUtilization: PoolUtilization;
   InfrahubSearchAnywhere: NodeEdges;
@@ -37694,6 +37728,20 @@ export type QueryInfrahubPathTraversalArgs = {
 
 export type QueryInfrahubReachableNodesArgs = {
   data: ReachableNodesInput;
+};
+
+
+export type QueryInfrahubRepositoryBranchStatusArgs = {
+  id: Scalars['String']['input'];
+  internal_status__value?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<MetadataOrderInput>;
+  own_values_only?: InputMaybe<Scalars['Boolean']['input']>;
+  partial_match?: InputMaybe<Scalars['Boolean']['input']>;
+  status__value?: InputMaybe<BranchStatus>;
+  sync_status__value?: InputMaybe<Scalars['String']['input']>;
 };
 
 
