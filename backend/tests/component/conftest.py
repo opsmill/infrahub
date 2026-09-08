@@ -2,7 +2,8 @@ import os
 import shutil
 import subprocess  # noqa: S404
 import sys
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Mapping
+from dataclasses import dataclass
 from itertools import islice
 from pathlib import Path
 from typing import Any, Generator
@@ -33,7 +34,7 @@ from infrahub.core.attribute import (
     StringOptional,
 )
 from infrahub.core.branch import Branch
-from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES, BranchStatus
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     BranchSupportType,
@@ -47,12 +48,14 @@ from infrahub.core.constants import (
 from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
+    create_global_branch,
     create_root_node,
 )
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
+from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.schema import (
     GenericSchema,
@@ -62,6 +65,7 @@ from infrahub.core.schema import (
     core_models,
 )
 from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.node_inheritance_handler import NodeInheritanceHandler
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -82,6 +86,7 @@ from tests.helpers.constants import (
 )
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.prefect_diagnostics import register_prefect_test_server
+from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import find_available_prefect_port
 from tests.test_data import dataset01 as ds01
@@ -3155,3 +3160,162 @@ async def branch_aware_node_with_agnostic_attrs_schema(default_branch: Branch, d
         ],
     )
     return registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@dataclass(frozen=True)
+class RepositoryBranchStatusBranches:
+    """Names of the branches saved once for the cross-branch repository status tests."""
+
+    default_branch: Branch
+    """Default branch, the only branch the fixture creates data on."""
+
+    query_branch_name: str
+    """Non-default branch that carries a schema branch, so queries can execute against it."""
+
+    five: tuple[str, ...]
+    """Five syncing, non-terminal branches, for the small-scale reads."""
+
+    two_hundred: tuple[str, ...]
+    """Two hundred syncing, non-terminal branches, for the query-cost reads."""
+
+    non_syncing: str
+    """Branch saved with `sync_with_git=False`."""
+
+    by_status: Mapping[BranchStatus, str]
+    """One branch name per branch status, terminal statuses included."""
+
+    legacy_non_isolated: str
+    """Branch saved with `is_isolated=False`, as branches created before isolation was the default were."""
+
+    @property
+    def non_terminal_status_names(self) -> tuple[str, ...]:
+        """Names of the branches whose status is neither MERGED nor DELETING."""
+        return tuple(name for status, name in self.by_status.items() if status not in TERMINAL_BRANCH_STATUSES)
+
+    @property
+    def terminal_status_names(self) -> tuple[str, ...]:
+        """Names of the MERGED and DELETING branches, which no read returns."""
+        return tuple(name for status, name in self.by_status.items() if status in TERMINAL_BRANCH_STATUSES)
+
+
+@pytest.fixture(scope="module")
+async def repository_branch_status_branches(db: InfrahubDatabase) -> RepositoryBranchStatusBranches:
+    """Bootstrap a database holding every branch shape the cross-branch repository status read must cover.
+
+    The branches are saved directly rather than through the branch-creation flow, which duplicates the
+    schema and writes a diff per branch and would make two hundred of them prohibitively slow. Creation
+    timestamps are set explicitly and increase with the save order, so an ordering assertion cannot
+    depend on two saves landing in different microseconds.
+
+    The fixture owns the whole database for the module: it wipes it, creates the root node, the default
+    branch, the global branch and the core schema itself. A module that consumes it must therefore not
+    also request `default_branch`, `empty_database` or any of the schema fixtures, since those run per
+    test or per class and would wipe the branches this one saved. No repository node is created here;
+    a test that writes repository values creates its own so the writes cannot leak into another test
+    sharing the database.
+
+    Args:
+        db: Database connection instance.
+
+    Returns:
+        The names of every branch saved, grouped by the property that makes each interesting.
+
+    """
+    registry.delete_all()
+    await delete_all_nodes(db=db)
+    await create_root_node(db=db)
+    default_branch = await create_default_branch(db=db)
+    await create_global_branch(db=db)
+
+    registry.schema = SchemaManager()
+    install_processed_internal_schema_branch(branch_name=default_branch.name)
+    install_processed_core_schema_branch(branch_name=default_branch.name)
+    default_branch.update_schema_hash()
+
+    five = tuple(f"rbs-five-{index:02d}" for index in range(1, 6))
+    two_hundred = tuple(f"rbs-scale-{index:03d}" for index in range(200))
+    non_syncing = "rbs-nosync"
+    by_status = {status: f"rbs-status-{status.value.lower().replace('_', '-')}" for status in BranchStatus}
+    legacy_non_isolated = "rbs-legacy"
+
+    # (name, status, sync_with_git, is_isolated); the save order fixes the created_at order.
+    specs: list[tuple[str, BranchStatus, bool, bool]] = [
+        *[(name, BranchStatus.OPEN, True, True) for name in (*five, *two_hundred)],
+        (non_syncing, BranchStatus.OPEN, False, True),
+        *[(name, status, True, True) for status, name in by_status.items()],
+        (legacy_non_isolated, BranchStatus.OPEN, True, False),
+    ]
+
+    base = Timestamp()
+    oldest = base.subtract(seconds=len(specs) + 100).to_string()
+    default_branch.created_at = oldest
+    default_branch.branched_from = oldest
+    await default_branch.save(db=db)
+
+    for index, (name, status, sync_with_git, is_isolated) in enumerate(specs):
+        created_at = base.subtract(seconds=len(specs) - index).to_string()
+        branch = Branch(
+            name=name,
+            status=status,
+            description=f"branch {name}",
+            is_default=False,
+            sync_with_git=sync_with_git,
+            is_isolated=is_isolated,
+            branched_from=created_at,
+            created_at=created_at,
+        )
+        await branch.save(db=db)
+
+    query_branch = await Branch.get_by_name(name=five[0], db=db)
+    registry.branch[query_branch.name] = query_branch
+    registry.schema.set_schema_branch(
+        name=query_branch.name,
+        schema=registry.schema.get_schema_branch(name=default_branch.name).duplicate(name=query_branch.name),
+    )
+    query_branch.update_schema_hash()
+
+    return RepositoryBranchStatusBranches(
+        default_branch=default_branch,
+        query_branch_name=query_branch.name,
+        five=five,
+        two_hundred=two_hundred,
+        non_syncing=non_syncing,
+        by_status=by_status,
+        legacy_non_isolated=legacy_non_isolated,
+    )
+
+
+async def make_repository_pair(
+    db: InfrahubDatabase, name_prefix: str = "repository-branch-status"
+) -> tuple[CoreRepository, CoreReadOnlyRepository]:
+    """Create one read-write and one read-only repository on the default branch.
+
+    Args:
+        db: Database connection instance.
+        name_prefix: Prefix for the repository names and locations, so a caller can create a pair of
+            its own without colliding with another test sharing the database.
+
+    Returns:
+        The read-write repository and the read-only repository.
+
+    """
+    repository = await Node.init(db=db, schema=CoreRepository)
+    await repository.new(
+        db=db,
+        name=f"{name_prefix}-repository",
+        location=f"git@github.com:opsmill/{name_prefix}-repository.git",
+        commit="1111111111111111111111111111111111111111",
+    )
+    await repository.save(db=db)
+
+    read_only_repository = await Node.init(db=db, schema=CoreReadOnlyRepository)
+    await read_only_repository.new(
+        db=db,
+        name=f"{name_prefix}-read-only-repository",
+        location=f"git@github.com:opsmill/{name_prefix}-read-only-repository.git",
+        commit="2222222222222222222222222222222222222222",
+        ref="main",
+    )
+    await read_only_repository.save(db=db)
+
+    return repository, read_only_repository
