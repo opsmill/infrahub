@@ -602,6 +602,8 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         await wait_for_transform_runs(client, flow_name=DEVICE_NAME_FLOW, at_least=runs_before + expected_runs)
         assert await wait_until_tasks_settle(client), "the queue never drained, so the count is premature"
 
+        # The count pins the dispatch shape, not the scope: a whole-kind widening also arrives as
+        # one chunked flow. The component tests are what pin the scope.
         runs_for_the_merge = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW) - runs_before
         if COALESCED_PYTHON_RECOMPUTE:
             assert runs_for_the_merge == 1
@@ -636,6 +638,8 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         await wait_for_transform_runs(client, flow_name=DEVICE_NAME_FLOW, at_least=runs_before + expected_runs)
         assert await wait_until_tasks_settle(client), "the queue never drained, so the count is premature"
 
+        # The count pins the dispatch shape, not the scope: a whole-kind widening also arrives as
+        # one chunked flow. The component tests are what pin the scope.
         runs_for_the_rebase = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW) - runs_before
         if COALESCED_PYTHON_RECOMPUTE:
             assert runs_for_the_rebase == 1
