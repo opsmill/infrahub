@@ -147,24 +147,8 @@ class ScopedRecomputeTestBase(TestInfrahubAppBase):
         dependency_provider: Provider,
         service: InfrahubServices,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
-<<<<<<< HEAD
-        original = config.OVERRIDE.workflow
-        recorder = WorkflowRecorder()
-        config.OVERRIDE.workflow = recorder
-        try:
-            with dependency_provider.scope(build_workflow, lambda: recorder):
-                yield recorder
-        finally:
-            config.OVERRIDE.workflow = original
-=======
-        await setup_task_manager_once()
         with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
             yield recorder
-
-    @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: Any) -> InfrahubServices:
-        return app.state.service
->>>>>>> origin/stable
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:
