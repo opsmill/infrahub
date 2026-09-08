@@ -555,8 +555,11 @@ async def test_get_list_unpaged_reads_every_branch(
         await Branch(name=name, branched_from=Timestamp().to_string()).save(db=db)
 
     branches = await Branch.get_list(db=db, limit=None)
+    expected_names = created_names | {default_branch.name, GLOBAL_BRANCH_NAME}
 
-    assert {branch.name for branch in branches} == created_names | {default_branch.name, GLOBAL_BRANCH_NAME}
+    # The count is what makes this "exactly once": a set alone would hide a branch returned twice.
+    assert len(branches) == len(expected_names)
+    assert {branch.name for branch in branches} == expected_names
 
 
 async def test_get_list_filters_on_sync_with_git(db: InfrahubDatabase, default_branch: Branch) -> None:
