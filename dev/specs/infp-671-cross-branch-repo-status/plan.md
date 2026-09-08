@@ -153,8 +153,7 @@ backend/infrahub/
 ├── graphql/
 │   ├── schema.py                             # [A] InfrahubBaseQuery.InfrahubRepositoryBranchStatus
 │   ├── queries/
-│   │   ├── branch.py                         # [A] sync_with_git argument on InfrahubBranchQueryList
-│   │   └── repository_branch_status/
+│   │   └── repository_branch_status/         # branch.py is NOT touched: no argument, no ordering change
 │   │       ├── __init__.py                   # [A] empty, per dev/knowledge/backend/package-init-files.md
 │   │       ├── field.py                      # [A] composition root: build_attribute_source, resolver instance, Field
 │   │       ├── resolver.py                   # [A] RepositoryBranchStatusResolver: validation, lookup, rows, page assembly
@@ -176,7 +175,6 @@ backend/tests/
 │   ├── core/query/
 │   │   └── test_repository_branch_attributes.py   # [B] primitive: inheritance, rebase, own_value, 5 vs 200 query count
 │   ├── graphql/queries/
-│   │   ├── test_branch.py                    # [A] sync_with_git filter on InfrahubBranch
 │   │   └── test_repository_branch_status.py  # [A] membership, paging, permissions, not-found, zero bus sends; [B] filters, inheritance, FR-008
 │   ├── computed_attribute/
 │   │   └── test_gather.py                    # [C] branches[branch.name] resolves for every non-global branch
@@ -230,7 +228,7 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
 | Permission enforced in the resolver rather than the checker pipeline | The analyzer ignores hand-written root fields and the pipeline never requires `ALLOW_ALL` | A new pipeline checker keyed on one root field name is more machinery for one query; revisit if a second cross-branch query appears |
 | `Branch.get_list(limit=None)` widening | The resolver must read every in-scope branch before attribute filters apply | Passing a large literal limit is an arbitrary cap; a preceding count query adds a statement to every page |
 | E2E test deferred to the Branches card (Principle IV deviation) | The user-facing surface is the card, owned by the frontend team and built against this contract | An E2E test that only fires a GraphQL document adds nothing over the component tests. Accepted only because T059 opens a tracked subtask carrying the requirement; without that it is an unrecorded miss against a MUST |
-| Id tiebreaker added to `StandardNodeGetListQuery` | The unpaged chunked branch read is only correct over a total order, and metadata ordering has none today | Ordering the branch read differently from every other standard-node list would leave the shared defect in place for the next caller. The cost is that this feature changes shared machinery, so T031 names the blast radius in the PR |
+| ~~Id tiebreaker added to `StandardNodeGetListQuery`~~ **reversed during implementation** | Claimed the unpaged chunked read is only correct over a total order | Both preconditions are unreachable: `query_size_limit` defaults to 5000 against a 200-branch scale, so there is one chunk and no boundary, and `created_at` is per-instance at microsecond precision, so ties do not occur. `spec.md` asks for neither and says no repository is expected to exceed the query size limit. `StandardNodeGetListQuery` is left untouched, which also means this feature changes no shared machinery |
 
 ---
 
@@ -238,8 +236,10 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
 
 ### Increment A: contract stub (first PR, needs GraphQL schema sign-off)
 
-1. `BranchListFilters.sync_with_git`, the Cypher condition, the argument on `InfrahubBranchQueryList`;
-   test in `test_branch.py`.
+1. `BranchListFilters.sync_with_git` and the Cypher condition, tested through `Branch.get_list` in
+   the core `test_branch.py`. No argument on `InfrahubBranchQueryList`: the resolver reads through
+   `Branch.get_list`, nothing queries `InfrahubBranch`, and exposing it there would be public API
+   with no caller (research.md, Decision 5, reversed).
 2. `Branch.get_list` accepts `limit=None` and reads all rows through the base chunked path.
 3. GraphQL types in `graphql/types/repository_branch_status.py`; resolver, wiring and field in
    `graphql/queries/repository_branch_status/`; registration on `InfrahubBaseQuery` importing
@@ -254,16 +254,18 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
    call; the root field description carries "(preview: attribute values are placeholders, not yet read
    from the graph)" while the stub is live. The description is API-facing, so it names neither the
    ticket nor the increment (`.agents/rules/code-doc-style.md`).
-6. Confirm `StandardNodeGetListQuery` adds an id tiebreaker when ordering by `created_at` or
-   `updated_at`, so the unpaged chunked branch read stays a total order; add one if missing.
+6. Leave `StandardNodeGetListQuery` alone. An earlier revision added an id tiebreaker to its
+   timestamp `ORDER BY` arms for the unpaged chunked read; that guards a scenario needing both
+   more than `query_size_limit` (5000) branches and a microsecond-precision timestamp collision,
+   and this feature's scale is 200.
 7. Regenerate `schema/schema.graphql`; run `pnpm codegen`; commit both.
 8. Component tests for membership per kind, not-found, permission matrix including anonymous with and
    without a role grant, paging and count, ordering, `ref` dispatch, zero bus sends. Unit tests for
    `paging.py`. The 5-branch and 200-branch fixtures are one module-scoped fixture built with
    `Branch(...).save()` and shared with the increment B and C test files.
-9. Changelog fragment for the `sync_with_git` argument on `InfrahubBranch`. It is a user-visible
-   GraphQL change and ships in this increment, so the fragment does too; the query itself stays
-   unlogged while its values are fabricated.
+9. No changelog fragment for the foundational phase: it is core-internal, since the two
+   `InfrahubBranch` changes it once carried were both dropped. The query itself stays unlogged while
+   its values are fabricated.
 10. Hand the frontend team `contracts/graphql-repository-branch-status.md`. The card is built without
     the git-derived drift column for now.
 
@@ -313,7 +315,7 @@ C depends on B's reader. The frontend card depends only on A.
 
 ### Governance sign-off needed before A merges
 
-- GraphQL schema modification: new root field `InfrahubRepositoryBranchStatus` and its three types;
-  new `sync_with_git` argument on `InfrahubBranch`.
+- GraphQL schema modification: new root field `InfrahubRepositoryBranchStatus` and its three types.
+  `InfrahubBranch` is not modified; the foundational phase changes no SDL at all.
 - Everything else in the spec's Governance table is ruled out (no migration, no dependency, no CI
   change, no new permission).
