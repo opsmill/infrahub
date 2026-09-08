@@ -138,6 +138,8 @@ Functional-requirement numbers follow the Confluence PRD. Requirements from the 
 - Range records and the pool's held-number records are branch-agnostic (identical on every branch), consistent with today's behaviour.
 - Gap detection within a range set stays in the database read path; the effective-space arithmetic in application code governs size, fullness, and allocation order.
 - The single parameter-contract change that makes the shorthand fields default to "unset" (FR-041) is coordinated with the P3 scope-parameter addition as one schema-contract review, even though P3 is out of scope for this slice.
+- Existing frontend and API consumers of `start_range` / `end_range` tolerate a null value on those fields; the nullable-read change (SC-007) lands in P1 even though the frontend work is deferred, so the changelog upgrade note must address API consumers, not only pool authors.
+- Range-validity rules (start ≤ end, intra-pool non-overlap per FR-004) are enforced on every write path — both the GraphQL mutation and schema-created pools via `NumberPoolParameters` — not only the interactive mutation.
 
 ## Dependencies & Risks
 

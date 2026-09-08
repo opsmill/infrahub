@@ -91,9 +91,17 @@ dev/knowledge/backend/                             # ranges model + effective-sp
 
 **Structure Decision**: Backend-only change within the existing resource-manager/pool modules and the schema-definitions/migrations framework. No new top-level package. The one new module-level abstraction — the effective-space calculator — lives in the existing `backend/infrahub/pools/number.py`, replacing three duplicated computations; it is justified by two-plus existing callers (`get_next`, `total_pool_size`/`utilization`, and the read-query range set), satisfying Principle VII.
 
+## Sequencing & de-risking (from critique)
+
+- **De-risk first (must-address E1/X1)**: The very first implementation task is a fail-fast schema-load spike proving that an `AGNOSTIC` node (`CoreNumberPoolRange`) can inherit the `AWARE` generic `CoreWeightedPoolResource` and that `allocation_weight` materialises correctly (research D2). If it fails, apply the recorded fallback — make `CoreWeightedPoolResource` branch-neutral for inheritance rather than storing ranges branch-aware — before building the queries, migration, or mutation on top.
+- **Range-validity on every write path (must-address E2)**: Enforce `start ≤ end` and intra-pool non-overlap (FR-004) in **both** the GraphQL mutation (`InfrahubNumberPoolMutation`) and the schema-created path (`NumberPoolParameters` validation), each with its own test. Cross-pool overlap stays allowed.
+- **Benchmark the gap walk (E3/E4)**: `EXPLAIN` the generalised `NumberPoolGetFree` range-set gap walk and add one at-scale allocation benchmark (a fully-allocated multi-range pool, e.g. a 4094-entry VLAN pool) to guard against regression versus the single-span walk.
+- **Migration re-run safety (E5)**: The data migration is forward-only (per the `ArbitraryMigration` framework) and MUST be idempotent — running it against a pool that already has a covering range must not create a second one. Assert this in the migration test.
+- **Consumer tolerance for nullable reads (P1/X2)**: Verify existing frontend/API consumers tolerate a null `start_range`/`end_range`; the changelog upgrade note must address API consumers, not only pool authors.
+
 ## Phase notes
 
-- **Phase 0 (research)**: complete → `research.md` (decisions D1–D12; open branch-inheritance point D2 carried as an implementation verification task, not a blocker).
+- **Phase 0 (research)**: complete → `research.md` (decisions D1–D12; branch-inheritance point D2 now sequenced as the first fail-fast task above).
 - **Phase 1 (design)**: complete → `data-model.md`, `contracts/graphql-schema-changes.md`, `quickstart.md`; agent context updated.
 - **Post-design constitution re-check**: PASS — no new violations introduced by the design; the effective-space consolidation is a net reduction in complexity.
 

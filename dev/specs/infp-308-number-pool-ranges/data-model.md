@@ -57,6 +57,7 @@ Derived quantities, all from this one definition (research D5):
 | `ranges` | **new** optional list of `{start, end, weight}` | Schema-declared multi-range pools (FR-039). |
 | validator | **new** | Refuse supplying both the single shorthand and an explicit `ranges` list. |
 | `get_pool_size()` | reimplemented | Defer to the effective-space calculator. |
+| range-validity | **new** | `NumberPoolParameters` validation enforces the same rules as the GraphQL mutation — `start ≤ end` and intra-pool non-overlap (FR-004) — so a schema-declared pool cannot define an inverted or overlapping range the mutation would refuse. Covered by a validator test. |
 
 ## Held-number record (unchanged in P1)
 
