@@ -118,7 +118,7 @@ class GatheredPythonReadSets:
             )
             report = item.query_analyzer.query_report
             if not report.only_has_unique_targets:
-                log.info(
+                log.debug(
                     "Widening the recompute of %s.%s: its transform query is not pinned to one object",
                     attribute.kind,
                     attribute.attribute_name,
@@ -194,6 +194,11 @@ async def build_python_target_resolver(*, db: InfrahubDatabase) -> PythonTargetR
     resolves neither the client nor the component.
     """
     if not config.SETTINGS.main.coalesce_python_recompute_after_merge:
+        log.warning(
+            "Recomputing no Python computed attribute for this pass: the coalesced pass is disabled. "
+            "The per-node automations own the work once their stored trigger definitions are reconciled, "
+            "which `infrahub upgrade` performs."
+        )
         return DisabledPythonTargetResolver()
 
     return IndexedPythonTargetResolver(
