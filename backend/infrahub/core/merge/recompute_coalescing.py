@@ -539,7 +539,13 @@ class CoalescedRecomputeSubmitter:
 
 
 def _every_python_attribute_widened(schema_branch: SchemaBranch) -> list[AffectedTarget]:
-    """Every Python computed attribute the schema declares, each over its whole kind."""
+    """Every Python computed attribute the schema declares, each over its whole kind.
+
+    Reads the schema branch the builder already holds rather than the declared-attributes source,
+    whose convergence wait needs the database that just failed. A worker behind on the schema
+    therefore widens the attributes of the schema it has, which is the accepted cost of a fallback
+    that must not raise.
+    """
     return [
         AffectedTarget(
             family=PYTHON_COMPUTED_ATTRIBUTE,
