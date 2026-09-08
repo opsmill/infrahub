@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
-from infrahub.core.changelog.diff import MigrationTracker
-from infrahub.core.changelog.models import NodeChangelog
+from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
+from infrahub.core.changelog.models import AttributeChangelog, NodeChangelog
 from infrahub.core.constants import DiffAction, SchemaPathType
 from infrahub.core.diff.model.path import EnrichedDiffAttribute
 from infrahub.core.models import SchemaUpdateMigrationInfo
@@ -92,6 +93,60 @@ def test_migration_tracker_resolves_attribute_name(case: AttributeNameCase) -> N
     attribute = EnrichedDiffAttribute(name=case.attribute_name, changed_at=Timestamp(), action=DiffAction.UPDATED)
 
     assert tracker.get_attribute_name(node=node, attribute=attribute) == case.expected_name
+
+
+def _hfid_attribute(*, value: Any = None, value_previous: Any = None) -> AttributeChangelog:
+    return AttributeChangelog(name="human_friendly_id", kind="Text", value=value, value_previous=value_previous)
+
+
+@dataclass
+class HfidFromDiffCase:
+    name: str
+    attribute: AttributeChangelog
+    expected: list[str] | None
+
+
+HFID_FROM_DIFF_CASES = [
+    HfidFromDiffCase(
+        name="json_list_value_is_parsed",
+        attribute=_hfid_attribute(value='["Volvo", "5"]'),
+        expected=["Volvo", "5"],
+    ),
+    HfidFromDiffCase(
+        name="previous_value_is_used_when_current_is_absent",
+        attribute=_hfid_attribute(value=None, value_previous='["Old"]'),
+        expected=["Old"],
+    ),
+    HfidFromDiffCase(
+        name="non_string_value_yields_none",
+        attribute=_hfid_attribute(value=["Volvo"]),
+        expected=None,
+    ),
+    HfidFromDiffCase(
+        name="invalid_json_yields_none",
+        attribute=_hfid_attribute(value="not-json"),
+        expected=None,
+    ),
+    HfidFromDiffCase(
+        name="json_that_is_not_a_list_yields_none",
+        attribute=_hfid_attribute(value='"Volvo"'),
+        expected=None,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", HFID_FROM_DIFF_CASES, ids=lambda case: case.name)
+def test_hfid_from_diff(case: HfidFromDiffCase) -> None:
+    node = NodeChangelog(node_id="n1", node_kind="TestCar", display_label="label")
+    node.add_attribute(attribute=case.attribute)
+
+    assert DiffChangelogCollector._hfid_from_diff(node) == case.expected
+
+
+def test_hfid_from_diff_without_attribute_yields_none() -> None:
+    node = NodeChangelog(node_id="n1", node_kind="TestCar", display_label="label")
+
+    assert DiffChangelogCollector._hfid_from_diff(node) is None
 
 
 def test_migration_tracker_without_migrations_keeps_original_name() -> None:
