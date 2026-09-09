@@ -547,16 +547,19 @@ async def computed_attribute_setup_python(
 ) -> None:
     database = await get_database()
     async with database.start_session() as db:
+        log = get_run_logger()
+
+        # Above the try, so that a worker which could not confirm the schema never reaches the
+        # reconcile below: that one deletes every automation its gather did not return, and a
+        # gather off an unrefreshed registry would delete automations nothing else covers.
+        branch_name = branch_name or registry.default_branch
+        if branch_name:
+            await add_tags(branches=[branch_name])
+            component = await get_component()
+            await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
+
         try:
-            log = get_run_logger()
-
             changed_element_set = _resolve_changed_elements(changed_elements)
-
-            branch_name = branch_name or registry.default_branch
-            if branch_name:
-                await add_tags(branches=[branch_name])
-                component = await get_component()
-                await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
 
             triggers_python, _ = await gather_trigger_computed_attribute_python(db=db)
 
