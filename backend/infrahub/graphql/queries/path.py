@@ -220,7 +220,16 @@ def _candidate_relationships(
     """
     candidates = schema.get_relationships_by_identifier(id=identifier)
     if direction is not None:
-        candidates = [candidate for candidate in candidates if candidate.direction == direction] or candidates
+        declared = [candidate for candidate in candidates if candidate.direction == direction]
+        if not declared:
+            log.warning(
+                "The stored edge direction matches no declaration for this end, falling back to the peer kinds",
+                kind=schema.kind,
+                identifier=identifier,
+                direction=direction.value,
+                declared=[(candidate.name, candidate.direction.value) for candidate in candidates],
+            )
+        candidates = declared or candidates
     other_kinds = {other_kind}
     if isinstance(other_schema, NodeSchema):
         other_kinds.update(other_schema.inherit_from)
@@ -236,20 +245,22 @@ def select_hop_relationships(
     to_kind: str,
     identifier: str,
     from_direction: RelationshipDirection | None = None,
-    to_direction: RelationshipDirection | None = None,
 ) -> tuple[RelationshipSchema | None, RelationshipSchema | None]:
     """Pick the relationship each end of a hop holds for ``identifier``.
 
     Both ends of an edge share one identifier, like a hierarchy's ``parent`` and
-    ``children``, so the identifier alone cannot name one end. The directions the edge is
-    stored with name both ends exactly; the peer kinds only break a tie between several
-    declarations sharing one direction.
+    ``children``, so the identifier alone cannot name one end. ``from_direction`` is the
+    direction the source end declares, read from the stored edge; the destination end holds
+    its neighbor direction. A schema allows at most one declaration per direction per
+    identifier, so that pins both ends.
 
-    Without those directions, or when they match no declaration, the ends are told apart
-    from the schema alone: candidates are paired by mirrored direction, then ranked by how
-    many peers name the other end's exact kind. That pick is a deterministic guess with a
-    logged warning unless a single pair mirrors or a single pair pins both peer kinds.
+    The peer kinds only act when ``from_direction`` is ``None`` or matches no declaration.
+    The ends are then told apart from the schema alone: candidates are paired by mirrored
+    direction, then ranked by how many peers name the other end's exact kind. That pick is
+    a deterministic guess with a logged warning unless a single pair mirrors or a single
+    pair pins both peer kinds.
     """
+    to_direction = from_direction.neighbor_direction if from_direction is not None else None
     from_candidates = (
         _candidate_relationships(
             schema=from_schema,
@@ -326,7 +337,6 @@ def _resolve_relationship(
         to_kind=to_kind,
         identifier=identifier,
         from_direction=from_direction,
-        to_direction=from_direction.neighbor_direction,
     )
 
     kind = ""

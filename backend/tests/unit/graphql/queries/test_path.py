@@ -184,7 +184,6 @@ def test_stored_direction_names_both_ends_of_an_ambiguous_hop(case: AmbiguousHop
                 to_kind=to_kind,
                 identifier="parent__child",
                 from_direction=from_direction,
-                to_direction=from_direction.neighbor_direction,
             )
 
             assert from_rel is not None
@@ -201,7 +200,6 @@ def test_direction_that_matches_no_declaration_keeps_the_peer_pick(location_sche
         to_kind=TestKind.SITE,
         identifier=PLAIN_IDENTIFIER,
         from_direction=RelationshipDirection.OUTBOUND,
-        to_direction=RelationshipDirection.INBOUND,
     )
 
     assert from_rel is not None
