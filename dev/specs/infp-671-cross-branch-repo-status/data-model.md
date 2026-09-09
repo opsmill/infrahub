@@ -162,6 +162,12 @@ primitive call in the periodic sync.
 | missing `ALLOW_ALL` view on the resolved concrete kind | `PermissionDeniedError` before any row is returned | error |
 | context without a `PermissionManager` | treated as denial | error |
 
+The table is the end-state contract. One deviation applies while the stub serves placeholder values:
+`own_values_only`, `sync_status__value` and `internal_status__value` are rejected with a
+`ValidationError` rather than applied, because they filter on resolved attribute values that do not
+exist yet. Only actual narrowing rejects, so the defaults still pass. The rows above describe what
+they do once the graph read lands.
+
 ## State transitions
 
 None. The feature writes nothing.

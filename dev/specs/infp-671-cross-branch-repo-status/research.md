@@ -76,7 +76,11 @@ its presence is visible in logs.
 **Decision**: The resolver always performs the same three reads, in this order:
 
 1. Resolve the repository by id or name with `NodeManager.get_one_by_id_or_default_filter` (kind
-   `CoreGenericRepository`; the default filter is `name__value`), then dispatch on the concrete kind.
+   `CoreGenericRepository`; the default filter is `name__value`), check the resolved node really is a
+   repository, then dispatch on the concrete kind. The explicit check is necessary because that
+   lookup does not forward `kind` to `get_one`, so on the id path any node uuid resolves and the
+   `kind` argument only takes effect on the name path. Without it the field is an existence-and-kind
+   oracle over every node in the instance.
    No repository kind declares a `human_friendly_id`, so there is no HFID path.
 2. Read every in-scope branch row in one call to `Branch.get_list` with `exclude_global=True`,
    `exclude_terminal=True`, a `BranchListFilters` carrying the name filter, `partial_match`, the

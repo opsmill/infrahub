@@ -290,6 +290,25 @@ so the contract-update-and-flag clause was not triggered. If you would rather th
 announced per argument, that is an SDL edit to the contract, `schema/schema.graphql` and the
 frontend types, and it belongs in the same PR as the decision.
 
+**Resolved during review (supersedes the two paragraphs above).** The decision came back the other
+way: accepting a filter that cannot narrow is the wrong failure mode for a live public field, because
+a document asking for a filtered row set receives an unfiltered one with no error. The three
+arguments now raise `ValidationError` naming every one that would narrow, and only actual narrowing
+rejects, so a client round-tripping the defaults is unaffected. Consequences for the findings above:
+
+- The three argument descriptions keep their frozen wording, so the frontend still codegens once.
+  The stub window is announced once in the field description rather than per argument, which was the
+  cheaper half of the option offered above.
+- `count`'s "after all filters" is now accurate as written, since any filter that would narrow is
+  rejected before the count is taken. That finding is closed rather than deferred.
+- The `own_values_only` widening in the attribute read became unreachable and was removed; T039
+  restores it with the rest of that argument's behaviour.
+
+Still open, and **not** addressed: the field description says "Resolved entirely from the graph" two
+sentences before "not yet read from the graph". The original reason for leaving it - not churning the
+frozen artifact - is weaker now that the description has been edited once anyway, so this is worth a
+decision rather than another deferral. Fixing it is a one-line SDL change plus a regeneration.
+
 Type-design hardening, all low or medium, none reachable through current callers:
 
 - `RepositoryBranchAttributes`' generated `__init__` is public, so the key-to-value agreement that

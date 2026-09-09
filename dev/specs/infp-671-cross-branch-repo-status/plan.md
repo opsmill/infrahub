@@ -247,12 +247,14 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
 4. Resolver: argument validation (`id` required, uuid or name; `limit >= 1`; `offset >= 0`),
    pre-lookup permission check (caller holds the required `view` decision on `Core/Repository` or
    `Core/ReadOnlyRepository`, else denied before any lookup), repository lookup through
-   `NodeManager.get_one_by_id_or_default_filter` and kind dispatch, post-lookup FR-012 check on the
-   resolved kind, branch row read, `fabricate_attribute_values`, Python order and page, `count`. A
+   `NodeManager.get_one_by_id_or_default_filter` followed by the resolver's own repository-kind check
+   (that lookup does not enforce `kind` on the id path, so without it any node id resolves) and kind
+   dispatch, post-lookup FR-012 check on the resolved kind, branch row read, `fabricate_attribute_values`, Python order and page, `count`. A
    missing `PermissionManager` on the context is treated as denial, not as an internal error.
 5. Stub visibility: `stub.py` logs one warning when it is imported into the schema and `debug` per
    call; the root field description carries "(preview: attribute values are placeholders, not yet read
-   from the graph)" while the stub is live. The description is API-facing, so it names neither the
+   from the graph, so sync_status__value, internal_status__value and own_values_only are rejected)"
+   while the stub is live. The description is API-facing, so it names neither the
    ticket nor the increment (`.agents/rules/code-doc-style.md`).
 6. Leave `StandardNodeGetListQuery` alone. An earlier revision added an id tiebreaker to its
    timestamp `ORDER BY` arms for the unpaged chunked read; that guards a scenario needing both
