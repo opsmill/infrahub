@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from graphene import Field, Int, String
 
+from infrahub import config
 from infrahub.core.constants import (
     InfrahubKind,
     PermissionAction,
@@ -13,8 +14,8 @@ from infrahub.core.constants import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericRepository
 from infrahub.core.registry import registry
-from infrahub.exceptions import ValidationError
-from infrahub.git.branch_mapping import get_mapped_remote_branch
+from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.git.branch_mapping import get_mapped_remote_branch, remote_branch_is_imported
 from infrahub.git.state.factory import build_repository_git_state_reader
 from infrahub.git.state.models import CommitLogRequest
 from infrahub.graphql.field_extractor import extract_graphql_fields
@@ -24,6 +25,7 @@ from infrahub.permissions.types import define_object_permission_from_branch
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
+    from infrahub.core.account import ObjectPermission
     from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
     from infrahub.git.state.models import CommitLogResult
     from infrahub.graphql.initialization import GraphqlContext
@@ -34,7 +36,11 @@ MIN_LIMIT = 1
 MAX_LIMIT = 100
 
 COMMIT_GIT_FIELDS = frozenset({"condition", "remote_head", "pending_count", "fetched_at", "unavailable", "edges"})
-"""Selecting none of these means no worker request is made at all."""
+"""Selecting none of these means no worker request is made at all.
+
+checked_at is deliberately absent: it is read from the refs-check cache on the API side, so selecting
+it alone needs no worker.
+"""
 
 UNAVAILABLE_MESSAGES: dict[RepositoryGitUnavailableReason, str] = {
     RepositoryGitUnavailableReason.NOT_CLONED: "The answering worker holds no local copy of this repository yet.",
@@ -43,25 +49,57 @@ UNAVAILABLE_MESSAGES: dict[RepositoryGitUnavailableReason, str] = {
 }
 
 
+def _view_permission(kind: str, branch_name: str) -> ObjectPermission:
+    schema = registry.get_node_schema(name=kind, branch=branch_name, duplicate=False)
+    return define_object_permission_from_branch(schema=schema, action=PermissionAction.VIEW, branch_name=branch_name)
+
+
+def _raise_unless_any_repository_is_viewable(graphql_context: GraphqlContext, branch_name: str) -> None:
+    """Raise the view denial unless the caller can view at least one repository kind.
+
+    Answering "no such repository" ahead of any permission check would let a caller who can view
+    none of them tell a real id from a made-up one. The concrete kind is unknown here, so the test
+    is whether any kind is viewable at all.
+
+    Raises:
+        PermissionDeniedError: When no repository kind is viewable.
+
+    """
+    permissions = [
+        _view_permission(kind=kind, branch_name=branch_name)
+        for kind in (InfrahubKind.REPOSITORY, InfrahubKind.READONLYREPOSITORY)
+    ]
+    if any(graphql_context.active_permissions.has_permission(permission=permission) for permission in permissions):
+        return
+
+    graphql_context.active_permissions.raise_for_permission(permission=permissions[0])
+
+
 async def load_repository_for_view(graphql_context: GraphqlContext, repository_id: str) -> CoreGenericRepository:
     """Load a repository on the request branch and enforce view permission on its concrete kind.
 
     The check is imperative because the query analyzer maps top-level fields to kinds by exact
     name and cannot see a custom query.
+
+    Raises:
+        NodeNotFoundError: When no repository carries this id and the caller may view repositories.
+
     """
     branch = graphql_context.branch
-    repository = await NodeManager.get_one_by_id_or_default_filter(
-        db=graphql_context.db,
-        kind=CoreGenericRepository,
-        id=repository_id,
-        branch=branch,
-    )
+    try:
+        repository = await NodeManager.get_one_by_id_or_default_filter(
+            db=graphql_context.db,
+            kind=CoreGenericRepository,
+            id=repository_id,
+            branch=branch,
+        )
+    except NodeNotFoundError:
+        _raise_unless_any_repository_is_viewable(graphql_context=graphql_context, branch_name=branch.name)
+        raise
 
-    schema = registry.get_node_schema(name=repository.get_kind(), branch=branch.name, duplicate=False)
-    permission = define_object_permission_from_branch(
-        schema=schema, action=PermissionAction.VIEW, branch_name=branch.name
+    graphql_context.active_permissions.raise_for_permission(
+        permission=_view_permission(kind=repository.get_kind(), branch_name=branch.name)
     )
-    graphql_context.active_permissions.raise_for_permission(permission=permission)
 
     return repository
 
@@ -106,19 +144,25 @@ def _resolve_git_ref(
     """
     match repository.get_kind():
         case InfrahubKind.REPOSITORY:
-            # A branch Infrahub deliberately never imports may still share a name with a real
-            # remote branch, so mapping it through would report drift for history that is not meant
-            # to arrive.
-            if not branch_is_synced_with_git:
-                return None
             repository_default_branch = cast("CoreRepository", repository).default_branch.value
             if not repository_default_branch:
                 return None
-            return get_mapped_remote_branch(
+            remote_branch = get_mapped_remote_branch(
                 branch_name=infrahub_branch_name,
                 repository_default_branch=repository_default_branch,
                 infrahub_default_branch=registry.default_branch,
             )
+            # Calling a branch untracked that a sync would still import onto would contradict the
+            # imported_commit answered next to it.
+            if not remote_branch_is_imported(
+                remote_branch_name=remote_branch,
+                branch_is_synced_with_git=branch_is_synced_with_git,
+                repository_default_branch=repository_default_branch,
+                infrahub_default_branch=registry.default_branch,
+                import_sync_branch_names=config.SETTINGS.git.import_sync_branch_names,
+            ):
+                return None
+            return remote_branch
         case InfrahubKind.READONLYREPOSITORY:
             return cast("CoreReadOnlyRepository", repository).ref.value or None
         case unsupported_kind:
@@ -163,7 +207,7 @@ class RepositoryCommitsResolver:
         if not COMMIT_GIT_FIELDS & set(fields):
             return payload
 
-        reader = build_repository_git_state_reader(message_bus=graphql_context.active_service.message_bus)
+        reader = build_repository_git_state_reader()
         result = await reader.commits(
             request=CommitLogRequest(
                 repository_id=repository.get_id(),
@@ -183,6 +227,8 @@ class RepositoryCommitsResolver:
         payload["remote_head"] = result.remote_head
         payload["pending_count"] = result.pending_count
         payload["fetched_at"] = result.fetched_at
+        if result.imported_commit:
+            payload["imported_commit"] = result.imported_commit
         payload["edges"] = [
             {
                 "node": {
@@ -198,7 +244,9 @@ class RepositoryCommitsResolver:
             }
             for commit in result.commits
         ]
-        if result.unavailable_reason:
+        # CommitLogResult ties the reason and the condition together, so this agrees with
+        # condition == UNAVAILABLE by construction.
+        if result.unavailable_reason is not None:
             payload["unavailable"] = _unavailable_payload(result=result, reason=result.unavailable_reason)
 
         return payload

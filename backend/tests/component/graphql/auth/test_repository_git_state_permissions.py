@@ -166,6 +166,75 @@ async def test_missing_repository_view_permission_denies_both_queries(
     assert reloaded.commit.value == IMPORTED_COMMIT
 
 
+async def test_missing_view_permission_denies_before_revealing_whether_an_id_exists(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    service: InfrahubServices,
+    repository: Node,
+) -> None:
+    session = await _account_session(db=db, name="repository-prober", permissions=[])
+
+    real_id = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session,
+    )
+    made_up_id = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": "18d39e83-1ef7-d650-5424-000000000000"},
+        account_session=session,
+    )
+
+    denial = "You do not have the following permission: object:Core:Repository:view:allow_default"
+    assert real_id.errors
+    assert made_up_id.errors
+    assert real_id.errors[0].message == denial
+    assert made_up_id.errors[0].message == denial
+
+
+async def test_repository_view_permission_still_reports_a_missing_id_as_missing(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    service: InfrahubServices,
+    repository: Node,
+) -> None:
+    session = await _account_session(
+        db=db,
+        name="repository-viewer-missing-id",
+        permissions=[
+            ObjectPermission(
+                namespace="Core",
+                name="Repository",
+                action=PermissionAction.VIEW.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
+            )
+        ],
+    )
+
+    response = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": "18d39e83-1ef7-d650-5424-000000000000"},
+        account_session=session,
+    )
+
+    assert response.errors
+    assert (
+        response.errors[0].message
+        == "Unable to find the node 18d39e83-1ef7-d650-5424-000000000000 / CoreGenericRepository in the database."
+    )
+
+
 async def test_check_refs_mutation_requires_update_permission(
     db: InfrahubDatabase,
     default_branch: Branch,

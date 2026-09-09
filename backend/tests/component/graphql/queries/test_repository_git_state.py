@@ -131,6 +131,34 @@ async def synced_branch(db: InfrahubDatabase, default_branch: Branch, repository
     return branch
 
 
+@pytest.fixture
+async def unsynced_branch(db: InfrahubDatabase, default_branch: Branch, repository: Node) -> Branch:
+    branch = await create_branch(branch_name="branch2", db=db)
+
+    repo_on_branch = await NodeManager.get_one(db=db, id=repository.id, branch=branch, raise_on_error=True)
+    repo_on_branch.commit.value = BRANCH_COMMIT
+    await repo_on_branch.save(db=db)
+
+    return branch
+
+
+@pytest.fixture
+def no_import_filters() -> Iterator[None]:
+    """Import every remote branch, whatever INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES holds in the ambient environment."""
+    original = config.SETTINGS.git.import_sync_branch_names
+    config.SETTINGS.git.import_sync_branch_names = []
+    yield
+    config.SETTINGS.git.import_sync_branch_names = original
+
+
+@pytest.fixture
+def import_filters_excluding_branch2() -> Iterator[None]:
+    original = config.SETTINGS.git.import_sync_branch_names
+    config.SETTINGS.git.import_sync_branch_names = ["release-.*"]
+    yield
+    config.SETTINGS.git.import_sync_branch_names = original
+
+
 def _expected_request(
     repository_id: str,
     infrahub_branch_name: str,
@@ -289,6 +317,69 @@ async def test_commit_log_follows_the_infrahub_branch(
             include_pending_count=True,
         )
     ]
+
+
+async def test_commit_log_tracks_a_branch_that_does_not_sync_with_git(
+    db: InfrahubDatabase,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    repository: Node,
+    unsynced_branch: Branch,
+    no_import_filters: None,
+    recording_reader: RecordingRepositoryGitStateReader,
+) -> None:
+    response = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=unsynced_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    answer = response.data["InfrahubRepositoryCommits"]
+    assert answer["git_ref"] == unsynced_branch.name
+    assert answer["imported_commit"] == BRANCH_COMMIT
+    assert recording_reader.commit_requests == [
+        _expected_request(
+            repository_id=repository.id,
+            infrahub_branch_name=unsynced_branch.name,
+            git_ref=unsynced_branch.name,
+            imported_commit=BRANCH_COMMIT,
+            include_pending_count=True,
+        )
+    ]
+
+
+async def test_commit_log_reports_a_branch_the_import_filters_skip_as_untracked(
+    db: InfrahubDatabase,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    repository: Node,
+    unsynced_branch: Branch,
+    import_filters_excluding_branch2: None,
+    recording_reader: RecordingRepositoryGitStateReader,
+) -> None:
+    response = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=unsynced_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    answer = response.data["InfrahubRepositoryCommits"]
+    assert answer["git_ref"] is None
+    assert answer["condition"] == RepositoryGitCondition.NOT_TRACKED.name
+    assert answer["edges"] == []
+    assert recording_reader.commit_requests == []
 
 
 @dataclass

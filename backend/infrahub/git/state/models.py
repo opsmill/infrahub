@@ -3,12 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from infrahub.core.constants import RepositoryGitCondition
+
 if TYPE_CHECKING:
     from datetime import datetime
 
     from infrahub.core.constants import (
         RepositoryCommitState,
-        RepositoryGitCondition,
         RepositoryGitUnavailableReason,
     )
 
@@ -100,6 +101,8 @@ class CommitLogResult:
     condition: RepositoryGitCondition
     remote_head: str | None = None
     imported_commit: str | None = None
+    """The imported hash as the answering worker resolved it, when it resolved one."""
+
     pending_count: int | None = None
     commits: tuple[CommitEntry, ...] = ()
     fetched_at: datetime | None = None
@@ -107,6 +110,21 @@ class CommitLogResult:
     warm_up_task_id: str | None = None
     error_message: str | None = None
     """Display-safe explanation, set whenever no git-derived answer was produced."""
+
+    def __post_init__(self) -> None:
+        """Reject a result whose condition and unavailable reason disagree.
+
+        Raises:
+            ValueError: When only one of the two is set.
+
+        """
+        is_unavailable = self.condition is RepositoryGitCondition.UNAVAILABLE
+        if is_unavailable and self.unavailable_reason is None:
+            raise ValueError("A result with condition UNAVAILABLE must carry an unavailable_reason")
+        if not is_unavailable and self.unavailable_reason is not None:
+            raise ValueError(
+                f"A result carrying an unavailable_reason must have condition UNAVAILABLE, not {self.condition.name}"
+            )
 
 
 @dataclass(frozen=True)

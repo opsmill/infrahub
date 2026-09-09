@@ -29,7 +29,11 @@ Read this before reasoning about which remote branches get imported or why a git
   branch by omitting the repository's trunk.
 - `git.import_sync_branch_names` (settings) is a list of names or regex patterns selecting which
   other remote branches are imported during sync; branches created in Infrahub with
-  `sync_with_git` are imported regardless.
+  `sync_with_git` are imported regardless. **The list is empty by default, and an empty list
+  filters nothing** — every remote branch is then imported, `sync_with_git` or not. So
+  `sync_with_git` alone never answers "does Infrahub import this branch"; the predicate that does
+  is `remote_branch_is_imported` in `backend/infrahub/git/branch_mapping.py`, and both trunks are
+  always imported.
 
 ## Git error surfacing
 
