@@ -5,7 +5,6 @@ import type { SelectOption } from "@/shared/components/inputs/select-old";
 import type { FormField } from "@/shared/components/ui/form";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
-import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
 import type {
   IpPoolKind,
   NumberPoolKind,
@@ -38,6 +37,8 @@ export type IpPoolSource = PoolSourceBase & {
   kind: IpPoolKind;
   /** Pool default, shown as the prefix-length override placeholder; never serialized. */
   defaultPrefixLength?: number | null;
+  /** Pool default, shown as the target-kind override placeholder; never serialized. */
+  defaultAllocatedKind?: string | null;
 };
 
 export type NumberPoolSource = PoolSourceBase & {
@@ -45,6 +46,30 @@ export type NumberPoolSource = PoolSourceBase & {
 };
 
 export type PoolSource = IpPoolSource | NumberPoolSource;
+
+/**
+ * What a pool picker emits when the user chooses a pool: the pool itself, the per-allocation
+ * overrides, and the pool's own defaults. The defaults are routed to the field's `source` so the
+ * overrides can show them as placeholders; they are never serialized.
+ */
+export type PoolValue = {
+  from_pool: {
+    id: string;
+    name: string;
+    /** The pool's own `__typename` (e.g. `CoreIPAddressPool`), not the kind to allocate. */
+    kind: string;
+    prefixLength?: number;
+    /**
+     * Concrete node kind to allocate, when the relationship peers at a generic
+     * (e.g. `IpamIPAddress` for a `BuiltinIPAddress` peer). Distinct from `kind` above.
+     */
+    allocatedKind?: string;
+    /** Pool default prefix length, routed to the field's source metadata (not sent). */
+    defaultPrefixLength?: number | null;
+    /** Pool default target kind, routed to the field's source metadata (not sent). */
+    defaultAllocatedKind?: string | null;
+  };
+};
 
 export type ProfileSource = {
   type: "profile";
@@ -67,7 +92,7 @@ export type AttributeValueFromProfile = {
 
 export type AttributeValueFromPool = {
   source: PoolSource;
-  value: { from_pool: { id: string; prefixLength?: number } };
+  value: { from_pool: { id: string; prefixLength?: number; allocatedKind?: string } };
 };
 
 export type AttributeValueForCheckbox = {
@@ -122,7 +147,7 @@ export type RelationshipManyValueFromTemplate = {
 
 export type RelationshipValueFromPool = {
   source: PoolSource;
-  value: NodeCore | { from_pool: { id: string; prefixLength?: number } };
+  value: NodeCore | { from_pool: { id: string; prefixLength?: number; allocatedKind?: string } };
 };
 
 export type RelationshipOneValueFromProfile = {
@@ -156,6 +181,28 @@ export type FormRelationshipValue =
 
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
 
+/**
+ * Everything a field needs to offer "allocate from a pool" as one of the two ways of filling
+ * itself in. Its presence is the single gate on the value-or-pool tabs, so every pool-backed
+ * field presents the choice identically.
+ */
+export type FormFieldPool = {
+  /** The pool kind to allocate from, e.g. `CoreIPAddressPool`. */
+  kind: string;
+  defaultAllocatedObjectKind: string;
+  /**
+   * `<name>_from_resource_pool`, when the schema has one. A pool value is submitted through
+   * that relationship instead of the field itself.
+   */
+  fromPoolRelationshipName?: string;
+  /**
+   * Pools to offer instead of querying for them. A number pool is configured for one node kind
+   * and one attribute, which only the field builder can resolve, so those arrive pre-fetched;
+   * IP pools are queried live and leave this unset.
+   */
+  options?: Array<NodeCore>;
+};
+
 export type FormFieldProps = {
   attribute?: AttributeSchema;
   defaultValue?: FormAttributeValue;
@@ -169,11 +216,7 @@ export type FormFieldProps = {
   onChange?: (value: FormFieldValue) => void;
   // Indicates the form is used for bulk updates, enabling explicit null-setting UI
   isBulkUpdate?: boolean;
-  pool?: {
-    kind: string;
-    defaultAllocatedObjectKind: string;
-    fromPoolRelationshipName?: string;
-  };
+  pool?: FormFieldPool;
   shouldUnregister?: boolean;
 };
 
@@ -183,7 +226,6 @@ export type DynamicInputFieldProps = FormFieldProps & {
 
 export type DynamicNumberFieldProps = FormFieldProps & {
   type: "Number";
-  pools?: Array<NumberPool>;
 };
 
 export type DynamicDropdownFieldProps = FormFieldProps & {

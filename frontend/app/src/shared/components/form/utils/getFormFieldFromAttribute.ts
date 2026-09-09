@@ -169,25 +169,34 @@ export const getFormFieldFromAttribute = ({
   }
 
   if (attributeSchema.kind === ATTRIBUTE_KIND.NUMBER) {
-    const numberPools = pools?.filter((pool) => pool.attributeName === attributeSchema.name);
+    const numberPools = pools?.filter((pool) => pool.attributeName === attributeSchema.name) ?? [];
 
     const fromPoolName = `${attributeSchema.name}${FROM_RESOURCE_POOL_SUFFIX}`;
     const hasFromPoolRelationship = schema.relationships?.some((r) => r.name === fromPoolName);
 
-    const dropdownField: DynamicNumberFieldProps = {
+    // A number attribute reaches a pool by two independent routes: a template's schema grows a
+    // `<name>_from_resource_pool` relationship, while on a plain node the only evidence is a
+    // CoreNumberPool configured for this kind and attribute. Both land on `pool` — the shape
+    // every other pool-backed field already uses — so one gate drives the value-or-pool tabs
+    // everywhere. `fromPoolRelationshipName` stays keyed to the relationship alone, because
+    // that is what decides where a pool value is submitted.
+    const numberField: DynamicNumberFieldProps = {
       ...basicFormFieldProps,
       type: "Number",
-      pools: numberPools,
-      pool: hasFromPoolRelationship
-        ? {
-            kind: NUMBER_POOL_KIND,
-            defaultAllocatedObjectKind: schema.kind!,
-            fromPoolRelationshipName: fromPoolName,
-          }
-        : undefined,
+      pool:
+        hasFromPoolRelationship || numberPools.length
+          ? {
+              kind: NUMBER_POOL_KIND,
+              defaultAllocatedObjectKind: schema.kind!,
+              fromPoolRelationshipName: hasFromPoolRelationship ? fromPoolName : undefined,
+              // Pre-fetched rather than queried: CoreNumberPool has to be narrowed to this
+              // node kind and attribute, which the caller already did.
+              options: numberPools,
+            }
+          : undefined,
     };
 
-    return dropdownField;
+    return numberField;
   }
 
   if (isUpdate) {

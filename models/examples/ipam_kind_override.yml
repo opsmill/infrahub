@@ -1,0 +1,97 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+#
+# IFC-2764 — try the pool "default target kind" override locally
+# -----------------------------------------------------------------
+# `models/base/ipam.yml` defines exactly one concrete kind per IPAM generic
+# (`IpamIPPrefix` inherits `BuiltinIPPrefix`, `IpamIPAddress` inherits
+# `BuiltinIPAddress`), so there is nothing else a resource pool could ever
+# allocate — the "override the pool's default target kind" picker never has
+# a second option to show. This file adds a second concrete kind per
+# generic (`InfraLoopbackAddress`, `InfraTransitPrefix`) plus a demo node
+# whose relationships peer at the bare generics, so the picker in the UI
+# actually has two kinds to choose from.
+#
+# Try it locally:
+#
+#   infrahubctl schema load models/base models/examples/ipam_kind_override.yml
+#   infrahubctl run models/examples/ipam_kind_override_data.py
+#
+# `models/base` is a prerequisite — it defines the `Ipam` kinds
+# (`IpamIPPrefix` / `IpamIPAddress`) and the default IP namespace used
+# below, and this file does not stand on its own without it.
+#
+# Then, in the UI:
+#   1. Open the "Kind Override Demo" object created by the data script
+#      (or create a new one) and set its `IP Address` / `IP Prefix`
+#      relationships — the picker offers both the `Ipam` kind (the pool's
+#      default) and the new `Infra` kind.
+#   2. Allocate from "IFC-2764 demo prefix pool" / "IFC-2764 demo address
+#      pool" (created by the data script) and pick `InfraTransitPrefix` /
+#      `InfraLoopbackAddress` instead of accepting the pool's default —
+#      the allocated object shows up as the override kind, with its own
+#      distinguishing attribute (`provider__value` / `router_id__value`)
+#      populated, proving the override took effect.
+---
+version: '1.0'
+nodes:
+  # -------------------------------------------------------------
+  # Second concrete kind per generic, so a pool has something else
+  # to allocate besides the `Ipam` kind defined in models/base/ipam.yml.
+  # -------------------------------------------------------------
+  - name: LoopbackAddress
+    namespace: Infra
+    include_in_menu: false
+    inherit_from:
+      - "BuiltinIPAddress"
+    description: "Loopback IP Address — alternate concrete kind demonstrating the pool default-target-kind override"
+    icon: "mdi:router-network"
+    label: "Loopback Address"
+    attributes:
+      - name: router_id
+        kind: Text
+        optional: true
+        description: "Set so it's obvious a LoopbackAddress, not the pool default IpamIPAddress, was picked"
+  - name: TransitPrefix
+    namespace: Infra
+    include_in_menu: false
+    inherit_from:
+      - "BuiltinIPPrefix"
+    description: "Transit IP Prefix — alternate concrete kind demonstrating the pool default-target-kind override"
+    icon: "mdi:transit-connection-variant"
+    label: "Transit Prefix"
+    attributes:
+      - name: provider
+        kind: Text
+        optional: true
+        description: "Set so it's obvious a TransitPrefix, not the pool default IpamIPPrefix, was picked"
+  # -------------------------------------------------------------
+  # Demo node whose relationships peer at the BARE generics
+  # (BuiltinIPAddress / BuiltinIPPrefix), not at a single concrete kind.
+  # This is what makes the override picker appear at all: no relationship
+  # anywhere else in models/ points at the bare generic.
+  # -------------------------------------------------------------
+  - name: KindOverrideDemo
+    namespace: Infra
+    include_in_menu: true
+    description: "IFC-2764 demo: relationships peer at the bare IPAM generics to exercise the pool target-kind override"
+    icon: "mdi:swap-horizontal-circle-outline"
+    label: "Kind Override Demo"
+    human_friendly_id: ["name__value"]
+    order_by:
+      - name__value
+    display_label: "{{ name__value }}"
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+    relationships:
+      - name: ip_address
+        label: "IP Address"
+        peer: "BuiltinIPAddress"
+        optional: true
+        cardinality: one
+      - name: ip_prefix
+        label: "IP Prefix"
+        peer: "BuiltinIPPrefix"
+        optional: true
+        cardinality: one

@@ -259,8 +259,120 @@ describe("getCreateMutationFromFormData", () => {
     });
   });
 
+  it("includes the chosen allocated kind as address_type on a direct from-pool relationship", () => {
+    // GIVEN a relationship whose peer is the generic BuiltinIPAddress, with the user
+    // having chosen the concrete kind to allocate.
+    const fields: Array<DynamicFieldProps> = [
+      buildFormField({
+        name: "primary_address",
+        type: "relationship",
+        pool: { kind: "CoreIPAddressPool", defaultAllocatedObjectKind: "BuiltinIPAddress" },
+      }),
+    ];
+    const formData: Record<string, FormRelationshipValue> = {
+      primary_address: {
+        source: { type: "pool", label: "Loopbacks pool", id: "pool-id", kind: "CoreIPAddressPool" },
+        value: { from_pool: { id: "pool-id", allocatedKind: "IpamIPAddress" } },
+      },
+    };
+
+    // WHEN
+    const mutationData = getCreateMutationFromFormData(fields, formData);
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      primary_address: { from_pool: { id: "pool-id", address_type: "IpamIPAddress" } },
+    });
+  });
+
+  it("includes the chosen allocated kind as prefix_type for an IP prefix pool", () => {
+    // GIVEN
+    const fields: Array<DynamicFieldProps> = [
+      buildFormField({
+        name: "prefix",
+        type: "relationship",
+        pool: { kind: "CoreIPPrefixPool", defaultAllocatedObjectKind: "BuiltinIPPrefix" },
+      }),
+    ];
+    const formData: Record<string, FormRelationshipValue> = {
+      prefix: {
+        source: { type: "pool", label: "Supernet pool", id: "pool-id", kind: "CoreIPPrefixPool" },
+        value: { from_pool: { id: "pool-id", allocatedKind: "IpamIPPrefix", prefixLength: 26 } },
+      },
+    };
+
+    // WHEN
+    const mutationData = getCreateMutationFromFormData(fields, formData);
+
+    // THEN both overrides travel together.
+    expect(mutationData).to.deep.equal({
+      prefix: { from_pool: { id: "pool-id", size: 26, prefix_type: "IpamIPPrefix" } },
+    });
+  });
+
+  it("omits the allocated kind on a direct from-pool relationship when none was chosen", () => {
+    // GIVEN
+    const fields: Array<DynamicFieldProps> = [
+      buildFormField({
+        name: "primary_address",
+        type: "relationship",
+        pool: { kind: "CoreIPAddressPool", defaultAllocatedObjectKind: "BuiltinIPAddress" },
+      }),
+    ];
+    const formData: Record<string, FormRelationshipValue> = {
+      primary_address: {
+        source: { type: "pool", label: "Loopbacks pool", id: "pool-id", kind: "CoreIPAddressPool" },
+        value: { from_pool: { id: "pool-id" } },
+      },
+    };
+
+    // WHEN
+    const mutationData = getCreateMutationFromFormData(fields, formData);
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      primary_address: { from_pool: { id: "pool-id" } },
+    });
+  });
+
   describe("Resource pool from-pool relationship", () => {
-    it("includes prefixlen on the from-pool relationship when fromPoolRelationshipName is set", () => {
+    it("sends only the pool id on the _from_resource_pool field, since its peer is the pool kind (dropping the allocated kind)", () => {
+      // `<rel>_from_resource_pool` peers at the pool kind itself, so GraphQL types it as a
+      // plain RelatedNodeInput: `address_type` is not a member of that input and the query
+      // is rejected before any resolver runs. The kind override belongs on the direct
+      // `{ <rel>: { from_pool } }` payload instead.
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildFormField({
+          name: "ip_address",
+          type: "relationship",
+          pool: {
+            kind: "CoreIPAddressPool",
+            defaultAllocatedObjectKind: "BuiltinIPAddress",
+            fromPoolRelationshipName: "ip_address_from_resource_pool",
+          },
+        }),
+      ];
+      const formData: Record<string, FormRelationshipValue> = {
+        ip_address: {
+          source: { type: "pool", label: "test pool", id: "pool-id", kind: "CoreIPAddressPool" },
+          value: { from_pool: { id: "pool-id", allocatedKind: "IpamIPAddress" } },
+        },
+      };
+
+      // WHEN
+      const mutationData = getCreateMutationFromFormData(fields, formData);
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        ip_address_from_resource_pool: { id: "pool-id" },
+      });
+    });
+
+    it("sends only the pool id on the _from_resource_pool field, since its peer is the pool kind (dropping the prefix length)", () => {
+      // This also fixes a pre-existing bug: `prefixlen` was being sent here too, and is
+      // just as invalid — the pool-kind peer's RelatedNodeInput has no such member, and
+      // `create.py` allocates from the stored pointer alone, passing no prefix length.
       // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
@@ -285,7 +397,7 @@ describe("getCreateMutationFromFormData", () => {
 
       // THEN
       expect(mutationData).to.deep.equal({
-        ip_address_from_resource_pool: { id: "pool-id", prefixlen: 24 },
+        ip_address_from_resource_pool: { id: "pool-id" },
       });
     });
 
