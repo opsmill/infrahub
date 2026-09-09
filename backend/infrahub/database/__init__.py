@@ -694,13 +694,16 @@ async def run_in_transaction_with_retry[T](
     """Run `func` in a database transaction, replaying it when the database errors transiently.
 
     The retried scope is the transaction and nothing else, so a replay never repeats work that an
-    earlier attempt already committed. Locks are held around the transaction rather than inside it,
-    and are released between attempts.
+    earlier attempt already committed. When this function opens the transaction it holds the locks
+    around it and releases them between attempts, so no lock is held across a backoff.
 
     `func` runs once, without retrying, in either of two cases. When `db` already runs in a
     transaction, because the transient error has already failed it and replaying on it raises
     `TransactionError` instead; only whoever opened it can roll it back and start a new one. And
     when an enclosing scope already owns the retry, so that nesting cannot multiply the attempts.
+
+    Passing in a transaction the caller opened moves the locks inside it: they are released when
+    this returns, and so do not cover the caller's commit.
 
     Args:
         db: Database to run against.
