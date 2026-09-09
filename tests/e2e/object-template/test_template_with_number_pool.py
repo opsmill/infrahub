@@ -12,7 +12,7 @@ import contextlib
 from typing import TYPE_CHECKING
 
 import pytest
-from helpers import generate_random_branch_name
+from helpers import generate_random_branch_name, select_pool
 from playwright.async_api import expect
 
 pytestmark = pytest.mark.shard_foundation
@@ -60,10 +60,10 @@ class TestTemplateWithNumberPool:
         await admin_page.get_by_label("Select an object type").click()
         await admin_page.get_by_role("option", name="Patch Panel Infra").click()
         await admin_page.get_by_label("Template Name *").fill("number_pool_patch_panel_template")
-        await admin_page.get_by_test_id("number-pool-button").click()
-        await admin_page.get_by_role("option", name="module capacity pool").click()
+        await select_pool(admin_page, "module capacity pool")
+        # The badge is now the sole indication of provenance: the value input lives in the other
+        # tab, which is unmounted while the pool tab is showing, so it cannot be asserted here.
         await expect(admin_page.get_by_test_id("source-pool-badge")).to_be_visible()
-        await expect(admin_page.get_by_label("Module Capacity")).to_contain_text("Allocated by pool")
         await admin_page.get_by_role("button", name="Save").click()
         await expect(admin_page.get_by_text("InfraPatchPanel created")).to_be_visible()
 
@@ -79,8 +79,9 @@ class TestTemplateWithNumberPool:
         await admin_page.get_by_test_id("create-object-button").click()
         await admin_page.get_by_role("button", name="Start from template").click()
         await admin_page.get_by_role("option", name="number_pool_patch_panel_template").click()
+        # A template-inherited pool value shows its provenance as a badge; the old
+        # "Allocated by pool" stand-in inside the value input no longer exists.
         await expect(admin_page.get_by_test_id("source-pool-badge")).to_be_visible()
-        await expect(admin_page.get_by_label("Module Capacity")).to_contain_text("Allocated by pool")
 
         await admin_page.get_by_role("textbox", name="Name *").fill("patch-panel-from-pool-template")
         await admin_page.get_by_role("button", name="Save").click()
