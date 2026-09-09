@@ -10,6 +10,7 @@ from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
 
 from .classifier_builder import QueryClassifierBuilder
+from .derived_dependencies import DerivedFieldDependencyResolver
 from .impact_classifier import ChangedNodes, EveryTarget, RelationshipReachedChanges
 from .models import TargetSelection
 
@@ -61,7 +62,8 @@ class FieldLevelImpactResolver:
             document=cached_parse(query_payload),
         ).query_report
 
-        classifier = QueryClassifierBuilder(query_branch=query_branch, schema_branch=query_schema_branch).build(
+        dependency_resolver = DerivedFieldDependencyResolver(schema_branch=query_schema_branch)
+        classifier = QueryClassifierBuilder(query_branch=query_branch, dependency_resolver=dependency_resolver).build(
             query_report
         )
         assessment = classifier.assess(diff_summary=diff_summary)
