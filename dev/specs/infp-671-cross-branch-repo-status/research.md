@@ -39,7 +39,11 @@ Three facts found during research bound the design more than the spec anticipate
   the per-branch attribute payloads from a deterministic fabrication keyed on the branch name.
   `schema/schema.graphql` is regenerated so the frontend's `pnpm codegen` produces the final types.
   The two attribute-value filters (`sync_status__value`, `internal_status__value`) and the
-  `own_values_only` flag are accepted and ignored, which the contract document states.
+  `own_values_only` flag are present in the schema but rejected with a `ValidationError` naming every
+  argument that would narrow, which the contract document states. Accepting and ignoring them was the
+  original plan; it was changed during review, because silently returning an unfiltered row set to a
+  document that asked for a filtered one is the wrong failure mode for a live public field. Sending the
+  defaults back is still accepted, so a client that round-trips them is unaffected.
 - **Increment B, graph read**: the core primitive (Query class plus reader component) replaces the
   fabrication; attribute filters become real; the query-count and inheritance tests land. The stub
   module is deleted in this change and its deletion is the acceptance criterion.
