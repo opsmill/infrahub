@@ -57,6 +57,20 @@ class ChangelogRelationshipMapper:
     def add_peer_from_relationship(self, relationship: Relationship) -> None:
         if self.schema.cardinality == RelationshipCardinality.ONE:
             self._set_cardinality_one_peer(relationship=relationship)
+            # Record the edge metadata only for a genuinely new relationship. A peer swap records
+            # the previous peer first, and its properties belong to that update, not a fresh edge.
+            if self.cardinality_one_relationship.peer_id_previous is None:
+                if source_id := getattr(relationship, "source_id", None):
+                    self.cardinality_one_relationship.add_property(
+                        name="source", value_current=source_id, value_previous=None
+                    )
+                if owner_id := getattr(relationship, "owner_id", None):
+                    self.cardinality_one_relationship.add_property(
+                        name="owner", value_current=owner_id, value_previous=None
+                    )
+                self.cardinality_one_relationship.add_property(
+                    name="is_protected", value_current=relationship.is_protected, value_previous=None
+                )
         elif self.schema.cardinality == RelationshipCardinality.MANY:
             self.cardinality_many_relationship.add_new_peer(relationship=relationship)
 
