@@ -7,7 +7,8 @@ from graphene import Boolean, InputField, InputObjectType, List, Mutation, Strin
 from infrahub_sdk.utils import compare_lists
 
 from infrahub.core.account import GlobalPermission, ObjectPermission
-from infrahub.core.changelog.models import NodeChangelog, RelationshipChangelogGetter
+from infrahub.core.changelog.builder import build_relationship_changelog_getter
+from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
     InfrahubKind,
     MetadataOptions,
@@ -139,7 +140,7 @@ async def _emit_relationship_add_events(
         fields=[relationship_name],
         meta=EventMeta(branch=graphql_context.branch, context=event_context),
     )
-    relationship_changelogs = RelationshipChangelogGetter(db=graphql_context.db, branch=graphql_context.branch)
+    relationship_changelogs = build_relationship_changelog_getter(db=graphql_context.db, branch=graphql_context.branch)
     node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=node_changelog)
 
     events: list[NodeUpdatedEvent] = [main_event]
@@ -191,6 +192,7 @@ class RelationshipAdd(Mutation):
         node_changelog = NodeChangelog(
             node_id=source.get_id(), node_kind=source.get_kind(), display_label=display_label
         )
+        node_changelog.hfid = await source.get_hfid(db=graphql_context.db)
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
         _validate_cardinality_add(data=data, rel_schema=rel_schema, existing_peers=existing_peers)
@@ -276,6 +278,7 @@ class RelationshipRemove(Mutation):
         node_changelog = NodeChangelog(
             node_id=source.get_id(), node_kind=source.get_kind(), display_label=display_label
         )
+        node_changelog.hfid = await source.get_hfid(db=graphql_context.db)
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
         _validate_optional_remove(data=data, rel_schema=rel_schema, existing_peers=existing_peers)
@@ -373,7 +376,7 @@ class RelationshipRemove(Mutation):
                     meta=EventMeta(branch=graphql_context.branch, context=event_context),
                 )
 
-                relationship_changelogs = RelationshipChangelogGetter(
+                relationship_changelogs = build_relationship_changelog_getter(
                     db=graphql_context.db, branch=graphql_context.branch
                 )
                 node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=node_changelog)
