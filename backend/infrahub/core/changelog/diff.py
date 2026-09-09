@@ -251,16 +251,20 @@ class DiffChangelogCollector:
         changed_nodes = [node for node in self._diff.nodes if node.action != DiffAction.UNCHANGED]
         # A node whose kind was dropped by a schema migration in the merge has no schema to resolve
         # labels against; leave it out of the load so one such node cannot fail the whole batch.
-        resolvable_ids = [
-            node.uuid for node in changed_nodes if self._db.schema.has(name=node.kind, branch=self._branch)
-        ]
+        resolvable_ids = [node.uuid for node in changed_nodes if self._is_resolvable_kind(node.kind)]
         changelogs = [
             (node.action, node_changelog)
             for node in changed_nodes
             if (node_changelog := self._process_node(node=node)).has_changes
         ]
-        await self._hfid_resolver.enrich(changelogs=changelogs, resolvable_ids=resolvable_ids)
+        await self._hfid_resolver.enrich(
+            changelogs=changelogs, resolvable_ids=resolvable_ids, is_resolvable_kind=self._is_resolvable_kind
+        )
         return changelogs
+
+    def _is_resolvable_kind(self, kind: str) -> bool:
+        """Whether a node kind still exists on the branch, so its labels can be loaded."""
+        return self._db.schema.has(name=kind, branch=self._branch)
 
 
 def _keep_branch_update(diff_property: EnrichedDiffProperty) -> bool:

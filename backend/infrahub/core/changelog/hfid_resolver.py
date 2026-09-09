@@ -7,7 +7,7 @@ from infrahub.core.constants import DiffAction
 from infrahub.core.constants.schema import HFID_ATTRIBUTE_NAME
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from .enrichment import NodeLabelLoader
     from .models import NodeChangelog
@@ -24,12 +24,18 @@ class ChangelogHfidResolver:
         self._label_loader = label_loader
 
     async def enrich(
-        self, changelogs: Sequence[tuple[DiffAction, NodeChangelog]], resolvable_ids: Sequence[str]
+        self,
+        changelogs: Sequence[tuple[DiffAction, NodeChangelog]],
+        resolvable_ids: Sequence[str],
+        is_resolvable_kind: Callable[[str], bool],
     ) -> None:
         """Set the HFID of each changed node and of every relationship peer across the changelogs.
 
         ``resolvable_ids`` are the changed nodes whose HFID can be loaded; a peer outside that set is
         loaded on its own so a peer's HFID does not depend on whether the peer also changed.
+        ``is_resolvable_kind`` gates that extra load: an external peer whose kind was dropped from
+        the schema is left unresolved rather than joining the batch, so it cannot fail the load for
+        every other external peer.
         """
         node_hfids = await self._label_loader.load_hfids(resolvable_ids)
         for action, changelog in changelogs:
@@ -37,12 +43,13 @@ class ChangelogHfidResolver:
             if changelog.hfid is None and action == DiffAction.REMOVED:
                 # A removed node is gone when the batch load runs, but the diff still records its HFID.
                 changelog.hfid = _hfid_from_diff(changelog)
-        await self._fill_peer_hfids(changelogs=changelogs, node_hfids=node_hfids)
+        await self._fill_peer_hfids(changelogs=changelogs, node_hfids=node_hfids, is_resolvable_kind=is_resolvable_kind)
 
     async def _fill_peer_hfids(
         self,
         changelogs: Sequence[tuple[DiffAction, NodeChangelog]],
         node_hfids: dict[str, list[str] | None],
+        is_resolvable_kind: Callable[[str], bool],
     ) -> None:
         peers = [
             peer
@@ -56,6 +63,10 @@ class ChangelogHfidResolver:
                 continue
             if peer.peer_id in node_hfids:
                 peer.peer_hfid = node_hfids[peer.peer_id]
+            elif peer.peer_kind is not None and not is_resolvable_kind(peer.peer_kind):
+                # The peer's kind is gone from the schema; leave its HFID unresolved so it never
+                # fails the batch load that the other external peers share.
+                continue
             else:
                 external_ids.append(peer.peer_id)
         if not external_ids:

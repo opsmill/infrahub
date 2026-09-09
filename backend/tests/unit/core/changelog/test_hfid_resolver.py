@@ -43,6 +43,10 @@ class FailingReader:
         raise RuntimeError("label backend unavailable")
 
 
+def _any_kind_resolvable(_kind: str) -> bool:
+    return True
+
+
 def _resolver(hfids: dict[str, list[str] | None]) -> tuple[ChangelogHfidResolver, RecordingReader]:
     reader = RecordingReader(hfids)
     return ChangelogHfidResolver(label_loader=NodeLabelLoader(reader=reader)), reader
@@ -115,7 +119,9 @@ async def test_enrich_sets_node_hfid_from_loaded_batch() -> None:
     resolver, reader = _resolver({"n1": ["Volvo", "5"]})
     node = _node("n1")
 
-    await resolver.enrich(changelogs=[(DiffAction.UPDATED, node)], resolvable_ids=["n1"])
+    await resolver.enrich(
+        changelogs=[(DiffAction.UPDATED, node)], resolvable_ids=["n1"], is_resolvable_kind=_any_kind_resolvable
+    )
 
     assert node.hfid == ["Volvo", "5"]
     assert reader.hfid_calls == [["n1"]]
@@ -125,7 +131,9 @@ async def test_enrich_removed_node_missing_from_batch_falls_back_to_diff() -> No
     resolver, reader = _resolver({})
     node = _node("n1", hfid_attribute_value='["Gone"]')
 
-    await resolver.enrich(changelogs=[(DiffAction.REMOVED, node)], resolvable_ids=["n1"])
+    await resolver.enrich(
+        changelogs=[(DiffAction.REMOVED, node)], resolvable_ids=["n1"], is_resolvable_kind=_any_kind_resolvable
+    )
 
     assert node.hfid == ["Gone"]
     # The fallback reads the diff, not a second load: the batch is the only read.
@@ -136,7 +144,9 @@ async def test_enrich_removed_node_present_in_batch_keeps_loaded_hfid() -> None:
     resolver, reader = _resolver({"n1": ["Fresh"]})
     node = _node("n1", hfid_attribute_value='["Stale"]')
 
-    await resolver.enrich(changelogs=[(DiffAction.REMOVED, node)], resolvable_ids=["n1"])
+    await resolver.enrich(
+        changelogs=[(DiffAction.REMOVED, node)], resolvable_ids=["n1"], is_resolvable_kind=_any_kind_resolvable
+    )
 
     assert node.hfid == ["Fresh"]
     assert reader.hfid_calls == [["n1"]]
@@ -146,7 +156,9 @@ async def test_enrich_non_removed_node_missing_from_batch_stays_none() -> None:
     resolver, reader = _resolver({})
     node = _node("n1", hfid_attribute_value='["Ignored"]')
 
-    await resolver.enrich(changelogs=[(DiffAction.UPDATED, node)], resolvable_ids=["n1"])
+    await resolver.enrich(
+        changelogs=[(DiffAction.UPDATED, node)], resolvable_ids=["n1"], is_resolvable_kind=_any_kind_resolvable
+    )
 
     assert node.hfid is None
     assert reader.hfid_calls == [["n1"]]
@@ -157,7 +169,9 @@ async def test_enrich_internal_peer_resolved_from_batch_without_extra_load() -> 
     node = _node("n1")
     node.relationships["owner"] = RelationshipCardinalityOneChangelog(name="owner", peer_id="n2")
 
-    await resolver.enrich(changelogs=[(DiffAction.UPDATED, node)], resolvable_ids=["n1", "n2"])
+    await resolver.enrich(
+        changelogs=[(DiffAction.UPDATED, node)], resolvable_ids=["n1", "n2"], is_resolvable_kind=_any_kind_resolvable
+    )
 
     owner = node.relationships["owner"]
     assert isinstance(owner, RelationshipCardinalityOneChangelog)
@@ -170,7 +184,9 @@ async def test_enrich_external_peer_loaded_separately() -> None:
     node = _node("n1")
     node.relationships["owner"] = RelationshipCardinalityOneChangelog(name="owner", peer_id="ext")
 
-    await resolver.enrich(changelogs=[(DiffAction.UPDATED, node)], resolvable_ids=["n1"])
+    await resolver.enrich(
+        changelogs=[(DiffAction.UPDATED, node)], resolvable_ids=["n1"], is_resolvable_kind=_any_kind_resolvable
+    )
 
     owner = node.relationships["owner"]
     assert isinstance(owner, RelationshipCardinalityOneChangelog)
@@ -186,7 +202,9 @@ async def test_enrich_peer_in_batch_with_no_hfid_is_not_reloaded() -> None:
         peers=[RelationshipPeerChangelog(peer_id="n2", peer_kind="TestCar", peer_status=DiffAction.ADDED)],
     )
 
-    await resolver.enrich(changelogs=[(DiffAction.UPDATED, node)], resolvable_ids=["n1", "n2"])
+    await resolver.enrich(
+        changelogs=[(DiffAction.UPDATED, node)], resolvable_ids=["n1", "n2"], is_resolvable_kind=_any_kind_resolvable
+    )
 
     members = node.relationships["members"]
     assert isinstance(members, RelationshipCardinalityManyChangelog)
@@ -199,9 +217,35 @@ async def test_enrich_degrades_when_reader_fails() -> None:
     node = _node("n1")
     node.relationships["owner"] = RelationshipCardinalityOneChangelog(name="owner", peer_id="ext")
 
-    await resolver.enrich(changelogs=[(DiffAction.UPDATED, node)], resolvable_ids=["n1"])
+    await resolver.enrich(
+        changelogs=[(DiffAction.UPDATED, node)], resolvable_ids=["n1"], is_resolvable_kind=_any_kind_resolvable
+    )
 
     owner = node.relationships["owner"]
     assert isinstance(owner, RelationshipCardinalityOneChangelog)
     assert node.hfid is None
     assert owner.peer_hfid is None
+
+
+async def test_enrich_excludes_external_peer_whose_kind_is_gone_from_the_batch() -> None:
+    resolver, reader = _resolver({"n1": ["A"], "ext_ok": ["OK"]})
+    node = _node("n1")
+    node.relationships["members"] = RelationshipCardinalityManyChangelog(
+        name="members",
+        peers=[
+            RelationshipPeerChangelog(peer_id="ext_ok", peer_kind="TestCar", peer_status=DiffAction.ADDED),
+            RelationshipPeerChangelog(peer_id="ext_gone", peer_kind="Dropped", peer_status=DiffAction.ADDED),
+        ],
+    )
+
+    await resolver.enrich(
+        changelogs=[(DiffAction.UPDATED, node)],
+        resolvable_ids=["n1"],
+        is_resolvable_kind=lambda kind: kind != "Dropped",
+    )
+
+    members = node.relationships["members"]
+    assert isinstance(members, RelationshipCardinalityManyChangelog)
+    assert {peer.peer_id: peer.peer_hfid for peer in members.peers} == {"ext_ok": ["OK"], "ext_gone": None}
+    # The dropped-kind peer is kept out of the external batch, so it cannot fail the load for ext_ok.
+    assert reader.hfid_calls == [["n1"], ["ext_ok"]]
