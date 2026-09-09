@@ -849,6 +849,8 @@ async def check_read_only_repositories_refs() -> None:
 
 @flow(name="git-read-only-repository-check-refs", flow_run_name="Check remote refs of repository {repository_id}")
 async def check_read_only_repository_refs(repository_id: str) -> None:
+    await add_tags(nodes=[repository_id])
+
     log = get_run_logger()
     log.info(f"Checking remote refs of repository {repository_id} is not implemented yet")
 

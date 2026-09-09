@@ -482,7 +482,6 @@ GIT_REPOSITORIES_IMPORT_OBJECTS = WorkflowDefinition(
 GIT_READ_ONLY_REPOSITORIES_CHECK_REFS = WorkflowDefinition(
     name="git-read-only-repositories-check-refs",
     type=WorkflowType.INTERNAL,
-    cron="* * * * *",
     module="infrahub.git.tasks",
     function="check_read_only_repositories_refs",
     concurrency_limit=1,
