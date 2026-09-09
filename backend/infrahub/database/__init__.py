@@ -601,32 +601,43 @@ def is_retriable_db_error(exc: BaseException) -> bool:
     return False
 
 
-_retry_owner: ContextVar[str | None] = ContextVar("retry_owner", default=None)
+@dataclass
+class _RetryClaim:
+    """A retry scope, for as long as the scope that made it is still running."""
+
+    is_live: bool = True
+
+
+_retry_owner: ContextVar[_RetryClaim | None] = ContextVar("retry_owner", default=None)
 
 
 @asynccontextmanager
-async def _claim_retry_ownership(name: str) -> AsyncIterator[bool]:
+async def _claim_retry_ownership() -> AsyncIterator[bool]:
     """Claim the right to replay failed database work for the duration of the scope.
 
     Only the outermost claim retries. An inner one runs its work once and lets the error travel out
     to the scope that already owns the replay, so layers that each retry independently cannot
     multiply into `retry_limit` raised to the power of their nesting depth.
 
-    Args:
-        name: Label of the scope making the claim.
+    A task started while a claim is held inherits a copy of the context carrying it, and that copy
+    is not the one the scope goes on to restore. Retiring the claim itself is what keeps such a
+    task from spending the rest of its life unable to retry anything.
 
     Yields:
         Whether this scope owns the retry.
 
     """
-    if _retry_owner.get() is not None:
+    owner = _retry_owner.get()
+    if owner is not None and owner.is_live:
         yield False
         return
 
-    token = _retry_owner.set(name)
+    claim = _RetryClaim()
+    token = _retry_owner.set(claim)
     try:
         yield True
     finally:
+        claim.is_live = False
         _retry_owner.reset(token)
 
 
@@ -675,7 +686,7 @@ def retry_db_transaction(
     def func_wrapper(func: Callable[..., Coroutine[Any, Any, R]]) -> Callable[..., Coroutine[Any, Any, R]]:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> R:
-            async with _claim_retry_ownership(name) as owns_retry:
+            async with _claim_retry_ownership() as owns_retry:
                 if not owns_retry:
                     return await func(*args, **kwargs)
                 return await _run_retry_loop(name=name, func=functools.partial(func, *args, **kwargs))
@@ -707,7 +718,7 @@ async def run_with_retry[T](db: InfrahubDatabase, name: str, func: Callable[[], 
         ClientError: When every attempt ended in a retriable error.
 
     """
-    async with _claim_retry_ownership(name) as owns_retry:
+    async with _claim_retry_ownership() as owns_retry:
         if not owns_retry or db.is_transaction:
             return await func()
         return await _run_retry_loop(name=name, func=func)

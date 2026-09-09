@@ -267,6 +267,42 @@ class TestRetryOwnership:
         assert TRANSACTION_RETRIES.labels("counted_inner")._value.get() == inner_before
         assert TRANSACTION_RETRIES.labels("counted_outer")._value.get() == outer_before + 1
 
+    async def test_a_task_awaited_inside_the_scope_shares_the_budget(self) -> None:
+        work = _RetriableWork(failures=99)
+
+        async def inner_task() -> str:
+            return await retry_db_transaction(name="awaited_inner")(work.run)()
+
+        async def spawn_and_await() -> str:
+            return await asyncio.create_task(inner_task())
+
+        with pytest.raises(TransientError, match=r"^no available threads to serve this request$"):
+            await retry_db_transaction(name="awaited_outer")(spawn_and_await)()
+
+        assert work.calls == 3
+
+    async def test_a_task_outliving_the_scope_retries_on_its_own(self) -> None:
+        """A scope must not leave the tasks it started unable to retry for the rest of their lives.
+
+        Starting a task copies the context the claim lives in, and the copy is not the one the
+        scope goes on to restore when it returns.
+        """
+        work = _RetriableWork(failures=1)
+        scope_returned = asyncio.Event()
+
+        async def retry_once_the_scope_is_gone() -> str:
+            await scope_returned.wait()
+            return await retry_db_transaction(name="outliving_task")(work.run)()
+
+        async def spawn_only() -> asyncio.Task[str]:
+            return asyncio.create_task(retry_once_the_scope_is_gone())
+
+        task = await retry_db_transaction(name="spawning_scope")(spawn_only)()
+        scope_returned.set()
+
+        assert await task == "ok"
+        assert work.calls == 2
+
     async def test_ownership_is_released_after_the_scope_returns(self) -> None:
         succeeding = _RetriableWork(failures=0)
         await retry_db_transaction(name="released_first")(succeeding.run)()
