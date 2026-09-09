@@ -112,3 +112,47 @@ class TestRenderDepthsFilter:
     def test_render_with_only_unfeasible_depths_raises(self) -> None:
         with pytest.raises(ValueError, match=r"no feasible fixed-depth query"):
             _render_linear_paths(depths={1})
+
+
+def _hop_projecting_renders() -> dict[str, str]:
+    """Rendered text of every entry point whose projection carries the hop list."""
+    renderer = _build_renderer()
+    plan = _linear_plan()
+    at = Timestamp()
+    return {
+        "render_paths_to_targets": renderer.render_paths_to_targets(
+            plan=plan, source_id="src-uuid", at=at, terminal_uuids=["uuid-c"], max_paths=10
+        ).text,
+        "render_canonical_join": renderer.render_canonical_join(
+            plan=plan,
+            source_id="src-uuid",
+            target_id="uuid-c",
+            left_len=1,
+            right_len=1,
+            tier_middles=["mid-uuid"],
+            tier_limit=10,
+            at=at,
+        ).text,
+        "render_canonical_join_direct": renderer.render_canonical_join(
+            plan=plan,
+            source_id="src-uuid",
+            target_id="uuid-c",
+            left_len=0,
+            right_len=1,
+            tier_middles=[],
+            tier_limit=10,
+            at=at,
+        ).text,
+        "render_half_from_source": renderer.render_half_from_source(
+            plan=plan, source_id="src-uuid", length=2, limit=10, at=at
+        ).text,
+        "render_half_to_target": renderer.render_half_to_target(
+            plan=plan, source_id="src-uuid", target_id="uuid-c", length=1, middles=["mid-uuid"], limit=10, at=at
+        ).text,
+    }
+
+
+@pytest.mark.parametrize("entry_point", sorted(_hop_projecting_renders()))
+def test_every_hop_projection_carries_the_edge_direction(entry_point: str) -> None:
+    # A projection that omits the field otherwise fails only at extraction time.
+    assert "from_direction" in _hop_projecting_renders()[entry_point]

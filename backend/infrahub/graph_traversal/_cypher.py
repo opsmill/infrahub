@@ -37,7 +37,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipDirection
 from infrahub.core.timestamp import Timestamp
 from infrahub.graph_traversal.planning.models import Plan, TerminalById
 
@@ -241,10 +241,29 @@ _HOP_TUPLE_PREDICATE = """[{start_var}.kind, {rel_var}.name, {end_var}.kind] IN 
 # relationship, and away from it for an inbound one, so the two edge orientations of a hop name
 # the direction each of its ends declares.
 _HOP_DIRECTION_CASE = """CASE
-        WHEN startNode({edge_in}) = {start} AND startNode({edge_out}) = {rel} THEN "outbound"
-        WHEN startNode({edge_in}) = {rel} AND startNode({edge_out}) = {end} THEN "inbound"
-        ELSE "bidirectional"
+        WHEN startNode({edge_in}) = {start} AND startNode({edge_out}) = {rel} THEN "{outbound}"
+        WHEN startNode({edge_in}) = {rel} AND startNode({edge_out}) = {end} THEN "{inbound}"
+        ELSE "{bidirectional}"
     END"""
+
+
+def _hop_direction(*, edge_in: str, edge_out: str, start: str, rel: str, end: str) -> str:
+    """The hop-direction CASE for one hop, over the Cypher variables naming its parts.
+
+    The emitted values are the ``RelationshipDirection`` values the extractor parses back,
+    so a renamed enum value changes both sides at once.
+    """
+    return _HOP_DIRECTION_CASE.format(
+        edge_in=edge_in,
+        edge_out=edge_out,
+        start=start,
+        rel=rel,
+        end=end,
+        outbound=RelationshipDirection.OUTBOUND.value,
+        inbound=RelationshipDirection.INBOUND.value,
+        bidirectional=RelationshipDirection.BIDIR.value,
+    )
+
 
 _DELETION_SHADOW_PREDICATE = """
 NOT EXISTS {{ ({from_var})-[{del_var}:IS_RELATED {{status: "deleted", branch: $user_branch}}]-({to_var})
@@ -434,7 +453,7 @@ _HALF_RETURN_LABELS: tuple[str, ...] = ("mid_uuid", "hops")
 
 def _qpp_hop_direction(path_var: str) -> str:
     """The hop-direction CASE for the hop at list index ``i`` of a quantified-path-pattern path."""
-    return _HOP_DIRECTION_CASE.format(
+    return _hop_direction(
         edge_in=f"relationships({path_var})[i * 2]",
         edge_out=f"relationships({path_var})[i * 2 + 1]",
         start=f"nodes({path_var})[i * 2]",
@@ -1043,7 +1062,7 @@ LIMIT $max_targets"""
             rel_var = f"rel{hop}"
             from_var = "source" if hop == 1 else f"b{hop - 1}"
             node_var = "target" if hop == depth else f"b{hop}"
-            direction = _HOP_DIRECTION_CASE.format(
+            direction = _hop_direction(
                 edge_in=f"r{hop}_s", edge_out=f"r{hop}_e", start=from_var, rel=rel_var, end=node_var
             )
             hop_entries.append(
