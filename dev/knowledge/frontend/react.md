@@ -53,3 +53,7 @@ useEffect(() => setFiltered(items.filter(i => i.active)), [items]);
 Anything a user might bookmark, share, or refresh-and-resume (filters, current selection, mode toggle) lives in the URL — not in `useState`. Use `nuqs` for typed URL params, or `useFilters` for the standard filter pattern.
 
 The page component reads URL params and passes them down. Children should not read `searchParams` for state the page already owns. See `dev/guidelines/frontend/page-architecture.md` for the full state-ownership rules.
+
+## An effect-driven retry needs a dependency that changes on failure
+
+The REST client sets `retry: false` app-wide (`shared/api/rest/client.ts`), so a failed query stays failed until something re-triggers it. An effect that launches a must-eventually-succeed step re-runs only when a dependency changes; if every dependency is stable after a failure (same name, same boolean, a stable `refetch`), the step never retries and the screen wedges until reload. Give such an effect a fetch-identity dependency — TanStack Query's `dataUpdatedAt` — so each fresh response re-arms it.

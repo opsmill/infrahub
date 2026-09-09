@@ -438,7 +438,10 @@ class Branch(StandardNode):
     async def rebase(
         self, db: InfrahubDatabase, at: str | Timestamp | None = None, user_id: str = SYSTEM_USER_ID
     ) -> None:
-        """Rebase the current Branch with its origin branch."""
+        """Rebase the current Branch with its origin branch.
+
+        Mutates this instance (`branched_from`, `status`) and persists it with the given `db`.
+        """
         at = Timestamp(at)
 
         await self.rebase_graph(db=db, at=at)
@@ -446,9 +449,6 @@ class Branch(StandardNode):
         self.branched_from = at.to_string()
         self.status = BranchStatus.OPEN
         await self.save(db=db, user_id=user_id)
-
-        # Update the branch in the registry after the rebase
-        registry.branch[self.name] = self
 
     async def rebase_graph(self, db: InfrahubDatabase, at: Timestamp) -> None:
         """Rebase all relationships on this branch to a new point in time.

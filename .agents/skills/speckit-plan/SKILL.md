@@ -165,6 +165,7 @@ Command ends after Phase 2 planning. Report branch, IMPL_PLAN path, and generate
 
 - Use absolute paths for filesystem operations; use project-relative paths for references in documentation and agent context files
 - ERROR on gate failures or unresolved clarifications
+- When research.md/plan.md names a specific code location, cite the module and symbol (e.g. `some/module.py::SomeClass`), never a line number — implementation shifts lines before the plan merges. See `dev/guidelines/documentation.md`
 
 ## Done When
 

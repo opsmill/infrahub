@@ -4,6 +4,7 @@ from typing import Awaitable, Callable
 import pytest
 
 from infrahub.core.branch.models import Branch
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -203,6 +204,73 @@ CREATE (a)-[:$(type(child)) {branch: $branch_name, branch_level: $branch_level, 
     )
 
 
+async def _mark_attribute_agnostic_without_moving_edges(db: InfrahubDatabase, car: Node, person: Node) -> None:
+    """Declare one attribute branch-agnostic while its edges stay on the branch that wrote them."""
+    query = """
+MATCH (n:Node {uuid: $node_id})-[hae:HAS_ATTRIBUTE {status: "active"}]->(a:Attribute {name: "name"})
+WHERE hae.to IS NULL
+WITH a LIMIT 1
+SET a.branch_support = $agnostic
+    """
+    await db.execute_query(query=query, params={"node_id": car.id, "agnostic": BranchSupportType.AGNOSTIC.value})
+
+
+async def _move_aware_attribute_edges_to_global(db: InfrahubDatabase, car: Node, person: Node) -> None:
+    """Move a branch-aware attribute's live edges onto the global branch."""
+    query = """
+MATCH (n:Node {uuid: $node_id})-[hae:HAS_ATTRIBUTE {status: "active"}]->(a:Attribute {name: "name"})
+WHERE hae.to IS NULL
+WITH a, hae LIMIT 1
+SET hae.branch = $global_branch, hae.branch_level = 1
+WITH a
+MATCH (a)-[prop]->()
+WHERE prop.status = "active" AND prop.to IS NULL
+SET prop.branch = $global_branch, prop.branch_level = 1
+    """
+    await db.execute_query(query=query, params={"node_id": car.id, "global_branch": GLOBAL_BRANCH_NAME})
+
+
+async def _make_attribute_agnostic_on_global_branch(
+    db: InfrahubDatabase, node_uuid: str, branch_level: int | None
+) -> None:
+    """Declare one attribute branch-agnostic and move its live edges onto the global branch.
+
+    ``branch_level`` is written verbatim, so anything other than 1 leaves the edges on the branch the
+    attribute's branch support asks for while carrying a level the global branch never has. ``None``
+    removes the property outright, the shape the historical branch_level repair migrations exist for.
+    """
+    query = """
+MATCH (n:Node {uuid: $node_id})-[hae:HAS_ATTRIBUTE {status: "active"}]->(a:Attribute {name: "name"})
+WHERE hae.to IS NULL
+WITH a, hae LIMIT 1
+SET a.branch_support = $agnostic
+SET hae.branch = $global_branch, hae.branch_level = $branch_level
+WITH a
+MATCH (a)-[prop]->()
+WHERE prop.status = "active" AND prop.to IS NULL
+SET prop.branch = $global_branch, prop.branch_level = $branch_level
+    """
+    await db.execute_query(
+        query=query,
+        params={
+            "node_id": node_uuid,
+            "agnostic": BranchSupportType.AGNOSTIC.value,
+            "global_branch": GLOBAL_BRANCH_NAME,
+            "branch_level": branch_level,
+        },
+    )
+
+
+async def _agnostic_attribute_global_edges_without_branch_level(db: InfrahubDatabase, car: Node, person: Node) -> None:
+    """Put an agnostic attribute's edges on the global branch with no branch_level at all."""
+    await _make_attribute_agnostic_on_global_branch(db=db, node_uuid=car.id, branch_level=None)
+
+
+async def _agnostic_attribute_global_edges_with_branch_level_2(db: InfrahubDatabase, car: Node, person: Node) -> None:
+    """Put an agnostic attribute's edges on the global branch with a branch's level rather than 1."""
+    await _make_attribute_agnostic_on_global_branch(db=db, node_uuid=car.id, branch_level=2)
+
+
 @dataclass
 class GraphDamageCase:
     name: str
@@ -264,6 +332,42 @@ GRAPH_DAMAGE_CASES = [
         name="edges_after_node_delete",
         check=GraphCheck.EDGES_AFTER_NODE_DELETE,
         damage=_add_edge_after_node_delete,
+        expected_violations=1,
+        scoped_violations=1,
+        included_kinds=["TestCar"],
+        excluded_kinds=["TestPerson"],
+    ),
+    GraphDamageCase(
+        name="agnostic_attribute_edges_off_global_branch",
+        check=GraphCheck.ATTRIBUTE_EDGE_BRANCH,
+        damage=_mark_attribute_agnostic_without_moving_edges,
+        expected_violations=1,
+        scoped_violations=1,
+        included_kinds=["TestCar"],
+        excluded_kinds=["TestPerson"],
+    ),
+    GraphDamageCase(
+        name="aware_attribute_edges_on_global_branch",
+        check=GraphCheck.ATTRIBUTE_EDGE_BRANCH,
+        damage=_move_aware_attribute_edges_to_global,
+        expected_violations=1,
+        scoped_violations=1,
+        included_kinds=["TestCar"],
+        excluded_kinds=["TestPerson"],
+    ),
+    GraphDamageCase(
+        name="agnostic_attribute_global_edges_without_branch_level",
+        check=GraphCheck.ATTRIBUTE_EDGE_BRANCH,
+        damage=_agnostic_attribute_global_edges_without_branch_level,
+        expected_violations=1,
+        scoped_violations=1,
+        included_kinds=["TestCar"],
+        excluded_kinds=["TestPerson"],
+    ),
+    GraphDamageCase(
+        name="agnostic_attribute_global_edges_with_branch_level_2",
+        check=GraphCheck.ATTRIBUTE_EDGE_BRANCH,
+        damage=_agnostic_attribute_global_edges_with_branch_level_2,
         expected_violations=1,
         scoped_violations=1,
         included_kinds=["TestCar"],
@@ -403,6 +507,32 @@ class TestVerifyGraph:
         )
 
         assert await collect_graph_violations(db=db, kinds=["TestCar"]) == []
+
+    @pytest.mark.parametrize("branch_level", [None, 0, 2], ids=["missing", "zero", "branch"])
+    async def test_global_branch_edges_are_reported_for_their_branch_level(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        car_person_schema: SchemaBranch,
+        person_john_main: Node,
+        car_accord_main: Node,
+        branch_level: int | None,
+    ) -> None:
+        """A branch-agnostic attribute stored on the global branch still has to carry branch_level 1.
+
+        The edges are on the branch the attribute's branch support asks for, so the violation has to name
+        the level rather than the branch. A missing property is included: `branch_level <> 1` alone
+        evaluates to NULL for it and the row is dropped.
+        """
+        await _make_attribute_agnostic_on_global_branch(db=db, node_uuid=car_accord_main.id, branch_level=1)
+        assert await collect_graph_violations(db=db, kinds=["TestCar"]) == []
+
+        await _make_attribute_agnostic_on_global_branch(db=db, node_uuid=car_accord_main.id, branch_level=branch_level)
+
+        violations = await collect_graph_violations(db=db, kinds=["TestCar"])
+        assert [violation.check for violation in violations] == [GraphCheck.ATTRIBUTE_EDGE_BRANCH]
+        assert f"branch_level={branch_level!r}" in violations[0].message
+        assert "expected branch_level 1" in violations[0].message
 
     async def test_every_check_runs_and_all_violations_are_reported(
         self,

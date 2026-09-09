@@ -8,9 +8,19 @@ Git workflow and commit conventions for the project.
 
 - **Main branches:** `stable` (production), `develop` (development), `release-*` (releases)
 - **Feature branches:** Create from `develop`, merge back via PR
-- **Bug fixes:** target the oldest branch that needs the fix — `stable` when the bug is in released
-  code and the fix should ship in a patch release, `develop` when the code only exists there or the
-  fix can wait for the next minor
+- **Bug fixes, performance and test-reliability improvements:** target the oldest maintained branch
+  that should ship the change — `stable` when the affected code is released and the change can ship
+  in a patch release, `develop` when the code only exists there or the change can wait for the next
+  minor. A fix that changes observable behavior (which branch an event fires on, a value that is no
+  longer accepted) defaults to `develop` with a changelog fragment — shipping it in a patch release
+  is a deliberate call for an urgent fix, not the default
+- **Repo-tooling/lint/CI-config changes:** target `develop` if the diff also edits runtime source —
+  converting call sites, changing behavior a new lint rule now gates — since what the code emits at
+  runtime changed regardless of how enabling it was triggered. Target `stable` when the diff has no
+  runtime source changes (pure config, docs, CI, test-only).
+- **Wide mechanical churn** (a reformat, a rename sweep): the category rules above yield to conflict
+  cost — land it on the branch where the touched files diverge least from the other main branch, and
+  say so in the PR description, or every forward merge pays for the churn again
 - **Verify the base before cutting:** check that the code the ticket references actually exists on
   the chosen base (`git ls-tree <base> -- <path>`); follow-up tickets often reference modules that
   are only on `develop`
@@ -115,6 +125,18 @@ Add changelog fragments to `changelog/` using Towncrier. Use the `creating-chang
 - What was changed and why
 - Any notable implementation details
 - Testing performed
+
+**Scope to match the change.** A trivial, code-only fix with no behavior change ships as just the
+code diff — no spec-kit design record (`dev/specs/<feature>/`, see
+[Repository Organization](repository-organization.md)), no changelog fragment (see the
+`creating-changelog-entries` skill). Trim both before opening the PR if the workflow that produced
+the change generated them by default.
+
+**A lint- or rule-suppression PR ships the suppression only.** If resolving a lint violation
+(e.g. adding a justified `# noqa`) surfaces a pre-existing behavioral bug in the code you're
+annotating, don't fix the bug in the same PR — keep the diff limited to the annotation and file
+the bug separately. The justification comment may record what you found (see
+[Exception Handling](backend/exceptions.md)), but the fix belongs in its own PR.
 
 ## Critical Rules
 

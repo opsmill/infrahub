@@ -296,14 +296,14 @@ export type BranchCreate = {
 };
 
 export type BranchCreateInput = {
-  /** @deprecated branched_from is set by the server and cannot be provided */
+  /** @deprecated branched_from is set by the server and cannot be provided. Will be removed after version 1.12. */
   branched_from?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
   id?: InputMaybe<Scalars['String']['input']>;
-  /** @deprecated Non isolated mode is not supported anymore */
+  /** @deprecated Non-isolated mode is not supported anymore. Will be removed after version 1.12. */
   is_isolated?: InputMaybe<Scalars['Boolean']['input']>;
   name: Scalars['String']['input'];
-  /** @deprecated Branches can only be created from the default branch */
+  /** @deprecated Branches can only be created from the default branch. Will be removed after version 1.12. */
   origin_branch?: InputMaybe<Scalars['String']['input']>;
   sync_with_git?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -17682,10 +17682,12 @@ export type EdgedProfileIpamNamespace = {
 /**
  * An effective `date_format` value and the source it was resolved from.
  *
- * `value` is a DateFormat key, or null when nothing is set.
+ * `value` is a DateFormat key, or null when nothing is set. `inherited` is what the caller would
+ * fall back to with no override of their own, null when nothing is set for them to inherit.
  */
 export type EffectiveDateFormat = {
   __typename: 'EffectiveDateFormat';
+  inherited: Maybe<DateFormat>;
   source: PreferenceSource;
   value: Maybe<DateFormat>;
 };
@@ -17697,9 +17699,15 @@ export type EffectivePreferencesType = {
   timezone: EffectiveTimezone;
 };
 
-/** An effective `timezone`: the resolved IANA name (null when nothing is set) and its source. */
+/**
+ * An effective `timezone`: the resolved IANA name (null when nothing is set) and its source.
+ *
+ * `inherited` is the IANA name the caller would fall back to with no override of their own, null
+ * when nothing is set for them to inherit.
+ */
 export type EffectiveTimezone = {
   __typename: 'EffectiveTimezone';
+  inherited: Maybe<Scalars['String']['output']>;
   source: PreferenceSource;
   value: Maybe<Scalars['String']['output']>;
 };

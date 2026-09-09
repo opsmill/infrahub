@@ -43,8 +43,15 @@ Application data nodes. Labels: `Node`, `CoreNode`, `{kind}`, plus inherited sch
 | Property | Type | Description |
 |----------|------|-------------|
 | `uuid` | string | UUID |
-| `kind` | string | Node type (also in labels) |
+| `kind` | string | Concrete node kind (also in labels) |
 | `branch_support` | string | `"aware"`, `"local"`, or `"agnostic"` |
+
+The `kind` property always holds the *concrete* kind; generic kinds exist only as labels. A Cypher
+filter on `n.kind` therefore never matches a generic — it silently returns zero rows. Match
+generics via labels, and remember a label-based sum double-counts nodes that inherit several of the
+requested generics. When a query input must be concrete-only, accept `list[NodeSchema]` and derive
+the kind strings internally, so passing a `GenericSchema` fails type-checking instead of returning
+a silent zero at runtime.
 
 ### Relationship
 
@@ -235,6 +242,9 @@ Implementation: `Branch.get_query_filter_path()` in `backend/infrahub/core/branc
 
 Outbound on `n1`, inbound on `n2`.
 
+A node is never its own relationship peer: instance-level self-loops (`n1` = `n2`) are unsupported.
+Same-kind relationships between two distinct nodes are the supported case (the unidirectional form).
+
 ### Node Existence
 
 ```cypher
@@ -282,6 +292,16 @@ For any vertex pair:
 // Adds IS_PART_OF edge (sets to on existing active edge if same branch)
 {status: "deleted", from: $deletion_time, to: NULL}
 ```
+
+### Branch-agnostic fields on branch-aware Nodes
+
+A `branch_support="agnostic"` Attribute or Relationship writes all of its edges on the global branch, which every branch reads. If the field is on a branch-aware Node, then deletion requires special handling because we need to check if the field is still accessible on any branch. If and only if the field is completely inaccessible, we must close the branch-agnostic field's edges on the global branch.
+
+**Rule: every code path that can stop an object being readable must re-evaluate whether its branch-agnostic fields are still retained**, and close their global edges when they are not. This includes direct object deletion, attribute and field remove schema migrations, branch merge, branch rebase, and branch delete. If the branch-agnostic field is not reachable on any branch, then it must be closed. If the field is accessible from any branch, then it must be kept open to make sure that the object is still valid on that branch.
+
+The predicate lives once, in `core/query/agnostic_retention.py` (`UNRETAINED_AGNOSTIC_FIELD_PREDICATE`) — reuse it, don't re-derive it. Current call sites: `Node.delete`, `AttributeRemoveQuery`, `node_relationship_remove`, `DiffMerger.merge_graph`, branch rebase (`core/branch/tasks.py`), branch delete (`core/branch/data_deleter.py`), plus migration `m078` for the pre-existing backlog. Adding a seventh deletion path means adding a seventh call site.
+
+Every call site closes edges on the global branch — that is where the field's edges live. `DiffMerger.merge_graph` is the merge-specific call site: it re-evaluates fields for nodes whose deletions the merge carries to the target and closes their global edges at the merge's `$at`. Schema-removal migrations can make the same global-branch closures during the merge window. That is why merge-failure recovery has to roll back the global branch as well as the target, and why it matches the exact `$at` there rather than the merge-start range it uses on the target branch — see [merge-failure-recovery.md](merge-failure-recovery.md).
 
 ## Attribute Updates
 
@@ -364,15 +384,9 @@ These filters apply to *any* query whose contract mentions "active" or "current"
 
 Neo4j rejects some writes with errors that are safe to replay on a fresh transaction (a lock contention deadlock, or an entity that a concurrent transaction removed mid-statement). Infrahub retries these at the transaction layer with the `retry_db_transaction` decorator.
 
-`retry_db_transaction(name=...)` wraps an `async` method that owns its transaction. On a retriable error it re-runs the whole method after an exponential backoff with jitter, up to `retry_limit` attempts; a non-retriable error propagates immediately. The retriable set is defined by `is_retriable_db_error` in `database/__init__.py`:
+`retry_db_transaction(name=...)` wraps an `async` method that owns its transaction. On a retriable error — `is_retriable_db_error` accepts `TransientError` (deadlock, lock timeout) and `ClientError` with code `Neo.ClientError.Statement.EntityNotFound`, nothing else — it re-runs the whole method after an exponential backoff with jitter, configured by the `INFRAHUB_DB_RETRY_*` settings; a non-retriable error propagates immediately.
 
-| Error | Retriable |
-|-------|-----------|
-| `neo4j.exceptions.TransientError` (deadlock, lock timeout) | Yes |
-| `ClientError` with code `Neo.ClientError.Statement.EntityNotFound` | Yes |
-| Any other exception | No |
-
-Backoff is configured under the `database` settings (`INFRAHUB_DB_RETRY_*` environment variables): `retry_limit`, `retry_base_delay`, `retry_max_delay`, `retry_jitter_max`.
+**A new session escapes the caller's transaction.** `start_transaction()` carries the current session forward, but `start_session()` builds a fresh session straight from the driver — writes made through it commit on their own, whatever transaction the caller holds, so a caller rollback keeps them. Code handed a `db` runs its queries on that `db`; a helper that opens per-task sessions for concurrency must fall back to running sequentially on the caller's `db` when `db.is_transaction`.
 
 **The retry must run at the transaction owner.** A method decorated with `retry_db_transaction` opens the transaction it retries. Code running *inside* that transaction (a query loop, a nested helper) must let a retriable error propagate to the owner rather than catching it and returning a failed result: a caught error still leaves the transaction poisoned, so the commit fails with a non-retryable `TransactionError` and the replay never happens. Only paths that run outside any transaction (they skip the transaction wrapper and have no owner to replay them) record the error as a failure instead. Gate that choice on `db.is_transaction`.
 

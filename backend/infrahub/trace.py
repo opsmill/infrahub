@@ -1,5 +1,9 @@
 import os
+from pathlib import Path
+from typing import Any
 
+import requests
+from grpc import ssl_channel_credentials
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
     OTLPSpanExporter as GRPCSpanExporter,
@@ -54,25 +58,59 @@ def add_span_exception(exception: Exception) -> None:
         current_span.record_exception(exception)
 
 
+class InsecureTLSSession(requests.Session):
+    """Session that never verifies TLS certificates, overriding any per-request `verify` value."""
+
+    def merge_environment_settings(self, *args: Any, **kwargs: Any) -> Any:
+        settings = super().merge_environment_settings(*args, **kwargs)
+        settings["verify"] = False
+        return settings
+
+
+def create_span_exporter(
+    exporter_type: str,
+    insecure: bool,
+    tls_insecure: bool,
+    exporter_endpoint: str | None = None,
+    exporter_protocol: str | None = None,
+    tls_ca_bundle: str | None = None,
+) -> SpanExporter:
+    if exporter_type == "console":
+        return ConsoleSpanExporter()
+    if exporter_type != "otlp":
+        raise ValueError("Exporter type unsupported by Infrahub")
+    if not exporter_endpoint:
+        raise ValueError("Exporter type is set to otlp but endpoint is not set")
+    if exporter_protocol == "http/protobuf":
+        session = InsecureTLSSession() if tls_insecure else None
+        return HTTPSpanExporter(endpoint=exporter_endpoint, certificate_file=tls_ca_bundle, session=session)
+    if exporter_protocol == "grpc":
+        if tls_ca_bundle:
+            # A CA bundle is only meaningful over TLS, so it overrides the plaintext default.
+            credentials = ssl_channel_credentials(root_certificates=Path(tls_ca_bundle).read_bytes())
+            return GRPCSpanExporter(endpoint=exporter_endpoint, insecure=False, credentials=credentials)
+        return GRPCSpanExporter(endpoint=exporter_endpoint, insecure=insecure)
+    raise ValueError("Exporter protocol unsupported by Infrahub")
+
+
 def create_tracer_provider(
     service: str,
     version: str,
     exporter_type: str,
     exporter_endpoint: str | None = None,
     exporter_protocol: str | None = None,
+    insecure: bool = True,
+    tls_insecure: bool = False,
+    tls_ca_bundle: str | None = None,
 ) -> TracerProvider:
-    # Create a BatchSpanProcessor exporter based on the type
-    if exporter_type == "console":
-        exporter: SpanExporter = ConsoleSpanExporter()
-    elif exporter_type == "otlp":
-        if not exporter_endpoint:
-            raise ValueError("Exporter type is set to otlp but endpoint is not set")
-        if exporter_protocol == "http/protobuf":
-            exporter = HTTPSpanExporter(endpoint=exporter_endpoint)
-        elif exporter_protocol == "grpc":
-            exporter = GRPCSpanExporter(endpoint=exporter_endpoint)
-    else:
-        raise ValueError("Exporter type unsupported by Infrahub")
+    exporter = create_span_exporter(
+        exporter_type=exporter_type,
+        insecure=insecure,
+        tls_insecure=tls_insecure,
+        exporter_endpoint=exporter_endpoint,
+        exporter_protocol=exporter_protocol,
+        tls_ca_bundle=tls_ca_bundle,
+    )
 
     extra_attributes = {}
     if os.getenv("OTEL_RESOURCE_ATTRIBUTES"):
@@ -100,6 +138,9 @@ def configure_trace(
     exporter_type: str,
     exporter_endpoint: str | None = None,
     exporter_protocol: str | None = None,
+    insecure: bool = True,
+    tls_insecure: bool = False,
+    tls_ca_bundle: str | None = None,
 ) -> None:
     # Create a trace provider with the exporter
     tracer_provider = create_tracer_provider(
@@ -108,6 +149,9 @@ def configure_trace(
         exporter_type=exporter_type,
         exporter_endpoint=exporter_endpoint,
         exporter_protocol=exporter_protocol,
+        insecure=insecure,
+        tls_insecure=tls_insecure,
+        tls_ca_bundle=tls_ca_bundle,
     )
 
     # Register the trace provider

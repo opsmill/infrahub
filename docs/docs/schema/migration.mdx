@@ -53,6 +53,8 @@ The default value is `state: present` and doesn't have to be provided on all ele
 
 :::
 
+Removing a branch-agnostic attribute or relationship this way releases its value without deleting any object, as long as no branch can still read the objects that hold it. See [Branch-agnostic data](../branches/branch-agnostic-data.mdx).
+
 ## Remove existing text field values
 
 Removing an existing value for a text field of a schema node, like `description` or `label`, can be performed by specifying

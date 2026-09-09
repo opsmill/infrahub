@@ -89,7 +89,7 @@ infrahub-testcontainers = { path = "python_testcontainers", editable = true }
 [dependency-groups]
 dev = [
     "yamllint",
-    "mypy>=1.15,<1.16",
+    "mypy>=2.3,<2.4",
     "ipython>=8,<9",
     "pytest-asyncio>=1.3,<1.4",
     "pytest-clarity>=1.0,<1.1",
@@ -568,6 +568,9 @@ ignorelist = [
     "property",
     "type",
 ]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"infrahub.workflows.initialization.setup_task_manager".msg = "The raw setup belongs to the application's own startup. Tests use tests.helpers.task_manager.setup_task_manager_once(), which runs it once per Prefect server and bounds it with a timeout."
 
 [tool.ruff.lint.isort]
 known-first-party = ["infrahub"]

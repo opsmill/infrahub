@@ -1,1 +1,0 @@
-Added graph path traversal feature with visual topology explorer. Users can discover paths between any two nodes, find dependencies from a source node, filter by kind and namespace, and explore the graph interactively with React Flow visualization.

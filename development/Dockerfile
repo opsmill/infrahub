@@ -2,7 +2,7 @@
 # ****************************************************************
 # STAGE : Base Python Image (build-time toolchain)
 # ****************************************************************
-ARG PYTHON_VER=3.14.3
+ARG PYTHON_VER=3.14.7
 ARG NODE_VER=24.15.0
 ARG UV_VER
 FROM docker.io/python:${PYTHON_VER}-slim AS base

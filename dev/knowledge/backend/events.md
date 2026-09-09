@@ -25,6 +25,14 @@ All events extend `InfrahubEvent` from `backend/infrahub/events/models.py` and c
 - **related**: Additional context resources (returned by `get_related()`)
 - **payload**: Event-specific data (returned by `get_event_payload()`)
 
+### Sensitive values are masked only at construction
+
+The changelog models (`backend/infrahub/core/changelog/models.py`) mask `Password`/
+`HashedPassword` attribute values to `***` in a `model_validator(mode="after")` — which runs only
+when the model is constructed. Assigning `value`/`value_previous` on an existing instance bypasses
+the mask (`validate_assignment` is not enabled) and leaks the secret into the event payload. Build
+changelog entries with their final values; never patch them after construction.
+
 ### Related resources cap
 
 The Prefect API rejects any event whose `related` list exceeds
@@ -91,6 +99,8 @@ InfrahubEventService.send(event)
                    │
                    └──► emit_event() → Prefect Automations
 ```
+
+For example, `BranchDeletedEvent` drives the `branch-deleted-purge-tasks-trigger` automation, which runs the `branch-purge-tasks` flow to delete the deleted branch's settled flow runs so their completed tasks no longer surface on a same-named recreation (see [Asynchronous Tasks](async-tasks.md)).
 
 ## Trigger action parameters
 

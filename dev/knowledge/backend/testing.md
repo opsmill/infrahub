@@ -111,6 +111,12 @@ async def test_query_performance(aio_benchmark, db):
     await aio_benchmark(expensive_query, db=db)
 ```
 
+**The benchmark's input must actually exercise what it claims to measure.** When a performance
+change is conditional on a specific input shape (a particular field selection, a branch of an
+`if`, a fast path), add or update a benchmark whose input takes that path. A benchmark that takes a
+different path measures the neighbour instead and honestly reports "no change" — so on a perf PR,
+check that the input drives the changed code before reading anything into the result, either way.
+
 ### Query Benchmark Tests (`backend/tests/query_benchmark/`)
 
 Dedicated database query performance testing. Measures query execution time and efficiency using database snapshots for comparison.
@@ -180,6 +186,28 @@ Two consequences worth remembering:
 - Test ordering under `--dist loadscope` (set in `addopts`) is not stable across pytest-xdist
   releases — scopes are sorted largest-first, so which modules run concurrently can change on an
   upgrade. Tests must not depend on what else is or is not running.
+
+### One process, several Prefect servers
+
+A test process does not keep one Prefect server. The session-scoped `prefect_test_fixture` starts
+an ephemeral one for the whole session, and the `prefect` (module) and `prefect_class` (class)
+fixtures start a **container of their own** and re-point `PREFECT_API_URL` at it for that scope.
+Each orchestration client a test builds reads the setting when it is built, so it follows.
+
+Prefect's background queue services do not. `EventsWorker` and `APILogWorker` are process-wide
+`QueueService` singletons, memoized on `hash((cls, *args))`, and `EventsWorker.instance()` passes
+no API URL in that key; the websocket and orchestration clients it builds in `_lifespan` read
+`PREFECT_API_URL` once. Left alone it therefore stays bound to the first server of the process,
+and every event after that goes to a server the process has moved off — silently while that server
+is up, then as a wall of `Service 'EventsWorker' failed to process item` once it is torn down. The
+backlog is expensive too: a stale queue drains at about one event per 60s client request timeout,
+and `prefect_test_harness` ends the session in `drain_workers()`, which blocks with no timeout.
+
+`prefect` and `prefect_class` handle this through `prefect_api_target()` from
+`tests/helpers/prefect_services.py`, which drains the queue services on **both** sides of the
+change of server: on the way in while the old URL still resolves, so queued items reach the server
+they were meant for, and on the way out before the new container is stopped. Anything else that
+re-points `PREFECT_API_URL` must go through it rather than calling `temporary_settings` directly.
 
 Within a single module or class, however, pytest runs tests in definition order and
 `--dist loadscope` keeps the whole scope on one worker — so the sequential, stateful `test_stepNN`
@@ -263,6 +291,7 @@ Test data and fixture files:
 | `test_client.py` | HTTP test client wrapper |
 | `utils.py` | Container utilities |
 | `constants.py` | Port numbers, image names |
+| `prefect_services.py` | Rebinds Prefect's process-wide queue services when the test process changes Prefect server (`prefect_api_target`). See [One process, several Prefect servers](#one-process-several-prefect-servers). |
 | `file_repo.py` | Builds throwaway on-disk Git "remote" repos from `repos/` fixtures (`FileRepo`). The remotes accept pushes to their checked-out branch, so tests exercise push and write-back like a hosted remote would. |
 
 ### Test Data (`backend/tests/test_data/`)
@@ -299,7 +328,10 @@ Container (session)
 
 ### Schema Fixtures
 
-**Always prefer existing schema fixtures** over creating new ones. The codebase provides several reusable schema fixtures in `backend/tests/conftest.py`:
+Registered schemas come from fixtures in `backend/tests/conftest.py`. Derive a variant the way
+`dev/guidelines/backend/testing.md` §"Test Schemas" prescribes for the `tests/helpers/schema/`
+constants: `deepcopy` the unregistered fixture, never edit a shared one, and promote to
+`conftest.py` only what several modules need.
 
 | Fixture | Description |
 |---------|-------------|
@@ -311,66 +343,11 @@ Container (session)
 
 When several tests share an expensive schema/data load, group them in a class and use the
 `_scope_class` variant with `@pytest.fixture(scope="class")` fixtures for the data; methods run in
-definition order and may build on accumulated state. See `TestNumberPoolAllocation` in
-`backend/tests/component/core/resource_manager/test_number_pool.py`.
+definition order and may build on accumulated state.
 
-**When to use existing fixtures:**
-
-```python
-# GOOD: Use existing fixture directly
-async def test_my_feature(db: InfrahubDatabase, car_person_schema: SchemaBranch):
-    # car_person_schema provides TestCar, TestPerson with relationships
-    ...
-```
-
-**When you need additional schema elements:**
-
-1. **Live update within the test** - Use `deepcopy` to modify an unregistered schema fixture:
+JSON schemas under `backend/tests/fixtures/schemas/` load through the test helper:
 
 ```python
-from copy import deepcopy
-
-async def test_with_custom_constraint(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    car_person_schema_unregistered: SchemaRoot,
-):
-    # Copy and modify the schema
-    custom_schema = deepcopy(car_person_schema_unregistered)
-    custom_schema.nodes[0].uniqueness_constraints = [["name__value", "color__value"]]
-
-    # Register the modified schema
-    registry.schema.register_schema(schema=custom_schema, branch=default_branch.name)
-    ...
-```
-
-2. **Update the base fixture** - If the modification is broadly useful, add it to `backend/tests/conftest.py`:
-
-```python
-# In conftest.py - add a new reusable fixture
-@pytest.fixture
-async def car_person_schema_with_extra_attr(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
-) -> SchemaBranch:
-    schema = deepcopy(car_person_schema_unregistered)
-    schema.nodes[0].attributes.append(
-        AttributeSchema(name="year", kind="Number", optional=True)
-    )
-    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
-```
-
-**Avoid:**
-
-- Creating inline schema dictionaries when existing fixtures suffice
-- Duplicating schema definitions across test files
-- Defining schemas in test files that could be shared fixtures
-
-**Schema files in `backend/tests/fixtures/schemas/`:**
-
-For JSON-based schemas, use the helper methods:
-
-```python
-# Load schema from fixtures directory
 schema_dict = helper.schema_file("infra_simple_01.json")
 await client.schema.load(schemas=[schema_dict])
 ```
@@ -416,8 +393,6 @@ async def test_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
     assert "expected message" in caplog.text
 ```
 
-This matches the pattern used in `test_webhook_header.py` and `test_models.py`.
-
 ### Prefect Server State Outlives the Test Class
 
 The Prefect test server is session-scoped — one per xdist worker — while the database and the
@@ -432,9 +407,68 @@ it. Two rules follow:
   comparison saturates and can never be true again. Read newest-first
   (`FlowRunSort.EXPECTED_START_TIME_DESC`) and identify the run by its id or parameters instead.
 
+### A Component Test Process Talks to Two Prefect Servers
+
+There is no single "the Prefect server" in a component test process. Two fixtures each provide one,
+and which is current depends on the fixtures the test asked for:
+
+| Fixture | Scope | Server |
+|---------|-------|--------|
+| `prefect_test_fixture` (autouse, `component/conftest.py`) | session | ephemeral `prefect_test_harness` subprocess |
+| `prefect` (`tests/conftest.py`) | **module** | `prefect_container`, via a `temporary_settings` override of `PREFECT_API_URL` |
+
+The `prefect` override lasts only as long as the module that requested it. A test that does not
+depend on `prefect` therefore falls back to the harness server, even in a process where the
+container is running — `component/api/conftest.py::workflow_local` and
+`TestInfrahubApp.workflow_local` sit on opposite sides of this line.
+
+**Tests register the task manager through `setup_task_manager_once()`, never the raw
+`setup_task_manager()`.** The raw call redoes every block, worker pool, deployment and builtin
+trigger against the current server with no timeout of its own; under CI load it hangs until
+pytest-timeout kills the whole class. The helper runs the registration once per server, bounded,
+and fails fast for that server afterwards. It remembers a timed-out server the moment its ceiling is
+hit, before cancelling the registration: Prefect answers the cancellation with a shielded Crashed
+state write to the same server, which against a wedged one blocks for minutes, so the helper does
+not wait for it.
+
+**Never memoize server-side registration per process.** The registration goes to whichever server is
+current, so a process-wide "already done" flag lets the first server's setup satisfy fixtures pointing
+at the second, which then has no deployments and fails far from the cause. The helper keys its memo
+on `get_current_settings().api.url`; anything else cached against a Prefect server needs the same key.
+
+### Swapping the Workflow Adapter for a Test Double
+
+Swap a workflow double in through `tests/helpers/workflow_override.py::override_workflow`, which
+sets both places a lookup can come from — `config.OVERRIDE.workflow` and the `build_workflow`
+override in the dependency provider — and puts the *previous* values back in a `finally`. Swap any
+other dependency through `tests/helpers/dependency_override.py::override_dependency`, which does the
+same for one provider entry.
+
+Do not reach for `dependency_provider.scope` in new code. It pops its override instead of restoring
+the one it replaced, and it pops only when the block ends normally, so an exception thrown through
+it — a `pytest.raises` around the call under test included — leaves the double installed for the
+rest of the xdist worker process. Per-test `scope()` calls still exist across the suite and the
+guard below covers what they leak, but a fixture at class scope or wider outlives that guard, so a
+swap at that scope has to use the helpers.
+
+That is worth recognising in CI, because the failure surfaces far from its cause: the next class on
+the worker whose app resolves its workflow before its own override is in place starts with a
+`WorkflowRecorder`, and every one of its tests errors at `client` setup with `These tests are
+currently meant to run with a local worker`. Which class that is depends on how xdist split the
+suite, so the victim moves between runs while the message stays the same. A function-scoped autouse
+fixture in `tests/conftest.py` now fails the test that leaves an override behind and puts the
+provider back, so a leak is attributed to its source instead.
+
+The app built by `test_client` resolves its workflow once, during `lifespan`, so the order the
+fixtures run in decides what the app gets. pytest orders autouse fixtures by name, which is not a
+thing to rely on: declare the order instead. `TestInfrahubApp.service` takes `workflow_local` as a
+parameter so the app is built under it, and a class that installs a second double on top — a
+recorder it wants the test body to see — takes `service` as a parameter so it takes over only once
+the app is built.
+
 ### Functional Tests with `TestInfrahubApp`
 
-`TestInfrahubApp` provides a `memory_cache` fixture (class-scoped) that injects a `MemoryCache` via `dependency_provider.scope(build_cache, ...)`. Use it in functional tests to pre-fill and assert on cache state:
+`TestInfrahubApp` provides a class-scoped `memory_cache` fixture that injects a `MemoryCache`. Use it in functional tests to pre-fill and assert on cache state:
 
 ```python
 from tests.helpers.test_app import TestInfrahubApp

@@ -36,7 +36,7 @@ mutate_create()
                       -> add_human_friendly_id()
                       -> add_display_label()
                       -> NodeCreateAllQuery  # bulk Neo4j insert
-            -> handle_template_relationships()  # recursive template instantiation
+            -> handle_template_relationships()  # template instantiation, read a level at a time
        -> apply profiles if applicable
   -> emit NodeCreatedEvent
 ```
@@ -82,6 +82,25 @@ mutate_upsert()
             -> handle file idempotency (checksum comparison)
 ```
 
+## Transaction Retry
+
+`retry_db_transaction` (in `backend/infrahub/database/__init__.py`) replays the *entire* wrapped
+function when Neo4j raises a `TransientError` — or a `ClientError` coded
+`Neo.ClientError.Statement.EntityNotFound`. Its placement is therefore semantics-bearing, not
+decoration:
+
+- Wrap only a scope whose writes are fully contained in a transaction the retry can roll back. The
+  create path is the trap: `create_node()` commits its own transaction and then does post-commit
+  work (profiles, response reads), so a decorator on the whole mutation replays a commit that
+  already succeeded and creates a duplicate node. The update path keeps its response build inside
+  `db.start_transaction()`, which is what makes it replay-safe.
+- Skip the retry when `db.is_transaction` — a caller-supplied transaction is already failed after a
+  `TransientError`, and replaying inside it raises instead of recovering; the caller owns the retry.
+- Check whether an already-retried caller reaches the code: nested retries multiply attempts.
+  Upsert is the case to watch, and today it is safe — it reaches only the undecorated
+  `mutate_create` and `_call_mutate_update`, never the decorated `mutate_update`, so it is the
+  single retry point. Routing it through a decorated method would start multiplying attempts.
+
 ## Relationship Resolution During Mutations
 
 ### RelationshipManager.update()
@@ -125,12 +144,56 @@ After resolution, `save()` reconciles local state with the database:
 - Peer only in local: create new relationship in DB
 - Peer only in DB: delete orphaned relationship
 
+### When the peers are read from the database
+
+One mutation applies the payload, checks the constraints and saves, and each of those steps
+compares the local relationships against the stored peers. The comparison is recomputed from the
+peers the manager already read rather than reading them again:
+
+- `fetch_relationship_ids()` reads the peers and records them; `refresh_update_details()` only
+  recomputes the comparison, reading again when the manager has not read under the same conditions
+  or has written to the relationship since. Any write through the manager discards the record.
+- A node that has never been written is not read at all: it cannot have any relationship edge, and
+  creating it writes the edges without going through the manager, so that answer is never recorded.
+- A read with `prefetch_relationships` resolves every relationship in one query, so a relationship
+  that came back without a peer is marked as read too. That read covers the relationships the
+  schemas of the nodes declare, and `NodeManager.prefetch_relationships()` narrows it further to the
+  relationships the caller names — reading a node's every edge would pull in the relationships that
+  point *at* it, such as the objects created from an object template or the nodes using a profile.
+- The peers of a prefetched relationship come back as nodes rather than ids, so a caller that
+  prefetched walks them without reading them back. Applying an object template leans on this: each
+  level of subtemplates arrives with the read of the level above it (see
+  [Object Templates](templates.md)).
+
+### The peers a mutation already holds
+
+A payload names a peer by id, but a caller that already holds the peer can pass the node itself, and
+the mutation then works from it rather than reading it back:
+
+- the grouped uniqueness constraint asks the relationship for the peer id
+  (`RelationshipManager.get_peer_id()`) and reads the peer only when it is named by a
+  human-friendly id or a default filter value, which reading is the only way to resolve;
+- the peer-kind constraint trusts the kind a peer states, and reads only the peers named by an id;
+- the create query reads the peers of a relationship of cardinality many in one call, and only those
+  held by id (`RelationshipManager.read_peers_not_in_hand()`); `Relationship.get_create_data()` then
+  writes the edge from the peer it holds. Before that, the create query batched every peer of such a
+  relationship through `get_peers()`, which reads whatever it is given — a component created from a
+  template read back, once per component, a peer the template read had already brought back.
+
+Passing a node keeps the rest of the payload for that relationship (its source, its owner) only if
+the node replaces the `id` inside it rather than the payload itself.
+
 ## Locking Strategy
 
 1. A preview node is created with `process_pools=False` (no side effects)
 2. Lock names are computed from uniqueness constraints and resource pool fields
 3. `InfrahubMultiLock` acquired before the transaction
 4. Actual mutation runs inside the lock
+
+The update path builds its preview by reading the node and applying the payload through
+`apply_payload_for_lock_names()`, which leaves the stored peers unread: the relationship lock names
+come from the peers the payload sets. The node itself is still read, because the uniqueness
+constraint hashes cover attributes the payload may not carry.
 
 ## Key Files
 

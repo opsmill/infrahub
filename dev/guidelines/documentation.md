@@ -97,7 +97,7 @@ agents with a job to finish.
 - Link to topic/explanation docs for background information (in guides)
 - Link to guides for task instructions (in topics)
 - Define technical terms on first use
-- Before citing a specific test as verifying a scenario (a spec table, a status doc), confirm that test function actually exists in the change or repo — label not-yet-written coverage as planned/unverified instead of naming a test that isn't there
+- Before citing a concrete name — a test function, a flow or automation's registered name, a config key, a file path — grep for it and copy it verbatim: a near-miss name sends the reader (and every grep) to nothing. Label not-yet-written coverage as planned/unverified instead of naming a test that isn't there
 
 ### Don't
 
@@ -115,6 +115,7 @@ agents with a job to finish.
 - Focus on "how to" instead of "how it works" (in topics)
 - Reference Jira tickets, GitHub issues, PR numbers, or spec files as the reason for a rule — describe the underlying behavior or constraint instead. These rot once the item closes and the spec is forgotten, and a reader can't verify a closed reference the way a reviewer could at review time. Work-item IDs belong in commit messages, PR descriptions, and changelog fragments; track a significant architectural decision in `dev/adr/` (see `dev/adr/README.md`) instead, written as a self-contained Context/Decision/Consequences record independent of the spec that prompted it
 - Cite a `file.py:123` or `file.py:100-140` line location — reference the module path and symbol only (`some/module.py::SomeClass`). A symbol reference survives the code moving within a file or being renamed at the call site; a line number does not, and a spec's own line-numbered citations routinely rot before the feature it describes even merges
+- Reference another step by its number ("see step 4") — numbering shifts when a step is added or removed; name the action instead ("after restarting the workers")
 
 ## Documentation Workflow
 

@@ -87,6 +87,7 @@ from infrahub_sdk import InfrahubClient
 - Use relative paths for internal documentation links
 - All documentation URLs should be relative (not absolute)
 - When referencing Infrahub source files (models, sample scripts), link the file on GitHub (`https://github.com/opsmill/infrahub/blob/stable/<path>`); never cite a bare repo path — docs readers have no checkout
+- Never route a relative link through a repo symlink (the root `specs` is a symlink to `dev/specs`) — GitHub's renderer does not follow symlinks, so the link 404s on the web UI even though it resolves in a checkout; link the real path
 
 ```markdown
 <!-- ✅ Good -->

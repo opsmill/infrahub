@@ -163,6 +163,14 @@ class Registry:
 
         raise BranchNotFoundError(identifier=branch)
 
+    def refresh_cached_branch(self, branch: Branch) -> None:
+        """Replace this worker's cached copy of a branch, when it already holds one.
+
+        Do not create, which requires schema loading.
+        """
+        if branch.name in self.branch:
+            self.branch[branch.name] = branch
+
     async def get_branch(
         self,
         db: InfrahubDatabase,

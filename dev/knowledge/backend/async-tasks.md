@@ -95,6 +95,14 @@ async def validate_schema(db: InfrahubDatabase, branch: Branch) -> bool:
     # ... implementation
 ```
 
+### InfrahubBatch is concurrent, not ordered
+
+The SDK's `InfrahubBatch` runs everything added to it concurrently when executed — grouping tasks
+into one batch (or into a "phase" of batches) is not a serialization mechanism. When tasks must not
+overlap (e.g. writes touching overlapping vertices whose idempotency guards only protect
+*sequential* reruns), cap the batch's max concurrent execution to 1 or run the items in a plain
+loop.
+
 ## Naming Conventions
 
 ### Workflow and Task Names
@@ -152,6 +160,12 @@ Workflows receive metadata tags for organization and filtering:
 | Database Change | `infrahub.app/database-change` | Flag database-modifying workflows |
 
 Tags come from two moments, and the difference matters: tags present at run creation (the deployment's static tags plus any `tags=` passed to `submit_workflow`) survive for the run's lifetime, while tags added mid-run via `add_tags` are rebuilt from the tags known at flow start, so a later in-flow tag update drops anything another in-flow update added before it. A tag that filtering depends on (the branch tag for branch-filtered task queries, for example) must therefore be passed at submission, not added from inside the flow.
+
+### Branch-tagged runs outlive their branch
+
+Deleting a branch does not remove the flow runs tagged with it; they persist in Prefect. Because the branch tag encodes the branch **name**, a new branch created with the same name would otherwise retrieve the deleted branch's runs in the branch-filtered task query. To prevent this, the `branch-deleted-purge-tasks-trigger` automation reacts to `BranchDeletedEvent` and runs the internal `branch-purge-tasks` flow, which deletes the settled (terminal-state) runs tagged with the branch. The purge is best-effort, and because it runs after the deletion, runs that were still in flight at delete time have usually settled and are cleaned up as well; runs still executing (the deletion flow itself, for one) keep the tag and are left in place.
+
+Scoping the purge to terminal states, and running it as one reaction to the deletion event, leaves one known gap: `BranchDeletedEvent` also triggers the schema-refresh setup flows (profile refresh, computed attributes, hfid, display labels), which tag themselves with the same branch and can complete after the purge has already run. Those runs linger and can surface on a same-named recreation. Scoping the branch-filtered task query by the branch's stable UUID instead of its name would remove the race, at the cost of tagging and resolving branch UUIDs across every submission site.
 
 ## Execution Flow
 
@@ -322,6 +336,8 @@ A write whose only purpose is observability — persisting a Prefect artifact th
 
 Work dispatched *after* an operation has already committed — the recompute and event-send follow-ups after a merge, for example — must not be able to fail or roll back the committed operation. The contract to follow for such work is log-and-continue: catch per item, log the skipped item at exception level so a partial failure is greppable rather than silent, and carry on with the rest of the batch so one failed dispatch never aborts the others. Guaranteeing eventual consistency after a transient dispatch failure is the job of a separate reconciliation/backfill job, not of the best-effort path — do not bolt retries onto it. (Not every post-commit path enforces this yet — the merge recompute does per-item; verify before assuming a given caller isolates failures.)
 
+The same holds for a single side effect inline in a request handler — a telemetry or notification event sent before the response — not only for per-item batch work. Confirm first that the call can fail in a way the caller cares about (see [Exception Handling](../../guidelines/backend/exceptions.md)); if it does need isolating, dispatch it as a background task that runs after the response instead of wrapping it in `try`/`except` in the handler.
+
 ### Transient database errors are retried at the transaction layer, not by task retry
 
 A Prefect task retry re-runs the failed task and by default waits no time between attempts. When a batch of concurrent tasks contend for the same nodes, each deadlocking task retries at the same moment and deadlocks again. Transient database errors therefore belong to the transaction-layer retry (`retry_db_transaction`), which reopens a fresh transaction after an exponential backoff with jitter so contending writers separate; the task-level retry remains the outer fallback. A transaction-owning write path invoked from a task must carry `retry_db_transaction` and let retriable errors reach that owner. See [Database Schema — Transaction Retry](database-schema.md#transaction-retry).
@@ -340,9 +356,27 @@ Because the discriminant is intrinsic to every run, historical runs type correct
 
 ## Liveness and zombie detection
 
-A running flow emits a `prefect.flow-run.heartbeat` event on a fixed interval while it executes. The `crash-zombie-flows` system automation watches for the absence of these events: it keeps a per-run countdown that every expected event restarts, and marks a run `CRASHED` once the countdown lapses. This reaps runs whose worker process died without recording a terminal state, which would otherwise stay `RUNNING` indefinitely.
+A running flow emits a `prefect.flow-run.heartbeat` event on a fixed interval while it executes. The `crash-zombie-flows` system automation watches for the absence of these events and marks a run `CRASHED` once its countdown lapses. This reaps runs whose worker process died without recording a terminal state, which would otherwise stay `RUNNING` indefinitely.
 
-A run waiting out a retry backoff emits nothing while it waits. The retry-wait transition is therefore registered as an expected event, anchoring the countdown at the start of that silence, and the detection window is sized above the longest configured retry backoff so a run waiting between attempts is not mistaken for a dead process. The window is derived from the webhook send retry delay plus a margin rather than hardcoded, so the relationship holds if the backoff changes. A run whose process genuinely died still lapses the window and is crashed, at the cost of the widened detection latency.
+### An event either renews the countdown or ends the watch
+
+A Prefect proactive trigger has two event sets, and they do opposite things. This is the single most important thing to know before editing the trigger, because the two are easy to confuse and the failure mode is silent:
+
+- an event in **`after`** opens or restarts the per-run countdown;
+- an event that is only in **`expect`** *satisfies* the window instead. It pushes the bucket's count to the threshold, so at expiry the proactive `count < threshold` test fails, the action never fires, and the bucket is then deleted. The run is left unwatched until an `after` event opens a new one.
+
+So "expected" does not mean "renews". Ending the watch is the correct outcome only for the terminal states, where the run has finished and must stop being watched. Any other event the trigger expects means the run is still alive, so it must appear in **both** sets. A unit test asserts that the expected set only ever adds terminal states on top of the renewing ones, because getting this wrong disarms detection for the affected run rather than producing an obvious error.
+
+### Retry waits
+
+A run waiting out a retry backoff is silent for the whole wait: the flow engine tears down its heartbeat thread before it sleeps out the delay, and Prefect excludes in-process retries (`empirical_policy.retry_type == "in_process"`) from the worker scheduled-run query, so nothing else reports on the run either. Two consequences:
+
+- The retry-wait transition renews the countdown, anchoring it at the start of the silence it explains, so the whole window is available to the backoff. Were it merely expected, it would end the watch and a run whose process died inside the wait would never be crashed.
+- The window is sized above the longest configured retry backoff so a legitimate wait is not mistaken for a dead process. It is derived from the webhook send retry delay plus a margin rather than hardcoded, so the relationship holds if the backoff changes.
+
+Because a dead in-process retry wait is never re-submitted by a worker, crashing it has no false-positive path: the run has no way forward other than the process that just died. The cost of the widened window is detection latency, not correctness.
+
+Note when reasoning about which events fire: on resume, Prefect renames the state, so the event is `prefect.flow-run.Retrying`, not `...Running`. The client-side return value of a state proposal keeps the locally-proposed name, so it is not a reliable guide to the emitted event.
 
 ## Key Locations
 
@@ -353,6 +387,7 @@ A run waiting out a retry backoff emits nothing while it waits. The retry-wait t
 | Constants & types | `backend/infrahub/workflows/constants.py` |
 | Initialization | `backend/infrahub/workflows/initialization.py` |
 | Branch tasks | `backend/infrahub/core/branch/tasks.py` |
+| Branch task purge | `backend/infrahub/task_manager/flow_run/branch_cleanup.py` |
 | Git tasks | `backend/infrahub/git/tasks.py` |
 | Schema tasks | `backend/infrahub/core/migrations/schema/tasks.py` |
 | System automations | `backend/infrahub/trigger/system.py` |

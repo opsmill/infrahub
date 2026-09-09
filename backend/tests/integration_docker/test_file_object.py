@@ -1,20 +1,64 @@
 from __future__ import annotations
 
+from asyncio import sleep, timeout
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 import yaml
 from infrahub_sdk.schema.main import NodeSchemaAPI
+from infrahub_sdk.task.models import TaskFilter, TaskState
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
+
+from tests.helpers.schema import COLOR
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
+pytestmark = pytest.mark.shard_b
 
-class TestFileObject(TestInfrahubDockerClient):
+QUERY_DISPLAY_LABELS = """
+query {
+    TestingColor {
+        edges {
+            node {
+                id
+                display_label
+            }
+        }
+    }
+}
+"""
+
+
+async def wait_for_all_tasks_to_be_completed(client: InfrahubClient) -> None:
+    async with timeout(120):
+        while (  # noqa: ASYNC110
+            await client.task.count(
+                filters=TaskFilter(state=[TaskState.PENDING, TaskState.RUNNING, TaskState.SCHEDULED])
+            )
+            > 0
+        ):
+            await sleep(1)
+
+
+class TestFileObjectAndDisplayLabelBackfill(TestInfrahubDockerClient):
+    """File-object behaviors and display-label backfill sharing one stack.
+
+    The two groups use disjoint kinds (TestingFileContract/TestingVendor vs TestingColor)
+    and every assertion is scoped to the nodes its own test created.
+
+    The display-label tests must keep their definition order: the repr-fallback assertion
+    only holds while the schema still lacks a display label, before a later test reloads
+    it with one and the backfill rewrites existing nodes.
+    """
+
+    @pytest.fixture(scope="class")
+    def infrahub_version(self) -> str:
+        return "local"
+
     @pytest.fixture(scope="class")
     def schema_file_contract(self) -> dict:
         return yaml.safe_load(Path(CURRENT_DIRECTORY / "test_files/file_contract.yml").read_text(encoding="utf-8"))
@@ -155,3 +199,67 @@ class TestFileObject(TestInfrahubDockerClient):
         await retrieved_vendor.contracts.fetch()
         assert len(retrieved_vendor.contracts.peers) == 1
         assert retrieved_vendor.contracts.peers[0].id == contract.id
+
+    # Display-label backfill: existing nodes get their display_label backfilled after the
+    # schema is updated to add one.
+
+    @pytest.fixture(scope="class")
+    def schema_without_display_label(self) -> dict:
+        schema = COLOR.duplicate()
+        schema.display_label = None
+        return {"version": "1.0", "nodes": [schema.model_dump()]}
+
+    @pytest.fixture(scope="class")
+    def schema_with_display_label(self) -> dict:
+        return {"version": "1.0", "nodes": [COLOR.model_dump()]}
+
+    @pytest.fixture(scope="class")
+    async def color_before(self, client: InfrahubClient, schema_without_display_label: dict) -> str:
+        """Load schema without display_label and create a node."""
+        response = await client.schema.load(schemas=[schema_without_display_label], wait_until_converged=True)
+        assert response.schema_updated
+
+        color = await client.create(kind="TestingColor", name="Red", description="A warm color")
+        await color.save()
+        return color.id
+
+    @pytest.fixture(scope="class")
+    async def color_after(self, client: InfrahubClient, color_before: str, schema_with_display_label: dict) -> str:
+        """Update schema to add display_label and create a second node."""
+        response = await client.schema.load(schemas=[schema_with_display_label], wait_until_converged=True)
+        assert response.schema_updated
+
+        color = await client.create(kind="TestingColor", name="Blue", description="A cool color")
+        await color.save()
+        return color.id
+
+    async def _get_display_labels(self, client: InfrahubClient) -> dict[str, str]:
+        result = await client.execute_graphql(query=QUERY_DISPLAY_LABELS)
+        return {e["node"]["id"]: e["node"]["display_label"] for e in result["TestingColor"]["edges"]}
+
+    async def test_node_created_before_display_label_has_repr(self, client: InfrahubClient, color_before: str) -> None:
+        """A node created without display_label in the schema should fall back to repr()."""
+        await wait_for_all_tasks_to_be_completed(client=client)
+        labels = await self._get_display_labels(client)
+        assert labels[color_before] == f"TestingColor(ID: {color_before})"
+
+    async def test_node_created_after_display_label_has_value(self, client: InfrahubClient, color_after: str) -> None:
+        """A node created after display_label is added should have the correct value."""
+        labels = await self._get_display_labels(client)
+        assert labels[color_after] == "Blue"
+
+    async def test_backfill_updates_preexisting_node(
+        self, client: InfrahubClient, color_before: str, color_after: str
+    ) -> None:
+        """After the async backfill completes, all nodes should have correct display_labels.
+
+        The backfill is asynchronous, so poll the stored display_label until the pre-existing node
+        converges rather than assuming it is set right after the schema load.
+        """
+        labels: dict[str, str] = {}
+        async with timeout(120):
+            while labels.get(color_before) != "Red":
+                await sleep(1)
+                labels = await self._get_display_labels(client)
+        assert labels[color_before] == "Red"
+        assert labels[color_after] == "Blue"

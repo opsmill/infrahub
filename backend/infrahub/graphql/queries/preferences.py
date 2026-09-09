@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from graphene import Field
 
 from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
-from infrahub.core.preferences.models import EffectivePreferences
+from infrahub.core.preferences.models import EffectivePreferences, ResolvedPreference
 from infrahub.core.preferences.permissions import MANAGE_GLOBAL_PREFERENCES_PERMISSION
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.types.preferences import (
@@ -19,11 +19,25 @@ if TYPE_CHECKING:
     from infrahub.graphql.initialization import GraphqlContext
 
 
+def _effective_field(*, resolved: ResolvedPreference[Any], inherited: ResolvedPreference[Any]) -> dict[str, Any]:
+    """Shape one field as the plain dict graphene resolves.
+
+    `inherited` is projected down to its value: a null one means nothing is set to inherit, which is
+    the DEFAULT source it would otherwise report.
+    """
+    return {
+        "value": resolved.value,
+        "source": resolved.source,
+        "inherited": inherited.value,
+    }
+
+
 async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) -> dict:  # noqa: ARG001
     """Resolve the caller's effective preferences (user override → global default → DEFAULT).
 
-    Open to any authenticated caller; the global row is read internally, never exposed as raw org
-    values.
+    Open to any authenticated caller. Every field also carries the layer it shadows, so the
+    organisation's own values are readable here for each field, whether or not the caller overrides
+    it.
     """
     graphql_context: GraphqlContext = info.context
     account_id = graphql_context.active_account_session.account_id
@@ -34,8 +48,10 @@ async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) ->
     preferences = await repository.get_for_owners(owner_ids={account_id, global_id})
     effective = EffectivePreferences(user=preferences.get(account_id), global_=preferences.get(global_id))
     return {
-        "date_format": effective.resolved_date_format(),
-        "timezone": effective.resolved_timezone(),
+        "date_format": _effective_field(
+            resolved=effective.resolved_date_format(), inherited=effective.inherited_date_format()
+        ),
+        "timezone": _effective_field(resolved=effective.resolved_timezone(), inherited=effective.inherited_timezone()),
     }
 
 

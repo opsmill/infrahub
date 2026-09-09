@@ -22,7 +22,14 @@ from pydantic import BaseModel, Field
 
 from infrahub.core import registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
-from infrahub.core.constants import SYSTEM_USER_ID, BranchSupportType, InfrahubKind, MetadataOptions, RelationshipKind
+from infrahub.core.constants import (
+    SYSTEM_USER_ID,
+    BranchSupportType,
+    InfrahubKind,
+    MetadataOptions,
+    RelationshipCardinality,
+    RelationshipKind,
+)
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.metadata.interface import MetadataInterface
@@ -83,6 +90,19 @@ class RelationshipUpdateDetails:
     peer_ids_present_both: list[str]
     peer_ids_present_local_only: list[str]
     peer_ids_present_database_only: list[str]
+
+
+@dataclass
+class DbPeersRead:
+    """The peers a relationship manager read from the database, and the conditions of that read."""
+
+    peers: list[RelationshipPeerData]
+    at: str
+    branch_agnostic: bool
+
+    def is_valid_for(self, at: str, branch_agnostic: bool) -> bool:
+        """Whether a read under these conditions would return the peers recorded here."""
+        return self.at == at and self.branch_agnostic == branch_agnostic
 
 
 @dataclass
@@ -172,17 +192,20 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         return self.peer_id
 
     def get_peer_kind(self) -> str:
-        if not self._peer or isinstance(self._peer, str):
-            return self.schema.peer
-
-        return self._peer.get_kind()
+        peer = self.get_peer_in_hand()
+        return peer.get_kind() if peer is not None else self.schema.peer
 
     def get_concrete_peer_kind(self) -> str | None:
         """Return the peer's concrete kind, or None when only the schema's (possibly generic) peer kind is known."""
-        if self._peer and not isinstance(self._peer, str):
-            return self._peer.get_kind()
+        peer = self.get_peer_in_hand()
+        return peer.get_kind() if peer is not None else self._resolved_peer_kind
 
-        return self._resolved_peer_kind
+    def get_peer_in_hand(self) -> Node | None:
+        """Return the peer as the node it is, or None when this relationship holds only its id."""
+        if self._peer is None or isinstance(self._peer, str):
+            return None
+
+        return self._peer
 
     @property
     def node_id(self) -> str:
@@ -883,6 +906,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
         self._relationships: RelationshipValidatorList = self._get_init_relationships()
         self._relationship_id_details: RelationshipUpdateDetails | None = None
+        self._last_db_peers: DbPeersRead | None = None
         self.has_fetched_relationships: bool = False
         self.lock = asyncio.Lock()
 
@@ -953,7 +977,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
         return self.schema.kind
 
     def __iter__(self) -> Iterator[Relationship]:
-        if self.schema.cardinality == "one":
+        if self.schema.cardinality == RelationshipCardinality.ONE:
             raise TypeError("relationship with single cardinality are not iterable")
 
         if not self.has_fetched_relationships:
@@ -1030,7 +1054,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
         peer_type: type[PeerType] | None = None,  # noqa: ARG002
         raise_on_error: bool = False,
     ) -> Node | PeerType | None:
-        if self.schema.cardinality == "many":
+        if self.schema.cardinality == RelationshipCardinality.MANY:
             raise TypeError("peer is not available for relationship with multiple cardinality")
 
         rels = await self.get_relationships(db=db)
@@ -1040,6 +1064,30 @@ class RelationshipManager[RelationshipManagerPeerType]:
             raise LookupError("Unable to find the peer")
 
         return await rels[0].get_peer(db=db)
+
+    async def get_peer_id(self, db: InfrahubDatabase) -> str | None:
+        """Return the id of the peer of this relationship without reading the peer itself.
+
+        A peer named by a human-friendly id or by a default filter value is still read, as reading it
+        is the only way to know which node it is.
+
+        Raises:
+            TypeError: When the relationship has a cardinality of many.
+
+        """
+        if self.schema.cardinality == RelationshipCardinality.MANY:
+            raise TypeError("peer is not available for relationship with multiple cardinality")
+
+        rels = await self.get_relationships(db=db)
+        if not rels:
+            return None
+
+        peer_id = rels[0].peer_id
+        if peer_id and is_valid_uuid(peer_id):
+            return peer_id
+
+        peer = await rels[0].get_peer(db=db)
+        return peer.get_id() if peer else None
 
     @overload
     async def get_peers(
@@ -1075,6 +1123,29 @@ class RelationshipManager[RelationshipManagerPeerType]:
             branch_agnostic=branch_agnostic,
             include_metadata=include_metadata,
         )
+
+    async def read_peers_not_in_hand(self, db: InfrahubDatabase, branch_agnostic: bool = False) -> None:
+        """Read, in one query, the peers the relationships hold only the id of, and hand each its node.
+
+        A relationship already holding its peer as a node is left as it is: the caller handed the node
+        over, and reading it back is what this avoids. A relationship without a peer id yet, such as one
+        waiting on a resource pool, or naming its peer by a default filter value, is left to
+        `Relationship.resolve()`, which reads it the only way it can be read.
+        """
+        peer_ids = [
+            rel.peer_id
+            for rel in self._relationships
+            if rel.peer_id and is_valid_uuid(rel.peer_id) and rel.get_peer_in_hand() is None
+        ]
+        if not peer_ids:
+            return
+
+        peers = await registry.manager.get_many(
+            db=db, ids=peer_ids, branch=self.branch, branch_agnostic=branch_agnostic
+        )
+        for rel in self._relationships:
+            if rel.get_peer_in_hand() is None and rel.peer_id in peers:
+                rel.set_peer(value=peers[rel.peer_id])
 
     def get_branch_based_on_support_type(self) -> Branch:
         """If the attribute is branch aware, return the Branch object associated with this attribute.
@@ -1124,9 +1195,44 @@ class RelationshipManager[RelationshipManagerPeerType]:
         if not force_refresh and self._relationship_id_details is not None:
             return self._relationship_id_details
 
-        current_peer_ids = [rel.get_peer_id() for rel in self._relationships]
+        if not self.node._existing:
+            # A node that has never been written cannot have any relationship edge in the database.
+            # Creating it writes the edges without going through this manager, so this answer must
+            # not be recorded for reuse: it stops being true as soon as the node is saved.
+            self._last_db_peers = None
+            details = self._compare_with_db_peers(peers=[])
+            self._relationship_id_details = None
+            return details
 
-        peers = await self.get_db_peers(db=db, at=at, branch_agnostic=branch_agnostic)
+        # Resolve the timestamp here rather than leaving it to `get_db_peers`, so that the peers are
+        # recorded under the very timestamp the query read them at.
+        read_at = at or self.at
+        peers = await self.get_db_peers(db=db, at=read_at, branch_agnostic=branch_agnostic)
+        self._last_db_peers = DbPeersRead(peers=peers, at=str(read_at), branch_agnostic=branch_agnostic)
+
+        return self._compare_with_db_peers(peers=peers)
+
+    async def refresh_update_details(
+        self,
+        db: InfrahubDatabase,
+        at: Timestamp | None = None,
+        branch_agnostic: bool = False,
+    ) -> RelationshipUpdateDetails:
+        """Compare the local relationships with the peers last read from the database.
+
+        The peers are read again only when this manager has not read them yet under the same
+        conditions, or when it has written to the relationship since. Use this instead of
+        `fetch_relationship_ids` when the local relationships have changed but the database has
+        not, so that the comparison is recomputed without paying for another read.
+        """
+        last_read = self._last_db_peers
+        if last_read and last_read.is_valid_for(at=str(at or self.at), branch_agnostic=branch_agnostic):
+            return self._compare_with_db_peers(peers=last_read.peers)
+
+        return await self.fetch_relationship_ids(db=db, at=at, branch_agnostic=branch_agnostic, force_refresh=True)
+
+    def _compare_with_db_peers(self, peers: list[RelationshipPeerData]) -> RelationshipUpdateDetails:
+        current_peer_ids = [rel.get_peer_id() for rel in self._relationships]
 
         self.is_from_profile = bool(peers) and all(peer.is_from_profile for peer in peers)
 
@@ -1179,9 +1285,9 @@ class RelationshipManager[RelationshipManagerPeerType]:
     async def get(self, db: InfrahubDatabase) -> Relationship | list[Relationship] | None:
         rels = await self.get_relationships(db=db)
 
-        if self.schema.cardinality == "one" and rels:
+        if self.schema.cardinality == RelationshipCardinality.ONE and rels:
             return rels[0]
-        if self.schema.cardinality == "one" and not rels:
+        if self.schema.cardinality == RelationshipCardinality.ONE and not rels:
             return None
 
         return rels
@@ -1311,6 +1417,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
                 if process_delete:
                     for rel in previous_relationships.values():
                         await rel.delete(db=db, at=update_at, user_id=user_id)
+                    self._last_db_peers = None
                 return True
             return False
 
@@ -1431,6 +1538,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
             at=remove_at,
         )
         await delete_query.execute(db=db)
+        self._last_db_peers = None
 
     async def save(
         self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None
@@ -1440,7 +1548,10 @@ class RelationshipManager[RelationshipManagerPeerType]:
         branch_agnostic = self.schema.branch is BranchSupportType.AGNOSTIC
 
         save_at = Timestamp(at)
-        details = await self.fetch_relationship_ids(db=db, branch_agnostic=branch_agnostic, force_refresh=True)
+        details = await self.refresh_update_details(db=db, branch_agnostic=branch_agnostic)
+        # The writes below make the recorded peers stale. Discard them now, so that a write failing
+        # part-way cannot leave the pre-write snapshot behind for a later comparison.
+        self._last_db_peers = None
         relationship_mapper = ChangelogRelationshipMapper(schema=self.schema)
 
         # If we have previously fetched the relationships from the database
@@ -1487,6 +1598,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
         relationship_mapper = ChangelogRelationshipMapper(schema=self.schema)
 
         await self._fetch_relationships(at=delete_at, db=db, force_refresh=True)
+        self._last_db_peers = None
 
         for rel in await self.get_relationships(db=db):
             relationship_mapper.delete_relationship(
@@ -1500,7 +1612,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
         self, db: InfrahubDatabase, fields: dict | None = None, related_node_ids: set | None = None
     ) -> dict | None:
         # NOTE Need to investigate when and why we are passing the peer directly here, how do we account for many relationship
-        if self.schema.cardinality == "many":
+        if self.schema.cardinality == RelationshipCardinality.MANY:
             raise TypeError("to_graphql is not available for relationship with multiple cardinality")
 
         relationships = await self.get_relationships(db=db)

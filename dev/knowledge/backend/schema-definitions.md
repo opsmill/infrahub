@@ -41,7 +41,7 @@ core_standard_webhook = NodeSchema(
 | `name` | `str` | *required* | Relationship name (lowercase, 3-64 chars) |
 | `peer` | `str` | *required* | Kind of the peer object (e.g., `InfrahubKind.KEYVALUE`) |
 | `kind` | `RelationshipKind` | `GENERIC` | Relationship type (see below) |
-| `identifier` | `str \| None` | `None` | Unique identifier; auto-generated if omitted |
+| `identifier` | `str \| None` | `None` | Names the shared relationship edge; auto-generated if omitted. Not unique within a node schema, see Direction |
 | `cardinality` | `RelationshipCardinality` | `MANY` | `ONE` or `MANY` |
 | `optional` | `bool` | `True` | Whether the relationship is mandatory |
 | `order_weight` | `int \| None` | `None` | Frontend display ordering (lower = first) |
@@ -54,7 +54,7 @@ core_standard_webhook = NodeSchema(
 | `on_delete` | `RelationshipDeleteBehavior \| None` | `None` | `None` (no-action) or `cascade` |
 | `allow_override` | `AllowOverrideType` | `ANY` | Whether inheriting nodes can override this relationship |
 | `read_only` | `bool` | `False` | Prevents user modification |
-| `deprecation` | `str \| None` | `None` | Deprecation message shown to users |
+| `deprecation` | `str \| None` | `None` | Deprecation message shown to users; name the version after which the field is removed (applies to GraphQL `deprecation_reason` too) |
 | `common_parent` | `str \| None` | `None` | Constrains peer's parent to match this object's parent |
 | `common_relatives` | `list[str] \| None` | `None` | Peer relationships that must share the same set of peers |
 
@@ -71,13 +71,26 @@ When wiring a new cascade, inspect every schema for a mandatory relationship tha
 | `GENERIC` | Standard association between nodes |
 | `ATTRIBUTE` | Peer is semantically part of the parent (e.g., headers on a webhook) |
 | `COMPONENT` | Triggers template generation for the peer (see [Object Templates](templates.md)) |
-| `PARENT` | Hierarchical parent-child relationship |
+| `PARENT` | Marks the peer as the owning parent of this node |
 | `GROUP` | Group membership |
+| `HIERARCHY` | The generated `parent` / `children` pair on a hierarchical node |
+| `PROFILE` | Links a node to its profile |
+| `TEMPLATE` | Links an instance to the object template it came from |
 
 ### Direction
 
 - **`BIDIR`** (default) — traversable both ways. Use when peers are different kinds.
 - **`OUTBOUND`** / **`INBOUND`** — needed when the same model appears on both sides (self-referencing relationships).
+
+Both sides of one relationship share a single `identifier`, so it is not unique within a node
+schema. A hierarchical node carries two relationships under the identifier `parent__child`
+(`PARENT_CHILD_IDENTIFIER` in `core/constants/schema.py`): `parent` (`OUTBOUND`, cardinality
+`ONE`) and `children` (`INBOUND`, cardinality `MANY`). Both come from
+`SchemaBranch.add_hierarchy_node()` and `add_hierarchy_generic()`.
+
+`get_relationship_by_identifier()` therefore cannot resolve a hierarchy. It returns whichever side
+is declared first. Use `get_relationships_by_identifier()` instead and select the side whose
+`direction` equals the local relationship's `direction.neighbor_direction`.
 
 ### Branch Support Auto-Determination
 

@@ -21,11 +21,13 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import MergeConflictsUnresolvedError
-from infrahub.workers.dependencies import build_cache, build_database, build_event_service, build_workflow
+from infrahub.workers.dependencies import build_cache, build_database, build_event_service
 from tests.adapters.cache import MemoryCache
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema import load_schema
+from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
     from fast_depends import Provider
@@ -107,10 +109,10 @@ async def test_merge_conflicts_when_a_self_attribute_input_changes_on_each_side(
     # Each side recomputed the summary to a different value, so the merge's conflict gate blocks it
     # rather than committing a value that reflects only one of the two edits.
     with (
-        dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
-        dependency_provider.scope(build_event_service, lambda: event_recorder),
-        dependency_provider.scope(build_workflow, lambda: workflow_recorder),
-        dependency_provider.scope(build_cache, lambda: cache),
+        override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
+        override_dependency(build_event_service, lambda: event_recorder, dependency_provider=dependency_provider),
+        override_workflow(workflow_recorder, dependency_provider=dependency_provider),
+        override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
         pytest.raises(
             MergeConflictsUnresolvedError,
             match=r"^Unable to merge the branch 'two-sided-self', conflict resolution missing:.*summary/value",

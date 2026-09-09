@@ -1,0 +1,1 @@
+Added the `infrahub db reset` command to delete all data from the graph database and the task manager database, resetting whichever of the two the current environment is configured for, for example to start over on a development or test deployment without recreating the containers.

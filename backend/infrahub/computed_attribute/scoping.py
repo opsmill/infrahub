@@ -5,7 +5,9 @@ per kind, the attribute/relationship names that changed). Each computed attribut
 declares the schema elements its value reads (its dependency set). Recompute is
 needed for an attribute only when its dependency set intersects the changed-element
 set, when its own definition changed, or when its dependencies cannot be determined
-precisely (the conservative "depends on everything" case).
+precisely (the conservative "depends on everything" case). Imprecision can also be
+held per kind, where any change to that one kind counts and the rest of the dependency
+set is still filtered on names.
 
 The decision is pure: it reads only the structures passed in and performs no
 database or network access, so it is unit-testable in isolation.
@@ -67,6 +69,10 @@ class DependencySet:
     kind plus the attribute's own name are always part of the set so an edit to the
     attribute's own definition triggers recompute. ``depends_on_everything`` marks
     the conservative case where the read set cannot be determined precisely.
+
+    ``imprecise_kinds`` holds the kinds read through a derived field such as the hfid,
+    whose backing fields cannot be named: any change to one of those kinds counts,
+    while every other kind is still filtered on its own read field names.
     """
 
     owner_kind: str
@@ -74,6 +80,7 @@ class DependencySet:
     kind: ComputedAttributeKind
     read_kinds: frozenset[str] = frozenset()
     read_fields: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    imprecise_kinds: frozenset[str] = frozenset()
     depends_on_everything: bool = False
 
 
@@ -154,6 +161,10 @@ class RecomputeScoper:
                 selected.append(candidate)
                 continue
 
+            if any(kind in changed_elements.changed_fields for kind in dependencies.imprecise_kinds):
+                selected.append(candidate)
+                continue
+
             if self._reads_changed_field(dependencies=dependencies, changed_elements=changed_elements):
                 selected.append(candidate)
                 continue
@@ -189,7 +200,8 @@ class PythonTransformDependencyDeriver:
     The read set of a transform comes from its GraphQL query, which is database
     data; it is pre-computed once per branch and injected so that derivation here
     is a pure lookup with no database access. An attribute whose read set is unknown
-    (no entry) or imprecise is marked to always recompute.
+    (no entry) or could not be mapped at all is marked to always recompute; a kind read
+    through a derived field is carried as an imprecise kind instead.
     """
 
     def __init__(self, *, read_sets: Mapping[tuple[str, str, str], TransformReadSet]) -> None:
@@ -226,6 +238,7 @@ class PythonTransformDependencyDeriver:
             kind=ComputedAttributeKind.TRANSFORM_PYTHON,
             read_kinds=read_set.read_kinds | frozenset({owner_kind}),
             read_fields=read_fields,
+            imprecise_kinds=read_set.imprecise_kinds,
             depends_on_everything=False,
         )
 

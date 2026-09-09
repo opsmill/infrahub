@@ -31,6 +31,8 @@ if TYPE_CHECKING:
 
     from infrahub_sdk import InfrahubClient
 
+pytestmark = pytest.mark.shard_a
+
 COLOR_KIND = "TestingColor"
 TSHIRT_KIND = "TestingTShirt"
 

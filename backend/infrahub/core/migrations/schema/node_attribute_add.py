@@ -62,7 +62,8 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuer
 
 class NodeAttributeAddMigration(AttributeSchemaMigration):
     name: str = "node.attribute.add"
-    queries: Sequence[type[AttributeMigrationQuery]] = [NodeAttributeAddMigrationQuery01]  # type: ignore[assignment]
+    queries: Sequence[type[MigrationBaseQuery]] = [NodeAttributeAddMigrationQuery01]
+    force_inherited: bool = False
 
     async def execute(
         self,
@@ -70,7 +71,7 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         branch: Branch,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,
     ) -> MigrationResult:
-        if self.new_attribute_schema.inherited is True:
+        if self.new_attribute_schema.inherited is True and not self.force_inherited:
             return MigrationResult()
         return await super().execute(migration_input=migration_input, branch=branch, queries=queries)
 

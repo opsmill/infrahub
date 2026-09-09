@@ -22,6 +22,7 @@ from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import build_message_bus
+from tests.helpers.dependency_override import override_dependency
 
 if TYPE_CHECKING:
     from aio_pika.abc import AbstractIncomingMessage
@@ -373,6 +374,25 @@ async def test_rabbitmq_publish(rabbitmq_api: RabbitMQManager) -> None:
     assert parsed_delayed_message == delayed_message
 
 
+# A message has to travel out to the broker and back through the consumer before the operation
+# logs, so the wait is bounded generously: overshooting costs nothing, since the loop returns as
+# soon as the line lands.
+_LOG_WAIT_ATTEMPTS = 300
+_LOG_WAIT_INTERVAL = 0.05
+
+
+async def _wait_for_log(logs: list[str | None], expected: str) -> None:
+    """Wait for a log line the broker round trip produces asynchronously.
+
+    Returns once the line shows up or once the attempts run out, leaving the caller's assertion to
+    report a line that never arrived.
+    """
+    for _ in range(_LOG_WAIT_ATTEMPTS):
+        if expected in logs:
+            return
+        await asyncio.sleep(_LOG_WAIT_INTERVAL)
+
+
 async def test_rabbitmq_callback(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:
     """Validates that incoming messages gets parsed by the callback method."""
     bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
@@ -383,7 +403,7 @@ async def test_rabbitmq_callback(rabbitmq_api: RabbitMQManager, fake_log: FakeLo
 
     with patch("infrahub.message_bus.operations.send.echo.get_logger", return_value=fake_log):
         await service.message_bus.send(message=messages.SendEchoRequest(message="Hello there"))
-        await asyncio.sleep(delay=1)
+        await _wait_for_log(logs=fake_log.info_logs, expected="Received message: Hello there")
         await service.shutdown()
 
     assert "Received message: Hello there" in fake_log.info_logs
@@ -399,7 +419,7 @@ async def test_rabbitmq_callback_with_invalid_routing_key(rabbitmq_api: RabbitMQ
 
     with patch("infrahub.services.adapters.message_bus.rabbitmq.get_logger", return_value=fake_log):
         await bus.exchange.publish(Message(body=b"Completely invalid"), routing_key="event.branch.invalid")
-        await asyncio.sleep(delay=1)
+        await _wait_for_log(logs=fake_log.error_logs, expected="Invalid message received")
         await service.shutdown()
 
     assert "Invalid message received" in fake_log.error_logs
@@ -409,7 +429,7 @@ async def test_rabbitmq_rpc(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger,
     """Validates that incoming messages gets parsed by the callback method."""
     bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
     service = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
-    with dependency_provider.scope(build_message_bus, lambda: bus):
+    with override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider):
         queue = await bus.channel.get_queue(f"{bus.settings.namespace}.rpcs")
         callback = partial(on_callback, message_bus=bus)
         await queue.consume(callback, no_ack=True)
@@ -432,10 +452,7 @@ async def test_rabbitmq_on_message(rabbitmq_api: RabbitMQManager, fake_log: Fake
 
     with patch("infrahub.message_bus.operations.send.echo.get_logger", return_value=fake_log):
         await bus.send(message=messages.SendEchoRequest(message="Hello there"))
-        for _ in range(50):
-            if fake_log.info_logs:
-                break
-            await asyncio.sleep(delay=0.2)
+        await _wait_for_log(logs=fake_log.info_logs, expected="Received message: Hello there")
         await bus.shutdown()
 
     assert fake_log.info_logs == ["Received message: Hello there"]
@@ -453,10 +470,7 @@ async def test_rabbitmq_on_message_invalid_routing_key(rabbitmq_api: RabbitMQMan
         await bus.publish(
             routing_key="request.something.invalid", message=messages.SendEchoRequest(message="Hello there")
         )
-        for _ in range(50):
-            if fake_log.error_logs:
-                break
-            await asyncio.sleep(delay=0.2)
+        await _wait_for_log(logs=fake_log.error_logs, expected="Invalid message received")
         await bus.shutdown()
 
     assert fake_log.info_logs == []

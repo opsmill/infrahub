@@ -49,10 +49,10 @@ export function RelationshipNodeDisplay({ node }: { node: NodeCore }) {
       variant="outline"
       size="sm"
       href={getObjectDetailsUrl(node.__typename, node.id)}
-      className="truncate rounded-full pr-2.5 hover:border-custom-blue-700 hover:underline"
+      className="min-w-0 shrink rounded-full pr-2.5 hover:border-custom-blue-700 hover:underline"
     >
       <Icon icon={getSchemaIcon(schema)} className="text-custom-blue-800" />
-      {getNodeLabel(node)}
+      <span className="truncate">{getNodeLabel(node)}</span>
     </LinkButton>
   );
 }

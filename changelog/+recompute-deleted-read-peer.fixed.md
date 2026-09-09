@@ -1,1 +1,0 @@
-Merging or rebasing a branch that deletes a node now refreshes the derived values of the nodes that read the deleted node across a relationship. Their computed attributes, display labels, and human-friendly ids no longer keep naming the deleted node.

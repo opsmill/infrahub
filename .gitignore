@@ -1,6 +1,7 @@
 .coverage
 coverage.xml
 *junit*
+test-results/
 *.pyc
 *.env
 script.py

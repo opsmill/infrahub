@@ -224,7 +224,7 @@ def infrahub_app(
     yield compose
 
     if request.session.testsfailed:
-        stdout, stderr = compose.get_logs("infrahub-server", "task-worker")
+        stdout, stderr = compose.get_logs("infrahub-server", "task-worker", "task-manager", "database", "message-queue")
         warnings.warn(f"Container logs:\nStdout:\n{stdout}\nStderr:\n{stderr}", stacklevel=2)
     compose.stop()
 

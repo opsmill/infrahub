@@ -12,7 +12,7 @@ import { FormField } from "@/shared/components/ui/form";
 import { formatWithPreferences } from "@/shared/context/date-preferences-context";
 import { supportedTimezone } from "@/shared/utils/date";
 
-import type { Preference } from "@/entities/preferences/domain/model/preference";
+import type { EffectivePreference } from "@/entities/preferences/domain/model/preference";
 import {
   buildDateFormatPresets,
   dateFormatLabel,
@@ -33,24 +33,29 @@ export function toFieldValue(value: string | null): FormAttributeValue {
   return { source: { type: "user" }, value };
 }
 
-/** Explains where a field's effective value comes from, based on its resolved source. */
+/** Explains where a field's pending value comes from — what saving the form as it stands would produce. */
 function sourceMessage(
-  preference: Preference,
+  own: string | null,
+  inherited: string | null,
   {
-    formatGlobalValue,
+    formatValue,
     browserValue,
-  }: { formatGlobalValue: (value: string) => string; browserValue: string }
-): string {
-  switch (preference.source) {
-    case "USER":
-      return "Your preference.";
-    case "GLOBAL":
-      return preference.value
-        ? `From the organisation default: ${formatGlobalValue(preference.value)}.`
-        : `From your browser: ${browserValue}.`;
-    default: // DEFAULT — browser locale fallback
-      return `From your browser: ${browserValue}.`;
+  }: {
+    /** Renders a stored value as a label. */
+    formatValue: (value: string) => string;
+    /** The browser's own value, when the field has one worth naming. Omitted -> the clause is dropped. */
+    browserValue?: string;
   }
+): string {
+  const fromBrowser = browserValue ? `From your browser: ${browserValue}.` : "From your browser.";
+
+  if (own) {
+    // An own value equal to the organisation default overrides nothing worth naming.
+    return inherited && inherited !== own
+      ? `Your preference, overriding the organisation default: ${formatValue(inherited)}.`
+      : "Your preference.";
+  }
+  return inherited ? `From the organisation default: ${formatValue(inherited)}.` : fromBrowser;
 }
 
 /** Presentational (i) tooltip trigger — the message is resolved by the field that owns it. */
@@ -72,7 +77,7 @@ function SourceInfo({ message }: { message: string }) {
 
 interface PreferenceFieldProps {
   /** Effective preference used to resolve the (i) source tooltip. Omit it (e.g. global editing) to hide the tooltip. */
-  preference?: Preference;
+  preference?: EffectivePreference;
   emptyValueLabel?: string;
 }
 
@@ -93,17 +98,18 @@ export function DateFormatField({
   const fieldValue = useWatch({ name: "date_format" }) as FormAttributeValue | undefined;
   const selected = (fieldValue?.value as string | null | undefined) ?? null;
 
-  // Previews what saving would produce, so it follows the form's own (possibly unsaved) zone.
+  // Previews what saving would produce, so it follows the form's own (possibly unsaved) values.
   const timezoneValue = useWatch({ name: "timezone" }) as FormAttributeValue | undefined;
   const timezone = (timezoneValue?.value as string | null | undefined) ?? fallbackTimezone ?? null;
-  const example = (key: string) =>
-    formatWithPreferences(now, { pattern: dateFormatPattern(key), timezone });
+  const previewFormat = selected ?? preference?.inherited ?? null;
+  // A null format is the browser's own rendering, which is exactly what saving no override produces.
+  const example = formatWithPreferences(now, {
+    pattern: previewFormat ? dateFormatPattern(previewFormat) : null,
+    timezone,
+  });
 
   const message = preference
-    ? sourceMessage(preference, {
-        formatGlobalValue: (value) => `${example(value)} (${dateFormatLabel(value)})`,
-        browserValue: formatWithPreferences(now, { pattern: null, timezone }),
-      })
+    ? sourceMessage(selected, preference.inherited, { formatValue: dateFormatLabel })
     : null;
 
   return (
@@ -121,17 +127,15 @@ export function DateFormatField({
                 label="Date format"
                 placeholder={emptyValueLabel}
                 emptyMessage="No date format found."
-                aria-describedby={selected ? exampleId : undefined}
+                aria-describedby={exampleId}
               />
             )}
           />
         </div>
         <div className="min-w-0 flex-1 truncate">
-          {selected && (
-            <p id={exampleId} className="truncate text-gray-500 text-xs">
-              Example: {example(selected)}
-            </p>
-          )}
+          <p id={exampleId} className="truncate text-gray-500 text-xs">
+            Example: {example}
+          </p>
         </div>
         {message && <SourceInfo message={message} />}
       </Row>
@@ -141,13 +145,18 @@ export function DateFormatField({
 
 /** Resolves the (i) hint for a timezone, correcting the source claim when this browser can't apply it.
  * A resolved zone this runtime cannot render is silently displayed in the browser's own zone, so the
- * hint must report that fallback rather than claim the stored zone is in effect. */
-function timezoneSourceMessage(preference: Preference, browserZone: string): string {
-  if (preference.value && !supportedTimezone(preference.value)) {
-    return `This browser can't display ${preference.value}; times are shown in ${browserZone}.`;
+ * hint must report that fallback rather than claim the pending zone is in effect. */
+function timezoneSourceMessage(
+  own: string | null,
+  preference: EffectivePreference,
+  browserZone: string
+): string {
+  const pending = own ?? preference.inherited;
+  if (pending && !supportedTimezone(pending)) {
+    return `This browser can't display ${pending}; times are shown in ${browserZone}.`;
   }
-  return sourceMessage(preference, {
-    formatGlobalValue: (value) => value,
+  return sourceMessage(own, preference.inherited, {
+    formatValue: (value) => value,
     browserValue: browserZone,
   });
 }
@@ -156,8 +165,11 @@ export function TimezoneField({
   preference,
   emptyValueLabel = EMPTY_VALUE_LABEL,
 }: PreferenceFieldProps) {
+  const fieldValue = useWatch({ name: "timezone" }) as FormAttributeValue | undefined;
+  const selected = (fieldValue?.value as string | null | undefined) ?? null;
+
   const message = preference
-    ? timezoneSourceMessage(preference, Intl.DateTimeFormat().resolvedOptions().timeZone)
+    ? timezoneSourceMessage(selected, preference, Intl.DateTimeFormat().resolvedOptions().timeZone)
     : null;
 
   return (

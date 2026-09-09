@@ -47,6 +47,8 @@ Mark deprecated docs clearly. Don't delete—update with pointers to replacement
 
 - **Repository Organization**: [guidelines/repository-organization.md](guidelines/repository-organization.md) - How to organize content in dev/
 - **Python Backend**: [guidelines/backend/python.md](guidelines/backend/python.md)
+- **Python Exception Handling**: [guidelines/backend/exceptions.md](guidelines/backend/exceptions.md)
+- **ASGI Middleware**: [guidelines/backend/asgi-middleware.md](guidelines/backend/asgi-middleware.md)
 - **TypeScript Frontend**: [guidelines/frontend/typescript.md](guidelines/frontend/typescript.md)
 - **Git Workflow**: [guidelines/git-workflow.md](guidelines/git-workflow.md)
 - **Markdown Formatting**: [guidelines/markdown.md](guidelines/markdown.md)
@@ -63,6 +65,7 @@ Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 - [message-bus.md](knowledge/backend/message-bus.md) - Message bus system
 - [api-backpressure.md](knowledge/backend/api-backpressure.md) - Priority-aware load shedding and the database-stress signal
 - [telemetry.md](knowledge/backend/telemetry.md) - Anonymous usage telemetry (categories, windowing, retention, degradation)
+- [graphql-execution.md](knowledge/backend/graphql-execution.md) - Sync vs async field completion and why middleware must stay synchronous
 
 Frontend architecture documentation in [knowledge/frontend/](knowledge/frontend/):
 

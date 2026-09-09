@@ -48,7 +48,22 @@ INFRAHUB_TRACE_EXPORTER_ENDPOINT=http://infrahub-tempo:4317
 INFRAHUB_TRACE_INSECURE=true
 ```
 
+`INFRAHUB_TRACE_INSECURE=true` sends spans over a plaintext connection, which is what the bundled Tempo instance expects. Set it to `false` when your collector terminates TLS.
+
 :::
+
+### Exporting to a collector that uses TLS
+
+When the collector presents a certificate issued by a private or internal certificate authority, the default trust store cannot verify it and every export fails with `StatusCode.UNAVAILABLE` (gRPC) or a certificate verification error (HTTP). Point Infrahub at the issuing CA instead:
+
+```bash
+INFRAHUB_TRACE_EXPORTER_ENDPOINT=otel-collector.example.com:4317
+INFRAHUB_TRACE_TLS_CA_BUNDLE=/etc/ssl/certs/internal-ca.pem
+```
+
+The bundle is a PEM file that must be readable by the Infrahub server and task workers, so mount it into both containers. With the `grpc` protocol, setting it also switches the connection to TLS, so `INFRAHUB_TRACE_INSECURE` can be left at its default. With `http/protobuf` the endpoint URL scheme is what selects TLS, so the endpoint must start with `https://`. Infrahub checks the bundle when configuration loads and refuses to start if it cannot be loaded, rather than starting and silently dropping every span.
+
+To skip certificate verification entirely in a test environment, set `INFRAHUB_TRACE_TLS_INSECURE=true`. This requires `INFRAHUB_TRACE_EXPORTER_PROTOCOL=http/protobuf` and an `https://` endpoint, because the gRPC client cannot skip verification; use a CA bundle for gRPC collectors. Never enable it in production.
 
 For the full Infrahub Enterprise Compose install, see the [Enterprise install guide](./enterprise).
 

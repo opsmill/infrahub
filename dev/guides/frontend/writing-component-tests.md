@@ -67,6 +67,22 @@ Follow BDD structure consistently:
 - A test that needs a second WHEN/THEN is exercising a multi-phase flow - split it into separate,
   single-phase tests instead of chaining WHEN → THEN → WHEN → THEN in one test.
 
+## The test has to fail when the behavior breaks
+
+Before you call a test done, ask what would make it fail. Two shapes pass no matter what the component
+does:
+
+- **An assertion on the static part of the output.** `getByText("Now working on")` passes when the
+  branch name beside it is wrong, missing, or blank. Assert the whole user-visible string, including the
+  value the change is about: `getByText("Now working on platform-upgrade")`.
+- **A setup flag the component never reads.** Setting `isFetching: true` on a mocked query hook proves
+  nothing if the component only destructures `isPending` — the test is indistinguishable from the one
+  above it. Check the component actually reads what you varied.
+
+A behavior change needs a test that exercises the new behavior, not the old default: replacing a
+hardcoded `"main"` with a `is_default` lookup is only covered by a case whose default branch *isn't*
+named `main`.
+
 ## Querying Elements
 
 Prefer accessibility-based queries in this order:
@@ -255,6 +271,20 @@ describe("TaskStatus", () => {
     // THEN
     await expect.element(component.getByRole("link")).toBeVisible();
   });
+});
+```
+
+## Test Isolation
+
+If a test mutates shared global state — a Jotai atom in `store` (e.g. `nodeSchemasAtom`), `window.history`/query params, or a module-level mock reused across `test` blocks in the same file — restore it so later tests (in this file, or run in the same worker) don't inherit leftover state:
+
+```tsx
+const initialNodeSchemas = store.get(nodeSchemasAtom);
+beforeAll(() => store.set(nodeSchemasAtom, [generateNodeSchema()]));
+afterAll(() => store.set(nodeSchemasAtom, initialNodeSchemas));
+afterEach(() => {
+  vi.resetAllMocks(); // clearAllMocks only clears call history; reset also drops mockReturnValue/mockImplementation overrides
+  window.history.replaceState(null, "", window.location.pathname);
 });
 ```
 

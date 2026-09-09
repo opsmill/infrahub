@@ -55,6 +55,7 @@ from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.utils import count_nodes, delete_all_nodes
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import DatabaseType
@@ -66,6 +67,14 @@ from infrahub.exceptions import ValidationError
 from .constants import APPLIED_BADGE, ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
 from .db_commands.check_inheritance import check_inheritance
 from .db_commands.clean_duplicate_schema_fields import clean_duplicate_schema_fields
+from .db_commands.reset import (
+    get_configured_task_manager_database_url,
+    get_task_manager_database_dialect,
+    is_graph_database_configured,
+    mask_connection_url_password,
+    reset_task_manager_database,
+    task_manager_database,
+)
 from .patch import patch_app
 
 
@@ -75,6 +84,8 @@ def get_timestamp_string() -> str:
 
 
 if TYPE_CHECKING:
+    from prefect.server.database.interface import PrefectDBInterface
+
     from infrahub.cli.context import CliContext
     from infrahub.core.root import Root
     from infrahub.database import InfrahubDatabase
@@ -131,7 +142,8 @@ async def do_migrate(
         root_node: The root node containing the current graph version.
         check: If True, only check which migrations need to run without applying them.
         migration_number: If provided, run only this specific migration.
-        verbose: If True, show internal migration output.
+        verbose: If True, leave the internal infrahub/prefect loggers unsuppressed.
+            Per-migration progress is printed either way.
 
     """
     migrations = await detect_migration_to_run(
@@ -399,6 +411,143 @@ async def reset_deployment_id_cmd(
         await dbdriver.close()
 
 
+@app.command(name="reset")
+async def reset_cmd(
+    ctx: typer.Context,
+    yes_graph: bool = typer.Option(
+        False, "--yes-graph", help="Reset the graph database without asking for confirmation."
+    ),
+    yes_task_manager: bool = typer.Option(
+        False, "--yes-task-manager", help="Reset the task manager database without asking for confirmation."
+    ),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Erase all Infrahub data from the databases configured in this environment.
+
+    This resets Infrahub completely: objects, schemas, branches, accounts, permissions, task history
+    and logs are permanently erased and cannot be recovered, so make sure a backup exists before
+    running it. The graph database is reset when its connection is configured, through INFRAHUB_DB_* settings
+    or the `database` section of the configuration file: every vertex and edge is removed, indexes
+    and constraints are kept. The task manager (Prefect) database is reset when
+    PREFECT_API_DATABASE_CONNECTION_URL is set: every table is dropped and recreated empty. A
+    database that is not configured is skipped, and each configured one is confirmed separately
+    unless its --yes flag is given. Each Infrahub container only knows its own database, so run the
+    command in the infrahub-server container to reset the graph and in the task-manager container
+    to reset the task manager. Stop the Infrahub server and task workers first and start them
+    again afterwards: on startup the server initializes the empty databases exactly as on a first
+    installation.
+
+    Raises:
+        Exit: When no database is configured, the task manager database URL is unsupported or its
+            database unreachable, or every configured database is declined at its confirmation
+            prompt (raises typer.Exit to terminate the CLI command).
+
+    """
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+    logging.getLogger("alembic").setLevel(logging.WARNING)
+
+    console = Console()
+
+    config.load_and_exit(config_file_name=config_file)
+
+    graph_configured = is_graph_database_configured(database_settings=config.SETTINGS.database)
+    task_manager_db_url = get_configured_task_manager_database_url()
+
+    if not graph_configured and task_manager_db_url is None:
+        console.print(
+            "[red]No database is configured in this environment: neither an INFRAHUB_DB_* setting "
+            "nor PREFECT_API_DATABASE_CONNECTION_URL is set.[/red]"
+        )
+        raise typer.Exit(code=1)
+
+    if task_manager_db_url is not None:
+        try:
+            get_task_manager_database_dialect(connection_url=task_manager_db_url)
+        except ValueError as exc:
+            console.print(f"[red]{exc}[/red]")
+            raise typer.Exit(code=1) from exc
+
+    dbdriver: InfrahubDatabase | None = None
+    if graph_configured:
+        context: CliContext = ctx.obj
+        dbdriver = await context.init_db(retry=1)
+
+    try:
+        with contextlib.ExitStack() as stack:
+            vertex_count = 0
+            if dbdriver is not None:
+                database_settings = config.SETTINGS.database
+                graph_target = (
+                    f"{database_settings.db_type.value} at {database_settings.address}:{database_settings.port}"
+                )
+                if database_settings.database:
+                    graph_target += f", database {database_settings.database}"
+                vertex_count = await count_nodes(db=dbdriver)
+                console.print(f"Graph database:        [bold]{graph_target}[/bold] ({vertex_count} vertices)")
+            else:
+                console.print(
+                    "Graph database:        [yellow]not configured here (no INFRAHUB_DB_* setting), skipped[/yellow]"
+                )
+
+            task_db: PrefectDBInterface | None = None
+            if task_manager_db_url is not None:
+                task_db = stack.enter_context(task_manager_database(connection_url=task_manager_db_url))
+                masked_url = mask_connection_url_password(connection_url=task_manager_db_url)
+                if not await task_db.is_db_connectable():
+                    console.print(f"[red]Cannot connect to the task manager database at {masked_url}.[/red]")
+                    raise typer.Exit(code=1)
+                console.print(f"Task manager database: [bold]{masked_url}[/bold]")
+            else:
+                console.print(
+                    "Task manager database: [yellow]not configured here "
+                    "(PREFECT_API_DATABASE_CONNECTION_URL is unset), skipped[/yellow]"
+                )
+
+            console.print(
+                "[bold red]WARNING: this resets Infrahub completely. All data in the databases listed above "
+                "is permanently erased and cannot be recovered. Make sure you have a backup before "
+                "continuing.[/bold red]"
+            )
+
+            # Collect every decision before the first wipe, so a declined prompt never follows a
+            # deletion that already happened.
+            reset_graph = False
+            if dbdriver is not None:
+                reset_graph = yes_graph or typer.confirm(
+                    "Erase ALL Infrahub data from the graph database (objects, schemas, branches, accounts, "
+                    "permissions)? This cannot be undone."
+                )
+                if not reset_graph:
+                    console.print("[yellow]Graph database: skipped.[/yellow]")
+            reset_task_manager = False
+            if task_db is not None:
+                reset_task_manager = yes_task_manager or typer.confirm(
+                    "Erase ALL task manager data (task history, logs, schedules)? This cannot be undone."
+                )
+                if not reset_task_manager:
+                    console.print("[yellow]Task manager database: skipped.[/yellow]")
+
+            if dbdriver is not None and reset_graph:
+                await delete_all_nodes(db=dbdriver)
+                console.print(f"[green]Graph database reset: {vertex_count} vertices deleted.[/green]")
+
+            if task_db is not None and reset_task_manager:
+                await reset_task_manager_database(task_db=task_db)
+                console.print("[green]Task manager database reset: all tables dropped and recreated.[/green]")
+
+        if not reset_graph and not reset_task_manager:
+            console.print("[yellow]Nothing was reset.[/yellow]")
+            raise typer.Exit(code=1)
+        console.print(
+            "[yellow]Start the Infrahub server and task workers again to initialize the empty databases.[/yellow]"
+        )
+    finally:
+        if dbdriver is not None:
+            await dbdriver.close()
+
+
 @app.command(name="check-duplicate-schema-fields")
 async def check_duplicate_schema_fields_cmd(
     ctx: typer.Context,
@@ -619,7 +768,8 @@ async def migrate_database(
         migrations: Sequence of migrations to apply.
         initialize: Whether to initialize the registry before running migrations.
         update_graph_version: Whether to update the graph version after each migration.
-        verbose: If True, show detailed internal output from each migration.
+        verbose: Whether the caller left the internal infrahub/prefect loggers unsuppressed.
+            Only affects the hint shown on failure; per-migration progress is always printed.
 
     """
     if not migrations:
@@ -638,7 +788,6 @@ async def migrate_database(
             migration_console.log(f"{ERROR_BADGE} {error}")
         return False
 
-    inner_console = migration_console if verbose else Console(quiet=True)
     total_start = time.perf_counter()
     applied_count = 0
 
@@ -648,7 +797,7 @@ async def migrate_database(
         start = time.perf_counter()
 
         execution_result = await migration.execute(
-            migration_input=MigrationInput(db=db, console=inner_console),
+            migration_input=MigrationInput(db=db, console=migration_console),
         )
         validation_result = None
         if execution_result.success:
@@ -672,7 +821,7 @@ async def migrate_database(
                     migration_console.log(f"    Error: {error}")
             if not verbose:
                 migration_console.log(
-                    f"    Hint: Use --verbose for detailed output, or re-run with: infrahub db migrate --migration-number {migration_num} --verbose"
+                    f"    Hint: re-run with internal logs enabled: infrahub db migrate --migration-number {migration_num} --verbose"
                 )
             return False
 

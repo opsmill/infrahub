@@ -1,6 +1,6 @@
 import { useQueryState } from "nuqs";
 import React from "react";
-import { useNavigate } from "react-router";
+import { Navigate } from "react-router";
 import { toast } from "react-toastify";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -10,6 +10,7 @@ import { QSP } from "@/shared/config/qsp";
 
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { findSelectedBranch } from "@/entities/branches/domain/rules/find-selected-branch";
+import { useConfirmBranchIsGone } from "@/entities/branches/ui/hooks/use-confirm-branch-is-gone";
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 
 type BranchContext = {
@@ -31,31 +32,44 @@ export function useCurrentBranch() {
 export const BranchesProvider = ({ children }: { children?: React.ReactNode }) => {
   const { data: branches, isPending, error } = useGetBranches();
   const [branchInQueryString, setBranchInQueryString] = useQueryState(QSP.BRANCH);
-  const navigate = useNavigate();
 
   const currentBranch = branches ? findSelectedBranch(branches, branchInQueryString) : null;
 
-  // The branch QSP is the source of truth: the default branch is represented by its absence
-  const setCurrentBranch = (branch: BranchListItem) => {
-    setBranchInQueryString(branch.is_default ? null : branch.name);
-  };
+  const { goneBranchName, isDefaultBranchGone } = useConfirmBranchIsGone({
+    branchName: branchInQueryString,
+  });
 
   React.useEffect(() => {
-    if (!branches || currentBranch) return;
+    if (goneBranchName === null) return;
 
     toast(
       <Alert
         type={ALERT_TYPES.ERROR}
         message={
           <>
-            Branch <b>{branchInQueryString}</b> not found, you have been redirected to the default
+            Branch <b>{goneBranchName}</b> not found, you have been redirected to the default
             branch.
           </>
         }
       />
     );
-    navigate("/");
-  }, [branches, currentBranch]);
+  }, [goneBranchName]);
+
+  // The branch QSP is the source of truth: the default branch is represented by its absence
+  const setCurrentBranch = (branch: BranchListItem) => {
+    setBranchInQueryString(branch.is_default ? null : branch.name);
+  };
+
+  if (isDefaultBranchGone) {
+    return (
+      <ErrorScreen message="The default branch is missing from this deployment. Contact your administrator." />
+    );
+  }
+
+  if (goneBranchName !== null) {
+    // replace, not push: Back must not land on the gone-branch URL and bounce here forever
+    return <Navigate to="/" replace />;
+  }
 
   if (isPending) {
     return <InfrahubLoading>Loading branches...</InfrahubLoading>;

@@ -9,9 +9,11 @@ from infrahub.computed_attribute.scoping import (
     ChangedElementSet,
     ComputedAttributeRef,
     DependencySet,
+    PythonTransformDependencyDeriver,
     RecomputeScoper,
 )
 from infrahub.core.constants import ComputedAttributeKind
+from infrahub.core.schema.schema_branch_computed import TransformReadSet
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -217,6 +219,89 @@ def test_depends_on_everything_does_not_set_fallback() -> None:
 
     assert [ref.attribute_name for ref in report.selected] == ["opaque"]
     assert [skipped.ref.attribute_name for skipped in report.skipped] == ["scoped"]
+    assert report.fallback_full_recompute is False
+
+
+INTERFACE_KIND = "TestingInterface"
+CIRCUIT_KIND = "TestingCircuit"
+DEVICE_KIND = "TestingDevice"
+DERIVED_READ_ATTRIBUTE = "interface_description"
+
+
+def _derived_read_scoper() -> RecomputeScoper:
+    """Scoper for a transform query reading a circuit's hfid and a device's name.
+
+    The circuit's hfid is built from its own attributes, so the read can be held against that
+    one kind. A hfid crossing a relationship cannot, and collapses the whole read set instead.
+    """
+    read_set = TransformReadSet.from_read_fields(
+        {CIRCUIT_KIND: {"human_friendly_id"}, DEVICE_KIND: {"name"}},
+        scopable_derived_kinds={CIRCUIT_KIND},
+    )
+    return RecomputeScoper(
+        derivers={
+            ComputedAttributeKind.TRANSFORM_PYTHON: PythonTransformDependencyDeriver(
+                read_sets={("main", INTERFACE_KIND, DERIVED_READ_ATTRIBUTE): read_set}
+            )
+        }
+    )
+
+
+def _derived_read_ref() -> ComputedAttributeRef:
+    return ComputedAttributeRef(
+        branch="main",
+        kind=INTERFACE_KIND,
+        attribute_name=DERIVED_READ_ATTRIBUTE,
+        computed_kind=ComputedAttributeKind.TRANSFORM_PYTHON,
+    )
+
+
+@dataclass
+class DerivedReadCase:
+    name: str
+    changed_elements: ChangedElementSet
+    expected_selected: bool
+
+
+DERIVED_READ_CASES = [
+    DerivedReadCase(
+        name="change_to_an_unread_kind_is_rejected",
+        changed_elements=ChangedElementSet(changed_fields={"TestingDeviceType": frozenset({"part_number"})}),
+        expected_selected=False,
+    ),
+    DerivedReadCase(
+        name="any_change_to_the_imprecise_kind_selects",
+        changed_elements=ChangedElementSet(changed_fields={CIRCUIT_KIND: frozenset({"description"})}),
+        expected_selected=True,
+    ),
+    DerivedReadCase(
+        name="removing_the_imprecise_kind_selects",
+        changed_elements=ChangedElementSet(removed_kinds=frozenset({CIRCUIT_KIND})),
+        expected_selected=True,
+    ),
+    DerivedReadCase(
+        name="named_read_on_another_kind_still_selects",
+        changed_elements=ChangedElementSet(changed_fields={DEVICE_KIND: frozenset({"name"})}),
+        expected_selected=True,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", DERIVED_READ_CASES, ids=[c.name for c in DERIVED_READ_CASES])
+def test_derived_read_narrows_to_the_kind_it_reads(case: DerivedReadCase) -> None:
+    # A query reading one hfid used to collapse its whole read set, which selected the
+    # attribute on every schema change, including changes to kinds it never reads.
+    report = _derived_read_scoper().scope(
+        candidate_attributes=[_derived_read_ref()],
+        changed_elements=case.changed_elements,
+    )
+
+    if case.expected_selected:
+        assert report.selected == [_derived_read_ref()]
+        assert report.skipped == []
+    else:
+        assert report.selected == []
+        assert [skipped.ref for skipped in report.skipped] == [_derived_read_ref()]
     assert report.fallback_full_recompute is False
 
 

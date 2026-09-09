@@ -1,1 +1,0 @@
-Fixed display labels and human-friendly ids that read across a relationship not refreshing when they were recomputed by their own id. Resolving a cross-node template overwrote the cached own-id filter in place, so a later self recompute queried with the relationship filter, matched no node, and left the stored value stale.

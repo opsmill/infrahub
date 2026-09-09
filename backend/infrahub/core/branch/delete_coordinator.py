@@ -68,7 +68,7 @@ class BranchDeleteOrchestrator:
         # Freezing has to precede the deletion, which takes away the branch name they are found by.
         await self.diff_freezer.freeze_diffs_for_branch(branch_name=branch.name)
 
-        result = await self.data_deleter.delete(branch=branch)
+        result = await self.data_deleter.delete(branch=branch, user_id=context.account.account_id)
 
         if result.branch_deleted:
             await self.workflow.submit_workflow(

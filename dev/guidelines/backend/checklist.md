@@ -57,6 +57,19 @@ Plan the access control requirements:
 - **Object-level permissions** - should users only access/modify their own resources?
 - **Branch permissions** - are branch-specific restrictions needed?
 
+## Configuration
+
+### Does this feature add a setting to `infrahub.config.Settings`?
+
+A new setting must be reachable from every Compose entry point, and the two files are maintained
+differently:
+
+- The root `docker-compose.yml` env block is **generated** from the `Settings` classes and
+  CI-validated — regenerate it with `uv run invoke release.validate-dockercomposeenv`
+- `development/docker-compose.yml` forwards each `INFRAHUB_*` variable through a **hand-maintained**
+  anchor that nothing generates or validates — add the mapping yourself, or the setting is
+  documented but untunable in the dev stack
+
 ## Error Handling & User Experience
 
 ### How will users be informed when the feature fails?

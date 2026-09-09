@@ -154,4 +154,4 @@ When 2+ methods are available and no preference is stored, `LoginMethodPicker` p
 | `ui/auth-provider.test.tsx` | Cross-tab storage reconciliation: seed from localStorage, logout when another tab clears tokens or calls `clear()`, ignore unrelated keys. |
 | `ui/routing/login-redirect.test.ts` | `safeInternalPath` (accepts internal paths, rejects protocol-relative/schemed/normalizing payloads) and `pathToString`. |
 
-E2E coverage lives in `frontend/app/tests/e2e/login.spec.ts`. Selectors target `Log in`, `Log in with SSO`, and `Log in with your credentials` — these strings are part of the contract.
+E2E coverage lives in `tests/e2e/test_login.py` (repo root). Selectors target `Log in`, `Log in with SSO`, and `Log in with your credentials` — these strings are part of the contract.

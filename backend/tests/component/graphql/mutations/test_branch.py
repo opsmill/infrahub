@@ -24,11 +24,13 @@ from infrahub.exceptions import BranchNotFoundError
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_database, build_message_bus, build_workflow
+from infrahub.workers.dependencies import build_database, build_message_bus
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.graphql import graphql, graphql_mutation
 from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.workflow_override import override_workflow
 
 BRANCH_CREATE = """
 mutation(
@@ -445,9 +447,9 @@ async def local_services(db: InfrahubDatabase, dependency_provider: Provider) ->
     workflow = WorkflowLocalExecution()
 
     with (
-        dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
-        dependency_provider.scope(build_message_bus, lambda: message_bus),
-        dependency_provider.scope(build_workflow, lambda: workflow),
+        override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
+        override_dependency(build_message_bus, lambda: message_bus, dependency_provider=dependency_provider),
+        override_workflow(workflow, dependency_provider=dependency_provider),
     ):
         yield await InfrahubServices.new(message_bus=message_bus, database=db, workflow=workflow, cache=MemoryCache())
 
@@ -588,12 +590,62 @@ async def test_branch_update_description(
 
     branch4_updated = await Branch.get_by_name(db=db, name="branch4")
 
+    # The mutation publishes what it saved, so the cache reflects the committed description
+    cached_branch4 = registry.branch["branch4"]
+    assert cached_branch4.description == "testing"
+    assert cached_branch4.description == branch4_updated.description
+
     assert branch4.updated_at == branch4.created_at
     assert branch4_updated.description == "testing"
     assert branch4.updated_at
     assert branch4_updated.updated_at
     assert branch4_updated.updated_at > branch4.updated_at
     assert branch4_updated.updated_by == session_admin.account_id
+
+
+async def test_branch_update_leaves_an_unknown_branch_out_of_the_registry(
+    db: InfrahubDatabase, base_dataset_02: dict, session_admin: AccountSession, local_services: InfrahubServices
+) -> None:
+    """A branch this worker has never seen must stay out of the cache, so refresh_branches still creates it.
+
+    `Branch.get_by_name` does not load the schema, so caching it here would leave an entry that the sweep
+    treats as already present and never repairs.
+    """
+    branch5 = await create_branch(branch_name="branch5", db=db)
+    # Undo what create_branch cached: this stands in for a branch created on another worker
+    del registry.branch[branch5.name]
+
+    query = """
+    mutation {
+    BranchUpdate(
+        data: {
+        name: "branch5",
+        description: "testing"
+        }
+    ) {
+        ok
+    }
+    }
+    """
+
+    gql_params = await prepare_graphql_params(
+        db=db, branch=registry.default_branch, account_session=session_admin, service=local_services
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["BranchUpdate"]["ok"] is True
+
+    # The write still landed; only the cache was left for the sweep to populate
+    assert (await Branch.get_by_name(db=db, name="branch5")).description == "testing"
+    assert branch5.name not in registry.branch
 
 
 async def test_branch_merge_wrong_branch(

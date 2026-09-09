@@ -1,0 +1,1 @@
+Fixed a merge or schema-update rollback leaving branch-agnostic object, attribute, and relationship timestamps wrong: it could revert the timestamps of an unrelated branch-agnostic change made in the same window, and could clear timestamps it had already restored.

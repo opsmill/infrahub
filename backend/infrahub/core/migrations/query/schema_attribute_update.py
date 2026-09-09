@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING, Any
 import ujson
 
 from infrahub.core.query import Query, QueryType
-from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -22,16 +22,19 @@ class SchemaAttributeUpdateQuery(Query):
         node_name: str,
         node_namespace: str,
         new_value: Any,
+        at: Timestamp | str,
         previous_value: Any | None = None,
         **kwargs: Any,
     ) -> None:
+        if not at:
+            raise ValueError("`at` is required and must be the caller's operation timestamp")
         self.attr_name = attribute_name
         self.node_name = node_name
         self.node_namespace = node_namespace
         self.attr_new_value = new_value
         self.attr_previous_value = previous_value
 
-        super().__init__(**kwargs)
+        super().__init__(at=at, **kwargs)
 
     def render_match(self) -> str:
         return self._render_match_schema_node()
@@ -49,8 +52,7 @@ class SchemaAttributeUpdateQuery(Query):
         """
 
     def render_where(self) -> str:
-        at = self.at or Timestamp()
-        filters, params = at.get_query_filter_path()
+        filters, params = self.at.get_query_filter_path()
         self.params.update(params)
 
         # ruff: noqa: E501

@@ -8,6 +8,7 @@ from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
@@ -22,6 +23,7 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_database
 from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION
 from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema import load_schema
 
 
@@ -29,7 +31,12 @@ async def test_rebase_graph(
     db: InfrahubDatabase, base_dataset_02: dict, register_core_models_schema: SchemaBranch
 ) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
+    cached_branched_from = registry.branch[branch1.name].branched_from
     await branch1.rebase(db=db)
+
+    # Rebasing mutates the instance it is given but must not publish it to the branch cache
+    assert branch1.branched_from != cached_branched_from
+    assert registry.branch[branch1.name].branched_from == cached_branched_from
 
     # Query all cars in MAIN, AFTER the rebase
     cars = sorted(await NodeManager.query(schema="TestCar", db=db), key=lambda c: c.id)
@@ -117,7 +124,7 @@ async def test_branch_rebase_diff_conflict(
     car_camry_main: Node,
 ) -> None:
     # NOTE: Ideally, this should be somewhere else for all tests to benefit from it
-    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
+    with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
         car_main.name.value += "-main"
@@ -371,8 +378,16 @@ async def test_rebase_schemas_handed_to_the_update_coordinator(
         account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
     )
 
-    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
+    with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
         await rebase_branch(branch=baseline_branch.name, context=context)
+
+        # The flow publishes the branch it rebased, so the cache stops holding the pre-rebase instance
+        rebased_baseline_branch = await Branch.get_by_name(db=db, name=baseline_branch.name)
+        assert rebased_baseline_branch.branched_from != baseline_branch.branched_from
+        published_baseline_branch = registry.branch[baseline_branch.name]
+        assert published_baseline_branch is not baseline_branch
+        assert published_baseline_branch.branched_from == rebased_baseline_branch.branched_from
+        assert published_baseline_branch.status is BranchStatus.OPEN
 
         migration_calls = workflow_recorder.get_execute_calls_for(SCHEMA_APPLY_MIGRATION)
         assert len(migration_calls) == 1
@@ -400,3 +415,64 @@ async def test_rebase_schemas_handed_to_the_update_coordinator(
     # The restored hash has to reach storage, not just the in-memory registry the rollback wrote
     reloaded_branch = await Branch.get_by_name(db=db, name=rollback_branch.name)
     assert reloaded_branch.active_schema_hash.main == rollback_pre_rebase_hash
+
+
+async def test_failed_rebase_keeps_the_branch_data(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dependency_provider: Provider,
+    workflow_recorder: WorkflowRecorder,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A rollback after failed migrations must not take the branch's own data with it."""
+    widget_kind = "TestingWidget"
+    gadget_kind = "TestingGadget"
+    widget = NodeSchema(
+        name="Widget",
+        namespace="Testing",
+        default_filter="name__value",
+        attributes=[AttributeSchema(name="name", kind="Text")],
+    )
+    gadget = NodeSchema(
+        name="Gadget",
+        namespace="Testing",
+        default_filter="name__value",
+        attributes=[AttributeSchema(name="name", kind="Text")],
+    )
+    await load_schema(db=db, schema=SchemaRoot(nodes=[widget, gadget]), update_db=True)
+
+    branch = await create_branch(db=db, branch_name="failed-rebase-branch")
+
+    branch_widget = await Node.init(db=db, schema=widget_kind, branch=branch)
+    await branch_widget.new(db=db, name="widget-on-branch")
+    await branch_widget.save(db=db)
+
+    # A schema change of the branch's own, on a kind the destination never touches, so the rebase
+    # runs migrations at all without reporting a conflict
+    branch_gadget = gadget.duplicate()
+    branch_gadget.attributes.append(AttributeSchema(name="serial", kind="Text", optional=True))
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(nodes=[branch_gadget]),
+        branch_name=branch.name,
+        update_db=True,
+        limit=[gadget_kind],
+    )
+
+    # A node created on the destination after the fork, so the rebase has something to pull in
+    main_widget = await Node.init(db=db, schema=widget_kind)
+    await main_widget.new(db=db, name="widget-on-main")
+    await main_widget.save(db=db)
+
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+    with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
+        workflow_recorder.execute_results[SCHEMA_APPLY_MIGRATION.name] = ["migration failed on purpose"]
+        with pytest.raises(MigrationError):
+            await rebase_branch(branch=branch.name, context=context)
+
+    rolled_back_branch = await Branch.get_by_name(db=db, name=branch.name)
+    widgets = await NodeManager.query(db=db, schema=widget_kind, branch=rolled_back_branch)
+    assert sorted(str(node.get_attribute("name").value) for node in widgets) == ["widget-on-branch", "widget-on-main"]

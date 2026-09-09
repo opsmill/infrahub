@@ -257,7 +257,7 @@ export const Dropdown = ({
         </div>
       </ComboboxTrigger>
 
-      <ComboboxContent fitTriggerWidth={false}>
+      <ComboboxContent>
         <ComboboxList>
           <ComboboxEmpty>No dropdown found.</ComboboxEmpty>
           {localItems.map((item) => (

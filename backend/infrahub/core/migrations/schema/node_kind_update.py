@@ -2,12 +2,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
 
+from infrahub.core.constants import SchemaPathType
+from infrahub.core.path import SchemaPath
+
 from ..query import MigrationQuery
 from ..query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
-from ..shared import SchemaMigration
+from ..shared import MigrationInput, MigrationResult, SchemaMigration
+from .node_attribute_add import NodeAttributeAddMigration
 
 if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
     from infrahub.core.schema import MainSchemaTypes
+    from infrahub.core.schema.attribute_schema import AttributeSchema
+
+    from ..query import MigrationBaseQuery
 
 
 def _schema_node_info(schema: MainSchemaTypes) -> SchemaNodeInfo:
@@ -49,3 +57,38 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery, NodeDuplicateQuery):
 class NodeKindUpdateMigration(SchemaMigration):
     name: str = "node.kind.update"
     queries: Sequence[type[MigrationQuery]] = [NodeKindUpdateMigrationQuery01]  # type: ignore[assignment]
+
+    async def execute(
+        self,
+        migration_input: MigrationInput,
+        branch: Branch,
+        queries: Sequence[type[MigrationBaseQuery]] | None = None,
+    ) -> MigrationResult:
+        result = await super().execute(migration_input=migration_input, branch=branch, queries=queries)
+        if result.errors:
+            return result
+
+        # explicitly run migrations to add the new attributes to existing instances
+        for attribute in self._newly_inherited_attributes():
+            sub_migration = NodeAttributeAddMigration(
+                new_node_schema=self.new_node_schema,
+                previous_node_schema=self.previous_node_schema,
+                schema_path=SchemaPath(
+                    path_type=SchemaPathType.ATTRIBUTE,
+                    schema_kind=self.new_schema.kind,
+                    field_name=attribute.name,
+                ),
+                force_inherited=True,
+            )
+            sub_result = await sub_migration.execute(migration_input=migration_input, branch=branch)
+            result.errors.extend(sub_result.errors)
+            result.nbr_migrations_executed += sub_result.nbr_migrations_executed
+            if result.errors:
+                break
+
+        return result
+
+    def _newly_inherited_attributes(self) -> list[AttributeSchema]:
+        new_names = set(self.new_schema.attribute_names) - set(self.previous_schema.attribute_names)
+        attributes = (self.new_schema.get_attribute(name=name) for name in sorted(new_names))
+        return [attribute for attribute in attributes if attribute.inherited]

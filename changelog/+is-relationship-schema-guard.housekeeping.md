@@ -1,1 +1,0 @@
-Introduced a shared `isRelationshipSchema` type guard in the frontend schema entity and routed the previously inline `"peer" in fieldSchema` field-schema checks through it, so attribute/relationship discrimination now lives in one tested place instead of being duplicated across form, table, filter and detail components.

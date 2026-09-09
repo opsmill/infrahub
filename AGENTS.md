@@ -11,7 +11,7 @@ Style: be direct and substantive. No filler, preamble, or pleasantries. Challeng
 - **Backend:** Python 3.14, FastAPI 0.131.0, Neo4j 2026.05 (driver 6.2), Pydantic 2.12
 - **Frontend:** TypeScript 5.9, React 19.2, Vite 8.0, Tailwind CSS 4.2
 - **Testing:** pytest 9.0, Vitest 4.1, Playwright 1.60
-- **Linting:** ruff 0.15, mypy 1.15, Biome 2.4
+- **Linting:** ruff 0.15, mypy 2.3, Biome 2.4
 - **Package Managers:** uv (Python), pnpm (Frontend)
 - **Task Runner:** Invoke 2.2.1
 
@@ -41,7 +41,6 @@ cd frontend/app && pnpm install       # Install frontend dependencies
 uv run invoke backend.test-unit       # Backend unit tests
 uv run invoke backend.test-integration # Backend integration tests
 cd frontend/app && pnpm test          # Frontend unit tests
-cd frontend/app && pnpm test:e2e      # Frontend E2E tests (legacy TS suite)
 uv run pytest -c tests/e2e/pytest.ini tests/e2e  # E2E tests (pytest, testcontainers)
 ```
 
@@ -99,6 +98,11 @@ cd frontend/app && pnpm biome:fix     # Format/lint frontend
 uv run invoke docs.lint               # Lint documentation
 ```
 
+`invoke lint` runs `yamllint` repo-wide, but its ruff checks cover only `tasks`, `models`,
+`utilities`, `python_testcontainers` and `backend`, while CI runs `ruff check . --exclude python_sdk`
+over the whole repo — so a Python violation elsewhere passes locally and fails in CI. `/pre-ci`
+includes that whole-repo check.
+
 ### Build
 
 ```bash
@@ -131,7 +135,7 @@ checkout.
 
 ## Coding Standards
 
-- Backend: `dev/guidelines/backend/python.md` (load before writing backend Python — typing, exception handling) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
+- Backend: `dev/guidelines/backend/python.md` (load before writing backend Python — typing, imports), `dev/guidelines/backend/exceptions.md` (load when writing a `try`/`except`) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
 - Frontend: `frontend/app/AGENTS.md`
 - Git workflow: `dev/guidelines/git-workflow.md`
 - Markdown: `dev/guidelines/markdown.md`
@@ -163,9 +167,11 @@ CI validates that all generated files are committed — the `validate-generated-
 - Before diagnosing _or_ modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
+- Add a towncrier changelog fragment for any user-visible change, UI styling included (use the `creating-changelog-entries` skill). `housekeeping` is not a catch-all: internal maintenance gets a fragment only when a user could still notice the change (the skill draws the boundary on user visibility) — agent-doc, CI-config, and test-only tweaks are the typical cases a user never notices, so they get none
 - Use type hints for Python (backend) and TypeScript types (frontend)
 - In `tasks/*.py`, use the shared helpers for project-scoped Docker Compose operations rather than hard-coding `docker compose` or service names: build the command with `get_compose_cmd` (it selects the required `--profile`/`--ansi never` options) plus `get_env_vars`, run it through `execute_command` (which handles `sudo`), and reference named services via the shared constants (e.g. `SERVICE_WORKER_NAME`). Literal `docker compose` is acceptable only for genuinely global, project-agnostic discovery commands.
 - Before pushing, run `/pre-ci` (`.agents/commands/pre-ci.md`) — it runs the locally-executable CI checks, including generated-file and generated-doc validation (`docs.validate`); CI fails if any generated file is stale
+- Before writing a changelog fragment, PR description, or ADR that names a specific identifier, metric, or config default, grep the actual diff/code for it — state what landed, not what the plan intended. When a later fix changes a figure — or reverses a decision — that a spec-kit doc set already stated, grep the whole `dev/specs/<feature>/` directory for the old value or decision and update every file that repeats it in the same commit
 
 ### Ask First
 

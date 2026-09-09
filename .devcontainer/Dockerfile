@@ -1,4 +1,4 @@
-FROM python:3.14.3
+FROM python:3.14.7
 
 RUN apt-get remove -yq docker.io docker-doc docker-compose podman-docker containerd runc 2>&1 || true
 
@@ -36,7 +36,7 @@ USER vscode
 
 RUN pip install invoke
 
-ARG UV_VER=0.9.9
+ARG UV_VER=0.11.8
 RUN curl -sSL https://astral.sh/uv/$UV_VER/install.sh | sh - \
     && echo "export PATH=\"$HOME/.local/bin:$PATH\"" >> $HOME/.bashrc
 

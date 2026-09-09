@@ -14,9 +14,9 @@ Most components wrap `react-aria-components` primitives with Tailwind styling. C
 
 | Component family | Purpose |
 |---|---|
-| `Button` / `LinkButton` | Any clickable styled button (+ `buttonVariants`). Migrated in #9065. |
-| `Card` (`CardHeader`, `CardContent`) | Bordered + rounded + shadowed content surface. Migrated in #9048. |
-| `Modal` (`ModalOverlay`) | Dialog/overlay with focus trap and escape handling. Migrated in #9088. |
+| `Button` / `LinkButton` | Any clickable styled button (+ `buttonVariants`). |
+| `Card` (`CardHeader`, `CardContent`) | Bordered + rounded + shadowed content surface. |
+| `Modal` (`ModalOverlay`) | Dialog/overlay with focus trap and escape handling. |
 | `Sheet` | Side-panel overlay; integrates the dismiss guard (see hooks below). |
 | `Popover` (`PopoverDialog`, `PopoverTrigger`) | React-aria popover. See the app-popover duality note below. |
 | `Tooltip` | Hover/focus tooltip with arrow; supports non-interactive triggers. |
@@ -29,8 +29,8 @@ Most components wrap `react-aria-components` primitives with Tailwind styling. C
 | `Tree` (`TreeItem`, `TreeItemContent`, `TreeItemLoader`) | Expandable tree with lazy loading. |
 | `SortableList` / `SortableItem` | Drag-and-drop reorderable list (react-aria `useDragAndDrop`). |
 | `ResizablePanelGroup` / `ResizablePanel` / `ResizableHandle` | Split panes built on `react-resizable-panels`. |
-| `ScrollArea` | Styled scroll container. Migrated in #9101. |
-| `Meter` | Progress/utilization bar. Migrated in #9100. |
+| `ScrollArea` | Styled scroll container. |
+| `Meter` | Progress/utilization bar. |
 | `Spinner` | Loading indicator. |
 | `DismissGuardContext` / `useDismissGuard` | Hook + context to block overlay dismissal (used by `Sheet`; consumers such as dirty forms mark themselves undismissable). |
 

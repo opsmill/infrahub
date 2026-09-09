@@ -1,4 +1,4 @@
-import { Checkbox, LinkButton } from "@infrahub/ui";
+import { Checkbox, LinkButton, Tooltip } from "@infrahub/ui";
 import type { PressEvent } from "react-aria-components";
 
 import { Col, Row } from "@/shared/components/container";
@@ -36,14 +36,18 @@ export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNa
 
       <Col className="gap-0.5 overflow-hidden">
         <Row className="gap-1">
-          <LinkButton
-            variant="ghost"
-            size="sm"
-            href={getBranchDetailsUrl(branch.name)}
-            className="truncate rounded-full px-2.5 text-custom-blue-700 data-hovered:bg-custom-blue-700/10 data-hovered:underline"
-          >
-            {branch.name}
-          </LinkButton>
+          <Tooltip message={branch.name}>
+            <LinkButton
+              variant="ghost"
+              size="sm"
+              href={getBranchDetailsUrl(branch.name)}
+              className="min-w-0 shrink rounded-full px-2.5 text-custom-blue-700 data-hovered:bg-custom-blue-700/10 data-hovered:underline"
+            >
+              {/* The ellipsis has to sit on a child: `text-overflow` does nothing on
+                  the button's own flex box. */}
+              <span className="truncate">{branch.name}</span>
+            </LinkButton>
+          </Tooltip>
 
           <Row className="gap-1">
             {branch.is_default && <BranchDefaultBadge />}

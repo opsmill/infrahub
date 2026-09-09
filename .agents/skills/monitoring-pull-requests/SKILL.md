@@ -158,6 +158,13 @@ genuinely 0 commits behind an hour ago is not proof it still is now.
   failure is gone there, a rebase is the fix, not an escalation.
 - A reviewer's "this needs a rebase" is a cue to re-verify, not a claim to argue against with a
   distance computed earlier — that number may no longer be true.
+- **Cite a specific run, not an impression.** To prove a failure predates your branch, find a run of
+  the same job on the base branch (`gh run list --branch <base-branch> --json databaseId,conclusion,headSha,createdAt`)
+  and confirm it failed the same way — a concrete run ID beats an inferred "probably pre-existing."
+- **To test whether your own commit caused a failure without burning the run**, re-run the failed job
+  on the *same* SHA (`gh run rerun <run-id> --failed`) instead of pushing a fix-attempt commit first —
+  a workflow with `concurrency: cancel-in-progress: true` cancels the very run whose outcome would
+  answer the question.
 
 1. **List failed jobs for each failed run:**
 
