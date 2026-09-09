@@ -21,7 +21,7 @@ from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel, Field
 
 from infrahub.core import registry
-from infrahub.core.changelog.models import ChangelogRelationshipMapper
+from infrahub.core.changelog.relationship_mapper import ChangelogRelationshipMapper
 from infrahub.core.constants import (
     SYSTEM_USER_ID,
     BranchSupportType,
