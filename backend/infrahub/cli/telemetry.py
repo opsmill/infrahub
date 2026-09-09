@@ -83,7 +83,8 @@ def probe_resources(
 
     if as_json:
         payload = asdict(diagnostics) | {"reading": diagnostics.reading.model_dump()}
-        print(ujson.dumps(payload, indent=2))
+        # Paths are the point of this output, so keep the slashes unescaped for a reader.
+        print(ujson.dumps(payload, indent=2, escape_forward_slashes=False))
         return
 
     _render(diagnostics=diagnostics, console=Console())
