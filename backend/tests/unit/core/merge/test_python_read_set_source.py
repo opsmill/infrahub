@@ -1,4 +1,4 @@
-"""Assembling the read-set index from the declared attributes and the analyzed queries.
+"""Joining the declared attributes with the analyzed queries.
 
 The schema says which attributes exist, the transform queries say what each reads, and the two
 arrive separately. What is pinned here is what happens when the second half is incomplete: one
@@ -7,7 +7,7 @@ unresolved transform drops its own attribute, while a failed analysis widens all
 
 from __future__ import annotations
 
-from infrahub.core.merge.python_target_sources import AnalyzedRead, DatabasePythonReadSetSource, DeclaredAttribute
+from infrahub.core.merge.python_target_sources import AnalyzedRead, ComposedPythonReadSetSource, DeclaredAttribute
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from tests.adapters.python_target_sources import (
     FailingAnalyzedPythonReadSets,
@@ -18,42 +18,38 @@ from tests.adapters.python_target_sources import (
 BRANCH = "main"
 DEVICE = "TestingDevice"
 SUMMARY = DeclaredAttribute(kind=DEVICE, attribute_name="summary")
+ROSTER = DeclaredAttribute(kind=DEVICE, attribute_name="roster")
 DIGEST = DeclaredAttribute(kind=DEVICE, attribute_name="digest")
-SUMMARY_READS = TransformReadSet(read_kinds=frozenset({DEVICE}), read_fields={DEVICE: frozenset({"name"})})
-SUMMARY_READ = AnalyzedRead(read_set=SUMMARY_READS, pinned=True)
+DEVICE_READS = TransformReadSet(read_kinds=frozenset({DEVICE}), read_fields={DEVICE: frozenset({"name"})})
+SUMMARY_READ = AnalyzedRead(read_set=DEVICE_READS, pinned=True)
+ROSTER_READ = AnalyzedRead(read_set=DEVICE_READS, pinned=False)
 
 
 def _source(
     *, declared: list[DeclaredAttribute], analyzed: dict[DeclaredAttribute, AnalyzedRead] | None = None
-) -> DatabasePythonReadSetSource:
-    return DatabasePythonReadSetSource(
+) -> ComposedPythonReadSetSource:
+    return ComposedPythonReadSetSource(
         declared_attributes=StaticDeclaredPythonAttributes(declared=declared),
-        read_sets=StaticAnalyzedPythonReadSets(analyzed=analyzed or {}),
+        analyzed_reads=StaticAnalyzedPythonReadSets(analyzed=analyzed or {}),
     )
-
-
-async def test_an_analyzed_attribute_keeps_its_read_set() -> None:
-    source = _source(declared=[SUMMARY], analyzed={SUMMARY: SUMMARY_READ})
-
-    read_sets = await source.read_sets(branch=BRANCH)
-
-    assert [(entry.kind, entry.attribute_name) for entry in read_sets] == [(DEVICE, "summary")]
-    assert read_sets[0].read_set == SUMMARY_READS
-    assert read_sets[0].gathered is True
 
 
 async def test_an_attribute_the_analysis_skipped_is_left_out() -> None:
     """An attribute with no transform to compute it stays out of the pass.
 
     Nothing can render its value until the transform arrives, and the recompute that follows the
-    transform being created is what covers it then.
+    transform being created is what covers it then. The two the analysis did answer for keep both
+    of its findings: what the query reads, and whether its root is pinned.
     """
-    source = _source(declared=[SUMMARY, DIGEST], analyzed={SUMMARY: SUMMARY_READ})
+    source = _source(declared=[SUMMARY, ROSTER, DIGEST], analyzed={SUMMARY: SUMMARY_READ, ROSTER: ROSTER_READ})
 
-    read_sets = await source.read_sets(branch=BRANCH)
+    read_sets = {entry.attribute_name: entry for entry in await source.read_sets(branch=BRANCH)}
 
-    assert [(entry.kind, entry.attribute_name) for entry in read_sets] == [(DEVICE, "summary")]
-    assert read_sets[0].read_set == SUMMARY_READS
+    assert set(read_sets) == {"summary", "roster"}
+    assert read_sets["summary"].read_set == DEVICE_READS
+    assert read_sets["summary"].gathered is True
+    assert read_sets["summary"].pinned is True
+    assert read_sets["roster"].pinned is False
 
 
 async def test_a_failed_analysis_widens_every_declared_attribute() -> None:
@@ -62,8 +58,8 @@ async def test_a_failed_analysis_widens_every_declared_attribute() -> None:
     Each declared attribute is then reported undeterminable and recomputed over its whole kind.
     """
     analyzed = FailingAnalyzedPythonReadSets()
-    source = DatabasePythonReadSetSource(
-        declared_attributes=StaticDeclaredPythonAttributes(declared=[SUMMARY, DIGEST]), read_sets=analyzed
+    source = ComposedPythonReadSetSource(
+        declared_attributes=StaticDeclaredPythonAttributes(declared=[SUMMARY, DIGEST]), analyzed_reads=analyzed
     )
 
     read_sets = await source.read_sets(branch=BRANCH)
@@ -76,8 +72,8 @@ async def test_a_failed_analysis_widens_every_declared_attribute() -> None:
 
 async def test_a_branch_declaring_nothing_never_reaches_the_analysis() -> None:
     analyzed = StaticAnalyzedPythonReadSets(analyzed={})
-    source = DatabasePythonReadSetSource(
-        declared_attributes=StaticDeclaredPythonAttributes(declared=[]), read_sets=analyzed
+    source = ComposedPythonReadSetSource(
+        declared_attributes=StaticDeclaredPythonAttributes(declared=[]), analyzed_reads=analyzed
     )
 
     assert await source.read_sets(branch=BRANCH) == []
