@@ -1,3 +1,10 @@
+"""End-to-end recompute of Python computed attributes on merge and rebase.
+
+Both compose files default the coalesced switch on, so CI only ever runs the coalesced legs. The
+switch-off branches are for the manual gate that runs this file in both positions, which is where
+the value assertions are held against the per-node dispatch.
+"""
+
 from __future__ import annotations
 
 import os
@@ -38,6 +45,8 @@ DEVICE_KIND = "InfraDevice"
 DEVICE_NAME_FLOW = "Process computed attribute for InfraDevice.name"
 
 # Enough devices that one flow per replayed node is unmistakable against one flow for the batch.
+# The two sets stay disjoint: the transform builds the device name, which is the unique HFID, so a
+# shared instance number would collide on that constraint rather than fail an assertion.
 MERGE_DEVICE_INSTANCES = (11, 12, 13, 14)
 REBASE_DEVICE_INSTANCES = (21, 22, 23, 24)
 
@@ -85,20 +94,18 @@ async def count_transform_runs(client: InfrahubClient, *, flow_name: str) -> int
 
 async def wait_for_transform_runs(
     client: InfrahubClient, *, flow_name: str, at_least: int, seconds: int = PREFECT_EVENT_WAIT_SECONDS
-) -> int:
-    """Wait until at least ``at_least`` runs of ``flow_name`` exist, and report what was counted.
+) -> None:
+    """Wait until at least ``at_least`` runs of ``flow_name`` exist.
 
     The recompute is submitted inside the merge flow but reaches the task API a moment later, so a
-    count taken as soon as the merge returns can read the queue before the submission lands.
+    count taken as soon as the merge returns can read the queue before the submission lands. The
+    assertion that follows is what decides the outcome, so a deadline here only stops the wait.
     """
-    count = 0
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
-        count = await count_transform_runs(client, flow_name=flow_name)
-        if count >= at_least:
-            break
+        if await count_transform_runs(client, flow_name=flow_name) >= at_least:
+            return
         await sleep(1)
-    return count
 
 
 async def create_device_and_wait(
