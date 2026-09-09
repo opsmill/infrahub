@@ -7,6 +7,8 @@ from infrahub.exceptions import ValidationError
 from infrahub.utils import InfrahubNumberEnum, InfrahubStringEnum
 
 from .schema import (
+    DISPLAY_LABEL_ATTRIBUTE_NAME,
+    HFID_ATTRIBUTE_NAME,
     FlagProperty,
     NodeProperty,
     SchemaElementPathType,
@@ -16,6 +18,8 @@ from .schema import (
 )
 
 __all__ = [
+    "DISPLAY_LABEL_ATTRIBUTE_NAME",
+    "HFID_ATTRIBUTE_NAME",
     "FlagProperty",
     "InfrahubKind",
     "NodeProperty",
