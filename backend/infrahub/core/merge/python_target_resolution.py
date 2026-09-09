@@ -121,6 +121,7 @@ class _Accumulator:
     def add(self, *, selection: _Selection, node_ids: set[str], deleted: bool) -> None:
         if isinstance(selection, _Widen):
             self.whole_kind = True
+            self.precise = False
             return
 
         if selection.self_ids:
@@ -351,10 +352,7 @@ def _select(*, signature: ChangeSignature, attribute: PythonAttributeReadSet) ->
         return _Widen()
 
     if not attribute.pinned and signature.kind in attribute.read_set.read_kinds:
-        # No field filter holds for an unpinned query, whatever the action. The read set carries
-        # the fields the query selects, never the ones it only filters on, so a change to a
-        # filtered field moves a node into or out of the result while the members already in it
-        # stay untouched. Which nodes read it cannot be established either way.
+        # No field filter holds for an unpinned query, whatever the action.
         return _Widen()
 
     if signature.action == CREATED:
