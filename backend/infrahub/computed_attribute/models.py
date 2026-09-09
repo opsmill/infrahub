@@ -120,10 +120,8 @@ class PythonTransformTarget:
 def _restrict_to_live_origin(event_trigger: EventTrigger, *, live_only: bool) -> None:
     """Leave merge, rebase and recompute replays to the coalesced pass when it owns them.
 
-    The decision arrives as an argument, read once where the triggers are gathered, so one gather
-    cannot build some automations for one answer and some for another. It is baked into the stored
-    automation, not read when the event arrives, so a change takes effect on the next reconcile of
-    these two trigger types rather than on the next restart.
+    Baked into the stored automation, not read when the event arrives, so a change takes effect on
+    the next reconcile of these two trigger types rather than on the next restart.
     """
     if live_only:
         event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value

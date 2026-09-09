@@ -6,6 +6,7 @@ through two injected sources, so these are unit tests over in-memory data.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
@@ -485,20 +486,6 @@ async def test_an_unpinned_query_widens_on_a_field_it_reads_without_selecting() 
     assert subscribers.calls == []
 
 
-async def test_an_unpinned_query_still_ignores_a_kind_it_never_reads() -> None:
-    """Widening on any read kind must not become widening on every merge."""
-    subscribers = RecordingSubscriberSource(subscribers={})
-    resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
-
-    targets = await resolver.resolve(
-        branch=BRANCH,
-        changes=[MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"name"}))],
-    )
-
-    assert targets == []
-    assert subscribers.calls == []
-
-
 async def test_a_created_node_of_an_unpinned_attribute_kind_is_its_own_target() -> None:
     """An unpinned query that never reads the owner kind still leaves the new node to compute.
 
@@ -519,14 +506,35 @@ async def test_a_created_node_of_an_unpinned_attribute_kind_is_its_own_target() 
     assert subscribers.calls == []
 
 
-async def test_an_updated_node_of_an_unpinned_attribute_kind_selects_nothing() -> None:
-    """Its value is built from the query data, and a kind the query never reads is not that."""
+@dataclass
+class UnreadKindCase:
+    name: str
+    kind: str
+    node_id: str
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        UnreadKindCase(name="a_kind_the_query_never_reads", kind=SITE, node_id="s1"),
+        UnreadKindCase(name="the_kind_the_attribute_lives_on", kind=OWNER, node_id="o1"),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_an_unpinned_query_ignores_an_update_to_a_kind_it_never_reads(case: UnreadKindCase) -> None:
+    """Widening on any read kind must not become widening on every merge.
+
+    The attribute's own kind is one of those unread kinds here, and an update to it moves nothing
+    the query reads, so it selects nothing either.
+    """
     subscribers = RecordingSubscriberSource(subscribers={})
     resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
 
     targets = await resolver.resolve(
         branch=BRANCH,
-        changes=[MergeChange(node_id="o1", kind=OWNER, action="updated", changed_fields=frozenset({"name"}))],
+        changes=[
+            MergeChange(node_id=case.node_id, kind=case.kind, action="updated", changed_fields=frozenset({"name"}))
+        ],
     )
 
     assert targets == []

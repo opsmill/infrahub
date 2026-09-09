@@ -82,9 +82,6 @@ QUERY_LABEL = "query TestCarLabel($id: ID!) { TestCar(ids: [$id]) { edges { node
 # No root filter, so any number of cars can answer it.
 QUERY_UNPINNED = "query TestCarAll { TestCar { edges { node { name { value } } } } }"
 
-# Unpinned and reading the owner only, so the kind the attribute lives on is not read at all.
-QUERY_UNPINNED_PEER = "query TestPersonAll { TestPerson { edges { node { name { value } } } } }"
-
 
 def _schema_with_an_owner_reading_transform() -> SchemaRoot:
     """The car/person Python schema, with the second attribute fed by the owner-reading transform.
@@ -632,55 +629,6 @@ class TestCoalescedRecomputePythonUnpinnedQuery(CoalescedPythonTestBase):
             NAME_ATTRIBUTE: sorted(unpinned_dataset.car_ids),
             OWNER_ATTRIBUTE: WHOLE_KIND,
         }
-
-
-class TestCoalescedRecomputePythonUnpinnedPeerQuery(CoalescedPythonTestBase):
-    """An unpinned query that does not read the kind its attribute lives on.
-
-    Widening covers the readers of a kind the query reads. It has nothing to say about a created
-    node of the attribute's own kind when that kind is outside the query, and that node still needs
-    its first value.
-    """
-
-    @pytest.fixture(scope="class")
-    async def peer_dataset(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        client: InfrahubClient,
-        admin_account: CoreAccount,
-    ) -> PythonRecomputeDataset:
-        return await _seed(
-            db=db,
-            branch=default_branch,
-            schema=_schema_with_an_owner_reading_transform(),
-            owner_query=QUERY_UNPINNED_PEER,
-        )
-
-    async def test_a_created_node_of_the_attribute_kind_is_still_its_own_target(
-        self,
-        peer_dataset: PythonRecomputeDataset,
-        db: InfrahubDatabase,
-        workflow_recorder: WorkflowRecorder,
-        default_branch: Branch,
-        admin_account: CoreAccount,
-    ) -> None:
-        """Nothing the query reads moved, so the new car is the exact target of both attributes."""
-        person = await NodeManager.get_one(db=db, id=peer_dataset.person_id, raise_on_error=True)
-        created = await Node.init(db=db, schema=CAR_KIND)
-        await created.new(db=db, name="car-created-after-seed", owner=person)
-        await created.save(db=db)
-        created_id = created.id
-
-        submissions = await self._run_pass(
-            db=db,
-            recorder=workflow_recorder,
-            default_branch=default_branch,
-            admin_account=admin_account,
-            changes=[MergeChange(node_id=created_id, kind=CAR_KIND, action="created")],
-        )
-
-        assert submissions == {NAME_ATTRIBUTE: [created_id], OWNER_ATTRIBUTE: [created_id]}
 
 
 class TestCoalescedRecomputePythonRebase(CoalescedPythonTestBase):
