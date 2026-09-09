@@ -55,7 +55,8 @@ A release must not be cut while increment A's stub is live (research.md, Decisio
 ### I. Schema-Driven Integrity: PASS
 
 No node, attribute or relationship is added. `schema/schema.graphql` and the frontend generated types
-are regenerated, never edited (`uv run invoke schema.generate-graphqlschema`, `pnpm codegen`).
+are regenerated, never edited (`uv run invoke schema.generate-graphqlschema`, then both
+`pnpm --dir frontend/app codegen` and `pnpm --dir frontend/app codegen:graphql`).
 
 ### II. Branch-Safe by Default: PASS
 
@@ -186,7 +187,9 @@ backend/tests/
     └── test_repository_branch_attributes.py  # [B] primitive benchmark at the target branch counts
 
 schema/schema.graphql                         # [A] regenerated
-frontend/app/src/shared/api/graphql/generated/types.ts   # [A] regenerated (pnpm codegen)
+frontend/app/src/shared/api/graphql/generated/types.ts            # [A] regenerated (pnpm codegen)
+frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts    # [A] regenerated (pnpm codegen:graphql)
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts  # [A] regenerated (pnpm codegen:graphql)
 
 changelog/
 ├── +branch-list-sync-with-git-filter.added.md  # [A]
@@ -260,7 +263,8 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
    timestamp `ORDER BY` arms for the unpaged chunked read; that guards a scenario needing both
    more than `query_size_limit` (5000) branches and a microsecond-precision timestamp collision,
    and this feature's scale is 200.
-7. Regenerate `schema/schema.graphql`; run `pnpm codegen`; commit both.
+7. Regenerate `schema/schema.graphql`; run both `pnpm codegen` and `pnpm codegen:graphql`; commit
+   all four files.
 8. Component tests for membership per kind, not-found, permission matrix including anonymous with and
    without a role grant, paging and count, ordering, `ref` dispatch, zero bus sends. Unit tests for
    `paging.py`. The 5-branch and 200-branch fixtures are one module-scoped fixture built with

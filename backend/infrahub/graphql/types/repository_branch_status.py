@@ -1,21 +1,40 @@
 from __future__ import annotations
 
-from graphene import Boolean, Field, Int, List, NonNull, ObjectType, String
+from graphene import Field, Int, List, NonNull, ObjectType
 
 from .attribute import DropdownType, TextAttributeType
-from .enums import InfrahubBranchStatus
+from .branch import (
+    NonRequiredBooleanValueField,
+    NonRequiredStringValueField,
+    RequiredStringValueField,
+    StatusField,
+)
+from .metadata import InfrahubStandardNodeMetaData
 
 
 class InfrahubRepositoryBranchStatusNode(ObjectType):
-    name = String(required=True, description="Branch name; joins the repository's per-branch attribute edges")
-    status = InfrahubBranchStatus(required=True)
-    is_default = Boolean(required=True)
-    sync_with_git = Boolean(
+    """One branch's view of a repository.
+
+    The branch fields carry the same value-field wrappers and nullability as the branch query, so a
+    client reads `name.value` and `commit.value` through one access pattern across the whole row.
+    """
+
+    name = Field(
+        RequiredStringValueField,
         required=True,
+        description="Branch name; joins the repository's per-branch attribute edges",
+    )
+    status = Field(StatusField, required=True)
+    is_default = Field(NonRequiredBooleanValueField, required=False)
+    sync_with_git = Field(
+        NonRequiredBooleanValueField,
+        required=False,
         description="Always true on CoreRepository, which selects on it; varies per row on CoreReadOnlyRepository, whose row set is every branch",
     )
-    branched_from = String(
-        required=True, description="Fork point from the default branch; inherited rows resolve as of this time"
+    branched_from = Field(
+        NonRequiredStringValueField,
+        required=False,
+        description="Fork point from the default branch; inherited rows resolve as of this time",
     )
     commit = Field(TextAttributeType, description="Imported commit as this branch resolves it")
     sync_status = Field(
@@ -31,6 +50,7 @@ class InfrahubRepositoryBranchStatusNode(ObjectType):
 
 class InfrahubRepositoryBranchStatusEdge(ObjectType):
     node = Field(InfrahubRepositoryBranchStatusNode, required=True)
+    node_metadata = Field(InfrahubStandardNodeMetaData, required=True)
 
 
 class InfrahubRepositoryBranchStatusType(ObjectType):

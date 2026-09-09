@@ -8955,21 +8955,27 @@ type InfrahubRelationshipMetadata {
   updated_by: CoreGenericAccount
 }
 
+"""
+One branch's view of a repository.
+
+The branch fields carry the same value-field wrappers and nullability as the branch query, so a
+client reads `name.value` and `commit.value` through one access pattern across the whole row.
+"""
 type InfrahubRepositoryBranchStatus {
   """
   Fork point from the default branch; inherited rows resolve as of this time
   """
-  branched_from: String!
+  branched_from: NonRequiredStringValueField
   """Imported commit as this branch resolves it"""
   commit: TextAttribute
   """Defined on CoreGenericRepository, present for both kinds"""
   internal_status: Dropdown
-  is_default: Boolean!
+  is_default: NonRequiredBooleanValueField
   """Branch name; joins the repository's per-branch attribute edges"""
-  name: String!
+  name: RequiredStringValueField!
   """CoreReadOnlyRepository only; null for CoreRepository"""
   ref: TextAttribute
-  status: BranchStatus!
+  status: StatusField!
   """
   Import status as this branch resolves it (defined on CoreGenericRepository, present for both kinds)
   """
@@ -8977,11 +8983,12 @@ type InfrahubRepositoryBranchStatus {
   """
   Always true on CoreRepository, which selects on it; varies per row on CoreReadOnlyRepository, whose row set is every branch
   """
-  sync_with_git: Boolean!
+  sync_with_git: NonRequiredBooleanValueField
 }
 
 type InfrahubRepositoryBranchStatusEdge {
   node: InfrahubRepositoryBranchStatus!
+  node_metadata: InfrahubNodeMetadata!
 }
 
 type InfrahubRepositoryBranchStatusType {

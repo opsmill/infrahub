@@ -128,6 +128,12 @@ whose attribute has no visible edge (never created) produces no row; the reader 
 The pure helpers in `paging.py` operate on a list of these: `apply_value_filters`, `order_rows`
 (default branch first, then `name` ascending, only when no `order` argument), `page_rows`.
 
+A row becomes one GraphQL edge through `Branch.to_graphql`, the branch query's own serialisation, so
+the five branch fields arrive wrapped in `InfrahubBranch`'s value-field types and each edge carries
+`node_metadata`. The attribute payloads are merged into the resulting `node`. The legacy flat
+`Branch` scalars are not the model: `StandardNode.to_graphql_flat` exists only for the deprecated
+`Branch` query, and reusing `to_graphql` is what keeps the two row shapes from diverging.
+
 ### `RepositoryData` and `RepositoryBranchInfo`
 
 `infrahub.git.models::RepositoryData` keeps `branch_info: dict[str, RepositoryBranchInfo]` unchanged.

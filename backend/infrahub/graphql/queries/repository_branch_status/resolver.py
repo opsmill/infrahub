@@ -8,7 +8,7 @@ from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.core.node.standard import StandardNodeOrdering
+from infrahub.core.node.standard import StandardNodeOrdering, StandardNodeQueryFields
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.queries.branch import standard_node_ordering_from_order_input
@@ -30,6 +30,8 @@ if TYPE_CHECKING:
     from infrahub.graphql.types.metadata import MetadataOrderInput
 
     from .kind_dispatch import RepositoryKindPolicy
+
+_BRANCH_FIELD_NAMES = frozenset({"name", "status", "is_default", "sync_with_git", "branched_from"})
 
 
 class RepositoryBranchStatusResolver:
@@ -156,7 +158,9 @@ class RepositoryBranchStatusResolver:
         )
 
         fields = extract_graphql_fields(info)
-        node_fields = (fields.get("edges") or {}).get("node") or {}
+        edge_fields = fields.get("edges") or {}
+        node_fields = edge_fields.get("node") or {}
+        node_metadata_fields = edge_fields.get("node_metadata") or {}
         attribute_names = self._attribute_names(node_fields=node_fields, policy=policy)
 
         attributes = await self.build_source(db).read(
@@ -183,7 +187,12 @@ class RepositoryBranchStatusResolver:
 
         attribute_schemas = self._attribute_schemas(db=db, policy=policy)
         result["edges"] = [
-            {"node": self._build_node(row=row, attribute_schemas=attribute_schemas)}
+            await self._build_edge(
+                row=row,
+                attribute_schemas=attribute_schemas,
+                node_fields=node_fields,
+                node_metadata_fields=node_metadata_fields,
+            )
             for row in page_rows(rows=rows, offset=offset, limit=limit)
         ]
         return result
@@ -195,22 +204,23 @@ class RepositoryBranchStatusResolver:
         schema = db.schema.get(name=policy.kind, branch=None, duplicate=False)
         return {name: schema.get_attribute(name=name) for name in sorted(policy.attribute_names)}
 
-    def _build_node(
-        self, row: RepositoryBranchStatusRow, attribute_schemas: dict[str, AttributeSchema]
+    async def _build_edge(
+        self,
+        row: RepositoryBranchStatusRow,
+        attribute_schemas: dict[str, AttributeSchema],
+        node_fields: dict[str, Any],
+        node_metadata_fields: dict[str, Any],
     ) -> dict[str, Any]:
-        node: dict[str, Any] = {
-            "name": row.branch.name,
-            "status": row.branch.status.value,
-            "is_default": row.branch.is_default,
-            "sync_with_git": row.branch.sync_with_git,
-            "branched_from": row.branch.branched_from,
-            "commit": None,
-            "sync_status": None,
-            "internal_status": None,
-            "ref": None,
-        }
+        # The branch half goes through the branch model's own serialisation, so the value-field
+        # wrapping and the metadata shape cannot drift from the branch query's.
+        branch_fields = {name: node_fields[name] for name in _BRANCH_FIELD_NAMES & node_fields.keys()}
+        edge = await row.branch.to_graphql(
+            fields=StandardNodeQueryFields(node=branch_fields, node_metadata=node_metadata_fields)
+        )
+
+        node = edge["node"]
         for attribute_name, attribute_schema in attribute_schemas.items():
             node[attribute_name] = build_attribute_payload(
                 value=row.values.get(attribute_name), attribute_schema=attribute_schema
             )
-        return node
+        return edge

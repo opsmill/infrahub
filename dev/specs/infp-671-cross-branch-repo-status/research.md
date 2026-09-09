@@ -37,7 +37,8 @@ Three facts found during research bound the design more than the spec anticipate
   a resolver that resolves the repository for real (id or name, kind dispatch, not-found), enforces the
   FR-012 permission for real, reads the real in-scope branch rows through the branch list, and fills
   the per-branch attribute payloads from a deterministic fabrication keyed on the branch name.
-  `schema/schema.graphql` is regenerated so the frontend's `pnpm codegen` produces the final types.
+  `schema/schema.graphql` is regenerated so the frontend's `pnpm codegen` plus `pnpm codegen:graphql`
+  produce the final types.
   The two attribute-value filters (`sync_status__value`, `internal_status__value`) and the
   `own_values_only` flag are present in the schema but rejected with a `ValidationError` naming every
   argument that would narrow, which the contract document states. Accepting and ignoring them was the

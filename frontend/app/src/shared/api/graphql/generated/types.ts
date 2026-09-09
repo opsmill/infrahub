@@ -18280,29 +18280,36 @@ export type InfrahubRelationshipMetadata = {
   updated_by: Maybe<CoreGenericAccount>;
 };
 
+/**
+ * One branch's view of a repository.
+ *
+ * The branch fields carry the same value-field wrappers and nullability as the branch query, so a
+ * client reads `name.value` and `commit.value` through one access pattern across the whole row.
+ */
 export type InfrahubRepositoryBranchStatus = {
   __typename: 'InfrahubRepositoryBranchStatus';
   /** Fork point from the default branch; inherited rows resolve as of this time */
-  branched_from: Scalars['String']['output'];
+  branched_from: Maybe<NonRequiredStringValueField>;
   /** Imported commit as this branch resolves it */
   commit: Maybe<TextAttribute>;
   /** Defined on CoreGenericRepository, present for both kinds */
   internal_status: Maybe<Dropdown>;
-  is_default: Scalars['Boolean']['output'];
+  is_default: Maybe<NonRequiredBooleanValueField>;
   /** Branch name; joins the repository's per-branch attribute edges */
-  name: Scalars['String']['output'];
+  name: RequiredStringValueField;
   /** CoreReadOnlyRepository only; null for CoreRepository */
   ref: Maybe<TextAttribute>;
-  status: BranchStatus;
+  status: StatusField;
   /** Import status as this branch resolves it (defined on CoreGenericRepository, present for both kinds) */
   sync_status: Maybe<Dropdown>;
   /** Always true on CoreRepository, which selects on it; varies per row on CoreReadOnlyRepository, whose row set is every branch */
-  sync_with_git: Scalars['Boolean']['output'];
+  sync_with_git: Maybe<NonRequiredBooleanValueField>;
 };
 
 export type InfrahubRepositoryBranchStatusEdge = {
   __typename: 'InfrahubRepositoryBranchStatusEdge';
   node: InfrahubRepositoryBranchStatus;
+  node_metadata: InfrahubNodeMetadata;
 };
 
 export type InfrahubRepositoryBranchStatusType = {
@@ -25722,7 +25729,7 @@ export type Query = {
   InfrahubPermissions: AccountPermissionsEdges;
   /** Find all nodes of specified kinds reachable from a source node */
   InfrahubReachableNodes: ReachableNodesResultType;
-  /** Status of one repository as seen from every relevant branch, one row per branch. Resolved entirely from the graph; never contacts a task worker. Requires view permission on the repository's kind covering both the default and non-default branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER). (preview: attribute values are placeholders, not yet read from the graph) */
+  /** Status of one repository as seen from every relevant branch, one row per branch. Resolved entirely from the graph; never contacts a task worker. Requires view permission on the repository's kind covering both the default and non-default branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER). (preview: attribute values are placeholders, not yet read from the graph, so sync_status__value, internal_status__value and own_values_only are rejected) */
   InfrahubRepositoryBranchStatus: InfrahubRepositoryBranchStatusType;
   InfrahubResourcePoolAllocated: PoolAllocated;
   InfrahubResourcePoolUtilization: PoolUtilization;

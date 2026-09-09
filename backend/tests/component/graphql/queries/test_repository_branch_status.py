@@ -65,15 +65,16 @@ query(
     count
     edges {
       node {
-        name
-        status
-        is_default
-        sync_with_git
-        branched_from
+        name { value }
+        status { value }
+        is_default { value }
+        sync_with_git { value }
+        branched_from { value }
         commit { value }
         sync_status { value label color }
         internal_status { value }
       }
+      node_metadata { created_at updated_at }
     }
   }
 }
@@ -84,7 +85,7 @@ query($id: String!, $limit: Int, $direction: OrderDirection!) {
   InfrahubRepositoryBranchStatus(id: $id, limit: $limit, order: {node_metadata: {created_at: $direction}}) {
     count
     edges {
-      node { name }
+      node { name { value } }
     }
   }
 }
@@ -96,7 +97,7 @@ query($id: String!, $limit: Int, $name: String, $partial_match: Boolean) {
     count
     edges {
       node {
-        name
+        name { value }
         ref { value }
         commit { value }
       }
@@ -109,7 +110,7 @@ NAMES_ONLY_QUERY = """
 query($id: String!, $limit: Int) {
   InfrahubRepositoryBranchStatus(id: $id, limit: $limit) {
     edges {
-      node { name }
+      node { name { value } }
     }
   }
 }
@@ -120,7 +121,7 @@ query($id: String!, $limit: Int, $name: String) {
   InfrahubRepositoryBranchStatus(id: $id, limit: $limit, name__value: $name) {
     edges {
       node {
-        name
+        name { value }
         commit { value updated_at }
         sync_status { value updated_at }
         internal_status { value updated_at }
@@ -134,7 +135,7 @@ EMPTY_ORDER_QUERY = """
 query($id: String!, $limit: Int) {
   InfrahubRepositoryBranchStatus(id: $id, limit: $limit, order: {}) {
     edges {
-      node { name }
+      node { name { value } }
     }
   }
 }
@@ -144,11 +145,50 @@ EMPTY_NODE_METADATA_ORDER_QUERY = """
 query($id: String!, $limit: Int) {
   InfrahubRepositoryBranchStatus(id: $id, limit: $limit, order: {node_metadata: {}}) {
     edges {
-      node { name }
+      node { name { value } }
     }
   }
 }
 """
+
+# The two documents below select the same branch fields through both queries, so the row shape can be
+# compared field for field against the branch query's.
+_BRANCH_FIELD_SELECTION = """
+      node {
+        name { value }
+        status { value }
+        is_default { value }
+        sync_with_git { value }
+        branched_from { value }
+      }
+      node_metadata { created_at updated_at }
+"""
+
+BRANCH_FIELDS_QUERY = (
+    """
+query($id: String!, $name: String) {
+  InfrahubRepositoryBranchStatus(id: $id, name__value: $name) {
+    edges {
+%s
+    }
+  }
+}
+"""
+    % _BRANCH_FIELD_SELECTION
+)
+
+INFRAHUB_BRANCH_FIELDS_QUERY = (
+    """
+query($name: String) {
+  InfrahubBranch(name__value: $name) {
+    edges {
+%s
+    }
+  }
+}
+"""
+    % _BRANCH_FIELD_SELECTION
+)
 
 VALUE_FILTER_QUERY = """
 query(
@@ -166,7 +206,7 @@ query(
   ) {
     count
     edges {
-      node { name }
+      node { name { value } }
     }
   }
 }
@@ -180,7 +220,7 @@ query($id: String!, $limit: Int) {
     order: {node_metadata: {created_at: ASC, updated_at: ASC}}
   ) {
     edges {
-      node { name }
+      node { name { value } }
     }
   }
 }
@@ -486,7 +526,7 @@ async def _run(
 
 def _names(result: ExecutionResult) -> list[str]:
     assert result.data
-    return [edge["node"]["name"] for edge in result.data["InfrahubRepositoryBranchStatus"]["edges"]]
+    return [edge["node"]["name"]["value"] for edge in result.data["InfrahubRepositoryBranchStatus"]["edges"]]
 
 
 def _nodes(result: ExecutionResult) -> list[dict[str, Any]]:
@@ -526,7 +566,7 @@ class TestRepositoryBranchStatusRows:
         assert len(branches.non_terminal_status_names) == 5
         assert branches.default_branch.name in names
         assert branches.legacy_non_isolated in names
-        assert {node["sync_with_git"] for node in _nodes(result)} == {True}
+        assert {node["sync_with_git"]["value"] for node in _nodes(result)} == {True}
 
     async def test_read_only_kind_also_returns_the_non_syncing_branch(
         self,
@@ -556,7 +596,7 @@ class TestRepositoryBranchStatusRows:
         assert branches.non_syncing in names
         assert set(branches.terminal_status_names) & set(names) == set()
         assert set(branches.non_terminal_status_names) <= set(names)
-        sync_with_git = {node["name"]: node["sync_with_git"] for node in _nodes(result)}
+        sync_with_git = {node["name"]["value"]: node["sync_with_git"]["value"] for node in _nodes(result)}
         assert sync_with_git[branches.non_syncing] is False
         assert sync_with_git[branches.default_branch.name] is True
         assert set(sync_with_git.values()) == {True, False}
@@ -583,7 +623,7 @@ class TestRepositoryBranchStatusRows:
         assert result.errors is None
         assert result.data
         assert result.data["InfrahubRepositoryBranchStatus"]["count"] == 5
-        statuses = {node["name"]: node["status"] for node in _nodes(result)}
+        statuses = {node["name"]["value"]: node["status"]["value"] for node in _nodes(result)}
         assert statuses == {
             branches.by_status[BranchStatus.OPEN]: BranchStatus.OPEN.value,
             branches.by_status[BranchStatus.NEED_REBASE]: BranchStatus.NEED_REBASE.value,
@@ -614,8 +654,8 @@ class TestRepositoryBranchStatusRows:
         assert first_page.data
         assert first_page.data["InfrahubRepositoryBranchStatus"]["count"] == READ_WRITE_ROW_COUNT
         assert _names(first_page) == [branches.default_branch.name, *branches.five[:4]]
-        assert _nodes(first_page)[0]["is_default"] is True
-        assert [node["is_default"] for node in _nodes(first_page)[1:]] == [False, False, False, False]
+        assert _nodes(first_page)[0]["is_default"]["value"] is True
+        assert [node["is_default"]["value"] for node in _nodes(first_page)[1:]] == [False, False, False, False]
 
         tail_page = await _run(
             db=db,
@@ -1028,6 +1068,74 @@ class TestRepositoryBranchStatusRows:
         assert [node["ref"]["value"] for node in _nodes(read_only)] == ["main"] * 5
         assert all(node["commit"]["value"] for node in _nodes(read_write))
 
+    async def test_branch_fields_serialize_exactly_as_the_branch_query_does(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        """The branch half of a row must match InfrahubBranch, so one client accessor serves both."""
+        branches = repository_branch_status_branches
+        repository, _ = repositories
+        target = branches.five[0]
+
+        rows = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=BRANCH_FIELDS_QUERY,
+            variables={"id": repository.id, "name": target},
+            account_session=reader_session,
+        )
+        branch_query = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=INFRAHUB_BRANCH_FIELDS_QUERY,
+            variables={"name": target},
+            account_session=reader_session,
+        )
+
+        assert rows.errors is None
+        assert branch_query.errors is None
+        assert rows.data
+        assert branch_query.data
+
+        row_edge = rows.data["InfrahubRepositoryBranchStatus"]["edges"][0]
+        branch_edge = branch_query.data["InfrahubBranch"]["edges"][0]
+
+        assert row_edge["node"] == branch_edge["node"]
+        assert row_edge["node_metadata"] == branch_edge["node_metadata"]
+        assert row_edge["node"]["name"] == {"value": target}
+        assert row_edge["node_metadata"]["created_at"] is not None
+
+    async def test_node_metadata_is_readable_for_every_row(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        """`order` sorts by node metadata, so the metadata it sorts on must be selectable."""
+        branches = repository_branch_status_branches
+        repository, _ = repositories
+
+        result = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=ROWS_QUERY,
+            variables={"id": repository.id, "limit": 5},
+            account_session=reader_session,
+        )
+
+        assert result.errors is None
+        assert result.data
+        edges = result.data["InfrahubRepositoryBranchStatus"]["edges"]
+        assert len(edges) == 5
+        assert all(edge["node_metadata"]["created_at"] is not None for edge in edges)
+        assert all(edge["node_metadata"]["updated_at"] is not None for edge in edges)
+
     async def test_dropdown_payload_carries_the_schema_label_and_colour(
         self,
         db: InfrahubDatabase,
@@ -1353,7 +1461,7 @@ query(
     own_values_only: $own_values_only
   ) {
     edges {
-      node { name commit { value } }
+      node { name { value } commit { value } }
     }
   }
 }
