@@ -343,6 +343,39 @@ async def test_commit_log_refuses_out_of_range_paging(
     assert recording_reader.commit_requests == []
 
 
+async def test_explicit_null_paging_falls_back_to_the_documented_defaults(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    repository: Node,
+    recording_reader: RecordingRepositoryGitStateReader,
+) -> None:
+    """Both arguments are nullable, so an explicit null must mean the default rather than raising."""
+    response = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id, "limit": None, "offset": None},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert recording_reader.commit_requests == [
+        _expected_request(
+            repository_id=repository.id,
+            infrahub_branch_name=default_branch.name,
+            git_ref=REPOSITORY_DEFAULT_BRANCH,
+            imported_commit=MAIN_COMMIT,
+            include_pending_count=True,
+            limit=10,
+            offset=0,
+        )
+    ]
+
+
 async def test_selecting_pending_count_asks_the_reader_to_count(
     db: InfrahubDatabase,
     default_branch: Branch,

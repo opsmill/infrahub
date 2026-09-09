@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from infrahub.graphql.initialization import GraphqlContext
 
 DEFAULT_LIMIT = 10
+DEFAULT_OFFSET = 0
 MIN_LIMIT = 1
 MAX_LIMIT = 100
 
@@ -73,11 +74,25 @@ def _unavailable_payload(result: CommitLogResult | None, reason: RepositoryGitUn
     }
 
 
-def _validate_paging(limit: int, offset: int) -> None:
-    if limit < MIN_LIMIT or limit > MAX_LIMIT:
+def _resolve_paging(limit: int | None, offset: int | None) -> tuple[int, int]:
+    """Apply the documented paging defaults, then bound both values.
+
+    Both arguments are nullable in the schema, so a caller can send an explicit null as readily as
+    omitting them; each means "use the default" rather than "no limit".
+
+    Raises:
+        ValidationError: When either value falls outside its documented range.
+
+    """
+    resolved_limit = DEFAULT_LIMIT if limit is None else limit
+    resolved_offset = DEFAULT_OFFSET if offset is None else offset
+
+    if resolved_limit < MIN_LIMIT or resolved_limit > MAX_LIMIT:
         raise ValidationError(f"limit must be between {MIN_LIMIT} and {MAX_LIMIT}")
-    if offset < 0:
+    if resolved_offset < 0:
         raise ValidationError("offset must be greater than or equal to 0")
+
+    return resolved_limit, resolved_offset
 
 
 def _resolve_git_ref(
@@ -116,13 +131,13 @@ class RepositoryCommitsResolver:
         root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         repository_id: str,
-        limit: int = DEFAULT_LIMIT,
-        offset: int = 0,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> dict[str, Any]:
         graphql_context: GraphqlContext = info.context
         branch = graphql_context.branch
 
-        _validate_paging(limit=limit, offset=offset)
+        resolved_limit, resolved_offset = _resolve_paging(limit=limit, offset=offset)
 
         repository = await load_repository_for_view(graphql_context=graphql_context, repository_id=repository_id)
         git_ref = _resolve_git_ref(
@@ -158,8 +173,8 @@ class RepositoryCommitsResolver:
                 infrahub_branch_name=branch.name,
                 git_ref=git_ref,
                 imported_commit=imported_commit,
-                limit=limit,
-                offset=offset,
+                limit=resolved_limit,
+                offset=resolved_offset,
                 include_pending_count="pending_count" in fields,
             )
         )

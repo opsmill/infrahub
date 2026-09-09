@@ -229,9 +229,15 @@ Depends on blocks 2.3 and 2.4 (2.5 may land after).
 - [x] T028 [P] Walk quickstart.md "Phase A" against a running stack and record any step whose expectation the implementation contradicts, amending quickstart.md rather than the assertion. **Done 2026-09-09**, against the dev dependencies plus a natively-run API server and `infrahubasync` Prefect worker from this branch rather than `invoke dev.start`, because the host already ran a compose project holding the published ports. A `CoreRepository` pointed at a `FileRepo` fixture on disk supplied the repository; the add path's connectivity RPC is answered by the Prefect worker, which is also the message-bus consumer, and that RPC is still unbounded until block 3.1. Results: step 2 holds verbatim, including `git_ref` resolving to the repository's configured `default_branch` on the default branch and to the branch's own name elsewhere, and `imported_commit` inherited from the origin branch's fork point on a branch that never imported. Step 3's row half confirmed absent as amended. **Step 4 contradicted its expectation and is amended**: the denial matches `CoreRepository`'s in code (`PERMISSION_DENIED`), status (403) and permission named (`object:Core:Repository:view:allow_default`), but not in wording, because these resolvers check one permission while the analyzer batches every kind and denies in the plural, and the resolver-level error additionally carries `path` and `locations`. Step 5 holds but is only a smoke check live, since the placeholder reader makes no worker request either way. Added as step 6: the paging refusals carry the exact expected messages but surface as `UNDEFINED_ERROR` / 422, because `ValidationError` has no catalogue entry anywhere in the codebase — cataloguing one is published-error-surface work for its own ticket
 
 **Checkpoint 2A (the frontend hand-off, and the MVP)**: `schema/schema.graphql` and the frontend
-generated types carry the full surface; both queries answer with real repository, branch, ref and
-imported-commit values and an honest unavailable state; permission behaves exactly as it does for the
-repository itself. Frontend work (block 3.5) can start now and does not wait for any later phase.
+generated types carry the full surface; `InfrahubRepositoryCommits` answers with real repository,
+branch, ref and imported-commit values and an honest unavailable state; permission behaves exactly
+as it does for the repository itself. Frontend work (block 3.5) can start now and does not wait for
+any later phase.
+
+`InfrahubRepositoryBranchDrift` is live at this checkpoint but answers with the repository id and its
+own column-level unavailable state and no rows: a drift row needs the per-branch tracked commit that
+block 2.5 supplies, and the request branch's value would be wrong for every other branch. Do not read
+this checkpoint as promising drift rows from PR 2 - that is checkpoint 2B.
 
 **Checkpoint 2B**: drift rows carry each branch's own tracked commit and ref from one database query,
 with the query count independent of branch count.
