@@ -101,9 +101,9 @@ parent and children, declare the same mirrored pair, so pairing the declarations
 `RelationshipSchema.mirrors()` leaves more than one answer and any pick is a guess.
 
 Read the direction back from the graph instead. The two `IS_RELATED` edges around the
-`Relationship` vertex are stored in the direction of the relationship: an end points its edge at
-that vertex for `OUTBOUND` and for `BIDIR`, and away from it for `INBOUND`. The orientation of
-both edges therefore names both ends:
+`Relationship` vertex are stored in the direction of the relationship (see
+[Relationships Between Nodes](database-schema.md#relationships-between-nodes)), so their
+orientation names both ends:
 
 | First edge | Second edge | Local side | Peer side |
 |---|---|---|---|
@@ -111,10 +111,10 @@ both edges therefore names both ends:
 | `rel → node` | `peer → rel` | `INBOUND` | `OUTBOUND` |
 | `node → rel` | `peer → rel` | `BIDIR` | `BIDIR` |
 
-A Cypher `CASE` over `startNode()` reads it — `database/validation.py` and the traversal
-projection in `graph_traversal/_cypher.py` both do. Narrow the candidates by that direction
-first and by peer kind second; keep the mirror pairing as the fallback for an orientation the
-schema no longer matches.
+A Cypher `CASE` over `startNode()` reads it back; `core/metadata/query/node_metadata.py` emits
+the `RelationshipDirection` values verbatim, so the result parses straight back into the enum.
+Narrow the candidates by that direction first and by peer kind second; keep the mirror pairing
+as the fallback for an orientation the schema no longer matches.
 
 ### Branch Support Auto-Determination
 
