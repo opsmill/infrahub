@@ -7,8 +7,8 @@ import pytest
 
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection, RelationshipKind
 from infrahub.core.regeneration.derived_dependencies import (
-    DerivedFieldDependencyResolver,
     PeerDependency,
+    SchemaDerivedFieldDependencyResolver,
 )
 from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
@@ -281,7 +281,7 @@ RESOLVE_CASES = [
 @pytest.mark.parametrize("case", RESOLVE_CASES, ids=lambda case: case.name)
 def test_resolve(case: ResolveCase) -> None:
     schemas: dict[str, MainSchemaTypes] = {**BASE_SCHEMAS, "TestReader": case.reader, **case.extra_schemas}
-    resolver = DerivedFieldDependencyResolver(schema_branch=_schema_branch(schemas))
+    resolver = SchemaDerivedFieldDependencyResolver(schema_branch=_schema_branch(schemas))
 
     dependencies = resolver.resolve(case.readable_fields_by_kind)
 

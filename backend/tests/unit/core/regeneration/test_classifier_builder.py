@@ -8,8 +8,8 @@ from infrahub.core.constants import RelationshipCardinality, RelationshipDirecti
 from infrahub.core.regeneration.classifier_builder import QueryClassifierBuilder
 from infrahub.core.regeneration.derived_dependencies import (
     DerivedFieldDependencies,
-    DerivedFieldDependencyResolver,
     PeerDependency,
+    SchemaDerivedFieldDependencyResolver,
 )
 from infrahub.core.regeneration.impact_classifier import QueryImpactClassifier
 from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
@@ -72,7 +72,7 @@ def _builder() -> QueryClassifierBuilder:
     branch = SchemaBranch(cache={}, name="test")
     for kind, schema in schemas.items():
         branch.set(name=kind, schema=schema)
-    resolver = DerivedFieldDependencyResolver(schema_branch=branch)
+    resolver = SchemaDerivedFieldDependencyResolver(schema_branch=branch)
     return QueryClassifierBuilder(query_branch=QUERY_BRANCH, dependency_resolver=resolver)
 
 
