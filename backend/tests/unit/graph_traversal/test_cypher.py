@@ -152,7 +152,7 @@ def _hop_projecting_renders() -> dict[str, str]:
     }
 
 
-@pytest.mark.parametrize("entry_point", sorted(_hop_projecting_renders()))
-def test_every_hop_projection_carries_the_edge_direction(entry_point: str) -> None:
+def test_every_hop_projection_carries_the_edge_direction() -> None:
     # A projection that omits the field otherwise fails only at extraction time.
-    assert "from_direction" in _hop_projecting_renders()[entry_point]
+    for entry_point, text in _hop_projecting_renders().items():
+        assert "from_direction" in text, entry_point
