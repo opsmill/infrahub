@@ -21,7 +21,8 @@ _DESCRIPTION = (
     "Resolved entirely from the graph; never contacts a task worker. "
     "Requires view permission on the repository's kind covering both the default and non-default "
     "branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER)."
-    " (preview: attribute values are placeholders, not yet read from the graph)"
+    " (preview: attribute values are placeholders, not yet read from the graph, so "
+    "sync_status__value, internal_status__value and own_values_only are rejected)"
 )
 
 

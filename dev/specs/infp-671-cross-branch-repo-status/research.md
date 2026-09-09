@@ -183,7 +183,11 @@ decision=PermissionDecisionFlag.ALLOW_ALL)`:
 
 `PermissionResolver.resolve_object_permission` checks `combined & required == required`, so
 `ALLOW_ALL` is satisfied by one `ALLOW_ALL` grant or by separate `ALLOW_DEFAULT` and `ALLOW_OTHER`
-grants, and denied by either alone. Super admins bypass via `has_permission`. A context without a
+grants, and denied by either alone. The two separate grants combine only while they carry the same
+specificity: `report_object_permission` ORs decisions at equal specificity, and a more specific grant
+replaces a less specific one outright instead. So `Core:Repository:view:ALLOW_DEFAULT` paired with a
+wildcard `Core:*:view:ALLOW_OTHER` resolves to `ALLOW_DEFAULT` alone and is denied, even though an
+operator granted both halves. Super admins bypass via `has_permission`. A context without a
 `PermissionManager` (internal callers build one without an account session) is treated as denial rather
 than allowed to surface as `InitializationError`.
 
@@ -289,7 +293,8 @@ needs every dropdown value to appear so each colour is exercised. Marking the ou
 example a `FAKE-` prefix) would break the `Dropdown` contract the card depends on; the markers are the
 module name, its docstring, one warning logged when the module is imported into the schema (a warning
 per call would flood the log under a refetching card; per-call logging is `debug`), and a "(preview:
-attribute values are placeholders, not yet read from the graph)" note in the root field's SDL
+attribute values are placeholders, not yet read from the graph, so sync_status__value,
+internal_status__value and own_values_only are rejected)" note in the root field's SDL
 description while the stub is live. That description is API-facing, so it names neither the ticket nor
 the delivery increment: both are meaningless to a schema consumer, and `.agents/rules/code-doc-style.md`
 keeps spec vocabulary out of anything a reader encounters without the spec. Every developer stack built

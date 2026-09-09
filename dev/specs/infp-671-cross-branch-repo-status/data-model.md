@@ -148,7 +148,7 @@ primitive call in the periodic sync.
 
 | Argument | Rule | Failure |
 | --- | --- | --- |
-| `id` | required; a repository uuid or its name, resolved with `NodeManager.get_one_by_id_or_default_filter` | `NodeNotFoundError` when neither matches |
+| `id` | required; a repository uuid or its name, resolved with `NodeManager.get_one_by_id_or_default_filter`. That lookup does not enforce `kind` on the id path, so the resolver checks the resolved node against `CoreGenericRepository.used_by` itself; without that check any node uuid resolves and the field becomes an existence-and-kind oracle | `NodeNotFoundError` when neither matches, and when the id resolves to a node that is not a repository |
 | `limit` | `>= 1`; default 40; no maximum | `ValidationError` |
 | `offset` | `>= 0`; default 0 | `ValidationError` |
 | `order` | at most one of `created_at`, `updated_at` (existing `standard_node_ordering_from_order_input`) | `ValidationError` |

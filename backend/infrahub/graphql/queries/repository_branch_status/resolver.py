@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core import registry
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.standard import StandardNodeOrdering
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.queries.branch import standard_node_ordering_from_order_input
 
@@ -34,10 +35,9 @@ if TYPE_CHECKING:
 class RepositoryBranchStatusResolver:
     """Resolve one repository's status as every branch in scope sees it, one row per branch.
 
-    The `sync_status__value`, `internal_status__value` and `own_values_only` arguments are accepted
-    but do not narrow the rows or the count yet, because the attribute values are still
-    placeholders. `own_values_only` does already widen the attributes read, so the read set is the
-    same once the filters apply.
+    The `sync_status__value`, `internal_status__value` and `own_values_only` arguments are rejected
+    while the attribute values are placeholders, so that a caller cannot mistake an unfiltered row
+    set for a filtered one.
     """
 
     def __init__(self, build_source: Callable[[InfrahubDatabase], RepositoryBranchAttributesSource]) -> None:
@@ -54,8 +54,8 @@ class RepositoryBranchStatusResolver:
         partial_match: bool = False,
         status__value: str | None = None,
         order: MetadataOrderInput | None = None,
-        sync_status__value: str | None = None,  # noqa: ARG002
-        internal_status__value: str | None = None,  # noqa: ARG002
+        sync_status__value: str | None = None,
+        internal_status__value: str | None = None,
         own_values_only: bool = False,
     ) -> dict[str, Any]:
         """Resolve the repository's per-branch status rows.
@@ -72,16 +72,17 @@ class RepositoryBranchStatusResolver:
             status__value: Branch status filter.
             order: Ordering over branch node metadata; the default order applies when it expresses
                 no ordering.
-            sync_status__value: Accepted, not applied yet.
-            internal_status__value: Accepted, not applied yet.
-            own_values_only: Accepted, not applied yet; widens the attributes read.
+            sync_status__value: Rejected while the attribute values are placeholders.
+            internal_status__value: Rejected while the attribute values are placeholders.
+            own_values_only: Rejected while the attribute values are placeholders.
 
         Returns:
             The payload the GraphQL types consume: `edges`, and `count` when it was selected.
 
         Raises:
-            ValidationError: If `limit` is null or below 1, if `offset` is null or negative, if
-                `order` is contradictory, or if the repository's kind is not supported.
+            ValidationError: If `limit` is null or below 1, if `offset` is null or negative, if a
+                value filter that cannot be applied yet is given, if `order` is contradictory, or
+                if the repository's kind is not supported.
             NodeNotFoundError: If `id` resolves to no repository.
             PermissionDeniedError: If the caller may not view the repository's kind across both the
                 default branch and other branches.
@@ -92,6 +93,24 @@ class RepositoryBranchStatusResolver:
             raise ValidationError("limit must be >= 1")
         if offset is None or offset < 0:
             raise ValidationError("offset must be >= 0")
+
+        # Accepting a filter that cannot narrow yet would render an unfiltered row set as a filtered one.
+        unsupported_filters = [
+            name
+            for name, narrows in (
+                ("sync_status__value", sync_status__value is not None),
+                ("internal_status__value", internal_status__value is not None),
+                ("own_values_only", own_values_only),
+            )
+            if narrows
+        ]
+        if unsupported_filters:
+            raise ValidationError(
+                input_value=(
+                    f"{', '.join(unsupported_filters)} cannot narrow the rows "
+                    "while the attribute values are placeholders"
+                )
+            )
 
         node_ordering = standard_node_ordering_from_order_input(order)
 
@@ -108,6 +127,17 @@ class RepositoryBranchStatusResolver:
             branch=None,
             at=graphql_context.at,
         )
+        # The id path of the lookup does not enforce `kind`, so a node of any kind resolves here.
+        repository_kinds = db.schema.get_generic_schema(
+            name=InfrahubKind.GENERICREPOSITORY, branch=None, duplicate=False
+        ).used_by
+        if repository.get_kind() not in repository_kinds:
+            raise NodeNotFoundError(
+                branch_name=registry.default_branch,
+                node_type=InfrahubKind.GENERICREPOSITORY,
+                identifier=id,
+            )
+
         policy = policy_for_kind(kind=repository.get_kind())
         guard.ensure_kind_viewable(policy=policy)
 
@@ -127,7 +157,7 @@ class RepositoryBranchStatusResolver:
 
         fields = extract_graphql_fields(info)
         node_fields = (fields.get("edges") or {}).get("node") or {}
-        attribute_names = self._attribute_names(node_fields=node_fields, policy=policy, own_values_only=own_values_only)
+        attribute_names = self._attribute_names(node_fields=node_fields, policy=policy)
 
         attributes = await self.build_source(db).read(
             repository_ids=[repository.id],
@@ -158,13 +188,8 @@ class RepositoryBranchStatusResolver:
         ]
         return result
 
-    def _attribute_names(
-        self, node_fields: dict[str, Any], policy: RepositoryKindPolicy, own_values_only: bool
-    ) -> set[str]:
-        attribute_names = set(policy.attribute_names & node_fields.keys())
-        if own_values_only:
-            attribute_names.add("commit")
-        return attribute_names
+    def _attribute_names(self, node_fields: dict[str, Any], policy: RepositoryKindPolicy) -> set[str]:
+        return set(policy.attribute_names & node_fields.keys())
 
     def _attribute_schemas(self, db: InfrahubDatabase, policy: RepositoryKindPolicy) -> dict[str, AttributeSchema]:
         schema = db.schema.get(name=policy.kind, branch=None, duplicate=False)

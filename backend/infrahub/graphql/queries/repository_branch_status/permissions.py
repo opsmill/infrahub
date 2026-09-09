@@ -68,6 +68,12 @@ class RepositoryBranchStatusPermissionGuard:
 
 
 def _view_permission(name: str) -> ObjectPermission:
+    """Build the view permission the read requires: both the default-branch and other-branch bits.
+
+    `ALLOW_ALL` is the union of `ALLOW_DEFAULT` and `ALLOW_OTHER`, so a role granting the two
+    separately also satisfies this - but only while both grants carry the same specificity, since a
+    more specific grant replaces a less specific one rather than combining with it.
+    """
     return ObjectPermission(
         namespace=_CORE_NAMESPACE,
         name=name,

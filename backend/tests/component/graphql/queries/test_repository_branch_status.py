@@ -150,6 +150,28 @@ query($id: String!, $limit: Int) {
 }
 """
 
+VALUE_FILTER_QUERY = """
+query(
+    $id: String!
+    $sync_status: String
+    $internal_status: String
+    $own_values_only: Boolean
+) {
+  InfrahubRepositoryBranchStatus(
+    id: $id
+    limit: 5
+    sync_status__value: $sync_status
+    internal_status__value: $internal_status
+    own_values_only: $own_values_only
+  ) {
+    count
+    edges {
+      node { name }
+    }
+  }
+}
+"""
+
 CONTRADICTORY_ORDER_QUERY = """
 query($id: String!, $limit: Int) {
   InfrahubRepositoryBranchStatus(
@@ -264,6 +286,50 @@ INVALID_PAGING_CASES = (
     InvalidPagingCase(name="negative-offset", variables={"offset": -1}, message="offset must be >= 0"),
     InvalidPagingCase(name="explicit-null-limit", variables={"limit": None}, message="limit must be >= 1"),
     InvalidPagingCase(name="explicit-null-offset", variables={"offset": None}, message="offset must be >= 0"),
+)
+
+
+@dataclass(frozen=True)
+class UnsupportedFilterCase:
+    """A value filter the resolver must reject while the attribute values are placeholders."""
+
+    name: str
+    """Identifier of the case, also used as the pytest id."""
+
+    variables: Mapping[str, Any]
+    """Query variables carrying the filter."""
+
+    message: str
+    """Exact error message the caller receives."""
+
+
+_PLACEHOLDER_FILTER_SUFFIX = "cannot narrow the rows while the attribute values are placeholders"
+
+UNSUPPORTED_FILTER_CASES = (
+    UnsupportedFilterCase(
+        name="sync-status",
+        variables={"sync_status": RepositorySyncStatus.IN_SYNC.value},
+        message=f"sync_status__value {_PLACEHOLDER_FILTER_SUFFIX}",
+    ),
+    UnsupportedFilterCase(
+        name="internal-status",
+        variables={"internal_status": RepositoryInternalStatus.ACTIVE.value},
+        message=f"internal_status__value {_PLACEHOLDER_FILTER_SUFFIX}",
+    ),
+    UnsupportedFilterCase(
+        name="own-values-only",
+        variables={"own_values_only": True},
+        message=f"own_values_only {_PLACEHOLDER_FILTER_SUFFIX}",
+    ),
+    UnsupportedFilterCase(
+        name="every-filter-at-once",
+        variables={
+            "sync_status": RepositorySyncStatus.IN_SYNC.value,
+            "internal_status": RepositoryInternalStatus.ACTIVE.value,
+            "own_values_only": True,
+        },
+        message=(f"sync_status__value, internal_status__value, own_values_only {_PLACEHOLDER_FILTER_SUFFIX}"),
+    ),
 )
 
 
@@ -823,6 +889,86 @@ class TestRepositoryBranchStatusRows:
             "Unable to find the node rbs-no-such-repository / CoreGenericRepository in the database."
         )
 
+    async def test_a_node_of_another_kind_is_reported_as_not_found(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        """A non-repository id must not resolve, so the field cannot reveal that the node exists."""
+        branches = repository_branch_status_branches
+
+        result = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=ROWS_QUERY,
+            variables={"id": reader_session.account_id, "limit": 5},
+            account_session=reader_session,
+        )
+
+        assert result.data is None
+        assert result.errors
+        assert len(result.errors) == 1
+        assert result.errors[0].message == (
+            f"Unable to find the node {reader_session.account_id} / CoreGenericRepository in the database."
+        )
+
+    @pytest.mark.parametrize("case", UNSUPPORTED_FILTER_CASES, ids=lambda case: case.name)
+    async def test_value_filters_are_rejected_while_the_values_are_placeholders(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        reader_session: AccountSession,
+        default_permission_backend: None,
+        case: UnsupportedFilterCase,
+    ) -> None:
+        branches = repository_branch_status_branches
+        repository, _ = repositories
+
+        result = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=VALUE_FILTER_QUERY,
+            variables={"id": repository.id, **case.variables},
+            account_session=reader_session,
+        )
+
+        assert result.data is None
+        assert result.errors
+        assert len(result.errors) == 1
+        assert result.errors[0].message == case.message
+
+    async def test_the_value_filter_defaults_are_accepted(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        """A client sending the defaults back must not be rejected, only one narrowing the rows."""
+        branches = repository_branch_status_branches
+        repository, _ = repositories
+
+        result = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=VALUE_FILTER_QUERY,
+            variables={
+                "id": repository.id,
+                "sync_status": None,
+                "internal_status": None,
+                "own_values_only": False,
+            },
+            account_session=reader_session,
+        )
+
+        assert result.errors is None
+        assert result.data
+        assert result.data["InfrahubRepositoryBranchStatus"]["count"] == READ_WRITE_ROW_COUNT
+
     @pytest.mark.parametrize("case", INVALID_PAGING_CASES, ids=lambda case: case.name)
     async def test_invalid_paging_arguments_are_rejected(
         self,
@@ -980,7 +1126,10 @@ class TestRepositoryBranchStatusRows:
         assert query_type
         description = query_type.fields["InfrahubRepositoryBranchStatus"].description
         assert description
-        assert "preview" in description
+        assert description.endswith(
+            " (preview: attribute values are placeholders, not yet read from the graph, so "
+            "sync_status__value, internal_status__value and own_values_only are rejected)"
+        )
 
 
 class TestRepositoryBranchStatusPermissions:
@@ -1238,17 +1387,6 @@ DOCUMENT_SHAPES = (
     DocumentShape(
         name="status-filter", source=FILTERED_ROWS_QUERY, variables={"limit": 5, "status": BranchStatus.OPEN.value}
     ),
-    DocumentShape(
-        name="sync-status-filter",
-        source=FILTERED_ROWS_QUERY,
-        variables={"limit": 5, "sync_status": RepositorySyncStatus.IN_SYNC.value},
-    ),
-    DocumentShape(
-        name="internal-status-filter",
-        source=FILTERED_ROWS_QUERY,
-        variables={"limit": 5, "internal_status": RepositoryInternalStatus.ACTIVE.value},
-    ),
-    DocumentShape(name="own-values-only", source=FILTERED_ROWS_QUERY, variables={"limit": 5, "own_values_only": True}),
 )
 
 

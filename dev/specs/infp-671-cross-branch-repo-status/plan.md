@@ -18,7 +18,7 @@ Delivery is contract-first in three increments (see [research.md](research.md), 
 
 | Increment | Ships | What is real | What is fabricated |
 | --- | --- | --- | --- |
-| A, contract stub | Root field, types, all arguments, regenerated `schema/schema.graphql`, permission check, branch row set, paging | Repository lookup, permission denial, row membership, ordering, paging, count | Attribute values (`commit`, `sync_status`, `internal_status`, `ref`); attribute-value filters are inert |
+| A, contract stub | Root field, types, all arguments, regenerated `schema/schema.graphql`, permission check, branch row set, paging | Repository lookup, permission denial, row membership, ordering, paging, count | Attribute values (`commit`, `sync_status`, `internal_status`, `ref`); the attribute-value filters are rejected with a `ValidationError` rather than accepted and ignored, so an unfiltered row set is never rendered as a filtered one |
 | B, graph read | Core primitive and reader, attribute filters, query-count and inheritance tests, changelog, docs | Everything | Nothing; the stub module is deleted |
 | C, periodic sync | `get_repositories_commit_per_branch` on the primitive, chunked | | |
 

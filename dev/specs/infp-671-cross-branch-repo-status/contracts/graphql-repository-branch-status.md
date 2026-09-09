@@ -181,10 +181,15 @@ While the stub is live on `develop`:
 - `commit`, `sync_status`, `internal_status` and `ref` values are fabricated deterministically from the
   branch name, so they are stable across reloads. Labels and colours are the real schema choices, and
   every `sync_status` value appears across a handful of branches.
-- `sync_status__value`, `internal_status__value` and `own_values_only` are accepted and ignored.
-  `count` therefore ignores them too.
+- `sync_status__value`, `internal_status__value` and `own_values_only` are **rejected** with a
+  `ValidationError` naming every argument that would narrow the rows, so a document cannot receive an
+  unfiltered row set where it asked for a filtered one. Sending the defaults back is still accepted:
+  an explicit `null` for the two status filters, and `own_values_only: false`. Build the card's
+  document without these three arguments until the stub is gone; `count` is exact for the filters
+  that do work (`name__value`, `partial_match`, `status__value`).
 - The API log carries one warning when the stub module is loaded, and the root field's description
-  in the schema says "(preview: attribute values are placeholders, not yet read from the graph)".
+  in the schema says "(preview: attribute values are placeholders, not yet read from the graph, so
+  sync_status__value, internal_status__value and own_values_only are rejected)".
   Both disappear with the stub.
 - The card is built without the git-derived drift column for now; that column arrives on its own
   data path once the sibling PRD settles it, and nothing in this contract changes for it.

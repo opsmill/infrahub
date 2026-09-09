@@ -12,7 +12,8 @@ extend type Query {
   Requires view permission on the repository's kind covering both the default
   and non-default branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER).
   While the stub is live the description also carries:
-  "(preview: attribute values are placeholders, not yet read from the graph)".
+  "(preview: attribute values are placeholders, not yet read from the graph, so
+  sync_status__value, internal_status__value and own_values_only are rejected)".
   The description is API-facing, so it names no ticket and no delivery increment.
   """
   InfrahubRepositoryBranchStatus(
@@ -27,6 +28,8 @@ extend type Query {
     status__value: BranchStatus
     "Ordering by branch node metadata; default is default branch first, then name ascending"
     order: MetadataOrderInput
+    # These three are rejected with a ValidationError while the stub serves placeholder
+    # values, so that an unfiltered row set is never rendered as a filtered one.
     "Keep rows whose resolved sync_status value equals this value (server-side)"
     sync_status__value: String
     "Keep rows whose resolved internal_status value equals this value (server-side)"
