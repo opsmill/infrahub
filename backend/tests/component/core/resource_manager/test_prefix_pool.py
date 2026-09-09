@@ -156,6 +156,142 @@ async def test_get_resource_accepts_size_alias(
     assert same_both.id == first.id
 
 
+@pytest.fixture
+async def kind_override_pool(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_kind_override_schema: SchemaBranch,
+    ip_dataset_prefix_v4: dict,
+) -> CoreIPPrefixPool:
+    """A prefix pool whose default kind is IpamIPPrefix, with TestIPPrefix as a sibling."""
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
+    await pool.new(
+        db=db,
+        name="pool1",
+        resources=[ip_dataset_prefix_v4["net141"]],
+        ip_namespace=ip_dataset_prefix_v4["ns1"],
+        default_prefix_length=24,
+        default_prefix_type="IpamIPPrefix",
+    )
+    await pool.save(db=db)
+    return pool
+
+
+async def test_get_resource_prefix_type_overrides_pool_default(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pool: CoreIPPrefixPool
+) -> None:
+    """An explicit prefix_type wins over the pool's default_prefix_type."""
+    node = await kind_override_pool.get_resource(
+        db=db, branch=default_branch, prefix_type="TestIPPrefix", peer_kind=InfrahubKind.IPPREFIX
+    )
+
+    assert node.get_kind() == "TestIPPrefix"
+
+
+async def test_get_resource_prefix_type_falls_back_to_pool_default(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pool: CoreIPPrefixPool
+) -> None:
+    """Without an override the pool default is used and is *not* re-validated."""
+    node = await kind_override_pool.get_resource(db=db, branch=default_branch, peer_kind=InfrahubKind.IPPREFIX)
+
+    assert node.get_kind() == "IpamIPPrefix"
+
+
+async def test_get_resource_prefix_type_not_allowed_for_peer_raises(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pool: CoreIPPrefixPool
+) -> None:
+    """A kind outside the peer generic's used_by is rejected."""
+    with pytest.raises(ValidationError, match=re.escape("'TestMandatoryPrefix' is not a valid kind")):
+        await kind_override_pool.get_resource(
+            db=db, branch=default_branch, prefix_type="TestMandatoryPrefix", peer_kind=InfrahubKind.IPPREFIX
+        )
+
+
+async def test_get_resource_prefix_type_from_data_dict_is_validated(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pool: CoreIPPrefixPool
+) -> None:
+    """The untyped `data` dict is the second door into prefix_type and must be validated too."""
+    with pytest.raises(ValidationError, match=re.escape("'TestMandatoryPrefix' is not a valid kind")):
+        await kind_override_pool.get_resource(
+            db=db,
+            branch=default_branch,
+            data={"prefix_type": "TestMandatoryPrefix"},
+            peer_kind=InfrahubKind.IPPREFIX,
+        )
+
+
+async def test_get_resource_prefix_type_rejected_for_concrete_peer(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pool: CoreIPPrefixPool
+) -> None:
+    """A sibling kind is not allocatable when the relationship peer is a concrete kind."""
+    with pytest.raises(ValidationError, match=re.escape("'TestIPPrefix' is not a valid kind")):
+        await kind_override_pool.get_resource(
+            db=db, branch=default_branch, prefix_type="TestIPPrefix", peer_kind="IpamIPPrefix"
+        )
+
+    # The concrete peer's own kind stays allocatable.
+    node = await kind_override_pool.get_resource(
+        db=db, branch=default_branch, prefix_type="IpamIPPrefix", peer_kind="IpamIPPrefix"
+    )
+    assert node.get_kind() == "IpamIPPrefix"
+
+
+async def test_get_resource_without_peer_kind_is_unconstrained(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pool: CoreIPPrefixPool
+) -> None:
+    """Back-compat: callers that don't know the peer (node.new, migrations) stay unvalidated."""
+    node = await kind_override_pool.get_resource(db=db, branch=default_branch, prefix_type="TestIPPrefix")
+
+    assert node.get_kind() == "TestIPPrefix"
+
+
+async def test_get_resource_reserved_kind_validated_against_peer(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pool: CoreIPPrefixPool
+) -> None:
+    """A reservation created under a permissive peer cannot be reused by a narrower one.
+
+    validate_reserved_kind only compares requested-vs-reserved, so it passes whenever the
+    caller asks for nothing. The reserved node's *own* kind must therefore be checked against
+    this caller's peer as well: `Relationship.set_peer` performs no kind check, so otherwise a
+    TestIPPrefix reserved through the broad BuiltinIPPrefix generic would be attached to a
+    relationship peering at TestNarrowPrefix, which cannot hold it.
+    """
+    first = await kind_override_pool.get_resource(
+        db=db,
+        identifier="item1",
+        branch=default_branch,
+        prefix_type="TestIPPrefix",
+        peer_kind=InfrahubKind.IPPREFIX,
+    )
+    assert first.get_kind() == "TestIPPrefix"
+
+    with pytest.raises(
+        ValidationError,
+        match=re.escape("'TestIPPrefix' is not a valid kind to allocate for 'TestNarrowPrefix'"),
+    ):
+        await kind_override_pool.get_resource(
+            db=db, identifier="item1", branch=default_branch, peer_kind="TestNarrowPrefix"
+        )
+
+    # A peer that permits the reserved kind, a concrete peer of exactly that kind, or no peer
+    # at all, all still get the reservation back.
+    same = await kind_override_pool.get_resource(
+        db=db, identifier="item1", branch=default_branch, peer_kind=InfrahubKind.IPPREFIX
+    )
+    assert same.id == first.id
+
+    same_concrete_peer = await kind_override_pool.get_resource(
+        db=db, identifier="item1", branch=default_branch, peer_kind="TestIPPrefix"
+    )
+    assert same_concrete_peer.id == first.id
+
+    same_no_peer = await kind_override_pool.get_resource(db=db, identifier="item1", branch=default_branch)
+    assert same_no_peer.id == first.id
+
+
 async def test_get_next_weighted(
     db: InfrahubDatabase,
     default_branch: Branch,

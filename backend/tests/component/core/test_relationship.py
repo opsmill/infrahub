@@ -8,6 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship.model import Relationship, RelationshipValidatorList
@@ -503,6 +504,112 @@ async def test_relationship_assign_from_pool(
     await obj.save(db=db)
 
     assert await obj.prefix.get_peer(db=db)
+
+
+@pytest.fixture
+async def kind_override_pools(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_kind_override_schema: SchemaBranch,
+    init_nodes_registry: None,
+    ip_dataset_prefix_v4: dict[str, Any],
+) -> dict[str, Node]:
+    """A prefix pool and an address pool, both defaulting to the Ipam* kinds."""
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+    address_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+
+    prefix_pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
+    await prefix_pool.new(
+        db=db,
+        name="prefix-pool",
+        default_prefix_length=24,
+        default_prefix_type="IpamIPPrefix",
+        resources=[ip_dataset_prefix_v4["net141"]],
+        ip_namespace=ip_dataset_prefix_v4["ns1"],
+    )
+    await prefix_pool.save(db=db)
+
+    address_pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db, branch=default_branch)
+    await address_pool.new(
+        db=db,
+        name="address-pool",
+        default_address_type="IpamIPAddress",
+        resources=[ip_dataset_prefix_v4["net145"]],
+        ip_namespace=ip_dataset_prefix_v4["ns1"],
+    )
+    await address_pool.save(db=db)
+
+    return {"prefix_pool": prefix_pool, "address_pool": address_pool}
+
+
+async def test_relationship_from_pool_overrides_prefix_type(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
+) -> None:
+    """from_pool.prefix_type overrides the pool default when the peer is a bare generic."""
+    owner_schema = registry.schema.get_node_schema(name="TestGenericPrefixOwner", branch=default_branch)
+
+    obj = await Node.init(schema=owner_schema, db=db, branch=default_branch)
+    await obj.new(
+        db=db,
+        name={"value": "site1"},
+        prefix={"from_pool": {"id": kind_override_pools["prefix_pool"].id, "prefix_type": "TestIPPrefix"}},
+    )
+    await obj.save(db=db)
+
+    peer = await obj.prefix.get_peer(db=db)
+    assert peer
+    assert peer.get_kind() == "TestIPPrefix"
+
+
+async def test_relationship_from_pool_overrides_address_type(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
+) -> None:
+    """from_pool.address_type overrides the pool default when the peer is a bare generic."""
+    owner_schema = registry.schema.get_node_schema(name="TestGenericAddressOwner", branch=default_branch)
+
+    obj = await Node.init(schema=owner_schema, db=db, branch=default_branch)
+    await obj.new(
+        db=db,
+        name={"value": "server1"},
+        address={"from_pool": {"id": kind_override_pools["address_pool"].id, "address_type": "TestIPAddress"}},
+    )
+    await obj.save(db=db)
+
+    peer = await obj.address.get_peer(db=db)
+    assert peer
+    assert peer.get_kind() == "TestIPAddress"
+
+
+async def test_relationship_from_pool_rejects_kind_outside_peer_used_by(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
+) -> None:
+    owner_schema = registry.schema.get_node_schema(name="TestGenericPrefixOwner", branch=default_branch)
+
+    obj = await Node.init(schema=owner_schema, db=db, branch=default_branch)
+    await obj.new(
+        db=db,
+        name={"value": "site2"},
+        prefix={"from_pool": {"id": kind_override_pools["prefix_pool"].id, "prefix_type": "TestMandatoryPrefix"}},
+    )
+    with pytest.raises(infra_execs.ValidationError, match="'TestMandatoryPrefix' is not a valid kind"):
+        await obj.save(db=db)
+
+
+async def test_relationship_from_pool_rejects_sibling_kind_for_concrete_peer(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
+) -> None:
+    """TestMandatoryPrefix.prefix peers at the concrete IpamIPPrefix, so no sibling is allowed."""
+    mandatory_prefix_schema = registry.schema.get_node_schema(name="TestMandatoryPrefix", branch=default_branch)
+
+    obj = await Node.init(schema=mandatory_prefix_schema, db=db, branch=default_branch)
+    await obj.new(
+        db=db,
+        name={"value": "site3"},
+        prefix={"from_pool": {"id": kind_override_pools["prefix_pool"].id, "prefix_type": "TestIPPrefix"}},
+    )
+    with pytest.raises(infra_execs.ValidationError, match="'TestIPPrefix' is not a valid kind"):
+        await obj.save(db=db)
 
 
 async def test_relationship_timestamp_changes(
