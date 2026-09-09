@@ -252,6 +252,48 @@ def _host_memory_available() -> int | None:
     return int(psutil.virtual_memory().available)
 
 
+# The limit and usage files worth reporting when explaining a read. The v2 names
+# are looked for at every level of the process's cgroup path; the v1 names only
+# at the controller mount root, which is where a container sees them.
+_V2_EVIDENCE_FILES = ("cpu.max", "memory.max", "memory.current")
+_V1_EVIDENCE_FILES = (
+    "cpu/cpu.cfs_quota_us",
+    "cpu/cpu.cfs_period_us",
+    "memory/memory.limit_in_bytes",
+    "memory/memory.usage_in_bytes",
+)
+
+
+@dataclass(frozen=True)
+class CgroupLevel:
+    """The limit files present at one level of the process's cgroup path."""
+
+    path: str
+
+    files: dict[str, str]
+    """Contents of the limit files found here, keyed by file name; empty when the level carries none."""
+
+
+@dataclass(frozen=True)
+class ResourceDiagnostics:
+    """A reading together with the evidence that produced it.
+
+    Explains an environment whose reported figures look wrong: which cgroup the
+    process resolved to, which limit files each level actually carried, and how
+    the reported figures compare with the whole host's.
+    """
+
+    reading: WorkerResourceReading
+    proc_cgroup: str | None
+    """Raw contents of the proc cgroup file, or ``None`` when it is unreadable."""
+
+    cgroup_v2_root: bool
+    cgroup_v1_root: bool
+    levels: list[CgroupLevel]
+    host_processor_available: int | None
+    host_memory_total: int | None
+
+
 class ProcessResources:
     """Read and cache this process's static resource facts, refreshing free memory.
 
@@ -295,6 +337,37 @@ class ProcessResources:
             processor_assigned=self._static.processor_assigned,
             memory_total=self._static.memory_total,
             memory_available=self._read_memory_available(self._static),
+        )
+
+    def diagnose(self) -> ResourceDiagnostics:
+        """Return a reading alongside the cgroup evidence behind it."""
+        cgroup_dirs = _own_cgroup_dirs(cgroup_root=self._cgroup_root, proc_cgroup=self._proc_cgroup)
+        levels = [
+            CgroupLevel(
+                path=str(directory),
+                files={
+                    name: content
+                    for name in _V2_EVIDENCE_FILES
+                    if (content := _read_text_file(directory / name)) is not None
+                },
+            )
+            for directory in cgroup_dirs
+        ]
+        root = cgroup_dirs[-1]
+        v1_files = {
+            name: content for name in _V1_EVIDENCE_FILES if (content := _read_text_file(root / name)) is not None
+        }
+        if v1_files:
+            levels.append(CgroupLevel(path=f"{root} (v1 controllers)", files=v1_files))
+
+        return ResourceDiagnostics(
+            reading=self.read(),
+            proc_cgroup=_read_text_file(self._proc_cgroup),
+            cgroup_v2_root=(self._cgroup_root / "cgroup.controllers").exists(),
+            cgroup_v1_root=(self._cgroup_root / "cpu" / "cpu.cfs_quota_us").exists(),
+            levels=levels,
+            host_processor_available=psutil.cpu_count(logical=True),
+            host_memory_total=_host_memory_total(),
         )
 
 
