@@ -37,6 +37,7 @@ class ChangelogRelationshipMapper:
         if self.schema.cardinality == RelationshipCardinality.ONE:
             self.cardinality_one_relationship.peer_id_previous = str(peer_data.peer_id)
             self.cardinality_one_relationship.peer_kind_previous = peer_data.peer_kind
+            self.cardinality_one_relationship.set_parent_from_relationship(rel_kind=self.schema.kind)
         elif self.schema.cardinality == RelationshipCardinality.MANY:
             self.cardinality_many_relationship.remove_peer(
                 peer_id=str(peer_data.peer_id), peer_kind=peer_data.peer_kind
