@@ -105,7 +105,26 @@ class RelationshipChangelogGetter:
                         labels=labels,
                     )
                 )
-        return secondaries
+        return self._merge_secondaries_by_node(secondaries)
+
+    @staticmethod
+    def _merge_secondaries_by_node(secondaries: list[NodeChangelog]) -> list[NodeChangelog]:
+        """Collapse the secondaries so each affected peer yields a single changelog.
+
+        A mutation can change several relationships to the same peer, and each produces its own
+        secondary for that peer; emitting them separately would deliver duplicate events. Fold the
+        later ones into the first changelog seen for the peer, keeping every distinct reciprocal
+        relationship it carries.
+        """
+        merged: dict[str, NodeChangelog] = {}
+        for secondary in secondaries:
+            existing = merged.get(secondary.node_id)
+            if existing is None:
+                merged[secondary.node_id] = secondary
+                continue
+            for name, relationship in secondary.relationships.items():
+                existing.relationships.setdefault(name, relationship)
+        return list(merged.values())
 
     @staticmethod
     def _referenced_peer_ids(changelog: NodeChangelog) -> list[str]:
