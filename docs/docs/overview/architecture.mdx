@@ -267,8 +267,8 @@ The message bus is the communication backbone between components in Infrahub. It
 - **Message persistence**: Ensures reliable delivery even during component failures
 - **Multiple messaging patterns**: Supports publish-subscribe, work queues, and request-reply patterns
 
-:::note
-Infrahub also supports NATS JetStream as an alternative message bus implementation, offering different performance characteristics and deployment models.
+:::warning Experimental
+Infrahub offers experimental support for NATS JetStream as an alternative message bus implementation. This integration is not feature-complete and some functionality does not currently work, so RabbitMQ remains the recommended option for production deployments.
 :::
 
 <ReferenceLink title="RabbitMQ Project" url="https://www.rabbitmq.com/" />
@@ -286,8 +286,8 @@ The cache system is built on **Redis** and serves multiple critical functions:
 - **Versatile data structures**: Supports complex operations beyond basic key-value storage
 - **Pub/sub capabilities**: Enables lightweight messaging for specific use cases
 
-:::note
-Infrahub also supports NATS JetStream as an alternative cache implementation.
+:::warning Experimental
+Infrahub offers experimental support for NATS JetStream as an alternative cache implementation. This integration is not feature-complete and some functionality does not currently work, so Redis remains the recommended option for production deployments.
 :::
 
 <ReferenceLink title="Redis Project" url="https://github.com/redis/redis" />
