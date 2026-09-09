@@ -7,6 +7,8 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:
+    import pytest
+
     from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
@@ -564,34 +566,50 @@ async def test_resolver_names_each_end_of_a_bidirectional_hop(
     default_permission_backend: None,
     session_admin: AccountSession,
     hierarchical_location_data_thing: dict[str, Node],
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     # Both ends of a bidirectional edge point their stored edge at the Relationship vertex,
-    # the shape the direction CASE resolves through its ELSE arm.
+    # the shape the direction CASE resolves through its ELSE arm. The two ends keep their own
+    # name whichever way the hop is walked.
     site = hierarchical_location_data_thing["paris"]
     thing = hierarchical_location_data_thing["thing-paris"]
 
-    data, errors = await _run_resolver(
-        db=db,
-        branch=default_branch,
-        session=session_admin,
-        variables={"data": {"source_id": thing.id, "destination_id": site.id, "max_depth": 1}},
-        source=PATH_TRAVERSAL_RELATIONSHIP_QUERY,
-    )
-
-    assert errors is None
-    assert data is not None
-    result = data["InfrahubPathTraversal"]
-    assert result["count"] == 1
-    hops = result["paths"][0]["hops"]
-    assert [hop["node"]["id"] for hop in hops] == [thing.id, site.id]
-    assert hops[0]["relationship"] is None
-    assert hops[1]["relationship"] == {
+    from_the_thing = {
         "from_rel": "location",
         "from_label": "Location",
         "to_rel": "things",
         "to_label": "Things",
         "kind": "Generic",
     }
+    from_the_site = {
+        "from_rel": "things",
+        "from_label": "Things",
+        "to_rel": "location",
+        "to_label": "Location",
+        "kind": "Generic",
+    }
+    expectations = {(thing.id, site.id): from_the_thing, (site.id, thing.id): from_the_site}
+    for (source_id, destination_id), expected in expectations.items():
+        data, errors = await _run_resolver(
+            db=db,
+            branch=default_branch,
+            session=session_admin,
+            variables={"data": {"source_id": source_id, "destination_id": destination_id, "max_depth": 1}},
+            source=PATH_TRAVERSAL_RELATIONSHIP_QUERY,
+        )
+
+        assert errors is None
+        assert data is not None
+        result = data["InfrahubPathTraversal"]
+        assert result["count"] == 1
+        hops = result["paths"][0]["hops"]
+        assert [hop["node"]["id"] for hop in hops] == [source_id, destination_id]
+        assert hops[0]["relationship"] is None
+        assert hops[1]["relationship"] == expected
+
+    # The names above survive a wrong direction, because a single declaration per side is
+    # what the peer narrowing falls back to. Only the absence of that fallback pins the arm.
+    assert [record.message for record in caplog.records if "matches no declaration" in record.message] == []
 
 
 async def test_resolver_names_each_end_of_a_self_referential_hierarchy_hop(
