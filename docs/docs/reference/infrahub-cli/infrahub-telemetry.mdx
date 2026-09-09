@@ -1,0 +1,39 @@
+# `infrahub telemetry`
+
+Inspect what telemetry reports about this deployment.
+
+**Usage**:
+
+```console
+$ infrahub telemetry [OPTIONS] COMMAND [ARGS]...
+```
+
+**Options**:
+
+* `--install-completion`: Install completion for the current shell.
+* `--show-completion`: Show completion for the current shell, to copy it or customize the installation.
+* `--help`: Show this message and exit.
+
+**Commands**:
+
+* `probe-resources`: Report the CPU and memory allocation this...
+
+## `infrahub telemetry probe-resources`
+
+Report the CPU and memory allocation this process sees, and the evidence behind it.
+
+Reads only the local process&#x27;s own control group and needs no database, cache
+or configuration, so it can explain an environment whose reported figures
+look wrong even when the deployment is otherwise unhealthy. Nothing is
+transmitted; the output goes to stdout.
+
+**Usage**:
+
+```console
+$ infrahub telemetry probe-resources [OPTIONS]
+```
+
+**Options**:
+
+* `--json`: Emit machine-readable JSON instead of tables.
+* `--help`: Show this message and exit.
