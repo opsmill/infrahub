@@ -304,10 +304,11 @@ rejects, so a client round-tripping the defaults is unaffected. Consequences for
 - The `own_values_only` widening in the attribute read became unreachable and was removed; T039
   restores it with the rest of that argument's behaviour.
 
-Still open, and **not** addressed: the field description says "Resolved entirely from the graph" two
-sentences before "not yet read from the graph". The original reason for leaving it - not churning the
-frozen artifact - is weaker now that the description has been edited once anyway, so this is worth a
-decision rather than another deferral. Fixing it is a one-line SDL change plus a regeneration.
+Not addressed, and deliberately left to the epic: the field description says "Resolved entirely from
+the graph" two sentences before "not yet read from the graph". Raised again during review and
+deferred again, because T037 deletes the preview clause when the graph read lands and the
+contradiction goes with it. No edit for its own sake, and no regeneration of the frozen artifact
+during the stub window. Whoever picks up T037 resolves this by doing T037.
 
 Type-design hardening, all low or medium, none reachable through current callers:
 
