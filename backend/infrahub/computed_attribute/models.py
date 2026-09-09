@@ -9,7 +9,6 @@ from prefect.events.schemas.automations import Automation  # noqa: TC002
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from typing_extensions import Self
 
-from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import AttributeSchema, NodeSchema  # noqa: TC001
@@ -118,14 +117,15 @@ class PythonTransformTarget:
     object_id: str
 
 
-def _restrict_to_live_origin(event_trigger: EventTrigger) -> None:
+def _restrict_to_live_origin(event_trigger: EventTrigger, *, live_only: bool) -> None:
     """Leave merge, rebase and recompute replays to the coalesced pass when it owns them.
 
-    One setting gates both halves, so the filter is never applied while the pass is disabled. The
-    setting is read when the automation is built, not when the event arrives, so flipping it takes
-    effect on the next reconcile of these two trigger types and not on the next restart.
+    The decision arrives as an argument, read once where the triggers are gathered, so one gather
+    cannot build some automations for one answer and some for another. It is baked into the stored
+    automation, not read when the event arrives, so a change takes effect on the next reconcile of
+    these two trigger types rather than on the next restart.
     """
-    if config.SETTINGS.main.coalesce_python_recompute_after_merge:
+    if live_only:
         event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
 
 
@@ -230,6 +230,7 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
         cls,
         branch: str,
         computed_attribute: PythonTransformComputedAttribute,
+        live_only: bool,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
         # scope = registry.default_branch
@@ -243,7 +244,7 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
         if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
-        _restrict_to_live_origin(event_trigger)
+        _restrict_to_live_origin(event_trigger, live_only=live_only)
 
         update_fields = computed_attribute.query_analyzer.query_report.fields_by_kind(
             kind=computed_attribute.computed_attribute.kind
@@ -293,6 +294,7 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         branch: str,
         kind: str,
         computed_attribute: PythonTransformComputedAttribute,
+        live_only: bool,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
         # Only matching on node updated events, before nodes are created they won't be a member of the GraphQL query
@@ -313,7 +315,7 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
-        _restrict_to_live_origin(event_trigger)
+        _restrict_to_live_origin(event_trigger, live_only=live_only)
         event_trigger.exclude_branches(branches_out_of_scope or [])
 
         return cls(
