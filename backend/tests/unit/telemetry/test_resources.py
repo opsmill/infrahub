@@ -355,3 +355,56 @@ def test_static_fields_are_cached_only_free_memory_refreshes(tmp_path: Path) -> 
 
     assert second.memory_total == 8589934592
     assert second.memory_available == 8589934592 - 2147483648
+
+
+def test_diagnostics_report_the_enforced_memory_limit(tmp_path: Path) -> None:
+    # The limit is what distinguishes an allocation from host capacity, so it is
+    # reported directly rather than inferred by comparing the two figures — a
+    # limit set to exactly the host's capacity is still a limit.
+    _write_cgroup_files(tmp_path, {"memory.max": "8589934592", "memory.current": "1073741824"})
+
+    diagnostics = ProcessResources(cgroup_root=tmp_path).diagnose()
+
+    assert diagnostics.memory_limit == 8589934592
+    assert diagnostics.reading.memory_total == 8589934592
+
+
+def test_diagnostics_report_no_limit_when_memory_is_unbounded(tmp_path: Path) -> None:
+    _write_cgroup_files(tmp_path, {"memory.max": "max"})
+
+    diagnostics = ProcessResources(cgroup_root=tmp_path).diagnose()
+
+    assert diagnostics.memory_limit is None
+    assert diagnostics.reading.memory_total == psutil.virtual_memory().total
+
+
+def test_diagnostics_expose_the_limit_files_found_at_each_level(tmp_path: Path) -> None:
+    case = CgroupPathCase(
+        name="ancestor",
+        proc_content="0::/a/b\n",
+        files={
+            "a/b/memory.max": "max",
+            "a/memory.max": "4294967296",
+            "a/memory.current": "1073741824",
+        },
+        expected_assigned=None,
+        expected_memory_total=4294967296,
+        expected_memory_available=4294967296 - 1073741824,
+    )
+    cgroup_root = tmp_path / "cgroup"
+    cgroup_root.mkdir()
+    _write_cgroup_files(cgroup_root, case.files)
+    proc_cgroup = tmp_path / "proc_self_cgroup"
+    proc_cgroup.write_text(case.proc_content)
+
+    diagnostics = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).diagnose()
+
+    assert [level.path for level in diagnostics.levels] == [
+        str(cgroup_root / "a" / "b"),
+        str(cgroup_root / "a"),
+        str(cgroup_root),
+    ]
+    assert diagnostics.levels[0].files == {"memory.max": "max"}
+    assert diagnostics.levels[1].files == {"memory.max": "4294967296", "memory.current": "1073741824"}
+    assert diagnostics.levels[2].files == {}
+    assert diagnostics.memory_limit == 4294967296

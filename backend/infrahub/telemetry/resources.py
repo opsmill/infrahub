@@ -289,6 +289,10 @@ class ResourceDiagnostics:
 
     cgroup_v2_root: bool
     cgroup_v1_root: bool
+
+    memory_limit: int | None
+    """The enforced memory limit in bytes, or ``None`` when memory is unbounded."""
+
     levels: list[CgroupLevel]
     host_processor_available: int | None
     host_memory_total: int | None
@@ -360,11 +364,13 @@ class ProcessResources:
         if v1_files:
             levels.append(CgroupLevel(path=f"{root} (v1 controllers)", files=v1_files))
 
+        reading = self.read()
         return ResourceDiagnostics(
-            reading=self.read(),
+            reading=reading,
             proc_cgroup=_read_text_file(self._proc_cgroup),
             cgroup_v2_root=(self._cgroup_root / "cgroup.controllers").exists(),
             cgroup_v1_root=(self._cgroup_root / "cpu" / "cpu.cfs_quota_us").exists(),
+            memory_limit=self._static.memory_limit if self._static is not None else None,
             levels=levels,
             host_processor_available=psutil.cpu_count(logical=True),
             host_memory_total=_host_memory_total(),

@@ -44,10 +44,10 @@ def _render(diagnostics: ResourceDiagnostics, console: Console) -> None:
     host.add_row("memory total", _format_bytes(diagnostics.host_memory_total))
     console.print(host)
 
-    if reading.memory_total == diagnostics.host_memory_total:
+    if diagnostics.memory_limit is None:
         console.print(
-            "[yellow]memory_total matches the whole host: no memory limit is enforced on this process, "
-            "so the figure is host capacity rather than an allocation.[/yellow]"
+            "[yellow]No memory limit is enforced on this process, so memory_total is host capacity "
+            "rather than an allocation.[/yellow]"
         )
 
     environment = Table(title="Environment", show_header=False, title_justify="left")
