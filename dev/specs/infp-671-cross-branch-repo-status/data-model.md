@@ -131,8 +131,10 @@ The pure helpers in `paging.py` operate on a list of these: `apply_value_filters
 A row becomes one GraphQL edge through `Branch.to_graphql`, the branch query's own serialisation, so
 the five branch fields arrive wrapped in `InfrahubBranch`'s value-field types and each edge carries
 `node_metadata`. The attribute payloads are merged into the resulting `node`. The legacy flat
-`Branch` scalars are not the model: `StandardNode.to_graphql_flat` exists only for the deprecated
-`Branch` query, and reusing `to_graphql` is what keeps the two row shapes from diverging.
+`Branch` scalars are not the model: `StandardNode.to_graphql_flat` serves only the deprecated flat
+`Branch` query and the old-style branch mutations (`BranchCreate`, `BranchRebase`, `BranchValidate`,
+`BranchMerge`), which its own docstring says are to be replaced by `InfrahubBranch` equivalents.
+Reusing `to_graphql` is what keeps the two row shapes from diverging.
 
 ### `RepositoryData` and `RepositoryBranchInfo`
 
