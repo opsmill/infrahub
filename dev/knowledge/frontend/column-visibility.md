@@ -101,6 +101,10 @@ curl -s "http://localhost:8000/api/schema?branch=main" -H "X-INFRAHUB-KEY: $KEY"
 
 ## Known follow-ups
 
+The tracked list is in `dev/specs/column-visibility-infp-119/tasks.md`, including a latent
+`ip_prefix` duplication in the IPAM address relationship rule that is safe only by accident of that
+relationship's kind. The ones that shape how the feature behaves today:
+
 1. Column reordering.
 2. Unify the three column builders onto a shared field-column helper — gated on the IPAM tables
    gaining component tests, since both IPAM builders key special cells on attribute *name* with no

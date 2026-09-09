@@ -13,7 +13,9 @@ import type { ColumnCandidate } from "@/entities/nodes/columns/domain/rules/get-
  * A name in BOTH params is a contradictory link, and hiding wins: with two named params there is no
  * ordering to fall back on, and a link that says "hide this" must never put that column on screen.
  *
- * The returned state never leaves a table with no field columns.
+ * A hide request cannot take away the last visible field column. A surface offering nothing but
+ * default-hidden columns is a different case and is returned unchanged: nothing was hidden, so
+ * there is no hide request to relax.
  */
 export function getColumnVisibilityState(
   hiddenNames: readonly string[],
@@ -25,20 +27,20 @@ export function getColumnVisibilityState(
   );
   const hideRequests = new Set(hiddenNames);
 
-  // Null prototype: a field named after an `Object.prototype` member would otherwise read as
-  // present on a state that never mentioned it.
-  const visibility: ColumnVisibilityState = Object.create(null);
-
   // Only a default-hidden column has anything to reveal, and never one the other param hides.
-  for (const name of shownNames) {
-    if (defaultVisibilityByName.get(name) === false && !hideRequests.has(name)) {
-      visibility[name] = true;
-    }
-  }
+  const shown = shownNames.filter(
+    (name) => defaultVisibilityByName.get(name) === false && !hideRequests.has(name)
+  );
   // Only a default-visible column has anything to hide.
-  for (const name of hideRequests) {
-    if (defaultVisibilityByName.get(name) === true) visibility[name] = false;
-  }
+  const hidden = [...hideRequests].filter((name) => defaultVisibilityByName.get(name) === true);
+
+  // Assigned onto a null prototype rather than spread into a literal: a spread would produce an
+  // ordinary object, on which a field named after an `Object.prototype` member reads as present.
+  const visibility: ColumnVisibilityState = Object.assign(
+    Object.create(null),
+    Object.fromEntries(shown.map((name) => [name, true])),
+    Object.fromEntries(hidden.map((name) => [name, false]))
+  );
 
   return keepOneFieldColumnVisible(visibility, columnCandidates);
 }

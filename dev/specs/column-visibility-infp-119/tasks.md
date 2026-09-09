@@ -181,5 +181,8 @@ bot-review round, because what those rounds changed is the most useful part of t
 7. A semantic Tailwind token layer. The styling guideline recommends tokens this codebase does not
    have, so the guideline is currently unfollowable.
 8. An E2E for the reveal path, asserting non-empty cells.
-9. The IPAM address relationship rule prepends a field without removing it from the list it then
-   spreads. It does not duplicate today only because the shared rule drops that field's kind.
+9. Filter `ip_prefix` out of the spread in `getIpAddressRelationshipsVisibleInListView` rather than
+   relying on its relationship kind to drop it. That rule prepends `ip_prefix` on top of a spread of
+   the shared list-view rule, and is safe today only because the shared rule rejects it as a
+   `Generic` relationship. A schema giving `ip_prefix` a kind the list view accepts would emit two
+   columns with the same id: the candidate list dedupes, the IPAM builder does not.
