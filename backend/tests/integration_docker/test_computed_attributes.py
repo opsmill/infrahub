@@ -76,8 +76,8 @@ async def load_schema_and_wait(client: InfrahubClient, schema: dict, *, branch: 
 async def count_transform_runs(client: InfrahubClient, *, flow_name: str) -> int:
     """Count the recompute flows of one attribute, so unrelated ones cannot move the number.
 
-    An attribute whose transform the repository does not carry is refreshed over its whole kind on
-    every merge, which would otherwise be counted here too.
+    The demo schema declares several Python computed attributes, and every one of them runs through
+    this workflow. The title is what says which attribute a run belongs to.
     """
     tasks = await client.task.filter(filter=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM.name]))
     return len([task for task in tasks if task.title == flow_name])
