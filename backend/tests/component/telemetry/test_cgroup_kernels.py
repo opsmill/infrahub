@@ -43,9 +43,22 @@ print(json.dumps(reading.model_dump() | {
 # Enforce the limits on the parent and leave the process's own group unbounded,
 # the shape a pod-level limit produces. The parent must be vacated before its
 # controllers can be delegated to children.
+#
+# This runs privileged against the host's cgroup hierarchy, so it refuses to act
+# unless it has resolved its own non-root group: an unresolved path would place
+# the limits on the root and throttle everything else sharing the machine.
 _ANCESTOR_LIMIT_SETUP = """
+set -e
 own=$(sed -n 's/^0:://p' /proc/self/cgroup)
+if [ -z "$own" ] || [ "$own" = "/" ]; then
+    echo "refusing to run: own cgroup did not resolve to a non-root path" >&2
+    exit 3
+fi
 cgroup=/sys/fs/cgroup$own
+if [ ! -d "$cgroup" ]; then
+    echo "refusing to run: $cgroup is not a directory" >&2
+    exit 3
+fi
 mkdir -p $cgroup/leaf
 echo $$ > $cgroup/leaf/cgroup.procs
 echo '+memory +cpu' > $cgroup/cgroup.subtree_control
