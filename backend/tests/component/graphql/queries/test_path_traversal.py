@@ -558,6 +558,42 @@ class HierarchyPathCase:
     shortest_paths_only: bool
 
 
+async def test_resolver_names_each_end_of_a_bidirectional_hop(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    hierarchical_location_data_thing: dict[str, Node],
+) -> None:
+    # Both ends of a bidirectional edge point their stored edge at the Relationship vertex,
+    # the shape the direction CASE resolves through its ELSE arm.
+    site = hierarchical_location_data_thing["paris"]
+    thing = hierarchical_location_data_thing["thing-paris"]
+
+    data, errors = await _run_resolver(
+        db=db,
+        branch=default_branch,
+        session=session_admin,
+        variables={"data": {"source_id": thing.id, "destination_id": site.id, "max_depth": 1}},
+        source=PATH_TRAVERSAL_RELATIONSHIP_QUERY,
+    )
+
+    assert errors is None
+    assert data is not None
+    result = data["InfrahubPathTraversal"]
+    assert result["count"] == 1
+    hops = result["paths"][0]["hops"]
+    assert [hop["node"]["id"] for hop in hops] == [thing.id, site.id]
+    assert hops[0]["relationship"] is None
+    assert hops[1]["relationship"] == {
+        "from_rel": "location",
+        "from_label": "Location",
+        "to_rel": "things",
+        "to_label": "Things",
+        "kind": "Generic",
+    }
+
+
 async def test_resolver_names_each_end_of_a_self_referential_hierarchy_hop(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -566,9 +602,11 @@ async def test_resolver_names_each_end_of_a_self_referential_hierarchy_hop(
     self_referential_hierarchy_data: dict[str, Node],
 ) -> None:
     # Both ends declare `parent` and `children` with the same peer kind, so only the
-    # direction the edge is stored with tells them apart.
+    # direction the edge is stored with tells them apart. The depth-3 cases are the ones
+    # that read a hop past the first entry of a quantified-path-pattern half.
     root = self_referential_hierarchy_data["root"]
-    middle = self_referential_hierarchy_data["middle"]
+    upper = self_referential_hierarchy_data["upper"]
+    lower = self_referential_hierarchy_data["lower"]
     leaf = self_referential_hierarchy_data["leaf"]
 
     upward = {
@@ -587,21 +625,33 @@ async def test_resolver_names_each_end_of_a_self_referential_hierarchy_hop(
     }
     cases = [
         HierarchyPathCase(
-            name="one_hop_up", node_ids=[leaf.id, middle.id], relationships=[upward], shortest_paths_only=True
+            name="one_hop_up", node_ids=[leaf.id, lower.id], relationships=[upward], shortest_paths_only=True
         ),
         HierarchyPathCase(
-            name="one_hop_down", node_ids=[middle.id, leaf.id], relationships=[downward], shortest_paths_only=True
+            name="one_hop_down", node_ids=[lower.id, leaf.id], relationships=[downward], shortest_paths_only=True
         ),
         HierarchyPathCase(
             name="two_hops_up",
-            node_ids=[leaf.id, middle.id, root.id],
+            node_ids=[leaf.id, lower.id, upper.id],
             relationships=[upward, upward],
             shortest_paths_only=True,
         ),
         HierarchyPathCase(
             name="two_hops_down_all_paths",
-            node_ids=[root.id, middle.id, leaf.id],
+            node_ids=[upper.id, lower.id, leaf.id],
             relationships=[downward, downward],
+            shortest_paths_only=False,
+        ),
+        HierarchyPathCase(
+            name="three_hops_up",
+            node_ids=[leaf.id, lower.id, upper.id, root.id],
+            relationships=[upward, upward, upward],
+            shortest_paths_only=True,
+        ),
+        HierarchyPathCase(
+            name="three_hops_down_all_paths",
+            node_ids=[root.id, upper.id, lower.id, leaf.id],
+            relationships=[downward, downward, downward],
             shortest_paths_only=False,
         ),
     ]

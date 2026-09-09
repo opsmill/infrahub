@@ -143,14 +143,15 @@ async def test_resolver_names_each_end_of_a_self_referential_hierarchy_hop(
     # Both ends declare `parent` and `children` with the same peer kind, so only the
     # direction the edge is stored with tells them apart.
     root = self_referential_hierarchy_data["root"]
-    middle = self_referential_hierarchy_data["middle"]
+    upper = self_referential_hierarchy_data["upper"]
+    lower = self_referential_hierarchy_data["lower"]
     leaf = self_referential_hierarchy_data["leaf"]
 
     data, errors = await _run_resolver(
         db=db,
         branch=default_branch,
         session=session_admin,
-        variables={"data": {"source_id": root.id, "target_kinds": ["NestedFolder"], "max_depth": 2}},
+        variables={"data": {"source_id": root.id, "target_kinds": ["NestedFolder"], "max_depth": 3}},
         source=REACHABLE_NODES_RELATIONSHIP_QUERY,
     )
 
@@ -172,10 +173,11 @@ async def test_resolver_names_each_end_of_a_self_referential_hierarchy_hop(
         for dependency in result["dependencies"]
     }
     assert reached == {
-        middle.id: ([root.id, middle.id], [None, downward]),
-        leaf.id: ([root.id, middle.id, leaf.id], [None, downward, downward]),
+        upper.id: ([root.id, upper.id], [None, downward]),
+        lower.id: ([root.id, upper.id, lower.id], [None, downward, downward]),
+        leaf.id: ([root.id, upper.id, lower.id, leaf.id], [None, downward, downward, downward]),
     }
-    assert result["count"] == 2
+    assert result["count"] == 3
 
 
 async def test_resolver_short_circuits_when_no_route_to_target_kind(

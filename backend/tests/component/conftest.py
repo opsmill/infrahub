@@ -2258,7 +2258,7 @@ async def _build_hierarchical_location_data(db: InfrahubDatabase, branch: Branch
 async def self_referential_hierarchy_data(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> dict[str, Node]:
-    """A kind that is its own parent and children, plus a root, a middle and a leaf of it.
+    """A kind that is its own parent and children, plus a four-level chain of it.
 
     Both ends of a hop declare the same mirrored pair with the same peer kind, so the
     schema alone cannot say which end holds `parent` and which holds `children`.
@@ -2291,7 +2291,7 @@ async def self_referential_hierarchy_data(
 
     nodes: dict[str, Node] = {}
     parent_id: str | None = None
-    for name in ("root", "middle", "leaf"):
+    for name in ("root", "upper", "lower", "leaf"):
         folder = await Node.init(db=db, branch=default_branch, schema="NestedFolder")
         await folder.new(db=db, name=name, parent=parent_id)
         await folder.save(db=db)
