@@ -60,9 +60,8 @@ under-recomputes, and defers any source-branch redundancy skip.
 ### Neutral
 
 - Profile refresh stays on its own automations, outside this pass. Python-transform computed
-  attributes joined as a fourth family and suppress their two per-node automations the same way,
-  while `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE` is on;
-  `dev/knowledge/backend/merge-recompute.md` records that design.
+  attributes did too until they joined as a fourth family, which suppresses no per-node automation
+  of its own; `dev/knowledge/backend/merge-recompute.md` records that design.
 - Readers of a recompute write are handled by a schema-derived, depth-bounded chain submitter.
 
 ## Alternatives Considered
