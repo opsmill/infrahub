@@ -37,7 +37,7 @@ enum RepositoryGitUnavailableReason {
 
 "A commit read live from a worker's local clone. Never persisted."
 type RepositoryCommit {
-  "Full commit hash. The row identity; a later hash-keyed outcome store joins on it."
+  "Full commit hash."
   hash: String!
   "First 7 characters of the hash."
   short_hash: String!
@@ -107,7 +107,7 @@ type RepositoryBranchDrifts {
   fetched_at: DateTime
   "When the remote was last checked for movement. Read-only repositories only."
   checked_at: DateTime
-  "Set when the whole column is unavailable; the branch rows themselves come from elsewhere and still render."
+  "Set when no drift answer could be produced for the repository."
   unavailable: RepositoryGitUnavailable
   edges: [RepositoryBranchDriftNode!]!
 }

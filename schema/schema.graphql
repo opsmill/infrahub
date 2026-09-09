@@ -26701,9 +26701,7 @@ type RepositoryBranchDrifts {
   edges: [RepositoryBranchDriftNode!]!
   fetched_at: DateTime
   repository_id: String!
-  """
-  Set when the whole column is unavailable; the branch rows themselves come from elsewhere and still render.
-  """
+  """Set when no drift answer could be produced for the repository."""
   unavailable: RepositoryGitUnavailable
 }
 
@@ -26712,9 +26710,7 @@ type RepositoryCommit {
   author_name: String!
   authored_at: DateTime!
   committed_at: DateTime!
-  """
-  Full commit hash. The row identity; a later hash-keyed outcome store joins on it.
-  """
+  """Full commit hash."""
   hash: String!
   """Full commit message."""
   message: String!

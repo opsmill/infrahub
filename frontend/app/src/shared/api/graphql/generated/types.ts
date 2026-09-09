@@ -38676,7 +38676,7 @@ export type RepositoryBranchDrifts = {
   edges: Array<RepositoryBranchDriftNode>;
   fetched_at: Maybe<Scalars['DateTime']['output']>;
   repository_id: Scalars['String']['output'];
-  /** Set when the whole column is unavailable; the branch rows themselves come from elsewhere and still render. */
+  /** Set when no drift answer could be produced for the repository. */
   unavailable: Maybe<RepositoryGitUnavailable>;
 };
 
@@ -38686,7 +38686,7 @@ export type RepositoryCommit = {
   author_name: Scalars['String']['output'];
   authored_at: Scalars['DateTime']['output'];
   committed_at: Scalars['DateTime']['output'];
-  /** Full commit hash. The row identity; a later hash-keyed outcome store joins on it. */
+  /** Full commit hash. */
   hash: Scalars['String']['output'];
   /** Full commit message. */
   message: Scalars['String']['output'];

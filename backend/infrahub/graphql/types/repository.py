@@ -22,9 +22,7 @@ RepositoryGitUnavailableReason = Enum.from_enum(
 class RepositoryCommit(ObjectType):
     """A commit read live from a worker's local clone. Never persisted."""
 
-    hash = String(
-        required=True, description="Full commit hash. The row identity; a later hash-keyed outcome store joins on it."
-    )
+    hash = String(required=True, description="Full commit hash.")
     short_hash = String(required=True, description="First 7 characters of the hash.")
     summary = String(required=True, description="First line of the commit message.")
     message = String(required=True, description="Full commit message.")
@@ -102,6 +100,6 @@ class RepositoryBranchDrifts(ObjectType):
     checked_at = DateTime(description="When the remote was last checked for movement. Read-only repositories only.")
     unavailable = Field(
         RepositoryGitUnavailable,
-        description="Set when the whole column is unavailable; the branch rows themselves come from elsewhere and still render.",
+        description="Set when no drift answer could be produced for the repository.",
     )
     edges = List(NonNull(RepositoryBranchDriftNode), required=True)
