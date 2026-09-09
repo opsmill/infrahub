@@ -39,7 +39,7 @@ These changes are handled by Prefect background tasks triggered by `NodeCreatedE
 
 **When**: A branch merge or rebase changes nodes that feed computed attributes.
 
-A merge or rebase runs a single coalesced recompute for the whole change set, writes the results in bulk, and chains any value that reads them. It replaces the per-node path for all four derived-value families: computed attributes, display labels, human-friendly ids and Python transform computed attributes. Their triggers are suppressed for merge/rebase/recompute-origin events, so the change is processed once. `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE`, on by default, governs the Python family and selects both halves at once: the pass and the `live` filter on its two automations. See [merge-recompute.md](merge-recompute.md).
+A merge or rebase runs a single coalesced recompute for the whole change set, writes the results in bulk, and chains any value that reads them. It replaces the per-node path for all four derived-value families: Jinja2 computed attributes, display labels, human-friendly ids and Python transform computed attributes. Their triggers are suppressed for merge/rebase/recompute-origin events, so the change is processed once. `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE`, on by default, governs the Python family and selects both halves at once: the pass and the `live` filter on its two automations. See [merge-recompute.md](merge-recompute.md).
 
 ## Self-Targeting Filter (`targets_self`)
 
