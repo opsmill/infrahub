@@ -685,6 +685,34 @@ def retry_db_transaction(
     return func_wrapper
 
 
+async def run_with_retry[T](db: InfrahubDatabase, name: str, func: Callable[[], Coroutine[Any, Any, T]]) -> T:
+    """Replay `func` when the database errors transiently, opening no transaction of its own.
+
+    `func` runs once, without retrying, in either of two cases. When `db` already runs in a
+    transaction, because the transient error has already failed it and replaying on it raises
+    `TransactionError` instead; only whoever opened it can roll it back and start a new one. And
+    when an enclosing scope already owns the retry, so that nesting cannot multiply the attempts.
+    Either way the error travels out to the scope that can act on it.
+
+    Args:
+        db: Database the work runs against.
+        name: Label to record failed attempts against in the retry metric.
+        func: Work to run, and to replay when it fails transiently.
+
+    Returns:
+        Whatever `func` returns.
+
+    Raises:
+        TransientError: When every attempt ended in a retriable error.
+        ClientError: When every attempt ended in a retriable error.
+
+    """
+    async with _claim_retry_ownership(name) as owns_retry:
+        if not owns_retry or db.is_transaction:
+            return await func()
+        return await _run_retry_loop(name=name, func=func)
+
+
 async def run_in_transaction_with_retry[T](
     db: InfrahubDatabase,
     name: str,
@@ -697,13 +725,10 @@ async def run_in_transaction_with_retry[T](
     earlier attempt already committed. When this function opens the transaction it holds the locks
     around it and releases them between attempts, so no lock is held across a backoff.
 
-    `func` runs once, without retrying, in either of two cases. When `db` already runs in a
-    transaction, because the transient error has already failed it and replaying on it raises
-    `TransactionError` instead; only whoever opened it can roll it back and start a new one. And
-    when an enclosing scope already owns the retry, so that nesting cannot multiply the attempts.
-
-    Passing in a transaction the caller opened moves the locks inside it: they are released when
-    this returns, and so do not cover the caller's commit.
+    `func` runs once, without retrying, when `db` already runs in a transaction or when an
+    enclosing scope already owns the retry. Passing in a transaction the caller opened also moves
+    the locks inside it: they are released when this returns, and so do not cover the caller's
+    commit.
 
     Args:
         db: Database to run against.
@@ -719,23 +744,16 @@ async def run_in_transaction_with_retry[T](
         ClientError: When every attempt ended in a retriable error.
 
     """
-    if db.is_transaction:
-        # Claim the retry here too: a scope below this one must not replay on a transaction it has
-        # no way to roll back and reopen.
-        async with (
-            _claim_retry_ownership(name),
-            lock.InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False),
-        ):
-            return await func(db)
 
     async def run_attempt() -> T:
+        if db.is_transaction:
+            async with lock.InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False):
+                return await func(db)
+
         async with (
             lock.InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False),
             db.start_transaction() as dbt,
         ):
             return await func(dbt)
 
-    async with _claim_retry_ownership(name) as owns_retry:
-        if not owns_retry:
-            return await run_attempt()
-        return await _run_retry_loop(name=name, func=run_attempt)
+    return await run_with_retry(db=db, name=name, func=run_attempt)

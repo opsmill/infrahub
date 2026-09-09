@@ -14,11 +14,14 @@ from infrahub.database import (
     InfrahubDatabaseMode,
     retry_db_transaction,
     run_in_transaction_with_retry,
+    run_with_retry,
 )
 from infrahub.database.metrics import TRANSACTION_RETRIES
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
+
+    from neo4j import AsyncDriver
 
 
 @pytest.fixture
@@ -192,14 +195,23 @@ def _set_zero_delay_retries() -> Generator[None, None, None]:
 
 
 @pytest.fixture
-async def transaction_mode_db() -> AsyncGenerator[InfrahubDatabase, None]:
-    """A database in transaction mode, standing in for one a caller opened and owns.
-
-    Nothing here runs a query, so the driver never opens a connection.
-    """
+async def neo4j_driver() -> AsyncGenerator[AsyncDriver, None]:
+    """A driver that is never asked to run a query, so it never opens a connection."""
     driver = AsyncGraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "unused"))
-    yield InfrahubDatabase(driver=driver, mode=InfrahubDatabaseMode.TRANSACTION)
+    yield driver
     await driver.close()
+
+
+@pytest.fixture
+def transaction_mode_db(neo4j_driver: AsyncDriver) -> InfrahubDatabase:
+    """A database in transaction mode, standing in for one a caller opened and owns."""
+    return InfrahubDatabase(driver=neo4j_driver, mode=InfrahubDatabaseMode.TRANSACTION)
+
+
+@pytest.fixture
+def driver_mode_db(neo4j_driver: AsyncDriver) -> InfrahubDatabase:
+    """A database outside any transaction, as a mutation holds it before it opens one."""
+    return InfrahubDatabase(driver=neo4j_driver, mode=InfrahubDatabaseMode.DRIVER)
 
 
 class _RetriableWork:
@@ -280,3 +292,38 @@ class TestRetryOwnership:
             await run_in_transaction_with_retry(db=transaction_mode_db, name="transaction_owner", func=run_nested)
 
         assert work.calls == 1
+
+
+@pytest.mark.usefixtures("_set_zero_delay_retries")
+class TestRunWithRetry:
+    """A mutation's reads are replayed as well as its write.
+
+    An object is created from a schema, a template and a pool that are all read before the write
+    transaction opens. A database saturated enough to fail those reads fails the mutation just as
+    surely as one that fails the write, so both sides of it get the same second chance.
+    """
+
+    async def test_work_outside_a_transaction_is_replayed(self, driver_mode_db: InfrahubDatabase) -> None:
+        work = _RetriableWork(failures=1)
+
+        assert await run_with_retry(db=driver_mode_db, name="reads_before_the_write", func=work.run) == "ok"
+        assert work.calls == 2
+
+    async def test_a_caller_owned_transaction_is_not_replayed(self, transaction_mode_db: InfrahubDatabase) -> None:
+        work = _RetriableWork(failures=1)
+
+        with pytest.raises(TransientError, match=r"^no available threads to serve this request$"):
+            await run_with_retry(db=transaction_mode_db, name="caller_owns_the_transaction", func=work.run)
+
+        assert work.calls == 1
+
+    async def test_an_enclosing_owner_keeps_the_whole_budget(self, driver_mode_db: InfrahubDatabase) -> None:
+        work = _RetriableWork(failures=99)
+
+        async def inner() -> str:
+            return await run_with_retry(db=driver_mode_db, name="budget_inner", func=work.run)
+
+        with pytest.raises(TransientError, match=r"^no available threads to serve this request$"):
+            await retry_db_transaction(name="budget_outer")(inner)()
+
+        assert work.calls == 3
