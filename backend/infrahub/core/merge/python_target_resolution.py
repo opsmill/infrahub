@@ -91,8 +91,8 @@ class _Narrow:
     """The change affects the attribute, and these are the nodes to recompute.
 
     ``self_ids`` and ``reader_lookup`` are independent: a changed node can be both a target of
-    its own and a source whose readers have to be resolved. ``precise`` records whether the
-    field filter held, which the submission carries so a chained level can tell the two apart.
+    its own and a source whose readers have to be resolved. ``precise`` records whether the field
+    filter held, and is reported on the target rather than acted on.
     """
 
     self_ids: bool
@@ -124,7 +124,6 @@ class _Accumulator:
     def add(self, *, selection: _Selection, node_ids: set[str], deleted: bool) -> None:
         if isinstance(selection, _Widen):
             self.whole_kind = True
-            self.precise = False
             return
 
         if selection.self_ids:
