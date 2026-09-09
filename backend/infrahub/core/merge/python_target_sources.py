@@ -194,11 +194,7 @@ async def build_python_target_resolver(*, db: InfrahubDatabase) -> PythonTargetR
     resolves neither the client nor the component.
     """
     if not config.SETTINGS.main.coalesce_python_recompute_after_merge:
-        log.warning(
-            "Recomputing no Python computed attribute for this pass: the coalesced pass is disabled. "
-            "The per-node automations own the work once their stored trigger definitions are reconciled, "
-            "which `infrahub upgrade` performs."
-        )
+        log.debug("Deriving no Python computed attribute for this pass: the coalesced pass is disabled")
         return DisabledPythonTargetResolver()
 
     return IndexedPythonTargetResolver(
