@@ -8,6 +8,7 @@ these tests pin the wiring between the two, not the narrowing itself.
 from __future__ import annotations
 
 from infrahub.computed_attribute.scoping import ChangedElementSet
+from infrahub.core.merge.python_target_sources import UnavailablePythonTargetResolver
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
     PYTHON_COMPUTED_ATTRIBUTE,
@@ -172,3 +173,24 @@ async def test_a_failing_resolution_on_a_chained_level_widens_the_same_way() -> 
 
     assert resolver.calls == [BRANCH]
     assert _families(submissions) == {COMPUTED_ATTRIBUTE, PYTHON_COMPUTED_ATTRIBUTE}
+
+
+async def test_a_resolver_that_could_not_be_built_widens_every_declared_attribute() -> None:
+    """A caller that cannot build a resolver hands on one that raises, and the pass widens.
+
+    That is what keeps the family in the pass. Handing on a resolver that answered with nothing
+    would leave the replayed changes with no route to a refresh at all.
+    """
+    coordinator = MergeRecomputeCoordinator(
+        builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch_with_a_python_attribute()),
+        submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
+        python_resolver=UnavailablePythonTargetResolver(),
+    )
+
+    submissions = await coordinator.run(changes=[_root_change()], branch=BRANCH, context=_event_context())
+
+    assert _families(submissions) == {COMPUTED_ATTRIBUTE, PYTHON_COMPUTED_ATTRIBUTE}
+    python = [submission for submission in submissions if submission.family == PYTHON_COMPUTED_ATTRIBUTE]
+    assert [(submission.target_kind, submission.attribute_name, submission.whole_kind) for submission in python] == [
+        (chain_kind(1), "digest", True)
+    ]
