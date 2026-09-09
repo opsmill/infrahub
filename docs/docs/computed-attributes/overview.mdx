@@ -30,6 +30,8 @@ Infrahub provides several ways to represent an object using data from its attrib
 
 Use a computed attribute when the generated value needs to exist as part of the object and be available to queries, automation, or integrations.
 
+`display_label` also uses a Jinja2 template, but it defines a single label for the whole node — not an attribute you can query — and only supports one level of direct, cardinality-one relationships. Use a computed attribute instead of `display_label` when you need to query the derived value, filter on it, or feed it to automation or integrations.
+
 <!-- vale Infrahub.branded-terms-case-swap = NO -->
 ## Choose between Jinja2 and Python {#choosing-between-jinja2-and-python}
 <!-- vale Infrahub.branded-terms-case-swap = YES -->
@@ -56,7 +58,7 @@ Computed attributes have some inherent restrictions due to system constraints an
 Infrahub recalculates a computed attribute when data used by its calculation changes. The inputs Infrahub tracks, and when the updated value becomes available, depend on whether the attribute uses Jinja2 or a Python Transformation.
 
 - **Jinja2** — Infrahub tracks the attributes and direct relationships referenced by the template. When one of those inputs changes, Infrahub recalculates the computed value. Changes to inputs on the same node are recalculated as part of the same update; changes to data on a related object are processed asynchronously. If the template references a pool-sourced attribute on the same node that has not been allocated yet, Infrahub defers that recalculation until the pool assigns a value. A template that references a path the schema does not have, or the attribute itself, is rejected when the schema loads.
-- **Python** — Infrahub uses the Transformation's GraphQL query to determine which data changes can affect the computed value. When matching data changes, Infrahub schedules the Transformation on a worker and updates the computed attribute when the task completes.
+- **Python** — Infrahub uses the Transformation's GraphQL query to determine which data changes affect the computed value, tracking only the specific fields the query reads on each node kind, not every field. Infrahub recomputes the value directly whenever the object that owns it is created or updated. A change to a related object recomputes only the owners whose Transformation already read that object — not every object of that kind. When one of those tracked changes happens, Infrahub schedules the Transformation on a worker and updates the computed attribute once the task completes.
 
 When you change a Python Transformation, Infrahub recomputes the attributes that use it.
 
@@ -73,6 +75,7 @@ Use Jinja2 when the calculation is concise and depends only on attributes on the
 - Jinja2 computed attributes cannot reference relationships with cardinality `many`.
 - Only direct relationships are available; a relationship of a relationship cannot be referenced.
 - A computed attribute can be inherited from only one generic, because Infrahub cannot determine the evaluation order if multiple generics define the same computed attribute.
+- Infrahub evaluates computed attributes inside the API server, in a restricted execution context that only allows fully trusted filters — filters that make network calls or run regular expressions, for example, are blocked. See [Execution contexts in the SDK Templating Reference]($(base_url)python-sdk/reference/templating#execution-contexts) for the full list of allowed filters, and `security.restrict_untrusted_jinja2_filters` in the [configuration reference](../reference/configuration#security) to change this default.
 
 ::::
 
