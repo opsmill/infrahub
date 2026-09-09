@@ -63,7 +63,7 @@ As a developer debugging unexpected traversal results, I want the planner's surv
 
 **Why this priority**: Operational quality-of-life. Useful for troubleshooting and future development, but not required for the feature to deliver value.
 
-**Independent Test**: With a debug flag or log level enabled, execute a traversal query and verify the plan is emitted in a structured, readable form that lists each viable `(start_kind, relationship_identifier, end_kind)` triple in the adjacency. Direction is intentionally absent — see FR-002 — because the runtime Cypher uses undirected QPP arrows and has no consumer for direction.
+**Independent Test**: With a debug flag or log level enabled, execute a traversal query and verify the plan is emitted in a structured, readable form that lists each viable `(start_kind, relationship_identifier, end_kind)` triple in the adjacency. Direction is intentionally absent from the plan — see FR-002 — because the runtime Cypher uses undirected QPP arrows.
 
 **Acceptance Scenarios**:
 
@@ -91,7 +91,7 @@ As a developer debugging unexpected traversal results, I want the planner's surv
 ### Functional Requirements
 
 - **FR-001**: The system MUST, on receiving a traversal request, derive from the active branch's schema the complete set of `(start_kind, relationship_identifier, end_kind)` triples (up to the configured maximum depth) that lie on some path from the source object's kind to either the destination object's kind or any of the requested destination kinds.
-- **FR-002**: The plan output MUST be a per-hop adjacency map `{start_kind: {relationship_identifier: frozenset(end_kind, ...)}}`. Schema-relationship direction (OUTBOUND/INBOUND/BIDIR) is **not** carried in the plan: the runtime Cypher uses undirected QPP arrows, so direction has no consumer downstream.
+- **FR-002**: The plan output MUST be a per-hop adjacency map `{start_kind: {relationship_identifier: frozenset(end_kind, ...)}}`. Schema-relationship direction (OUTBOUND/INBOUND/BIDIR) is **not** carried in the plan: the runtime Cypher uses undirected QPP arrows, so the planner has no use for it. The direction is not lost, it is read back later: the RETURN projection derives each hop's `from_direction` from the orientation of the two stored `IS_RELATED` edges, and the GraphQL resolver consumes it to name both ends of the hop.
 - **FR-003**: The planner MUST exclude any hop whose `start_kind` or `end_kind` is a node kind on which the requesting user does not have read permission, evaluated against the requester's effective permissions for the requested branch.
 - **FR-004**: When the planner produces an empty adjacency (whether because no schema path exists, all hops were pruned for permissions, or all hops were pruned by user-supplied filters), the system MUST return an empty result without executing a traversal against the data graph.
 - **FR-005**: The system MUST translate the planner output into a single Cypher query whose path expressions correspond exactly to the per-hop adjacency map; no `(start_kind, rel_name, end_kind)` triple outside the adjacency may be matched.

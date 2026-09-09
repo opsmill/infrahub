@@ -96,7 +96,8 @@ RETURN
     [i IN range(0, depth - 1) | {
         relationship_identifier: nodes(path)[i*2 + 1].name,
         uuid: nodes(path)[i*2 + 2].uuid,
-        kind: nodes(path)[i*2 + 2].kind
+        kind: nodes(path)[i*2 + 2].kind,
+        from_direction: <CASE over startNode() of the hop's two edges>
     }] AS hops,
     depth
 ```
