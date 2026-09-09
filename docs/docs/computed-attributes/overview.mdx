@@ -39,13 +39,13 @@ Use Jinja2 when the value can be calculated from attributes on the same object a
 | **Use when** | The value can be calculated from attributes and direct cardinality-one relationships | The calculation needs more complex logic, cardinality-many relationships, or nested relationships |
 | **Relationship support** | Direct relationships only; cardinality `many` is not supported | No equivalent relationship restriction |
 | **Mandatory attribute support** | Supported | Not supported; the attribute must be optional |
-| **Execution** | A change on the object itself is recalculated as part of the same update; a change on a related object is processed asynchronously | Runs asynchronously on workers |
+| **Execution** | A change on the object itself is recalculated as part of the same update; a change on a related object is processed asynchronously. Recalculation is deferred if the template reads a not-yet-allocated pool-sourced attribute | Runs asynchronously on workers |
 
 ::::info Limitations
 
 Computed attributes have some inherent restrictions due to system constraints and performance considerations. Keep these in mind when designing your schema:
 
-* Only `URL` and `Text` attribute kinds are supported for computed attributes.
+- Only `URL` and `Text` attribute kinds are supported for computed attributes.
 
 ::::
 
@@ -53,7 +53,7 @@ Computed attributes have some inherent restrictions due to system constraints an
 
 Infrahub recalculates a computed attribute when data used by its calculation changes. The inputs Infrahub tracks, and when the updated value becomes available, depend on whether the attribute uses Jinja2 or a Python Transformation.
 
-- **Jinja2** — Infrahub tracks the attributes and direct relationships referenced by the template. When one of those inputs changes, Infrahub recalculates the computed value. Changes to inputs on the same node are recalculated as part of the same update; changes to data on a related object are processed asynchronously. A template that references a path the schema does not have, or the attribute itself, is rejected when the schema loads.
+- **Jinja2** — Infrahub tracks the attributes and direct relationships referenced by the template. When one of those inputs changes, Infrahub recalculates the computed value. Changes to inputs on the same node are recalculated as part of the same update; changes to data on a related object are processed asynchronously. If the template references a pool-sourced attribute on the same node that has not been allocated yet, Infrahub defers that recalculation until the pool assigns a value. A template that references a path the schema does not have, or the attribute itself, is rejected when the schema loads.
 - **Python** — Infrahub uses the Transformation's GraphQL query to determine which data changes can affect the computed value. When matching data changes, Infrahub schedules the Transformation on a worker and updates the computed attribute when the task completes.
 
 When you change a Python Transformation, Infrahub recomputes the attributes that use it.
@@ -68,9 +68,9 @@ Use Jinja2 when the calculation is concise and depends only on attributes on the
 
 ::::warning
 
-* Jinja2 computed attributes cannot reference relationships with cardinality `many`.
-* Only direct relationships are available; a relationship of a relationship cannot be referenced.
-* A computed attribute can be inherited from only one generic, because Infrahub cannot determine the evaluation order if multiple generics define the same computed attribute.
+- Jinja2 computed attributes cannot reference relationships with cardinality `many`.
+- Only direct relationships are available; a relationship of a relationship cannot be referenced.
+- A computed attribute can be inherited from only one generic, because Infrahub cannot determine the evaluation order if multiple generics define the same computed attribute.
 
 ::::
 
@@ -171,19 +171,20 @@ Python computed attributes run asynchronously on Infrahub workers, so the update
 
 ::::warning
 
-* Python computed attributes cannot be mandatory.
-* Python computed attributes run as asynchronous Transformations. Consider the amount of data queried and the work performed by the Transformation when designing the calculation.
+- Python computed attributes cannot be mandatory.
+- Python computed attributes run as asynchronous Transformations. Consider the amount of data queried and the work performed by the Transformation when designing the calculation.
 
 ::::
 
 ### Add a Python computed attribute
 
-Creating a Python computed attribute has four parts:
+Creating a Python computed attribute has five parts:
 
 1. Add the computed attribute to the schema and reference the Transformation.
 2. Create the GraphQL query that provides the Transformation inputs.
 3. Create the Python Transformation that returns the computed string.
 4. Register the query and Transformation in `.infrahub.yml`.
+5. Commit the Transformation files to a Git repository connected to Infrahub.
 
 This example calculates a `description` for an `InfraCircuit` from its endpoints and their locations.
 
