@@ -23,7 +23,9 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
-from infrahub.workers.dependencies import build_cache, build_database, build_workflow
+from infrahub.workers.dependencies import build_cache, build_database
+from tests.helpers.dependency_override import override_dependency
+from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
     from fast_depends import Provider
@@ -53,7 +55,6 @@ from tests.helpers.agnostic_edges import (
     relationship_vertex_uuid,
     to_times,
 )
-from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema.agnostic_retirement import (
     AGNOSTIC_RETIREMENT_SCHEMA,
     GADGET_KIND,
@@ -78,9 +79,9 @@ async def _rebase_branch(
     # The rollback test raises through this block, so the doubles have to come off on an exception too.
     with (
         override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
-        # Lambdas rather than the bare classes: fast_depends reads the callable's return annotation,
+        override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider),
+        # A lambda rather than the bare class: fast_depends reads the callable's return annotation,
         # and a class used as the factory resolves to `None` and fails its validation.
-        override_dependency(build_workflow, lambda: WorkflowRecorder(), dependency_provider=dependency_provider),  # noqa: PLW0108
         override_dependency(build_cache, lambda: MemoryCache(), dependency_provider=dependency_provider),  # noqa: PLW0108
     ):
         await rebase_branch(branch=branch.name, context=context, send_events=False)

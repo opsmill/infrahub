@@ -30,6 +30,7 @@ from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_PIPELINE
 from infrahub.workflows.initialization import setup_deployments, setup_worker_pools
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder, BusSimulator
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.graphql import graphql, graphql_mutation
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -598,7 +599,7 @@ class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
         client: InfrahubClient,
         dependency_provider: Provider,
     ) -> None:
-        with dependency_provider.scope(build_client, lambda: client):
+        with override_dependency(build_client, lambda: client, dependency_provider=dependency_provider):
             cache = MemoryCache()
             message_bus = BusRecorder()
             service = await InfrahubServices.new(
@@ -657,7 +658,7 @@ class TestMergeProposedChangeUnexpectedFailure(TestInfrahubApp):
         client: InfrahubClient,
         dependency_provider: Provider,
     ) -> None:
-        with dependency_provider.scope(build_client, lambda: client):
+        with override_dependency(build_client, lambda: client, dependency_provider=dependency_provider):
             cache = MemoryCache()
             message_bus = BusRecorder()
             service = await InfrahubServices.new(
