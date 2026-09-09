@@ -34,7 +34,10 @@ import json, sys
 sys.path.insert(0, "/mounted")
 import psutil, resources
 reading = resources.ProcessResources().read()
-print(json.dumps(reading.model_dump() | {"host_memory_total": psutil.virtual_memory().total}))
+print(json.dumps(reading.model_dump() | {
+    "host_memory_total": psutil.virtual_memory().total,
+    "host_processor_available": psutil.cpu_count(logical=True),
+}))
 """
 
 # Enforce the limits on the parent and leave the process's own group unbounded,
@@ -141,6 +144,11 @@ def test_reader_against_real_cgroups(case: KernelCase, probe_image: str) -> None
     assert result.returncode == 0, f"container failed: {result.stderr}"
 
     reading = json.loads(result.stdout.strip().splitlines()[-1])
+
+    # A CPU quota never narrows the reported core count: 'available' is what the host
+    # has, 'assigned' is what is enforced, and the audit needs both separately.
+    assert reading["processor_available"] == reading["host_processor_available"]
+    assert reading["processor_available"] >= 1
 
     assert reading["processor_assigned"] == case.expected_assigned
     if case.expected_memory_total is None:
