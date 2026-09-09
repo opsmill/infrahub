@@ -549,9 +549,9 @@ async def computed_attribute_setup_python(
     async with database.start_session() as db:
         log = get_run_logger()
 
-        # Above the try, so that a worker which could not confirm the schema never reaches the
-        # reconcile below: that one deletes every automation its gather did not return, and a
-        # gather off an unrefreshed registry would delete automations nothing else covers.
+        # Reconciling the automations deletes every one its gather did not return, so this worker
+        # confirms the schema before it can reach that: a gather off an unrefreshed registry would
+        # delete automations that nothing else covers while the origin gate is on.
         branch_name = branch_name or registry.default_branch
         if branch_name:
             await add_tags(branches=[branch_name])
