@@ -106,10 +106,11 @@ Requested time '<time>' is before branch '<name>' was created at '<created_at>'.
 
 **Nothing checks whether the requested time is in the future.** A future time is accepted, and the
 query returns current data with no indication that this happened. The reason is that the filter used
-to select versions is `from <= $at AND (to IS NULL OR to > $at)`, in
-`backend/infrahub/core/timestamp.py`, lines 23 to 24, and every currently valid version satisfies
-that condition for a future time. The web interface is not affected, because its picker only offers
-times in the past (`time-selector.tsx`, lines 56 to 57). This affects GraphQL, REST, and the SDK.
+to select versions, in `backend/infrahub/core/timestamp.py` lines 22 to 25, is two clauses joined by
+OR — `(r.from <= $at AND r.to IS NULL)` or `(r.from <= $at AND r.to >= $at)` — and every currently
+valid version satisfies the first of those for a future time. The web interface is not affected,
+because its picker only offers times in the past (`time-selector.tsx`, lines 56 to 57). This affects
+GraphQL, REST, and the SDK.
 See open item 2.
 
 ### How comparing two moments in time works
