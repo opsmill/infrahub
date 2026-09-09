@@ -176,11 +176,7 @@ async def test_a_failing_resolution_on_a_chained_level_widens_the_same_way() -> 
 
 
 async def test_a_resolver_that_could_not_be_built_widens_every_declared_attribute() -> None:
-    """A caller that cannot build a resolver hands on one that raises, and the pass widens.
-
-    That is what keeps the family in the pass. Handing on a resolver that answered with nothing
-    would leave the replayed changes with no route to a refresh at all.
-    """
+    """A caller that cannot build a resolver hands on one that raises, and the pass widens."""
     coordinator = MergeRecomputeCoordinator(
         builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch_with_a_python_attribute()),
         submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
