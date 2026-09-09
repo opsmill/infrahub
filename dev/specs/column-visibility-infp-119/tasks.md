@@ -165,7 +165,14 @@ bot-review round, because what those rounds changed is the most useful part of t
 ## Follow-ups to file
 
 1. Column reordering — promised on the ticket.
-2. Unify the three column builders. Prerequisite: IPAM component tests.
+2. Unify the three column builders. Prerequisite: IPAM component tests. Review raised the standing
+   cost of `ColumnSurface` in the meantime: it is one real configuration and three thin ones — two
+   supply `canReveal: false`, an identity `orderFields` and an `excludeField` that never excludes, so
+   they use none of its expressiveness, and a third is the object surface spread with one override.
+   The price is discoverability: "which columns does the IPAM prefix table show" now spans the model,
+   the surfaces, the candidate rule and four rule modules across three entity folders, where it used
+   to be one builder read top to bottom. Unifying the builders should mostly remove the need for the
+   surfaces to be data at all.
 3. Align IPAM attribute filtering to the object rule. Removes currently-visible columns, so it needs
    product sign-off.
 4. Durable per-user preferences through the backend `preferences` entity.

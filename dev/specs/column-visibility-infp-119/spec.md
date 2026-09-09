@@ -30,7 +30,10 @@
 
 - Q: IPAM's attribute filters never check `display`, so `extra` attributes are already visible
   there. Align IPAM to the object rule, or leave it? → A: Leave it. Aligning removes columns users
-  can see today, in builders with no component tests.
+  can see today, in builders with no component tests. Note the divergence is only half true, and
+  the halves must not be fixed separately: IPAM's *attribute* filters ignore `display` entirely, but
+  its *relationship* paths do delegate to the shared rule, which does drop `extra`. So "reveal would
+  be a no-op on IPAM" holds for attributes and not for relationships.
 - Q: Relationship tables render no toolbar and their headers are read-only. How do they get the
   feature? → A: A minimal Columns-only toolbar row; no header menu.
 - Q: Hiding a column with an active sort or filter? → A: Never discard either. Mark such fields in

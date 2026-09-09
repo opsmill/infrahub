@@ -136,6 +136,18 @@ hide-only rather than merely unfinished:
 The relationships fetch has no equivalent seam. Adding one is a filed follow-up, gated on the
 relationship table first gaining component tests.
 
+## A landmine for whoever enables relationship header sorting
+
+Relationship tables pass `isDisabled` through their header props, which short-circuits the shared
+header to its read-only variant — so no surface lookup ever mounts there. That matters because the
+lookup is deliberately non-throwing and falls back to the object surface, and two of the relationship
+table's three hosts provide no table context at all.
+
+Drop `isDisabled` to enable header sorting and those headers would silently resolve the object
+surface, whose `canReveal: true` offers `display: "extra"` fields that the relationship fetch never
+requests — the revealed column would render permanently empty. Thread the surface in explicitly
+before removing that flag.
+
 ## Complexity Tracking
 
 | Decision | Simpler alternative | Why the simpler one was rejected |

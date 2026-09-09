@@ -5,12 +5,10 @@ import type {
 } from "@/entities/schema/domain/model/schema";
 
 /**
- * Describes one table surface's column rules as data. There is deliberately no surface identifier,
- * so the rules can only be read from the fields below and never branched on per surface.
+ * One table's column rules, as data.
  *
- * `getDefault*` must be the very functions that build this surface's columns, otherwise a column
- * can be offered that the table cannot render. `canReveal` is false wherever the fetch path has no
- * reveal seam: the candidate list then collapses to the defaults.
+ * `getDefault*` must be the functions that build that table's columns, or a column can be offered
+ * that the table cannot render. `canReveal: false` collapses the candidate list to the defaults.
  */
 export interface ColumnSurface {
   readonly fixedColumnIds: readonly string[];

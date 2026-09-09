@@ -10,11 +10,10 @@ import type { ColumnCandidate } from "@/entities/nodes/columns/domain/rules/get-
  * silently do nothing. A name that agrees with its surface's default is dropped too: it is not a
  * departure, so it must not count towards the picker's badge.
  *
- * A name in BOTH params is a contradictory link, and hiding wins. With two named params there is no
- * ordering to fall back on, and hiding is the safer reading: a link that says "hide this" never
- * puts a column the sender meant to keep away on screen.
+ * A name in BOTH params is a contradictory link, and hiding wins: with two named params there is no
+ * ordering to fall back on, and a link that says "hide this" must never put that column on screen.
  *
- * At least one field column always survives — see `keepOneFieldColumnVisible`.
+ * The returned state never leaves a table with no field columns.
  */
 export function getColumnVisibilityState(
   hiddenNames: readonly string[],
@@ -26,62 +25,45 @@ export function getColumnVisibilityState(
   );
   const hideRequests = new Set(hiddenNames);
 
-  // Only a default-visible column has anything to hide.
-  const hidden = [...hideRequests].filter((name) => defaultVisibilityByName.get(name) === true);
-  // Only a default-hidden column has anything to reveal, and never one the other param hides.
-  const shown = [...new Set(shownNames)].filter(
-    (name) => defaultVisibilityByName.get(name) === false && !hideRequests.has(name)
-  );
+  // Null prototype: a field named after an `Object.prototype` member would otherwise read as
+  // present on a state that never mentioned it.
+  const visibility: ColumnVisibilityState = Object.create(null);
 
-  const visibility: ColumnVisibilityState = {
-    ...Object.fromEntries(shown.map((name) => [name, true] as const)),
-    ...Object.fromEntries(hidden.map((name) => [name, false] as const)),
-  };
+  // Only a default-hidden column has anything to reveal, and never one the other param hides.
+  for (const name of shownNames) {
+    if (defaultVisibilityByName.get(name) === false && !hideRequests.has(name)) {
+      visibility[name] = true;
+    }
+  }
+  // Only a default-visible column has anything to hide.
+  for (const name of hideRequests) {
+    if (defaultVisibilityByName.get(name) === true) visibility[name] = false;
+  }
 
   return keepOneFieldColumnVisible(visibility, columnCandidates);
 }
 
 /**
- * The minimum: a table never ends up with zero field columns.
- *
- * **The rule.** If applying the hide list would leave no field column visible, exactly one hide
- * entry is dropped — the one for the FIRST column in `columnCandidates` display order that the hide list
- * names. That column returns to its default, which is necessarily visible, since only a
- * default-visible column ever gets a `false` entry. Every other hide entry is kept, so as little of
- * the request is discarded as possible. Display order, not param order, decides the survivor: the
- * same set of names must always leave the same column standing, however the URL happens to spell it.
- *
- * **Why here.** This is the single trust boundary, so it is the only place that can hold for BOTH
- * ways zero columns can be asked for: the picker unchecking the last box, and a hand-written or
- * stale `?hide_columns=` naming every column at once. Enforcing it in the picker would leave the
- * crafted URL unguarded; enforcing it in the table would leave the URL and the screen disagreeing.
- * The picker still greys out the last remaining item, so the clamp is never what a user meets — that
- * is an affordance on top of this rule, not a second copy of it.
- *
- * **Why at all.** The IPAM tables render an "available range" row as one cell spanning
- * `col-start-2 -col-end-2`, which needs a grid track between the identity and actions columns; with
- * every field column hidden the two grid lines collapse onto each other and the row wraps. Beyond
- * that one symptom, a table showing only a row label and an actions menu carries no data and gives
- * the user nothing to click back from except Reset.
- *
- * A surface offering nothing but default-hidden columns has no hide entry to give back and is
- * returned untouched: there is no hide request to blame for the empty table, so there is none to
- * relax.
+ * Drops one hide entry when the hide list would leave no field column visible, so the state can
+ * never empty a table. Display order picks which, so the same set of names always leaves the same
+ * column standing however the URL spells them.
  */
 function keepOneFieldColumnVisible(
   visibility: ColumnVisibilityState,
   columnCandidates: ColumnCandidate[]
 ): ColumnVisibilityState {
-  // Own keys only: a field named after an `Object.prototype` member must never read as visible on a
-  // state that does not mention it.
   const isVisible = ({ name, isDefaultVisible }: ColumnCandidate) =>
-    Object.hasOwn(visibility, name) ? visibility[name] : isDefaultVisible;
+    name in visibility ? visibility[name] : isDefaultVisible;
   if (columnCandidates.some(isVisible)) return visibility;
 
   const survivor = columnCandidates.find(({ name }) => visibility[name] === false);
+  // Nothing was hidden, so there is no hide request to relax.
   if (!survivor) return visibility;
 
-  const { [survivor.name]: _restored, ...withSurvivorVisible } = visibility;
+  const withSurvivorVisible: ColumnVisibilityState = Object.create(null);
+  for (const [name, isVisible] of Object.entries(visibility)) {
+    if (name !== survivor.name) withSurvivorVisible[name] = isVisible;
+  }
 
   return withSurvivorVisible;
 }
