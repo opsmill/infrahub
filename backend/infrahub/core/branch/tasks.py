@@ -27,7 +27,10 @@ from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge.builder import build_branch_merge_orchestrator
 from infrahub.core.merge.merge_locker import MergeLocker
-from infrahub.core.merge.python_target_sources import build_python_target_resolver
+from infrahub.core.merge.python_target_sources import (
+    UnavailablePythonTargetResolver,
+    build_python_target_resolver,
+)
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
@@ -82,6 +85,7 @@ from infrahub.workflows.utils import add_tags
 if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
 
+    from infrahub.core.merge.recompute_coalescing import PythonTargetResolver
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -355,16 +359,20 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             )
         )
 
+    event_service = await get_event_service()
+    for event in events:
+        await event_service.send(event)
+
     # The rebase session closed further up, and this pass runs queries of its own.
     async with database.start_session() as recompute_db:
-        # Before the events go out. They carry the rebase origin, which is what stops the per-node
-        # automations from answering them, so a failure to build the resolver must not leave the
-        # replayed changes suppressed with nothing recomputing them.
-        python_resolver = await build_python_target_resolver(db=recompute_db)
-
-        event_service = await get_event_service()
-        for event in events:
-            await event_service.send(event)
+        python_resolver: PythonTargetResolver
+        try:
+            python_resolver = await build_python_target_resolver(db=recompute_db)
+        except Exception:
+            # Handed on as a resolver that raises, which widens every declared attribute. Skipping
+            # the family instead would leave the replayed changes with nothing to refresh them.
+            log.exception("Widening the post-rebase Python recompute: its resolver could not be built")
+            python_resolver = UnavailablePythonTargetResolver()
 
         with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
             schema_name = (

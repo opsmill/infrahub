@@ -20,14 +20,17 @@ from .python_target_resolution import DisabledPythonTargetResolver, IndexedPytho
 log = get_logger()
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from infrahub_sdk.client import InfrahubClient
 
+    from infrahub.computed_attribute.scoping import ChangedElementSet
     from infrahub.core.query_group.subscribers import SubscriberRef
     from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubComponent
 
-    from .recompute_coalescing import PythonTargetResolver
+    from .recompute_coalescing import AffectedTarget, MergeChange, PythonTargetResolver
 
 
 @dataclass(frozen=True)
@@ -163,6 +166,14 @@ class ComposedPythonReadSetSource:
                 for attribute in declared
             ]
 
+        unanswered = set(declared) - set(analyzed)
+        if unanswered:
+            log.debug(
+                "Leaving %s out of the Python recompute on %s: no transform answered for them",
+                sorted(f"{attribute.kind}.{attribute.attribute_name}" for attribute in unanswered),
+                branch,
+            )
+
         return [
             PythonAttributeReadSet(
                 kind=attribute.kind,
@@ -183,6 +194,23 @@ class ClientSubscriberSource:
 
     async def subscribers(self, *, node_ids: list[str], branch: str) -> list[SubscriberRef]:
         return await fetch_subscriber_refs(client=self.client, node_ids=node_ids, branch=branch)
+
+
+class UnavailablePythonTargetResolver:
+    """Raises on every resolution, for when the real resolver could not be built.
+
+    A caller that cannot build one hands this on instead of skipping the family: the resolution
+    failure is what widens every declared attribute, so the values are still refreshed.
+    """
+
+    async def resolve(
+        self,
+        *,
+        changes: Iterable[MergeChange],  # noqa: ARG002
+        branch: str,  # noqa: ARG002
+        schema_changed_elements: ChangedElementSet | None = None,  # noqa: ARG002
+    ) -> list[AffectedTarget]:
+        raise RuntimeError("the Python target resolver could not be built")
 
 
 async def build_python_target_resolver(*, db: InfrahubDatabase) -> PythonTargetResolver:
