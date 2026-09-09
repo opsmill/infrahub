@@ -355,13 +355,17 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             )
         )
 
-    event_service = await get_event_service()
-    for event in events:
-        await event_service.send(event)
-
     # The rebase session closed further up, and this pass runs queries of its own.
     async with database.start_session() as recompute_db:
+        # Before the events go out. They carry the rebase origin, which is what stops the per-node
+        # automations from answering them, so a failure to build the resolver must not leave the
+        # replayed changes suppressed with nothing recomputing them.
         python_resolver = await build_python_target_resolver(db=recompute_db)
+
+        event_service = await get_event_service()
+        for event in events:
+            await event_service.send(event)
+
         with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
             schema_name = (
                 user_branch.name
