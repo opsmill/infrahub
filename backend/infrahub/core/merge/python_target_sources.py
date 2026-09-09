@@ -99,9 +99,7 @@ class GatheredPythonReadSets:
 
     Every query is mapped the same way the schema-scoped backfill maps it, so both sides scope a
     schema change on the same read set. A root that is not restricted to a single object is carried
-    as a separate fact, because what it costs is the reader lookup and not the mapping: readers come
-    from query-group membership, which records what the last run read, so a node enters or leaves the
-    result set without anything changing on the members already in it.
+    as a separate fact rather than folded into the mapping.
     """
 
     def __init__(self, db: InfrahubDatabase) -> None:
@@ -130,21 +128,21 @@ class GatheredPythonReadSets:
         return reads
 
 
-class DatabasePythonReadSetSource:
-    """Read sets for every Python transform computed attribute whose transform exists.
+class ComposedPythonReadSetSource:
+    """Join what the schema declares with what the transform queries were found to read.
 
-    The schema is what says which attributes exist; the analyzed transform queries are what says
-    what each of them reads. An attribute whose query could not be mapped still gets an entry, so
-    the resolver widens it rather than skipping it.
+    The schema is what says which attributes exist; the analyzed queries are what says what each of
+    them reads. An attribute the analysis returned nothing for has no transform to compute it, so it
+    is left out: nothing can render its value until the transform arrives, and the recompute that
+    follows the transform being created is what covers it then.
 
-    An attribute whose transform is not in the database gets none. Nothing can compute it until the
-    transform arrives, and the recompute that follows the transform being created is what covers it
-    then, so selecting it here only submits work that raises.
+    An analysis that fails outright says nothing about any attribute, so every declared one is
+    reported undeterminable and widens rather than dropping out unnoticed.
     """
 
-    def __init__(self, declared_attributes: DeclaredPythonAttributes, read_sets: AnalyzedPythonReadSets) -> None:
+    def __init__(self, declared_attributes: DeclaredPythonAttributes, analyzed_reads: AnalyzedPythonReadSets) -> None:
         self.declared_attributes = declared_attributes
-        self.read_sets_source = read_sets
+        self.analyzed_reads = analyzed_reads
 
     async def read_sets(self, *, branch: str) -> list[PythonAttributeReadSet]:
         declared = await self.declared_attributes.declared(branch=branch)
@@ -152,7 +150,7 @@ class DatabasePythonReadSetSource:
             return []
 
         try:
-            analyzed = await self.read_sets_source.analyzed(branch=branch)
+            analyzed = await self.analyzed_reads.analyzed(branch=branch)
         except Exception:
             log.exception("Widening every Python computed attribute on %s: the read-set gather failed", branch)
             return [
@@ -198,9 +196,9 @@ async def build_python_target_resolver(*, db: InfrahubDatabase) -> PythonTargetR
         return DisabledPythonTargetResolver()
 
     return IndexedPythonTargetResolver(
-        read_set_source=DatabasePythonReadSetSource(
+        read_set_source=ComposedPythonReadSetSource(
             declared_attributes=SchemaDeclaredPythonAttributes(db=db, component=await get_component()),
-            read_sets=GatheredPythonReadSets(db=db),
+            analyzed_reads=GatheredPythonReadSets(db=db),
         ),
         subscriber_source=ClientSubscriberSource(client=get_client()),
     )
