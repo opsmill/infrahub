@@ -27,12 +27,16 @@ def _flow_body() -> ast.AsyncFunctionDef:
     return parsed
 
 
+def _called_name(call: ast.Call) -> str | None:
+    return call.func.id if isinstance(call.func, ast.Name) else getattr(call.func, "attr", None)
+
+
 def _positions(name: str, node: ast.AST) -> list[int]:
+    """Where ``name`` is awaited. An unawaited call never runs, so it does not count as ordering."""
     return sorted(
         child.lineno
         for child in ast.walk(node)
-        if isinstance(child, ast.Call)
-        and (child.func.id if isinstance(child.func, ast.Name) else getattr(child.func, "attr", None)) == name
+        if isinstance(child, ast.Await) and isinstance(child.value, ast.Call) and _called_name(child.value) == name
     )
 
 
@@ -48,15 +52,11 @@ def _reconciling_try(body: ast.AST) -> ast.Try:
 
 
 def _called_names(node: ast.AST) -> set[str]:
-    names: set[str] = set()
-    for child in ast.walk(node):
-        if isinstance(child, ast.Call):
-            func = child.func
-            if isinstance(func, ast.Name):
-                names.add(func.id)
-            elif isinstance(func, ast.Attribute):
-                names.add(func.attr)
-    return names
+    return {
+        called
+        for child in ast.walk(node)
+        if isinstance(child, ast.Call) and (called := _called_name(child)) is not None
+    }
 
 
 def test_the_schema_refresh_runs_before_the_reconcile_is_promised() -> None:
