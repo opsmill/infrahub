@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.account import ObjectPermission
+from infrahub.core.constants import PermissionAction
 from infrahub.exceptions import InitializationError, PermissionDeniedError
 from infrahub.log import get_logger
 from infrahub.permissions.constants import PermissionDecisionFlag
@@ -70,6 +71,6 @@ def _view_permission(name: str) -> ObjectPermission:
     return ObjectPermission(
         namespace=_CORE_NAMESPACE,
         name=name,
-        action="view",
+        action=PermissionAction.VIEW.value,
         decision=PermissionDecisionFlag.ALLOW_ALL,
     )

@@ -3202,10 +3202,8 @@ class RepositoryBranchStatusBranches:
 async def repository_branch_status_branches(db: InfrahubDatabase) -> RepositoryBranchStatusBranches:
     """Bootstrap a database holding every branch shape the cross-branch repository status read must cover.
 
-    The branches are saved directly rather than through the branch-creation flow, which duplicates the
-    schema and writes a diff per branch and would make two hundred of them prohibitively slow. Creation
-    timestamps are set explicitly and increase with the save order, so an ordering assertion cannot
-    depend on two saves landing in different microseconds.
+    Creation timestamps are set explicitly and increase with the save order, so an ordering assertion
+    cannot depend on two saves landing in different microseconds.
 
     The fixture owns the whole database for the module: it wipes it, creates the root node, the default
     branch, the global branch and the core schema itself. A module that consumes it must therefore not

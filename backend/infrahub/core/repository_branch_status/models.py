@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Self
 
 if TYPE_CHECKING:
@@ -39,7 +40,9 @@ class RepositoryBranchAttributes:
                     f"branch {value.branch_name!r}, attribute {value.attribute_name!r}"
                 )
             branch_values[value.attribute_name] = value
-        return cls(values=grouped)
+        return cls(
+            values=MappingProxyType({key: MappingProxyType(branch_values) for key, branch_values in grouped.items()})
+        )
 
     def get(self, repository_id: str, branch_name: str, attribute_name: str) -> RepositoryBranchAttributeValue | None:
         """Return the value for one repository, branch and attribute name, or None when nothing resolved."""

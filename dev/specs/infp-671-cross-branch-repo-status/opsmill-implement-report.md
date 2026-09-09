@@ -88,7 +88,7 @@ New modules `resolver.py` and `field.py` (the composition root); the field regis
 
 Flagged upward:
 
-- Zero divergence from the frozen contract: field name, type, all eleven arguments, every default
+- Zero divergence from the frozen contract: field name, type, all ten arguments, every default
   (`limit: Int = 40`, `offset: Int = 0`, `partial_match: Boolean = false`,
   `own_values_only: Boolean = false`) and every description match. The SDL printer sorts arguments
   alphabetically while the contract lists them in declaration order, which is presentation only.
