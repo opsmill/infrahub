@@ -552,13 +552,7 @@ class TestCoalescedRecomputePythonDerivedRead(CoalescedPythonTestBase):
 
 
 class TestCoalescedRecomputePythonUnpinnedQuery(CoalescedPythonTestBase):
-    """A transform query that is not pinned to one object widens to its whole kind.
-
-    Readers come from query-group membership, which records what the last run read and never what
-    the next one would. With an unpinned root a car can enter or leave the result set while nothing
-    changes on the cars already in it, so a created one is invisible to the existing subscribers and
-    a deleted one leaves no membership behind.
-    """
+    """A transform query that is not pinned to one object widens to its whole kind."""
 
     @pytest.fixture(scope="class")
     async def unpinned_dataset(
@@ -672,7 +666,11 @@ class TestCoalescedRecomputePythonUnpinnedPeerQuery(CoalescedPythonTestBase):
         admin_account: CoreAccount,
     ) -> None:
         """Nothing the query reads moved, so the new car is the exact target of both attributes."""
-        created_id = "17c0ffee-0000-4000-8000-00000000cafe"
+        person = await NodeManager.get_one(db=db, id=peer_dataset.person_id, raise_on_error=True)
+        created = await Node.init(db=db, schema=CAR_KIND)
+        await created.new(db=db, name="car-created-after-seed", owner=person)
+        await created.save(db=db)
+        created_id = created.id
 
         submissions = await self._run_pass(
             db=db,

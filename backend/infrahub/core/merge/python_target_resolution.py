@@ -52,10 +52,7 @@ class PythonAttributeReadSet:
     ``gathered`` is ``False`` when the gather failed outright, so nothing is known about any pair
     and none of them may be dropped as covered by another pass.
 
-    ``pinned`` is ``False`` when the query root is not restricted to a single object. The read set
-    still says what the query reads, which is what the schema-scoped backfill decides on; what an
-    unpinned root costs is the reader lookup, since a node enters or leaves the result set without
-    touching the members already in it.
+    ``pinned`` is ``False`` when the query root is not restricted to a single object.
     """
 
     kind: str

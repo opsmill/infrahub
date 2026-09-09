@@ -395,7 +395,7 @@ async def test_only_a_pair_the_schema_pass_can_see_is_covered() -> None:
 
 
 async def test_every_lookup_of_a_pass_runs_on_the_branch_it_was_asked_for() -> None:
-    """One resolver serves several branches, so the branch travels per call, not per instance.
+    """Every lookup carries the branch it was asked for, and the memo is keyed on it.
 
     A rebase recomputes on the user branch while a merge recomputes on the destination, and a
     lookup sent to the wrong branch answers with that branch's query groups.
@@ -422,22 +422,6 @@ async def test_the_read_set_index_is_fetched_once_per_pass() -> None:
     await resolver.resolve(branch=BRANCH, changes=[change])
 
     assert read_set_source.calls == [BRANCH]
-
-
-async def test_an_unpinned_query_widens_instead_of_resolving_its_readers() -> None:
-    """Query-group membership records what the last run read, so it cannot name these readers."""
-    subscribers = RecordingSubscriberSource(subscribers={"d1": [("o1", OWNER)]})
-    resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
-
-    targets = await resolver.resolve(
-        branch=BRANCH,
-        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"name"}))],
-    )
-
-    assert _identities(targets) == [(OWNER, "roster")]
-    assert targets[0].whole_kind is True
-    assert targets[0].precise is False
-    assert subscribers.calls == []
 
 
 async def test_an_unpinned_query_keeps_the_read_set_the_schema_pass_scopes_on() -> None:
@@ -497,6 +481,8 @@ async def test_an_unpinned_query_widens_on_a_field_it_reads_without_selecting() 
 
     assert _identities(targets) == [(OWNER, "roster")]
     assert targets[0].whole_kind is True
+    assert targets[0].precise is False
+    assert subscribers.calls == []
 
 
 async def test_an_unpinned_query_still_ignores_a_kind_it_never_reads() -> None:
