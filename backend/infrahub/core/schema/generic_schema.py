@@ -15,6 +15,10 @@ class GenericSchema(GeneratedGenericSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
     @property
+    def concrete_kinds(self) -> tuple[str, ...]:
+        return tuple(sorted(self.used_by))
+
+    @property
     def is_node_schema(self) -> bool:
         return False
 
