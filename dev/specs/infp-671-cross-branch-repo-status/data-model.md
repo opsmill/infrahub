@@ -128,6 +128,14 @@ whose attribute has no visible edge (never created) produces no row; the reader 
 The pure helpers in `paging.py` operate on a list of these: `apply_value_filters`, `order_rows`
 (default branch first, then `name` ascending, only when no `order` argument), `page_rows`.
 
+A row becomes one GraphQL edge through `Branch.to_graphql`, the branch query's own serialisation, so
+the five branch fields arrive wrapped in `InfrahubBranch`'s value-field types and each edge carries
+`node_metadata`. The attribute payloads are merged into the resulting `node`. The legacy flat
+`Branch` scalars are not the model: `StandardNode.to_graphql_flat` serves only the deprecated flat
+`Branch` query and the old-style branch mutations (`BranchCreate`, `BranchRebase`, `BranchValidate`,
+`BranchMerge`), which its own docstring says are to be replaced by `InfrahubBranch` equivalents.
+Reusing `to_graphql` is what keeps the two row shapes from diverging.
+
 ### `RepositoryData` and `RepositoryBranchInfo`
 
 `infrahub.git.models::RepositoryData` keeps `branch_info: dict[str, RepositoryBranchInfo]` unchanged.
@@ -148,7 +156,7 @@ primitive call in the periodic sync.
 
 | Argument | Rule | Failure |
 | --- | --- | --- |
-| `id` | required; a repository uuid or its name, resolved with `NodeManager.get_one_by_id_or_default_filter` | `NodeNotFoundError` when neither matches |
+| `id` | required; a repository uuid or its name, resolved with `NodeManager.get_one_by_id_or_default_filter`. That lookup does not enforce `kind` on the id path, so the resolver checks the resolved node against `CoreGenericRepository.used_by` itself; without that check any node uuid resolves and the field becomes an existence-and-kind oracle | `NodeNotFoundError` when neither matches, and when the id resolves to a node that is not a repository |
 | `limit` | `>= 1`; default 40; no maximum | `ValidationError` |
 | `offset` | `>= 0`; default 0 | `ValidationError` |
 | `order` | at most one of `created_at`, `updated_at` (existing `standard_node_ordering_from_order_input`) | `ValidationError` |
@@ -161,6 +169,12 @@ primitive call in the periodic sync.
 | no `ALLOW_ALL` view on either repository kind | `PermissionDeniedError` before the lookup | error |
 | missing `ALLOW_ALL` view on the resolved concrete kind | `PermissionDeniedError` before any row is returned | error |
 | context without a `PermissionManager` | treated as denial | error |
+
+The table is the end-state contract. One deviation applies while the stub serves placeholder values:
+`own_values_only`, `sync_status__value` and `internal_status__value` are rejected with a
+`ValidationError` rather than applied, because they filter on resolved attribute values that do not
+exist yet. Only actual narrowing rejects, so the defaults still pass. The rows above describe what
+they do once the graph read lands.
 
 ## State transitions
 

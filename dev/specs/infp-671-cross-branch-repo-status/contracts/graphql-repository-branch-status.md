@@ -28,9 +28,15 @@ other branch status is included. The branch the query is executed against does n
 
 ### Row values
 
-- `name`, `status`, `is_default`, `sync_with_git`, `branched_from` are the branch's own. `sync_with_git`
-  is always `true` on a read-write repository's rows, because that is the row-set criterion; on a
-  read-only repository it varies, because every branch is a row.
+- `name`, `status`, `is_default`, `sync_with_git`, `branched_from` are the branch's own, and carry the
+  **same value-field wrappers and nullability as `InfrahubBranch`** - `name { value }`,
+  `status { value }` and so on - so a client reads `name.value` and `commit.value` through one access
+  pattern across the whole row. Do not model them on the legacy flat `Branch` query.
+  `sync_with_git` is always `true` on a read-write repository's rows, because that is the row-set
+  criterion; on a read-only repository it varies, because every branch is a row.
+- Each edge also carries `node_metadata` (`created_at`, `updated_at`, `created_by`, `updated_by`),
+  the same type `InfrahubBranchEdge` carries. `order` sorts on this metadata, so it has to be
+  readable.
 - `commit`, `sync_status`, `internal_status`, `ref` are the repository's attribute values **as that
   branch resolves them**. A branch that never wrote its own value shows the default branch's value at
   the branch's fork point. This is the correct value for that branch and is not an error state.
@@ -84,20 +90,24 @@ query RepositoryBranchStatus($id: String!, $limit: Int, $offset: Int, $syncStatu
     count
     edges {
       node {
-        name
-        status
-        is_default
-        sync_with_git
-        branched_from
+        name { value }
+        status { value }
+        is_default { value }
+        sync_with_git { value }
+        branched_from { value }
         commit { value updated_at }
         sync_status { value label color }
         internal_status { value label color }
         ref { value }
       }
+      node_metadata { created_at updated_at }
     }
   }
 }
 ```
+
+While the stub is live, leave `$syncStatus` unset: passing a value makes the query fail, because the
+value filters are rejected until the graph read lands.
 
 ## Example response (read-write repository, three branches, one failed import)
 
@@ -109,42 +119,45 @@ query RepositoryBranchStatus($id: String!, $limit: Int, $offset: Int, $syncStatu
       "edges": [
         {
           "node": {
-            "name": "main",
-            "status": "OPEN",
-            "is_default": true,
-            "sync_with_git": true,
-            "branched_from": "2026-08-01T09:00:00.000000Z",
+            "name": { "value": "main" },
+            "status": { "value": "OPEN" },
+            "is_default": { "value": true },
+            "sync_with_git": { "value": true },
+            "branched_from": { "value": "2026-08-01T09:00:00.000000Z" },
             "commit": { "value": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b", "updated_at": "2026-09-02T14:12:03.512000Z" },
             "sync_status": { "value": "in-sync", "label": "In Sync", "color": "#60a5fa" },
             "internal_status": { "value": "active", "label": "Active", "color": "#86efac" },
             "ref": null
-          }
+          },
+          "node_metadata": { "created_at": "2026-08-01T09:00:00.000000Z", "updated_at": "2026-08-01T09:00:00.000000Z" }
         },
         {
           "node": {
-            "name": "add-core-switches",
-            "status": "OPEN",
-            "is_default": false,
-            "sync_with_git": true,
-            "branched_from": "2026-09-01T08:30:00.000000Z",
+            "name": { "value": "add-core-switches" },
+            "status": { "value": "OPEN" },
+            "is_default": { "value": false },
+            "sync_with_git": { "value": true },
+            "branched_from": { "value": "2026-09-01T08:30:00.000000Z" },
             "commit": { "value": "0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e", "updated_at": "2026-09-02T15:40:11.001000Z" },
             "sync_status": { "value": "error-import", "label": "Import Error", "color": "#f87171" },
             "internal_status": { "value": "inactive", "label": "Inactive", "color": "#e5e7eb" },
             "ref": null
-          }
+          },
+          "node_metadata": { "created_at": "2026-09-01T08:30:00.000000Z", "updated_at": "2026-09-01T08:30:00.000000Z" }
         },
         {
           "node": {
-            "name": "wip-firewall-rules",
-            "status": "OPEN",
-            "is_default": false,
-            "sync_with_git": true,
-            "branched_from": "2026-09-02T10:00:00.000000Z",
+            "name": { "value": "wip-firewall-rules" },
+            "status": { "value": "OPEN" },
+            "is_default": { "value": false },
+            "sync_with_git": { "value": true },
+            "branched_from": { "value": "2026-09-02T10:00:00.000000Z" },
             "commit": { "value": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b", "updated_at": "2026-09-02T14:12:03.512000Z" },
             "sync_status": { "value": "in-sync", "label": "In Sync", "color": "#60a5fa" },
             "internal_status": { "value": "inactive", "label": "Inactive", "color": "#e5e7eb" },
             "ref": null
-          }
+          },
+          "node_metadata": { "created_at": "2026-09-02T10:00:00.000000Z", "updated_at": "2026-09-02T10:00:00.000000Z" }
         }
       ]
     }
@@ -181,17 +194,32 @@ While the stub is live on `develop`:
 - `commit`, `sync_status`, `internal_status` and `ref` values are fabricated deterministically from the
   branch name, so they are stable across reloads. Labels and colours are the real schema choices, and
   every `sync_status` value appears across a handful of branches.
-- `sync_status__value`, `internal_status__value` and `own_values_only` are accepted and ignored.
-  `count` therefore ignores them too.
+- `sync_status__value`, `internal_status__value` and `own_values_only` are **rejected** with a
+  `ValidationError` naming every argument that would narrow the rows, so a document cannot receive an
+  unfiltered row set where it asked for a filtered one. Sending the defaults back is still accepted:
+  an explicit `null` for the two status filters, and `own_values_only: false`. Build the card's
+  document without these three arguments until the stub is gone; `count` is exact for the filters
+  that do work (`name__value`, `partial_match`, `status__value`).
 - The API log carries one warning when the stub module is loaded, and the root field's description
-  in the schema says "(preview: attribute values are placeholders, not yet read from the graph)".
+  in the schema says "(preview: attribute values are placeholders, not yet read from the graph, so
+  sync_status__value, internal_status__value and own_values_only are rejected)".
   Both disappear with the stub.
 - The card is built without the git-derived drift column for now; that column arrives on its own
   data path once the sibling PRD settles it, and nothing in this contract changes for it.
 
-Consuming the types: pull `develop`, run `pnpm codegen` in `frontend/app`, then write the document
-with the `graphql()` tag from `@/shared/api/graphql/client` in the `api/` layer of the repository entity
-slice (`frontend/app/src/entities/repository/api/`), as `get-repository-group-from-api.ts` does.
+Consuming the types: check out the epic's integration branch `cross-branch-repo-status-infp-671` -
+**not `develop`**, which does not carry the field until the whole epic lands. Then run **both**
+`pnpm --dir frontend/app codegen` and `pnpm --dir frontend/app codegen:graphql`: the first writes
+`types.ts` only, while `graphql-env.d.ts` and `graphql-cache.d.ts` come from the second, and skipping
+it leaves the new root field absent from introspection with every cached document hash stale, which
+fails CI's `frontend-validate-graphql-types`. Then write the document with the `graphql()` tag from
+`@/shared/api/graphql/client` in the `api/` layer of the repository entity slice
+(`frontend/app/src/entities/repository/api/`), as `get-repository-group-from-api.ts` does.
+
+Reading a row: the branch fields are wrapped exactly as `InfrahubBranch` wraps them, so it is
+`node.name.value`, `node.status.value`, `node.sync_with_git.value` alongside `node.commit.value` -
+one access pattern for the whole row. Creation and update timestamps are on the edge, as
+`node_metadata`, not on the node.
 
 ## No companion change on the existing branch query
 

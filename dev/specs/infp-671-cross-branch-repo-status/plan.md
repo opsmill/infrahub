@@ -18,7 +18,7 @@ Delivery is contract-first in three increments (see [research.md](research.md), 
 
 | Increment | Ships | What is real | What is fabricated |
 | --- | --- | --- | --- |
-| A, contract stub | Root field, types, all arguments, regenerated `schema/schema.graphql`, permission check, branch row set, paging | Repository lookup, permission denial, row membership, ordering, paging, count | Attribute values (`commit`, `sync_status`, `internal_status`, `ref`); attribute-value filters are inert |
+| A, contract stub | Root field, types, all arguments, regenerated `schema/schema.graphql`, permission check, branch row set, paging | Repository lookup, permission denial, row membership, ordering, paging, count | Attribute values (`commit`, `sync_status`, `internal_status`, `ref`); the attribute-value filters are rejected with a `ValidationError` rather than accepted and ignored, so an unfiltered row set is never rendered as a filtered one |
 | B, graph read | Core primitive and reader, attribute filters, query-count and inheritance tests, changelog, docs | Everything | Nothing; the stub module is deleted |
 | C, periodic sync | `get_repositories_commit_per_branch` on the primitive, chunked | | |
 
@@ -55,7 +55,8 @@ A release must not be cut while increment A's stub is live (research.md, Decisio
 ### I. Schema-Driven Integrity: PASS
 
 No node, attribute or relationship is added. `schema/schema.graphql` and the frontend generated types
-are regenerated, never edited (`uv run invoke schema.generate-graphqlschema`, `pnpm codegen`).
+are regenerated, never edited (`uv run invoke schema.generate-graphqlschema`, then both
+`pnpm --dir frontend/app codegen` and `pnpm --dir frontend/app codegen:graphql`).
 
 ### II. Branch-Safe by Default: PASS
 
@@ -186,7 +187,9 @@ backend/tests/
     └── test_repository_branch_attributes.py  # [B] primitive benchmark at the target branch counts
 
 schema/schema.graphql                         # [A] regenerated
-frontend/app/src/shared/api/graphql/generated/types.ts   # [A] regenerated (pnpm codegen)
+frontend/app/src/shared/api/graphql/generated/types.ts            # [A] regenerated (pnpm codegen)
+frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts    # [A] regenerated (pnpm codegen:graphql)
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts  # [A] regenerated (pnpm codegen:graphql)
 
 changelog/
 ├── +branch-list-sync-with-git-filter.added.md  # [A]
@@ -247,18 +250,21 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
 4. Resolver: argument validation (`id` required, uuid or name; `limit >= 1`; `offset >= 0`),
    pre-lookup permission check (caller holds the required `view` decision on `Core/Repository` or
    `Core/ReadOnlyRepository`, else denied before any lookup), repository lookup through
-   `NodeManager.get_one_by_id_or_default_filter` and kind dispatch, post-lookup FR-012 check on the
-   resolved kind, branch row read, `fabricate_attribute_values`, Python order and page, `count`. A
+   `NodeManager.get_one_by_id_or_default_filter` followed by the resolver's own repository-kind check
+   (that lookup does not enforce `kind` on the id path, so without it any node id resolves) and kind
+   dispatch, post-lookup FR-012 check on the resolved kind, branch row read, `fabricate_attribute_values`, Python order and page, `count`. A
    missing `PermissionManager` on the context is treated as denial, not as an internal error.
 5. Stub visibility: `stub.py` logs one warning when it is imported into the schema and `debug` per
    call; the root field description carries "(preview: attribute values are placeholders, not yet read
-   from the graph)" while the stub is live. The description is API-facing, so it names neither the
+   from the graph, so sync_status__value, internal_status__value and own_values_only are rejected)"
+   while the stub is live. The description is API-facing, so it names neither the
    ticket nor the increment (`.agents/rules/code-doc-style.md`).
 6. Leave `StandardNodeGetListQuery` alone. An earlier revision added an id tiebreaker to its
    timestamp `ORDER BY` arms for the unpaged chunked read; that guards a scenario needing both
    more than `query_size_limit` (5000) branches and a microsecond-precision timestamp collision,
    and this feature's scale is 200.
-7. Regenerate `schema/schema.graphql`; run `pnpm codegen`; commit both.
+7. Regenerate `schema/schema.graphql`; run both `pnpm codegen` and `pnpm codegen:graphql`; commit
+   all four files.
 8. Component tests for membership per kind, not-found, permission matrix including anonymous with and
    without a role grant, paging and count, ordering, `ref` dispatch, zero bus sends. Unit tests for
    `paging.py`. The 5-branch and 200-branch fixtures are one module-scoped fixture built with

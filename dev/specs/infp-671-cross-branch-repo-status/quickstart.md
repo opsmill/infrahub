@@ -32,10 +32,16 @@ uv run invoke schema.validate-graphqlschema
 
 1. `uv run invoke schema.generate-graphqlschema`; `git diff --stat schema/schema.graphql` shows the
    new root field and three types. `InfrahubBranch` is unchanged: T007 was dropped.
-2. `cd frontend/app && pnpm codegen` succeeds and `git diff --stat src/shared/api/graphql/generated/`
-   shows the new types.
+2. `pnpm --dir frontend/app codegen` **and** `pnpm --dir frontend/app codegen:graphql` both succeed,
+   and `git diff --stat frontend/app/src/shared/api/graphql/generated/` shows all three files
+   changed. The first writes `types.ts` only; `graphql-env.d.ts` and `graphql-cache.d.ts` come from
+   the second, and omitting it fails CI's `frontend-validate-graphql-types`.
 
-**Expected**: the SDL matches `contracts/graphql-repository-branch-status.graphql`.
+**Expected**: the SDL matches `contracts/graphql-repository-branch-status.graphql`, including the
+branch fields being `RequiredStringValueField`, `StatusField` and `NonRequiredBooleanValueField`
+rather than bare scalars, and `InfrahubRepositoryBranchStatusEdge` carrying `node_metadata`. Selecting
+the same branch fields through this query and `InfrahubBranch` returns identical `node` and
+`node_metadata` objects.
 
 ### A2. Row membership per kind
 
@@ -70,8 +76,12 @@ For the "none" row, `CountingInfrahubDatabase` records no repository lookup: den
 
 ### A5. Not found and argument validation
 
-**Expected**: an unknown `id` fails like other repository lookups; the repository's `name` passed as
-`id` resolves; `limit: 0` and `offset: -1` fail validation.
+**Expected**: an unknown `id` fails like other repository lookups; the `id` of a node that exists but
+is not a repository fails the same way, so the field cannot reveal that the node exists or what kind
+it is; the repository's `name` passed as `id` resolves; `limit: 0` and `offset: -1` fail validation;
+`sync_status__value`, `internal_status__value` and `own_values_only: true` each fail validation while
+the stub is live, with the error naming every argument that would narrow, while an explicit `null` for
+the two status filters and `own_values_only: false` are accepted.
 
 ### A6. `ref` dispatch and no bus traffic
 

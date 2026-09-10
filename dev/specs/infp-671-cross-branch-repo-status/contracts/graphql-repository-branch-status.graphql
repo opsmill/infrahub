@@ -1,9 +1,12 @@
 # SDL of the additions to the Infrahub GraphQL schema.
 # Authoritative once regenerated into schema/schema.graphql by
 #   uv run invoke schema.generate-graphqlschema
-# Existing types referenced: TextAttribute, Dropdown, BranchStatus, MetadataOrderInput.
-# BranchStatus is the wire name: graphene derives it from the Python enum class, so the
-# symbol imported in Python is InfrahubBranchStatus while the SDL type is BranchStatus.
+# Existing types referenced: TextAttribute, Dropdown, MetadataOrderInput, InfrahubNodeMetadata, and
+# the branch query's value-field types RequiredStringValueField, NonRequiredStringValueField,
+# NonRequiredBooleanValueField and StatusField.
+# BranchStatus is the wire name of the status__value argument's enum: graphene derives it from the
+# Python enum class, so the symbol imported in Python is InfrahubBranchStatus while the SDL type is
+# BranchStatus. The status *field* is StatusField, which wraps that enum in a `value`.
 
 extend type Query {
   """
@@ -12,7 +15,8 @@ extend type Query {
   Requires view permission on the repository's kind covering both the default
   and non-default branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER).
   While the stub is live the description also carries:
-  "(preview: attribute values are placeholders, not yet read from the graph)".
+  "(preview: attribute values are placeholders, not yet read from the graph, so
+  sync_status__value, internal_status__value and own_values_only are rejected)".
   The description is API-facing, so it names no ticket and no delivery increment.
   """
   InfrahubRepositoryBranchStatus(
@@ -27,6 +31,8 @@ extend type Query {
     status__value: BranchStatus
     "Ordering by branch node metadata; default is default branch first, then name ascending"
     order: MetadataOrderInput
+    # These three are rejected with a ValidationError while the stub serves placeholder
+    # values, so that an unfiltered row set is never rendered as a filtered one.
     "Keep rows whose resolved sync_status value equals this value (server-side)"
     sync_status__value: String
     "Keep rows whose resolved internal_status value equals this value (server-side)"
@@ -44,17 +50,23 @@ type InfrahubRepositoryBranchStatusType {
 
 type InfrahubRepositoryBranchStatusEdge {
   node: InfrahubRepositoryBranchStatus!
+  # Same metadata type InfrahubBranchEdge carries, so the metadata `order` sorts on is readable.
+  # It is repointed at the dynamic type by GraphQLSchemaManager._patch_static_types.
+  node_metadata: InfrahubNodeMetadata!
 }
 
+# The branch fields reuse InfrahubBranch's value-field types verbatim, wrappers and nullability
+# alike, so one client accessor serves the whole row. The legacy flat `Branch` shape is not the
+# model here.
 type InfrahubRepositoryBranchStatus {
   "Branch name; joins the repository's per-branch attribute edges"
-  name: String!
-  status: BranchStatus!
-  is_default: Boolean!
+  name: RequiredStringValueField!
+  status: StatusField!
+  is_default: NonRequiredBooleanValueField
   "Always true on CoreRepository, which selects on it; varies per row on CoreReadOnlyRepository, whose row set is every branch"
-  sync_with_git: Boolean!
+  sync_with_git: NonRequiredBooleanValueField
   "Fork point from the default branch; inherited rows resolve as of this time"
-  branched_from: String!
+  branched_from: NonRequiredStringValueField
   "Imported commit as this branch resolves it"
   commit: TextAttribute
   "Import status as this branch resolves it (defined on CoreGenericRepository, present for both kinds)"

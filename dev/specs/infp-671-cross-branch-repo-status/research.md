@@ -37,9 +37,14 @@ Three facts found during research bound the design more than the spec anticipate
   a resolver that resolves the repository for real (id or name, kind dispatch, not-found), enforces the
   FR-012 permission for real, reads the real in-scope branch rows through the branch list, and fills
   the per-branch attribute payloads from a deterministic fabrication keyed on the branch name.
-  `schema/schema.graphql` is regenerated so the frontend's `pnpm codegen` produces the final types.
+  `schema/schema.graphql` is regenerated so the frontend's `pnpm codegen` plus `pnpm codegen:graphql`
+  produce the final types.
   The two attribute-value filters (`sync_status__value`, `internal_status__value`) and the
-  `own_values_only` flag are accepted and ignored, which the contract document states.
+  `own_values_only` flag are present in the schema but rejected with a `ValidationError` naming every
+  argument that would narrow, which the contract document states. Accepting and ignoring them was the
+  original plan; it was changed during review, because silently returning an unfiltered row set to a
+  document that asked for a filtered one is the wrong failure mode for a live public field. Sending the
+  defaults back is still accepted, so a client that round-trips them is unaffected.
 - **Increment B, graph read**: the core primitive (Query class plus reader component) replaces the
   fabrication; attribute filters become real; the query-count and inheritance tests land. The stub
   module is deleted in this change and its deletion is the acceptance criterion.
@@ -72,7 +77,11 @@ its presence is visible in logs.
 **Decision**: The resolver always performs the same three reads, in this order:
 
 1. Resolve the repository by id or name with `NodeManager.get_one_by_id_or_default_filter` (kind
-   `CoreGenericRepository`; the default filter is `name__value`), then dispatch on the concrete kind.
+   `CoreGenericRepository`; the default filter is `name__value`), check the resolved node really is a
+   repository, then dispatch on the concrete kind. The explicit check is necessary because that
+   lookup does not forward `kind` to `get_one`, so on the id path any node uuid resolves and the
+   `kind` argument only takes effect on the name path. Without it the field is an existence-and-kind
+   oracle over every node in the instance.
    No repository kind declares a `human_friendly_id`, so there is no HFID path.
 2. Read every in-scope branch row in one call to `Branch.get_list` with `exclude_global=True`,
    `exclude_terminal=True`, a `BranchListFilters` carrying the name filter, `partial_match`, the
@@ -183,7 +192,11 @@ decision=PermissionDecisionFlag.ALLOW_ALL)`:
 
 `PermissionResolver.resolve_object_permission` checks `combined & required == required`, so
 `ALLOW_ALL` is satisfied by one `ALLOW_ALL` grant or by separate `ALLOW_DEFAULT` and `ALLOW_OTHER`
-grants, and denied by either alone. Super admins bypass via `has_permission`. A context without a
+grants, and denied by either alone. The two separate grants combine only while they carry the same
+specificity: `report_object_permission` ORs decisions at equal specificity, and a more specific grant
+replaces a less specific one outright instead. So `Core:Repository:view:ALLOW_DEFAULT` paired with a
+wildcard `Core:*:view:ALLOW_OTHER` resolves to `ALLOW_DEFAULT` alone and is denied, even though an
+operator granted both halves. Super admins bypass via `has_permission`. A context without a
 `PermissionManager` (internal callers build one without an account session) is treated as denial rather
 than allowed to surface as `InitializationError`.
 
@@ -289,7 +302,8 @@ needs every dropdown value to appear so each colour is exercised. Marking the ou
 example a `FAKE-` prefix) would break the `Dropdown` contract the card depends on; the markers are the
 module name, its docstring, one warning logged when the module is imported into the schema (a warning
 per call would flood the log under a refetching card; per-call logging is `debug`), and a "(preview:
-attribute values are placeholders, not yet read from the graph)" note in the root field's SDL
+attribute values are placeholders, not yet read from the graph, so sync_status__value,
+internal_status__value and own_values_only are rejected)" note in the root field's SDL
 description while the stub is live. That description is API-facing, so it names neither the ticket nor
 the delivery increment: both are meaningless to a schema consumer, and `.agents/rules/code-doc-style.md`
 keeps spec vocabulary out of anything a reader encounters without the spec. Every developer stack built
