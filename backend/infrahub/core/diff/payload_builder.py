@@ -1,18 +1,38 @@
 from __future__ import annotations
 
+from itertools import batched
 from typing import TYPE_CHECKING
 
 from infrahub import config
 from infrahub.core.manager import NodeManager
+from infrahub.core.query.node import NodeListGetDisplayLabelQuery
 from infrahub.core.registry import registry
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from infrahub.database import InfrahubDatabase
 
 
 log = get_logger(__name__)
+
+
+async def get_stored_display_labels(db: InfrahubDatabase, branch_name: str, node_ids: Iterable[str]) -> dict[str, str]:
+    """Return the display labels stored on these nodes, keyed by node id, as seen from the branch.
+
+    Reading the stored label costs one query per batch of ids, where computing it through
+    ``get_display_labels_per_kind`` builds a full node object per id. A node is missing from the
+    result when it is not active on the branch or when it has no display label stored yet.
+    """
+    branch = await registry.get_branch(branch=branch_name, db=db)
+    display_label_map: dict[str, str] = {}
+    for ids_batch in batched(node_ids, config.SETTINGS.database.query_size_limit):
+        query = await NodeListGetDisplayLabelQuery.init(db=db, branch=branch, ids=list(ids_batch))
+        await query.execute(db=db)
+        display_label_map.update(query.get_display_label_map())
+    return display_label_map
 
 
 async def get_display_labels_per_kind(
