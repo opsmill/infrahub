@@ -153,7 +153,7 @@ mutation CalculateIncidentDiff {
 
 Then retrieve it with the same branch and time range you calculated it for, using `DiffTree` for the changed nodes or `DiffTreeSummary` when you only need counts. The timestamps do not need to align with a branch point or a Proposed Change, so you can compare any useful period, such as the hours around an incident.
 
-Infrahub stores the diff under that name but retrieves it by time range. Both queries accept a `name` argument, and passing it does not retrieve the diff: `DiffTree` returns `null` and `DiffTreeSummary` returns an error. Retrieve with the time range instead.
+Retrieve a custom period by that period rather than by its name. `DiffTree` looks for a diff covering the range it computes by default, from the branch point to the present, so it does not find one stored for a different range and returns `null`. `DiffTreeSummary` does not accept `name` at all and returns an error. A name is still worth setting, because `DiffUpdate` requires one for a custom period.
 
 ```graphql title="Retrieve the calculated diff"
 query IncidentChanges {
