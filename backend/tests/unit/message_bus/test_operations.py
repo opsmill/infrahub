@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
-from unittest.mock import patch
 
 import pytest
 from prefect import Flow, flow
@@ -19,8 +18,7 @@ if TYPE_CHECKING:
     from infrahub.message_bus import InfrahubMessage
 
 ECHO_ROUTING_KEY = "send.echo.request"
-SET_CHECK_STATUS = "infrahub.message_bus.operations.set_check_status"
-GET_LOGGER = "infrahub.message_bus.operations.get_logger"
+OPERATIONS_MODULE = "infrahub.message_bus.operations"
 
 
 class HandlerError(Exception):
@@ -74,7 +72,7 @@ def maximum_message_retries() -> Generator[int]:
     config.SETTINGS.broker.maximum_message_retries = original
 
 
-async def test_plain_handler_is_awaited_and_message_is_acknowledged() -> None:
+async def test_plain_handler_is_awaited_and_message_is_acknowledged(monkeypatch: pytest.MonkeyPatch) -> None:
     """A successful plain coroutine handler receives the decoded message and asks for no retry."""
     received: list[InfrahubMessage] = []
 
@@ -84,8 +82,8 @@ async def test_plain_handler_is_awaited_and_message_is_acknowledged() -> None:
     bus = RecordingBus()
     sent = SendEchoRequest(message="ping")
 
-    with patch.dict(COMMAND_MAP, {ECHO_ROUTING_KEY: handler}):
-        delay = await execute_message(routing_key=ECHO_ROUTING_KEY, message_body=sent.body, message_bus=bus)
+    monkeypatch.setitem(COMMAND_MAP, ECHO_ROUTING_KEY, handler)
+    delay = await execute_message(routing_key=ECHO_ROUTING_KEY, message_body=sent.body, message_bus=bus)
 
     assert len(received) == 1
     handled = received[0]
@@ -95,7 +93,7 @@ async def test_plain_handler_is_awaited_and_message_is_acknowledged() -> None:
     assert bus.messages == []
 
 
-async def test_flow_handler_is_unwrapped_when_flows_are_skipped() -> None:
+async def test_flow_handler_is_unwrapped_when_flows_are_skipped(monkeypatch: pytest.MonkeyPatch) -> None:
     """With skip_flow set, a Prefect flow handler is unwrapped to its function and that is awaited."""
     received: list[InfrahubMessage] = []
 
@@ -108,10 +106,8 @@ async def test_flow_handler_is_unwrapped_when_flows_are_skipped() -> None:
     bus = RecordingBus()
     sent = SendEchoRequest(message="ping")
 
-    with patch.dict(COMMAND_MAP, {ECHO_ROUTING_KEY: handler}):
-        delay = await execute_message(
-            routing_key=ECHO_ROUTING_KEY, message_body=sent.body, message_bus=bus, skip_flow=True
-        )
+    monkeypatch.setitem(COMMAND_MAP, ECHO_ROUTING_KEY, handler)
+    delay = await execute_message(routing_key=ECHO_ROUTING_KEY, message_body=sent.body, message_bus=bus, skip_flow=True)
 
     assert len(received) == 1
     handled = received[0]
@@ -121,7 +117,7 @@ async def test_flow_handler_is_unwrapped_when_flows_are_skipped() -> None:
     assert bus.messages == []
 
 
-async def test_failure_with_reply_requested_returns_an_error_response() -> None:
+async def test_failure_with_reply_requested_returns_an_error_response(monkeypatch: pytest.MonkeyPatch) -> None:
     """A handler failure on a message awaiting a reply is answered with an error and not retried."""
 
     async def handler(message: SendEchoRequest) -> None:
@@ -130,8 +126,8 @@ async def test_failure_with_reply_requested_returns_an_error_response() -> None:
     bus = RecordingBus()
     sent = SendEchoRequest(message="ping", meta=Meta(reply_to="reply-queue", correlation_id="correlation-1"))
 
-    with patch.dict(COMMAND_MAP, {ECHO_ROUTING_KEY: handler}):
-        delay = await execute_message(routing_key=ECHO_ROUTING_KEY, message_body=sent.body, message_bus=bus)
+    monkeypatch.setitem(COMMAND_MAP, ECHO_ROUTING_KEY, handler)
+    delay = await execute_message(routing_key=ECHO_ROUTING_KEY, message_body=sent.body, message_bus=bus)
 
     assert len(bus.replies) == 1
     response, routing_key = bus.replies[0]
@@ -144,7 +140,9 @@ async def test_failure_with_reply_requested_returns_an_error_response() -> None:
     assert bus.messages == []
 
 
-async def test_failure_after_maximum_retries_is_logged_and_marked_failed(maximum_message_retries: int) -> None:
+async def test_failure_after_maximum_retries_is_logged_and_marked_failed(
+    monkeypatch: pytest.MonkeyPatch, maximum_message_retries: int
+) -> None:
     """A handler failure on an exhausted message is logged, marked failed and not retried again."""
 
     async def handler(message: SendEchoRequest) -> None:
@@ -155,12 +153,10 @@ async def test_failure_after_maximum_retries_is_logged_and_marked_failed(maximum
     logger = LoggerRecorder()
     sent = SendEchoRequest(message="ping", meta=Meta(retry_count=maximum_message_retries))
 
-    with (
-        patch.dict(COMMAND_MAP, {ECHO_ROUTING_KEY: handler}),
-        patch(SET_CHECK_STATUS, new=check_status),
-        patch(GET_LOGGER, new=lambda: logger),
-    ):
-        delay = await execute_message(routing_key=ECHO_ROUTING_KEY, message_body=sent.body, message_bus=bus)
+    monkeypatch.setitem(COMMAND_MAP, ECHO_ROUTING_KEY, handler)
+    monkeypatch.setattr(f"{OPERATIONS_MODULE}.set_check_status", check_status)
+    monkeypatch.setattr(f"{OPERATIONS_MODULE}.get_logger", lambda: logger)
+    delay = await execute_message(routing_key=ECHO_ROUTING_KEY, message_body=sent.body, message_bus=bus)
 
     assert logger.exceptions == ["Message failed after maximum number of retries"]
     assert len(check_status.conclusions) == 1
@@ -171,7 +167,9 @@ async def test_failure_after_maximum_retries_is_logged_and_marked_failed(maximum
     assert bus.messages == []
 
 
-async def test_failure_with_retries_remaining_is_requeued_with_a_delay(maximum_message_retries: int) -> None:
+async def test_failure_with_retries_remaining_is_requeued_with_a_delay(
+    monkeypatch: pytest.MonkeyPatch, maximum_message_retries: int
+) -> None:
     """A handler failure with retries left re-sends the message with a delay and returns that delay."""
 
     async def handler(message: SendEchoRequest) -> None:
@@ -180,8 +178,8 @@ async def test_failure_with_retries_remaining_is_requeued_with_a_delay(maximum_m
     bus = RecordingBus()
     sent = SendEchoRequest(message="ping", meta=Meta(retry_count=maximum_message_retries - 2))
 
-    with patch.dict(COMMAND_MAP, {ECHO_ROUTING_KEY: handler}):
-        delay = await execute_message(routing_key=ECHO_ROUTING_KEY, message_body=sent.body, message_bus=bus)
+    monkeypatch.setitem(COMMAND_MAP, ECHO_ROUTING_KEY, handler)
+    delay = await execute_message(routing_key=ECHO_ROUTING_KEY, message_body=sent.body, message_bus=bus)
 
     assert len(bus.messages) == 1
     assert bus.messages[0].meta.retry_count == maximum_message_retries - 1
