@@ -128,6 +128,8 @@ Besides the transform-lifecycle triggers, two families of data-path automations 
 
 While the coalesced pass owns merge and rebase, both trigger types match `origin=live` only. `_reconcile_python_computed_attribute_automations` rebuilds these from the schema. One gather builds both trigger lists and they are applied under a single trigger-registry lock, so a concurrent reconcile cannot delete an automation another run just created, and a transform delete prunes its automation rather than leaving it stale.
 
+The flow behind the second family resolves its targets from query-group membership: every node subscribed to a group that holds the changed node as a member. It is told which query and which transform its automation was built for, so it keeps only the groups of that query and submits only the attributes that transform feeds. A node reported once per matching group is submitted once. Both parameters are optional, and either one missing widens the dispatch back to every Python attribute of every subscriber kind: an automation the schema cannot explain has to recompute rather than narrow to nothing. The query is identified by its id, so renaming it cannot make a stored automation reject every group, and a group whose query cannot be read is kept for the same reason.
+
 ### Batch Execution
 
 `process_transform` processes its node ids as one batch per attribute, not one task per node:
