@@ -38,7 +38,13 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TypedDict
 
-ANSI = re.compile(r"\x1b\[[0-9;]*m")
+# The raw job log keeps every terminal escape sequence, not only colour (SGR) codes. Strip general
+# CSI sequences (colour, cursor moves, erase-line/screen) and OSC sequences (window title) so none
+# survive into the test-extraction regexes.
+ANSI = re.compile(
+    r"\x1b\[[0-?]*[ -/]*[@-~]"  # CSI: ESC [ ... final-byte
+    r"|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)"  # OSC: ESC ] ... (BEL | ST)
+)
 
 # The Actions list-runs API silently returns at most this many results per query.
 API_RESULT_CAP = 1000

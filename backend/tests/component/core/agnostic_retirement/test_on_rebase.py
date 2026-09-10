@@ -76,7 +76,7 @@ async def _rebase_branch(
         branch=default_branch,
         account=AccountSession(account_id=TEST_ACTOR_ID, auth_type=AuthType.NONE),
     )
-    # The rollback test raises through this block, so the doubles have to come off on an exception too.
+    # The doubles must come off even when an exception propagates through this block.
     with (
         override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
         override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider),
