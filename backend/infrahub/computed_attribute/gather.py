@@ -87,6 +87,7 @@ async def gather_python_transform_attributes(
                 repository_kind=repository.get_kind(),
                 query_analyzer=query_analyzer,
                 query_name=query.name.value,
+                query_id=query.get_id(),
                 computed_attribute=attribute,
             )
             python_transform_computed_attribute.populate_branch_commit(
