@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 import graphene
 import pytest
 from graphene import Boolean, Field, Int, ObjectType, String
+from starlette.requests import Request
 
 from infrahub import config
 from infrahub.auth.session import AccountSession, AnonymousSession
@@ -320,6 +321,16 @@ INVALID_PAGING_CASES = (
     InvalidPagingCase(name="explicit-null-limit", variables={"limit": None}, message="limit must be >= 1"),
     InvalidPagingCase(name="explicit-null-offset", variables={"offset": None}, message="offset must be >= 0"),
 )
+
+AT_REJECTION_MESSAGE = "at is not supported on InfrahubRepositoryBranchStatus: the branch row set is always current"
+PAST_TIMESTAMP = "2020-01-01T00:00:00.000000Z"
+
+
+def _request(query_string: bytes) -> Request:
+    """Build a request carrying the given query string, the only place an `at` parameter survives."""
+    return Request(
+        scope={"type": "http", "method": "POST", "path": "/graphql", "query_string": query_string, "headers": []}
+    )
 
 
 def _view_repository_permission(decision: PermissionDecision) -> ObjectPermission:
@@ -1028,6 +1039,70 @@ class TestRepositoryBranchStatusRows:
         assert result.errors
         assert len(result.errors) == 1
         assert result.errors[0].message == case.message
+
+    async def test_a_request_for_a_past_point_in_time_is_rejected(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        reader_session: AccountSession,
+        recording_bus: RecordingBus,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+        repository, _ = repositories
+
+        gql_params = await prepare_graphql_params(
+            db=db,
+            branch=branches.default_branch.name,
+            at=PAST_TIMESTAMP,
+            account_session=reader_session,
+            request=_request(query_string=f"at={PAST_TIMESTAMP}".encode()),
+            service=recording_bus.service,
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=ROWS_QUERY,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": repository.id},
+        )
+
+        assert result.data is None
+        assert result.errors
+        assert len(result.errors) == 1
+        assert result.errors[0].message == AT_REJECTION_MESSAGE
+
+    async def test_a_request_carrying_no_at_parameter_is_accepted(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        reader_session: AccountSession,
+        recording_bus: RecordingBus,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+        repository, _ = repositories
+
+        gql_params = await prepare_graphql_params(
+            db=db,
+            branch=branches.default_branch.name,
+            account_session=reader_session,
+            request=_request(query_string=b"branch=main"),
+            service=recording_bus.service,
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=ROWS_QUERY,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": repository.id, "limit": 1000},
+        )
+
+        assert result.errors is None
+        assert result.data
+        assert result.data["InfrahubRepositoryBranchStatus"]["count"] == READ_WRITE_ROW_COUNT
 
     async def test_ref_is_null_on_the_read_write_kind_and_set_on_the_read_only_kind(
         self,

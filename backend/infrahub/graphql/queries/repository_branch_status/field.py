@@ -21,7 +21,9 @@ _DESCRIPTION = (
     "Status of one repository as seen from every relevant branch, one row per branch. "
     "Resolved entirely from the graph; never contacts a task worker. "
     "Requires view permission on the repository's kind covering both the default and non-default "
-    "branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER)."
+    "branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER). "
+    "Always reports the present: a request carrying an 'at' query parameter is rejected, because "
+    "the branch list this query builds its rows from has no historical form."
 )
 
 

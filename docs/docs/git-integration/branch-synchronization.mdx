@@ -245,6 +245,59 @@ query {
 
 Only branches matching your configured rules should appear in the results.
 
+## Checking a repository's status on every branch
+
+Listing branches tells you which ones Infrahub tracks. To see what a single repository looks like from each of those branches at once, including the commit each branch resolves and whether its last import succeeded, use the `InfrahubRepositoryBranchStatus` query. It returns one row per branch and reads everything from the graph, so it does not contact a Git server or a task worker.
+
+The `id` argument accepts the repository's ID or its name.
+
+```graphql
+query RepositoryBranchStatus($id: String!, $limit: Int, $offset: Int, $syncStatus: String) {
+  InfrahubRepositoryBranchStatus(
+    id: $id
+    limit: $limit
+    offset: $offset
+    sync_status__value: $syncStatus
+  ) {
+    count
+    edges {
+      node {
+        name { value }
+        status { value }
+        is_default { value }
+        sync_with_git { value }
+        branched_from { value }
+        commit { value updated_at }
+        sync_status { value label color }
+        internal_status { value label color }
+        ref { value }
+      }
+      node_metadata { created_at updated_at }
+    }
+  }
+}
+```
+
+Which branches appear depends on the repository type. A read-write repository returns only branches with `sync_with_git` set to true, which is the same set the rules on this page control. A read-only repository returns every branch, because it tracks a single reference and is not affected by selective synchronization. In both cases, merged and deleting branches are left out, and the branch you send the query to does not change the result.
+
+### How values are resolved for each branch
+
+A branch that has never imported the repository still gets a row. Its values are the ones the default branch held at the point that branch was created, which is the correct answer for that branch and is not an error.
+
+`sync_status__value`, `internal_status__value`, and `own_values_only` narrow the rows on the server, and `count` reflects them. Set `own_values_only` to true to keep only the branches that have imported the repository themselves.
+
+:::warning
+On a row that inherits its values, `updated_at` is the time the default branch was written, not the time that branch last imported the repository. Do not present it as a last-import time. To find out whether a branch has imported the repository at all, use the `own_values_only` argument.
+:::
+
+:::info
+This query always reports the present. A request that includes an `at` query parameter is rejected, because the list of branches it builds its rows from has no historical form. For a point-in-time view, query the repository object directly.
+:::
+
+### Permission requirement
+
+The account running the query needs the `view` permission on the repository's kind, `Core/Repository` or `Core/ReadOnlyRepository`, with a decision that covers both the default branch and other branches. A single `ALLOW_ALL` grant satisfies this, and so does `ALLOW_DEFAULT` together with `ALLOW_OTHER`. Granting only one of the two is refused with an error rather than a shortened list of branches.
+
 ## Troubleshooting
 
 ### Branches not appearing after configuration

@@ -63,6 +63,25 @@ All filters apply server-side and `count` reflects them.
 
 Default ordering when `order` is omitted: the default branch first, then branch name ascending.
 
+### Point in time
+
+The query always reports the present. A request carrying an `at` query parameter is rejected with a
+`ValidationError` reading:
+
+```text
+at is not supported on InfrahubRepositoryBranchStatus: the branch row set is always current
+```
+
+The rows come from the branch list, and that list has no historical form: it is read as it is now
+whatever `at` says. Serving it alongside values resolved at a past timestamp would return rows for
+branches that did not exist then and drop branches deleted since, so the pairing is refused rather
+than shipped as a silent inconsistency. Point-in-time reads of a single repository stay available on
+the ordinary node queries.
+
+Note that the request, not the resolved timestamp, is what carries the answer: an omitted `at`
+reaches the resolver already resolved to the current time, so the two are indistinguishable by the
+time the field runs.
+
 ### Permission
 
 The caller needs `view` on the repository's concrete kind (`Core/Repository` or

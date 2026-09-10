@@ -146,6 +146,22 @@ Each checker returns `TERMINATE` (stop chain, authorized) or `NEXT_CHECKER` (con
 | Enforcement | Raises `PermissionDeniedError` if violated, returns NEXT_CHECKER. | DefaultBranch, MergeBranch, AccountManager, RepositoryManager, PermissionManager |
 | Terminal | Always returns TERMINATE. Must be last. | ObjectPermission |
 
+## Enforcing permission inside a hand-written root field
+
+The checker pipeline above authorizes what it can see in the analyzed query: node kinds, mutations, and the operations the schema generated from them. A hand-written root field - a `graphene.Field` with its own resolver, not generated from a node schema - carries no kind the pipeline can map to an `ObjectPermission`. The pipeline therefore lets it through, and the field is unprotected unless its resolver checks for itself.
+
+The check belongs in a small guard component the resolver holds, not inline in the resolver body, and it runs as a **pair** around the lookup:
+
+1. **Pre-lookup**: before resolving the requested id, require the grant on *at least one* of the kinds the field can return. This runs first so a caller with no grant at all is denied identically whether the id exists or not - a denial that ran after the lookup would leak existence through the difference between "not found" and "not permitted".
+2. **Post-lookup**: once the concrete kind is known, require the grant on *that* kind. The pre-lookup check is deliberately the weaker one; it exists to close the timing gap, not to be the real authorization.
+
+Two further points:
+
+- **Decide which branches the grant must cover, and say so.** A read that returns rows for the default branch *and* other branches needs a decision spanning both: one `ALLOW_ALL`, or `ALLOW_DEFAULT` and `ALLOW_OTHER` granted at the same specificity. `ALLOW_ALL` is the union of the two flags, so requiring `ALLOW_ALL` accepts either shape - but only while both separate grants carry the same specificity, since a more specific grant replaces a less specific one rather than combining with it.
+- **A context with no `PermissionManager` is a denial, not a bypass.** `GraphqlContext.active_permissions` raises `InitializationError` when no manager was loaded. Catch that one exception at that one site, log it, and re-raise as `PermissionDeniedError`. Letting the `InitializationError` escape turns a missing-permissions bug into a 500, and swallowing it turns it into an open door.
+
+`graphql/queries/repository_branch_status/permissions.py` is the worked example.
+
 ## REST API Enforcement
 
 REST endpoints have no pipeline. Each must manually call `raise_for_permission()`. Some endpoints (schema load, file object download, telemetry) do this correctly. Others only check authentication without authorization.

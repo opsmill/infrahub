@@ -33,6 +33,28 @@ if TYPE_CHECKING:
 
 _BRANCH_FIELD_NAMES = frozenset({"name", "status", "is_default", "sync_with_git", "branched_from"})
 _COMMIT_ATTRIBUTE_NAME = "commit"
+_AT_QUERY_PARAMETER = "at"
+_AT_REJECTION_MESSAGE = "at is not supported on InfrahubRepositoryBranchStatus: the branch row set is always current"
+
+
+def _reject_historical_read(context: GraphqlContext) -> None:
+    """Reject a request that asks for a past point in time.
+
+    The rows come from the branch list, which is only ever the current one, so historical values
+    would be paired with branches that did not exist then and would omit branches deleted since.
+    The context resolves an absent `at` to the current time, so the request is the only place that
+    still records whether the caller asked for one.
+
+    Args:
+        context: GraphQL request context.
+
+    Raises:
+        ValidationError: If the request carries an `at` parameter.
+
+    """
+    request = context.request
+    if request is not None and request.query_params.get(_AT_QUERY_PARAMETER) is not None:
+        raise ValidationError(_AT_REJECTION_MESSAGE)
 
 
 class RepositoryBranchStatusResolver:
@@ -80,22 +102,25 @@ class RepositoryBranchStatusResolver:
             The payload the GraphQL types consume: `edges`, and `count` when it was selected.
 
         Raises:
-            ValidationError: If `limit` is null or below 1, if `offset` is null or negative, if
-                `order` is contradictory, or if the repository's kind is not supported.
+            ValidationError: If `limit` is null or below 1, if `offset` is null or negative, if the
+                request asks for a past point in time, if `order` is contradictory, or if the
+                repository's kind is not supported.
             NodeNotFoundError: If `id` resolves to no repository.
             PermissionDeniedError: If the caller may not view the repository's kind across both the
                 default branch and other branches.
 
         """
+        graphql_context: GraphqlContext = info.context
+
         # A nullable Int argument with a default still reaches here as None for an explicit null.
         if limit is None or limit < 1:
             raise ValidationError("limit must be >= 1")
         if offset is None or offset < 0:
             raise ValidationError("offset must be >= 0")
+        _reject_historical_read(context=graphql_context)
 
         node_ordering = standard_node_ordering_from_order_input(order)
 
-        graphql_context: GraphqlContext = info.context
         db = graphql_context.db
 
         guard = RepositoryBranchStatusPermissionGuard(context=graphql_context)

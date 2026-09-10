@@ -3199,7 +3199,9 @@ class RepositoryBranchStatusBranches:
 
 
 @pytest.fixture(scope="module")
-async def repository_branch_status_branches(db: InfrahubDatabase) -> RepositoryBranchStatusBranches:
+async def repository_branch_status_branches(
+    db: InfrahubDatabase,
+) -> AsyncGenerator[RepositoryBranchStatusBranches, None]:
     """Bootstrap a database holding every branch shape the cross-branch repository status read must cover.
 
     Creation timestamps are set explicitly and increase with the save order, so an ordering assertion
@@ -3212,13 +3214,18 @@ async def repository_branch_status_branches(db: InfrahubDatabase) -> RepositoryB
     here; a test that writes repository values creates its own so the writes cannot leak into another
     test sharing the database.
 
+    Teardown empties the database again and puts the registry back the way it was found, so the next
+    module in the worker does not inherit these branches or this registry.
+
     Args:
         db: Database connection instance.
 
-    Returns:
+    Yields:
         Every branch saved, grouped by the property that makes each interesting.
 
     """
+    registry_state = dict(vars(registry))
+
     registry.delete_all()
     await delete_all_nodes(db=db)
     await create_root_node(db=db)
@@ -3272,7 +3279,7 @@ async def repository_branch_status_branches(db: InfrahubDatabase) -> RepositoryB
     )
     query_branch.update_schema_hash()
 
-    return RepositoryBranchStatusBranches(
+    yield RepositoryBranchStatusBranches(
         default_branch=default_branch,
         query_branch_name=query_branch.name,
         five=five,
@@ -3281,6 +3288,10 @@ async def repository_branch_status_branches(db: InfrahubDatabase) -> RepositoryB
         by_status=by_status,
         legacy_non_isolated=legacy_non_isolated,
     )
+
+    await delete_all_nodes(db=db)
+    for name, value in registry_state.items():
+        setattr(registry, name, value)
 
 
 async def make_repository_pair(
