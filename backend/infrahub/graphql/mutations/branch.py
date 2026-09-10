@@ -418,8 +418,7 @@ class BranchMerge(Mutation):
                 # ignore_deleting=False so a branch that auto-delete has moved to DELETING is still returned
                 obj = await Branch.get_by_name(db=graphql_context.db, name=branch_name, ignore_deleting=False)
             except BranchNotFoundError:
-                # delete_branch_after_merge removed the branch after the merge committed; the merge
-                # succeeded, so return the pre-merge branch with its deletion in progress.
+                # The merge succeeded and auto-delete has already removed the branch, so report deletion in progress rather than failing.
                 obj.status = BranchStatus.DELETING
             graphql_object = await obj.to_graphql_flat(fields=fields.get("object", {}))
 
