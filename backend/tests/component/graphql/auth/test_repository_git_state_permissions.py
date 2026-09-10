@@ -70,6 +70,14 @@ async def read_only_repository(db: InfrahubDatabase, default_branch: Branch, reg
 
 
 @pytest.fixture
+async def tag(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> Node:
+    node = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
+    await node.new(db=db, name="not-a-repository")
+    await node.save(db=db)
+    return node
+
+
+@pytest.fixture
 async def service(db: InfrahubDatabase) -> InfrahubServices:
     return await InfrahubServices.new(database=db, message_bus=BusRecorder(), workflow=WorkflowLocalExecution())
 
@@ -233,6 +241,83 @@ async def test_repository_view_permission_still_reports_a_missing_id_as_missing(
         response.errors[0].message
         == "Unable to find the node 18d39e83-1ef7-d650-5424-000000000000 / CoreGenericRepository in the database."
     )
+
+
+async def test_the_id_of_another_kind_is_reported_as_a_missing_repository(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    service: InfrahubServices,
+    tag: Node,
+) -> None:
+    session = await _account_session(
+        db=db,
+        name="repository-viewer-other-kind",
+        permissions=[
+            ObjectPermission(
+                namespace="Core",
+                name="Repository",
+                action=PermissionAction.VIEW.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
+            )
+        ],
+    )
+
+    commits = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": tag.id},
+        account_session=session,
+    )
+    drift = await graphql_query(
+        query=DRIFT_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": tag.id},
+        account_session=session,
+    )
+
+    missing = f"Unable to find the node {tag.id} / CoreGenericRepository in the database."
+    assert commits.errors
+    assert commits.errors[0].message == missing
+    assert drift.errors
+    assert drift.errors[0].message == missing
+
+
+async def test_the_id_of_another_kind_denies_without_naming_that_kind(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    service: InfrahubServices,
+    tag: Node,
+) -> None:
+    session = await _account_session(db=db, name="repository-kind-prober", permissions=[])
+
+    other_kind_id = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": tag.id},
+        account_session=session,
+    )
+    made_up_id = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": "18d39e83-1ef7-d650-5424-000000000000"},
+        account_session=session,
+    )
+
+    denial = "You do not have the following permission: object:Core:Repository:view:allow_default"
+    assert other_kind_id.errors
+    assert made_up_id.errors
+    assert other_kind_id.errors[0].message == denial
+    assert made_up_id.errors[0].message == denial
 
 
 async def test_check_refs_mutation_requires_update_permission(

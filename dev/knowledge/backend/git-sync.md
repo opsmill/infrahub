@@ -30,10 +30,21 @@ Read this before reasoning about which remote branches get imported or why a git
 - `git.import_sync_branch_names` (settings) is a list of names or regex patterns selecting which
   other remote branches are imported during sync; branches created in Infrahub with
   `sync_with_git` are imported regardless. **The list is empty by default, and an empty list
-  filters nothing** — every remote branch is then imported, `sync_with_git` or not. So
-  `sync_with_git` alone never answers "does Infrahub import this branch"; the predicate that does
-  is `remote_branch_is_imported` in `backend/infrahub/git/branch_mapping.py`, and both trunks are
-  always imported.
+  filters nothing**: every remote branch then reaches import validation, `sync_with_git` or not.
+  Passing the filter is not the last word, because `validate_remote_branch` still rejects a name
+  the database cannot hold and the mismatched default branch described above. So `sync_with_git`
+  alone never answers "does Infrahub import this branch".
+- Two functions express that filter, and they answer different questions. They are not
+  interchangeable:
+  - `get_filtered_remote_branches` in `backend/infrahub/git/base.py` is the filter the sync itself
+    runs, over every remote branch. Where an Infrahub branch of that name exists, either trunk
+    name, `sync_with_git`, or a filter match admits it. Where no Infrahub branch of that name
+    exists, only a filter match admits it: that arm has no trunk exemption.
+  - `remote_branch_is_imported` in `backend/infrahub/git/branch_mapping.py` answers the narrower
+    question the API side asks about a branch that already exists in Infrahub: does a sync import
+    this remote branch onto the Infrahub branch that maps to it. It admits both trunks
+    unconditionally, so it must not be reused to decide whether a remote branch with no Infrahub
+    counterpart is imported.
 
 ## Git error surfacing
 

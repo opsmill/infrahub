@@ -233,7 +233,7 @@ GIT_REPOSITORIES_MERGE = WorkflowDefinition(
 
 GIT_REPOSITORY_WARM_UP = WorkflowDefinition(
     name="git-repository-warm-up",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.USER,
     module="infrahub.git.tasks",
     function="warm_up_git_repository",
 )

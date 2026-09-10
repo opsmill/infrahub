@@ -18,6 +18,7 @@ from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.git.branch_mapping import get_mapped_remote_branch, remote_branch_is_imported
 from infrahub.git.state.factory import build_repository_git_state_reader
 from infrahub.git.state.models import CommitLogRequest
+from infrahub.git.state.reader import NOT_IMPLEMENTED_MESSAGE
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.repository import RepositoryBranchDrifts, RepositoryCommits
 from infrahub.permissions.types import define_object_permission_from_branch
@@ -36,15 +37,13 @@ MIN_LIMIT = 1
 MAX_LIMIT = 100
 
 COMMIT_GIT_FIELDS = frozenset({"condition", "remote_head", "pending_count", "fetched_at", "unavailable", "edges"})
-"""Selecting none of these means no worker request is made at all.
+"""Selecting none of these means no worker request is made at all."""
 
-checked_at is deliberately absent: it is read from the refs-check cache on the API side, so selecting
-it alone needs no worker.
-"""
+GENERIC_UNAVAILABLE_MESSAGE = "No git-derived answer could be produced for this repository."
 
 UNAVAILABLE_MESSAGES: dict[RepositoryGitUnavailableReason, str] = {
     RepositoryGitUnavailableReason.NOT_CLONED: "The answering worker holds no local copy of this repository yet.",
-    RepositoryGitUnavailableReason.NOT_IMPLEMENTED: "Reading git state from a worker is not available in this version.",
+    RepositoryGitUnavailableReason.NOT_IMPLEMENTED: NOT_IMPLEMENTED_MESSAGE,
     RepositoryGitUnavailableReason.TIMEOUT: "No worker answered within the configured time.",
 }
 
@@ -59,7 +58,8 @@ def _raise_unless_any_repository_is_viewable(graphql_context: GraphqlContext, br
 
     Answering "no such repository" ahead of any permission check would let a caller who can view
     none of them tell a real id from a made-up one. The concrete kind is unknown here, so the test
-    is whether any kind is viewable at all.
+    is whether any kind is viewable at all. A caller allowed one kind and denied the other can still
+    tell a repository of the denied kind from a made-up id, since the denial names the loaded kind.
 
     Raises:
         PermissionDeniedError: When no repository kind is viewable.
@@ -86,6 +86,7 @@ async def load_repository_for_view(graphql_context: GraphqlContext, repository_i
 
     """
     branch = graphql_context.branch
+    repository: CoreGenericRepository | None
     try:
         repository = await NodeManager.get_one_by_id_or_default_filter(
             db=graphql_context.db,
@@ -94,8 +95,18 @@ async def load_repository_for_view(graphql_context: GraphqlContext, repository_i
             branch=branch,
         )
     except NodeNotFoundError:
+        repository = None
+
+    # The lookup validates the requested kind only when it falls back to the default filter, so the
+    # id of any other node resolves too and must not be answered as though it were a repository.
+    if repository is not None and InfrahubKind.GENERICREPOSITORY not in repository.get_schema().inherit_from:
+        repository = None
+
+    if repository is None:
         _raise_unless_any_repository_is_viewable(graphql_context=graphql_context, branch_name=branch.name)
-        raise
+        raise NodeNotFoundError(
+            branch_name=branch.name, node_type=InfrahubKind.GENERICREPOSITORY, identifier=repository_id
+        )
 
     graphql_context.active_permissions.raise_for_permission(
         permission=_view_permission(kind=repository.get_kind(), branch_name=branch.name)
@@ -107,7 +118,11 @@ async def load_repository_for_view(graphql_context: GraphqlContext, repository_i
 def _unavailable_payload(result: CommitLogResult | None, reason: RepositoryGitUnavailableReason) -> dict[str, Any]:
     return {
         "reason": reason,
-        "message": (result.error_message if result and result.error_message else UNAVAILABLE_MESSAGES[reason]),
+        "message": (
+            result.error_message
+            if result and result.error_message
+            else UNAVAILABLE_MESSAGES.get(reason, GENERIC_UNAVAILABLE_MESSAGE)
+        ),
         "warm_up_task_id": result.warm_up_task_id if result else None,
     }
 

@@ -100,6 +100,7 @@ class RepositoryBranchDrifts(ObjectType):
     checked_at = DateTime(description="When the remote was last checked for movement. Read-only repositories only.")
     unavailable = Field(
         RepositoryGitUnavailable,
-        description="Set when no drift answer could be produced for the repository.",
+        description="Set when the git-derived drift answer could not be produced. It does not empty edges, "
+        "whose rows are graph-resolved and unaffected.",
     )
     edges = List(NonNull(RepositoryBranchDriftNode), required=True)

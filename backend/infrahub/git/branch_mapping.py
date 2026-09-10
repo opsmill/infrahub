@@ -41,8 +41,10 @@ def remote_branch_is_imported(
 ) -> bool:
     """Return whether a sync imports this remote branch onto the Infrahub branch that maps to it.
 
-    With no import filters configured every remote branch is imported, so `branch_is_synced_with_git`
-    on its own does not decide the answer. Both trunks are always imported.
+    Presumes that Infrahub branch exists, because both trunks are admitted unconditionally: this
+    does not answer whether a remote branch with no Infrahub counterpart is imported, where a sync
+    admits nothing the filters do not match. With no import filters configured every remote branch
+    is imported, so `branch_is_synced_with_git` on its own does not decide the answer.
     """
     if not import_sync_branch_names:
         return True

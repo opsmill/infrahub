@@ -837,6 +837,8 @@ async def import_read_only_repository_last_commit(model: GitReadOnlyRepositoryIm
 
 @flow(name="git-repository-warm-up", flow_run_name="Warm up the local copy of repository {repository_id}")
 async def warm_up_git_repository(repository_id: str) -> None:
+    await add_tags(nodes=[repository_id])
+
     log = get_run_logger()
     log.info(f"Warm up of repository {repository_id} is not implemented yet")
 
