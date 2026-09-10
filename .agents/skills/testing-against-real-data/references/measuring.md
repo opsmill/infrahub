@@ -19,10 +19,13 @@ uv run inv build
 uv run inv test-integration        # --tier full for the extended tier
 ```
 
-The tag cannot be the literal `local` here: testcontainers treats that as a sentinel and
-re-resolves it, so the suite rejects it up front rather than running the wrong image. Any other
-tag works, which is why the re-tag exists. The suite also stops immediately, naming the command
-to run, when the image it needs was never built.
+Mind the tag, because it means the opposite of what it means here. In this repository `local` is
+the normal value (`INFRAHUB_TESTING_IMAGE_VER=local`, per `tests/e2e/README.md`). The solution's
+integration suite refuses it: `infrahub-testcontainers` re-resolves that sentinel from
+`INFRAHUB_TESTING_IMAGE_VER`, which can point the stack at an image other than the one just
+built, so the solution's own `tests/integration/stack_config.py` raises instead of letting the
+run be silently wrong. Give it any other tag — that is what the re-tag above is for. That suite
+also stops immediately, naming the command to run, when the image it needs was never built.
 
 ## Measuring a frontend change
 
