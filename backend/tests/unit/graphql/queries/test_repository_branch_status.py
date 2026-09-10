@@ -277,7 +277,7 @@ class TestBuildAttributePayload:
         assert payload is not None
         assert payload["updated_at"] is None
 
-    def test_dropdown_payload_carries_the_schema_label_and_colour(self) -> None:
+    def test_dropdown_payload_carries_the_schema_label_and_color(self) -> None:
         payload = build_attribute_payload(
             value=_value(attribute_name="sync_status", value=RepositorySyncStatus.IN_SYNC.value),
             attribute_schema=_generic_repository_attribute(name="sync_status"),

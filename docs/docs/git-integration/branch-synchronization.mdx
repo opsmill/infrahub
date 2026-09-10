@@ -282,9 +282,11 @@ Which branches appear depends on the repository type. A read-write repository re
 
 ### How values are resolved for each branch
 
-A branch that has never imported the repository still gets a row. Its values are the ones the default branch held at the point that branch was created, which is the correct answer for that branch and is not an error.
+A branch that has never imported the repository still gets a row, and that row is not an error. An isolated branch, which is what a branch created today is, inherits the values the default branch held at the point the branch was created. A branch created before isolation became the default reads the default branch as it stands now instead.
 
-`sync_status__value`, `internal_status__value`, and `own_values_only` narrow the rows on the server, and `count` reflects them. Set `own_values_only` to true to keep only the branches that have imported the repository themselves.
+Values written when the repository was first added are visible on every branch, including branches that already existed, because Infrahub records them outside any single branch. A read-only repository's `commit` and `ref` are the exception: they are recorded on the branch the repository was created on, so they reach only that branch and the branches forked from it afterwards.
+
+`sync_status__value`, `internal_status__value`, and `own_values_only` narrow the rows on the server, and `count` reflects them. Set `own_values_only` to true to keep only the branches holding their own `commit` rather than an inherited one: the branches that have imported the repository themselves, plus, for a read-only repository, the branch it was created on.
 
 :::warning
 On a row that inherits its values, `updated_at` is the time the default branch was written, not the time that branch last imported the repository. Do not present it as a last-import time. To find out whether a branch has imported the repository at all, use the `own_values_only` argument.

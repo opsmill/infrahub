@@ -29,7 +29,7 @@ class RepositoryBranchAttributeValue:
     """UUID of the attribute node."""
 
     value: str | None
-    """Value carried by the winning value edge."""
+    """Value the winning value edge points at, None when the attribute holds no value."""
 
     own_value: bool
     """True when the winning value edge lives on `branch_name` itself rather than being inherited."""
@@ -61,8 +61,8 @@ class RepositoryBranchAttributesQuery(Query):
         self.default_branch_name = default_branch_name
         self.global_branch_name = global_branch_name
         super().__init__(**kwargs)
-        # The statement carries no LIMIT, so execute() would otherwise route it through
-        # query_with_size_limit() and re-run it until a batch comes back short.
+        # The statement carries no LIMIT of its own; unless this limit covers every row it can
+        # produce, the read is paginated and re-run until a batch comes back short.
         self.limit = max(len(repository_ids) * len(branch_names) * len(attribute_names), 1)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002

@@ -110,8 +110,8 @@ class TestRepositoryBranchAttributesReader:
         assert on_branch2.value == "commit21"
         assert on_branch2.own_value is True
         assert on_main.value == "commit-on-main"
-        # Node creation writes every attribute on the global branch, so the value the default branch
-        # reads right after creation is not its own.
+        # A read-write repository's commit is a LOCAL attribute on a branch-agnostic node, so
+        # creation writes it on the global branch and the default branch inherits it.
         assert on_main.own_value is False
 
     async def test_a_branch_inherits_the_default_branch_value_from_its_fork_point(
@@ -303,7 +303,7 @@ class TestRepositoryBranchAttributesMatchTheStandardRead:
     async def test_commit_matches_the_standard_read_on_every_branch(
         self, db: InfrahubDatabase, repository_branch_status_branches: RepositoryBranchStatusBranches
     ) -> None:
-        """The primitive's per-branch election must agree with the standard node read, legacy branches included."""
+        """The cross-branch read must agree with the standard node read, legacy branches included."""
         branches = repository_branch_status_branches
         default_branch_name = branches.default_branch.name
         repository = await _create_repository(db=db, name="rbap-differential", commit="created-commit")

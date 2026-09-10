@@ -33,6 +33,8 @@ if TYPE_CHECKING:
 
 _BRANCH_FIELD_NAMES = frozenset({"name", "status", "is_default", "sync_with_git", "branched_from"})
 _COMMIT_ATTRIBUTE_NAME = "commit"
+_SYNC_STATUS_ATTRIBUTE_NAME = "sync_status"
+_INTERNAL_STATUS_ATTRIBUTE_NAME = "internal_status"
 _AT_QUERY_PARAMETER = "at"
 _AT_REJECTION_MESSAGE = "at is not supported on InfrahubRepositoryBranchStatus: the branch row set is always current"
 
@@ -92,9 +94,10 @@ class RepositoryBranchStatusResolver:
             status__value: Branch status filter.
             order: Ordering over branch node metadata; the default order applies when it expresses
                 no ordering.
-            sync_status__value: Keep only rows whose resolved `sync_status` equals this value.
+            sync_status__value: Keep only rows whose resolved `sync_status` equals this value,
+                independent of the selected fields.
             internal_status__value: Keep only rows whose resolved `internal_status` equals this
-                value.
+                value, independent of the selected fields.
             own_values_only: Keep only rows whose branch holds its own `commit` value rather than
                 inheriting one, independent of the selected fields.
 
@@ -165,7 +168,13 @@ class RepositoryBranchStatusResolver:
         edge_fields = fields.get("edges") or {}
         node_fields = edge_fields.get("node") or {}
         node_metadata_fields = edge_fields.get("node_metadata") or {}
-        attribute_names = self._attribute_names(node_fields=node_fields, policy=policy, own_values_only=own_values_only)
+        attribute_names = self._attribute_names(
+            node_fields=node_fields,
+            policy=policy,
+            own_values_only=own_values_only,
+            sync_status=sync_status__value,
+            internal_status=internal_status__value,
+        )
 
         attributes = await self.build_source(db).read(
             repository_ids=[repository.id],
@@ -208,13 +217,25 @@ class RepositoryBranchStatusResolver:
         return result
 
     def _attribute_names(
-        self, node_fields: dict[str, Any], policy: RepositoryKindPolicy, own_values_only: bool
+        self,
+        node_fields: dict[str, Any],
+        policy: RepositoryKindPolicy,
+        own_values_only: bool,
+        sync_status: str | None,
+        internal_status: str | None,
     ) -> set[str]:
-        selected = set(policy.attribute_names & node_fields.keys())
-        # The own-values filter reads `commit` whether or not the caller selected it.
-        if own_values_only:
-            selected.add(_COMMIT_ATTRIBUTE_NAME)
-        return selected
+        # Each server-side filter resolves its attribute whether or not the caller selected it, and
+        # the policy intersection keeps the read to attributes the kind actually has.
+        widened_by_filters = {
+            attribute_name
+            for attribute_name, filter_is_set in (
+                (_COMMIT_ATTRIBUTE_NAME, own_values_only),
+                (_SYNC_STATUS_ATTRIBUTE_NAME, sync_status is not None),
+                (_INTERNAL_STATUS_ATTRIBUTE_NAME, internal_status is not None),
+            )
+            if filter_is_set
+        }
+        return set(policy.attribute_names & (node_fields.keys() | widened_by_filters))
 
     def _attribute_schemas(self, db: InfrahubDatabase, policy: RepositoryKindPolicy) -> dict[str, AttributeSchema]:
         schema = db.schema.get(name=policy.kind, branch=None, duplicate=False)
@@ -227,7 +248,7 @@ class RepositoryBranchStatusResolver:
         node_fields: dict[str, Any],
         node_metadata_fields: dict[str, Any],
     ) -> dict[str, Any]:
-        # The branch half goes through the branch model's own serialisation, so the value-field
+        # The branch half goes through the branch model's own serialization, so the value-field
         # wrapping and the metadata shape cannot drift from the branch query's.
         branch_fields = {name: node_fields[name] for name in _BRANCH_FIELD_NAMES & node_fields.keys()}
         edge = await row.branch.to_graphql(
