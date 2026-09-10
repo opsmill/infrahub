@@ -10,9 +10,8 @@ from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.tasks.check import set_check_status
 
-# Handlers are heterogeneous by design: each takes a specific InfrahubMessage subtype, and half are
-# wrapped as Prefect flows. The dispatch site only has the base type, so the parameters cannot be
-# pinned here — but the callable-and-awaits-to-None shape can be, and is.
+# Each handler takes a distinct InfrahubMessage subtype while the dispatch site holds only the base
+# type, so the parameters cannot be pinned.
 MessageHandler = Callable[..., Awaitable[None]]
 
 COMMAND_MAP: dict[str, MessageHandler] = {

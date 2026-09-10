@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from prefect import Flow, flow
+from prefect.context import FlowRunContext
 
 from infrahub import config
 from infrahub.message_bus import Meta, RPCErrorResponse
@@ -13,8 +14,6 @@ from infrahub.message_bus.types import MessageTTL
 from tests.adapters.message_bus import BusRecorder
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
-
     from infrahub.message_bus import InfrahubMessage
 
 ECHO_ROUTING_KEY = "send.echo.request"
@@ -37,14 +36,14 @@ class RecordingBus(BusRecorder):
         self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
     ) -> None:
         self.publish_options.append((delay, is_retry))
-        await super().publish(message, routing_key=routing_key, delay=delay, is_retry=is_retry)
+        await super().publish(message=message, routing_key=routing_key, delay=delay, is_retry=is_retry)
 
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         self.replies.append((message, routing_key))
 
 
 class CheckStatusRecorder:
-    """Stand-in for set_check_status that keeps the conclusion reported for each message."""
+    """Check-status double that keeps the conclusion reported for each message."""
 
     def __init__(self) -> None:
         self.conclusions: list[tuple[InfrahubMessage, str]] = []
@@ -54,22 +53,21 @@ class CheckStatusRecorder:
 
 
 class LoggerRecorder:
-    """Stand-in for the dispatcher's logger that keeps the events reported at exception level."""
+    """Logger double that keeps each event reported at exception level along with its keywords."""
 
     def __init__(self) -> None:
-        self.exceptions: list[str] = []
+        self.exceptions: list[tuple[str, dict[str, Any]]] = []
 
     def exception(self, event: str, **kwargs: Any) -> None:
-        self.exceptions.append(event)
+        self.exceptions.append((event, kwargs))
 
 
 @pytest.fixture
-def maximum_message_retries() -> Generator[int]:
+def maximum_message_retries(monkeypatch: pytest.MonkeyPatch) -> int:
     """Pin the retry ceiling the dispatcher reads, restoring whatever the environment provided."""
-    original = config.SETTINGS.broker.maximum_message_retries
-    config.SETTINGS.broker.maximum_message_retries = 3
-    yield 3
-    config.SETTINGS.broker.maximum_message_retries = original
+    ceiling = 3
+    monkeypatch.setattr(config.SETTINGS.broker, "maximum_message_retries", ceiling)
+    return ceiling
 
 
 async def test_plain_handler_is_awaited_and_message_is_acknowledged(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -94,11 +92,14 @@ async def test_plain_handler_is_awaited_and_message_is_acknowledged(monkeypatch:
 
 
 async def test_flow_handler_is_unwrapped_when_flows_are_skipped(monkeypatch: pytest.MonkeyPatch) -> None:
-    """With skip_flow set, a Prefect flow handler is unwrapped to its function and that is awaited."""
+    """With skip_flow set, a Prefect flow handler runs as a bare coroutine rather than as a flow run."""
     received: list[InfrahubMessage] = []
+    flow_run_contexts: list[FlowRunContext | None] = []
 
     @flow(name="unit-test-echo-handler")
     async def handler(message: SendEchoRequest) -> None:
+        # A flow invoked through the Prefect engine has a run context; the unwrapped function has none.
+        flow_run_contexts.append(FlowRunContext.get())
         received.append(message)
 
     assert isinstance(handler, Flow), "the scenario only covers the unwrap when the handler really is a flow"
@@ -109,6 +110,7 @@ async def test_flow_handler_is_unwrapped_when_flows_are_skipped(monkeypatch: pyt
     monkeypatch.setitem(COMMAND_MAP, ECHO_ROUTING_KEY, handler)
     delay = await execute_message(routing_key=ECHO_ROUTING_KEY, message_body=sent.body, message_bus=bus, skip_flow=True)
 
+    assert flow_run_contexts == [None]
     assert len(received) == 1
     handled = received[0]
     assert isinstance(handled, SendEchoRequest)
@@ -158,7 +160,11 @@ async def test_failure_after_maximum_retries_is_logged_and_marked_failed(
     monkeypatch.setattr(f"{OPERATIONS_MODULE}.get_logger", lambda: logger)
     delay = await execute_message(routing_key=ECHO_ROUTING_KEY, message_body=sent.body, message_bus=bus)
 
-    assert logger.exceptions == ["Message failed after maximum number of retries"]
+    assert len(logger.exceptions) == 1
+    event, keywords = logger.exceptions[0]
+    assert event == "Message failed after maximum number of retries"
+    assert isinstance(keywords["error"], HandlerError)
+    assert str(keywords["error"]) == "handler exploded"
     assert len(check_status.conclusions) == 1
     failed_message, conclusion = check_status.conclusions[0]
     assert failed_message.meta.retry_count == maximum_message_retries
