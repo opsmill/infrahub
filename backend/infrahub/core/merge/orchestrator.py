@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from opentelemetry import trace
+
 from infrahub import config, lock
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.builder import build_diff_changelog_collector
@@ -16,8 +18,12 @@ from .rollback_handler import PreMergeState
 from .write_blocker import MergeProtectionState
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
+    from infrahub.core.changelog.models import NodeChangelog
+    from infrahub.core.constants import DiffAction
     from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
     from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
@@ -106,17 +112,16 @@ class BranchMergeOrchestrator:
             async with lock.registry.global_graph_lock():
                 self.log.info("Global graph lock acquired for merge")
                 await self._record_merge_start(merge_at=merge_at, user_id=user_id)
-                await self.graph_merger.merge(at=merge_at, user_id=user_id)
+                with trace.get_tracer(__name__).start_as_current_span("merge.graph_merge"):
+                    await self.graph_merger.merge(at=merge_at, user_id=user_id)
 
             self.log.info("Loading enriched diff for changelog collection")
-            branch_diff = await self.diff_repository.get_one(
-                diff_branch_name=self.source_branch.name,
-                tracking_id=BranchTrackingId(name=self.source_branch.name),
-            )
-            changelog_collector = build_diff_changelog_collector(
-                diff=branch_diff, db=self.db, branch=self.source_branch
-            )
-            node_events = await changelog_collector.collect_changelogs()
+            with trace.get_tracer(__name__).start_as_current_span("merge.load_diff"):
+                branch_diff = await self.diff_repository.get_one(
+                    diff_branch_name=self.source_branch.name,
+                    tracking_id=BranchTrackingId(name=self.source_branch.name),
+                )
+            node_events = await self._collect_node_events(branch_diff=branch_diff)
 
             if await self.schema_analyzer.has_schema_changes():
                 self.log.info("Applying schema migrations after merge")
@@ -147,10 +152,11 @@ class BranchMergeOrchestrator:
             # Compute the IPAM reconciliation details while the diff is still live. Submission is
             # deferred until after the MERGED transition because recovery cannot completely roll back
             # the changes made during reconciliation.
-            ipam_node_details = await self.ipam_diff_parser.get_changed_ipam_node_details(
-                source_branch_name=self.source_branch.name,
-                target_branch_name=self.destination_branch.name,
-            )
+            with trace.get_tracer(__name__).start_as_current_span("merge.ipam_details"):
+                ipam_node_details = await self.ipam_diff_parser.get_changed_ipam_node_details(
+                    source_branch_name=self.source_branch.name,
+                    target_branch_name=self.destination_branch.name,
+                )
         except BaseException as exc:
             self.log.error("Merge failed, beginning rollback", extra={"error": str(exc)})
             await self.rollback_handler.rollback(
@@ -196,6 +202,14 @@ class BranchMergeOrchestrator:
             schema_diff=schema_diff,
             schema_hash=schema_updated_hash,
         )
+
+    async def _collect_node_events(self, branch_diff: EnrichedDiffRoot) -> Sequence[tuple[DiffAction, NodeChangelog]]:
+        """Collect the node changelogs from the merged branch's enriched diff."""
+        changelog_collector = build_diff_changelog_collector(diff=branch_diff, db=self.db, branch=self.source_branch)
+        with trace.get_tracer(__name__).start_as_current_span("merge.collect_changelogs") as span:
+            node_events = await changelog_collector.collect_changelogs()
+            span.set_attribute("changelog.changelog_count", len(node_events))
+        return node_events
 
     async def _record_merge_start(self, *, merge_at: Timestamp, user_id: str) -> None:
         """Persist the merge-start markers a recovery depends on.
