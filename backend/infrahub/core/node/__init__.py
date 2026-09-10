@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Protocol, Sequence, TypeVar, cast, overlo
 from infrahub_sdk.template.exceptions import JinjaTemplateError
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
+from opentelemetry import trace
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
@@ -1153,9 +1154,21 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 rel.id, rel.db_id = new_ids[identifier]
                 node_changelog.create_relationship(relationship=rel)
 
-        node_changelog.display_label = await self.get_display_label(db=db)
-        node_changelog.hfid = await self.get_hfid(db=db)
+        await self._set_changelog_labels(db=db, node_changelog=node_changelog)
         return node_changelog
+
+    async def _set_changelog_labels(self, db: InfrahubDatabase, node_changelog: NodeChangelog) -> None:
+        """Fill the changelog with this node's display label and HFID.
+
+        Both read the materialized attribute when the node carries one and fall back to computing
+        the value, which resolves relationship peers from the database; the span tells the two apart.
+        """
+        with trace.get_tracer(__name__).start_as_current_span("changelog.primary_labels") as span:
+            span.set_attribute("changelog.node_kind", self.get_kind())
+            span.set_attribute("changelog.display_label_materialized", self._display_label is not None)
+            span.set_attribute("changelog.hfid_materialized", self._human_friendly_id is not None)
+            node_changelog.display_label = await self.get_display_label(db=db)
+            node_changelog.hfid = await self.get_hfid(db=db)
 
     async def _update(
         self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None, fields: list[str] | None = None
@@ -1197,8 +1210,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             db=db, fields=updated_fields, node_changelog=node_changelog, update_at=update_at, user_id=user_id
         )
 
-        node_changelog.display_label = await self.get_display_label(db=db)
-        node_changelog.hfid = await self.get_hfid(db=db)
+        await self._set_changelog_labels(db=db, node_changelog=node_changelog)
 
         if node_changelog.has_changes:
             await self._add_parent_to_changelog(
@@ -1251,10 +1263,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         """Delete the Node in the database."""
         delete_at = Timestamp(at)
 
-        node_changelog = NodeChangelog(
-            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label(db=db)
-        )
-        node_changelog.hfid = await self.get_hfid(db=db)
+        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
+        await self._set_changelog_labels(db=db, node_changelog=node_changelog)
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)

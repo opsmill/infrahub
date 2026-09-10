@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
+from opentelemetry import trace
+
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.schema import HFID_ATTRIBUTE_NAME
 
@@ -37,20 +39,26 @@ class ChangelogHfidResolver:
         the schema is left unresolved rather than joining the batch, so it cannot fail the load for
         every other external peer.
         """
-        node_hfids = await self._label_loader.load_hfids(resolvable_ids)
-        for action, changelog in changelogs:
-            changelog.hfid = node_hfids.get(changelog.node_id)
-            if changelog.hfid is None and action == DiffAction.REMOVED:
-                # A removed node is gone when the batch load runs, but the diff still records its HFID.
-                changelog.hfid = _hfid_from_diff(changelog)
-        await self._fill_peer_hfids(changelogs=changelogs, node_hfids=node_hfids, is_resolvable_kind=is_resolvable_kind)
+        with trace.get_tracer(__name__).start_as_current_span("changelog.resolve_hfids") as span:
+            span.set_attribute("changelog.changed_node_count", len(resolvable_ids))
+            node_hfids = await self._label_loader.load_hfids(resolvable_ids)
+            for action, changelog in changelogs:
+                changelog.hfid = node_hfids.get(changelog.node_id)
+                if changelog.hfid is None and action == DiffAction.REMOVED:
+                    # A removed node is gone when the batch load runs, but the diff still records its HFID.
+                    changelog.hfid = _hfid_from_diff(changelog)
+            external_count = await self._fill_peer_hfids(
+                changelogs=changelogs, node_hfids=node_hfids, is_resolvable_kind=is_resolvable_kind
+            )
+            span.set_attribute("changelog.external_peer_count", external_count)
 
     async def _fill_peer_hfids(
         self,
         changelogs: Sequence[tuple[DiffAction, NodeChangelog]],
         node_hfids: dict[str, list[str] | None],
         is_resolvable_kind: Callable[[str], bool],
-    ) -> None:
+    ) -> int:
+        """Fill the HFID of every relationship peer; return how many were loaded on their own."""
         peers = [
             peer
             for _, changelog in changelogs
@@ -70,11 +78,12 @@ class ChangelogHfidResolver:
             else:
                 external_ids.append(peer.peer_id)
         if not external_ids:
-            return
+            return 0
         peer_hfids = await self._label_loader.load_hfids(external_ids)
         for peer in peers:
             if peer.peer_hfid is None and peer.peer_id in peer_hfids:
                 peer.peer_hfid = peer_hfids[peer.peer_id]
+        return len(set(external_ids))
 
 
 def _hfid_from_diff(node_changelog: NodeChangelog) -> list[str] | None:
