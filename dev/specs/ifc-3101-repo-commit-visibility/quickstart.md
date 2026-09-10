@@ -52,6 +52,14 @@ uv run invoke dev.build && uv run invoke dev.start   # full stack with at least 
    naming `object:Core:Repository:view:allow_default` — the same code, status and permission as
    querying `CoreRepository` directly.
 
+   A caller who can view *some* repository kind but not the one behind the id is answered not-found
+   instead, which is the same answer an id that exists nowhere gets. That is deliberate: a denial
+   naming the concrete kind would let them tell a repository of the kind they cannot view from an id
+   that does not exist. So the 403 belongs to the caller who can view no repository kind at all, and
+   it names `Core:Repository` whatever kind the id turns out to be. Run this half granted
+   `Core/Repository/view` only, against a `CoreReadOnlyRepository` id, and expect
+   `Unable to find the node <id> / CoreGenericRepository in the database.`
+
    Not byte-identical to the `CoreRepository` denial, and it cannot be. These resolvers check one
    permission, so the message reads "You do not have the following permission: ..."; the query
    analyzer batches every kind a query touches and denies with the plural "You do not have one of
