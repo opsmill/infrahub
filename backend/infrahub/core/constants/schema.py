@@ -3,6 +3,9 @@ from enum import Enum, Flag, IntEnum, auto
 PARENT_CHILD_IDENTIFIER = "parent__child"
 RESOURCE_POOL_REL_SUFFIX = "_from_resource_pool"
 
+HFID_ATTRIBUTE_NAME = "human_friendly_id"
+DISPLAY_LABEL_ATTRIBUTE_NAME = "display_label"
+
 
 class FlagProperty(Enum):
     IS_PROTECTED = "is_protected"
