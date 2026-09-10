@@ -1,5 +1,5 @@
 from infrahub.actions.triggers import TRIGGER_ACTION_RULE_UPDATE
-from infrahub.branch.triggers import TRIGGER_BRANCH_MERGED
+from infrahub.branch.triggers import TRIGGER_BRANCH_DELETED_PURGE_TASKS, TRIGGER_BRANCH_MERGED
 from infrahub.computed_attribute.triggers import (
     TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA,
     TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_TRANSFORM_CREATED,
@@ -16,6 +16,7 @@ from infrahub.webhook.triggers import TRIGGER_KEYVALUE_WEBHOOK_INVALIDATE, TRIGG
 
 builtin_triggers: list[TriggerDefinition] = [
     TRIGGER_ACTION_RULE_UPDATE,
+    TRIGGER_BRANCH_DELETED_PURGE_TASKS,
     TRIGGER_BRANCH_MERGED,
     TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA,
     TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_TRANSFORM_CREATED,

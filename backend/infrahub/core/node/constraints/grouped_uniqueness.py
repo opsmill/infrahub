@@ -68,8 +68,8 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
             if schema_attribute_path.relationship_schema:
                 relationship_name = schema_attribute_path.relationship_schema.name
                 relationship_manager: RelationshipManager = getattr(updated_node, relationship_name)
-                related_node = await relationship_manager.get_peer(db=self.db)
-                related_node_id = related_node.get_id() if related_node else None
+                # The constraint compares the peer this node points at, which its id identifies.
+                related_node_id = await relationship_manager.get_peer_id(db=self.db)
                 valued_paths.append(
                     QueryRelationshipPathValued(
                         relationship_schema=schema_attribute_path.relationship_schema,

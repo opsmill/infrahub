@@ -170,7 +170,6 @@ class TestSchemaUpdateAndRollback:
             target_branch=default_branch,
             at=schema_update_at,
             scope=RollbackScope.AT_TIMESTAMP,
-            restore_metadata=False,
         )
 
         # Step 7: Verify schema reverted by loading from DB and comparing to original

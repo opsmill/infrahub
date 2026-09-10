@@ -19,13 +19,15 @@ from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
+    from nats.aio.msg import Msg
+
     from infrahub.config import BrokerSettings
     from infrahub.message_bus.types import MessageTTL
 
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
 
-publish_tasks = set()
+publish_tasks: set[asyncio.Task[None]] = set()
 
 
 async def _add_request_id(message: InfrahubMessage) -> None:
@@ -81,7 +83,7 @@ class NATSMessageBus(InfrahubMessageBus):
     async def shutdown(self) -> None:
         await self.connection.drain()
 
-    async def on_callback(self, message: nats.aio.msg.Msg) -> None:
+    async def on_callback(self, message: Msg) -> None:
         if is_instrumentation_enabled() and message.headers:
             ctx = propagate.extract(message.headers)
             token = context.attach(ctx)
@@ -107,7 +109,7 @@ class NATSMessageBus(InfrahubMessageBus):
             if is_instrumentation_enabled() and message.headers:
                 context.detach(token)
 
-    async def on_message(self, message: nats.aio.msg.Msg) -> None:
+    async def on_message(self, message: Msg) -> None:
         if is_instrumentation_enabled() and message.headers:
             ctx = propagate.extract(message.headers)
             token = context.attach(ctx)
@@ -292,6 +294,6 @@ class NATSMessageBus(InfrahubMessageBus):
 
         await self.send(message=message)
 
-        response: nats.aio.msg.Msg = await future
+        response: Msg = await future
         data = ujson.loads(response.data)
         return response_class(**data)

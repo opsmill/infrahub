@@ -21,8 +21,9 @@ from infrahub.server import app, lifespan
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.utils import get_models_dir
 from infrahub.workers.dependencies import build_database, clear_singletons
-from infrahub.workflows.initialization import setup_task_manager
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.task_manager import setup_task_manager_once
 from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.test_client import InfrahubTestClient
 from tests.integration.conftest import IntegrationHelper
@@ -52,7 +53,7 @@ class TestInfrahubClient:
     async def workflow_local(self, prefect_test_fixture: None) -> AsyncGenerator[WorkflowLocalExecution, None]:
         original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
-        await setup_task_manager()
+        await setup_task_manager_once()
         config.OVERRIDE.workflow = workflow
         yield workflow
         config.OVERRIDE.workflow = original
@@ -82,7 +83,7 @@ class TestInfrahubClient:
         # rebuilds them against the current db_class.
         clear_singletons()
 
-        with dependency_provider.scope(build_database, _db):
+        with override_dependency(build_database, _db, dependency_provider=dependency_provider):
             async with lifespan(app):
                 yield InfrahubTestClient(app=app)
 

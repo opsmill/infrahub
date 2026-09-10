@@ -108,10 +108,11 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
             member_ids = await self._fetch_member_ids(definition=definition, target_branch=target_branch)
             impacted: list[str] = []
             if not regenerate_all_members:
+                # The merge target branch is the branch the definition's query is analysed against.
                 selection = await self.impacted_resolver.resolve(
                     query_payload=definition.query_payload,
                     diff_summary=diff_summary,
-                    target_branch=target_branch,
+                    query_branch=target_branch,
                     subscriber_kind=self.subscriber_kind,
                     every_target=list(subscriber_by_member.values()),
                 )
@@ -126,12 +127,6 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
                     impacted=impacted,
                 )
             ]
-            self.log.debug(
-                f"SELECTIVE_REGEN select [{definition.definition_name}]: "
-                f"regenerate_all_members={regenerate_all_members} forced={forced} "
-                f"members={len(member_ids)} mapped_subscribers={len(subscriber_by_member)} "
-                f"impacted={len(impacted)} rendered={len(rendered_members)}"
-            )
             if not rendered_members:
                 continue
             members = _narrow_members_filter(rendered_members, len(member_ids))

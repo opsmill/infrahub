@@ -45,7 +45,7 @@ export function ThemeProvider({ canChoose, defaultTheme, children }: ThemeProvid
         setChoice(next);
       },
     }),
-    [canChoose],
+    [canChoose]
   );
 
   return <ThemeContext value={control}>{children}</ThemeContext>;

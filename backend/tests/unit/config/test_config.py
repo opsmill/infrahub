@@ -185,6 +185,23 @@ def test_database_uri_with_policy() -> None:
     assert settings.database_uri == "bolt://member1:7687?policy=europe"
 
 
+def test_database_pool_timeout_defaults() -> None:
+    # Both unset by default: the driver's own defaults apply (3600s lifetime, no liveness check).
+    settings = DatabaseSettings()
+    assert settings.max_connection_lifetime is None
+    assert settings.liveness_check_timeout is None
+
+
+def test_database_pool_timeout_environment_variables() -> None:
+    with patch.dict(
+        os.environ,
+        {"INFRAHUB_DB_MAX_CONNECTION_LIFETIME": "600", "INFRAHUB_DB_LIVENESS_CHECK_TIMEOUT": "0"},
+    ):
+        settings = DatabaseSettings()
+    assert settings.max_connection_lifetime == 600
+    assert settings.liveness_check_timeout == 0
+
+
 def _make_oidc_provider(verify_signature: bool) -> SecurityOIDCSettings:
     return SecurityOIDCSettings(
         client_id="testing-client",

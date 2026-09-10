@@ -21,7 +21,11 @@ from infrahub.lock import InfrahubMultiLock
 from infrahub.log import get_logger
 
 from ...core.node.create import create_node
-from ...core.node.lock_utils import build_object_lock_name, get_lock_names_on_object_mutation
+from ...core.node.lock_utils import (
+    apply_payload_for_lock_names,
+    build_object_lock_name,
+    get_lock_names_on_object_mutation,
+)
 from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions, UpsertResult, build_graphql_response
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
@@ -208,7 +212,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
             id=address.get_id(),
             branch=branch,
         )
-        await preview_obj.from_graphql(db=db, data=data, process_pools=False)
+        await apply_payload_for_lock_names(db=db, node=preview_obj, data=data)
 
         schema_branch = db.schema.get_schema_branch(name=branch.name)
         lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
@@ -371,7 +375,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             id=prefix.get_id(),
             branch=branch,
         )
-        await preview_obj.from_graphql(db=db, data=data, process_pools=False)
+        await apply_payload_for_lock_names(db=db, node=preview_obj, data=data)
 
         schema_branch = db.schema.get_schema_branch(name=branch.name)
         lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)

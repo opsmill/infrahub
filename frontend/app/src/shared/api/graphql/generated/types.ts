@@ -12762,7 +12762,7 @@ export type CoreRepository = CoreGenericRepository & CoreNode & CoreTaskTarget &
   /** Current commit hash being tracked */
   commit: Maybe<TextAttribute>;
   credential: NestedEdgedCoreCredential;
-  /** Default branch name in the Git repository */
+  /** Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch. */
   default_branch: Maybe<TextAttribute>;
   /** Description of the repository */
   description: Maybe<TextAttribute>;
@@ -13146,7 +13146,7 @@ export type CoreRepositoryCreateInput = {
   /** Current commit hash being tracked */
   commit?: InputMaybe<TextAttributeCreate>;
   credential?: InputMaybe<RelatedNodeInput>;
-  /** Default branch name in the Git repository */
+  /** Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch. */
   default_branch?: InputMaybe<TextAttributeCreate>;
   /** Description of the repository */
   description?: InputMaybe<TextAttributeCreate>;
@@ -13410,7 +13410,7 @@ export type CoreRepositoryUpdateInput = {
   /** Current commit hash being tracked */
   commit?: InputMaybe<TextAttributeUpdate>;
   credential?: InputMaybe<RelatedNodeInput>;
-  /** Default branch name in the Git repository */
+  /** Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch. */
   default_branch?: InputMaybe<TextAttributeUpdate>;
   /** Description of the repository */
   description?: InputMaybe<TextAttributeUpdate>;
@@ -13447,7 +13447,7 @@ export type CoreRepositoryUpsertInput = {
   /** Current commit hash being tracked */
   commit?: InputMaybe<TextAttributeUpdate>;
   credential?: InputMaybe<RelatedNodeInput>;
-  /** Default branch name in the Git repository */
+  /** Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch. */
   default_branch?: InputMaybe<TextAttributeUpdate>;
   /** Description of the repository */
   description?: InputMaybe<TextAttributeUpdate>;
@@ -17686,10 +17686,12 @@ export type EdgedProfileIpamNamespace = {
 /**
  * An effective `date_format` value and the source it was resolved from.
  *
- * `value` is a DateFormat key, or null when nothing is set.
+ * `value` is a DateFormat key, or null when nothing is set. `inherited` is what the caller would
+ * fall back to with no override of their own, null when nothing is set for them to inherit.
  */
 export type EffectiveDateFormat = {
   __typename: 'EffectiveDateFormat';
+  inherited: Maybe<DateFormat>;
   source: PreferenceSource;
   value: Maybe<DateFormat>;
 };
@@ -17701,9 +17703,15 @@ export type EffectivePreferencesType = {
   timezone: EffectiveTimezone;
 };
 
-/** An effective `timezone`: the resolved IANA name (null when nothing is set) and its source. */
+/**
+ * An effective `timezone`: the resolved IANA name (null when nothing is set) and its source.
+ *
+ * `inherited` is the IANA name the caller would fall back to with no override of their own, null
+ * when nothing is set for them to inherit.
+ */
 export type EffectiveTimezone = {
   __typename: 'EffectiveTimezone';
+  inherited: Maybe<Scalars['String']['output']>;
   source: PreferenceSource;
   value: Maybe<Scalars['String']['output']>;
 };

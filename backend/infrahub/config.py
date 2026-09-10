@@ -221,6 +221,12 @@ class MainSettings(BaseSettings):
         description="When enabled, only the generators and artifact definitions affected by a merge "
         "are re-executed; when disabled, every generator and artifact definition is re-executed.",
     )
+    coalesce_python_recompute_after_merge: bool = Field(
+        default=True,
+        description="When enabled, the coalesced merge and rebase pass also recomputes Python transform "
+        "computed attributes, alongside the per-node tasks that still run; when disabled, only those "
+        "per-node tasks recompute them.",
+    )
     merge_failure_grace_period_seconds: int = Field(
         default=180,
         ge=0,
@@ -375,6 +381,27 @@ class DatabaseSettings(BaseSettings):
         default=100,
         ge=1,
         description="Maximum number of connections the driver keeps in its pool per remote address.",
+    )
+    max_connection_lifetime: int | None = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Maximum age in seconds of a pooled connection before the driver discards it and dials a "
+            "fresh one. Unset by default, leaving the driver's own default (3600s) in charge. Set it "
+            "below the idle timeout of every firewall, NAT gateway or load balancer between Infrahub "
+            "and the database: such middleboxes silently evict idle flows, and a request sent on an "
+            "evicted connection hangs until TCP gives up instead of failing fast."
+        ),
+    )
+    liveness_check_timeout: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Idle time in seconds after which a pooled connection is ping-tested before reuse, so a "
+            "connection closed by the server (e.g. a database restart) is replaced transparently instead "
+            "of failing the request. Costs one extra round trip per reuse of a connection that was idle "
+            "this long. Unset by default, leaving the driver's own default in charge: no liveness check."
+        ),
     )
 
     @property

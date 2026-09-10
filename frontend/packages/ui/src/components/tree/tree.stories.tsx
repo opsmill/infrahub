@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-
 import { Collection } from "react-aria-components";
 
 import { Tree, TreeItem, TreeItemContent } from "./tree";

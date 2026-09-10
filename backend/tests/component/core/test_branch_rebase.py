@@ -23,6 +23,7 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_database
 from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION
 from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema import load_schema
 
 
@@ -123,7 +124,7 @@ async def test_branch_rebase_diff_conflict(
     car_camry_main: Node,
 ) -> None:
     # NOTE: Ideally, this should be somewhere else for all tests to benefit from it
-    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
+    with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
         car_main.name.value += "-main"
@@ -377,7 +378,7 @@ async def test_rebase_schemas_handed_to_the_update_coordinator(
         account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
     )
 
-    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
+    with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
         await rebase_branch(branch=baseline_branch.name, context=context)
 
         # The flow publishes the branch it rebased, so the cache stops holding the pre-rebase instance
@@ -467,7 +468,7 @@ async def test_failed_rebase_keeps_the_branch_data(
         branch=default_branch,
         account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
     )
-    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
+    with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
         workflow_recorder.execute_results[SCHEMA_APPLY_MIGRATION.name] = ["migration failed on purpose"]
         with pytest.raises(MigrationError):
             await rebase_branch(branch=branch.name, context=context)

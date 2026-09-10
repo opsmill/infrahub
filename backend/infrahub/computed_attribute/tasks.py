@@ -13,11 +13,6 @@ from infrahub.core.query_group.subscribers import fetch_subscriber_refs
 from infrahub.core.recompute.bulk_write import AttributeValueWrite
 from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
 from infrahub.core.registry import registry
-from infrahub.core.schema.schema_branch_computed import TransformReadSet
-from infrahub.core.schema.schema_branch_computed.python_transform import (
-    IMPRECISE_READ_FIELDS,
-    derived_read_is_scopable,
-)
 from infrahub.events import BranchDeletedEvent
 from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
@@ -45,6 +40,7 @@ from .models import (
     ComputedAttrJinja2TriggerDefinition,
     PythonTransformTarget,
 )
+from .read_sets import transform_read_set_from_query_report
 from .scoping import (
     ChangedElementSet,
     ComputedAttributeRef,
@@ -55,11 +51,9 @@ from .scoping import (
 from .transform_recompute import TransformRecomputeSubmitter
 
 if TYPE_CHECKING:
-    from infrahub.core.schema.computed_attribute import ComputedAttribute
-    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.schema.schema_branch_computed import TransformReadSet
     from infrahub.database import InfrahubDatabase
     from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
-    from infrahub.graphql.analyzer import GraphQLQueryReport
 
 
 async def _reconcile_python_computed_attribute_automations(db: InfrahubDatabase) -> None:
@@ -98,31 +92,6 @@ def _resolve_changed_elements(
     if changed_elements is None:
         return None
     return ChangedElementSet.from_payload(changed_elements)
-
-
-def _transform_read_set_from_query_report(
-    *, report: GraphQLQueryReport, schema_branch: SchemaBranch
-) -> TransformReadSet:
-    """Map an analyzed GraphQL query report into the kinds and fields it reads."""
-    read_fields_by_kind = {kind: access.fields for kind, access in report.requested_read.items()}
-
-    scopable_derived_kinds = {
-        kind
-        for kind, fields in read_fields_by_kind.items()
-        if _derived_reads_are_scopable(schema_branch=schema_branch, kind=kind, read_fields=frozenset(fields))
-    }
-
-    return TransformReadSet.from_read_fields(read_fields_by_kind, scopable_derived_kinds=scopable_derived_kinds)
-
-
-def _derived_reads_are_scopable(*, schema_branch: SchemaBranch, kind: str, read_fields: frozenset[str]) -> bool:
-    """Whether every derived field read on one kind can be held against that kind alone."""
-    derived_reads = read_fields & IMPRECISE_READ_FIELDS
-    if not derived_reads or not schema_branch.has(name=kind):
-        return False
-
-    node_schema = schema_branch.get(name=kind, duplicate=False)
-    return all(derived_read_is_scopable(node_schema=node_schema, field_name=field_name) for field_name in derived_reads)
 
 
 async def _transform_value_for_node(
@@ -195,18 +164,21 @@ def _partition_transform_results(
 async def process_transform(
     branch_name: str,
     node_kind: str,
-    computed_attribute_name: str,  # noqa: ARG001
+    computed_attribute_name: str,
     computed_attribute_kind: str,  # noqa: ARG001
     context: EventContext,
     object_id: str | None = None,
     object_ids: list[str] | None = None,
     updated_fields: list[str] | None = None,  # noqa: ARG001
+    coalesced: bool = False,
+    recompute_depth: int = 0,
 ) -> None:
-    """Recompute Python computed attributes for a batch of nodes.
+    """Recompute one Python computed attribute for a batch of nodes.
 
     One repository init and one bulk write per batch; unchanged values emit no events
     and fan out no further recompute; a failing node keeps its previous value without
-    blocking its siblings.
+    blocking its siblings. A coalesced pass stamps its writes with the recompute origin
+    and drives the next level through the bounded chain.
 
     Raises:
         ValueError: if a computed attribute has no transform configured or the transform cannot be fetched.
@@ -221,76 +193,76 @@ async def process_transform(
     client.request_context = context.to_request_context()
 
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
-    node_schema = schema_branch.get_node(name=node_kind, duplicate=False)
-    transform_attributes: dict[str, ComputedAttribute] = {}
-    for attribute in node_schema.attributes:
-        if attribute.computed_attribute and attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON:
-            transform_attributes[attribute.name] = attribute.computed_attribute
-
-    if not transform_attributes:
+    transform_attribute = schema_branch.computed_attributes.get_python_transform_attribute(
+        node_kind, computed_attribute_name
+    )
+    if not transform_attribute:
+        log.warning(f"'{node_kind}' has no Python computed attribute named '{computed_attribute_name}'")
         return
 
-    for attribute_name, transform_attribute in transform_attributes.items():
-        if not transform_attribute.transform:
-            raise ValueError(f"No transform configured for computed attribute '{attribute_name}'")
-        transform_query = ComputedAttributeTransformQuery(transform_id=transform_attribute.transform)
-        transform_response = await client.execute_graphql(
-            query=transform_query.render_query(),
-            variables=transform_query.get_variables(),
-            branch_name=branch_name,
+    if not transform_attribute.transform:
+        raise ValueError(f"No transform configured for computed attribute '{computed_attribute_name}'")
+    transform_query = ComputedAttributeTransformQuery(transform_id=transform_attribute.transform)
+    transform_response = await client.execute_graphql(
+        query=transform_query.render_query(),
+        variables=transform_query.get_variables(),
+        branch_name=branch_name,
+    )
+    transform = transform_query.parse_response(response=transform_response)
+
+    if not transform:
+        raise ValueError(
+            f"Unable to fetch transform '{transform_attribute.transform}' "
+            f"for computed attribute '{computed_attribute_name}'"
         )
-        transform = transform_query.parse_response(response=transform_response)
 
-        if not transform:
-            raise ValueError(
-                f"Unable to fetch transform '{transform_attribute.transform}' for computed attribute '{attribute_name}'"
-            )
+    # Built first: resolving it after the transforms would discard a completed batch.
+    # `coalesced` stays a parameter; a live whole-kind refresh sends ids too.
+    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch, coalesced=coalesced)
 
-        repo = await get_initialized_repo(
-            client=client,
-            repository_id=transform.repository_id,
-            name=transform.repository_name,
-            repository_kind=transform.repository_typename,
+    repo = await get_initialized_repo(
+        client=client,
+        repository_id=transform.repository_id,
+        name=transform.repository_name,
+        repository_kind=transform.repository_typename,
+        commit=transform.repository_commit,
+    )
+
+    # One failing node must not abort the batch and drop its siblings' writes.
+    batch = await client.create_batch(return_exceptions=True)
+    for oid in all_ids:
+        batch.add(
+            task=_transform_value_for_node,
+            node=oid,
+            branch_name=branch_name,
+            object_id=oid,
+            attribute_name=computed_attribute_name,
+            query_id=transform.query_name,
+            transform_timeout=transform.timeout,
             commit=transform.repository_commit,
-        )
-
-        # One failing node must not abort the batch and drop its siblings' writes.
-        batch = await client.create_batch(return_exceptions=True)
-        for oid in all_ids:
-            batch.add(
-                task=_transform_value_for_node,
-                node=oid,
-                branch_name=branch_name,
-                object_id=oid,
-                attribute_name=attribute_name,
-                query_id=transform.query_name,
-                transform_timeout=transform.timeout,
-                commit=transform.repository_commit,
-                file_path=transform.file_path,
-                class_name=transform.class_name,
-                convert_query_response=transform.convert_query_response,
-                context=context,
-                repo=repo,
-            )
-        results: list[tuple[str, AttributeValueWrite | Exception]] = [
-            (oid, result) async for oid, result in batch.execute()
-        ]
-        writes, skipped = _partition_transform_results(results)
-        for skipped_id, reason in skipped:
-            log.warning(f"Skipping recompute of '{attribute_name}' for node {skipped_id}: {reason}")
-
-        dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
-        await dispatcher.dispatch(
-            writes=writes,
-            branch_name=branch_name,
+            file_path=transform.file_path,
+            class_name=transform.class_name,
+            convert_query_response=transform.convert_query_response,
             context=context,
-            coalesced=False,
-            recompute_depth=0,
+            repo=repo,
         )
-        log.info(
-            f"Recompute of '{attribute_name}' complete: submitted={len(results)} "
-            f"written={len(writes)} skipped={len(skipped)}"
-        )
+    results: list[tuple[str, AttributeValueWrite | Exception]] = [
+        (oid, result) async for oid, result in batch.execute()
+    ]
+    writes, skipped = _partition_transform_results(results)
+    for skipped_id, reason in skipped:
+        log.warning(f"Skipping recompute of '{computed_attribute_name}' for node {skipped_id}: {reason}")
+
+    await dispatcher.dispatch(
+        writes=writes,
+        branch_name=branch_name,
+        context=context,
+        recompute_depth=recompute_depth,
+    )
+    log.info(
+        f"Recompute of '{computed_attribute_name}' complete: submitted={len(results)} "
+        f"written={len(writes)} skipped={len(skipped)}"
+    )
 
 
 @flow(
@@ -302,7 +274,10 @@ async def trigger_update_python_computed_attributes(
     computed_attribute_name: str,
     computed_attribute_kind: str,
     context: EventContext,
+    coalesced: bool = False,
+    recompute_depth: int = 0,
 ) -> None:
+    """Recompute one Python computed attribute over every node of its kind."""
     await add_tags(branches=[branch_name])
 
     client = get_client()
@@ -325,6 +300,8 @@ async def trigger_update_python_computed_attributes(
                 "computed_attribute_name": computed_attribute_name,
                 "computed_attribute_kind": computed_attribute_kind,
                 "context": context,
+                "coalesced": coalesced,
+                "recompute_depth": recompute_depth,
             },
             # Must be a creation tag: in-flow tag updates drop tags added mid-run.
             tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],
@@ -409,12 +386,11 @@ async def process_jinja2(
             if value != node.computed_attribute_value:
                 writes.append(AttributeValueWrite(node_id=node.node_id, field=attribute.name, value=value))
 
-    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
+    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch, coalesced=object_ids is not None)
     await dispatcher.dispatch(
         writes=writes,
         branch_name=branch_name,
         context=context,
-        coalesced=object_ids is not None,
         recompute_depth=recompute_depth,
     )
 
@@ -591,7 +567,7 @@ async def computed_attribute_setup_python(
         for trigger in triggers_python:
             definition = trigger.computed_attribute.computed_attribute
             read_sets[trigger.branch, definition.kind, definition.attribute.name] = (
-                _transform_read_set_from_query_report(
+                transform_read_set_from_query_report(
                     report=trigger.computed_attribute.query_analyzer.query_report,
                     schema_branch=registry.schema.get_schema_branch(name=trigger.branch),
                 )

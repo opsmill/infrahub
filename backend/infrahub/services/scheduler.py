@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 log = get_logger()
 
-background_tasks = set()
+background_tasks: set[asyncio.Task[None]] = set()
 
 
 @dataclass

@@ -11,7 +11,12 @@ export const getEffectivePreferences: GetEffectivePreferences = async () => {
     dateFormat: {
       value: effective.date_format.value ?? null,
       source: effective.date_format.source,
+      inherited: effective.date_format.inherited ?? null,
     },
-    timezone: { value: effective.timezone.value ?? null, source: effective.timezone.source },
+    timezone: {
+      value: effective.timezone.value ?? null,
+      source: effective.timezone.source,
+      inherited: effective.timezone.inherited ?? null,
+    },
   };
 };

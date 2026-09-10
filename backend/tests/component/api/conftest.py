@@ -15,9 +15,11 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_database, build_message_bus, build_workflow
+from infrahub.workers.dependencies import build_database, build_message_bus
 from tests.conftest import TestHelper
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.task_manager import setup_task_manager_once
+from tests.helpers.workflow_override import override_workflow
 
 
 @pytest.fixture
@@ -30,7 +32,7 @@ def client(
     async def _db(singleton: bool = True) -> InfrahubDatabase:
         return await build_database(singleton=False)
 
-    with dependency_provider.scope(build_database, _db):
+    with override_dependency(build_database, _db, dependency_provider=dependency_provider):
         yield TestClient(app)
 
 
@@ -49,20 +51,16 @@ def rpc_bus(helper: TestHelper, dependency_provider: Provider) -> Generator[Any,
     original = config.OVERRIDE.message_bus
     bus = helper.get_message_bus_rpc()
     config.OVERRIDE.message_bus = bus
-    with dependency_provider.scope(build_message_bus, lambda: bus):
+    with override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider):
         yield bus
     config.OVERRIDE.message_bus = original
 
 
 @pytest.fixture
 async def workflow_local(dependency_provider: Provider) -> AsyncGenerator[WorkflowLocalExecution, None]:
-    original = config.OVERRIDE.workflow
-    workflow = WorkflowLocalExecution()
     await setup_task_manager_once()
-    config.OVERRIDE.workflow = workflow
-    with dependency_provider.scope(build_workflow, lambda: workflow):
+    with override_workflow(WorkflowLocalExecution(), dependency_provider=dependency_provider) as workflow:
         yield workflow
-    config.OVERRIDE.workflow = original
 
 
 @pytest.fixture

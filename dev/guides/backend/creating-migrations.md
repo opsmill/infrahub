@@ -32,6 +32,10 @@ Choose the right base class in `backend/infrahub/core/migrations/shared.py`:
 
 `SchemaMigration` is a separate family under `backend/infrahub/core/migrations/schema/`, registered in `MIGRATION_MAP` and selected by the schema diff rather than by `GRAPH_VERSION`. Steps 1-3 below do not apply to it, but the retry rule does.
 
+## Migrations run at the current timestamp
+
+Each caller supplies `MigrationInput.at` for its operation: the graph upgrade and branch-version runner use a fresh timestamp, while rebases derive it from the diff timestamp and schema-migration batches forward `message.at`. Keep `from <= $at` predicates and historical-`at` tests whenever the migration query is time-scoped.
+
 ## Steps
 
 ### Step 1: Create the Migration File
@@ -129,13 +133,18 @@ node deletes everything attached to it), the per-transaction cost is unbounded n
 `n` is. Batch over the fan-out unit where possible, and cap a fan-out-prone batch with
 `min(configured_size, ceiling)` rather than inheriting `query_size_limit` unchanged.
 
-**Pitfall — one bad item must not hide the rest.** A migration that iterates independent items
-(branches, nodes, kinds) wraps each item in its own `try`, collects per-item failures into
-`MigrationResult.errors`, and keeps going. A single `try` around the loop aborts on the first
-failure, reports one error, and leaves the state of every remaining item unknown — on re-run the
-operator cannot tell what was reclaimed and what was never attempted.
-
 **Pitfall — don't carry candidate ids across phases in application memory.** A multi-phase migration (phase 1 computes candidate node/edge ids, phase 2 acts on them — e.g. deleting orphans or restoring metadata for what phase 1 touched) must not hold those candidates in a Python list to drive the later phase. A crash between phases loses that in-memory list, and a resumed run can no longer tell what still needs cleanup. Keep candidate selection and its dependent cleanup database-side: re-derive candidates by the same filter inside the same `CALL ... IN TRANSACTIONS` pass as the write that produces them, rather than collecting ids in Python. Distinct logical phases (e.g. reopening edges vs. deleting edges) can and should stay as separate passes when planner or transaction-memory limits require it — each pass just needs to clean up after its own candidates rather than depending on ids collected by an earlier pass. See [Merge Failure Recovery](../../knowledge/backend/merge-failure-recovery.md) for a worked example.
+
+**Pitfall — one bad item must not hide the rest.** An `ArbitraryMigration` that owns its `execute`
+and iterates independent items (branches, nodes, kinds) as auto-commit statements wraps each item in
+its own `try`, collects per-item failures into `MigrationResult.errors`, and keeps going —
+`m075_finish_deleting_branches.py` is the house example. A single `try` around the loop aborts on the
+first failure, reports one error, and leaves the state of every remaining item unknown — on re-run
+the operator cannot tell what was reclaimed and what was never attempted.
+
+This does not extend to `GraphMigration` and `SchemaMigration`: their `execute` wraps the work in
+`db.start_transaction()`, and a failed statement aborts that transaction, so catching per item and
+continuing inside it cannot work. There, let the error reach the transaction owner.
 
 ### Step 4: Beware of Shared Nodes
 

@@ -16,7 +16,7 @@ from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.delete_coordinator import BranchDeleteOrchestrator
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
-from infrahub.core.constants import MutationAction
+from infrahub.core.constants import SYSTEM_USER_ID, DiffAction, MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, EnrichedDiffRootMetadata
@@ -27,6 +27,7 @@ from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge.builder import build_branch_merge_orchestrator
 from infrahub.core.merge.merge_locker import MergeLocker
+from infrahub.core.merge.python_target_sources import build_python_target_resolver
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
@@ -43,6 +44,7 @@ from infrahub.core.merge.selective_regen.orchestrator import build_merge_selecti
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.runner import MigrationRunner
+from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
@@ -84,6 +86,9 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
+RETIREMENT_BATCH_SIZE = 500
+"""How many deleted-node uuids one retirement query evaluates at a time."""
+
 
 @flow(name="branch-migrate", flow_run_name="Apply migrations to branch {branch}")
 async def migrate_branch(branch: str, context: InfrahubContext, send_events: bool = True) -> None:
@@ -104,6 +109,7 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
             log.info(f"No migrations detected for branch '{obj.name}'")
             obj.graph_version = GRAPH_VERSION
             await obj.save(db=db)
+            registry.refresh_cached_branch(obj)
             return
 
         # Branch status will remain as so if the migration process fails
@@ -111,6 +117,7 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
         if obj.status != BranchStatus.NEED_UPGRADE_REBASE:
             obj.status = BranchStatus.NEED_UPGRADE_REBASE
             await obj.save(db=db)
+            registry.refresh_cached_branch(obj)
 
         try:
             log.info(f"Running migrations for branch '{obj.name}'")
@@ -123,6 +130,7 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
             obj.status = BranchStatus.OPEN
         obj.graph_version = GRAPH_VERSION
         await obj.save(db=db)
+        registry.refresh_cached_branch(obj)
 
     if send_events:
         event_context = context.to_event_context()
@@ -144,6 +152,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
     medium_context = context.model_copy(update={"priority": WorkflowPriority.MEDIUM})
     low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
+    user_id = context.account.account_id or SYSTEM_USER_ID
 
     async with database.start_session() as db:
         log = get_run_logger()
@@ -225,6 +234,11 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
         migrations = []
         async with lock.registry.global_graph_lock():
+            base_deleted_node_uuids = await diff_repository.get_affected_node_uuids(
+                diff_branch_name=base_branch.name,
+                tracking_id=BranchTrackingId(name=user_branch.name),
+                include_actions=[DiffAction.REMOVED],
+            )
             # Both baselines are resolved under the lock and before the rebase: the common ancestor
             # resolves against branched_from, which the rebase advances, and the rollback snapshot
             # must not predate a schema update that landed while the pre-lock validation ran.
@@ -235,8 +249,15 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 pre_rebase_schema = registry.schema.get_schema_branch(name=user_branch.name).duplicate()
 
             async with db.start_transaction() as dbt:
-                await user_branch.rebase(db=dbt, user_id=context.account.account_id, at=rebase_at)
+                await user_branch.rebase(db=dbt, user_id=user_id, at=rebase_at)
                 log.info("Branch graph rebased")
+                await _retire_agnostic_fields_of_base_deletions(
+                    db=dbt,
+                    node_uuids=base_deleted_node_uuids,
+                    at=rebase_at,
+                    user_id=user_id,
+                    log=log,
+                )
 
             # Only update registry after txn commit. Otherwise, branch status and branched_from
             # could diverge between registry and database during a failed txn commit.
@@ -263,7 +284,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                     migrations=migrations,
                     update_db=False,
                     update_registry=True,
-                    user_id=context.account.account_id,
+                    user_id=user_id,
                     manage_rollback=True,
                 )
                 log.info("Migrations completed")
@@ -338,16 +359,22 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     for event in events:
         await event_service.send(event)
 
-    with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
-        schema_name = (
-            user_branch.name if user_branch.name in registry.get_altered_schema_branches() else registry.default_branch
-        )
-        schema_branch = registry.schema.get_schema_branch(name=schema_name)
-        coordinator = MergeRecomputeCoordinator(
-            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-            submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
-        )
-        await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
+    # The rebase session closed further up, and this pass runs queries of its own.
+    async with database.start_session() as recompute_db:
+        python_resolver = await build_python_target_resolver(db=recompute_db)
+        with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
+            schema_name = (
+                user_branch.name
+                if user_branch.name in registry.get_altered_schema_branches()
+                else registry.default_branch
+            )
+            schema_branch = registry.schema.get_schema_branch(name=schema_name)
+            coordinator = MergeRecomputeCoordinator(
+                builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
+                submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
+                python_resolver=python_resolver,
+            )
+            await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
@@ -471,6 +498,44 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
         await creator.create(model=model, context=context)
 
 
+async def _retire_agnostic_fields_of_base_deletions(
+    db: InfrahubDatabase,
+    node_uuids: list[str],
+    at: Timestamp,
+    user_id: str,
+    log: Logger | LoggerAdapter[Logger],
+) -> None:
+    """Re-evaluate branch-agnostic retention for the base-branch deletions this rebase absorbs.
+
+    Look at every object deleted as part of this rebase and check any branch-agnostic fields on each
+    object, deleting them on the global branch if the field is no longer reachable from any branch.
+
+    Must run after the branch has been rebased.
+
+    Args:
+        db: The transaction the rebase itself runs in.
+        node_uuids: The nodes the base-branch diff records as removed within the rebased window.
+        at: The rebase timestamp; closed edges are stamped with it.
+        user_id: The account the rebase runs as, recorded on the edges the re-evaluation closes.
+        log: The flow's run logger.
+
+    """
+    if not node_uuids:
+        return
+    log.info(f"Re-evaluating branch-agnostic retirement for {len(node_uuids)} deletions absorbed by the rebase")
+    for batch_start in range(0, len(node_uuids), RETIREMENT_BATCH_SIZE):
+        batch_uuids = node_uuids[batch_start : batch_start + RETIREMENT_BATCH_SIZE]
+        retirement_query = await RetireNodeAgnosticFieldsQuery.init(
+            db=db, node_uuids=batch_uuids, at=at, user_id=user_id
+        )
+        await retirement_query.execute(db=db)
+        retired = retirement_query.get_data()
+        log.info(
+            "Branch-agnostic retirement re-evaluated for base-branch deletions: "
+            f"candidates={len(batch_uuids)} edges_closed={retired.edges_closed} at={at.to_string()}"
+        )
+
+
 async def _get_diff_root(
     diff_coordinator: DiffCoordinator,
     enriched_diff_metadata: EnrichedDiffRootMetadata,
@@ -512,7 +577,9 @@ async def _build_post_merge_regeneration_dispatcher(
     generator_output = GeneratorCascadeOutput(capturer=output_capturer)
     return PostMergeRegenerationDispatcher(
         workflow=get_workflow(),
-        planner=build_merge_selective_regeneration(client=get_client(), log=log, generator_output=generator_output),
+        planner=build_merge_selective_regeneration(
+            db=db, client=get_client(), log=log, generator_output=generator_output
+        ),
         summary_cache=DiffSummaryCache(
             cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
         ),

@@ -1,0 +1,1 @@
+Clarified the description of the `default_branch` attribute on repositories. It now states that the value is the remote branch Infrahub maps onto its own default branch, and that it does not have to be the remote's default branch.

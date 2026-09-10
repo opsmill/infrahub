@@ -50,6 +50,7 @@ export function Sidebar({ className, children, ...props }: React.ComponentProps<
     <Card
       variant="secondary"
       className={classNames(
+        // biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: a transition property list is not a design value; the timing is already tokenised
         "group w-64 shrink-0 overflow-hidden transition-[width] duration-200 ease-linear data-[state=collapsed]:w-14",
         className
       )}

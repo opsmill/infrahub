@@ -34,7 +34,7 @@ const items = [
 
 function SizeLabel({ children }: { children?: string }) {
   return (
-    <div className="text-xxs font-medium tracking-wider text-subtle-muted uppercase">
+    <div className="font-medium text-subtle-muted text-xxs uppercase tracking-wider">
       {children}
     </div>
   );

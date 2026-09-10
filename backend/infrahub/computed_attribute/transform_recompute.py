@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
-from infrahub.core.constants import InfrahubKind
+from infrahub_sdk.protocols import CoreTransformPython
+
 from infrahub.core.registry import registry
 from infrahub.log import get_logger
 from infrahub.workflows.catalogue import TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
@@ -11,8 +12,6 @@ from infrahub.workflows.constants import WorkflowTag
 from .recompute_resolution import RecomputeResolver
 
 if TYPE_CHECKING:
-    from infrahub_sdk.node import InfrahubNode
-
     from infrahub.events.models import EventContext
     from infrahub.services.adapters.workflow import InfrahubWorkflow
 
@@ -22,7 +21,9 @@ log = get_logger()
 class TransformFetcher(Protocol):
     """Fetches a Python transform node by id, returning ``None`` when it is gone."""
 
-    async def get(self, *, kind: str, id: str, branch: str, raise_when_missing: bool) -> InfrahubNode | None: ...
+    async def get(
+        self, *, kind: type[CoreTransformPython], id: str, branch: str, raise_when_missing: bool
+    ) -> CoreTransformPython | None: ...
 
 
 class TransformRecomputeSubmitter:
@@ -41,7 +42,7 @@ class TransformRecomputeSubmitter:
         A transform that no longer resolves (branch race, or an already-landed delete) returns 0.
         """
         transform = await self._client.get(
-            kind=InfrahubKind.TRANSFORMPYTHON, id=transform_id, branch=branch_name, raise_when_missing=False
+            kind=CoreTransformPython, id=transform_id, branch=branch_name, raise_when_missing=False
         )
         if transform is None:
             log.warning(f"Transform {transform_id} not found on {branch_name}; skipping recompute")

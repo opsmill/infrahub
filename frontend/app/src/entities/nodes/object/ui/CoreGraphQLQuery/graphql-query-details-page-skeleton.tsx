@@ -10,7 +10,7 @@ export function GraphQLQueryDetailsPageSkeleton() {
 
       <section className="flex flex-wrap items-start gap-4 p-4 lg:flex-nowrap">
         <Skeleton className="h-screen w-full max-w-(--breakpoint-md)" />
-        <Skeleton className="h-[400px] grow" />
+        <Skeleton className="h-100 grow" />
       </section>
     </div>
   );

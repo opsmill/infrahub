@@ -32,7 +32,7 @@ const ResourcePoolUtilization = ({
                 description="Utilization of pool within the default branch"
               />
             ),
-            color: "#0987a8",
+            color: "var(--accent-strong)",
           },
           {
             value: utilizationOtherBranches,
@@ -42,7 +42,7 @@ const ResourcePoolUtilization = ({
                 description="Utilization of pool within other branches"
               />
             ),
-            color: "#54b6cf",
+            color: "color-mix(in oklch, var(--accent-strong) 45%, transparent)",
           },
         ]}
         {...props}

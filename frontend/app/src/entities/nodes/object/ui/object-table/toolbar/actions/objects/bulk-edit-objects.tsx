@@ -44,6 +44,7 @@ export function BulkEditObjects({ selectedRows }: BulkEditObjectsProps) {
         </GroupPanelBody>
       </GroupCard>
 
+      {/* biome-ignore lint/nursery/noTailwindArbitraryValue: calc: positions the panel relative to its own parent's width, so the value is not a constant */}
       <GroupCard className="absolute bottom-0 left-[calc(100%+0.5rem)] w-100">
         <GroupPanelHeader>Set bulk changes</GroupPanelHeader>
         <GroupPanelBody>

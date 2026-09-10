@@ -15,8 +15,7 @@ from infrahub.services.component import InfrahubComponent
 from infrahub.worker import WORKER_IDENTITY
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
-
-from .conftest import find_logged_event
+from tests.helpers.log import find_logged_event
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase

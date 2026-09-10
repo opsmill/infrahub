@@ -14,10 +14,13 @@ if TYPE_CHECKING:
 class CountingInfrahubDatabase(InfrahubDatabase):
     """Database that records how many queries were executed, keyed by query name."""
 
-    def __init__(self, query_counts: Counter[str] | None = None, **kwargs: Any) -> None:
+    def __init__(
+        self, query_counts: Counter[str] | None = None, row_counts: Counter[str] | None = None, **kwargs: Any
+    ) -> None:
         super().__init__(**kwargs)
         # shared by reference so counts recorded by derived session/transaction instances land here
         self.query_counts: Counter[str] = query_counts if query_counts is not None else Counter()
+        self.row_counts: Counter[str] = row_counts if row_counts is not None else Counter()
 
     @classmethod
     def from_db(cls, db: InfrahubDatabase) -> CountingInfrahubDatabase:
@@ -33,13 +36,19 @@ class CountingInfrahubDatabase(InfrahubDatabase):
     def get_context(self) -> dict[str, Any]:
         ctx = super().get_context()
         ctx["query_counts"] = self.query_counts
+        ctx["row_counts"] = self.row_counts
         return ctx
 
     def count_for(self, name: str) -> int:
         return self.query_counts[name]
 
+    def rows_for(self, name: str) -> int:
+        """Number of rows the queries of that name returned, to catch a read that grows with the data."""
+        return self.row_counts[name]
+
     def reset_counts(self) -> None:
         self.query_counts.clear()
+        self.row_counts.clear()
 
     async def execute_query_with_metadata(
         self,
@@ -51,6 +60,8 @@ class CountingInfrahubDatabase(InfrahubDatabase):
         timeout_seconds: float | None = None,
     ) -> tuple[list[Record], dict[str, Any]]:
         self.query_counts[name] += 1
-        return await super().execute_query_with_metadata(
+        results, metadata = await super().execute_query_with_metadata(
             query=query, params=params, name=name, context=context, type=type, timeout_seconds=timeout_seconds
         )
+        self.row_counts[name] += len(results)
+        return results, metadata

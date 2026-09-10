@@ -76,7 +76,7 @@ When a proposed change includes commits to a linked Git repository, Infrahub reg
 
 Two repository-level rules also apply:
 
-- Editing a repository's `.infrahub.yml` regenerates the artifacts of every Transformation in that repository, because the manifest can change how any of them is built.
+- Editing a repository's `.infrahub.yml` does not by itself regenerate a Transformation whose dependency closure is complete. The manifest is not part of that closure, so a comment, a reformat, or an entry belonging to another definition regenerates no artifacts. What does regenerate is the change the edit makes to a definition: changing a Transformation's `template_path`, `file_path`, `class_name`, `convert_query_response`, or `watch.files`, or an artifact definition's `transformation`, `parameters`, `content_type`, `artifact_name`, or `targets`, is a change to the definition itself and regenerates its artifacts. Two cases still re-render on any manifest edit: a Transformation in one of the fallback states below, which re-renders on any file change in the repository, and one that names the manifest in its [`watch.files`](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch), which puts it back in the closure deliberately - spelled the way the repository spells the file, `.infrahub.yml` or `.infrahub.yaml`.
 - Read-only repositories follow the same rules as regular ones. Bumping a `CoreReadOnlyRepository` to a new pinned commit on the source branch regenerates the artifacts affected by that commit, even on branches where `sync_with_git` is disabled.
 
 #### Where to find the why trail
@@ -105,7 +105,7 @@ The task log explains each fallback and names the Transformation, so a broad reg
 
 Infrahub automatically runs Generators as part of the proposed change workflow, and applies the same precise regeneration that artifacts use. Each Generator's dependency closure - its own source file, plus any extra paths you declare with `watch.files` - is computed when the repository is imported and stored on the Generator definition. A file change re-runs a Generator's instances only when the changed file is in that Generator's closure. A change to the GraphQL query the Generator uses, or to the Generator definition itself, also triggers a re-run, and a data change on a node the query reads continues to run the Generator exactly as before.
 
-The two repository-level rules above apply to Generators as well: editing a repository's `.infrahub.yml` re-runs every Generator in that repository, and read-only repositories participate on the same terms - bumping a `CoreReadOnlyRepository` to a new pinned commit re-runs the Generators affected by that commit, even on branches where `sync_with_git` is disabled.
+The two repository-level rules above apply to Generators as well: editing a repository's `.infrahub.yml` re-runs only the Generators whose own definition the edit changed, and read-only repositories participate on the same terms - bumping a `CoreReadOnlyRepository` to a new pinned commit re-runs the Generators affected by that commit, even on branches where `sync_with_git` is disabled.
 
 The why trail covers Generators too. Each run or skip decision is recorded in the task log with the precise cause, in Generator-correct wording:
 

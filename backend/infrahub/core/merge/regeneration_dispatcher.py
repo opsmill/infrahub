@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import Counter
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
@@ -91,13 +90,6 @@ class PostMergeRegenerationDispatcher:
             return await self._full_regeneration(
                 context=context, target_branch=target_branch, reason=FullRegenerationReason.SUMMARY_UNAVAILABLE
             )
-
-        kind_counts = Counter(entry["kind"] for entry in diff_summary)
-        field_counts = Counter(element["name"] for entry in diff_summary for element in entry.get("elements", []))
-        self.log.debug(
-            f"SELECTIVE_REGEN merge-diff: nodes={len(diff_summary)} "
-            f"kinds={dict(kind_counts)} changed_fields={dict(field_counts)}"
-        )
 
         # A failure to build or dispatch the plan falls back to blanket regeneration rather than risk
         # leaving the merge under-regenerated. A single generator run failing is handled granularly in

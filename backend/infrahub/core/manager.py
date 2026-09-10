@@ -29,7 +29,7 @@ from infrahub.core.query.node import (
 )
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
-from infrahub.core.relationship import Relationship, RelationshipManager
+from infrahub.core.relationship import Relationship
 from infrahub.core.relationship.model import PeerWithRelationshipMetadata
 from infrahub.core.schema import (
     GenericSchema,
@@ -1202,6 +1202,37 @@ class NodeManager:
         return nodes
 
     @classmethod
+    async def prefetch_relationships(
+        cls,
+        db: InfrahubDatabase,
+        nodes: Iterable[Node],
+        names: set[str],
+        branch: Branch | str | None = None,
+        at: Timestamp | str | None = None,
+        include_metadata: MetadataOptions = MetadataOptions.NONE,
+        branch_agnostic: bool = False,
+    ) -> None:
+        """Read the named relationships of these nodes, and their peers, in a single query.
+
+        The relationships that are not named are left untouched, to be read on demand.
+        """
+        nodes_by_id = {node.get_id(): node for node in nodes}
+        if not nodes_by_id or not names:
+            return
+
+        await cls._enrich_node_dicts_with_relationships(
+            db=db,
+            branch=await registry.get_branch(branch=branch, db=db),
+            at=Timestamp(at),
+            nodes_by_id=nodes_by_id,
+            branch_agnostic=branch_agnostic,
+            include_metadata=include_metadata,
+            prefetch_relationships=True,
+            fields=None,
+            prefetch_relationship_names=names,
+        )
+
+    @classmethod
     async def _enrich_node_dicts_with_relationships(
         cls,
         db: InfrahubDatabase,
@@ -1212,35 +1243,34 @@ class NodeManager:
         include_metadata: MetadataOptions,
         prefetch_relationships: bool,
         fields: dict[str, Any] | None,
+        prefetch_relationship_names: set[str] | None = None,
     ) -> None:
         if not prefetch_relationships and not fields:
             return
         cardinality_one_identifiers_by_kind: dict[str, dict[str, RelationshipDirection]] | None = None
-        outbound_identifiers: set[str] | None = None
-        inbound_identifiers: set[str] | None = None
-        bidirectional_identifiers: set[str] | None = None
-        if not prefetch_relationships:
+        if prefetch_relationships:
+            # Only the relationships these schemas declare are kept below, so reading the peers of
+            # the other edges pointing at these nodes would be reading them to discard them.
+            identifiers_by_direction = _get_relationship_identifiers_by_direction(
+                nodes=nodes_by_id.values(), names=prefetch_relationship_names
+            )
+        else:
             cardinality_one_identifiers_by_kind = _get_cardinality_one_identifiers_by_kind(
                 nodes=nodes_by_id.values(), fields=fields or {}
             )
-            outbound_identifiers = set()
-            inbound_identifiers = set()
-            bidirectional_identifiers = set()
-            for identifier_direction_map in cardinality_one_identifiers_by_kind.values():
-                for identifier, direction in identifier_direction_map.items():
-                    if direction is RelationshipDirection.OUTBOUND:
-                        outbound_identifiers.add(identifier)
-                    elif direction is RelationshipDirection.INBOUND:
-                        inbound_identifiers.add(identifier)
-                    elif direction is RelationshipDirection.BIDIR:
-                        bidirectional_identifiers.add(identifier)
-
+            identifiers_by_direction = _group_identifiers_by_direction(
+                identifier_directions=(
+                    (identifier, direction)
+                    for identifier_direction_map in cardinality_one_identifiers_by_kind.values()
+                    for identifier, direction in identifier_direction_map.items()
+                )
+            )
         query = await NodeListGetRelationshipsQuery.init(
             db=db,
             ids=list(nodes_by_id.keys()),
-            outbound_identifiers=None if outbound_identifiers is None else list(outbound_identifiers),
-            inbound_identifiers=None if inbound_identifiers is None else list(inbound_identifiers),
-            bidirectional_identifiers=None if bidirectional_identifiers is None else list(bidirectional_identifiers),
+            outbound_identifiers=list(identifiers_by_direction[RelationshipDirection.OUTBOUND]),
+            inbound_identifiers=list(identifiers_by_direction[RelationshipDirection.INBOUND]),
+            bidirectional_identifiers=list(identifiers_by_direction[RelationshipDirection.BIDIR]),
             branch=branch,
             at=at,
             branch_agnostic=branch_agnostic,
@@ -1251,6 +1281,9 @@ class NodeManager:
         peer_ids = grouped_peer_nodes.get_all_peers()
         # there are no peers to enrich the nodes
         if not peer_ids:
+            if prefetch_relationships:
+                for node in nodes_by_id.values():
+                    node.mark_relationships_as_fetched(names=prefetch_relationship_names)
             return
 
         missing_peers: dict[str, Node] = {}
@@ -1273,6 +1306,7 @@ class NodeManager:
                 nodes_by_id=nodes_by_id | missing_peers,
                 cardinality_one_identifiers_by_kind=cardinality_one_identifiers_by_kind,
                 insert_peer_node=prefetch_relationships,
+                prefetch_relationship_names=prefetch_relationship_names,
             )
 
     @classmethod
@@ -1284,21 +1318,35 @@ class NodeManager:
         nodes_by_id: dict[str, Node],
         cardinality_one_identifiers_by_kind: dict[str, dict[str, RelationshipDirection]] | None,
         insert_peer_node: bool,
+        prefetch_relationship_names: set[str] | None = None,
     ) -> None:
         if not grouped_peer_nodes.has_node(node_id=node.get_id()):
+            if insert_peer_node:
+                node.mark_relationships_as_fetched(names=prefetch_relationship_names)
             return
 
         node_schema = node.get_schema()
         for rel_schema in node_schema.relationships:
+            if (
+                insert_peer_node
+                and prefetch_relationship_names is not None
+                and rel_schema.name not in prefetch_relationship_names
+            ):
+                # The query did not cover this relationship, leave it to be read on demand.
+                continue
             peer_ids = grouped_peer_nodes.get_peer_ids(
                 node_id=node.get_id(),
                 rel_name=rel_schema.get_identifier(),
                 direction=rel_schema.direction,
             )
+            rel_manager = node.get_relationship(rel_schema.name)
             if not peer_ids:
+                if insert_peer_node:
+                    # The batched query covered every relationship of this node, so an empty result
+                    # is authoritative and a later read does not need to ask the database again.
+                    rel_manager.has_fetched_relationships = True
                 continue
 
-            rel_manager: RelationshipManager = getattr(node, rel_schema.name)
             if insert_peer_node:
                 rel_peers: list[Node | str] = []
                 for peer_id in peer_ids:
@@ -1371,6 +1419,41 @@ class NodeManager:
             await node.delete(db=db, at=at, user_id=user_id)
 
         return nodes_to_delete
+
+
+def _group_identifiers_by_direction(
+    identifier_directions: Iterable[tuple[str, RelationshipDirection]],
+) -> dict[RelationshipDirection, set[str]]:
+    grouped: dict[RelationshipDirection, set[str]] = {
+        RelationshipDirection.OUTBOUND: set(),
+        RelationshipDirection.INBOUND: set(),
+        RelationshipDirection.BIDIR: set(),
+    }
+    for identifier, direction in identifier_directions:
+        grouped[direction].add(identifier)
+    return grouped
+
+
+def _get_relationship_identifiers_by_direction(
+    nodes: Iterable[Node], names: set[str] | None = None
+) -> dict[RelationshipDirection, set[str]]:
+    """Return the identifiers of the relationships the schemas of these nodes declare, per direction.
+
+    `names` restricts the result to the relationships bearing one of these names.
+    """
+    seen_kinds: set[str] = set()
+    identifier_directions: list[tuple[str, RelationshipDirection]] = []
+    for node in nodes:
+        node_schema = node.get_schema()
+        if not node_schema or node_schema.kind in seen_kinds:
+            continue
+        seen_kinds.add(node_schema.kind)
+        identifier_directions.extend(
+            (rel_schema.get_identifier(), rel_schema.direction)
+            for rel_schema in node_schema.relationships
+            if names is None or rel_schema.name in names
+        )
+    return _group_identifiers_by_direction(identifier_directions=identifier_directions)
 
 
 def _get_cardinality_one_identifiers_by_kind(

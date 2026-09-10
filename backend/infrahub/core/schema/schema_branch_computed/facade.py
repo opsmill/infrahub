@@ -23,6 +23,7 @@ from infrahub.core.schema.schema_branch_computed.python_transform import PythonD
 
 if TYPE_CHECKING:
     from infrahub.core.schema import NodeSchema, SchemaAttributePath
+    from infrahub.core.schema.computed_attribute import ComputedAttribute
 
 
 class ComputedAttributes:
@@ -51,6 +52,9 @@ class ComputedAttributes:
 
     def get_python_attributes_per_node(self) -> dict[str, list[AttributeSchema]]:
         return self._python.get_attributes_per_node()
+
+    def get_python_transform_attribute(self, node_kind: str, name: str) -> ComputedAttribute | None:
+        return self._python.get_transform_attribute(node_kind, name)
 
     @property
     def python_attributes_by_transform(self) -> dict[str, list[PythonDefinition]]:

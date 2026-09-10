@@ -128,7 +128,7 @@ export function PathResultsList({
                       >
                         {getItemTitle(path, index)}
                       </span>
-                      <span className="shrink-0 rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] text-subtle-muted dark:bg-white/10">
+                      <span className="shrink-0 rounded-full bg-gray-200 px-1.5 py-0.5 text-subtle-muted text-xxs dark:bg-white/10">
                         {path.depth} hop{path.depth !== 1 ? "s" : ""}
                       </span>
                     </div>
@@ -147,16 +147,14 @@ export function PathResultsList({
                     )}
                   </div>
                   {subtitle && !isExpanded && (
-                    <div className="truncate px-3 pb-2 text-[10px] text-subtle-muted">
-                      {subtitle}
-                    </div>
+                    <div className="truncate px-3 pb-2 text-subtle-muted text-xxs">{subtitle}</div>
                   )}
                   {isExpanded && (
                     <ul className="space-y-1 px-3 pb-2">
                       {path.hops.map((hop, hopIndex) => (
                         <li
                           key={`${hop.node.id}-${hopIndex}`}
-                          className="flex items-center gap-2 text-[11px] text-subtle"
+                          className="flex items-center gap-2 text-subtle text-xxs"
                         >
                           <span
                             className="size-1.5 shrink-0 rounded-full"

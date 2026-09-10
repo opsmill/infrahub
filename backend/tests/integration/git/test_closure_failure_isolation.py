@@ -95,7 +95,6 @@ class TestClosureFailureIsolation(TestInfrahubApp):
         well_formed = transforms["well_formed_report"]
         assert well_formed.dependencies_complete.value is True
         assert set(well_formed.dependencies.value) == {
-            ".infrahub.yml",
             "templates/partial.j2",
             "templates/report.j2",
         }

@@ -318,7 +318,7 @@ Use `pytest.mark.skip` with a reason that names the cause (the equivalent of the
 `test.fixme`):
 
 ```python
-@pytest.mark.skip(reason="flaky upstream ordering, see #1234")
+@pytest.mark.skip(reason="flaky upstream ordering in the list view")
 async def test_broken(self, admin_page: Page) -> None: ...
 ```
 

@@ -10,7 +10,7 @@ Applies when creating a new backend component or making significant changes to a
 
 ## Use modular components with dependency injection
 
-New logic lives in components that receive their collaborators through constructor injection rather than instantiating them internally, which keeps them composable, swappable, and testable without patching. Every collaborator is a **required** parameter — not `collaborator: Collaborator | None = None` with an internal default, which hides that the dependency exists and lets a caller silently skip wiring it.
+New logic lives in components that receive their collaborators through constructor injection rather than instantiating them internally, which keeps them composable, swappable, and testable without patching. A dataclass is data — inputs and outputs of functions; the moment it needs a collaborator to do work, it is a component: make it a plain class with the collaborator injected at construction. Every collaborator is a **required** parameter — not `collaborator: Collaborator | None = None` with an internal default, which hides that the dependency exists and lets a caller silently skip wiring it.
 
 The single exception is editing existing code where adding a required parameter would force a large change across many call sites. There, an optional parameter is a transitional compromise to keep the change small - not the target shape for new components.
 

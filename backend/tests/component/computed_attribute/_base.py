@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, AsyncGenerator, ClassVar, Generator
+from typing import TYPE_CHECKING, Any, AsyncGenerator, ClassVar
 
 import pytest
 
-from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
@@ -17,10 +16,9 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  used in dataclass field
 from infrahub.server import app
-from infrahub.workers.dependencies import build_workflow
 from tests.adapters.workflow import WorkflowRecorder
-from tests.helpers.task_manager import setup_task_manager_once
-from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
+from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
     from fast_depends import Provider
@@ -30,6 +28,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.events.models import EventContext
     from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
     from infrahub.workflows.models import WorkflowDefinition
 
 
@@ -125,7 +124,7 @@ class ScopedRecomputeCase:
     expected_submitted: set[str]
 
 
-class ScopedRecomputeTestBase(TestInfrahubAppBase):
+class ScopedRecomputeTestBase(TestInfrahubAppWithoutLocalWorkflow):
     """Fixtures and helpers shared by the Jinja2 and Python scoped recompute tests.
 
     Subclasses set ``WORKFLOW`` to the recompute trigger workflow whose submissions
@@ -137,19 +136,14 @@ class ScopedRecomputeTestBase(TestInfrahubAppBase):
     @pytest.fixture(scope="class", autouse=True)
     async def workflow_recorder(
         self,
-        prefect: Generator[str, None, None],
+        service: InfrahubServices,
         dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
-        original = config.OVERRIDE.workflow
-        recorder = WorkflowRecorder()
-        await setup_task_manager_once()
-        config.OVERRIDE.workflow = recorder
-        with dependency_provider.scope(build_workflow, lambda: recorder):
+        with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
             yield recorder
-        config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: Any) -> InfrahubServices:
+    async def service(self, workflow_local: WorkflowLocalExecution, test_client: Any) -> InfrahubServices:
         return app.state.service
 
     @pytest.fixture(autouse=True)

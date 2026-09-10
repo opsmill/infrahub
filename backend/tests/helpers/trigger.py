@@ -34,11 +34,8 @@ def _node_updated_event(kind: str, field: str, branch_name: str) -> NodeUpdatedE
 def _automation_covers_event(trigger_definition: TriggerDefinition, event: InfrahubEvent) -> bool:
     """Report whether the automation built from this definition selects the event.
 
-    The verdict comes from `EventTrigger.covers_resources`, which is what the task manager calls
-    to route an event to an automation, so the assertion is about the filter we generate and not
-    about Prefect. The shape of a generated filter says nothing about the events it selects.
-
-    This does tie the test to a server-side signature, which a Prefect upgrade could move.
+    Uses `EventTrigger.covers_resources`, the entry point the task manager calls to route an
+    event to an automation, so this tracks a server-side signature that an upgrade could move.
     """
     server_trigger = PrefectServerEventTrigger.model_validate(trigger_definition.trigger.get_prefect().model_dump())
     return server_trigger.covers_resources(

@@ -28,11 +28,14 @@ COMPONENT_TEST_DIRECTORY = f"{MAIN_DIRECTORY}/tests/component"
 # Directories listed here are run by their named shard; everything else falls into the
 # "other" catch-all shard, which ignores exactly the directories assigned below so new
 # test directories are picked up automatically. The partition is verified by
-# backend.validate-component-shards. Shard contents are sized from measured durations,
-# rebalance when they drift apart.
+# backend.validate-component-shards.
+#
+# Shard names are labels, not a taxonomy: contents are balanced from measured CI
+# durations so the jobs finish together, which is why suites unrelated to a shard's
+# name sit in it. The catch-all is the one that grows; rebalance when it pulls ahead.
 COMPONENT_TEST_SHARDS: dict[str, list[str]] = {
     "graphql": ["graphql"],
-    "core-diff": ["core/diff", "core/migrations", "core/changelog"],
+    "core-diff": ["core/diff", "core/migrations", "core/changelog", "merge_recompute_coalescing"],
     "core-schema": [
         "core/schema",
         "core/schema_manager",
@@ -44,6 +47,8 @@ COMPONENT_TEST_SHARDS: dict[str, list[str]] = {
         "core/node",
         "core/hierarchy",
         "core/graph",
+        "api",
+        "computed_attribute",
     ],
 }
 COMPONENT_TEST_CATCHALL_SHARD = "other"
@@ -67,6 +72,40 @@ def _component_shard_targets(shard: str) -> str:
         valid_shards = ", ".join([*COMPONENT_TEST_SHARDS, COMPONENT_TEST_CATCHALL_SHARD])
         raise ValueError(f"Unknown component test shard '{shard}', expected one of: {valid_shards}")
     return " ".join(f"{COMPONENT_TEST_DIRECTORY}/{path}" for path in COMPONENT_TEST_SHARDS[shard])
+
+
+INTEGRATION_TEST_DIRECTORY = f"{MAIN_DIRECTORY}/tests/integration"
+
+# Integration test shards run by CI in parallel jobs (see backend-tests-integration).
+# Directories listed here run under their named shard; everything else falls into the
+# catch-all shard, which ignores exactly the directories assigned below so new test
+# directories are picked up automatically. The partition is verified by
+# backend.validate-integration-shards. Shard contents are sized from measured durations,
+# rebalance when they drift apart.
+INTEGRATION_TEST_SHARDS: dict[str, list[str]] = {
+    "a": ["schema_lifecycle", "git"],
+}
+INTEGRATION_TEST_CATCHALL_SHARD = "b"
+
+
+def _integration_shard_targets(shard: str) -> str:
+    """Build the pytest path arguments for an integration test shard.
+
+    The catch-all shard must be expressed with --ignore flags only: pytest drops an
+    explicit child path when an ancestor path is also passed positionally.
+
+    Raises:
+        ValueError: If the shard name is unknown.
+
+    """
+    if shard == INTEGRATION_TEST_CATCHALL_SHARD:
+        ignored = [path for paths in INTEGRATION_TEST_SHARDS.values() for path in paths]
+        ignore_args = " ".join(f"--ignore={INTEGRATION_TEST_DIRECTORY}/{path}" for path in ignored)
+        return f"{INTEGRATION_TEST_DIRECTORY} {ignore_args}"
+    if shard not in INTEGRATION_TEST_SHARDS:
+        valid_shards = ", ".join([*INTEGRATION_TEST_SHARDS, INTEGRATION_TEST_CATCHALL_SHARD])
+        raise ValueError(f"Unknown integration test shard '{shard}', expected one of: {valid_shards}")
+    return " ".join(f"{INTEGRATION_TEST_DIRECTORY}/{path}" for path in INTEGRATION_TEST_SHARDS[shard])
 
 
 # ----------------------------------------------------------------------------
@@ -212,14 +251,56 @@ def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | N
 
 
 @task(optional=["database"])
-def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
-    """Run backend integration tests."""
+def test_integration(context: Context, database: str = INFRAHUB_DATABASE, shard: str | None = None) -> Result | None:
+    """Run backend integration tests, optionally restricted to a single shard."""
+    targets = _integration_shard_targets(shard) if shard else INTEGRATION_TEST_DIRECTORY
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {targets}"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd=}")
         return execute_command(context=context, command=f"{exec_cmd}")
+
+
+@task
+def validate_integration_shards(context: Context) -> None:
+    """Verify that the integration test shards cover the full integration test suite exactly once.
+
+    Raises:
+        RuntimeError: If test collection fails or the shards do not partition the full suite.
+
+    """
+
+    def collect(targets: str) -> list[str]:
+        result = execute_command(
+            context=context,
+            command=f"uv run pytest --collect-only -qq -p no:cacheprovider --neo4j {targets}",
+            hide=True,
+        )
+        if result is None:
+            raise RuntimeError(f"Failed to collect tests for: {targets}")
+        return [line for line in result.stdout.splitlines() if line.startswith(f"{INTEGRATION_TEST_DIRECTORY}/")]
+
+    with context.cd(ESCAPED_REPO_PATH):
+        full_suite = sorted(collect(INTEGRATION_TEST_DIRECTORY))
+        all_shards = [*INTEGRATION_TEST_SHARDS, INTEGRATION_TEST_CATCHALL_SHARD]
+        sharded = sorted(test for shard in all_shards for test in collect(_integration_shard_targets(shard)))
+
+    if full_suite != sharded:
+        full_set = set(full_suite)
+        shard_set = set(sharded)
+        missing = sorted(full_set - shard_set)
+        duplicated = sorted({test for test in sharded if sharded.count(test) > 1} | (shard_set - full_set))
+        msg = f"Integration test shards do not match the full suite ({len(sharded)} vs {len(full_suite)} tests)."
+        if missing:
+            msg += f"\nMissing from all shards ({len(missing)}): " + ", ".join(missing[:10])
+        if duplicated:
+            msg += f"\nCollected more than once ({len(duplicated)}): " + ", ".join(duplicated[:10])
+        raise RuntimeError(msg)
+
+    print(
+        f" - [{NAMESPACE}] Integration test shards are consistent ({len(full_suite)} tests across {len(all_shards)} shards)"
+    )
 
 
 @task(optional=["database"])
@@ -1319,14 +1400,60 @@ def _generate_protocols(context: Context) -> None:
     execute_command(context=context, command=f"ruff check --fix {protocols_output}")
 
     # Export protocols for Python SDK code use
-    generated = f"{REPO_BASE}/python_sdk/infrahub_sdk"
-    template = env.get_template("generate_protocols_sdk.j2")
-
-    protocols_rendered = template.render(
-        generics=_sort_and_filter_models(core_models["generics"]), models=_sort_and_filter_models(core_models["nodes"])
-    )
-    protocols_output = f"{generated}/protocols.py"
-    Path(protocols_output).write_text(protocols_rendered, encoding="utf-8")
+    protocols_output = f"{REPO_BASE}/python_sdk/infrahub_sdk/protocols.py"
+    Path(protocols_output).write_text(_render_sdk_protocols(), encoding="utf-8")
 
     execute_command(context=context, command=f"ruff format {protocols_output}")
     execute_command(context=context, command=f"ruff check --fix {protocols_output}")
+
+
+def _render_sdk_protocols() -> str:
+    """Render the protocols the SDK ships, using the SDK's own generator."""
+    from typing import assert_never
+
+    from infrahub_sdk.protocols_generator.generator import CodeGenerator
+    from infrahub_sdk.protocols_generator.target import ProtocolTarget
+    from infrahub_sdk.schema import (
+        GenericSchemaAPI,
+        MainSchemaTypesAll,
+        NodeSchemaAPI,
+        ProfileSchemaAPI,
+        TemplateSchemaAPI,
+    )
+
+    from infrahub import config
+    from infrahub.core.schema import (
+        GenericSchema,
+        NodeSchema,
+        ProfileSchema,
+        SchemaRoot,
+        TemplateSchema,
+        core_models,
+        internal_schema,
+    )
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.schema.read_schema import build_read_schema
+
+    # Processing a schema branch reads the settings, so they have to be loaded even though
+    # generation never reaches a database.
+    config.load_and_exit()
+
+    schema_branch = SchemaBranch(cache={}, name="default")
+    schema_branch.load_schema(schema=SchemaRoot(**internal_schema).merge(schema=SchemaRoot(**core_models)))
+    schema_branch.process()
+
+    schema: dict[str, MainSchemaTypesAll] = {}
+    for kind, node in schema_branch.get_all(include_internal=False).items():
+        match node:
+            case ProfileSchema():
+                schema[kind] = build_read_schema(model=ProfileSchemaAPI, schema=node)
+            case TemplateSchema():
+                schema[kind] = build_read_schema(model=TemplateSchemaAPI, schema=node)
+            case GenericSchema():
+                schema[kind] = build_read_schema(model=GenericSchemaAPI, schema=node)
+            case NodeSchema():
+                schema[kind] = build_read_schema(model=NodeSchemaAPI, schema=node)
+            case _:
+                assert_never(node)
+
+    return CodeGenerator(schema=schema, target=ProtocolTarget.SDK_CORE).render()

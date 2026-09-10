@@ -41,7 +41,7 @@ core_repository = NodeSchema(
         Attr(
             name="default_branch",
             kind="Text",
-            description="Default branch name in the Git repository",
+            description="Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch.",
             default_value="main",
             order_weight=6000,
         ),

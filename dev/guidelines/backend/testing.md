@@ -291,33 +291,43 @@ hook attachable. If you need to verify a side effect happened, assert against th
 changed — e.g. read the fake cache/store the method wrote to — rather than trusting a return value
 added for that purpose.
 
-To verify *wiring* — the right decorator applied, a convention held across a module — parse the
-source instead of instrumenting it: an `ast.parse(inspect.getsource(module))` test reads decorator
-names and arguments off the tree with zero production hooks.
-`backend/tests/unit/workflows/test_flow_session_convention.py` is the house example. Behavioral
-coverage (does the decorator retry?) belongs on the decorator's own tests; the wiring test only
-proves it is attached.
+To verify *wiring* — a convention held across a module, the right decorator applied — parse the
+source instead of instrumenting it. `ast.parse` over `inspect.getsource`/`inspect.getsourcelines`
+reads the shape off the tree with zero production hooks:
+`backend/tests/unit/workflows/test_flow_session_convention.py` walks each registered flow's own
+source for `service.database` session-opening calls, and the same technique reads decorator names
+and arguments off a module tree. Behavioral coverage (does the decorator retry?) belongs on the
+decorator's own tests; the wiring test only proves it is attached.
 
 ```python
 # ❌ Bad - return value exists only so the test can assert on it
 class StaleEntryCleaner:
+    def __init__(self, cache: InfrahubCache) -> None:
+        self._cache = cache
+
     async def clear_expired(self) -> list[str]:
-        deleted = [key async for key in self._sweep()]
-        return deleted
+        deleted = await self._cache.list_keys(filter_pattern="stale:*")
+        for key in deleted:
+            await self._cache.delete(key)
+        return deleted          # nothing in production reads this
 
 # ✅ Good - no return; the test asserts against the fake store it wrote to
 class StaleEntryCleaner:
-    def __init__(self, cache: MemoryCache) -> None:
+    def __init__(self, cache: InfrahubCache) -> None:
         self._cache = cache
 
     async def clear_expired(self) -> None:
-        async for key in self._sweep():
-            ...
+        for key in await self._cache.list_keys(filter_pattern="stale:*"):
+            await self._cache.delete(key)
 
-async def test_clears_expired_entries(cache: MemoryCache) -> None:
+async def test_clears_expired_entries() -> None:
+    cache = MemoryCache()
+    await cache.set(key="stale:1", value="value")
     cleaner = StaleEntryCleaner(cache=cache)
+
     await cleaner.clear_expired()
-    assert cache.storage == {}
+
+    assert cache.storage == {}   # seeded above, so an empty store is a real transition
 ```
 
 ### Acceptable exceptions
@@ -368,25 +378,21 @@ In integration-tier tests the clock cannot be injected — a consumer or worker 
 wall-clock time to act. Never guess that duration with a fixed `asyncio.sleep(n)` before
 asserting: on a loaded CI runner the test flakes, and on a fast machine it wastes the time. Poll
 the expected state in a small loop with a deadline, so the test waits exactly as long as the
-outcome takes and fails with a timeout when it never arrives.
+outcome takes and fails with a timeout when it never arrives. Poll for the exact state the
+assertion will check — the specific log line, the exact count — not for mere arrival: a loop that
+exits as soon as anything shows up hands an unrelated first event to the assertion and the test
+fails (or passes) spuriously.
 
 ## Exception Testing
 
 When testing that code raises an exception, use the `match` parameter of `pytest.raises` to validate the error message:
 
 ```python
-# Good - use match parameter for message validation
 with pytest.raises(PoolExhaustedError, match=r"no more addresses available"):
     allocate_from_pool(pool_id=exhausted_pool.id)
-
-# Bad - manual assertion on exception message
-with pytest.raises(PoolExhaustedError) as exc_info:
-    allocate_from_pool(pool_id=exhausted_pool.id)
-
-assert "no more addresses available" in exc_info.value.message
 ```
 
-The `match` parameter accepts a regular expression pattern and is more concise. Use `r"..."` raw strings to avoid escaping issues.
+The `match` parameter accepts a regular expression pattern and is more concise than a manual assertion on `exc_info.value.message`. Use `r"..."` raw strings to avoid escaping issues.
 
 ## GraphQL Result Assertions
 

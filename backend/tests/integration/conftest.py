@@ -1,4 +1,7 @@
 import asyncio
+import contextlib
+import ctypes
+import gc
 import os
 from pathlib import Path
 from typing import Any, Generator
@@ -28,6 +31,22 @@ from tests.helpers.constants import (
 )
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.utils import find_available_prefect_port
+
+
+@pytest.fixture(scope="class", autouse=True)
+def _collect_cyclic_garbage() -> Generator[None, None, None]:
+    """Collect reference cycles and return freed pages to the OS after each test class.
+
+    The async neo4j driver and the query machinery create cyclic garbage faster than the
+    default gen-2 GC cadence collects it; on a large heap hundreds of MB of dead objects
+    can sit between collections. Collecting alone is not enough: freed pages stay in the
+    allocator, so worker RSS ratchets to its high-water mark, which caps how many xdist
+    workers fit on a host. malloc_trim hands the freed pages back to the OS.
+    """
+    yield
+    gc.collect()
+    with contextlib.suppress(OSError):  # non-glibc platform
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
 
 
 @pytest.fixture(scope="session")

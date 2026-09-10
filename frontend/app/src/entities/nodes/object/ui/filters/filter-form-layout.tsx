@@ -29,6 +29,7 @@ export function FilterFormLayout({
   label,
 }: FilterFormLayoutProps) {
   return (
+    // biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: inherit is a CSS keyword, not a scale value
     <Col className="max-h-[inherit] overflow-hidden p-2">
       <Row className="shrink-0 gap-0">
         <span className="font-semibold text-sm">{label}</span>

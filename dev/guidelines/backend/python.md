@@ -188,32 +188,13 @@ branch_data = BranchCreateInput(name="feature-x")
 
 ### Use dict.get() for Default Values
 
-Prefer `dict.get(key, default)` over an existence check or `try/except` when reading a key that may be missing. It is more concise and avoids the cost of raising and catching `KeyError`:
+Read a possibly-missing key with `dict.get(key, default)`, not an `in` check or `try/except KeyError`:
 
 ```python
-config: dict[str, int] = {"timeout": 30}
-
-# ❌ Bad - verbose existence check
-if "retries" in config:
-    retries = config["retries"]
-else:
-    retries = 3
-
-# ❌ Bad - exception handling for an expected-missing key
-try:
-    retries = config["retries"]
-except KeyError:
-    retries = 3
-
-# ✅ Good - get() with an explicit default
 retries = config.get("retries", 3)
 ```
 
-Guidelines:
-
-- `get()` without a second argument returns `None` for missing keys.
-- Chain for nested access: `config.get("db", {}).get("host", "localhost")`.
-- Use `setdefault()` when the default is a mutable object you intend to build up: `cache.setdefault("results", []).append(42)`.
+Without a second argument `get()` returns `None`. Use `setdefault()` when the default is a mutable object you build up: `cache.setdefault("results", []).append(42)`.
 
 ## Configuration Settings
 
@@ -336,6 +317,35 @@ origin: NodeMutationOrigin | None = None
 
 The annotation alone does not reject a bad value at runtime — a validation layer enforces it (a Pydantic model, or an explicit `NodeMutationOrigin(value)` conversion at the boundary for plain dataclasses/adapters). For a value exposed over GraphQL, reuse the existing Python-enum → GraphQL-enum conversion rather than re-declaring the values as strings in the GraphQL layer.
 
+The same applies on the read side: where an enum exists, branch on the member (`if rel.cardinality == RelationshipCardinality.MANY`), never on its string value — a comparison or query literal that hardcodes the value drifts silently when the enum changes.
+
+### A struct of mode flags is a union of dataclasses
+
+When a class carries several booleans of which most combinations are invalid (one flag excludes the others, two only make sense together), name the legal states instead: model each legal case as its own small dataclass and type the value as their union. Invalid combinations become unrepresentable, each case carries a name, and a `match` over the union replaces flag-order-sensitive `if` chains.
+
+```python
+# ❌ Bad - widen=True silently makes the other flags meaningless
+@dataclass
+class _Selection:
+    widen: bool = False
+    self_ids: bool = False
+    reader_lookup: bool = False
+
+# ✅ Good - each legal case is a type; invalid mixes cannot be built
+@dataclass(frozen=True)
+class Widen: ...
+
+@dataclass(frozen=True)
+class SelfTarget:
+    ids: list[str]
+
+@dataclass(frozen=True)
+class ReaderLookup:
+    reader_kind: str
+
+Selection = Widen | SelfTarget | ReaderLookup
+```
+
 ### Do not narrow a type in an override (Liskov / `ty`)
 
 An override may not make a parameter type *narrower* (or a return type *wider*) than the base declaration — `ty` rejects it as a Liskov violation. When an abstract method and its implementations must accept a union, declare the full shared type on the abstract **and** on every implementation; do not tighten one adapter.
@@ -355,9 +365,15 @@ async def set(self, key: str, value: str, expires: KVTTL | int | None = None) ->
 
 To branch on or read from a typed object, use `isinstance` so the type checker can narrow it; reaching for `getattr(obj, "attr", default)` defeats type analysis. When guarding a schema object, cover the whole family that carries the attribute — `isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema))` — since profiles and templates inherit node behavior and a `NodeSchema`-only check silently drops them.
 
-### Don't write "one or many" unions — take `Sequence[T]` and let callers wrap
+The same goes for named accessors: read a relationship manager with `node.get_relationship(name)`, not `getattr(node, name)` — the accessor is typed and greppable, and `getattr` hides the read from both. When the field is optional, use the raising accessor instead of coercing: `str(rel_schema.identifier)` turns a missing identifier into the literal string `"None"`, which then matches nothing downstream — `rel_schema.get_identifier()` raises at the fault instead.
 
-A parameter typed `T | Sequence[T]` forces runtime `isinstance` dispatch on every consumer, and when `T` includes `str` the dispatch is a trap: a bare string satisfies `Sequence[str]`, so it falls into the "many" branch and gets iterated character-by-character. Declare the plural form only — `Sequence[str]` (or `list[str]`) — and have callers pass `[value]`. In existing code that already carries such a union, exclude `str` before the `Sequence` check (`if isinstance(data, str) or not isinstance(data, Sequence): data = [data]`), and whenever an annotation widens, widen the runtime check in step and test with a bare `str` and a `tuple`.
+### Don't write "one or many" unions — take the plural form and let callers wrap
+
+A parameter typed `T | Sequence[T]` forces runtime `isinstance` dispatch on every consumer, and when `T` includes `str` the dispatch is a trap: a bare string satisfies `Sequence[str]`, so it falls into the "many" branch and gets iterated character-by-character. Declare the plural form only — `list[str]` or `tuple[str]` — and have callers pass `[value]`.
+Prefer a concrete container over `Sequence[str]` when the element type is or includes `str`: mypy
+rejects a bare `str` for `list[str]`, but accepts it for `Sequence[str]`, so the annotation alone
+still lets the character-iteration bug through. Reserve `Sequence[T]` for a parameter that
+deliberately accepts any sequence of a non-string `T`. In existing code that already carries such a union, exclude `str` before the `Sequence` check (`if isinstance(data, str) or not isinstance(data, Sequence): data = [data]`), and whenever an annotation widens, widen the runtime check in step and test with a bare `str` and a `tuple`.
 
 ### Deterministic serialization for hashes and cache keys
 
@@ -394,31 +410,9 @@ if any(path == excluded or path.startswith(f"{excluded}/") for excluded in exclu
 
 The `python_testcontainers` package supports Python 3.10+, while the main backend requires Python 3.12+. When writing code that may be shared or used in `python_testcontainers`, be mindful of version-specific features.
 
-### datetime.UTC (Python 3.11+)
+### Version-specific features
 
-The `datetime.UTC` constant was introduced in Python 3.11. For Python 3.10 compatibility, use `timezone.utc` instead:
-
-```python
-# ❌ Bad - Python 3.11+ only
-from datetime import UTC, datetime
-now = datetime.now(UTC)
-
-# ✅ Good - Works in Python 3.10+
-from datetime import datetime, timezone
-now = datetime.now(timezone.utc)
-```
-
-### Other Version-Specific Features
-
-When using newer Python features, verify they're available in the minimum supported version:
-
-| Feature | Minimum Version |
-|---------|-----------------|
-| `datetime.UTC` | 3.11 |
-| `str \| None` union syntax | 3.10 |
-| `list[Type]` generic syntax | 3.9 |
-| `match` statements | 3.10 |
-| `Self` type hint | 3.11 (use `typing_extensions.Self` for 3.10) |
+The backend targets modern Python, but code shared with `python_testcontainers` must run on 3.10: there, avoid `datetime.UTC` (use `datetime.now(timezone.utc)`), and import `Self` from `typing_extensions`.
 
 ## Function Call Style
 

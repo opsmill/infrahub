@@ -45,9 +45,9 @@ export function RelationshipNodeDisplay({ node }: { node: NodeCore }) {
   if (!schema) return `Schema for ${node.__typename} not found`;
 
   return (
-    <LinkPill href={getObjectDetailsUrl(node.__typename, node.id)} className="truncate">
-      <Icon icon={getSchemaIcon(schema)} className="text-accent" />
-      {getNodeLabel(node)}
+    <LinkPill href={getObjectDetailsUrl(node.__typename, node.id)} className="min-w-0 shrink">
+      <Icon icon={getSchemaIcon(schema)} className="shrink-0 text-accent" />
+      <span className="truncate">{getNodeLabel(node)}</span>
     </LinkPill>
   );
 }

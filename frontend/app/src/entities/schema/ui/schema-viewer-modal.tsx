@@ -32,6 +32,7 @@ export function SchemaViewerModal({
             targetField={targetField}
             onKindClick={setNestedKind}
             onClose={close}
+            // biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: inherit is a CSS keyword, not a scale value
             className="rounded-[inherit] border-0 p-3"
           />
 

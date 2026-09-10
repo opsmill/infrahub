@@ -108,6 +108,7 @@ const TopLevelMenuItem: React.FC<{
       <DropdownMenuContent
         side="left"
         align="start"
+        // biome-ignore lint/nursery/noTailwindArbitraryValue: calc: derived from the viewport minus this menu's own chrome; a fixed token would not track it
         className="max-h-[calc(100vh-7rem)] min-w-60 overflow-auto"
       >
         {item.children.map((child) => (

@@ -18,15 +18,15 @@ and never a hardcoded pattern.
 - **Need a date *string* in code → `useFormatDate()`** (`shared/context/date-preferences-context.tsx`):
   `const { formatDate } = useFormatDate();` then `formatDate(date, variant?)` with
   `variant ∈ "datetime" (default) | "date" | "relative"`.
-- **Previewing preferences that are not the active ones → `formatWithPreferences()`** (same
-  module): the hook's underlying pure function, for the rare caller that must render against an
-  explicit `{ pattern, timezone }` pair — e.g. the preferences forms' "Example:", which previews the
-  unsaved form values. Anything rendering against the *viewer's* preferences uses the hook, never this.
-- **Rendering against preferences that are *not* the viewer's active ones → `formatWithPreferences`**
-  (same module, backs the hook). Only the preferences editor needs this: its "Example:" preview and
-  source tooltip must render the pattern *and zone* currently held in the form, including unsaved
-  edits, so the preview matches what the timestamps will become. An editor of the org-wide default
-  must not reach for the hook — that would preview everyone's default in the admin's own zone.
+- **Previewing preferences that are not the viewer's active ones → `formatWithPreferences()`** (same
+  module, backs the hook): the pure function, for the rare caller that must render against an
+  explicit `{ pattern, timezone }` pair. Only the preferences forms need it, and only for their
+  "Example:" line, which renders the values the form currently holds — including unsaved edits, and
+  the inherited layer for a field left empty — so it shows what the timestamps become on save. The
+  source tooltip beside it renders **no** sample: it names the format by its label, which keeps it
+  independent of the form's timezone field. Anything rendering against the viewer's active
+  preferences uses the hook, never this. An editor of the org-wide default must not reach for the
+  hook — that would preview everyone's default in the admin's own zone.
 
 ## How it's wired (feature-sliced-design safe)
 

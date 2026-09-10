@@ -93,11 +93,6 @@ class ProposedChangeRepository(BaseModel):
         return bool(self.files_added + self.files_changed + self.files_removed)
 
 
-class ProposedChangeSubscriber(BaseModel):
-    subscriber_id: str
-    kind: str
-
-
 class ProposedChangeArtifactDefinition(BaseModel):
     definition_id: str
     definition_name: str

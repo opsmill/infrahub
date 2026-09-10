@@ -100,6 +100,8 @@ InfrahubEventService.send(event)
                    └──► emit_event() → Prefect Automations
 ```
 
+For example, `BranchDeletedEvent` drives the `branch-deleted-purge-tasks-trigger` automation, which runs the `branch-purge-tasks` flow to delete the deleted branch's settled flow runs so their completed tasks no longer surface on a same-named recreation (see [Asynchronous Tasks](async-tasks.md)).
+
 ## Trigger action parameters
 
 A trigger definition's `ExecuteWorkflow` action passes parameters to the target deployment. Each parameter value is a Jinja template that Prefect renders server-side, against the triggering event, when the automation fires.
@@ -165,6 +167,15 @@ The `EventMeta` class provides rich context:
 - **origin**: For node mutation events, how the mutation was produced (`live`, `merge`, `rebase`, `recompute`), defaulting to `live`. The recompute triggers for computed attributes, display labels, and human-friendly ids match only `live`, so a merge, rebase, or recompute write does not re-trigger their per-node flows. See [merge-recompute.md](merge-recompute.md).
 
 Use `EventMeta.from_parent()` to create child events that maintain hierarchy.
+
+## Scoping branch for webhook matching
+
+Webhook branch scoping matches an event against `meta.context.branch` (see [Webhooks](webhooks.md)). Not every branch-agnostic event overrides the caller's context, so the scoping branch is set per event:
+
+- Proposed change merge and review events (merged, approved, rejected, and the approval/rejection revoke variants) are stamped to the default branch, so scoping is independent of the branch the mutation ran on.
+- `branch.merged` is stamped to the default branch as well, since the merge lands there. Its payload still carries the merged branch in `branch_name` / `branch_id`; only the scoping branch is the default one.
+- `branch.created` and `branch.deleted` are stamped to the global branch, pending a general rule for branch-agnostic node events.
+- `branch.rebased` and `branch.migrated` inherit the caller's context branch; they are not overridden.
 
 ## Querying Events
 

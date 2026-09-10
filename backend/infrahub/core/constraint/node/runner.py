@@ -42,6 +42,6 @@ class NodeConstraintRunner:
                 if effective_filters and relationship_name not in effective_filters:
                     continue
                 relationship_manager: RelationshipManager = getattr(node, relationship_name)
-                await relationship_manager.fetch_relationship_ids(db=db, force_refresh=True)
+                await relationship_manager.refresh_update_details(db=db)
                 for relationship_constraint in self.relationship_manager_constraints:
                     await relationship_constraint.check(relm=relationship_manager, node_schema=node_schema, node=node)

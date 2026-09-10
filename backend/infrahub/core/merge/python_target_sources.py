@@ -1,0 +1,129 @@
+"""Database and client sources behind the Python transform target resolver."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from infrahub import config
+from infrahub.computed_attribute.gather import gather_python_transform_attributes
+from infrahub.computed_attribute.read_sets import transform_read_set_from_query_report
+from infrahub.core.query_group.subscribers import fetch_subscriber_refs
+from infrahub.core.registry import registry
+from infrahub.core.schema.schema_branch_computed import TransformReadSet
+from infrahub.log import get_logger, get_run_logger
+from infrahub.workers.dependencies import get_client, get_component
+from infrahub.workflows.utils import wait_for_schema_to_converge
+
+from .python_target_resolution import DisabledPythonTargetResolver, IndexedPythonTargetResolver, PythonAttributeReadSet
+
+log = get_logger()
+
+if TYPE_CHECKING:
+    from infrahub_sdk.client import InfrahubClient
+
+    from infrahub.core.query_group.subscribers import SubscriberRef
+    from infrahub.core.schema import AttributeSchema
+    from infrahub.database import InfrahubDatabase
+    from infrahub.services import InfrahubComponent
+
+    from .recompute_coalescing import PythonTargetResolver
+
+
+class DatabasePythonReadSetSource:
+    """Read sets for every Python transform computed attribute whose transform exists.
+
+    The schema is what says which attributes exist; the analyzed transform queries are what says
+    what each of them reads. An attribute whose query could not be mapped still gets an entry, so
+    the resolver widens it rather than skipping it.
+
+    An attribute whose transform is not in the database gets none. Nothing can compute it until the
+    transform arrives, and the recompute that follows the transform being created is what covers it
+    then, so selecting it here only submits work that raises.
+    """
+
+    def __init__(self, db: InfrahubDatabase, component: InfrahubComponent) -> None:
+        self.db = db
+        self.component = component
+
+    def _declared_attributes(self, *, branch: str) -> dict[str, list[AttributeSchema]]:
+        return registry.schema.get_schema_branch(name=branch).computed_attributes.get_python_attributes_per_node()
+
+    async def read_sets(self, *, branch: str) -> list[PythonAttributeReadSet]:
+        if not registry.schema.has_schema_branch(name=branch):
+            # The kinds of an unregistered branch are unknown, so there is nothing to widen to.
+            # Every active branch is registered when the registry loads, so this stays unreached.
+            log.warning("Skipping the Python computed attributes of %s: no schema is registered for it", branch)
+            return []
+
+        # Before the wait, which costs its full timeout whenever no worker publishes a schema hash.
+        if not self._declared_attributes(branch=branch):
+            return []
+
+        # A worker behind on the schema declares no Python attribute, which reads as nothing to do.
+        await wait_for_schema_to_converge(
+            branch_name=branch, component=self.component, db=self.db, log=get_run_logger()
+        )
+        schema_branch = registry.schema.get_schema_branch(name=branch)
+        attributes_per_kind = schema_branch.computed_attributes.get_python_attributes_per_node()
+        if not attributes_per_kind:
+            return []
+
+        try:
+            gathered_items = await gather_python_transform_attributes(db=self.db, branch_name=branch)
+        except Exception:
+            log.exception("Widening every Python computed attribute on %s: the read-set gather failed", branch)
+            return [
+                PythonAttributeReadSet(
+                    kind=kind,
+                    attribute_name=attribute.name,
+                    read_set=TransformReadSet.imprecise(),
+                    gathered=False,
+                )
+                for kind, attributes in attributes_per_kind.items()
+                for attribute in attributes
+            ]
+
+        gathered_read_sets = {
+            (
+                item.computed_attribute.kind,
+                item.computed_attribute.attribute.name,
+            ): transform_read_set_from_query_report(
+                report=item.query_analyzer.query_report, schema_branch=schema_branch
+            )
+            for item in gathered_items
+        }
+        return [
+            PythonAttributeReadSet(
+                kind=kind,
+                attribute_name=attribute.name,
+                read_set=gathered_read_sets[kind, attribute.name],
+            )
+            for kind, attributes in attributes_per_kind.items()
+            for attribute in attributes
+            if (kind, attribute.name) in gathered_read_sets
+        ]
+
+
+class ClientSubscriberSource:
+    """Query-group subscribers, read through the API client."""
+
+    def __init__(self, client: InfrahubClient) -> None:
+        self.client = client
+
+    async def subscribers(self, *, node_ids: list[str], branch: str) -> list[SubscriberRef]:
+        return await fetch_subscriber_refs(client=self.client, node_ids=node_ids, branch=branch)
+
+
+async def build_python_target_resolver(*, db: InfrahubDatabase) -> PythonTargetResolver:
+    """Build the resolver for one recompute pass, inert while the switch is off.
+
+    The switch is read first, so a deployment that leaves the family to the per-node automations
+    resolves neither the client nor the component.
+    """
+    if not config.SETTINGS.main.coalesce_python_recompute_after_merge:
+        return DisabledPythonTargetResolver()
+
+    return IndexedPythonTargetResolver(
+        read_set_source=DatabasePythonReadSetSource(db=db, component=await get_component()),
+        subscriber_source=ClientSubscriberSource(client=get_client()),
+    )

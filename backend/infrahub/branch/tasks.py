@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from prefect import flow
+from prefect import flow, get_client
 from prefect.logging import get_run_logger
 
 from infrahub.core.registry import registry
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.pools.tasks import validate_schema_number_pools
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
+from infrahub.task_manager.flow_run.branch_cleanup import BranchFlowRunPurger
+from infrahub.task_manager.flow_run.filters import FlowRunFilterBuilder
+from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
 from infrahub.workflows.utils import wait_for_schema_to_converge
 
 
@@ -31,3 +34,13 @@ async def branch_merged(
     if updated_branches:
         async with service.database.start_session() as db:
             await wait_for_schema_to_converge(branch_name=target_branch, component=service.component, db=db, log=log)
+
+
+@flow(name="branch-purge-tasks", flow_run_name="Purge tasks for deleted branch '{branch_name}'")
+async def purge_deleted_branch_tasks(branch_name: str) -> None:
+    log = get_run_logger()
+    async with get_client(sync_client=False) as prefect_client:
+        purger = BranchFlowRunPurger(
+            client=PrefectClientAdapter(client=prefect_client), filter_builder=FlowRunFilterBuilder(), log=log
+        )
+        await purger.purge_for_branch(branch_name=branch_name)

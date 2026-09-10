@@ -38,7 +38,13 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TypedDict
 
-ANSI = re.compile(r"\x1b\[[0-9;]*m")
+# The raw job log keeps every terminal escape sequence, not only colour (SGR) codes. Strip general
+# CSI sequences (colour, cursor moves, erase-line/screen) and OSC sequences (window title) so none
+# survive into the test-extraction regexes.
+ANSI = re.compile(
+    r"\x1b\[[0-?]*[ -/]*[@-~]"  # CSI: ESC [ ... final-byte
+    r"|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)"  # OSC: ESC ] ... (BEL | ST)
+)
 
 # The Actions list-runs API silently returns at most this many results per query.
 API_RESULT_CAP = 1000
@@ -62,11 +68,19 @@ BUCKETS: list[tuple[str, str]] = [
     ("runner-oom", r"Process completed with exit code 137|exit code: 137"),
     ("docker-network-pool-exhausted", r"all predefined address pools have been fully subnetted"),
     ("actions-download-429", r"Failed to download action .*429"),
-    # pytest summary is green (no "N failed") yet the process exits 1: a
-    # session-teardown/plugin abort, e.g. the testcontainers result reporting.
+    # One Prefect test server stopped answering, and every later test class fail-fasts on the
+    # remembered failure. Matched through "RuntimeError: " so that a test asserting on this
+    # message cannot tag a job by having its own source line printed in a traceback.
+    (
+        "prefect-task-manager-wedged",
+        r"RuntimeError: Prefect task manager setup already failed for http",
+    ),
+    # pytest summary is green (no "N failed" and no "N errors") yet the process exits 1: a
+    # session-teardown/plugin abort, e.g. the testcontainers result reporting. Errors have to be
+    # excluded too, or a fixture cascade ("474 passed, 11 errors") reads as a green session.
     (
         "pytest-green-exit-1",
-        r"=+ \d+ passed(?:(?!\d+ failed)[^\n])*=+[^\n]*\n(?:[^\n]*\n){0,3}[^\n]*Process completed with exit code 1\.",
+        r"=+ \d+ passed(?:(?!\d+ (?:failed|error))[^\n])*=+[^\n]*\n(?:[^\n]*\n){0,3}[^\n]*Process completed with exit code 1\.",
     ),
 ]
 
@@ -107,7 +121,7 @@ def fetch_job_log(repo: str, job_id: int, log_path: Path) -> None:
     collection retries.
     """
     res = subprocess.run(  # noqa: S603
-        ["gh", "api", f"repos/{repo}/actions/jobs/{job_id}/logs"],  # noqa: S607
+        ["gh", "api", f"repos/{repo}/actions/jobs/{job_id}/logs", "--allow-escape-sequences"],  # noqa: S607
         capture_output=True,
         text=True,
         errors="replace",

@@ -190,7 +190,7 @@ class RelationshipQuery(Query):
 
         self.rel = rel
         self.rel_id = rel_id
-        self.schema = schema or self.rel.schema
+        self.schema = schema or self.rel.schema  # type: ignore[misc]  # self.rel is type[Relationship] | Relationship | None
 
         if not branch and inspect.isclass(rel) and not hasattr(rel, "branch"):
             raise ValueError("Either an instance of Relationship or a valid branch must be provided.")
@@ -414,7 +414,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params["rel_node_id"] = self.rel_id or (self.rel.id if self.rel else None)
+        self.params["rel_node_id"] = self.rel_id or (self.rel.id if self.rel else None)  # type: ignore[misc]  # self.rel is type[Relationship] | Relationship | None
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["user_id"] = self.user_id
@@ -576,7 +576,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         rel_filter, rel_params = self.branch.get_query_filter_path(at=self.at, variable_name="edge")
-        self.params["rel_id"] = self.rel_id or self.rel.id
+        self.params["rel_id"] = self.rel_id or self.rel.id  # type: ignore[misc]  # self.rel is type[Relationship] | Relationship | None
         self.params["branch"] = self.branch.name
         self.params["rel_prop"] = self.get_relationship_properties_dict(
             status=RelationshipStatus.DELETED, user_id=self.user_id
@@ -1153,10 +1153,6 @@ class RelationshipGetByIdentifierQuery(Query):
             self.full_identifiers = []
         self.excluded_namespaces = excluded_namespaces or []
 
-        # Always exclude relationships with internal nodes
-        if "Internal" not in self.excluded_namespaces:
-            self.excluded_namespaces.append("Internal")
-
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
@@ -1472,14 +1468,17 @@ class RelationshipDeleteAllQuery(Query):
     def get_deleted_relationships_changelog(
         self, node_schema: NodeSchema
     ) -> list[RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog]:
-        rel_identifier_to_changelog_mapper: dict[str, ChangelogRelationshipMapper] = {}
+        # Both sides of a hierarchy share one identifier, so it cannot be the key.
+        rel_name_to_changelog_mapper: dict[str, ChangelogRelationshipMapper] = {}
 
         for item in self.get_data():
             if item.uuid == self.node_id:
                 continue
 
             deleted_rel_schemas = [
-                rel_schema for rel_schema in node_schema.relationships if rel_schema.identifier == item.rel_identifier
+                rel_schema
+                for rel_schema in node_schema.relationships
+                if rel_schema.get_identifier() == item.rel_identifier
             ]
 
             if len(deleted_rel_schemas) == 0:
@@ -1501,14 +1500,14 @@ class RelationshipDeleteAllQuery(Query):
                 deleted_rel_schema = deleted_rel_schemas[0]
 
             try:
-                changelog_mapper = rel_identifier_to_changelog_mapper[item.rel_identifier]
+                changelog_mapper = rel_name_to_changelog_mapper[deleted_rel_schema.name]
             except KeyError:
                 changelog_mapper = ChangelogRelationshipMapper(schema=deleted_rel_schema)
-                rel_identifier_to_changelog_mapper[item.rel_identifier] = changelog_mapper
+                rel_name_to_changelog_mapper[deleted_rel_schema.name] = changelog_mapper
 
             changelog_mapper.delete_relationship(peer_id=item.uuid, peer_kind=item.kind, rel_schema=deleted_rel_schema)
 
-        return [changelog_mapper.changelog for changelog_mapper in rel_identifier_to_changelog_mapper.values()]
+        return [changelog_mapper.changelog for changelog_mapper in rel_name_to_changelog_mapper.values()]
 
 
 class GetAllPeersIds(Query):

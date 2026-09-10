@@ -23,12 +23,12 @@ from infrahub.services.component import InfrahubComponent
 from infrahub.worker import WORKER_IDENTITY
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
+from tests.helpers.log import find_logged_event
 
 from .conftest import (
     FailAtBranchResetRecoverer,
     FailAtLockReleaseRecoverer,
     build_recovery,
-    find_logged_event,
 )
 
 if TYPE_CHECKING:

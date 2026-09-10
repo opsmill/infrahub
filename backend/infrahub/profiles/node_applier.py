@@ -253,7 +253,7 @@ class NodeProfilesApplier:
                     break
 
             # Refresh the relationship manager to update the is_from_profile property
-            await node_rel.fetch_relationship_ids(db=self.db)
+            await node_rel.refresh_update_details(db=self.db)
             if not has_profile_rel_data and node_rel.is_from_profile:
                 await self._remove_profile_from_relationship(relationship_manager=node_rel)
                 updated_field_names.append(node_rel.name)

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal, assert_never
+from typing import TYPE_CHECKING, Any, Literal, Protocol, assert_never
 
 from infrahub.display_labels.scoping import derive_display_label_targets
 from infrahub.events.limits import get_submission_chunk_size
@@ -12,8 +12,10 @@ from infrahub.log import get_logger
 from infrahub.utilities.chunks import chunked
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     DISPLAY_LABELS_PROCESS_JINJA2,
     HFID_PROCESS,
+    TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
 from infrahub.workflows.constants import WorkflowTag
 
@@ -22,15 +24,17 @@ log = get_logger()
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
+    from infrahub.computed_attribute.scoping import ChangedElementSet
     from infrahub.core.recompute.bulk_write import WrittenNode
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.events.models import EventContext
     from infrahub.services.adapters.workflow import InfrahubWorkflow
     from infrahub.workflows.models import WorkflowDefinition
 
-RecomputeFamily = Literal["computed_attribute", "display_label", "hfid"]
+RecomputeFamily = Literal["computed_attribute", "python_computed_attribute", "display_label", "hfid"]
 
 COMPUTED_ATTRIBUTE: RecomputeFamily = "computed_attribute"
+PYTHON_COMPUTED_ATTRIBUTE: RecomputeFamily = "python_computed_attribute"
 DISPLAY_LABEL: RecomputeFamily = "display_label"
 HFID: RecomputeFamily = "hfid"
 
@@ -38,7 +42,7 @@ CREATED = "created"
 UPDATED = "updated"
 DELETED = "deleted"
 
-_SELF_FILTER = "ids"
+SELF_FILTER = "ids"
 
 # Floor for the schema-derived chain bound; the bound only guards a cyclic schema.
 RECOMPUTE_CHAIN_DEPTH_FLOOR = 10
@@ -53,6 +57,10 @@ class MergeChange:
     action: str
     changed_fields: frozenset[str] = frozenset()
 
+    @property
+    def signature(self) -> ChangeSignature:
+        return ChangeSignature(kind=self.kind, action=self.action, changed_fields=self.changed_fields)
+
 
 @dataclass(frozen=True)
 class ChangeSignature:
@@ -61,6 +69,14 @@ class ChangeSignature:
     kind: str
     action: str
     changed_fields: frozenset[str]
+
+
+def group_ids_by_signature(changes: Iterable[MergeChange]) -> dict[ChangeSignature, set[str]]:
+    """Group the changed node ids by the signature whose derivation they all share."""
+    ids_by_signature: dict[ChangeSignature, set[str]] = {}
+    for change in changes:
+        ids_by_signature.setdefault(change.signature, set()).add(change.node_id)
+    return ids_by_signature
 
 
 @dataclass(frozen=True)
@@ -88,6 +104,9 @@ class AffectedTarget:
     target is reached by the change set, so its readers are resolved by one query
     over the union rather than one per changed node. ``precise`` is ``False`` when a
     bounded over-approximation was used instead of an exact derivation.
+
+    ``whole_kind`` marks a target whose nodes could not be resolved at all, so every
+    node of ``target_kind`` has to be recomputed. Such a target carries no node ids.
     """
 
     family: RecomputeFamily
@@ -96,6 +115,7 @@ class AffectedTarget:
     reads_across_relationship: bool
     reader_lookups: frozenset[ReaderLookup]
     precise: bool = True
+    whole_kind: bool = False
 
 
 @dataclass(frozen=True)
@@ -113,6 +133,27 @@ class CoalescedRecompute:
     @property
     def fallback_used(self) -> bool:
         return any(not target.precise for target in self.targets)
+
+    def with_targets(self, targets: Iterable[AffectedTarget]) -> CoalescedRecompute:
+        """The same recompute plus more targets, deduplicated against the ones already held."""
+        return CoalescedRecompute(branch=self.branch, targets=self.targets | frozenset(targets))
+
+
+class PythonTargetResolver(Protocol):
+    """The Python transform computed attributes a merge or rebase change set affects.
+
+    ``schema_changed_elements`` names the schema elements a merge changed, so the resolver can drop
+    the pairs the schema-driven backfill already refreshes. It is ``None`` wherever no schema change
+    is replayed, which is every rebase and every chained level.
+    """
+
+    async def resolve(
+        self,
+        *,
+        changes: Iterable[MergeChange],
+        branch: str,
+        schema_changed_elements: ChangedElementSet | None,
+    ) -> list[AffectedTarget]: ...
 
 
 @dataclass
@@ -164,6 +205,9 @@ class CoalescedSubmission:
     not the changed-node count times the matching automations. ``filter_key`` groups the node
     ids for deduplication and orders the submissions deterministically; the flow re-derives its
     own query filter and does not read it.
+
+    ``whole_kind`` carries the widened case: there are no node ids to send, so the submission goes
+    to the fan-out flow, which resolves every node of ``target_kind`` itself.
     """
 
     family: RecomputeFamily
@@ -173,6 +217,7 @@ class CoalescedSubmission:
     filter_key: str
     branch: str
     node_ids: tuple[str, ...]
+    whole_kind: bool = False
 
 
 class CoalescedRecomputeBuilder:
@@ -195,10 +240,7 @@ class CoalescedRecomputeBuilder:
         destination branch) is not recomputed here; it is reached by the ordinary live recompute
         that fires when this pass writes the value that reader depends on.
         """
-        ids_by_signature: dict[ChangeSignature, set[str]] = {}
-        for change in changes:
-            signature = ChangeSignature(kind=change.kind, action=change.action, changed_fields=change.changed_fields)
-            ids_by_signature.setdefault(signature, set()).add(change.node_id)
+        ids_by_signature = group_ids_by_signature(changes)
 
         accumulators: dict[tuple[str, str, str | None], _TargetAccumulator] = {}
         for signature, node_ids in ids_by_signature.items():
@@ -338,7 +380,7 @@ class CoalescedRecomputeBuilder:
             target_kind = resolved.target.kind
             attribute_name = resolved.target.attribute.name
             for filter_key in resolved.node_filters:
-                is_self = filter_key == _SELF_FILTER
+                is_self = filter_key == SELF_FILTER
                 if is_self and not (include_self and target_kind == kind):
                     continue
                 if not is_self and not include_cross:
@@ -367,22 +409,40 @@ class CoalescedRecomputeSubmitter:
         target whose union exceeds the submission chunk size is split into several submissions so no
         flow-run parameter grows past the size Prefect accepts. The order is deterministic so the
         same change set always submits the same work.
+
+        A widened target has no node ids, and chunking an empty id set yields nothing, so it gets one
+        submission of its own; otherwise the widening would turn into a silent skip.
         """
         chunk_size = get_submission_chunk_size()
-        submissions = [
-            CoalescedSubmission(
-                family=target.family,
-                source_kind=lookup.source_kind,
-                target_kind=target.target_kind,
-                attribute_name=target.attribute_name,
-                filter_key=lookup.filter_key,
-                branch=coalesced.branch,
-                node_ids=chunk,
+        submissions: list[CoalescedSubmission] = []
+        for target in coalesced.targets:
+            if target.whole_kind:
+                submissions.append(
+                    CoalescedSubmission(
+                        family=target.family,
+                        source_kind=target.target_kind,
+                        target_kind=target.target_kind,
+                        attribute_name=target.attribute_name,
+                        filter_key=SELF_FILTER,
+                        branch=coalesced.branch,
+                        node_ids=(),
+                        whole_kind=True,
+                    )
+                )
+                continue
+            submissions.extend(
+                CoalescedSubmission(
+                    family=target.family,
+                    source_kind=lookup.source_kind,
+                    target_kind=target.target_kind,
+                    attribute_name=target.attribute_name,
+                    filter_key=lookup.filter_key,
+                    branch=coalesced.branch,
+                    node_ids=chunk,
+                )
+                for lookup in target.reader_lookups
+                for chunk in chunked(tuple(sorted(lookup.source_node_ids)), chunk_size)
             )
-            for target in coalesced.targets
-            for lookup in target.reader_lookups
-            for chunk in chunked(tuple(sorted(lookup.source_node_ids)), chunk_size)
-        ]
         return sorted(
             submissions,
             key=lambda submission: (
@@ -404,19 +464,42 @@ class CoalescedRecomputeSubmitter:
             "node_kind": submission.source_kind,
             "object_ids": list(submission.node_ids),
             "context": context,
-            "recompute_depth": recompute_depth,
+        }
+        attribute_parameters = {
+            "computed_attribute_name": submission.attribute_name,
+            "computed_attribute_kind": submission.target_kind,
         }
         match submission.family:
             case "computed_attribute":
-                parameters["computed_attribute_name"] = submission.attribute_name
-                parameters["computed_attribute_kind"] = submission.target_kind
-                return COMPUTED_ATTRIBUTE_PROCESS_JINJA2, parameters
+                return (
+                    COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+                    parameters | attribute_parameters | {"recompute_depth": recompute_depth},
+                )
+            case "python_computed_attribute":
+                if submission.whole_kind:
+                    # The widened case has no ids to send: the fan-out flow resolves the kind itself.
+                    return TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES, {
+                        "branch_name": submission.branch,
+                        "computed_attribute_name": submission.attribute_name,
+                        "computed_attribute_kind": submission.target_kind,
+                        "context": context,
+                        "coalesced": True,
+                        "recompute_depth": recompute_depth,
+                    }
+                return (
+                    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
+                    parameters | attribute_parameters | {"coalesced": True, "recompute_depth": recompute_depth},
+                )
             case "display_label":
-                parameters["target_kind"] = submission.target_kind
-                return DISPLAY_LABELS_PROCESS_JINJA2, parameters
+                return DISPLAY_LABELS_PROCESS_JINJA2, parameters | {
+                    "target_kind": submission.target_kind,
+                    "recompute_depth": recompute_depth,
+                }
             case "hfid":
-                parameters["target_kind"] = submission.target_kind
-                return HFID_PROCESS, parameters
+                return HFID_PROCESS, parameters | {
+                    "target_kind": submission.target_kind,
+                    "recompute_depth": recompute_depth,
+                }
             case _:
                 assert_never(submission.family)
 
@@ -455,22 +538,65 @@ class CoalescedRecomputeSubmitter:
         return submitted
 
 
+async def _resolve_python_targets(
+    *,
+    resolver: PythonTargetResolver,
+    changes: list[MergeChange],
+    branch: str,
+    schema_changed_elements: ChangedElementSet | None,
+) -> list[AffectedTarget]:
+    """The Python targets of a change set, or none of them when the derivation fails.
+
+    This family is the only one that reads the database and the API to derive its targets. The other
+    three come from the schema alone, so letting a failure here escape would cancel their submissions
+    too and leave the whole pass unrun.
+
+    Dropping the family is safe only while the per-node automations still fire on a merge and a
+    rebase, which a test on the built trigger definitions pins. Gating them on the live origin
+    removes that cover, so this fallback has to widen to the whole kind in the same change.
+    """
+    try:
+        return await resolver.resolve(changes=changes, branch=branch, schema_changed_elements=schema_changed_elements)
+    except Exception:
+        log.exception("Leaving the Python computed attributes of branch %s to the per-node automations", branch)
+        return []
+
+
 class MergeRecomputeCoordinator:
     """Build the coalesced recompute for a merge or rebase change set and submit it.
 
     Build and submit are always run together, so this holds one of each and hands the builder's
-    output to the submitter.
+    output to the submitter. The Python transform family is derived separately, since it reads the
+    database and the query groups instead of the schema alone.
     """
 
-    def __init__(self, builder: CoalescedRecomputeBuilder, submitter: CoalescedRecomputeSubmitter) -> None:
+    def __init__(
+        self,
+        builder: CoalescedRecomputeBuilder,
+        submitter: CoalescedRecomputeSubmitter,
+        python_resolver: PythonTargetResolver,
+    ) -> None:
         self.builder = builder
         self.submitter = submitter
+        self.python_resolver = python_resolver
 
     async def run(
-        self, *, changes: Iterable[MergeChange], branch: str, context: EventContext
+        self,
+        *,
+        changes: Iterable[MergeChange],
+        branch: str,
+        context: EventContext,
+        schema_changed_elements: ChangedElementSet | None = None,
     ) -> list[CoalescedSubmission]:
-        coalesced = self.builder.build(changes=changes, branch=branch)
-        return await self.submitter.submit(coalesced=coalesced, context=context)
+        change_list = list(changes)
+        coalesced = self.builder.build(changes=change_list, branch=branch)
+        python_targets = await _resolve_python_targets(
+            resolver=self.python_resolver,
+            changes=change_list,
+            branch=branch,
+            schema_changed_elements=schema_changed_elements,
+        )
+        return await self.submitter.submit(coalesced=coalesced.with_targets(python_targets), context=context)
 
 
 def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
@@ -481,6 +607,10 @@ def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
     """
     target_count = (
         len(schema_branch.computed_attributes.get_jinja2_target_map())
+        + sum(
+            len(attributes)
+            for attributes in schema_branch.computed_attributes.get_python_attributes_per_node().values()
+        )
         + len(schema_branch.display_labels.get_template_nodes())
         + len(schema_branch.hfids.get_template_nodes())
     )
@@ -490,9 +620,15 @@ def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
 class RecomputeChainSubmitter:
     """Dispatch the next recompute level for a set of derived-value writes, as one coalesced pass."""
 
-    def __init__(self, builder: CoalescedRecomputeBuilder, submitter: CoalescedRecomputeSubmitter) -> None:
+    def __init__(
+        self,
+        builder: CoalescedRecomputeBuilder,
+        submitter: CoalescedRecomputeSubmitter,
+        python_resolver: PythonTargetResolver,
+    ) -> None:
         self.builder = builder
         self.submitter = submitter
+        self.python_resolver = python_resolver
 
     async def submit(
         self,
@@ -528,4 +664,9 @@ class RecomputeChainSubmitter:
             for node in written
         ]
         coalesced = self.builder.build(changes=changes, branch=branch)
-        return await self.submitter.submit(coalesced=coalesced, context=context, recompute_depth=next_depth)
+        python_targets = await _resolve_python_targets(
+            resolver=self.python_resolver, changes=changes, branch=branch, schema_changed_elements=None
+        )
+        return await self.submitter.submit(
+            coalesced=coalesced.with_targets(python_targets), context=context, recompute_depth=next_depth
+        )

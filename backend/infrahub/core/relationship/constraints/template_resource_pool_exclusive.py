@@ -67,7 +67,7 @@ class TemplateResourcePoolExclusiveConstraint(RelationshipManagerConstraintInter
 
     async def _relationship_has_peers(self, relm: RelationshipManager) -> bool:
         """Check if a relationship currently has peers (locally or untouched in DB)."""
-        update_details = await relm.fetch_relationship_ids(db=self.db, force_refresh=True)
+        update_details = await relm.refresh_update_details(db=self.db)
         peers_in_local_state = update_details.peer_ids_present_both or update_details.peer_ids_present_local_only
         peers_untouched_in_db = update_details.peer_ids_present_database_only and not relm.has_fetched_relationships
         return bool(peers_in_local_state or peers_untouched_in_db)

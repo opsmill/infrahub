@@ -3,6 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
@@ -27,31 +28,52 @@ class RollbackScope(Enum):
     SINCE_TIMESTAMP = "since_timestamp"
 
 
-def _scope_to_operator(rollback_scope: RollbackScope) -> str:
-    return "=" if rollback_scope is RollbackScope.AT_TIMESTAMP else ">="
+def _rollback_branches(target_branch: Branch, rollback_scope: RollbackScope) -> list[dict[str, Any]]:
+    """The branches to undo, each with the time comparison that identifies this operation's writes.
+
+    The target branch follows the scope. All changes on the branch for the scope (exact or range)
+    are assumed to be part of a single group of changes.
+
+    The global branch is always included, and always matched on the exact timestamp. Only exact
+    timestamp changes are rolled back on the global branch b/c changes with later timestamps could
+    be from change groups on other branches.
+    """
+    branches: list[dict[str, Any]] = [
+        {"name": target_branch.name, "exact": rollback_scope is RollbackScope.AT_TIMESTAMP}
+    ]
+    if target_branch.name != GLOBAL_BRANCH_NAME:
+        branches.append({"name": GLOBAL_BRANCH_NAME, "exact": True})
+    return branches
 
 
-def _render_restore_metadata_pipeline(rollback_scope: RollbackScope) -> str:
-    operator = _scope_to_operator(rollback_scope)
+def _render_restore_metadata_pipeline() -> str:
+    """Restore the metadata snapshots of the vertices an edge reversal touched.
+
+    Matches the operation's exact timestamp on every pass, independent of branch and scope.
+    All ``updated_at`` properties on ``:Node``, ``:Attribute``, and ``:Relationship`` vertexes
+    are assumed to be updated at the exact timestamp if changed on the default/global branches.
+    The exact timestamp match also ensures that metadata is only restored one time and never
+    attempts multiple restores, which would lead to NULL updated_at/by.
+    """
     return """
     UNWIND [src, dst] AS endpoint
     OPTIONAL MATCH (endpoint:Attribute|Relationship)-[:HAS_ATTRIBUTE|IS_RELATED]-(owner:Node)
-    WHERE owner.updated_at %(op)s $at
+    WHERE owner.updated_at = $at
     UNWIND [endpoint, owner] AS restore_vertex
-    WITH restore_vertex
-    WHERE restore_vertex.updated_at %(op)s $at
+    WITH DISTINCT restore_vertex
+    WHERE restore_vertex.updated_at = $at
     SET restore_vertex.updated_at = restore_vertex.previous_updated_at,
         restore_vertex.updated_by = restore_vertex.previous_updated_by
     SET restore_vertex.previous_updated_at = NULL, restore_vertex.previous_updated_by = NULL
-    """ % {"op": operator}
+    """
 
 
 class RollbackReopenEdgesQuery(Query):
-    """Reopen every edge that was closed in the rollback window.
+    """Reopen every edge that was closed in the rollback window, on every rollback branch.
 
-    Resets `to`/`to_user_id` back to NULL, and (optionally) restores the vertex metadata snapshots
-    for each edge's endpoints in the same batched transaction as the edge reversal itself. Bundling
-    the cleanup with the edge it belongs to keeps an interrupted run resumable: a committed batch
+    Resets `to`/`to_user_id` back to NULL, and restores the vertex metadata snapshots for each
+    edge's endpoints in the same batched transaction as the edge reversal itself. Bundling the
+    cleanup with the edge it belongs to keeps an interrupted run resumable: a committed batch
     is fully finished, and the edges of an uncommitted batch still match a re-run.
     """
 
@@ -65,43 +87,40 @@ class RollbackReopenEdgesQuery(Query):
         at: Timestamp,
         target_branch: Branch,
         scope: RollbackScope,
-        restore_metadata: bool,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.rollback_at = at
         self.target_branch = target_branch
         self.scope = scope
-        self.restore_metadata = restore_metadata
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "at": self.rollback_at.to_string(),
-            "target_branch": self.target_branch.name,
+            "rollback_branches": _rollback_branches(target_branch=self.target_branch, rollback_scope=self.scope),
         }
-        restore = ""
-        if self.restore_metadata:
-            restore = "\n    WITH src, dst" + _render_restore_metadata_pipeline(rollback_scope=self.scope)
         query = """
-MATCH (src)-[edge {branch: $target_branch}]->(dst)
-WHERE edge.to %(op)s $at
+UNWIND $rollback_branches AS rollback_branch
+MATCH (src)-[edge {branch: rollback_branch.name}]->(dst)
+WHERE (rollback_branch.exact AND edge.to = $at)
+   OR (NOT rollback_branch.exact AND edge.to >= $at)
 CALL (edge, src, dst) {
-    SET edge.to = NULL, edge.to_user_id = NULL%(restore)s
+    SET edge.to = NULL, edge.to_user_id = NULL
+    WITH src, dst%(restore)s
 } IN TRANSACTIONS OF 500 ROWS
-""" % {"op": _scope_to_operator(self.scope), "restore": restore}
+""" % {"restore": _render_restore_metadata_pipeline()}
         self.add_to_query(query=query)
 
 
 class RollbackDeleteEdgesQuery(Query):
-    """Delete every edge that was created in the rollback window.
+    """Delete every edge that was created in the rollback window, on every rollback branch.
 
     Runs as two batched transactional blocks over the matched edges: first restore the vertex
-    metadata snapshots for the edges' endpoints (skipped when ``restore_metadata`` is off), then
-    delete the edges, deleting any endpoint the deletions left with no remaining connections in
-    the same batch as its edges. The restore-before-delete ordering is the crash-safety mechanism:
-    every restore commits before the first edge deletion, so at any interruption point the
-    not-yet-deleted edges still match a re-run and the already-done restores repeat as
-    window-filtered no-ops.
+    metadata snapshots for the edges' endpoints, then delete the edges, deleting any endpoint the
+    deletions left with no remaining connections in the same batch as its edges. The
+    restore-before-delete ordering is the crash-safety mechanism: every restore commits before the
+    first edge deletion, so at any interruption point the not-yet-deleted edges still match a
+    re-run and the already-done restores repeat as window-filtered no-ops.
     """
 
     name = "rollback_delete_edges"
@@ -114,31 +133,26 @@ class RollbackDeleteEdgesQuery(Query):
         at: Timestamp,
         target_branch: Branch,
         scope: RollbackScope,
-        restore_metadata: bool,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.rollback_at = at
         self.target_branch = target_branch
         self.scope = scope
-        self.restore_metadata = restore_metadata
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "at": self.rollback_at.to_string(),
-            "target_branch": self.target_branch.name,
+            "rollback_branches": _rollback_branches(target_branch=self.target_branch, rollback_scope=self.scope),
         }
-        restore_block = ""
-        if self.restore_metadata:
-            restore_block = """
-CALL (src, dst) {
-    %(pipeline)s
-} IN TRANSACTIONS OF 500 ROWS
-""" % {"pipeline": _render_restore_metadata_pipeline(rollback_scope=self.scope)}
         query = """
-MATCH (src)-[edge {branch: $target_branch}]->(dst)
-WHERE edge.from %(op)s $at
-%(restore_block)s
+UNWIND $rollback_branches AS rollback_branch
+MATCH (src)-[edge {branch: rollback_branch.name}]->(dst)
+WHERE (rollback_branch.exact AND edge.from = $at)
+   OR (NOT rollback_branch.exact AND edge.from >= $at)
+CALL (src, dst) {
+    %(restore)s
+} IN TRANSACTIONS OF 500 ROWS
 CALL (edge, src, dst) {
     DELETE edge
     WITH src, dst
@@ -147,5 +161,5 @@ CALL (edge, src, dst) {
     WHERE NOT exists((endpoint)--())
     DELETE endpoint
 } IN TRANSACTIONS OF 500 ROWS
-""" % {"op": _scope_to_operator(rollback_scope=self.scope), "restore_block": restore_block}
+""" % {"restore": _render_restore_metadata_pipeline()}
         self.add_to_query(query=query)
