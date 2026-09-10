@@ -217,18 +217,47 @@ async def test_gather_trigger_computed_attribute_python(
     assert triggers_by_kind["TestCar"].trigger.match_related["infrahub.field.name"] == ["name"]
 
 
-async def test_two_attributes_sharing_a_transform_each_get_an_automation(
+async def test_two_attributes_sharing_a_transform_share_its_query_automations(
     db: InfrahubDatabase,
     default_branch: Branch,
     car_person_schema_computed_attr: None,
-    transform01: Node,
+    repo01: Node,
 ) -> None:
-    """One transform can feed several attributes, and each one needs its own automation.
+    """One transform can feed several attributes, and each one needs its owner automation.
 
-    They share a query, so nothing else fires for the attribute left out.
+    The query automations are the transform's, not the attribute's: two attributes fed by a
+    transform reading two kinds get two query automations and not one pair each. The flow behind
+    them resolves the attributes itself, so a second copy would only run it twice.
     """
+    owner_query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY, branch=default_branch)
+    await owner_query.new(
+        db=db,
+        name="query_car_owner",
+        query="""
+        query CarOwner($id: ID!) {
+            TestCar(ids: [$id]) {
+                edges { node { name { value } owner { node { name { value } } } } }
+            }
+        }
+        """,
+        models=["TestCar", "TestPerson"],
+    )
+    await owner_query.save(db=db)
+
+    owner_transform = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON, branch=default_branch)
+    await owner_transform.new(
+        db=db,
+        name="transform_car_owner",
+        file_path="transform.py",
+        class_name="Transform",
+        query=owner_query,
+        repository=repo01,
+    )
+    await owner_transform.save(db=db)
+
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get_node("TestCar")
+    car_schema.get_attribute(name="computed_desc_python").computed_attribute.transform = "transform_car_owner"
     car_schema.attributes.append(
         AttributeSchema(
             name="computed_desc_python_second",
@@ -237,7 +266,7 @@ async def test_two_attributes_sharing_a_transform_each_get_an_automation(
             optional=True,
             computed_attribute=ComputedAttribute(
                 kind=ComputedAttributeKind.TRANSFORM_PYTHON,
-                transform="transform01",
+                transform="transform_car_owner",
             ),
         )
     )
@@ -253,9 +282,9 @@ async def test_two_attributes_sharing_a_transform_each_get_an_automation(
         "TestCar_computed_desc_python",
         "TestCar_computed_desc_python_second",
     }
-    assert {trigger.name for trigger in trigger_queries} == {
-        "TestCar_computed_desc_python::kind::TestCar",
-        "TestCar_computed_desc_python_second::kind::TestCar",
+    assert {trigger.generate_name() for trigger in trigger_queries} == {
+        "computed_attr_python_query::main::transform::transform_car_owner::kind::TestCar",
+        "computed_attr_python_query::main::transform::transform_car_owner::kind::TestPerson",
     }
 
 
@@ -415,7 +444,7 @@ async def test_python_triggers_match_only_live_origin(
 
     # Named, so that a gather returning nothing cannot satisfy the assertions below.
     assert [trigger.name for trigger in triggers] == ["TestCar_computed_desc_python"]
-    assert [trigger.name for trigger in trigger_queries] == ["TestCar_computed_desc_python::kind::TestCar"]
+    assert [trigger.name for trigger in trigger_queries] == ["transform::transform01::kind::TestCar"]
 
     for trigger in [*triggers, *trigger_queries]:
         assert trigger.trigger.match[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE.value
@@ -441,7 +470,7 @@ async def test_python_triggers_keep_every_origin_when_the_pass_is_disabled(
 
     # Named, so that a gather returning nothing cannot satisfy the assertions below.
     assert [trigger.name for trigger in triggers] == ["TestCar_computed_desc_python"]
-    assert [trigger.name for trigger in trigger_queries] == ["TestCar_computed_desc_python::kind::TestCar"]
+    assert [trigger.name for trigger in trigger_queries] == ["transform::transform01::kind::TestCar"]
 
     for trigger in [*triggers, *trigger_queries]:
         assert NODE_ORIGIN_LABEL not in trigger.trigger.match
