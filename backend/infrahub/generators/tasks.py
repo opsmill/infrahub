@@ -102,7 +102,7 @@ async def run_generator(model: RequestGeneratorRun) -> None:
         )
         await generator.run(identifier=generator_definition.name)
         generator_instance.status.value = GeneratorInstanceStatus.READY.value
-    except Exception:  # noqa: BLE001
+    except Exception:
         generator_instance.status.value = GeneratorInstanceStatus.ERROR.value
         await generator_instance.update(do_full_update=True)
         raise
