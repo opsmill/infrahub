@@ -1,3 +1,5 @@
+from collections.abc import Awaitable, Callable
+
 import ujson
 from prefect import Flow
 
@@ -8,7 +10,12 @@ from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.tasks.check import set_check_status
 
-COMMAND_MAP = {
+# Handlers are heterogeneous by design: each takes a specific InfrahubMessage subtype, and half are
+# wrapped as Prefect flows. The dispatch site only has the base type, so the parameters cannot be
+# pinned here — but the callable-and-awaits-to-None shape can be, and is.
+MessageHandler = Callable[..., Awaitable[None]]
+
+COMMAND_MAP: dict[str, MessageHandler] = {
     "git.file.get": git.file.get,
     "git.repository.connectivity": git.repository.connectivity,
     "refresh.git.fetch": git.repository.fetch,
@@ -31,6 +38,7 @@ async def execute_message(
         if skip_flow and isinstance(func, Flow):
             func = func.fn
         await func(message=message)
+        return None
     # Message-bus boundary: any handler failure must be routed to the reply/retry/dead-letter protocol, never crash the consumer
     except Exception as exc:  # noqa: BLE001
         if message.reply_requested:

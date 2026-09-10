@@ -431,13 +431,6 @@ disable_error_code = [
     "return-value",
 ]
 
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations"
-disable_error_code = [
-    "operator",
-    "return",
-]
-
 [tool.ruff]
 line-length = 120
 target-version = "py312"
@@ -1762,17 +1755,6 @@ include = ["backend/infrahub/message_bus/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
-
-[[tool.ty.overrides]]
-include = ["backend/infrahub/message_bus/operations/__init__.py"]
-
-[tool.ty.overrides.rules]
-##################################################################################################
-# COMMAND_MAP is a heterogeneous dispatch table: each handler takes a specific InfrahubMessage   #
-# subtype, but the dispatch site only has the base type. Scoped to this file so the rest of      #
-# message_bus/ stays enforced.                                                                    #
-##################################################################################################
-invalid-argument-type = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/artifacts/**"]
