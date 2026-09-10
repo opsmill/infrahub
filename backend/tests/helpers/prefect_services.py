@@ -1,22 +1,12 @@
-"""Rebind Prefect's background queue services when the test process changes Prefect server.
+"""Drain Prefect's background queue services when the test process changes Prefect server.
 
-Prefect emits events and API logs through process-wide background services, ``EventsWorker`` and
-``APILogWorker``. ``EventsWorker.instance()`` is memoized on ``(client_type, client_options)``,
-and for a self-hosted server the options are empty, so the key carries no API URL. The worker it
-hands back built its websocket client and its orchestration client once, from whatever
-``PREFECT_API_URL`` was set the first time an event was emitted.
-
-A test process talks to more than one Prefect server: an ephemeral one for the whole session, plus
-a container that modules and classes opt into. Every orchestration client a test builds follows
-the current setting; the queue services do not. So from the second server onwards the events go to
-the previous one — silently, while that server is still up, and then as a wall of ``Service
-'EventsWorker' failed to process item`` once it has been torn down. Either way the events the
-current server's automations and the tests that assert on them are waiting for never arrive.
-
-Draining is what unpins them: ``_stop`` unregisters an instance synchronously, so the next event
-builds a new worker against the URL current at that point. Drain on both sides of a change of
-server — on the way in, while the old URL still resolves, so queued items reach the server they
-were meant for, and on the way out, before the new server is torn down.
+Prefect routes events and API logs through process-wide queue services that are created once and
+pin to the API URL in effect when they first start; a later change of URL does not rebind them. A
+test process that talks to more than one Prefect server would otherwise keep sending to the first.
+Draining unpins them, and it has to happen on both sides of a server change: on the way in, while
+the previous URL still resolves, so already-queued items reach the server they were meant for; and
+on the way out, before the new server is torn down. After a drain, the next event starts a fresh
+service against the current URL.
 """
 
 from __future__ import annotations

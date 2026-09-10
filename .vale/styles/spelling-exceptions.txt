@@ -222,12 +222,16 @@ Redis
 Redoc
 refactored
 regex
+regenerator
+regenerators
 reimported
 repo
 requesters
 resizable
 Resizable
 reusability
+ROADM
+ROADMs
 rollout
 Schema
 schema_mapping

@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
-from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreGeneratorInstance
 from infrahub_sdk.schema.repository import InfrahubGeneratorDefinitionConfig
@@ -103,7 +102,7 @@ async def run_generator(model: RequestGeneratorRun) -> None:
         )
         await generator.run(identifier=generator_definition.name)
         generator_instance.status.value = GeneratorInstanceStatus.READY.value
-    except (ModuleImportError, Exception):
+    except Exception:
         generator_instance.status.value = GeneratorInstanceStatus.ERROR.value
         await generator_instance.update(do_full_update=True)
         raise
@@ -239,6 +238,7 @@ async def request_generator_definition_run(
         )
 
     tasks: list[Coroutine[Any, Any, Any]] = []
+    members: list[tuple[str, str]] = []
     for relationship in group.members.peers:
         member = relationship.peer
 
@@ -259,15 +259,37 @@ async def request_generator_definition_run(
             target_id=member.id,
             target_name=member.display_label,
         )
+        members.append((request_generator_run_model.target_id, request_generator_run_model.target_name))
         tasks.append(
             get_workflow().execute_workflow(
                 workflow=REQUEST_GENERATOR_RUN, context=context, parameters={"model": request_generator_run_model}
             )
         )
 
-    try:
-        await asyncio.gather(*tasks)
+    # Let every member run and report each outcome, rather than aborting on the first failure.
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    # A cancelled member is a BaseException, not an Exception, so propagate the cancellation
+    # instead of letting it slip past the failure filter below and count as a success.
+    for result in results:
+        if isinstance(result, asyncio.CancelledError):
+            raise result
+    failures = [
+        (target_id, target_name, result)
+        for (target_id, target_name), result in zip(members, results, strict=True)
+        if isinstance(result, Exception)
+    ]
+    if not failures:
         return Completed(message=f"Successfully run {len(tasks)} generators")
+<<<<<<< HEAD
     # Flow boundary: any generator failure must surface as a Failed state carrying the error, not a crashed flow run
     except Exception as exc:  # noqa: BLE001
         return Failed(message="One or more generators failed", error=exc)
+=======
+
+    succeeded = len(results) - len(failures)
+    details = "; ".join(f"{target_name} ({target_id}): {error}" for target_id, target_name, error in failures)
+    return Failed(
+        message=f"{len(failures)} of {len(results)} generators failed, {succeeded} succeeded: {details}",
+        data=ExceptionGroup("generator run failures", [error for *_, error in failures]),
+    )
+>>>>>>> origin/stable
