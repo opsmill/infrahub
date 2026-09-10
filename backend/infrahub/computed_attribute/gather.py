@@ -81,12 +81,14 @@ async def gather_python_transform_attributes(
         for attribute in transform_attributes[transform.name.value]:
             python_transform_computed_attribute = PythonTransformComputedAttribute(
                 name=transform.name.value,
+                transform_id=transform.get_id(),
                 branch_name=branch_name,
                 repository_id=repository.get_id(),
                 repository_name=repository.name.value,
                 repository_kind=repository.get_kind(),
                 query_analyzer=query_analyzer,
                 query_name=query.name.value,
+                query_id=query.get_id(),
                 computed_attribute=attribute,
                 default_schema=branch_name not in branches_with_diff_from_main,
             )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
@@ -41,6 +42,7 @@ from .models import (
     PythonTransformTarget,
 )
 from .read_sets import transform_read_set_from_query_report
+from .recompute_resolution import RecomputeResolver
 from .scoping import (
     ChangedElementSet,
     ComputedAttributeRef,
@@ -51,6 +53,8 @@ from .scoping import (
 from .transform_recompute import TransformRecomputeSubmitter
 
 if TYPE_CHECKING:
+    from infrahub.core.query_group.subscribers import SubscriberRef
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.schema.schema_branch_computed import TransformReadSet
     from infrahub.database import InfrahubDatabase
     from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
@@ -666,6 +670,43 @@ async def process_transform_lifecycle(
             await _reconcile_python_computed_attribute_automations(db=db)
 
 
+def _belongs_to_query(*, ref: SubscriberRef, graphql_query_id: str | None) -> bool:
+    """Whether the group that reported this subscriber runs the automation's own query.
+
+    A ref that cannot be compared is kept. Dropping it would drop a reader the automation is
+    there to recompute, and a subscriber resolved through another query is only extra work.
+    """
+    if graphql_query_id is None or ref.query_id is None:
+        return True
+    return ref.query_id == graphql_query_id
+
+
+def _attributes_fed_by_transform(
+    *, schema_branch: SchemaBranch, transform_name: str | None, transform_id: str | None
+) -> dict[str, list[str]] | None:
+    """The Python computed attributes one transform feeds, per kind that owns them.
+
+    An attribute wires its transform by name or by id, so both keys answer here.
+
+    None when the transform cannot be mapped to any attribute, which the caller answers by
+    recomputing every Python attribute of the subscriber kinds: an automation the schema no
+    longer explains must still recompute rather than narrow to nothing.
+    """
+    if transform_name is None or transform_id is None:
+        return None
+
+    definitions = RecomputeResolver(
+        attributes_by_transform=schema_branch.computed_attributes.python_attributes_by_transform
+    ).resolve(transform_name=transform_name, transform_id=transform_id)
+    if not definitions:
+        return None
+
+    attributes_by_kind: dict[str, list[str]] = defaultdict(list)
+    for definition in definitions:
+        attributes_by_kind[definition.kind].append(definition.attribute.name)
+    return attributes_by_kind
+
+
 @flow(
     name="query-computed-attribute-transform-targets",
     flow_run_name="Query for potential targets of computed attributes for {node_kind}",
@@ -675,27 +716,53 @@ async def query_transform_targets(
     node_kind: str,  # noqa: ARG001
     object_id: str,
     context: EventContext,
+    graphql_query_id: str | None = None,
+    transform_name: str | None = None,
+    transform_id: str | None = None,
 ) -> None:
+    """Recompute the readers of a node that a transform's GraphQL query reads.
+
+    The parameters identify the automation's own query and transform. They are optional, so an
+    automation stored before they existed keeps working: without them every Python computed
+    attribute of every subscriber kind is recomputed, as before.
+    """
+    log = get_run_logger()
     await add_tags(branches=[branch_name])
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
     client = get_client()
     client.request_context = context.to_request_context()
     refs = await fetch_subscriber_refs(client=client, node_ids=[object_id], branch=branch_name)
-    subscribers = [PythonTransformTarget(object_id=ref.id, kind=ref.kind) for ref in refs]
+    subscribers = [
+        PythonTransformTarget(object_id=ref.id, kind=ref.kind)
+        for ref in refs
+        if _belongs_to_query(ref=ref, graphql_query_id=graphql_query_id)
+    ]
 
-    nodes_with_computed_attributes = schema_branch.computed_attributes.get_python_attributes_per_node()
+    attributes_by_kind = _attributes_fed_by_transform(
+        schema_branch=schema_branch, transform_name=transform_name, transform_id=transform_id
+    )
+    if attributes_by_kind is None:
+        reason = (
+            "the automation identifies no transform"
+            if transform_name is None or transform_id is None
+            else f"the schema of {branch_name} feeds no attribute from the transform {transform_name}"
+        )
+        log.info(f"Recomputing every Python computed attribute of the subscriber kinds: {reason}")
+        attributes_by_kind = {
+            kind: [attribute.name for attribute in attributes]
+            for kind, attributes in schema_branch.computed_attributes.get_python_attributes_per_node().items()
+        }
 
-    # Group by (kind, attribute_name) so each attribute gets one batch workflow submission
-    batches: dict[tuple[str, str], list[str]] = {}
+    # One batch per (kind, attribute), with the ids deduplicated: a subscriber is reported once
+    # per group holding the changed node, and processing it twice writes the same value twice.
+    batches: dict[tuple[str, str], set[str]] = defaultdict(set)
     for subscriber in subscribers:
-        if subscriber.kind in nodes_with_computed_attributes:
-            for computed_attribute in nodes_with_computed_attributes[subscriber.kind]:
-                key = (subscriber.kind, computed_attribute.name)
-                batches.setdefault(key, []).append(subscriber.object_id)
+        for attribute_name in attributes_by_kind.get(subscriber.kind, []):
+            batches[subscriber.kind, attribute_name].add(subscriber.object_id)
 
     chunk_size = get_submission_chunk_size()
     for (kind, attribute_name), batch_object_ids in batches.items():
-        for chunk in chunked(batch_object_ids, chunk_size):
+        for chunk in chunked(sorted(batch_object_ids), chunk_size):
             await get_workflow().submit_workflow(
                 workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
                 context=context,

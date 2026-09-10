@@ -83,10 +83,12 @@ class ComputedAttributeAutomations(BaseModel):
 class PythonTransformComputedAttribute(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str
+    transform_id: str
     repository_id: str
     repository_name: str
     repository_kind: str
     query_name: str
+    query_id: str
     query_analyzer: InfrahubGraphQLQueryAnalyzer
     computed_attribute: PythonDefinition
     default_schema: bool
@@ -340,6 +342,12 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
                         "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
                         "node_kind": jinja_parameter("{{ event.resource['infrahub.node.kind'] }}"),
                         "object_id": jinja_parameter("{{ event.resource['infrahub.node.id'] }}"),
+                        # The flow reads no attribute name from the event, so it is told which
+                        # query matched and which transform runs it: that pair is what narrows the
+                        # groups and the attributes it recomputes.
+                        "graphql_query_id": computed_attribute.query_id,
+                        "transform_name": computed_attribute.name,
+                        "transform_id": computed_attribute.transform_id,
                         "context": {
                             "__prefect_kind": "json",
                             "value": {
