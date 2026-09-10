@@ -50,7 +50,7 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 - **Server:** `server.py` - FastAPI application factory
 - **Config:** `config.py` - Pydantic settings management
 - **Database:** `database/__init__.py` - `InfrahubDatabase` client
-- **Registry:** `core/__init__.py` - Central node class registry
+- **Registry:** `core/registry.py` - Central in-memory registry (schemas, branches, node classes); `core/__init__.py` only re-exports it
 
 ## See Also
 

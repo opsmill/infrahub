@@ -127,7 +127,7 @@ Two things to know:
   as undeclared.
 
 `packages/ui` and `packages/graph` previously used `oxlint` + `oxfmt`, which nothing in CI ever ran.
-That split was removed in #10390; `packages/plugins/template` is a standalone published scaffold and
+That split has since been removed; `packages/plugins/template` is a standalone published scaffold and
 still ships its own ESLint setup, and `packages/schema-visualizer` is a git submodule with its own
 Biome config. Both are excluded from the root config.
 
