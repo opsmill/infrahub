@@ -190,9 +190,11 @@ Two consequences worth remembering:
 ### One process, several Prefect servers
 
 A test process does not keep one Prefect server. The session-scoped `prefect_test_fixture` starts
-an ephemeral one for the whole session, and the `prefect` (module) and `prefect_class` (class)
-fixtures start a **container of their own** and re-point `PREFECT_API_URL` at it for that scope.
-Each orchestration client a test builds reads the setting when it is built, so it follows.
+an ephemeral one for the whole session. The module-scoped `prefect` fixture reuses the
+session-scoped `prefect_container`, while the class-scoped `prefect_class` starts a container per
+class; both re-point `PREFECT_API_URL` at their server for the scope, so a test can end up on a
+different server than the one before it. Each orchestration client a test builds reads the setting
+when it is built, so it follows.
 
 Prefect's background queue services do not. `EventsWorker` and `APILogWorker` are process-wide
 `QueueService` singletons, memoized on `hash((cls, *args))`, and `EventsWorker.instance()` passes
