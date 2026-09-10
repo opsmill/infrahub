@@ -345,7 +345,7 @@ export const GenericRelationshipField = ({
             return (
               <>
                 {fieldLabel}
-                {objectPanel}
+                <Col className="rounded-md border border-border p-3">{objectPanel}</Col>
               </>
             );
           }
@@ -357,10 +357,6 @@ export const GenericRelationshipField = ({
               // Switching discards the staged value, so it must take a deliberate press rather
               // than merely arrowing across the strip.
               activationMode="manual"
-              // The label is a child of the tab root so it can carry `fieldData`; the root adds
-              // no spacing of its own, so give it the same rhythm the untabbed fields use or the
-              // label sits flush against the strip.
-              className="space-y-2"
             >
               {fieldLabel}
 
