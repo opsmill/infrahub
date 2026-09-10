@@ -20,10 +20,6 @@ from infrahub.graphql.queries.repository_branch_status.paging import (
     page_rows,
 )
 from infrahub.graphql.queries.repository_branch_status.payload import build_attribute_payload
-from infrahub.graphql.queries.repository_branch_status.stub import (
-    PLACEHOLDER_UPDATED_AT,
-    fabricate_attribute_values,
-)
 
 if TYPE_CHECKING:
     from infrahub.core.schema.attribute_schema import AttributeSchema
@@ -339,101 +335,6 @@ class TestPolicyForKind:
             match=(r"^Repository kind 'CoreGenericRepository' is not supported by the repository branch status query$"),
         ):
             policy_for_kind(kind=InfrahubKind.GENERICREPOSITORY)
-
-
-class TestFabricateAttributeValues:
-    attribute_names = frozenset({"commit", "sync_status", "internal_status", "ref"})
-    twelve_names = tuple(f"branch-{index:02d}" for index in range(1, 13))
-
-    def _values_by_name(self, branch_name: str, is_default_branch: bool = False) -> dict[str, str | None]:
-        return {
-            value.attribute_name: value.value
-            for value in fabricate_attribute_values(
-                repository_id=REPOSITORY_ID,
-                branch_name=branch_name,
-                attribute_names=self.attribute_names,
-                is_default_branch=is_default_branch,
-            )
-        }
-
-    def test_identical_arguments_yield_identical_values(self) -> None:
-        first = fabricate_attribute_values(
-            repository_id=REPOSITORY_ID,
-            branch_name="branch-01",
-            attribute_names=self.attribute_names,
-            is_default_branch=False,
-        )
-        second = fabricate_attribute_values(
-            repository_id=REPOSITORY_ID,
-            branch_name="branch-01",
-            attribute_names=self.attribute_names,
-            is_default_branch=False,
-        )
-
-        assert first == second
-
-    def test_every_requested_attribute_is_served(self) -> None:
-        values = self._values_by_name(branch_name="branch-01")
-
-        assert set(values) == self.attribute_names
-        assert values["ref"] == "main"
-        assert all(
-            value.updated_at == PLACEHOLDER_UPDATED_AT
-            for value in fabricate_attribute_values(
-                repository_id=REPOSITORY_ID,
-                branch_name="branch-01",
-                attribute_names=self.attribute_names,
-                is_default_branch=False,
-            )
-        )
-
-    def test_unknown_attribute_names_are_skipped(self) -> None:
-        values = fabricate_attribute_values(
-            repository_id=REPOSITORY_ID,
-            branch_name="branch-01",
-            attribute_names={"commit", "operational_status"},
-            is_default_branch=False,
-        )
-
-        assert [value.attribute_name for value in values] == ["commit"]
-
-    def test_every_sync_status_choice_appears_across_twelve_names(self) -> None:
-        served = {self._values_by_name(branch_name=name)["sync_status"] for name in self.twelve_names}
-
-        assert served == {status.value for status in RepositorySyncStatus}
-
-    def test_internal_status_follows_the_default_branch_flag(self) -> None:
-        assert (
-            self._values_by_name(branch_name="branch-01", is_default_branch=True)["internal_status"]
-            == RepositoryInternalStatus.ACTIVE.value
-        )
-        assert (
-            self._values_by_name(branch_name="branch-01", is_default_branch=False)["internal_status"]
-            == RepositoryInternalStatus.INACTIVE.value
-        )
-
-    def test_the_default_branch_always_holds_its_own_value(self) -> None:
-        values = fabricate_attribute_values(
-            repository_id=REPOSITORY_ID,
-            branch_name="branch-02",
-            attribute_names={"commit"},
-            is_default_branch=True,
-        )
-
-        assert [value.own_value for value in values] == [True]
-
-    def test_own_value_varies_across_non_default_branches(self) -> None:
-        own_values = {
-            name: fabricate_attribute_values(
-                repository_id=REPOSITORY_ID,
-                branch_name=name,
-                attribute_names={"commit"},
-                is_default_branch=False,
-            )[0].own_value
-            for name in self.twelve_names
-        }
-
-        assert set(own_values.values()) == {True, False}
 
 
 class TestRepositoryBranchAttributes:

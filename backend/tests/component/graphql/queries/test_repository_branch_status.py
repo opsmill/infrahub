@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -190,28 +191,6 @@ query($name: String) {
     % _BRANCH_FIELD_SELECTION
 )
 
-VALUE_FILTER_QUERY = """
-query(
-    $id: String!
-    $sync_status: String
-    $internal_status: String
-    $own_values_only: Boolean
-) {
-  InfrahubRepositoryBranchStatus(
-    id: $id
-    limit: 5
-    sync_status__value: $sync_status
-    internal_status__value: $internal_status
-    own_values_only: $own_values_only
-  ) {
-    count
-    edges {
-      node { name { value } }
-    }
-  }
-}
-"""
-
 CONTRADICTORY_ORDER_QUERY = """
 query($id: String!, $limit: Int) {
   InfrahubRepositoryBranchStatus(
@@ -225,9 +204,6 @@ query($id: String!, $limit: Int) {
   }
 }
 """
-
-# The placeholder source dates every value at 2026-01-01T00:00:00Z; graphene renders it in this shape.
-EXPECTED_UPDATED_AT = "2026-01-01T00:00:00+00:00"
 
 
 @dataclass(frozen=True)
@@ -326,50 +302,6 @@ INVALID_PAGING_CASES = (
     InvalidPagingCase(name="negative-offset", variables={"offset": -1}, message="offset must be >= 0"),
     InvalidPagingCase(name="explicit-null-limit", variables={"limit": None}, message="limit must be >= 1"),
     InvalidPagingCase(name="explicit-null-offset", variables={"offset": None}, message="offset must be >= 0"),
-)
-
-
-@dataclass(frozen=True)
-class UnsupportedFilterCase:
-    """A value filter the resolver must reject while the attribute values are placeholders."""
-
-    name: str
-    """Identifier of the case, also used as the pytest id."""
-
-    variables: Mapping[str, Any]
-    """Query variables carrying the filter."""
-
-    message: str
-    """Exact error message the caller receives."""
-
-
-_PLACEHOLDER_FILTER_SUFFIX = "cannot narrow the rows while the attribute values are placeholders"
-
-UNSUPPORTED_FILTER_CASES = (
-    UnsupportedFilterCase(
-        name="sync-status",
-        variables={"sync_status": RepositorySyncStatus.IN_SYNC.value},
-        message=f"sync_status__value {_PLACEHOLDER_FILTER_SUFFIX}",
-    ),
-    UnsupportedFilterCase(
-        name="internal-status",
-        variables={"internal_status": RepositoryInternalStatus.ACTIVE.value},
-        message=f"internal_status__value {_PLACEHOLDER_FILTER_SUFFIX}",
-    ),
-    UnsupportedFilterCase(
-        name="own-values-only",
-        variables={"own_values_only": True},
-        message=f"own_values_only {_PLACEHOLDER_FILTER_SUFFIX}",
-    ),
-    UnsupportedFilterCase(
-        name="every-filter-at-once",
-        variables={
-            "sync_status": RepositorySyncStatus.IN_SYNC.value,
-            "internal_status": RepositoryInternalStatus.ACTIVE.value,
-            "own_values_only": True,
-        },
-        message=(f"sync_status__value, internal_status__value, own_values_only {_PLACEHOLDER_FILTER_SUFFIX}"),
-    ),
 )
 
 
@@ -954,61 +886,6 @@ class TestRepositoryBranchStatusRows:
             f"Unable to find the node {reader_session.account_id} / CoreGenericRepository in the database."
         )
 
-    @pytest.mark.parametrize("case", UNSUPPORTED_FILTER_CASES, ids=lambda case: case.name)
-    async def test_value_filters_are_rejected_while_the_values_are_placeholders(
-        self,
-        db: InfrahubDatabase,
-        repository_branch_status_branches: RepositoryBranchStatusBranches,
-        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
-        reader_session: AccountSession,
-        default_permission_backend: None,
-        case: UnsupportedFilterCase,
-    ) -> None:
-        branches = repository_branch_status_branches
-        repository, _ = repositories
-
-        result = await _run(
-            db=db,
-            branch_name=branches.default_branch.name,
-            source=VALUE_FILTER_QUERY,
-            variables={"id": repository.id, **case.variables},
-            account_session=reader_session,
-        )
-
-        assert result.data is None
-        assert result.errors
-        assert len(result.errors) == 1
-        assert result.errors[0].message == case.message
-
-    async def test_the_value_filter_defaults_are_accepted(
-        self,
-        db: InfrahubDatabase,
-        repository_branch_status_branches: RepositoryBranchStatusBranches,
-        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
-        reader_session: AccountSession,
-        default_permission_backend: None,
-    ) -> None:
-        """A client sending the defaults back must not be rejected, only one narrowing the rows."""
-        branches = repository_branch_status_branches
-        repository, _ = repositories
-
-        result = await _run(
-            db=db,
-            branch_name=branches.default_branch.name,
-            source=VALUE_FILTER_QUERY,
-            variables={
-                "id": repository.id,
-                "sync_status": None,
-                "internal_status": None,
-                "own_values_only": False,
-            },
-            account_session=reader_session,
-        )
-
-        assert result.errors is None
-        assert result.data
-        assert result.data["InfrahubRepositoryBranchStatus"]["count"] == READ_WRITE_ROW_COUNT
-
     @pytest.mark.parametrize("case", INVALID_PAGING_CASES, ids=lambda case: case.name)
     async def test_invalid_paging_arguments_are_rejected(
         self,
@@ -1045,7 +922,7 @@ class TestRepositoryBranchStatusRows:
     ) -> None:
         branches = repository_branch_status_branches
         repository, read_only_repository = repositories
-        variables: dict[str, Any] = {"limit": 1000, "name": "rbs-five-", "partial_match": True}
+        variables: dict[str, Any] = {"limit": 1000, "name": branches.default_branch.name}
 
         read_write = await _run(
             db=db,
@@ -1064,9 +941,10 @@ class TestRepositoryBranchStatusRows:
 
         assert read_write.errors is None
         assert read_only.errors is None
-        assert [node["ref"] for node in _nodes(read_write)] == [None] * 5
-        assert [node["ref"]["value"] for node in _nodes(read_only)] == ["main"] * 5
-        assert all(node["commit"]["value"] for node in _nodes(read_write))
+        assert [node["ref"] for node in _nodes(read_write)] == [None]
+        assert [node["ref"]["value"] for node in _nodes(read_only)] == ["main"]
+        assert [node["commit"]["value"] for node in _nodes(read_write)] == ["1111111111111111111111111111111111111111"]
+        assert [node["commit"]["value"] for node in _nodes(read_only)] == ["2222222222222222222222222222222222222222"]
 
     async def test_branch_fields_serialize_exactly_as_the_branch_query_does(
         self,
@@ -1157,10 +1035,12 @@ class TestRepositoryBranchStatusRows:
 
         assert result.errors is None
         node = _nodes(result)[0]
-        assert node["sync_status"]["value"] in {status.value for status in RepositorySyncStatus}
-        assert node["sync_status"]["label"]
-        assert node["sync_status"]["color"].startswith("#")
-        assert node["internal_status"]["value"] == "active"
+        assert node["sync_status"] == {
+            "value": RepositorySyncStatus.UNKNOWN.value,
+            "label": "Unknown",
+            "color": "#9ca3af",
+        }
+        assert node["internal_status"]["value"] == RepositoryInternalStatus.INACTIVE.value
 
     async def test_updated_at_is_returned_as_a_timestamp(
         self,
@@ -1184,10 +1064,12 @@ class TestRepositoryBranchStatusRows:
         assert result.errors is None
         assert len(_nodes(result)) == 1
         node = _nodes(result)[0]
-        assert node["commit"]["updated_at"] == EXPECTED_UPDATED_AT
-        assert node["sync_status"]["updated_at"] == EXPECTED_UPDATED_AT
-        assert node["internal_status"]["updated_at"] == EXPECTED_UPDATED_AT
-        assert node["commit"]["value"]
+        # The repository was written in one save, so its three values share one write time.
+        written_at = node["commit"]["updated_at"]
+        assert datetime.fromisoformat(written_at).tzinfo is not None
+        assert node["sync_status"]["updated_at"] == written_at
+        assert node["internal_status"]["updated_at"] == written_at
+        assert node["commit"]["value"] == "1111111111111111111111111111111111111111"
 
     async def test_two_calls_return_identical_values(
         self,
@@ -1220,7 +1102,7 @@ class TestRepositoryBranchStatusRows:
         assert second.errors is None
         assert first.data == second.data
 
-    async def test_field_description_announces_the_placeholder_values(
+    async def test_field_description_makes_no_preview_claim(
         self,
         db: InfrahubDatabase,
         repository_branch_status_branches: RepositoryBranchStatusBranches,
@@ -1234,10 +1116,7 @@ class TestRepositoryBranchStatusRows:
         assert query_type
         description = query_type.fields["InfrahubRepositoryBranchStatus"].description
         assert description
-        assert description.endswith(
-            " (preview: attribute values are placeholders, not yet read from the graph, so "
-            "sync_status__value, internal_status__value and own_values_only are rejected)"
-        )
+        assert "preview" not in description
 
 
 class TestRepositoryBranchStatusPermissions:
@@ -1495,6 +1374,17 @@ DOCUMENT_SHAPES = (
     DocumentShape(
         name="status-filter", source=FILTERED_ROWS_QUERY, variables={"limit": 5, "status": BranchStatus.OPEN.value}
     ),
+    DocumentShape(
+        name="sync-status-filter",
+        source=FILTERED_ROWS_QUERY,
+        variables={"limit": 5, "sync_status": RepositorySyncStatus.UNKNOWN.value},
+    ),
+    DocumentShape(
+        name="internal-status-filter",
+        source=FILTERED_ROWS_QUERY,
+        variables={"limit": 5, "internal_status": RepositoryInternalStatus.INACTIVE.value},
+    ),
+    DocumentShape(name="own-values-only", source=FILTERED_ROWS_QUERY, variables={"limit": 5, "own_values_only": True}),
 )
 
 
