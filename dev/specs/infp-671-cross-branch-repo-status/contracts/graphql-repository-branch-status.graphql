@@ -1,0 +1,66 @@
+# SDL of the additions to the Infrahub GraphQL schema.
+# Authoritative once regenerated into schema/schema.graphql by
+#   uv run invoke schema.generate-graphqlschema
+# Existing types referenced: TextAttribute, Dropdown, BranchStatus, MetadataOrderInput.
+# BranchStatus is the wire name: graphene derives it from the Python enum class, so the
+# symbol imported in Python is InfrahubBranchStatus while the SDL type is BranchStatus.
+
+extend type Query {
+  """
+  Status of one repository as seen from every relevant branch, one row per branch.
+  Resolved entirely from the graph; never contacts a task worker.
+  Requires view permission on the repository's kind covering both the default
+  and non-default branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER).
+  While the stub is live the description also carries:
+  "(preview: attribute values are placeholders, not yet read from the graph)".
+  The description is API-facing, so it names no ticket and no delivery increment.
+  """
+  InfrahubRepositoryBranchStatus(
+    "Repository id (uuid) or name"
+    id: String!
+    limit: Int = 40
+    offset: Int = 0
+    "Branch name filter; exact unless partial_match is true"
+    name__value: String
+    partial_match: Boolean = false
+    "Branch status filter; MERGED and DELETING branches are never returned"
+    status__value: BranchStatus
+    "Ordering by branch node metadata; default is default branch first, then name ascending"
+    order: MetadataOrderInput
+    "Keep rows whose resolved sync_status value equals this value (server-side)"
+    sync_status__value: String
+    "Keep rows whose resolved internal_status value equals this value (server-side)"
+    internal_status__value: String
+    "Keep only branches holding their own commit value (imported on this branch), independent of the selected fields"
+    own_values_only: Boolean = false
+  ): InfrahubRepositoryBranchStatusType!
+}
+
+type InfrahubRepositoryBranchStatusType {
+  "Number of rows after all filters, before limit and offset"
+  count: Int!
+  edges: [InfrahubRepositoryBranchStatusEdge!]!
+}
+
+type InfrahubRepositoryBranchStatusEdge {
+  node: InfrahubRepositoryBranchStatus!
+}
+
+type InfrahubRepositoryBranchStatus {
+  "Branch name; joins the repository's per-branch attribute edges"
+  name: String!
+  status: BranchStatus!
+  is_default: Boolean!
+  "Always true on CoreRepository, which selects on it; varies per row on CoreReadOnlyRepository, whose row set is every branch"
+  sync_with_git: Boolean!
+  "Fork point from the default branch; inherited rows resolve as of this time"
+  branched_from: String!
+  "Imported commit as this branch resolves it"
+  commit: TextAttribute
+  "Import status as this branch resolves it (defined on CoreGenericRepository, present for both kinds)"
+  sync_status: Dropdown
+  "Defined on CoreGenericRepository, present for both kinds"
+  internal_status: Dropdown
+  "CoreReadOnlyRepository only; null for CoreRepository"
+  ref: TextAttribute
+}

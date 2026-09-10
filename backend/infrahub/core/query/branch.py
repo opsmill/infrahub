@@ -267,10 +267,23 @@ class BranchNodeGetListQuery(StandardNodeGetListQuery):
             self._branch_filter_params[param_name] = [status.value for status in self.branch_filters.statuses]
             conditions.append(f"n.status IN ${param_name}")
 
+        if self.branch_filters.sync_with_git is not None:
+            param_name = "filter_sync_with_git"
+            self._branch_filter_params[param_name] = self.branch_filters.sync_with_git
+            conditions.append(f"n.sync_with_git = ${param_name}")
+
         if self.branch_filters.created_by_id:
             param_name = "filter_created_by"
             self._branch_filter_params[param_name] = self.branch_filters.created_by_id
             conditions.append(f"n.created_by = ${param_name}")
+
+        conditions.extend(self._build_timestamp_filters())
+
+        return " AND ".join(conditions) if conditions else ""
+
+    def _build_timestamp_filters(self) -> list[str]:
+        """Return the timestamp range conditions for the same WHERE clause the caller assembles."""
+        conditions: list[str] = []
 
         # Branched from (rebase timestamp) filters (with NULL check)
         if self.branch_filters.branched_from_after:
@@ -315,4 +328,4 @@ class BranchNodeGetListQuery(StandardNodeGetListQuery):
             ).to_string()
             conditions.append(f"(n.updated_at IS NOT NULL AND n.updated_at < ${param_name})")
 
-        return " AND ".join(conditions) if conditions else ""
+        return conditions
