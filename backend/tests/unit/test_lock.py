@@ -15,6 +15,7 @@ from infrahub.lock import (
     InfrahubLockRegistry,
     get_worker_id_from_lock_token,
 )
+from infrahub.services import InfrahubServices
 
 
 @dataclass
@@ -146,27 +147,23 @@ async def test_regular_locks_have_no_ttl() -> None:
     assert regular_lock.remote.timeout is None
 
 
-def test_remote_lock_rejects_a_connection_the_driver_cannot_use(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Each driver rejects a connection it cannot use, at construction time.
+async def test_remote_lock_rejects_a_connection_the_driver_cannot_use(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each driver rejects the other driver's connection, at construction time.
 
     Both branches previously received the same unvalidated union, so a mismatch surfaced later as
-    an AttributeError on the first acquire -- or, under NATS, not at all.
+    an AttributeError on the first acquire -- or, under NATS, not at all. Each case passes a real
+    connection of the wrong driver, so the guards are exercised without an ill-typed argument:
+    both reject anything outside their own type by the same path.
     """
-    unsupported: list[tuple[config.CacheDriver, object, str]] = [
+    unsupported: list[tuple[config.CacheDriver, redis.Redis | InfrahubServices, str]] = [
         (config.CacheDriver.NATS, redis.Redis(), "requires an InfrahubServices connection"),
-        (config.CacheDriver.NATS, object(), "requires an InfrahubServices connection"),
-        (config.CacheDriver.Redis, object(), "requires a Redis connection"),
+        (config.CacheDriver.Redis, await InfrahubServices.new(), "requires a Redis connection"),
     ]
 
     for driver, connection, expected in unsupported:
         monkeypatch.setattr(config.SETTINGS.cache, "driver", driver)
         with pytest.raises(TypeError, match=expected):
-            # Deliberately ill-typed: this guard is what an untyped or mis-wired caller hits.
-            lock.InfrahubLock(
-                name="global.wrong-connection",
-                connection=connection,  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
-                local=False,
-            )
+            lock.InfrahubLock(name="global.wrong-connection", connection=connection, local=False)
 
 
 async def test_reentrant_lock_allows_nested_acquisitions() -> None:
