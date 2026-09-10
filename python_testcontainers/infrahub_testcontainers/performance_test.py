@@ -102,14 +102,21 @@ class InfrahubPerformanceTest:
         self,
         definition: MeasurementDefinition,
         value: float | str,
-        **kwargs: dict[str, float],
+        context: dict[str, Any] | None = None,
+        **kwargs: str | float,
     ) -> None:
+        """Record a measurement.
+
+        Context dimensions can be passed either as keyword arguments or as a `context` mapping.
+        Either way they land flat on the recorded item, so every measurement of a definition
+        carries the same shape and the whole set compares as a single series.
+        """
         self.measurements.append(
             InfrahubMeasurementItem(
                 name=definition.name,
                 value=value,
                 unit=definition.unit,
-                context=kwargs or {},
+                context={**(context or {}), **kwargs},
             )
         )
 
