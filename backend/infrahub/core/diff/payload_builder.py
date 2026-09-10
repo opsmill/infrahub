@@ -22,9 +22,9 @@ log = get_logger(__name__)
 async def get_stored_display_labels(db: InfrahubDatabase, branch_name: str, node_ids: Iterable[str]) -> dict[str, str]:
     """Return the display labels stored on these nodes, keyed by node id, as seen from the branch.
 
-    Reading the stored label costs one query per batch of ids, where computing it through
-    ``get_display_labels_per_kind`` builds a full node object per id. A node is missing from the
-    result when it is not active on the branch or when it has no display label stored yet.
+    The stored ``display_label`` attribute is read in batches of ``query_size_limit`` ids without
+    building a node object. A node is missing from the result when it is not active on the branch
+    or when its stored display label is empty or absent.
     """
     branch = await registry.get_branch(branch=branch_name, db=db)
     display_label_map: dict[str, str] = {}
