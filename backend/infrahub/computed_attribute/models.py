@@ -241,10 +241,20 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
         live_only: bool,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
-        # scope = registry.default_branch
+        """Recompute the attribute when a node of its own kind is created.
+
+        A created node is a member of no query group yet, so nothing else can start its first
+        computation. An updated node is reached through the group it subscribed to when it last
+        computed, and matching updates here too would recompute it a second time on the same
+        fields. One exception stays: a transform query that reads no field of the owner kind gets
+        no query automation for that kind, so updates to the owner are matched here.
+        """
+        update_fields = computed_attribute.query_analyzer.query_report.fields_by_kind(
+            kind=computed_attribute.computed_attribute.kind
+        )
 
         event_trigger = EventTrigger()
-        event_trigger.events.update({NodeCreatedEvent.event_name, NodeUpdatedEvent.event_name})
+        event_trigger.events.add(NodeCreatedEvent.event_name)
         event_trigger.match = {
             "infrahub.node.kind": [computed_attribute.computed_attribute.kind],
         }
@@ -254,15 +264,14 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
 
         _restrict_to_live_origin(event_trigger, live_only=live_only)
 
-        update_fields = computed_attribute.query_analyzer.query_report.fields_by_kind(
-            kind=computed_attribute.computed_attribute.kind
-        )
         event_trigger.match_related = {
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
         }
 
         if update_fields:
             event_trigger.match_related["infrahub.field.name"] = update_fields
+        else:
+            event_trigger.events.add(NodeUpdatedEvent.event_name)
 
         event_trigger.exclude_branches(branches_out_of_scope or [])
 

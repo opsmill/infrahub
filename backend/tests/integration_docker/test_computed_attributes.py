@@ -54,6 +54,10 @@ DEVICE_NAME_FLOW = "Process computed attribute for InfraDevice.name"
 MERGE_DEVICE_INSTANCES = (11, 12, 13, 14)
 REBASE_DEVICE_INSTANCES = (21, 22, 23, 24)
 
+# Kept apart from the merge and rebase sets for the same uniqueness reason: the transform builds
+# the device name, which is the human-friendly id.
+OWNER_UPDATE_DEVICE_INSTANCES = (31, 32)
+
 # The same false spellings Pydantic accepts for the setting the stack is started with.
 FALSE_VALUES = {"0", "off", "f", "false", "n", "no"}
 
@@ -656,3 +660,32 @@ class TestComputedAttributes(TestInfrahubDockerClient):
             assert runs_for_the_rebase == 1
         else:
             assert runs_for_the_rebase >= len(REBASE_DEVICE_INSTANCES)
+
+    async def test_an_owner_update_recomputes_the_owner_once(self, client: InfrahubClient) -> None:
+        """Updating a field the transform query reads, on the device itself, runs one recompute.
+
+        The owner automation and the query automation of the device's own kind carried the same
+        field filter, so an update to one of those fields started a flow from each of them for the
+        same node. The owner automation now matches creations, and an updated device is reached
+        through the query group it subscribed to when it last computed.
+        """
+        site = await client.get(kind="LocationSite", hfid=["sth"])
+        first_instance, second_instance = OWNER_UPDATE_DEVICE_INSTANCES
+        device_id = await create_device_and_wait(
+            client, site=site, instance=first_instance, expected=f"swe-sth-router-{first_instance}"
+        )
+
+        assert await wait_until_tasks_settle(client), "the queue never drained, so the baseline count is not a baseline"
+        runs_before = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW)
+
+        device = await client.get(kind=DEVICE_KIND, id=device_id)
+        device.instance.value = second_instance
+        await device.save()
+
+        expected = [f"swe-sth-router-{second_instance}"]
+        assert await wait_for_device_names(client, [device_id], expected) == expected
+
+        await wait_for_transform_runs(client, flow_name=DEVICE_NAME_FLOW, at_least=runs_before + 1)
+        assert await wait_until_tasks_settle(client), "the queue never drained, so the count is premature"
+
+        assert await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW) - runs_before == 1
