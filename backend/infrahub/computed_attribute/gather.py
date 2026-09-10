@@ -81,6 +81,7 @@ async def gather_python_transform_attributes(
         for attribute in transform_attributes[transform.name.value]:
             python_transform_computed_attribute = PythonTransformComputedAttribute(
                 name=transform.name.value,
+                transform_id=transform.get_id(),
                 branch_name=branch_name,
                 repository_id=repository.get_id(),
                 repository_name=repository.name.value,

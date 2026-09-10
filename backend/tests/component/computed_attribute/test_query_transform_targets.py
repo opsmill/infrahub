@@ -6,6 +6,7 @@ one per query, with the changed node as a member and the reader as a subscriber.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -105,14 +106,21 @@ class WideDispatchCase:
     name: str
     graphql_query_id: str | None
     transform_name: str | None
+    transform_id: str | None
 
 
 WIDE_DISPATCH_CASES = [
-    WideDispatchCase(name="an_automation_stored_before_the_narrowing", graphql_query_id=None, transform_name=None),
+    WideDispatchCase(
+        name="an_automation_stored_before_the_narrowing",
+        graphql_query_id=None,
+        transform_name=None,
+        transform_id=None,
+    ),
     WideDispatchCase(
         name="a_transform_the_schema_no_longer_feeds_from",
         graphql_query_id=None,
         transform_name="transform_retired",
+        transform_id="0000-retired",
     ),
 ]
 
@@ -134,6 +142,7 @@ class TestQueryTransformTargets(ScopedRecomputeTestBase):
         await repository.save(db=db)
 
         queries: dict[str, Node] = {}
+        transforms: dict[str, Node] = {}
         for query_name, query_body, transform_name in (
             ("query_own", QUERY_OWN, "transform_own"),
             ("query_other", QUERY_OTHER, "transform_other"),
@@ -154,8 +163,24 @@ class TestQueryTransformTargets(ScopedRecomputeTestBase):
                 repository=repository,
             )
             await transform.save(db=db)
+            transforms[transform_name] = transform
 
-        await load_schema(db=db, schema=CAR_PERSON_TWO_QUERY_SCHEMA, update_db=True)
+        # One attribute wires its transform by id instead of by name, which the schema allows.
+        schema = deepcopy(CAR_PERSON_TWO_QUERY_SCHEMA)
+        person_schema = next(node for node in schema.nodes if node.name == "Person")
+        person_schema.attributes.append(
+            AttributeSchema(
+                name="computed_peer_by_id",
+                kind="Text",
+                read_only=True,
+                optional=True,
+                computed_attribute=ComputedAttribute(
+                    kind=ComputedAttributeKind.TRANSFORM_PYTHON,
+                    transform=transforms["transform_peer"].id,
+                ),
+            )
+        )
+        await load_schema(db=db, schema=schema, update_db=True)
 
         person = await Node.init(db=db, schema="TestPerson")
         await person.new(db=db, name="owner01")
@@ -183,7 +208,7 @@ class TestQueryTransformTargets(ScopedRecomputeTestBase):
             db=db, name="group_peer_of_car", query=queries["query_peer"], members=[cars[0]], subscribers=[person]
         )
 
-        return {"person": person, "cars": cars, "queries": queries}
+        return {"person": person, "cars": cars, "queries": queries, "transforms": transforms}
 
     @staticmethod
     async def _create_group(
@@ -222,6 +247,7 @@ class TestQueryTransformTargets(ScopedRecomputeTestBase):
             context=self._context(admin_account, default_branch),
             graphql_query_id=dataset["queries"]["query_own"].id,
             transform_name="transform_own",
+            transform_id=dataset["transforms"]["transform_own"].id,
         )
 
         assert self._submissions(workflow_recorder) == {("TestCar", "computed_own"): [dataset["cars"][0].id]}
@@ -236,7 +262,8 @@ class TestQueryTransformTargets(ScopedRecomputeTestBase):
         """A renamed car is not recomputed when nothing that reads its name feeds it.
 
         The car subscribes to its own group, whose query reads ``nbr_seats``. Only the person's
-        query reads the name, so the rename reaches the person and stops there.
+        query reads the name, so the rename reaches the person and stops there. Both of the
+        person's attributes run: one wires that transform by name and the other by id.
         """
         car = dataset["cars"][0]
 
@@ -247,9 +274,13 @@ class TestQueryTransformTargets(ScopedRecomputeTestBase):
             context=self._context(admin_account, default_branch),
             graphql_query_id=dataset["queries"]["query_peer"].id,
             transform_name="transform_peer",
+            transform_id=dataset["transforms"]["transform_peer"].id,
         )
 
-        assert self._submissions(workflow_recorder) == {("TestPerson", "computed_peer"): [dataset["person"].id]}
+        assert self._submissions(workflow_recorder) == {
+            ("TestPerson", "computed_peer"): [dataset["person"].id],
+            ("TestPerson", "computed_peer_by_id"): [dataset["person"].id],
+        }
 
     @pytest.mark.parametrize("case", WIDE_DISPATCH_CASES, ids=lambda case: case.name)
     async def test_an_automation_that_cannot_be_narrowed_keeps_the_wide_dispatch(
@@ -274,10 +305,12 @@ class TestQueryTransformTargets(ScopedRecomputeTestBase):
             context=self._context(admin_account, default_branch),
             graphql_query_id=case.graphql_query_id,
             transform_name=case.transform_name,
+            transform_id=case.transform_id,
         )
 
         assert self._submissions(workflow_recorder) == {
             ("TestCar", "computed_own"): [car.id],
             ("TestCar", "computed_other"): [car.id],
             ("TestPerson", "computed_peer"): [dataset["person"].id],
+            ("TestPerson", "computed_peer_by_id"): [dataset["person"].id],
         }

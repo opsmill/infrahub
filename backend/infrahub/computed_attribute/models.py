@@ -83,6 +83,7 @@ class ComputedAttributeAutomations(BaseModel):
 class PythonTransformComputedAttribute(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str
+    transform_id: str
     repository_id: str
     repository_name: str
     repository_kind: str
@@ -346,6 +347,7 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
                         # groups and the attributes it recomputes.
                         "graphql_query_id": computed_attribute.query_id,
                         "transform_name": computed_attribute.name,
+                        "transform_id": computed_attribute.transform_id,
                         "context": {
                             "__prefect_kind": "json",
                             "value": {

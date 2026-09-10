@@ -42,6 +42,7 @@ from .models import (
     PythonTransformTarget,
 )
 from .read_sets import transform_read_set_from_query_report
+from .recompute_resolution import RecomputeResolver
 from .scoping import (
     ChangedElementSet,
     ComputedAttributeRef,
@@ -681,18 +682,22 @@ def _belongs_to_query(*, ref: SubscriberRef, graphql_query_id: str | None) -> bo
 
 
 def _attributes_fed_by_transform(
-    *, schema_branch: SchemaBranch, transform_name: str | None
+    *, schema_branch: SchemaBranch, transform_name: str | None, transform_id: str | None
 ) -> dict[str, list[str]] | None:
-    """The Python computed attributes the named transform feeds, per kind that owns them.
+    """The Python computed attributes one transform feeds, per kind that owns them.
+
+    An attribute wires its transform by name or by id, so both keys answer here.
 
     None when the transform cannot be mapped to any attribute, which the caller answers by
     recomputing every Python attribute of the subscriber kinds: an automation the schema no
     longer explains must still recompute rather than narrow to nothing.
     """
-    if transform_name is None:
+    if transform_name is None or transform_id is None:
         return None
 
-    definitions = schema_branch.computed_attributes.python_attributes_by_transform.get(transform_name)
+    definitions = RecomputeResolver(
+        attributes_by_transform=schema_branch.computed_attributes.python_attributes_by_transform
+    ).resolve(transform_name=transform_name, transform_id=transform_id)
     if not definitions:
         return None
 
@@ -713,12 +718,13 @@ async def query_transform_targets(
     context: EventContext,
     graphql_query_id: str | None = None,
     transform_name: str | None = None,
+    transform_id: str | None = None,
 ) -> None:
     """Recompute the readers of a node that a transform's GraphQL query reads.
 
-    ``graphql_query_id`` and ``transform_name`` identify the automation's own query and transform.
-    Both are optional, so an automation stored before they existed keeps working: without them
-    every Python computed attribute of every subscriber kind is recomputed, as before.
+    The parameters identify the automation's own query and transform. They are optional, so an
+    automation stored before they existed keeps working: without them every Python computed
+    attribute of every subscriber kind is recomputed, as before.
     """
     log = get_run_logger()
     await add_tags(branches=[branch_name])
@@ -732,11 +738,13 @@ async def query_transform_targets(
         if _belongs_to_query(ref=ref, graphql_query_id=graphql_query_id)
     ]
 
-    attributes_by_kind = _attributes_fed_by_transform(schema_branch=schema_branch, transform_name=transform_name)
+    attributes_by_kind = _attributes_fed_by_transform(
+        schema_branch=schema_branch, transform_name=transform_name, transform_id=transform_id
+    )
     if attributes_by_kind is None:
         reason = (
-            "the automation names no transform"
-            if transform_name is None
+            "the automation identifies no transform"
+            if transform_name is None or transform_id is None
             else f"the schema of {branch_name} feeds no attribute from the transform {transform_name}"
         )
         log.info(f"Recomputing every Python computed attribute of the subscriber kinds: {reason}")
