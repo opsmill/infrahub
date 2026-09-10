@@ -151,14 +151,18 @@ class NATSLock:
 
 
 def _require_services_connection(connection: redis.Redis | InfrahubServices | None, lock_name: str) -> InfrahubServices:
-    """Return ``connection`` as an ``InfrahubServices``, rejecting anything else.
+    """Return ``connection`` as an ``InfrahubServices``, rejecting a missing or Redis connection.
 
-    ``redis.Redis`` is a generic class, so mypy does not subtract it from the union in the negative
-    ``isinstance`` branch. The ``cast`` records only what the check above has already established at
-    runtime; it is not a substitute for one.
+    The check is by elimination rather than a positive ``isinstance``, which would need the class
+    at runtime: ``infrahub.services`` imports this module transitively, and importing it back here
+    perturbs that cycle enough to break ``from infrahub.core import registry`` resolution in
+    unrelated modules -- mypy then binds the submodule instead of the re-exported singleton, for 15
+    errors across ``infrahub/types.py`` and ``infrahub/tasks/registry.py``. Elimination is
+    exhaustive for the declared union, which mypy and ty enforce at both ``InfrahubLock``
+    construction sites, and the ``cast`` records what the check establishes.
 
     Raises:
-        TypeError: If ``connection`` is not an ``InfrahubServices``.
+        TypeError: If ``connection`` is missing, or belongs to the Redis driver.
 
     """
     if connection is None or isinstance(connection, redis.Redis):
