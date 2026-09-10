@@ -7,6 +7,7 @@ from opentelemetry import trace
 
 from infrahub import config
 from infrahub.log import get_logger
+from infrahub.utilities.chunks import chunked
 from infrahub.utils import log_exception_guard
 
 if TYPE_CHECKING:
@@ -65,9 +66,7 @@ class DbNodeLabelReader:
     async def _load_nodes(self, node_ids: list[str]) -> dict[str, Node]:
         """Load the nodes in query-size-limited pages so a large batch never issues one huge query."""
         nodes: dict[str, Node] = {}
-        limit = config.SETTINGS.database.query_size_limit
-        for offset in range(0, len(node_ids), limit):
-            page = node_ids[offset : offset + limit]
+        for page in chunked(node_ids, config.SETTINGS.database.query_size_limit):
             nodes.update(await self._node_loader(db=self._db, ids=page, branch=self._branch))
         return nodes
 
