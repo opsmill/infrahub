@@ -280,11 +280,6 @@ async def request_generator_definition_run(
     ]
     if not failures:
         return Completed(message=f"Successfully run {len(tasks)} generators")
-<<<<<<< HEAD
-    # Flow boundary: any generator failure must surface as a Failed state carrying the error, not a crashed flow run
-    except Exception as exc:  # noqa: BLE001
-        return Failed(message="One or more generators failed", error=exc)
-=======
 
     succeeded = len(results) - len(failures)
     details = "; ".join(f"{target_name} ({target_id}): {error}" for target_id, target_name, error in failures)
@@ -292,4 +287,3 @@ async def request_generator_definition_run(
         message=f"{len(failures)} of {len(results)} generators failed, {succeeded} succeeded: {details}",
         data=ExceptionGroup("generator run failures", [error for *_, error in failures]),
     )
->>>>>>> origin/stable
