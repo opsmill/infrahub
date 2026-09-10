@@ -102,6 +102,14 @@ class PythonTransformComputedAttribute(BaseModel):
             for branch, commit in repository_data.branches.items():
                 self.branch_commit[branch] = commit
 
+    @property
+    def transform_key_name(self) -> str:
+        """Identity of the transform in an automation name.
+
+        Every attribute the transform feeds shares it, so one definition can cover them all.
+        """
+        return f"transform{NAME_SEPARATOR}{self.name}"
+
     def get_altered_branches(self) -> list[str]:
         if registry.default_branch in self.branch_commit:
             default_branch_commit = self.branch_commit[registry.default_branch]
@@ -295,6 +303,11 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         live_only: bool,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
+        """One definition per read kind of the transform query, whatever attributes it feeds.
+
+        The definition is keyed on the transform and not on one attribute: the attributes fed by
+        one transform share its query, so they read the same kinds and the same fields of them.
+        """
         # Only matching on node updated events, before nodes are created they won't be a member of the GraphQL query
         # group regardless so it doesn't make sense to trigger the query on node creation. For the initial object
         # where the computed attribute belongs that to will need to be created first which will trigger its own initial
@@ -317,7 +330,7 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         event_trigger.exclude_branches(branches_out_of_scope or [])
 
         return cls(
-            name=f"{computed_attribute.computed_attribute.key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{kind}",
+            name=f"{computed_attribute.transform_key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{kind}",
             branch=branch,
             trigger=event_trigger,
             actions=[

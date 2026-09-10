@@ -141,6 +141,25 @@ async def gather_trigger_computed_attribute_jinja2(
     return triggers
 
 
+def _branch_scopes(branches: dict[str, PythonTransformComputedAttribute]) -> list[tuple[str, list[str]]]:
+    """Which branch each automation is built for, and the branches it must not answer for.
+
+    A branch pinned to a repository commit of its own owns an automation; the default-branch one
+    covers every other branch, including the ones created after this gather.
+    """
+    if registry.default_branch in branches:
+        commit_main = branches[registry.default_branch].repository_commit
+        branches_with_diff_from_main = [
+            branch_name for branch_name, item in branches.items() if item.repository_commit != commit_main
+        ]
+    else:
+        return [(branch_name, []) for branch_name in branches]
+
+    scopes: list[tuple[str, list[str]]] = [(branch_name, []) for branch_name in branches_with_diff_from_main]
+    scopes.append((registry.default_branch, branches_with_diff_from_main))
+    return scopes
+
+
 @task(
     name="gather-trigger-computed-attribute-python",
     cache_policy=NONE,
@@ -156,9 +175,12 @@ async def gather_trigger_computed_attribute_python(
 
     repositories = await get_repositories_commit_per_branch(db=db)
 
-    # Keyed by attribute and by transform: an attribute gets its own automation even when it shares
-    # a transform, and a branch that repoints the attribute keeps a definition of its own.
-    all_computed_attributes: dict[tuple[str, str], dict[str, PythonTransformComputedAttribute]] = defaultdict(dict)
+    # Keyed by attribute and by transform: an attribute gets its own owner automation even when it
+    # shares a transform, and a branch that repoints the attribute keeps a definition of its own.
+    by_attribute: dict[tuple[str, str], dict[str, PythonTransformComputedAttribute]] = defaultdict(dict)
+    # Keyed by transform alone: a query automation carries no attribute name, so the attributes fed
+    # by one transform need one definition per read kind and not one each.
+    by_transform: dict[str, dict[str, PythonTransformComputedAttribute]] = defaultdict(dict)
     for branch in list(registry.branch.values()):
         if branch.is_global:
             continue
@@ -168,46 +190,38 @@ async def gather_trigger_computed_attribute_python(
         )
         for computed_attribute in computed_attributes:
             key = (computed_attribute.computed_attribute.key_name, computed_attribute.name)
-            all_computed_attributes[key][branch.name] = computed_attribute
+            by_attribute[key][branch.name] = computed_attribute
+            by_transform[computed_attribute.name][branch.name] = computed_attribute
 
-    for branches in all_computed_attributes.values():
-        branches_with_diff_from_main = []
-        if registry.default_branch in branches.keys():
-            commit_main = branches[registry.default_branch].repository_commit
-            branches_with_diff_from_main = [
-                branch_name for branch_name, item in branches.items() if item.repository_commit != commit_main
-            ]
-        else:
-            branches_with_diff_from_main = list(branches.keys())
-
-        branches_to_process: list[tuple[str, list[str]]] = [(branch, []) for branch in branches_with_diff_from_main]
-
-        if registry.default_branch in branches.keys():
-            branches_to_process.append((registry.default_branch, branches_with_diff_from_main))
-
-        for branch_scope, branches_out_of_scope in branches_to_process:
-            trigger_python = ComputedAttrPythonTriggerDefinition.from_object(
-                computed_attribute=branches[branch_scope],
-                branch=branch_scope,
-                live_only=live_only,
-                branches_out_of_scope=branches_out_of_scope,
+    for branches in by_attribute.values():
+        for branch_scope, branches_out_of_scope in _branch_scopes(branches):
+            triggers_python.append(
+                ComputedAttrPythonTriggerDefinition.from_object(
+                    computed_attribute=branches[branch_scope],
+                    branch=branch_scope,
+                    live_only=live_only,
+                    branches_out_of_scope=branches_out_of_scope,
+                )
             )
-            triggers_python.append(trigger_python)
 
-            for kind, access in branches[branch_scope].query_analyzer.query_report.requested_read.items():
+    for branches in by_transform.values():
+        for branch_scope, branches_out_of_scope in _branch_scopes(branches):
+            computed_attribute = branches[branch_scope]
+            for kind, access in computed_attribute.query_analyzer.query_report.requested_read.items():
                 if not access.fields:
                     # A kind reached through a generic relationship is reported for every member,
                     # even the ones the query reads no field from. Such a trigger would get no
                     # field filter and fire on every update to that kind.
                     continue
 
-                trigger_python_query = ComputedAttrPythonQueryTriggerDefinition.from_object(
-                    kind=kind,
-                    computed_attribute=branches[branch_scope],
-                    branch=branch_scope,
-                    live_only=live_only,
-                    branches_out_of_scope=branches_out_of_scope,
+                triggers_python_query.append(
+                    ComputedAttrPythonQueryTriggerDefinition.from_object(
+                        kind=kind,
+                        computed_attribute=computed_attribute,
+                        branch=branch_scope,
+                        live_only=live_only,
+                        branches_out_of_scope=branches_out_of_scope,
+                    )
                 )
-                triggers_python_query.append(trigger_python_query)
 
     return triggers_python, triggers_python_query
