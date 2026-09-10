@@ -7,13 +7,18 @@ from infrahub import config
 from .reader import UnavailableRepositoryGitStateReader
 
 if TYPE_CHECKING:
+    from infrahub.services.adapters.message_bus import InfrahubMessageBus
+
     from .reader import RepositoryGitStateReader
 
 
-def build_repository_git_state_reader() -> RepositoryGitStateReader:
+def build_repository_git_state_reader(
+    message_bus: InfrahubMessageBus,  # noqa: ARG001
+) -> RepositoryGitStateReader:
     """Return the reader every git-state consumer codes against.
 
-    The only place an implementation is chosen or a setting is read.
+    The only place an implementation is chosen or a setting is read. The bus is the collaborator a
+    reader that answers from a worker is built with; the unavailable reader needs none.
     """
     if config.OVERRIDE.repository_git_state_reader:
         return config.OVERRIDE.repository_git_state_reader

@@ -226,7 +226,7 @@ class RepositoryCommitsResolver:
         if not COMMIT_GIT_FIELDS & set(fields):
             return payload
 
-        reader = build_repository_git_state_reader()
+        reader = build_repository_git_state_reader(message_bus=graphql_context.active_service.message_bus)
         result = await reader.commits(
             request=CommitLogRequest(
                 repository_id=repository.get_id(),
