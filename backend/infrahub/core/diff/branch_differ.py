@@ -11,6 +11,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import DiffFromRequiredOnDefaultBranchError, DiffRangeValidationError
+from infrahub.log import get_logger
 
 from ...git.models import GitDiffNamesOnly
 from ...workflows.catalogue import GIT_REPOSITORIES_DIFF_NAMES_ONLY
@@ -23,6 +24,8 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
     from ..branch import Branch
+
+log = get_logger()
 
 
 class BranchDiffer:
@@ -205,9 +208,16 @@ class BranchDiffer:
             commit_from = repos_from[repo_id].commit.value
             commit_to = repos_to[repo_id].commit.value
 
-            # A repository without a commit at one end of the range has no tree to compare against,
-            # so there is no file diff to report for it.
             if not commit_from or not commit_to:
+                # `diff_from` defaults to the branch creation time, so a repository unsynced at that
+                # point stays skipped for the branch's whole life rather than for a single request.
+                log.warning(
+                    "Skipping the file diff of a repository without a commit at one end of the range",
+                    repository_id=repo_id,
+                    branch=branch.name,
+                    commit_from=commit_from,
+                    commit_to=commit_to,
+                )
                 continue
 
             if commit_from == commit_to:
