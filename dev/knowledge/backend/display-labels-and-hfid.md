@@ -120,6 +120,10 @@ if self._existing:
 3. **No `display_label` template** in schema: return `repr(self)`.
 4. **No stored attribute at all** (virtual nodes like IPAM available nodes that are never saved): compute on the fly using `DisplayLabel.compute()`.
 
+### Bulk Reads of Stored Labels
+
+Loading a node object to call `get_display_label()` costs one attribute and one relationship-manager instance per schema field, plus a Jinja2 compile of the template when the stored value was not loaded — around a millisecond of CPU per node. Code that only needs the labels of many nodes reads the stored attribute directly instead: `NodeListGetDisplayLabelQuery` (`core/query/node.py`) returns `{node_id: display_label}` for the nodes active on a branch that carry a non-empty stored label, and `get_stored_display_labels()` (`core/diff/payload_builder.py`) batches it by `query_size_limit`. The diff labels enricher (`core/diff/enricher/labels.py`) resolves every label this way and falls back to `get_display_labels_per_kind()` (node objects, on-the-fly compute) only for the ids the query did not return: schema nodes, kinds without a template, nodes created before labels were stored. A large diff went from ~42 s to ~3 s of enrichment with this split.
+
 ### Async Backfill After Schema Changes
 
 When a schema is updated to add or change a `display_label`, the async Prefect workflow chain updates existing nodes:
@@ -188,7 +192,7 @@ parent { node { ... on LocationSite { name { value } } } }
 | `core/attribute.py` | `IndexedListAttribute` (HFID storage with indexing and size fallback) |
 | `core/node/node_property_attribute.py` | `DisplayLabel`, `HumanFriendlyIdentifier` classes |
 | `core/node/__init__.py` | `resolve_relationships()`, `_collect_extra_filters()`, `add_display_label()`, `_update()` |
-| `core/query/node.py` | `NodeGetByHFIDQuery` (branch-aware HFID lookup) |
+| `core/query/node.py` | `NodeGetByHFIDQuery` (branch-aware HFID lookup), `NodeListGetDisplayLabelQuery` (bulk read of stored display labels) |
 | `core/manager.py` | `NodeManager.get_one_by_hfid()` (uses `NodeGetByHFIDQuery`) |
 | `core/schema/schema_branch_display.py` | `DisplayLabels` registry, `TemplateLabel` |
 | `core/schema/schema_branch_hfid.py` | `HFIDs` registry, `HFIDDefinition` |
