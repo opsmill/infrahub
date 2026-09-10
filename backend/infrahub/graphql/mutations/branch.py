@@ -410,10 +410,17 @@ class BranchMerge(Mutation):
             )
             task = {"id": workflow.id}
 
-        # Pull the latest information about the branch from the database directly
-        obj = await Branch.get_by_name(db=graphql_context.db, name=branch_name)
-
         fields = extract_graphql_fields(info=info)
-        ok = True
 
-        return cls(object=await obj.to_graphql_flat(fields=fields.get("object", {})), ok=ok, task=task)
+        graphql_object = None
+        if "object" in fields:
+            try:
+                # ignore_deleting=False so a branch that auto-delete has moved to DELETING is still returned
+                obj = await Branch.get_by_name(db=graphql_context.db, name=branch_name, ignore_deleting=False)
+            except BranchNotFoundError:
+                # delete_branch_after_merge removed the branch after the merge committed; the merge
+                # succeeded, so return the pre-merge branch with its deletion in progress.
+                obj.status = BranchStatus.DELETING
+            graphql_object = await obj.to_graphql_flat(fields=fields.get("object", {}))
+
+        return cls(object=graphql_object, ok=True, task=task)
