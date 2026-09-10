@@ -6,7 +6,7 @@ import pytest
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
-from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
+from infrahub.core.regeneration.impact import FieldLevelImpactResolver
 from infrahub.core.regeneration.models import TargetSelection
 from tests.constants import TestKind
 from tests.helpers.diff_summary import node_diff
@@ -126,22 +126,23 @@ class TestFieldLevelImpact(TestInfrahubApp):
     async def _resolve(
         self,
         *,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
         diff_summary: list[NodeDiff],
     ) -> TargetSelection:
-        return await get_field_level_impacted_subscribers(
+        return await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_payload=QUERY_CAR_WITH_OWNER,
             diff_summary=diff_summary,
             query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
             every_target=[dataset["subscriber_id"]],
-            client=client,
         )
 
     async def test_root_node_change_selects_subscriber(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -152,6 +153,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         routing regenerates the definitions it was asked about and nothing else.
         """
         resolved = await self._resolve(
+            db=db,
             dataset=dataset,
             default_branch=default_branch,
             client=client,
@@ -168,6 +170,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
 
     async def test_display_label_backing_change_selects_subscriber(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -178,7 +181,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         exact-name match would drop it and leave the artifact stale. The label is built from the
         car's own attributes, so the routing narrows to the car's subscriber rather than widening.
         """
-        resolved = await get_field_level_impacted_subscribers(
+        resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_payload=QUERY_CAR_DISPLAY_LABEL,
             diff_summary=[
                 node_diff(
@@ -191,12 +194,12 @@ class TestFieldLevelImpact(TestInfrahubApp):
             query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
             every_target=[dataset["subscriber_id"]],
-            client=client,
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
 
     async def test_related_node_change_narrows_to_the_owning_member(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -208,6 +211,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         selected -- not every member of the definition.
         """
         resolved = await self._resolve(
+            db=db,
             dataset=dataset,
             default_branch=default_branch,
             client=client,
@@ -224,6 +228,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
 
     async def test_unread_related_field_change_selects_nothing(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -234,6 +239,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         actually reads off the owner can implicate the cars that read it.
         """
         resolved = await self._resolve(
+            db=db,
             dataset=dataset,
             default_branch=default_branch,
             client=client,
@@ -352,6 +358,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
 
     async def test_generic_owner_reached_change_narrows_to_the_owning_member(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -362,7 +369,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
         traversal keyed on the generic slot label reaches only the slot holding the changed card, and
         through it only the owning rack, so a single subscriber comes back.
         """
-        resolved = await get_field_level_impacted_subscribers(
+        resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_payload=QUERY_RACK_WITH_CARD,
             diff_summary=[
                 node_diff(
@@ -375,6 +382,5 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
             query_branch=default_branch.name,
             subscriber_kind=TestKind.TAG,
             every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
-            client=client,
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)

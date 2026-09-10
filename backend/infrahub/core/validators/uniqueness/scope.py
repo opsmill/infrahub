@@ -10,7 +10,7 @@ LOG = get_logger(__name__)
 
 if TYPE_CHECKING:
     from infrahub.core.constants import RelationshipDirection
-    from infrahub.core.relationship.dependent_resolver import DependentNodeResolverInterface
+    from infrahub.core.relationship.dependent_resolver import DependentNodeResolver
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
     from infrahub.core.schema.basenode_schema import SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -71,7 +71,7 @@ class UniquenessConstraintScoper:
 
     def __init__(
         self,
-        dependent_resolver: DependentNodeResolverInterface,
+        dependent_resolver: DependentNodeResolver,
         node_diff_index: NodeDiffIndex,
     ) -> None:
         self.dependent_resolver = dependent_resolver

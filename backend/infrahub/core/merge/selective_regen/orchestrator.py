@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Protocol
 
 from infrahub.core import registry
+from infrahub.core.regeneration.impact import FieldLevelImpactResolver
 from infrahub.core.regeneration.profiles import SchemaProfileExpander
 from infrahub.proposed_change.branch_diff import get_modified_kinds
 
@@ -10,7 +11,6 @@ from .definition_selector.artifact_selector import ArtifactSelector
 from .definition_selector.generator_selector import GeneratorSelector
 from .fallbacks import repositories_forcing_full_regeneration
 from .gate import DefinitionGate
-from .impacted import ImpactedSubscriberResolver
 from .models import CascadeRole, PlannedRegeneration, SelectiveRegenerationPlan
 from .participant import CascadeSource, CascadeTerminal
 
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
 
     from infrahub.core.regeneration.profiles import ModifiedKindsExpander
+    from infrahub.database import InfrahubDatabase
 
     from .models import CascadeSourceOutput, DefinitionModel, FullRegeneration, RegenerationRequest
     from .participant import CascadeParticipant
@@ -135,6 +136,7 @@ class MergeSelectiveRegeneration(RegenerationPlanner):
 
 def build_merge_selective_regeneration(
     *,
+    db: InfrahubDatabase,
     client: InfrahubClient,
     log: logging.Logger | logging.LoggerAdapter[logging.Logger],
     generator_output: CascadeSourceOutput[Any],
@@ -146,7 +148,7 @@ def build_merge_selective_regeneration(
     its output capture is built once at the composition root and injected here.
     """
     gate = DefinitionGate(log=log)
-    impacted_resolver = ImpactedSubscriberResolver(client=client)
+    impacted_resolver = FieldLevelImpactResolver(db=db, client=client)
     return MergeSelectiveRegeneration(
         participants=[
             CascadeSource(
