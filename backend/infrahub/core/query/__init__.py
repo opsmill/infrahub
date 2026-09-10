@@ -392,7 +392,6 @@ class QueryStat:
         return cls(**data)
 
 
-<<<<<<< HEAD
 class QueryInitKwargs(TypedDict, total=False):
     """Keyword arguments every query constructor accepts and forwards to its base."""
 
@@ -403,7 +402,8 @@ class QueryInitKwargs(TypedDict, total=False):
     order_by: list[str] | None
     branch_agnostic: bool
     user_id: str
-=======
+
+
 PAGINATION_LIMIT_PARAM = "query_limit"
 PAGINATION_OFFSET_PARAM = "query_offset"
 
@@ -414,7 +414,6 @@ class RenderedQuery:
 
     text: str
     params: dict[str, Any]
->>>>>>> origin/stable
 
 
 class Query:
