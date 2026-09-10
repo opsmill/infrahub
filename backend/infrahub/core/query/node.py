@@ -1411,6 +1411,8 @@ class NodeListGetDisplayLabelQuery(Query):
         WITH n
         WHERE root_edge.status = "active"
         MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "display_label"})
+        // a deleted or migrated node holds several edges to the same attribute: resolve each pair once
+        WITH DISTINCT n, attr
         CALL (n, attr) {
             MATCH (n)-[r:HAS_ATTRIBUTE]->(attr)
             WHERE %(branch_filter)s
