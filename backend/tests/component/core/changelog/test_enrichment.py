@@ -14,6 +14,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
 from infrahub.core.changelog.enrichment import NodeLabelLoader, NodeLabels, node_label_loader
+from infrahub.core.changelog.hfid_resolver import ChangelogHfidResolver
 from infrahub.core.changelog.models import (
     RelationshipCardinalityManyChangelog,
     RelationshipCardinalityOneChangelog,
@@ -252,7 +253,9 @@ async def test_merge_enriches_node_hfid_and_peer_label(
         diff=diff,
         db=db,
         branch=branch,
-        label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many),
+        hfid_resolver=ChangelogHfidResolver(
+            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
+        ),
     ).collect_changelogs()
 
     car_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == car.id)
@@ -282,7 +285,10 @@ async def test_merge_changelog_survives_label_reader_failure(
     diff, branch, _owner, car = await _merge_car_owned_by_person(db, default_branch, "merge_label_failure")
 
     changelogs = await DiffChangelogCollector(
-        diff=diff, db=db, branch=branch, label_loader=NodeLabelLoader(reader=_RaisingLabelReader())
+        diff=diff,
+        db=db,
+        branch=branch,
+        hfid_resolver=ChangelogHfidResolver(label_loader=NodeLabelLoader(reader=_RaisingLabelReader())),
     ).collect_changelogs()
 
     # The collection completes despite the label read failing; the HFID just degrades to None.
@@ -322,7 +328,9 @@ async def test_merge_changelog_reports_deleted_node_hfid(
         diff=diff,
         db=db,
         branch=branch,
-        label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many),
+        hfid_resolver=ChangelogHfidResolver(
+            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
+        ),
     ).collect_changelogs()
 
     # The car is gone when the batch load runs, but its HFID is recovered from the diff.
@@ -357,7 +365,9 @@ async def test_merge_fills_peer_hfid_for_a_peer_that_did_not_change(
         diff=diff,
         db=db,
         branch=branch,
-        label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many),
+        hfid_resolver=ChangelogHfidResolver(
+            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
+        ),
     ).collect_changelogs()
 
     # The owner has no reciprocal relationship, so it is not a changed node, yet its HFID is still
@@ -399,7 +409,9 @@ async def test_merge_tolerates_dropped_kind_referencing_an_unchanged_peer(
         diff=diff,
         db=db,
         branch=branch,
-        label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many),
+        hfid_resolver=ChangelogHfidResolver(
+            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
+        ),
     ).collect_changelogs()
 
     item_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == item.id)
@@ -426,7 +438,9 @@ async def test_merge_tolerates_kind_deleted_in_migration(
         diff=diff,
         db=db,
         branch=branch,
-        label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many),
+        hfid_resolver=ChangelogHfidResolver(
+            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
+        ),
     ).collect_changelogs()
 
     by_id = {changelog.node_id: changelog for _, changelog in changelogs}
@@ -468,7 +482,9 @@ async def test_collector_applies_a_rename_migration_to_the_changelog(
         diff=diff,
         branch=branch,
         db=db,
-        label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many),
+        hfid_resolver=ChangelogHfidResolver(
+            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
+        ),
         migration_tracker=MigrationTracker(migrations=[rename]),
     ).collect_changelogs()
 
