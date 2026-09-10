@@ -4,6 +4,7 @@ from asyncio import gather, sleep
 from dataclasses import dataclass
 
 import pytest
+from redis.asyncio.lock import Lock as GlobalLock
 
 from infrahub import config, lock
 from infrahub.config import CacheSettings
@@ -128,6 +129,7 @@ async def test_init_locks_carry_configured_ttl() -> None:
 
     for init_lock in init_locks:
         assert init_lock.ttl == expected_ttl
+        assert isinstance(init_lock.remote, GlobalLock)
         assert init_lock.remote.timeout == expected_ttl
 
 
@@ -139,6 +141,7 @@ async def test_regular_locks_have_no_ttl() -> None:
     regular_lock = registry.get(name="repo-a", namespace="repository")
 
     assert regular_lock.ttl is None
+    assert isinstance(regular_lock.remote, GlobalLock)
     assert regular_lock.remote.timeout is None
 
 

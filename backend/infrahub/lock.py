@@ -6,7 +6,7 @@ import uuid
 from asyncio import Lock as LocalLock
 from asyncio import sleep
 from contextvars import ContextVar
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import redis.asyncio as redis
 from prometheus_client import Histogram
@@ -27,7 +27,9 @@ if TYPE_CHECKING:
 
 log = get_logger()
 
-registry: InfrahubLockRegistry = None
+# Populated by ``initialize_lock()`` during startup, before any consumer runs. Declared
+# non-optional so the ~56 ``lock.registry.<...>`` call sites don't each need a None guard.
+registry: InfrahubLockRegistry = None  # type: ignore[assignment]  # set by initialize_lock()
 
 
 METRIC_PREFIX = "infrahub_lock"
@@ -148,6 +150,25 @@ class NATSLock:
         return await self.service.cache.get(key=self.name) is not None
 
 
+def _require_services_connection(connection: redis.Redis | InfrahubServices | None, lock_name: str) -> InfrahubServices:
+    """Return ``connection`` as an ``InfrahubServices``, rejecting anything else.
+
+    ``redis.Redis`` is a generic class, so mypy does not subtract it from the union in the negative
+    ``isinstance`` branch. The ``cast`` records only what the check above has already established at
+    runtime; it is not a substitute for one.
+
+    Raises:
+        TypeError: If ``connection`` is not an ``InfrahubServices``.
+
+    """
+    if connection is None or isinstance(connection, redis.Redis):
+        raise TypeError(
+            f"Lock {lock_name!r} requires an InfrahubServices connection when the cache driver is "
+            f"{config.SETTINGS.cache.driver}, got {type(connection).__name__}"
+        )
+    return cast("InfrahubServices", connection)
+
+
 class InfrahubLock:
     """InfrahubLock object to provide a unified interface for both Local and Distributed locks.
 
@@ -164,10 +185,10 @@ class InfrahubLock:
         ttl: int | None = None,
     ) -> None:
         self.use_local: bool | None = local
-        self.local: LocalLock = None
-        self.remote: GlobalLock = None
+        self.local: LocalLock | None = None
+        self.remote: GlobalLock | NATSLock | None = None
         self.name: str = name
-        self.connection: redis.Redis | None = connection
+        self.connection: redis.Redis | InfrahubServices | None = connection
         self.in_multi: bool = in_multi
         self.lock_type: str = "multi" if self.in_multi else "individual"
         self._acquire_time: int | None = None
@@ -182,9 +203,18 @@ class InfrahubLock:
         if self.use_local:
             self.local = LocalLock()
         elif config.SETTINGS.cache.driver == config.CacheDriver.Redis:
+            if not isinstance(self.connection, redis.Redis):
+                raise TypeError(
+                    f"Lock {self.name!r} requires a Redis connection when the cache driver is Redis, "
+                    f"got {type(self.connection).__name__}"
+                )
             self.remote = GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}", timeout=ttl)
         else:
-            self.remote = NATSLock(service=self.connection, name=f"{LOCK_PREFIX}.{self.name}", ttl=ttl)
+            self.remote = NATSLock(
+                service=_require_services_connection(connection=self.connection, lock_name=self.name),
+                name=f"{LOCK_PREFIX}.{self.name}",
+                ttl=ttl,
+            )
 
     @property
     def acquire_time(self) -> int:
@@ -196,6 +226,30 @@ class InfrahubLock:
     @acquire_time.setter
     def acquire_time(self, value: int) -> None:
         self._acquire_time = value
+
+    @property
+    def _local_lock(self) -> LocalLock:
+        """The local lock, which only exists when this lock was built with ``use_local``.
+
+        Raises:
+            RuntimeError: If this lock is not a local lock.
+
+        """
+        if self.local is None:
+            raise RuntimeError(f"Lock {self.name!r} was not configured as a local lock")
+        return self.local
+
+    @property
+    def _remote_lock(self) -> GlobalLock | NATSLock:
+        """The distributed lock, which only exists when this lock was not built with ``use_local``.
+
+        Raises:
+            RuntimeError: If this lock is not a remote lock.
+
+        """
+        if self.remote is None:
+            raise RuntimeError(f"Lock {self.name!r} was not configured as a remote lock")
+        return self.remote
 
     async def __aenter__(self) -> None:
         await self.acquire()
@@ -217,13 +271,13 @@ class InfrahubLock:
         if self.metrics:
             with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, self.lock_type).time():
                 if not self.use_local:
-                    await self.remote.acquire(token=f"{current_timestamp()}::{WORKER_IDENTITY}")
+                    await self._remote_lock.acquire(token=f"{current_timestamp()}::{WORKER_IDENTITY}")
                 else:
-                    await self.local.acquire()
+                    await self._local_lock.acquire()
         elif not self.use_local:
-            await self.remote.acquire(token=f"{current_timestamp()}::{WORKER_IDENTITY}")
+            await self._remote_lock.acquire(token=f"{current_timestamp()}::{WORKER_IDENTITY}")
         else:
-            await self.local.acquire()
+            await self._local_lock.acquire()
 
         self.acquire_time = time.time_ns()
         self.event.clear()
@@ -238,15 +292,15 @@ class InfrahubLock:
             self._recursion_var.set(depth - 1)
             return
 
-        if self.acquire_time is not None:
-            duration_ns = time.time_ns() - self.acquire_time
+        if self._acquire_time is not None:
+            duration_ns = time.time_ns() - self._acquire_time
             if self.metrics:
                 LOCK_RESERVE_TIME_METRICS.labels(self.name, self.lock_type).observe(duration_ns / 1000000000)
-            self.acquire_time = None
+            self._acquire_time = None
 
         if not self.use_local:
             try:
-                await self.remote.release()
+                await self._remote_lock.release()
             except LockNotOwnedError:
                 # When a TTL is set the lock may have auto-expired (and possibly been re-acquired by
                 # another worker) before we got here. There is nothing left for us to release.
@@ -254,16 +308,16 @@ class InfrahubLock:
                     raise
                 log.warning("Lock expired before it could be released", lock=self.name, ttl=self.ttl)
         else:
-            self.local.release()
+            self._local_lock.release()
 
         self._recursion_var.set(None)
         self.event.set()
 
     async def locked(self) -> bool:
         if not self.use_local:
-            return await self.remote.locked()
+            return await self._remote_lock.locked()
 
-        return self.local.locked()
+        return self._local_lock.locked()
 
 
 class LockNameGenerator:
@@ -315,6 +369,7 @@ class InfrahubLockRegistry:
         service: InfrahubServices | None = None,
         name_generator: LockNameGenerator | None = None,
     ) -> None:
+        self.connection: redis.Redis | InfrahubServices | None = None
         if not local_only:
             if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
                 credential_provider: UsernamePasswordCredentialProvider | None = None
@@ -334,8 +389,6 @@ class InfrahubLockRegistry:
                 )
             else:
                 self.connection = service
-        else:
-            self.connection = None
 
         self.token = token or str(uuid.uuid4())
         self.locks: dict[str, InfrahubLock] = {}
