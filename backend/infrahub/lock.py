@@ -29,8 +29,8 @@ log = get_logger()
 
 # ``initialize_lock()`` populates this at startup, but ``None`` is genuinely reachable: the m076
 # migration guards on it (``if lock.registry is None: initialize_lock()``). The honest type is
-# therefore ``| None``, which costs 68 union-attr errors across 33 call-site modules -- its own
-# change (INBOX-71 tracks the override burn-down) rather than this module's cleanup.
+# therefore ``| None``; that costs 68 union-attr errors across 33 call-site modules, so widening it
+# is a separate change from this module's cleanup.
 registry: InfrahubLockRegistry = None  # type: ignore[assignment]  # set by initialize_lock()
 
 
