@@ -9,7 +9,7 @@ import graphene
 from graphene.types.generic import GenericScalar
 from pydantic import EmailStr, HttpUrl, IPvAnyAddress, Json
 
-from infrahub.core import registry
+from infrahub.core.registry import registry
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute

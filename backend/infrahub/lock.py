@@ -6,7 +6,7 @@ import uuid
 from asyncio import Lock as LocalLock
 from asyncio import sleep
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import redis.asyncio as redis
 from prometheus_client import Histogram
@@ -151,26 +151,23 @@ class NATSLock:
 
 
 def _require_services_connection(connection: redis.Redis | InfrahubServices | None, lock_name: str) -> InfrahubServices:
-    """Return ``connection`` as an ``InfrahubServices``, rejecting a missing or Redis connection.
+    """Return ``connection`` as an ``InfrahubServices``, rejecting anything else.
 
-    The check is by elimination rather than a positive ``isinstance``, which would need the class
-    at runtime: ``infrahub.services`` imports this module transitively, and importing it back here
-    perturbs that cycle enough to break ``from infrahub.core import registry`` resolution in
-    unrelated modules -- mypy then binds the submodule instead of the re-exported singleton, for 15
-    errors across ``infrahub/types.py`` and ``infrahub/tasks/registry.py``. Elimination is
-    exhaustive for the declared union, which mypy and ty enforce at both ``InfrahubLock``
-    construction sites, and the ``cast`` records what the check establishes.
+    Imported here rather than at module scope because ``infrahub.services`` imports this module
+    transitively; by the time a lock is built the package is importable.
 
     Raises:
-        TypeError: If ``connection`` is missing, or belongs to the Redis driver.
+        TypeError: If ``connection`` is not an ``InfrahubServices``.
 
     """
-    if connection is None or isinstance(connection, redis.Redis):
+    from infrahub.services import InfrahubServices  # noqa: PLC0415  # avoid circular import
+
+    if not isinstance(connection, InfrahubServices):
         raise TypeError(
             f"Lock {lock_name!r} requires an InfrahubServices connection when the cache driver is "
             f"{config.SETTINGS.cache.driver}, got {type(connection).__name__}"
         )
-    return cast("InfrahubServices", connection)
+    return connection
 
 
 class InfrahubLock:

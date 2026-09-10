@@ -147,24 +147,26 @@ async def test_regular_locks_have_no_ttl() -> None:
 
 
 def test_remote_lock_rejects_a_connection_the_driver_cannot_use(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Each driver must reject the other driver's connection at construction.
+    """Each driver rejects a connection it cannot use, at construction time.
 
-    Both branches previously received the same unvalidated union, so a mismatch surfaced much later
-    as an AttributeError on the first acquire instead of here, with the driver named.
+    Both branches previously received the same unvalidated union, so a mismatch surfaced later as
+    an AttributeError on the first acquire -- or, under NATS, not at all.
     """
-    monkeypatch.setattr(config.SETTINGS.cache, "driver", config.CacheDriver.NATS)
-    with pytest.raises(TypeError, match="requires an InfrahubServices connection"):
-        lock.InfrahubLock(name="global.redis-under-nats", connection=redis.Redis(), local=False)
+    unsupported: list[tuple[config.CacheDriver, object, str]] = [
+        (config.CacheDriver.NATS, redis.Redis(), "requires an InfrahubServices connection"),
+        (config.CacheDriver.NATS, object(), "requires an InfrahubServices connection"),
+        (config.CacheDriver.Redis, object(), "requires a Redis connection"),
+    ]
 
-    monkeypatch.setattr(config.SETTINGS.cache, "driver", config.CacheDriver.Redis)
-    with pytest.raises(TypeError, match="requires a Redis connection"):
-        # Any non-Redis connection: the Redis branch checks positively, so this needs no
-        # InfrahubServices instance to stand in.
-        lock.InfrahubLock(
-            name="global.services-under-redis",
-            connection=object(),  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
-            local=False,
-        )
+    for driver, connection, expected in unsupported:
+        monkeypatch.setattr(config.SETTINGS.cache, "driver", driver)
+        with pytest.raises(TypeError, match=expected):
+            # Deliberately ill-typed: this guard is what an untyped or mis-wired caller hits.
+            lock.InfrahubLock(
+                name="global.wrong-connection",
+                connection=connection,  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
+                local=False,
+            )
 
 
 async def test_reentrant_lock_allows_nested_acquisitions() -> None:
