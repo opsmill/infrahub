@@ -56,10 +56,8 @@ def _view_permission(kind: str, branch_name: str) -> ObjectPermission:
 def _raise_unless_any_repository_is_viewable(graphql_context: GraphqlContext, branch_name: str) -> None:
     """Raise the view denial unless the caller can view at least one repository kind.
 
-    Answering "no such repository" ahead of any permission check would let a caller who can view
-    none of them tell a real id from a made-up one. The concrete kind is unknown here, so the test
-    is whether any kind is viewable at all. A caller allowed one kind and denied the other can still
-    tell a repository of the denied kind from a made-up id, since the denial names the loaded kind.
+    The denial names the first kind rather than the one behind the id, so it reveals nothing about
+    what the id is or whether it exists.
 
     Raises:
         PermissionDeniedError: When no repository kind is viewable.
@@ -75,6 +73,26 @@ def _raise_unless_any_repository_is_viewable(graphql_context: GraphqlContext, br
     graphql_context.active_permissions.raise_for_permission(permission=permissions[0])
 
 
+async def _load_generic_repository(graphql_context: GraphqlContext, repository_id: str) -> CoreGenericRepository | None:
+    """Load the repository this id names on the request branch, or None when it names anything else."""
+    try:
+        repository = await NodeManager.get_one_by_id_or_default_filter(
+            db=graphql_context.db,
+            kind=CoreGenericRepository,
+            id=repository_id,
+            branch=graphql_context.branch,
+        )
+    except NodeNotFoundError:
+        return None
+
+    # The lookup validates the requested kind only when it falls back to the default filter, so the
+    # id of any other node resolves too and must not be answered as though it were a repository.
+    if InfrahubKind.GENERICREPOSITORY not in repository.get_schema().inherit_from:
+        return None
+
+    return repository
+
+
 async def load_repository_for_view(graphql_context: GraphqlContext, repository_id: str) -> CoreGenericRepository:
     """Load a repository on the request branch and enforce view permission on its concrete kind.
 
@@ -82,37 +100,24 @@ async def load_repository_for_view(graphql_context: GraphqlContext, repository_i
     name and cannot see a custom query.
 
     Raises:
-        NodeNotFoundError: When no repository carries this id and the caller may view repositories.
+        NodeNotFoundError: When the caller may view some repository kind and this id names no
+            repository they may view.
+        PermissionDeniedError: When the caller may view no repository kind at all.
 
     """
     branch = graphql_context.branch
-    repository: CoreGenericRepository | None
-    try:
-        repository = await NodeManager.get_one_by_id_or_default_filter(
-            db=graphql_context.db,
-            kind=CoreGenericRepository,
-            id=repository_id,
-            branch=branch,
-        )
-    except NodeNotFoundError:
-        repository = None
+    repository = await _load_generic_repository(graphql_context=graphql_context, repository_id=repository_id)
 
-    # The lookup validates the requested kind only when it falls back to the default filter, so the
-    # id of any other node resolves too and must not be answered as though it were a repository.
-    if repository is not None and InfrahubKind.GENERICREPOSITORY not in repository.get_schema().inherit_from:
-        repository = None
-
-    if repository is None:
-        _raise_unless_any_repository_is_viewable(graphql_context=graphql_context, branch_name=branch.name)
-        raise NodeNotFoundError(
-            branch_name=branch.name, node_type=InfrahubKind.GENERICREPOSITORY, identifier=repository_id
-        )
-
-    graphql_context.active_permissions.raise_for_permission(
+    if repository is not None and graphql_context.active_permissions.has_permission(
         permission=_view_permission(kind=repository.get_kind(), branch_name=branch.name)
-    )
+    ):
+        return repository
 
-    return repository
+    # Every rejection answers the same way, so neither the existence of an id nor the kind behind
+    # it can be read back from the difference. The denial is reserved for the caller who can view
+    # no repository at all, for whom it discloses nothing.
+    _raise_unless_any_repository_is_viewable(graphql_context=graphql_context, branch_name=branch.name)
+    raise NodeNotFoundError(branch_name=branch.name, node_type=InfrahubKind.GENERICREPOSITORY, identifier=repository_id)
 
 
 def _unavailable_payload(result: CommitLogResult | None, reason: RepositoryGitUnavailableReason) -> dict[str, Any]:

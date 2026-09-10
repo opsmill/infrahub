@@ -320,6 +320,55 @@ async def test_the_id_of_another_kind_denies_without_naming_that_kind(
     assert made_up_id.errors[0].message == denial
 
 
+async def test_a_repository_kind_the_caller_cannot_view_is_reported_as_missing(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    service: InfrahubServices,
+    read_only_repository: Node,
+) -> None:
+    session = await _account_session(
+        db=db,
+        name="read-write-repository-viewer",
+        permissions=[
+            ObjectPermission(
+                namespace="Core",
+                name="Repository",
+                action=PermissionAction.VIEW.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
+            )
+        ],
+    )
+
+    denied_kind = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": read_only_repository.id},
+        account_session=session,
+    )
+    made_up_id = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": "18d39e83-1ef7-d650-5424-000000000000"},
+        account_session=session,
+    )
+
+    assert denied_kind.errors
+    assert made_up_id.errors
+    assert (
+        denied_kind.errors[0].message
+        == f"Unable to find the node {read_only_repository.id} / CoreGenericRepository in the database."
+    )
+    assert (
+        made_up_id.errors[0].message
+        == "Unable to find the node 18d39e83-1ef7-d650-5424-000000000000 / CoreGenericRepository in the database."
+    )
+
+
 async def test_check_refs_mutation_requires_update_permission(
     db: InfrahubDatabase,
     default_branch: Branch,

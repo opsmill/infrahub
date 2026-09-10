@@ -26702,7 +26702,7 @@ type RepositoryBranchDrifts {
   fetched_at: DateTime
   repository_id: String!
   """
-  Set when the git-derived drift answer could not be produced. It does not empty edges, whose rows are graph-resolved and unaffected.
+  Set when the git-derived drift answer could not be produced. It does not suppress edges, which is resolved separately.
   """
   unavailable: RepositoryGitUnavailable
 }
