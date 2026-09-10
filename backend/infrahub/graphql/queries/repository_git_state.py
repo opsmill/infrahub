@@ -113,9 +113,8 @@ async def load_repository_for_view(graphql_context: GraphqlContext, repository_i
     ):
         return repository
 
-    # Every rejection answers the same way, so neither the existence of an id nor the kind behind
-    # it can be read back from the difference. The denial is reserved for the caller who can view
-    # no repository at all, for whom it discloses nothing.
+    # One caller gets one answer for every rejection, whichever of the two it is, so neither the
+    # existence of an id nor the kind behind it can be read back from the difference.
     _raise_unless_any_repository_is_viewable(graphql_context=graphql_context, branch_name=branch.name)
     raise NodeNotFoundError(branch_name=branch.name, node_type=InfrahubKind.GENERICREPOSITORY, identifier=repository_id)
 
