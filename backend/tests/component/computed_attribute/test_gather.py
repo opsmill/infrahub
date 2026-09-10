@@ -22,6 +22,7 @@ from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.events import NodeCreatedEvent, NodeUpdatedEvent
 from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
 from tests.helpers.trigger import branches_covered_by
 
@@ -63,6 +64,20 @@ query PersonCars($id: ID!) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+"""
+
+# TestPerson owns the attribute, and this query reads a field of TestCar only. Nothing about
+# TestPerson is read, so no query automation is built for it.
+QUERY_READING_NO_OWNER_FIELD = """
+query PersonCars {
+    TestCar {
+        edges {
+            node {
+                name { value }
             }
         }
     }
@@ -540,3 +555,53 @@ async def test_gather_trigger_computed_attribute_python_query(
         kind: sorted(trigger.trigger.match_related["infrahub.field.name"])
         for kind, trigger in _triggers_by_kind(trigger_queries).items()
     } == {kind: sorted(fields) for kind, fields in case.expected_fields_by_kind.items()}
+
+
+async def test_an_owner_update_is_matched_by_one_automation(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_computed_attr: None, transform01: Node
+) -> None:
+    """The two families used to match an owner update on the same fields and recompute it twice.
+
+    The owner automation now takes creations, where no query group holds the node yet, and the
+    query automation of the owner kind takes updates. Their field filters stay equal, so exactly
+    one of the two answers an update to a field the query reads.
+    """
+    triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+
+    assert [trigger.name for trigger in triggers] == ["TestCar_computed_desc_python"]
+    owner_trigger = triggers[0]
+    owner_kind_query_trigger = _triggers_by_kind(trigger_queries)["TestCar"]
+
+    assert owner_trigger.trigger.events == {NodeCreatedEvent.event_name}
+    assert owner_kind_query_trigger.trigger.events == {NodeUpdatedEvent.event_name}
+    assert (
+        owner_trigger.trigger.match_related["infrahub.field.name"]
+        == owner_kind_query_trigger.trigger.match_related["infrahub.field.name"]
+    )
+
+
+async def test_an_owner_whose_fields_are_never_read_still_matches_updates(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_generics_unregistered: dict[str, Any],
+) -> None:
+    """A query reading no field of the owner kind leaves the owner automation as the only cover.
+
+    No query automation is built for a kind with no field to filter on, so narrowing this one to
+    creations would leave an update to the owner reached by nothing.
+    """
+    await _setup_person_transform(
+        db=db,
+        default_branch=default_branch,
+        schema_dict=car_person_schema_generics_unregistered,
+        query=QUERY_READING_NO_OWNER_FIELD,
+    )
+
+    triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+
+    assert [trigger.name for trigger in triggers] == ["TestPerson_computed_desc_python"]
+    assert triggers[0].trigger.events == {NodeCreatedEvent.event_name, NodeUpdatedEvent.event_name}
+    assert "infrahub.field.name" not in triggers[0].trigger.match_related
+    # TestCar is a generic here, so its members are reported with it. TestPerson, which owns the
+    # attribute, is absent: that is the kind left with no cover but the owner automation.
+    assert set(_triggers_by_kind(trigger_queries)) == {"TestCar", "TestElectricCar", "TestGazCar"}
