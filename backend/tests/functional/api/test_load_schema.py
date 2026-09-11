@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_sdk.schema import GenericSchemaAPI as SDKGenericSchema
-from infrahub_sdk.schema import validate_schema
+from infrahub_sdk.schema import format_error_location, validate_schema
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.initialization import create_account
@@ -17,6 +17,7 @@ from infrahub.core.schema.basenode_schema import OPTIONAL_TEXT_FIELDS
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_relationships
 from infrahub.database import InfrahubDatabase
+from tests.helpers.schema_errors import error_paths
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -665,9 +666,9 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         )
 
         assert response.status_code == 422
-        assert [(item["loc"], item["input"], item["msg"]) for item in response.json()["detail"]] == [
+        assert error_paths(response.json()["detail"]) == [
             (
-                ["body", "schemas", 0, "nodes", 0, "attributes", 0, "not_a_real_field"],
+                "body.schemas[0].nodes[0].attributes[0].not_a_real_field",
                 "value",
                 "Unknown field, it is not part of the schema",
             )
@@ -705,7 +706,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         detail = response.json()["detail"]
         assert len(detail) == 1, detail
         # The invalid kind fails the attribute discriminator, so the location stops at the attribute.
-        assert detail[0]["loc"] == ["body", "schemas", 0, "nodes", 0, "attributes", 0]
+        assert format_error_location(loc=detail[0]["loc"]) == "body.schemas[0].nodes[0].attributes[0]"
         assert detail[0]["input"] == {"name": "name", "kind": "NotARealKind"}
         assert "Input tag 'NotARealKind' found using 'kind' does not match any of the expected tags" in detail[0]["msg"]
 
@@ -794,12 +795,8 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         )
 
         assert response.status_code == 422
-        assert [(item["loc"], item["input"], item["msg"]) for item in response.json()["detail"]] == [
-            (
-                ["body", "schemas", 0, "nodes", 0, "relationships", 0, "cardinality"],
-                "both",
-                "Input should be 'one' or 'many'",
-            )
+        assert error_paths(response.json()["detail"]) == [
+            ("body.schemas[0].nodes[0].relationships[0].cardinality", "both", "Input should be 'one' or 'many'")
         ]
 
     async def test_stored_schema_with_read_level_field_reads_back(
@@ -995,8 +992,8 @@ class TestLoadSchemaAPI(TestInfrahubApp):
             headers={"X-INFRAHUB-KEY": api_admin_token},
         )
         assert response_unknown.status_code == 422
-        assert [(item["loc"], item["input"], item["msg"]) for item in response_unknown.json()["detail"]] == [
-            (["body", "schemas", 0, *unknown_error.loc], unknown_error.input, unknown_error.reason)
+        assert error_paths(response_unknown.json()["detail"]) == [
+            (f"body.schemas[0].{unknown_error.field}", unknown_error.input, unknown_error.reason)
         ]
 
         # Out-of-enum value: SDK offline verdict is "invalid" and the server rejects it (422) with
@@ -1013,6 +1010,6 @@ class TestLoadSchemaAPI(TestInfrahubApp):
             headers={"X-INFRAHUB-KEY": api_admin_token},
         )
         assert response_invalid.status_code == 422
-        assert [(item["loc"], item["input"], item["msg"]) for item in response_invalid.json()["detail"]] == [
-            (["body", "schemas", 0, *offline_error.loc], offline_error.input, offline_error.reason)
+        assert error_paths(response_invalid.json()["detail"]) == [
+            (f"body.schemas[0].{offline_error.field}", offline_error.input, offline_error.reason)
         ]

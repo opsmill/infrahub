@@ -15,6 +15,7 @@ from infrahub.api.schema import SchemaLoadAPI, SchemaReadAPI, SchemasLoadAPI
 from infrahub.core.constants import ComputedAttributeKind, HashableModelState
 from infrahub.core.schema import SchemaRoot, SchemaWarningType
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
+from tests.helpers.schema_errors import error_paths
 
 
 def _full_internal_dump() -> dict[str, Any]:
@@ -394,16 +395,12 @@ def test_load_request_reports_one_error_per_violation_located_on_the_field() -> 
     response = _schema_load_client().post("/schema/load", json=payload)
 
     assert response.status_code == 422
-    assert [(item["type"], item["loc"], item["input"], item["msg"]) for item in response.json()["detail"]] == [
+    detail = response.json()["detail"]
+    assert {item["type"] for item in detail} == {"value_error"}
+    assert error_paths(detail) == [
+        ("body.schemas[0].extensions.nodes[0].namespace", "Forbidden", "Unknown field, it is not part of the schema"),
         (
-            "value_error",
-            ["body", "schemas", 0, "extensions", "nodes", 0, "namespace"],
-            "Forbidden",
-            "Unknown field, it is not part of the schema",
-        ),
-        (
-            "value_error",
-            ["body", "schemas", 0, "extensions", "nodes", 0, "attributes", 0, "made_up"],
+            "body.schemas[0].extensions.nodes[0].attributes[0].made_up",
             True,
             "Unknown field, it is not part of the schema",
         ),
