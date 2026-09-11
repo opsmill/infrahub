@@ -280,16 +280,16 @@ When `false`, the Generator will not run after the branch has been merged.
 
 ## Running a Generator from events
 
-Inside a proposed change, Generator runs and artifact generation run concurrently, so an artifact that reads a Generator's output can render before that output exists (see [Ordering between Generators and artifacts](../proposed-changes/overview#ordering-between-generators-and-artifacts)). To avoid this, run the Generator on the branch before the proposed change is opened. Chain two event rules:
+Inside a proposed change, Generator runs and artifact generation start at the same time, so an artifact that reads a Generator's output can render before that output exists (see [Ordering between Generators and artifacts](../proposed-changes/overview#ordering-between-generators-and-artifacts)). Run the Generator on the branch before you open the proposed change. Chain two event rules:
 
 1. A [node trigger rule](../events/event-rules#configure-a-node-trigger-rule) matches the mutation that creates the input data and fires a group action that adds the object to the Generator definition's target group.
 2. A [group trigger rule](../events/event-rules#configure-a-group-trigger-rule) on that group matches the member-added event and fires a [Generator action](../events/event-actions#configure-a-generator-action) that runs the Generator against the new member.
 
 The Generator runs only for the objects that are members of the Generator definition's target group. If none of the triggering objects are members, the run fails with `Target <id> is not part of the group <id>`.
 
-Create both rules on the default branch, and set `branch_scope` to `other_branches` so the chain fires on the branches where a proposed change will review the result. A rule created on another branch does not fire (see [where trigger rules are stored and evaluated](../events/event-rules#where-trigger-rules-are-stored-and-evaluated)).
+Create both rules on the default branch, and set `branch_scope` to `other_branches` so the chain fires on the branches where you review the result in a proposed change. A rule created on another branch does not fire (see [where trigger rules are stored and evaluated](../events/event-rules#where-trigger-rules-are-stored-and-evaluated)).
 
-Set `execute_in_proposed_change: false` on the Generator, so that it does not also run inside the proposed-change pipeline. This flag does not gate event-triggered runs.
+Set `execute_in_proposed_change: false` on the Generator, so that it does not also run inside the proposed-change pipeline. The flag applies only to that pipeline: it does not prevent an event from running the Generator.
 
 ## Video guides
 
