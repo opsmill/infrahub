@@ -138,6 +138,26 @@ annotating, don't fix the bug in the same PR — keep the diff limited to the an
 the bug separately. The justification comment may record what you found (see
 [Exception Handling](backend/exceptions.md)), but the fix belongs in its own PR.
 
+## Stacked Pull Requests
+
+When a change ships as a
+[stack of pull requests](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/optimizing-ci-for-stacked-pull-requests),
+CI runs the GitHub-hosted checks (lint, unit tests, generated-file validation) on every pull
+request of the stack, but the huge-runner jobs (component, integration, functional, docker and
+e2e tests, version upgrade, benchmarks) only on the top pull request. The top contains every
+commit of the stack, so one run there covers all levels.
+
+- **Mechanism:** the `huge-runner-gate` job in `.github/workflows/ci.yml`, which every
+  huge-runner job depends on, is skipped when the pull request is in a stack and not its top.
+  Skipped jobs count as passing for required status checks.
+- **Adding a level:** pushing a new pull request on top of a stack turns the previous top into an
+  intermediate pull request; its next CI run skips the huge-runner jobs.
+- **Override:** to run the huge-runner jobs on an intermediate pull request, add the
+  `ci/run-huge-runners` label, then push a commit: adding the label does not start a run, and
+  re-running an existing run does not see it.
+- **Scope:** only pull requests GitHub created as a stack carry stack metadata; a pull request
+  that merely targets another feature branch runs the huge-runner jobs.
+
 ## Critical Rules
 
 - Never force push to `stable` or `develop`
