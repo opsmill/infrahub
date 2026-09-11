@@ -209,7 +209,22 @@ signal they were under-called.
 | --- | --- | --- |
 | P2 | `contracts/graphql-repository-branch-status.md` documented `at` as unconditionally rejected, which the code does not guarantee. | Fixed: the contract now names `/graphql` and states the saved-query and transformation boundary. |
 | P2 | `repository.py` `default_window` moved the window forward to `branched_from` even when `at` predates the fork. | Fixed, with a regression test proven to fail before the change. |
-| P3 | The fixture teardown emptied the database but restored a pre-setup registry snapshot, leaving registry and database mutually inconsistent. | Fixed: fields describing database rows (`branch`, `_schema`, `_default_ipnamespace`) are left cleared; registered types are still restored. |
+| P3 | The fixture teardown emptied the database but restored a pre-setup registry snapshot, leaving registry and database mutually inconsistent. | Fixed: `registry.delete_all()` runs after the wipe, then the snapshot's registered types are restored while `branch`, `_schema` and `_default_ipnamespace` stay cleared. |
+
+A second cubic pass on the fix commit found two more, both valid:
+
+| Sev | Finding | Disposition |
+| --- | --- | --- |
+| P3 | This report marked the `default_window` divergence fixed in the findings table while section 7 still listed it for triage. | Fixed: section 7 no longer lists it. |
+| P3 | The first teardown fix only *skipped restoring* the database-backed registry fields, so the values this module built stayed in place and still described deleted rows - the docstring asserted the opposite of what the code did. | Fixed: `registry.delete_all()` now actually clears them, which makes the docstring true rather than the docstring being softened to match. |
+
+The teardown fix was verified with a throwaway probe module run after the fixture's own module,
+asserting `registry.branch == {}` and `registry._schema is None`: it FAILED against the previous
+teardown and passed against the fixed one. The probe was then deleted rather than committed,
+because a test asserting what a *previous* module left behind depends on module execution order and
+worker assignment, and would be flaky under the xdist configuration component tests run with. The
+teardown therefore has no permanent regression guard; that is a deliberate trade and the reason
+this behaviour has now been got wrong twice.
 
 Explicitly checked and cleared by the reviewer, not merely unexamined:
 
@@ -279,9 +294,11 @@ Decisions the owner may want to revisit:
    InfrahubRepositoryBranchStatus stub" task, and whether the `ValueError` in `models.py:38` should
    become an Infrahub `Error` subclass.
 3. **Triage the deferred MEDIUM findings.** In rough order of risk: read-only repository value
-   coverage (the review's own pick for most likely surprise), the boundary-timestamp case in the
-   differential test, an explicit ceiling on the result set, the `default_window` divergence, and
-   soft-delete coverage.
+   coverage (the review's own pick for most likely surprise), an explicit ceiling on the result
+   set, and soft-delete coverage. The `default_window` divergence is no longer on this list: it was
+   fixed after the PR review. The differential test's boundary-timestamp gap is partly closed by
+   the regression test that fix carried, which reads at an exact edge timestamp and so pins the
+   non-strict `from <=`; a case for the `to >` arm would finish it.
 4. **Sweep the contract docs in Phase 6.** `contracts/graphql-repository-branch-status.{md,graphql}`
    and `plan.md` still describe the stub window; T057 owns that.
 5. Phase 5 (T048 onward, IFC-3128, the periodic sync) is untouched and ready.

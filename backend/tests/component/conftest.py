@@ -3295,7 +3295,11 @@ async def repository_branch_status_branches(
         legacy_non_isolated=legacy_non_isolated,
     )
 
+    # Clearing first is what empties the fields holding objects read from the database: skipping
+    # them in the restore below would otherwise leave this module's branches and schemas in place,
+    # describing rows the wipe above just deleted.
     await delete_all_nodes(db=db)
+    registry.delete_all()
     for name, value in registry_state.items():
         if name not in _REGISTRY_FIELDS_BACKED_BY_DATABASE_ROWS:
             setattr(registry, name, value)
