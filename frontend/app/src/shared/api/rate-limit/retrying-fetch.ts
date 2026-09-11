@@ -1,4 +1,5 @@
 import { sendWithRateLimitRetry } from "@/shared/api/rate-limit/policy";
+import { notifyRetryScheduled } from "@/shared/api/rate-limit/retry-notice";
 import { isShedResponse } from "@/shared/api/rate-limit/shed-envelope";
 
 // Replaying these is safe whoever returned the 429.
@@ -30,6 +31,10 @@ export const retryingFetch: typeof fetch = (input, init) => {
     // re-sent as-is, which holds because those bodies are strings — a stream
     // body could not be replayed.
     () => fetch(request ? request.clone() : input, init),
-    { signal, canReplay: (response) => canReplay(method, response) }
+    {
+      signal,
+      canReplay: (response) => canReplay(method, response),
+      onRetryScheduled: (retry) => notifyRetryScheduled(retry.delayMs),
+    }
   );
 };
