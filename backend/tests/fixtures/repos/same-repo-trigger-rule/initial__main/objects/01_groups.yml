@@ -1,0 +1,7 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreStandardGroup
+  data:
+    - name: repo_defined_group
