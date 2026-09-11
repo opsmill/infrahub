@@ -66,8 +66,9 @@ Flagged upward:
 1 task, 1 done. Commit `f85248486`.
 
 Not in the original `tasks.md`. Added after the owner approved it on measured evidence, and
-recorded as a ticked T034a so the deviation is visible to a reviewer rather than silent. All four
-T034 EXPLAIN criteria pass with it in place.
+recorded as a ticked T034a so the deviation is visible to a reviewer rather than silent. It fixes
+T034's index criteria; the no-Cartesian-product criterion was recorded as passing here but was not
+met until the later hoist, as the section below records.
 
 ### Chunk 3: Tests for increment B (T040, T041, T042, T043)
 
@@ -120,6 +121,10 @@ an Infrahub `Error` subclass, on the duplicate-triple guard. The reasoning is th
 the duplicate impossible, so reaching it is a server-side integrity bug that should surface as a
 500 rather than as a clean client-facing message with `data: null`. T046's text says "every raised
 error is an Infrahub `Error` subclass", so this is a knowing deviation.
+
+**Resolved after PR review**: it now raises `ResourceMultipleFoundError`, which is HTTP 500 and so
+keeps the intent, while failing through the standard error envelope instead of an unhandled
+traceback. The deviation from T046 is gone.
 
 ### Chunk 6: Review fixes
 
@@ -225,14 +230,26 @@ A third pass, against the review-fix commit, found two more. Both named the same
 | P3 | A why-comment in `repository.py` named the base `Query` classmethod it described, against the "no references to other code" rule. | Fixed: the comment states the durable behaviour without naming the method. |
 | P3 | The same reference in the new unit test's comment. | Fixed in the comment **and** in the test name, which carried the same reference. Cubic's stated remedy - delete the comment because the name already says it - would have left the violation in the name and dropped the one non-obvious fact on those lines, why the unused connection may be `None`. Its rationale also inverted the rule it cited, claiming comments must not explain why; that rule requires the why and forbids the what. |
 
+A fourth pass, on the commit carrying those two fixes, found two more. Both valid:
+
+| Sev | Finding | Disposition |
+| --- | --- | --- |
+| P3 | Stripping the method name from the paging comment broke its meaning: it then claimed both arguments arrive as `None` whether or not the caller passed them, which is false for a caller that passes one. | Fixed: the comment now says the *unset* pair arrives as `None` rather than absent. Cubic's own suggestion restored the method name its previous pass objected to, so the wording matches neither of its two suggestions. |
+| P3 | The report gave two timelines for T034: chunk 2b said all four criteria passed once the index was in place, while the section below said the Cartesian criterion was unmet until the hoist. | Fixed: chunk 2b now scopes its claim to the index criteria and points at the later section. |
+
+The same sweep found three stale `ValueError` claims this report had not updated when the exception
+was converted, in the chunk 5 deviation note, the deviations list and the open questions. All three
+now record the conversion. The Phase 3 report's equivalent claim was left alone: it is a sealed
+record of a different branch and head commit, and was true when written.
+
 ### T034 was ticked on a criterion it did not meet
 
 T034 required confirming "no Cartesian product and no eager operator between the `UNWIND` and the
 subqueries" and was recorded as done. It was not: the node match sat below the `UNWIND` and shared
 no variable with `branch_name`, so the planner drove it as the right side of a cartesian `Apply`,
 repeating the uuid seek and the attribute expansion once per branch. A `PROFILE` over 200 branches,
-one repository and three attributes measured that subtree at 8960 db-hits; with the match hoisted
-above the `UNWIND` it is 3068, for an identical 600-row result (90,560 to 84,668 total). The
+one repository and three attributes measured that subtree at 8,960 db-hits; with the match hoisted
+above the `UNWIND` it is 3,068, for an identical 600-row result (90,560 to 84,668 total). The
 criterion is met now, by the hoist rather than by the original statement. T034a's separate
 `Branch.name` finding was real and was handled at the time; what this shows is that the plan was
 read for the index question and not for the operator question the same task also asked.
@@ -303,15 +320,16 @@ Decisions the owner may want to revisit:
    unusable. Escalated immediately after.
 6. **Finding 2 recorded rather than fixed**, on the owner's explicit instruction.
 7. **The `ValueError` deviation in `models.py:38` left standing**, flagged rather than converted.
+   Converted to `ResourceMultipleFoundError` after the PR review raised it again.
 8. **Report written as a sibling file** rather than overwriting the Phase 3 report.
 
 ## 7. Suggested next steps
 
 1. **Open the PR.** Base `cross-branch-repo-status-infp-671`, not `develop`. The body, carrying the
    T034 EXPLAIN plan and the T046 error-path checklist, was handed over in the session.
-2. **Decide the two open questions**: whether IFC-3127 subsumes the never-created "Remove
-   InfrahubRepositoryBranchStatus stub" task, and whether the `ValueError` in `models.py:38` should
-   become an Infrahub `Error` subclass.
+2. **Decide the remaining open question**: whether IFC-3127 subsumes the never-created "Remove
+   InfrahubRepositoryBranchStatus stub" task. The `models.py:38` exception question is settled: it
+   became `ResourceMultipleFoundError` after the PR review.
 3. **Triage the deferred MEDIUM findings.** In rough order of risk: read-only repository value
    coverage (the review's own pick for most likely surprise), an explicit ceiling on the result
    set, and soft-delete coverage. The `default_window` divergence is no longer on this list: it was
