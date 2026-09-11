@@ -156,6 +156,15 @@ def schema_branch_with_python_attributes() -> Generator[None, None, None]:
 
 
 @pytest.fixture
+def schema_branch_without_the_attribute() -> Generator[None, None, None]:
+    """A registry that does not carry the branch, as a worker behind on the schema has."""
+    original = registry._schema
+    registry.schema = SchemaManager()
+    yield
+    registry._schema = original
+
+
+@pytest.fixture
 def client_without_the_transform(monkeypatch: pytest.MonkeyPatch) -> _RecordingClient:
     """Answer the transform fetch with an empty result, as a branch holding no such transform does."""
     client = _RecordingClient(NO_TRANSFORM_FOUND)
@@ -273,16 +282,11 @@ async def test_a_widened_fan_out_raises_for_a_transform_it_cannot_run(
 
 
 async def test_a_widened_fan_out_proceeds_when_the_branch_schema_has_no_such_attribute(
+    schema_branch_without_the_attribute: None,
     client_without_the_transform: _RecordingClient,
-    recorded_submissions: WorkflowRecorder,
 ) -> None:
     """A worker whose registry does not carry the branch reports no attribute, and must not skip."""
-    original = registry._schema
-    registry.schema = SchemaManager()
-    try:
-        await _fan_out(widened=True)
-    finally:
-        registry._schema = original
+    await _fan_out(widened=True)
 
     assert client_without_the_transform.listed_kinds == [CAR_KIND]
 
@@ -304,7 +308,7 @@ async def test_a_widened_batch_skips_a_transform_deleted_after_the_widening(
     client_without_the_transform: _RecordingClient,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """The chunks a widened fan-out submits carry the same licence it had."""
+    """A widened fan-out passes `widened` to its chunks, so a later deletion lands here."""
     with caplog.at_level(logging.WARNING, logger=LOGGER_NAME):
         await _batch(coalesced=True, widened=True)
 
