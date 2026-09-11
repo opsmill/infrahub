@@ -35,10 +35,10 @@ registry: InfrahubLockRegistry
 
 
 def __getattr__(name: str) -> Any:
-    """Give the pre-initialization read of ``registry`` a clear error instead of a bare NameError.
+    """Raise for a module attribute that is not bound.
 
     Raises:
-        InitializationError: If ``registry`` is read before ``initialize_lock()`` has bound it.
+        InitializationError: If the lock registry is read before it is initialized.
         AttributeError: For any other missing module attribute.
 
     """
