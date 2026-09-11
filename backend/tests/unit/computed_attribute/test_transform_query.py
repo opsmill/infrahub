@@ -84,9 +84,15 @@ class TestComputedAttributeTransformQuery:
         )
 
     def test_parse_response_returns_none_for_empty_edges(self) -> None:
-        """Empty edges is the one shape that means absent, which a caller is allowed to wait out."""
+        """An empty result means absent, which a caller is allowed to wait out."""
         q = ComputedAttributeTransformQuery(transform_id="txfm-001")
         result = q.parse_response(response={"CoreTransformPython": {"edges": []}})
+        assert result is None
+
+    def test_parse_response_returns_none_for_a_null_node(self) -> None:
+        """The second absent shape: an edge that carries no node."""
+        q = ComputedAttributeTransformQuery(transform_id="txfm-001")
+        result = q.parse_response(response={"CoreTransformPython": {"edges": [{"node": None}]}})
         assert result is None
 
     def test_parse_response_raises_for_a_response_of_another_shape(self) -> None:
