@@ -143,6 +143,15 @@ Copy the artifact ID from the artifact menu:
 
 Query artifacts through the GraphQL API for automation workflows.
 
+## Regenerate an artifact
+
+Infrahub does not regenerate an artifact when the data behind it changes. To pick up a change without opening a Proposed Change, request a run:
+
+1. To regenerate every member of the group, open the artifact definition and click **Generate**.
+2. To regenerate one artifact, open that artifact and click **Re-generate**.
+
+For everything else that starts a run, see [when artifacts regenerate](./overview#when-artifacts-regenerate).
+
 ## Validation
 
 Confirm your artifact generation is working:
@@ -150,8 +159,7 @@ Confirm your artifact generation is working:
 - ✓ artifact definitions appear in the web interface
 - ✓ artifacts are generated for all group members
 - ✓ Generated content matches your template expectations
-- ✓ **Generate** on the artifact definition regenerates every member of the group
-- ✓ **Re-generate** on a single artifact regenerates that artifact only
+- ✓ the content changes after you click **Generate** on the artifact definition
 
 ## Troubleshooting
 
