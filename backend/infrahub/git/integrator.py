@@ -11,7 +11,7 @@ import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
 from infrahub_sdk.exceptions import Error as InfrahubSdkError
-from infrahub_sdk.exceptions import ValidationError
+from infrahub_sdk.exceptions import TrackingGroupCleanupError, ValidationError
 from infrahub_sdk.graphql.query_renderer import render_query
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
@@ -1528,22 +1528,30 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def _import_file_paths(
         self, branch_name: str, commit: str, files_pathes: list[Path], object_type: RepositoryObjects
     ) -> None:
+        log = get_run_logger()
         branch_wt = self.get_worktree(identifier=commit or branch_name)
         file_pathes = [branch_wt.directory / file_path for file_path in files_pathes]
 
-        # We currently assume there can't be concurrent imports, but if so, we might need to clone the client before tracking here.
-        async with self.sdk.start_tracking(
-            identifier=f"group-repo-{object_type.value}-{self.id}",
-            delete_unused_nodes=True,
-            branch=branch_name,
-            group_type="CoreRepositoryGroup",
-            group_params={"content": object_type.value, "repository": str(self.id)},
-        ):
-            file_type = repo_object_type_to_file_type(object_type)
-            await self._load_objects(
-                paths=file_pathes,
+        try:
+            # We currently assume there can't be concurrent imports, but if so, we might need to clone the client before tracking here.
+            async with self.sdk.start_tracking(
+                identifier=f"group-repo-{object_type.value}-{self.id}",
+                delete_unused_nodes=True,
                 branch=branch_name,
-                file_type=file_type,
+                group_type="CoreRepositoryGroup",
+                group_params={"content": object_type.value, "repository": str(self.id)},
+            ):
+                file_type = repo_object_type_to_file_type(object_type)
+                await self._load_objects(
+                    paths=file_pathes,
+                    branch=branch_name,
+                    file_type=file_type,
+                )
+        # The refused objects stay in the tracking group, so the next import retries them.
+        except TrackingGroupCleanupError as exc:
+            log.warning(
+                f"Unable to delete {len(exc.failures)} {object_type.value} object(s) no longer "
+                f"defined in the repository: {exc}"
             )
 
     @task(name="import-objects", task_run_name="Import Objects", cache_policy=NONE)
