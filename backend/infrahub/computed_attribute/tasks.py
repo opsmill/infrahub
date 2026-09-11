@@ -51,9 +51,15 @@ from .scoping import (
 from .transform_recompute import TransformRecomputeSubmitter
 
 if TYPE_CHECKING:
+    from logging import Logger, LoggerAdapter
+
+    from infrahub_sdk import InfrahubClient
+
     from infrahub.core.schema.schema_branch_computed import TransformReadSet
     from infrahub.database import InfrahubDatabase
     from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
+
+    from .graphql_queries.queries import TransformNode
 
 
 async def _reconcile_python_computed_attribute_automations(db: InfrahubDatabase) -> None:
@@ -157,6 +163,45 @@ def _partition_transform_results(
     return writes, skipped
 
 
+async def _fetch_transform(*, client: InfrahubClient, transform_id: str, branch_name: str) -> TransformNode | None:
+    """The Python transform a computed attribute names, or ``None`` when the branch holds none."""
+    transform_query = ComputedAttributeTransformQuery(transform_id=transform_id)
+    transform_response = await client.execute_graphql(
+        query=transform_query.render_query(),
+        variables=transform_query.get_variables(),
+        branch_name=branch_name,
+    )
+    return transform_query.parse_response(response=transform_response)
+
+
+def _report_missing_transform(
+    *,
+    log: Logger | LoggerAdapter[Logger],
+    coalesced: bool,
+    branch_name: str,
+    computed_attribute_name: str,
+    transform_id: str,
+) -> None:
+    """Warn on a coalesced pass, raise on the live path.
+
+    A coalesced pass that cannot narrow its targets widens from the schema alone, so it reaches
+    attributes whose transform is absent from the branch and that state is expected. The live path
+    starts a run only for an attribute the database answered for, where the same state is a fault.
+
+    Raises:
+        ValueError: on the live path, where a missing transform must stay visible.
+
+    """
+    if not coalesced:
+        raise ValueError(
+            f"Unable to fetch transform '{transform_id}' for computed attribute '{computed_attribute_name}'"
+        )
+    log.warning(
+        f"Skipping the coalesced recompute of '{computed_attribute_name}' on branch '{branch_name}': "
+        f"transform '{transform_id}' is not in the database, so nothing can compute the attribute yet"
+    )
+
+
 @flow(
     name="computed_attribute_process_transform",
     flow_run_name="Process computed attribute for {computed_attribute_kind}.{computed_attribute_name}",
@@ -181,7 +226,8 @@ async def process_transform(
     and drives the next level through the bounded chain.
 
     Raises:
-        ValueError: if a computed attribute has no transform configured or the transform cannot be fetched.
+        ValueError: if a computed attribute has no transform configured, or if the transform cannot
+            be fetched on the live path.
 
     """
     log = get_run_logger()
@@ -202,19 +248,20 @@ async def process_transform(
 
     if not transform_attribute.transform:
         raise ValueError(f"No transform configured for computed attribute '{computed_attribute_name}'")
-    transform_query = ComputedAttributeTransformQuery(transform_id=transform_attribute.transform)
-    transform_response = await client.execute_graphql(
-        query=transform_query.render_query(),
-        variables=transform_query.get_variables(),
-        branch_name=branch_name,
-    )
-    transform = transform_query.parse_response(response=transform_response)
 
+    transform = await _fetch_transform(
+        client=client, transform_id=transform_attribute.transform, branch_name=branch_name
+    )
+    # A transform deleted between the widening and this run lands here.
     if not transform:
-        raise ValueError(
-            f"Unable to fetch transform '{transform_attribute.transform}' "
-            f"for computed attribute '{computed_attribute_name}'"
+        _report_missing_transform(
+            log=log,
+            coalesced=coalesced,
+            branch_name=branch_name,
+            computed_attribute_name=computed_attribute_name,
+            transform_id=transform_attribute.transform,
         )
+        return
 
     # Built first: resolving it after the transforms would discard a completed batch.
     # `coalesced` stays a parameter; a live whole-kind refresh sends ids too.
@@ -277,11 +324,44 @@ async def trigger_update_python_computed_attributes(
     coalesced: bool = False,
     recompute_depth: int = 0,
 ) -> None:
-    """Recompute one Python computed attribute over every node of its kind."""
+    """Recompute one Python computed attribute over every node of its kind.
+
+    Raises:
+        ValueError: if the attribute has no transform configured, or if the transform cannot be
+            fetched on the live path.
+
+    """
+    log = get_run_logger()
     await add_tags(branches=[branch_name])
 
     client = get_client()
     client.request_context = context.to_request_context()
+
+    schema_branch = registry.schema.get_schema_branch(name=branch_name)
+    transform_attribute = schema_branch.computed_attributes.get_python_transform_attribute(
+        computed_attribute_kind, computed_attribute_name
+    )
+    if not transform_attribute:
+        log.warning(f"'{computed_attribute_kind}' has no Python computed attribute named '{computed_attribute_name}'")
+        return
+
+    if not transform_attribute.transform:
+        raise ValueError(f"No transform configured for computed attribute '{computed_attribute_name}'")
+
+    # Checked first so a widened run does not pay a whole-kind read for chunks that compute nothing.
+    transform = await _fetch_transform(
+        client=client, transform_id=transform_attribute.transform, branch_name=branch_name
+    )
+    if not transform:
+        _report_missing_transform(
+            log=log,
+            coalesced=coalesced,
+            branch_name=branch_name,
+            computed_attribute_name=computed_attribute_name,
+            transform_id=transform_attribute.transform,
+        )
+        return
+
     nodes = await client.all(kind=computed_attribute_kind, branch=branch_name)
     object_ids = [node.id for node in nodes]
 
