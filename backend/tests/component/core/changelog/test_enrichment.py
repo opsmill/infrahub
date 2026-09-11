@@ -235,9 +235,15 @@ async def test_unresolvable_peer_falls_back_to_placeholder(
     car_secondaries = [secondary for secondary in secondaries if secondary.node_id in car_ids]
     assert len(car_secondaries) == len(car_ids)
 
-    # The cascaded peers are already gone when their labels are resolved.
+    # The cascaded peers are already gone when their labels are resolved: their own changelog falls
+    # back to the placeholder label, while as peers of the deleted person they carry no label at all.
     assert all(secondary.display_label == "n/a" for secondary in car_secondaries)
     assert all(secondary.hfid is None for secondary in car_secondaries)
+    cars_rel = person_john_main.node_changelog.relationships["cars"]
+    assert isinstance(cars_rel, RelationshipCardinalityManyChangelog)
+    assert {peer.peer_id for peer in cars_rel.peers} == car_ids
+    assert all(peer.peer_display_label is None for peer in cars_rel.peers)
+    assert all(peer.peer_hfid is None for peer in cars_rel.peers)
 
 
 async def test_merge_enriches_node_hfid_and_peer_label(

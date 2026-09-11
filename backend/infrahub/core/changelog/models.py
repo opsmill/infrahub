@@ -565,18 +565,17 @@ class RelationshipChangelogGetter:
 
     @staticmethod
     def _enrich_relationship_peers(changelog: NodeChangelog, labels: dict[str, NodeLabels]) -> None:
-        """Fill each current relationship peer of the mutated node with its display label and HFID."""
+        """Fill each relationship peer of the mutated node with its display label and HFID.
+
+        A peer that could not be resolved keeps both unset, as the diff path leaves them.
+        """
         for relationship in changelog.relationships.values():
-            if isinstance(relationship, RelationshipCardinalityOneChangelog):
-                if relationship.peer_id:
-                    peer_labels = _labels_for(peer_id=relationship.peer_id, labels=labels)
-                    relationship.peer_display_label = peer_labels.display_label
-                    relationship.peer_hfid = peer_labels.hfid
-            elif isinstance(relationship, RelationshipCardinalityManyChangelog):
-                for peer in relationship.peers:
-                    peer_labels = _labels_for(peer_id=peer.peer_id, labels=labels)
-                    peer.peer_display_label = peer_labels.display_label
-                    peer.peer_hfid = peer_labels.hfid
+            for peer in relationship.peer_entries():
+                peer_labels = labels.get(peer.peer_id) if peer.peer_id else None
+                if peer_labels is None:
+                    continue
+                peer.peer_display_label = peer_labels.display_label
+                peer.peer_hfid = peer_labels.hfid
 
     def _parse_cardinality_one_relationship(
         self,

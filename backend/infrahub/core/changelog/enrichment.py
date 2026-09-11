@@ -33,7 +33,11 @@ class NodeLabels:
 
 
 PLACEHOLDER_LABELS = NodeLabels(display_label="n/a", hfid=None)
-"""Fallback used when a referenced node cannot be resolved (for instance a peer deleted in a cascade)."""
+"""Labels of a changelog whose node cannot be resolved (for instance a peer deleted in a cascade).
+
+A changelog always names its node, so this stands in for the node's own labels only; an unresolved
+relationship peer keeps its optional labels unset instead.
+"""
 
 
 class NodeLoader(Protocol):
