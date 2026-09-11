@@ -1,3 +1,6 @@
 COMMITS_DIRECTORY_NAME = "commits"
 BRANCHES_DIRECTORY_NAME = "branches"
 TEMPORARY_DIRECTORY_NAME = "temp"
+
+IMPORT_STATUS_CHECK_KIND = "RepositoryImportCheck"
+IMPORT_STATUS_CHECK_NAME = "Repository Import Check"
