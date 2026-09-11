@@ -221,6 +221,8 @@ class CoalescedPythonTestBase(ScopedRecomputeTestBase):
             attribute_name = call["parameters"]["computed_attribute_name"]
             assert attribute_name not in submissions, f"{attribute_name} was submitted more than once"
             assert call["parameters"]["coalesced"] is True
+            # Only this shape carries it, which is what lets the run skip what it cannot compute.
+            assert call["parameters"]["widened"] is True
             submissions[attribute_name] = WHOLE_KIND
         return submissions
 
@@ -428,7 +430,8 @@ class TestCoalescedRecomputePythonMissingTransform(CoalescedPythonTestBase):
 
     A repository that has not been loaded yet is the ordinary way to reach this. Nothing can
     compute the attribute until the transform arrives, and the recompute that follows the transform
-    being created covers it then. Submitting for it here only produces flow runs that raise.
+    being created covers it then. A narrowed pass leaves it out; a widened run skips it with a
+    warning.
     """
 
     @pytest.fixture(scope="class")
@@ -476,7 +479,7 @@ class TestCoalescedRecomputePythonMissingTransform(CoalescedPythonTestBase):
         admin_account: CoreAccount,
         client: InfrahubClient,
     ) -> None:
-        """A failed resolution widens from the schema, so the attribute without a transform is in.
+        """A failed resolution widens from the schema, so the attribute names a transform nothing holds.
 
         Its fan-out then stops before it lists the kind, while the attributes whose transform is in
         the database still fan out to every car.
@@ -511,6 +514,7 @@ class TestCoalescedRecomputePythonMissingTransform(CoalescedPythonTestBase):
             computed_attribute_kind=CAR_KIND,
             context=context,
             coalesced=True,
+            widened=True,
         )
         assert workflow_recorder.submit_calls == []
 
@@ -521,6 +525,7 @@ class TestCoalescedRecomputePythonMissingTransform(CoalescedPythonTestBase):
             computed_attribute_kind=CAR_KIND,
             context=context,
             coalesced=True,
+            widened=True,
         )
         fanned_out = [
             object_id
