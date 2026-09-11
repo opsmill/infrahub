@@ -188,7 +188,8 @@ async def test_submit_sends_a_widened_target_to_the_fan_out_flow() -> None:
     """A widened target has no ids, so the flow that resolves the kind itself has to run instead.
 
     Sending it to the per-id flow would recompute nothing, which is the skip the flag exists to
-    prevent.
+    prevent. It is also the only submission marked ``widened``, which is what licenses the run to
+    skip an attribute nothing can compute; a submission of resolved ids never carries it.
     """
     recorder = WorkflowRecorder()
     coalesced = CoalescedRecompute(branch="main", targets=frozenset({_python_target(whole_kind=True)}))
@@ -206,6 +207,7 @@ async def test_submit_sends_a_widened_target_to_the_fan_out_flow() -> None:
         "computed_attribute_kind": TARGET_KIND,
         "context": _event_context(),
         "coalesced": True,
+        "widened": True,
         "recompute_depth": 1,
     }
     assert calls[0]["tags"] == [WorkflowTag.BRANCH.render(identifier="main")]

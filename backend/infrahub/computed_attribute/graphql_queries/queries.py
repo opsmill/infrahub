@@ -55,10 +55,21 @@ class ComputedAttributeTransformQuery(BaseModel):
         return TRANSFORM_QUERY
 
     def parse_response(self, response: dict[str, Any]) -> TransformNode | None:
+        """The transform, or ``None`` when the branch holds none under that id or name.
+
+        ``None`` means absent and nothing else. A record that is there but cannot be run raises, so
+        a caller weighing whether anything can compute a value never reads a broken one as missing.
+
+        Raises:
+            ValueError: if the response does not have the shape the query asked for, or if the
+                transform is in the database without the repository, query or file details a run
+                needs.
+
+        """
         try:
             typed = ComputedAttributeFetchTransform.model_validate(response)
-        except ValidationError:
-            return None
+        except ValidationError as exc:
+            raise ValueError(f"Unexpected response shape for transform '{self.transform_id}'") from exc
         edges = typed.core_transform_python.edges
         if not edges:
             return None
@@ -98,4 +109,6 @@ class ComputedAttributeTransformQuery(BaseModel):
                 repository_commit=repo.commit.value if repo.commit else None,
                 query_name=query_node.name.value,
             )
-        return None
+        raise ValueError(
+            f"Transform '{node.id}' is in the database without the repository, query or file details a run needs"
+        )
