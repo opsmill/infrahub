@@ -152,7 +152,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_BROKER_MAXIMUM_MESSAGE_RETRIES` | The maximum number of retries that are attempted for failed messages | integer | 10 |
 | `INFRAHUB_BROKER_MAXIMUM_CONCURRENT_MESSAGES` | The maximum number of concurrent messages fetched by each worker | integer | 2 |
 | `INFRAHUB_BROKER_VIRTUALHOST` | The virtual host to connect to | string | / |
-| `INFRAHUB_BROKER_DRIVER` | None | string (rabbitmq, nats) | rabbitmq |
+| `INFRAHUB_BROKER_DRIVER` | Message bus implementation. RabbitMQ is the recommended and fully supported driver. NATS JetStream is experimental and not feature-complete: some functionality does not currently work, so it is not recommended for production. | string (rabbitmq, nats) | rabbitmq |
 
 ## Cache
 
@@ -161,7 +161,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_CACHE_ADDRESS` | None | string | localhost |
 | `INFRAHUB_CACHE_PORT` | Specified if running on a non default port (6379) | None | None |
 | `INFRAHUB_CACHE_DATABASE` | Id of the database to use | integer | 0 |
-| `INFRAHUB_CACHE_DRIVER` | None | string (redis, nats) | redis |
+| `INFRAHUB_CACHE_DRIVER` | Cache implementation. Redis is the recommended and fully supported driver. NATS JetStream is experimental and not feature-complete: some functionality does not currently work, so it is not recommended for production. | string (redis, nats) | redis |
 | `INFRAHUB_CACHE_USERNAME` | None | string |  |
 | `INFRAHUB_CACHE_PASSWORD` | None | string |  |
 | `INFRAHUB_CACHE_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
