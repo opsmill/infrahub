@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, cast
 from graphene import InputObjectType, Mutation
 from typing_extensions import Self
 
+from infrahub.database import run_in_transaction_with_retry
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
 
@@ -99,13 +100,14 @@ class InfrahubTriggerRuleMatchMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: InfrahubDatabase | None = None,  # noqa: ARG003
+        database: InfrahubDatabase | None = None,
         override_data: dict[str, Any] | None = None,
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
+        db = database or graphql_context.db
 
-        async with graphql_context.db.start_transaction() as dbt:
-            trigger_match, result = await super().mutate_create(
+        async def create_trigger_match(dbt: InfrahubDatabase) -> tuple[Node, Self]:
+            trigger_match, result = await super(InfrahubTriggerRuleMatchMutation, cls).mutate_create(
                 info=info, data=data, branch=branch, database=dbt, override_data=override_data
             )
             trigger_match_model = cast(
@@ -115,8 +117,9 @@ class InfrahubTriggerRuleMatchMutation(InfrahubMutationMixin, Mutation):
             node_trigger_rule_model = cast("CoreNodeTriggerRule", node_trigger_rule)
             node_schema = dbt.schema.get_node_schema(name=node_trigger_rule_model.node_kind.value, duplicate=False)
             _validate_node_kind_field(data=data, node_schema=node_schema)
+            return trigger_match, result
 
-        return trigger_match, result
+        return await run_in_transaction_with_retry(db=db, name="object_create", func=create_trigger_match)
 
     @classmethod
     async def mutate_update(
@@ -124,12 +127,16 @@ class InfrahubTriggerRuleMatchMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: InfrahubDatabase | None = None,  # noqa: ARG003
+        database: InfrahubDatabase | None = None,
         node: Node | None = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
-        async with graphql_context.db.start_transaction() as dbt:
-            trigger_match, result = await super().mutate_update(info=info, data=data, branch=branch, database=dbt)
+        db = database or graphql_context.db
+
+        async def update_trigger_match(dbt: InfrahubDatabase) -> tuple[Node, Self]:
+            trigger_match, result = await super(InfrahubTriggerRuleMatchMutation, cls).mutate_update(
+                info=info, data=data, branch=branch, database=dbt
+            )
             trigger_match_model = cast(
                 "CoreNodeTriggerAttributeMatch | CoreNodeTriggerRelationshipMatch", trigger_match
             )
@@ -137,8 +144,9 @@ class InfrahubTriggerRuleMatchMutation(InfrahubMutationMixin, Mutation):
             node_trigger_rule_model = cast("CoreNodeTriggerRule", node_trigger_rule)
             node_schema = dbt.schema.get_node_schema(name=node_trigger_rule_model.node_kind.value, duplicate=False)
             _validate_node_kind_field(data=data, node_schema=node_schema)
+            return trigger_match, result
 
-        return trigger_match, result
+        return await run_in_transaction_with_retry(db=db, name="object_update", func=update_trigger_match)
 
 
 def _validate_node_kind(data: InputObjectType, db: InfrahubDatabase) -> None:
