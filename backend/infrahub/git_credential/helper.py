@@ -6,9 +6,27 @@ from infrahub_sdk import Config, InfrahubClientSync
 from infrahub_sdk.protocols import CoreGenericRepository
 
 from infrahub import config
+from infrahub.tls.context_builder import TlsContextBuilder
 
 logging.getLogger("httpx").setLevel(logging.ERROR)
 app = typer.Typer()
+
+
+def build_client_config() -> Config:
+    """Build the SDK configuration used to reach the Infrahub API, honouring the HTTP TLS settings.
+
+    The helper runs as a git subprocess with its own process, so it has to apply the same TLS settings
+    the task worker uses for its own client to the Infrahub API: without them an internal address served
+    with a private CA is rejected.
+    """
+    client_config = Config(address=config.SETTINGS.main.internal_address, insert_tracker=True)
+    tls_ca_bundle = config.SETTINGS.http.tls_ca_bundle
+    client_config.set_ssl_context(
+        context=TlsContextBuilder.build(
+            insecure=config.SETTINGS.http.tls_insecure, ca_bundle=tls_ca_bundle, force_verify=bool(tls_ca_bundle)
+        )
+    )
+    return client_config
 
 
 def parse_helper_get_input(text: str) -> str:
@@ -54,7 +72,7 @@ def get(
         print(str(exc))
         raise typer.Exit(1) from exc
 
-    client = InfrahubClientSync(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
+    client = InfrahubClientSync(config=build_client_config())
     repo = client.get(kind=CoreGenericRepository.__name__, location__value=location)
 
     if not repo:

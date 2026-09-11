@@ -18,6 +18,8 @@ from infrahub.config import (
 )
 
 TEST_DIR = Path(__file__).parent
+# CA settings are validated at load, so destination bundles must point at a bundle that exists.
+CA_BUNDLE = str(TEST_DIR.parent / "test_data" / "ca-bundle.pem")
 
 
 def test_log_forwarding_destination_valid() -> None:
@@ -210,8 +212,10 @@ def test_log_forwarding_destinations_from_environment_variable() -> None:
     assert settings.destinations[1].protocol.value == "udp"
 
 
-def test_log_forwarding_from_toml_file() -> None:
-    config_file = str(TEST_DIR / "log_forwarding_multi_dest.toml")
+def test_log_forwarding_from_toml_file(tmp_path: Path) -> None:
+    template = (TEST_DIR / "log_forwarding_multi_dest.toml").read_text(encoding="utf-8")
+    config_file = tmp_path / "log_forwarding_multi_dest.toml"
+    config_file.write_text(template.replace("__CA_BUNDLE__", CA_BUNDLE), encoding="utf-8")
     config = load(config_file_name=config_file)
 
     assert len(config.log_forwarding.destinations) == 2
@@ -224,7 +228,7 @@ def test_log_forwarding_from_toml_file() -> None:
     assert primary.protocol is SyslogProtocol.TCP
     assert primary.format is SyslogFormat.RFC5424
     assert primary.tls_enabled is True
-    assert primary.tls_ca_bundle == "/etc/ssl/certs/ca-certificates.crt"
+    assert primary.tls_ca_bundle == CA_BUNDLE
     assert primary.queue_size == 50000
     assert primary.forward_application_logs is True
     assert primary.min_log_severity == ExtraLogLevel.INFO
@@ -250,7 +254,7 @@ def test_log_forwarding_destinations_from_per_destination_env_vars() -> None:
         "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_PROTOCOL": "tcp",
         "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_FORMAT": "rfc5424",
         "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_TLS_ENABLED": "true",
-        "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_TLS_CA_BUNDLE": "/etc/ssl/certs/ca.crt",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_TLS_CA_BUNDLE": CA_BUNDLE,
         "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_FORWARD_APPLICATION_LOGS": "true",
         "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_MIN_LOG_SEVERITY": "INFO",
         "INFRAHUB_LOG_FORWARDING_DESTINATION_BACKUP_COLLECTOR_HOST": "syslog-backup.example.com",
@@ -269,7 +273,7 @@ def test_log_forwarding_destinations_from_per_destination_env_vars() -> None:
     assert primary.protocol is SyslogProtocol.TCP
     assert primary.format is SyslogFormat.RFC5424
     assert primary.tls_enabled is True
-    assert primary.tls_ca_bundle == "/etc/ssl/certs/ca.crt"
+    assert primary.tls_ca_bundle == CA_BUNDLE
     assert primary.forward_application_logs is True
     assert primary.min_log_severity is ExtraLogLevel.INFO
 
