@@ -31,15 +31,20 @@ class RepositoryBranchAttributesQuery(Query):
 
 - Constructor takes primitives only. `at` and `db` arrive through the base `Query.init` path; the
   query binds `$at` from `self.at`.
-- One statement: `UNWIND $branch_names AS branch_name MATCH (br:Branch {name: branch_name})`, then
-  `MATCH (n:Node)-[:HAS_ATTRIBUTE]->(a:Attribute) WHERE n.uuid IN $repository_ids AND a.name IN
-  $attribute_names`, `WITH DISTINCT` on `(n, a, branch_name, br.branched_from)`, one `CALL` subquery
-  electing the visible `HAS_ATTRIBUTE` edge and one electing the visible `HAS_VALUE` edge, both with
-  the per-branch predicate in [data-model.md](../data-model.md) and the standard election order.
+- One statement: `MATCH (n:Node)-[:HAS_ATTRIBUTE]->(a:Attribute) WHERE n.uuid IN $repository_ids AND
+  a.name IN $attribute_names`, `WITH DISTINCT n, a`, then `UNWIND $branch_names AS branch_name MATCH
+  (br:Branch {name: branch_name})` carrying `n, a, branch_name` and the default-branch window, one
+  `CALL` subquery electing the visible `HAS_ATTRIBUTE` edge and one electing the visible `HAS_VALUE`
+  edge, both with the per-branch predicate in [data-model.md](../data-model.md) and the standard
+  election order. The node match and its deduplication sit **above** the `UNWIND`: below it they
+  share no variable with `branch_name`, so the planner drives them as the right side of a cartesian
+  `Apply` and repeats the uuid seek and the attribute expansion once per branch.
 - Returns only `n.uuid`, `branch_name`, `a.name`, `a.uuid`, `av.value`, `r_value.branch`,
   `r_value.from`.
 - No `LIMIT`: the statement is bounded by `len(branch_names) * len(attribute_names) *
-  len(repository_ids)` rows by construction. Callers chunk `branch_names`.
+  len(repository_ids)` rows by construction. Callers chunk `branch_names`. The read is therefore
+  unpageable and rejects a `limit` or `offset` argument rather than silently discarding it; it sets
+  `self.limit` to that bound itself, so a READ with neither set is not treated as unpaginated.
 
 Result dataclass (frozen): `RepositoryBranchAttributeValue(repository_id, branch_name,
 attribute_name, attribute_id, value, own_value, updated_at)`.

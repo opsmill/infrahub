@@ -1,15 +1,21 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+import graphene
 import pytest
+from graphene import Argument, Boolean, Field, Int, ObjectType, String
+from starlette.requests import Request
 
 from infrahub import config
 from infrahub.auth.session import AccountSession, AnonymousSession
 from infrahub.auth.types import AuthType
+from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.models import Branch
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     InfrahubKind,
@@ -17,8 +23,17 @@ from infrahub.core.constants import (
     RepositoryInternalStatus,
     RepositorySyncStatus,
 )
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
+from infrahub.core.repository_branch_status.interface import RepositoryBranchAttributesSource
+from infrahub.core.repository_branch_status.models import RepositoryBranchAttributes
+from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.queries.repository_branch_status.resolver import RepositoryBranchStatusResolver
+from infrahub.graphql.types.enums import InfrahubBranchStatus
+from infrahub.graphql.types.metadata import MetadataOrderInput
+from infrahub.graphql.types.repository_branch_status import InfrahubRepositoryBranchStatusType
 from infrahub.services import InfrahubServices
 from tests.component.conftest import make_repository_pair
 from tests.conftest import TestHelper
@@ -27,21 +42,25 @@ from tests.helpers.graphql import graphql
 from tests.helpers.permissions import define_permissions
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Mapping
+    from collections.abc import Collection, Generator, Mapping, Sequence
 
-    from graphql import ExecutionResult
+    from graphql import ExecutionResult, GraphQLSchema
 
-    from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusRecorder
     from tests.component.conftest import RepositoryBranchStatusBranches
 
 ANONYMOUS_UNKNOWN_ROLE = "rbs-anonymous-without-a-role"
 
-# The shared branch fixture saves 214 branches; two carry a terminal status, so 212 remain
-# alongside the default branch. The read-write kind drops the one non-syncing branch on top.
-READ_ONLY_ROW_COUNT = 213
-READ_WRITE_ROW_COUNT = 212
+INHERITED_BRANCH_NAME = "rbs-inherit-from-main"
+OWN_VALUE_BRANCH_NAMES = ("rbs-inherit-own-1", "rbs-inherit-own-2", "rbs-inherit-own-3")
+FIRST_IMPORT_COMMIT = "aaaa111111111111111111111111111111111111"
+SECOND_IMPORT_COMMIT = "bbbb222222222222222222222222222222222222"
+
+# 212 of the shared fixture's 214 branches are non-terminal, plus the default branch and the value
+# fixture's four; the read-write kind drops the one non-syncing branch on top.
+READ_ONLY_ROW_COUNT = 217
+READ_WRITE_ROW_COUNT = 216
 
 ANONYMOUS_GRANTED_ROLE = "rbs-anonymous-granted"
 
@@ -190,28 +209,6 @@ query($name: String) {
     % _BRANCH_FIELD_SELECTION
 )
 
-VALUE_FILTER_QUERY = """
-query(
-    $id: String!
-    $sync_status: String
-    $internal_status: String
-    $own_values_only: Boolean
-) {
-  InfrahubRepositoryBranchStatus(
-    id: $id
-    limit: 5
-    sync_status__value: $sync_status
-    internal_status__value: $internal_status
-    own_values_only: $own_values_only
-  ) {
-    count
-    edges {
-      node { name { value } }
-    }
-  }
-}
-"""
-
 CONTRADICTORY_ORDER_QUERY = """
 query($id: String!, $limit: Int) {
   InfrahubRepositoryBranchStatus(
@@ -225,9 +222,6 @@ query($id: String!, $limit: Int) {
   }
 }
 """
-
-# The placeholder source dates every value at 2026-01-01T00:00:00Z; graphene renders it in this shape.
-EXPECTED_UPDATED_AT = "2026-01-01T00:00:00+00:00"
 
 
 @dataclass(frozen=True)
@@ -328,49 +322,15 @@ INVALID_PAGING_CASES = (
     InvalidPagingCase(name="explicit-null-offset", variables={"offset": None}, message="offset must be >= 0"),
 )
 
-
-@dataclass(frozen=True)
-class UnsupportedFilterCase:
-    """A value filter the resolver must reject while the attribute values are placeholders."""
-
-    name: str
-    """Identifier of the case, also used as the pytest id."""
-
-    variables: Mapping[str, Any]
-    """Query variables carrying the filter."""
-
-    message: str
-    """Exact error message the caller receives."""
+AT_REJECTION_MESSAGE = "at is not supported on InfrahubRepositoryBranchStatus: the branch row set is always current"
+PAST_TIMESTAMP = "2020-01-01T00:00:00.000000Z"
 
 
-_PLACEHOLDER_FILTER_SUFFIX = "cannot narrow the rows while the attribute values are placeholders"
-
-UNSUPPORTED_FILTER_CASES = (
-    UnsupportedFilterCase(
-        name="sync-status",
-        variables={"sync_status": RepositorySyncStatus.IN_SYNC.value},
-        message=f"sync_status__value {_PLACEHOLDER_FILTER_SUFFIX}",
-    ),
-    UnsupportedFilterCase(
-        name="internal-status",
-        variables={"internal_status": RepositoryInternalStatus.ACTIVE.value},
-        message=f"internal_status__value {_PLACEHOLDER_FILTER_SUFFIX}",
-    ),
-    UnsupportedFilterCase(
-        name="own-values-only",
-        variables={"own_values_only": True},
-        message=f"own_values_only {_PLACEHOLDER_FILTER_SUFFIX}",
-    ),
-    UnsupportedFilterCase(
-        name="every-filter-at-once",
-        variables={
-            "sync_status": RepositorySyncStatus.IN_SYNC.value,
-            "internal_status": RepositoryInternalStatus.ACTIVE.value,
-            "own_values_only": True,
-        },
-        message=(f"sync_status__value, internal_status__value, own_values_only {_PLACEHOLDER_FILTER_SUFFIX}"),
-    ),
-)
+def _request(query_string: bytes) -> Request:
+    """Build a request carrying the given query string, the only place an `at` parameter survives."""
+    return Request(
+        scope={"type": "http", "method": "POST", "path": "/graphql", "query_string": query_string, "headers": []}
+    )
 
 
 def _view_repository_permission(decision: PermissionDecision) -> ObjectPermission:
@@ -390,11 +350,111 @@ async def _create_role_with_repository_view(db: InfrahubDatabase, name: str) -> 
     return role
 
 
+@dataclass(frozen=True)
+class ValueFixture:
+    """Repositories and branches whose attribute values differ from branch to branch."""
+
+    repository: CoreRepository
+    """Read-write repository imported on the default branch and on three branches of its own."""
+
+    never_imported: CoreRepository
+    """Read-write repository that has never been imported anywhere."""
+
+    first_import_at: Timestamp
+    """Time the first import was written on the default branch."""
+
+
+async def _create_branch_forked_now(db: InfrahubDatabase, name: str, default_branch_name: str) -> Branch:
+    """Save a branch forked at the current time but stamped as created before every other branch.
+
+    The creation time keeps the branch out of the metadata-ordered assertions of the other tests,
+    while the fork point is what the attribute read resolves inherited values against.
+    """
+    branch = Branch(
+        name=name,
+        status=BranchStatus.OPEN,
+        description=f"branch {name}",
+        is_default=False,
+        sync_with_git=True,
+        is_isolated=True,
+        created_at=Timestamp().subtract(hours=1).to_string(),
+    )
+    registry.schema.set_schema_branch(
+        name=branch.name, schema=registry.schema.get_schema_branch(name=default_branch_name).duplicate(name=name)
+    )
+    branch.update_schema_hash()
+    await branch.save(db=db)
+    registry.branch[branch.name] = branch
+    return branch
+
+
+async def _import(
+    db: InfrahubDatabase,
+    repository_id: str,
+    branch_name: str,
+    commit: str,
+    sync_status: str | None = None,
+    at: Timestamp | None = None,
+) -> None:
+    repository = await NodeManager.get_one(
+        db=db, id=repository_id, kind=CoreRepository, branch=branch_name, raise_on_error=True
+    )
+    repository.commit.value = commit
+    if sync_status is not None:
+        repository.sync_status.value = sync_status
+    await repository.save(db=db, at=at)
+
+
 @pytest.fixture(scope="module")
 async def repositories(
     db: InfrahubDatabase, repository_branch_status_branches: RepositoryBranchStatusBranches
 ) -> tuple[CoreRepository, CoreReadOnlyRepository]:
     return await make_repository_pair(db=db)
+
+
+@pytest.fixture(scope="module", autouse=True)
+async def value_fixture(
+    db: InfrahubDatabase, repository_branch_status_branches: RepositoryBranchStatusBranches
+) -> ValueFixture:
+    """Import on the default branch, fork a branch from it, import again, then import on three branches.
+
+    Every branch is forked after the repository was written, which is what lets a row inherit a
+    value rather than resolve nothing. The fixture is autouse so the branches it adds are part of
+    the row set of every test in the module, whatever order the tests run in.
+    """
+    default_branch_name = repository_branch_status_branches.default_branch.name
+    repository, _ = await make_repository_pair(db=db, name_prefix="rbs-values")
+
+    first_import_at = Timestamp()
+    await _import(
+        db=db,
+        repository_id=repository.id,
+        branch_name=default_branch_name,
+        commit=FIRST_IMPORT_COMMIT,
+        at=first_import_at,
+    )
+    await _create_branch_forked_now(db=db, name=INHERITED_BRANCH_NAME, default_branch_name=default_branch_name)
+    await _import(db=db, repository_id=repository.id, branch_name=default_branch_name, commit=SECOND_IMPORT_COMMIT)
+
+    for index, name in enumerate(OWN_VALUE_BRANCH_NAMES, start=1):
+        await _create_branch_forked_now(db=db, name=name, default_branch_name=default_branch_name)
+        await _import(
+            db=db,
+            repository_id=repository.id,
+            branch_name=name,
+            commit=f"{index}" * 40,
+            sync_status=RepositorySyncStatus.ERROR_IMPORT.value,
+        )
+
+    never_imported = await Node.init(db=db, schema=CoreRepository)
+    await never_imported.new(
+        db=db,
+        name="rbs-values-never-imported",
+        location="git@github.com:opsmill/rbs-values-never-imported.git",
+    )
+    await never_imported.save(db=db)
+
+    return ValueFixture(repository=repository, never_imported=never_imported, first_import_at=first_import_at)
 
 
 @pytest.fixture(scope="module")
@@ -954,61 +1014,6 @@ class TestRepositoryBranchStatusRows:
             f"Unable to find the node {reader_session.account_id} / CoreGenericRepository in the database."
         )
 
-    @pytest.mark.parametrize("case", UNSUPPORTED_FILTER_CASES, ids=lambda case: case.name)
-    async def test_value_filters_are_rejected_while_the_values_are_placeholders(
-        self,
-        db: InfrahubDatabase,
-        repository_branch_status_branches: RepositoryBranchStatusBranches,
-        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
-        reader_session: AccountSession,
-        default_permission_backend: None,
-        case: UnsupportedFilterCase,
-    ) -> None:
-        branches = repository_branch_status_branches
-        repository, _ = repositories
-
-        result = await _run(
-            db=db,
-            branch_name=branches.default_branch.name,
-            source=VALUE_FILTER_QUERY,
-            variables={"id": repository.id, **case.variables},
-            account_session=reader_session,
-        )
-
-        assert result.data is None
-        assert result.errors
-        assert len(result.errors) == 1
-        assert result.errors[0].message == case.message
-
-    async def test_the_value_filter_defaults_are_accepted(
-        self,
-        db: InfrahubDatabase,
-        repository_branch_status_branches: RepositoryBranchStatusBranches,
-        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
-        reader_session: AccountSession,
-        default_permission_backend: None,
-    ) -> None:
-        """A client sending the defaults back must not be rejected, only one narrowing the rows."""
-        branches = repository_branch_status_branches
-        repository, _ = repositories
-
-        result = await _run(
-            db=db,
-            branch_name=branches.default_branch.name,
-            source=VALUE_FILTER_QUERY,
-            variables={
-                "id": repository.id,
-                "sync_status": None,
-                "internal_status": None,
-                "own_values_only": False,
-            },
-            account_session=reader_session,
-        )
-
-        assert result.errors is None
-        assert result.data
-        assert result.data["InfrahubRepositoryBranchStatus"]["count"] == READ_WRITE_ROW_COUNT
-
     @pytest.mark.parametrize("case", INVALID_PAGING_CASES, ids=lambda case: case.name)
     async def test_invalid_paging_arguments_are_rejected(
         self,
@@ -1035,6 +1040,70 @@ class TestRepositoryBranchStatusRows:
         assert len(result.errors) == 1
         assert result.errors[0].message == case.message
 
+    async def test_a_request_for_a_past_point_in_time_is_rejected(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        reader_session: AccountSession,
+        recording_bus: RecordingBus,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+        repository, _ = repositories
+
+        gql_params = await prepare_graphql_params(
+            db=db,
+            branch=branches.default_branch.name,
+            at=PAST_TIMESTAMP,
+            account_session=reader_session,
+            request=_request(query_string=f"at={PAST_TIMESTAMP}".encode()),
+            service=recording_bus.service,
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=ROWS_QUERY,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": repository.id},
+        )
+
+        assert result.data is None
+        assert result.errors
+        assert len(result.errors) == 1
+        assert result.errors[0].message == AT_REJECTION_MESSAGE
+
+    async def test_a_request_carrying_no_at_parameter_is_accepted(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        reader_session: AccountSession,
+        recording_bus: RecordingBus,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+        repository, _ = repositories
+
+        gql_params = await prepare_graphql_params(
+            db=db,
+            branch=branches.default_branch.name,
+            account_session=reader_session,
+            request=_request(query_string=b"branch=main"),
+            service=recording_bus.service,
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=ROWS_QUERY,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": repository.id, "limit": 1000},
+        )
+
+        assert result.errors is None
+        assert result.data
+        assert result.data["InfrahubRepositoryBranchStatus"]["count"] == READ_WRITE_ROW_COUNT
+
     async def test_ref_is_null_on_the_read_write_kind_and_set_on_the_read_only_kind(
         self,
         db: InfrahubDatabase,
@@ -1045,7 +1114,7 @@ class TestRepositoryBranchStatusRows:
     ) -> None:
         branches = repository_branch_status_branches
         repository, read_only_repository = repositories
-        variables: dict[str, Any] = {"limit": 1000, "name": "rbs-five-", "partial_match": True}
+        variables: dict[str, Any] = {"limit": 1000, "name": branches.default_branch.name}
 
         read_write = await _run(
             db=db,
@@ -1064,9 +1133,10 @@ class TestRepositoryBranchStatusRows:
 
         assert read_write.errors is None
         assert read_only.errors is None
-        assert [node["ref"] for node in _nodes(read_write)] == [None] * 5
-        assert [node["ref"]["value"] for node in _nodes(read_only)] == ["main"] * 5
-        assert all(node["commit"]["value"] for node in _nodes(read_write))
+        assert [node["ref"] for node in _nodes(read_write)] == [None]
+        assert [node["ref"]["value"] for node in _nodes(read_only)] == ["main"]
+        assert [node["commit"]["value"] for node in _nodes(read_write)] == ["1111111111111111111111111111111111111111"]
+        assert [node["commit"]["value"] for node in _nodes(read_only)] == ["2222222222222222222222222222222222222222"]
 
     async def test_branch_fields_serialize_exactly_as_the_branch_query_does(
         self,
@@ -1136,7 +1206,7 @@ class TestRepositoryBranchStatusRows:
         assert all(edge["node_metadata"]["created_at"] is not None for edge in edges)
         assert all(edge["node_metadata"]["updated_at"] is not None for edge in edges)
 
-    async def test_dropdown_payload_carries_the_schema_label_and_colour(
+    async def test_dropdown_payload_carries_the_schema_label_and_color(
         self,
         db: InfrahubDatabase,
         repository_branch_status_branches: RepositoryBranchStatusBranches,
@@ -1157,10 +1227,12 @@ class TestRepositoryBranchStatusRows:
 
         assert result.errors is None
         node = _nodes(result)[0]
-        assert node["sync_status"]["value"] in {status.value for status in RepositorySyncStatus}
-        assert node["sync_status"]["label"]
-        assert node["sync_status"]["color"].startswith("#")
-        assert node["internal_status"]["value"] == "active"
+        assert node["sync_status"] == {
+            "value": RepositorySyncStatus.UNKNOWN.value,
+            "label": "Unknown",
+            "color": "#9ca3af",
+        }
+        assert node["internal_status"]["value"] == RepositoryInternalStatus.INACTIVE.value
 
     async def test_updated_at_is_returned_as_a_timestamp(
         self,
@@ -1184,10 +1256,12 @@ class TestRepositoryBranchStatusRows:
         assert result.errors is None
         assert len(_nodes(result)) == 1
         node = _nodes(result)[0]
-        assert node["commit"]["updated_at"] == EXPECTED_UPDATED_AT
-        assert node["sync_status"]["updated_at"] == EXPECTED_UPDATED_AT
-        assert node["internal_status"]["updated_at"] == EXPECTED_UPDATED_AT
-        assert node["commit"]["value"]
+        # The repository was written in one save, so its three values share one write time.
+        written_at = node["commit"]["updated_at"]
+        assert datetime.fromisoformat(written_at).tzinfo is not None
+        assert node["sync_status"]["updated_at"] == written_at
+        assert node["internal_status"]["updated_at"] == written_at
+        assert node["commit"]["value"] == "1111111111111111111111111111111111111111"
 
     async def test_two_calls_return_identical_values(
         self,
@@ -1220,7 +1294,7 @@ class TestRepositoryBranchStatusRows:
         assert second.errors is None
         assert first.data == second.data
 
-    async def test_field_description_announces_the_placeholder_values(
+    async def test_field_description_makes_no_preview_claim(
         self,
         db: InfrahubDatabase,
         repository_branch_status_branches: RepositoryBranchStatusBranches,
@@ -1234,10 +1308,7 @@ class TestRepositoryBranchStatusRows:
         assert query_type
         description = query_type.fields["InfrahubRepositoryBranchStatus"].description
         assert description
-        assert description.endswith(
-            " (preview: attribute values are placeholders, not yet read from the graph, so "
-            "sync_status__value, internal_status__value and own_values_only are rejected)"
-        )
+        assert "preview" not in description
 
 
 class TestRepositoryBranchStatusPermissions:
@@ -1481,6 +1552,12 @@ class DocumentShape:
     variables: Mapping[str, Any]
     """Query variables, excluding the repository id."""
 
+    expected_names: tuple[str, ...] | None = None
+    """Exact branch names the shape must return, or None when the shape does not pin them down."""
+
+
+# Both repository kinds report on all five, so one expectation covers the whole parametrization.
+FIVE_BRANCH_NAMES = ("rbs-five-01", "rbs-five-02", "rbs-five-03", "rbs-five-04", "rbs-five-05")
 
 DOCUMENT_SHAPES = (
     DocumentShape(name="count-and-values", source=ROWS_QUERY, variables={"limit": 5}),
@@ -1495,6 +1572,29 @@ DOCUMENT_SHAPES = (
     DocumentShape(
         name="status-filter", source=FILTERED_ROWS_QUERY, variables={"limit": 5, "status": BranchStatus.OPEN.value}
     ),
+    DocumentShape(
+        name="sync-status-filter",
+        source=FILTERED_ROWS_QUERY,
+        variables={
+            "limit": 5,
+            "name": "rbs-five-",
+            "partial_match": True,
+            "sync_status": RepositorySyncStatus.UNKNOWN.value,
+        },
+        expected_names=FIVE_BRANCH_NAMES,
+    ),
+    DocumentShape(
+        name="internal-status-filter",
+        source=FILTERED_ROWS_QUERY,
+        variables={
+            "limit": 5,
+            "name": "rbs-five-",
+            "partial_match": True,
+            "internal_status": RepositoryInternalStatus.INACTIVE.value,
+        },
+        expected_names=FIVE_BRANCH_NAMES,
+    ),
+    DocumentShape(name="own-values-only", source=FILTERED_ROWS_QUERY, variables={"limit": 5, "own_values_only": True}),
 )
 
 
@@ -1527,3 +1627,669 @@ class TestRepositoryBranchStatusSendsNoMessage:
         assert result.errors is None
         assert result.data
         assert recording_bus.recorder.messages == []
+        if shape.expected_names is not None:
+            assert _names(result) == list(shape.expected_names)
+
+
+VALUE_ROWS_QUERY = """
+query(
+    $id: String!
+    $limit: Int
+    $name: String
+    $partial_match: Boolean
+    $sync_status: String
+    $own_values_only: Boolean
+) {
+  InfrahubRepositoryBranchStatus(
+    id: $id
+    limit: $limit
+    name__value: $name
+    partial_match: $partial_match
+    sync_status__value: $sync_status
+    own_values_only: $own_values_only
+  ) {
+    count
+    edges {
+      node {
+        name { value }
+        commit { value updated_at }
+        sync_status { value label color }
+      }
+    }
+  }
+}
+"""
+
+VALUE_ROWS_WITHOUT_COUNT_QUERY = """
+query($id: String!, $limit: Int) {
+  InfrahubRepositoryBranchStatus(id: $id, limit: $limit) {
+    edges {
+      node {
+        name { value }
+        commit { value updated_at }
+        sync_status { value label color }
+      }
+    }
+  }
+}
+"""
+
+SYNC_STATUS_SELECTION_QUERY = """
+query($id: String!, $limit: Int, $own_values_only: Boolean) {
+  InfrahubRepositoryBranchStatus(id: $id, limit: $limit, own_values_only: $own_values_only) {
+    count
+    edges {
+      node {
+        name { value }
+        sync_status { value }
+      }
+    }
+  }
+}
+"""
+
+
+# The value filters are the point of this document, and it selects neither of the attributes they
+# compare, so a filter that only read selected attributes would answer it with no rows at all.
+VALUE_FILTERS_WITHOUT_SELECTION_QUERY = """
+query(
+    $id: String!
+    $limit: Int
+    $name: String
+    $partial_match: Boolean
+    $sync_status: String
+    $internal_status: String
+) {
+  InfrahubRepositoryBranchStatus(
+    id: $id
+    limit: $limit
+    name__value: $name
+    partial_match: $partial_match
+    sync_status__value: $sync_status
+    internal_status__value: $internal_status
+  ) {
+    count
+    edges {
+      node { name { value } commit { value } }
+    }
+  }
+}
+"""
+
+
+async def _run_counting(
+    db: InfrahubDatabase,
+    branch_name: str,
+    source: str,
+    variables: dict[str, Any],
+    account_session: AccountSession,
+) -> tuple[ExecutionResult, int]:
+    """Execute a document against a counting database and return the result with the query total."""
+    gql_params = await prepare_graphql_params(db=db, branch=branch_name, account_session=account_session)
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+    gql_params.context.db = counting_db
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=source,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values=variables,
+    )
+    return result, sum(counting_db.query_counts.values())
+
+
+class TestRepositoryBranchStatusValues:
+    async def test_sync_status_filter_returns_only_the_branches_that_wrote_that_value(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        value_fixture: ValueFixture,
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+
+        result = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=VALUE_ROWS_QUERY,
+            variables={
+                "id": value_fixture.repository.id,
+                "limit": 1000,
+                "sync_status": RepositorySyncStatus.ERROR_IMPORT.value,
+            },
+            account_session=reader_session,
+        )
+
+        assert result.errors is None
+        assert result.data
+        assert result.data["InfrahubRepositoryBranchStatus"]["count"] == 3
+        assert _names(result) == list(OWN_VALUE_BRANCH_NAMES)
+
+    async def test_the_sync_status_filter_applies_when_the_document_does_not_select_it(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        value_fixture: ValueFixture,
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+
+        failed = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=VALUE_FILTERS_WITHOUT_SELECTION_QUERY,
+            variables={
+                "id": value_fixture.repository.id,
+                "limit": 1000,
+                "sync_status": RepositorySyncStatus.ERROR_IMPORT.value,
+            },
+            account_session=reader_session,
+        )
+        unmatched = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=VALUE_FILTERS_WITHOUT_SELECTION_QUERY,
+            variables={
+                "id": value_fixture.repository.id,
+                "limit": 1000,
+                "sync_status": RepositorySyncStatus.SYNCING.value,
+            },
+            account_session=reader_session,
+        )
+
+        assert failed.errors is None
+        assert unmatched.errors is None
+        assert failed.data
+        assert unmatched.data
+        assert failed.data["InfrahubRepositoryBranchStatus"]["count"] == 3
+        assert _names(failed) == list(OWN_VALUE_BRANCH_NAMES)
+        assert unmatched.data["InfrahubRepositoryBranchStatus"]["count"] == 0
+        assert _names(unmatched) == []
+
+    async def test_the_internal_status_filter_applies_when_the_document_does_not_select_it(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        value_fixture: ValueFixture,
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+        variables: dict[str, Any] = {
+            "id": value_fixture.repository.id,
+            "limit": 1000,
+            "name": "rbs-inherit-",
+            "partial_match": True,
+        }
+
+        inactive = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=VALUE_FILTERS_WITHOUT_SELECTION_QUERY,
+            variables={**variables, "internal_status": RepositoryInternalStatus.INACTIVE.value},
+            account_session=reader_session,
+        )
+        active = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=VALUE_FILTERS_WITHOUT_SELECTION_QUERY,
+            variables={**variables, "internal_status": RepositoryInternalStatus.ACTIVE.value},
+            account_session=reader_session,
+        )
+
+        assert inactive.errors is None
+        assert active.errors is None
+        assert inactive.data
+        assert active.data
+        assert inactive.data["InfrahubRepositoryBranchStatus"]["count"] == 4
+        assert _names(inactive) == [INHERITED_BRANCH_NAME, *OWN_VALUE_BRANCH_NAMES]
+        assert active.data["InfrahubRepositoryBranchStatus"]["count"] == 0
+        assert _names(active) == []
+
+    async def test_own_values_only_keeps_the_branches_holding_their_own_commit(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        value_fixture: ValueFixture,
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+        variables: dict[str, Any] = {"id": value_fixture.repository.id, "limit": 1000, "own_values_only": True}
+        expected_names = [branches.default_branch.name, *OWN_VALUE_BRANCH_NAMES]
+
+        selecting_commit = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=VALUE_ROWS_QUERY,
+            variables=variables,
+            account_session=reader_session,
+        )
+        selecting_sync_status = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=SYNC_STATUS_SELECTION_QUERY,
+            variables=variables,
+            account_session=reader_session,
+        )
+
+        assert selecting_commit.errors is None
+        assert selecting_sync_status.errors is None
+        assert selecting_commit.data
+        assert selecting_sync_status.data
+        assert selecting_commit.data["InfrahubRepositoryBranchStatus"]["count"] == 4
+        assert _names(selecting_commit) == expected_names
+        assert selecting_sync_status.data["InfrahubRepositoryBranchStatus"]["count"] == 4
+        assert _names(selecting_sync_status) == expected_names
+
+    async def test_a_branch_forked_after_an_import_inherits_it_with_the_default_branch_write_time(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        value_fixture: ValueFixture,
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+
+        result = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=VALUE_ROWS_QUERY,
+            variables={
+                "id": value_fixture.repository.id,
+                "limit": 1000,
+                "name": "rbs-inherit-from-",
+                "partial_match": True,
+            },
+            account_session=reader_session,
+        )
+        default_branch_row = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=VALUE_ROWS_QUERY,
+            variables={"id": value_fixture.repository.id, "limit": 1000, "name": branches.default_branch.name},
+            account_session=reader_session,
+        )
+
+        assert result.errors is None
+        assert default_branch_row.errors is None
+        assert _names(result) == [INHERITED_BRANCH_NAME]
+        inherited = _nodes(result)[0]
+        assert inherited["commit"]["value"] == FIRST_IMPORT_COMMIT
+        assert datetime.fromisoformat(inherited["commit"]["updated_at"]) == value_fixture.first_import_at.to_datetime()
+        assert _nodes(default_branch_row)[0]["commit"]["value"] == SECOND_IMPORT_COMMIT
+
+    async def test_a_repository_that_was_never_imported_returns_rows_without_a_commit(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        value_fixture: ValueFixture,
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+
+        result = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=VALUE_ROWS_QUERY,
+            variables={"id": value_fixture.never_imported.id, "limit": 1000},
+            account_session=reader_session,
+        )
+
+        assert result.errors is None
+        assert result.data
+        assert result.data["InfrahubRepositoryBranchStatus"]["count"] == READ_WRITE_ROW_COUNT
+        assert {node["commit"]["value"] for node in _nodes(result)} == {None}
+        assert {node["sync_status"]["value"] for node in _nodes(result)} == {RepositorySyncStatus.UNKNOWN.value}
+
+    async def test_a_failed_import_carries_the_schema_label_and_color(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        value_fixture: ValueFixture,
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+
+        result = await _run(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=VALUE_ROWS_QUERY,
+            variables={"id": value_fixture.repository.id, "limit": 1000, "name": OWN_VALUE_BRANCH_NAMES[0]},
+            account_session=reader_session,
+        )
+
+        assert result.errors is None
+        assert _names(result) == [OWN_VALUE_BRANCH_NAMES[0]]
+        assert _nodes(result)[0]["sync_status"] == {
+            "value": RepositorySyncStatus.ERROR_IMPORT.value,
+            "label": "Import Error",
+            "color": "#f87171",
+        }
+
+    async def test_omitting_count_costs_the_same_queries_as_selecting_it(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        value_fixture: ValueFixture,
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+        variables: dict[str, Any] = {"id": value_fixture.repository.id, "limit": 5}
+
+        with_count, with_count_queries = await _run_counting(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=VALUE_ROWS_QUERY,
+            variables=variables,
+            account_session=reader_session,
+        )
+        without_count, without_count_queries = await _run_counting(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=VALUE_ROWS_WITHOUT_COUNT_QUERY,
+            variables=variables,
+            account_session=reader_session,
+        )
+
+        assert with_count.errors is None
+        assert without_count.errors is None
+        assert with_count.data
+        assert with_count.data["InfrahubRepositoryBranchStatus"]["count"] == READ_WRITE_ROW_COUNT
+        assert without_count.data
+        assert "count" not in without_count.data["InfrahubRepositoryBranchStatus"]
+        assert _names(without_count) == _names(with_count)
+        assert len(_names(without_count)) == 5
+        assert without_count_queries == with_count_queries
+        assert with_count_queries > 0
+
+    async def test_one_page_costs_the_same_at_five_and_two_hundred_branches(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        value_fixture: ValueFixture,
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        branches = repository_branch_status_branches
+
+        five, five_queries = await _run_counting(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=ROWS_QUERY,
+            variables={"id": value_fixture.repository.id, "limit": 5, "name": "rbs-five-", "partial_match": True},
+            account_session=reader_session,
+        )
+        two_hundred, two_hundred_queries = await _run_counting(
+            db=db,
+            branch_name=branches.default_branch.name,
+            source=ROWS_QUERY,
+            variables={"id": value_fixture.repository.id, "limit": 5, "name": "rbs-scale-", "partial_match": True},
+            account_session=reader_session,
+        )
+
+        assert five.errors is None
+        assert two_hundred.errors is None
+        assert five.data
+        assert two_hundred.data
+        assert five.data["InfrahubRepositoryBranchStatus"]["count"] == len(branches.five)
+        assert two_hundred.data["InfrahubRepositoryBranchStatus"]["count"] == len(branches.two_hundred)
+        assert two_hundred_queries == five_queries
+        assert five_queries > 0
+
+
+COMMIT_SELECTION_QUERY = """
+query($id: String!, $limit: Int) {
+  InfrahubRepositoryBranchStatus(id: $id, limit: $limit) {
+    edges {
+      node {
+        name { value }
+        commit { value }
+      }
+    }
+  }
+}
+"""
+
+SYNC_STATUS_OWN_VALUES_QUERY = """
+query($id: String!, $limit: Int) {
+  InfrahubRepositoryBranchStatus(id: $id, limit: $limit, own_values_only: true) {
+    edges {
+      node { sync_status { value } }
+    }
+  }
+}
+"""
+
+REF_SELECTION_QUERY = """
+query($id: String!, $limit: Int) {
+  InfrahubRepositoryBranchStatus(id: $id, limit: $limit) {
+    edges {
+      node {
+        ref { value }
+        commit { value }
+      }
+    }
+  }
+}
+"""
+
+NAME_SELECTION_WITH_VALUE_FILTERS_QUERY = """
+query($id: String!, $limit: Int, $sync_status: String, $internal_status: String) {
+  InfrahubRepositoryBranchStatus(
+    id: $id
+    limit: $limit
+    sync_status__value: $sync_status
+    internal_status__value: $internal_status
+  ) {
+    edges {
+      node { name { value } }
+    }
+  }
+}
+"""
+
+
+@dataclass(frozen=True)
+class RecordedRead:
+    """One call the resolver made to its attribute source."""
+
+    repository_ids: tuple[str, ...]
+    branch_names: tuple[str, ...]
+    attribute_names: frozenset[str]
+
+
+class RecordingAttributeSource(RepositoryBranchAttributesSource):
+    """Attribute source that records every read and resolves no value."""
+
+    def __init__(self) -> None:
+        self.reads: list[RecordedRead] = []
+
+    async def read(
+        self,
+        repository_ids: Sequence[str],
+        branch_names: Sequence[str],
+        attribute_names: Collection[str],
+        at: Timestamp | None = None,
+    ) -> RepositoryBranchAttributes:
+        self.reads.append(
+            RecordedRead(
+                repository_ids=tuple(repository_ids),
+                branch_names=tuple(branch_names),
+                attribute_names=frozenset(attribute_names),
+            )
+        )
+        return RepositoryBranchAttributes.from_values(values=[])
+
+
+@dataclass(frozen=True)
+class FixedSourceFactory:
+    """Source factory handing the resolver one prepared source, whatever database it is given."""
+
+    source: RepositoryBranchAttributesSource
+
+    def __call__(self, db: InfrahubDatabase) -> RepositoryBranchAttributesSource:
+        return self.source
+
+
+def _schema_with_source(source: RepositoryBranchAttributesSource) -> GraphQLSchema:
+    """Build a schema exposing the resolver with the production argument set and a chosen source."""
+
+    class RecordingQuery(ObjectType):
+        InfrahubRepositoryBranchStatus = Field(
+            InfrahubRepositoryBranchStatusType,
+            required=True,
+            id=String(required=True),
+            limit=Int(default_value=40),
+            offset=Int(default_value=0),
+            name__value=String(),
+            partial_match=Boolean(default_value=False),
+            status__value=Argument(InfrahubBranchStatus),
+            order=Argument(MetadataOrderInput),
+            sync_status__value=String(),
+            internal_status__value=String(),
+            own_values_only=Boolean(default_value=False),
+            resolver=RepositoryBranchStatusResolver(build_source=FixedSourceFactory(source=source)),
+        )
+
+    return graphene.Schema(query=RecordingQuery, auto_camelcase=False).graphql_schema
+
+
+class TestRepositoryBranchStatusReadsOnlyTheSelectedAttributes:
+    async def _record(
+        self,
+        db: InfrahubDatabase,
+        branch_name: str,
+        source_document: str,
+        repository_id: str,
+        account_session: AccountSession,
+        variables: Mapping[str, Any] | None = None,
+    ) -> RecordedRead:
+        recording_source = RecordingAttributeSource()
+        gql_params = await prepare_graphql_params(db=db, branch=branch_name, account_session=account_session)
+
+        result = await graphql(
+            schema=_schema_with_source(source=recording_source),
+            source=source_document,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": repository_id, "limit": 5, **(variables or {})},
+        )
+
+        assert result.errors is None
+        assert len(recording_source.reads) == 1
+        return recording_source.reads[0]
+
+    async def test_selecting_only_the_commit_reads_only_the_commit(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        repository, _ = repositories
+
+        read = await self._record(
+            db=db,
+            branch_name=repository_branch_status_branches.default_branch.name,
+            source_document=COMMIT_SELECTION_QUERY,
+            repository_id=repository.id,
+            account_session=reader_session,
+        )
+
+        assert read.attribute_names == {"commit"}
+        assert read.repository_ids == (repository.id,)
+
+    async def test_own_values_only_widens_a_sync_status_selection_by_the_commit(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        repository, _ = repositories
+
+        read = await self._record(
+            db=db,
+            branch_name=repository_branch_status_branches.default_branch.name,
+            source_document=SYNC_STATUS_OWN_VALUES_QUERY,
+            repository_id=repository.id,
+            account_session=reader_session,
+        )
+
+        assert read.attribute_names == {"sync_status", "commit"}
+
+    async def test_ref_is_never_read_for_the_read_write_kind(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        repository, read_only_repository = repositories
+
+        read_write = await self._record(
+            db=db,
+            branch_name=repository_branch_status_branches.default_branch.name,
+            source_document=REF_SELECTION_QUERY,
+            repository_id=repository.id,
+            account_session=reader_session,
+        )
+        read_only = await self._record(
+            db=db,
+            branch_name=repository_branch_status_branches.default_branch.name,
+            source_document=REF_SELECTION_QUERY,
+            repository_id=read_only_repository.id,
+            account_session=reader_session,
+        )
+
+        assert read_write.attribute_names == {"commit"}
+        assert read_only.attribute_names == {"commit", "ref"}
+
+    async def test_a_value_filter_widens_the_read_by_the_attribute_it_compares(
+        self,
+        db: InfrahubDatabase,
+        repository_branch_status_branches: RepositoryBranchStatusBranches,
+        repositories: tuple[CoreRepository, CoreReadOnlyRepository],
+        reader_session: AccountSession,
+        default_permission_backend: None,
+    ) -> None:
+        repository, _ = repositories
+
+        sync_status_filtered = await self._record(
+            db=db,
+            branch_name=repository_branch_status_branches.default_branch.name,
+            source_document=NAME_SELECTION_WITH_VALUE_FILTERS_QUERY,
+            repository_id=repository.id,
+            account_session=reader_session,
+            variables={"sync_status": RepositorySyncStatus.IN_SYNC.value},
+        )
+        internal_status_filtered = await self._record(
+            db=db,
+            branch_name=repository_branch_status_branches.default_branch.name,
+            source_document=NAME_SELECTION_WITH_VALUE_FILTERS_QUERY,
+            repository_id=repository.id,
+            account_session=reader_session,
+            variables={"internal_status": RepositoryInternalStatus.ACTIVE.value},
+        )
+        unfiltered = await self._record(
+            db=db,
+            branch_name=repository_branch_status_branches.default_branch.name,
+            source_document=NAME_SELECTION_WITH_VALUE_FILTERS_QUERY,
+            repository_id=repository.id,
+            account_session=reader_session,
+        )
+
+        assert sync_status_filtered.attribute_names == {"sync_status"}
+        assert internal_status_filtered.attribute_names == {"internal_status"}
+        assert unfiltered.attribute_names == set()
