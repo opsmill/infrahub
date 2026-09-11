@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import pytest
 
+from infrahub.core.constants import RelationshipDirection
 from infrahub.core.schema import NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.graphql.queries.path import select_hop_relationships
@@ -166,23 +167,44 @@ AMBIGUOUS_HOP_CASES = [
 
 
 @pytest.mark.parametrize("case", AMBIGUOUS_HOP_CASES, ids=[case.name for case in AMBIGUOUS_HOP_CASES])
-def test_ambiguous_hierarchy_keeps_a_deterministic_mirrored_pair(case: AmbiguousHopCase) -> None:
-    # The schema cannot tell the ends apart, so the guess is the same pair in
-    # every hop direction: for two distinct kinds, one direction is swapped.
+def test_stored_direction_names_both_ends_of_an_ambiguous_hop(case: AmbiguousHopCase) -> None:
+    # The end whose edge is stored outbound is the child, whichever way the hop is walked.
     schema_branch = _processed_branch(nodes=case.nodes)
+    expectations = {
+        RelationshipDirection.OUTBOUND: ("parent", "children"),
+        RelationshipDirection.INBOUND: ("children", "parent"),
+    }
 
     for from_kind, to_kind in case.hops:
-        from_rel, to_rel = select_hop_relationships(
-            from_schema=schema_branch.get(name=from_kind, duplicate=False),
-            to_schema=schema_branch.get(name=to_kind, duplicate=False),
-            from_kind=from_kind,
-            to_kind=to_kind,
-            identifier="parent__child",
-        )
+        for from_direction, expected in expectations.items():
+            from_rel, to_rel = select_hop_relationships(
+                from_schema=schema_branch.get(name=from_kind, duplicate=False),
+                to_schema=schema_branch.get(name=to_kind, duplicate=False),
+                from_kind=from_kind,
+                to_kind=to_kind,
+                identifier="parent__child",
+                from_direction=from_direction,
+            )
 
-        assert from_rel is not None
-        assert to_rel is not None
-        assert (from_rel.name, to_rel.name) == ("parent", "children")
+            assert from_rel is not None
+            assert to_rel is not None
+            assert (from_rel.name, to_rel.name) == expected
+
+
+def test_direction_that_matches_no_declaration_keeps_the_peer_pick(location_schema_branch: SchemaBranch) -> None:
+    # A stored direction the schema no longer declares must not lose the answer.
+    from_rel, to_rel = select_hop_relationships(
+        from_schema=location_schema_branch.get(name=TestKind.COUNTRY, duplicate=False),
+        to_schema=location_schema_branch.get(name=TestKind.SITE, duplicate=False),
+        from_kind=TestKind.COUNTRY,
+        to_kind=TestKind.SITE,
+        identifier=PLAIN_IDENTIFIER,
+        from_direction=RelationshipDirection.OUTBOUND,
+    )
+
+    assert from_rel is not None
+    assert to_rel is not None
+    assert (from_rel.name, to_rel.name) == ("managed_sites", "managed_by")
 
 
 def test_unknown_end_falls_back_to_first_declaration(location_schema_branch: SchemaBranch) -> None:

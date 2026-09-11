@@ -133,6 +133,53 @@ async def test_resolver_names_each_end_of_a_hierarchy_hop(
     }
 
 
+async def test_resolver_names_each_end_of_a_self_referential_hierarchy_hop(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    self_referential_hierarchy_data: dict[str, Node],
+) -> None:
+    # Both ends declare `parent` and `children` with the same peer kind, so only the
+    # direction the edge is stored with tells them apart.
+    root = self_referential_hierarchy_data["root"]
+    upper = self_referential_hierarchy_data["upper"]
+    lower = self_referential_hierarchy_data["lower"]
+    leaf = self_referential_hierarchy_data["leaf"]
+
+    data, errors = await _run_resolver(
+        db=db,
+        branch=default_branch,
+        session=session_admin,
+        variables={"data": {"source_id": root.id, "target_kinds": ["NestedFolder"], "max_depth": 3}},
+        source=REACHABLE_NODES_RELATIONSHIP_QUERY,
+    )
+
+    assert errors is None
+    assert data is not None
+    result = data["InfrahubReachableNodes"]
+    downward = {
+        "from_rel": "children",
+        "from_label": "Children",
+        "to_rel": "parent",
+        "to_label": "Parent",
+        "kind": "Hierarchy",
+    }
+    reached = {
+        dependency["node"]["id"]: (
+            [hop["node"]["id"] for hop in dependency["path"]["hops"]],
+            [hop["relationship"] for hop in dependency["path"]["hops"]],
+        )
+        for dependency in result["dependencies"]
+    }
+    assert reached == {
+        upper.id: ([root.id, upper.id], [None, downward]),
+        lower.id: ([root.id, upper.id, lower.id], [None, downward, downward]),
+        leaf.id: ([root.id, upper.id, lower.id, leaf.id], [None, downward, downward, downward]),
+    }
+    assert result["count"] == 3
+
+
 async def test_resolver_short_circuits_when_no_route_to_target_kind(
     db: InfrahubDatabase,
     default_branch: Branch,
