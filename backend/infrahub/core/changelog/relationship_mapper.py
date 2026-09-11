@@ -5,7 +5,11 @@ from uuid import UUID
 
 from infrahub.core.constants import RelationshipCardinality
 
-from .models import RelationshipCardinalityManyChangelog, RelationshipCardinalityOneChangelog
+from .models import (
+    RelationshipCardinalityManyChangelog,
+    RelationshipCardinalityOneChangelog,
+    record_new_edge_metadata,
+)
 
 if TYPE_CHECKING:
     from infrahub.core.manager import RelationshipSchema
@@ -59,17 +63,7 @@ class ChangelogRelationshipMapper:
             self._set_cardinality_one_peer(relationship=relationship)
             # Record the new edge's metadata, whether the relationship is freshly added or the peer
             # is being swapped, so the changelog always reports the edge that now exists.
-            if source_id := getattr(relationship, "source_id", None):
-                self.cardinality_one_relationship.add_property(
-                    name="source", value_current=source_id, value_previous=None
-                )
-            if owner_id := getattr(relationship, "owner_id", None):
-                self.cardinality_one_relationship.add_property(
-                    name="owner", value_current=owner_id, value_previous=None
-                )
-            self.cardinality_one_relationship.add_property(
-                name="is_protected", value_current=relationship.is_protected, value_previous=None
-            )
+            record_new_edge_metadata(changelog=self.cardinality_one_relationship, relationship=relationship)
         elif self.schema.cardinality == RelationshipCardinality.MANY:
             self.cardinality_many_relationship.add_new_peer(relationship=relationship)
 
