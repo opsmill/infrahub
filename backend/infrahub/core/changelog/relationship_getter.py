@@ -137,7 +137,15 @@ class RelationshipChangelogGetter:
                 merged[secondary.node_id] = secondary
                 continue
             for name, relationship in secondary.relationships.items():
-                existing.relationships.setdefault(name, relationship)
+                current = existing.relationships.get(name)
+                if current is None:
+                    existing.relationships[name] = relationship
+                elif isinstance(current, RelationshipCardinalityManyChangelog) and isinstance(
+                    relationship, RelationshipCardinalityManyChangelog
+                ):
+                    # Two source relationships resolved to the same many peer-side name; keep every
+                    # affected peer rather than dropping the later relationship's entries.
+                    current.peers.extend(relationship.peers)
         return list(merged.values())
 
     @staticmethod
