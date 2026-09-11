@@ -18,6 +18,7 @@ from infrahub import config, lock
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.computed_attribute.scoping import ChangedElementSet
+from infrahub.computed_attribute.tasks import trigger_update_python_computed_attributes
 from infrahub.context import InfrahubContext
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
@@ -37,6 +38,7 @@ from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
+from tests.adapters.python_target_sources import FailingPythonTargetResolver
 from tests.component.computed_attribute._base import (
     CAR_PERSON_PYTHON_SCHEMA,
     ScopedRecomputeTestBase,
@@ -50,6 +52,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
     from infrahub.core.branch import Branch
+    from infrahub.core.merge.recompute_coalescing import PythonTargetResolver
     from infrahub.core.protocols import CoreAccount
     from infrahub.core.schema import SchemaRoot
     from infrahub.database import InfrahubDatabase
@@ -188,13 +191,14 @@ class CoalescedPythonTestBase(ScopedRecomputeTestBase):
         admin_account: CoreAccount,
         changes: Iterable[MergeChange],
         schema_changed_elements: ChangedElementSet | None = None,
+        python_resolver: PythonTargetResolver | None = None,
     ) -> dict[str, list[str] | str]:
         """Run the pass and report one entry per attribute it submitted."""
         branch = default_branch
         coordinator = MergeRecomputeCoordinator(
             builder=CoalescedRecomputeBuilder(schema_branch=registry.schema.get_schema_branch(name=branch.name)),
             submitter=CoalescedRecomputeSubmitter(workflow=recorder),
-            python_resolver=await build_python_target_resolver(db=db),
+            python_resolver=python_resolver or await build_python_target_resolver(db=db),
         )
 
         await coordinator.run(
@@ -217,6 +221,8 @@ class CoalescedPythonTestBase(ScopedRecomputeTestBase):
             attribute_name = call["parameters"]["computed_attribute_name"]
             assert attribute_name not in submissions, f"{attribute_name} was submitted more than once"
             assert call["parameters"]["coalesced"] is True
+            # Only this shape carries it, which is what lets the run skip what it cannot compute.
+            assert call["parameters"]["widened"] is True
             submissions[attribute_name] = WHOLE_KIND
         return submissions
 
@@ -424,7 +430,8 @@ class TestCoalescedRecomputePythonMissingTransform(CoalescedPythonTestBase):
 
     A repository that has not been loaded yet is the ordinary way to reach this. Nothing can
     compute the attribute until the transform arrives, and the recompute that follows the transform
-    being created covers it then. Submitting for it here only produces flow runs that raise.
+    being created covers it then. A narrowed pass leaves it out; a widened run skips it with a
+    warning.
     """
 
     @pytest.fixture(scope="class")
@@ -462,6 +469,70 @@ class TestCoalescedRecomputePythonMissingTransform(CoalescedPythonTestBase):
         )
 
         assert submissions == {OWNER_ATTRIBUTE: sorted(missing_transform_dataset.car_ids)}
+
+    async def test_a_failed_resolution_widens_the_attribute_and_the_fan_out_skips_it(
+        self,
+        missing_transform_dataset: PythonRecomputeDataset,
+        db: InfrahubDatabase,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+    ) -> None:
+        """A failed resolution widens from the schema, so the attribute names a transform nothing holds.
+
+        Its fan-out then stops before it lists the kind, while the attributes whose transform is in
+        the database still fan out to every car.
+        """
+        submissions = await self._run_pass(
+            db=db,
+            recorder=workflow_recorder,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            changes=[
+                MergeChange(
+                    node_id=missing_transform_dataset.person_id,
+                    kind=PERSON_KIND,
+                    action="updated",
+                    changed_fields=frozenset({"name"}),
+                )
+            ],
+            python_resolver=FailingPythonTargetResolver(),
+        )
+
+        assert submissions == {
+            NAME_ATTRIBUTE: WHOLE_KIND,
+            OWNER_ATTRIBUTE: WHOLE_KIND,
+            MISSING_TRANSFORM_ATTRIBUTE: WHOLE_KIND,
+        }
+
+        context = self._context(admin_account, default_branch)
+        workflow_recorder.reset()
+        await trigger_update_python_computed_attributes(
+            branch_name=default_branch.name,
+            computed_attribute_name=MISSING_TRANSFORM_ATTRIBUTE,
+            computed_attribute_kind=CAR_KIND,
+            context=context,
+            coalesced=True,
+            widened=True,
+        )
+        assert workflow_recorder.submit_calls == []
+
+        workflow_recorder.reset()
+        await trigger_update_python_computed_attributes(
+            branch_name=default_branch.name,
+            computed_attribute_name=OWNER_ATTRIBUTE,
+            computed_attribute_kind=CAR_KIND,
+            context=context,
+            coalesced=True,
+            widened=True,
+        )
+        fanned_out = [
+            object_id
+            for call in workflow_recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM)
+            for object_id in call["parameters"]["object_ids"]
+        ]
+        assert sorted(fanned_out) == sorted(missing_transform_dataset.car_ids)
 
 
 class TestCoalescedRecomputePythonDerivedRead(CoalescedPythonTestBase):

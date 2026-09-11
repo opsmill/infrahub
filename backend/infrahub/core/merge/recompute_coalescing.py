@@ -484,6 +484,8 @@ class CoalescedRecomputeSubmitter:
                         "computed_attribute_kind": submission.target_kind,
                         "context": context,
                         "coalesced": True,
+                        # The one submission the resolution could not narrow.
+                        "widened": True,
                         "recompute_depth": recompute_depth,
                     }
                 return (
