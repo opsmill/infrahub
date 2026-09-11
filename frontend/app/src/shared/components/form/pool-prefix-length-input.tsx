@@ -12,6 +12,11 @@ export interface PoolPrefixLengthInputProps {
   invalid?: boolean;
   /** Pool's default prefix length, shown as a hint of the mask used when left blank. */
   placeholder?: string;
+  /** Ties a caller's visible label to this control. */
+  id?: string;
+  /** Widens past the compact default, for a caller that gives it a row of its own. */
+  className?: string;
+  disabled?: boolean;
   onChange: (value: number | null) => void;
 }
 
@@ -24,16 +29,30 @@ export function PoolPrefixLengthInput({
   value,
   invalid,
   placeholder,
+  id,
+  className,
+  disabled,
   onChange,
 }: PoolPrefixLengthInputProps) {
   return (
     <Row
-      className={classNames(inputStyle, focusWithinStyle, "w-18 gap-1", invalid && inputErrorStyle)}
+      className={classNames(
+        inputStyle,
+        focusWithinStyle,
+        "w-18 gap-1",
+        invalid && inputErrorStyle,
+        // `inputStyle`'s `disabled:` variants key off the element that carries the attribute,
+        // which here is the inner input rather than this wrapper.
+        disabled && "cursor-not-allowed opacity-60",
+        className
+      )}
       title="Prefix length"
     >
       <span className="text-subtle-muted">/</span>
       <input
+        id={id}
         type="number"
+        disabled={disabled}
         min={MIN_PREFIX_LENGTH}
         max={MAX_PREFIX_LENGTH}
         value={value ?? ""}

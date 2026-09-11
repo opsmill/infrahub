@@ -8,6 +8,10 @@ export interface AllocateResourceInput {
   id: string;
   /** Address mask (address pool) or subnet size (prefix pool); omitted uses the pool default. */
   prefix_length?: number;
+  /** Concrete kind to allocate from an IP address pool; omitted uses the pool default. */
+  address_type?: string;
+  /** Concrete kind to allocate from an IP prefix pool; omitted uses the pool default. */
+  prefix_type?: string;
   data?: Record<string, unknown>;
 }
 

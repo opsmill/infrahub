@@ -2,7 +2,7 @@ import { Button, Spinner } from "@infrahub/ui";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React from "react";
 
-import type { PoolValue } from "@/shared/components/form/pool-selector";
+import type { PoolValue } from "@/shared/components/form/type";
 import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
@@ -31,6 +31,8 @@ export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value
   options?: Array<Node>;
   parent?: { name?: string; value?: string };
   addNewInitialObject?: NodeFieldsWithMetadata;
+  /** Shown while nothing is picked, mirroring the pool control's "Select a pool". */
+  placeholder?: string;
   ref?: React.Ref<React.ComponentRef<typeof PopoverTrigger>>;
 }
 
@@ -42,6 +44,7 @@ export const RelationshipInput = ({
   peer,
   parent,
   addNewInitialObject,
+  placeholder = "Select an object",
   ref,
   ...props
 }: RelationshipInputProps) => {
@@ -75,10 +78,12 @@ export const RelationshipInput = ({
           className
         )}
       >
-        {value && (
+        {value ? (
           <span data-testid="select-value">
             {"from_pool" in value ? "Allocated by pool" : getNodeLabel(value)}
           </span>
+        ) : (
+          <span className="text-subtle-muted">{placeholder}</span>
         )}
 
         {isRelationshipListLoading && <Spinner className="ml-auto" />}

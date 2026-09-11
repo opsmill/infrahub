@@ -94,13 +94,24 @@ def get_data_table_row(page: Page, name: str) -> Locator:
 
 
 async def select_pool(page: Page, pool_name: str) -> None:
-    """Open a from-pool field's pool picker and select the pool by name.
+    """Switch a pool-backed field to its pool tab and select the pool by name.
 
     The "open the resource-pool dropdown, then click the named pool" pair is
     identical across every from-pool allocation flow (IPAM create, object
     create / relationship / bulk-edit, object templates), so it lives here once.
     Callers keep their own surrounding navigation, field fills and assertions.
+
+    A pool-backed field offers two tabs -- provide the value yourself, or
+    allocate from a pool -- and opens on the value tab. The pool controls live
+    in the other tab's panel, which is not in the DOM until that tab is
+    selected, so the tab click belongs here rather than in every caller.
+
+    Deliberately not scoped to a single field: every caller's page has exactly
+    one pool-backed field, so an ambiguous locator would be a bug worth failing
+    on. Should a page ever grow a second one, Playwright's strict mode raises
+    rather than clicking an arbitrary tab.
     """
+    await page.get_by_role("tab", name="From pool").click()
     await page.get_by_test_id("select-open-pool-option-button").click()
     await page.get_by_role("option", name=pool_name).click()
 
