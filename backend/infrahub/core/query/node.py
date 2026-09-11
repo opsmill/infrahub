@@ -15,6 +15,7 @@ from infrahub.constants.enums import OrderDirection
 from infrahub.core import registry
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
+    NULL_VALUE,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
     AttributeDBNodeType,
@@ -1370,6 +1371,90 @@ WITH node_id, head(collect(node_kind)) AS node_kind
         for result in self.get_results():
             node_kind_map[str(result.get("node_id"))] = str(result.get("node_kind"))
         return node_kind_map
+
+
+class NodeListGetDisplayLabelQuery(Query):
+    """Read the display label stored on a list of nodes without instantiating the nodes.
+
+    The stored ``display_label`` attribute is what ``Node.get_display_label`` returns when it is
+    populated, so this is the cheap way to label many nodes at once. A node that is not active on
+    the branch, or that has no display label stored, is absent from the result.
+    """
+
+    name = "node_list_get_display_label"
+    type = QueryType.READ
+
+    def __init__(self, ids: list[str], **kwargs: Any) -> None:
+        self.ids = ids
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+        self.params["ids"] = self.ids
+
+        query = """
+        MATCH (n:Node)
+        WHERE n.uuid IN $ids
+        // --------------------------
+        // Keep the node vertex that is active on the branch: a deleted node has no active
+        // IS_PART_OF edge and a kind migration leaves several vertices with the same uuid
+        // --------------------------
+        CALL (n) {
+            MATCH (n)-[r:IS_PART_OF]->(:Root)
+            WHERE %(branch_filter)s
+            RETURN r AS root_edge
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n
+        WHERE root_edge.status = "active"
+        MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "display_label"})
+        // a deleted or migrated node holds several edges to the same attribute: resolve each pair once
+        WITH DISTINCT n, attr
+        CALL (n, attr) {
+            MATCH (n)-[r:HAS_ATTRIBUTE]->(attr)
+            WHERE %(branch_filter)s
+            RETURN r AS attr_edge
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, attr
+        WHERE attr_edge.status = "active"
+        // --------------------------
+        // Resolve the value active on the branch at the requested point in time
+        // --------------------------
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
+            WHERE %(branch_filter)s
+            RETURN r AS value_edge, av
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, av
+        WHERE value_edge.status = "active"
+        """ % {"branch_filter": branch_filter}
+
+        self.add_to_query(query)
+        self.return_labels = ["n.uuid AS node_id", "av.value AS display_label"]
+
+    def get_display_label_map(self) -> dict[str, str]:
+        """Return the stored display label of every node that has a non-empty one, keyed by node id.
+
+        An empty stored label, including the ``NULL_VALUE`` sentinel a kind without a template
+        stores, is left out on purpose: whether it should read as an empty string or as the node's
+        default representation depends on the node's schema, which ``Node.get_display_label`` knows
+        and this query does not.
+        """
+        display_label_map: dict[str, str] = {}
+        for result in self.get_results():
+            display_label = result.get("display_label")
+            if not display_label or display_label == NULL_VALUE:
+                continue
+            display_label_map[str(result.get("node_id"))] = str(display_label)
+        return display_label_map
 
 
 class NodeListGetInfoQuery(Query):
