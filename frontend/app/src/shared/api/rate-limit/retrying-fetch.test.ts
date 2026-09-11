@@ -6,7 +6,10 @@ import {
   SHED_BODY,
   shedResponse,
 } from "../../../../tests/fake/shed-response";
+import { notifyRetryScheduled } from "./retry-notice";
 import { retryingFetch } from "./retrying-fetch";
+
+vi.mock("./retry-notice", () => ({ notifyRetryScheduled: vi.fn() }));
 
 const TEST_URL = "http://localhost:8000/api/test";
 
@@ -26,6 +29,7 @@ describe("retryingFetch", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it("sends a successful request once", async () => {
@@ -122,6 +126,25 @@ describe("retryingFetch", () => {
     expect(response.status).toBe(200);
     expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(fetchSpy.mock.calls[1]?.[0]).toBe(TEST_URL);
+  });
+
+  it("tells the notice how long a replay will wait", async () => {
+    // GIVEN
+    vi.useFakeTimers();
+    fetchSpy
+      .mockResolvedValueOnce(shedResponse({ "Retry-After": "2" }))
+      .mockResolvedValueOnce(ok());
+
+    // WHEN
+    const pending = retryingFetch(new Request(TEST_URL));
+    await vi.advanceTimersByTimeAsync(0);
+
+    // THEN
+    expect(notifyRetryScheduled).toHaveBeenCalledWith(2000);
+    // The race settles with the probe only while the replay is still waiting.
+    await expect(Promise.race([pending, Promise.resolve("still waiting")])).resolves.toBe(
+      "still waiting"
+    );
   });
 
   it("lets init override the Request's method, as fetch does", async () => {

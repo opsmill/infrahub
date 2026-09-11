@@ -247,6 +247,82 @@ describe("sendWithRateLimitRetry", () => {
     expect(response.status).toBe(429);
   });
 
+  it("reports the wait it has decided on before replaying", async () => {
+    // GIVEN
+    vi.useFakeTimers();
+    const send = vi
+      .fn<() => Promise<Response>>()
+      .mockResolvedValueOnce(shedResponse({ "Retry-After": "2" }))
+      .mockResolvedValueOnce(ok());
+    const onRetryScheduled = vi.fn();
+
+    // WHEN
+    const pending = sendWithRateLimitRetry(send, { random: noJitter, onRetryScheduled });
+    await vi.advanceTimersByTimeAsync(0);
+
+    // THEN
+    expect(onRetryScheduled).toHaveBeenCalledWith({ attempt: 0, delayMs: 2000 });
+    expect(send).toHaveBeenCalledOnce();
+    // The race settles with the probe only while the replay is still waiting.
+    await expect(Promise.race([pending, Promise.resolve("still waiting")])).resolves.toBe(
+      "still waiting"
+    );
+  });
+
+  it("tells the reporter a replay was sent once its wait has elapsed", async () => {
+    // GIVEN
+    vi.useFakeTimers();
+    const send = vi
+      .fn<() => Promise<Response>>()
+      .mockResolvedValueOnce(shedResponse({ "Retry-After": "1" }))
+      .mockResolvedValueOnce(ok());
+    const settle = vi.fn();
+    const pending = sendWithRateLimitRetry(send, {
+      random: noJitter,
+      onRetryScheduled: () => settle,
+    });
+
+    // WHEN
+    await vi.advanceTimersByTimeAsync(1000);
+
+    // THEN
+    await expect(pending).resolves.toHaveProperty("status", 200);
+    expect(settle).toHaveBeenCalledExactlyOnceWith("replayed");
+  });
+
+  it("tells the reporter a replay was abandoned when the wait is aborted", async () => {
+    // GIVEN
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const send = vi.fn(async () => shedResponse({ "Retry-After": "10" }));
+    const settle = vi.fn();
+    const pending = sendWithRateLimitRetry(send, {
+      random: noJitter,
+      signal: controller.signal,
+      onRetryScheduled: () => settle,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+
+    // WHEN
+    controller.abort(new Error("gone"));
+
+    // THEN
+    await expect(pending).rejects.toThrow("gone");
+    expect(settle).toHaveBeenCalledExactlyOnceWith("abandoned");
+  });
+
+  it("does not report a response it will not replay", async () => {
+    // GIVEN a 429 on every attempt, so the last one is handed back unreplayed
+    const send = vi.fn(async () => shedResponse());
+    const onRetryScheduled = vi.fn();
+
+    // WHEN
+    await sendWithRateLimitRetry(send, { random: noJitter, onRetryScheduled });
+
+    // THEN
+    expect(onRetryScheduled).toHaveBeenCalledTimes(MAX_RETRIES);
+  });
+
   it("rejects with the signal's reason instead of replaying a request that was already aborted", async () => {
     // GIVEN
     const send = vi.fn(async () => shedResponse());

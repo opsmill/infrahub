@@ -82,6 +82,12 @@ person is waiting on the response. With no advice, the delay is a full-jitter ex
 from 300ms. An abort during a wait rejects with the signal's reason, as `fetch` itself does, so a
 torn-down query is never replayed.
 
+While a replay of a second or more is pending, an informational toast says how long the wait is
+(`shared/api/rate-limit/retry-notice.ts`). A burst of shed requests shares one notice that follows
+the latest wait. The notice closes shortly after the last announced replay fires, and at once if the
+waiting request is aborted, so it never promises a replay that will not happen; a sub-second replay
+gets no notice, because it is over before anyone could read it.
+
 `GET`/`HEAD`/`OPTIONS` is always replayable. Anything else is replayed only when the response has
 the `X-Infrahub-Admission: shed` header, which only the admission layer sets and which proves the
 request never reached a handler. The body is not enough: the REST exception handler emits the same

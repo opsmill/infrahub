@@ -83,6 +83,12 @@ export function nextDelayMs(
   return random() * computeBackoffMs(attempt);
 }
 
+/** A replay the driver has decided on: which retry it is and how long it waits first. */
+export type ScheduledRetry = { attempt: number; delayMs: number };
+
+/** How a scheduled wait ended: the replay was sent, or the caller aborted first. */
+export type RetryOutcome = "replayed" | "abandoned";
+
 export type RateLimitRetryOptions = {
   /**
    * Cuts a wait short. An aborted request is never replayed: the call rejects
@@ -93,6 +99,12 @@ export type RateLimitRetryOptions = {
   canReplay?: (response: Response) => boolean;
   /** Seam so the jitter can be driven deterministically in tests. */
   random?: () => number;
+  /**
+   * Told about each replay just before the wait for it starts. May return a
+   * callback, which is then told how the wait ended, so a notice about the
+   * replay can be withdrawn if it is never sent.
+   */
+  onRetryScheduled?: (retry: ScheduledRetry) => ((outcome: RetryOutcome) => void) | undefined;
 };
 
 /**
@@ -108,7 +120,7 @@ export async function sendWithRateLimitRetry(
   send: () => Promise<Response>,
   options: RateLimitRetryOptions = {}
 ): Promise<Response> {
-  const { signal, canReplay, random = Math.random } = options;
+  const { signal, canReplay, random = Math.random, onRetryScheduled } = options;
   const deadline = Date.now() + TOTAL_RETRY_WINDOW_MS;
 
   for (let attempt = 0; ; attempt += 1) {
@@ -119,7 +131,9 @@ export async function sendWithRateLimitRetry(
     const delay = nextDelayMs(attempt, response.headers.get("Retry-After"), random);
     if (Date.now() + delay > deadline) return response;
 
+    const settle = onRetryScheduled?.({ attempt, delayMs: delay });
     await waitFor(delay, signal);
+    settle?.(signal?.aborted ? "abandoned" : "replayed");
     // Aborted before or during the wait: reject as `fetch` would, rather than
     // hand back a 429 for a request the caller has abandoned.
     signal?.throwIfAborted();
