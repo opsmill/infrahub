@@ -1228,11 +1228,17 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     def _object_depends_on_definitions(schema: MainSchemaTypesAPI) -> bool:
         """Whether an object of this kind references a definition created later in the import.
 
-        Generator actions and trigger rules point at a generator definition that the import
-        creates from a dedicated config section, so they must be reconciled after those
-        definitions rather than alongside the groups the definitions target.
+        Generator actions point at a generator definition that the import creates from a
+        dedicated config section, so they must be reconciled after those definitions rather
+        than alongside the groups the definitions target. Trigger rules are deferred as a
+        whole because the action they point at is only known once the document is resolved;
+        the ones bound to another action kind are deferred without needing to be.
+
+        Other action kinds, ``CoreGroupAction`` today, only reference objects imported in the
+        regular pass and stay there.
         """
-        return bool({InfrahubKind.ACTION, InfrahubKind.TRIGGERRULE}.intersection(schema.inherit_from))
+        kinds = {schema.kind, *schema.inherit_from}
+        return bool({InfrahubKind.GENERATORACTION, InfrahubKind.TRIGGERRULE}.intersection(kinds))
 
     async def _load_objects(
         self,
@@ -1245,7 +1251,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         ``defer`` selects which documents to load by their reconciliation ordering: ``False``
         loads the documents that do not depend on repository-defined definitions, ``True`` loads
-        the generator actions and trigger rules that reference such a definition, and ``None``
+        the generator actions and trigger rules that may reference such a definition, and ``None``
         loads every document.
 
         Raises:
