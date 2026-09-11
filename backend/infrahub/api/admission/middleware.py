@@ -30,16 +30,23 @@ _CORS_REQUEST_METHOD_HEADER = b"access-control-request-method"
 
 _SHED_MESSAGE = "Server is shedding load; retry later."
 
+# Marks a 429 the admission layer wrote itself. A client may replay a non-idempotent request
+# against a 429 only if the handler never ran, and the body alone cannot promise that: the REST
+# exception handler emits the same integer-code envelope for any error. The CORS middleware exposes
+# the header so a cross-origin browser can read it.
+SHED_MARKER_HEADER = "X-Infrahub-Admission"
+SHED_MARKER_VALUE = "shed"
+
 
 class AdmissionMiddleware:
-    """Pure-ASGI outermost gate that sheds load by priority before any handler work.
+    """Pure-ASGI gate, outermost but for CORS, that sheds load by priority before any handler work.
 
     Non-``http`` scopes, the excluded liveness/scrape/static paths, and every request
     while the layer is disabled pass straight through. Otherwise the ``X-Priority`` header
     is classified and handed to the admission controller: an admitted request runs the
     downstream app inside its slot and always releases the slot afterwards, while a shed
-    request is answered with a ``429`` error envelope carrying ``Retry-After`` and never
-    reaches the app.
+    request is answered with a ``429`` error envelope, a ``Retry-After`` hint and the
+    ``X-Infrahub-Admission: shed`` marker, and never reaches the app.
 
     The controller and kill-switch are not built here. They are constructed once during
     application startup (the lifespan) and published on ``app.state`` as
@@ -72,9 +79,10 @@ class AdmissionMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # A CORS preflight carries no X-Priority and would be classified MEDIUM. Shedding it under
-        # load would strip the CORS response and break every cross-origin request precisely when the
-        # backend is busy, so preflights bypass the gate and reach the downstream CORS middleware.
+        # A CORS preflight has no X-Priority and would be classified MEDIUM. Shedding it under load
+        # would break every cross-origin request precisely when the backend is busy. CORS sits
+        # outside this gate and answers preflights itself, but the exemption stays so the guarantee
+        # does not rest on middleware ordering.
         if _is_cors_preflight(scope):
             await self.app(scope, receive, send)
             return
@@ -124,7 +132,7 @@ def _read_priority_header(scope: Scope) -> str | None:
 
 
 def _build_shed_response(*, path: str, retry_after: int) -> JSONResponse:
-    """Build the ``429`` shed response with a ``Retry-After`` header.
+    """Build the ``429`` shed response with its ``Retry-After`` hint and shed marker.
 
     The body is the Infrahub error envelope, selected REST vs GraphQL by request path.
     Both surfaces use the integer-code envelope: a shed is a transport-level outcome with
@@ -138,7 +146,7 @@ def _build_shed_response(*, path: str, retry_after: int) -> JSONResponse:
     return JSONResponse(
         status_code=HTTP_429_TOO_MANY_REQUESTS,
         content=content,
-        headers={"Retry-After": str(retry_after)},
+        headers={"Retry-After": str(retry_after), SHED_MARKER_HEADER: SHED_MARKER_VALUE},
     )
 
 
