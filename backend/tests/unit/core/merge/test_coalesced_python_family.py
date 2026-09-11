@@ -209,3 +209,20 @@ async def test_an_empty_change_set_resolves_nothing_without_reading_the_database
 
     assert resolver.calls == []
     assert [submission for submission in submissions if submission.family == PYTHON_COMPUTED_ATTRIBUTE] == []
+
+
+async def test_a_schema_only_merge_widens_nothing() -> None:
+    """The schema half belongs to the scoped backfill, so a merge that moved no data widens nothing."""
+    resolver = FailingPythonTargetResolver()
+    coordinator = MergeRecomputeCoordinator(
+        builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch_with_a_python_attribute()),
+        submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
+        python_resolver=resolver,
+    )
+
+    submissions = await coordinator.run(
+        changes=[], branch=BRANCH, context=_event_context(), schema_changed_elements=SCHEMA_SCOPE
+    )
+
+    assert resolver.calls == []
+    assert [submission for submission in submissions if submission.family == PYTHON_COMPUTED_ATTRIBUTE] == []

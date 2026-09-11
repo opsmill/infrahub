@@ -573,8 +573,9 @@ async def _resolve_python_targets(
     together.
     """
     if not changes:
-        # The read-set index is loaded before the changes are read, so an empty change set would
-        # still pay the gather, and a failure in it would widen every attribute over nothing.
+        # Targets come only from the changes, and the schema half is the backfill's. The read-set
+        # index loads before the changes are read, so resolving would pay the gather for nothing,
+        # and a failure in it would widen every attribute over nothing.
         return []
 
     try:
