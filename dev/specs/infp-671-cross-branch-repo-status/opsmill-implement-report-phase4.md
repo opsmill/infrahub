@@ -218,6 +218,25 @@ A second cubic pass on the fix commit found two more, both valid:
 | P3 | This report marked the `default_window` divergence fixed in the findings table while section 7 still listed it for triage. | Fixed: section 7 no longer lists it. |
 | P3 | The first teardown fix only *skipped restoring* the database-backed registry fields, so the values this module built stayed in place and still described deleted rows - the docstring asserted the opposite of what the code did. | Fixed: `registry.delete_all()` now actually clears them, which makes the docstring true rather than the docstring being softened to match. |
 
+A third pass, against the review-fix commit, found two more. Both named the same rule:
+
+| Sev | Finding | Disposition |
+| --- | --- | --- |
+| P3 | A why-comment in `repository.py` named the base `Query` classmethod it described, against the "no references to other code" rule. | Fixed: the comment states the durable behaviour without naming the method. |
+| P3 | The same reference in the new unit test's comment. | Fixed in the comment **and** in the test name, which carried the same reference. Cubic's stated remedy - delete the comment because the name already says it - would have left the violation in the name and dropped the one non-obvious fact on those lines, why the unused connection may be `None`. Its rationale also inverted the rule it cited, claiming comments must not explain why; that rule requires the why and forbids the what. |
+
+### T034 was ticked on a criterion it did not meet
+
+T034 required confirming "no Cartesian product and no eager operator between the `UNWIND` and the
+subqueries" and was recorded as done. It was not: the node match sat below the `UNWIND` and shared
+no variable with `branch_name`, so the planner drove it as the right side of a cartesian `Apply`,
+repeating the uuid seek and the attribute expansion once per branch. A `PROFILE` over 200 branches,
+one repository and three attributes measured that subtree at 8960 db-hits; with the match hoisted
+above the `UNWIND` it is 3068, for an identical 600-row result (90,560 to 84,668 total). The
+criterion is met now, by the hoist rather than by the original statement. T034a's separate
+`Branch.name` finding was real and was handled at the time; what this shows is that the plan was
+read for the index question and not for the operator question the same task also asked.
+
 The teardown fix was verified with a throwaway probe module run after the fixture's own module,
 asserting `registry.branch == {}` and `registry._schema is None`: it FAILED against the previous
 teardown and passed against the fixed one. The probe was then deleted rather than committed,

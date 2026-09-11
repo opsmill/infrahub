@@ -64,9 +64,8 @@ def test_paging_arguments_are_rejected(case: PagingCase) -> None:
         _build(**case.kwargs)
 
 
-async def test_init_accepts_the_unset_paging_arguments_it_forwards() -> None:
-    # `init` forwards limit and offset unconditionally, and builds the statement without reading
-    # the database, so the rejection must let the unset pair through.
+async def test_paging_arguments_left_unset_are_accepted() -> None:
+    # The statement is built without reading the database, so the connection is never used.
     query = await RepositoryBranchAttributesQuery.init(
         db=cast("InfrahubDatabase", None),
         repository_ids=["repository-1"],

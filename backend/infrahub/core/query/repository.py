@@ -65,7 +65,7 @@ class RepositoryBranchAttributesQuery(Query):
             ValueError: If `limit` or `offset` is given, which the read cannot honour.
 
         """
-        # `init` forwards both as None whether or not the caller passed them, so only a value counts.
+        # Both arrive as None whether or not the caller passed them, so only a non-None value counts.
         unsupported = sorted(argument for argument in ("limit", "offset") if kwargs.get(argument) is not None)
         if unsupported:
             raise ValueError(f"{', '.join(unsupported)} not supported: the read returns every matching row")

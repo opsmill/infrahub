@@ -278,9 +278,10 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
 ### Increment B: graph read
 
 1. `RepositoryBranchAttributesQuery` with the per-branch visibility predicate, its operators copied
-   verbatim from `Branch.get_query_filter_path`, `WITH DISTINCT` on `(n, a, branch_name, branched_from)`
-   before the election subqueries, and `br.is_isolated` honoured (`CASE WHEN br.is_isolated THEN
-   br.branched_from ELSE $at END` as the default-branch window); `EXPLAIN` reviewed.
+   verbatim from `Branch.get_query_filter_path`, the node match and its `WITH DISTINCT n, a` above
+   the `UNWIND` so the uuid seek runs once rather than once per branch, and `br.is_isolated` honoured
+   (`CASE WHEN br.is_isolated AND br.branched_from < $at THEN br.branched_from ELSE $at END` as the
+   default-branch window); `EXPLAIN` reviewed.
 2. `RepositoryBranchAttributes` lookup and `RepositoryBranchAttributesReader`.
 3. Resolver swaps the stub for the reader; attribute names come from the GraphQL selection
    (`extract_graphql_fields`), `ref` only for the read-only kind; `sync_status__value`,
