@@ -449,6 +449,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         # Validate if the value is still correct, will raise a ValidationError if not
         self.validate(value=self.value, name=self.name, schema=self.schema)
+        # Every write path funnels through here, so this is where the stored form is made canonical
+        if self.value is not None:
+            self.value = self._normalize_value(self.value)
 
         # Check if the current value is still the default one
         if self.is_default:
