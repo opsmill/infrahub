@@ -1,10 +1,14 @@
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
 from infrahub.core.node import Node
 from infrahub.core.query.node import NodeListGetDisplayLabelQuery
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from tests.constants import TestKind
+from tests.helpers.schema import CAR_SCHEMA
 
 
 async def run_query(db: InfrahubDatabase, branch: Branch, ids: list[str]) -> NodeListGetDisplayLabelQuery:
@@ -91,3 +95,24 @@ async def test_one_row_per_node_after_a_kind_migration(
 
         assert query.num_of_results == 2
         assert query.get_display_label_map() == expected
+
+
+async def test_kind_without_template_is_left_out(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+    person_jane_main: Node,
+) -> None:
+    """A kind without a display_label template stores the NULL sentinel, which is not a label."""
+    registry.schema.register_schema(schema=CAR_SCHEMA, branch=default_branch.name)
+    manufacturer = await Node.init(db=db, schema=TestKind.MANUFACTURER, branch=default_branch)
+    await manufacturer.new(db=db, name="Omnicorp")
+    await manufacturer.save(db=db)
+    assert await manufacturer.get_display_label(db=db) == f"{TestKind.MANUFACTURER}(ID: {manufacturer.get_id()})"
+
+    labels = await get_stored_display_labels(
+        db=db, branch=default_branch, ids=[person_jane_main.get_id(), manufacturer.get_id()]
+    )
+
+    assert labels == {person_jane_main.get_id(): "Jane"}

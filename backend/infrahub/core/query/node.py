@@ -15,6 +15,7 @@ from infrahub.constants.enums import OrderDirection
 from infrahub.core import registry
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
+    NULL_VALUE,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
     AttributeDBNodeType,
@@ -1442,15 +1443,17 @@ class NodeListGetDisplayLabelQuery(Query):
     def get_display_label_map(self) -> dict[str, str]:
         """Return the stored display label of every node that has a non-empty one, keyed by node id.
 
-        An empty stored label is left out on purpose: whether it should read as an empty string or
-        as the node's default representation depends on the node's schema, which
-        ``Node.get_display_label`` knows and this query does not.
+        An empty stored label, including the ``NULL_VALUE`` sentinel a kind without a template
+        stores, is left out on purpose: whether it should read as an empty string or as the node's
+        default representation depends on the node's schema, which ``Node.get_display_label`` knows
+        and this query does not.
         """
         display_label_map: dict[str, str] = {}
         for result in self.get_results():
             display_label = result.get("display_label")
-            if display_label:
-                display_label_map[str(result.get("node_id"))] = str(display_label)
+            if not display_label or display_label == NULL_VALUE:
+                continue
+            display_label_map[str(result.get("node_id"))] = str(display_label)
         return display_label_map
 
 
