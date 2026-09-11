@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING, cast
 
+from opentelemetry import trace
+
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.builder import build_relationship_changelog_getter
 from infrahub.core.constants import InfrahubKind, MutationAction
@@ -48,7 +50,9 @@ async def generate_node_mutation_events(
         meta=meta,
     )
     relationship_changelogs = build_relationship_changelog_getter(db=db, branch=branch)
-    node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=node.node_changelog)
+    with trace.get_tracer(__name__).start_as_current_span("changelog.relationship_changelogs") as span:
+        node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=node.node_changelog)
+        span.set_attribute("changelog.secondary_count", len(node_changelogs))
 
     events: list[NodeMutatedEvent] = [main_event]
 
@@ -93,7 +97,10 @@ async def generate_node_mutation_events(
         )
 
     group_parser = GroupNodeMutationParser(db=db, branch=branch)
-    group_events = await group_parser.group_events_from_node_actions(events=events)
+    with trace.get_tracer(__name__).start_as_current_span("changelog.group_events") as span:
+        span.set_attribute("changelog.input_event_count", len(events))
+        group_events = await group_parser.group_events_from_node_actions(events=events)
+        span.set_attribute("changelog.group_event_count", len(group_events))
 
     specific_events: list[InfrahubEvent] = []
     if (kind := node.get_kind()) in [

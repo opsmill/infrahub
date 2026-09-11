@@ -314,7 +314,7 @@ async def test_node_changelog_update_with_cardinality_one_relationship(
                 peer_kind_previous="TestPerson",
                 peer_id=person2.id,
                 peer_kind="TestPerson",
-                properties={},
+                properties={"is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None)},
             )
         },
     )

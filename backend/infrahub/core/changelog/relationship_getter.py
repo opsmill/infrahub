@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from opentelemetry import trace
+
 from infrahub.core.changelog.enrichment import PLACEHOLDER_LABELS, NodeLabelLoader, NodeLabels
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.log import get_logger
@@ -77,9 +79,21 @@ class RelationshipChangelogGetter:
             The secondary changelogs, one per affected peer.
 
         """
-        labels = await self._label_loader.load_labels(self._referenced_peer_ids(changelog=primary_changelog))
+        referenced_peer_ids = self._referenced_peer_ids(changelog=primary_changelog)
+        labels = await self._label_loader.load_labels(referenced_peer_ids)
         self._enrich_relationship_peers(changelog=primary_changelog, labels=labels)
 
+        with trace.get_tracer(__name__).start_as_current_span("changelog.build_secondaries") as span:
+            span.set_attribute("changelog.referenced_peer_count", len(referenced_peer_ids))
+            span.set_attribute("changelog.resolved_peer_count", len(labels))
+            secondaries = self._build_secondaries(primary_changelog=primary_changelog, labels=labels)
+            span.set_attribute("changelog.secondary_count", len(secondaries))
+        return secondaries
+
+    def _build_secondaries(
+        self, primary_changelog: NodeChangelog, labels: dict[str, NodeLabels]
+    ) -> list[NodeChangelog]:
+        """Build one secondary changelog per peer whose reciprocal relationship changed."""
         schema_branch = self._db.schema.get_schema_branch(name=self._branch.name)
         node_schema = schema_branch.get(name=primary_changelog.node_kind, duplicate=False)
 
@@ -105,7 +119,34 @@ class RelationshipChangelogGetter:
                         labels=labels,
                     )
                 )
-        return secondaries
+        return self._merge_secondaries_by_node(secondaries)
+
+    @staticmethod
+    def _merge_secondaries_by_node(secondaries: list[NodeChangelog]) -> list[NodeChangelog]:
+        """Collapse the secondaries so each affected peer yields a single changelog.
+
+        A mutation can change several relationships to the same peer, and each produces its own
+        secondary for that peer; emitting them separately would deliver duplicate events. Fold the
+        later ones into the first changelog seen for the peer, keeping every distinct reciprocal
+        relationship it carries.
+        """
+        merged: dict[str, NodeChangelog] = {}
+        for secondary in secondaries:
+            existing = merged.get(secondary.node_id)
+            if existing is None:
+                merged[secondary.node_id] = secondary
+                continue
+            for name, relationship in secondary.relationships.items():
+                current = existing.relationships.get(name)
+                if current is None:
+                    existing.relationships[name] = relationship
+                elif isinstance(current, RelationshipCardinalityManyChangelog) and isinstance(
+                    relationship, RelationshipCardinalityManyChangelog
+                ):
+                    # Two source relationships resolved to the same many peer-side name; keep every
+                    # affected peer rather than dropping the later relationship's entries.
+                    current.peers.extend(relationship.peers)
+        return list(merged.values())
 
     @staticmethod
     def _referenced_peer_ids(changelog: NodeChangelog) -> list[str]:

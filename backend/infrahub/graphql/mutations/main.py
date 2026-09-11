@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
 from infrahub_sdk.utils import extract_fields_first_node
+from opentelemetry import trace
 from typing_extensions import Self
 
 from infrahub import lock
@@ -66,16 +67,21 @@ async def emit_node_mutation_events(
 
     log_data = get_log_data()
     request_id = log_data.get("request_id", "")
-    events = await generate_node_mutation_events(
-        node=node,
-        deleted_nodes=deleted_nodes or [],
-        db=graphql_context.db,
-        branch=graphql_context.branch,
-        context=graphql_context.to_event_context(),
-        request_id=request_id,
-        action=action,
-        side_effect_nodes=side_effect_nodes or [],
-    )
+    with trace.get_tracer(__name__).start_as_current_span("changelog.emit_node_mutation_events") as span:
+        span.set_attribute("changelog.action", action.value)
+        span.set_attribute("changelog.node_kind", node.get_kind())
+        span.set_attribute("changelog.deleted_node_count", len(deleted_nodes or []))
+        events = await generate_node_mutation_events(
+            node=node,
+            deleted_nodes=deleted_nodes or [],
+            db=graphql_context.db,
+            branch=graphql_context.branch,
+            context=graphql_context.to_event_context(),
+            request_id=request_id,
+            action=action,
+            side_effect_nodes=side_effect_nodes or [],
+        )
+        span.set_attribute("changelog.event_count", len(events))
     for event in events:
         graphql_context.background.add_task(graphql_context.active_service.event.send, event)
 
