@@ -178,14 +178,23 @@ Single-project monorepo under `backend/`. New module-level code lands in `backen
 
 ## Phase 8: User Story 6 — Substitutable global dependencies (P3)
 
-**Goal**: Make the default-branch name and the SDK client injectable at construction time. Two PRs.
+**Goal**: Make the SDK client and the branch-name mapping injectable at construction time. Two PRs.
 
-**Independent Test**: A test constructs a repository with a custom `default_branch_name` without touching `registry.default_branch`; reading `repo.client` twice does not mutate the repository's persisted state.
+**Independent Test**: Reading `repo.client` twice does not mutate the repository's persisted state; the read-only kind's identity branch mapping comes from an injected collaborator rather than three overridden methods.
 
-### Default-branch override (1 PR)
+### Branch-name mapping (1 PR) — was "Default-branch override"
 
-- [ ] T061 [US6] Verify that `InfrahubRepositoryBase.default_branch_name` (already a Pydantic field on `base.py`) is honored end-to-end; the `default_branch` property at `base.py:190-192` already falls back to `registry.default_branch` when the field is `None`, so this PR may be annotation/test-only (FR-009)
-- [ ] T062 [US6] Add `backend/tests/unit/git/test_constructor_injection.py::test_default_branch_override` constructing an integrator with `default_branch_name="trunk"` and asserting `repo.default_branch == "trunk"` without patching `registry`
+> **Amended.** T061 and T062 as originally written are superseded by IFC-3105
+> (`dev/specs/ifc-3105-honour-default-branch/`), which deletes both
+> `InfrahubRepositoryBase.default_branch_name` and the `default_branch` property that fell back to
+> `registry.default_branch`. There is no optional field left to honour and no fallback left to test,
+> and building one would reintroduce the exact shape that caused the defect IFC-3105 fixes. FR-009's
+> testability goal is met by IFC-3105's required field, which is injectable with no global to patch.
+> **Blocked until IFC-3105 (PR 2, IFC-3138) has merged.**
+
+- [ ] T061 [US6] **Superseded, do not implement.** Confirm on rebase that `default_branch_name`, the `default_branch` fallback property, and `internal_status` are gone from `InfrahubRepositoryBase`, and that `InfrahubRepository.default_branch` is a required field. Nothing to build; this is a check that the supersession actually landed
+- [ ] T062 [US6] Replace the three branch-mapping hooks IFC-3105 leaves on the base (`_get_mapped_remote_branch`, `_get_mapped_target_branch`, `_resolve_worktree_identifier`) with a single injected `BranchNameMapper` collaborator: a trunk-mapping implementation for the read-write kind, an identity one for the read-only kind (FR-009a). This is the extraction IFC-3105 deferred to this spec: the three hooks are one concept, and the read-only kind implements all three as identity. Behaviour-preserving. Per `.agents/rules/backend-component-design.md` the collaborator is a **required** constructor parameter, which means threading it through the factories IFC-3105 reshaped — the reason that feature declined to do it inside a bug fix
+- [ ] T062a [US6] Add `backend/tests/unit/git/test_constructor_injection.py::test_branch_mapper_injection`: a read-write repository constructed with the trunk mapper maps a branch named like Infrahub's default onto the trunk, and a read-only repository constructed with the identity mapper returns the branch unchanged. No `registry` patching, and no mapping hooks remain on the base to override
 
 ### SDK-client lifecycle (1 PR)
 
