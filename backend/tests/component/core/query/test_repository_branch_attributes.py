@@ -151,6 +151,43 @@ class TestRepositoryBranchAttributesReader:
         assert on_b2.value == "c2"
         assert on_b2.own_value is False
 
+    async def test_a_read_before_a_branch_forked_uses_the_requested_time_not_the_fork_point(
+        self, db: InfrahubDatabase, repository_branch_status_branches: RepositoryBranchStatusBranches
+    ) -> None:
+        default_branch_name = repository_branch_status_branches.default_branch.name
+        repository = await _create_repository(db=db, name="rbap-historical")
+
+        await _import_commit(db=db, repository_id=repository.id, branch_name=default_branch_name, commit="c1")
+        after_c1 = await _reader(db=db).read(
+            repository_ids=[repository.id], branch_names=[default_branch_name], attribute_names={"commit"}
+        )
+        c1 = after_c1.get(repository.id, default_branch_name, "commit")
+        assert c1
+        # The instant c1 was written. A window ending here admits c1 and nothing later, which is
+        # also what pins the non-strict `from <=` against a strict one.
+        at_c1 = Timestamp(c1.updated_at)
+
+        await _import_commit(db=db, repository_id=repository.id, branch_name=default_branch_name, commit="c2")
+        branch = await create_branch(branch_name="rbap-historical-b1", db=db)
+        await _import_commit(db=db, repository_id=repository.id, branch_name=default_branch_name, commit="c3")
+
+        result = await _reader(db=db).read(
+            repository_ids=[repository.id],
+            branch_names=[default_branch_name, branch.name],
+            attribute_names={"commit"},
+            at=at_c1,
+        )
+
+        expected = await NodeManager.get_one(
+            db=db, id=repository.id, kind=CoreRepository, branch=branch.name, at=at_c1, raise_on_error=True
+        )
+        on_branch = result.get(repository.id, branch.name, "commit")
+        assert on_branch
+        # The branch forked after c2, so reading it as of c1 must not widen the default-branch
+        # window forward to the fork and show a value written after the time asked for.
+        assert on_branch.value == "c1"
+        assert on_branch.value == expected.commit.value
+
     async def test_an_own_import_survives_while_a_rebase_moves_another_branch_forward(
         self, db: InfrahubDatabase, repository_branch_status_branches: RepositoryBranchStatusBranches
     ) -> None:

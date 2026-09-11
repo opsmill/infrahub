@@ -3198,6 +3198,10 @@ class RepositoryBranchStatusBranches:
         return tuple(name for status, name in self.by_status.items() if status in TERMINAL_BRANCH_STATUSES)
 
 
+_REGISTRY_FIELDS_BACKED_BY_DATABASE_ROWS = frozenset({"branch", "_schema", "_default_ipnamespace"})
+"""Registry fields whose values describe rows in the database rather than registered types."""
+
+
 @pytest.fixture(scope="module")
 async def repository_branch_status_branches(
     db: InfrahubDatabase,
@@ -3214,8 +3218,10 @@ async def repository_branch_status_branches(
     here; a test that writes repository values creates its own so the writes cannot leak into another
     test sharing the database.
 
-    Teardown empties the database again and puts the registry back the way it was found, so the next
-    module in the worker does not inherit these branches or this registry.
+    Teardown empties the database again and restores the registered types the snapshot held, leaving
+    the fields that describe database rows cleared so the registry matches the emptied database. The
+    next module in the worker inherits neither these branches nor a registry pointing at rows that
+    no longer exist, and is expected to bootstrap its own.
 
     Args:
         db: Database connection instance.
@@ -3291,7 +3297,8 @@ async def repository_branch_status_branches(
 
     await delete_all_nodes(db=db)
     for name, value in registry_state.items():
-        setattr(registry, name, value)
+        if name not in _REGISTRY_FIELDS_BACKED_BY_DATABASE_ROWS:
+            setattr(registry, name, value)
 
 
 async def make_repository_pair(

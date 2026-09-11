@@ -65,8 +65,8 @@ Default ordering when `order` is omitted: the default branch first, then branch 
 
 ### Point in time
 
-The query always reports the present. A request carrying an `at` query parameter is rejected with a
-`ValidationError` reading:
+The query always reports the present. A request to `/graphql` carrying an `at` query parameter is
+rejected with a `ValidationError` reading:
 
 ```text
 at is not supported on InfrahubRepositoryBranchStatus: the branch row set is always current
@@ -81,6 +81,13 @@ the ordinary node queries.
 Note that the request, not the resolved timestamp, is what carries the answer: an omitted `at`
 reaches the resolver already resolved to the current time, so the two are indistinguishable by the
 time the field runs.
+
+That is also the limit of the guarantee. The rejection reads the incoming HTTP request, so it covers
+`/graphql` but not the routes that build a GraphQL context without one: a document stored as a
+`CoreGraphQLQuery` and fetched through `GET /api/query/<name>?at=<past>`, or the transformation
+routes, still resolve values at the given timestamp while the branch rows stay current. Running this
+field that way is not supported and is not expected; treat a need for it as a new issue rather than
+as behaviour to rely on.
 
 ### Permission
 
