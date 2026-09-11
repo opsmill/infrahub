@@ -326,9 +326,11 @@ async def trigger_update_python_computed_attributes(
 ) -> None:
     """Recompute one Python computed attribute over every node of its kind.
 
+    An attribute the schema does not name is left to the per-node flow, which decides what a
+    kind without it means.
+
     Raises:
-        ValueError: if the attribute has no transform configured, or if the transform cannot be
-            fetched on the live path.
+        ValueError: if the transform cannot be fetched on the live path.
 
     """
     log = get_run_logger()
@@ -341,26 +343,20 @@ async def trigger_update_python_computed_attributes(
     transform_attribute = schema_branch.computed_attributes.get_python_transform_attribute(
         computed_attribute_kind, computed_attribute_name
     )
-    if not transform_attribute:
-        log.warning(f"'{computed_attribute_kind}' has no Python computed attribute named '{computed_attribute_name}'")
-        return
-
-    if not transform_attribute.transform:
-        raise ValueError(f"No transform configured for computed attribute '{computed_attribute_name}'")
-
-    # Checked first so a widened run does not pay a whole-kind read for chunks that compute nothing.
-    transform = await _fetch_transform(
-        client=client, transform_id=transform_attribute.transform, branch_name=branch_name
-    )
-    if not transform:
-        _report_missing_transform(
-            log=log,
-            coalesced=coalesced,
-            branch_name=branch_name,
-            computed_attribute_name=computed_attribute_name,
-            transform_id=transform_attribute.transform,
+    # Read first so a widened run does not pay a whole-kind read to compute nothing.
+    if transform_attribute and transform_attribute.transform:
+        transform = await _fetch_transform(
+            client=client, transform_id=transform_attribute.transform, branch_name=branch_name
         )
-        return
+        if not transform:
+            _report_missing_transform(
+                log=log,
+                coalesced=coalesced,
+                branch_name=branch_name,
+                computed_attribute_name=computed_attribute_name,
+                transform_id=transform_attribute.transform,
+            )
+            return
 
     nodes = await client.all(kind=computed_attribute_kind, branch=branch_name)
     object_ids = [node.id for node in nodes]
