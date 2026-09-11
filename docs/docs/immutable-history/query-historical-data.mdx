@@ -151,16 +151,15 @@ mutation CalculateIncidentDiff {
 }
 ```
 
-Then retrieve it with the same branch and time range you calculated it for, using `DiffTree` for the changed nodes or `DiffTreeSummary` when you only need counts. The timestamps do not need to align with a branch point or a Proposed Change, so you can compare any useful period, such as the hours around an incident.
+Then retrieve it by the name you stored it under, using `DiffTree` for the changed nodes or `DiffTreeSummary` when you only need counts. The timestamps do not need to align with a branch point or a Proposed Change, so you can compare any useful period, such as the hours around an incident.
 
-Retrieve a custom period by that period rather than by its name. `DiffTree` looks for a diff covering the range it computes by default, from the branch point to the present, so it does not find one stored for a different range and returns `null`. `DiffTreeSummary` does not accept `name` at all and returns an error. A name is still worth setting, because `DiffUpdate` requires one for a custom period.
+Passing `name` on its own retrieves the diff stored under that name, whatever period it covers. Pass the time range instead when you want a diff for that range whether or not it was stored under a name, and pass both to require the named diff to match the range as well.
 
 ```graphql title="Retrieve the calculated diff"
 query IncidentChanges {
   DiffTree(
     branch: "main"
-    from_time: "2026-03-09T00:00:00Z"
-    to_time: "2026-03-10T00:00:00Z"
+    name: "incident-2026-03-09"
   ) {
     num_added
     num_updated
@@ -180,13 +179,14 @@ query IncidentChanges {
 
 Behavior to expect:
 
+- Omit `name`, `from_time`, and `to_time`, and the comparison covers the branch's `branched_from` timestamp to the present.
 - Omit `from_time` and the comparison starts at the branch's `branched_from` timestamp.
 - Omit `to_time` and the comparison runs to the present.
 - Narrow the result with `filters`, which accepts `ids`, `kind`, `namespace`, and `status`. The `kind`, `namespace`, and `status` filters each take `includes` and `excludes` lists.
 - Page through results with `limit` and `offset`.
 - The base of the comparison is the default branch. Name a feature branch to compare it with the default branch across the requested period, or name the default branch to compare it with itself over time.
 - Pass `proposed_change_id` instead of a branch and period to retrieve the diff for a Proposed Change.
-- A `null` result means that no diff covering the requested period has been calculated, not that nothing changed.
+- A `null` result means that no diff matching the requested name or period has been calculated, not that nothing changed. A calculated diff with no changes in it comes back as a result with zero counts.
 
 In the web interface, a branch's Branch view shows its diff and lets you refresh it, whether or not a Proposed Change exists for that branch, and a Proposed Change shows the diff between its source and target branches. When you need review, validation, and checks alongside the comparison, use a [Proposed Change](../proposed-changes/overview.mdx).
 
