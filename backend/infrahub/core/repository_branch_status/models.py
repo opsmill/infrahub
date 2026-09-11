@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Self
 
+from infrahub.exceptions import ResourceMultipleFoundError
+
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
@@ -28,14 +30,15 @@ class RepositoryBranchAttributes:
             A lookup over the given values.
 
         Raises:
-            ValueError: If two values share a repository, branch and attribute name.
+            ResourceMultipleFoundError: If two values share a repository, branch and attribute name,
+                which means the graph holds more than one attribute of that name on that branch.
 
         """
         grouped: dict[tuple[str, str], dict[str, RepositoryBranchAttributeValue]] = {}
         for value in values:
             branch_values = grouped.setdefault((value.repository_id, value.branch_name), {})
             if value.attribute_name in branch_values:
-                raise ValueError(
+                raise ResourceMultipleFoundError(
                     f"Duplicate attribute value for repository {value.repository_id!r}, "
                     f"branch {value.branch_name!r}, attribute {value.attribute_name!r}"
                 )

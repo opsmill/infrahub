@@ -39,7 +39,11 @@ class RepositoryBranchAttributeValue:
 
 
 class RepositoryBranchAttributesQuery(Query):
-    """Resolve repository attribute values on many branches in one statement."""
+    """Resolve repository attribute values on many branches in one statement.
+
+    The read is unpageable: it resolves every requested repository, branch and attribute in one
+    batch, so it accepts neither `limit` nor `offset`.
+    """
 
     name = "repository-branch-attributes"
     type = QueryType.READ
@@ -55,6 +59,16 @@ class RepositoryBranchAttributesQuery(Query):
         global_branch_name: str,
         **kwargs: Any,
     ) -> None:
+        """Build the query.
+
+        Raises:
+            ValueError: If `limit` or `offset` is given, which the read cannot honour.
+
+        """
+        # `init` forwards both as None whether or not the caller passed them, so only a value counts.
+        unsupported = sorted(argument for argument in ("limit", "offset") if kwargs.get(argument) is not None)
+        if unsupported:
+            raise ValueError(f"{', '.join(unsupported)} not supported: the read returns every matching row")
         self.repository_ids = repository_ids
         self.branch_names = branch_names
         self.attribute_names = attribute_names
@@ -76,6 +90,15 @@ class RepositoryBranchAttributesQuery(Query):
         }
 
         query = """
+MATCH (n:Node)-[:HAS_ATTRIBUTE]->(a:Attribute)
+WHERE n.uuid IN $repository_ids AND a.name IN $attribute_names
+// ----------
+// One HAS_ATTRIBUTE edge exists per branch that touched the attribute, so the match above yields
+// one row per edge; the election below has to run once per (node, attribute, branch) instead.
+// Deduplicating before the branch list multiplies the rows also keeps this match off the branch
+// loop, so the uuid lookup and the attribute expansion run once instead of once per branch.
+// ----------
+WITH DISTINCT n, a
 UNWIND $branch_names AS branch_name
 MATCH (br:Branch {name: branch_name})
 // ----------
@@ -85,15 +108,8 @@ MATCH (br:Branch {name: branch_name})
 // the requested time is already the tighter bound, and moving forward to the fork would expose
 // default-branch writes made after the time asked for.
 // ----------
-WITH branch_name,
+WITH n, a, branch_name,
      CASE WHEN br.is_isolated AND br.branched_from < $at THEN br.branched_from ELSE $at END AS default_window
-MATCH (n:Node)-[:HAS_ATTRIBUTE]->(a:Attribute)
-WHERE n.uuid IN $repository_ids AND a.name IN $attribute_names
-// ----------
-// One HAS_ATTRIBUTE edge exists per branch that touched the attribute, so the match above yields
-// one row per edge; the election below has to run once per (node, attribute, branch) instead.
-// ----------
-WITH DISTINCT n, a, branch_name, default_window
 CALL (n, a, branch_name, default_window) {
     MATCH (n)-[r:HAS_ATTRIBUTE]->(a)
     WHERE (r.branch IN [branch_name, $global_branch_name] AND r.from <= $at AND r.to IS NULL)

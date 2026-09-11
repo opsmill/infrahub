@@ -11,7 +11,7 @@ from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, Repo
 from infrahub.core.query.repository import RepositoryBranchAttributeValue
 from infrahub.core.repository_branch_status.models import RepositoryBranchAttributes
 from infrahub.core.schema import SchemaRoot, core_models
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import ResourceMultipleFoundError, ValidationError
 from infrahub.graphql.queries.repository_branch_status.kind_dispatch import policy_for_kind
 from infrahub.graphql.queries.repository_branch_status.paging import (
     RepositoryBranchStatusRow,
@@ -372,7 +372,7 @@ class TestRepositoryBranchAttributes:
         ]
 
         with pytest.raises(
-            ValueError,
+            ResourceMultipleFoundError,
             match=(
                 rf"^Duplicate attribute value for repository '{REPOSITORY_ID}', "
                 r"branch 'b-1', attribute 'commit'$"
