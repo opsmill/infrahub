@@ -36,6 +36,8 @@ safe-outputs:
     client-id: ${{ secrets.GH_AW_APP_ID }}
     private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
   report-failure-as-issue: false
+  noop:
+    report-as-issue: false
   add-labels:
     max: 2
     target: triggering

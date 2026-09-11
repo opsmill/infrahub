@@ -545,7 +545,14 @@ jobs:
   # ------------------------------------------ Huge-runner gate ------------------------------------------
   huge-runner-gate:
     name: Gate for huge-runner jobs
-    if: always() && !cancelled()
+    # Skipped below the top of a stack, which skips every huge-runner job: the top level covers the whole stack.
+    if: |
+      always() && !cancelled() &&
+      (
+        github.event.pull_request.stack == null ||
+        github.event.pull_request.stack.position == github.event.pull_request.stack.size ||
+        contains(github.event.pull_request.labels.*.name, 'ci/run-huge-runners')
+      )
     needs:
       - prepare-environment
       - files-changed
@@ -1281,10 +1288,11 @@ jobs:
       - prepare-environment
       - files-changed
       - huge-runner-gate
+    # For a stack, the branch the whole stack targets counts, not the level below.
     if: |
       !cancelled() &&
       needs.huge-runner-gate.result == 'success' &&
-      github.base_ref == 'stable' &&
+      (github.base_ref == 'stable' || github.event.pull_request.stack.base.ref == 'stable') &&
       needs.files-changed.outputs.e2e == 'true'
     runs-on:
       group: huge-runners
