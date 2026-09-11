@@ -34,7 +34,9 @@ Rules that follow from the ASGI contract:
   handlers cannot attach custom response headers.
 - Registration order is inverted: Starlette inserts each `add_middleware(...)` at the front, so
   the **last** registered runs **first** (outermost). Put a gate that must run before auth,
-  routing, and telemetry last in `server.py`.
+  routing, and telemetry second to last in `server.py`: `InfrahubCORSMiddleware` stays last,
+  because a response a gate short-circuits has to pass back through CORS or a cross-origin
+  browser blocks it and the client sees an opaque network error instead of the status.
 - Anything resolved by `Depends(...)` — including the authenticated user — is not available;
   dependencies resolve per route, after all middleware.
 
