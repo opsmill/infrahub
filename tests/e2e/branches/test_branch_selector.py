@@ -53,6 +53,21 @@ class TestBranchSelectorNotLoggedIn:
         await branch_list.get_by_role("option", name="atl1-delete-upstream").click()
         await expect(page.get_by_role("button", name="atl1-delete-upstream", exact=True)).to_be_visible()
 
+    async def test_sidebar_navigation_keeps_the_active_branch(
+        self, page: Page, data_scenario_branches: ScenarioBranchesHandle
+    ) -> None:
+        await page.goto("/branches")
+        await page.get_by_test_id("branch-selector-trigger").click()
+        branch_list = page.get_by_label("branch list")
+        await page.get_by_placeholder("Search...").fill("atl1")
+        await branch_list.get_by_role("option", name="atl1-delete-upstream").click()
+        await expect(page.get_by_role("button", name="atl1-delete-upstream", exact=True)).to_be_visible()
+
+        await page.get_by_label("Infrahub home").click()
+
+        await expect(page.get_by_role("button", name="atl1-delete-upstream", exact=True)).to_be_visible()
+        assert "branch=atl1-delete-upstream" in page.url
+
 
 class TestBranchSelectorLoggedInAsAdmin:
     async def test_create_a_branch_with_a_name_that_does_not_exist(self, admin_page: Page) -> None:

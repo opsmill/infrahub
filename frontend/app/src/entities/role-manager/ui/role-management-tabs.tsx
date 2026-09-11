@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
 import { ScrollArea, Spinner } from "@infrahub/ui";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
 import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
 
+import { useConstructPath } from "@/entities/navigation/ui/hooks/use-construct-path";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 import {
   GLOBAL_PERMISSION_OBJECT,
@@ -17,37 +17,32 @@ import {
   ACCOUNT_ROLE_OBJECT,
 } from "@/entities/role-manager/domain/model/account";
 
-const tabs = [
+const TABS = [
   {
-    to: constructPath("/role-management"),
     path: "/role-management",
     icon: "mdi:user-outline",
     label: "Accounts",
     kind: ACCOUNT_GENERIC_OBJECT,
   },
   {
-    to: constructPath("/role-management/groups"),
     path: "/role-management/groups",
     icon: "mdi:user-multiple-outline",
     label: "Groups",
     kind: ACCOUNT_GROUP_OBJECT,
   },
   {
-    to: constructPath("/role-management/roles"),
     path: "/role-management/roles",
     icon: "mdi:user-circle-outline",
     label: "Roles",
     kind: ACCOUNT_ROLE_OBJECT,
   },
   {
-    to: constructPath("/role-management/global-permissions"),
     path: "/role-management/global-permissions",
     icon: "mdi:ticket-confirmation-outline",
     label: "Global Permissions",
     kind: GLOBAL_PERMISSION_OBJECT,
   },
   {
-    to: constructPath("/role-management/object-permissions"),
     path: "/role-management/object-permissions",
     icon: "mdi:ticket-outline",
     label: "Object Permissions",
@@ -56,6 +51,8 @@ const tabs = [
 ] as const;
 
 export function RoleManagementTabs() {
+  const constructPath = useConstructPath();
+
   return (
     <ScrollArea
       scrollX
@@ -65,10 +62,10 @@ export function RoleManagementTabs() {
     >
       <nav aria-label="Tabs">
         <Row className="items-end gap-4 px-4">
-          {tabs.map((tab) => (
+          {TABS.map((tab) => (
             <RoleManagementTab
               key={tab.path}
-              to={tab.to}
+              to={constructPath(tab.path)}
               icon={tab.icon}
               label={tab.label}
               kind={tab.kind}
