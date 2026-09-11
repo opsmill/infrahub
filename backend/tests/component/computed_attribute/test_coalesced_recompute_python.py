@@ -522,12 +522,12 @@ class TestCoalescedRecomputePythonMissingTransform(CoalescedPythonTestBase):
             context=context,
             coalesced=True,
         )
-        fanned_out = {
+        fanned_out = [
             object_id
             for call in workflow_recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM)
             for object_id in call["parameters"]["object_ids"]
-        }
-        assert fanned_out == set(missing_transform_dataset.car_ids)
+        ]
+        assert sorted(fanned_out) == sorted(missing_transform_dataset.car_ids)
 
 
 class TestCoalescedRecomputePythonDerivedRead(CoalescedPythonTestBase):
