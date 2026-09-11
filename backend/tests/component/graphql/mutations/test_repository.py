@@ -17,8 +17,13 @@ from infrahub.git.models import GitReadOnlyRepositoryImportCommit, GitRepository
 from infrahub.graphql.mutations.repository import cleanup_payload
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workflows.catalogue import GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT, GIT_REPOSITORIES_IMPORT_OBJECTS
+from infrahub.workflows.catalogue import (
+    GIT_READ_ONLY_REPOSITORY_CHECK_REFS,
+    GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
+    GIT_REPOSITORIES_IMPORT_OBJECTS,
+)
 from tests.adapters.message_bus import BusRecorder
+from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.graphql import graphql_mutation
 
 if TYPE_CHECKING:
@@ -270,3 +275,81 @@ async def test_import_read_only_repository_last_commit(
             ),
         ]
         mock_submit_workflow.assert_has_calls(expected_calls)
+
+
+CHECK_REFS_MUTATION = """
+mutation InfrahubReadOnlyRepositoryCheckRefs($id: String!) {
+    InfrahubReadOnlyRepositoryCheckRefs(data: {id: $id}) {
+        ok
+        task { id }
+    }
+}
+"""
+
+
+async def test_check_refs_submits_the_check_for_a_read_only_repository(
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+    default_branch: Branch,
+    create_test_admin: Node,
+    default_permission_backend: None,
+) -> None:
+    recorder = WorkflowRecorder()
+    service = await InfrahubServices.new(database=db, message_bus=BusRecorder(), workflow=recorder)
+    account_session = AccountSession(
+        authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+    )
+
+    repository_model = registry.schema.get_node_schema(name=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
+    repo = await Node.init(schema=repository_model, db=db, branch=default_branch)
+    await repo.new(db=db, name="test-check-refs-repo", location="/tmp/check-refs-repo", ref="main")
+    await repo.save(db=db)
+
+    result = await graphql_mutation(
+        query=CHECK_REFS_MUTATION,
+        db=db,
+        variables={"id": repo.id},
+        service=service,
+        account_session=account_session,
+    )
+
+    assert not result.errors
+    assert result.data
+    submissions = recorder.get_submit_calls_for(workflow=GIT_READ_ONLY_REPOSITORY_CHECK_REFS)
+    assert len(submissions) == 1
+    assert submissions[0]["parameters"] == {"repository_id": repo.id}
+    assert result.data["InfrahubReadOnlyRepositoryCheckRefs"]["task"]["id"]
+
+
+async def test_check_refs_refuses_a_read_write_repository(
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+    default_branch: Branch,
+    create_test_admin: Node,
+    default_permission_backend: None,
+) -> None:
+    recorder = WorkflowRecorder()
+    service = await InfrahubServices.new(database=db, message_bus=BusRecorder(), workflow=recorder)
+    account_session = AccountSession(
+        authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+    )
+
+    repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
+    repo = await Node.init(schema=repository_model, db=db, branch=default_branch)
+    await repo.new(db=db, name="test-check-refs-read-write", location="/tmp/check-refs-read-write")
+    await repo.save(db=db)
+
+    result = await graphql_mutation(
+        query=CHECK_REFS_MUTATION,
+        db=db,
+        variables={"id": repo.id},
+        service=service,
+        account_session=account_session,
+    )
+
+    assert result.errors
+    assert result.errors[0].message == (
+        f"Node {repo.id} is a CoreRepository, not a CoreReadOnlyRepository. "
+        "Checking remote refs is only supported for read-only repositories."
+    )
+    assert recorder.submit_calls == []

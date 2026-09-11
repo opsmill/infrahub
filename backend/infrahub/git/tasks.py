@@ -835,6 +835,28 @@ async def import_read_only_repository_last_commit(model: GitReadOnlyRepositoryIm
         await repo.update_latest_commit()
 
 
+@flow(name="git-repository-warm-up", flow_run_name="Warm up the local copy of repository {repository_id}")
+async def warm_up_git_repository(repository_id: str) -> None:
+    await add_tags(nodes=[repository_id])
+
+    log = get_run_logger()
+    log.info(f"Warm up of repository {repository_id} is not implemented yet")
+
+
+@flow(name="git-read-only-repositories-check-refs", flow_run_name="Check remote refs of read only git repositories")
+async def check_read_only_repositories_refs() -> None:
+    log = get_run_logger()
+    log.info("Checking remote refs of read only repositories is not implemented yet")
+
+
+@flow(name="git-read-only-repository-check-refs", flow_run_name="Check remote refs of repository {repository_id}")
+async def check_read_only_repository_refs(repository_id: str) -> None:
+    await add_tags(nodes=[repository_id])
+
+    log = get_run_logger()
+    log.info(f"Checking remote refs of repository {repository_id} is not implemented yet")
+
+
 @flow(
     name="git-repository-diff-names-only",
     flow_run_name="Collecting modifications between commits {model.first_commit} and {model.second_commit}",

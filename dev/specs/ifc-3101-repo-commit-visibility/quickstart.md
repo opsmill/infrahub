@@ -35,13 +35,55 @@ uv run invoke dev.build && uv run invoke dev.start   # full stack with at least 
    the column's unavailable state set. Switch to another Infrahub branch and confirm the commit-view
    answer follows it.
 
-4. Permission: run the query as a user without `Core/Repository/view` (see
-   `backend/tests/component/graphql/auth/`). Expected: `PERMISSION_DENIED`, identical to querying
-   `CoreRepository` directly.
+   The rows arrive with the per-branch graph query, which is its own pull request. Until it lands,
+   the drift query answers with the repository id and the column's unavailable state and no rows at
+   all: the resolver has no per-branch tracked commit to put in a row, and inventing one from the
+   request branch's value would report the wrong commit for every other branch. Run the row half of
+   this step against the per-branch-query pull request, not against the contract one.
+
+   The branch-switch half does hold from the contract pull request onward, and is worth running
+   because it exercises the branch mapping in both directions: on the default branch `git_ref` is
+   the repository's own configured `default_branch`, and on any other branch synchronised with Git
+   it is that branch's own name. `imported_commit` on a branch that has never imported reports the
+   value inherited from its origin branch's fork point, not null.
+
+4. Permission: run both queries as a user without `Core/Repository/view` (see
+   `backend/tests/component/graphql/auth/`). Expected: `PERMISSION_DENIED` with `http_status: 403`,
+   naming `object:Core:Repository:view:allow_default` — the same code, status and permission as
+   querying `CoreRepository` directly.
+
+   A caller who can view *some* repository kind but not the one behind the id is answered not-found
+   instead, which is the same answer an id that exists nowhere gets. That is deliberate: a denial
+   naming the concrete kind would let them tell a repository of the kind they cannot view from an id
+   that does not exist. So the 403 belongs to the caller who can view no repository kind at all, and
+   it names `Core:Repository` whatever kind the id turns out to be. Run this half granted
+   `Core/Repository/view` only, against a `CoreReadOnlyRepository` id, and expect
+   `Unable to find the node <id> / CoreGenericRepository in the database.`
+
+   Not byte-identical to the `CoreRepository` denial, and it cannot be. These resolvers check one
+   permission, so the message reads "You do not have the following permission: ..."; the query
+   analyzer batches every kind a query touches and denies with the plural "You do not have one of
+   the following permissions: ...". The resolver-level error also carries `path` and `locations`,
+   because it is raised during execution rather than ahead of it. What a caller keys on — the code,
+   the status and the permission named — is the same, which is what FR-009 requires. Assert on those
+   rather than on the sentence.
 
 5. Laziness: selecting only Infrahub-side fields makes no worker request at all (component test
    asserts the recorded reader saw no call). Selecting `pending_count` sets
    `include_pending_count`; omitting it leaves the counting call unmade.
+
+   Both halves are only observable against the recording reader, so the component test is the real
+   assertion here and this step is a smoke check: on a live stack the placeholder reader issues no
+   worker request either way, so the two selections look identical from outside. What the live run
+   does confirm is that an Infrahub-side-only selection answers with no `condition` and no error,
+   which is the shape the frontend builds against.
+
+6. Paging bounds: `limit` outside 1..100 and a negative `offset` are refused with
+   `limit must be between 1 and 100` and `offset must be greater than or equal to 0`. Both surface
+   as `UNDEFINED_ERROR` with `http_status: 422`: `ValidationError` carries no catalogue entry
+   anywhere in the codebase, so a consumer distinguishes these by message, not by code. Adding a
+   catalogued validation code is a change to published error surface and belongs to its own ticket,
+   not to this feature.
 
 Backend tests for this phase:
 

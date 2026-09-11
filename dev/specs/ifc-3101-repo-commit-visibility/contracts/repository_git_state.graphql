@@ -37,7 +37,7 @@ enum RepositoryGitUnavailableReason {
 
 "A commit read live from a worker's local clone. Never persisted."
 type RepositoryCommit {
-  "Full commit hash. The row identity; a later hash-keyed outcome store joins on it."
+  "Full commit hash."
   hash: String!
   "First 7 characters of the hash."
   short_hash: String!
@@ -107,13 +107,13 @@ type RepositoryBranchDrifts {
   fetched_at: DateTime
   "When the remote was last checked for movement. Read-only repositories only."
   checked_at: DateTime
-  "Set when the whole column is unavailable; the branch rows themselves come from elsewhere and still render."
+  "Set when the git-derived drift answer could not be produced. It does not suppress edges, which is resolved separately."
   unavailable: RepositoryGitUnavailable
   edges: [RepositoryBranchDriftNode!]!
 }
 
 extend type Query {
-  "Paged commit log for a repository on the request branch. Requires view permission on the repository."
+  "Paged commit log for a repository on the request branch."
   InfrahubRepositoryCommits(
     repository_id: String!
     "Page size, 1 to 100. Default 10."
@@ -122,7 +122,7 @@ extend type Query {
     offset: Int
   ): RepositoryCommits!
 
-  "Per-branch drift for a repository. Requires view permission on the repository."
+  "Per-branch drift for a repository."
   InfrahubRepositoryBranchDrift(repository_id: String!): RepositoryBranchDrifts!
 }
 

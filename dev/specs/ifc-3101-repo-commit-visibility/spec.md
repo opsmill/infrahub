@@ -235,7 +235,11 @@ here should match the PRD.
   function; and restating the rule in the resolver would leave two copies to drift on precisely the
   default-branch case that [INFP-670](https://opsmill.atlassian.net/browse/INFP-670) is fixing. The
   extracted copy takes all three inputs as required parameters, which is what keeps it free of the
-  `or registry.default_branch` fallback that PRD is removing. Coordination recorded on that epic.
+  `or registry.default_branch` fallback that PRD is removing. **Agreed with the INFP-670 owner,
+  Patrick Ogenstad, on 2026-09-09**, who owns both this feature and that epic: the extraction with
+  all three inputs required is the seam the configured-default-branch work builds on, and leaving
+  the `default_branch` property's `or registry.default_branch` fallback in place keeps this change
+  clear of that epic's P1.
 - **Two configuration settings, not one.** The PRD scopes configuration to "one new interval knob".
   The bounded wait needs a timeout setting as well. Both are in the governance table below, and the
   timeout is the one that changes behaviour for existing callers.

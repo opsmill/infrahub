@@ -18,8 +18,21 @@ class GraphQLFieldExtractor:
 
     def get_fields(self) -> dict[str, Any]:
         """Extract fields from the GraphQL selection set."""
-        fields = self._extract_fields(selection_set=self.info.field_nodes[0].selection_set)
-        return fields or {}
+        # A field selected more than once under one response key resolves once, carrying the
+        # selection set of every occurrence, so reading only the first under-reports the selection.
+        fields: dict[str, Any] = {}
+        for field_node in self.info.field_nodes:
+            self._merge_fields(target=fields, source=self._extract_fields(selection_set=field_node.selection_set) or {})
+        return fields
+
+    @classmethod
+    def _merge_fields(cls, target: dict[str, Any], source: dict[str, Any]) -> None:
+        for name, value in source.items():
+            existing = target.get(name)
+            if isinstance(existing, dict) and isinstance(value, dict):
+                cls._merge_fields(target=existing, source=value)
+            elif name not in target or existing is None:
+                target[name] = value
 
     def _extract_fields(self, selection_set: SelectionSetNode | None) -> dict[str, dict] | None:
         """This function extract all the requested fields in a tree of Dict from a SelectionSetNode.
