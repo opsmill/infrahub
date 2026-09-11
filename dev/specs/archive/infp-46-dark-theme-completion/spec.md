@@ -6,7 +6,7 @@
 
 **Created**: 2026-08-17
 
-**Status**: Draft
+**Status**: Extracted
 
 **Input**: Follow-up work inherited from the dark-theme series (PRs #10247 → #10284). Seven known
 limitations were recorded by the series author; this spec covers all seven.

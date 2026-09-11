@@ -104,6 +104,23 @@ Configured in `frontend/app/graphql.config.ts`. Uses `@graphql-codegen/cli` with
 - **Documents**: `src/**/*.{ts,tsx}` (scans for GraphQL operations)
 - **Output**: `src/shared/api/graphql/generated/types.ts`
 
+## Compose Env Block
+
+The root `docker-compose.yml` env block is rendered from the backend settings, so adding a
+setting to `config.py` makes the committed compose file stale. Two traps:
+
+- `release.gen-config-env` writes nothing by default. Its `update_docker_file` parameter is
+  `False`, so the plain invocation silently no-ops — pass `-u` / `--update-docker-file`.
+- `release.validate-dockercomposeenv` regenerates and then runs `git diff --exit-code`, so it
+  reports failure for an *uncommitted* regeneration exactly as it does for a stale one. Commit
+  the regenerated file, then re-run it.
+
+The `update-compose-file-and-chart` workflow regenerates it with `-u` during a release cut, and
+`ci.yml` runs the validation, so a stale file fails CI rather than drifting quietly. Prose that
+describes which compose files carry a given variable goes stale on the same regeneration —
+`dev/knowledge/frontend/theming.md` once claimed the root file had no dark-theme passthrough
+after generation had added one.
+
 ## Key Locations
 
 | Component | Path |
@@ -118,3 +135,13 @@ Configured in `frontend/app/graphql.config.ts`. Uses `@graphql-codegen/cli` with
 - [Schema Definitions](schema-definitions.md) — How to define schemas that feed the pipeline
 - [ADR 0010](../../adr/0010-generated-user-facing-schema-contract.md) — Why the user-facing schema
   contract is generated into the SDK submodule
+
+## Keep generated GraphQL descriptions single-line
+
+A description passed to `Enum.from_enum` (or any GraphQL type built in
+`backend/infrahub/graphql/types/`) must stay on one line. `graphql-core`'s SDL printer dedents
+multi-line descriptions differently across versions, so a wrapped description makes the generated
+`schema/schema.graphql` depend on the environment that produced it — and CI validates that file is
+committed and current, so the mismatch surfaces as an unexplainable diff on someone else's machine.
+
+Write the long form as a single implicitly-concatenated string rather than wrapping the prose.

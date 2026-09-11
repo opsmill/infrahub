@@ -96,6 +96,8 @@ Architecture Decision Records in [adr/](adr/):
 - [0017-coalesced-merge-rebase-recompute.md](adr/0017-coalesced-merge-rebase-recompute.md) - Coalesced deduplicated recompute pass on merge and rebase
 - [0018-static-transform-lifecycle-triggers.md](adr/0018-static-transform-lifecycle-triggers.md) - Static kind-scoped lifecycle triggers for Python-transform recompute
 - [0019-transform-lifecycle-owns-node-input-reconciliation.md](adr/0019-transform-lifecycle-owns-node-input-reconciliation.md) - Transform lifecycle flow owns node-input automation reconciliation
+- [0020-experimental-flag-gates-pre-release-ui.md](adr/0020-experimental-flag-gates-pre-release-ui.md) - A pre-release UI feature is gated by an experimental settings flag, not by the running version
+- [0021-application-owned-theme-resolution.md](adr/0021-application-owned-theme-resolution.md) - The application resolves the theme once and hands the answer down
 
 ## Current Guides
 
