@@ -145,6 +145,7 @@ const InputField = ({
                 // No `allocatableKinds`: an `address`/`prefix` attribute pins the kind to the
                 // node being created, so there is nothing to override.
                 options={pool.options}
+                fromPoolRelationshipName={pool.fromPoolRelationshipName}
                 selectedPoolId={selectedPoolId}
                 value={fieldData}
                 disabled={props.disabled}

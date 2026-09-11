@@ -8,7 +8,8 @@ import {
 } from "@/shared/components/inputs/pool-select";
 import { FormMessage } from "@/shared/components/ui/form";
 
-export interface PoolAllocationPanelProps extends Pick<FormFieldPool, "options"> {
+export interface PoolAllocationPanelProps
+  extends Pick<FormFieldPool, "options" | "fromPoolRelationshipName"> {
   /** Name of the host form field; the nested override fields register under it. */
   name: string;
   poolKind: string;
@@ -45,11 +46,19 @@ export const PoolAllocationPanel = ({
   poolDefaultAllocatedObjectKind,
   allocatableKinds,
   options,
+  fromPoolRelationshipName,
   selectedPoolId,
   value,
   disabled,
   onChange,
 }: PoolAllocationPanelProps) => {
+  // An object template submits its allocation through `<name>_from_resource_pool`, whose peer is
+  // the pool kind — so GraphQL types it as a plain RelatedNodeInput carrying neither `prefixlen`
+  // nor `address_type`, and `create.py` allocates from the stored pool pointer alone. Neither
+  // override can reach the API on that path, so offering them would promise something the save
+  // silently drops. Tracked in IFC-3135.
+  const canOverrideAllocation = !fromPoolRelationshipName;
+
   return (
     // gap-4 between the pool and the override row, so they read as separate rows rather than
     // one block.
@@ -83,26 +92,28 @@ export const PoolAllocationPanel = ({
           flex item, so the parent's `gap-4` would reserve space beneath the pool for overrides
           that are not there. Hiding it removes it from the layout instead of duplicating each
           override's visibility rule here. */}
-      <Row className="items-start gap-4 empty:hidden">
-        <PoolPrefixLengthField
-          name={name}
-          poolKind={poolKind}
-          value={value}
-          disabled={disabled}
-          // 112px: "Prefix length" plus its help button measures ~105px, and the label row
-          // wraps rather than truncating, so a narrower column puts the "?" on its own line.
-          className="w-28 shrink-0"
-        />
+      {canOverrideAllocation && (
+        <Row className="items-start gap-4 empty:hidden">
+          <PoolPrefixLengthField
+            name={name}
+            poolKind={poolKind}
+            value={value}
+            disabled={disabled}
+            // 112px: "Prefix length" plus its help button measures ~105px, and the label row
+            // wraps rather than truncating, so a narrower column puts the "?" on its own line.
+            className="w-28 shrink-0"
+          />
 
-        <PoolKindOverrideField
-          name={name}
-          poolKind={poolKind}
-          options={allocatableKinds ?? []}
-          value={value}
-          disabled={disabled}
-          className="flex-1"
-        />
-      </Row>
+          <PoolKindOverrideField
+            name={name}
+            poolKind={poolKind}
+            options={allocatableKinds ?? []}
+            value={value}
+            disabled={disabled}
+            className="flex-1"
+          />
+        </Row>
+      )}
 
       <FormMessage />
     </Col>

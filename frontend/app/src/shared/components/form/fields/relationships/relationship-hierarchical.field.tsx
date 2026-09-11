@@ -190,6 +190,7 @@ export default function RelationshipHierarchicalField({
                 // No `allocatableKinds`: a concrete peer pins the kind the pool allocates,
                 // so there is nothing to override.
                 options={poolForCardinality.options}
+                fromPoolRelationshipName={poolForCardinality.fromPoolRelationshipName}
                 selectedPoolId={selectedPoolId}
                 value={fieldData}
                 disabled={disabled}

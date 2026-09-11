@@ -134,6 +134,7 @@ const NumberField = ({
                 // allocates is a number rather than an object with a kind. Both controls
                 // withhold themselves, so the panel is the pool alone.
                 options={pool.options}
+                fromPoolRelationshipName={pool.fromPoolRelationshipName}
                 selectedPoolId={selectedPoolId}
                 value={fieldData}
                 disabled={props.disabled}

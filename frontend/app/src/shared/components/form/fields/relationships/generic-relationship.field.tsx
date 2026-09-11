@@ -384,6 +384,7 @@ export const GenericRelationshipField = ({
                     namespace: option.badge,
                   }))}
                   options={pool.options}
+                  fromPoolRelationshipName={pool.fromPoolRelationshipName}
                   selectedPoolId={selectedPoolId}
                   value={fieldData}
                   disabled={props.disabled}

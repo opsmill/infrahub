@@ -241,6 +241,7 @@ export const NodeRelationshipField = ({
                   // No `allocatableKinds`: a concrete peer pins the kind the pool allocates,
                   // so there is nothing to override.
                   options={pool.options}
+                  fromPoolRelationshipName={pool.fromPoolRelationshipName}
                   selectedPoolId={selectedPoolId}
                   value={fieldData}
                   disabled={props.disabled}

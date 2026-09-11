@@ -218,6 +218,33 @@ describe("NodeRelationshipField", () => {
     await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
   });
 
+  test("offers no overrides on an object template, which cannot carry them", async () => {
+    const component = await render(
+      <TestForm>
+        <NodeRelationshipField
+          {...poolProps}
+          pool={{
+            kind: "CoreIPAddressPool",
+            defaultAllocatedObjectKind: "IpamIPAddress",
+            fromPoolRelationshipName: "primary_address_from_resource_pool",
+          }}
+          defaultValue={DEFAULT_FORM_FIELD_VALUE}
+        />
+      </TestForm>
+    );
+
+    await component.getByRole("tab", { name: "From pool" }).click();
+    await component.getByTestId("select-open-pool-option-button").click();
+    await component.getByRole("option", { name: "Loopbacks pool" }).click();
+
+    // A template submits through `<name>_from_resource_pool`, whose input type carries neither
+    // field, so an override typed here would be dropped in silence. The pool itself still
+    // works — only the overrides go. See IFC-3135.
+    await expect.element(component.getByTestId("select-value")).toHaveTextContent("Loopbacks pool");
+    await expect.poll(() => component.getByTestId("pool-prefix-length-input").query()).toBeNull();
+    await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
+  });
+
   test("submits the same from-pool payload the pool button produced", async () => {
     const onSubmit = vi.fn();
     const component = await render(
