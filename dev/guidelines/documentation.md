@@ -99,7 +99,7 @@ agents with a job to finish.
 - Link to guides for task instructions (in topics)
 - Define technical terms on first use
 - Before citing a concrete name — a test function, a flow or automation's registered name, a config key, a file path — grep for it and copy it verbatim: a near-miss name sends the reader (and every grep) to nothing. Label not-yet-written coverage as planned/unverified instead of naming a test that isn't there
-- The same for a claim inherited from working notes, a spec, or a code comment: confirming the source says it is not confirming it is still true. Re-verify the behavior against the current code before restating it
+- Before restating a claim inherited from working notes, a spec, or a code comment, re-verify the behavior against the current code: a source recording the claim does not confirm the claim is still true
 
 ### Don't
 
@@ -119,7 +119,7 @@ agents with a job to finish.
 - Cite a `file.py:123` or `file.py:100-140` line location — reference the module path and symbol only (`some/module.py::SomeClass`). A symbol reference survives the code moving within a file or being renamed at the call site; a line number does not, and a spec's own line-numbered citations routinely rot before the feature it describes even merges
 - Reference another step by its number ("see step 4") — numbering shifts when a step is added or removed; name the action instead ("after restarting the workers")
 - Enumerate the events that cause a behavior when you can state its condition ("the window moves when new commits reach the worker's copy", not a list of the operations that fetch) — a trigger list is wrong the moment a caller is added or removed
-- Give a temporary feature switch durable documentation — state what it gates and how to run each leg; per-state semantics leave the docs when the switch does
+- Bake a temporary feature switch's per-state semantics into durable docs — instead state what it gates and how to run each leg; per-state semantics leave the docs when the switch does
 
 ## Documentation Workflow
 
