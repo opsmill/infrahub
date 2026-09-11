@@ -8,6 +8,7 @@ these tests pin the wiring between the two, not the narrowing itself.
 from __future__ import annotations
 
 from infrahub.computed_attribute.scoping import ChangedElementSet
+from infrahub.core.merge.python_target_sources import UnavailablePythonTargetResolver
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
     PYTHON_COMPUTED_ATTRIBUTE,
@@ -20,6 +21,8 @@ from infrahub.core.merge.recompute_coalescing import (
     RecomputeChainSubmitter,
 )
 from infrahub.core.recompute.bulk_write import WrittenNode
+from infrahub.core.schema import AttributeSchema
+from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.events.models import EventBranchContext, EventContext
 from tests.adapters.python_target_sources import (
@@ -38,6 +41,27 @@ SCHEMA_SCOPE = ChangedElementSet(changed_fields={PYTHON_KIND: frozenset({"digest
 def _schema_branch() -> SchemaBranch:
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=build_chain_schema(levels=3))
+    schema_branch.process()
+    return schema_branch
+
+
+def _schema_branch_with_a_python_attribute() -> SchemaBranch:
+    """The chain schema, plus one Python transform computed attribute on its first level."""
+    schema = build_chain_schema(levels=3)
+    node = next(item for item in schema.nodes if item.kind == chain_kind(1))
+    node.attributes.append(
+        AttributeSchema(
+            name="digest",
+            kind="Text",
+            optional=True,
+            read_only=True,
+            computed_attribute=ComputedAttribute(
+                kind=ComputedAttributeKind.TRANSFORM_PYTHON, transform="transform_digest"
+            ),
+        )
+    )
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema)
     schema_branch.process()
     return schema_branch
 
@@ -114,38 +138,91 @@ async def test_a_chained_level_derives_the_python_targets_of_its_writes() -> Non
     assert python_calls[0]["parameters"]["coalesced"] is True
 
 
-async def test_a_failed_python_derivation_still_submits_the_jinja2_family() -> None:
-    """Only this family reads the database, so only this family may be lost when that read fails.
-
-    The schema-derived families are already built by the time it runs. This change set moves a
-    computed attribute only, so that is the one submission left to see.
-    """
-    workflow = WorkflowRecorder()
+async def test_a_failing_resolution_widens_python_and_keeps_the_other_families() -> None:
+    """The widening covers every declared Python attribute over its whole kind."""
+    resolver = FailingPythonTargetResolver()
     coordinator = MergeRecomputeCoordinator(
-        builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch()),
-        submitter=CoalescedRecomputeSubmitter(workflow=workflow),
-        python_resolver=FailingPythonTargetResolver(),
+        builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch_with_a_python_attribute()),
+        submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
+        python_resolver=resolver,
     )
 
     submissions = await coordinator.run(changes=[_root_change()], branch=BRANCH, context=_event_context())
 
-    assert _families(submissions) == {COMPUTED_ATTRIBUTE}
+    assert resolver.calls == [BRANCH]
+    assert _families(submissions) == {COMPUTED_ATTRIBUTE, PYTHON_COMPUTED_ATTRIBUTE}
+    python = [submission for submission in submissions if submission.family == PYTHON_COMPUTED_ATTRIBUTE]
+    assert [(submission.target_kind, submission.attribute_name, submission.whole_kind) for submission in python] == [
+        (chain_kind(1), "digest", True)
+    ]
 
 
-async def test_a_failed_python_derivation_still_chains_the_jinja2_family() -> None:
-    """The chained levels run the same derivation, and carry the same risk."""
-    workflow = WorkflowRecorder()
-    chain = RecomputeChainSubmitter(
-        builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch()),
-        submitter=CoalescedRecomputeSubmitter(workflow=workflow),
-        python_resolver=FailingPythonTargetResolver(),
-    )
+async def test_a_failing_resolution_on_a_chained_level_widens_the_same_way() -> None:
+    resolver = FailingPythonTargetResolver()
 
-    submissions = await chain.submit(
+    submissions = await RecomputeChainSubmitter(
+        builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch_with_a_python_attribute()),
+        submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
+        python_resolver=resolver,
+    ).submit(
         written=[WrittenNode(node_id="l1-0", kind=chain_kind(1), fields=("name",))],
         branch=BRANCH,
         context=_event_context(),
         depth=0,
     )
 
-    assert _families(submissions) == {COMPUTED_ATTRIBUTE}
+    assert resolver.calls == [BRANCH]
+    assert _families(submissions) == {COMPUTED_ATTRIBUTE, PYTHON_COMPUTED_ATTRIBUTE}
+
+
+async def test_a_resolver_that_could_not_be_built_widens_every_declared_attribute() -> None:
+    """A caller that cannot build a resolver hands on one that raises, and the pass widens."""
+    coordinator = MergeRecomputeCoordinator(
+        builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch_with_a_python_attribute()),
+        submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
+        python_resolver=UnavailablePythonTargetResolver(),
+    )
+
+    submissions = await coordinator.run(changes=[_root_change()], branch=BRANCH, context=_event_context())
+
+    assert _families(submissions) == {COMPUTED_ATTRIBUTE, PYTHON_COMPUTED_ATTRIBUTE}
+    python = [submission for submission in submissions if submission.family == PYTHON_COMPUTED_ATTRIBUTE]
+    assert [(submission.target_kind, submission.attribute_name, submission.whole_kind) for submission in python] == [
+        (chain_kind(1), "digest", True)
+    ]
+
+
+async def test_an_empty_change_set_resolves_nothing_without_reading_the_database() -> None:
+    """A rebase that replayed no data change has nothing to resolve, and must not widen.
+
+    The read-set index is loaded before the changes are inspected, so without the early return a
+    failure loading it would widen every declared attribute for a change set that is empty.
+    """
+    resolver = FailingPythonTargetResolver()
+    coordinator = MergeRecomputeCoordinator(
+        builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch_with_a_python_attribute()),
+        submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
+        python_resolver=resolver,
+    )
+
+    submissions = await coordinator.run(changes=[], branch=BRANCH, context=_event_context())
+
+    assert resolver.calls == []
+    assert [submission for submission in submissions if submission.family == PYTHON_COMPUTED_ATTRIBUTE] == []
+
+
+async def test_a_schema_only_merge_widens_nothing() -> None:
+    """The schema half belongs to the scoped backfill, so a merge that moved no data widens nothing."""
+    resolver = FailingPythonTargetResolver()
+    coordinator = MergeRecomputeCoordinator(
+        builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch_with_a_python_attribute()),
+        submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
+        python_resolver=resolver,
+    )
+
+    submissions = await coordinator.run(
+        changes=[], branch=BRANCH, context=_event_context(), schema_changed_elements=SCHEMA_SCOPE
+    )
+
+    assert resolver.calls == []
+    assert [submission for submission in submissions if submission.family == PYTHON_COMPUTED_ATTRIBUTE] == []

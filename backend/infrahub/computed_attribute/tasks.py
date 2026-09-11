@@ -45,8 +45,8 @@ from .scoping import (
     ChangedElementSet,
     ComputedAttributeRef,
     Jinja2DependencyDeriver,
-    PythonTransformDependencyDeriver,
     RecomputeScoper,
+    scope_python_transforms,
 )
 from .transform_recompute import TransformRecomputeSubmitter
 
@@ -549,79 +549,85 @@ async def computed_attribute_setup_python(
     async with database.start_session() as db:
         log = get_run_logger()
 
-        changed_element_set = _resolve_changed_elements(changed_elements)
-
+        # Reconciling the automations deletes every one its gather did not return, so the registry
+        # is refreshed first: a gather off a stale one would delete automations that nothing else
+        # covers while the origin gate is on.
         branch_name = branch_name or registry.default_branch
         if branch_name:
             await add_tags(branches=[branch_name])
             component = await get_component()
             await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
 
-        triggers_python, _ = await gather_trigger_computed_attribute_python(db=db)
+        try:
+            changed_element_set = _resolve_changed_elements(changed_elements)
 
-        # The read set of each transform is derived from its GraphQL query here, where the
-        # database session is available, so that the scoping decision itself stays pure. A
-        # derived read is checked against the schema of the trigger's own branch, whose derived
-        # definitions are what decide the read can be held against a single kind.
-        read_sets: dict[tuple[str, str, str], TransformReadSet] = {}
-        for trigger in triggers_python:
-            definition = trigger.computed_attribute.computed_attribute
-            read_sets[trigger.branch, definition.kind, definition.attribute.name] = (
-                transform_read_set_from_query_report(
-                    report=trigger.computed_attribute.query_analyzer.query_report,
-                    schema_branch=registry.schema.get_schema_branch(name=trigger.branch),
+            triggers_python, _ = await gather_trigger_computed_attribute_python(db=db)
+
+            # The read set of each transform is derived from its GraphQL query here, where the
+            # database session is available, so that the scoping decision itself stays pure. A
+            # derived read is checked against the schema of the trigger's own branch, whose derived
+            # definitions are what decide the read can be held against a single kind.
+            read_sets: dict[tuple[str, str, str], TransformReadSet] = {}
+            for trigger in triggers_python:
+                definition = trigger.computed_attribute.computed_attribute
+                read_sets[trigger.branch, definition.kind, definition.attribute.name] = (
+                    transform_read_set_from_query_report(
+                        report=trigger.computed_attribute.query_analyzer.query_report,
+                        schema_branch=registry.schema.get_schema_branch(name=trigger.branch),
+                    )
                 )
+
+            # Since we can have multiple trigger per NodeKind
+            # we need to extract the list of unique node that should be processed
+            unique_nodes: set[tuple[str, str, str]] = {
+                (
+                    trigger.branch,
+                    trigger.computed_attribute.computed_attribute.kind,
+                    trigger.computed_attribute.computed_attribute.attribute.name,
+                )
+                for trigger in triggers_python
+            }
+            candidate_attributes = [
+                ComputedAttributeRef(
+                    branch=branch,
+                    kind=kind,
+                    attribute_name=attribute_name,
+                    computed_kind=ComputedAttributeKind.TRANSFORM_PYTHON,
+                )
+                for branch, kind, attribute_name in sorted(unique_nodes)
+                if event_name != BranchDeletedEvent.event_name and branch == branch_name
+            ]
+
+            report = scope_python_transforms(
+                candidate_attributes=candidate_attributes,
+                read_sets=read_sets,
+                changed_elements=changed_element_set,
             )
 
-        # Since we can have multiple trigger per NodeKind
-        # we need to extract the list of unique node that should be processed
-        unique_nodes: set[tuple[str, str, str]] = {
-            (
-                trigger.branch,
-                trigger.computed_attribute.computed_attribute.kind,
-                trigger.computed_attribute.computed_attribute.attribute.name,
+            selected_identities = [f"{ref.kind}.{ref.attribute_name}" for ref in report.selected]
+            log.info(
+                f"Recompute scoping selected {len(report.selected)} Python computed attribute(s) on {branch_name}: "
+                f"{selected_identities}"
             )
-            for trigger in triggers_python
-        }
-        candidate_attributes = [
-            ComputedAttributeRef(
-                branch=branch,
-                kind=kind,
-                attribute_name=attribute_name,
-                computed_kind=ComputedAttributeKind.TRANSFORM_PYTHON,
-            )
-            for branch, kind, attribute_name in sorted(unique_nodes)
-            if event_name != BranchDeletedEvent.event_name and branch == branch_name
-        ]
+            for skipped in report.skipped:
+                log.debug(
+                    f"Skipping {skipped.ref.kind}.{skipped.ref.attribute_name} on {branch_name}: {skipped.reason}"
+                )
 
-        scoper = RecomputeScoper(
-            derivers={ComputedAttributeKind.TRANSFORM_PYTHON: PythonTransformDependencyDeriver(read_sets=read_sets)}
-        )
-        report = scoper.scope(
-            candidate_attributes=candidate_attributes,
-            changed_elements=changed_element_set,
-        )
-
-        selected_identities = [f"{ref.kind}.{ref.attribute_name}" for ref in report.selected]
-        log.info(
-            f"Recompute scoping selected {len(report.selected)} Python computed attribute(s) on {branch_name}: "
-            f"{selected_identities}"
-        )
-        for skipped in report.skipped:
-            log.debug(f"Skipping {skipped.ref.kind}.{skipped.ref.attribute_name} on {branch_name}: {skipped.reason}")
-
-        for ref in report.selected:
-            await get_workflow().submit_workflow(
-                workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
-                context=context,
-                parameters={
-                    "branch_name": branch_name,
-                    "computed_attribute_name": ref.attribute_name,
-                    "computed_attribute_kind": ref.kind,
-                },
-            )
-
-        await _reconcile_python_computed_attribute_automations(db=db)
+            for ref in report.selected:
+                await get_workflow().submit_workflow(
+                    workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+                    context=context,
+                    parameters={
+                        "branch_name": branch_name,
+                        "computed_attribute_name": ref.attribute_name,
+                        "computed_attribute_kind": ref.kind,
+                    },
+                )
+        finally:
+            # Reconcile on every event, even when the submissions above failed, so the automations
+            # match the schema this flow just read.
+            await _reconcile_python_computed_attribute_automations(db=db)
 
 
 @flow(

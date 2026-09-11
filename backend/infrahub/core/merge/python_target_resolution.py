@@ -16,8 +16,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from infrahub.computed_attribute.scoping import (
     ComputedAttributeRef,
-    PythonTransformDependencyDeriver,
-    RecomputeScoper,
+    scope_python_transforms,
 )
 from infrahub.core.constants import ComputedAttributeKind
 from infrahub.log import get_logger
@@ -52,12 +51,15 @@ class PythonAttributeReadSet:
 
     ``gathered`` is ``False`` when the gather failed outright, so nothing is known about any pair
     and none of them may be dropped as covered by another pass.
+
+    ``pinned`` is ``False`` when the query root is not restricted to a single object.
     """
 
     kind: str
     attribute_name: str
     read_set: TransformReadSet
     gathered: bool = True
+    pinned: bool = True
 
 
 class PythonReadSetSource(Protocol):
@@ -77,17 +79,25 @@ class PythonSubscriberSource(Protocol):
 
 
 @dataclass(frozen=True)
-class _Selection:
-    """Why one change signature selects one attribute, and how exactly.
+class _Widen:
+    """The change affects the attribute, but which nodes cannot be established."""
+
+
+@dataclass(frozen=True)
+class _Narrow:
+    """The change affects the attribute, and these are the nodes to recompute.
 
     ``self_ids`` and ``reader_lookup`` are independent: a changed node can be both a target of
-    its own and a source whose readers have to be resolved.
+    its own and a source whose readers have to be resolved. ``precise`` records whether the field
+    filter held, and is reported on the target rather than acted on.
     """
 
-    widen: bool
     self_ids: bool
     reader_lookup: bool
     precise: bool
+
+
+_Selection = _Widen | _Narrow
 
 
 @dataclass(frozen=True)
@@ -109,14 +119,16 @@ class _Accumulator:
     whole_kind: bool = False
 
     def add(self, *, selection: _Selection, node_ids: set[str], deleted: bool) -> None:
-        if selection.widen:
+        if isinstance(selection, _Widen):
             self.whole_kind = True
-        else:
-            if selection.self_ids:
-                self.self_ids.update(node_ids)
-            if selection.reader_lookup:
-                sources = self.deleted_source_ids if deleted else self.source_ids
-                sources.update(node_ids)
+            self.precise = False
+            return
+
+        if selection.self_ids:
+            self.self_ids.update(node_ids)
+        if selection.reader_lookup:
+            sources = self.deleted_source_ids if deleted else self.source_ids
+            sources.update(node_ids)
         if not selection.precise:
             self.precise = False
 
@@ -205,7 +217,9 @@ class IndexedPythonTargetResolver:
         target_ids = set(accumulator.self_ids)
         whole_kind = accumulator.whole_kind
         if whole_kind:
-            log.info("Widening the recompute of %s to its whole kind: the read set is undeterminable", identity)
+            # The cause is logged where it was found: an unmappable or unpinned query by the
+            # read-set source, a failed reader lookup below.
+            log.info("Widening the recompute of %s to its whole kind", identity)
         else:
             for node_ids in accumulator.lookups:
                 try:
@@ -286,16 +300,7 @@ def _covered_by_schema_pass(
     transforms it could gather, so a pair it never gathered is a pair it never submits.
     """
     candidates = [attribute for attribute in read_sets if attribute.gathered]
-    scoper = RecomputeScoper(
-        derivers={
-            ComputedAttributeKind.TRANSFORM_PYTHON: PythonTransformDependencyDeriver(
-                read_sets={
-                    (branch, attribute.kind, attribute.attribute_name): attribute.read_set for attribute in candidates
-                }
-            )
-        }
-    )
-    report = scoper.scope(
+    report = scope_python_transforms(
         candidate_attributes=[
             ComputedAttributeRef(
                 branch=branch,
@@ -305,6 +310,7 @@ def _covered_by_schema_pass(
             )
             for attribute in candidates
         ],
+        read_sets={(branch, attribute.kind, attribute.attribute_name): attribute.read_set for attribute in candidates},
         changed_elements=changed_elements,
     )
     return {(ref.kind, ref.attribute_name) for ref in report.selected}
@@ -338,17 +344,22 @@ def _select(*, signature: ChangeSignature, attribute: PythonAttributeReadSet) ->
             leaving a value stale.
 
     """
-    if signature.action == CREATED:
-        # A created node subscribes to no query group yet, so only itself is selected. Readers of
-        # an unfiltered query are missed here, as they are on the live path.
-        return (
-            _Selection(widen=False, self_ids=True, reader_lookup=False, precise=True)
-            if attribute.kind == signature.kind
-            else None
-        )
-
-    if signature.action not in {UPDATED, DELETED}:
+    if signature.action not in {CREATED, UPDATED, DELETED}:
         raise ValueError(f"Unknown change action: {signature.action!r}")
+
+    if attribute.read_set.depends_on_everything:
+        # Nothing is known about what the query reads, so any change may reach it.
+        return _Widen()
+
+    if not attribute.pinned and signature.kind in attribute.read_set.read_kinds:
+        # No field filter holds for an unpinned query, whatever the action.
+        return _Widen()
+
+    if signature.action == CREATED:
+        # A created node subscribes to no query group yet, so it can only be its own target. This
+        # holds for an unpinned query the changed kind falls outside of: nothing the query reads
+        # moved, so the new node's own value is all there is to compute.
+        return _Narrow(self_ids=True, reader_lookup=False, precise=True) if attribute.kind == signature.kind else None
 
     return _select_reader(signature=signature, read_set=attribute.read_set, target_kind=attribute.kind)
 
@@ -364,23 +375,20 @@ def _select_reader(*, signature: ChangeSignature, read_set: TransformReadSet, ta
     readers for. The reverse lookup finds it only through the query group it subscribed to on its
     last successful compute, so a node that never computed would stay stale.
     """
-    if read_set.depends_on_everything:
-        return _Selection(widen=True, self_ids=False, reader_lookup=False, precise=False)
-
     if signature.kind not in read_set.read_kinds:
         return None
 
     if signature.action == DELETED:
         # Every field the query read is gone with the node, so dropping the field filter is exact.
-        return _Selection(widen=False, self_ids=False, reader_lookup=True, precise=True)
+        return _Narrow(self_ids=False, reader_lookup=True, precise=True)
 
     self_ids = signature.kind == target_kind
 
     if not signature.changed_fields or signature.kind in read_set.imprecise_kinds:
         # Nothing to filter on, or a derived read whose backing fields cannot be named.
-        return _Selection(widen=False, self_ids=self_ids, reader_lookup=True, precise=False)
+        return _Narrow(self_ids=self_ids, reader_lookup=True, precise=False)
 
     if signature.changed_fields & read_set.read_fields.get(signature.kind, frozenset()):
-        return _Selection(widen=False, self_ids=self_ids, reader_lookup=True, precise=True)
+        return _Narrow(self_ids=self_ids, reader_lookup=True, precise=True)
 
     return None

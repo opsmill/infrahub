@@ -117,6 +117,16 @@ class PythonTransformTarget:
     object_id: str
 
 
+def _restrict_to_live_origin(event_trigger: EventTrigger, *, live_only: bool) -> None:
+    """Leave merge, rebase and recompute replays to the coalesced pass when it owns them.
+
+    Baked into the stored automation, not read when the event arrives, so a change takes effect on
+    the next reconcile of these two trigger types rather than on the next restart.
+    """
+    if live_only:
+        event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
+
+
 class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
     type: TriggerType = TriggerType.COMPUTED_ATTR_JINJA2
     computed_attribute: ComputedAttributeTarget
@@ -218,6 +228,7 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
         cls,
         branch: str,
         computed_attribute: PythonTransformComputedAttribute,
+        live_only: bool,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
         # scope = registry.default_branch
@@ -230,6 +241,8 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
 
         if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
+
+        _restrict_to_live_origin(event_trigger, live_only=live_only)
 
         update_fields = computed_attribute.query_analyzer.query_report.fields_by_kind(
             kind=computed_attribute.computed_attribute.kind
@@ -279,6 +292,7 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         branch: str,
         kind: str,
         computed_attribute: PythonTransformComputedAttribute,
+        live_only: bool,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
         # Only matching on node updated events, before nodes are created they won't be a member of the GraphQL query
@@ -299,6 +313,7 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
+        _restrict_to_live_origin(event_trigger, live_only=live_only)
         event_trigger.exclude_branches(branches_out_of_scope or [])
 
         return cls(

@@ -223,9 +223,11 @@ class MainSettings(BaseSettings):
     )
     coalesce_python_recompute_after_merge: bool = Field(
         default=True,
-        description="When enabled, the coalesced merge and rebase pass also recomputes Python transform "
-        "computed attributes, alongside the per-node tasks that still run; when disabled, only those "
-        "per-node tasks recompute them.",
+        description="When enabled, the coalesced merge and rebase pass recomputes Python transform "
+        "computed attributes, and their per-node tasks only run for a live write; when disabled, "
+        "the pass recomputes none of them and those per-node tasks run for a merge and a rebase "
+        "too. The per-node side of a change takes effect once those automations are rebuilt, which "
+        "`infrahub upgrade` does.",
     )
     merge_failure_grace_period_seconds: int = Field(
         default=180,
