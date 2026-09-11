@@ -294,7 +294,7 @@ InfrahubRepositoryCommits = Field(
     repository_id=String(required=True),
     limit=Int(required=False, description="Page size, 1 to 100. Default 10."),
     offset=Int(required=False, description="Default 0."),
-    description="Paged commit log for a repository on the request branch. Requires view permission on the repository.",
+    description="Paged commit log for a repository on the request branch.",
     resolver=RepositoryCommitsResolver.resolve,
     required=True,
 )
@@ -302,7 +302,7 @@ InfrahubRepositoryCommits = Field(
 InfrahubRepositoryBranchDrift = Field(
     RepositoryBranchDrifts,
     repository_id=String(required=True),
-    description="Per-branch drift for a repository. Requires view permission on the repository.",
+    description="Per-branch drift for a repository.",
     resolver=RepositoryBranchDriftResolver.resolve,
     required=True,
 )

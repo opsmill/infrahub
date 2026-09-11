@@ -25707,13 +25707,9 @@ type Query {
   InfrahubPermissions: AccountPermissionsEdges!
   """Find all nodes of specified kinds reachable from a source node"""
   InfrahubReachableNodes(data: ReachableNodesInput!): ReachableNodesResultType!
-  """
-  Per-branch drift for a repository. Requires view permission on the repository.
-  """
+  """Per-branch drift for a repository."""
   InfrahubRepositoryBranchDrift(repository_id: String!): RepositoryBranchDrifts!
-  """
-  Paged commit log for a repository on the request branch. Requires view permission on the repository.
-  """
+  """Paged commit log for a repository on the request branch."""
   InfrahubRepositoryCommits(
     """Page size, 1 to 100. Default 10."""
     limit: Int

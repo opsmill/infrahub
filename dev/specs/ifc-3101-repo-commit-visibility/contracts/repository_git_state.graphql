@@ -113,7 +113,7 @@ type RepositoryBranchDrifts {
 }
 
 extend type Query {
-  "Paged commit log for a repository on the request branch. Requires view permission on the repository."
+  "Paged commit log for a repository on the request branch."
   InfrahubRepositoryCommits(
     repository_id: String!
     "Page size, 1 to 100. Default 10."
@@ -122,7 +122,7 @@ extend type Query {
     offset: Int
   ): RepositoryCommits!
 
-  "Per-branch drift for a repository. Requires view permission on the repository."
+  "Per-branch drift for a repository."
   InfrahubRepositoryBranchDrift(repository_id: String!): RepositoryBranchDrifts!
 }
 
