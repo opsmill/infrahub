@@ -18,6 +18,11 @@ Git workflow and commit conventions for the project.
   converting call sites, changing behavior a new lint rule now gates — since what the code emits at
   runtime changed regardless of how enabling it was triggered. Target `stable` when the diff has no
   runtime source changes (pure config, docs, CI, test-only).
+- **Internal docs and specs follow what they describe.** The docs half of the rule above holds only
+  when the content is true on both branches; it then reaches `develop` through the stable→develop
+  merge. A doc describing behavior that exists only on `develop`, an edit to files only `develop`
+  carries, or a spec set for work building on `develop` targets `develop` — on `stable` it would
+  describe a system that branch does not have.
 - **Wide mechanical churn** (a reformat, a rename sweep): the category rules above yield to conflict
   cost — land it on the branch where the touched files diverge least from the other main branch, and
   say so in the PR description, or every forward merge pays for the churn again

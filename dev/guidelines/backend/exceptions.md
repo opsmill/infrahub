@@ -40,6 +40,22 @@ except Exception as exc:
     raise
 ```
 
+## Cancellation is not an `Exception`
+
+`asyncio.CancelledError` subclasses `BaseException`, so `except Exception` and
+`isinstance(result, Exception)` both let it through. The trap is
+`asyncio.gather(..., return_exceptions=True)`: it hands a cancelled task's `CancelledError` back as
+an ordinary result, and a failure filter built on `Exception` then counts the cancelled task as a
+success. Re-raise cancellation before classifying failures, so the caller stays cancelled:
+
+```python
+results = await asyncio.gather(*tasks, return_exceptions=True)
+for result in results:
+    if isinstance(result, asyncio.CancelledError):
+        raise result
+failures = [result for result in results if isinstance(result, Exception)]
+```
+
 ## Best-effort side effects degrade to a safe fallback
 
 A second broad-catch case is a best-effort side effect whose failure must not abort a primary
