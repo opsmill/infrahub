@@ -78,4 +78,17 @@ export function formatFileSize(bytes: number | undefined | null): string {
 
   return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
 }
-export const waitFor = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/** Resolves after `ms`, or at once if `signal` is already aborted or aborts during the wait. */
+export const waitFor = (ms: number, signal?: AbortSignal | null): Promise<void> => {
+  if (signal?.aborted) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const finish = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", finish);
+      resolve();
+    };
+    const timer = setTimeout(finish, ms);
+    signal?.addEventListener("abort", finish, { once: true });
+  });
+};

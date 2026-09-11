@@ -1,0 +1,1 @@
+Added an `X-Infrahub-Admission: shed` marker header to load-shed `429` responses, exposed to cross-origin clients along with the `Retry-After` hint, so a client can tell an admission shed from any other `429`.
