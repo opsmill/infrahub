@@ -38,7 +38,7 @@ uv run towncrier create -c "content of changelog entry" ${ISSUE}.${TYPE}.md
 
 These commands use `uv run`, which runs the project's pinned Towncrier and is the convention across these Python projects. If your project doesn't use uv, drop the prefix (`towncrier create ...`) or use its runner (e.g. `poetry run towncrier ...`).
 
-- **ISSUE** — issue ID, or `+` when no issue exists (e.g. `+pnpm-workspaces`).
+- **ISSUE** — issue ID, or `+` when no issue exists (e.g. `+pnpm-workspaces`). With an issue, the stem is the bare number and nothing else: Towncrier renders the whole stem through `issue_format`, so `1234-short-slug.fixed.md` links to issue `1234-short-slug` — a 404. Only orphan (`+`) fragments take a descriptive slug. Verify with `towncrier build --draft` when unsure.
 - **TYPE** — one of the change types below.
 
 | Type | Use For |

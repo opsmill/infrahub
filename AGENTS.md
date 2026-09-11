@@ -138,7 +138,8 @@ checkout.
 - Backend: `dev/guidelines/backend/python.md` (load before writing backend Python — typing, imports), `dev/guidelines/backend/exceptions.md` (load when writing a `try`/`except`) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
 - Frontend: `frontend/app/AGENTS.md`
 - Git workflow: `dev/guidelines/git-workflow.md`
-- Markdown: `dev/guidelines/markdown.md`
+- Markdown formatting: `dev/guidelines/markdown.md`
+- Internal docs (`dev/`, the `AGENTS.md` files, `.agents/`): `dev/guidelines/documentation.md` — load *Writing Style → For Internal Docs* and the *Don't* list before writing or editing one
 
 ## Generated Files (Do Not Edit)
 

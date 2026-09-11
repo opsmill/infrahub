@@ -176,25 +176,30 @@ Use `frozen=True` unless you have a specific reason to mutate instances (e.g., b
 
 ### Avoid Plain Dictionaries
 
-Regardless of which approach you use, avoid untyped dictionaries for structured data:
+Regardless of which approach you use, avoid untyped dictionaries for structured data: write
+`BranchCreateInput(name="feature-x")`, not `{"name": "feature-x", "description": None}`.
+
+### Optional and default values
+
+Prefer `dict.get(key, default)` over an `in` check or `try/except KeyError` for a possibly-missing
+key (without a second argument `get()` returns `None`); use `setdefault()` when the default is a
+mutable object you build up.
+
+Zero is a value, not an absence. Test an optional numeric with `is not None` — a truthiness check
+silently treats a legitimate `0` as unset:
 
 ```python
-# ❌ Bad - no type safety
-branch_data = {"name": "feature-x", "description": None}
+# ❌ Bad - offset=0 is dropped, so the first page renders a different query text
+if offset:
+    query += " SKIP $offset"
 
-# ✅ Good - use dataclass or Pydantic depending on context
-branch_data = BranchCreateInput(name="feature-x")
+# ✅ Good - zero is bound like any other value
+if offset is not None:
+    query += " SKIP $offset"
 ```
 
-### Use dict.get() for Default Values
-
-Read a possibly-missing key with `dict.get(key, default)`, not an `in` check or `try/except KeyError`:
-
-```python
-retries = config.get("retries", 3)
-```
-
-Without a second argument `get()` returns `None`. Use `setdefault()` when the default is a mutable object you build up: `cache.setdefault("results", []).append(42)`.
+When zero deliberately means "no bound" in the caller contract, keep that reading — and pin it with
+a test, so the next pass at the line fails fast instead of shipping the inversion.
 
 ## Configuration Settings
 

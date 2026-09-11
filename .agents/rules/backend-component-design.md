@@ -62,6 +62,10 @@ For new code, database access and (de)serialization do not belong on the model. 
 
 The older `StandardNode`/`Branch` shape — persistence methods and `from_db` on the model itself — is legacy. Do not copy it into new code; when you extend an existing model that follows it, prefer adding a Repository/Query rather than another method on the model.
 
+## Lookups live on the component that owns the data
+
+A helper that digs through a context object to reach another component's data, or filters that component's internals, belongs as a method on the owning component (the schema branch, a facade, the registry) — not as a private helper beside its one caller. Needing to test a private helper directly is the tell that it wants to be a public method on the owner.
+
 ## Interfaces for multiple implementations
 
 When more than one implementation of a component is required (e.g. real vs. in-memory adapter, different backends, A/B variants), define a `Protocol` or abstract base class. The correct implementation is selected at the wiring layer and injected to the constructor — the consumer codes against the interface, not a concrete class.
