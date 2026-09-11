@@ -572,6 +572,11 @@ async def _resolve_python_targets(
     Never raises: this is the only family that reads the database, and the four are submitted
     together.
     """
+    if not changes:
+        # The read-set index is loaded before the changes are read, so an empty change set would
+        # still pay the gather, and a failure in it would widen every attribute over nothing.
+        return []
+
     try:
         return await resolver.resolve(changes=changes, branch=branch, schema_changed_elements=schema_changed_elements)
     except Exception:
