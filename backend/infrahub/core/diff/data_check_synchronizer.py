@@ -109,20 +109,24 @@ class DiffDataCheckSynchronizer:
             return BranchConflictKeep.SOURCE
         return None
 
-    def _update_diff_conflicts(self, updated_diff: EnrichedDiffRoot, retrieved_diff: EnrichedDiffRoot) -> None:
+    @classmethod
+    def _update_diff_conflicts(cls, updated_diff: EnrichedDiffRoot, retrieved_diff: EnrichedDiffRoot) -> None:
+        # One lookup per updated node instead of a scan of ``retrieved_diff.nodes`` for each of them: the scan
+        # grows with every node added below, so on a diff of tens of thousands of nodes it turned this loop
+        # into minutes of pure CPU with no ``await``, long enough to starve the worker's event loop.
+        retrieved_nodes_by_identifier = retrieved_diff.get_node_map()
         for updated_node in updated_diff.nodes:
-            try:
-                retrieved_node = retrieved_diff.get_node(node_identifier=updated_node.identifier)
-            except ValueError:
-                retrieved_node = None
+            retrieved_node = retrieved_nodes_by_identifier.get(updated_node.identifier)
             if not retrieved_node:
                 retrieved_diff.nodes.add(updated_node)
+                retrieved_nodes_by_identifier[updated_node.identifier] = updated_node
                 continue
             retrieved_node.conflict = updated_node.conflict
-            self._update_diff_attr_conflicts(updated_node=updated_node, retrieved_node=retrieved_node)
-            self._update_diff_relationship_conflicts(updated_node=updated_node, retrieved_node=retrieved_node)
+            cls._update_diff_attr_conflicts(updated_node=updated_node, retrieved_node=retrieved_node)
+            cls._update_diff_relationship_conflicts(updated_node=updated_node, retrieved_node=retrieved_node)
 
-    def _update_diff_attr_conflicts(self, updated_node: EnrichedDiffNode, retrieved_node: EnrichedDiffNode) -> None:
+    @staticmethod
+    def _update_diff_attr_conflicts(updated_node: EnrichedDiffNode, retrieved_node: EnrichedDiffNode) -> None:
         for updated_attr in updated_node.attributes:
             try:
                 retrieved_attr = retrieved_node.get_attribute(name=updated_attr.name)
@@ -141,9 +145,8 @@ class DiffDataCheckSynchronizer:
                     continue
                 retrieved_prop.conflict = updated_prop.conflict
 
-    def _update_diff_relationship_conflicts(
-        self, updated_node: EnrichedDiffNode, retrieved_node: EnrichedDiffNode
-    ) -> None:
+    @staticmethod
+    def _update_diff_relationship_conflicts(updated_node: EnrichedDiffNode, retrieved_node: EnrichedDiffNode) -> None:
         for updated_rel in updated_node.relationships:
             try:
                 retrieved_rel = retrieved_node.get_relationship(name=updated_rel.name)
