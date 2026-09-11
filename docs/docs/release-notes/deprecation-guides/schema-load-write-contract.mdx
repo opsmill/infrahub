@@ -155,8 +155,11 @@ nodes[0].relationships[0].cardinality: Input should be 'one' or 'many' (received
 ```
 
 Every entry in `result.errors` carries the field path in `.field` and the full message in
-`.message`. `result.raise_for_status()` raises a `ValueError` joining all the messages when
-the payload is invalid. Each entry in `result.warnings` additionally carries the schema kind
+`.message`, plus the same information split into parts: the path as a tuple of keys and
+indexes in `.loc`, the value received there in `.input` and the reason on its own in
+`.reason`. `result.raise_for_status()` raises a `ValueError` joining all the messages when
+the payload is invalid. The server reports the same violations in its 422 response, one
+entry per offending field with `loc`, `input` and `msg` matching these parts. Each entry in `result.warnings` additionally carries the schema kind
 and element that set the field in `.kind` and `.element`, and in `.name` the field named
 relative to them — so a nested block is unambiguous (`parameters.id` rather than `id`, which
 *is* settable on the attribute itself).

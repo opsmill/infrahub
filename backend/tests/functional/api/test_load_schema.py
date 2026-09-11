@@ -665,12 +665,13 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         )
 
         assert response.status_code == 422
-        messages = [item["msg"] for item in response.json()["detail"]]
-        assert len(messages) == 1, messages
-        assert (
-            "nodes[0].attributes[0].not_a_real_field: Unknown field, it is not part of the schema "
-            "(received: 'value')" in messages[0]
-        ), messages[0]
+        assert [(item["loc"], item["input"], item["msg"]) for item in response.json()["detail"]] == [
+            (
+                ["body", "schemas", 0, "nodes", 0, "attributes", 0, "not_a_real_field"],
+                "value",
+                "Unknown field, it is not part of the schema",
+            )
+        ]
 
     async def test_schema_load_rejects_out_of_enum_attribute_kind(
         self,
@@ -701,13 +702,12 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         )
 
         assert response.status_code == 422
-        messages = [item["msg"] for item in response.json()["detail"]]
-        assert len(messages) == 1, messages
-        message = messages[0]
-        # The invalid kind fails the attribute discriminator, so the path stops at the attribute.
-        assert "nodes[0].attributes[0]:" in message, message
-        assert "Input tag 'NotARealKind' found using 'kind' does not match any of the expected tags" in message, message
-        assert "(received: {'name': 'name', 'kind': 'NotARealKind'})" in message, message
+        detail = response.json()["detail"]
+        assert len(detail) == 1, detail
+        # The invalid kind fails the attribute discriminator, so the location stops at the attribute.
+        assert detail[0]["loc"] == ["body", "schemas", 0, "nodes", 0, "attributes", 0]
+        assert detail[0]["input"] == {"name": "name", "kind": "NotARealKind"}
+        assert "Input tag 'NotARealKind' found using 'kind' does not match any of the expected tags" in detail[0]["msg"]
 
     async def test_schema_load_accepts_read_level_field_in_extensions(
         self,
@@ -794,12 +794,13 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         )
 
         assert response.status_code == 422
-        messages = [item["msg"] for item in response.json()["detail"]]
-        assert len(messages) == 1, messages
-        message = messages[0]
-        assert "nodes[0].relationships[0].cardinality:" in message, message
-        assert "Input should be 'one' or 'many'" in message, message
-        assert "(received: 'both')" in message, message
+        assert [(item["loc"], item["input"], item["msg"]) for item in response.json()["detail"]] == [
+            (
+                ["body", "schemas", 0, "nodes", 0, "relationships", 0, "cardinality"],
+                "both",
+                "Input should be 'one' or 'many'",
+            )
+        ]
 
     async def test_stored_schema_with_read_level_field_reads_back(
         self,
@@ -915,7 +916,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
 
         A valid payload passes both; a payload carrying a read-level field is accepted by both with
         the same warning; an unknown field and an out-of-enum value are rejected by both, and the
-        offending value the SDK names offline appears in the server's rejection response.
+        server's rejection response carries the location, value and reason the SDK reports offline.
         """
         valid_schema_root = {
             "version": "1.0",
@@ -982,36 +983,36 @@ class TestLoadSchemaAPI(TestInfrahubApp):
             "'inherited' is a read-only field, the submitted value is ignored"
         ]
 
-        # Unknown field: SDK offline verdict is "invalid" and the server rejects it (422) with the
-        # same field-level message.
+        # Unknown field: SDK offline verdict is "invalid" and the server rejects it (422) with an
+        # error located on the same field, carrying the same value and reason.
         offline_unknown = validate_schema(schema=unknown_field_schema_root)
         assert offline_unknown.valid is False
-        assert len(offline_unknown.messages) == 1, offline_unknown.messages
-        unknown_message = offline_unknown.messages[0]
+        assert len(offline_unknown.errors) == 1, offline_unknown.messages
+        unknown_error = offline_unknown.errors[0]
         response_unknown = await test_client.post(
             "/api/schema/load",
             json={"schemas": [unknown_field_schema_root]},
             headers={"X-INFRAHUB-KEY": api_admin_token},
         )
         assert response_unknown.status_code == 422
-        unknown_server_messages = [item["msg"] for item in response_unknown.json()["detail"]]
-        assert len(unknown_server_messages) == 1, unknown_server_messages
-        assert unknown_message in unknown_server_messages[0], (unknown_message, unknown_server_messages)
+        assert [(item["loc"], item["input"], item["msg"]) for item in response_unknown.json()["detail"]] == [
+            (["body", "schemas", 0, *unknown_error.loc], unknown_error.input, unknown_error.reason)
+        ]
 
-        # Out-of-enum value: SDK offline verdict is "invalid" and the server rejects it (422),
-        # naming the invalid value the SDK named offline.
+        # Out-of-enum value: SDK offline verdict is "invalid" and the server rejects it (422) with
+        # an error located where the SDK located it, carrying the same value and reason.
         offline_invalid = validate_schema(schema=invalid_schema_root)
         assert offline_invalid.valid is False
-        assert len(offline_invalid.messages) == 1, offline_invalid.messages
-        offline_message = offline_invalid.messages[0]
-        assert offline_message.startswith("nodes[0].attributes[0]:"), offline_message
-        assert "NotARealKind" in offline_message, offline_message
+        assert len(offline_invalid.errors) == 1, offline_invalid.messages
+        offline_error = offline_invalid.errors[0]
+        assert offline_error.field == "nodes[0].attributes[0]", offline_error.message
+        assert "NotARealKind" in offline_error.reason, offline_error.reason
         response_invalid = await test_client.post(
             "/api/schema/load",
             json={"schemas": [invalid_schema_root]},
             headers={"X-INFRAHUB-KEY": api_admin_token},
         )
         assert response_invalid.status_code == 422
-        server_messages = [item["msg"] for item in response_invalid.json()["detail"]]
-        assert len(server_messages) == 1, server_messages
-        assert offline_message in server_messages[0], (offline_message, server_messages)
+        assert [(item["loc"], item["input"], item["msg"]) for item in response_invalid.json()["detail"]] == [
+            (["body", "schemas", 0, *offline_error.loc], offline_error.input, offline_error.reason)
+        ]

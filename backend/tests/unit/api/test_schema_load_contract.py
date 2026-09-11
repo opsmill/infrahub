@@ -4,11 +4,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from infrahub_sdk.schema import validate_schema
 from infrahub_sdk.schema.generated.contract import READ_ONLY_FIELDS
 from infrahub_sdk.schema.generated.write import InfrahubSchemaWrite
+from pydantic import ValidationError as PydanticValidationError
 
-from infrahub.api.schema import SchemaLoadAPI, SchemaReadAPI
+from infrahub.api.schema import SchemaLoadAPI, SchemaReadAPI, SchemasLoadAPI
 from infrahub.core.constants import ComputedAttributeKind, HashableModelState
 from infrahub.core.schema import SchemaRoot, SchemaWarningType
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
@@ -196,7 +199,7 @@ def test_schema_load_contract(case: LoadContractCase) -> None:
         loaded = SchemaLoadAPI.model_validate(payload)
         assert loaded.internal_schema is not None
     else:
-        with pytest.raises(ValueError, match="validation error for SchemaLoadAPI"):
+        with pytest.raises(ValueError, match=r"validation errors? for SchemaLoadAPI"):
             SchemaLoadAPI.model_validate(payload)
 
 
@@ -290,12 +293,12 @@ def test_unknown_field_is_rejected_naming_the_field() -> None:
         ],
     }
 
-    with pytest.raises(
-        ValueError,
-        match=r"nodes\[0\]\.attributes\[0\]\.inheritd: Unknown field, it is not part of the schema "
-        r"\(received: True\)",
-    ):
+    with pytest.raises(PydanticValidationError, match=r"^1 validation error for SchemaLoadAPI") as exc_info:
         SchemaLoadAPI.model_validate(payload)
+
+    assert [(error["loc"], error["input"], error["msg"]) for error in exc_info.value.errors()] == [
+        (("nodes", 0, "attributes", 0, "inheritd"), True, "Unknown field, it is not part of the schema")
+    ]
 
 
 def test_computed_attribute_survives_its_discriminated_union() -> None:
@@ -347,9 +350,61 @@ def test_out_of_enum_attribute_kind_is_rejected_naming_the_value() -> None:
         "nodes": [{"namespace": "Test", "name": "Widget", "attributes": [{"name": "field_one", "kind": "NotAKind"}]}],
     }
 
-    with pytest.raises(
-        ValueError,
-        match=r"nodes\[0\]\.attributes\[0\]: Input tag 'NotAKind' found using 'kind' does not match any of "
-        r"the expected tags:",
-    ):
+    with pytest.raises(PydanticValidationError, match=r"^1 validation error for SchemaLoadAPI") as exc_info:
         SchemaLoadAPI.model_validate(payload)
+
+    errors = exc_info.value.errors()
+    assert len(errors) == 1, errors
+    # The invalid kind fails the attribute discriminator, so the location stops at the attribute.
+    assert errors[0]["loc"] == ("nodes", 0, "attributes", 0)
+    assert errors[0]["input"] == {"name": "field_one", "kind": "NotAKind"}
+    assert errors[0]["msg"].startswith(
+        "Input tag 'NotAKind' found using 'kind' does not match any of the expected tags:"
+    )
+
+
+def _schema_load_client() -> TestClient:
+    app = FastAPI()
+
+    @app.post("/schema/load")
+    def load(schemas: SchemasLoadAPI) -> dict[str, int]:
+        return {"schemas": len(schemas.schemas)}
+
+    return TestClient(app)
+
+
+def test_load_request_reports_one_error_per_violation_located_on_the_field() -> None:
+    payload = {
+        "schemas": [
+            {
+                "version": "1.0",
+                "extensions": {
+                    "nodes": [
+                        {
+                            "kind": "BuiltinTag",
+                            "namespace": "Forbidden",
+                            "attributes": [{"name": "speed", "kind": "Number", "made_up": True}],
+                        }
+                    ]
+                },
+            }
+        ]
+    }
+
+    response = _schema_load_client().post("/schema/load", json=payload)
+
+    assert response.status_code == 422
+    assert [(item["type"], item["loc"], item["input"], item["msg"]) for item in response.json()["detail"]] == [
+        (
+            "value_error",
+            ["body", "schemas", 0, "extensions", "nodes", 0, "namespace"],
+            "Forbidden",
+            "Unknown field, it is not part of the schema",
+        ),
+        (
+            "value_error",
+            ["body", "schemas", 0, "extensions", "nodes", 0, "attributes", 0, "made_up"],
+            True,
+            "Unknown field, it is not part of the schema",
+        ),
+    ]

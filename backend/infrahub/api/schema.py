@@ -22,6 +22,8 @@ from pydantic import (
     create_model,
     model_validator,
 )
+from pydantic import ValidationError as PydanticValidationError
+from pydantic_core import InitErrorDetails, PydanticCustomError
 from starlette.responses import JSONResponse
 
 from infrahub import lock
@@ -139,9 +141,20 @@ class SchemaLoadAPI(InfrahubSchemaWrite):
         # Wrapped rather than run before validation so the warnings, which are only visible on the
         # raw payload, can be carried on the instance the handler returns.
         result = validate_write_schema(schema=data) if isinstance(data, dict) else None
-        # Raising here turns the field-level messages into a single request-validation error.
+        # One line error per violation, located on the offending field, so the request-validation
+        # response names each field and the value it received.
         if result is not None and not result.valid:
-            raise ValueError("; ".join(result.messages))
+            raise PydanticValidationError.from_exception_data(
+                title=cls.__name__,
+                line_errors=[
+                    InitErrorDetails(
+                        type=PydanticCustomError("value_error", "{reason}", {"reason": error.reason}),
+                        loc=error.loc,
+                        input=error.input,
+                    )
+                    for error in result.errors
+                ],
+            )
 
         instance: Self = handler(data)
 
