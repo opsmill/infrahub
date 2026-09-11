@@ -30,6 +30,8 @@ booleans
 Buildkite
 cAdvisor
 Ceph
+cgroup
+cgroups
 changelog
 chatbot
 conftest
@@ -233,6 +235,7 @@ reusability
 ROADM
 ROADMs
 rollout
+runtimes
 Schema
 schema_mapping
 stdin
@@ -262,6 +265,7 @@ substring
 subtree
 subtyping
 supernet
+systemd
 template_path
 templated
 Terraform
