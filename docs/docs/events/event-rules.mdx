@@ -72,7 +72,7 @@ A group trigger rule fires when a group's membership changes (member added or re
    - Enter a name (example: `added-to-provisioning-circuits-group`)
    - Select the kind (example: `Standard Group Core`)
    - Choose the standard group (example: `provisioning_circuits`)
-   - Select the action kind (example: `Generator Action Core`)
+   - Select the action kind. A group trigger rule can only fire a Generator action (example: `Generator Action Core`)
    - Choose the Generator action that the rule will fire (example: `create_circuit_endpoints`)
    - Click **Save**.
 
@@ -80,15 +80,19 @@ A group trigger rule fires when a group's membership changes (member added or re
 
 After saving, the rule appears in the trigger rules list as inactive. Activate it when you're ready to start matching events.
 
-A group trigger rule fires a [Generator action](./event-actions#configure-a-generator-action); to change group membership from an event, use a node trigger rule with a group action instead.
+To change group membership from an event, use a node trigger rule with a [group action](./event-actions#configure-a-group-action) instead.
 
 ## Where trigger rules are stored and evaluated
 
-Infrahub reads trigger rules from the default branch only; a rule created on another branch does not fire. Create rules on the default branch, and use `branch_scope` to control which branches they fire on:
+Infrahub reads trigger rules from the default branch only. A rule created on another branch does not fire, and creating it reports no error: Infrahub skips the rule when it reconciles the trigger rules, and the task worker logs a warning, `Skipping trigger rule with an unresolved relationship`, naming the rule and the relationship it could not resolve. Create rules, together with the groups and Generator definitions they point to, on the default branch, and use `branch_scope` to control which branches they fire on:
 
 - `default_branch` (the default): the rule fires only for events on the default branch.
 - `other_branches`: the rule fires only for events on other branches. Use this when the outcome should be reviewed in a proposed change before it reaches the default branch.
 - `all_branches`: the rule fires everywhere.
+
+## Known limitations
+
+- [10463](https://github.com/opsmill/infrahub/issues/10463) attaching a group action to a group trigger rule stops Infrahub from applying any trigger rule change until that rule is deleted. Existing rules keep firing, so the failure can go unnoticed.
 
 ## Related
 
