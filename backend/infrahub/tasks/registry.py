@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub import lock
-from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.registry import registry
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.log import get_logger
 from infrahub.utils import log_exception_guard

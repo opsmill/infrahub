@@ -4,15 +4,19 @@ from asyncio import gather, sleep
 from dataclasses import dataclass
 
 import pytest
+import redis.asyncio as redis
+from redis.asyncio.lock import Lock as GlobalLock
 
 from infrahub import config, lock
 from infrahub.config import CacheSettings
+from infrahub.exceptions import InitializationError
 from infrahub.lock import (
     GLOBAL_TASKMGR_INIT_LOCK,
     GLOBAL_WORKER_TASKMGR_INIT_LOCK,
     InfrahubLockRegistry,
     get_worker_id_from_lock_token,
 )
+from infrahub.services import InfrahubServices
 
 
 @dataclass
@@ -128,6 +132,7 @@ async def test_init_locks_carry_configured_ttl() -> None:
 
     for init_lock in init_locks:
         assert init_lock.ttl == expected_ttl
+        assert isinstance(init_lock.remote, GlobalLock)
         assert init_lock.remote.timeout == expected_ttl
 
 
@@ -139,7 +144,36 @@ async def test_regular_locks_have_no_ttl() -> None:
     regular_lock = registry.get(name="repo-a", namespace="repository")
 
     assert regular_lock.ttl is None
+    assert isinstance(regular_lock.remote, GlobalLock)
     assert regular_lock.remote.timeout is None
+
+
+def test_reading_the_registry_before_initialization_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An un-initialized registry must announce itself, not read as a usable value."""
+    monkeypatch.delattr(lock, "registry", raising=False)
+
+    assert not lock.is_initialized()
+    with pytest.raises(InitializationError, match="has not been initialized"):
+        _ = lock.registry
+
+
+async def test_remote_lock_rejects_a_connection_the_driver_cannot_use(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each driver rejects the other driver's connection, at construction time.
+
+    Both branches previously received the same unvalidated union, so a mismatch surfaced later as
+    an AttributeError on the first acquire -- or, under NATS, not at all. Each case passes a real
+    connection of the wrong driver, so the guards are exercised without an ill-typed argument:
+    both reject anything outside their own type by the same path.
+    """
+    unsupported: list[tuple[config.CacheDriver, redis.Redis | InfrahubServices, str]] = [
+        (config.CacheDriver.NATS, redis.Redis(), "requires an InfrahubServices connection"),
+        (config.CacheDriver.Redis, await InfrahubServices.new(), "requires a Redis connection"),
+    ]
+
+    for driver, connection, expected in unsupported:
+        monkeypatch.setattr(config.SETTINGS.cache, "driver", driver)
+        with pytest.raises(TypeError, match=expected):
+            lock.InfrahubLock(name="global.wrong-connection", connection=connection, local=False)
 
 
 async def test_reentrant_lock_allows_nested_acquisitions() -> None:
