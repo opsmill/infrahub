@@ -5,7 +5,9 @@ description: "Task list for Number Pools P1 — several weighted ranges per pool
 
 # Tasks: Number Pools — Several Weighted Ranges per Pool (P1)
 
-**Input**: Design documents from `specs/infp-308-number-pool-ranges/`
+**Epic**: [IFC-3065 — Number pool improvements - part 1 - Weighted Ranges per pool](https://opsmill.atlassian.net/browse/IFC-3065)
+
+**Input**: Design documents from `specs/ifc-3065-number-pool-ranges/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/graphql-schema-changes.md, quickstart.md
 

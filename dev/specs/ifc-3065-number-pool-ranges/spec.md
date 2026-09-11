@@ -1,12 +1,14 @@
 # Feature Specification: Number Pools — Several Weighted Ranges per Pool
 
+**Epic**: [IFC-3065 — Number pool improvements - part 1 - Weighted Ranges per pool](https://opsmill.atlassian.net/browse/IFC-3065)
+
 **Feature Branch**: `pmi-number-pools-part1`
 
 **Created**: 2026-09-08
 
 **Status**: Draft
 
-**Input**: Number Pools PRD revision "simple as possible" (Confluence 870514689, revising INFP-308), slice **P1** only — several weighted ranges per pool with schema-declared ranges. Derived from `POOL-RANGES-PRD.md`.
+**Input**: Number Pools PRD revision "simple as possible" (Confluence 870514689). Product origin: JPD INFP-308 (the PRD this revision revises). Engineering Epic: [IFC-3065](https://opsmill.atlassian.net/browse/IFC-3065). Slice **P1** only — several weighted ranges per pool with schema-declared ranges. Derived from `POOL-RANGES-PRD.md`.
 
 ## Scope
 

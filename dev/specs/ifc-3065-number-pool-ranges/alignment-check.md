@@ -4,7 +4,8 @@
 
 ## Source
 
-- **Primary**: Confluence page 870514689 — "Number Pools - PRD, simple as possible" (revises INFP-308; derived from `POOL-RANGES-PRD.md` / `POOL-ASSIGNMENT-PRD.md` / `SCOPED-POOLS-PRD.md`), fetched in full for this check.
+- **Engineering Epic**: [IFC-3065 — Number pool improvements - part 1 - Weighted Ranges per pool](https://opsmill.atlassian.net/browse/IFC-3065).
+- **Primary**: Confluence page 870514689 — "Number Pools - PRD, simple as possible" (revises product JPD INFP-308; derived from `POOL-RANGES-PRD.md` / `POOL-ASSIGNMENT-PRD.md` / `SCOPED-POOLS-PRD.md`), fetched in full for this check.
 - **Governing scope from the user's ask**: "first part" → the PRD's **P1 slice** (weighted ranges). P2, P3, P4 are separate parts on their own branches.
 - **In-session maintainer direction** (mid-turn message): "we can make P1 and P2 disjoint and not related if we update NumberGetTaken at the end of P1." This authorises the one deliberate divergence below.
 

@@ -1,8 +1,10 @@
 # Implementation Plan: Number Pools — Several Weighted Ranges per Pool (P1)
 
+**Epic**: [IFC-3065 — Number pool improvements - part 1 - Weighted Ranges per pool](https://opsmill.atlassian.net/browse/IFC-3065)
+
 **Branch**: `pmi-number-pools-part1` | **Date**: 2026-09-08 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `specs/infp-308-number-pool-ranges/spec.md`
+**Input**: Feature specification from `specs/ifc-3065-number-pool-ranges/spec.md`
 
 ## Summary
 
@@ -47,7 +49,7 @@ No violations → Complexity Tracking left empty.
 ### Documentation (this feature)
 
 ```text
-specs/infp-308-number-pool-ranges/
+specs/ifc-3065-number-pool-ranges/
 ├── plan.md
 ├── research.md
 ├── data-model.md
