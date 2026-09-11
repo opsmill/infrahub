@@ -6,7 +6,7 @@ import uuid
 from asyncio import Lock as LocalLock
 from asyncio import sleep
 from contextvars import ContextVar
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import redis.asyncio as redis
 from prometheus_client import Histogram
@@ -16,6 +16,7 @@ from redis.exceptions import LockNotOwnedError
 
 from infrahub import config
 from infrahub.core.timestamp import current_timestamp
+from infrahub.exceptions import InitializationError
 from infrahub.log import get_logger
 from infrahub.worker import WORKER_IDENTITY
 
@@ -27,11 +28,28 @@ if TYPE_CHECKING:
 
 log = get_logger()
 
-# ``initialize_lock()`` populates this at startup, but ``None`` is genuinely reachable: the m076
-# migration guards on it (``if lock.registry is None: initialize_lock()``). The honest type is
-# therefore ``| None``; that costs 68 union-attr errors across 33 call-site modules, so widening it
-# is a separate change from this module's cleanup.
-registry: InfrahubLockRegistry = None  # type: ignore[assignment]  # set by initialize_lock()
+# Bound by ``initialize_lock()`` at startup, and deliberately declared without a value: reading it
+# beforehand raises through ``__getattr__`` below instead of handing back a ``None`` that every call
+# site would have to guard for. Same approach as ``config.SETTINGS``.
+registry: InfrahubLockRegistry
+
+
+def __getattr__(name: str) -> Any:
+    """Give the pre-initialization read of ``registry`` a clear error instead of a bare NameError.
+
+    Raises:
+        InitializationError: If ``registry`` is read before ``initialize_lock()`` has bound it.
+        AttributeError: For any other missing module attribute.
+
+    """
+    if name == "registry":
+        raise InitializationError("The lock registry has not been initialized, call initialize_lock() first")
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def is_initialized() -> bool:
+    """Whether ``initialize_lock()`` has bound the registry yet."""
+    return "registry" in globals()
 
 
 METRIC_PREFIX = "infrahub_lock"

@@ -9,6 +9,7 @@ from redis.asyncio.lock import Lock as GlobalLock
 
 from infrahub import config, lock
 from infrahub.config import CacheSettings
+from infrahub.exceptions import InitializationError
 from infrahub.lock import (
     GLOBAL_TASKMGR_INIT_LOCK,
     GLOBAL_WORKER_TASKMGR_INIT_LOCK,
@@ -145,6 +146,15 @@ async def test_regular_locks_have_no_ttl() -> None:
     assert regular_lock.ttl is None
     assert isinstance(regular_lock.remote, GlobalLock)
     assert regular_lock.remote.timeout is None
+
+
+def test_reading_the_registry_before_initialization_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An un-initialized registry must announce itself, not read as a usable value."""
+    monkeypatch.delattr(lock, "registry", raising=False)
+
+    assert not lock.is_initialized()
+    with pytest.raises(InitializationError, match="has not been initialized"):
+        _ = lock.registry
 
 
 async def test_remote_lock_rejects_a_connection_the_driver_cannot_use(monkeypatch: pytest.MonkeyPatch) -> None:
