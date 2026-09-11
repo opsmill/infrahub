@@ -43,8 +43,7 @@ backend Python, including:
 - Query patterns
 
 Typing lives in `dev/guidelines/backend/typing.md` — load it when a type checker flags your change,
-when narrowing a union or an optional, or when clearing a `pyproject.toml` suppression (no `cast()`,
-no new ignore).
+when narrowing a union or an optional, or when clearing a `pyproject.toml` suppression.
 
 Exception handling lives in `dev/guidelines/backend/exceptions.md` — load it when writing a
 `try`/`except` or suppressing ruff's blind-except rule (catch the narrowest types the call path
