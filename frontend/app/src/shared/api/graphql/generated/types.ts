@@ -25696,9 +25696,9 @@ export type Query = {
   InfrahubPermissions: AccountPermissionsEdges;
   /** Find all nodes of specified kinds reachable from a source node */
   InfrahubReachableNodes: ReachableNodesResultType;
-  /** Per-branch drift for a repository. Requires view permission on the repository. */
+  /** Per-branch drift for a repository. */
   InfrahubRepositoryBranchDrift: RepositoryBranchDrifts;
-  /** Paged commit log for a repository on the request branch. Requires view permission on the repository. */
+  /** Paged commit log for a repository on the request branch. */
   InfrahubRepositoryCommits: RepositoryCommits;
   InfrahubResourcePoolAllocated: PoolAllocated;
   InfrahubResourcePoolUtilization: PoolUtilization;
@@ -38676,7 +38676,7 @@ export type RepositoryBranchDrifts = {
   edges: Array<RepositoryBranchDriftNode>;
   fetched_at: Maybe<Scalars['DateTime']['output']>;
   repository_id: Scalars['String']['output'];
-  /** Set when no drift answer could be produced for the repository. */
+  /** Set when the git-derived drift answer could not be produced. It does not suppress edges, which is resolved separately. */
   unavailable: Maybe<RepositoryGitUnavailable>;
 };
 
