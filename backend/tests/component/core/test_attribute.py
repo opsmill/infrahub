@@ -6,6 +6,7 @@ import pytest
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
+from infrahub.core import registry
 from infrahub.core.attribute import (
     MAX_STRING_LENGTH,
     URL,
@@ -458,6 +459,38 @@ async def test_update_stores_normalized_value(
         db=db, node_uuid=obj.id, attr_name=test_case.attribute_name, branch_name=default_branch.name
     )
     assert stored_after_update == test_case.expected_stored_value
+
+
+async def test_save_keeps_is_default_when_schema_default_is_not_canonical(
+    db: InfrahubDatabase, default_branch: Branch, group_schema: None, data_schema: None
+) -> None:
+    """A schema default written without its prefix length still counts as the default after the value is canonicalized."""
+    node_schema = NodeSchema(
+        name="IpDefault",
+        namespace="Test",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", optional=True),
+            AttributeSchema(name="ipaddress", kind="IPHost", optional=True, default_value="10.0.0.1"),
+        ],
+    )
+    registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
+    registry.schema.process_schema_branch(name=default_branch.name)
+
+    obj = await Node.init(db=db, schema=node_schema.kind)
+    await obj.new(db=db, name="obj1")
+    await obj.save(db=db)
+
+    reloaded = await NodeManager.get_one(id=obj.id, db=db, branch=default_branch)
+    assert reloaded.ipaddress.value == "10.0.0.1/32"
+    assert reloaded.ipaddress.is_default is True
+    await reloaded.save(db=db)
+
+    reloaded_again = await NodeManager.get_one(id=obj.id, db=db, branch=default_branch)
+    assert reloaded_again.ipaddress.is_default is True
+    stored_value = await _read_stored_attribute_value(
+        db=db, node_uuid=obj.id, attr_name="ipaddress", branch_name=default_branch.name
+    )
+    assert stored_value == "10.0.0.1/32"
 
 
 async def test_validate_content_dropdown(

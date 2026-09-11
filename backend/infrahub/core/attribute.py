@@ -455,10 +455,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         # Check if the current value is still the default one
         if self.is_default:
+            default_value = self.schema.default_value
+            if default_value is not None:
+                default_value = self._normalize_value(default_value)
             if isinstance(self.value, Enum):
-                has_default_value = self.schema.default_value == self.value.value
+                has_default_value = default_value == self.value.value
             else:
-                has_default_value = self.schema.default_value == self.value
+                has_default_value = default_value == self.value
             if (self.schema.default_value is not None and not has_default_value) or (
                 self.schema.default_value is None and self.value is not None
             ):
