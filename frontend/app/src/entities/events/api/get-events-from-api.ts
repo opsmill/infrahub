@@ -14,8 +14,8 @@ const EVENTS_QUERY = graphql(`
     $level: Int
     $since: DateTime
     $until: DateTime
-    $offset: Int
-    $limit: Int
+    $offset: PositiveInteger
+    $limit: PositiveInteger
     $order: EventSortOrder
   ) {
     InfrahubEvent(
