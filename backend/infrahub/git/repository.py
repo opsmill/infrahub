@@ -36,9 +36,8 @@ log = get_run_logger()
 def _describe_push_rejection(summary: str) -> str:
     """Prefix a per-ref push rejection summary with the likely reason the remote refused it.
 
-    The matched substrings come from the per-ref status line of ``git push``: a rejected
-    ref is not a failed command, so no ``GitCommandError`` is raised and the stderr-based
-    error enrichment never sees the rejection.
+    A rejected ref is not a failed ``git push`` command, so the ref's status summary is the
+    only signal available to classify.
     """
     lowered = summary.lower()
     if any(marker in lowered for marker in ("hook declined", "protected branch", "permission denied", "not allowed")):
@@ -415,10 +414,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             repo.git.reset("--hard", commit_before)
         except GitCommandError:
             log.exception(
-                f"Failed to reset the worktree of branch {dest_branch} to {commit_before} while recovering "
-                "from a failed merge; manual reconciliation may be required before the merge can be retried.",
-                repository=self.name,
-                branch=dest_branch,
+                "Failed to reset the worktree of branch %s of repository %s to %s while recovering from a "
+                "failed merge; manual reconciliation may be required before the merge can be retried.",
+                dest_branch,
+                self.name,
+                commit_before,
+                extra={"repository": self.name, "branch": dest_branch},
             )
 
     async def rebase(
