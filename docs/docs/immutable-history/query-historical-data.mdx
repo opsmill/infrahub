@@ -179,7 +179,7 @@ query IncidentChanges {
 
 Behavior to expect:
 
-- Omit `name`, `from_time`, and `to_time`, and the comparison covers the branch's `branched_from` timestamp to the present.
+- Omit `name`, `from_time`, and `to_time`, and the comparison covers the branch's `branched_from` timestamp to the present. Once a branch has been merged or is being deleted, that same form returns the last diff stored for it instead, whatever period that diff covers.
 - Omit `from_time` and the comparison starts at the branch's `branched_from` timestamp.
 - Omit `to_time` and the comparison runs to the present.
 - Narrow the result with `filters`, which accepts `ids`, `kind`, `namespace`, and `status`. The `kind`, `namespace`, and `status` filters each take `includes` and `excludes` lists.
