@@ -1,10 +1,12 @@
 import re
+from dataclasses import dataclass
 from enum import Enum
 
 import pytest
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
+from infrahub.core import registry
 from infrahub.core.attribute import (
     MAX_STRING_LENGTH,
     URL,
@@ -369,6 +371,126 @@ async def test_ipnetwork_normalizes_value(
     attr = IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/24")
 
     assert attr._normalize_value(input_value) == normalized_value
+
+
+async def _read_stored_attribute_value(db: InfrahubDatabase, node_uuid: str, attr_name: str, branch_name: str) -> str:
+    """Return the raw value on the active AttributeValue vertex, bypassing the in-memory normalization on read."""
+    query = """
+    MATCH (n:Node {uuid: $node_uuid})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attr_name})
+    MATCH (a)-[hv:HAS_VALUE]->(av:AttributeValue)
+    WHERE hv.status = "active" AND hv.to IS NULL AND hv.branch = $branch_name
+    RETURN av.value AS value
+    """
+    results = await db.execute_query(
+        query=query, params={"node_uuid": node_uuid, "attr_name": attr_name, "branch_name": branch_name}
+    )
+    assert len(results) == 1
+    return results[0]["value"]
+
+
+@dataclass
+class UpdateNormalizationTestCase:
+    name: str
+    """Descriptive name for the test scenario (used as test ID)."""
+
+    attribute_name: str
+    """Attribute of TestAllAttributeTypes to exercise."""
+
+    initial_value: str
+    """Canonical value the node is created with."""
+
+    update_value: str
+    """Non-canonical value submitted through the update payload."""
+
+    expected_stored_value: str
+    """Canonical form that must end up on the AttributeValue vertex."""
+
+
+UPDATE_NORMALIZATION_TEST_CASES: list[UpdateNormalizationTestCase] = [
+    UpdateNormalizationTestCase(
+        name="iphost_bare_address_gets_prefix_length",
+        attribute_name="ipaddress",
+        initial_value="192.0.2.10/32",
+        update_value="192.0.2.20",
+        expected_stored_value="192.0.2.20/32",
+    ),
+    UpdateNormalizationTestCase(
+        name="ipnetwork_expanded_ipv6_is_compressed",
+        attribute_name="prefix",
+        initial_value="192.0.2.0/24",
+        update_value="2001:0DB8:0000:0000:0000:0000:0000:0000/32",
+        expected_stored_value="2001:db8::/32",
+    ),
+    UpdateNormalizationTestCase(
+        name="ipaddress_expanded_ipv6_is_compressed",
+        attribute_name="bare_address",
+        initial_value="192.0.2.10",
+        update_value="2001:0DB8:0000:0000:0000:0000:0000:0001",
+        expected_stored_value="2001:db8::1",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [pytest.param(tc, id=tc.name) for tc in UPDATE_NORMALIZATION_TEST_CASES],
+)
+async def test_update_stores_normalized_value(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    all_attribute_types_schema: NodeSchema,
+    test_case: UpdateNormalizationTestCase,
+) -> None:
+    """An update payload must persist the same canonical form that creating the node with that value would."""
+    obj = await Node.init(db=db, schema="TestAllAttributeTypes")
+    await obj.new(db=db, name="obj1", **{test_case.attribute_name: test_case.initial_value})
+    await obj.save(db=db)
+
+    stored_after_create = await _read_stored_attribute_value(
+        db=db, node_uuid=obj.id, attr_name=test_case.attribute_name, branch_name=default_branch.name
+    )
+    assert stored_after_create == test_case.initial_value
+
+    reloaded = await NodeManager.get_one(id=obj.id, db=db, branch=default_branch)
+    await reloaded.from_graphql(db=db, data={test_case.attribute_name: {"value": test_case.update_value}})
+    await reloaded.save(db=db)
+
+    stored_after_update = await _read_stored_attribute_value(
+        db=db, node_uuid=obj.id, attr_name=test_case.attribute_name, branch_name=default_branch.name
+    )
+    assert stored_after_update == test_case.expected_stored_value
+
+
+async def test_save_keeps_is_default_when_schema_default_is_not_canonical(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    """A schema default written without its prefix length still counts as the default after the value is canonicalized."""
+    node_schema = NodeSchema(
+        name="IpDefault",
+        namespace="Test",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", optional=True),
+            AttributeSchema(name="ipaddress", kind="IPHost", optional=True, default_value="10.0.0.1"),
+        ],
+    )
+    registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
+    registry.schema.process_schema_branch(name=default_branch.name)
+
+    obj = await Node.init(db=db, schema=node_schema.kind)
+    await obj.new(db=db, name="obj1")
+    await obj.save(db=db)
+
+    reloaded = await NodeManager.get_one(id=obj.id, db=db, branch=default_branch)
+    assert reloaded.ipaddress.value == "10.0.0.1/32"
+    assert reloaded.ipaddress.is_default is True
+    await reloaded.save(db=db)
+
+    reloaded_again = await NodeManager.get_one(id=obj.id, db=db, branch=default_branch)
+    assert reloaded_again.ipaddress.is_default is True
+    stored_value = await _read_stored_attribute_value(
+        db=db, node_uuid=obj.id, attr_name="ipaddress", branch_name=default_branch.name
+    )
+    assert stored_value == "10.0.0.1/32"
 
 
 async def test_validate_content_dropdown(
