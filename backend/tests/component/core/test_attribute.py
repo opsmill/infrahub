@@ -462,7 +462,7 @@ async def test_update_stores_normalized_value(
 
 
 async def test_save_keeps_is_default_when_schema_default_is_not_canonical(
-    db: InfrahubDatabase, default_branch: Branch, group_schema: None, data_schema: None
+    db: InfrahubDatabase, default_branch: Branch
 ) -> None:
     """A schema default written without its prefix length still counts as the default after the value is canonicalized."""
     node_schema = NodeSchema(
