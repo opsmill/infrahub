@@ -34,20 +34,20 @@ Set the image reference and its signing identity as variables so the commands be
 For the community image:
 
 ```shell
-export IMAGE="registry.opsmill.io/opsmill/infrahub:1.11.2"
+export IMAGE="registry.opsmill.io/opsmill/infrahub:latest"
 export IDENTITY="^https://github\.com/opsmill/infrahub/\.github/workflows/ci-docker-image\.yml@refs/tags/infrahub-v"
 ```
 
 For the enterprise image:
 
 ```shell
-export IMAGE="registry.opsmill.io/opsmill/infrahub-enterprise:1.11.2"
+export IMAGE="registry.opsmill.io/opsmill/infrahub-enterprise:latest"
 export IDENTITY="^https://github\.com/opsmill/infrahub-private/\.github/workflows/ci-docker-image\.yml@refs/tags/infrahub-enterprise-v"
 ```
 
-Use the exact image reference you deploy. Both the signature and the attestations are attached to the image digest, so what you verify matches the version you run.
+Use the exact image reference you deploy. The `latest` tag points to the most recent release. To verify a specific version, substitute its tag; the released versions are listed on the [releases page](https://github.com/opsmill/infrahub/releases). Both the signature and the attestations are attached to the image digest, so what you verify matches the version you run.
 
-These patterns cover release images, which are built from `infrahub-v` and `infrahub-enterprise-v` tags. Images published from a branch, such as `develop` or a `dev-` tag, are signed by the same workflow at a branch ref instead. To verify one of those, replace the `@refs/tags/` portion of the pattern with the branch ref it was built from. A failed verification reports the identity it found, which tells you the value to use.
+These patterns cover release images, which are built from `infrahub-v` and `infrahub-enterprise-v` tags. The `latest` tag is a release image and verifies with them. Images published from a branch are not: `develop`, `stable` and the `dev-` tags are built on a schedule from a branch ref, so despite its name `stable` is a nightly build rather than a release. To verify one of those, replace the `@refs/tags/` portion of the pattern with the branch ref it was built from. A failed verification reports the identity it found, which tells you the value to use.
 
 ## Verifying the image signature
 
@@ -63,7 +63,7 @@ cosign verify \
 Cosign lists the checks it performed:
 
 ```text
-Verification for registry.opsmill.io/opsmill/infrahub:1.11.2 --
+Verification for registry.opsmill.io/opsmill/infrahub:latest --
 The following checks were performed on each of these signatures:
   - The cosign claims were validated
   - Existence of the claims in the transparency log was verified offline
