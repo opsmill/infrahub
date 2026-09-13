@@ -1,6 +1,10 @@
+from dataclasses import dataclass
 from typing import Any
 
-from infrahub.computed_attribute.tasks import _partition_transform_results
+import pytest
+
+from infrahub.computed_attribute.tasks import _belongs_to_query, _partition_transform_results
+from infrahub.core.query_group.subscribers import SubscriberRef
 from infrahub.core.recompute.bulk_write import AttributeValueWrite
 
 
@@ -38,3 +42,38 @@ def test_partition_transform_results_isolates_a_failed_node() -> None:
 
 def test_partition_transform_results_handles_empty() -> None:
     assert _partition_transform_results([]) == ([], [])
+
+
+@dataclass
+class QueryMatchCase:
+    name: str
+    group_query_id: str | None
+    automation_query_id: str | None
+    expected: bool
+
+
+QUERY_MATCH_CASES = [
+    QueryMatchCase(
+        name="the_same_query_matches", group_query_id="query01", automation_query_id="query01", expected=True
+    ),
+    QueryMatchCase(
+        name="another_query_is_dropped", group_query_id="query02", automation_query_id="query01", expected=False
+    ),
+    QueryMatchCase(
+        name="a_group_with_no_query_is_kept", group_query_id=None, automation_query_id="query01", expected=True
+    ),
+    QueryMatchCase(
+        name="an_automation_with_no_query_keeps_every_group",
+        group_query_id="query02",
+        automation_query_id=None,
+        expected=True,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", QUERY_MATCH_CASES, ids=lambda case: case.name)
+def test_belongs_to_query(case: QueryMatchCase) -> None:
+    """A subscriber is dropped only when both queries are known and differ."""
+    ref = SubscriberRef(id="n1", kind="TestCar", query_id=case.group_query_id)
+
+    assert _belongs_to_query(ref=ref, graphql_query_id=case.automation_query_id) is case.expected
