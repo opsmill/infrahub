@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Generator
+from typing import Any, Generator
 
 import pytest
 
@@ -22,9 +22,6 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.events.models import EventBranchContext, EventContext
 from tests.adapters.workflow import WorkflowRecorder
 
-if TYPE_CHECKING:
-    from infrahub_sdk.node import InfrahubNode
-
 LOGGER_NAME = "infrahub.computed_attribute.tasks"
 BRANCH = "main"
 CAR_KIND = "TestingCar"
@@ -36,8 +33,7 @@ UNCONFIGURED_ATTRIBUTE = "no_transform_named"
 # The shape the API answers with when no transform matches the filter.
 NO_TRANSFORM_FOUND: dict[str, Any] = {"CoreTransformPython": {"edges": []}}
 
-# A transform that is in the database but lost its repository peer. It is not absent, so no run may
-# treat it as a state to wait out.
+# A transform in the database that lost its repository peer: present, and not runnable.
 TRANSFORM_WITHOUT_A_REPOSITORY: dict[str, Any] = {
     "CoreTransformPython": {
         "edges": [
@@ -110,7 +106,7 @@ class _RecordingClient:
         self.fetched_branches.append(branch_name)
         return self._transform_response
 
-    async def all(self, kind: str, branch: str) -> list[InfrahubNode]:
+    async def all(self, kind: str, branch: str) -> list[object]:
         self.listed_kinds.append(kind)
         return []
 
@@ -218,11 +214,11 @@ async def _fan_out(*, attribute_name: str = ATTRIBUTE_NAME, widened: bool, coale
     )
 
 
-async def _batch(*, coalesced: bool, widened: bool) -> None:
+async def _batch(*, coalesced: bool, widened: bool, attribute_name: str = ATTRIBUTE_NAME) -> None:
     await process_transform.fn(
         branch_name=BRANCH,
         node_kind=CAR_KIND,
-        computed_attribute_name=ATTRIBUTE_NAME,
+        computed_attribute_name=attribute_name,
         computed_attribute_kind=CAR_KIND,
         context=_context(),
         object_ids=["c1", "c2"],
@@ -317,6 +313,33 @@ async def test_a_widened_batch_skips_a_transform_deleted_after_the_widening(
         f"Skipping the widened recompute of '{ATTRIBUTE_NAME}' on branch '{BRANCH}': "
         f"transform '{TRANSFORM_NAME}' is not in the database, so nothing can compute the attribute yet"
     ]
+
+
+async def test_a_widened_batch_skips_an_attribute_that_names_no_transform(
+    schema_branch_with_python_attributes: None,
+    client_without_the_transform: _RecordingClient,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The fan-out waits this state out, and a batch it submitted has to answer the same way."""
+    with caplog.at_level(logging.WARNING, logger=LOGGER_NAME):
+        await _batch(coalesced=True, widened=True, attribute_name=UNCONFIGURED_ATTRIBUTE)
+
+    assert client_without_the_transform.fetched_branches == []
+    assert _warnings(caplog) == [
+        f"Skipping the widened recompute of '{UNCONFIGURED_ATTRIBUTE}' on branch '{BRANCH}': "
+        f"no transform is configured for it, so nothing can compute the attribute yet"
+    ]
+
+
+async def test_a_batch_that_was_not_widened_raises_when_no_transform_is_configured(
+    schema_branch_with_python_attributes: None,
+    client_without_the_transform: _RecordingClient,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match=rf"^No transform configured for computed attribute '{UNCONFIGURED_ATTRIBUTE}'$",
+    ):
+        await _batch(coalesced=True, widened=False, attribute_name=UNCONFIGURED_ATTRIBUTE)
 
 
 @pytest.mark.parametrize(

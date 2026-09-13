@@ -527,11 +527,10 @@ class TestCoalescedRecomputePythonMissingTransform(CoalescedPythonTestBase):
             coalesced=True,
             widened=True,
         )
-        fanned_out = [
-            object_id
-            for call in workflow_recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM)
-            for object_id in call["parameters"]["object_ids"]
-        ]
+        chunk_calls = workflow_recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM)
+        # Every chunk inherits the flag, which is what covers a transform deleted after the widening.
+        assert {call["parameters"]["widened"] for call in chunk_calls} == {True}
+        fanned_out = [object_id for call in chunk_calls for object_id in call["parameters"]["object_ids"]]
         assert sorted(fanned_out) == sorted(missing_transform_dataset.car_ids)
 
 
