@@ -1,0 +1,3 @@
+A live change to a node that feeds a Python transform computed attribute no longer starts duplicated recompute tasks. A change to a node the transform query reads now recomputes only the attributes that query feeds, on the nodes that read the changed node through it, instead of every Python computed attribute of every kind subscribed to any query group that holds the changed node. A change to a node of the attribute's own kind now starts one recompute instead of two, and a transform feeding several attributes builds one set of automations instead of one set per attribute. The stored values are the same.
+
+The automations that carry this are rebuilt on the next reconcile, which `infrahub upgrade` performs, so the previous behavior continues until then.

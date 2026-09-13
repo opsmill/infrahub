@@ -123,6 +123,10 @@ Besides the transform-lifecycle triggers, two families of data-path automations 
 
 The flow behind the second family resolves its targets from query-group membership: every node subscribed to a group that holds the changed node as a member. It is told which query and which transform its automation was built for, so it keeps only the groups of that query and submits only the attributes that transform feeds. A node reported once per matching group is submitted once. Both parameters are optional, and either one missing widens the dispatch back to every Python attribute of every subscriber kind: an automation the schema cannot explain has to recompute rather than narrow to nothing. The query is identified by its id, so renaming it cannot make a stored automation reject every group, and a group whose query cannot be read is kept for the same reason.
 
+The owner family matches node creations. A created node is a member of no query group yet, so nothing else can start its first computation, while an updated node is reached through the group it subscribed to when it last computed. A transform query that reads no field of the owner kind is the exception: no query automation exists for a kind with nothing to filter on, so the owner family keeps matching updates there.
+
+One node stays out of reach of the update path. A node whose first computation failed never subscribed to the query group, so an update to it starts no recompute until something else refreshes the attribute: a schema change, a transform edit, or a merge through the coalesced pass. The reader path has the same gap for the same reason, and the coalesced pass closes it for a merge by treating an updated node of the target kind as its own target.
+
 ### Batch Execution
 
 `process_transform` processes its node ids as one batch per attribute, not one task per node:
