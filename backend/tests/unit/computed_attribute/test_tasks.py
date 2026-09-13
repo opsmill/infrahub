@@ -389,7 +389,6 @@ async def test_a_batch_that_was_not_widened_raises_when_no_transform_is_configur
 
 async def test_a_widened_fan_out_confirms_a_skip_against_a_converged_schema(
     restored_registry_schema: None,
-    recorded_submissions: WorkflowRecorder,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
