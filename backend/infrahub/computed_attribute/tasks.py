@@ -168,7 +168,8 @@ async def _fetch_transform(*, client: InfrahubClient, transform_id: str, branch_
     """The Python transform a computed attribute names, or ``None`` when the branch holds none.
 
     Raises:
-        ValueError: if the transform is in the database but cannot be run.
+        ValueError: if the transform is in the database but cannot be run, or if the response does
+            not have the shape the query asked for.
 
     """
     transform_query = ComputedAttributeTransformQuery(transform_id=transform_id)
@@ -211,14 +212,15 @@ async def _widened_attribute_is_computable(
     them then.
 
     Raises:
-        ValueError: if the transform is in the database but cannot be run, which is a fault on
-            every path rather than a state to wait out.
+        ValueError: if the transform is in the database but cannot be run, or if the response does
+            not have the shape the query asked for. Both are faults on every path rather than
+            states to wait out.
 
     """
     attribute = schema_branch.computed_attributes.get_python_transform_attribute(
         computed_attribute_kind, computed_attribute_name
     )
-    # A worker whose registry does not carry the branch reports no attribute for any kind.
+    # A registry that does not name the attribute yet decides nothing, so the run goes ahead.
     if attribute is None:
         return True
     if not attribute.transform:
@@ -265,12 +267,14 @@ async def process_transform(
     and drives the next level through the bounded chain.
 
     ``widened`` marks a batch the resolution could not narrow, which is the only batch allowed to
-    treat an absent transform as a state to wait out. A batch of resolved ids came from a
-    resolution that found the transform, so the same state is a fault there.
+    wait out the two states nothing can compute: no transform configured, and a transform the
+    branch does not hold. A batch of resolved ids came from a resolution that found the transform,
+    so either state is a fault there.
 
     Raises:
-        ValueError: if a computed attribute has no transform configured, if the transform cannot be
-            run, or if it is absent on anything but a widened batch.
+        ValueError: on anything but a widened batch, if the attribute has no transform configured
+            or its transform is absent; on every batch, if the transform cannot be run or the
+            response does not have the shape the query asked for.
 
     """
     log = get_run_logger()
@@ -290,7 +294,15 @@ async def process_transform(
         return
 
     if not transform_attribute.transform:
-        raise ValueError(f"No transform configured for computed attribute '{computed_attribute_name}'")
+        if not widened:
+            raise ValueError(f"No transform configured for computed attribute '{computed_attribute_name}'")
+        _warn_widened_skip(
+            log=log,
+            branch_name=branch_name,
+            computed_attribute_name=computed_attribute_name,
+            reason="no transform is configured for it",
+        )
+        return
 
     transform = await _fetch_transform(
         client=client, transform_id=transform_attribute.transform, branch_name=branch_name
@@ -379,7 +391,8 @@ async def trigger_update_python_computed_attributes(
     holds: a worker that does not carry the branch reports no attribute and the run goes ahead.
 
     Raises:
-        ValueError: if a widened run finds a transform it cannot run.
+        ValueError: if a widened run finds a transform it cannot run, or one whose response does
+            not have the shape the query asked for.
 
     """
     log = get_run_logger()
@@ -388,8 +401,7 @@ async def trigger_update_python_computed_attributes(
     client = get_client()
     client.request_context = context.to_request_context()
 
-    # Weighed before the kind is listed, so a widened run pays no whole-kind read to submit
-    # chunks that cannot compute anything.
+    # Weighed before the kind is listed, so a run that can compute nothing pays no whole-kind read.
     if widened and not await _widened_attribute_is_computable(
         log=log,
         client=client,
