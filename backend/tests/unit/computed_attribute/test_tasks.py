@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, Generator
+from typing import Any, AsyncIterator, Generator
 
 import pytest
 
@@ -27,30 +28,46 @@ BRANCH = "main"
 CAR_KIND = "TestingCar"
 ATTRIBUTE_NAME = "description"
 TRANSFORM_NAME = "transform_a"
+STALE_TRANSFORM_NAME = "transform_the_branch_renamed"
 
 UNCONFIGURED_ATTRIBUTE = "no_transform_named"
 
 # The shape the API answers with when no transform matches the filter.
 NO_TRANSFORM_FOUND: dict[str, Any] = {"CoreTransformPython": {"edges": []}}
 
-# A transform in the database that lost its repository peer: present, and not runnable.
-TRANSFORM_WITHOUT_A_REPOSITORY: dict[str, Any] = {
-    "CoreTransformPython": {
-        "edges": [
-            {
-                "node": {
-                    "id": "txfm-001",
-                    "file_path": {"value": "transforms/t.py"},
-                    "class_name": {"value": "T"},
-                    "timeout": {"value": 60},
-                    "convert_query_response": {"value": False},
-                    "repository": {"node": None},
-                    "query": {"node": {"id": "query-001", "name": {"value": "q"}}},
+
+def _transform_payload(repository: dict[str, Any] | None) -> dict[str, Any]:
+    """One transform edge, with or without the repository peer a run needs."""
+    return {
+        "CoreTransformPython": {
+            "edges": [
+                {
+                    "node": {
+                        "id": "txfm-001",
+                        "file_path": {"value": "transforms/t.py"},
+                        "class_name": {"value": "T"},
+                        "timeout": {"value": 60},
+                        "convert_query_response": {"value": False},
+                        "repository": {"node": repository},
+                        "query": {"node": {"id": "query-001", "name": {"value": "q"}}},
+                    }
                 }
-            }
-        ]
+            ]
+        }
     }
-}
+
+
+USABLE_TRANSFORM = _transform_payload(
+    {
+        "id": "repo-001",
+        "__typename": "CoreReadOnlyRepository",
+        "name": {"value": "repo01"},
+        "commit": {"value": "commit01"},
+    }
+)
+
+# In the database and not runnable: the repository peer is gone.
+TRANSFORM_WITHOUT_A_REPOSITORY = _transform_payload(None)
 
 UNUSABLE_TRANSFORM_ERROR = (
     r"^Transform 'txfm-001' is in the database without the repository, query or file details a run needs$"
@@ -96,15 +113,18 @@ def test_partition_transform_results_handles_empty() -> None:
 class _RecordingClient:
     """An SDK client stand-in that answers the transform fetch and records every kind it lists."""
 
-    def __init__(self, transform_response: dict[str, Any]) -> None:
+    def __init__(
+        self, transform_response: dict[str, Any], by_transform: dict[str, dict[str, Any]] | None = None
+    ) -> None:
         self._transform_response = transform_response
+        self._by_transform = by_transform or {}
         self.request_context: Any = None
         self.fetched_branches: list[str] = []
         self.listed_kinds: list[str] = []
 
     async def execute_graphql(self, query: str, variables: dict[str, Any], branch_name: str) -> dict[str, Any]:
         self.fetched_branches.append(branch_name)
-        return self._transform_response
+        return self._by_transform.get(variables.get("transform_name", ""), self._transform_response)
 
     async def all(self, kind: str, branch: str) -> list[object]:
         self.listed_kinds.append(kind)
@@ -130,34 +150,41 @@ def _python_attribute(name: str, transform: str | None) -> AttributeSchema:
 
 
 @pytest.fixture
-def schema_branch_with_python_attributes() -> Generator[None, None, None]:
-    """Register a schema branch holding one attribute with a transform and one without.
-
-    The registry schema is swapped for a fresh manager so the test never leaks state.
-    """
+def restored_registry_schema() -> Generator[None, None, None]:
+    """Let a test swap the registry schema freely and put the original back."""
     original = registry._schema
+    yield
+    registry._schema = original
+
+
+def _install_schema_branch(*attributes: AttributeSchema) -> None:
+    """Point the registry at a branch whose car carries these Python attributes."""
     manager = SchemaManager()
     branch = SchemaBranch(cache={}, name=BRANCH)
     car = NodeSchema(name="Car", namespace="Testing")
-    branch.computed_attributes.add_python_attribute(
-        node=car, attribute=_python_attribute(ATTRIBUTE_NAME, TRANSFORM_NAME)
-    )
-    # The schema validator only rejects a mandatory Python attribute, so an unset transform reaches
-    # the widened set the same way a named one does.
-    branch.computed_attributes.add_python_attribute(node=car, attribute=_python_attribute(UNCONFIGURED_ATTRIBUTE, None))
+    for attribute in attributes:
+        branch.computed_attributes.add_python_attribute(node=car, attribute=attribute)
     manager.set_schema_branch(name=BRANCH, schema=branch)
     registry.schema = manager
-    yield
-    registry._schema = original
 
 
 @pytest.fixture
-def schema_branch_without_the_attribute() -> Generator[None, None, None]:
+def schema_branch_with_python_attributes(restored_registry_schema: None) -> None:
+    """One attribute with a transform and one without.
+
+    The schema validator only rejects a mandatory Python attribute, so an unset transform reaches
+    the widened set the same way a named one does.
+    """
+    _install_schema_branch(
+        _python_attribute(ATTRIBUTE_NAME, TRANSFORM_NAME),
+        _python_attribute(UNCONFIGURED_ATTRIBUTE, None),
+    )
+
+
+@pytest.fixture
+def schema_branch_without_the_attribute(restored_registry_schema: None) -> None:
     """A registry that does not carry the branch, as a worker behind on the schema has."""
-    original = registry._schema
     registry.schema = SchemaManager()
-    yield
-    registry._schema = original
 
 
 @pytest.fixture
@@ -182,15 +209,33 @@ def recorded_submissions(monkeypatch: pytest.MonkeyPatch) -> WorkflowRecorder:
     return recorder
 
 
+class _NullDatabase:
+    """Stands in for the session the converge wait is handed; no test here reads it."""
+
+    @asynccontextmanager
+    async def start_session(self) -> AsyncIterator[None]:
+        yield None
+
+
 @pytest.fixture(autouse=True)
 def _flow_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Stand in for the two Prefect runtime calls the flows make outside their own logic."""
+    """Stand in for the runtime calls the flows make outside their own logic.
+
+    The converge wait is a no-op by default, so a skip decided on the registry the test installed
+    is re-decided on that same registry. A test that cares about convergence replaces it.
+    """
 
     async def _noop(**_kwargs: object) -> None:
         return None
 
+    async def _database() -> _NullDatabase:
+        return _NullDatabase()
+
     monkeypatch.setattr(tasks, "get_run_logger", lambda: logging.getLogger(LOGGER_NAME))
     monkeypatch.setattr(tasks, "add_tags", _noop)
+    monkeypatch.setattr(tasks, "get_database", _database)
+    monkeypatch.setattr(tasks, "get_component", _noop)
+    monkeypatch.setattr(tasks, "wait_for_schema_to_converge", _noop)
 
 
 def _context() -> EventContext:
@@ -340,6 +385,52 @@ async def test_a_batch_that_was_not_widened_raises_when_no_transform_is_configur
         match=rf"^No transform configured for computed attribute '{UNCONFIGURED_ATTRIBUTE}'$",
     ):
         await _batch(coalesced=True, widened=False, attribute_name=UNCONFIGURED_ATTRIBUTE)
+
+
+async def test_a_widened_fan_out_confirms_a_skip_against_a_converged_schema(
+    restored_registry_schema: None,
+    recorded_submissions: WorkflowRecorder,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """One worker decides for the whole kind, so a stale schema must not be what skips it."""
+    client = _RecordingClient(NO_TRANSFORM_FOUND, by_transform={TRANSFORM_NAME: USABLE_TRANSFORM})
+    monkeypatch.setattr(tasks, "get_client", lambda: client)
+    _install_schema_branch(_python_attribute(ATTRIBUTE_NAME, STALE_TRANSFORM_NAME))
+
+    async def _converge(**_kwargs: object) -> None:
+        _install_schema_branch(_python_attribute(ATTRIBUTE_NAME, TRANSFORM_NAME))
+
+    monkeypatch.setattr(tasks, "wait_for_schema_to_converge", _converge)
+
+    with caplog.at_level(logging.WARNING, logger=LOGGER_NAME):
+        await _fan_out(widened=True)
+
+    assert _warnings(caplog) == []
+    assert client.listed_kinds == [CAR_KIND]
+
+
+async def test_a_widened_batch_with_a_runnable_transform_still_runs(
+    schema_branch_with_python_attributes: None,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """`widened` licenses two skips and nothing else, so a runnable transform reaches the work."""
+
+    class _ReachedTheWorkError(Exception):
+        pass
+
+    async def _reached(**_kwargs: object) -> None:
+        raise _ReachedTheWorkError
+
+    client = _RecordingClient(USABLE_TRANSFORM)
+    monkeypatch.setattr(tasks, "get_client", lambda: client)
+    monkeypatch.setattr(tasks, "build_bulk_recompute_dispatcher", _reached)
+
+    with caplog.at_level(logging.WARNING, logger=LOGGER_NAME), pytest.raises(_ReachedTheWorkError):
+        await _batch(coalesced=True, widened=True)
+
+    assert _warnings(caplog) == []
 
 
 @pytest.mark.parametrize(

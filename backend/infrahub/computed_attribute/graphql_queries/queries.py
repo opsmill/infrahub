@@ -61,9 +61,9 @@ class ComputedAttributeTransformQuery(BaseModel):
         a caller weighing whether anything can compute a value never reads a broken one as missing.
 
         Raises:
-            ValueError: if the response does not have the shape the query asked for, or if the
+            ValueError: if the response does not have the shape the query asked for, if the
                 transform is in the database without the repository, query or file details a run
-                needs.
+                needs, or if its repository is of a kind a transform cannot run from.
 
         """
         try:
