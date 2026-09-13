@@ -181,6 +181,13 @@ async def _fetch_transform(*, client: InfrahubClient, transform_id: str, branch_
     return transform_query.parse_response(response=transform_response)
 
 
+_NO_TRANSFORM_CONFIGURED = "no transform is configured for it"
+
+
+def _transform_absent(transform_id: str) -> str:
+    return f"transform '{transform_id}' is not in the database"
+
+
 def _warn_widened_skip(
     *,
     log: Logger | LoggerAdapter[Logger],
@@ -195,21 +202,22 @@ def _warn_widened_skip(
     )
 
 
-async def _widened_attribute_is_computable(
+async def _widened_skip_reason(
     *,
-    log: Logger | LoggerAdapter[Logger],
     client: InfrahubClient,
     schema_branch: SchemaBranch,
     branch_name: str,
     computed_attribute_kind: str,
     computed_attribute_name: str,
-) -> bool:
-    """Whether a widened run can produce a value, warning when it cannot.
+) -> str | None:
+    """Why a widened run can produce no value, or ``None`` when it can.
 
-    A widened set is built from the schema alone, so it names attributes the database has nothing
-    to run for: one with no transform configured, and one whose transform is not in the branch.
-    Both hold until the schema or the repository changes, and the recompute that follows covers
-    them then.
+    A whole-kind target names an attribute the database may have nothing to run for: one with no
+    transform configured, and one whose transform is not in the branch. Both hold until the schema
+    or the repository changes, and the recompute that follows covers them then. Every whole-kind
+    target reaches this, the ones a failed resolution rebuilt from the schema and the ones a
+    successful one widened on its own. The verdict is only as good as the schema branch it is
+    given, so a caller acting on a reason has to be sure of it.
 
     Raises:
         ValueError: if the transform is in the database but cannot be run, or if the response does
@@ -222,24 +230,12 @@ async def _widened_attribute_is_computable(
     )
     # A registry that does not name the attribute yet decides nothing, so the run goes ahead.
     if attribute is None:
-        return True
+        return None
     if not attribute.transform:
-        _warn_widened_skip(
-            log=log,
-            branch_name=branch_name,
-            computed_attribute_name=computed_attribute_name,
-            reason="no transform is configured for it",
-        )
-        return False
+        return _NO_TRANSFORM_CONFIGURED
     if await _fetch_transform(client=client, transform_id=attribute.transform, branch_name=branch_name):
-        return True
-    _warn_widened_skip(
-        log=log,
-        branch_name=branch_name,
-        computed_attribute_name=computed_attribute_name,
-        reason=f"transform '{attribute.transform}' is not in the database",
-    )
-    return False
+        return None
+    return _transform_absent(attribute.transform)
 
 
 @flow(
@@ -300,7 +296,7 @@ async def process_transform(
             log=log,
             branch_name=branch_name,
             computed_attribute_name=computed_attribute_name,
-            reason="no transform is configured for it",
+            reason=_NO_TRANSFORM_CONFIGURED,
         )
         return
 
@@ -318,7 +314,7 @@ async def process_transform(
             log=log,
             branch_name=branch_name,
             computed_attribute_name=computed_attribute_name,
-            reason=f"transform '{transform_attribute.transform}' is not in the database",
+            reason=_transform_absent(transform_attribute.transform),
         )
         return
 
@@ -387,8 +383,9 @@ async def trigger_update_python_computed_attributes(
     """Recompute one Python computed attribute over every node of its kind.
 
     ``widened`` marks a run the resolution could not narrow. Only that run weighs whether anything
-    can compute the attribute before listing the kind, and it trusts the schema branch the worker
-    holds: a worker that does not carry the branch reports no attribute and the run goes ahead.
+    can compute the attribute before listing the kind. That verdict covers the whole kind and no
+    chunk revisits it, so a skip is confirmed against a converged schema before it is taken; a
+    worker that does not name the attribute at all reports nothing and the run goes ahead.
 
     Raises:
         ValueError: if a widened run finds a transform it cannot run, or one whose response does
@@ -401,16 +398,34 @@ async def trigger_update_python_computed_attributes(
     client = get_client()
     client.request_context = context.to_request_context()
 
-    # Weighed before the kind is listed, so a run that can compute nothing pays no whole-kind read.
-    if widened and not await _widened_attribute_is_computable(
-        log=log,
-        client=client,
-        schema_branch=registry.schema.get_schema_branch(name=branch_name),
-        branch_name=branch_name,
-        computed_attribute_kind=computed_attribute_kind,
-        computed_attribute_name=computed_attribute_name,
-    ):
-        return
+    if widened:
+
+        async def skip_reason() -> str | None:
+            return await _widened_skip_reason(
+                client=client,
+                schema_branch=registry.schema.get_schema_branch(name=branch_name),
+                branch_name=branch_name,
+                computed_attribute_kind=computed_attribute_kind,
+                computed_attribute_name=computed_attribute_name,
+            )
+
+        reason = await skip_reason()
+        if reason:
+            # Only the skip path waits, and it was about to save a whole-kind read anyway.
+            database = await get_database()
+            async with database.start_session() as db:
+                await wait_for_schema_to_converge(
+                    branch_name=branch_name, component=await get_component(), db=db, log=log
+                )
+            reason = await skip_reason()
+        if reason:
+            _warn_widened_skip(
+                log=log,
+                branch_name=branch_name,
+                computed_attribute_name=computed_attribute_name,
+                reason=reason,
+            )
+            return
 
     nodes = await client.all(kind=computed_attribute_kind, branch=branch_name)
     object_ids = [node.id for node in nodes]
