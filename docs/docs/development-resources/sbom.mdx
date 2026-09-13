@@ -47,6 +47,8 @@ export IDENTITY="^https://github\.com/opsmill/infrahub-private/\.github/workflow
 
 Use the exact image reference you deploy. Both the signature and the attestations are attached to the image digest, so what you verify matches the version you run.
 
+These patterns cover release images, which are built from `infrahub-v` and `infrahub-enterprise-v` tags. Images published from a branch, such as `develop` or a `dev-` tag, are signed by the same workflow at a branch ref instead. To verify one of those, replace the `@refs/tags/` portion of the pattern with the branch ref it was built from. A failed verification reports the identity it found, which tells you the value to use.
+
 ## Verifying the image signature
 
 `cosign verify` confirms that the image was built and signed by an OpsMill release workflow. Run it before you retrieve the SBOM.
@@ -68,7 +70,7 @@ The following checks were performed on each of these signatures:
   - The code-signing certificate was verified using trusted certificate authority certificates
 ```
 
-It then prints the signed payloads as JSON. Entries with the types `https://spdx.dev/Document` and `https://cyclonedx.org/bom` are the SBOM attestations covered in the next section: cosign v3 returns them next to the image signature.
+It then prints the signed payloads as JSON. With cosign v3 and no additional flags, those payloads are the SBOM attestations, listed by the types `https://spdx.dev/Document` and `https://cyclonedx.org/bom`. The command confirms the signature, the signing identity and the transparency-log entry, which is what the checks above report. It does not return the SBOM documents themselves. Use `cosign verify-attestation` below to retrieve those.
 
 If the identity does not match, verification fails with `no matching CertificateIdentity found`, and the error reports both the pattern it expected and the identity it found. Each pattern names one repository and one tag prefix, so the community pattern rejects an enterprise image and the enterprise pattern rejects a community one.
 
