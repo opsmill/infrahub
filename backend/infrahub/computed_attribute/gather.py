@@ -144,16 +144,26 @@ async def gather_trigger_computed_attribute_jinja2(
 def _branch_scopes(branches: dict[str, PythonTransformComputedAttribute]) -> list[tuple[str, list[str]]]:
     """Which branch each automation is built for, and the branches it must not answer for.
 
-    A branch pinned to a repository commit of its own owns an automation; the default-branch one
-    covers every other branch, including the ones created after this gather.
+    A branch owns its automations when it is pinned to a repository commit of its own, or when its
+    schema differs from the default one. Both change what the transform query resolves to: the
+    commit changes the query text, and the schema changes what that text reads, since a generic
+    expands to the member kinds the branch declares. An automation built from the default branch
+    would carry the wrong read set for such a branch. The default-branch automation covers every
+    other branch, including the ones created after this gather, and excludes the ones that own
+    theirs.
+
+    Without the default branch in the dict, nothing declares the attribute there, so every branch
+    that does owns its automations and none of them excludes anything.
     """
-    if registry.default_branch in branches:
-        commit_main = branches[registry.default_branch].repository_commit
-        branches_with_diff_from_main = [
-            branch_name for branch_name, item in branches.items() if item.repository_commit != commit_main
-        ]
-    else:
+    if registry.default_branch not in branches:
         return [(branch_name, []) for branch_name in branches]
+
+    commit_main = branches[registry.default_branch].repository_commit
+    branches_with_diff_from_main = [
+        branch_name
+        for branch_name, item in branches.items()
+        if item.repository_commit != commit_main or not item.default_schema
+    ]
 
     scopes: list[tuple[str, list[str]]] = [(branch_name, []) for branch_name in branches_with_diff_from_main]
     scopes.append((registry.default_branch, branches_with_diff_from_main))
