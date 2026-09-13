@@ -303,10 +303,12 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         live_only: bool,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
-        """One definition per read kind of the transform query, whatever attributes it feeds.
+        """Build the definition that answers a change to ``kind`` for this transform.
 
-        The definition is keyed on the transform and not on one attribute: the attributes fed by
-        one transform share its query, so they read the same kinds and the same fields of them.
+        The definition is keyed on the transform and not on one attribute: within one branch the
+        attributes a transform feeds share its query, so they read the same kinds and the same
+        fields of them. Another branch resolves that query against its own schema and owns its
+        own definitions.
         """
         # Only matching on node updated events, before nodes are created they won't be a member of the GraphQL query
         # group regardless so it doesn't make sense to trigger the query on node creation. For the initial object

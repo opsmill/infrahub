@@ -141,6 +141,35 @@ async def _setup_person_transform(
     await default_branch.save(db=db)
 
 
+async def _create_car_owner_transform(db: InfrahubDatabase, branch: Branch, repository: Node) -> None:
+    """A transform whose query reads a field of TestCar and a field of TestPerson."""
+    owner_query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY, branch=branch)
+    await owner_query.new(
+        db=db,
+        name="query_car_owner",
+        query="""
+        query CarOwner($id: ID!) {
+            TestCar(ids: [$id]) {
+                edges { node { name { value } owner { node { name { value } } } } }
+            }
+        }
+        """,
+        models=["TestCar", "TestPerson"],
+    )
+    await owner_query.save(db=db)
+
+    owner_transform = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON, branch=branch)
+    await owner_transform.new(
+        db=db,
+        name="transform_car_owner",
+        file_path="transform.py",
+        class_name="Transform",
+        query=owner_query,
+        repository=repository,
+    )
+    await owner_transform.save(db=db)
+
+
 def _triggers_by_kind(
     triggers: list[ComputedAttrPythonQueryTriggerDefinition],
 ) -> dict[str, ComputedAttrPythonQueryTriggerDefinition]:
@@ -229,31 +258,7 @@ async def test_two_attributes_sharing_a_transform_share_its_query_automations(
     transform reading two kinds get two query automations and not one pair each. The flow behind
     them resolves the attributes itself, so a second copy would only run it twice.
     """
-    owner_query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY, branch=default_branch)
-    await owner_query.new(
-        db=db,
-        name="query_car_owner",
-        query="""
-        query CarOwner($id: ID!) {
-            TestCar(ids: [$id]) {
-                edges { node { name { value } owner { node { name { value } } } } }
-            }
-        }
-        """,
-        models=["TestCar", "TestPerson"],
-    )
-    await owner_query.save(db=db)
-
-    owner_transform = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON, branch=default_branch)
-    await owner_transform.new(
-        db=db,
-        name="transform_car_owner",
-        file_path="transform.py",
-        class_name="Transform",
-        query=owner_query,
-        repository=repo01,
-    )
-    await owner_transform.save(db=db)
+    await _create_car_owner_transform(db=db, branch=default_branch, repository=repo01)
 
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get_node("TestCar")
@@ -282,10 +287,107 @@ async def test_two_attributes_sharing_a_transform_share_its_query_automations(
         "TestCar_computed_desc_python",
         "TestCar_computed_desc_python_second",
     }
+    # Counted as well as compared: two definitions sharing one name collapse into one entry of
+    # the set, and the reconcile would create both and then never delete the leftover.
+    assert len(trigger_queries) == 2
     assert {trigger.generate_name() for trigger in trigger_queries} == {
         "computed_attr_python_query::main::transform::transform_car_owner::kind::TestCar",
         "computed_attr_python_query::main::transform::transform_car_owner::kind::TestPerson",
     }
+
+
+@dataclass
+class BranchScopeCase:
+    """What makes a branch resolve the transform query differently from the default branch."""
+
+    name: str
+    pin_branch_commit: bool
+
+
+BRANCH_SCOPE_CASES = [
+    BranchScopeCase(name="the_branch_is_pinned_to_its_own_commit", pin_branch_commit=True),
+    BranchScopeCase(name="the_branch_only_alters_the_schema", pin_branch_commit=False),
+]
+
+
+@pytest.mark.parametrize("case", BRANCH_SCOPE_CASES, ids=lambda case: case.name)
+async def test_a_branch_binding_another_attribute_to_a_transform_owns_its_automations(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_computed_attr: None,
+    repo01: Node,
+    case: BranchScopeCase,
+) -> None:
+    """A branch that binds another attribute to a transform still needs its own query automations.
+
+    They are keyed on the transform, so the branch shares a key with the default branch instead of
+    bringing one of its own. It resolves that query against its own schema, where a generic can
+    expand to other member kinds, so an automation built from the default branch would carry a
+    read set that does not describe it.
+    """
+    await _create_car_owner_transform(db=db, branch=default_branch, repository=repo01)
+
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    car_schema = schema_branch.get_node("TestCar")
+    car_schema.get_attribute(name="computed_desc_python").computed_attribute.transform = "transform_car_owner"
+    schema_branch.set(name="TestCar", schema=car_schema)
+    registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
+    default_branch.update_schema_hash()
+    schema_branch.process()
+    await default_branch.save(db=db)
+
+    branch = await create_branch(branch_name="branch_shares_transform", db=db)
+
+    if case.pin_branch_commit:
+        repositories = await NodeManager.query(
+            db=db,
+            schema=InfrahubKind.READONLYREPOSITORY,
+            branch=branch,
+            filters={"name__value": "repo02"},
+        )
+        repositories[0].commit.value = "commit-branch"
+        await repositories[0].save(db=db)
+
+    branch_schema = registry.schema.get_schema_branch(name=branch.name)
+    person_schema = branch_schema.get_node("TestPerson")
+    person_schema.attributes.append(
+        AttributeSchema(
+            name="computed_from_car",
+            kind="Text",
+            read_only=True,
+            optional=True,
+            computed_attribute=ComputedAttribute(
+                kind=ComputedAttributeKind.TRANSFORM_PYTHON,
+                transform="transform_car_owner",
+            ),
+        )
+    )
+    branch_schema.set(name="TestPerson", schema=person_schema)
+    registry.schema.set_schema_branch(name=branch.name, schema=branch_schema)
+    branch.update_schema_hash()
+    branch_schema.process()
+    await branch.save(db=db)
+
+    _, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+
+    assert len(trigger_queries) == 4
+    assert {(trigger.branch, trigger.trigger.match["infrahub.node.kind"]) for trigger in trigger_queries} == {
+        ("main", "TestCar"),
+        ("main", "TestPerson"),
+        (branch.name, "TestCar"),
+        (branch.name, "TestPerson"),
+    }
+
+    # One scope answers each branch: the default-branch automation has to exclude the branch that
+    # owns one, or a single edit would start the flow twice.
+    triggers_by_scope = {
+        trigger.branch: trigger
+        for trigger in trigger_queries
+        if trigger.trigger.match["infrahub.node.kind"] == "TestCar"
+    }
+    assert branches_covered_by(
+        triggers_by_scope=triggers_by_scope, kind="TestCar", field="name", branch_names=["main", branch.name]
+    ) == {"main": ["main"], branch.name: [branch.name]}
 
 
 async def test_gather_trigger_computed_attribute_python_only_on_branch(
