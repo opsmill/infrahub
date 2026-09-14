@@ -7,6 +7,7 @@ from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.query.diff import DiffNodeNodesQuery
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -437,3 +438,31 @@ async def test_create_aware_and_agnostic_nodes_on_branch(
     rel_diff = node_diff.relationships.pop()
     assert rel_diff.name == "cars"
     assert rel_diff.action is DiffAction.UPDATED
+
+
+async def test_node_nodes_query_lists_nodes_added_or_removed_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, person_john_main: Node
+) -> None:
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+    new_person = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await new_person.new(db=db, name="Stokely")
+    await new_person.save(db=db)
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await car_branch.delete(db=db)
+    # an attribute update on the branch is a field-level change, not a node-level one
+    john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+    john_branch.name.value = "Johnny"
+    await john_branch.save(db=db)
+
+    query = await DiffNodeNodesQuery.init(
+        db=db,
+        branch=branch,
+        base_branch=default_branch,
+        diff_branch_from_time=from_time,
+        diff_from=from_time,
+        diff_to=Timestamp(),
+    )
+    await query.execute(db=db)
+
+    assert set(query.get_node_uuids()) == {new_person.id, car_accord_main.id}
