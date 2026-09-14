@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar
 
 from opentelemetry import trace
 
 from infrahub import config
+from infrahub.core.constants.schema import DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME
 from infrahub.log import get_logger
 from infrahub.utilities.chunks import chunked
 from infrahub.utils import log_exception_guard
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable, Iterable
+    from collections.abc import Awaitable, Callable, Iterable, Mapping
 
     from infrahub.core.branch import Branch
-    from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
@@ -41,10 +41,43 @@ relationship peer keeps its optional labels unset instead.
 """
 
 
-class NodeLoader(Protocol):
-    """Loads nodes by ID, letting the label reader read the graph without importing concrete implementations."""
+LABEL_FIELDS: dict[str, Any] = {DISPLAY_LABEL_ATTRIBUTE_NAME: None, HFID_ATTRIBUTE_NAME: None}
+"""The only node fields a label read needs: both labels are materialized as attributes on the node."""
 
-    async def __call__(self, *, db: InfrahubDatabase, ids: list[str], branch: Branch) -> dict[str, Node]: ...
+HFID_FIELDS: dict[str, Any] = {HFID_ATTRIBUTE_NAME: None}
+"""The only node field an HFID read needs."""
+
+
+class LabeledNode(Protocol):
+    """What the label reader needs from a loaded node: its two labels and whether each is stored."""
+
+    def display_label_needs_read(self) -> bool: ...
+
+    def hfid_needs_read(self) -> bool: ...
+
+    async def get_display_label(self, db: InfrahubDatabase) -> str: ...
+
+    async def get_hfid(self, db: InfrahubDatabase) -> list[str] | None: ...
+
+
+def _lacks_stored_labels(node: LabeledNode) -> bool:
+    return node.display_label_needs_read() or node.hfid_needs_read()
+
+
+def _lacks_stored_hfid(node: LabeledNode) -> bool:
+    return node.hfid_needs_read()
+
+
+class NodeLoader(Protocol):
+    """Loads nodes by ID, letting the label reader read the graph without importing concrete implementations.
+
+    ``fields`` restricts the attributes and relationships read from the graph, in the shape the node
+    manager accepts; ``None`` loads the whole node.
+    """
+
+    async def __call__(
+        self, *, db: InfrahubDatabase, ids: list[str], branch: Branch, fields: dict[str, Any] | None
+    ) -> Mapping[str, LabeledNode]: ...
 
 
 class NodeLabelReader(Protocol):
@@ -62,20 +95,32 @@ class DbNodeLabelReader:
     testable without one.
     """
 
-    def __init__(self, db: InfrahubDatabase, branch: Branch, node_loader: NodeLoader) -> None:
+    def __init__(self, db: InfrahubDatabase, branch: Branch, node_loader: NodeLoader, page_size: int) -> None:
         self._db = db
         self._branch = branch
         self._node_loader = node_loader
+        self._page_size = page_size
 
-    async def _load_nodes(self, node_ids: list[str]) -> dict[str, Node]:
-        """Load the nodes in query-size-limited pages so a large batch never issues one huge query."""
-        nodes: dict[str, Node] = {}
-        for page in chunked(node_ids, config.SETTINGS.database.query_size_limit):
-            nodes.update(await self._node_loader(db=self._db, ids=page, branch=self._branch))
+    async def _load_nodes(
+        self, node_ids: list[str], fields: dict[str, Any], lacks_stored_value: Callable[[LabeledNode], bool]
+    ) -> dict[str, LabeledNode]:
+        """Load the nodes in pages of at most ``page_size`` ids so a large batch never issues one huge query.
+
+        Only the requested label attributes are read, since the labels are materialized on the node
+        and the rest of its fields would be loaded to be discarded. A node whose label is not
+        materialized is reloaded whole, so the label can be computed from its fields as a full load
+        would.
+        """
+        nodes: dict[str, LabeledNode] = {}
+        for page in chunked(node_ids, self._page_size):
+            nodes.update(await self._node_loader(db=self._db, ids=page, branch=self._branch, fields=fields))
+        unmaterialized = [node_id for node_id, node in nodes.items() if lacks_stored_value(node)]
+        for page in chunked(unmaterialized, self._page_size):
+            nodes.update(await self._node_loader(db=self._db, ids=page, branch=self._branch, fields=None))
         return nodes
 
     async def load_labels(self, node_ids: list[str]) -> dict[str, NodeLabels]:
-        nodes = await self._load_nodes(node_ids)
+        nodes = await self._load_nodes(node_ids, fields=LABEL_FIELDS, lacks_stored_value=_lacks_stored_labels)
         return {
             node_id: NodeLabels(
                 display_label=await node.get_display_label(db=self._db),
@@ -85,7 +130,7 @@ class DbNodeLabelReader:
         }
 
     async def load_hfids(self, node_ids: list[str]) -> dict[str, list[str] | None]:
-        nodes = await self._load_nodes(node_ids)
+        nodes = await self._load_nodes(node_ids, fields=HFID_FIELDS, lacks_stored_value=_lacks_stored_hfid)
         return {node_id: await node.get_hfid(db=self._db) for node_id, node in nodes.items()}
 
 
@@ -126,4 +171,8 @@ class NodeLabelLoader:
 
 def node_label_loader(db: InfrahubDatabase, branch: Branch, node_loader: NodeLoader) -> NodeLabelLoader:
     """Build a NodeLabelLoader that reads labels from the database through the given node loader."""
-    return NodeLabelLoader(reader=DbNodeLabelReader(db=db, branch=branch, node_loader=node_loader))
+    return NodeLabelLoader(
+        reader=DbNodeLabelReader(
+            db=db, branch=branch, node_loader=node_loader, page_size=config.SETTINGS.database.query_size_limit
+        )
+    )
