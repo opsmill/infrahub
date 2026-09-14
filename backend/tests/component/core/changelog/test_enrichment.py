@@ -30,11 +30,13 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
+from infrahub.core.query.node import NodeListGetAttributeQuery, NodeListGetRelationshipsQuery
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
 
 # A relationship only ZzzItem declares, so pointing it at a ZzzOwner leaves that owner unchanged.
 _ONE_DIRECTIONAL_SCHEMA: dict[str, Any] = {
@@ -169,6 +171,27 @@ async def test_mutation_enriches_the_mutated_nodes_own_relationships(
     assert owner_rel.peer_id == person.id
     assert owner_rel.peer_display_label == await person.get_display_label(db=db)
     assert owner_rel.peer_hfid == await person.get_hfid(db=db)
+
+
+async def test_label_load_reads_only_the_two_label_attributes_and_no_relationship(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    animal_person_schema: SchemaBranch,
+) -> None:
+    """A label read returns the real labels while reading two attribute rows per node and no edge."""
+    person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+    labels = await node_label_loader(
+        db=counting_db, branch=default_branch, node_loader=NodeManager.get_many
+    ).load_labels([person.id, dog.id])
+
+    assert labels == {
+        person.id: NodeLabels(display_label=await person.get_display_label(db=db), hfid=await person.get_hfid(db=db)),
+        dog.id: NodeLabels(display_label=await dog.get_display_label(db=db), hfid=await dog.get_hfid(db=db)),
+    }
+    assert counting_db.rows_for(NodeListGetAttributeQuery.name) == 2 * len(labels)
+    assert counting_db.count_for(NodeListGetRelationshipsQuery.name) == 0
 
 
 async def test_mutation_enriches_secondary_peer_changelogs(
