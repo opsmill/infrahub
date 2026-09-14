@@ -102,6 +102,7 @@ a test that swaps in an adapter.
 - `dev/guidelines/backend/typing.md` - Typing — load when a checker flags your change, when narrowing a union or reviewing code that does, or when clearing a mypy/ty suppression
 - `dev/guidelines/backend/exceptions.md` - Exception handling — load when adding, changing or reviewing a `try`/`except`, or when ruff flags a blind except
 - `dev/guidelines/backend/asgi-middleware.md` - ASGI middleware — load when adding, changing or reviewing middleware in `server.py`
+- `dev/guidelines/backend/prefect-payloads.md` - Prefect payloads — load when adding, changing or reviewing a `@flow` or `@task`, or passing data across one (return values, task arguments, subflow parameters)
 - `dev/guidelines/backend/checklist.md` - feature checklist — walk when planning, implementing or reviewing a backend feature (migrations, query efficiency, permissions)
 - Use the `creating-changelog-entries` skill - Changelog fragment creation
 
