@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from opentelemetry import trace
 
@@ -41,7 +41,16 @@ class ChangelogHfidResolver:
         """
         with trace.get_tracer(__name__).start_as_current_span("changelog.resolve_hfids") as span:
             span.set_attribute("changelog.resolvable_node_count", len(resolvable_ids))
-            node_hfids = await self._label_loader.load_hfids(resolvable_ids)
+            # A node whose HFID the diff carries as a current value (created, or HFID changed) is
+            # read from the diff rather than loaded.
+            node_hfids: dict[str, list[str] | None] = {
+                changelog.node_id: hfid
+                for _, changelog in changelogs
+                if (hfid := _current_hfid_from_diff(changelog)) is not None
+            }
+            span.set_attribute("changelog.diff_hfid_count", len(node_hfids))
+            ids_to_load = [node_id for node_id in resolvable_ids if node_id not in node_hfids]
+            node_hfids.update(await self._label_loader.load_hfids(ids_to_load))
             for action, changelog in changelogs:
                 changelog.hfid = node_hfids.get(changelog.node_id)
                 if changelog.hfid is None and action == DiffAction.REMOVED:
@@ -87,11 +96,27 @@ class ChangelogHfidResolver:
 
 
 def _hfid_from_diff(node_changelog: NodeChangelog) -> list[str] | None:
-    """Recover a node's HFID from the human-friendly-id attribute the diff carries for it."""
+    """Recover a node's HFID from the human-friendly-id attribute the diff carries for it.
+
+    The current value is used when the diff has one, the previous value otherwise, so a removed
+    node's HFID is recovered from what it was before the removal.
+    """
     attribute = node_changelog.attributes.get(HFID_ATTRIBUTE_NAME)
     if attribute is None:
         return None
-    raw = attribute.value if attribute.value is not None else attribute.value_previous
+    return _parse_hfid(attribute.value if attribute.value is not None else attribute.value_previous)
+
+
+def _current_hfid_from_diff(node_changelog: NodeChangelog) -> list[str] | None:
+    """Return the node's HFID when the diff carries it as a current value, None otherwise."""
+    attribute = node_changelog.attributes.get(HFID_ATTRIBUTE_NAME)
+    if attribute is None:
+        return None
+    return _parse_hfid(attribute.value)
+
+
+def _parse_hfid(raw: Any) -> list[str] | None:
+    """Parse the stored form of an HFID attribute, a JSON-encoded list, or None when it is not one."""
     if not isinstance(raw, str):
         return None
     try:
