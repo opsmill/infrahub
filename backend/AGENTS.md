@@ -36,11 +36,14 @@ See `dev/guidelines/backend/python.md` for detailed coding standards — load it
 backend Python, including:
 
 - Async-first patterns
+- Imports
 - Pydantic models
 - Docstring conventions
 - Naming conventions
 - Query patterns
-- Type hints
+
+Typing lives in `dev/guidelines/backend/typing.md` — load it when a type checker flags your change,
+when narrowing a union or an optional, or when clearing a `pyproject.toml` suppression.
 
 Exception handling lives in `dev/guidelines/backend/exceptions.md` — load it when writing a
 `try`/`except` or suppressing ruff's blind-except rule (catch the narrowest types the call path
@@ -96,7 +99,8 @@ a test that swaps in an adapter.
 
 ### Guidelines
 
-- `dev/guidelines/backend/python.md` - Python coding standards — load before writing backend Python (typing, imports, docstrings)
+- `dev/guidelines/backend/python.md` - Python coding standards — load before writing backend Python (imports, data structures, docstrings)
+- `dev/guidelines/backend/typing.md` - Typing — load when a checker flags your change, when narrowing a union, or when clearing a mypy/ty suppression
 - `dev/guidelines/backend/exceptions.md` - Exception handling — load when adding or changing a `try`/`except`, or when ruff flags a blind except
 - `dev/guidelines/backend/asgi-middleware.md` - ASGI middleware — load when adding or changing middleware in `server.py`
 - `dev/guidelines/backend/checklist.md` - feature checklist — walk when planning or implementing a backend feature (migrations, query efficiency, permissions)
