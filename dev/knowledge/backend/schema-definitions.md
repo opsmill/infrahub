@@ -202,6 +202,8 @@ with one `detail` entry per violation: `loc` runs from `["body", "schemas", <ind
 the offending field, `input` is the value received there and `msg` is the reason on its own.
 The three map one-to-one onto the `loc`, `input` and `reason` of the SDK validator's error
 details, so `infrahubctl` and any other client can name the field without parsing text.
+The mapping requires the SDK error detail to expose `loc`, `input` and `reason`; bump the
+`python_sdk` pointer alongside any change to that shape.
 After changing a field's `visibility` (or adding a field), run
 `invoke backend.generate` and commit the regenerated SDK models alongside the backend
 change; CI fails if the generated artifact is stale.
