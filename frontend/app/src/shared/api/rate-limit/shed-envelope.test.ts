@@ -11,6 +11,8 @@ import {
   isShedResponse,
   SHED_MARKER_HEADER,
   SHED_MARKER_VALUE,
+  SHED_USER_MESSAGE,
+  withShedWording,
 } from "./shed-envelope";
 
 describe("isShedErrorItem", () => {
@@ -114,5 +116,57 @@ describe("isShedResponse", () => {
     // THEN
     expect(response.bodyUsed).toBe(false);
     await expect(response.json()).resolves.toEqual(SHED_BODY);
+  });
+});
+
+describe("withShedWording", () => {
+  it("replaces the server's wording on a shed envelope with the user-facing one", async () => {
+    // GIVEN
+    const response = shedResponse();
+
+    // WHEN
+    const reworded = await withShedWording(response);
+
+    // THEN
+    await expect(reworded.json()).resolves.toEqual({
+      ...SHED_BODY,
+      errors: [{ ...SHED_BODY.errors[0], message: SHED_USER_MESSAGE }],
+    });
+  });
+
+  it("keeps the shed's status and headers on the copy", async () => {
+    // GIVEN
+    const response = shedResponse({ "Retry-After": "3" });
+
+    // WHEN
+    const reworded = await withShedWording(response);
+
+    // THEN
+    expect(reworded.status).toBe(429);
+    expect(reworded.headers.get("Retry-After")).toBe("3");
+    expect(reworded.headers.get(SHED_MARKER_HEADER)).toBe(SHED_MARKER_VALUE);
+  });
+
+  it("leaves a 429 from something else in front of the API untouched", async () => {
+    // GIVEN
+    const response = foreignRateLimitResponse();
+
+    // WHEN
+    const result = await withShedWording(response);
+
+    // THEN
+    expect(result).toBe(response);
+    await expect(result.json()).resolves.toEqual({ detail: "slow down" });
+  });
+
+  it("leaves any other response untouched", async () => {
+    // GIVEN
+    const response = jsonResponse({ data: { ok: true } }, 200);
+
+    // WHEN
+    const result = await withShedWording(response);
+
+    // THEN
+    expect(result).toBe(response);
   });
 });

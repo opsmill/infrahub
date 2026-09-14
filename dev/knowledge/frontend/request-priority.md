@@ -101,7 +101,9 @@ recognized before the error catalogue (`shared/api/rate-limit/shed-envelope.ts`)
 envelope's `code` is an integer HTTP status rather than a catalogue identifier, so without that
 branch it collapses into `UNDEFINED_ERROR` and asks a developer to register a code that must never
 be registered. The toast and the thrown `error.message` both use the same user-facing wording
-instead of the server's.
+instead of the server's. On the REST side the envelope is reworded once, in the REST client's
+response middleware and in the raw fetch helper, so every consumer that surfaces the envelope's
+message shows that wording too; GraphiQL keeps the server's words.
 
 ## Backend note (CORS)
 

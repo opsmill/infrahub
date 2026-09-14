@@ -1,5 +1,6 @@
 import { DEFAULT_PRIORITY, PRIORITY_HEADER } from "@/shared/api/priority";
 import { retryingFetch } from "@/shared/api/rate-limit/retrying-fetch";
+import { withShedWording } from "@/shared/api/rate-limit/shed-envelope";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 import { QSP } from "@/shared/config/qsp";
 
@@ -56,7 +57,7 @@ export const fetchUrl = async (url: string, payload?: RequestInit) => {
       : {}),
   };
 
-  const rawResponse = await retryingFetch(url, newPayload);
+  const rawResponse = await withShedWording(await retryingFetch(url, newPayload));
 
   if (!rawResponse.ok) {
     // Try to surface the REST error envelope ({errors: [...]}) so callers
