@@ -28,6 +28,55 @@ def _node(display_label: str | None, human_friendly_id: list[str] | None) -> Nod
 
 
 @dataclass
+class LabelDependencyCase:
+    name: str
+    display_label: str | None
+    human_friendly_id: list[str] | None
+    expected: dict[str, bool]
+
+
+LABEL_DEPENDENCY_CASES = [
+    LabelDependencyCase(
+        name="display_label_reads_a_relationship",
+        display_label="{{ name__value }} {{ color__name__value }}",
+        human_friendly_id=["name__value"],
+        expected={"color": True, "brand": False, "tags": False},
+    ),
+    LabelDependencyCase(
+        name="hfid_reads_a_relationship",
+        display_label="name__value",
+        human_friendly_id=["brand__name__value", "name__value"],
+        expected={"color": False, "brand": True, "tags": False},
+    ),
+    LabelDependencyCase(
+        name="both_labels_read_a_different_relationship",
+        display_label="{{ color__name__value }}",
+        human_friendly_id=["brand__name__value"],
+        expected={"color": True, "brand": True, "tags": False},
+    ),
+    LabelDependencyCase(
+        name="labels_read_only_attributes",
+        display_label="{{ name__value }}",
+        human_friendly_id=["name__value"],
+        expected={"color": False, "brand": False, "tags": False},
+    ),
+    LabelDependencyCase(
+        name="no_labels_defined",
+        display_label=None,
+        human_friendly_id=None,
+        expected={"color": False, "brand": False, "tags": False},
+    ),
+]
+
+
+@pytest.mark.parametrize("case", LABEL_DEPENDENCY_CASES, ids=lambda case: case.name)
+def test_has_label_depending_on_relationship(case: LabelDependencyCase) -> None:
+    node = _node(display_label=case.display_label, human_friendly_id=case.human_friendly_id)
+
+    assert {name: node.has_label_depending_on_relationship(name=name) for name in case.expected} == case.expected
+
+
+@dataclass
 class NeedsReadCase:
     name: str
     display_label: str | None

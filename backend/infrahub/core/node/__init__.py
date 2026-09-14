@@ -281,6 +281,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     def has_display_label(self) -> bool:
         return self._display_label is not None
 
+    def has_label_depending_on_relationship(self, name: str) -> bool:
+        """Whether the display label or HFID of this node's schema reads the named relationship."""
+        label_definitions = (
+            DisplayLabel(node_schema=self._schema, template=self._schema.display_label),
+            HumanFriendlyIdentifier(node_schema=self._schema, template=self._schema.human_friendly_id),
+        )
+        return any(name in definition.node_relationships for definition in label_definitions)
+
     def display_label_needs_read(self) -> bool:
         """Whether returning the display label computes it from the node's fields instead of the stored value."""
         return bool(self._schema.display_label) and self._display_label is None
