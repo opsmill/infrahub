@@ -17,7 +17,7 @@ from infrahub.trigger.setup import setup_triggers
 
 from .catalogue import WORKER_POOLS, get_workflows
 from .constants import WorkflowPriority
-from .models import TASK_RESULT_STORAGE_NAME
+from .models import TASK_RESULT_STORAGE_NAME, TASK_RESULT_TTL_SECONDS
 
 
 @task(name="task-manager-setup-worker-pools", task_run_name="Setup Worker pools", cache_policy=NONE)
@@ -68,18 +68,11 @@ async def setup_deployments(client: PrefectClient) -> None:
 
 @task(name="task-manager-setup-blocks", task_run_name="Setup Blocks", cache_policy=NONE)
 async def setup_blocks() -> None:
-    log = get_run_logger()
-
-    try:
-        await RedisDatabase.aregister_type_and_schema()
-    except ObjectAlreadyExists:
-        log.warning(f"Redis Storage {TASK_RESULT_STORAGE_NAME} already registered ")
-
-    redis_block = RedisDatabase(connection_url=SecretStr(build_cache_connection_string(config.SETTINGS.cache)))
-    try:
-        await redis_block.asave(name=TASK_RESULT_STORAGE_NAME, overwrite=True)
-    except ObjectAlreadyExists:
-        log.warning(f"Redis Storage {TASK_RESULT_STORAGE_NAME} already present ")
+    redis_block = RedisDatabase(
+        connection_url=SecretStr(build_cache_connection_string(config.SETTINGS.cache)),
+        key_ttl=TASK_RESULT_TTL_SECONDS,
+    )
+    await redis_block.asave(name=TASK_RESULT_STORAGE_NAME, overwrite=True)
 
 
 @flow(name="task-manager-setup", flow_run_name="Setup Task Manager")
