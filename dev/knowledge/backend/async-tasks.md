@@ -95,6 +95,17 @@ async def validate_schema(db: InfrahubDatabase, branch: Branch) -> bool:
     # ... implementation
 ```
 
+### Result storage
+
+The task worker runs Prefect with `PREFECT_RESULTS_PERSIST_BY_DEFAULT` enabled, so every flow's
+return value is pickled and written to Redis through the `redis-database/infrahub-storage` block, a
+prefect-redis `RedisDatabase` built by `build_task_result_storage()` in `workflows/initialization.py`.
+Prefect never deletes a persisted result, so the block is saved with `key_ttl` set to
+`TASK_RESULT_TTL_SECONDS` (two days, matching flow-run retention) and every key expires on its own.
+A result is read exactly once, by `execute_workflow` in the caller that waited for the run. A flow
+whose return value is a large object tree should opt out with `persist_result=False` rather than
+push it through Redis.
+
 ### InfrahubBatch is concurrent, not ordered
 
 The SDK's `InfrahubBatch` runs everything added to it concurrently when executed — grouping tasks
@@ -380,6 +391,7 @@ Note when reasoning about which events fire: on resume, Prefect renames the stat
 | Workflow models | `backend/infrahub/workflows/models.py` |
 | Constants & types | `backend/infrahub/workflows/constants.py` |
 | Initialization | `backend/infrahub/workflows/initialization.py` |
+| Result storage TTL | `backend/infrahub/workflows/models.py` |
 | Branch tasks | `backend/infrahub/core/branch/tasks.py` |
 | Git tasks | `backend/infrahub/git/tasks.py` |
 | Schema tasks | `backend/infrahub/core/migrations/schema/tasks.py` |

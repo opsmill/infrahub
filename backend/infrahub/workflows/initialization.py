@@ -19,7 +19,7 @@ from infrahub.trigger.setup import setup_triggers
 
 from .catalogue import WORKER_POOLS, get_workflows
 from .constants import WorkflowPriority
-from .models import TASK_RESULT_STORAGE_NAME
+from .models import TASK_RESULT_STORAGE_NAME, TASK_RESULT_TTL_SECONDS
 
 
 def _redis_url(*, scheme: str, host: str, port: int, db: int, conn: dict[str, object]) -> str:
@@ -124,6 +124,17 @@ async def setup_deployments(client: PrefectClient) -> None:
         log.info(f"Flow {workflow.name}, created successfully ... ")
 
 
+def build_task_result_storage(cache: CacheSettings) -> RedisDatabase:
+    """Build the result storage block the task worker writes flow results to.
+
+    Prefect never deletes a persisted result, and a result is read exactly once, by the caller
+    waiting on the flow run, so every key is written with an expiry instead of living forever.
+    """
+    return RedisDatabase(
+        connection_url=SecretStr(build_cache_connection_string(cache)), key_ttl=TASK_RESULT_TTL_SECONDS
+    )
+
+
 @task(name="task-manager-setup-blocks", task_run_name="Setup Blocks", cache_policy=NONE)
 async def setup_blocks() -> None:
     log = get_run_logger()
@@ -133,7 +144,7 @@ async def setup_blocks() -> None:
     except ObjectAlreadyExists:
         log.warning(f"Redis Storage {TASK_RESULT_STORAGE_NAME} already registered ")
 
-    redis_block = RedisDatabase(connection_url=SecretStr(build_cache_connection_string(config.SETTINGS.cache)))
+    redis_block = build_task_result_storage(cache=config.SETTINGS.cache)
     try:
         await redis_block.asave(name=TASK_RESULT_STORAGE_NAME, overwrite=True)
     except ObjectAlreadyExists:
