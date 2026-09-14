@@ -916,8 +916,8 @@ class DiffChangedNodesQuery(DiffCalculationQuery):
 
     The paths queries page their rows with SKIP and LIMIT, so every page re-runs their match over each edge
     changed on the branch. Running them one chunk of the uuids listed here at a time keeps every match small.
-    The only condition is the time window on the changed edge, which the paths queries apply as well, so the
-    list is a superset of the nodes they return paths for and partitioning by it loses no row.
+    Every condition here is one the matching paths query applies as well, so the list is a superset of the
+    nodes it returns paths for and partitioning by it loses no row.
     """
 
     def get_node_uuids(self) -> list[str]:
@@ -937,7 +937,8 @@ class DiffNodeNodesQuery(DiffChangedNodesQuery):
 // Identify nodes added/removed on branch
 // -------------------------------------
 MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(p:Node)
-WHERE (
+WHERE p.branch_support = $branch_aware
+AND (
     ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
     OR ($from_time <= diff_rel.to < $to_time)
 )
