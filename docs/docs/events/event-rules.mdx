@@ -17,13 +17,15 @@ Rules inherit from the `CoreTriggerRule` generic. Two rule kinds exist because m
 
 Every rule has a `branch_scope` that limits which branches its events are matched on. The scope is matched against the branch the event was emitted on.
 
-| Scope | Fires on |
-|---|---|
-| `default_branch` (default) | The default branch only |
-| `other_branches` | Every branch except the default branch |
-| `all_branches` | Every branch |
+| Scope | Label in the UI | Fires on |
+|---|---|---|
+| `default_branch` | **Default Branch** | The default branch only |
+| `other_branches` | **Other Branches** | Every branch except the default branch |
+| `all_branches` | **All Branches** | Every branch |
 
-A rule created without changing this field fires on the default branch only. Set `other_branches` when the automation should run inside branches and proposed changes, so its results are reviewed before they reach the default branch.
+The default is `default_branch`, so a rule created without setting this field never fires inside a branch or a Proposed Change. That is the opposite of what automation running inside a branch needs: set `other_branches` when the results should be reviewed in a Proposed Change before they reach the default branch, as [chained Generators](../generators/modular-best-practices#use-branches-for-cascade-testing) do.
+
+Which scope can match depends on the branch an event is emitted on, and that is not always the branch you changed something on. Webhooks share this field, and [configuring branch types](../webhooks/overview#configuring-branch-types) lists the emission branch for each class of event.
 
 ## Match filters
 
@@ -54,6 +56,7 @@ A node trigger rule fires when a node is created, updated, or deleted.
    - Choose the mutation action (example: `created`)
    - Select the action kind (example: `Group Action Core`)
    - Choose the action that the rule will fire (example: `add-to-group-arista_devices`)
+   - Set the [branch scope](#branch-scope). It defaults to **Default Branch**, which does not fire inside a branch
    - Click **Save**.
 
 ![Node Trigger form creation](../media/guides/events/node-trigger-form-creation.png)
@@ -86,6 +89,7 @@ A group trigger rule fires when a group's membership changes (member added or re
    - Choose the standard group (example: `provisioning_circuits`)
    - Select the action kind (example: `Generator Action Core`). A group trigger rule can only fire a Generator action
    - Choose the Generator action that the rule will fire (example: `create_circuit_endpoints`)
+   - Set the [branch scope](#branch-scope). It defaults to **Default Branch**, which does not fire inside a branch
    - Click **Save**.
 
 ![Group Trigger form creation](../media/guides/events/group-trigger-form-creation.png)
@@ -98,11 +102,7 @@ To change group membership from an event, use a node trigger rule with a [group 
 
 Infrahub reads trigger rules from the default branch only. A rule created on another branch does not fire, and you see no error when you create it. Infrahub skips the rule while it reconciles the trigger rules, and the task worker logs a warning, `Skipping trigger rule with an unresolved relationship`, naming the rule and the relationship it could not resolve.
 
-Create rules on the default branch, together with the groups and Generator definitions they reference, and use `branch_scope` to control which branches they fire on:
-
-- `default_branch` (the default): the rule fires only for events on the default branch.
-- `other_branches`: the rule fires only for events on other branches. Use this when the outcome should be reviewed in a proposed change before it reaches the default branch.
-- `all_branches`: the rule fires everywhere.
+Create rules on the default branch, together with the groups and Generator definitions they reference, and use [`branch_scope`](#branch-scope) to control which branches they fire on.
 
 ## Known limitations
 
