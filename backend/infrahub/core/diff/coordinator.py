@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Iterable, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Iterable, Literal, Sequence, cast, overload
 from uuid import uuid4
 
 from opentelemetry import trace
 from prefect import flow
+from prefect.utilities.annotations import quote
 
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
@@ -480,11 +481,6 @@ class DiffCoordinator:
         force_branch_refresh: Literal[False] = ...,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]: ...
 
-    @flow(  # type: ignore[misc]
-        name="update-diff",
-        flow_run_name="Update diff for {base_branch.name} - {diff_branch.name}: ({from_time}-{to_time}),tracking_id={tracking_id}",
-        validate_parameters=False,
-    )
     async def _update_diffs(
         self,
         base_branch: Branch,
@@ -494,6 +490,36 @@ class DiffCoordinator:
         tracking_id: TrackingId,
         force_branch_refresh: bool = False,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]:
+        quoted = await self._update_diffs_flow(  # type: ignore[call-overload]
+            base_branch=base_branch,
+            diff_branch=diff_branch,
+            from_time=from_time,
+            to_time=to_time,
+            tracking_id=tracking_id,
+            force_branch_refresh=force_branch_refresh,
+        )
+        # mypy does not model quote as generic, so the flow is annotated with a bare quote and
+        # the payload type is restored here
+        return cast("tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]", quoted.unquote())
+
+    # The enriched diff can hold millions of objects. Prefect would otherwise walk every one of
+    # them looking for futures when the flow returns, and the task worker would pickle the whole
+    # tree into its Redis result store, so the result is returned inside quote() and not persisted.
+    @flow(
+        name="update-diff",
+        flow_run_name="Update diff for {base_branch.name} - {diff_branch.name}: ({from_time}-{to_time}),tracking_id={tracking_id}",
+        validate_parameters=False,
+        persist_result=False,
+    )
+    async def _update_diffs_flow(
+        self,
+        base_branch: Branch,
+        diff_branch: Branch,
+        from_time: Timestamp,
+        to_time: Timestamp,
+        tracking_id: TrackingId,
+        force_branch_refresh: bool = False,
+    ) -> quote:
         # start with empty diffs b/c we only care about their metadata for now, hydrate them with data as needed
         diff_pairs_metadata = await self.diff_repo.get_diff_pairs_metadata(
             base_branch_names=[base_branch.name],
@@ -536,7 +562,7 @@ class DiffCoordinator:
         # this is an EnrichedDiffsMetadata, so there are no nodes to enrich
         if not isinstance(aggregated_enriched_diffs, EnrichedDiffs):
             aggregated_enriched_diffs.update_metadata(from_time=from_time, to_time=to_time, tracking_id=tracking_id)
-            return aggregated_enriched_diffs, set()
+            return quote((aggregated_enriched_diffs, set()))
 
         await self.conflicts_enricher.add_conflicts_to_branch_diff(
             base_diff_root=aggregated_enriched_diffs.base_branch_diff,
@@ -546,7 +572,7 @@ class DiffCoordinator:
             enriched_diff_root=aggregated_enriched_diffs.diff_branch_diff, conflicts_only=True
         )
 
-        return aggregated_enriched_diffs, node_identifiers_to_drop
+        return quote((aggregated_enriched_diffs, node_identifiers_to_drop))
 
     @overload
     async def _aggregate_enriched_diffs(
