@@ -47,9 +47,9 @@ export IDENTITY="^https://github\.com/opsmill/infrahub-private/\.github/workflow
 
 Replace `<version>` with the version you deploy, and verify that reference rather than `latest`. `latest` points to a different image after each release, so verifying it does not confirm the image you are running. The released versions are listed on the [releases page](https://github.com/opsmill/infrahub/releases). Both the signature and the attestations are attached to the image digest, so what you verify matches the version you run.
 
-These patterns match release images, which are signed at the release tag that built them. Images published from a branch are signed at that branch ref instead. This includes the nightly build, pull-request previews and manual dev builds. A rolling tag can carry either identity, because more than one workflow writes it: `stable` is published both by a release and by the nightly build, so which identity it carries depends on which ran last. That is a further reason to verify the version you deploy rather than a rolling tag.
+These patterns match release images, which are signed at the release tag that built them. Every other image is signed at the ref its build ran from, and that ref depends on how the build was triggered. A rolling tag can carry either identity, because more than one workflow writes it: `stable` is published both by a release and by the nightly build, so which identity it carries depends on which ran last. That is a further reason to verify the version you deploy rather than a rolling tag.
 
-To verify a branch-built image, replace the whole ref portion of the pattern, `@refs/tags/infrahub-v` for the community image or `@refs/tags/infrahub-enterprise-v` for the enterprise one, with the branch ref, for example `@refs/heads/stable`. A failed verification reports the identity it found, which tells you the value to use.
+To verify an image that is not a release, run the command with the release pattern first. Verification fails and reports the identity it found, which is the value to pin. Replace the whole ref portion of the pattern, `@refs/tags/infrahub-v` for the community image or `@refs/tags/infrahub-enterprise-v` for the enterprise one, with the ref from that output.
 
 ## Verifying the image signature
 
