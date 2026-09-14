@@ -1550,7 +1550,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         # The refused objects stay in the tracking group, so the next import retries them.
         except TrackingGroupCleanupError as exc:
             log.warning(
-                f"Unable to delete {len(exc.failures)} {object_type.value} object(s) no longer "
+                f"Unable to delete {len(exc.failures)} {object_type.value}(s) no longer "
                 f"defined in the repository: {exc}"
             )
 
