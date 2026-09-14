@@ -129,7 +129,8 @@ async def test_enrich_sets_node_hfid_from_loaded_batch() -> None:
 
 async def test_enrich_removed_node_missing_from_batch_falls_back_to_diff() -> None:
     resolver, reader = _resolver({})
-    node = _node("n1", hfid_attribute_value='["Gone"]')
+    node = _node("n1")
+    node.add_attribute(attribute=_hfid_attribute(value=None, value_previous='["Gone"]'))
 
     await resolver.enrich(
         changelogs=[(DiffAction.REMOVED, node)], resolvable_ids=["n1"], is_resolvable_kind=_any_kind_resolvable
@@ -142,7 +143,8 @@ async def test_enrich_removed_node_missing_from_batch_falls_back_to_diff() -> No
 
 async def test_enrich_removed_node_present_in_batch_keeps_loaded_hfid() -> None:
     resolver, reader = _resolver({"n1": ["Fresh"]})
-    node = _node("n1", hfid_attribute_value='["Stale"]')
+    node = _node("n1")
+    node.add_attribute(attribute=_hfid_attribute(value=None, value_previous='["Stale"]'))
 
     await resolver.enrich(
         changelogs=[(DiffAction.REMOVED, node)], resolvable_ids=["n1"], is_resolvable_kind=_any_kind_resolvable
@@ -154,13 +156,49 @@ async def test_enrich_removed_node_present_in_batch_keeps_loaded_hfid() -> None:
 
 async def test_enrich_non_removed_node_missing_from_batch_stays_none() -> None:
     resolver, reader = _resolver({})
-    node = _node("n1", hfid_attribute_value='["Ignored"]')
+    node = _node("n1")
+    node.add_attribute(attribute=_hfid_attribute(value=None, value_previous='["Ignored"]'))
 
     await resolver.enrich(
         changelogs=[(DiffAction.UPDATED, node)], resolvable_ids=["n1"], is_resolvable_kind=_any_kind_resolvable
     )
 
+    # Only a removed node recovers its HFID from the previous value the diff holds.
     assert node.hfid is None
+    assert reader.hfid_calls == [["n1"]]
+
+
+async def test_enrich_node_whose_diff_carries_a_current_hfid_is_not_loaded() -> None:
+    resolver, reader = _resolver({"n1": ["Loaded"], "n2": ["Other"]})
+    created = _node("n1", hfid_attribute_value='["From", "Diff"]')
+    unchanged_hfid = _node("n2")
+
+    await resolver.enrich(
+        changelogs=[(DiffAction.ADDED, created), (DiffAction.UPDATED, unchanged_hfid)],
+        resolvable_ids=["n1", "n2"],
+        is_resolvable_kind=_any_kind_resolvable,
+    )
+
+    assert created.hfid == ["From", "Diff"]
+    assert unchanged_hfid.hfid == ["Other"]
+    assert reader.hfid_calls == [["n2"]]
+
+
+async def test_enrich_peer_whose_diff_carries_a_current_hfid_is_not_loaded_externally() -> None:
+    resolver, reader = _resolver({"n1": ["A"]})
+    node = _node("n1")
+    node.relationships["owner"] = RelationshipCardinalityOneChangelog(name="owner", peer_id="n2")
+    peer = _node("n2", hfid_attribute_value='["Peer"]')
+
+    await resolver.enrich(
+        changelogs=[(DiffAction.UPDATED, node), (DiffAction.ADDED, peer)],
+        resolvable_ids=["n1", "n2"],
+        is_resolvable_kind=_any_kind_resolvable,
+    )
+
+    owner = node.relationships["owner"]
+    assert isinstance(owner, RelationshipCardinalityOneChangelog)
+    assert owner.peer_hfid == ["Peer"]
     assert reader.hfid_calls == [["n1"]]
 
 
