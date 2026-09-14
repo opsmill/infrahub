@@ -86,7 +86,65 @@ CALL (diff_roots) {
         return {"diff_root_list": diff_root_list}
 
 
+def _build_diff_node_properties(enriched_node: EnrichedDiffNode) -> dict[str, Any]:
+    return {
+        "uuid": enriched_node.uuid,
+        "kind": enriched_node.kind,
+        "db_id": enriched_node.identifier.db_id,
+        "is_node_kind_migration": enriched_node.is_node_kind_migration,
+        "label": enriched_node.label,
+        "changed_at": enriched_node.changed_at.to_string() if enriched_node.changed_at else None,
+        "action": enriched_node.action.value,
+        "path_identifier": enriched_node.path_identifier,
+    }
+
+
+class EnrichedDiffNodesCreateQuery(Query):
+    """Create, with its node-level properties, the DiffNode of every listed node its root does not hold yet.
+
+    Writing the root takes its lock for the transaction, so overlapping saves of one diff create each node once.
+    A created node is readable before its batch writes its fields, so it carries every property a reader requires.
+    """
+
+    name = "enriched_diff_nodes_create"
+    type = QueryType.WRITE
+    insert_return = False
+
+    def __init__(self, diff_root_uuid: str, diff_nodes: Iterable[EnrichedDiffNode], **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.diff_root_uuid = diff_root_uuid
+        self.diff_nodes = diff_nodes
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params = {
+            "root_uuid": self.diff_root_uuid,
+            "node_properties_list": [_build_diff_node_properties(enriched_node=node) for node in self.diff_nodes],
+        }
+        query = """
+MERGE (diff_root:DiffRoot {uuid: $root_uuid})
+// this same-value write takes the root's lock, so a concurrent save waits and finds the node instead of creating it
+SET diff_root.uuid = $root_uuid
+WITH diff_root
+UNWIND $node_properties_list AS node_properties
+// USING INDEX keeps the lookup on the uuid index: the query must not walk the root's edge list
+OPTIONAL MATCH (existing_node:DiffNode {uuid: node_properties.uuid, db_id: node_properties.db_id})
+USING INDEX existing_node:DiffNode(uuid)
+WHERE (diff_root)-[:DIFF_HAS_NODE]->(existing_node)
+WITH diff_root, node_properties, existing_node
+WHERE existing_node IS NULL
+CREATE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
+SET diff_node = node_properties
+        """
+        self.add_to_query(query)
+
+
 class EnrichedNodeBatchCreateQuery(Query):
+    """Write the fields, conflicts and properties of a batch of diff nodes their roots already hold.
+
+    The query never writes the root and touches only the nodes of its batch, so batches of one save can run
+    in concurrent transactions.
+    """
+
     name = "enriched_nodes_create"
     type = QueryType.WRITE
     insert_return = False
@@ -102,33 +160,11 @@ class EnrichedNodeBatchCreateQuery(Query):
 UNWIND $node_details_list AS node_details
 WITH
     node_details.root_uuid AS root_uuid,
-    toString(node_details.node_map.node_properties.uuid) AS node_uuid,
-    node_details.node_map.node_properties.db_id AS node_db_id
-// -------------------------
-// create the diff nodes the root does not hold yet
-// -------------------------
-MERGE (diff_root:DiffRoot {uuid: root_uuid})
-// writing the root takes its lock for the transaction, so overlapping saves of one diff create each node once
-SET diff_root.uuid = root_uuid
-WITH diff_root, node_uuid, node_db_id
-// USING INDEX keeps every node lookup in this query on the uuid index: a batch must not walk the root's edge list
-OPTIONAL MATCH (existing_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
-USING INDEX existing_node:DiffNode(uuid)
-WHERE (diff_root)-[:DIFF_HAS_NODE]->(existing_node)
-WITH diff_root, node_uuid, node_db_id, existing_node
-WHERE existing_node IS NULL
-CREATE (diff_root)-[:DIFF_HAS_NODE]->(:DiffNode {uuid: node_uuid, db_id: node_db_id})
-// -------------------------
-// resetting the UNWIND here reduces memory usage; count(*) keeps one row even when nothing was created
-// -------------------------
-WITH count(*) AS num_created_nodes
-UNWIND $node_details_list AS node_details
-WITH
-    node_details.root_uuid AS root_uuid,
     node_details.node_map AS node_map,
     toString(node_details.node_map.node_properties.uuid) AS node_uuid,
     node_details.node_map.node_properties.db_id AS node_db_id
 MATCH (diff_root:DiffRoot {uuid: root_uuid})
+// USING INDEX keeps every node lookup in this query on the uuid index: a batch must not walk the root's edge list
 MATCH (diff_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
 USING INDEX diff_node:DiffNode(uuid)
 WHERE (diff_root)-[:DIFF_HAS_NODE]->(diff_node)
@@ -466,16 +502,7 @@ CALL (has_property_conflict, diff_relationship_property, node_relationship_prope
         if enriched_node.conflict:
             conflict_params = self._build_conflict_params(enriched_conflict=enriched_node.conflict)
         return {
-            "node_properties": {
-                "uuid": enriched_node.uuid,
-                "kind": enriched_node.kind,
-                "db_id": enriched_node.identifier.db_id,
-                "is_node_kind_migration": enriched_node.is_node_kind_migration,
-                "label": enriched_node.label,
-                "changed_at": enriched_node.changed_at.to_string() if enriched_node.changed_at else None,
-                "action": enriched_node.action.value,
-                "path_identifier": enriched_node.path_identifier,
-            },
+            "node_properties": _build_diff_node_properties(enriched_node=enriched_node),
             "conflict_params": conflict_params,
             "attributes": attribute_props,
             "relationships": relationship_props,
