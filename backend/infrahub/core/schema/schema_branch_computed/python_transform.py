@@ -6,6 +6,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from infrahub.core.constants.schema import DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME
 from infrahub.core.schema import AttributeSchema  # noqa: TC001
 
 if TYPE_CHECKING:
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 # schema elements, so any change to the kind read through them can move the value: editing a
 # display_label template moves every label with no data change.
 # Data-change triggers do filter on them by name. Schema names, not the GraphQL spelling.
-IMPRECISE_READ_FIELDS = frozenset({"display_label", "human_friendly_id"})
+IMPRECISE_READ_FIELDS = frozenset({DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME})
 
 
 def derived_read_is_scopable(*, node_schema: MainSchemaTypes, field_name: str) -> bool:
