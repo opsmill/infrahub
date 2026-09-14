@@ -15,7 +15,8 @@ from infrahub.core.branch.creator import BranchCreator
 from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.delete_coordinator import BranchDeleteOrchestrator
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
+from infrahub.core.changelog.builder import build_diff_changelog_collector
+from infrahub.core.changelog.diff import MigrationTracker
 from infrahub.core.constants import SYSTEM_USER_ID, DiffAction, MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
@@ -331,10 +332,17 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     )
     events: list[InfrahubEvent] = [rebase_event]
     changes: list[MergeChange] = []
-    changelog_collector = DiffChangelogCollector(
-        diff=default_branch_diff, branch=user_branch, db=db, migration_tracker=MigrationTracker(migrations=migrations)
-    )
-    for action, node_changelog in changelog_collector.collect_changelogs():
+    # The database session used for the rebase has already closed here, so open a fresh one for the
+    # changelog's own database reads.
+    async with database.start_session() as changelog_db:
+        changelog_collector = build_diff_changelog_collector(
+            diff=default_branch_diff,
+            db=changelog_db,
+            branch=user_branch,
+            migration_tracker=MigrationTracker(migrations=migrations),
+        )
+        collected_changelogs = await changelog_collector.collect_changelogs()
+    for action, node_changelog in collected_changelogs:
         mutation_action = MutationAction.from_diff_action(diff_action=action)
         meta = EventMeta.from_parent(parent=rebase_event, branch=user_branch)
         meta.origin = NodeMutationOrigin.REBASE
