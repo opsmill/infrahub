@@ -238,6 +238,30 @@ Heap readings are taken before and after rather than sampled, and are dominated 
 cell read 879.7 MB before and 332.9 MB after. They are not reported above because they measure the
 JVM's collection schedule, not this feature.
 
+### Branch deletion (measured 2026-09-11)
+
+T059 did not cover this path, and it was the one that needed it: branch deletion is the only
+enforcement point whose candidates are found by the query itself rather than sliced by the caller,
+so the "collected candidate list never exceeds one batch" bound above never applied to it. Measured
+on a synthetic graph against `neo4j:2026.05.0-enterprise` with the CI docker-suite memory settings
+(heap 1 GiB, page cache 512 MiB, so a 716.8 MiB transaction pool) and the production index set;
+every node on the deleted branch carries one branch-agnostic attribute, and the sibling branches are
+all open and fork before the population is created.
+
+| Query | Nodes on branch | Sibling branches | Outer-operator memory (`PROFILE`) | Result |
+|---|---|---|---|---|
+| Shipped 2026-09-04 | 2,000 | 5 | 24.1 MiB | 8,000 edges closed |
+| Shipped 2026-09-04 | 60,000 | 10 | — | `MemoryPoolOutOfMemoryError` after 2.2 s |
+| Streaming + batched | 60,000 | 10 | 0.2 MiB | 240,000 edges closed in 4.5 s |
+| Streaming + batched | 300,000 | 30 | 0.2 MiB | 1,200,000 edges closed in 36.7 s |
+
+The per-batch memory is what the node-bounded query already pays for a 500-uuid slice, times the
+branch count. The outer stream is buffered once ahead of the batches (a planner `Eager` on the `to`
+property, visible only in a `PROFILE` of the write form) at one node reference per candidate:
+1.1 MiB for 20,000 candidates, so linear in the branch size but two orders of magnitude below the
+old evaluation's footprint at six branches, and the gap widens with the branch count because the old
+footprint grew with it.
+
 ## Pre-push checks
 
 ```bash
