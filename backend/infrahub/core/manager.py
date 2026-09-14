@@ -1265,6 +1265,9 @@ class NodeManager:
                     for identifier, direction in identifier_direction_map.items()
                 )
             )
+            if not any(identifiers_by_direction.values()):
+                # The requested fields name no relationship, so there is no edge to read.
+                return
         query = await NodeListGetRelationshipsQuery.init(
             db=db,
             ids=list(nodes_by_id.keys()),
