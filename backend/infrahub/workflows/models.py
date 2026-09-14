@@ -17,6 +17,9 @@ from .constants import TAG_NAMESPACE, WorkflowPriority, WorkflowTag, WorkflowTyp
 
 TASK_RESULT_STORAGE_NAME = "infrahub-storage"
 
+TASK_RESULT_TTL_SECONDS = 2 * 24 * 60 * 60
+"""Two days, matching the default retention of the flow runs the results belong to."""
+
 WorkflowReturn = TypeVar("WorkflowReturn")
 
 

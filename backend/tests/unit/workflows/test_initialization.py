@@ -4,10 +4,12 @@ from dataclasses import dataclass, field
 
 import pytest
 import redis
+from prefect_redis import RedisDatabase
 from redis.connection import Connection, SSLConnection
 
 from infrahub.config import CacheSettings
-from infrahub.workflows.initialization import build_cache_connection_string
+from infrahub.workflows.initialization import build_cache_connection_string, build_task_result_storage
+from infrahub.workflows.models import TASK_RESULT_TTL_SECONDS
 
 
 @dataclass
@@ -323,3 +325,41 @@ def test_connection_string_round_trip_through_redis_py(case: RoundTripCase) -> N
         assert pool.connection_kwargs.get(key) == expected_value, (
             f"kwarg {key!r}: expected {expected_value!r}, got {pool.connection_kwargs.get(key)!r}"
         )
+
+
+class FakeAsyncRedis:
+    """The subset of redis.asyncio.Redis a result write touches."""
+
+    connection_pool = None
+    """prefect-redis inspects the pool for Sentinel daemons when closing a client."""
+
+    def __init__(self) -> None:
+        self.set_calls: list[tuple[str, bytes, int | None]] = []
+
+    async def set(self, name: str, value: bytes, ex: int | None = None) -> bool:
+        self.set_calls.append((name, value, ex))
+        return True
+
+    async def aclose(self) -> None:
+        return None
+
+
+def test_task_result_storage_block_expires_its_keys() -> None:
+    cache = CacheSettings(address="redis.internal", database=3)
+
+    block = build_task_result_storage(cache=cache)
+
+    assert block.get_block_type_slug() == "redis-database"
+    assert block.key_ttl == TASK_RESULT_TTL_SECONDS
+    assert block.connection_url is not None
+    assert block.connection_url.get_secret_value() == build_cache_connection_string(cache)
+
+
+async def test_task_result_storage_writes_with_an_expiry(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = FakeAsyncRedis()
+    monkeypatch.setattr(RedisDatabase, "get_async_client", lambda _self: fake)
+    block = build_task_result_storage(cache=CacheSettings(address="redis.internal"))
+
+    assert await block.awrite_path("0123456789abcdef0123456789abcdef", b"payload") is True
+
+    assert fake.set_calls == [("0123456789abcdef0123456789abcdef", b"payload", TASK_RESULT_TTL_SECONDS)]
