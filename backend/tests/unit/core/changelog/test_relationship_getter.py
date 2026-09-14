@@ -33,11 +33,13 @@ def test_merge_secondaries_collapses_the_same_peer_into_one_changelog() -> None:
     assert set(by_id["peer-2"].relationships) == {"rel_c"}
 
 
-def _many_secondary(node_id: str, relationship_name: str, peer_id: str) -> NodeChangelog:
+def _many_secondary(
+    node_id: str, relationship_name: str, peer_id: str, status: DiffAction = DiffAction.ADDED
+) -> NodeChangelog:
     changelog = NodeChangelog(node_id=node_id, node_kind="TestPerson", display_label="label")
     changelog.relationships[relationship_name] = RelationshipCardinalityManyChangelog(
         name=relationship_name,
-        peers=[RelationshipPeerChangelog(peer_id=peer_id, peer_kind="TestCar", peer_status=DiffAction.ADDED)],
+        peers=[RelationshipPeerChangelog(peer_id=peer_id, peer_kind="TestCar", peer_status=status)],
     )
     return changelog
 
@@ -53,4 +55,22 @@ def test_merge_secondaries_merges_peers_for_a_shared_many_relationship_name() ->
     assert len(merged) == 1
     members = merged[0].relationships["members"]
     assert isinstance(members, RelationshipCardinalityManyChangelog)
-    assert {peer.peer_id for peer in members.peers} == {"a", "b"}
+    assert [peer.peer_id for peer in members.peers] == ["a", "b"]
+
+
+def test_merge_secondaries_keeps_one_entry_per_peer_and_status_for_a_shared_many_relationship_name() -> None:
+    secondaries = [
+        _many_secondary(node_id="peer-1", relationship_name="members", peer_id="a"),
+        _many_secondary(node_id="peer-1", relationship_name="members", peer_id="a"),
+        _many_secondary(node_id="peer-1", relationship_name="members", peer_id="a", status=DiffAction.REMOVED),
+    ]
+
+    merged = RelationshipChangelogGetter._merge_secondaries_by_node(secondaries)
+
+    assert len(merged) == 1
+    members = merged[0].relationships["members"]
+    assert isinstance(members, RelationshipCardinalityManyChangelog)
+    assert [(peer.peer_id, peer.peer_status) for peer in members.peers] == [
+        ("a", DiffAction.ADDED),
+        ("a", DiffAction.REMOVED),
+    ]
