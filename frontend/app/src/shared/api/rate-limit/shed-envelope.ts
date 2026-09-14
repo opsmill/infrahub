@@ -39,3 +39,36 @@ export function isShedResponse(response: Response): boolean {
     response.headers.get(SHED_MARKER_HEADER) === SHED_MARKER_VALUE
   );
 }
+
+/**
+ * A copy of a shed response whose envelope items say what the person should
+ * do instead of what the server did, so a REST caller that surfaces
+ * `errors[0].message` shows the same text as the toast. Any other response,
+ * including a 429 from something in front of the API, is returned untouched.
+ */
+export async function withShedWording(response: Response): Promise<Response> {
+  if (!isShedResponse(response)) return response;
+
+  let body: unknown;
+  try {
+    body = await response.clone().json();
+  } catch {
+    return response;
+  }
+  if (body === null || typeof body !== "object") return response;
+  const { errors } = body as { errors?: unknown };
+  if (!Array.isArray(errors)) return response;
+
+  const reworded = errors.map((item: unknown) =>
+    item !== null &&
+    typeof item === "object" &&
+    isShedErrorItem((item as { extensions?: unknown }).extensions)
+      ? { ...item, message: SHED_USER_MESSAGE }
+      : item
+  );
+  return new Response(JSON.stringify({ ...body, errors: reworded }), {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
