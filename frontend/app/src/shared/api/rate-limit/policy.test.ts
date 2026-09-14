@@ -232,6 +232,23 @@ describe("sendWithRateLimitRetry", () => {
     expect(send).toHaveBeenCalledTimes(2);
   });
 
+  it("releases the body of a 429 it discards and leaves the returned one readable", async () => {
+    // GIVEN
+    const send = vi
+      .fn<() => Promise<Response>>()
+      .mockResolvedValueOnce(shedResponse())
+      .mockResolvedValueOnce(new Response('{"ok":true}', { status: 200 }));
+
+    // WHEN
+    const returned = await sendWithRateLimitRetry(send, { random: noJitter });
+
+    // THEN
+    const discarded = await send.mock.results[0]?.value;
+    expect(discarded.bodyUsed).toBe(true);
+    expect(returned.bodyUsed).toBe(false);
+    await expect(returned.json()).resolves.toEqual({ ok: true });
+  });
+
   it("does not replay when the caller rules the response out", async () => {
     // GIVEN
     const send = vi.fn(async () => shedResponse());
