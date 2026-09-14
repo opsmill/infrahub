@@ -331,7 +331,7 @@ async def test_merge_changelog_survives_label_reader_failure(
     register_simplified_proposed_change_schema: SchemaBranch,
     car_person_schema: None,
 ) -> None:
-    diff, branch, _owner, car = await _merge_car_owned_by_person(db, default_branch, "merge_label_failure")
+    diff, branch, owner, car = await _merge_car_owned_by_person(db, default_branch, "merge_label_failure")
 
     changelogs = await DiffChangelogCollector(
         diff=diff,
@@ -340,10 +340,12 @@ async def test_merge_changelog_survives_label_reader_failure(
         hfid_resolver=ChangelogHfidResolver(label_loader=NodeLabelLoader(reader=_RaisingLabelReader())),
     ).collect_changelogs()
 
-    # The collection completes despite the label read failing; the HFID just degrades to None.
+    # The collection completes despite the label read failing. The created car's HFID is carried by
+    # the diff, so it needs no read; the owner's HFID is not in the diff and degrades to None.
     car_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == car.id)
-    assert car_changelog.hfid is None
-    assert changelogs
+    assert car_changelog.hfid == ["Volvo"]
+    owner_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == owner.id)
+    assert owner_changelog.hfid is None
 
 
 async def test_merge_changelog_reports_deleted_node_hfid(
