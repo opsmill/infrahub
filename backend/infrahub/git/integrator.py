@@ -44,6 +44,7 @@ from infrahub_sdk.yaml import InfrahubFile, SchemaFile
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
+from prefect.utilities.annotations import quote
 from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
@@ -1855,6 +1856,16 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     @task(name="jinja2-template-render", task_run_name="Render Jinja2 template", cache_policy=NONE)
     async def render_jinja2_template(self, commit: str, location: str, data: dict) -> str:
+        """Render a Jinja2 template from the repository with ``data`` as its context.
+
+        Callers wrap ``data`` in Prefect's ``quote()``: Prefect otherwise walks every element of a
+        task argument twice before the task starts, which costs seconds on a large query response.
+        The task body always receives the plain value.
+
+        Raises:
+            TransformError: When the template cannot be rendered.
+
+        """
         log = get_run_logger()
         commit_worktree = self.get_commit_worktree(commit=commit)
 
@@ -1951,6 +1962,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     ) -> Any:
         """Execute A Python Transform stored in the repository.
 
+        Callers wrap ``data`` in Prefect's ``quote()``: Prefect otherwise walks every element of a
+        task argument twice before the task starts, which costs seconds on a large query response.
+        The task body always receives the plain value.
+
         Raises:
             ValueError: When ``location`` does not contain the expected ``module::class`` separator.
             TransformError: When the transform module cannot be loaded, the class is missing or running the transform raises an unexpected exception.
@@ -2035,7 +2050,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             transformation_location = transformation.template_path.value
             artifact_content = await self.render_jinja2_template.with_options(
                 timeout_seconds=transformation.timeout.value
-            )(commit=commit, location=transformation_location, data=response)  # type: ignore[call-overload]
+            )(commit=commit, location=transformation_location, data=quote(response))  # type: ignore[call-overload]
         elif transformation.typename == InfrahubKind.TRANSFORMPYTHON:
             transformation_location = f"{transformation.file_path.value}::{transformation.class_name.value}"
             artifact_content = await self.execute_python_transform.with_options(
@@ -2045,7 +2060,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 branch_name=branch_name,
                 commit=commit,
                 location=transformation_location,
-                data=response,
+                data=quote(response),
                 convert_query_response=transformation.convert_query_response.value,
             )  # type: ignore[call-overload]
 
@@ -2098,7 +2113,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         if message.transform_type == InfrahubKind.TRANSFORMJINJA2:
             artifact_content = await self.render_jinja2_template.with_options(timeout_seconds=message.timeout)(
-                commit=message.commit, location=message.transform_location, data=response
+                commit=message.commit, location=message.transform_location, data=quote(response)
             )  # type: ignore[call-overload]
         elif message.transform_type == InfrahubKind.TRANSFORMPYTHON:
             artifact_content = await self.execute_python_transform.with_options(timeout_seconds=message.timeout)(
@@ -2106,7 +2121,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 branch_name=message.branch_name,
                 commit=message.commit,
                 location=message.transform_location,
-                data=response,
+                data=quote(response),
                 convert_query_response=message.convert_query_response,
             )  # type: ignore[call-overload]
 
