@@ -525,7 +525,7 @@ const sidebars: SidebarsConfig = {
       link: { type: 'generated-index', slug: 'development-resources' },
       items: [
         { type: 'doc', id: 'development-resources/developer-guide', label: 'Developer Guide' },
-        { type: 'doc', id: 'development-resources/sbom', label: 'Software Bill of Materials (SBOM)' },
+        { type: 'doc', id: 'development-resources/sbom', label: 'Image signing and SBOM' },
         { type: 'doc', id: 'development-resources/testcontainers', label: 'Integration testing with Testcontainers' },
         {
           type: 'category',
