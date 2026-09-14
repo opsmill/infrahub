@@ -43,7 +43,7 @@ export const PoolAllocationPanel = ({
   onChange,
 }: PoolAllocationPanelProps) => {
   // A template allocates through `<name>_from_resource_pool`, typed as a plain RelatedNodeInput,
-  // which carries neither override — offering them would promise what the save drops. IFC-3135.
+  // which carries neither override — offering them would promise what the save drops.
   const canOverrideAllocation = !fromPoolRelationshipName;
 
   return (

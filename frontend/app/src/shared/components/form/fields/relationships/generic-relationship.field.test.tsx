@@ -196,8 +196,8 @@ describe("GenericRelationshipField", () => {
   });
 
   // A relationship whose peer is the *generic* BuiltinIPAddress: `getPoolKindFromSchema`
-  // sets `field.pool` for it, but until IFC-2764 the pool UI was never rendered on the
-  // generic branch, making "allocate from pool" unreachable.
+  // sets `field.pool` for it, and the generic branch has to render the pool UI — it once did
+  // not, which made "allocate from pool" unreachable for exactly these relationships.
   describe("allocate from pool on a generic IP peer", () => {
     const ipGeneric = generateGenericSchema({
       kind: "BuiltinIPAddress",

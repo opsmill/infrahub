@@ -239,7 +239,7 @@ describe("NodeRelationshipField", () => {
 
     // A template submits through `<name>_from_resource_pool`, whose input type carries neither
     // field, so an override typed here would be dropped in silence. The pool itself still
-    // works — only the overrides go. See IFC-3135.
+    // works — only the overrides go.
     await expect.element(component.getByTestId("select-value")).toHaveTextContent("Loopbacks pool");
     await expect.poll(() => component.getByTestId("pool-prefix-length-input").query()).toBeNull();
     await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
