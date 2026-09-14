@@ -396,6 +396,7 @@ Note when reasoning about which events fire: on resume, Prefect renames the stat
 
 - [ADR-0003: Asynchronous Tasks](../../adr/0003-asynchronous-tasks.md) - Why we use Prefect
 - [Creating Workflows Guide](../../guides/backend/creating-async-tasks.md) - How to create a new workflow
+- [Prefect Flow and Task Payloads](../../guidelines/backend/prefect-payloads.md) - What flows may return and tasks may receive
 - [Events System](events.md) - Event-driven workflow triggers
 - [Webhooks](webhooks.md) - Primary consumer of events and async tasks
 - [Backend Architecture](architecture.md) - Overall backend structure

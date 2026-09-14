@@ -49,6 +49,7 @@ Mark deprecated docs clearly. Don't delete—update with pointers to replacement
 - **Python Backend**: [guidelines/backend/python.md](guidelines/backend/python.md)
 - **Python Exception Handling**: [guidelines/backend/exceptions.md](guidelines/backend/exceptions.md)
 - **ASGI Middleware**: [guidelines/backend/asgi-middleware.md](guidelines/backend/asgi-middleware.md)
+- **Prefect Flow and Task Payloads**: [guidelines/backend/prefect-payloads.md](guidelines/backend/prefect-payloads.md) - What flows return, what tasks receive
 - **TypeScript Frontend**: [guidelines/frontend/typescript.md](guidelines/frontend/typescript.md)
 - **Git Workflow**: [guidelines/git-workflow.md](guidelines/git-workflow.md)
 - **Markdown Formatting**: [guidelines/markdown.md](guidelines/markdown.md)
