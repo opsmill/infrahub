@@ -21,8 +21,9 @@ if TYPE_CHECKING:
     from infrahub.core.branch.models import Branch
     from infrahub.database import InfrahubDatabase
 
-# The agnostic cleanup batches Nodes, and each one can drag an unbounded number of peer vertices
-# into the transaction with it, so its batch is capped low.
+# The agnostic cleanup and the agnostic retirement batch Nodes, and each one can drag an unbounded
+# number of peer vertices into the transaction with it -- for the retirement, its fields evaluated
+# against every branch -- so their batch is capped low.
 MAX_AGNOSTIC_PEER_BATCH_SIZE = 500
 
 
@@ -140,7 +141,9 @@ class BranchDataDeleter:
         following this branch's delete, are no longer readable on any branch. Retention is
         re-evaluated across every remaining branch, so anything still readable somewhere stays open.
 
-        Uses IS_PART_OF edges on this branch, so must run before those edges are deleted.
+        Uses IS_PART_OF edges on this branch, so must run before those edges are deleted. The query
+        streams the candidate Nodes and evaluates them per batch, so the transaction memory it needs
+        is bounded by the batch size rather than by the size of the branch.
         """
         batch_size = min(self.batch_size, MAX_AGNOSTIC_PEER_BATCH_SIZE)
 
