@@ -161,17 +161,21 @@ async def _emit_relationship_add_events(
 
 
 async def _enrich_source_changelog(
-    node_changelog: NodeChangelog, source_id: str, db: InfrahubDatabase, branch: Branch
+    node_changelog: NodeChangelog, source: Node, relationship_name: str, db: InfrahubDatabase, branch: Branch
 ) -> None:
-    """Fill the source node's HFID and display label on its changelog, read after the write.
+    """Fill the source node's HFID and display label on its changelog.
 
-    Enrichment is cosmetic: reading after the transaction reflects a relationship that feeds the
-    HFID or display label, and a read failure leaves the values unchanged rather than failing the
-    already-committed mutation.
+    When the mutated relationship feeds the HFID or display label template, both are read after the
+    write so the changelog reflects the new peer; otherwise the labels the loaded node holds are
+    current and no read is issued. Enrichment is cosmetic: a read failure leaves the values
+    unchanged rather than failing the already-committed mutation.
     """
+    if not source.has_label_depending_on_relationship(name=relationship_name):
+        node_changelog.hfid = await source.get_hfid(db=db)
+        return
     loader = node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
-    labels = await loader.load_labels([source_id])
-    if source_labels := labels.get(source_id):
+    labels = await loader.load_labels([source.get_id()])
+    if source_labels := labels.get(source.get_id()):
         node_changelog.hfid = source_labels.hfid
         node_changelog.display_label = source_labels.display_label
 
@@ -253,7 +257,8 @@ class RelationshipAdd(Mutation):
         if group_event_type == GroupUpdateType.NONE and node_changelog.has_changes:
             await _enrich_source_changelog(
                 node_changelog=node_changelog,
-                source_id=source.get_id(),
+                source=source,
+                relationship_name=relationship_name,
                 db=graphql_context.db,
                 branch=graphql_context.branch,
             )
@@ -351,7 +356,8 @@ class RelationshipRemove(Mutation):
         if group_event_type == GroupUpdateType.NONE and node_changelog.has_changes:
             await _enrich_source_changelog(
                 node_changelog=node_changelog,
-                source_id=source.get_id(),
+                source=source,
+                relationship_name=relationship_name,
                 db=graphql_context.db,
                 branch=graphql_context.branch,
             )

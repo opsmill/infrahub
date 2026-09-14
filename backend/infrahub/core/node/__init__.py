@@ -281,6 +281,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     def has_display_label(self) -> bool:
         return self._display_label is not None
 
+    def has_label_depending_on_relationship(self, name: str) -> bool:
+        """Whether the display label or HFID template of this node's schema reads the named relationship."""
+        templates = (
+            DisplayLabel(node_schema=self._schema, template=self._schema.display_label),
+            HumanFriendlyIdentifier(node_schema=self._schema, template=self._schema.human_friendly_id),
+        )
+        return any(name in template.node_relationships for template in templates)
+
     async def add_display_label(self, db: InfrahubDatabase) -> None:
         if self._display_label:
             return
