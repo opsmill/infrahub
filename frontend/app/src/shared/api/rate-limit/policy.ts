@@ -131,6 +131,10 @@ export async function sendWithRateLimitRetry(
     const delay = nextDelayMs(attempt, response.headers.get("Retry-After"), random);
     if (Date.now() + delay > deadline) return response;
 
+    // This 429 is not handed back, so release its body rather than holding the
+    // stream open until garbage collection.
+    response.body?.cancel();
+
     const settle = onRetryScheduled?.({ attempt, delayMs: delay });
     await waitFor(delay, signal);
     settle?.(signal?.aborted ? "abandoned" : "replayed");
