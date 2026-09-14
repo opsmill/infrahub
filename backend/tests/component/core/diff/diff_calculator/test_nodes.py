@@ -440,20 +440,30 @@ async def test_create_aware_and_agnostic_nodes_on_branch(
     assert rel_diff.action is DiffAction.UPDATED
 
 
-async def test_node_nodes_query_lists_nodes_added_or_removed_on_branch(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, person_john_main: Node
+async def test_node_nodes_query_lists_branch_aware_nodes_added_or_removed_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_branch_local: SchemaBranch
 ) -> None:
+    john_main = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await john_main.new(db=db, name="John", height=180)
+    await john_main.save(db=db)
+    jane_main = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await jane_main.new(db=db, name="Jane", height=170)
+    await jane_main.save(db=db)
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     new_person = await Node.init(db=db, schema="TestPerson", branch=branch)
-    await new_person.new(db=db, name="Stokely")
+    await new_person.new(db=db, name="Stokely", height=175)
     await new_person.save(db=db)
-    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
-    await car_branch.delete(db=db)
+    john_branch = await NodeManager.get_one(db=db, branch=branch, id=john_main.id)
+    await john_branch.delete(db=db)
     # an attribute update on the branch is a field-level change, not a node-level one
-    john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
-    john_branch.name.value = "Johnny"
-    await john_branch.save(db=db)
+    jane_branch = await NodeManager.get_one(db=db, branch=branch, id=jane_main.id)
+    jane_branch.name.value = "Janet"
+    await jane_branch.save(db=db)
+    # TestCar is branch-local, so the paths query never returns its nodes
+    local_car = await Node.init(db=db, schema="TestCar", branch=branch)
+    await local_car.new(db=db, name="camry", owner=new_person.id)
+    await local_car.save(db=db)
 
     query = await DiffNodeNodesQuery.init(
         db=db,
@@ -465,4 +475,6 @@ async def test_node_nodes_query_lists_nodes_added_or_removed_on_branch(
     )
     await query.execute(db=db)
 
-    assert set(query.get_node_uuids()) == {new_person.id, car_accord_main.id}
+    node_uuids = query.get_node_uuids()
+    assert len(node_uuids) == 2
+    assert set(node_uuids) == {new_person.id, john_main.id}
