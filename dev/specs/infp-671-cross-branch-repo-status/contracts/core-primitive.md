@@ -44,7 +44,9 @@ class RepositoryBranchAttributesQuery(Query):
 - No `LIMIT`: the statement is bounded by `len(branch_names) * len(attribute_names) *
   len(repository_ids)` rows by construction. Callers chunk `branch_names`. The read is therefore
   unpageable and rejects a `limit` or `offset` argument rather than silently discarding it; it sets
-  `self.limit` to that bound itself, so a READ with neither set is not treated as unpaginated.
+  `self.limit` to that bound floored at 1, so a READ with neither set is not treated as unpaginated.
+  The floor is only reachable by a direct caller passing an empty branch or attribute list, which
+  the reader answers without executing the statement.
 
 Result dataclass (frozen): `RepositoryBranchAttributeValue(repository_id, branch_name,
 attribute_name, attribute_id, value, own_value, updated_at)`.

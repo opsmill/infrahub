@@ -40,7 +40,8 @@ class RepositoryBranchAttributesReader(RepositoryBranchAttributesSource):
             A lookup holding one value per repository, branch and attribute name that resolved.
 
         Raises:
-            ValueError: If the read produced two values for the same repository, branch and attribute name.
+            ResourceMultipleFoundError: If the read produced two values for the same repository,
+                branch and attribute name.
 
         """
         unique_branch_names = list(dict.fromkeys(branch_names))
