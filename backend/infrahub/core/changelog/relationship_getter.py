@@ -144,8 +144,11 @@ class RelationshipChangelogGetter:
                     relationship, RelationshipCardinalityManyChangelog
                 ):
                     # Two source relationships resolved to the same many peer-side name; keep every
-                    # affected peer rather than dropping the later relationship's entries.
-                    current.peers.extend(relationship.peers)
+                    # distinct peer change rather than dropping the later relationship's entries.
+                    seen = {(peer.peer_id, peer.peer_status) for peer in current.peers}
+                    current.peers.extend(
+                        peer for peer in relationship.peers if (peer.peer_id, peer.peer_status) not in seen
+                    )
         return list(merged.values())
 
     @staticmethod

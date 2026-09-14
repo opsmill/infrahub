@@ -40,7 +40,7 @@ class ChangelogHfidResolver:
         every other external peer.
         """
         with trace.get_tracer(__name__).start_as_current_span("changelog.resolve_hfids") as span:
-            span.set_attribute("changelog.changed_node_count", len(resolvable_ids))
+            span.set_attribute("changelog.resolvable_node_count", len(resolvable_ids))
             node_hfids = await self._label_loader.load_hfids(resolvable_ids)
             for action, changelog in changelogs:
                 changelog.hfid = node_hfids.get(changelog.node_id)
@@ -83,7 +83,7 @@ class ChangelogHfidResolver:
         for peer in peers:
             if peer.peer_hfid is None and peer.peer_id in peer_hfids:
                 peer.peer_hfid = peer_hfids[peer.peer_id]
-        return len(set(external_ids))
+        return len(peer_hfids)
 
 
 def _hfid_from_diff(node_changelog: NodeChangelog) -> list[str] | None:
