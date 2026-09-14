@@ -253,6 +253,46 @@ Example: `NodeGetListByAttributeValueQuery` and `NodeGetByHFIDQuery` chain three
 
 The outer `MATCH` returns one row per matching edge, and the graph keeps one `HAS_ATTRIBUTE` edge per branch that touched the attribute — so an attribute edited on three branches yields three rows, and the `CALL` subquery then runs three times to elect the same winning edge. Add `WITH DISTINCT <keys>` before the `CALL` and group at the natural cardinality: an Attribute has exactly one active AttributeValue per branch/time, so group by `(n, attr)` and re-apply value predicates after the subquery. Keep the outer edge anonymous (`-[:HAS_ATTRIBUTE]->`) while you are there — binding a variable you never read does not change the row count, but it does collide with the subquery's own edge variable (see below). See [Database Schema — Key Points](database-schema.md#key-points).
 
+### Cross-branch grouped attribute read
+
+The section above resolves one branch's view. When a read needs the *same* attributes as *many* branches resolve them - a per-branch status table, a cross-branch integrity check - do not loop the single-branch query once per branch. Drive the branch set through the statement as a parameter, so the query count stays flat as branches are added:
+
+```cypher
+MATCH (n:Node)-[:HAS_ATTRIBUTE]->(a:Attribute)
+WHERE n.uuid IN $node_ids AND a.name IN $attribute_names
+WITH DISTINCT n, a
+UNWIND $branch_names AS branch_name
+MATCH (br:Branch {name: branch_name})
+WITH n, a, branch_name,
+     CASE WHEN br.is_isolated AND br.branched_from < $at THEN br.branched_from ELSE $at END AS default_window
+CALL (n, a, branch_name, default_window) {
+    MATCH (n)-[r:HAS_ATTRIBUTE]->(a)
+    WHERE (r.branch IN [branch_name, $global_branch_name] AND r.from <= $at AND r.to IS NULL)
+       OR (r.branch IN [branch_name, $global_branch_name] AND r.from <= $at AND r.to > $at)
+       OR (branch_name <> $default_branch_name AND r.branch = $default_branch_name
+           AND r.from <= default_window AND r.to IS NULL)
+       OR (branch_name <> $default_branch_name AND r.branch = $default_branch_name
+           AND r.from <= default_window AND r.to > default_window)
+    RETURN r
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+```
+
+Four things carry the pattern:
+
+1. **`UNWIND` over the branch names, joined to `Branch`.** The row set becomes the cross product of the branch list and the matched attributes, and every branch-dependent value the election needs is read off the `Branch` node in the same pass. Index `Branch.name` (`node_indexes` in `core/graph/index.py`) before shipping such a query: without it the `MATCH (br:Branch {name: branch_name})` under the `UNWIND` compiles to a `NodeByLabelScan` under an `Apply` and rescans every branch once per unwound name, which is quadratic in the branch-set size.
+2. **`WITH DISTINCT` before the election subqueries, and the node match before the `UNWIND`.** Deduplicate for the same reason as the single-branch case - one `HAS_ATTRIBUTE` edge exists per branch that touched the attribute - since the cardinality is otherwise multiplied by the branch list, running the election `branches x edges` times instead of once per `(node, attribute, branch)`. Match the nodes *above* the `UNWIND` rather than below it: a node match that sits after it shares no variable with `branch_name`, so the planner drives it as the right side of a cartesian `Apply` and repeats the uuid seek and the attribute expansion once per branch. Profiled over 200 branches, one repository and three attributes, hoisting it cut that subtree from 8,960 to 3,068 dbHits for an identical 600-row result.
+3. **The per-branch visibility predicate and its `is_isolated` window.** A branch sees edges on itself, edges on the global branch at query time, and default-branch edges as of the fork point. `default_window` is that fork point for an isolated branch and the query time for one saved before isolation became the default, which is how branches predating the flag keep reading the default branch live. Substitute the fork point only when it is *earlier* than the requested time - `Branch.get_branches_and_times_to_query_global` guards the same substitution with `at > branched_from`. For a time before the branch existed the requested time is already the tighter bound, and widening the window forward to the fork would expose default-branch writes made after the time asked for. Copy the comparison operators off `Branch.get_query_filter_path`'s branch loop - non-strict `from <=` with strict `to >` - not off the `branch_agnostic` shortcut higher in that method, whose strict `from <` drops an edge written exactly at the query time or exactly at a branch's `branched_from`.
+4. **Backfill the missing branches in Python.** A branch that resolved nothing produces no row at all; there is no null row to find. Iterate the branch list you asked for and look each one up in the grouped result, rather than iterating the rows that came back.
+
+A trap worth knowing when reasoning about what a branch "should" see: for a node kind marked `AGNOSTIC`, `BaseAttribute.get_create_data` writes an `AGNOSTIC` or `LOCAL` attribute on the **global** branch at creation time, while later updates go to the branch being written on. An `AWARE` attribute is the exception - it lands on the current branch even on an `AGNOSTIC` node, at creation as at every later write. Global edges are visible from every branch regardless of fork point, so a node created *after* a branch forked still resolves the **creation** values of its global attributes on that branch; only the subsequent writes, and the `AWARE` attributes throughout, are windowed by the fork point. Repositories are the case in point, and the two kinds differ: `CoreRepository.commit` is `LOCAL`, so a read-write repository added today shows its initial `commit` on every branch and only later imports are branch-scoped, while `CoreReadOnlyRepository` overrides `commit` and `ref` to `AWARE`, so a read-only repository created on the default branch shows neither on a branch that forked before it.
+
+Two earlier queries hold halves of this shape, and are the ones to read alongside a new instance:
+
+- `_check_duplicate_attributes` (`infrahub/database/validation.py`) - the per-branch election with the `branched_from` window and the `branch_level DESC, from DESC, status ASC / LIMIT 1` subquery. It derives its branch set from the graph instead of taking one as a parameter, and its default-branch arm uses a strict `from <`.
+- `DiffCountChanges` (`infrahub/core/query/diff.py`) - the grouped read over a `branch_names` list in one statement, and the Python-side backfill: `get_num_changes_by_branch` walks `self.branch_names` and fills `0` for every branch the statement returned no row for.
+
 ### Query performance
 
 `AttributeValueIndexed` values are stored natively typed (a number attribute's `av.value` is an integer). Compare `av.value` directly in `WHERE` predicates — wrapping the property in a function (`toInteger(av.value) >= $x`) prevents Neo4j from using the index, so the query scans every row of the kind instead of seeking the matching range.

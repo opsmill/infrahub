@@ -33,7 +33,7 @@ Both are read with the same per-branch predicate.
 ### Per-branch visibility of an edge `r` for row branch `B` at time `at`
 
 ```text
-default_window(B) = B.branched_from if B.is_isolated else at
+default_window(B) = B.branched_from if B.is_isolated and B.branched_from < at else at
 
 visible(r, B) =
      (r.branch IN [B, "-global-"] AND r.from <= at AND (r.to IS NULL OR r.to > at))
@@ -50,6 +50,11 @@ implementation copies them rather than paraphrasing, and a differential test aga
 per-branch read pins them. `is_isolated` is deprecated and forced to true on creation, but a branch
 from an older database may carry `false`, and the standard read then sees the default branch at query
 time; `default_window` keeps the primitive consistent with that.
+
+The fork point substitutes for `at` only when it precedes `at`, which is the guard
+`Branch.get_branches_and_times_to_query_global` applies as `at > branched_from`. For a time before
+the branch existed the requested time is already the tighter bound, and widening the window forward
+to the fork would expose default-branch writes made after the time asked for.
 
 Winner among visible edges: `ORDER BY r.branch_level DESC, r.from DESC, r.status ASC LIMIT 1`, then keep
 only `status = "active"`. This is the rule `Branch.get_query_filter_path` encodes for a single branch
