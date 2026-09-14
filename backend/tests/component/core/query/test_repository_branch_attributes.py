@@ -268,6 +268,20 @@ class TestRepositoryBranchAttributesReader:
         assert counting_db.count_for(QUERY_NAME) == 0
         assert sum(counting_db.query_counts.values()) == 0
 
+    async def test_an_empty_repository_id_list_executes_no_query(
+        self, db: InfrahubDatabase, repository_branch_status_branches: RepositoryBranchStatusBranches
+    ) -> None:
+        default_branch_name = repository_branch_status_branches.default_branch.name
+        counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+        result = await _reader(db=counting_db).read(
+            repository_ids=[], branch_names=[default_branch_name], attribute_names={"commit"}
+        )
+
+        assert result.values == {}
+        assert counting_db.count_for(QUERY_NAME) == 0
+        assert sum(counting_db.query_counts.values()) == 0
+
     async def test_an_empty_attribute_name_list_executes_no_query(
         self, db: InfrahubDatabase, repository_branch_status_branches: RepositoryBranchStatusBranches
     ) -> None:

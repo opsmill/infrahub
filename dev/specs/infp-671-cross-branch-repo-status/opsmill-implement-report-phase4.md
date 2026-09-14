@@ -237,8 +237,21 @@ A fourth pass, on the commit carrying those two fixes, found two more. Both vali
 | P3 | Stripping the method name from the paging comment broke its meaning: it then claimed both arguments arrive as `None` whether or not the caller passed them, which is false for a caller that passes one. | Fixed: the comment now says the *unset* pair arrives as `None` rather than absent. Cubic's own suggestion restored the method name its previous pass objected to, so the wording matches neither of its two suggestions. |
 | P3 | The report gave two timelines for T034: chunk 2b said all four criteria passed once the index was in place, while the section below said the Cartesian criterion was unmet until the hoist. | Fixed: chunk 2b now scopes its claim to the index criteria and points at the later section. |
 
-The same sweep found three stale `ValueError` claims this report had not updated when the exception
-was converted, in the chunk 5 deviation note, the deviations list and the open questions. All three
+Two further passes each found one, and the second of them is the only review finding in this series
+that reached the code rather than a document:
+
+| Sev | Finding | Disposition |
+| --- | --- | --- |
+| P3 | The `Raises:` sections on the reader and its protocol still declared `ValueError` after the guard became `ResourceMultipleFoundError`, and the primitive contract stated the row bound without its floor of 1. | Fixed. The protocol one mattered most: it is what a second implementation is written against, and it named an exception the code can no longer raise. |
+| P3 | The reader short-circuits an empty `branch_names` or `attribute_names` but not an empty `repository_ids`, so that one case executed a statement that cannot match a row. | Fixed in the reader rather than documented as an exception, with a component test asserting zero queries, mirroring the two that already existed. The asymmetry was not deliberate: all three make the statement unable to match. No production behaviour changes - the single caller always passes exactly one id. |
+
+`repository_ids` is still not de-duplicated where `branch_names` is, and that asymmetry *is*
+deliberate: `UNWIND` over a repeated branch name yields a duplicate row, while `n.uuid IN $list`
+is set membership and a repeated id matches once.
+
+The sweep before those passes found three stale `ValueError` claims this report had not updated when
+the exception was converted, in the chunk 5 deviation note, the deviations list and the open
+questions. All three
 now record the conversion. The Phase 3 report's equivalent claim was left alone: it is a sealed
 record of a different branch and head commit, and was true when written.
 

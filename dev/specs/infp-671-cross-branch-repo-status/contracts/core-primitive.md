@@ -45,8 +45,8 @@ class RepositoryBranchAttributesQuery(Query):
   len(repository_ids)` rows by construction. Callers chunk `branch_names`. The read is therefore
   unpageable and rejects a `limit` or `offset` argument rather than silently discarding it; it sets
   `self.limit` to that bound floored at 1, so a READ with neither set is not treated as unpaginated.
-  The floor is only reachable by a direct caller passing an empty branch or attribute list, which
-  the reader answers without executing the statement.
+  The floor is only reachable by a direct caller passing an empty repository, branch or attribute
+  list, each of which the reader answers without executing the statement.
 
 Result dataclass (frozen): `RepositoryBranchAttributeValue(repository_id, branch_name,
 attribute_name, attribute_id, value, own_value, updated_at)`.
@@ -70,7 +70,8 @@ class RepositoryBranchAttributesReader:
 
 - Built at the entry point (resolver, sync flow) with `registry.default_branch` and
   `GLOBAL_BRANCH_NAME`; the component itself never touches `registry`.
-- Empty `branch_names` or empty `attribute_names` returns an empty lookup without executing.
+- An empty `repository_ids`, `branch_names` or `attribute_names` returns an empty lookup without
+  executing: each makes the statement unable to match a row.
 - Runs exactly one `RepositoryBranchAttributesQuery` per call. Chunking is the caller's decision.
 - `branch_names` is the caller's, and the two callers source it differently on purpose. The resolver
   reads it from the database, because its row set must match the branches page the user sees and a

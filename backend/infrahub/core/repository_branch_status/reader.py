@@ -45,7 +45,7 @@ class RepositoryBranchAttributesReader(RepositoryBranchAttributesSource):
 
         """
         unique_branch_names = list(dict.fromkeys(branch_names))
-        if not unique_branch_names or not attribute_names:
+        if not repository_ids or not unique_branch_names or not attribute_names:
             return RepositoryBranchAttributes.from_values(values=[])
 
         query = await RepositoryBranchAttributesQuery.init(
