@@ -195,9 +195,9 @@ describe("GenericRelationshipField", () => {
     await expect.poll(() => component.getByText("Select a kind first").query()).toBeNull();
   });
 
-  // A relationship whose peer is the *generic* BuiltinIPAddress: `getPoolKindFromSchema`
-  // sets `field.pool` for it, and the generic branch has to render the pool UI — it once did
-  // not, which made "allocate from pool" unreachable for exactly these relationships.
+  // A relationship whose peer is the *generic* BuiltinIPAddress: `getPoolKindFromSchema` sets
+  // `field.pool` for it, and the generic branch renders the pool UI, so "allocate from pool" is
+  // reachable for these relationships.
   describe("allocate from pool on a generic IP peer", () => {
     const ipGeneric = generateGenericSchema({
       kind: "BuiltinIPAddress",

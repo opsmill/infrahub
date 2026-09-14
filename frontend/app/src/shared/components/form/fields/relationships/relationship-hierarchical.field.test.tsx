@@ -161,8 +161,7 @@ describe("RelationshipHierarchicalField", () => {
 
     // The pool tab is for staging a *new* allocation; it has nothing to show for one that has
     // already resolved. The object tab holds the allocated prefix, and the label names the pool
-    // it came from — where the field used to feed the picker a synthetic node labelled
-    // "Allocated by pool", which said neither.
+    // it came from, so both the value and its provenance are legible.
     await expect
       .element(component.getByRole("tab", { name: "Object" }))
       .toHaveAttribute("data-state", "active");
