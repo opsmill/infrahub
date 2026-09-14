@@ -352,6 +352,15 @@ class DatabaseSettings(BaseSettings):
     max_concurrent_queries_delay: float = Field(
         default=0.01, ge=0, description="Delay to add when max_concurrent_queries is reached."
     )
+    diff_save_concurrency: int = Field(
+        default=4,
+        ge=1,
+        description=(
+            "Number of batches of diff nodes written at the same time when a diff is saved. Each batch is "
+            "its own transaction on its own connection, so a higher value uses more database cores and "
+            "connections from the pool."
+        ),
+    )
     path_traversal_query_timeout: float = Field(
         default=30,
         ge=1,

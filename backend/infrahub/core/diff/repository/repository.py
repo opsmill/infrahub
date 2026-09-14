@@ -1,3 +1,5 @@
+import asyncio
+from itertools import batched
 from typing import AsyncGenerator, Generator, Iterable, Sequence
 
 from neo4j.exceptions import TransientError
@@ -46,7 +48,12 @@ from ..query.has_conflicts_query import EnrichedDiffHasConflictQuery
 from ..query.link_proposed_change import EnrichedDiffLinkProposedChangeQuery
 from ..query.merge_tracking_id import EnrichedDiffMergedTrackingIdQuery
 from ..query.roots_metadata import EnrichedDiffRootsMetadataQuery
-from ..query.save import EnrichedDiffRootsUpsertQuery, EnrichedNodeBatchCreateQuery, EnrichedNodesLinkQuery
+from ..query.save import (
+    EnrichedDiffNodesCreateQuery,
+    EnrichedDiffRootsUpsertQuery,
+    EnrichedNodeBatchCreateQuery,
+    EnrichedNodesLinkQuery,
+)
 from ..query.time_range_query import EnrichedDiffTimeRangeQuery
 from ..query.update_conflict_query import EnrichedDiffConflictUpdateQuery
 from .deserializer import EnrichedDiffDeserializer
@@ -275,10 +282,33 @@ class DiffRepository:
         await root_query.execute(db=self.db)
         log.info("Diff metadata updated.")
 
-    async def _save_node_batch(self, node_create_batch: list[EnrichedNodeCreateRequest]) -> None:
-        node_query = await EnrichedNodeBatchCreateQuery.init(db=self.db, node_create_batch=node_create_batch)
+    @retry_db_transaction(name="enriched_diff_nodes_create")
+    async def _run_diff_nodes_create_query(self, diff_root_uuid: str, node_identifiers: list[NodeIdentifier]) -> None:
+        create_query = await EnrichedDiffNodesCreateQuery.init(
+            db=self.db, diff_root_uuid=diff_root_uuid, node_identifiers=node_identifiers
+        )
+        await create_query.execute(db=self.db)
+
+    async def _create_diff_nodes(self, enriched_diffs: EnrichedDiffs) -> None:
+        """Create the DiffNode of every node the roots do not hold yet.
+
+        Writing a root locks it, so these queries run one after the other; the batches that then fill in
+        the nodes never touch the root and can run concurrently.
+        """
+        chunk_size = config.SETTINGS.database.query_size_limit
+        for diff_root in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
+            identifiers = [node.identifier for node in diff_root.nodes]
+            for identifiers_chunk in batched(identifiers, chunk_size):
+                log.info(f"Creating diff nodes, num_nodes={len(identifiers_chunk)}")
+                await self._run_diff_nodes_create_query(
+                    diff_root_uuid=diff_root.uuid, node_identifiers=list(identifiers_chunk)
+                )
+
+    @retry_db_transaction(name="enriched_diff_node_batch_save")
+    async def _save_node_batch(self, db: InfrahubDatabase, node_create_batch: list[EnrichedNodeCreateRequest]) -> None:
+        node_query = await EnrichedNodeBatchCreateQuery.init(db=db, node_create_batch=node_create_batch)
         try:
-            await node_query.execute(db=self.db)
+            await node_query.execute(db=db)
         except TransientError as exc:
             if not exc.code or "OutOfMemoryError".lower() not in str(exc.code).lower():
                 raise
@@ -287,10 +317,43 @@ class DiffRepository:
                 log.info(
                     f"Updating node {node_request.node.uuid}, num_properties={node_request.node.num_properties}..."
                 )
-                single_node_query = await EnrichedNodeBatchCreateQuery.init(
-                    db=self.db, node_create_batch=[node_request]
-                )
-                await single_node_query.execute(db=self.db)
+                single_node_query = await EnrichedNodeBatchCreateQuery.init(db=db, node_create_batch=[node_request])
+                await single_node_query.execute(db=db)
+
+    async def _save_node_batches(self, enriched_diffs: EnrichedDiffs) -> None:
+        """Write the fields of every node, several batches at a time.
+
+        Each batch is its own transaction on its own session. A repository whose database is already a
+        transaction keeps the batches on it, one after the other, so the caller's transaction sees them.
+        """
+        node_create_batches = list(self._get_node_create_request_batch(enriched_diffs=enriched_diffs))
+        count_nodes_remaining = sum(len(node_create_batch) for node_create_batch in node_create_batches)
+
+        if self.db.is_transaction:
+            for batch_num, node_create_batch in enumerate(node_create_batches):
+                log.info(f"Saving node batch #{batch_num}...")
+                await self._save_node_batch(db=self.db, node_create_batch=node_create_batch)
+                count_nodes_remaining -= len(node_create_batch)
+                log.info(f"Batch saved. {count_nodes_remaining=}")
+            return
+
+        semaphore = asyncio.Semaphore(config.SETTINGS.database.diff_save_concurrency)
+
+        async def save_batch(batch_num: int, node_create_batch: list[EnrichedNodeCreateRequest]) -> None:
+            nonlocal count_nodes_remaining
+            async with semaphore, self.db.start_session() as batch_db:
+                log.info(f"Saving node batch #{batch_num}...")
+                await self._save_node_batch(db=batch_db, node_create_batch=node_create_batch)
+            count_nodes_remaining -= len(node_create_batch)
+            log.info(f"Batch saved. {count_nodes_remaining=}")
+
+        try:
+            async with asyncio.TaskGroup() as task_group:
+                for batch_num, node_create_batch in enumerate(node_create_batches):
+                    task_group.create_task(save_batch(batch_num=batch_num, node_create_batch=node_create_batch))
+        except ExceptionGroup as exc_group:
+            # the batches share one cause, so callers get the first failure as they would from a sequential save
+            raise exc_group.exceptions[0] from exc_group
 
     async def _drop_nodes(self, diff_root: EnrichedDiffRoot, node_identifiers: list[NodeIdentifier]) -> None:
         drop_node_query = await EnrichedDiffDropNodesQuery.init(
@@ -356,15 +419,10 @@ class DiffRepository:
             await self._save_root_metadata(enriched_diffs=enriched_diffs)
             return
 
-        count_nodes_remaining = len(enriched_diffs.base_branch_diff.nodes) + len(enriched_diffs.diff_branch_diff.nodes)
-        log.info(f"Saving diff (num_nodes={count_nodes_remaining})...")
-        for batch_num, node_create_batch in enumerate(
-            self._get_node_create_request_batch(enriched_diffs=enriched_diffs)
-        ):
-            log.info(f"Saving node batch #{batch_num}...")
-            await self._save_node_batch(node_create_batch=node_create_batch)
-            count_nodes_remaining -= len(node_create_batch)
-            log.info(f"Batch saved. {count_nodes_remaining=}")
+        num_nodes = len(enriched_diffs.base_branch_diff.nodes) + len(enriched_diffs.diff_branch_diff.nodes)
+        log.info(f"Saving diff ({num_nodes=})...")
+        await self._create_diff_nodes(enriched_diffs=enriched_diffs)
+        await self._save_node_batches(enriched_diffs=enriched_diffs)
         if node_identifiers_to_drop:
             await self._drop_nodes(diff_root=enriched_diffs.diff_branch_diff, node_identifiers=node_identifiers_to_drop)
         await self._update_hierarchy_links(enriched_diffs=enriched_diffs)
