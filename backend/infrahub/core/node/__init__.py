@@ -1166,7 +1166,10 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         with trace.get_tracer(__name__).start_as_current_span("changelog.primary_labels") as span:
             span.set_attribute("changelog.node_kind", self.get_kind())
             span.set_attribute("changelog.display_label_materialized", self._display_label is not None)
-            span.set_attribute("changelog.hfid_materialized", self._human_friendly_id is not None)
+            span.set_attribute(
+                "changelog.hfid_materialized",
+                bool(self._human_friendly_id and self._human_friendly_id.get_value(node=self, at=self._at)),
+            )
             node_changelog.display_label = await self.get_display_label(db=db)
             node_changelog.hfid = await self.get_hfid(db=db)
 

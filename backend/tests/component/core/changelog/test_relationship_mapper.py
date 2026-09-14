@@ -37,4 +37,4 @@ async def test_add_peer_from_one_cardinality_relationship_records_the_edge_metad
     changelog = mapper.changelog
     assert isinstance(changelog, RelationshipCardinalityOneChangelog)
     assert changelog.peer_id == owner.id
-    assert "is_protected" in changelog.properties
+    assert changelog.properties["is_protected"].value == relationship.is_protected
