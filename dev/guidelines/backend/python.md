@@ -79,11 +79,14 @@ def _require_service(connection: redis.Redis | InfrahubServices | None) -> Infra
         raise TypeError(...)
     return connection
 
-# ✅ Good - one typed slot per driver; the branch narrows on None and imports nothing above this layer
+# ✅ Good - one typed slot per driver; each branch narrows on None, importing nothing above this layer
 def __init__(self, name: str, connection: redis.Redis | None = None, cache: InfrahubCache | None = None) -> None:
-    if cache is None:
-        raise TypeError(f"Lock {name!r} requires a cache adapter")
-    self.cache: InfrahubCache = cache
+    if connection is not None:
+        self.connection: redis.Redis = connection
+    elif cache is not None:
+        self.cache: InfrahubCache = cache
+    else:
+        raise TypeError(f"Lock {name!r} requires a connection or a cache adapter")
 ```
 
 **Exception — `tasks/*.py`:** keep `infrahub.*` and other heavy imports function-local there.
