@@ -6,15 +6,15 @@ import { Pulse } from "@/shared/components/ui/pulse";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getObjectsCountQueryOptions } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
-import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
+import {
+  GENERIC_REPOSITORY_KIND,
+  REPOSITORY_ERROR_IMPORT_FILTER,
+} from "@/entities/repository/domain/model/repository";
 import {
   deriveGitStatus,
   type GitStatus as GitStatusValue,
 } from "@/entities/repository/domain/rules/derive-git-status";
-import {
-  getFailingRepositoriesUrl,
-  REPOSITORY_ERROR_IMPORT_FILTER,
-} from "@/entities/repository/ui/routing/repository-urls";
+import { getFailingRepositoriesUrl } from "@/entities/repository/ui/routing/repository-urls";
 
 /** Matches the task indicator's cadence so the two header controls behave alike. */
 const REFETCH_INTERVAL = 10_000;
@@ -88,7 +88,11 @@ export function GitStatus() {
         <GitStatusGlyph status={status} />
       </span>
       {status === "error" && (
-        <Pulse className="right-[6.5px] bottom-[6.5px]" data-testid="git-status-pulse" />
+        <Pulse
+          tone="danger"
+          className="right-[6.5px] bottom-[6.5px]"
+          data-testid="git-status-pulse"
+        />
       )}
     </>
   );

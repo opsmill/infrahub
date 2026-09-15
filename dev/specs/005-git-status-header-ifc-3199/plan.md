@@ -252,7 +252,18 @@ These are deliberate, not oversights, and must survive into the pull request des
 2. **Branch-change-mid-flight is untested.** It is a TanStack Query cache-key guarantee
    rather than application logic; testing it would test the library. The guarantee holds only
    while the query stays keyed on the branch.
-3. **Partial-match filtering is safe incidentally, not structurally.** `addFiltersToRequest`
+3. **The control changes element type between states.** Inert renders a `Button`; every other
+   state renders a `LinkButton`. React therefore remounts the subtree when a branch's
+   repository count crosses zero with the page open — dropping focus if the control happened
+   to be focused, and changing the accessible role from button to link with no announcement.
+   Accepted deliberately: the spec requires the inert state to be disabled, a disabled
+   `LinkButton` cannot show a tooltip (see research R2), and a `role="link"` that leads nowhere
+   is worse semantics than a disabled button. The transition is rare — it needs a repository
+   added to, or removed from, an otherwise empty branch while the operator watches. The
+   alternative, overriding the design system's `data-disabled:pointer-events-none` with an
+   arbitrary variant, trades a rare focus loss for a permanent fight with the component library.
+
+4. **Partial-match filtering is safe incidentally, not structurally.** `addFiltersToRequest`
    sets `partial_match: true` for any `__value` filter. No current sync-status enum value
    contains `error-import` as a substring, so the count is exact today. A future enum value
    that did would silently inflate it. A comment at the filter construction site points at
