@@ -335,7 +335,12 @@ class DatabaseSettings(BaseSettings):
         description="Maximum number of level to search in a hierarchy.",
     )
     retry_limit: int = Field(
-        default=3, description="Maximum number of times a transient issue in a transaction should be retried."
+        default=3,
+        ge=1,
+        description=(
+            "Number of times a transaction is attempted before a transient issue is raised. "
+            "1 attempts it once and does not retry."
+        ),
     )
     retry_base_delay: float = Field(
         default=0.1, ge=0, description="Base delay in seconds for exponential backoff on transaction retries."

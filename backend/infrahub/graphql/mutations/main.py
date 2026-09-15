@@ -19,7 +19,7 @@ from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.profile_schema import ProfileSchema
 from infrahub.core.schema.template_schema import TemplateSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import retry_db_transaction
+from infrahub.database import retry_db_transaction, run_with_retry
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.errors.validation import raise_classified_from_validation_error
 from infrahub.events.generator import generate_node_mutation_events
@@ -258,18 +258,28 @@ class InfrahubMutationMixin:
         db = database or graphql_context.db
         schema = cls._meta.active_schema
 
-        create_data = dict(data)
-        create_data.update(override_data or {})
+        async def create_object() -> Node:
+            create_data = dict(data)
+            create_data.update(override_data or {})
 
-        obj = await create_node(
-            data=create_data,
-            db=db,
-            branch=branch,
-            schema=schema,
-            user_id=graphql_context.assigned_user_id,
-        )
+            return await create_node(
+                data=create_data,
+                db=db,
+                branch=branch,
+                schema=schema,
+                user_id=graphql_context.assigned_user_id,
+            )
 
-        graphql_response = await build_graphql_response(info=info, db=db, obj=obj)
+        # The retry covers the reads a create makes before it opens its transaction, so that a
+        # database too saturated to serve them is replayed rather than reported. It ends at the
+        # commit: reading the node back is retried on its own, so that failing to render an object
+        # never creates a second one.
+        obj = await run_with_retry(db=db, name="object_create", func=create_object)
+
+        async def read_object_back() -> dict[str, Any]:
+            return await build_graphql_response(info=info, db=db, obj=obj)
+
+        graphql_response = await run_with_retry(db=db, name="object_create_response", func=read_object_back)
         return obj, cls(**graphql_response)
 
     @classmethod
