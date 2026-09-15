@@ -13,6 +13,7 @@ from ..model.path import (
     EnrichedDiffSingleRelationship,
     EnrichedDiffsMetadata,
     EnrichedNodeCreateRequest,
+    NodeIdentifier,
 )
 
 
@@ -86,7 +87,51 @@ CALL (diff_roots) {
         return {"diff_root_list": diff_root_list}
 
 
+class EnrichedDiffNodesCreateQuery(Query):
+    """Create the DiffNode of every listed node its root does not hold yet.
+
+    Writing the root takes its lock for the transaction, so overlapping saves of one diff create each node once.
+    """
+
+    name = "enriched_diff_nodes_create"
+    type = QueryType.WRITE
+    insert_return = False
+
+    def __init__(self, diff_root_uuid: str, node_identifiers: Iterable[NodeIdentifier], **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.diff_root_uuid = diff_root_uuid
+        self.node_identifiers = node_identifiers
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params = {
+            "root_uuid": self.diff_root_uuid,
+            "node_identifiers": [
+                {"uuid": identifier.uuid, "db_id": identifier.db_id} for identifier in self.node_identifiers
+            ],
+        }
+        query = """
+MERGE (diff_root:DiffRoot {uuid: $root_uuid})
+SET diff_root.uuid = $root_uuid
+WITH diff_root
+UNWIND $node_identifiers AS node_identifier
+// USING INDEX keeps the lookup on the uuid index: the query must not walk the root's edge list
+OPTIONAL MATCH (existing_node:DiffNode {uuid: node_identifier.uuid, db_id: node_identifier.db_id})
+USING INDEX existing_node:DiffNode(uuid)
+WHERE (diff_root)-[:DIFF_HAS_NODE]->(existing_node)
+WITH diff_root, node_identifier, existing_node
+WHERE existing_node IS NULL
+CREATE (diff_root)-[:DIFF_HAS_NODE]->(:DiffNode {uuid: node_identifier.uuid, db_id: node_identifier.db_id})
+        """
+        self.add_to_query(query)
+
+
 class EnrichedNodeBatchCreateQuery(Query):
+    """Write the fields, conflicts and properties of a batch of diff nodes their roots already hold.
+
+    The query never writes the root and touches only the nodes of its batch, so batches of one save can run
+    in concurrent transactions.
+    """
+
     name = "enriched_nodes_create"
     type = QueryType.WRITE
     insert_return = False
@@ -102,33 +147,11 @@ class EnrichedNodeBatchCreateQuery(Query):
 UNWIND $node_details_list AS node_details
 WITH
     node_details.root_uuid AS root_uuid,
-    toString(node_details.node_map.node_properties.uuid) AS node_uuid,
-    node_details.node_map.node_properties.db_id AS node_db_id
-// -------------------------
-// create the diff nodes the root does not hold yet
-// -------------------------
-MERGE (diff_root:DiffRoot {uuid: root_uuid})
-// writing the root takes its lock for the transaction, so overlapping saves of one diff create each node once
-SET diff_root.uuid = root_uuid
-WITH diff_root, node_uuid, node_db_id
-// USING INDEX keeps every node lookup in this query on the uuid index: a batch must not walk the root's edge list
-OPTIONAL MATCH (existing_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
-USING INDEX existing_node:DiffNode(uuid)
-WHERE (diff_root)-[:DIFF_HAS_NODE]->(existing_node)
-WITH diff_root, node_uuid, node_db_id, existing_node
-WHERE existing_node IS NULL
-CREATE (diff_root)-[:DIFF_HAS_NODE]->(:DiffNode {uuid: node_uuid, db_id: node_db_id})
-// -------------------------
-// resetting the UNWIND here reduces memory usage; count(*) keeps one row even when nothing was created
-// -------------------------
-WITH count(*) AS num_created_nodes
-UNWIND $node_details_list AS node_details
-WITH
-    node_details.root_uuid AS root_uuid,
     node_details.node_map AS node_map,
     toString(node_details.node_map.node_properties.uuid) AS node_uuid,
     node_details.node_map.node_properties.db_id AS node_db_id
 MATCH (diff_root:DiffRoot {uuid: root_uuid})
+// USING INDEX keeps every node lookup in this query on the uuid index: a batch must not walk the root's edge list
 MATCH (diff_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
 USING INDEX diff_node:DiffNode(uuid)
 WHERE (diff_root)-[:DIFF_HAS_NODE]->(diff_node)
