@@ -37,7 +37,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipDirection
 from infrahub.core.timestamp import Timestamp
 from infrahub.graph_traversal.planning.models import Plan, TerminalById
 
@@ -237,6 +237,34 @@ WITH anchor
 
 _HOP_TUPLE_PREDICATE = """[{start_var}.kind, {rel_var}.name, {end_var}.kind] IN ${hop_tuple_param}"""
 
+# An end points its IS_RELATED edge at the Relationship vertex for an outbound or bidirectional
+# relationship, and away from it for an inbound one, so the two edge orientations of a hop name
+# the direction each of its ends declares.
+_HOP_DIRECTION_CASE = """CASE
+        WHEN startNode({edge_in}) = {start} AND startNode({edge_out}) = {rel} THEN "{outbound}"
+        WHEN startNode({edge_in}) = {rel} AND startNode({edge_out}) = {end} THEN "{inbound}"
+        ELSE "{bidirectional}"
+    END"""
+
+
+def _hop_direction(*, edge_in: str, edge_out: str, start: str, rel: str, end: str) -> str:
+    """The hop-direction CASE for one hop, over the Cypher variables naming its parts.
+
+    The emitted values are the ``RelationshipDirection`` values the extractor parses back,
+    so a renamed enum value changes both sides at once.
+    """
+    return _HOP_DIRECTION_CASE.format(
+        edge_in=edge_in,
+        edge_out=edge_out,
+        start=start,
+        rel=rel,
+        end=end,
+        outbound=RelationshipDirection.OUTBOUND.value,
+        inbound=RelationshipDirection.INBOUND.value,
+        bidirectional=RelationshipDirection.BIDIR.value,
+    )
+
+
 _DELETION_SHADOW_PREDICATE = """
 NOT EXISTS {{ ({from_var})-[{del_var}:IS_RELATED {{status: "deleted", branch: $user_branch}}]-({to_var})
 WHERE {del_var}.from > {edge_var}.from
@@ -326,11 +354,13 @@ WITH
     [i IN range(0, %(left_last)d) | {
         relationship_identifier: nodes(lpath)[i * 2 + 1].name,
         uuid: nodes(lpath)[i * 2 + 2].uuid,
-        kind: nodes(lpath)[i * 2 + 2].kind
+        kind: nodes(lpath)[i * 2 + 2].kind,
+        from_direction: %(left_direction)s
     }] + [i IN range(0, %(right_last)d) | {
         relationship_identifier: nodes(rpath)[i * 2 + 1].name,
         uuid: nodes(rpath)[i * 2 + 2].uuid,
-        kind: nodes(rpath)[i * 2 + 2].kind
+        kind: nodes(rpath)[i * 2 + 2].kind,
+        from_direction: %(right_direction)s
     }] AS hops
 WITH start_node_uuid, start_node_kind, depth, hops,
     [start_node_uuid] + [h IN hops | h.uuid] AS node_uuids
@@ -356,7 +386,8 @@ WITH
     [i IN range(0, %(right_last)d) | {
         relationship_identifier: nodes(rpath)[i * 2 + 1].name,
         uuid: nodes(rpath)[i * 2 + 2].uuid,
-        kind: nodes(rpath)[i * 2 + 2].kind
+        kind: nodes(rpath)[i * 2 + 2].kind,
+        from_direction: %(right_direction)s
     }] AS hops
 WITH start_node_uuid, start_node_kind, depth, hops,
     [start_node_uuid] + [h IN hops | h.uuid] AS node_uuids
@@ -382,7 +413,8 @@ MATCH lpath = (source) %(unit)s{%(length)d} (mid:Node)
 WITH [i IN range(0, %(last)d) | {
         relationship_identifier: nodes(lpath)[i * 2 + 1].name,
         uuid: nodes(lpath)[i * 2 + 2].uuid,
-        kind: nodes(lpath)[i * 2 + 2].kind
+        kind: nodes(lpath)[i * 2 + 2].kind,
+        from_direction: %(direction)s
     }] AS hops
 WITH hops, [$source_id] + [h IN hops | h.uuid] AS node_uuids
 WHERE all(idx IN range(0, size(node_uuids) - 1) WHERE NOT node_uuids[idx] IN node_uuids[idx + 1..])
@@ -407,7 +439,8 @@ MATCH rpath = (m) %(unit)s{%(length)d} (target)
 WITH m, [i IN range(0, %(last)d) | {
         relationship_identifier: nodes(rpath)[i * 2 + 1].name,
         uuid: nodes(rpath)[i * 2 + 2].uuid,
-        kind: nodes(rpath)[i * 2 + 2].kind
+        kind: nodes(rpath)[i * 2 + 2].kind,
+        from_direction: %(direction)s
     }] AS hops
 WITH m.uuid AS mid_uuid, hops, [m.uuid] + [h IN hops | h.uuid] AS node_uuids
 WHERE all(idx IN range(0, size(node_uuids) - 1) WHERE NOT node_uuids[idx] IN node_uuids[idx + 1..])
@@ -416,6 +449,17 @@ LIMIT $half_limit
 """
 
 _HALF_RETURN_LABELS: tuple[str, ...] = ("mid_uuid", "hops")
+
+
+def _qpp_hop_direction(path_var: str) -> str:
+    """The hop-direction CASE for the hop at list index ``i`` of a quantified-path-pattern path."""
+    return _hop_direction(
+        edge_in=f"relationships({path_var})[i * 2]",
+        edge_out=f"relationships({path_var})[i * 2 + 1]",
+        start=f"nodes({path_var})[i * 2]",
+        rel=f"nodes({path_var})[i * 2 + 1]",
+        end=f"nodes({path_var})[i * 2 + 2]",
+    )
 
 
 def _reachable_targets_text(*, phase_one_inner: str) -> str:
@@ -657,6 +701,7 @@ class GraphTraversalCypherRenderer:
                 "right_unit": right_unit,
                 "right_len": right_len,
                 "right_last": right_len - 1,
+                "right_direction": _qpp_hop_direction("rpath"),
                 "depth": depth,
             }
         else:
@@ -670,6 +715,8 @@ class GraphTraversalCypherRenderer:
                 "right_len": right_len,
                 "left_last": left_len - 1,
                 "right_last": right_len - 1,
+                "left_direction": _qpp_hop_direction("lpath"),
+                "right_direction": _qpp_hop_direction("rpath"),
                 "depth": depth,
             }
             params["tier_middles"] = list(tier_middles)
@@ -692,7 +739,13 @@ class GraphTraversalCypherRenderer:
             raise ValueError(f"length must be >= 1, got {length}")
         at = at if at is not None else Timestamp()
         unit = self._join_unit(_QppVars(start="a", edge_in="ri", rel="relx", edge_out="ro", end="b"))
-        text = _HALF_FROM_SOURCE % {"source_match": _SOURCE_MATCH, "unit": unit, "length": length, "last": length - 1}
+        text = _HALF_FROM_SOURCE % {
+            "source_match": _SOURCE_MATCH,
+            "unit": unit,
+            "length": length,
+            "last": length - 1,
+            "direction": _qpp_hop_direction("lpath"),
+        }
         params: dict[str, Any] = {
             **self._base_params(source_id=source_id, at=at),
             "legal_triples": _legal_triples(plan),
@@ -731,6 +784,7 @@ class GraphTraversalCypherRenderer:
             "unit": unit,
             "length": length,
             "last": length - 1,
+            "direction": _qpp_hop_direction("rpath"),
             "visible_r": _BRANCH_VISIBLE.format(rv="r"),
         }
         params: dict[str, Any] = {
@@ -957,9 +1011,12 @@ LIMIT $max_targets"""
               AND <edge active for r3_s, r3_e> AND <hop3 triple>
               AND NOT b2.uuid IN [b1.uuid]
             RETURN source.uuid AS start_node_uuid, source.kind AS start_node_kind,
-                   [{rel_id: rel1.name, uuid: b1.uuid, kind: b1.kind},
-                    {rel_id: rel2.name, uuid: b2.uuid, kind: b2.kind},
-                    {rel_id: rel3.name, uuid: target.uuid, kind: target.kind}] AS hops,
+                   [{relationship_identifier: rel1.name, uuid: b1.uuid, kind: b1.kind,
+                     from_direction: <orientation CASE>},
+                    {relationship_identifier: rel2.name, uuid: b2.uuid, kind: b2.kind,
+                     from_direction: <orientation CASE>},
+                    {relationship_identifier: rel3.name, uuid: target.uuid, kind: target.kind,
+                     from_direction: <orientation CASE>}] AS hops,
                    3 AS depth
 
         At depth=4 the trailing predicates expand to::
@@ -1003,9 +1060,14 @@ LIMIT $max_targets"""
         hop_entries: list[str] = []
         for hop in range(1, depth + 1):
             rel_var = f"rel{hop}"
+            from_var = "source" if hop == 1 else f"b{hop - 1}"
             node_var = "target" if hop == depth else f"b{hop}"
+            direction = _hop_direction(
+                edge_in=f"r{hop}_s", edge_out=f"r{hop}_e", start=from_var, rel=rel_var, end=node_var
+            )
             hop_entries.append(
-                f"{{relationship_identifier: {rel_var}.name, uuid: {node_var}.uuid, kind: {node_var}.kind}}"
+                f"{{relationship_identifier: {rel_var}.name, uuid: {node_var}.uuid, "
+                f"kind: {node_var}.kind, from_direction: {direction}}}"
             )
         hops_list = ", ".join(hop_entries)
 

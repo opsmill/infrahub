@@ -19,6 +19,7 @@ from infrahub.graphql.queries.path import (
     _get_node_labels,
     _node_payload,
     _path_data_to_result,
+    _RelationshipCacheKey,
 )
 
 if TYPE_CHECKING:
@@ -158,7 +159,7 @@ async def reachable_nodes_resolver(
 
     source_info = _node_payload(node_id=source_node.id, kind=source_node.get_kind(), labels_map=labels_map)
 
-    relationship_cache: dict[tuple[str, str, str], dict[str, str]] = {}
+    relationship_cache: dict[_RelationshipCacheKey, dict[str, str]] = {}
     dependencies = [
         {
             "node": _node_payload(node_id=n.node.uuid, kind=n.node.kind, labels_map=labels_map),

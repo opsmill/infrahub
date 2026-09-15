@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:
+    import pytest
+
     from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
@@ -547,6 +550,153 @@ async def test_resolver_names_each_end_of_a_hierarchy_hop(
         "to_label": "Parent",
         "kind": "Hierarchy",
     }
+
+
+@dataclass
+class HierarchyPathCase:
+    name: str
+    node_ids: list[str]
+    relationships: list[dict[str, str]]
+    shortest_paths_only: bool
+
+
+async def test_resolver_names_each_end_of_a_bidirectional_hop(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    hierarchical_location_data_thing: dict[str, Node],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Both ends of a bidirectional edge point their stored edge at the Relationship vertex,
+    # the shape the direction CASE resolves through its ELSE arm. The two ends keep their own
+    # name whichever way the hop is walked.
+    site = hierarchical_location_data_thing["paris"]
+    thing = hierarchical_location_data_thing["thing-paris"]
+
+    from_the_thing = {
+        "from_rel": "location",
+        "from_label": "Location",
+        "to_rel": "things",
+        "to_label": "Things",
+        "kind": "Generic",
+    }
+    from_the_site = {
+        "from_rel": "things",
+        "from_label": "Things",
+        "to_rel": "location",
+        "to_label": "Location",
+        "kind": "Generic",
+    }
+    expectations = {(thing.id, site.id): from_the_thing, (site.id, thing.id): from_the_site}
+    for (source_id, destination_id), expected in expectations.items():
+        data, errors = await _run_resolver(
+            db=db,
+            branch=default_branch,
+            session=session_admin,
+            variables={"data": {"source_id": source_id, "destination_id": destination_id, "max_depth": 1}},
+            source=PATH_TRAVERSAL_RELATIONSHIP_QUERY,
+        )
+
+        assert errors is None
+        assert data is not None
+        result = data["InfrahubPathTraversal"]
+        assert result["count"] == 1
+        hops = result["paths"][0]["hops"]
+        assert [hop["node"]["id"] for hop in hops] == [source_id, destination_id]
+        assert hops[0]["relationship"] is None
+        assert hops[1]["relationship"] == expected
+
+    # The names above survive a wrong direction, because a single declaration per side is
+    # what the peer narrowing falls back to. Only the absence of that fallback pins the arm.
+    assert [record.message for record in caplog.records if "matches no declaration" in record.message] == []
+
+
+async def test_resolver_names_each_end_of_a_self_referential_hierarchy_hop(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    self_referential_hierarchy_data: dict[str, Node],
+) -> None:
+    # Both ends declare `parent` and `children` with the same peer kind, so only the
+    # direction the edge is stored with tells them apart. The depth-3 cases are the ones
+    # that read a hop past the first entry of a quantified-path-pattern half.
+    root = self_referential_hierarchy_data["root"]
+    upper = self_referential_hierarchy_data["upper"]
+    lower = self_referential_hierarchy_data["lower"]
+    leaf = self_referential_hierarchy_data["leaf"]
+
+    upward = {
+        "from_rel": "parent",
+        "from_label": "Parent",
+        "to_rel": "children",
+        "to_label": "Children",
+        "kind": "Hierarchy",
+    }
+    downward = {
+        "from_rel": "children",
+        "from_label": "Children",
+        "to_rel": "parent",
+        "to_label": "Parent",
+        "kind": "Hierarchy",
+    }
+    cases = [
+        HierarchyPathCase(
+            name="one_hop_up", node_ids=[leaf.id, lower.id], relationships=[upward], shortest_paths_only=True
+        ),
+        HierarchyPathCase(
+            name="one_hop_down", node_ids=[lower.id, leaf.id], relationships=[downward], shortest_paths_only=True
+        ),
+        HierarchyPathCase(
+            name="two_hops_up",
+            node_ids=[leaf.id, lower.id, upper.id],
+            relationships=[upward, upward],
+            shortest_paths_only=True,
+        ),
+        HierarchyPathCase(
+            name="two_hops_down_all_paths",
+            node_ids=[upper.id, lower.id, leaf.id],
+            relationships=[downward, downward],
+            shortest_paths_only=False,
+        ),
+        HierarchyPathCase(
+            name="three_hops_up",
+            node_ids=[leaf.id, lower.id, upper.id, root.id],
+            relationships=[upward, upward, upward],
+            shortest_paths_only=True,
+        ),
+        HierarchyPathCase(
+            name="three_hops_down_all_paths",
+            node_ids=[root.id, upper.id, lower.id, leaf.id],
+            relationships=[downward, downward, downward],
+            shortest_paths_only=False,
+        ),
+    ]
+
+    for case in cases:
+        data, errors = await _run_resolver(
+            db=db,
+            branch=default_branch,
+            session=session_admin,
+            variables={
+                "data": {
+                    "source_id": case.node_ids[0],
+                    "destination_id": case.node_ids[-1],
+                    "max_depth": len(case.relationships),
+                    "shortest_paths_only": case.shortest_paths_only,
+                }
+            },
+            source=PATH_TRAVERSAL_RELATIONSHIP_QUERY,
+        )
+
+        assert errors is None, case.name
+        assert data is not None
+        result = data["InfrahubPathTraversal"]
+        assert result["count"] == 1, case.name
+        hops = result["paths"][0]["hops"]
+        assert [hop["node"]["id"] for hop in hops] == case.node_ids, case.name
+        assert [hop["relationship"] for hop in hops] == [None, *case.relationships], case.name
 
 
 async def test_resolver_respects_session_permissions(

@@ -90,7 +90,31 @@ schema. A hierarchical node carries two relationships under the identifier `pare
 
 `get_relationship_by_identifier()` therefore cannot resolve a hierarchy. It returns whichever side
 is declared first. Use `get_relationships_by_identifier()` instead and select the side whose
-`direction` equals the local relationship's `direction.neighbor_direction`.
+`direction` equals the local relationship's `direction.neighbor_direction`. That rule needs one
+known side: it names the peer's declaration from the local one.
+
+#### Naming both sides of one edge
+
+When neither side is known — a graph traversal that only has the two kinds and the identifier —
+the schema alone is not enough. Two kinds under a loose hierarchy, or a kind that is its own
+parent and children, declare the same mirrored pair, so pairing the declarations by
+`RelationshipSchema.mirrors()` leaves more than one answer and any pick is a guess.
+
+Read the direction back from the graph instead. The two `IS_RELATED` edges around the
+`Relationship` vertex are stored in the direction of the relationship (see
+[Relationships Between Nodes](database-schema.md#relationships-between-nodes)), so their
+orientation names both ends:
+
+| First edge | Second edge | Local side | Peer side |
+|---|---|---|---|
+| `node → rel` | `rel → peer` | `OUTBOUND` | `INBOUND` |
+| `rel → node` | `peer → rel` | `INBOUND` | `OUTBOUND` |
+| `node → rel` | `peer → rel` | `BIDIR` | `BIDIR` |
+
+A Cypher `CASE` over `startNode()` reads it back; `core/metadata/query/node_metadata.py` emits
+the `RelationshipDirection` values verbatim, so the result parses straight back into the enum.
+Narrow the candidates by that direction first and by peer kind second; keep the mirror pairing
+as the fallback for an orientation the schema no longer matches.
 
 ### Branch Support Auto-Determination
 

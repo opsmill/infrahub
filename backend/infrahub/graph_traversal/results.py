@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from infrahub.core.constants import RelationshipDirection
 
 
 @dataclass(frozen=True)
@@ -17,6 +21,9 @@ class PathHopData:
     # Schema relationship identifier (e.g. "device_interfaces") of the edge
     # traversed to reach this node from the previous hop.
     relationship_identifier: str
+    # Direction the source end of this hop declares, read from the stored edge orientation.
+    # The destination end holds ``from_direction.neighbor_direction``.
+    from_direction: RelationshipDirection
 
 
 @dataclass(frozen=True)
