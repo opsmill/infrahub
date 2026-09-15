@@ -319,3 +319,17 @@ async def test_fill_peer_hfids_reports_zero_when_the_reader_fails() -> None:
     )
 
     assert loaded == 0
+
+
+async def test_enrich_dropped_kind_node_is_not_read_from_the_diff() -> None:
+    resolver, reader = _resolver({})
+    node = NodeChangelog(node_id="n1", node_kind="Dropped", display_label="label")
+    node.add_attribute(attribute=_hfid_attribute(value='["From", "Diff"]'))
+
+    await resolver.enrich(
+        changelogs=[(DiffAction.ADDED, node)], resolvable_ids=[], is_resolvable_kind=lambda kind: kind != "Dropped"
+    )
+
+    # A node whose kind is gone stays unresolved, like a peer of that kind does.
+    assert node.hfid is None
+    assert reader.hfid_calls == []

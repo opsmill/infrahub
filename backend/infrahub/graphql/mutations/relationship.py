@@ -11,6 +11,7 @@ from infrahub.core.changelog.builder import build_relationship_changelog_getter
 from infrahub.core.changelog.enrichment import node_label_loader
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
+    PROFILES_RELATIONSHIP_NAME,
     InfrahubKind,
     MetadataOptions,
     PermissionAction,
@@ -165,12 +166,17 @@ async def _enrich_source_changelog(
 ) -> None:
     """Fill the source node's HFID and display label on its changelog.
 
-    When the mutated relationship feeds the HFID or display label template, both are read after the
-    write so the changelog reflects the new peer; otherwise the labels the loaded node holds are
-    current and no read is issued. Enrichment is cosmetic: a read failure leaves the values
+    Both labels are read after the write when the mutated relationship can change them: a
+    relationship the HFID or display label template reads, or the profiles relationship, since a
+    profile change rewrites the attributes the templates read. Otherwise the labels the loaded node
+    holds are current and its materialized HFID fills the changelog with no read. Enrichment is
+    cosmetic: every database read goes through the label loader, whose failure leaves the values
     unchanged rather than failing the already-committed mutation.
     """
-    if not source.has_label_depending_on_relationship(name=relationship_name):
+    labels_may_change = relationship_name == PROFILES_RELATIONSHIP_NAME or source.has_label_depending_on_relationship(
+        name=relationship_name
+    )
+    if not labels_may_change and not source.hfid_needs_read():
         node_changelog.hfid = await source.get_hfid(db=db)
         return
     loader = node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
