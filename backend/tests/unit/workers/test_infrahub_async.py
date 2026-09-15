@@ -24,9 +24,11 @@ async def test_inject_service_parameter_fills_the_declared_slot() -> None:
     assert parameters == {"name": "repo-a", "service": service}
 
 
-async def test_inject_service_parameter_rejects_a_service_already_in_the_payload() -> None:
+@pytest.mark.parametrize("key", ["service", "name"])
+async def test_inject_service_parameter_rejects_a_service_already_in_the_payload(key: str) -> None:
+    """A service smuggled in under any parameter name is refused, not only under the declared slot."""
     service = await InfrahubServices.new()
-    parameters: dict[str, Any] = {"name": "repo-a", "service": service}
+    parameters: dict[str, Any] = {"name": "repo-a"} | {key: service}
 
     with pytest.raises(ValueError, match="should be injected"):
         inject_service_parameter(func=flow_with_service, parameters=parameters, service=service)
