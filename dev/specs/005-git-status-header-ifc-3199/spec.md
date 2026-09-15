@@ -164,9 +164,12 @@ same page on a branch that does have repositories.
 - **FR-005b**: The indicator MUST use a single glyph across its states. State MUST be
   conveyed by colour, the pulsing dot, the disabled treatment, and the substitutions defined
   in FR-007a and FR-011 — never by swapping the glyph for a different subject.
-- **FR-006**: The indicator MUST be present but not activatable when the current branch has
-  no Git repositories, and MUST occupy identical space in every state so that no state
-  change alters the header layout.
+- **FR-006**: The indicator MUST be present but not activatable when there are no Git
+  repositories, and MUST occupy identical space in every state so that no state change alters
+  the header layout. Note that repository nodes are branch-agnostic — only their sync status
+  is per-branch — so this condition is deployment-wide in practice: a branch cannot have no
+  repositories while another branch has some. The count is still issued with branch context,
+  which costs nothing and keeps the two lookups consistent.
 - **FR-007**: The indicator MUST refresh its state on a recurring interval without operator
   action, on the same cadence as the existing task indicator.
 - **FR-007a**: While the first status lookup is outstanding, the indicator MUST show a

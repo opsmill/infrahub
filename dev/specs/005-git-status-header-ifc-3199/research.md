@@ -135,3 +135,25 @@ tests and untouched by this frontend ticket.
 afterwards or run on its own branch. Otherwise it leaves a repository in an error state for
 every later test sharing that session-scoped fixture — a cheap mistake with confusing
 downstream symptoms.
+
+## R6. Repository nodes are branch-agnostic (found while building a local demo)
+
+**Finding**: `core_repository` and `core_generic_repository` are both
+`BranchSupportType.AGNOSTIC` (`backend/infrahub/core/schema/definitions/core/repository.py`).
+The repository *node* is therefore identical on every branch. Only the `sync_status`
+*attribute* is `BranchSupportType.LOCAL`, so its *value* is per-branch.
+
+**Why it matters**:
+
+- The error state is genuinely per-branch, because it is driven by the attribute. This is what
+  the e2e test relies on, and it asserted the default branch stays unaffected.
+- The **inert state is deployment-wide**, not per-branch. A branch cannot have zero
+  repositories while another has some. FR-006's wording was corrected accordingly.
+- Deleting a repository on a branch deletes it everywhere. Discovered the hard way: a demo
+  script deleted the repository expecting branch-local semantics and removed it from the
+  default branch. No production code path in this feature deletes anything, so the feature is
+  unaffected — but the assumption was wrong and is recorded here so it is not repeated.
+
+**What did not change**: the total-count lookup still passes branch context. It costs nothing,
+keeps the two lookups symmetric, and would be correct if repositories ever became
+branch-scoped.
