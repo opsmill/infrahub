@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import ID, Argument, Boolean, DateTime, Field, Int, List, NonNull, String
+from graphene import ID, Argument, Boolean, DateTime, Field, List, NonNull, String
 
 from infrahub.constants.enums import OrderByField, OrderDirection
 from infrahub.core.branch.enums import BranchStatus
@@ -11,6 +11,7 @@ from infrahub.core.node.standard import StandardNodeOrdering, StandardNodeQueryF
 from infrahub.core.registry import registry
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.scalars import PositiveInteger
 from infrahub.graphql.types import BranchType, InfrahubBranch, InfrahubBranchType
 from infrahub.graphql.types.enums import InfrahubBranchStatus
 from infrahub.graphql.types.metadata import MetadataOrderInput
@@ -91,11 +92,6 @@ async def infrahub_branch_resolver(
     node_metadata__updated_at__after: datetime | None = None,
     node_metadata__updated_at__before: datetime | None = None,
 ) -> dict[str, Any]:
-    if isinstance(limit, int) and limit < 1:
-        raise ValidationError("limit must be >= 1")
-    if isinstance(offset, int) and offset < 0:
-        raise ValidationError("offset must be >= 0")
-
     node_ordering = standard_node_ordering_from_order_input(order)
 
     # Construct the filter dataclass from GraphQL arguments
@@ -151,8 +147,8 @@ async def infrahub_branch_resolver(
 
 InfrahubBranchQueryList = Field(
     InfrahubBranchType,
-    offset=Int(),
-    limit=Int(),
+    offset=PositiveInteger(),
+    limit=PositiveInteger(),
     name__value=String(),
     ids=List(ID),
     partial_match=Boolean(default_value=False),
