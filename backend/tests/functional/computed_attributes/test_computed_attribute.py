@@ -108,11 +108,11 @@ class TestComputedAttribute(TestInfrahubApp):
         assert len(triggers_python_query) == 2
         assert (
             triggers_python_query[0].generate_name()
-            == "computed_attr_python_query::main::TestingTShirt_pitch::kind::TestingTShirt"
+            == "computed_attr_python_query::main::transform::TShirtPitch::kind::TestingTShirt"
         )
         assert (
             triggers_python_query[1].generate_name()
-            == "computed_attr_python_query::main::TestingTShirt_pitch::kind::TestingColor"
+            == "computed_attr_python_query::main::transform::TShirtPitch::kind::TestingColor"
         )
 
     async def test_gather_trigger_computed_attribute_python_branch(
