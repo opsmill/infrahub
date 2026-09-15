@@ -112,12 +112,11 @@ class TestAuthAndAccess(TestInfrahubApp):
         no_write_access_dataset: dict,
         client: InfrahubClient,
     ) -> None:
-        """Push as a read-only user surfaces a typed RepositoryPermissionError.
+        """Pushing as a read-only user raises a typed RepositoryPermissionError whose cause carries the 403.
 
-        The remote returns HTTP 403 for a no-write-access push, which GitPython raises
-        as a bare `GitCommandError`; `push()` routes that transport-level failure through
-        the enriched classifier so callers get the typed permission error instead of raw
-        `git` output. The remote's response text is preserved on the chained cause.
+        A read-only credential clones successfully but is denied at push time; the caller gets a typed
+        permission error rather than raw git output, and the remote's HTTP 403 response is still
+        reachable on the exception's chained cause.
         """
         repo_name = no_write_access_dataset["repo_name"]
         readonly_url = no_write_access_dataset["readonly_url"]
@@ -140,5 +139,8 @@ class TestAuthAndAccess(TestInfrahubApp):
         with pytest.raises(
             RepositoryPermissionError,
             match=rf"^Access to repository {repo_name} was denied; the credentials are not authorized for the operation\.$",
-        ):
+        ) as exc_info:
             await infrahub_repo.push("main")
+
+        # The remote's response is preserved on the chained cause, not swallowed by the typed error.
+        assert "403" in str(exc_info.value.__cause__)

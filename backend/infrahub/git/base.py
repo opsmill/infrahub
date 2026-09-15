@@ -1133,7 +1133,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         probe runs from a throwaway ``git init``-ed directory.
 
         Raises:
-            RepositoryPermissionError: When the credentials can read but not push.
+            RepositoryPermissionError: When the credentials authenticate but are not allowed to push.
+            RepositoryCredentialsError: When the push service rejects the credentials.
             RepositoryConnectionError: When the remote is unreachable.
             RepositoryError: For any other git failure.
 
@@ -1146,9 +1147,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             except GitCommandError as exc:
                 try:
                     cls._raise_enriched_error_static(name=name, location=url, error=exc)
-                except (RepositoryPermissionError, RepositoryCredentialsError) as classified:
-                    # The read check already passed before the probe ran, so a permission or credential
-                    # failure here specifically means the credentials can read but not push.
+                except RepositoryPermissionError as classified:
+                    # The read check already passed, so an authorization denial on the write service
+                    # specifically means the credentials can read but not push. A credential failure
+                    # (bad or missing token) keeps its own message and propagates unchanged.
                     raise RepositoryPermissionError(
                         identifier=name,
                         message=(
