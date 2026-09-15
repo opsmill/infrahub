@@ -249,6 +249,25 @@ describe("sendWithRateLimitRetry", () => {
     await expect(returned.json()).resolves.toEqual({ ok: true });
   });
 
+  it("keeps replaying when releasing a discarded body rejects", async () => {
+    // GIVEN a 429 whose stream has already errored, so cancelling it rejects
+    const errored = shedResponse();
+    Object.defineProperty(errored, "body", {
+      value: { cancel: () => Promise.reject(new Error("stream errored")) },
+    });
+    const send = vi
+      .fn<() => Promise<Response>>()
+      .mockResolvedValueOnce(errored)
+      .mockResolvedValueOnce(new Response('{"ok":true}', { status: 200 }));
+
+    // WHEN
+    const returned = await sendWithRateLimitRetry(send, { random: noJitter });
+
+    // THEN the rejection is swallowed rather than surfacing as an unhandled one
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(returned.status).toBe(200);
+  });
+
   it("does not replay when the caller rules the response out", async () => {
     // GIVEN
     const send = vi.fn(async () => shedResponse());
