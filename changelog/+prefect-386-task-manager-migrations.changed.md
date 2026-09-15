@@ -1,1 +1,0 @@
-Upgraded Prefect to 3.8.6. The first start after this upgrade applies three new index migrations to the task manager PostgreSQL database; they are built concurrently and hold no exclusive lock, but the start takes longer on a deployment with a large event history.
