@@ -4,7 +4,11 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.query import Query, QueryType
-from infrahub.core.query.agnostic_retention import UNRETAINED_AGNOSTIC_FIELD_PREDICATE
+from infrahub.core.query.agnostic_retention import (
+    BRANCH_WINDOW_ENTRY,
+    RETAINING_BRANCHES_MATCH,
+    UNRETAINED_AGNOSTIC_FIELD_EVALUATION,
+)
 
 if TYPE_CHECKING:
     from infrahub.core.timestamp import Timestamp
@@ -18,33 +22,53 @@ _RETIRE_UNRETAINED_FIELDS_OF_BRANCH = """
 OPTIONAL MATCH (deleted_branch:Branch {name: $branch_name})
 WITH deleted_branch.origin_branch AS origin_name, deleted_branch.branched_from AS fork_at
 // -----------------
-// Every active HAS_ATTRIBUTE/IS_RELATED edge on the global branch...
+// The retaining branches are read once for the whole run and imported into every batch below.
 // -----------------
-MATCH (reachable_node:Node)-[anchor:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
-WHERE anchor.branch = $global_branch_name
-AND anchor.status = "active"
-AND anchor.from <= $at
-AND anchor.to IS NULL
-AND EXISTS {
-    // -----------------
-    // ... that is either created on this branch ...
-    // -----------------
-    MATCH (reachable_node)-[existence:IS_PART_OF]->(:Root)
-    WHERE (existence.branch = $branch_name
-            AND existence.status = "active"
-            AND existence.to IS NULL)
-        // -----------------
-        // ... or has been deleted on the default branch
-        // -----------------
-        OR (existence.branch = origin_name
-            AND existence.status = "active"
-            AND existence.from <= fork_at
-            AND existence.to > fork_at)
-  }
-WITH collect(DISTINCT field) AS agnostic_candidates
-%(unretained_predicate)s
+%(retaining_branches_match)s
+WITH origin_name, fork_at, collect(%(branch_window_entry)s) AS branch_windows
+// -----------------
+// Every Node the deleted branch could read that other branches could not necessarily read: created
+// on this branch, or deleted on the default branch after the fork. Kept as an unaggregated stream:
+// no DISTINCT, and two seeks under UNION ALL rather than one OR, which plans as a deduplicated union.
+// -----------------
+CALL (origin_name, fork_at) {
+    MATCH (reachable_node:Node)-[existence:IS_PART_OF]->()
+    WHERE existence.branch = $branch_name
+      AND existence.status = "active"
+      AND existence.to IS NULL
+    RETURN reachable_node
+  UNION ALL
+    MATCH (reachable_node:Node)-[existence:IS_PART_OF]->()
+    WHERE existence.branch = origin_name
+      AND existence.status = "active"
+      AND existence.from <= fork_at
+      AND existence.to > fork_at
+    RETURN reachable_node
+}
+WITH reachable_node, branch_windows
+// -----------------
+// ... that still owns an open branch-agnostic field. Global owning edges exist only for those.
+// -----------------
+WHERE EXISTS {
+    MATCH (reachable_node)-[anchor:HAS_ATTRIBUTE|IS_RELATED]-(:Attribute|Relationship)
+    WHERE anchor.branch = $global_branch_name
+      AND anchor.status = "active"
+      AND anchor.from <= $at
+      AND anchor.to IS NULL
+}
 
-CALL (field) {
+// -----------------
+// Retention is evaluated and closed per batch of Nodes, so the transaction memory a batch needs is
+// bounded by the batch size times the branch count.
+// -----------------
+CALL (reachable_node, branch_windows) {
+    MATCH (reachable_node)-[anchor:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
+    WHERE anchor.branch = $global_branch_name
+      AND anchor.status = "active"
+      AND anchor.from <= $at
+      AND anchor.to IS NULL
+    WITH branch_windows, collect(DISTINCT field) AS agnostic_candidates
+    %(unretained_evaluation)s
     MATCH (field)-[edge_to_close]-()
     WHERE edge_to_close.branch = $global_branch_name
       AND edge_to_close.status = "active"
@@ -54,7 +78,11 @@ CALL (field) {
     RETURN count(edge_to_close) AS batch_closed_edges
 } IN TRANSACTIONS OF $batch_size ROWS
 RETURN sum(batch_closed_edges) AS edges_closed
-"""
+""" % {
+    "retaining_branches_match": RETAINING_BRANCHES_MATCH,
+    "branch_window_entry": BRANCH_WINDOW_ENTRY,
+    "unretained_evaluation": UNRETAINED_AGNOSTIC_FIELD_EVALUATION,
+}
 
 
 class RetireBranchAgnosticFieldsQuery(Query):
@@ -62,6 +90,11 @@ class RetireBranchAgnosticFieldsQuery(Query):
 
     Retention is judged across every remaining branch, and a field kept live by any of them is left open.
     Must run while the branch's IS_PART_OF edges still exist, because the candidate bound reads them.
+
+    Candidate Nodes are streamed and evaluated in batches of `batch_size`, each batch committing its
+    own closures, so the transaction memory a run needs is bounded by the batch size times the branch
+    count plus one node reference per candidate. A Node that matches both candidate bounds is
+    evaluated twice; the second pass finds its edges already closed.
 
     The writes are batched, so this query cannot run inside an explicit transaction. A failure part
     way through leaves the earlier batches closed, which a re-run completes: retention does not come
@@ -86,9 +119,7 @@ class RetireBranchAgnosticFieldsQuery(Query):
         self.params["batch_size"] = self.batch_size
         self.params["user_id"] = self.user_id
 
-        self.add_to_query(
-            _RETIRE_UNRETAINED_FIELDS_OF_BRANCH % {"unretained_predicate": UNRETAINED_AGNOSTIC_FIELD_PREDICATE}
-        )
+        self.add_to_query(_RETIRE_UNRETAINED_FIELDS_OF_BRANCH)
         self.update_return_labels(["edges_closed"])
 
     def closed_edge_count(self) -> int:

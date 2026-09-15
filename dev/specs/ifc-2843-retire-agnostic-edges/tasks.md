@@ -228,6 +228,10 @@ with the shared retention predicate extended only where a slice proves it must b
   median wall clock gets slightly worse (328.6 → 357.1 ms); the cost is the per-branch existence
   resolution below it, which scales with branch count exactly as T020's +37.6%-at-100-branches
   measurement shows. That retires the "invert the candidate seed" option T020 left on the table.
+  *Revised 2026-09-11: the seed was inverted after all, and the evaluation moved inside the
+  transactional batch — not for wall clock but because the whole-branch evaluation exhausted the
+  transaction memory pool on a large branch. See the dated revision in `research.md` under "Query
+  plans (delivered queries, 2026-08-31)".*
 - [X] R08 **Remove the superseded stack** once the last slice lands: `backend/infrahub/core/agnostic/`,
   `backend/infrahub/core/query/agnostic_retirement.py`, and their tests. Until then the retention
   logic exists twice, deliberately and visibly.
