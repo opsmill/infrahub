@@ -15,11 +15,9 @@ if TYPE_CHECKING:
 
 
 class QueryFilterFunction(Protocol):
-    """The part of the `get_query_filter` contract that the subquery builders depend on.
+    """Builds the query filter for one field; every parameter is keyword-only.
 
-    `AttributeSchema.get_query_filter`, `RelationshipSchema.get_query_filter` and
-    `default_attribute_query_filter` declare the same parameters in different orders, so the only
-    signature they share is a keyword-only one -- which is how the builders below call them.
+    Returns the query elements, their bound parameters, and the WHERE clauses.
     """
 
     async def __call__(
@@ -167,8 +165,7 @@ async def build_subquery_order(
         tail_node_name: None,
     }
     if extra_tail_properties:
-        # `tail_node` is the last element of `field_filter`, so it is always the entry seeded in
-        # `with_parts` above and carries no alias of its own.
+        # The tail node is always the entry seeded in with_parts above, so it needs no alias.
         for variable_name, tail_property in extra_tail_properties.items():
             to_return_parts[f"{tail_node_name}.{tail_property}"] = variable_name
     with_str_to_alias_parts: list[str] = []
