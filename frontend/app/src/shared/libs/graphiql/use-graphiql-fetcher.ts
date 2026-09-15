@@ -2,6 +2,7 @@ import type { Fetcher } from "@graphiql/toolkit";
 import { useAtomValue } from "jotai";
 
 import { DEFAULT_PRIORITY, PRIORITY_HEADER } from "@/shared/api/priority";
+import { retryingFetch } from "@/shared/api/rate-limit/retrying-fetch";
 import { CONFIG } from "@/shared/config/config";
 import { getParallelQueryConfig } from "@/shared/libs/graphiql/parallel-query-mode";
 import {
@@ -20,7 +21,7 @@ export const createBaseFetcher =
   (url: string): Fetcher =>
   async (graphQLParams) => {
     const accessToken = getAccessToken();
-    const data = await fetch(url, {
+    const data = await retryingFetch(url, {
       method: "POST",
       headers: {
         Accept: "application/json",
