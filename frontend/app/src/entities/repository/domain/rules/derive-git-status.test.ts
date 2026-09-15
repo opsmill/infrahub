@@ -105,6 +105,22 @@ describe("deriveGitStatus", () => {
     expect(status).toBe("check-failed");
   });
 
+  it("returns inert when the total is zero and the failing lookup is still pending", () => {
+    // GIVEN no repositories, so the failing count cannot change the answer even once it lands
+    const input: DeriveGitStatusInput = {
+      ...settled,
+      totalCount: 0,
+      failingIsPending: true,
+      failingCount: undefined,
+    };
+
+    // WHEN
+    const status = deriveGitStatus(input);
+
+    // THEN it resolves immediately rather than waiting on a lookup whose result is irrelevant
+    expect(status).toBe("inert");
+  });
+
   it("returns inert when the branch has no repositories", () => {
     // GIVEN
     const input: DeriveGitStatusInput = { ...settled, totalCount: 0, failingCount: 0 };

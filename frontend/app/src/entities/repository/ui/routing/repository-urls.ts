@@ -15,14 +15,18 @@ import {
  * literal would silently break on any deployment that renamed it.
  */
 export function getFailingRepositoriesUrl(currentBranch: BranchListItem): string {
-  // The branch must come from context, not the URL: nuqs writes the query param one render
-  // later, so a param inherited from the URL would still point at the previous branch.
+  // Scoped from the branch passed in, never from whatever the URL currently says, so the
+  // destination always matches the branch the caller is reporting on.
   const branchParam: overrideQueryParams = currentBranch.is_default
     ? { name: QSP.BRANCH, exclude: true }
     : { name: QSP.BRANCH, value: currentBranch.name };
 
   return constructPath(`/objects/${GENERIC_REPOSITORY_KIND}`, [
     branchParam,
+    // The indicator reports current health, so its destination must be current too. Left
+    // alone, an open time-frame selection is carried forward and the list shows the branch as
+    // it was, which may not contain the repository that is failing now.
+    { name: QSP.DATETIME, exclude: true },
     { name: QSP.FILTER, value: JSON.stringify([REPOSITORY_ERROR_IMPORT_FILTER]) },
   ]);
 }
