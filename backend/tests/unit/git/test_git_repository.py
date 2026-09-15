@@ -292,8 +292,8 @@ class _RaisingWorktree:
 class _FailingPushRepository(InfrahubRepository):
     """An InfrahubRepository whose worktree's origin push always fails with a preset transport error.
 
-    Records every operational status written so the test can assert the failure is persisted, not
-    only raised.
+    Records every operational status the classifier writes so the test can assert the status update is
+    executed, not only that the typed error is raised. The double keeps it in memory; it does not persist.
     """
 
     push_error: GitCommandError

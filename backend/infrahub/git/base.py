@@ -1196,7 +1196,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
           - TLS: "SSL certificate problem", "server certificate verification failed".
           - credentials: "Authentication failed for", "could not read Username".
           - permission: "Write access to repository not granted", "Permission to ... denied",
-            "The requested URL returned error: 403" - authenticated but not authorized to push.
+            "The requested URL returned error: 403", "not allowed to push" (GitLab), "permission
+            denied for writing" (Gitea) - authenticated but not authorized to push.
         These are stable user-facing git/curl strings, but keyed on text — revisit them if
         git or libcurl change their wording.
 
@@ -1259,6 +1260,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             "Write access to repository not granted" in error.stderr
             or "The requested URL returned error: 403" in error.stderr
             or ("Permission to" in error.stderr and "denied" in error.stderr)
+            or "not allowed to push" in error.stderr
+            or "permission denied for writing" in error.stderr.lower()
         ):
             raise RepositoryPermissionError(identifier=name) from error
 

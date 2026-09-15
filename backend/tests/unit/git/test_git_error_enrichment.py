@@ -82,6 +82,18 @@ ENRICHMENT_CASES = [
         command=["git", "push", "--dry-run", "--porcelain", "--delete"],
     ),
     EnrichmentCase(
+        name="permission_gitlab_not_allowed",
+        stderr="remote: You are not allowed to push code to this project.\nfatal: unable to access ...",
+        expected=RepositoryPermissionError,
+        command=["git", "push", "--dry-run", "--porcelain", "--delete"],
+    ),
+    EnrichmentCase(
+        name="permission_gitea_denied_writing",
+        stderr="remote: Gitea: User permission denied for writing.\nfatal: unable to access ...",
+        expected=RepositoryPermissionError,
+        command=["git", "push", "--dry-run", "--porcelain", "--delete"],
+    ),
+    EnrichmentCase(
         name="unclassified_error_falls_through",
         stderr="fatal: something entirely unexpected happened",
         expected=RepositoryError,
