@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from opentelemetry import trace
 from prefect import flow, get_run_logger
 from prefect.client.schemas.objects import State  # noqa: TC002
 from prefect.states import Completed, Failed
@@ -341,7 +342,9 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             branch=user_branch,
             migration_tracker=MigrationTracker(migrations=migrations),
         )
-        collected_changelogs = await changelog_collector.collect_changelogs()
+        with trace.get_tracer(__name__).start_as_current_span("rebase.collect_changelogs") as span:
+            collected_changelogs = await changelog_collector.collect_changelogs()
+            span.set_attribute("changelog.changelog_count", len(collected_changelogs))
     for action, node_changelog in collected_changelogs:
         mutation_action = MutationAction.from_diff_action(diff_action=action)
         meta = EventMeta.from_parent(parent=rebase_event, branch=user_branch)

@@ -249,3 +249,35 @@ async def test_enrich_excludes_external_peer_whose_kind_is_gone_from_the_batch()
     assert {peer.peer_id: peer.peer_hfid for peer in members.peers} == {"ext_ok": ["OK"], "ext_gone": None}
     # The dropped-kind peer is kept out of the external batch, so it cannot fail the load for ext_ok.
     assert reader.hfid_calls == [["n1"], ["ext_ok"]]
+
+
+async def test_fill_peer_hfids_reports_the_peers_actually_loaded() -> None:
+    resolver, reader = _resolver({"ext_found": ["E"]})
+    node = _node("n1")
+    node.relationships["members"] = RelationshipCardinalityManyChangelog(
+        name="members",
+        peers=[
+            RelationshipPeerChangelog(peer_id="ext_found", peer_kind="TestCar", peer_status=DiffAction.ADDED),
+            RelationshipPeerChangelog(peer_id="ext_missing", peer_kind="TestCar", peer_status=DiffAction.ADDED),
+        ],
+    )
+
+    loaded = await resolver._fill_peer_hfids(
+        changelogs=[(DiffAction.UPDATED, node)], node_hfids={}, is_resolvable_kind=_any_kind_resolvable
+    )
+
+    # Two peers were requested, one came back: the count reports the load result, not the request.
+    assert loaded == 1
+    assert reader.hfid_calls == [["ext_found", "ext_missing"]]
+
+
+async def test_fill_peer_hfids_reports_zero_when_the_reader_fails() -> None:
+    resolver = ChangelogHfidResolver(label_loader=NodeLabelLoader(reader=FailingReader()))
+    node = _node("n1")
+    node.relationships["owner"] = RelationshipCardinalityOneChangelog(name="owner", peer_id="ext")
+
+    loaded = await resolver._fill_peer_hfids(
+        changelogs=[(DiffAction.UPDATED, node)], node_hfids={}, is_resolvable_kind=_any_kind_resolvable
+    )
+
+    assert loaded == 0
