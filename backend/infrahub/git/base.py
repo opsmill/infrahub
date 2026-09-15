@@ -1131,6 +1131,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         ref update and no pack. The remote is never mutated, even when the probe ref happens to
         exist on it. ``git push`` needs a repository to run from - unlike ``ls-remote`` - so the
         probe runs from a throwaway ``git init``-ed directory.
+
+        Raises:
+            RepositoryPermissionError: When the credentials can read but not push.
+            RepositoryConnectionError: When the remote is unreachable.
+            RepositoryError: For any other git failure.
+
         """
         with tempfile.TemporaryDirectory() as probe_dir:
             cmd = git.cmd.Git(working_dir=probe_dir)
@@ -1138,7 +1144,18 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             try:
                 cmd.push("--dry-run", "--porcelain", "--delete", url, f"refs/heads/{WRITE_ACCESS_PROBE_REF}")
             except GitCommandError as exc:
-                cls._raise_enriched_error_static(name=name, location=url, error=exc)
+                try:
+                    cls._raise_enriched_error_static(name=name, location=url, error=exc)
+                except (RepositoryPermissionError, RepositoryCredentialsError) as classified:
+                    # The read check already passed before the probe ran, so a permission or credential
+                    # failure here specifically means the credentials can read but not push.
+                    raise RepositoryPermissionError(
+                        identifier=name,
+                        message=(
+                            f"Write access to repository {name} was denied. The credentials can read but "
+                            "not push; grant the token write access to the repository."
+                        ),
+                    ) from classified
 
     async def _raise_enriched_error(self, error: GitCommandError, branch_name: str | None = None) -> NoReturn:
         try:

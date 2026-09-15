@@ -12,8 +12,10 @@ from git import Repo
 from git.exc import GitCommandError
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
+from pydantic import Field
 
 from infrahub import config
+from infrahub.core.constants import RepositoryOperationalStatus
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
     RepositoryConnectionError,
@@ -288,12 +290,20 @@ class _RaisingWorktree:
 
 
 class _FailingPushRepository(InfrahubRepository):
-    """An InfrahubRepository whose worktree's origin push always fails with a preset transport error."""
+    """An InfrahubRepository whose worktree's origin push always fails with a preset transport error.
+
+    Records every operational status written so the test can assert the failure is persisted, not
+    only raised.
+    """
 
     push_error: GitCommandError
+    recorded_statuses: list[RepositoryOperationalStatus] = Field(default_factory=list)
 
     def get_git_repo_worktree(self, identifier: str) -> Any:
         return _RaisingWorktree(self.push_error)
+
+    async def _update_operational_status(self, status: RepositoryOperationalStatus) -> None:
+        self.recorded_statuses.append(status)
 
 
 @dataclass
@@ -301,6 +311,7 @@ class PushErrorCase:
     name: str
     stderr: str
     expected: type[RepositoryError]
+    expected_status: RepositoryOperationalStatus
 
 
 @pytest.mark.parametrize(
@@ -310,21 +321,24 @@ class PushErrorCase:
             name="credentials",
             stderr="fatal: Authentication failed for 'https://gitlab.example.com/net/repo.git/'",
             expected=RepositoryCredentialsError,
+            expected_status=RepositoryOperationalStatus.ERROR_CRED,
         ),
         PushErrorCase(
             name="connection",
             stderr="fatal: unable to access 'https://gitlab.example.com/net/repo.git/': "
             "Could not resolve host: gitlab.example.com",
             expected=RepositoryConnectionError,
+            expected_status=RepositoryOperationalStatus.ERROR_CONNECTION,
         ),
     ],
     ids=lambda c: c.name,
 )
 async def test_push_classifies_transport_error(case: PushErrorCase) -> None:
-    """A transport-level GitCommandError from the underlying push is converted to a classified repository error.
+    """A transport-level GitCommandError from the underlying push is classified and its status persisted.
 
     Such a failure leaves no porcelain status line for GitPython to parse, so it re-raises
-    GitCommandError instead of reporting on push_info.flags; push() must route it through the classifier.
+    GitCommandError instead of reporting on push_info.flags; push() must route it through the
+    classifier, which both raises the typed error and writes the matching operational status.
     """
     repository = _FailingPushRepository(
         id=UUIDT.new(),
@@ -343,6 +357,8 @@ async def test_push_classifies_transport_error(case: PushErrorCase) -> None:
 
     with pytest.raises(case.expected):
         await repository.push("main")
+
+    assert repository.recorded_statuses == [case.expected_status]
 
 
 @pytest.fixture
