@@ -111,9 +111,8 @@ class DiffDataCheckSynchronizer:
 
     @classmethod
     def _update_diff_conflicts(cls, updated_diff: EnrichedDiffRoot, retrieved_diff: EnrichedDiffRoot) -> None:
-        # One lookup per updated node instead of a scan of ``retrieved_diff.nodes`` for each of them: the scan
-        # grows with every node added below, so on a diff of tens of thousands of nodes it turned this loop
-        # into minutes of pure CPU with no ``await``, long enough to starve the worker's event loop.
+        # This loop runs without an ``await`` over a diff that can hold tens of thousands of nodes, so
+        # each match has to be a single lookup.
         retrieved_nodes_by_identifier = retrieved_diff.get_node_map()
         for updated_node in updated_diff.nodes:
             retrieved_node = retrieved_nodes_by_identifier.get(updated_node.identifier)
@@ -155,9 +154,8 @@ class DiffDataCheckSynchronizer:
             if not retrieved_rel:
                 retrieved_node.relationships.add(updated_rel)
                 continue
-            # One lookup per updated element instead of a scan of ``retrieved_rel.relationships`` for each
-            # of them, for the same reason as the node loop above: the scan grows with every element added
-            # below, and a cardinality-many relationship can hold tens of thousands of peers.
+            # A cardinality-many relationship can hold tens of thousands of peers, so each match has to
+            # be a single lookup.
             retrieved_elements_by_peer_id = {element.peer_id: element for element in retrieved_rel.relationships}
             for updated_element in updated_rel.relationships:
                 retrieved_element = retrieved_elements_by_peer_id.get(updated_element.peer_id)

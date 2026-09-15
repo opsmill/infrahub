@@ -135,8 +135,8 @@ class WorkerHeartbeat:
         cache: InfrahubCache | None = None
         try:
             while not self._stop_requested.is_set():
-                # Anchored before the beat rather than after it, so a slow beat eats into the interval
-                # instead of adding to it and pushing the next write past the key's expiry.
+                # Anchored before the beat, so a slow beat eats into the interval instead of adding to
+                # it and pushing the next write past the key's expiry.
                 deadline = time.monotonic() + self.interval_seconds
                 try:
                     if cache is None:
@@ -145,13 +145,9 @@ class WorkerHeartbeat:
                         refresh_worker_heartbeat(cache=cache, component_type=self.component_type),
                         timeout=self.beat_timeout_seconds,
                     )
-                # Top-level boundary of the thread: a refresh that fails (cache unreachable, connection
-                # dropped) or one that never returns must not end the heartbeat. The connection is dropped
-                # so the next beat opens a fresh one instead of retrying a possibly broken client forever;
-                # dropping it is also what makes the deadline safe, because cancelling a command in flight
-                # can leave a response unread on that connection. The next beat then comes after a short
-                # backoff instead of a full interval, so one failed beat does not spend the key's remaining
-                # life waiting.
+                # Top-level boundary of the thread: a beat that fails or times out leaves the heartbeat
+                # running, and abandons its connection because a cancelled command can leave a response
+                # unread on it.
                 except Exception:
                     self.log.exception("Worker heartbeat refresh failed")
                     if cache is not None:

@@ -220,11 +220,7 @@ async def test_heartbeat_start_is_idempotent_and_stop_without_start_is_safe() ->
 
 
 async def test_a_beat_that_never_returns_is_abandoned_and_its_connection_replaced() -> None:
-    """A connection that stops answering without closing must not hold the thread forever.
-
-    The cache clients impose no deadline of their own, so without one here the beat would block, the
-    stop request would only be seen between beats, and ``stop`` would leave a thread nothing can end.
-    """
+    """A connection that stops answering without closing must not hold the thread forever."""
     log = FakeLogger()
     hanging_cache = HangingCache()
     working_cache = RecordingCache()
