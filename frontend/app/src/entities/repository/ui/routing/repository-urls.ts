@@ -4,15 +4,8 @@ import { QSP } from "@/shared/config/qsp";
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import {
   GENERIC_REPOSITORY_KIND,
-  REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME,
-  REPOSITORY_SYNC_STATUS_ERROR_VALUE,
+  REPOSITORY_ERROR_IMPORT_FILTER,
 } from "@/entities/repository/domain/model/repository";
-
-/** Filters the repository list down to repositories whose import failed. */
-export const REPOSITORY_ERROR_IMPORT_FILTER = {
-  name: `${REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME}__value`,
-  value: REPOSITORY_SYNC_STATUS_ERROR_VALUE,
-};
 
 /**
  * The repository list, scoped to a branch and filtered to failed imports.

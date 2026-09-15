@@ -34,6 +34,7 @@ pytestmark = pytest.mark.shard_branches_repo
 
 ERROR_IMPORT = "error-import"
 INDICATOR_ERROR_LABEL = "Repositories failed to import on this branch"
+INDICATOR_HEALTHY_LABEL = "All Git repositories are in sync on this branch"
 
 
 class TestGitStatusHeader:
@@ -77,4 +78,8 @@ class TestGitStatusHeader:
         # requires, asserted rather than assumed.
         await admin_page.goto("/")
 
+        # Assert the healthy state positively first. Checking only that the error state is
+        # absent would pass just as happily if the indicator failed to render at all, which
+        # would prove nothing about branch scoping.
+        await expect(admin_page.get_by_role("link", name=INDICATOR_HEALTHY_LABEL)).to_be_visible()
         await expect(admin_page.get_by_role("link", name=INDICATOR_ERROR_LABEL)).not_to_be_visible()

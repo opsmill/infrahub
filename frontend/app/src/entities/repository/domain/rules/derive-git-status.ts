@@ -12,6 +12,11 @@ export type GitStatus = "loading" | "check-failed" | "inert" | "error" | "neutra
  * `isPending` — never `isFetching`. With a refresh interval, `isFetching` is true on every
  * poll while `isPending` is true only until data first arrives, so reading the wrong one makes
  * the indicator flash its loading treatment every ten seconds.
+ *
+ * The rule assumes that once a lookup is neither pending nor errored, its count is real. Do
+ * NOT give these queries `placeholderData` or `initialData`: a placeholder count of 0 would
+ * arrive with `isPending` already false, and the indicator would confidently report "no
+ * repositories" — or flash healthy — before the true count landed.
  */
 export interface DeriveGitStatusInput {
   totalIsPending: boolean;

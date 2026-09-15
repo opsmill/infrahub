@@ -2,7 +2,10 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getObjectsCountFromApi } from "@/entities/nodes/object/api/get-objects-count-from-api";
-import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
+import {
+  GENERIC_REPOSITORY_KIND,
+  REPOSITORY_ERROR_IMPORT_FILTER,
+} from "@/entities/repository/domain/model/repository";
 import { GitStatus } from "@/entities/repository/ui/git-status";
 
 import { render } from "../../../../tests/components/render";
@@ -37,7 +40,11 @@ describe("GitStatus", () => {
     failing: number | "error";
   }) => {
     getObjectsCountFromApiMock.mockImplementation(async ({ filters }) => {
-      const isFailingLookup = filters?.some((filter) => filter.name === "sync_status__value");
+      // Keyed off the real constant: if the component ever stops passing this filter, the
+      // mock misclassifies loudly rather than quietly returning the wrong count.
+      const isFailingLookup = filters?.some(
+        (filter) => filter.name === REPOSITORY_ERROR_IMPORT_FILTER.name
+      );
       const outcome = isFailingLookup ? failing : total;
       return outcome === "error" ? errorResponse() : countResponse(outcome);
     });
@@ -48,6 +55,11 @@ describe("GitStatus", () => {
       .querySelector('[data-testid="git-status-glyph"]')
       ?.firstElementChild?.getAttribute("icon");
 
+  /** Leaves a lookup permanently in flight so the loading state can actually be rendered. */
+  const mockNeverSettles = () => {
+    getObjectsCountFromApiMock.mockImplementation(() => new Promise(() => {}));
+  };
+
   const onBranch = (overrides: Parameters<typeof generateBranch>[0] = {}) => {
     const branch = generateBranch(overrides);
     useCurrentBranchMock.mockReturnValue({ currentBranch: branch, setCurrentBranch: () => {} });
@@ -56,6 +68,9 @@ describe("GitStatus", () => {
 
   afterEach(() => {
     vi.resetAllMocks();
+    // Restored here, not at the end of the test that sets it: an assertion throwing midway
+    // would otherwise leak the URL into every later test in this file.
+    window.history.pushState({}, "", "/");
   });
 
   test("renders the error appearance with a pulsing dot when a repository is failing", async () => {
@@ -127,6 +142,7 @@ describe("GitStatus", () => {
     });
     await expect.element(indicator).toBeVisible();
     expect((await indicator.element()).getAttribute("href")).toBeNull();
+    expect(glyphIcon(component)).toBe("mdi:source-branch");
   });
 
   test("still explains itself on hover while inert", async () => {
@@ -161,6 +177,32 @@ describe("GitStatus", () => {
     await expect
       .element(component.getByRole("link", { name: "Git status could not be checked" }))
       .toBeVisible();
+    expect(glyphIcon(component)).toBe("mdi:error-outline");
+    // Muted, never danger. An operator without permission to read repositories fails this
+    // lookup on every page, so a red alarm here would be permanent and unclearable — the
+    // regression this assertion exists to catch.
+    const glyph = component.container.querySelector(
+      '[data-testid="git-status-glyph"]'
+    )?.firstElementChild;
+    expect(glyph?.className).toContain("text-foreground-muted");
+    expect(glyph?.className).not.toContain("text-danger");
+  });
+
+  test("shows a loading treatment, holding its place, until the first lookup settles", async () => {
+    // GIVEN a lookup that never settles
+    onBranch({ name: "branch1" });
+    mockNeverSettles();
+
+    // WHEN
+    const component = await render(<GitStatus />);
+
+    // THEN it neither claims health nor claims failure, and the slot is already sized
+    await expect
+      .element(component.getByRole("link", { name: "Checking Git status" }))
+      .toBeVisible();
+    const slot = component.container.querySelector('[data-testid="git-status-glyph"]');
+    expect(slot?.className).toContain("size-4");
+    expect(component.container.querySelector('[data-testid="git-status-pulse"]')).toBeNull();
   });
 
   test("reports inert, not check-failed, when the branch is empty and the failure lookup fails", async () => {
@@ -260,7 +302,6 @@ describe("GitStatus", () => {
     for (const call of getObjectsCountFromApiMock.mock.calls) {
       expect(call[0].branchName).toBe("branch1");
     }
-    window.history.pushState({}, "", "/");
   });
 
   test("asks about now, ignoring the header time machine", async () => {
