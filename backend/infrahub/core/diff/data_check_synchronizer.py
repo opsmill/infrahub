@@ -155,13 +155,15 @@ class DiffDataCheckSynchronizer:
             if not retrieved_rel:
                 retrieved_node.relationships.add(updated_rel)
                 continue
+            # One lookup per updated element instead of a scan of ``retrieved_rel.relationships`` for each
+            # of them, for the same reason as the node loop above: the scan grows with every element added
+            # below, and a cardinality-many relationship can hold tens of thousands of peers.
+            retrieved_elements_by_peer_id = {element.peer_id: element for element in retrieved_rel.relationships}
             for updated_element in updated_rel.relationships:
-                try:
-                    retrieved_element = retrieved_rel.get_element(updated_element.peer_id)
-                except ValueError:
-                    retrieved_element = None
+                retrieved_element = retrieved_elements_by_peer_id.get(updated_element.peer_id)
                 if not retrieved_element:
                     retrieved_rel.relationships.add(updated_element)
+                    retrieved_elements_by_peer_id[updated_element.peer_id] = updated_element
                     continue
                 retrieved_element.conflict = updated_element.conflict
                 for updated_prop in updated_element.properties:

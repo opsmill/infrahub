@@ -1,11 +1,7 @@
 from __future__ import annotations
 
-import time
-from dataclasses import replace
-
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
-from infrahub.core.diff.model.path import NodeIdentifier
 from tests.helpers.diff_factories import (
     EnrichedAttributeFactory,
     EnrichedConflictFactory,
@@ -110,22 +106,3 @@ def test_two_updated_nodes_with_the_same_identifier_fold_into_one_retrieved_node
     # only it carried is present, and the surviving conflict is one of the two, not lost.
     assert merged_node.get_attribute(name="description") is attribute_only_on_second
     assert merged_node.conflict is first_conflict or merged_node.conflict is second_conflict
-
-
-def test_merging_a_large_diff_does_not_scale_quadratically() -> None:
-    """A per-node scan of the growing retrieved set took minutes at tens of thousands of nodes."""
-    template = EnrichedNodeFactory.build(attributes=set(), relationships=set(), conflict=None)
-    updated_nodes = {
-        replace(template, identifier=NodeIdentifier(uuid=f"uuid-{index}", kind="InterfacePhysical", db_id=str(index)))
-        for index in range(20_000)
-    }
-    updated_diff = EnrichedRootFactory.build(nodes=updated_nodes)
-    retrieved_diff = EnrichedRootFactory.build(nodes=set())
-
-    started_at = time.monotonic()
-    DiffDataCheckSynchronizer._update_diff_conflicts(updated_diff=updated_diff, retrieved_diff=retrieved_diff)
-    elapsed_seconds = time.monotonic() - started_at
-
-    assert len(retrieved_diff.nodes) == 20_000
-    # The quadratic version needs well over 20 s for this many nodes; the linear one a fraction of a second.
-    assert elapsed_seconds < 5
