@@ -27,6 +27,25 @@ function Input({ ref, ...props }: InputProps) {
 }
 ```
 
+## A render-time read of mutable global state is frozen at mount
+
+The compiler memoizes a value whose inputs are all non-reactive by computing it on the first render
+and never again — its cache slot is guarded by `Symbol.for("react.memo_cache_sentinel")`, and nothing
+invalidates that guard. Reading `window.location` or a module-level mutable during render therefore
+does not merely risk a stale value, it guarantees one for the life of the mount:
+
+```tsx
+// ❌ Impure read, no reactive input — evaluated once, then frozen
+<Link to={constructPath("/")} />
+
+// ✅ The hook closes over reactive state, so the call re-evaluates
+const constructPath = useConstructPath();
+<Link to={constructPath("/")} />
+```
+
+Give the component a reactive dependency on whatever the value really derives from — a context
+value, a store value, a query result — instead of reaching for the global.
+
 ## Rules of React
 
 Required for compiler to work:
