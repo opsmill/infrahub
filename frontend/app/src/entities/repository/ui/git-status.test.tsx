@@ -43,7 +43,9 @@ describe("GitStatus", () => {
       // Keyed off the real constant: if the component ever stops passing this filter, the
       // mock misclassifies loudly rather than quietly returning the wrong count.
       const isFailingLookup = filters?.some(
-        (filter) => filter.name === REPOSITORY_ERROR_IMPORT_FILTER.name
+        (filter) =>
+          filter.name === REPOSITORY_ERROR_IMPORT_FILTER.name &&
+          filter.value === REPOSITORY_ERROR_IMPORT_FILTER.value
       );
       const outcome = isFailingLookup ? failing : total;
       return outcome === "error" ? errorResponse() : countResponse(outcome);
@@ -88,7 +90,7 @@ describe("GitStatus", () => {
     await expect.element(indicator).toBeVisible();
     await expect.element(component.getByTestId("git-status-pulse")).toBeVisible();
     // Same subject glyph as every other resolved state: the state is carried by colour and
-    // the dot, never by swapping the icon for a different thing (FR-005b).
+    // the dot, never by swapping the icon for a different subject.
     expect(glyphIcon(component)).toBe("mdi:source-branch");
   });
 
@@ -107,7 +109,7 @@ describe("GitStatus", () => {
     await expect.element(indicator).toBeVisible();
     expect(component.container.querySelector('[data-testid="git-status-pulse"]')).toBeNull();
     // The dot, not the glyph, is what distinguishes this from the error state — so the two
-    // remain distinguishable without perceiving colour (FR-005b, SC-005).
+    // remain distinguishable without perceiving colour.
     expect(glyphIcon(component)).toBe("mdi:source-branch");
   });
 
@@ -158,11 +160,13 @@ describe("GitStatus", () => {
     await indicator.hover();
 
     // THEN the tooltip still fires. No other call site in this codebase combines LinkButton
-    // with isDisabled, so this asserts the behaviour rather than assuming it: FR-010a requires
-    // the inert state to explain itself, and a disabled control that says nothing would fail it.
+    // An inactive control still has to say why it is inactive, so the tooltip is asserted
+    // rather than assumed.
     await expect
       .element(component.getByRole("tooltip", { name: "No Git repositories configured" }))
       .toBeVisible();
+    // Move the pointer away so the open overlay cannot leak into a later test.
+    await initPointerTracking(component.locator);
   });
 
   test("renders the check-failed appearance when a lookup fails", async () => {
@@ -298,10 +302,28 @@ describe("GitStatus", () => {
     await render(<GitStatus />);
 
     // THEN both lookups are scoped to the branch from context
-    expect(getObjectsCountFromApiMock).toHaveBeenCalled();
+    expect(getObjectsCountFromApiMock).toHaveBeenCalledTimes(2);
     for (const call of getObjectsCountFromApiMock.mock.calls) {
       expect(call[0].branchName).toBe("branch1");
     }
+  });
+
+  test("does not carry a time-frame selection into the link", async () => {
+    // GIVEN a page already scoped to a past moment
+    onBranch({ name: "branch1", is_default: false });
+    mockCounts({ total: 3, failing: 1 });
+    window.history.pushState({}, "", "/?at=2020-01-01T00%3A00%3A00.000Z");
+
+    // WHEN
+    const component = await render(<GitStatus />);
+
+    // THEN the destination is present-time, like the indicator: a historical list could omit
+    // the very repository that is failing now.
+    const indicator = component.getByRole("link", {
+      name: "Repositories failed to import on this branch",
+    });
+    await expect.element(indicator).toBeVisible();
+    expect((await indicator.element()).getAttribute("href") ?? "").not.toContain("at=");
   });
 
   test("asks about now, ignoring the header time machine", async () => {
@@ -314,17 +336,27 @@ describe("GitStatus", () => {
 
     // THEN the lookups carry no historical date: a past "all clear" would be reported in the
     // present tense, which is the failure this indicator exists to prevent
-    expect(getObjectsCountFromApiMock).toHaveBeenCalled();
+    expect(getObjectsCountFromApiMock).toHaveBeenCalledTimes(2);
     for (const call of getObjectsCountFromApiMock.mock.calls) {
       expect(call[0].atDate).toBeNull();
     }
   });
 
   test.each([
-    ["error", { total: 3, failing: 1 } as const],
-    ["neutral", { total: 3, failing: 0 } as const],
-    ["inert", { total: 0, failing: 0 } as const],
-  ])("does not put the word branch in the %s state's button name", async (_label, counts) => {
+    [
+      "error",
+      { total: 3, failing: 1 } as const,
+      "link",
+      "Repositories failed to import on this branch",
+    ],
+    [
+      "neutral",
+      { total: 3, failing: 0 } as const,
+      "link",
+      "All Git repositories are in sync on this branch",
+    ],
+    ["inert", { total: 0, failing: 0 } as const, "button", "No Git repositories configured"],
+  ])("names the %s state without the word branch on a button", async (_label, counts, role, name) => {
     // GIVEN
     onBranch({ name: "branch1" });
     mockCounts(counts);
@@ -332,15 +364,40 @@ describe("GitStatus", () => {
     // WHEN
     const component = await render(<GitStatus />);
 
-    // THEN no button here may be findable by the accessible-name substring "branch". The e2e
-    // suite locates the branch selector with get_by_role("button", name="Branch"), and
-    // Playwright matches that name as a case-insensitive substring — so a button here naming
-    // a branch silently breaks an unrelated test whenever this state happens to render.
-    await expect.element(component.getByTestId("git-status")).toBeVisible();
-    const buttons = [...component.container.querySelectorAll("button")];
-    for (const button of buttons) {
+    // THEN the control exposes the role and name this state is meant to expose, and no button
+    // here can be found by searching accessible names for "branch" — the branch selector is
+    // located that way, and a second match breaks it.
+    await expect.element(component.getByRole(role, { name })).toBeVisible();
+    for (const button of [...component.container.querySelectorAll("button")]) {
       expect(button.getAttribute("aria-label")?.toLowerCase() ?? "").not.toContain("branch");
     }
+  });
+
+  test("keeps a resolved state through a background refetch", async () => {
+    // GIVEN a resolved error state
+    onBranch({ name: "branch1" });
+    mockCounts({ total: 3, failing: 1 });
+    const component = await render(<GitStatus />);
+    await expect
+      .element(
+        component.getByRole("link", { name: "Repositories failed to import on this branch" })
+      )
+      .toBeVisible();
+    const callsAfterFirstLoad = getObjectsCountFromApiMock.mock.calls.length;
+
+    // WHEN the lookups run again in the background, as the refresh interval makes them do
+    await component.rerender(<GitStatus />);
+
+    // THEN the resolved state stays put. Reading the refetching flag rather than the initial
+    // pending flag would drop the indicator back to its loading treatment on every poll.
+    await expect
+      .element(
+        component.getByRole("link", { name: "Repositories failed to import on this branch" })
+      )
+      .toBeVisible();
+    expect(getObjectsCountFromApiMock.mock.calls.length).toBeGreaterThanOrEqual(
+      callsAfterFirstLoad
+    );
   });
 
   test("counts every repository kind through the generic kind", async () => {
@@ -352,6 +409,7 @@ describe("GitStatus", () => {
     await render(<GitStatus />);
 
     // THEN
+    expect(getObjectsCountFromApiMock).toHaveBeenCalledTimes(2);
     for (const call of getObjectsCountFromApiMock.mock.calls) {
       expect(call[0].objectKind).toBe(GENERIC_REPOSITORY_KIND);
     }

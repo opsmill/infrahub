@@ -87,29 +87,30 @@ error sync status, and that the failing repository is present in the result.
 
 ### User Story 3 - Stay out of the way when Git is not in use (Priority: P3)
 
-Not every branch has Git repositories. On those branches the indicator has nothing to
-report and nowhere useful to send the operator, so it is present but inert: visible, not
-activatable, and occupying exactly the same space it occupies in every other state.
+Not every deployment has Git repositories. Without them the indicator has nothing to report
+and nowhere useful to send the operator, so it is present but inert: visible, not activatable,
+and occupying exactly the same space it occupies in every other state.
 
 **Why this priority**: A correctness and polish requirement rather than a new capability.
 It matters because the header must not shift when the indicator changes state — a control
 that appears and disappears moves everything beside it and makes the red state feel like a
 glitch rather than a signal.
 
-**Independent Test**: Load a branch that has no Git repositories at all and confirm the
-indicator is rendered, is not activatable, and that the header layout is unchanged from the
-same page on a branch that does have repositories.
+**Independent Test**: With no Git repositories configured, confirm the indicator is rendered,
+is not activatable, and that the header layout is unchanged from the same page where
+repositories do exist.
 
 **Acceptance Scenarios**:
 
-1. **Given** a branch with no Git repositories, **When** the operator loads a page on that
-   branch, **Then** the indicator is visible but not activatable.
-2. **Given** a branch with no Git repositories, **When** the operator compares the header to
-   a branch that has repositories, **Then** the indicator occupies the same position and
+1. **Given** no Git repositories are configured, **When** the operator loads any page,
+   **Then** the indicator is visible but not activatable.
+2. **Given** no Git repositories are configured, **When** the operator compares the header to
+   a deployment that has them, **Then** the indicator occupies the same position and
    dimensions in both.
-3. **Given** a branch with no Git repositories, **When** the operator hovers the indicator,
-   **Then** it explains that the branch has no Git repositories rather than offering an
-   action.
+3. **Given** no Git repositories are configured, **When** the operator hovers the indicator,
+   **Then** it explains that there are none rather than offering an action. The explanation
+   does not describe this as a property of the current branch, because repositories are
+   branch-agnostic.
 
 ---
 
@@ -136,7 +137,8 @@ same page on a branch that does have repositories.
 - **Many repositories on a branch**: the indicator asks only for counts, so its cost MUST
   NOT grow with the number of repositories.
 - **The operator moves the time machine**: the indicator MUST continue to report present-day
-  health, unchanged (FR-014).
+  health, unchanged, and the destination it links to MUST also be present-day — a historical
+  repository list may not contain the repository failing now (FR-014).
 - **The branch has no repositories and the failure lookup fails**: the indicator MUST show
   the inert state, not check-failed. A branch with no repositories cannot have failing ones,
   so the successful lookup fully determines the answer and the failed one is irrelevant.
@@ -295,8 +297,9 @@ same page on a branch that does have repositories.
 - Ten seconds is the correct refresh cadence, matching the existing task indicator. Faster
   adds load for a condition that changes on the order of minutes; slower makes the signal
   feel stale.
-- Operators who can view a branch can generally view its repositories; where they cannot,
-  the inert treatment of User Story 3 applies rather than a separate permission state.
+- Operators who can view a branch can generally view its repositories; where they cannot, the
+  lookup fails and the check-failed state of FR-011 applies. This is deliberately not the inert
+  state — see the Clarifications entry on permission-denied.
 
 ## Constitutional Compliance
 

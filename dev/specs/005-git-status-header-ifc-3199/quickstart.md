@@ -1,16 +1,12 @@
 # Quickstart — validating the Git status indicator (IFC-3199)
 
-How to prove this feature works, from cheapest check to most expensive. Run from the
-worktree, not the main checkout.
-
-```
-WORKTREE=/Users/paul/.claude-worktrees/infrahub-git-status-header-ifc-3199
-```
+How to prove this feature works, from cheapest check to most expensive. All paths are
+relative to the repository root.
 
 ## 1. Unit + component tests (seconds)
 
 ```bash
-cd $WORKTREE/frontend/app
+cd frontend/app
 pnpm test
 ```
 
@@ -21,7 +17,7 @@ mounting both indicators.
 Targeted run while iterating:
 
 ```bash
-cd $WORKTREE/frontend/app
+cd frontend/app
 pnpm test -- derive-git-status
 pnpm test -- git-status
 ```
@@ -32,7 +28,7 @@ These are separate CI jobs and each fails the build independently. `pnpm biome:f
 **not** the gate.
 
 ```bash
-cd $WORKTREE/frontend/app
+cd frontend/app
 pnpm exec biome ci .      # format + lint, as CI runs it
 pnpm knip                 # unused exports/files/deps
 pnpm exec betterer ci     # TypeScript regression gate (not plain tsc)
@@ -44,7 +40,7 @@ imported from exactly one place. If either ends up unreferenced after a refactor
 ## 3. Manual check in the running app (minutes)
 
 ```bash
-cd $WORKTREE/frontend/app
+cd frontend/app
 pnpm dev
 ```
 
@@ -54,7 +50,7 @@ Walk the five states:
 |---|---|
 | `neutral` | A branch with at least one healthy repository |
 | `error` | A branch with a repository whose sync status is the import-error value |
-| `inert` | A branch with no Git repositories |
+| `inert` | A deployment with no Git repositories configured |
 | `loading` | Throttle the network, or block the count request, and reload |
 | `check-failed` | Block the GraphQL endpoint in devtools and reload |
 
@@ -74,8 +70,8 @@ Requires the local stack. No new fixture repository — the test sets an existin
 `sync_status` to the import-error value directly.
 
 ```bash
-cd $WORKTREE
-# per the project's e2e instructions; the new test lives in tests/e2e/repository/
+# from the repository root; see the project's e2e instructions
+# the new test lives in tests/e2e/repository/
 ```
 
 Expected: with a repository on the branch carrying the import-error status, the indicator is
@@ -89,7 +85,7 @@ repository they did not expect to be broken.
 ## 5. Full local CI gate before pushing
 
 ```bash
-cd $WORKTREE/frontend/app && pnpm exec biome ci . && pnpm knip && pnpm exec betterer ci && pnpm test
+cd frontend/app && pnpm exec biome ci . && pnpm knip && pnpm exec betterer ci && pnpm test
 ```
 
 A frontend lint job runs on every PR regardless of paths touched, so this must be green even

@@ -20,13 +20,11 @@ import { getFailingRepositoriesUrl } from "@/entities/repository/ui/routing/repo
 const REFETCH_INTERVAL = 10_000;
 
 /**
- * Each state names the condition, not the control, so the text is useful on its own to anyone
- * reading it through assistive technology.
+ * Each state names the condition rather than the control, so the text stands on its own when
+ * read by assistive technology. Repositories are not per-branch, so the empty case does not
+ * describe itself as a property of the current branch.
  */
 const TOOLTIP_BY_STATUS: Record<GitStatusValue, string> = {
-  // The inert label deliberately avoids the word "branch": repositories are branch-agnostic,
-  // so "none on this branch" would be inaccurate, and it also collided with an e2e locator
-  // matching buttons by the accessible-name substring "Branch".
   loading: "Checking Git status",
   "check-failed": "Git status could not be checked",
   inert: "No Git repositories configured",
@@ -38,8 +36,8 @@ function GitStatusGlyph({ status }: { status: GitStatusValue }) {
   if (status === "loading") return <Spinner />;
 
   if (status === "check-failed") {
-    // Muted, never the danger colour: an operator who cannot read repositories fails this
-    // lookup on every page, and a red alarm they can never clear would drown out a real one.
+    // Muted, never the danger colour: a viewer who cannot read repositories fails this
+    // lookup on every page, and an alarm they can never clear would drown out a real one.
     return <Icon icon="mdi:error-outline" className="size-4 text-foreground-muted" />;
   }
 
@@ -54,10 +52,10 @@ function GitStatusGlyph({ status }: { status: GitStatusValue }) {
 export function GitStatus() {
   const { currentBranch } = useCurrentBranch();
 
-  // `getObjectsCountQueryOptions` is used directly rather than the `useObjectsCount` hook,
-  // which inherits the header time-machine's date from `datetimeAtom`. This indicator must
-  // always report health as of now: showing a historical "all clear" on a branch that is
-  // broken right now is the exact failure it exists to prevent.
+  // Both lookups ask about the present, deliberately ignoring any time-frame selection: a
+  // historical "all clear" shown on a branch that is broken right now is the failure this
+  // indicator exists to prevent. The shared count hook inherits that selection, so the query
+  // options are composed here instead.
   const countOptions = (filters?: typeof REPOSITORY_ERROR_IMPORT_FILTER) =>
     getObjectsCountQueryOptions({
       objectKind: GENERIC_REPOSITORY_KIND,
@@ -85,8 +83,7 @@ export function GitStatus() {
 
   const content = (
     <>
-      {/* Fixed slot: the spinner and the two icons must not resize the header between
-          states, so the box is pinned rather than left to whatever each glyph measures. */}
+      {/* Fixed slot, so the header cannot shift as the glyph inside it changes. */}
       <span className="flex size-4 items-center justify-center" data-testid="git-status-glyph">
         <GitStatusGlyph status={status} />
       </span>
@@ -108,10 +105,9 @@ export function GitStatus() {
     "data-testid": "git-status",
   } as const;
 
-  // With no repositories there is nowhere useful to send the operator, so the control becomes
-  // a button rather than a link. `isDisabledAndFocusable` is what keeps it hoverable while
-  // looking disabled — a `LinkButton` with `isDisabled` picks up `pointer-events-none`, which
-  // swallows the hover and leaves the state with no explanation at all (FR-010a).
+  // With no repositories there is nowhere to navigate to, so the control is a button rather
+  // than a link. It stays hoverable while looking disabled, because a control that cannot be
+  // hovered cannot show the tooltip that explains why it is inactive.
   if (status === "inert") {
     return (
       <Tooltip message={tooltipContent}>

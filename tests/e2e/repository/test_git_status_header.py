@@ -1,4 +1,4 @@
-"""The Git status indicator in the application header (IFC-3199).
+"""The Git status indicator in the application header.
 
 Proves the end the feature exists for: on a branch where a repository carries the
 import-error sync status, the header indicator is in its error state from an ordinary

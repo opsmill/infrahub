@@ -1,22 +1,15 @@
 /**
- * The five states the Git status indicator can display.
- *
- * Closed on purpose: only the import-error sync status is distinguished, and every other
- * status value is neutral. A third status treatment would contradict the feature's spec.
+ * The five states the Git status indicator can display. Only the import-error sync status
+ * counts as a failure; every other status is neutral.
  */
 export type GitStatus = "loading" | "check-failed" | "inert" | "error" | "neutral";
 
 /**
- * Both lookups' query lifecycle, flattened.
+ * Both lookups' outcomes, flattened.
  *
- * `isPending` — never `isFetching`. With a refresh interval, `isFetching` is true on every
- * poll while `isPending` is true only until data first arrives, so reading the wrong one makes
- * the indicator flash its loading treatment every ten seconds.
- *
- * The rule assumes that once a lookup is neither pending nor errored, its count is real. Do
- * NOT give these queries `placeholderData` or `initialData`: a placeholder count of 0 would
- * arrive with `isPending` already false, and the indicator would confidently report "no
- * repositories" — or flash healthy — before the true count landed.
+ * A count is only read once its lookup reports neither pending nor errored, so a pending flag
+ * must mean "no value has arrived yet" — not "a value is being refreshed", and not a
+ * placeholder standing in for one.
  */
 export interface DeriveGitStatusInput {
   totalIsPending: boolean;
@@ -30,17 +23,13 @@ export interface DeriveGitStatusInput {
 /**
  * Folds the two repository counts into one display state.
  *
- * The order of these checks is the substance of the rule, not an implementation detail:
+ * The order of the checks carries the meaning:
  *
- * 1. Never present a state that has not been confirmed. A glyph that flashes neutral before
- *    turning red reads as a glitch and trains operators to distrust it.
- * 2. Without the total, nothing is known. This is also the path a permission error takes,
- *    since the underlying query surfaces every failure the same way.
- * 3. A branch with no repositories cannot have failing ones — the failing count is a subset of
- *    an empty set. So the total settles the answer, and a failed failing-lookup is irrelevant
- *    rather than alarming. This check must stay above the one below it.
- * 4. With repositories present, a failed failing-lookup leaves health genuinely unknown.
- *    Neither "healthy" nor "failing" is a fact in hand, so neither may be claimed.
+ * - Without a total, nothing is known, so the check is reported as failed rather than healthy.
+ * - A total of zero settles the question on its own: no repositories means none failing, so
+ *   the other lookup cannot change the answer and is not waited for.
+ * - Otherwise nothing is claimed until both lookups have produced a value, and a failure to
+ *   obtain the failing count is reported as unknown rather than as healthy.
  */
 export function deriveGitStatus({
   totalIsPending,
@@ -50,9 +39,9 @@ export function deriveGitStatus({
   failingError,
   failingCount,
 }: DeriveGitStatusInput): GitStatus {
-  if (totalIsPending || failingIsPending) return "loading";
   if (totalError) return "check-failed";
   if (totalCount === 0) return "inert";
+  if (totalIsPending || failingIsPending) return "loading";
   if (failingError) return "check-failed";
   if (failingCount !== undefined && failingCount > 0) return "error";
   return "neutral";

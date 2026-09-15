@@ -9,9 +9,7 @@
 satisfies it. Tests are mandatory here — constitution Principle IV, and the user asked for
 test-first ordering.
 
-**Paths**: relative to the worktree root
-`/Users/paul/.claude-worktrees/infrahub-git-status-header-ifc-3199`. Frontend source lives
-under `frontend/app/src/`.
+**Paths**: relative to the repository root. Frontend source lives under `frontend/app/src/`.
 
 ---
 
@@ -29,8 +27,9 @@ under `frontend/app/src/`.
 
 - [x] T004 Verify by hand, in the running app or a scratch render, whether `LinkButton` with `isDisabled` still fires its `Tooltip` on hover. No call site in this codebase combines them, so this is unverified. Record the answer in `research.md` R2. If the tooltip does NOT fire, the inert state must instead use a non-interactive wrapper with `Tooltip`'s `nonInteractiveTrigger`, as `frontend/app/src/entities/branches/ui/branch-list-item/branch-git-sync-badge.tsx` does — adjust T017 and T021 accordingly *(R2; FR-006, FR-010a — blocks the inert state's design)*
 
-**Checkpoint**: the vocabulary constant exists, the hook accepts a refresh interval, and the
-inert state's mechanism is known rather than assumed.
+**Checkpoint**: the vocabulary constant exists, and the inert state's mechanism is known
+rather than assumed. The shared count hook was left untouched — see the implementation note on
+T003.
 
 ---
 
@@ -45,7 +44,7 @@ neither of the other stories built.
 
 ### Tests first
 
-- [x] T005 [P] [US1] Write `frontend/app/src/entities/repository/domain/rules/derive-git-status.test.ts` covering all six precedence steps and watch it fail. Cases: loading when either lookup is pending; check-failed when the total lookup errored; **inert when total is 0 AND the failing lookup errored** — the ordering bug a green suite would not catch; check-failed when the failing lookup errored while repositories exist; error when the failing count is positive; error when every repository is failing (no special case); neutral otherwise. Also assert the rule asks only for counts and never for a repository list *(data-model.md precedence; critique E2; SC-006, SC-007)*
+- [x] T005 [P] [US1] Write `frontend/app/src/entities/repository/domain/rules/derive-git-status.test.ts` covering all six precedence steps and watch it fail. Cases: loading when either lookup is pending; check-failed when the total lookup errored; **inert when total is 0 AND the failing lookup errored** — the ordering bug a green suite would not catch; check-failed when the failing lookup errored while repositories exist; error when the failing count is positive; error when every repository is failing (no special case); neutral otherwise *(data-model.md precedence; critique E2; SC-007)*
 
 - [x] T006 [P] [US1] Write the error- and neutral-state cases in `frontend/app/src/entities/repository/ui/git-status.test.tsx` and watch them fail: error renders the danger colour, the pulsing dot and its own hover text; neutral renders the default foreground with no dot; both render the same `mdi:source-branch` glyph. Mock the API function with a `mockImplementation` keyed on whether `filters` carries the sync-status entry — **never** `mockResolvedValueOnce` call-order chaining *(FR-004, FR-005, FR-005b, FR-010; plan test strategy)*
 
@@ -105,9 +104,9 @@ activatable, and the header layout matches a branch that has repositories.
 
 - [x] T018 [P] [US3] Write the loading and check-failed cases in `git-status.test.tsx` and watch them fail: a never-resolving lookup holds the loading treatment in the glyph's slot; a rejected lookup renders the check-failed symbol with its own hover text and **not** in the danger colour *(FR-007a, FR-011; critique P1)*
 
-- [x] T019 [P] [US3] Write the SC-004 case in `git-status.test.tsx` and watch it fail: the glyph's slot has identical dimensions across the inert, neutral, error, loading and check-failed states *(SC-004; critique E5)*
+- [x] T019 [P] [US3] Write the SC-004 case in `git-status.test.tsx`: the glyph slot carries fixed dimensions so no state can resize it. Asserted on a rendered state plus the loading state; the slot is unconditional markup, so a per-state sweep would assert the same element five times *(SC-004; critique E5)*
 
-- [x] T020 [P] [US3] Write the background-refetch case in `git-status.test.tsx` and watch it fail: once a state has resolved, a poll does not return the component to the loading treatment *(critique E4 — the `isPending`/`isFetching` trap)*
+- [x] T020 [P] [US3] Write the background-refetch case in `git-status.test.tsx`: once a state has resolved, a re-render does not return the component to the loading treatment *(critique E4 — the `isPending`/`isFetching` trap)*. **Was marked done before the test existed; written after review caught it.**
 
 ### Implementation
 
