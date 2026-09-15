@@ -50,10 +50,15 @@ class NATSCache(InfrahubCache):
             password=config.SETTINGS.cache.password,
             tls=tls_context,
         )
-        jetstream = connection.jetstream()
-
-        bucket = f"kv_{config.SETTINGS.cache.database}"
-        kv = await cls._ensure_kv(jetstream=jetstream, bucket=bucket)
+        try:
+            jetstream = connection.jetstream()
+            bucket = f"kv_{config.SETTINGS.cache.database}"
+            kv = await cls._ensure_kv(jetstream=jetstream, bucket=bucket)
+        # BaseException, so that a caller cancelling this coroutine on a deadline does not orphan the
+        # connection it never received.
+        except BaseException:
+            await connection.close()
+            raise
 
         return cls(connection=connection, jetstream=jetstream, kv=kv, bucket=bucket)
 
