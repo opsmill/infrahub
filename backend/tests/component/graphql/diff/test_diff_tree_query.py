@@ -213,6 +213,43 @@ query ($branch: String, $proposed_change_id: String){
 }
 """
 
+DIFF_TREE_QUERY_BY_NAME = """
+query ($branch: String, $name: String){
+    DiffTree (branch: $branch, name: $name) {
+        base_branch
+        diff_branch
+        from_time
+        to_time
+        name
+        num_added
+        num_removed
+        num_updated
+        num_conflicts
+        nodes {
+            uuid
+            kind
+            status
+        }
+    }
+}
+"""
+
+DIFF_TREE_SUMMARY_QUERY_BY_NAME = """
+query ($branch: String, $name: String){
+    DiffTreeSummary (branch: $branch, name: $name) {
+        base_branch
+        diff_branch
+        from_time
+        to_time
+        num_added
+        num_removed
+        num_updated
+        num_unchanged
+        num_conflicts
+    }
+}
+"""
+
 DIFF_TREE_QUERY_ALL_FILTERS = """
 query ($branch: String, $from_time: DateTime, $to_time: DateTime, $proposed_change_id: String){
     DiffTree (branch: $branch, from_time: $from_time, to_time: $to_time, proposed_change_id: $proposed_change_id) {
@@ -1404,3 +1441,126 @@ async def test_diff_tree_multiple_diffs_with_proposed_change_filter(
     assert result_mismatch.errors is None
     # This should return None because diff2 doesn't match the time range of diff1
     assert result_mismatch.data["DiffTree"] is None
+
+
+async def test_diff_tree_and_summary_by_name(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    criticality_low: Node,
+    diff_branch: Branch,
+    diff_coordinator: DiffCoordinator,
+) -> None:
+    """A named diff is retrievable by name alone, including for a period the branch no longer spans."""
+    time0 = Timestamp(diff_branch.branched_from)
+
+    branch_crit = await NodeManager.get_one(db=db, id=criticality_low.id, branch=diff_branch)
+    branch_crit.color.value = "#111111"
+    await branch_crit.save(db=db)
+
+    time1 = Timestamp()
+    diff_name = "incident-diff"
+    await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+        base_branch=default_branch,
+        diff_branch=diff_branch,
+        from_time=time0,
+        to_time=time1,
+        name=diff_name,
+    )
+
+    # Move the branch point past the stored diff's period, so the default range a name-only
+    # lookup would otherwise fall back to no longer covers it
+    diff_branch.branched_from = time1.to_string()
+    await diff_branch.save(db=db)
+
+    default_branch.update_schema_hash()
+    params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    tree_result = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_QUERY_BY_NAME,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name, "name": diff_name},
+    )
+
+    assert tree_result.errors is None
+    assert tree_result.data
+    assert tree_result.data["DiffTree"] == {
+        "base_branch": default_branch.name,
+        "diff_branch": diff_branch.name,
+        "from_time": time0.to_datetime().isoformat(),
+        "to_time": time1.to_datetime().isoformat(),
+        "name": diff_name,
+        "num_added": 0,
+        "num_removed": 0,
+        "num_updated": 1,
+        "num_conflicts": 0,
+        "nodes": [
+            {
+                "uuid": criticality_low.id,
+                "kind": criticality_low.get_kind(),
+                "status": UPDATED_ACTION,
+            }
+        ],
+    }
+
+    summary_result = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_SUMMARY_QUERY_BY_NAME,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name, "name": diff_name},
+    )
+
+    assert summary_result.errors is None
+    assert summary_result.data
+    assert summary_result.data["DiffTreeSummary"] == {
+        "base_branch": default_branch.name,
+        "diff_branch": diff_branch.name,
+        "from_time": time0.to_datetime().isoformat(),
+        "to_time": time1.to_datetime().isoformat(),
+        "num_added": 0,
+        "num_removed": 0,
+        "num_updated": 1,
+        "num_unchanged": 0,
+        "num_conflicts": 0,
+    }
+
+
+async def test_diff_tree_by_unknown_name(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_low: Node,
+    diff_branch: Branch,
+    diff_coordinator: DiffCoordinator,
+) -> None:
+    """A name that matches no stored diff returns null rather than the branch's own diff."""
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+
+    default_branch.update_schema_hash()
+    params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    tree_result = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_QUERY_BY_NAME,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name, "name": "no-such-diff"},
+    )
+
+    assert tree_result.errors is None
+    assert tree_result.data
+    assert tree_result.data["DiffTree"] is None
+
+    summary_result = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_SUMMARY_QUERY_BY_NAME,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name, "name": "no-such-diff"},
+    )
+
+    assert summary_result.errors is None
+    assert summary_result.data
+    assert summary_result.data["DiffTreeSummary"] is None
