@@ -194,6 +194,24 @@ async def test_label_load_reads_only_the_two_label_attributes_and_no_relationshi
     assert counting_db.count_for(NodeListGetRelationshipsQuery.name) == 0
 
 
+async def test_hfid_load_reads_only_the_hfid_attribute_and_no_relationship(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    animal_person_schema: SchemaBranch,
+) -> None:
+    """An HFID-only read returns the real HFIDs while reading one attribute row per node and no edge."""
+    person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+    hfids = await node_label_loader(db=counting_db, branch=default_branch, node_loader=NodeManager.get_many).load_hfids(
+        [person.id, dog.id]
+    )
+
+    assert hfids == {person.id: await person.get_hfid(db=db), dog.id: await dog.get_hfid(db=db)}
+    assert counting_db.rows_for(NodeListGetAttributeQuery.name) == len(hfids)
+    assert counting_db.count_for(NodeListGetRelationshipsQuery.name) == 0
+
+
 async def test_mutation_enriches_secondary_peer_changelogs(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -475,9 +493,8 @@ async def test_merge_tolerates_kind_deleted_in_migration(
     ).collect_changelogs()
 
     by_id = {changelog.node_id: changelog for _, changelog in changelogs}
-    # The node whose kind is gone still yields a changelog; its HFID is carried by the diff, so it
-    # needs no load against the missing schema.
-    assert by_id[car.id].hfid == ["Volvo"]
+    # The node whose kind is gone still yields a changelog, only without its HFID.
+    assert by_id[car.id].hfid is None
     # A node whose kind survives keeps its HFID: the load degrades per node, not per batch.
     assert by_id[owner.id].hfid == owner_hfid
 

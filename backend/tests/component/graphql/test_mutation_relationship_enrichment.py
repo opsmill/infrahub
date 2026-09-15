@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.changelog.models import NodeChangelog
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import NodeListGetAttributeQuery
 from infrahub.graphql.mutations.relationship import _enrich_source_changelog
@@ -32,6 +33,9 @@ async def test_has_label_depending_on_relationship_follows_the_templates(
 
     assert dog.has_label_depending_on_relationship(name="owner")
     assert not dog.has_label_depending_on_relationship(name="best_friend")
+    # A saved node holds both labels, so neither needs a read.
+    assert not dog.display_label_needs_read()
+    assert not dog.hfid_needs_read()
 
 
 async def test_enrich_source_changelog_rereads_labels_when_the_relationship_feeds_them(
@@ -86,3 +90,36 @@ async def test_enrich_source_changelog_leaves_changelog_when_node_cannot_be_read
 
     assert changelog.hfid == ["kept"]
     assert changelog.display_label == "kept"
+
+
+async def test_enrich_source_changelog_rereads_labels_on_a_profiles_mutation(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+) -> None:
+    """A profile change can rewrite the attributes the templates read, so both labels are re-read."""
+    dog = await _create_owned_dog(db, default_branch, animal_person_schema)
+
+    changelog = NodeChangelog(node_id=dog.id, node_kind="TestDog", display_label="stale", hfid=["stale"])
+    await _enrich_source_changelog(
+        node_changelog=changelog, source=dog, relationship_name="profiles", db=db, branch=default_branch
+    )
+
+    assert changelog.hfid == await dog.get_hfid(db=db)
+    assert changelog.display_label == await dog.get_display_label(db=db)
+
+
+async def test_enrich_source_changelog_reads_through_the_loader_when_the_hfid_is_not_materialized(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+) -> None:
+    """A node loaded without its stored HFID takes the guarded loader path, not the read-free one."""
+    dog = await _create_owned_dog(db, default_branch, animal_person_schema)
+    partial = await NodeManager.get_one(db=db, id=dog.id, branch=default_branch, fields={"name": None})
+    assert partial is not None
+    assert partial.hfid_needs_read()
+
+    changelog = NodeChangelog(node_id=dog.id, node_kind="TestDog", display_label="stale", hfid=None)
+    await _enrich_source_changelog(
+        node_changelog=changelog, source=partial, relationship_name="best_friend", db=db, branch=default_branch
+    )
+
+    assert changelog.hfid == await dog.get_hfid(db=db)
+    assert changelog.display_label == await dog.get_display_label(db=db)

@@ -42,11 +42,12 @@ class ChangelogHfidResolver:
         with trace.get_tracer(__name__).start_as_current_span("changelog.resolve_hfids") as span:
             span.set_attribute("changelog.resolvable_node_count", len(resolvable_ids))
             # A node whose HFID the diff carries as a current value (created, or HFID changed) is
-            # read from the diff rather than loaded.
+            # read from the diff rather than loaded. A node whose kind is gone stays unresolved, as
+            # its peers do, rather than being resolved from the diff alone.
             node_hfids: dict[str, list[str] | None] = {
                 changelog.node_id: hfid
                 for _, changelog in changelogs
-                if (hfid := _current_hfid_from_diff(changelog)) is not None
+                if is_resolvable_kind(changelog.node_kind) and (hfid := _current_hfid_from_diff(changelog)) is not None
             }
             span.set_attribute("changelog.diff_hfid_count", len(node_hfids))
             ids_to_load = [node_id for node_id in resolvable_ids if node_id not in node_hfids]
