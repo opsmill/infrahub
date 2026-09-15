@@ -138,7 +138,7 @@ describe("GitStatus", () => {
 
     // THEN it is a button, not a link: with no repositories there is nowhere to navigate to
     const indicator = component.getByRole("button", {
-      name: "No Git repositories on this branch",
+      name: "No Git repositories configured",
     });
     await expect.element(indicator).toBeVisible();
     expect((await indicator.element()).getAttribute("href")).toBeNull();
@@ -152,7 +152,7 @@ describe("GitStatus", () => {
 
     // WHEN the operator hovers the inert control
     const component = await render(<GitStatus />);
-    const indicator = component.getByRole("button", { name: "No Git repositories on this branch" });
+    const indicator = component.getByRole("button", { name: "No Git repositories configured" });
     await expect.element(indicator).toBeVisible();
     await initPointerTracking(component.locator);
     await indicator.hover();
@@ -161,7 +161,7 @@ describe("GitStatus", () => {
     // with isDisabled, so this asserts the behaviour rather than assuming it: FR-010a requires
     // the inert state to explain itself, and a disabled control that says nothing would fail it.
     await expect
-      .element(component.getByRole("tooltip", { name: "No Git repositories on this branch" }))
+      .element(component.getByRole("tooltip", { name: "No Git repositories configured" }))
       .toBeVisible();
   });
 
@@ -215,7 +215,7 @@ describe("GitStatus", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("button", { name: "No Git repositories on this branch" }))
+      .element(component.getByRole("button", { name: "No Git repositories configured" }))
       .toBeVisible();
   });
 
@@ -317,6 +317,29 @@ describe("GitStatus", () => {
     expect(getObjectsCountFromApiMock).toHaveBeenCalled();
     for (const call of getObjectsCountFromApiMock.mock.calls) {
       expect(call[0].atDate).toBeNull();
+    }
+  });
+
+  test.each([
+    ["error", { total: 3, failing: 1 } as const],
+    ["neutral", { total: 3, failing: 0 } as const],
+    ["inert", { total: 0, failing: 0 } as const],
+  ])("does not put the word branch in the %s state's button name", async (_label, counts) => {
+    // GIVEN
+    onBranch({ name: "branch1" });
+    mockCounts(counts);
+
+    // WHEN
+    const component = await render(<GitStatus />);
+
+    // THEN no button here may be findable by the accessible-name substring "branch". The e2e
+    // suite locates the branch selector with get_by_role("button", name="Branch"), and
+    // Playwright matches that name as a case-insensitive substring — so a button here naming
+    // a branch silently breaks an unrelated test whenever this state happens to render.
+    await expect.element(component.getByTestId("git-status")).toBeVisible();
+    const buttons = [...component.container.querySelectorAll("button")];
+    for (const button of buttons) {
+      expect(button.getAttribute("aria-label")?.toLowerCase() ?? "").not.toContain("branch");
     }
   });
 

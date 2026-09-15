@@ -24,9 +24,12 @@ const REFETCH_INTERVAL = 10_000;
  * reading it through assistive technology.
  */
 const TOOLTIP_BY_STATUS: Record<GitStatusValue, string> = {
+  // The inert label deliberately avoids the word "branch": repositories are branch-agnostic,
+  // so "none on this branch" would be inaccurate, and it also collided with an e2e locator
+  // matching buttons by the accessible-name substring "Branch".
   loading: "Checking Git status",
   "check-failed": "Git status could not be checked",
-  inert: "No Git repositories on this branch",
+  inert: "No Git repositories configured",
   error: "Repositories failed to import on this branch",
   neutral: "All Git repositories are in sync on this branch",
 };
