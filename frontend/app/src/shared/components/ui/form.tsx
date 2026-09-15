@@ -67,7 +67,7 @@ export const Form = ({
             })(event);
           }
         }}
-        className={classNames("space-y-4", className)}
+        className={classNames("space-y-6", className)}
         {...props}
       >
         {children}

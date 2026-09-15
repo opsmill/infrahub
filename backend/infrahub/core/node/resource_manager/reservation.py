@@ -39,3 +39,35 @@ def validate_reserved_prefix_length(
                 f"/{existing_prefixlen} can be used."
             )
         )
+
+
+def validate_reserved_kind(
+    *,
+    pool_kind: str,
+    pool_name: str,
+    reserved_value: Any,
+    reserved_kind: str,
+    requested_kind: str | None,
+) -> None:
+    """Guard re-allocation of an existing pool reservation against a conflicting target kind.
+
+    The counterpart of validate_reserved_prefix_length for the allocated object's kind. A
+    reservation's node keeps the kind it was created with, so a caller re-allocating the same
+    identifier with an explicit, different kind gets a clear error rather than silently
+    receiving a node of the original kind. An absent or matching kind is a no-op and the
+    existing reservation is reused.
+
+    Raises:
+        ValidationError: when an explicit kind conflicts with the reservation.
+
+    """
+    if requested_kind is None or requested_kind == reserved_kind:
+        return
+
+    raise ValidationError(
+        input_value=(
+            f"{pool_kind}: {pool_name} | This resource is already allocated as "
+            f"{reserved_value} of kind {reserved_kind}; its kind cannot be changed, only "
+            f"{reserved_kind} can be used."
+        )
+    )

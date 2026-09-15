@@ -2621,6 +2621,111 @@ async def register_ipam_extended_schema(default_branch: Branch, register_ipam_sc
 
 
 @pytest.fixture
+async def register_ipam_kind_override_schema(
+    default_branch: Branch, register_ipam_extended_schema: SchemaBranch
+) -> SchemaBranch:
+    """Schema to exercise from_pool target-kind overrides.
+
+    Adds a *second* concrete kind behind each builtin IP generic (so `used_by` holds more than
+    one option and an override is observable), plus two nodes whose relationships peer at the
+    *bare* generics. No other component fixture points a relationship at a bare generic.
+
+    Also adds a *narrower* IP generic on each side (`TestNarrowPrefix` / `TestNarrowAddress`),
+    used by a single concrete kind. A peer at one of those accepts strictly less than the bare
+    builtin generic, which is what makes a reservation created under the broad generic
+    observably illegal for the narrow one.
+    """
+    SCHEMA: dict[str, Any] = {
+        "generics": [
+            {
+                "name": "NarrowPrefix",
+                "namespace": "Test",
+                "description": "A narrower generic behind BuiltinIPPrefix, used by one kind only",
+                "attributes": [{"name": "narrow_marker", "kind": "Text", "optional": True}],
+            },
+            {
+                "name": "NarrowAddress",
+                "namespace": "Test",
+                "description": "A narrower generic behind BuiltinIPAddress, used by one kind only",
+                "attributes": [{"name": "narrow_marker", "kind": "Text", "optional": True}],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "NarrowIPPrefix",
+                "namespace": "Test",
+                "default_filter": "prefix__value",
+                "order_by": ["prefix__value"],
+                "display_label": "prefix__value",
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPPREFIX, "TestNarrowPrefix"],
+            },
+            {
+                "name": "NarrowIPAddress",
+                "namespace": "Test",
+                "default_filter": "address__value",
+                "order_by": ["address__value"],
+                "display_label": "address__value",
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPADDRESS, "TestNarrowAddress"],
+            },
+            {
+                "name": "IPPrefix",
+                "namespace": "Test",
+                "default_filter": "prefix__value",
+                "order_by": ["prefix__value"],
+                "display_label": "prefix__value",
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPPREFIX, InfrahubKind.WEIGHTED_POOL_RESOURCE],
+            },
+            {
+                "name": "IPAddress",
+                "namespace": "Test",
+                "default_filter": "address__value",
+                "order_by": ["address__value"],
+                "display_label": "address__value",
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPADDRESS],
+            },
+            {
+                "name": "GenericPrefixOwner",
+                "namespace": "Test",
+                "description": "A model with a relationship to the bare BuiltinIPPrefix generic",
+                "attributes": [{"name": "name", "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": "prefix",
+                        "peer": InfrahubKind.IPPREFIX,
+                        "kind": "Attribute",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+            {
+                "name": "GenericAddressOwner",
+                "namespace": "Test",
+                "description": "A model with a relationship to the bare BuiltinIPAddress generic",
+                "attributes": [{"name": "name", "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": "address",
+                        "peer": InfrahubKind.IPADDRESS,
+                        "kind": "Attribute",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+        ],
+    }
+
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**SCHEMA), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
+
+
+@pytest.fixture
 async def create_test_admin(db: InfrahubDatabase, register_core_models_schema: SchemaBranch, data_schema: None) -> Node:
     return await do_create_test_admin(db=db)
 

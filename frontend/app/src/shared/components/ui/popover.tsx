@@ -1,7 +1,14 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import * as TabsPrimitive from "@radix-ui/react-tabs";
 import React from "react";
 
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  type TabsListProps,
+  TabsTrigger,
+  type TabsTriggerProps,
+} from "@/shared/components/ui/tabs";
 import { classNames } from "@/shared/utils/common";
 
 export const Popover = PopoverPrimitive.Root;
@@ -44,44 +51,19 @@ export const PopoverContent = ({
   );
 };
 
-export const PopoverTabs = TabsPrimitive.Root;
+/**
+ * The shared `Tabs` primitive, dressed for a popover: the strip spans the popover's width and
+ * the active trigger takes the popover's own background so it covers the strip's border where
+ * it overlaps it. Everything else is the primitive's.
+ */
+export const PopoverTabs = Tabs;
 
-interface PopoverTabsListProps extends React.ComponentProps<typeof TabsPrimitive.List> {}
-
-export const PopoverTabsList = ({ className, ref, ...props }: PopoverTabsListProps) => (
-  <TabsPrimitive.List
-    ref={ref}
-    className={classNames(
-      "inline-flex w-full items-center justify-center border-b px-2",
-      className
-    )}
-    {...props}
-  />
+export const PopoverTabsList = ({ className, ...props }: TabsListProps) => (
+  <TabsList className={classNames("w-full justify-center px-2", className)} {...props} />
 );
 
-interface PopoverTabsTriggerProps extends React.ComponentProps<typeof TabsPrimitive.Trigger> {}
-
-export const PopoverTabsTrigger = ({ className, ref, ...props }: PopoverTabsTriggerProps) => (
-  <TabsPrimitive.Trigger
-    ref={ref}
-    className={classNames(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-t-md bg-popover px-3 py-1.5 font-medium text-sm transition-all",
-      "outline-hidden",
-      "disabled:pointer-events-none disabled:opacity-50",
-      "data-[state=active]:-mb-px data-[state=active]:border-x data-[state=active]:border-t",
-      className
-    )}
-    {...props}
-  />
+export const PopoverTabsTrigger = ({ className, ...props }: TabsTriggerProps) => (
+  <TabsTrigger className={classNames("bg-popover", className)} {...props} />
 );
 
-interface PopoverTabsContentProps extends React.ComponentProps<typeof TabsPrimitive.Content> {}
-
-export const PopoverTabsContent = ({ className, ref, ...props }: PopoverTabsContentProps) => (
-  <TabsPrimitive.Content
-    ref={ref}
-    tabIndex={-1}
-    className={classNames("outline-hidden", className)}
-    {...props}
-  />
-);
+export const PopoverTabsContent = TabsContent;
