@@ -59,7 +59,7 @@ def inject_service_parameter(func: Flow, parameters: dict[str, Any], service: In
 
     """
     if service_parameter_name := get_parameter_name(func=func, types=[InfrahubServices.__name__, InfrahubServices]):
-        if any(isinstance(param_value, InfrahubServices) for param_value in parameters):
+        if any(isinstance(param_value, InfrahubServices) for param_value in parameters.values()):
             raise ValueError(f"{func.name} parameters contains an InfrahubServices object while it should be injected")
         parameters[service_parameter_name] = service
 
