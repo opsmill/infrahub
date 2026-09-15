@@ -9,12 +9,19 @@ from unittest.mock import patch
 
 import pytest
 from git import Repo
+from git.exc import GitCommandError
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
+from pydantic import Field
 
 from infrahub import config
+from infrahub.core.constants import RepositoryOperationalStatus
 from infrahub.core.registry import registry
-from infrahub.exceptions import RepositoryError
+from infrahub.exceptions import (
+    RepositoryConnectionError,
+    RepositoryCredentialsError,
+    RepositoryError,
+)
 from infrahub.git import InfrahubRepository
 from infrahub.git.repository import FailedImport, ImportStep
 from tests.helpers.file_repo import MultipleStagesFileRepo
@@ -265,6 +272,93 @@ def test_check_connectivity_ignores_cwd_git_pointer(tmp_path: Path, monkeypatch:
     monkeypatch.chdir(cwd)
 
     InfrahubRepository.check_connectivity(name="test", url=f"file://{source_dir}")
+
+
+class _RaisingOrigin:
+    """Stand-in for GitPython's `origin` remote whose push always raises a transport-level error."""
+
+    def __init__(self, error: GitCommandError) -> None:
+        self._error = error
+
+    def push(self, *args: Any, **kwargs: Any) -> None:
+        raise self._error
+
+
+class _RaisingWorktree:
+    def __init__(self, error: GitCommandError) -> None:
+        self.remotes = type("_Remotes", (), {"origin": _RaisingOrigin(error)})()
+
+
+class _FailingPushRepository(InfrahubRepository):
+    """An InfrahubRepository whose worktree's origin push always fails with a preset transport error.
+
+    Records every operational status the classifier writes so the test can assert the status update is
+    executed, not only that the typed error is raised. The double keeps it in memory; it does not persist.
+    """
+
+    push_error: GitCommandError
+    recorded_statuses: list[RepositoryOperationalStatus] = Field(default_factory=list)
+
+    def get_git_repo_worktree(self, identifier: str) -> Any:
+        return _RaisingWorktree(self.push_error)
+
+    async def _update_operational_status(self, status: RepositoryOperationalStatus) -> None:
+        self.recorded_statuses.append(status)
+
+
+@dataclass
+class PushErrorCase:
+    name: str
+    stderr: str
+    expected: type[RepositoryError]
+    expected_status: RepositoryOperationalStatus
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        PushErrorCase(
+            name="credentials",
+            stderr="fatal: Authentication failed for 'https://gitlab.example.com/net/repo.git/'",
+            expected=RepositoryCredentialsError,
+            expected_status=RepositoryOperationalStatus.ERROR_CRED,
+        ),
+        PushErrorCase(
+            name="connection",
+            stderr="fatal: unable to access 'https://gitlab.example.com/net/repo.git/': "
+            "Could not resolve host: gitlab.example.com",
+            expected=RepositoryConnectionError,
+            expected_status=RepositoryOperationalStatus.ERROR_CONNECTION,
+        ),
+    ],
+    ids=lambda c: c.name,
+)
+async def test_push_classifies_transport_error(case: PushErrorCase) -> None:
+    """A transport-level GitCommandError from the underlying push is classified and its status persisted.
+
+    Such a failure leaves no porcelain status line for GitPython to parse, so it re-raises
+    GitCommandError instead of reporting on push_info.flags; push() must route it through the
+    classifier, which both raises the typed error and writes the matching operational status.
+    """
+    repository = _FailingPushRepository(
+        id=UUIDT.new(),
+        name="push-repo",
+        default_branch_name="main",
+        location="https://gitlab.example.com/net/repo.git",
+        has_origin=True,
+        cache_repo=None,
+        is_read_only=False,
+        internal_status="active",
+        reinitialized=False,
+        infrahub_branch_name="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        push_error=GitCommandError(command=["git", "push"], status=128, stderr=case.stderr),
+    )
+
+    with pytest.raises(case.expected):
+        await repository.push("main")
+
+    assert repository.recorded_statuses == [case.expected_status]
 
 
 @pytest.fixture

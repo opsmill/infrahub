@@ -299,7 +299,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         """Push a given branch to the remote Origin repository.
 
         Raises:
-            RepositoryError: When the remote rejects the push.
+            RepositoryError: When the remote rejects the push at the ref level.
+            RepositoryConnectionError: When the push fails to reach the remote.
+            RepositoryCredentialsError: When authentication fails at push time.
+            RepositoryPermissionError: When the credentials authenticate but lack write access.
 
         """
         if not self.has_origin:
@@ -316,7 +319,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         # Push the worktree HEAD, not the bare branch name: the local branch checked out in this
         # worktree may not be named after the remote branch (it differs when the repository's
         # default branch is not the Infrahub default), so a bare refspec would have no local source.
-        push_infos = repo.remotes.origin.push(refspec=f"HEAD:refs/heads/{remote_branch}")
+        try:
+            push_infos = repo.remotes.origin.push(refspec=f"HEAD:refs/heads/{remote_branch}")
+        except GitCommandError as exc:
+            # A transport-level failure (403, expired token, connection refused, TLS) leaves no
+            # porcelain status line to parse, so GitPython re-raises here rather than reporting it
+            # on push_info.flags. Route it through the same classifier a fetch failure uses.
+            await self._raise_enriched_error(error=exc, branch_name=branch_name)
         for push_info in push_infos:
             if push_info.flags & push_info.ERROR:
                 raise RepositoryError(

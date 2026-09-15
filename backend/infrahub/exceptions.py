@@ -123,6 +123,15 @@ class RepositoryCredentialsError(RepositoryError):
         )
 
 
+class RepositoryPermissionError(RepositoryError):
+    def __init__(self, identifier: str, message: str | None = None) -> None:
+        super().__init__(
+            identifier=identifier,
+            message=message
+            or f"Access to repository {identifier} was denied; the credentials are not authorized for the operation.",
+        )
+
+
 class RepositoryInvalidBranchError(RepositoryError):
     def __init__(self, identifier: str, branch_name: str, location: str, message: str | None = None) -> None:
         super().__init__(

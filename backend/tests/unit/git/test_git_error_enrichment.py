@@ -7,6 +7,7 @@ from infrahub.exceptions import (
     RepositoryConnectionError,
     RepositoryCredentialsError,
     RepositoryError,
+    RepositoryPermissionError,
 )
 from infrahub.git.base import InfrahubRepositoryBase
 
@@ -60,6 +61,37 @@ ENRICHMENT_CASES = [
         name="authentication_failed",
         stderr="fatal: Authentication failed for 'https://gitlab.example.com/net/repo.git/'",
         expected=RepositoryCredentialsError,
+    ),
+    EnrichmentCase(
+        name="permission_write_access_not_granted",
+        stderr="ERROR: Write access to repository not granted.\nfatal: The remote end hung up unexpectedly",
+        expected=RepositoryPermissionError,
+        command=["git", "push", "--dry-run", "--porcelain", "--delete"],
+    ),
+    EnrichmentCase(
+        name="permission_denied_to_user",
+        stderr="remote: Permission to opsmill/repo.git denied to baduser.\n"
+        "fatal: unable to access 'https://github.com/opsmill/repo.git/'",
+        expected=RepositoryPermissionError,
+        command=["git", "push", "--dry-run", "--porcelain", "--delete"],
+    ),
+    EnrichmentCase(
+        name="permission_http_403",
+        stderr="fatal: unable to access 'https://github.com/opsmill/repo.git/': The requested URL returned error: 403",
+        expected=RepositoryPermissionError,
+        command=["git", "push", "--dry-run", "--porcelain", "--delete"],
+    ),
+    EnrichmentCase(
+        name="permission_gitlab_not_allowed",
+        stderr="remote: You are not allowed to push code to this project.\nfatal: unable to access ...",
+        expected=RepositoryPermissionError,
+        command=["git", "push", "--dry-run", "--porcelain", "--delete"],
+    ),
+    EnrichmentCase(
+        name="permission_gitea_denied_writing",
+        stderr="remote: Gitea: User permission denied for writing.\nfatal: unable to access ...",
+        expected=RepositoryPermissionError,
+        command=["git", "push", "--dry-run", "--porcelain", "--delete"],
     ),
     EnrichmentCase(
         name="unclassified_error_falls_through",
