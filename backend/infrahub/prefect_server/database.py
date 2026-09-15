@@ -12,9 +12,13 @@ if TYPE_CHECKING:
 
 
 async def query_events(
-    session: AsyncSession, filter: EventFilter, page_size: int = INTERACTIVE_PAGE_SIZE, offset: int | None = None
+    session: AsyncSession,
+    filter: EventFilter,
+    page_size: int = INTERACTIVE_PAGE_SIZE,
+    offset: int | None = None,
+    include_total: bool = True,
 ) -> tuple[list[ReceivedEvent], int]:
-    count = await raw_count_events(session, filter)  # type: ignore[attr-defined]
+    count = await raw_count_events(session, filter) if include_total else 0  # type: ignore[attr-defined]
     page = await read_events(session, filter, limit=page_size, offset=offset)  # type: ignore[attr-defined]
     events = [ReceivedEvent.model_validate(e, from_attributes=True) for e in page]
     return events, count
