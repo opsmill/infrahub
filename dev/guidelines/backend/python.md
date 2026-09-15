@@ -22,17 +22,13 @@ def get_node(db, node_id):
 
 ## Imports
 
-All imports must be at the top of the file. Never import inside functions, methods, or classes:
+All imports must be at the top of the file. Never import inside functions, methods, or classes (ruff
+`PLC0415`). The only function-local imports we keep defer an optional or heavy dependency that must
+not load on every import, each marked `# noqa: PLC0415` with the reason:
 
 ```python
 # ✅ Good - imports at module level
-from infrahub.core.query import Query
 from infrahub.exceptions import ValidationError
-
-class NodeManager:
-    def validate(self, node: Node) -> None:
-        if not node.name:
-            raise ValidationError("Node name is required")
 
 # ❌ Bad - import inside function
 class NodeManager:
@@ -42,18 +38,9 @@ class NodeManager:
             raise ValidationError("Node name is required")
 ```
 
-All backend modules use `from __future__ import annotations`, which turns annotations into strings at runtime. This means imports used **only** in type hints have no runtime effect and can be placed under `TYPE_CHECKING` to prevent circular imports:
-
-```python
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from infrahub.database import InfrahubDatabase
-```
-
-If an import is only referenced in parameter types, return types, or variable annotations, move it under `TYPE_CHECKING` — especially when it causes or risks a circular import chain:
+All backend modules use `from __future__ import annotations`, so an import used **only** in
+parameter types, return types, or variable annotations has no runtime effect. Put it under
+`TYPE_CHECKING`, especially when it causes or risks a circular import chain:
 
 ```python
 # ❌ Bad - top-level import only used in annotations; causes circular import
@@ -72,18 +59,43 @@ def collect_filters(self, schema_branch: SchemaBranch) -> dict[str, set[str]]:
     ...
 ```
 
-**Exception — `tasks/*.py`:** keep `infrahub.*` and other heavy/optional imports function-local
-here. `tasks/__init__.py` eagerly imports every task submodule into the Invoke `Collection`, so a
-top-level backend import in any `tasks/*.py` file would load the full backend package on every
-`invoke` command, even unrelated ones (`invoke --list`, `invoke docs.*`, ...). This is a
-deliberate, documented exception: `pyproject.toml`'s `"tasks/**.py"` per-file-ignore disables the
-"import not at top level" lint rule for exactly this reason. Keep lightweight, always-needed
-imports (stdlib, `invoke`, sibling `.shared`/`.utils` modules) at the top; defer the rest into the
-function that needs them.
+### An import cycle is a layering defect, not a reason for a function-local import
 
-The exception covers a thin task wrapper, not logic that happens to live in `tasks/`. A task body
-needing a dozen deferred imports is telling you the logic belongs in a module of its own, which the
-task then imports once — put it there and the deferred imports mostly disappear with it.
+A cycle means the module reaches into a layer above it, and hiding the import inside a function only
+hides that. Map the cycle first: a hub package such as `infrahub.services` reaches low-level modules
+by several routes, so cutting one edge rarely frees it. Then fix the dependency itself:
+
+- Depend on the narrower interface the code actually uses: a lock that only calls `service.cache`
+  takes the cache adapter, not the services container that owns it.
+- When the import only served a runtime `isinstance`, give each accepted type its own parameter so
+  the branches narrow on `None` and the type stays a `TYPE_CHECKING` import.
+- Move a helper next to its only caller when that module already sits at the right layer.
+
+```python
+# ❌ Bad - the check needs a type from the layer above, so the import hides in the function
+def _require_service(connection: redis.Redis | InfrahubServices | None) -> InfrahubServices:
+    from infrahub.services import InfrahubServices  # noqa: PLC0415  # avoid circular import
+    if not isinstance(connection, InfrahubServices):
+        raise TypeError(...)
+    return connection
+
+# ✅ Good - one typed slot per driver; each branch narrows on None, importing nothing above this layer
+def __init__(self, name: str, connection: redis.Redis | None = None, cache: InfrahubCache | None = None) -> None:
+    if connection is not None:
+        self.connection: redis.Redis = connection
+    elif cache is not None:
+        self.cache: InfrahubCache = cache
+    else:
+        raise TypeError(f"Lock {name!r} requires a connection or a cache adapter")
+```
+
+**Exception — `tasks/*.py`:** keep `infrahub.*` and other heavy imports function-local there.
+`tasks/__init__.py` eagerly imports every task submodule into the Invoke `Collection`, so a top-level
+backend import in any task file would load the full backend on every `invoke` command, and
+`pyproject.toml`'s `"tasks/**.py"` per-file-ignore disables the rule for exactly this reason. Keep
+stdlib, `invoke` and sibling `.shared`/`.utils` imports at the top and defer the rest. The exception
+covers a thin task wrapper: a task body needing a dozen deferred imports belongs in a module of its
+own, which the task imports once.
 
 Import a singleton from the module that defines it, not from a package `__init__.py` that re-exports
 it under the same name as its submodule. `from infrahub.core import registry` names two things — the
