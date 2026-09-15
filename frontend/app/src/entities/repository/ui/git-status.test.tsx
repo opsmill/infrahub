@@ -1,0 +1,295 @@
+import { afterEach, describe, expect, test, vi } from "vitest";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { getObjectsCountFromApi } from "@/entities/nodes/object/api/get-objects-count-from-api";
+import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
+import { GitStatus } from "@/entities/repository/ui/git-status";
+
+import { render } from "../../../../tests/components/render";
+import { initPointerTracking } from "../../../../tests/components/utils";
+import { generateBranch } from "../../../../tests/fake/branch";
+
+vi.mock("@/entities/branches/ui/branches-provider");
+vi.mock("@/entities/nodes/object/api/get-objects-count-from-api");
+
+type CountResponse = Awaited<ReturnType<typeof getObjectsCountFromApi>>;
+
+const countResponse = (count: number) =>
+  ({ data: { [GENERIC_REPOSITORY_KIND]: { count } } }) as unknown as CountResponse;
+
+const errorResponse = () =>
+  ({ data: null, errors: [{ message: "boom" }] }) as unknown as CountResponse;
+
+describe("GitStatus", () => {
+  const useCurrentBranchMock = vi.mocked(useCurrentBranch);
+  const getObjectsCountFromApiMock = vi.mocked(getObjectsCountFromApi);
+
+  /**
+   * Both counts go through the same API function, so they are told apart by whether the call
+   * carries the sync-status filter — never by call order, which is an implementation detail a
+   * later refactor would silently invalidate.
+   */
+  const mockCounts = ({
+    total,
+    failing,
+  }: {
+    total: number | "error";
+    failing: number | "error";
+  }) => {
+    getObjectsCountFromApiMock.mockImplementation(async ({ filters }) => {
+      const isFailingLookup = filters?.some((filter) => filter.name === "sync_status__value");
+      const outcome = isFailingLookup ? failing : total;
+      return outcome === "error" ? errorResponse() : countResponse(outcome);
+    });
+  };
+
+  const glyphIcon = (component: { container: HTMLElement }) =>
+    component.container
+      .querySelector('[data-testid="git-status-glyph"]')
+      ?.firstElementChild?.getAttribute("icon");
+
+  const onBranch = (overrides: Parameters<typeof generateBranch>[0] = {}) => {
+    const branch = generateBranch(overrides);
+    useCurrentBranchMock.mockReturnValue({ currentBranch: branch, setCurrentBranch: () => {} });
+    return branch;
+  };
+
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  test("renders the error appearance with a pulsing dot when a repository is failing", async () => {
+    // GIVEN
+    onBranch({ name: "branch1" });
+    mockCounts({ total: 3, failing: 1 });
+
+    // WHEN
+    const component = await render(<GitStatus />);
+
+    // THEN
+    const indicator = component.getByRole("link", {
+      name: "Repositories failed to import on this branch",
+    });
+    await expect.element(indicator).toBeVisible();
+    await expect.element(component.getByTestId("git-status-pulse")).toBeVisible();
+    // Same subject glyph as every other resolved state: the state is carried by colour and
+    // the dot, never by swapping the icon for a different thing (FR-005b).
+    expect(glyphIcon(component)).toBe("mdi:source-branch");
+  });
+
+  test("renders the neutral appearance with no pulsing dot when repositories are healthy", async () => {
+    // GIVEN
+    onBranch({ name: "branch1" });
+    mockCounts({ total: 3, failing: 0 });
+
+    // WHEN
+    const component = await render(<GitStatus />);
+
+    // THEN
+    const indicator = component.getByRole("link", {
+      name: "All Git repositories are in sync on this branch",
+    });
+    await expect.element(indicator).toBeVisible();
+    expect(component.container.querySelector('[data-testid="git-status-pulse"]')).toBeNull();
+    // The dot, not the glyph, is what distinguishes this from the error state — so the two
+    // remain distinguishable without perceiving colour (FR-005b, SC-005).
+    expect(glyphIcon(component)).toBe("mdi:source-branch");
+  });
+
+  test("treats a syncing repository as neutral rather than giving it its own treatment", async () => {
+    // GIVEN a branch whose repositories are mid-sync: none carries the import-error status,
+    // so the failing count is zero even though the repositories are not idle
+    onBranch({ name: "branch1" });
+    mockCounts({ total: 2, failing: 0 });
+
+    // WHEN
+    const component = await render(<GitStatus />);
+
+    // THEN
+    await expect
+      .element(
+        component.getByRole("link", { name: "All Git repositories are in sync on this branch" })
+      )
+      .toBeVisible();
+  });
+
+  test("renders inert and not activatable when the branch has no repositories", async () => {
+    // GIVEN
+    onBranch({ name: "branch1" });
+    mockCounts({ total: 0, failing: 0 });
+
+    // WHEN
+    const component = await render(<GitStatus />);
+
+    // THEN it is a button, not a link: with no repositories there is nowhere to navigate to
+    const indicator = component.getByRole("button", {
+      name: "No Git repositories on this branch",
+    });
+    await expect.element(indicator).toBeVisible();
+    expect((await indicator.element()).getAttribute("href")).toBeNull();
+  });
+
+  test("still explains itself on hover while inert", async () => {
+    // GIVEN a branch with no repositories, so the control is disabled
+    onBranch({ name: "branch1" });
+    mockCounts({ total: 0, failing: 0 });
+
+    // WHEN the operator hovers the inert control
+    const component = await render(<GitStatus />);
+    const indicator = component.getByRole("button", { name: "No Git repositories on this branch" });
+    await expect.element(indicator).toBeVisible();
+    await initPointerTracking(component.locator);
+    await indicator.hover();
+
+    // THEN the tooltip still fires. No other call site in this codebase combines LinkButton
+    // with isDisabled, so this asserts the behaviour rather than assuming it: FR-010a requires
+    // the inert state to explain itself, and a disabled control that says nothing would fail it.
+    await expect
+      .element(component.getByRole("tooltip", { name: "No Git repositories on this branch" }))
+      .toBeVisible();
+  });
+
+  test("renders the check-failed appearance when a lookup fails", async () => {
+    // GIVEN
+    onBranch({ name: "branch1" });
+    mockCounts({ total: "error", failing: "error" });
+
+    // WHEN
+    const component = await render(<GitStatus />);
+
+    // THEN
+    await expect
+      .element(component.getByRole("link", { name: "Git status could not be checked" }))
+      .toBeVisible();
+  });
+
+  test("reports inert, not check-failed, when the branch is empty and the failure lookup fails", async () => {
+    // GIVEN a branch with no repositories, so the failing count cannot change the answer
+    onBranch({ name: "branch1" });
+    mockCounts({ total: 0, failing: "error" });
+
+    // WHEN
+    const component = await render(<GitStatus />);
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "No Git repositories on this branch" }))
+      .toBeVisible();
+  });
+
+  test("keeps the glyph slot the same size in every state", async () => {
+    // GIVEN
+    onBranch({ name: "branch1" });
+    mockCounts({ total: 3, failing: 1 });
+
+    // WHEN
+    const component = await render(<GitStatus />);
+
+    // THEN the slot is pinned rather than sized by whichever glyph occupies it, so the header
+    // cannot shift when the state changes
+    const slot = component.container.querySelector('[data-testid="git-status-glyph"]');
+    expect(slot?.className).toContain("size-4");
+  });
+
+  test("links to the repository list filtered to failed imports", async () => {
+    // GIVEN
+    onBranch({ name: "branch1", is_default: false });
+    mockCounts({ total: 3, failing: 1 });
+
+    // WHEN
+    const component = await render(<GitStatus />);
+
+    // THEN
+    const indicator = component.getByRole("link", {
+      name: "Repositories failed to import on this branch",
+    });
+    // Wait for the error state to resolve before reading the href: `.element()` resolves
+    // immediately, so without this it reads the loading state's markup.
+    await expect.element(indicator).toBeVisible();
+    const href = (await indicator.element()).getAttribute("href") ?? "";
+    expect(href).toContain(`/objects/${GENERIC_REPOSITORY_KIND}`);
+    expect(decodeURIComponent(href)).toContain("sync_status__value");
+    expect(decodeURIComponent(href)).toContain("error-import");
+  });
+
+  test("includes the branch in the link when the branch is not the default", async () => {
+    // GIVEN
+    onBranch({ name: "branch1", is_default: false });
+    mockCounts({ total: 3, failing: 1 });
+
+    // WHEN
+    const component = await render(<GitStatus />);
+
+    // THEN
+    const indicator = component.getByRole("link", {
+      name: "Repositories failed to import on this branch",
+    });
+    await expect.element(indicator).toBeVisible();
+    expect(decodeURIComponent((await indicator.element()).getAttribute("href") ?? "")).toContain(
+      "branch1"
+    );
+  });
+
+  test("omits the branch from the link on the default branch", async () => {
+    // GIVEN
+    onBranch({ name: "main", is_default: true });
+    mockCounts({ total: 3, failing: 1 });
+
+    // WHEN
+    const component = await render(<GitStatus />);
+
+    // THEN
+    const indicator = component.getByRole("link", {
+      name: "Repositories failed to import on this branch",
+    });
+    await expect.element(indicator).toBeVisible();
+    expect((await indicator.element()).getAttribute("href") ?? "").not.toContain("branch=");
+  });
+
+  test("asks about the branch from context, not a branch named in the URL", async () => {
+    // GIVEN the URL names a different branch from the one selected in the application
+    onBranch({ name: "branch1", is_default: false });
+    mockCounts({ total: 3, failing: 1 });
+    window.history.pushState({}, "", "/?branch=some-other-branch");
+
+    // WHEN
+    await render(<GitStatus />);
+
+    // THEN both lookups are scoped to the branch from context
+    expect(getObjectsCountFromApiMock).toHaveBeenCalled();
+    for (const call of getObjectsCountFromApiMock.mock.calls) {
+      expect(call[0].branchName).toBe("branch1");
+    }
+    window.history.pushState({}, "", "/");
+  });
+
+  test("asks about now, ignoring the header time machine", async () => {
+    // GIVEN
+    onBranch({ name: "branch1" });
+    mockCounts({ total: 3, failing: 0 });
+
+    // WHEN
+    await render(<GitStatus />);
+
+    // THEN the lookups carry no historical date: a past "all clear" would be reported in the
+    // present tense, which is the failure this indicator exists to prevent
+    expect(getObjectsCountFromApiMock).toHaveBeenCalled();
+    for (const call of getObjectsCountFromApiMock.mock.calls) {
+      expect(call[0].atDate).toBeNull();
+    }
+  });
+
+  test("counts every repository kind through the generic kind", async () => {
+    // GIVEN
+    onBranch({ name: "branch1" });
+    mockCounts({ total: 3, failing: 0 });
+
+    // WHEN
+    await render(<GitStatus />);
+
+    // THEN
+    for (const call of getObjectsCountFromApiMock.mock.calls) {
+      expect(call[0].objectKind).toBe(GENERIC_REPOSITORY_KIND);
+    }
+  });
+});
