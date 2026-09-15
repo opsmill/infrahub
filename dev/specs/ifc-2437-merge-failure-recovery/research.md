@@ -92,15 +92,18 @@ Supporting facts:
   `timestamp::worker_id` token (`backend/infrahub/lock.py`).
 - The worker that runs the `branch-merge` Prefect flow refreshes a heartbeat key
   `workers:active:{component}:worker:{WORKER_IDENTITY}` with a 15-second TTL every 10 seconds
-  (`backend/infrahub/services/component.py`; `backend/infrahub/services/scheduler.py`). When the
+  (`backend/infrahub/services/component.py`; `backend/infrahub/services/heartbeat.py`). When the
   worker dies, its heartbeat expires within ~15 s, so its `worker_id` leaves the active set well
   inside one ~1-minute scan interval.
-- **A long merge does not falsely expire the heartbeat.** The merge flow runs in-process in the
-  worker's async event loop (`InfrahubWorkerAsync`, no subprocess/thread), and Neo4j calls are
-  awaited, so the heartbeat task keeps firing during a long query. Verified locally against Neo4j on
-  `localhost:7687`: a 17 s server-side compute and a 100 s 5M-row result-consumption each kept a 1 s
-  ticker (standing in for the scheduler's refresh loop) at ~1 s cadence throughout — no stall past
-  the 15 s TTL. So `worker-inactive` is a reliable death signal, not a "busy" artifact.
+- **A long merge does not falsely expire the heartbeat.** The heartbeat runs on its own thread with
+  its own event loop and cache connection (`backend/infrahub/services/heartbeat.py`), so it keeps
+  firing whatever the merge flow does on the worker's main loop. It originally ran as an asyncio
+  schedule on that main loop, and the local verification at the time (a 17 s server-side compute and
+  a 100 s 5M-row result-consumption each kept a 1 s ticker at ~1 s cadence) only covered awaited
+  Neo4j calls, which yield the loop. A CPU-bound stretch does not: on 2026-09-10 a rebase spent 93 s
+  in pure-Python conflict merging, the key expired, and `clean_up_deadlocks` on another worker deleted
+  the diff-update locks the live rebase still held. Moving the refresh off the main loop is what makes
+  `worker-inactive` a reliable death signal, not a "busy" artifact.
 - **Grace period.** The predicate still requires `now − merge_started_at > grace_period` (a small
   configurable threshold, default ~2–3 minutes) as cheap insurance against a transient
   cache/heartbeat-write blip momentarily expiring a live worker's key. This is *not* needed to cover

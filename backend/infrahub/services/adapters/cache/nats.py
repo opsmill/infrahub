@@ -137,4 +137,10 @@ class NATSCache(InfrahubCache):
             await self.jetstream.publish(f"$KV.{self.bucket}.{key}", value.encode(), msg_ttl=msg_ttl)
         return True
 
-    async def close_connection(self) -> None: ...
+    async def close_connection(self) -> None:
+        """Close the NATS connection this cache opened.
+
+        ``close`` rather than ``drain``: the cache holds no subscriptions to flush, and a connection
+        that is already closed is a no-op for the client.
+        """
+        await self.connection.close()
