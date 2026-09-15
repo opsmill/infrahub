@@ -123,6 +123,18 @@ class RepositoryCredentialsError(RepositoryError):
         )
 
 
+class RepositoryPermissionError(RepositoryError):
+    def __init__(self, identifier: str, message: str | None = None) -> None:
+        super().__init__(
+            identifier=identifier,
+            message=message
+            or (
+                f"Write access to repository {identifier} was denied. The credentials can read but not push; "
+                "grant the token write access to the repository."
+            ),
+        )
+
+
 class RepositoryInvalidBranchError(RepositoryError):
     def __init__(self, identifier: str, branch_name: str, location: str, message: str | None = None) -> None:
         super().__init__(

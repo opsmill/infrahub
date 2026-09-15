@@ -302,6 +302,8 @@ class ValidateRepositoryConnectivity(Mutation):
         message = messages.GitRepositoryConnectivity(
             repository_name=str(repo.name.value),
             repository_location=str(repo.location.value),
+            # A read-write repository must be push-able; a read-only one never pushes.
+            requires_write=repo.get_kind() == InfrahubKind.REPOSITORY,
         )
         if graphql_context.service:
             response = await graphql_context.service.message_bus.rpc(
