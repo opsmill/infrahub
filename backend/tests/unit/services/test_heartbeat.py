@@ -63,6 +63,16 @@ class SlowClosingCache(RecordingCache):
         self.closed = True
 
 
+class HangingCache(RecordingCache):
+    """A cache whose writes never return, the way a connection black-holed mid-command behaves."""
+
+    async def set(
+        self, key: str, value: str, expires: KVTTL | int | None = None, not_exists: bool = False
+    ) -> bool | None:
+        await asyncio.Event().wait()
+        raise AssertionError("unreachable")
+
+
 async def wait_until(condition: Callable[[], bool], timeout_seconds: float = 2.0) -> None:
     deadline = time.monotonic() + timeout_seconds
     while not condition():
@@ -207,3 +217,29 @@ async def test_heartbeat_start_is_idempotent_and_stop_without_start_is_safe() ->
         first_thread = heartbeat._thread
         heartbeat.start()
         assert heartbeat._thread is first_thread
+
+
+async def test_a_beat_that_never_returns_is_abandoned_and_its_connection_replaced() -> None:
+    """A connection that stops answering without closing must not hold the thread forever.
+
+    The cache clients impose no deadline of their own, so without one here the beat would block, the
+    stop request would only be seen between beats, and ``stop`` would leave a thread nothing can end.
+    """
+    log = FakeLogger()
+    hanging_cache = HangingCache()
+    working_cache = RecordingCache()
+    caches = iter([hanging_cache, working_cache])
+
+    async def cache_factory() -> RecordingCache:
+        return next(caches)
+
+    heartbeat = WorkerHeartbeat(
+        component_type=ComponentType.GIT_AGENT, cache_factory=cache_factory, interval_seconds=BEAT_INTERVAL, log=log
+    )
+
+    async with running(heartbeat):
+        await wait_until(lambda: ACTIVE_KEY in working_cache.storage)
+
+    assert not heartbeat.running, "the stop request ended the thread rather than timing out"
+    assert hanging_cache.closed
+    assert log.exception_logs == ["Worker heartbeat refresh failed"]

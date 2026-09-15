@@ -382,7 +382,7 @@ Note when reasoning about which events fire: on resume, Prefect renames the stat
 
 Separate from Prefect's flow-run heartbeat, every API server and task worker publishes its own
 liveness key, `workers:active:{component}:worker:{worker_id}`, with a 15-second expiry, refreshed
-every 10 seconds (`refresh_worker_heartbeat` in `services/component.py`). The workers holding a live
+every 5 seconds (`refresh_worker_heartbeat` in `services/component.py`). The workers holding a live
 key form the active-worker set (`InfrahubComponent.list_active_worker_ids`), and four things read
 it: the deadlock cleanup (`locks/tasks.py`) deletes any lock older than
 `clean_up_deadlocks_interval_mins` whose holder has left the set; the merge failure identifier flags
@@ -403,10 +403,16 @@ The key therefore means "this process is alive", not "this process's event loop 
 what every consumer above wants to know.
 
 The thread needs its own cache connection because the asyncio Redis and NATS clients bind to the
-loop that created them. A failed beat closes that connection and the next beat reconnects through the
-factory, so a cache outage delays the heartbeat rather than ending it. A blip between one worker and the cache while the cleanup's
-worker can still reach it remains the one way a live holder can lose a lock; the merge watcher's
-grace period absorbs that, the deadlock cleanup has no equivalent.
+loop that created them. A failed beat closes that connection and the next beat reconnects through
+the factory after a short backoff, so a cache outage delays the heartbeat rather than ending it.
+Each beat carries its own deadline and the next one is scheduled from before the current one starts,
+so three beats fit in every expiry and one slow, failed or unanswered beat cannot push the next
+write past it. The deadline is the thread's own: the cache clients impose none, so a connection that
+stops answering without closing (an idle connection dropped by a load balancer, a failover without
+an RST) would otherwise block a beat indefinitely, and `stop` cannot end a thread sitting inside
+such a call. A blip between one worker and the cache while the cleanup's worker can still reach it
+remains the one way a live holder can lose a lock; the merge watcher's grace period absorbs that,
+the deadlock cleanup has no equivalent.
 
 ## Key Locations
 

@@ -14,8 +14,15 @@ if TYPE_CHECKING:
     from infrahub.components import ComponentType
     from infrahub.services.protocols import InfrahubLogger
 
-HEARTBEAT_INTERVAL_SECONDS = 10.0
-"""Seconds between two refreshes; the heartbeat key expires 15 seconds after the last one."""
+HEARTBEAT_INTERVAL_SECONDS = 5.0
+"""Seconds between the start of two refreshes; the heartbeat key expires 15 seconds after the last one.
+
+Three beats per expiry rather than one and a half: a beat that fails or times out still leaves room
+for the next one to write the key before the current one expires.
+"""
+
+RETRY_BACKOFF_FRACTION = 0.2
+"""Fraction of an interval to wait after a failed beat, rather than the full interval."""
 
 STOP_POLL_SECONDS = 1.0
 """Longest the thread sleeps before checking for a stop request, which bounds shutdown latency."""
@@ -49,6 +56,13 @@ class WorkerHeartbeat:
     closes that connection and the next beat opens a fresh one through the factory, so a cache
     outage delays the heartbeat instead of ending it, and a client left broken by the outage is
     never retried forever.
+
+    Each beat is bounded by ``beat_timeout_seconds`` and the next one is scheduled from before the
+    current one starts, so the key is rewritten once per interval rather than once per interval plus
+    however long the beat took. The bound matters because the cache clients do not impose one: a
+    connection that stops answering without closing (a load balancer dropping an idle connection, a
+    failover without an RST) would otherwise block the beat indefinitely, and ``stop`` cannot end a
+    thread that is inside such a call.
     """
 
     def __init__(
@@ -61,6 +75,8 @@ class WorkerHeartbeat:
         self.component_type = component_type
         self.cache_factory = cache_factory
         self.interval_seconds = interval_seconds
+        self.beat_timeout_seconds = interval_seconds
+        self.retry_backoff_seconds = interval_seconds * RETRY_BACKOFF_FRACTION
         self.log = log or get_logger()
         self._stop_requested = threading.Event()
         self._thread: threading.Thread | None = None
@@ -119,19 +135,30 @@ class WorkerHeartbeat:
         cache: InfrahubCache | None = None
         try:
             while not self._stop_requested.is_set():
+                # Anchored before the beat rather than after it, so a slow beat eats into the interval
+                # instead of adding to it and pushing the next write past the key's expiry.
+                deadline = time.monotonic() + self.interval_seconds
                 try:
                     if cache is None:
-                        cache = await self.cache_factory()
-                    await refresh_worker_heartbeat(cache=cache, component_type=self.component_type)
+                        cache = await asyncio.wait_for(self.cache_factory(), timeout=self.beat_timeout_seconds)
+                    await asyncio.wait_for(
+                        refresh_worker_heartbeat(cache=cache, component_type=self.component_type),
+                        timeout=self.beat_timeout_seconds,
+                    )
                 # Top-level boundary of the thread: a refresh that fails (cache unreachable, connection
-                # dropped) must not end the heartbeat. The connection is dropped so the next beat opens
-                # a fresh one instead of retrying a possibly broken client forever.
+                # dropped) or one that never returns must not end the heartbeat. The connection is dropped
+                # so the next beat opens a fresh one instead of retrying a possibly broken client forever;
+                # dropping it is also what makes the deadline safe, because cancelling a command in flight
+                # can leave a response unread on that connection. The next beat then comes after a short
+                # backoff instead of a full interval, so one failed beat does not spend the key's remaining
+                # life waiting.
                 except Exception:
                     self.log.exception("Worker heartbeat refresh failed")
                     if cache is not None:
                         await self._close_quietly(cache=cache)
                         cache = None
-                await self._sleep_until_next_beat()
+                    deadline = time.monotonic() + self.retry_backoff_seconds
+                await self._sleep_until(deadline=deadline)
         finally:
             if cache is not None:
                 await self._close_quietly(cache=cache)
@@ -144,8 +171,7 @@ class WorkerHeartbeat:
         except Exception:
             self.log.exception("Worker heartbeat cache connection could not be closed")
 
-    async def _sleep_until_next_beat(self) -> None:
-        deadline = time.monotonic() + self.interval_seconds
+    async def _sleep_until(self, deadline: float) -> None:
         while not self._stop_requested.is_set():
             remaining = deadline - time.monotonic()
             if remaining <= 0:
