@@ -11,6 +11,7 @@ from infrahub.core.changelog.builder import build_relationship_changelog_getter
 from infrahub.core.changelog.enrichment import node_label_loader
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
+    PROFILES_RELATIONSHIP_NAME,
     InfrahubKind,
     MetadataOptions,
     PermissionAction,
@@ -161,17 +162,26 @@ async def _emit_relationship_add_events(
 
 
 async def _enrich_source_changelog(
-    node_changelog: NodeChangelog, source_id: str, db: InfrahubDatabase, branch: Branch
+    node_changelog: NodeChangelog, source: Node, relationship_name: str, db: InfrahubDatabase, branch: Branch
 ) -> None:
-    """Fill the source node's HFID and display label on its changelog, read after the write.
+    """Fill the source node's HFID and display label on its changelog.
 
-    Enrichment is cosmetic: reading after the transaction reflects a relationship that feeds the
-    HFID or display label, and a read failure leaves the values unchanged rather than failing the
-    already-committed mutation.
+    Both labels are read after the write when the mutated relationship can change them: a
+    relationship the HFID or display label template reads, or the profiles relationship, since a
+    profile change rewrites the attributes the templates read. Otherwise the labels the loaded node
+    holds are current and its materialized HFID fills the changelog with no read. Enrichment is
+    cosmetic: every database read goes through the label loader, whose failure leaves the values
+    unchanged rather than failing the already-committed mutation.
     """
+    labels_may_change = relationship_name == PROFILES_RELATIONSHIP_NAME or source.has_label_depending_on_relationship(
+        name=relationship_name
+    )
+    if not labels_may_change and not source.hfid_needs_read():
+        node_changelog.hfid = await source.get_hfid(db=db)
+        return
     loader = node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
-    labels = await loader.load_labels([source_id])
-    if source_labels := labels.get(source_id):
+    labels = await loader.load_labels([source.get_id()])
+    if source_labels := labels.get(source.get_id()):
         node_changelog.hfid = source_labels.hfid
         node_changelog.display_label = source_labels.display_label
 
@@ -253,7 +263,8 @@ class RelationshipAdd(Mutation):
         if group_event_type == GroupUpdateType.NONE and node_changelog.has_changes:
             await _enrich_source_changelog(
                 node_changelog=node_changelog,
-                source_id=source.get_id(),
+                source=source,
+                relationship_name=relationship_name,
                 db=graphql_context.db,
                 branch=graphql_context.branch,
             )
@@ -351,7 +362,8 @@ class RelationshipRemove(Mutation):
         if group_event_type == GroupUpdateType.NONE and node_changelog.has_changes:
             await _enrich_source_changelog(
                 node_changelog=node_changelog,
-                source_id=source.get_id(),
+                source=source,
+                relationship_name=relationship_name,
                 db=graphql_context.db,
                 branch=graphql_context.branch,
             )
