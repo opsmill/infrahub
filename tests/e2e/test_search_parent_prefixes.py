@@ -2,7 +2,7 @@
 
 Search-anywhere "Parent Prefixes" section: containing prefixes for an IP,
 absent for non-IP queries, empty state for an unmatched IP, and navigation to a
-prefix detail page. Depends on data_sites' IP data (10.0.0.0/8, 10.0.0.0/16,
+prefix detail page. Depends on data_site_atl1' IP data (10.0.0.0/8, 10.0.0.0/16,
 and 10.0.0.2 — the second loopback).
 """
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class TestSearchParentPrefixes:
-    async def test_display_parent_prefixes_for_ip_address(self, admin_page: Page, data_sites: SitesHandle) -> None:
+    async def test_display_parent_prefixes_for_ip_address(self, admin_page: Page, data_site_atl1: SitesHandle) -> None:
         await admin_page.goto("/")
         await admin_page.get_by_test_id("search-anywhere-trigger").click()
         await expect(admin_page.get_by_test_id("search-anywhere")).to_be_visible()
@@ -38,7 +38,7 @@ class TestSearchParentPrefixes:
         # the existing IP address appears in the Objects section
         await expect(search_dialog.get_by_text("Objects")).to_be_visible()
 
-    async def test_no_parent_prefixes_for_non_ip_search(self, admin_page: Page, data_sites: SitesHandle) -> None:
+    async def test_no_parent_prefixes_for_non_ip_search(self, admin_page: Page, data_site_atl1: SitesHandle) -> None:
         await admin_page.goto("/")
         await admin_page.get_by_test_id("search-anywhere-trigger").click()
         await admin_page.get_by_test_id("search-anywhere-input").fill("atl1")
@@ -48,7 +48,7 @@ class TestSearchParentPrefixes:
         await expect(search_dialog.get_by_text("Parent Prefixes")).not_to_be_visible()
 
     async def test_empty_parent_prefixes_state_for_unmatched_ip(
-        self, admin_page: Page, data_sites: SitesHandle
+        self, admin_page: Page, data_site_atl1: SitesHandle
     ) -> None:
         await admin_page.goto("/")
         await admin_page.get_by_test_id("search-anywhere-trigger").click()
@@ -59,7 +59,7 @@ class TestSearchParentPrefixes:
         await expect(search_dialog.get_by_text("No containing prefixes found")).to_be_visible()
 
     async def test_navigate_to_prefix_detail_from_parent_prefix(
-        self, admin_page: Page, data_sites: SitesHandle
+        self, admin_page: Page, data_site_atl1: SitesHandle
     ) -> None:
         await admin_page.goto("/")
         await admin_page.get_by_test_id("search-anywhere-trigger").click()

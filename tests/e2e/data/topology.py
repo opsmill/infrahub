@@ -16,8 +16,10 @@ in the order ``run()`` calls it after the per-site loop (lines 2801-2815):
   profile): for every ordered pair of distinct sites and every edge index
   pair in ``range(1, min(3, num_sites))`` an INTERNAL InfraBGPSession
   (local/remote AS = Duff, local/remote IP = the devices' Loopback0
-  addresses, peer group POP_GLOBAL, device = the local edge) — 5x4x2x2 = 80
-  sessions saved in a single batch,
+  addresses, peer group POP_GLOBAL, device = the local edge). At the full
+  medium profile this is 5x4x2x2 = 80 sessions; with the 2-site slim (see
+  data/sites.py KEPT_SITES) ``min(3, num_sites)`` collapses the edge loop to
+  edge1 only -> 2x1x1x1 = 2 INTERNAL sessions, saved in a single batch,
 * ``create_backbone_connectivity`` (lines 1097-1231): the ``P2P_NETWORKS``
   table (lines 1115-1122, num_sites guards included), one /31 per link from
   the Interconnections pool with identifier
@@ -78,27 +80,24 @@ BACKBONE_ROLE = "backbone"
 
 
 def _p2p_networks(num_sites: int) -> list[dict[str, str | int]]:
-    """Transcribes the ``p2p_networks`` table of ``create_backbone_connectivity`` (lines 1113-1122)."""
-    p2p_networks: list[dict[str, str | int]] = []
+    """The backbone P2P links.
 
-    if num_sites > 1:
-        p2p_networks.extend(
-            (
-                {"site1": "atl1", "site2": "ord1", "edge": 1, "circuit": "DUFF-1543451"},
-                {"site1": "atl1", "site2": "ord1", "edge": 2, "circuit": "DUFF-8263953"},
-            )
-        )
-    if num_sites > 2:
-        p2p_networks.extend(
-            (
-                {"site1": "atl1", "site2": "jfk1", "edge": 1, "circuit": "DUFF-6535773"},
-                {"site1": "atl1", "site2": "jfk1", "edge": 2, "circuit": "DUFF-7324064"},
-                {"site1": "jfk1", "site2": "ord1", "edge": 1, "circuit": "DUFF-5826854"},
-                {"site1": "jfk1", "site2": "ord1", "edge": 2, "circuit": "DUFF-4867430"},
-            )
-        )
-
-    return p2p_networks
+    SLIM DEVIATION (not a transcription): the script's ``p2p_networks`` table
+    (lines 1113-1122) is a 3-site atl1<->ord1<->jfk1 triangle, but the slim
+    builds only atl1 + den1 (see data/sites.py KEPT_SITES). Rewritten to the
+    single atl1<->den1 pair on both edge devices, reusing the script's first
+    two circuit ids. Each link wires the two sites' edge<e> devices on their
+    FIRST backbone interface (Ethernet3) — so atl1-edge1 and atl1-edge2 each
+    get a backbone Circuit Endpoint, which objects/test_object_details.py
+    asserts (re-pinned from Ethernet4 to Ethernet3: with a single backbone
+    neighbour only the first backbone interface of each edge is wired).
+    """
+    if num_sites < 2:
+        return []
+    return [
+        {"site1": "atl1", "site2": "den1", "edge": 1, "circuit": "DUFF-1543451"},
+        {"site1": "atl1", "site2": "den1", "edge": 2, "circuit": "DUFF-8263953"},
+    ]
 
 
 def _provider_name(edge: int) -> str:
