@@ -101,11 +101,13 @@ async def test_new_closes_the_connection_when_initialisation_does_not_finish(
         pytest.skip("Must use NATS to run this test")
 
     opened: list[nats_client.NATS] = []
+    connected = asyncio.Event()
     connect = nats_client.connect
 
     async def recording_connect(*args: Any, **kwargs: Any) -> nats_client.NATS:
         connection = await connect(*args, **kwargs)
         opened.append(connection)
+        connected.set()
         return connection
 
     async def never_finishes(**kwargs: Any) -> None:
@@ -114,8 +116,12 @@ async def test_new_closes_the_connection_when_initialisation_does_not_finish(
     monkeypatch.setattr(nats_client, "connect", recording_connect)
     monkeypatch.setattr(NATSCache, "_ensure_kv", staticmethod(never_finishes))
 
-    with pytest.raises(TimeoutError):
-        await asyncio.wait_for(NATSCache.new(), timeout=1.0)
+    initialising = asyncio.create_task(NATSCache.new())
+    await connected.wait()
+    initialising.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await initialising
 
     assert len(opened) == 1
     assert opened[0].is_closed
