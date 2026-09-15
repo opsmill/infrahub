@@ -351,6 +351,8 @@ After triggering the import, the repository will fetch from the remote and re-im
 
 If you encounter issues with your repository connections, you can use the following steps to diagnose and resolve them:
 
+The Git status indicator in the header tells you whether anything is wrong without opening a repository. It turns red with a pulsing dot when any repository on the branch you are viewing has an `Import Error` sync status, and selecting it opens the repository list filtered to those repositories. It reads sync status rather than task results, so it still reports a failure when the task that ran the import finished successfully. On a branch with no Git repositories it stays inactive.
+
 1. Check the repository status indicators:
    - **Admin status**: Indicates if Infrahub is actively using the repository
    - **Operational status**: Shows connectivity between Infrahub and the repository
