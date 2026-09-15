@@ -1,0 +1,1 @@
+Fixed git repositories whose HTTPS certificate cannot be verified being reported with a generic error instead of the connection error status and certificate hint, on images whose git uses the current curl-GnuTLS wording.
