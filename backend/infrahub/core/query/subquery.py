@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT
 from infrahub.core.query import QueryNode
@@ -9,18 +9,41 @@ from .attribute import default_attribute_query_filter
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.query import QueryElement
     from infrahub.core.schema import AttributeSchema, RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
 
+class QueryFilterFunction(Protocol):
+    """The part of the `get_query_filter` contract that the subquery builders depend on.
+
+    `AttributeSchema.get_query_filter`, `RelationshipSchema.get_query_filter` and
+    `default_attribute_query_filter` declare the same parameters in different orders, so the only
+    signature they share is a keyword-only one -- which is how the builders below call them.
+    """
+
+    async def __call__(
+        self,
+        *,
+        db: InfrahubDatabase,
+        name: str,
+        filter_name: str,
+        filter_value: Any,
+        branch: Branch | None,
+        include_match: bool,
+        param_prefix: str,
+        partial_match: bool,
+    ) -> tuple[list[QueryElement], dict[str, Any], list[str]]: ...
+
+
 async def build_subquery_filter(
     db: InfrahubDatabase,
+    name: str,
     filter_name: str,
     filter_value: Any,
     branch_filter: str,
     field: AttributeSchema | RelationshipSchema | None = None,
     node_alias: str = "n",
-    name: str | None = None,
     branch: Branch | None = None,
     subquery_idx: int = 1,
     partial_match: bool = False,
@@ -33,6 +56,7 @@ async def build_subquery_filter(
 
     # If the field is not provided, it means that the query is targeting a special keyword like:: any or attribute
     # Currently any and attribute have the same effect and relationship is not supported yet
+    query_filter_function: QueryFilterFunction
     if field:
         query_filter_function = field.get_query_filter
     elif name in ["any", "attribute"]:
@@ -98,10 +122,10 @@ async def build_subquery_filter(
 async def build_subquery_order(
     db: InfrahubDatabase,
     field: AttributeSchema | RelationshipSchema,
+    name: str,
     order_by: str,
     branch_filter: str,
     node_alias: str = "n",
-    name: str | None = None,
     branch: Branch | None = None,
     subquery_idx: int = 1,
     result_prefix: str | None = None,
@@ -124,25 +148,27 @@ async def build_subquery_order(
     for item in field_filter:
         item.name = None
 
-    if not isinstance(field_filter[-1], QueryNode):
-        raise IndexError(f"The last item in field_filter must be a QueryNode not {type(field_filter[-1])}")
+    tail_node = field_filter[-1]
+    if not isinstance(tail_node, QueryNode):
+        raise IndexError(f"The last item in field_filter must be a QueryNode not {type(tail_node)}")
 
-    field_filter[-1].name = "last"
+    tail_node_name = "last"
+    tail_node.name = tail_node_name
 
     field_where.append("all(r IN relationships(path) WHERE (%s))" % branch_filter)
     filter_str = f"({node_alias}:Node {{uuid: {node_alias}.uuid}})" + "".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
     branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
     froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
-    to_return_parts = {f"last.{order_by if order_by != 'values' and '__' not in order_by else 'value'}": prefix}
+    to_return_parts = {
+        f"{tail_node_name}.{order_by if order_by != 'values' and '__' not in order_by else 'value'}": prefix
+    }
     with_parts: dict[str, str | None] = {
-        "last": None,
+        tail_node_name: None,
     }
     if extra_tail_properties:
-        tail_node = field_filter[-1]
-        if tail_node.name not in with_parts:
-            with_parts[tail_node.name] = None
-        tail_node_name = with_parts.get(tail_node.name) or tail_node.name
+        # `tail_node` is the last element of `field_filter`, so it is always the entry seeded in
+        # `with_parts` above and carries no alias of its own.
         for variable_name, tail_property in extra_tail_properties.items():
             to_return_parts[f"{tail_node_name}.{tail_property}"] = variable_name
     with_str_to_alias_parts: list[str] = []

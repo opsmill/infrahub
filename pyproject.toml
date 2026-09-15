@@ -283,14 +283,6 @@ disable_error_code = [
 ]
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.query.subquery"
-disable_error_code = [
-    "arg-type",
-    "assignment",
-    "index",
-]
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.schema.basenode_schema"
 disable_error_code = [
     "arg-type",
@@ -1261,7 +1253,6 @@ include = [
     "backend/infrahub/core/query/diff.py",
     "backend/infrahub/core/query/node.py",
     "backend/infrahub/core/query/relationship.py",
-    "backend/infrahub/core/query/subquery.py",
     "backend/infrahub/core/relationship/**",
     "backend/infrahub/core/schema/**",
     "backend/infrahub/core/validators/**",
@@ -1275,7 +1266,6 @@ invalid-argument-type = "ignore"
 include = [
     "backend/infrahub/core/manager.py",
     "backend/infrahub/core/node/__init__.py",
-    "backend/infrahub/core/query/subquery.py",
     "backend/infrahub/core/regeneration/members.py",
     "backend/infrahub/core/schema/basenode_schema.py",
     "backend/infrahub/core/schema/manager.py",
