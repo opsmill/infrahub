@@ -43,10 +43,10 @@ describe("AppHeader", () => {
     // THEN it takes the edge slot, after the task indicator. The order is a design decision —
     // the bar reads in severity order and the control that must be noticed from any page sits
     // at the edge — so it is pinned rather than left to whichever import happens to come first.
-    const task = component.container.querySelector('[data-testid="task-status-stub"]');
-    const git = component.container.querySelector('[data-testid="git-status-stub"]');
-    expect(
-      task?.compareDocumentPosition(git as Node) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
+    const indicators = [...component.container.querySelectorAll("[data-testid$='-status-stub']")];
+    expect(indicators.map((el) => el.getAttribute("data-testid"))).toEqual([
+      "task-status-stub",
+      "git-status-stub",
+    ]);
   });
 });
