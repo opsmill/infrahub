@@ -295,6 +295,7 @@ Test data and fixture files:
 | `constants.py` | Port numbers, image names |
 | `prefect_services.py` | Rebinds Prefect's process-wide queue services when the test process changes Prefect server (`prefect_api_target`). See [One process, several Prefect servers](#one-process-several-prefect-servers). |
 | `file_repo.py` | Builds throwaway on-disk Git "remote" repos from `repos/` fixtures (`FileRepo`). The remotes accept pushes to their checked-out branch, so tests exercise push and write-back like a hosted remote would. |
+| `schema_errors.py` | Flattens a 422 `detail` list into `(dotted field path, input, msg)` rows through the SDK's `format_error_location`, so an assertion on a schema load rejection names the offending field instead of a list of location segments. |
 
 ### Test Data (`backend/tests/test_data/`)
 

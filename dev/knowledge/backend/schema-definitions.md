@@ -197,7 +197,14 @@ shipped inside the published package.
 `validate_schema()` (`python_sdk/infrahub_sdk/schema/validate.py`) from the
 `validate_write_contract` validator on `SchemaLoadAPI` (`backend/infrahub/api/schema.py`).
 The same validator runs offline in the SDK, so a client gets the identical field-level
-verdict before submitting. After changing a field's `visibility` (or adding a field), run
+verdict before submitting. A rejected payload gets a standard 422 request-validation response
+with one `detail` entry per violation: `loc` runs from `["body", "schemas", <index>]` down to
+the offending field, `input` is the value received there and `msg` is the reason on its own.
+The three map one-to-one onto the `loc`, `input` and `reason` of the SDK validator's error
+details, so `infrahubctl` and any other client can name the field without parsing text.
+The mapping requires the SDK error detail to expose `loc`, `input` and `reason`; bump the
+`python_sdk` pointer alongside any change to that shape.
+After changing a field's `visibility` (or adding a field), run
 `invoke backend.generate` and commit the regenerated SDK models alongside the backend
 change; CI fails if the generated artifact is stale.
 
