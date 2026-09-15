@@ -12,6 +12,8 @@ Upgrading Infrahub involves pulling the latest container images, running databas
 
 **Backup first**: Even though a smooth migration is anticipated, we strongly recommend creating a backup before upgrading. See [Backup and restore](../database-backup/backup-and-restore.mdx).
 
+**Open branches**: Run `infrahub upgrade --check` before you start. It reports the branches the upgrade will rebase, so a branch that needs attention first can be resolved or deleted instead of failing during the upgrade.
+
 **Release notes**: Review the [release notes](../../../release-notes/infrahub/) for any version-specific upgrade instructions. In Infrahub 1.2 and later, the upgrade process was streamlined with a unified upgrade command. For earlier versions, refer to the release notes for specific instructions.
 
 ## What the upgrade does
@@ -176,11 +178,11 @@ Select the guide for your edition and deployment:
 
 ### Migration failing because of transaction memory limit reached in Neo4j
 
-For large database/schema migrations, you may encounter a `Transaction memory limit reached` error in Neo4j.
+For large database/schema migrations, you may encounter a `Transaction memory limit reached` error in Neo4j. The branch rebase in Step 6/6 can reach the same limit, because the memory it needs grows with the number of changes on the branch being rebased.
 
 :::info
 
-To work around this, you can disable the transaction memory limit by setting the `dbms.memory.transaction.total.max` to `0` in your Neo4j configuration.
+To work around this, you can disable the transaction memory limit by setting the `dbms.memory.transaction.total.max` to `0` in your Neo4j configuration. The memory is still allocated from the JVM heap, so `server.memory.heap.max_size` also has to be large enough for the operation.
 
 :::
 
