@@ -186,8 +186,9 @@ same page on a branch that does have repositories.
   distinction, and MUST be present in the error state and absent otherwise.
 - **FR-010a**: Each state MUST have distinct hover and assistive-technology text, naming the
   condition rather than the control. The five states are: repositories failing on this
-  branch; repositories present and healthy; no repositories on this branch; status still
-  being determined; and status could not be checked.
+  branch; repositories present and healthy; no repositories configured; status still being
+  determined; and status could not be checked. The inert state's name MUST NOT mention a
+  branch: repositories are branch-agnostic, so it would be inaccurate.
 - **FR-011**: When the status lookup fails, the indicator MUST substitute a dedicated
   check-failed symbol, with its own explanation, and MUST NOT report the branch as healthy.
   This substitution is the one permitted exception to FR-005b, since the subject genuinely
