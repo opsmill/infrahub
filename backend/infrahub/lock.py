@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.cache import InfrahubCache
 
 
 log = get_logger()
@@ -128,10 +129,10 @@ class InfrahubMultiLock:
 class NATSLock:
     """Context manager to lock using NATS."""
 
-    def __init__(self, service: InfrahubServices, name: str, ttl: int | None = None) -> None:
+    def __init__(self, cache: InfrahubCache, name: str, ttl: int | None = None) -> None:
         self.name = name
         self.token: str | None = None
-        self.service = service
+        self.cache = cache
         # Maximum lifetime in seconds for the lock.
         self.ttl = ttl
 
@@ -155,39 +156,19 @@ class NATSLock:
             await sleep(0.1)  # default Redis GlobalLock value
 
     async def do_acquire(self, token: str) -> bool | None:
-        return await self.service.cache.set(key=self.name, value=token, not_exists=True, expires=self.ttl)
+        return await self.cache.set(key=self.name, value=token, not_exists=True, expires=self.ttl)
 
     async def release(self) -> None:
-        if self.ttl is not None and await self.service.cache.get(key=self.name) != self.token:
+        if self.ttl is not None and await self.cache.get(key=self.name) != self.token:
             # The TTL elapsed and the lock may have been re-acquired by another worker; nothing of ours
             # to release.
             self.token = None
             return
-        await self.service.cache.delete(key=self.name)
+        await self.cache.delete(key=self.name)
         self.token = None
 
     async def locked(self) -> bool:
-        return await self.service.cache.get(key=self.name) is not None
-
-
-def _require_services_connection(connection: redis.Redis | InfrahubServices | None, lock_name: str) -> InfrahubServices:
-    """Return ``connection`` as an ``InfrahubServices``, rejecting anything else.
-
-    Imported here rather than at module scope because ``infrahub.services`` imports this module
-    transitively; by the time a lock is built the package is importable.
-
-    Raises:
-        TypeError: If ``connection`` is not an ``InfrahubServices``.
-
-    """
-    from infrahub.services import InfrahubServices  # noqa: PLC0415  # avoid circular import
-
-    if not isinstance(connection, InfrahubServices):
-        raise TypeError(
-            f"Lock {lock_name!r} requires an InfrahubServices connection when the cache driver is "
-            f"{config.SETTINGS.cache.driver}, got {type(connection).__name__}"
-        )
-    return connection
+        return await self.cache.get(key=self.name) is not None
 
 
 class InfrahubLock:
@@ -199,7 +180,8 @@ class InfrahubLock:
     def __init__(
         self,
         name: str,
-        connection: redis.Redis | InfrahubServices | None = None,
+        connection: redis.Redis | None = None,
+        cache: InfrahubCache | None = None,
         local: bool | None = None,
         in_multi: bool = False,
         metrics: bool = True,
@@ -209,7 +191,8 @@ class InfrahubLock:
         self.local: LocalLock | None = None
         self.remote: GlobalLock | NATSLock | None = None
         self.name: str = name
-        self.connection: redis.Redis | InfrahubServices | None = connection
+        self.connection: redis.Redis | None = connection
+        self.cache: InfrahubCache | None = cache
         self.in_multi: bool = in_multi
         self.lock_type: str = "multi" if self.in_multi else "individual"
         self._acquire_time: int | None = None
@@ -218,24 +201,25 @@ class InfrahubLock:
         self.metrics = metrics
         self.ttl: int | None = ttl
 
-        if not self.connection or (self.use_local is None and name.startswith("local.")):
+        if (self.connection is None and self.cache is None) or (self.use_local is None and name.startswith("local.")):
             self.use_local = True
 
         if self.use_local:
             self.local = LocalLock()
         elif config.SETTINGS.cache.driver == config.CacheDriver.Redis:
-            if not isinstance(self.connection, redis.Redis):
+            if self.connection is None:
                 raise TypeError(
                     f"Lock {self.name!r} requires a Redis connection when the cache driver is Redis, "
-                    f"got {type(self.connection).__name__}"
+                    f"got {type(self.cache).__name__}"
                 )
             self.remote = GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}", timeout=ttl)
         else:
-            self.remote = NATSLock(
-                service=_require_services_connection(connection=self.connection, lock_name=self.name),
-                name=f"{LOCK_PREFIX}.{self.name}",
-                ttl=ttl,
-            )
+            if self.cache is None:
+                raise TypeError(
+                    f"Lock {self.name!r} requires a cache adapter when the cache driver is "
+                    f"{config.SETTINGS.cache.driver.value}, got {type(self.connection).__name__}"
+                )
+            self.remote = NATSLock(cache=self.cache, name=f"{LOCK_PREFIX}.{self.name}", ttl=ttl)
 
     @property
     def acquire_time(self) -> int:
@@ -390,7 +374,8 @@ class InfrahubLockRegistry:
         service: InfrahubServices | None = None,
         name_generator: LockNameGenerator | None = None,
     ) -> None:
-        self.connection: redis.Redis | InfrahubServices | None = None
+        self.connection: redis.Redis | None = None
+        self.cache: InfrahubCache | None = None
         if not local_only:
             if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
                 credential_provider: UsernamePasswordCredentialProvider | None = None
@@ -408,8 +393,8 @@ class InfrahubLockRegistry:
                     ssl_check_hostname=not config.SETTINGS.cache.tls_insecure,
                     ssl_ca_certs=config.SETTINGS.cache.tls_ca_file,
                 )
-            else:
-                self.connection = service
+            elif service is not None:
+                self.cache = service.cache
 
         self.token = token or str(uuid.uuid4())
         self.locks: dict[str, InfrahubLock] = {}
@@ -443,7 +428,9 @@ class InfrahubLockRegistry:
         return self.locks[lock_name]
 
     def _create_lock(self, name: str, in_multi: bool, metrics: bool, ttl: int | None) -> InfrahubLock:
-        return InfrahubLock(name=name, connection=self.connection, in_multi=in_multi, metrics=metrics, ttl=ttl)
+        return InfrahubLock(
+            name=name, connection=self.connection, cache=self.cache, in_multi=in_multi, metrics=metrics, ttl=ttl
+        )
 
     def local_schema_lock(self) -> InfrahubLock:
         return self.get(name=LOCAL_SCHEMA_LOCK)

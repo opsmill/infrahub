@@ -1,4 +1,6 @@
 import operator
+import subprocess  # noqa: S404
+import sys
 import time
 from asyncio import gather, sleep
 from dataclasses import dataclass
@@ -13,10 +15,13 @@ from infrahub.exceptions import InitializationError
 from infrahub.lock import (
     GLOBAL_TASKMGR_INIT_LOCK,
     GLOBAL_WORKER_TASKMGR_INIT_LOCK,
+    LOCK_PREFIX,
     InfrahubLockRegistry,
+    NATSLock,
     get_worker_id_from_lock_token,
 )
 from infrahub.services import InfrahubServices
+from tests.adapters.cache import MemoryCache
 
 
 @dataclass
@@ -157,23 +162,40 @@ def test_reading_the_registry_before_initialization_raises(monkeypatch: pytest.M
         _ = lock.registry
 
 
-async def test_remote_lock_rejects_a_connection_the_driver_cannot_use(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Each driver rejects the other driver's connection, at construction time.
-
-    Both branches previously received the same unvalidated union, so a mismatch surfaced later as
-    an AttributeError on the first acquire -- or, under NATS, not at all. Each case passes a real
-    connection of the wrong driver, so the guards are exercised without an ill-typed argument:
-    both reject anything outside their own type by the same path.
-    """
-    unsupported: list[tuple[config.CacheDriver, redis.Redis | InfrahubServices, str]] = [
-        (config.CacheDriver.NATS, redis.Redis(), "requires an InfrahubServices connection"),
-        (config.CacheDriver.Redis, await InfrahubServices.new(), "requires a Redis connection"),
+def test_remote_lock_rejects_a_connection_the_driver_cannot_use(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each driver rejects being handed only the other driver's connection, at construction time."""
+    unsupported = [
+        (config.CacheDriver.NATS, redis.Redis(), None, "requires a cache adapter"),
+        (config.CacheDriver.Redis, None, MemoryCache(), "requires a Redis connection"),
     ]
 
-    for driver, connection, expected in unsupported:
+    for driver, connection, cache, expected in unsupported:
         monkeypatch.setattr(config.SETTINGS.cache, "driver", driver)
         with pytest.raises(TypeError, match=expected):
-            lock.InfrahubLock(name="global.wrong-connection", connection=connection, local=False)
+            lock.InfrahubLock(name="global.wrong-connection", connection=connection, cache=cache, local=False)
+
+
+async def test_nats_driver_locks_through_the_service_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A registry built from a service hands its locks the service's cache adapter, and nothing more."""
+    monkeypatch.setattr(config.SETTINGS.cache, "driver", config.CacheDriver.NATS)
+    cache = MemoryCache()
+    registry = InfrahubLockRegistry(local_only=False, service=await InfrahubServices.new(cache=cache))
+
+    lock_obj = registry.get(name="repo-a", namespace="repository")
+    key = f"{LOCK_PREFIX}.repository.repo-a"
+
+    assert isinstance(lock_obj.remote, NATSLock)
+    async with lock_obj:
+        assert await cache.get(key=key) is not None
+    assert await cache.get(key=key) is None
+
+
+def test_lock_module_does_not_import_the_services_layer() -> None:
+    """``infrahub.lock`` is a primitive the services layer is built on, so importing it must not load that layer."""
+    probe = "import sys, infrahub.lock; raise SystemExit(int('infrahub.services' in sys.modules))"
+    result = subprocess.run([sys.executable, "-c", probe], check=False, capture_output=True, text=True)  # noqa: S603
+
+    assert result.returncode == 0, result.stderr or "infrahub.lock imported infrahub.services"
 
 
 async def test_reentrant_lock_allows_nested_acquisitions() -> None:
