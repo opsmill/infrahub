@@ -383,6 +383,23 @@ assertion will check — the specific log line, the exact count — not for mere
 exits as soon as anything shows up hands an unrelated first event to the assertion and the test
 fails (or passes) spuriously.
 
+### Never assert on elapsed time
+
+`assert elapsed_seconds < N` encodes the speed of the machine that wrote it. It passes on a fast
+runner with the regression present, flakes on a loaded one without it, and the margin narrows every
+time the fixture grows, so it is both a weak guard and a source of flakes. This covers any assertion
+whose outcome depends on how fast the host is, wall-clock gaps between events included.
+
+Hold the shape instead of the duration:
+
+- Count the work. When a fix turns a scan into a lookup, assert the number of calls, queries or
+  comparisons; a counting double fails identically on every machine.
+- Keep the measurement out of the suite. The numbers that justified the change belong in the commit
+  message or the pull request, where they are read once, not in an assertion CI re-runs forever.
+
+When the behavior under test genuinely is a schedule, inject the clock as above so the schedule
+becomes a value the test reads exactly, rather than a duration it races.
+
 ## Exception Testing
 
 When testing that code raises an exception, use the `match` parameter of `pytest.raises` to validate the error message:

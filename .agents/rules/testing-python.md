@@ -88,6 +88,10 @@ Never call `setup_task_manager()` from a test or fixture; call `tests.helpers.ta
 
 Before trusting a test that pins a fix or an optimization, run it against the code without the change (revert it, or reintroduce the old call) and watch it fail — a guard that passes on both sides asserts nothing, and several have. State the check in the PR ("fails with X when the fix is reverted"). A `strict=True` xfail swallows every assertion in its body, so it holds only the expected failure; invariants that must hold today go in a passing test.
 
+## Never assert on elapsed time
+
+No `assert elapsed_seconds < N`, and no assertion on wall-clock gaps between events: the threshold encodes the speed of the machine that wrote it, so it passes on a fast runner with the regression present and flakes on a loaded one without it. Guard a complexity fix by counting the work (calls, queries, comparisons) instead, and put the measurement in the commit message or PR rather than the suite. When the behavior really is a schedule, inject the clock. Full guidance in `dev/guidelines/backend/testing.md` §"Never assert on elapsed time".
+
 ## Test file placement
 
 Test files mirror source structure: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
