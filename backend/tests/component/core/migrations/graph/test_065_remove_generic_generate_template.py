@@ -3,9 +3,10 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
+from infrahub.core.migrations.graph.load_schema_branch import build_internal_schema_branch
 from infrahub.core.migrations.graph.m065_remove_generic_generate_template import Migration065
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
-from infrahub.core.migrations.shared import InternalSchemaMigration, MigrationInput
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.models import HashableModelDiff
 from infrahub.core.path import SchemaPath
 from infrahub.core.timestamp import Timestamp
@@ -40,7 +41,7 @@ async def migration_065_data(
     db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_core_schema_db: None
 ) -> None:
     """Add generate_template attribute to SchemaGeneric nodes, simulating the old DB state."""
-    internal_schema_branch = InternalSchemaMigration.get_internal_schema()
+    internal_schema_branch = build_internal_schema_branch()
     schema_node = internal_schema_branch.get_node(name="SchemaNode")
     schema_generic = internal_schema_branch.get_node(name="SchemaGeneric")
 
