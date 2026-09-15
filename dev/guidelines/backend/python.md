@@ -80,10 +80,10 @@ def _require_service(connection: redis.Redis | InfrahubServices | None) -> Infra
     return connection
 
 # ✅ Good - one typed slot per driver; nothing above this layer is imported at runtime
-def __init__(self, connection: redis.Redis | None = None, cache: InfrahubCache | None = None) -> None:
+def __init__(self, name: str, connection: redis.Redis | None = None, cache: InfrahubCache | None = None) -> None:
     if cache is None:
-        raise TypeError(...)
-    self.remote = NATSLock(cache=cache, ...)
+        raise TypeError(f"Lock {name!r} requires a cache adapter")
+    self.remote = NATSLock(cache=cache, name=name)
 ```
 
 **Exception — `tasks/*.py`:** keep `infrahub.*` and other heavy imports function-local there.
