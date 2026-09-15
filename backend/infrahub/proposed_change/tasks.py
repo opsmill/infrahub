@@ -624,22 +624,22 @@ async def repository_checks(model: RequestProposedChangeRepositoryChecks, contex
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
     for repository in model.branch_diff.repositories:
-        if (
-            model.source_branch_sync_with_git
-            and not repository.read_only
-            and repository.internal_status == RepositoryInternalStatus.ACTIVE.value
-        ):
-            trigger_internal_checks_model = TriggerRepositoryInternalChecks(
-                proposed_change=model.proposed_change,
-                repository=repository.repository_id,
-                source_branch=model.source_branch,
-                target_branch=model.destination_branch,
-            )
-            await get_workflow().submit_workflow(
-                workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
-                context=context,
-                parameters={"model": trigger_internal_checks_model},
-            )
+        trigger_internal_checks_model = TriggerRepositoryInternalChecks(
+            proposed_change=model.proposed_change,
+            repository=repository.repository_id,
+            source_branch=model.source_branch,
+            target_branch=model.destination_branch,
+            check_merge_conflicts=(
+                model.source_branch_sync_with_git
+                and not repository.read_only
+                and repository.internal_status == RepositoryInternalStatus.ACTIVE.value
+            ),
+        )
+        await get_workflow().submit_workflow(
+            workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
+            context=context,
+            parameters={"model": trigger_internal_checks_model},
+        )
 
         trigger_user_checks_model = TriggerRepositoryUserChecks(
             proposed_change=model.proposed_change,
@@ -1195,18 +1195,20 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
         repositories=repositories, client=client
     ):
         for repo in repositories:
-            if not repo.read_only and repo.internal_status == RepositoryInternalStatus.ACTIVE.value:
-                trigger_repo_checks_model = TriggerRepositoryInternalChecks(
-                    proposed_change=model.proposed_change,
-                    repository=repo.repository_id,
-                    source_branch=repo.source_branch,
-                    target_branch=repo.destination_branch,
-                )
-                await get_workflow().submit_workflow(
-                    workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
-                    context=context,
-                    parameters={"model": trigger_repo_checks_model},
-                )
+            trigger_repo_checks_model = TriggerRepositoryInternalChecks(
+                proposed_change=model.proposed_change,
+                repository=repo.repository_id,
+                source_branch=repo.source_branch,
+                target_branch=repo.destination_branch,
+                check_merge_conflicts=(
+                    not repo.read_only and repo.internal_status == RepositoryInternalStatus.ACTIVE.value
+                ),
+            )
+            await get_workflow().submit_workflow(
+                workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
+                context=context,
+                parameters={"model": trigger_repo_checks_model},
+            )
         return
 
     file_diff_populator = RepositoryFileDiffPopulator(differ=GitRepositoryFileDiffer(client=client))
