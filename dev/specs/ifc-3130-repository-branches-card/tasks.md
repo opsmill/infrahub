@@ -120,7 +120,10 @@ page, and that moving to page 2 returns different rows.
 ### Work unit 2 — query, model, mapper, use case
 
 - [ ] T015 [P] [US1] Write the gql.tada document in
-      `frontend/app/src/entities/repository/ui/queries/get-repository-branch-status.query.ts`.
+      `frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts`, alongside
+      the api boundary. Every gql.tada document in this codebase lives in `api/*-from-api.ts`; none
+      lives in `ui/queries/`, which is the react-query `queryOptions` layer. Putting it in `ui/` would
+      force an `api/ → ui/` import, which `dev/knowledge/frontend/entities-structure.md` prohibits.
       Declare **only** `id`, `limit`, `offset`, `name__value`, `partial_match`, `status__value`.
       **Do not declare `sync_status__value`, `internal_status__value` or `own_values_only`** — that
       omission *is* FR-016's enforcement; the backend rejects all three with a `ValidationError`
@@ -141,8 +144,9 @@ page, and that moving to page 2 returns different rows.
       testing.
 - [ ] T019 [US1] Implement the use case in
       `frontend/app/src/entities/repository/domain/use-cases/get-repository-branch-status.ts`, throwing
-      the typed error. **Compose the existing `hasCatalogueCode` / `parseCatalogueError` from
-      `shared/api/errors/error-handling.ts`** rather than re-reading `extensions` by hand.
+      the typed error. **Compose the existing `hasCatalogueCode` from
+      `shared/api/graphql/error-handling.ts`** (which itself calls `parseCatalogueError` from
+      `shared/api/errors/`) rather than re-reading `extensions` by hand.
 - [ ] T020 [US1] Unit-test the use case's error mapping over a raw `extensions` payload in
       `get-repository-branch-status.test.ts`: a `PERMISSION_DENIED` payload yields `code:
       "PERMISSION_DENIED"`, anything else yields `"UNKNOWN"`.
@@ -169,6 +173,11 @@ page, and that moving to page 2 returns different rows.
 - [ ] T025 [US1] Define the columns in
       `frontend/app/src/entities/repository/ui/repository-branches-card/columns.tsx` — Branch,
       `sync_status` (via the existing `DropdownCell`), Commit, plus **Ref on the read-only kind only**.
+      `DropdownCell` currently types its prop as the **full** generated `Dropdown` but reads only
+      `color`, `label` and `value`; the query selects a four-field subset. Widen its prop to
+      `Pick<Dropdown, "value" | "label" | "color">`. This is a **type-only** widening of a shared file —
+      strictly more permissive, no runtime change, and it makes the signature honest about what the
+      component uses.
       **Every header text comes from the schema** (FR-005): do not hardcode the canvas's `Import
       status` or `Git state`. Declare `gridTemplateColumns` **at module scope** — `DataTable`'s default
       reserves a trailing 2.5rem actions column this card must not have. **No row-action menu column**
@@ -286,8 +295,9 @@ branch and assert only the second card's values change.
 - [ ] T046 [US2] Add the kind gate in
       `frontend/app/src/entities/nodes/object/ui/object-details/object-details.tsx` using
       `isOfKind(GENERIC_REPOSITORY_KIND, schema)`, which already resolves **both** concrete repository
-      kinds through `inherit_from` — **no kind list is needed**. This is the **only** shared file this
-      feature edits, and reverting this one edit is the feature's entire rollback path. Covers FR-020.
+      kinds through `inherit_from` — **no kind list is needed**. This is the feature's only
+      *behavioural* shared-file edit, and reverting it is the entire rollback path (T025's
+      `DropdownCell` widening is type-only and harmless on its own). Covers FR-020.
 - [ ] T047 [US2] Place the three cards in the main column in document order: repository-wide details,
       then branch-scoped details, then the branches card (FR-018a).
 - [ ] T048 [US2] Component-test FR-018: both card titles as complete strings, the caption's branch
