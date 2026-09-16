@@ -76,7 +76,8 @@ def get_schema[SchemaProtocol](
 ) -> MainSchemaTypes:
     if isinstance(node_schema, str):
         return db.schema.get(name=node_schema, branch=branch.name, duplicate=duplicate)
-    if isinstance(node_schema, type) and issubclass(node_schema, CoreNode):
+    # A protocol or a concrete Node subclass both name their kind by class name.
+    if isinstance(node_schema, type) and issubclass(node_schema, (CoreNode, Node)):
         return db.schema.get(name=node_schema.__name__, branch=branch.name, duplicate=duplicate)
     if not isinstance(node_schema, (MainSchemaTypes)):
         raise ValueError(f"Invalid schema provided {node_schema}")
