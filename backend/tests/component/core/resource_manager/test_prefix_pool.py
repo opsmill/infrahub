@@ -170,7 +170,7 @@ async def test_get_resource_prefix_type_overrides_pool_default(
 async def test_get_resource_prefix_type_falls_back_to_pool_default(
     db: InfrahubDatabase, default_branch: Branch, kind_override_prefix_pool: CoreIPPrefixPool
 ) -> None:
-    """Without an override the pool default is used and is *not* re-validated."""
+    """Without an explicit kind the pool's default kind is allocated."""
     node = await kind_override_prefix_pool.get_resource(db=db, branch=default_branch, peer_kind=InfrahubKind.IPPREFIX)
 
     assert node.get_kind() == "IpamIPPrefix"
@@ -217,7 +217,7 @@ async def test_get_resource_prefix_type_rejected_for_concrete_peer(
 async def test_get_resource_without_peer_kind_is_unconstrained(
     db: InfrahubDatabase, default_branch: Branch, kind_override_prefix_pool: CoreIPPrefixPool
 ) -> None:
-    """Back-compat: callers that don't know the peer (node.new, migrations) stay unvalidated."""
+    """With no peer kind given, the requested prefix_type is allocated without validation."""
     node = await kind_override_prefix_pool.get_resource(db=db, branch=default_branch, prefix_type="TestIPPrefix")
 
     assert node.get_kind() == "TestIPPrefix"

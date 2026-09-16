@@ -505,13 +505,13 @@ async def test_relationship_assign_from_pool(
     assert await obj.prefix.get_peer(db=db)
 
 
-async def test_relationship_from_pool_forwards_peer_kind_to_pool(
+async def test_relationship_from_pool_rejects_sibling_kind_for_concrete_peer(
     db: InfrahubDatabase,
     default_branch: Branch,
     init_nodes_registry: None,
     kind_override_prefix_pool: CoreIPPrefixPool,
 ) -> None:
-    """The relationship's declared peer reaches the pool as `peer_kind`, so a concrete peer allows no sibling."""
+    """A concrete relationship peer rejects a sibling kind of that peer."""
     mandatory_prefix_schema = registry.schema.get_node_schema(name="TestMandatoryPrefix", branch=default_branch)
 
     obj = await Node.init(schema=mandatory_prefix_schema, db=db, branch=default_branch)

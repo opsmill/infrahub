@@ -72,12 +72,12 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
     demo_object = await client.create(
         branch=branch,
         kind="InfraKindOverrideDemo",
-        name="ifc-2764-demo",
+        name="kind-override-demo",
     )
     await demo_object.save(allow_upsert=True)
 
     log.info(
         "Done. Allocate from 'Kind override demo prefix pool' / 'Kind override demo address pool' "
-        "or set the relationships on 'ifc-2764-demo' (InfraKindOverrideDemo) and pick "
+        "or set the relationships on 'kind-override-demo' (InfraKindOverrideDemo) and pick "
         "InfraTransitPrefix / InfraLoopbackAddress to exercise the default target kind override."
     )

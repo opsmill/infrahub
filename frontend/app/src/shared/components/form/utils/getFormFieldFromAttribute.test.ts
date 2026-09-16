@@ -49,8 +49,94 @@ describe("getFormFieldFromAttribute", () => {
         kind: "CoreNumberPool",
         defaultAllocatedObjectKind: "TestTemplate",
         fromPoolRelationshipName: "weight_from_resource_pool",
-        options: [],
+        options: undefined,
       });
+    });
+
+    it("leaves the options unset when no pre-fetched pool matches the attribute", () => {
+      const attributeSchema = generateAttributeSchema({
+        name: "weight",
+        kind: ATTRIBUTE_KIND.NUMBER,
+      });
+
+      const schema = generateNodeSchema({
+        kind: "TestTemplate",
+        attributes: [attributeSchema],
+        relationships: [
+          generateRelationshipSchema({
+            name: `weight${FROM_RESOURCE_POOL_SUFFIX}`,
+            peer: "CoreNumberPool",
+            cardinality: "one",
+            optional: true,
+          }),
+        ],
+      });
+
+      const field = getFormFieldFromAttribute({
+        auth: undefined,
+        isDefaultBranch: undefined,
+        attributeSchema,
+        currentObject: undefined,
+        objectTemplate: undefined,
+        schema,
+        isFilterForm: false,
+        isUpdate: false,
+        isBulkUpdate: false,
+        pools: [
+          {
+            id: "other-pool",
+            display_label: "Heights pool",
+            __typename: "CoreNumberPool",
+            schemaKind: "TestTemplate",
+            attributeName: "height",
+          },
+        ],
+      });
+
+      expect(field.pool?.options).toBeUndefined();
+    });
+
+    it("carries the pre-fetched pools when at least one matches the attribute", () => {
+      const attributeSchema = generateAttributeSchema({
+        name: "weight",
+        kind: ATTRIBUTE_KIND.NUMBER,
+      });
+
+      const schema = generateNodeSchema({
+        kind: "TestTemplate",
+        attributes: [attributeSchema],
+        relationships: [
+          generateRelationshipSchema({
+            name: `weight${FROM_RESOURCE_POOL_SUFFIX}`,
+            peer: "CoreNumberPool",
+            cardinality: "one",
+            optional: true,
+          }),
+        ],
+      });
+
+      const numberPool = {
+        id: "number-pool-1",
+        display_label: "Weights pool",
+        __typename: "CoreNumberPool",
+        schemaKind: "TestTemplate",
+        attributeName: "weight",
+      };
+
+      const field = getFormFieldFromAttribute({
+        auth: undefined,
+        isDefaultBranch: undefined,
+        attributeSchema,
+        currentObject: undefined,
+        objectTemplate: undefined,
+        schema,
+        isFilterForm: false,
+        isUpdate: false,
+        isBulkUpdate: false,
+        pools: [numberPool],
+      });
+
+      expect(field.pool?.options).toEqual([numberPool]);
     });
 
     it("attaches pool metadata from the pre-fetched pools alone, with no companion relationship", () => {

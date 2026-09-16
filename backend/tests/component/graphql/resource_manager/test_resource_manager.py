@@ -1547,6 +1547,7 @@ async def test_create_from_pool_with_address_type_override(
 async def test_create_from_pool_with_invalid_address_type(
     db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
 ) -> None:
+    """A from_pool.address_type outside the relationship's generic is rejected."""
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
@@ -1567,6 +1568,7 @@ async def test_create_from_pool_with_invalid_address_type(
 async def test_create_from_pool_with_prefix_type_override(
     db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
 ) -> None:
+    """from_pool.prefix_type is exposed on the GraphQL input and overrides the pool default."""
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
@@ -1589,6 +1591,7 @@ async def test_create_from_pool_with_prefix_type_override(
 async def test_create_from_pool_with_invalid_prefix_type(
     db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
 ) -> None:
+    """A from_pool.prefix_type outside the relationship's generic is rejected."""
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
@@ -1606,7 +1609,7 @@ async def test_create_from_pool_with_invalid_prefix_type(
     assert "'TestMandatoryPrefix' is not a valid kind" in str(result.errors[0].message)
 
 
-async def test_address_pool_get_resource_with_invalid_address_type(
+async def test_address_pool_get_resource_validates_address_type(
     db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
 ) -> None:
     """The standalone allocate mutation is validated against the BuiltinIPAddress generic."""
@@ -1634,7 +1637,7 @@ async def test_address_pool_get_resource_with_invalid_address_type(
     assert "'TestMandatoryAddress' is not a valid kind" in str(rejected.errors[0].message)
 
 
-async def test_prefix_pool_get_resource_with_invalid_prefix_type(
+async def test_prefix_pool_get_resource_validates_prefix_type(
     db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
 ) -> None:
     """The standalone allocate mutation is validated against the BuiltinIPPrefix generic."""

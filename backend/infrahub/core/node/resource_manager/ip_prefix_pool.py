@@ -50,7 +50,6 @@ class CoreIPPrefixPool(Node):
         # Only an explicitly requested kind is validated; the pool's own default is left alone.
         requested_prefix_type = prefix_type or data.get("prefix_type", None)
 
-        # Outside the pool lock: a request that can never succeed must not queue behind other allocations.
         validate_allocated_kind(
             db=db,
             branch=branch,

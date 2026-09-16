@@ -41,8 +41,9 @@ export interface PoolBackedFieldProps {
 }
 
 /**
- * Rendered inside the `FormField` render prop so it can carry `fieldData`, which is what badges
- * the label with the value's provenance.
+ * A field satisfied either by a value the user supplies or by an allocation from a resource pool,
+ * offered as two tabs. Given no pool it renders the value alone, untabbed. The label badges where
+ * the current value came from; switching tabs discards whatever the other one staged.
  */
 export const PoolBackedField = ({
   name,

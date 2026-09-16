@@ -91,12 +91,7 @@ export const updateRelationshipFieldValue = (
       defaultValue.source.id === newValue.from_pool.id &&
       keepsAllocatedKind(newValue.from_pool.allocatedKind, defaultValue.value)
     ) {
-      // Re-selecting the field's original pool restores the existing allocation
-      // unchanged. Allocation is idempotent on the reservation identifier, so the
-      // original pool cannot be re-allocated with a different mask — show the
-      // resolved value rather than a pending allocation with an editable length.
-      // No reservation identifier is sent for the kind, so a different kind is a fresh allocation
-      // and must fall through.
+      // Re-selecting the field's original pool restores the existing allocation unchanged.
       return defaultValue;
     }
     return {
@@ -113,7 +108,6 @@ export const updateRelationshipFieldValue = (
           ...(newValue.from_pool.prefixLength !== undefined && {
             prefixLength: newValue.from_pool.prefixLength,
           }),
-          // Kept in the value rather than the source because it is sent to the API.
           ...(newValue.from_pool.allocatedKind !== undefined && {
             allocatedKind: newValue.from_pool.allocatedKind,
           }),

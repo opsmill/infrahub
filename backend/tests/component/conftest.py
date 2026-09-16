@@ -2626,42 +2626,10 @@ async def register_ipam_kind_override_schema(
 ) -> SchemaBranch:
     """Schema exercising the from_pool target-kind override.
 
-    A second concrete kind behind each builtin IP generic, plus a narrower generic on each side.
+    A second concrete kind behind each builtin IP generic.
     """
     SCHEMA: dict[str, Any] = {
-        "generics": [
-            {
-                "name": "NarrowPrefix",
-                "namespace": "Test",
-                "description": "A narrower generic behind BuiltinIPPrefix, used by one kind only",
-                "attributes": [{"name": "narrow_marker", "kind": "Text", "optional": True}],
-            },
-            {
-                "name": "NarrowAddress",
-                "namespace": "Test",
-                "description": "A narrower generic behind BuiltinIPAddress, used by one kind only",
-                "attributes": [{"name": "narrow_marker", "kind": "Text", "optional": True}],
-            },
-        ],
         "nodes": [
-            {
-                "name": "NarrowIPPrefix",
-                "namespace": "Test",
-                "default_filter": "prefix__value",
-                "order_by": ["prefix__value"],
-                "display_label": "prefix__value",
-                "branch": BranchSupportType.AWARE.value,
-                "inherit_from": [InfrahubKind.IPPREFIX, "TestNarrowPrefix"],
-            },
-            {
-                "name": "NarrowIPAddress",
-                "namespace": "Test",
-                "default_filter": "address__value",
-                "order_by": ["address__value"],
-                "display_label": "address__value",
-                "branch": BranchSupportType.AWARE.value,
-                "inherit_from": [InfrahubKind.IPADDRESS, "TestNarrowAddress"],
-            },
             {
                 "name": "IPPrefix",
                 "namespace": "Test",
@@ -2771,6 +2739,7 @@ async def kind_override_pools(
     kind_override_prefix_pool: CoreIPPrefixPool,
     kind_override_address_pool: CoreIPAddressPool,
 ) -> dict[str, Node]:
+    """Both kind-override pools, keyed by "prefix_pool" and "address_pool"."""
     return {"prefix_pool": kind_override_prefix_pool, "address_pool": kind_override_address_pool}
 
 

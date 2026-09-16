@@ -141,7 +141,7 @@ async def test_get_resource_address_type_overrides_pool_default(
 async def test_get_resource_address_type_falls_back_to_pool_default(
     db: InfrahubDatabase, default_branch: Branch, kind_override_address_pool: CoreIPAddressPool
 ) -> None:
-    """Without an override the pool default is used and is *not* re-validated."""
+    """Without an explicit kind the pool's default kind is allocated."""
     node = await kind_override_address_pool.get_resource(db=db, branch=default_branch, peer_kind=InfrahubKind.IPADDRESS)
 
     assert node.get_kind() == "IpamIPAddress"
@@ -188,7 +188,7 @@ async def test_get_resource_address_type_rejected_for_concrete_peer(
 async def test_get_resource_without_peer_kind_is_unconstrained(
     db: InfrahubDatabase, default_branch: Branch, kind_override_address_pool: CoreIPAddressPool
 ) -> None:
-    """Back-compat: callers that don't know the peer (node.new, migrations) stay unvalidated."""
+    """With no peer kind given, the requested address_type is allocated without validation."""
     node = await kind_override_address_pool.get_resource(db=db, branch=default_branch, address_type="TestIPAddress")
 
     assert node.get_kind() == "TestIPAddress"
@@ -221,10 +221,10 @@ async def test_get_resource_conflicting_address_type_raises(
     default_branch: Branch,
     kind_override_address_pool: CoreIPAddressPool,
 ) -> None:
-    """The counterpart of test_get_resource_conflicting_prefixlen_raises for the target kind.
+    """A reservation keeps the kind it was allocated with.
 
-    A reservation keeps the kind it was allocated with, so re-allocating the same identifier
-    with a different explicit kind must error rather than silently return the original kind.
+    Re-allocating the same identifier with a different explicit kind errors; with the same kind,
+    or none at all, it returns the original resource.
     """
     first = await kind_override_address_pool.get_resource(
         db=db, identifier="item1", branch=default_branch, prefixlen=30

@@ -7,8 +7,8 @@ A resource pool creates objects of one kind by default. If a relationship points
 "allocate from this pool, but make it a `InfraLoopbackAddress` instead of the pool's usual
 `IpamIPAddress`". That is the override.
 
-Along the way the form changed: a field that can use a pool now shows **two tabs** — fill the
-value in yourself, or allocate from a pool.
+A field that can use a pool shows **two tabs** — fill the value in yourself, or allocate from a
+pool.
 
 ## Setup (once)
 
@@ -34,8 +34,8 @@ an override works you get an `Infra` kind back and can tell the difference at a 
 
 | Pool | Default kind |
 |---|---|
-| IFC-2764 demo address pool | `IpamIPAddress` |
-| IFC-2764 demo prefix pool | `IpamIPPrefix` |
+| Kind override demo address pool | `IpamIPAddress` |
+| Kind override demo prefix pool | `IpamIPPrefix` |
 
 ---
 
@@ -46,7 +46,7 @@ an override works you get an `Infra` kind back and can tell the difference at a 
 **Where**: Kind Override Demo → *Create* → the **IP Address** field.
 
 1. Click the **From pool** tab.
-2. Pick *IFC-2764 demo address pool*.
+2. Pick *Kind override demo address pool*.
 3. Under **Type to allocate**, pick `Loopback Address`.
 4. Name the object and save.
 
@@ -71,17 +71,16 @@ Same as case 1, on the **IP Prefix** field, picking `Transit Prefix`.
 On the **IP Address** field, click **From pool** straight away, without touching the **Object**
 tab.
 
-**You should see**: the pool selector works immediately. This is the fix for the confusing bit —
-previously you had to choose a Kind first, and that Kind had nothing to do with which pool you
-could pick.
+**You should see**: the pool selector works immediately. Which pools you can pick from is
+independent of the **Object** tab's Kind picker.
 
 ### Case 5: the Kind picker is only for choosing an existing object
 
 Click the **Object** tab.
 
 **You should see**: a **Kind** picker (needed to know which kind of object to search for), and
-no pool. Click **From pool** again and the Kind picker is gone. The two tabs no longer
-contradict each other.
+no pool. Click **From pool** again and the Kind picker is gone. Each tab carries only the
+controls its own mode needs.
 
 ### Case 6: switching tabs clears what you staged
 
@@ -146,12 +145,13 @@ Run it once, then again with `address_type: "InfraLoopbackAddress"`.
 kind returns the same address. Running it with a *different* kind is **refused** — an allocation
 that already exists can't change kind.
 
-### Case 12: an existing allocation can't be re-cut
+### Case 12: an allocated value says which pool it came from
 
 Open one of the objects you created in case 1, and look at the same field.
 
-**You should see**: the **From pool** tab active, naming the pool, and **no** override controls.
-The allocation already happened; its kind and mask are fixed.
+**You should see**: the field opens on the **Object** tab showing the allocated object, and the
+label carries a badge naming the pool the value came from. Every field opens on its value tab; the
+badge is what tells you the value was allocated rather than typed.
 
 ---
 
@@ -178,7 +178,7 @@ reach them by hand. Building those shapes is the "harness" task still outstandin
   is expected mid-change and not a bug to report.
 - **A field you're not allowed to edit still shows a live pool button** on those four
   unmigrated fields. That's a pre-existing bug the tab work fixes as it goes.
-- **Opening a form on the right tab** relies on the stored value saying where it came from.
-  There is a case where a pool-allocated value is recorded as if you typed it, which would open
-  the wrong tab. Harmless before (the pool was just a button), so it may still be there — worth
-  a look if you see a pool-allocated value open on the **Object** tab.
+- **A field always opens on its value/object tab**, whatever the value's provenance. A
+  pool-allocated value shows the allocated object there, with a badge on the label naming the
+  pool. Reaching the **From pool** tab discards the staged value, so opening there would put an
+  existing allocation one stray keystroke from being dropped.

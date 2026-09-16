@@ -55,7 +55,7 @@ export const PoolAllocationPanel = ({
         onChange={onChange}
       />
 
-      {/* An override that hides itself leaves an empty flex item still taking the parent's gap; `empty:hidden` removes the hole. */}
+      {/* With neither override rendered the row is an empty flex item still taking the parent's gap; `empty:hidden` removes the hole. */}
       {canOverrideAllocation && (
         <Row className="items-start gap-4 empty:hidden">
           <PoolPrefixLengthField

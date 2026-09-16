@@ -1,4 +1,4 @@
-import { IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
+import { IP_PREFIX_POOL, NUMBER_POOL_KIND } from "@/entities/resource-manager/domain/model/pool";
 
 export type FromPoolPayload = {
   id: string;
@@ -15,14 +15,20 @@ export type FromPoolPayload = {
  *
  * Both overrides are named per pool kind — an address pool takes `prefixlen`/`address_type`, a
  * prefix pool takes `size`/`prefix_type` — and an unrecognized kind falls back to the former.
+ * A number pool accepts neither, so it always yields the bare id.
  */
 export const buildFromPoolPayload = (
   fromPool: { id: string; prefixLength?: number | null; allocatedKind?: string | null },
   poolKind?: string
 ): FromPoolPayload => {
   const { id, prefixLength, allocatedKind } = fromPool;
-  const isPrefixPool = poolKind === IP_PREFIX_POOL;
   const payload: FromPoolPayload = { id };
+
+  if (poolKind === NUMBER_POOL_KIND) {
+    return payload;
+  }
+
+  const isPrefixPool = poolKind === IP_PREFIX_POOL;
 
   if (typeof prefixLength === "number") {
     if (isPrefixPool) {

@@ -1,3 +1,6 @@
+// An active trigger draws its left, top and right edges and leaves the bottom open, so the content
+// panel must stay flush against the trigger strip for the field to read as one region.
+
 import type {
   TabsContentProps,
   TabsListProps,
@@ -6,10 +9,6 @@ import type {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { classNames } from "@/shared/utils/common";
 
-/**
- * An active trigger draws its left, top and right edges and leaves the bottom open, so the panel
- * must stay flush against the strip for the field to read as one region.
- */
 export const FieldTabs = Tabs;
 
 export const FieldTabsList = ({ className, ...props }: TabsListProps) => (

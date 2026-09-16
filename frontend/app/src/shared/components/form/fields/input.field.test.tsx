@@ -108,7 +108,6 @@ describe("InputField", () => {
     await component.getByRole("textbox").fill("10.0.0.0/16");
 
     await expect.element(component.getByRole("textbox")).toHaveValue("10.0.0.0/16");
-    await expect.poll(() => component.getByText("Allocated by pool").query()).toBeNull();
   });
 
   test("opens on the value tab when the value came from a pool, badged with that pool", async () => {

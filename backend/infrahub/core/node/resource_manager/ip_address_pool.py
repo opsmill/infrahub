@@ -45,7 +45,6 @@ class CoreIPAddressPool(Node):
         # Only an explicitly requested kind is validated; the pool's own default is left alone.
         requested_address_type = address_type or data.get("address_type")
 
-        # Outside the pool lock: a request that can never succeed must not queue behind other allocations.
         validate_allocated_kind(
             db=db,
             branch=branch,

@@ -13,19 +13,15 @@ import { buildFormField } from "../../../../../../tests/fake/form";
 
 describe("getUpdateMutationFromFormData - test", () => {
   it("returns empty if there is no fields in form", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [];
     const formData: Record<string, FormAttributeValue> = {};
 
-    // WHEN
     const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-    // THEN
     expect(mutationData).to.deep.equal({});
   });
 
   it("keeps value if it's from the user", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "field1",
@@ -36,17 +32,14 @@ describe("getUpdateMutationFromFormData - test", () => {
       field1: { source: { type: "user" }, value: "test-value" },
     };
 
-    // WHEN
     const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: { value: "test-value" },
     });
   });
 
   it("correctly unset the array for multiselect", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "field1",
@@ -57,17 +50,14 @@ describe("getUpdateMutationFromFormData - test", () => {
       field1: { source: { type: "user" }, value: [] },
     };
 
-    // WHEN
     const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: null,
     });
   });
 
   it("set value to null if it's from the user and is an empty string", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "field1",
@@ -78,17 +68,14 @@ describe("getUpdateMutationFromFormData - test", () => {
       field1: { source: { type: "user" }, value: "" },
     };
 
-    // WHEN
     const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: { value: null },
     });
   });
 
   it("set attribute to null if it's from the user and value is null", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "field1",
@@ -99,17 +86,14 @@ describe("getUpdateMutationFromFormData - test", () => {
       field1: { source: { type: "user" }, value: null },
     };
 
-    // WHEN
     const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: { value: null },
     });
   });
 
   it("set relationship to null if it's from the user and value is null", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "relationship1",
@@ -124,17 +108,14 @@ describe("getUpdateMutationFromFormData - test", () => {
       relationship1: { source: { type: "user" }, value: null },
     };
 
-    // WHEN
     const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-    // THEN
     expect(mutationData).to.deep.equal({
       relationship1: null,
     });
   });
 
   it("removes field if value and source are not updated", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "field1",
@@ -145,15 +126,12 @@ describe("getUpdateMutationFromFormData - test", () => {
       field1: { source: { type: "user" }, value: "old-value" },
     };
 
-    // WHEN
     const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-    // THEN
     expect(mutationData).to.deep.equal({});
   });
 
   it("keeps field if source is updated", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "field1",
@@ -164,17 +142,14 @@ describe("getUpdateMutationFromFormData - test", () => {
       field1: { source: { type: "user" }, value: "value1" },
     };
 
-    // WHEN
     const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: { value: "value1" },
     });
   });
 
   it("keeps field if source change from user to pool", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "field1",
@@ -199,10 +174,8 @@ describe("getUpdateMutationFromFormData - test", () => {
       },
     };
 
-    // WHEN
     const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: {
         from_pool: { id: "pool-id" },
@@ -211,7 +184,6 @@ describe("getUpdateMutationFromFormData - test", () => {
   });
 
   it("includes the requested prefixlen on a direct from-pool relationship", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "primary_address",
@@ -227,17 +199,14 @@ describe("getUpdateMutationFromFormData - test", () => {
       },
     };
 
-    // WHEN
     const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-    // THEN
     expect(mutationData).to.deep.equal({
       primary_address: { from_pool: { id: "pool-id", prefixlen: 24 } },
     });
   });
 
   it("omits prefixlen on a direct from-pool relationship when none was entered", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "primary_address",
@@ -255,10 +224,8 @@ describe("getUpdateMutationFromFormData - test", () => {
       },
     };
 
-    // WHEN
     const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-    // THEN
     expect(mutationData).to.deep.equal({
       primary_address: { from_pool: { id: "pool-id" } },
     });
@@ -267,7 +234,6 @@ describe("getUpdateMutationFromFormData - test", () => {
   it("skips the update when the same pool is reselected, even with a different prefixlen", () => {
     // Allocation is idempotent on the reservation identifier, so re-selecting the
     // same pool cannot change an existing allocation's mask — it is a no-op.
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "primary_address",
@@ -291,10 +257,8 @@ describe("getUpdateMutationFromFormData - test", () => {
       },
     };
 
-    // WHEN
     const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-    // THEN
     expect(mutationData).to.deep.equal({});
   });
 
@@ -488,10 +452,8 @@ describe("getUpdateMutationFromFormData - test", () => {
         },
       };
 
-      // WHEN
       const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-      // THEN
       expect(mutationData).to.deep.equal({
         ip_address: null,
         ip_address_from_resource_pool: { id: "pool-id" },
@@ -499,7 +461,6 @@ describe("getUpdateMutationFromFormData - test", () => {
     });
 
     it("sets from-pool relationship to null when user selects a direct value", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "ip_address",
@@ -526,10 +487,8 @@ describe("getUpdateMutationFromFormData - test", () => {
         },
       };
 
-      // WHEN
       const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-      // THEN
       expect(mutationData).to.deep.equal({
         ip_address: { id: "new-ip" },
         ip_address_from_resource_pool: null,
@@ -537,7 +496,6 @@ describe("getUpdateMutationFromFormData - test", () => {
     });
 
     it("splits number attribute pool value using { value: null } for the attribute", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "weight",
@@ -565,10 +523,8 @@ describe("getUpdateMutationFromFormData - test", () => {
         },
       };
 
-      // WHEN
       const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-      // THEN
       expect(mutationData).to.deep.equal({
         weight: { value: null },
         weight_from_resource_pool: { id: "pool-id" },
@@ -576,7 +532,6 @@ describe("getUpdateMutationFromFormData - test", () => {
     });
 
     it("clears pool relationship when user enters a direct number value", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "weight",
@@ -604,10 +559,8 @@ describe("getUpdateMutationFromFormData - test", () => {
         },
       };
 
-      // WHEN
       const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-      // THEN
       expect(mutationData).to.deep.equal({
         weight: { value: 100 },
         weight_from_resource_pool: null,
@@ -615,7 +568,6 @@ describe("getUpdateMutationFromFormData - test", () => {
     });
 
     it("clears pool relationship when user sets number attribute to null", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "weight",
@@ -643,10 +595,8 @@ describe("getUpdateMutationFromFormData - test", () => {
         },
       };
 
-      // WHEN
       const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-      // THEN
       expect(mutationData).to.deep.equal({
         weight: { value: null },
         weight_from_resource_pool: null,
@@ -654,7 +604,6 @@ describe("getUpdateMutationFromFormData - test", () => {
     });
 
     it("sets both to null when value is null", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "ip_address",
@@ -677,10 +626,8 @@ describe("getUpdateMutationFromFormData - test", () => {
         },
       };
 
-      // WHEN
       const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-      // THEN
       expect(mutationData).to.deep.equal({
         ip_address: null,
         ip_address_from_resource_pool: null,
@@ -689,7 +636,6 @@ describe("getUpdateMutationFromFormData - test", () => {
   });
 
   it("set is_default: true if field if value is from profile", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "field1",
@@ -708,10 +654,8 @@ describe("getUpdateMutationFromFormData - test", () => {
       },
     };
 
-    // WHEN
     const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: { is_default: true },
     });
@@ -728,10 +672,8 @@ describe("getUpdateMutationFromFormData - test", () => {
       field1: { source: { type: "schema" }, value: "value2" },
     };
 
-    // WHEN
     const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: { is_default: true },
     });
@@ -739,7 +681,6 @@ describe("getUpdateMutationFromFormData - test", () => {
 
   describe("Attribute of kind list", () => {
     it("set correctly attribute of kind list when initial value is null", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "listField",
@@ -751,17 +692,14 @@ describe("getUpdateMutationFromFormData - test", () => {
         listField: { source: { type: "user" }, value: ["item2", "item3"] },
       };
 
-      // WHEN
       const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-      // THEN
       expect(mutationData).to.deep.equal({
         listField: { value: ["item2", "item3"] },
       });
     });
 
     it("set correctly attribute of kind list when initial has items", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "listField",
@@ -773,10 +711,8 @@ describe("getUpdateMutationFromFormData - test", () => {
         listField: { source: { type: "user" }, value: ["item2", "item3"] },
       };
 
-      // WHEN
       const mutationData = getUpdateMutationFromFormData({ fields, formData });
 
-      // THEN
       expect(mutationData).to.deep.equal({
         listField: { value: ["item2", "item3"] },
       });

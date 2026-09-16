@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { buildFromPoolPayload } from "@/shared/components/form/utils/mutations/buildFromPoolMutationValue";
 
-import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
+import {
+  IP_ADDRESS_POOL,
+  IP_PREFIX_POOL,
+  NUMBER_POOL_KIND,
+} from "@/entities/resource-manager/domain/model/pool";
 
 describe("buildFromPoolPayload", () => {
   it("omits the prefix length when none was entered", () => {
@@ -79,5 +83,14 @@ describe("buildFromPoolPayload", () => {
         IP_PREFIX_POOL
       )
     ).toEqual({ id: "pool1", size: 30, prefix_type: "IpamIPPrefix" });
+  });
+
+  it("sends only the id for a number pool", () => {
+    expect(
+      buildFromPoolPayload(
+        { id: "pool1", prefixLength: 24, allocatedKind: "TestNode" },
+        NUMBER_POOL_KIND
+      )
+    ).toEqual({ id: "pool1" });
   });
 });

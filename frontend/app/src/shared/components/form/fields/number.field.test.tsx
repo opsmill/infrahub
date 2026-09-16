@@ -244,7 +244,7 @@ describe("NumberField", () => {
     await expect.poll(() => component.getByTestId("select-value").query()).toBeNull();
   });
 
-  test("disables both tabs and the pool control when the field is disabled", async () => {
+  test("disables both tabs when the field is disabled", async () => {
     const component = await render(
       <TestForm>
         <NumberField {...poolProps} disabled />

@@ -165,7 +165,6 @@ describe("RelationshipHierarchicalField", () => {
     await expect
       .element(component.getByTestId("source-pool-badge"))
       .toHaveTextContent("Site prefixes pool");
-    await expect.poll(() => component.getByText("Allocated by pool").query()).toBeNull();
 
     await expect.poll(() => component.getByTestId("pool-prefix-length-input").query()).toBeNull();
     await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();

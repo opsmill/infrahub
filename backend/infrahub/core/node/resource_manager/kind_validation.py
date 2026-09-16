@@ -23,8 +23,9 @@ def validate_allocated_kind(
 ) -> None:
     """Guard an explicitly requested allocation kind against the kind it must satisfy.
 
-    Legal when the requested kind is `peer_kind` itself, or a kind implementing it when
-    `peer_kind` is a generic. The pool's own default is deliberately not validated: doing so
+    Legal when `peer_kind` is a node and the requested kind is `peer_kind` itself, or when
+    `peer_kind` is a generic and the requested kind implements it. A generic is never allocatable,
+    including as its own peer. The pool's own default is deliberately not validated: doing so
     would newly reject pools whose default is outside the peer's `used_by`. A `None` `peer_kind`
     leaves the allocation unconstrained.
 
@@ -32,7 +33,7 @@ def validate_allocated_kind(
         ValidationError: when the requested kind cannot satisfy the peer.
 
     """
-    if requested_kind is None or peer_kind is None or requested_kind == peer_kind:
+    if requested_kind is None or peer_kind is None:
         return
 
     peer_schema = db.schema.get(name=peer_kind, branch=branch, duplicate=False)
@@ -42,6 +43,8 @@ def validate_allocated_kind(
             return
         allowed_kinds = sorted(peer_schema.used_by)
     else:
+        if requested_kind == peer_kind:
+            return
         allowed_kinds = [peer_kind]
 
     raise ValidationError(
