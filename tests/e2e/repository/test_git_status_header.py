@@ -1,8 +1,7 @@
 """The Git status indicator in the application header.
 
-Sets `sync_status` directly rather than engineering an import failure: the indicator reads
-that attribute and nothing else. The attribute is branch-local, so a throwaway branch keeps
-the default branch clean.
+The failing status is set directly on a throwaway branch; the attribute is branch-local, so
+the default branch stays clean.
 """
 
 from __future__ import annotations
