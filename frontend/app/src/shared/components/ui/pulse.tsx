@@ -18,7 +18,6 @@ export function Pulse({ className, tone = "info", ...props }: PulseProps) {
   const { ping, dot } = TONE_CLASSES[tone];
 
   return (
-    // Decorative: whatever it accompanies already names the state.
     <span aria-hidden className={classNames("absolute flex h-2 w-2", className)} {...props}>
       <span
         className={classNames(

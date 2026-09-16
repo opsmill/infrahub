@@ -27,11 +27,7 @@ describe("GitStatus", () => {
   const useCurrentBranchMock = vi.mocked(useCurrentBranch);
   const getObjectsCountFromApiMock = vi.mocked(getObjectsCountFromApi);
 
-  /**
-   * Both counts go through the same API function, so they are told apart by whether the call
-   * carries the sync-status filter — never by call order, which is an implementation detail a
-   * later refactor would silently invalidate.
-   */
+  /** The two counts are told apart by their filter, never by call order. */
   const mockCounts = ({
     total,
     failing,
@@ -40,8 +36,6 @@ describe("GitStatus", () => {
     failing: number | "error";
   }) => {
     getObjectsCountFromApiMock.mockImplementation(async ({ filters }) => {
-      // Keyed off the real constant: if the component ever stops passing this filter, the
-      // mock misclassifies loudly rather than quietly returning the wrong count.
       const isFailingLookup = filters?.some(
         (filter) =>
           filter.name === REPOSITORY_ERROR_IMPORT_FILTER.name &&
@@ -57,7 +51,6 @@ describe("GitStatus", () => {
       .querySelector('[data-testid="git-status-glyph"]')
       ?.firstElementChild?.getAttribute("icon");
 
-  /** Leaves a lookup permanently in flight so the loading state can actually be rendered. */
   const mockNeverSettles = () => {
     getObjectsCountFromApiMock.mockImplementation(() => new Promise(() => {}));
   };
@@ -70,8 +63,6 @@ describe("GitStatus", () => {
 
   afterEach(() => {
     vi.resetAllMocks();
-    // Restored here rather than at the end of the test that changes them: an assertion
-    // throwing midway would otherwise leak into every later test in this file.
     vi.useRealTimers();
     window.history.pushState({}, "", "/");
   });
@@ -90,8 +81,6 @@ describe("GitStatus", () => {
     });
     await expect.element(indicator).toBeVisible();
     await expect.element(component.getByTestId("git-status-pulse")).toBeVisible();
-    // Same subject glyph as every other resolved state: the state is carried by colour and
-    // the dot, never by swapping the icon for a different subject.
     expect(glyphIcon(component)).toBe("mdi:source-branch");
   });
 
@@ -109,14 +98,11 @@ describe("GitStatus", () => {
     });
     await expect.element(indicator).toBeVisible();
     expect(component.container.querySelector('[data-testid="git-status-pulse"]')).toBeNull();
-    // The dot, not the glyph, is what distinguishes this from the error state — so the two
-    // remain distinguishable without perceiving colour.
     expect(glyphIcon(component)).toBe("mdi:source-branch");
   });
 
   test("treats a syncing repository as neutral rather than giving it its own treatment", async () => {
-    // GIVEN a branch whose repositories are mid-sync: none carries the import-error status,
-    // so the failing count is zero even though the repositories are not idle
+    // GIVEN repositories that are syncing rather than failing
     onBranch({ name: "branch1" });
     mockCounts({ total: 2, failing: 0 });
 
@@ -139,7 +125,7 @@ describe("GitStatus", () => {
     // WHEN
     const component = await render(<GitStatus />);
 
-    // THEN it is a button, not a link: with no repositories there is nowhere to navigate to
+    // THEN
     const indicator = component.getByRole("button", {
       name: "No Git repositories configured",
     });
@@ -161,12 +147,9 @@ describe("GitStatus", () => {
     await indicator.hover();
 
     // THEN the tooltip still fires. No other call site in this codebase combines LinkButton
-    // An inactive control still has to say why it is inactive, so the tooltip is asserted
-    // rather than assumed.
     await expect
       .element(component.getByRole("tooltip", { name: "No Git repositories configured" }))
       .toBeVisible();
-    // Move the pointer away so the open overlay cannot leak into a later test.
     await initPointerTracking(component.locator);
   });
 
@@ -183,9 +166,6 @@ describe("GitStatus", () => {
       .element(component.getByRole("link", { name: "Git status could not be checked" }))
       .toBeVisible();
     expect(glyphIcon(component)).toBe("mdi:error-outline");
-    // Muted, never danger. An operator without permission to read repositories fails this
-    // lookup on every page, so a red alarm here would be permanent and unclearable — the
-    // regression this assertion exists to catch.
     const glyph = component.container.querySelector(
       '[data-testid="git-status-glyph"]'
     )?.firstElementChild;
@@ -201,7 +181,7 @@ describe("GitStatus", () => {
     // WHEN
     const component = await render(<GitStatus />);
 
-    // THEN it neither claims health nor claims failure, and the slot is already sized
+    // THEN
     await expect
       .element(component.getByRole("link", { name: "Checking Git status" }))
       .toBeVisible();
@@ -211,7 +191,7 @@ describe("GitStatus", () => {
   });
 
   test("reports inert, not check-failed, when the branch is empty and the failure lookup fails", async () => {
-    // GIVEN a branch with no repositories, so the failing count cannot change the answer
+    // GIVEN
     onBranch({ name: "branch1" });
     mockCounts({ total: 0, failing: "error" });
 
@@ -232,8 +212,7 @@ describe("GitStatus", () => {
     // WHEN
     const component = await render(<GitStatus />);
 
-    // THEN the slot is pinned rather than sized by whichever glyph occupies it, so the header
-    // cannot shift when the state changes
+    // THEN
     const slot = component.container.querySelector('[data-testid="git-status-glyph"]');
     expect(slot?.className).toContain("size-4");
   });
@@ -250,8 +229,6 @@ describe("GitStatus", () => {
     const indicator = component.getByRole("link", {
       name: "Repositories failed to import on this branch",
     });
-    // Wait for the error state to resolve before reading the href: `.element()` resolves
-    // immediately, so without this it reads the loading state's markup.
     await expect.element(indicator).toBeVisible();
     const href = (await indicator.element()).getAttribute("href") ?? "";
     expect(href).toContain(`/objects/${GENERIC_REPOSITORY_KIND}`);
@@ -294,7 +271,7 @@ describe("GitStatus", () => {
   });
 
   test("asks about the branch from context, not a branch named in the URL", async () => {
-    // GIVEN the URL names a different branch from the one selected in the application
+    // GIVEN a different branch in the URL
     onBranch({ name: "branch1", is_default: false });
     mockCounts({ total: 3, failing: 1 });
     window.history.pushState({}, "", "/?branch=some-other-branch");
@@ -302,7 +279,7 @@ describe("GitStatus", () => {
     // WHEN
     await render(<GitStatus />);
 
-    // THEN both lookups are scoped to the branch from context
+    // THEN
     expect(getObjectsCountFromApiMock).toHaveBeenCalledTimes(2);
     for (const call of getObjectsCountFromApiMock.mock.calls) {
       expect(call[0].branchName).toBe("branch1");
@@ -318,8 +295,7 @@ describe("GitStatus", () => {
     // WHEN
     const component = await render(<GitStatus />);
 
-    // THEN the destination is present-time, like the indicator: a historical list could omit
-    // the very repository that is failing now.
+    // THEN
     const indicator = component.getByRole("link", {
       name: "Repositories failed to import on this branch",
     });
@@ -365,9 +341,8 @@ describe("GitStatus", () => {
     // WHEN
     const component = await render(<GitStatus />);
 
-    // THEN the control exposes the role and name this state is meant to expose, and no button
-    // here can be found by searching accessible names for "branch" — the branch selector is
-    // located that way, and a second match breaks it.
+    // THEN no button is findable by the accessible-name substring "branch", which the e2e
+    // suite uses to locate the branch selector
     await expect.element(component.getByRole(role, { name })).toBeVisible();
     for (const button of [...component.container.querySelectorAll("button")]) {
       expect(button.getAttribute("aria-label")?.toLowerCase() ?? "").not.toContain("branch");
@@ -389,9 +364,7 @@ describe("GitStatus", () => {
     // WHEN the refresh interval elapses
     await vi.advanceTimersByTimeAsync(10_000);
 
-    // THEN the lookups ran again, and the resolved state stayed put. Reading the refetching
-    // flag rather than the initial pending flag would drop the indicator back to its loading
-    // treatment on every poll.
+    // THEN the lookups ran again and the resolved state stayed put
     expect(getObjectsCountFromApiMock.mock.calls.length).toBeGreaterThan(callsBefore);
     await expect.element(indicator).toBeVisible();
   });

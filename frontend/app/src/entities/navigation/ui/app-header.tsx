@@ -22,12 +22,6 @@ export function AppHeader() {
         <BreadcrumbNavigation />
       </ScrollArea>
 
-      {/* Two controls answering different questions: "is something running?" and
-          "did something break?". They are deliberately not merged — a task can finish
-          green while the import it ran left the branch in an error state.
-
-          Git status sits last, per the design: the bar reads in severity order, and the
-          control that has to be noticed from any page gets the edge slot. */}
       <TaskStatus />
 
       <GitStatus />
