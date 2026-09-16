@@ -54,6 +54,7 @@ never asked for. This is a structural guarantee, not a rendering choice.
 
 ```text
 RepositoryBranchStatusRow
+  __typename    string            ← required by NodeCore, which DataTable's generic constrains to
   id            string            ← SYNTHESISED from name.value (see below)
   name          string            ← name.value (RequiredStringValueField, always present)
   status        BranchStatus      ← status.value (StatusField, always present)
@@ -247,9 +248,9 @@ RepositoryBranchStatusError extends Error
 Thrown by the **use case**, derived from the GraphQL `extensions` payload against the frontend error
 catalogue, which already declares `ERROR_CODES.PERMISSION_DENIED` with a typed `PermissionDeniedData`.
 
-**Reuse the existing parsers.** `hasCatalogueCode` and `parseCatalogueError`
-(`shared/api/errors/error-handling.ts`) already do this parsing — the use case composes them rather
-than re-reading `extensions` by hand.
+**Reuse the existing parsers.** `hasCatalogueCode` (`shared/api/graphql/error-handling.ts`) already
+does this parsing, calling `parseCatalogueError` from `shared/api/errors/` — the use case composes it
+rather than re-reading `extensions` by hand.
 
 Verified against the merged backend: the resolver raises `PermissionDeniedError`, a
 `ForwardableError` with HTTP 403.
