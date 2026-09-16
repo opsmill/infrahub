@@ -15,9 +15,10 @@ to the repository list filtered to failures; it does not explain.
 The technical approach is deliberately conservative: reuse the existing generic count query
 for both lookups, extract the only genuinely new logic (five-state derivation) into a pure
 function with its own unit test, and copy the existing task indicator's structure for
-everything else. The single new abstraction is the derivation
-function, which exists because the spec's own acceptance criteria require distinguishing
-three data conditions, not because a second caller is imagined.
+everything else. Two small helpers are added: the derivation function, which exists because the spec's own
+acceptance criteria require distinguishing three data conditions rather than because a second
+caller is imagined, and a URL builder for the failing-repositories destination, which follows
+the slice's existing `ui/routing/` convention.
 
 ## Technical Context
 
@@ -40,7 +41,7 @@ in the number of repositories (SC-006).
 **Constraints**: Header layout must not shift between states (SC-004). No colour-only state
 distinction (FR-010). Branch name is deployment-configurable — never compare to a literal.
 
-**Scale/Scope**: 7 new files, 5 modified, no new E2E fixture repository (status set directly).
+**Scale/Scope**: 7 new files, 3 modified (plus `tests/e2e/conftest.py` only if a status-setting helper is shared), no new E2E fixture repository (status set directly).
 
 ## Constitution Check
 
@@ -167,9 +168,9 @@ Query keys come from the existing `objectQueryKeys.count(params)` and differ nat
 query library types beyond plain booleans and numbers:
 
 ```
-1. either pending   -> "loading"        never present an unconfirmed state (isPending, NOT isFetching)
-2. total errored    -> "check-failed"   nothing is known
-3. total === 0      -> "inert"          failing is a subset of empty; the failed lookup is irrelevant
+1. total errored    -> "check-failed"   nothing is known
+2. total === 0      -> "inert"          no repositories; the other lookup cannot change it
+3. either pending   -> "loading"        isPending, NOT isFetching
 4. failing errored  -> "check-failed"   repositories exist, health genuinely unknown (SC-007)
 5. failing > 0      -> "error"
 6. otherwise        -> "neutral"
@@ -248,14 +249,10 @@ does not leave a poisoned repository for other tests in the same session-scoped 
 
 These are deliberate, not oversights, and must survive into the pull request description:
 
-1. **The 10-second refetch is not asserted by any test.** No test in this codebase asserts a
-   `refetchInterval` fires — the existing task indicator has the same gap. A regression
-   changing `10_000` would not be caught. Fake-timer coverage is buildable if a reviewer
-   wants it, but would be the first of its kind here.
-2. **Branch-change-mid-flight is untested.** It is a TanStack Query cache-key guarantee
+1. **Branch-change-mid-flight is untested.** It is a TanStack Query cache-key guarantee
    rather than application logic; testing it would test the library. The guarantee holds only
    while the query stays keyed on the branch.
-3. **The control changes element type between states.** Inert renders a `Button`; every other
+2. **The control changes element type between states.** Inert renders a `Button`; every other
    state renders a `LinkButton`. React therefore remounts the subtree when a branch's
    repository count crosses zero with the page open — dropping focus if the control happened
    to be focused, and changing the accessible role from button to link with no announcement.
@@ -266,7 +263,7 @@ These are deliberate, not oversights, and must survive into the pull request des
    alternative, overriding the design system's `data-disabled:pointer-events-none` with an
    arbitrary variant, trades a rare focus loss for a permanent fight with the component library.
 
-4. **Partial-match filtering is safe incidentally, not structurally.** `addFiltersToRequest`
+3. **Partial-match filtering is safe incidentally, not structurally.** `addFiltersToRequest`
    sets `partial_match: true` for any `__value` filter. No current sync-status enum value
    contains `error-import` as a substring, so the count is exact today. A future enum value
    that did would silently inflate it. A comment at the filter construction site points at

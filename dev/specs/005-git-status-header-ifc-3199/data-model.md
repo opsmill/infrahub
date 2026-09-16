@@ -51,16 +51,16 @@ indefinitely.
 
 **Why this order:**
 
-- **Loading first** — the indicator must never present a resolved state it has not confirmed
-  (spec edge case: first load). A glyph that flashes neutral before turning red reads as a
-  glitch and trains operators to distrust it.
 - **A failed total lookup is unrecoverable** — without it nothing is known, so check-failed
   is the only honest state. This is also the permission-denied path, per the spec amendment.
-- **Inert outranks a failed failure-lookup** — this ordering is load-bearing and was wrong in
-  an earlier draft. If the total is zero, the failing count is necessarily zero: it counts a
-  subset of an empty set. The successful lookup fully determines the answer, so alarming
-  about the failed one would be a false alarm about a question that cannot matter. Rule 3
-  must therefore sit above rule 4, not below a combined "either errored" rule.
+- **A confirmed zero total answers the question outright** — the failing count is a subset of
+  an empty set, so neither its result nor its failure can change the answer. This sits above
+  the pending guard as well as the failing-error rule: waiting on a lookup whose outcome is
+  irrelevant would leave an empty deployment loading forever if that request hung. A total of
+  zero can only be read once the total has settled, so this never fires mid-flight.
+- **Nothing is claimed until both lookups have produced a value** — beyond the two rules
+  above, the indicator must never present a resolved state it has not confirmed. A glyph that
+  flashes neutral before turning red reads as a glitch and trains operators to distrust it.
 - **A failed failure-lookup, with repositories present, is genuinely unknown** — the
   application knows repositories exist but not whether any are broken. Neither `neutral` nor
   `error` is a fact in hand, so check-failed is correct here. This is the case SC-007 exists

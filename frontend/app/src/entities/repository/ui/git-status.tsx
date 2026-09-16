@@ -52,10 +52,7 @@ function GitStatusGlyph({ status }: { status: GitStatusValue }) {
 export function GitStatus() {
   const { currentBranch } = useCurrentBranch();
 
-  // Both lookups ask about the present, deliberately ignoring any time-frame selection: a
-  // historical "all clear" shown on a branch that is broken right now is the failure this
-  // indicator exists to prevent. The shared count hook inherits that selection, so the query
-  // options are composed here instead.
+  // Always query the current repository state, regardless of the selected time frame.
   const countOptions = (filters?: typeof REPOSITORY_ERROR_IMPORT_FILTER) =>
     getObjectsCountQueryOptions({
       objectKind: GENERIC_REPOSITORY_KIND,

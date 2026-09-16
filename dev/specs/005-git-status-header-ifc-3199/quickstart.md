@@ -70,8 +70,10 @@ Requires the local stack. No new fixture repository — the test sets an existin
 `sync_status` to the import-error value directly.
 
 ```bash
-# from the repository root; see the project's e2e instructions
-# the new test lives in tests/e2e/repository/
+# from the repository root — the suite boots its own stack from a local image
+uv run invoke dev.build
+INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false \
+  uv run pytest -c tests/e2e/pytest.ini tests/e2e/repository/test_git_status_header.py
 ```
 
 Expected: with a repository on the branch carrying the import-error status, the indicator is
