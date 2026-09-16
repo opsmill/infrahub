@@ -13,7 +13,7 @@ describe("CommitHash", () => {
     await expect.element(component.getByText("8f3c2a1", { exact: true })).toBeVisible();
   });
 
-  test("carries the full hash in its accessible name", async () => {
+  test("reveals the full hash on hover", async () => {
     const component = await render(<CommitHash hash={HASH} />);
 
     await expect.element(component.getByTitle(HASH, { exact: true })).toBeVisible();

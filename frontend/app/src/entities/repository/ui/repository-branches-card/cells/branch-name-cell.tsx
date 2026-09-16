@@ -8,11 +8,12 @@ import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls"
 interface BranchNameCellProps {
   name: string;
   isDefault: boolean;
+  role?: React.AriaRole;
 }
 
-export function BranchNameCell({ name, isDefault }: BranchNameCellProps) {
+export function BranchNameCell({ name, isDefault, role }: BranchNameCellProps) {
   return (
-    <TableCell className="font-medium">
+    <TableCell className="font-medium" role={role}>
       <Tooltip message={name}>
         <LinkButton
           variant="ghost"

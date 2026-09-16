@@ -34,6 +34,9 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
   gridTemplateColumns?: (columnCount: number) => string;
   skeletonRowCount?: number;
   skeletonShowSelection?: boolean;
+  // Opt in only where every column also carries `role="cell"` / `role="columnheader"`: a table whose
+  // rows own no cells reads worse than no table semantics at all.
+  semanticTable?: boolean;
 }
 
 // `fit-content` keeps short columns shrink-to-fit while capping long ones. A bare
@@ -55,6 +58,7 @@ export function DataTable<T extends NodeCore>({
   gridTemplateColumns = defaultGridTemplateColumns,
   skeletonRowCount,
   skeletonShowSelection,
+  semanticTable = false,
   ...props
 }: DataTableProps<T>) {
   const { isAuthenticated } = useAuth();
@@ -88,24 +92,40 @@ export function DataTable<T extends NodeCore>({
 
   const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);
 
+  const headerCells = allHeaders.map((header) => {
+    return flexRender(header.column.columnDef.header, {
+      ...header.getContext(),
+      key: header.id,
+    });
+  });
+
   // `min-w-max` stops the grid from being squeezed into its scroll container.
   // Without it the tracks compress until columns are unreadably narrow instead of
   // keeping their width and letting the table scroll horizontally.
   return (
-    <div role="table" className="grid min-w-max content-start" style={style} {...props}>
-      {allHeaders.map((header) => {
-        return flexRender(header.column.columnDef.header, {
-          ...header.getContext(),
-          key: header.id,
-        });
-      })}
+    <div
+      role={semanticTable ? "table" : undefined}
+      className="grid min-w-max content-start"
+      style={style}
+      {...props}
+    >
+      {semanticTable ? (
+        // biome-ignore lint/a11y/useFocusableInteractive: rows are focusable only inside a grid/treegrid; this is a static table, so they stay out of the tab order.
+        <div role="row" className="contents">
+          {headerCells}
+        </div>
+      ) : (
+        headerCells
+      )}
 
       {allRows.map((row) => {
         return (
-          // The grid is a table semantically, so rows carry `role="row"` under the container's
-          // `role="table"` — an orphan row role is invalid ARIA and reads inconsistently.
-          // biome-ignore lint/a11y/useFocusableInteractive: rows are interactive only inside a grid/treegrid; this is a static table, so they stay out of the tab order.
-          <div key={row.id} role="row" className="group contents" data-testid="data-table-row">
+          <div
+            key={row.id}
+            role={semanticTable ? "row" : undefined}
+            className="group contents"
+            data-testid="data-table-row"
+          >
             {row.getVisibleCells().map((cell) => {
               return flexRender(cell.column.columnDef.cell, {
                 ...cell.getContext(),

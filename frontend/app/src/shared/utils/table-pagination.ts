@@ -2,7 +2,11 @@ import { formatNumberDisplay } from "@/shared/utils/number";
 
 export const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 
-export const DEFAULT_PAGE_SIZE = 20;
+export const DEFAULT_PAGE_SIZE = 10;
+
+// The smallest page a table can be asked for, and so the most height it can reserve against a
+// short last page without leaving dead space at the default.
+export const SMALLEST_PAGE_SIZE = PAGE_SIZE_OPTIONS[0];
 
 export type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 

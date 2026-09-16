@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { RepositoryBranchesCardBoundary } from "@/entities/repository/ui/repository-branches-card/repository-branches-card-boundary";
 
@@ -9,10 +9,14 @@ function Exploding(): never {
 }
 
 describe("RepositoryBranchesCardBoundary", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   test("renders what it wraps while nothing fails", async () => {
     // WHEN
     const component = await render(
-      <RepositoryBranchesCardBoundary>
+      <RepositoryBranchesCardBoundary resetKeys={["repo-1", 1, 10]}>
         <p>feature-auth</p>
       </RepositoryBranchesCardBoundary>
     );
@@ -30,7 +34,7 @@ describe("RepositoryBranchesCardBoundary", () => {
       <div>
         <h2>Repository details</h2>
 
-        <RepositoryBranchesCardBoundary>
+        <RepositoryBranchesCardBoundary resetKeys={["repo-1", 1, 10]}>
           <Exploding />
         </RepositoryBranchesCardBoundary>
       </div>
@@ -43,7 +47,31 @@ describe("RepositoryBranchesCardBoundary", () => {
     await expect
       .element(component.getByRole("heading", { name: "Repository details" }))
       .toBeVisible();
+  });
 
-    vi.restoreAllMocks();
+  test("shows the next page of branches once the query inputs move on", async () => {
+    // GIVEN a card left in its failed state by a row that threw
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const component = await render(
+      <RepositoryBranchesCardBoundary resetKeys={["repo-1", 1, 10]}>
+        <Exploding />
+      </RepositoryBranchesCardBoundary>
+    );
+    await expect
+      .element(component.getByText("The branches could not be loaded", { exact: true }))
+      .toBeVisible();
+
+    // WHEN the page changes and the new row set renders
+    await component.rerender(
+      <RepositoryBranchesCardBoundary resetKeys={["repo-1", 2, 10]}>
+        <p>release-2-0</p>
+      </RepositoryBranchesCardBoundary>
+    );
+
+    // THEN
+    await expect.element(component.getByText("release-2-0", { exact: true })).toBeVisible();
+    expect(
+      component.getByText("The branches could not be loaded", { exact: true }).elements()
+    ).toHaveLength(0);
   });
 });

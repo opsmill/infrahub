@@ -3,7 +3,10 @@ import { GraphQLError } from "graphql";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { getRepositoryBranchStatusFromApi } from "@/entities/repository/api/get-repository-branch-status-from-api";
-import { RepositoryBranchesCard } from "@/entities/repository/ui/repository-branches-card/repository-branches-card";
+import {
+  PAGINATION_URL_KEY,
+  RepositoryBranchesCard,
+} from "@/entities/repository/ui/repository-branches-card/repository-branches-card";
 import { RepositoryBranchesEmpty } from "@/entities/repository/ui/repository-branches-card/repository-branches-empty";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
@@ -11,6 +14,7 @@ import { render } from "../../../../../tests/components/render";
 import { generateBranch } from "../../../../../tests/fake/branch";
 import { generateInventedDropdown } from "../../../../../tests/fake/dropdown";
 import {
+  BRANCH_NAMES_BEFORE,
   generateReadOnlyRepositoryBranchStatus,
   generateRepositoryBranchStatus,
   generateRepositoryBranchStatusPage,
@@ -73,6 +77,7 @@ function asRenderedColour(colour: string): string {
 describe("RepositoryBranchesCard", () => {
   beforeEach(() => {
     apiMock.mockReset();
+    window.history.replaceState(null, "", window.location.pathname);
   });
 
   test("renders the branches one request returned and states the server's own total", async () => {
@@ -87,12 +92,12 @@ describe("RepositoryBranchesCard", () => {
     await expectServerDrivenChange({
       apiMock,
       callIndex: 0,
-      variables: { branchName: CURRENT_BRANCH, id: REPOSITORY_ID, limit: 20, offset: 0 },
+      variables: { branchName: CURRENT_BRANCH, id: REPOSITORY_ID, limit: 10, offset: 0 },
       payload: toApiResult(payload),
       rowVisibleAfter: "feature-auth",
     });
     await expect.element(component.getByRole("status", { name: "45 branches" })).toBeVisible();
-    expect(component.getByRole("row").elements()).toHaveLength(3);
+    expect(component.getByRole("row").elements()).toHaveLength(BRANCH_NAMES_BEFORE.length + 1);
   });
 
   test("replaces the rows on a page change and on a page-size change", async () => {
@@ -109,7 +114,7 @@ describe("RepositoryBranchesCard", () => {
     await expectServerDrivenChange({
       apiMock,
       callIndex: 0,
-      variables: { branchName: CURRENT_BRANCH, id: REPOSITORY_ID, limit: 20, offset: 0 },
+      variables: { branchName: CURRENT_BRANCH, id: REPOSITORY_ID, limit: 10, offset: 0 },
       payload: toApiResult(firstPage),
       rowVisibleAfter: "feature-auth",
     });
@@ -119,7 +124,7 @@ describe("RepositoryBranchesCard", () => {
     await expectServerDrivenChange({
       apiMock,
       callIndex: 1,
-      variables: { branchName: CURRENT_BRANCH, id: REPOSITORY_ID, limit: 20, offset: 20 },
+      variables: { branchName: CURRENT_BRANCH, id: REPOSITORY_ID, limit: 10, offset: 10 },
       payload: toApiResult(secondPage),
       rowVisibleAfter: "release-2-0",
     });
@@ -127,13 +132,13 @@ describe("RepositoryBranchesCard", () => {
 
     // WHEN
     await component.getByRole("button", { name: /Rows per page/ }).click();
-    await component.getByRole("option", { name: "10" }).click();
+    await component.getByRole("option", { name: "20" }).click();
 
     // THEN
     await expectServerDrivenChange({
       apiMock,
       callIndex: 2,
-      variables: { branchName: CURRENT_BRANCH, id: REPOSITORY_ID, limit: 10, offset: 0 },
+      variables: { branchName: CURRENT_BRANCH, id: REPOSITORY_ID, limit: 20, offset: 0 },
       payload: toApiResult(firstPage),
       rowVisibleAfter: "feature-auth",
     });
@@ -151,7 +156,7 @@ describe("RepositoryBranchesCard", () => {
 
     // THEN
     await expect
-      .element(component.getByText("Showing 1 to 20 of 45", { exact: true }))
+      .element(component.getByText("Showing 1 to 10 of 45", { exact: true }))
       .toBeVisible();
   });
 
@@ -164,6 +169,37 @@ describe("RepositoryBranchesCard", () => {
 
     // THEN
     await expect.element(component.getByText("Showing 1 to 3 of 3", { exact: true })).toBeVisible();
+  });
+
+  test("reserves a page of height so a short last page does not move the page below it", async () => {
+    // GIVEN a set larger than one page, whose last page holds fewer rows than a full one
+    apiMock.mockResolvedValue(
+      toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
+    );
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN the table keeps the height of a full page — header row included — however few rows
+    // the current page returned
+    await expect
+      .element(component.getByText("Showing 1 to 10 of 45", { exact: true }))
+      .toBeVisible();
+    const table = component.getByRole("table").element();
+    expect(table.parentElement?.style.minHeight).toBe(`${(10 + 1) * 40}px`);
+  });
+
+  test("reserves no height when every row fits on one page", async () => {
+    // GIVEN a set that fits one page, so no paging can shorten it
+    apiMock.mockResolvedValue(toApiResult(generateRepositoryBranchStatusPayloadBefore()));
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN nothing is reserved, so the card does not carry dead space
+    await expect.element(component.getByText("Showing 1 to 3 of 3", { exact: true })).toBeVisible();
+    const table = component.getByRole("table").element();
+    expect(table.parentElement?.style.minHeight).toBe("");
   });
 
   test("renders the chip label and colour the payload supplied for that branch", async () => {
@@ -261,9 +297,27 @@ describe("RepositoryBranchesCard", () => {
 
     // THEN
     await expect.element(component.getByRole("table")).toBeVisible();
-    expect(component.getByRole("row").elements()).toHaveLength(0);
+    expect(component.getByRole("cell").elements()).toHaveLength(0);
     expect(component.getByRole("checkbox").elements()).toHaveLength(0);
     expect(component.getByText("No data").elements()).toHaveLength(0);
+  });
+
+  test("says a read-only repository has no branches at all when the server returns none", async () => {
+    // GIVEN a kind whose row set is every branch, so an empty set cannot be about Git sync
+    apiMock.mockResolvedValue(toApiResult(generateRepositoryBranchStatusPage({ rows: [] })));
+
+    // WHEN
+    const component = await renderCard(readOnlyRepositorySchema);
+
+    // THEN
+    await expect
+      .element(component.getByText("This repository has no branches", { exact: true }))
+      .toBeVisible();
+    expect(
+      component
+        .getByText("No branch of this repository synchronises with Git", { exact: true })
+        .elements()
+    ).toHaveLength(0);
   });
 
   test("says the repository has no branch in scope when the server returns none", async () => {
@@ -281,9 +335,29 @@ describe("RepositoryBranchesCard", () => {
       .toBeVisible();
   });
 
+  test("leaves a way back when the url asks for a page past the last one", async () => {
+    // GIVEN a url pointing beyond the end of a set that does hold branches
+    window.history.replaceState(null, "", `?${PAGINATION_URL_KEY}_page=9`);
+    apiMock.mockResolvedValue(
+      toApiResult(generateRepositoryBranchStatusPage({ rows: [], count: 45 }))
+    );
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN the paging controls stay, and the card does not claim the repository has no branch
+    await expect.element(component.getByRole("navigation", { name: "Pagination" })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Previous page" })).toBeEnabled();
+    expect(
+      component
+        .getByText("No branch of this repository synchronises with Git", { exact: true })
+        .elements()
+    ).toHaveLength(0);
+  });
+
   test("says no branch matches the filters when a filter is set", async () => {
     // WHEN
-    const component = await render(<RepositoryBranchesEmpty hasFilters />);
+    const component = await render(<RepositoryBranchesEmpty hasFilters listsEveryBranch={false} />);
 
     // THEN
     await expect
@@ -357,6 +431,9 @@ describe("RepositoryBranchesCard", () => {
     const component = await renderCard();
 
     // THEN
+    await expect
+      .element(component.getByText("The branches could not be loaded", { exact: true }))
+      .toBeVisible();
     await expect.element(component.getByRole("heading", { name: "Branches" })).toBeVisible();
     expect(component.getByRole("row").elements()).toHaveLength(0);
   });

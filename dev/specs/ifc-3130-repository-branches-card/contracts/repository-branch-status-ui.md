@@ -41,7 +41,10 @@ the stub serves placeholder values — the resolver raises it for any of the thr
 rows, and the frozen SDL says so in terms. So the failure mode being prevented is a **loud whole-card
 failure**, not a silently-wrong row set.
 
-> IFC-3130's Jira description says these are "accepted but ignored". That is wrong; the contract wins.
+> IFC-3130's Jira description says these are "accepted but ignored", so that a filter "appears to do
+> nothing". That contradicts the frozen SDL and the resolver. **The ticket is wrong and needs editing
+> by its owner** — tracked as open question Q6 in [plan.md](../plan.md). The contract is what this
+> feature is built against.
 
 They are **deferred, not dropped** — once IFC-3127 lifts the restriction they become buildable as
 follow-on work outside this spec.
@@ -146,21 +149,26 @@ something false. They differ by **component**, not by a hand-written string.
 
 ## 4. Card states (FR-023)
 
-Four distinguishable states. Each has exactly one component, so no two can render the same text.
+Four distinguishable states — loading, populated, empty and failed — each with exactly one component,
+so no two can render the same text. Empty and failed each split in two by cause.
 
 | State | Component | Copy | Distinguishing fact |
 |---|---|---|---|
 | Loading | `ObjectTableSkeleton`, `rowCount` = the current page size | — | Occupies its space; **no layout jump** when rows arrive |
 | Populated | `DataTable` + `TablePagination` | — | Rows, the count pill, and the window statement |
 | Empty — no match | `NoDataFound` | `No branch matches these filters` | Follows a filter the user set |
-| Empty — none in scope | `NoDataFound` | `No branch of this repository synchronises with Git` | The repository genuinely has no in-scope branches — a different fact from "your filter matched nothing" |
+| Empty — none in scope, `CoreRepository` | `NoDataFound` | `No branch of this repository synchronises with Git` | The row set *is* the `sync_with_git` branches, so an empty set means none of them syncs |
+| Empty — none in scope, `CoreReadOnlyRepository` | `NoDataFound` | `This repository has no branches` | The row set is **every** branch (§5), so an empty set means there are no branches at all — the Git-sync wording would state something false |
 | Failed — denied | `UnauthorizedScreen` (with a `className` override; its default is page-shaped `flex-1 p-8`) | `You do not have permission to view this repository's branches` | The user is told they cannot see the list |
 | Failed — other | `ErrorScreen` (same override) | `The branches could not be loaded` | A failure distinct from both empty and loading |
 
 **The strings are pinned here deliberately.** The canvas draws none of these states, so left
 unspecified the components' defaults would silently become the user-facing copy — including the
-"no branch synchronises with Git" case, which is specific enough that a generic default would be
-actively misleading. Pinning them here lets copy be reviewed without reading code.
+none-in-scope case, which is specific enough that a generic default would be actively misleading.
+Pinning them here lets copy be reviewed without reading code.
+
+**The none-in-scope string is per kind**, because the row-set rule is (§5). A single Git-sync string
+is correct on `CoreRepository` and false on `CoreReadOnlyRepository`. Every other string is shared.
 
 **A failure here must not blank the rest of the page** (FR-024) — both details cards continue to
 render while the branches query is failed. This holds for query failures by construction (the throw
@@ -182,6 +190,7 @@ without it such a failure propagates to `error-boundary-router` and blanks the w
 | Row set | branches with `sync_with_git` true | **every** branch, including those with Git sync disabled |
 | `ref` column | absent (`ref` is null) | present — the ref that branch tracks |
 | Columns | Branch · *`sync_status`'s schema label* · Commit | Branch · *`sync_status`'s schema label* · Commit · Ref |
+| None-in-scope empty copy (§4) | `No branch of this repository synchronises with Git` | `This repository has no branches` |
 | E2E coverage | yes (FR-026) | **no — deliberately** (FR-027) |
 
 **FR-027 is a recorded gap, not an oversight.** The e2e data set contains no `CoreReadOnlyRepository`;

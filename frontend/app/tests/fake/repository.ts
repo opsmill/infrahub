@@ -49,8 +49,6 @@ export const generateReadOnlyRepositoryBranchStatus = (
 ): RepositoryBranchStatusWire =>
   generateRepositoryBranchStatus({ ref: { value: "refs/tags/v1.4.2" }, ...overrides });
 
-// Every nullable field absent as a field, not merely carrying a null value — the two are different
-// wire shapes and the mapper's guards have to survive both.
 export const generateSparseRepositoryBranchStatus = (
   overrides?: Partial<RepositoryBranchStatusWire>
 ): RepositoryBranchStatusWire =>

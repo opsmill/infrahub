@@ -62,6 +62,7 @@ const renderTable = (schema: ModelSchema, nodes: RepositoryBranchStatusWire[]) =
       columns={getRepositoryBranchesColumns(schema)}
       data={toRows(nodes)}
       gridTemplateColumns={branchesGridTemplateColumns}
+      semanticTable
     />
   );
 

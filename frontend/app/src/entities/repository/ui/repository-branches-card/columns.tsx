@@ -27,9 +27,9 @@ function getSyncStatusColumn(
 ): ColumnDef<RepositoryBranchStatusRow, unknown> {
   return columnHelper.display({
     id: "sync_status",
-    header: () => <TableColumnHeaderSimple columnSchema={columnSchema} />,
+    header: () => <TableColumnHeaderSimple columnSchema={columnSchema} role="columnheader" />,
     cell: ({ row }) => (
-      <TableCell>
+      <TableCell role="cell">
         {row.original.syncStatus && <DropdownCell dropdown={row.original.syncStatus} />}
       </TableCell>
     ),
@@ -41,9 +41,9 @@ function getCommitColumn(
 ): ColumnDef<RepositoryBranchStatusRow, unknown> {
   return columnHelper.display({
     id: "commit",
-    header: () => <TableColumnHeaderSimple columnSchema={columnSchema} />,
+    header: () => <TableColumnHeaderSimple columnSchema={columnSchema} role="columnheader" />,
     cell: ({ row }) => (
-      <TableCell>
+      <TableCell role="cell">
         {row.original.commit && <CommitHash hash={row.original.commit} copyable={false} />}
       </TableCell>
     ),
@@ -55,9 +55,9 @@ function getRefColumn(
 ): ColumnDef<RepositoryBranchStatusRow, unknown> {
   return columnHelper.display({
     id: "ref",
-    header: () => <TableColumnHeaderSimple columnSchema={columnSchema} />,
+    header: () => <TableColumnHeaderSimple columnSchema={columnSchema} role="columnheader" />,
     cell: ({ row }) => (
-      <TableCell>
+      <TableCell role="cell">
         <span className="truncate">{row.original.ref}</span>
       </TableCell>
     ),
@@ -76,9 +76,11 @@ export function getRepositoryBranchesColumns(
   return [
     columnHelper.display({
       id: "name",
-      header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.name} />,
+      header: () => (
+        <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.name} role="columnheader" />
+      ),
       cell: ({ row }) => (
-        <BranchNameCell name={row.original.name} isDefault={row.original.isDefault} />
+        <BranchNameCell name={row.original.name} isDefault={row.original.isDefault} role="cell" />
       ),
     }),
     ...(syncStatus ? [getSyncStatusColumn(syncStatus)] : []),

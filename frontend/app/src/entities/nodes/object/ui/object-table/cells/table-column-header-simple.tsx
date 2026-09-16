@@ -10,9 +10,14 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 export interface TableColumnHeaderSimpleProps {
   columnSchema: AttributeSchema | RelationshipSchema;
   className?: string;
+  role?: React.AriaRole;
 }
 
-export function TableColumnHeaderSimple({ columnSchema, className }: TableColumnHeaderSimpleProps) {
+export function TableColumnHeaderSimple({
+  columnSchema,
+  className,
+  role,
+}: TableColumnHeaderSimpleProps) {
   const isRelationship = isRelationshipSchema(columnSchema);
   const { schema: peerSchema } = useSchema(isRelationship ? columnSchema.peer : undefined);
   const label = isRelationship
@@ -20,7 +25,7 @@ export function TableColumnHeaderSimple({ columnSchema, className }: TableColumn
     : (columnSchema.label ?? columnSchema.name);
 
   return (
-    <div className={classNames(cellsStyle, cellHeaderStyle, className)}>
+    <div role={role} className={classNames(cellsStyle, cellHeaderStyle, className)}>
       <FieldSchemaIcon fieldSchema={columnSchema} />
       <span className="mr-2 truncate">{label}</span>
     </div>

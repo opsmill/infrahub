@@ -7,16 +7,21 @@ import { BRANCHES_LOAD_FAILED } from "@/entities/repository/ui/repository-branch
 
 interface RepositoryBranchesCardBoundaryProps {
   children: ReactNode;
+  // The query inputs behind the rendered rows: a failure caused by one row's data can only clear
+  // once a different row set is asked for, so re-rendering the same page must stay failed.
+  resetKeys: Array<string | number>;
 }
 
-// Without a card-scoped boundary a render-time failure in a row reaches the router's boundary and
-// blanks the whole repository page, taking the details cards with it.
-export function RepositoryBranchesCardBoundary({ children }: RepositoryBranchesCardBoundaryProps) {
+export function RepositoryBranchesCardBoundary({
+  children,
+  resetKeys,
+}: RepositoryBranchesCardBoundaryProps) {
   return (
     <ErrorBoundary
       fallbackRender={() => (
         <ErrorScreen className="flex-none py-12" message={BRANCHES_LOAD_FAILED} />
       )}
+      resetKeys={resetKeys}
     >
       {children}
     </ErrorBoundary>

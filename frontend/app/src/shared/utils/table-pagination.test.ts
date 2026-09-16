@@ -19,8 +19,8 @@ describe("page sizes", () => {
     expect(PAGE_SIZE_OPTIONS).toEqual([10, 20, 50]);
   });
 
-  test("defaults to 20", () => {
-    expect(DEFAULT_PAGE_SIZE).toBe(20);
+  test("defaults to 10", () => {
+    expect(DEFAULT_PAGE_SIZE).toBe(10);
   });
 
   test("accepts an offered size", () => {
