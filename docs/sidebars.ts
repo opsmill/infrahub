@@ -68,17 +68,10 @@ const sidebars: SidebarsConfig = {
       collapsible: false,
       collapsed: false,
       items: [
-        {
-          type: 'category',
-          label: 'Infrahub Labs',
-          link: { type: 'doc', id: 'learn/labs/overview' }, // hub
-          items: [
-            { type: 'doc', id: 'learn/labs/fundamentals-to-expert', label: 'Infrahub: Fundamentals to Expert' },
-            { type: 'doc', id: 'learn/labs/infrahub-introduction', label: 'First Tour of Infrahub' },
-            { type: 'doc', id: 'learn/labs/schema-deep-dive', label: 'Schema Deep Dive' },
-            'learn/labs/deploy-first-configuration',
-          ],
-        },
+        // Every lab is described in full in the labs catalogue, which also
+        // covers labs outside this repository, so there are no per-lab pages
+        // here to list.
+        { type: 'link', label: 'Infrahub Labs', href: 'https://docs.infrahub.app/labs' },
         {
           type: 'category',
           label: 'Tutorials',
