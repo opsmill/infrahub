@@ -63,8 +63,8 @@ export class RepositoryBranchStatusError extends Error {
   }
 }
 
-// `DropdownCell` renders a chip from a non-null dropdown, so a dropdown with no value collapses to
-// null here rather than reaching the cell as a half-populated object.
+// A dropdown with no value is not a selection, so it collapses to null rather than travelling on as
+// a half-populated object.
 function toDropdown(
   dropdown: RepositoryBranchStatusDropdown | null | undefined
 ): RepositoryBranchStatusDropdown | null {

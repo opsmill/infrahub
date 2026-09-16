@@ -48,7 +48,7 @@ describe("TablePagination", () => {
     const component = await render(<PagedCard totalCount={totalCount} />);
 
     // THEN
-    await expect.element(component.getByText("Showing 1 to 20 of 45")).toBeVisible();
+    await expect.element(component.getByText("Showing 1 to 10 of 45")).toBeVisible();
   });
 
   test("marks the page being shown as the current one", async () => {
@@ -75,7 +75,7 @@ describe("TablePagination", () => {
     await component.getByRole("button", { name: "Next page" }).click();
 
     // THEN
-    await expect.element(component.getByText("Branch 21", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("Branch 11", { exact: true })).toBeVisible();
     await expect.element(component.getByText("Branch 1", { exact: true })).not.toBeInTheDocument();
   });
 
@@ -87,7 +87,7 @@ describe("TablePagination", () => {
     await component.getByRole("button", { name: "Next page" }).click();
 
     // THEN
-    await expect.element(component.getByRole("status")).toHaveTextContent("Showing 21 to 40 of 45");
+    await expect.element(component.getByRole("status")).toHaveTextContent("Showing 11 to 20 of 45");
   });
 
   test("goes back to the previous page", async () => {
@@ -99,7 +99,7 @@ describe("TablePagination", () => {
 
     // THEN
     await expect.element(component.getByText("Branch 1", { exact: true })).toBeVisible();
-    await expect.element(component.getByText("Showing 1 to 20 of 45")).toBeVisible();
+    await expect.element(component.getByText("Showing 1 to 10 of 45")).toBeVisible();
   });
 
   test("jumps to a page chosen directly", async () => {
@@ -107,7 +107,7 @@ describe("TablePagination", () => {
     const component = await render(<PagedCard totalCount={45} />);
 
     // WHEN
-    await component.getByRole("button", { name: "Page 3" }).click();
+    await component.getByRole("button", { name: "Page 5" }).click();
 
     // THEN
     await expect.element(component.getByText("Branch 41", { exact: true })).toBeVisible();
@@ -130,7 +130,7 @@ describe("TablePagination", () => {
     const totalCount = 45;
 
     // WHEN
-    const component = await render(<PagedCard initialPage={3} totalCount={totalCount} />);
+    const component = await render(<PagedCard initialPage={5} totalCount={totalCount} />);
 
     // THEN
     await expect.element(component.getByRole("button", { name: "Next page" })).toBeDisabled();

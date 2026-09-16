@@ -10,13 +10,13 @@ disagreed it picks and says why. It is the input to `/speckit-plan`.
 All three verified source rather than trusting `research.md`. Four corrections, now authoritative:
 
 1. **`renderAt` is not exported** from `frontend/app/tests/components/render.tsx`. It is a private
-   helper in `src/shared/components/ui/link-tab.test.tsx:9`, and it overrides the whole wrapper —
+   helper in `src/shared/components/ui/link-tab.test.tsx`, and it overrides the whole wrapper —
    which drops NuqsAdapter, jotai, QueryClient and BranchContext. `research.md` §7 said otherwise
    and is wrong. URL-driven tests must instead drive `window.history` under the default
    `BrowserRouter` and reset it in `afterEach`, which is the only shape that keeps the nuqs adapter
    wired.
 2. **`DataTable` renders its own count footer** whenever `count !== undefined`
-   (`data-table.tsx:116-134`, rendering "N counts"). It would collide with FR-010a's window
+   (`data-table.tsx`, rendering "N counts"). It would collide with FR-010a's window
    statement. **Do not pass `count`.**
 3. **The generated gql.tada files live at** `frontend/app/src/shared/api/graphql/generated/`, and
    the **e2e suite is at repo-root `tests/e2e/`**, not under `frontend/app/`.
@@ -133,18 +133,19 @@ almost every element. **Only one new primitive is justified.**
 
 | Need | Use | Verdict |
 |---|---|---|
-| Card header: title + count pill + caption | `Content.CardTitle` — `{title, description, end, badgeContent, reload, isReloadLoading}` (`shared/components/layout/content.tsx:63`) | USE WITH PROPS — `badgeContent` is the count; caption goes in `end` for right alignment. Live example: `entities/branches/ui/branches-list.tsx:23` |
-| `default` row marker | `BranchDefaultBadge` (`entities/branches/ui/branch-list-item/branch-default-badge.tsx:4`) — already renders the literal `default` | USE AS-IS |
-| Branch link target | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` (`entities/branches/ui/routing/branch-urls.ts:5`) | USE AS-IS |
-| Branch link cell | Compose `Tooltip` + `LinkButton href={getBranchDetailsUrl(name)}` — the pattern at `branches-table/cells/branch-name-cell.tsx:39-50` | EXTEND, do not reuse the cell: it hard-depends on `useAuth()`, `StickyLeftCell` and a selection checkbox |
-| Search field | `SearchInput` — `{value, onChange, placeholder, onPressReset, ...}` (`shared/components/inputs/search-input.tsx:80`), pure and controlled, plus `useDebounce` (`shared/hooks/useDebounce.ts`) | USE AS-IS |
-| Branch-status filter | `BranchStatusEnum` — `{value: BranchStatus \| null, onChange, defaultOpen?}` (`entities/branches/ui/filters/branch-status-enum.tsx:14`), fully controlled | USE AS-IS with card-scoped state |
-| Empty state | `NoDataFound` — `{message?, icon?}` (`shared/components/errors/no-data-found.tsx:12`), already `col-span-full py-12` | USE AS-IS — card-safe |
-| Permission-denied state | `UnauthorizedScreen` — `{className?, message?, icon?}` (`shared/components/errors/unauthorized-screen.tsx:15`) | USE WITH PROPS — page-shaped `flex-1 p-8`, needs a `className` override |
-| Error state | `ErrorScreen` — `{className?, message?, icon?, hideIcon?}` (`shared/components/errors/error-screen.tsx:15`) | USE WITH PROPS — same override |
-| Loading state | `ObjectTableSkeleton` — `{headerCount: number}` (`entities/nodes/object/ui/object-table/object-table-skeleton.tsx:12`) | USE AS-IS — emits bare grid cells, valid only inside the grid table |
-| Info icon beside a value | `Tooltip` from `@infrahub/ui` with `nonInteractiveTrigger` + `InfoIcon` — pattern at `entities/branches/ui/branch-details/branch-attributes.tsx:47` | USE AS-IS |
-| Copy affordance, full hash in a details row | `CopyToClipboardButton` — `{data, ...AriaButtonProps}` (`shared/components/buttons/copy-to-clipboard-button.tsx:11`), already wrapped in a `Copied!`/`Copy` Tooltip | USE AS-IS |
+| Branches card header: title + count pill | `Content.CardTitle` — `{title, description, end, badgeContent, reload, isReloadLoading}` (`shared/components/layout/content.tsx::CardTitle`) | USE WITH PROPS — `badgeContent` is the count. Live example: `entities/branches/ui/branches-list.tsx` |
+| Details card header: title + branch-name caption | **Not `Content.CardTitle`** — the local `RepositoryDetailsCard` composes `Card` + `CardHeader` with an `<h2>` and a `caption` paragraph beneath it | LOCAL WRAPPER — neither `end` (right-aligned beside the title) nor `description` is the beneath-the-title caption slot FR-018 needs, and `Content.CardTitle` is a page-level title inside a card. See D1 in [plan.md](plan.md) |
+| `default` row marker | `BranchDefaultBadge` (`entities/branches/ui/branch-list-item/branch-default-badge.tsx`) — already renders the literal `default` | USE AS-IS |
+| Branch link target | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` (`entities/branches/ui/routing/branch-urls.ts`) | USE AS-IS |
+| Branch link cell | Compose `Tooltip` + `LinkButton href={getBranchDetailsUrl(name)}` — the pattern in `branches-table/cells/branch-name-cell.tsx` | EXTEND, do not reuse the cell: it hard-depends on `useAuth()`, `StickyLeftCell` and a selection checkbox |
+| Search field | `SearchInput` — `{value, onChange, placeholder, onPressReset, ...}` (`shared/components/inputs/search-input.tsx`), pure and controlled, plus `useDebounce` (`shared/hooks/useDebounce.ts`) | USE AS-IS |
+| Branch-status filter | `BranchStatusEnum` — `{value: BranchStatus \| null, onChange, defaultOpen?}` (`entities/branches/ui/filters/branch-status-enum.tsx`), fully controlled | USE AS-IS with card-scoped state |
+| Empty state | `NoDataFound` — `{message?, icon?}` (`shared/components/errors/no-data-found.tsx`), already `col-span-full py-12` | USE AS-IS — card-safe |
+| Permission-denied state | `UnauthorizedScreen` — `{className?, message?, icon?}` (`shared/components/errors/unauthorized-screen.tsx`) | USE WITH PROPS — page-shaped `flex-1 p-8`, needs a `className` override |
+| Error state | `ErrorScreen` — `{className?, message?, icon?, hideIcon?}` (`shared/components/errors/error-screen.tsx`) | USE WITH PROPS — same override |
+| Loading state | `ObjectTableSkeleton` — `{headerCount: number}` (`entities/nodes/object/ui/object-table/object-table-skeleton.tsx`) | USE AS-IS — emits bare grid cells, valid only inside the grid table |
+| Info icon beside a value | `Tooltip` from `@infrahub/ui` with `nonInteractiveTrigger` + `InfoIcon` — pattern in `entities/branches/ui/branch-details/branch-attributes.tsx` | USE AS-IS |
+| Copy affordance, full hash in a details row | `CopyToClipboardButton` — `{data, ...AriaButtonProps}` (`shared/components/buttons/copy-to-clipboard-button.tsx`), already wrapped in a `Copied!`/`Copy` Tooltip | USE AS-IS |
 
 **`UnauthorizedScreen` existing is what makes FR-023's denied-vs-empty distinction cheap** — the
 states differ by component, not by a hand-written string.
@@ -152,7 +153,7 @@ states differ by component, not by a hand-written string.
 ### The one new primitive: `CommitHash`
 
 Nothing in the app renders a monospace, truncating, short-form hash. The only `font-mono` usage is
-`entities/path-traversal/ui/infra-node.tsx:91`, and there is no short-hash helper anywhere.
+`entities/path-traversal/ui/infra-node.tsx`, and there is no short-hash helper anywhere.
 `src/shared/components/display/commit-hash.tsx` is justified, and per the repo's own anti-pattern
 rule a new shared primitive **must be justified in the PR description and added to
 `shared-components.md`** — folded into FR-028's documentation requirement.
@@ -163,11 +164,11 @@ table cells.
 
 ### Reuse traps found (beyond the two already known)
 
-1. `FilterSearchInput` (`entities/nodes/object/ui/filters/filter-search-input.tsx:15`) — the
-   component already used with the exact placeholder `"Search branches"` at `branches-list.tsx:40`,
+1. `FilterSearchInput` (`entities/nodes/object/ui/filters/filter-search-input.tsx`) — the
+   component already used with the exact placeholder `"Search branches"` in `branches-list.tsx`,
    and therefore the obvious thing to grab. It writes global `QSP.FILTER` via `useSearch` →
    `useFilters`. Use the underlying `SearchInput` instead.
-2. `useFilters()` (`entities/nodes/filters/ui/hooks/use-filters.ts:8`) infects `FilterSearchInput`,
+2. `useFilters()` (`entities/nodes/filters/ui/hooks/use-filters.ts`) infects `FilterSearchInput`,
    `BranchesEmpty`, `BranchStatusFilterForm`, `BranchStatusHeader` **and `BranchesTable` itself**.
 3. `BranchesTable` takes **zero props** — filters, columns and empty state are all hardcoded, so it
    cannot be reused in a card. `BranchesDataTable` *is* prop-driven, but mounts `BranchesToolbar`,

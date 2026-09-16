@@ -43,7 +43,7 @@ describe("useTablePagination", () => {
 
     // THEN
     await expect.element(component.getByText("page 1")).toBeVisible();
-    await expect.element(component.getByText("size 20")).toBeVisible();
+    await expect.element(component.getByText("size 10")).toBeVisible();
     await expect.element(component.getByText("offset 0")).toBeVisible();
   });
 
@@ -56,7 +56,7 @@ describe("useTablePagination", () => {
 
     // THEN
     await expect.element(component.getByText("page 2")).toBeVisible();
-    await expect.element(component.getByText("offset 20")).toBeVisible();
+    await expect.element(component.getByText("offset 10")).toBeVisible();
   });
 
   test("carries the page in the url under its own key", async () => {
@@ -79,7 +79,7 @@ describe("useTablePagination", () => {
 
     // THEN
     await expect.element(component.getByText("page 3")).toBeVisible();
-    await expect.element(component.getByText("offset 40")).toBeVisible();
+    await expect.element(component.getByText("offset 20")).toBeVisible();
   });
 
   test("returns to the first page when the page size changes", async () => {
