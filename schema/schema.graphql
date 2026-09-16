@@ -26790,8 +26790,6 @@ type RepositoryGitUnavailable {
   """Human-readable explanation safe to display."""
   message: String!
   reason: RepositoryGitUnavailableReason!
-  """Task id of the warm-up that was started, when one was."""
-  warm_up_task_id: String
 }
 
 """Why no git-derived answer was produced."""

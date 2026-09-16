@@ -49,7 +49,7 @@ query RepositoryCommits($id: String!, $limit: Int, $offset: Int) {
     pending_count
     fetched_at
     checked_at
-    unavailable { reason message warm_up_task_id }
+    unavailable { reason message }
     edges { node { hash short_hash summary message author_name authored_at committed_at state } }
   }
 }
@@ -108,7 +108,7 @@ query RepositoryBranchDrift($id: String!) {
     repository_id
     fetched_at
     checked_at
-    unavailable { reason message warm_up_task_id }
+    unavailable { reason message }
     edges { node { branch_name git_ref tracked_commit remote_head condition } }
   }
 }
@@ -303,7 +303,6 @@ async def test_drift_answers_the_infrahub_side_fields(
         "unavailable": {
             "reason": "NOT_IMPLEMENTED",
             "message": "Reading git state from a worker is not available in this version.",
-            "warm_up_task_id": None,
         },
         "edges": [],
     }
@@ -681,7 +680,6 @@ async def test_commit_log_reports_the_unavailable_placeholder(
     assert answer["unavailable"] == {
         "reason": RepositoryGitUnavailableReason.NOT_IMPLEMENTED.name,
         "message": "Reading git state from a worker is not available in this version.",
-        "warm_up_task_id": None,
     }
     assert answer["edges"] == []
     assert answer["remote_head"] is None

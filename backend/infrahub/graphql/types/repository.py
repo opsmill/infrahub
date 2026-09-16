@@ -41,7 +41,6 @@ class RepositoryGitUnavailable(ObjectType):
 
     reason = RepositoryGitUnavailableReason(required=True)
     message = String(required=True, description="Human-readable explanation safe to display.")
-    warm_up_task_id = String(description="Task id of the warm-up that was started, when one was.")
 
 
 class RepositoryCommits(ObjectType):

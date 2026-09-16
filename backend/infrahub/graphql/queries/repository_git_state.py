@@ -127,7 +127,6 @@ def _unavailable_payload(result: CommitLogResult | None, reason: RepositoryGitUn
             if result and result.error_message
             else UNAVAILABLE_MESSAGES.get(reason, GENERIC_UNAVAILABLE_MESSAGE)
         ),
-        "warm_up_task_id": result.warm_up_task_id if result else None,
     }
 
 

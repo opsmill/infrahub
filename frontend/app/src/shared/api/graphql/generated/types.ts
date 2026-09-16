@@ -38753,8 +38753,6 @@ export type RepositoryGitUnavailable = {
   /** Human-readable explanation safe to display. */
   message: Scalars['String']['output'];
   reason: RepositoryGitUnavailableReason;
-  /** Task id of the warm-up that was started, when one was. */
-  warm_up_task_id: Maybe<Scalars['String']['output']>;
 };
 
 /** Why no git-derived answer was produced. */

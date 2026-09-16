@@ -60,8 +60,6 @@ type RepositoryGitUnavailable {
   reason: RepositoryGitUnavailableReason!
   "Human-readable explanation safe to display."
   message: String!
-  "Task id of the warm-up that was started, when one was."
-  warm_up_task_id: String
 }
 
 "Commit log of a repository as seen from the request branch, newest first."
@@ -143,7 +141,7 @@ extend type Mutation {
 # query RepositoryCommits($id: String!, $limit: Int, $offset: Int) {
 #   InfrahubRepositoryCommits(repository_id: $id, limit: $limit, offset: $offset) {
 #     branch_name git_ref condition imported_commit remote_head pending_count
-#     fetched_at checked_at unavailable { reason message warm_up_task_id }
+#     fetched_at checked_at unavailable { reason message }
 #     edges { node { hash short_hash summary author_name authored_at state } }
 #   }
 # }
