@@ -224,7 +224,7 @@ Header: title `Details`, right-aligned action `Extra` with a `lucide:eye` 14px i
 
 > **Schema file not found.** `.infrahub.yml` declares `schemas/site_fra1.yml`, which does
 > not exist at `a19cd44`. The commit was fetched successfully; only the import failed.
-> Merging this branch is blocked until the import succeeds. [View task log]()
+> Merging this branch is blocked until the import succeeds. `View task log` (a link in the canvas; no destination drawn)
 
 (`Schema file not found.` is bold; `.infrahub.yml`, `schemas/site_fra1.yml` and `a19cd44`
 are monospace `code`; `View task log` is a link.)
@@ -294,7 +294,7 @@ Details on the row affordances:
 **Card footer / pagination** (`padding:8px 12px`, `border-top:1px solid #e5e7eb`,
 12px, `#78716c`), sitting directly below the table inside the card:
 
-> `Showing 5 of 12 · ` [`Load more`]()
+> `Showing 5 of 12 · ` `Load more` (a link in the canvas; no destination drawn)
 
 ### Aside cards (1a)
 
@@ -388,7 +388,7 @@ no tinted cells):
 Note the row order differs from 1a: the default branch `main` leads the list here.
 Each row ends with the `mdi:dots-vertical` menu cell.
 
-**Card footer:** `Showing 5 of 12 · ` [`Load more`]()
+**Card footer:** `Showing 5 of 12 · ` `Load more` (a link in the canvas; no destination drawn)
 
 ### Aside cards (1b)
 
