@@ -180,3 +180,110 @@ async def test_directive_merge_fields(
             },
         }
     }
+
+
+async def test_same_root_field_selected_twice_reads_all_selections(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    """A root field repeated as siblings must read the union of every occurrence, not only the first node's."""
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="low", level=4)
+    await obj.save(db=db)
+
+    query = """
+    query {
+        TestCriticality { count }
+        TestCriticality {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data == {"TestCriticality": {"count": 1, "edges": [{"node": {"name": {"value": "low"}}}]}}
+
+
+async def test_sibling_fragment_spreads_merge_overlapping_selections(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    """Two fragment spreads reaching the same field keep the sub-selections of both, not only the last."""
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="low", level=4)
+    await obj.save(db=db)
+
+    query = """
+    query {
+        TestCriticality {
+            ...NameFields
+            ...LevelFields
+        }
+    }
+
+    fragment NameFields on PaginatedTestCriticality {
+        edges { node { name { value } } }
+    }
+
+    fragment LevelFields on PaginatedTestCriticality {
+        edges { node { level { value } } }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data == {"TestCriticality": {"edges": [{"node": {"name": {"value": "low"}, "level": {"value": 4}}}]}}
+
+
+async def test_repeated_field_merges_overlapping_selections(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    """A field repeated under one response key keeps the nested sub-selections of every occurrence."""
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="low", level=4)
+    await obj.save(db=db)
+
+    query = """
+    query {
+        TestCriticality {
+            edges { node { name { value } } }
+            edges { node { level { value } } }
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data == {"TestCriticality": {"edges": [{"node": {"name": {"value": "low"}, "level": {"value": 4}}}]}}
