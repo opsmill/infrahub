@@ -4,6 +4,7 @@ import {
   foreignRateLimitResponse,
   jsonResponse,
   SHED_BODY,
+  SHED_MESSAGE,
   shedResponse,
 } from "../../../../tests/fake/shed-response";
 import {
@@ -157,6 +158,48 @@ describe("withShedWording", () => {
     // THEN
     expect(result).toBe(response);
     await expect(result.json()).resolves.toEqual({ detail: "slow down" });
+  });
+
+  it("leaves a shed whose body is not JSON untouched, wording and all", async () => {
+    // GIVEN a marked shed whose body never parses
+    const response = new Response("<html>502</html>", {
+      status: 429,
+      headers: { [SHED_MARKER_HEADER]: SHED_MARKER_VALUE },
+    });
+
+    // WHEN
+    const result = await withShedWording(response);
+
+    // THEN the server's own wording is what a caller ends up surfacing
+    expect(result).toBe(response);
+    await expect(result.text()).resolves.toBe("<html>502</html>");
+  });
+
+  it("leaves a shed whose body is not an object untouched", async () => {
+    // GIVEN a body that parses but is not an envelope
+    const response = jsonResponse("shedding load", 429, {
+      [SHED_MARKER_HEADER]: SHED_MARKER_VALUE,
+    });
+
+    // WHEN
+    const result = await withShedWording(response);
+
+    // THEN
+    expect(result).toBe(response);
+    await expect(result.json()).resolves.toBe("shedding load");
+  });
+
+  it("leaves a shed whose errors are not an array untouched", async () => {
+    // GIVEN an envelope whose `errors` is not the list the rewrite walks
+    const body = { data: null, errors: { message: SHED_MESSAGE } };
+    const response = jsonResponse(body, 429, { [SHED_MARKER_HEADER]: SHED_MARKER_VALUE });
+
+    // WHEN
+    const result = await withShedWording(response);
+
+    // THEN
+    expect(result).toBe(response);
+    await expect(result.json()).resolves.toEqual(body);
   });
 
   it("leaves any other response untouched", async () => {

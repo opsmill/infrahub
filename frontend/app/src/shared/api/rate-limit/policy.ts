@@ -132,8 +132,10 @@ export async function sendWithRateLimitRetry(
     if (Date.now() + delay > deadline) return response;
 
     // This 429 is not handed back, so release its body rather than holding the
-    // stream open until garbage collection.
-    response.body?.cancel();
+    // stream open until garbage collection. Cancelling a stream that has
+    // already errored rejects with that error; nothing here can act on it, and
+    // an unobserved rejection would surface as an unhandled one.
+    response.body?.cancel().catch(() => {});
 
     const settle = onRetryScheduled?.({ attempt, delayMs: delay });
     await waitFor(delay, signal);
