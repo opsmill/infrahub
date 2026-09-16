@@ -128,9 +128,13 @@ uv run pytest backend/tests/unit/git/state/test_classification.py backend/tests/
 
 5. Not cloned: start a second worker with an empty repositories directory and route the read to it
    (or delete its clone directory). Expected: `condition: UNAVAILABLE`,
-   `unavailable.reason: NOT_CLONED`, a `warm_up_task_id`, and exactly one `git_repository_warm_up`
-   task in the task list even when the query is fired ten times concurrently. The next read after the
-   task completes returns commits.
+   `unavailable.reason: NOT_CLONED` and no error. The next read after the warm-up completes returns
+   commits.
+
+   The warm-up is not observable from the API and is not meant to be: it is an internal workflow, so
+   it carries no namespace tag and `InfrahubTask` does not list it, and the answer carries no id for
+   it. That one burst of reads starts exactly one warm-up is asserted by T044 against a recording
+   cache and `WorkflowRecorder`; on a live stack, look for the run in Prefect.
 
 6. Freshness: `fetched_at` changes after a fetch on the answering worker. For a read-only
    repository, `checked_at` advances after a check cycle even when the remote has not moved, while
