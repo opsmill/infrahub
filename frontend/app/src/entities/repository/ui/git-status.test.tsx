@@ -70,8 +70,9 @@ describe("GitStatus", () => {
 
   afterEach(() => {
     vi.resetAllMocks();
-    // Restored here, not at the end of the test that sets it: an assertion throwing midway
-    // would otherwise leak the URL into every later test in this file.
+    // Restored here rather than at the end of the test that changes them: an assertion
+    // throwing midway would otherwise leak into every later test in this file.
+    vi.useRealTimers();
     window.history.pushState({}, "", "/");
   });
 
@@ -393,7 +394,6 @@ describe("GitStatus", () => {
     // treatment on every poll.
     expect(getObjectsCountFromApiMock.mock.calls.length).toBeGreaterThan(callsBefore);
     await expect.element(indicator).toBeVisible();
-    vi.useRealTimers();
   });
 
   test("counts every repository kind through the generic kind", async () => {
