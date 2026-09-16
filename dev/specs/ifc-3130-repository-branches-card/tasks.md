@@ -348,6 +348,9 @@ total** narrow — proving the narrowing happened before the page boundary, not 
 - [ ] T064 [US3] Component-test FR-016: `sync_status__value`, `internal_status__value` and
       `own_values_only` are absent from **every** request the feature makes. The gql.tada document
       cannot express them (T015), so this pins a structural fact rather than guarding a runtime one.
+      **`expectServerDrivenChange` cannot carry this assertion** — it matches variables with
+      `toMatchObject`, which is partial and passes when an extra argument is present. Assert absence
+      explicitly against each recorded call.
 
 **Checkpoint**: All three user stories complete.
 
