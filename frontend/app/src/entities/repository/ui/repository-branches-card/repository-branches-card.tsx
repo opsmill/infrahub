@@ -9,7 +9,7 @@ import { TablePagination } from "@/shared/components/table/table-pagination";
 import { Badge } from "@/shared/components/ui/badge";
 import { useTablePagination } from "@/shared/hooks/use-table-pagination";
 import { formatNumberDisplay } from "@/shared/utils/number";
-import { SMALLEST_PAGE_SIZE } from "@/shared/utils/table-pagination";
+import { PAGE_SIZE } from "@/shared/utils/table-pagination";
 
 import { READONLY_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import {
@@ -40,9 +40,7 @@ interface RepositoryBranchesBodyProps {
   error: Error | null;
   isPending: boolean;
   page: number;
-  pageSize: number;
   onPageChange: (page: number) => void;
-  onPageSizeChange: (pageSize: number) => void;
 }
 
 function RepositoryBranchesBody({
@@ -51,9 +49,7 @@ function RepositoryBranchesBody({
   error,
   isPending,
   page,
-  pageSize,
   onPageChange,
-  onPageSizeChange,
 }: RepositoryBranchesBodyProps) {
   if (error) {
     if (error instanceof RepositoryBranchStatusError && error.code === "PERMISSION_DENIED") {
@@ -80,7 +76,7 @@ function RepositoryBranchesBody({
           gridTemplateColumns={branchesGridTemplateColumns}
           isLoading
           semanticTable
-          skeletonRowCount={pageSize}
+          skeletonRowCount={PAGE_SIZE}
           skeletonShowSelection={false}
         />
       </div>
@@ -88,17 +84,13 @@ function RepositoryBranchesBody({
   }
 
   // A short last page would otherwise shrink the card and move everything below it.
-  const hasMultiplePages = data.count > pageSize;
+  const hasMultiplePages = data.count > PAGE_SIZE;
 
   return (
     <>
       <div
         className="overflow-x-auto"
-        style={
-          hasMultiplePages
-            ? { minHeight: (Math.min(pageSize, SMALLEST_PAGE_SIZE) + 1) * CELL_HEIGHT_PX }
-            : undefined
-        }
+        style={hasMultiplePages ? { minHeight: (PAGE_SIZE + 1) * CELL_HEIGHT_PX } : undefined}
       >
         <DataTable
           columns={columns}
@@ -123,9 +115,8 @@ function RepositoryBranchesBody({
       {data.count > 0 && (
         <TablePagination
           onPageChange={onPageChange}
-          onPageSizeChange={onPageSizeChange}
           page={page}
-          pageSize={pageSize}
+          pageSize={PAGE_SIZE}
           totalCount={data.count}
         />
       )}
@@ -143,7 +134,7 @@ export function RepositoryBranchesCard({ repositoryId, schema }: RepositoryBranc
   const title = isOfKind(READONLY_REPOSITORY_KIND, schema)
     ? READ_ONLY_BRANCHES_TITLE
     : BRANCHES_TITLE;
-  const { page, pageSize, offset, setPage, setPageSize } = useTablePagination({
+  const { page, pageSize, offset, setPage } = useTablePagination({
     urlKey: PAGINATION_URL_KEY,
   });
 
@@ -165,15 +156,13 @@ export function RepositoryBranchesCard({ repositoryId, schema }: RepositoryBranc
         )}
       </CardHeader>
 
-      <RepositoryBranchesCardBoundary resetKeys={[repositoryId, page, pageSize]}>
+      <RepositoryBranchesCardBoundary resetKeys={[repositoryId, page]}>
         <RepositoryBranchesBody
           data={data}
           error={error}
           isPending={isPending}
           onPageChange={setPage}
-          onPageSizeChange={setPageSize}
           page={page}
-          pageSize={pageSize}
           schema={schema}
         />
       </RepositoryBranchesCardBoundary>

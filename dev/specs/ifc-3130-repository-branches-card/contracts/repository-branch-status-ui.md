@@ -19,7 +19,7 @@ and needs no local schema overlay.
 | Variable | Type | Notes |
 |---|---|---|
 | `id` | `String!` | Repository id (uuid) or name |
-| `limit` | `Int` | = page size (default 20) |
+| `limit` | `Int` | = the fixed page size (10) |
 | `offset` | `Int` | = `(page - 1) * pageSize` |
 | `name__value` | `String` | Branch-name fragment |
 | `partial_match` | `Boolean` | **Always `true`** when `name__value` is sent — the filter is a partial match by requirement (FR-012) |
@@ -154,7 +154,7 @@ so no two can render the same text. Empty and failed each split in two by cause.
 
 | State | Component | Copy | Distinguishing fact |
 |---|---|---|---|
-| Loading | `ObjectTableSkeleton`, `rowCount` = the current page size | — | Occupies its space; **no layout jump** when rows arrive |
+| Loading | `ObjectTableSkeleton`, `rowCount` = the page size | — | Occupies its space; **no layout jump** when rows arrive |
 | Populated | `DataTable` + `TablePagination` | — | Rows, the count pill, and the window statement |
 | Empty — no match | `NoDataFound` | `No branch matches these filters` | Follows a filter the user set |
 | Empty — none in scope, `CoreRepository` | `NoDataFound` | `No branch of this repository synchronises with Git` | The row set *is* the `sync_with_git` branches, so an empty set means none of them syncs |
