@@ -1,26 +1,16 @@
 import type {
   NonRequiredBooleanValueField,
-  NonRequiredStringValueField,
   RequiredStringValueField,
-  StatusField,
   TextAttribute,
 } from "@/shared/api/graphql/generated/types";
 
-import {
-  type DropdownSelection,
-  generateDropdown,
-  generateInternalStatusDropdown,
-} from "./dropdown";
+import { type DropdownSelection, generateDropdown } from "./dropdown";
 
 export type RepositoryBranchStatusWire = {
   name: Pick<RequiredStringValueField, "value">;
-  status: Pick<StatusField, "value">;
   is_default: Pick<NonRequiredBooleanValueField, "value"> | null;
-  sync_with_git: Pick<NonRequiredBooleanValueField, "value"> | null;
-  branched_from: Pick<NonRequiredStringValueField, "value"> | null;
   commit: Pick<TextAttribute, "value"> | null;
   sync_status: DropdownSelection | null;
-  internal_status: DropdownSelection | null;
   ref: Pick<TextAttribute, "value"> | null;
 };
 
@@ -33,13 +23,9 @@ export const generateRepositoryBranchStatus = (
   overrides?: Partial<RepositoryBranchStatusWire>
 ): RepositoryBranchStatusWire => ({
   name: { value: "main" },
-  status: { value: "OPEN" },
   is_default: { value: true },
-  sync_with_git: { value: true },
-  branched_from: { value: "2024-12-12T09:36:44.968813Z" },
   commit: { value: "9f1c0d4e2b7a6f8c3d5e1a0b4c7d9e2f1a3b5c7d" },
   sync_status: generateDropdown(),
-  internal_status: generateInternalStatusDropdown(),
   ref: null,
   ...overrides,
 });
@@ -54,11 +40,8 @@ export const generateSparseRepositoryBranchStatus = (
 ): RepositoryBranchStatusWire =>
   generateRepositoryBranchStatus({
     is_default: null,
-    sync_with_git: null,
-    branched_from: null,
     commit: null,
     sync_status: null,
-    internal_status: null,
     ref: null,
     ...overrides,
   });

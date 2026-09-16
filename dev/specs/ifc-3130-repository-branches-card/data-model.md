@@ -52,18 +52,18 @@ never asked for. This is a structural guarantee, not a rendering choice.
 
 ### Domain shape (after the mapper)
 
+The row carries only what a column or the row key needs — the wire shape above is the contract's,
+not this card's. A field with no column has no place here; adding one is what FR-006 has to be
+argued about later.
+
 ```text
 RepositoryBranchStatusRow
   __typename    string            ← required by NodeCore, which DataTable's generic constrains to
   id            string            ← SYNTHESISED from name.value (see below)
   name          string            ← name.value (RequiredStringValueField, always present)
-  status        BranchStatus      ← status.value (StatusField, always present)
-  isDefault     boolean           ← is_default?.value ?? false
-  syncWithGit   boolean           ← sync_with_git?.value ?? false
-  branchedFrom  string | null     ← branched_from?.value ?? null
+  isDefault     boolean           ← is_default?.value ?? false     — the default-branch marker
   commit        string | null     ← commit?.value ?? null
   syncStatus    DropdownValue | null   ← sync_status, guarded (see below)
-  internalStatus DropdownValue | null
   ref           string | null     ← ref?.value ?? null  (always null on CoreRepository)
 
 RepositoryBranchStatusPage
@@ -87,9 +87,7 @@ Every one of these is guarded **in the mapper**, never at the call site:
 | Guard | Why |
 |---|---|
 | `is_default?.value ?? false` | `NonRequiredBooleanValueField` — the field itself may be null, not just its value |
-| `sync_with_git?.value ?? false` | same |
-| `sync_status` → `null` when the `Dropdown` or its `value` is absent | `sync_status` is a **nullable** `Dropdown`, but `DropdownCell` **requires non-null**. The cell renders an em-dash for `null` rather than crashing |
-| `internal_status` | same |
+| `sync_status` → `null` when the `Dropdown` or its `value` is absent | `sync_status` is a **nullable** `Dropdown`, but `DropdownCell` **requires non-null**. The cell renders nothing for `null` rather than crashing |
 | `commit?.value ?? null` | `TextAttribute` is nullable and so is its `value` |
 | `ref?.value ?? null` | always null on `CoreRepository`; the column is not rendered at all for that kind |
 

@@ -12,10 +12,9 @@ export interface TablePaginationState {
   pageSize: number;
   offset: number;
   setPage: (page: number) => void;
-  resetPage: () => void;
 }
 
-const mountedUrlKeys = new Map<string, number>();
+const mountedUrlKeys = new Map<string, Set<WeakRef<object>>>();
 
 function useUniqueUrlKey(urlKey: string) {
   useEffect(() => {
@@ -23,24 +22,35 @@ function useUniqueUrlKey(urlKey: string) {
       return;
     }
 
-    const mounted = (mountedUrlKeys.get(urlKey) ?? 0) + 1;
-    mountedUrlKeys.set(urlKey, mounted);
+    const holders = mountedUrlKeys.get(urlKey) ?? new Set<WeakRef<object>>();
 
-    if (mounted > 1) {
+    for (const holder of holders) {
+      if (holder.deref() === undefined) {
+        holders.delete(holder);
+      }
+    }
+
+    // The cleanup stands in for the mounted table and is held only weakly, so a cleanup React never
+    // ran is collected instead of leaving the key looking occupied for the rest of the session.
+    const release = () => {
+      holders.delete(releaseRef);
+
+      if (holders.size === 0) {
+        mountedUrlKeys.delete(urlKey);
+      }
+    };
+    const releaseRef = new WeakRef(release);
+
+    holders.add(releaseRef);
+    mountedUrlKeys.set(urlKey, holders);
+
+    if (holders.size > 1) {
       console.warn(
         `useTablePagination: urlKey "${urlKey}" is already used by another mounted table. Give each table its own key, or they will page together.`
       );
     }
 
-    return () => {
-      const remaining = (mountedUrlKeys.get(urlKey) ?? 1) - 1;
-
-      if (remaining > 0) {
-        mountedUrlKeys.set(urlKey, remaining);
-      } else {
-        mountedUrlKeys.delete(urlKey);
-      }
-    };
+    return release;
   }, [urlKey]);
 }
 
@@ -60,9 +70,6 @@ export function useTablePagination({ urlKey }: UseTablePaginationOptions): Table
     offset: getOffset(page, PAGE_SIZE),
     setPage: (nextPage) => {
       setParams({ page: toPageNumber(nextPage) });
-    },
-    resetPage: () => {
-      setParams({ page: 1 });
     },
   };
 }
