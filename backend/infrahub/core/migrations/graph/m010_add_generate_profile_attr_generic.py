@@ -10,6 +10,7 @@ from infrahub.core.path import SchemaPath
 
 from ..schema.node_attribute_add import NodeAttributeAddMigration
 from ..shared import InternalSchemaMigration
+from .load_schema_branch import build_internal_schema_branch
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -22,7 +23,7 @@ class Migration010(InternalSchemaMigration):
 
     @classmethod
     def init(cls, **kwargs: Any) -> Self:
-        internal_schema = cls.get_internal_schema()
+        internal_schema = build_internal_schema_branch()
         schema_generic = internal_schema.get_node(name="SchemaGeneric")
 
         migrations = [
