@@ -19,6 +19,7 @@ Acceptable exceptions:
 
 - Stable public API contracts (e.g. a protocol/interface that other implementations must satisfy) — name the protocol, not its callers.
 - A workaround that depends on a specific upstream library symbol — name the library function and version constraint.
+- The exception types a function raises — they are its contract, the same thing a `Raises:` section states, not a reference to other code.
 
 ## No work-item or spec IDs
 
