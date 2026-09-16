@@ -288,8 +288,9 @@ branch and assert only the second card's values change.
       `frontend/app/src/entities/repository/ui/repository-object-details.tsx`: build two derived
       `ModelSchema` objects from T040's partition and render each through `RepositoryDetailsCard` —
       repository-wide first, then `On this branch` with **the branch name as a caption beneath the
-      title** (the `description` slot, not `end`, which renders right-aligned beside it). Covers
-      FR-018.
+      title**. Pass it as `RepositoryDetailsCard`'s `caption` prop; there is no `description` slot to
+      look for — that belongs to `Content.CardTitle`, which T043 deliberately does not use.
+      Covers FR-018.
 - [ ] T045 [US2] Render nothing at all for a partition with no attributes **and** no relationships — a
       card with nothing to show must not appear as an empty titled box (FR-022).
 - [ ] T046 [US2] Add the kind gate in
