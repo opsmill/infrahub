@@ -101,26 +101,70 @@ an order and does not expose an order control** — the `order` argument is left
 
 ## 2. Branch-support declaration
 
-A per-attribute property of the schema stating whether an attribute's value is the same on every
-branch or varies by branch. Already delivered to the client and already displayed in the schema
-viewer; **this feature is the first to make presentation depend on it**.
+A per-**field** property of the schema stating whether a value is the same on every branch or varies
+by branch. Already delivered to the client and already displayed in the schema viewer; **this feature
+is the first to make presentation depend on it**.
 
 ```text
-partitionAttributesByBranchSupport(schema: ModelSchema)
-  → { repositoryWide: AttributeSchema[], branchScoped: AttributeSchema[] }
+partitionFieldsByBranchSupport(schema: ModelSchema)
+  → { repositoryWide: { attributes, relationships }, branchScoped: { attributes, relationships } }
 ```
 
-**Resolution rule (FR-019)**: read the attribute's own branch-support declaration; **fall back to the
-node's own declaration** when the attribute does not declare one. It MUST NOT be a list of attribute
-names held in this feature — that is what makes SC-005 (a new branch-scoped attribute lands in the
-right card with no code change) free.
+### The three-value mapping — get this wrong and the feature inverts
+
+`BranchSupportType` is **`"aware" | "agnostic" | "local"`** (`types.generated.ts`), not a boolean.
+The rule is:
+
+```text
+branchScoped  ⇔  (field.branch ?? node.branch) ∈ { "aware", "local" }
+repositoryWide ⇔ (field.branch ?? node.branch) === "agnostic"
+```
+
+**`local` counts as branch-scoped.** Both `aware` and `local` vary per branch; they differ only in
+merge behaviour, which is irrelevant to presentation.
+
+This is not a detail. Against the real schema
+(`backend/infrahub/core/schema/definitions/core/repository.py`):
+
+| Field | Kind | `branch` |
+|---|---|---|
+| `commit` | `CoreRepository` | **LOCAL** (:53) |
+| `commit` | `CoreGenericRepository` | **LOCAL** (:216) |
+| `sync_status` | `CoreGenericRepository` | **LOCAL** (:250) |
+| `internal_status` | `CoreGenericRepository` | **LOCAL** (:166) |
+| `ref` | `CoreReadOnlyRepository` | AWARE (:83) |
+| `commit` | `CoreReadOnlyRepository` | AWARE (:91) |
+| *node level* | both kinds | AGNOSTIC (:32, :69) |
+
+So a rule of `branch === "aware" ? branchScoped : repositoryWide` would put **`commit` and
+`sync_status` — the two values this feature exists to disambiguate — in the repository-wide card on
+the read-write kind**, making SC-004 actively false while every test that only checked the read-only
+kind still passed.
+
+**Required test coverage**: one unit case per enum value, `local` included, plus one case exercising
+the node-level fallback. Node-level `branch` is a **required** field on `NodeSchemaRead`,
+`GenericSchemaRead`, `ProfileSchemaRead` and `TemplateSchemaRead`, so the fallback is total — there is
+no third branch to handle.
+
+### Relationships are partitioned too
+
+`ObjectDataDisplay` renders **attributes *and* relationships**. Handing it two derived `ModelSchema`
+objects that each keep the full `relationships` array would render `credential`, `tags`,
+`transformations`, `queries` and `checks` **twice** — once per card.
+
+`RelationshipSchemaRead` carries `branch?: BranchSupportType | null` just as attributes do, so the
+same rule applies unchanged. On the repository kinds today every relationship is AGNOSTIC, so they
+all land repository-wide and the branch-scoped derived schema gets `relationships: []`.
+
+**Pinned by test**: each relationship label appears **exactly once** on the page. Without that
+assertion this regresses silently the first time a branch-aware relationship is added.
 
 **Shape**: a **pure function**, unit-testable without rendering. It takes a `ModelSchema` and returns
-two attribute lists; the caller builds two derived `ModelSchema` objects from them (D1) and hands
-each to the unchanged `ObjectDetailsCard`.
+two field sets; the caller builds two derived `ModelSchema` objects from them (D1) and hands each to
+`ObjectDataDisplay` via the local `RepositoryDetailsCard` (see D1's revision).
 
-**Empty-partition rule (FR-022)**: a partition with no attributes MUST NOT render as an empty titled
-box. The card is not rendered at all when its list is empty.
+**Empty-partition rule (FR-022)**: a partition with no attributes **and** no relationships MUST NOT
+render as an empty titled box. The card is not rendered at all when both lists are empty.
 
 **Kind gate (FR-020)**: the two-card presentation applies only to the repository kinds, gated by
 `isOfKind(GENERIC_REPOSITORY_KIND, schema)` — which already resolves both concrete kinds through
@@ -195,6 +239,10 @@ RepositoryBranchStatusError extends Error
 Thrown by the **use case**, derived from the GraphQL `extensions` payload against the frontend error
 catalogue, which already declares `ERROR_CODES.PERMISSION_DENIED` with a typed `PermissionDeniedData`.
 
+**Reuse the existing parsers.** `hasCatalogueCode` and `parseCatalogueError`
+(`shared/api/errors/error-handling.ts`) already do this parsing — the use case composes them rather
+than re-reading `extensions` by hand.
+
 Verified against the merged backend: the resolver raises `PermissionDeniedError`, a
 `ForwardableError` with HTTP 403.
 
@@ -213,10 +261,10 @@ and a **card test** over the two `code` values.
 ```text
 Repository (CoreRepository | CoreReadOnlyRepository)
    │
-   ├── ModelSchema ──▶ partitionAttributesByBranchSupport()
-   │                      ├─▶ repositoryWide  ──▶ derived ModelSchema ──▶ ObjectDetailsCard  ("Details")
-   │                      └─▶ branchScoped    ──▶ derived ModelSchema ──▶ ObjectDetailsCard  ("On this branch"
-   │                                                                        + branch-name caption)
+   ├── ModelSchema ──▶ partitionFieldsByBranchSupport()      (agnostic | aware+local)
+   │                      ├─▶ repositoryWide  ──▶ derived ModelSchema ──▶ RepositoryDetailsCard ("Details")
+   │                      └─▶ branchScoped    ──▶ derived ModelSchema ──▶ RepositoryDetailsCard ("On this branch"
+   │                            relationships: []                            + branch-name caption)
    └── InfrahubRepositoryBranchStatus(id, limit, offset, name__value, partial_match, status__value)
           │
           ├── count ──────────────────────────▶ the stated total (title pill + window statement)

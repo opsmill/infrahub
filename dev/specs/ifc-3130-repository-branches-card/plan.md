@@ -68,24 +68,48 @@ dropdown value appears, so the card is fully buildable and screenshottable again
 
 Two consequences this plan must honour:
 
-- `sync_status__value`, `internal_status__value` and `own_values_only` are **accepted but ignored**
-  today. **FR-016 is enforced structurally**: the gql.tada document simply does not declare those
-  three variables. A variable that cannot be expressed cannot be sent — stronger than any runtime
-  guard, and it needs no test to keep it true (though FR-016's test pins it anyway).
+- `sync_status__value`, `internal_status__value` and `own_values_only` are **rejected with a
+  `ValidationError`** while the stub serves placeholder values — *not* accepted-and-ignored. The
+  resolver raises it for any of the three that would narrow the rows, and the frozen SDL says so in
+  terms. (IFC-3130's own Jira description says "accepted but ignored"; **the contract wins** — an
+  earlier revision of this plan propagated the ticket's wording.)
+
+  **FR-016 is still enforced structurally**: the gql.tada document simply does not declare those three
+  variables, and a variable that cannot be expressed cannot be sent. But the failure mode being
+  prevented is a **loud whole-card failure**, not silently-wrong data — so FR-016 is lower-risk than
+  an earlier revision claimed, and the guarantee is about not shipping a broken card rather than
+  about not lying to the user.
 - Nothing in this feature may depend on the values being real (SC-008). When IFC-3127 merges, the
   values become real **with no contract change and no code change here**.
 
+### Who sees the fabricated values
+
+This branch targets **`cross-branch-repo-status-infp-671`**, the epic branch, and IFC-3127 lands on
+that same branch. So the fabricated values reach a user only if the epic branch merges to `develop`
+while IFC-3127 is still outstanding — which is the epic owner's release decision, not this card's.
+
+That is the honest position, and it is why this feature carries **no preview banner**: adding one
+would be chrome that must then be removed, for a window that by construction has no users in it.
+**If the epic branch is ever released without IFC-3127, this decision must be revisited** — plausible
+fake commit hashes with nothing marking them are worse than showing nothing. Recorded as an open
+question for the epic owner rather than settled here.
+
 ## Constitution Check
 
-*GATE: evaluated before Phase 0 and re-evaluated after Phase 1 design. Result: **PASS**, with one
-justified complexity entry.*
+*GATE: evaluated before Phase 0, re-evaluated after Phase 1 design, and revised after critique.
+Result: **PASS**, with four justified complexity entries.*
+
+> **Git Workflow deviation, stated once so a reviewer does not flag it late**: the constitution says
+> feature branches come from `develop`. This one comes from `cross-branch-repo-status-infp-671`,
+> the INFP-671 epic branch, because it depends on IFC-3126 which has merged there and not to
+> `develop`. Deliberate, and the PR targets that branch.
 
 | Principle | Applies? | How this plan satisfies it |
 |---|---|---|
-| **I. Schema-Driven Integrity** | Yes | The card division is derived from each attribute's `branch` support declaration (FR-019), and every label and column header comes from the schema (FR-005) — never from a field-name list held in the frontend. This is what makes SC-005 free. Generated files under `src/shared/api/graphql/generated/` are **regenerated, never hand-edited**; the base branch already carries them, so codegen must produce zero drift. |
+| **I. Schema-Driven Integrity** | Yes — **conditional** | The card division is derived from each field's `branch` support declaration (FR-019), and every label and column header comes from the schema (FR-005) — never from a field-name list held in the frontend. This is what makes SC-005 free. Generated files under `src/shared/api/graphql/generated/` are **regenerated, never hand-edited**; the base branch already carries them, so codegen must produce zero drift. **The condition**: this is schema-*shaped* until the rule names all three `BranchSupportType` values. `local` is the one that matters — see [data-model.md](data-model.md) §2. Reads PASS only once that mapping and its per-value tests exist. |
 | **II. Branch-Safe by Default** | Yes | Read-only; writes nothing, so no merge behaviour to specify. The one branch-semantics risk — a branch showing a value inherited from its **origin** branch at its fork point — is correct behaviour, pinned by acceptance scenario US1-4 and US1-7, and rendered as an ordinary value rather than as an error or an empty cell. This feature computes no inheritance itself. |
 | **III. Type Safety & Explicit Contracts** | Yes | The query is typed end-to-end through gql.tada against the frozen contract. No `any`; `unknown` + type guards where a boundary is loose. The nullable contract fields (`is_default`, `sync_with_git` as `NonRequiredBooleanValueField`; `sync_status` nullable while `DropdownCell` requires non-null) are guarded **in the mapper**, not at the call site. The page window and filter set are explicit inputs, never ambient state. Errors are typed (`RepositoryBranchStatusError` with a `code` union) rather than bare `Error`. |
-| **IV. Test Discipline** | Yes | Unit tests for the pure pagination arithmetic and the partition rule; component tests (Vitest browser mode) for every FR carrying a component-test verification; E2E at `tests/e2e/repository/` with the `shard_branches_repo` marker against `demo_edge_repo` (FR-026). The backend slice deferred the epic's E2E requirement to this card, so it lands here. Test files mirror source structure. **Two requirements are honestly recorded as verified by review rather than by test** — see [below](#verified-by-review-not-by-test). |
+| **IV. Test Discipline** | Yes — **with one recorded deviation** | Unit tests for the pure pagination arithmetic and the partition rule (one case per `BranchSupportType` value); component tests (Vitest browser mode) for every FR carrying a component-test verification; E2E at `tests/e2e/repository/` with the `shard_branches_repo` marker against `demo_edge_repo` (FR-026). The backend slice deferred the epic's E2E requirement to this card, so it lands here. Test files mirror source structure. **Two requirements are honestly recorded as verified by review rather than by test** — see [below](#verified-by-review-not-by-test). **The deviation**: the constitution says E2E "MUST be included for all user-facing features"; FR-027 knowingly ships `CoreReadOnlyRepository` without it. Defensible, but Governance requires a deviation be recorded in Complexity Tracking — it now is. |
 | **V. Query Performance & Efficiency** | Yes | One request per page (SC-003). Server-side count, filters and ordering; no client-side narrowing (FR-015). `node_metadata` is **not selected at all** — the cheapest possible guarantee for FR-006. Row transfer bounded by page size. |
 | **VI. Security & Input Boundaries** | Partial (N/A by shape) | No user input reaches a query language here — the filter values are bound as typed GraphQL variables. Authorization is the server's: the resolver raises `PermissionDeniedError` (a `ForwardableError`, HTTP 403) and the card renders `UnauthorizedScreen` for it (FR-023), distinct from the empty state, so a denial is never mistaken for "no branches" (SC-007). No error message exposes internal detail. |
 | **VII. Simplicity & Maintainability** | Yes, with one justified entry | Reuses the existing `ObjectDetailsCard`, `DataTable` and `DropdownCell` rather than adding parallel ones. D1 was decided **against** the more elegant refactor precisely to avoid touching a file every object-detail page depends on. One new shared primitive (`CommitHash`) and one new pagination trio — both justified in [Complexity Tracking](#complexity-tracking). |
@@ -131,18 +155,37 @@ are authoritative and override `research.md` wherever it disagrees:
 
 Four decisions where the three framings diverged. Settled; not to be revisited during implementation.
 
-### D1 — Two derived `ModelSchema` objects, not a `fieldFilter` prop
+### D1 — Two derived `ModelSchema` objects, rendered through a local `RepositoryDetailsCard`
 
-Build two derived `ModelSchema` objects with filtered `attributes` and hand each to the **unchanged**
-`ObjectDetailsCard` / `ObjectDataDisplay`.
+> **Revised after critique (E3).** The decision's *reasoning* survives intact; the component it named
+> does not. Recorded here rather than rewritten, because the reasoning is what matters.
+
+Build two derived `ModelSchema` objects with partitioned fields, and render each through a **thin
+local `RepositoryDetailsCard`** in `entities/repository/ui/` that composes `Card` + `CardHeader` +
+the existing **`ObjectDataDisplay`**.
 
 *Rejected*: adding an optional `fieldFilter` predicate to `ObjectDataDisplay` (~8 lines, default =
 today's behaviour). Both reach the same place, but the derived-schema route **touches no file that
 every object-detail page depends on** — the one change in this feature that could break unrelated
 pages, and the refactor framing's own risk register ranked that edit as its highest-blast-radius item.
 
+*Why not the original `ObjectDetailsCard`*: it **hardcodes the literal `Details`** in its `CardHeader`
+and hardcodes `data-testid="object-details"`, and exposes no title, caption or test-id prop. It
+therefore cannot produce FR-018's "On this branch" card with its branch-name caption, and two
+instances would emit the same test id. "Hand each to the unchanged `ObjectDetailsCard`" was not
+implementable as written.
+
+*Why the local card is better than either original option*: `ObjectDataDisplay` is the genuinely
+reusable part and it is reused unchanged. The wrapper is ~15 lines of `Card` + `CardHeader`. It keeps
+**zero shared-file edits** — D1's whole point — while freeing both titles, the caption slot and
+distinct test ids. Neither original framing found it.
+
 *Cost accepted*: two `ObjectDataDisplay` instances mount two metadata `Sheet`s, both default closed —
 a duplicated dialog in the tree, not a behaviour change.
+
+*Consequence for the partition*: `ObjectDataDisplay` renders **relationships as well as attributes**,
+so the partition must cover both or every relationship renders twice. See
+[data-model.md](data-model.md) §2.
 
 ### D2 — Tests mock at the API layer, never the hook
 
@@ -156,6 +199,28 @@ variables, *and* the rendered rows change to a second payload containing a branc
 
 This is what makes the suite non-tautological. A client-side filter would change rows without a second
 call; a "call the server and ignore the response" bug would keep the old rows. Neither passes.
+
+#### The rule is enforced mechanically, not by prose
+
+A rule this important cannot survive as a paragraph. The first developer under time pressure writes
+the request half alone and **nothing fails** — which is exactly how a suite becomes decorative.
+
+Two mechanisms, both landing in **work unit 4** so that units 5 and 6 have no other path available:
+
+1. **One helper whose signature makes both halves required arguments:**
+
+   ```ts
+   expectServerDrivenChange({ apiMock, callIndex, variables, payload, rowVisibleAfter })
+   ```
+
+   Omitting either half is a type error, so "did you pair it?" is answered by the type checker
+   rather than by a reviewer's memory.
+
+2. **A lint guard** forbidding direct `apiMock.mock.calls[...]` access in the branches-card test
+   files — a Biome `noRestrictedSyntax`-style rule, or a two-line CI grep if that is cheaper.
+
+This is the one decision in the plan that **cannot be retrofitted cheaply**: once twenty unpaired
+tests exist, the helper is a migration rather than a default.
 
 ### D3 — Pagination in three layers
 
@@ -223,14 +288,16 @@ frontend/app/src/
     │   ├── domain/
     │   │   ├── model/repository-branch-status.ts               # NEW — row model + typed error
     │   │   ├── use-cases/get-repository-branch-status.ts       # NEW
-    │   │   └── rules/partition-attributes-by-branch-support.ts # NEW — pure, unit-testable
+    │   │   └── rules/partition-fields-by-branch-support.ts     # NEW — pure, unit-testable
     │   └── ui/
     │       ├── queries/get-repository-branch-status.query.ts   # NEW — gql.tada document
     │       ├── repository-branches-card/
     │       │   ├── repository-branches-card.tsx                # NEW
+    │       │   ├── repository-branches-card-boundary.tsx       # NEW — card-scoped ErrorBoundary
     │       │   ├── columns.tsx                                 # NEW
     │       │   ├── cells/                                      # NEW
     │       │   └── use-repository-branch-filters.ts            # NEW
+    │       ├── repository-details-card.tsx                     # NEW — Card + CardHeader + ObjectDataDisplay
     │       └── repository-object-details.tsx                   # NEW — the two-card split
     │
     └── nodes/object/ui/object-details/
@@ -238,7 +305,8 @@ frontend/app/src/
 
 frontend/app/tests/
 ├── fake/repository.ts                                  # NEW — row factories
-└── fake/dropdown.ts                                    # NEW
+├── fake/dropdown.ts                                    # NEW
+└── helpers/expect-server-driven-change.ts              # NEW — D2's pairing rule, mechanically enforced
 
 tests/e2e/repository/
 └── test_repository_branches_card.py                    # NEW — marker: shard_branches_repo
@@ -266,16 +334,16 @@ each assumed more had to be built than actually does.
 
 | Need | Use | Verdict |
 |---|---|---|
-| Card header: title + count pill + caption | `Content.CardTitle` — `{title, description, end, badgeContent, reload, isReloadLoading}` (`shared/components/layout/content.tsx`) | **USE WITH PROPS** — `badgeContent` is the count; caption goes in `end`. Live example: `entities/branches/ui/branches-list.tsx` |
+| Card header: title + count pill + caption | `Content.CardTitle` — `{title, description, end, badgeContent, reload, isReloadLoading, className}` (`shared/components/layout/content.tsx`) | **USE WITH PROPS** — `badgeContent` is the count; the caption goes in **`description`** (the beneath slot), *not* `end`, which renders right-aligned *beside* the title. Renders its title as `<h1>`: give the card header an explicit `aria-label`, and **poll the badge by its own accessible name**, not the heading (the count is a sibling `<Badge>`, not part of the heading's name). Consider `CardHeader` + `<h2>` rather than a page-level title component inside a card |
 | `default` row marker | `BranchDefaultBadge` (`entities/branches/ui/branch-list-item/branch-default-badge.tsx`) — already renders the literal `default` | **USE AS-IS** |
 | Branch link target | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` (`entities/branches/ui/routing/branch-urls.ts`) | **USE AS-IS** |
 | Branch link cell | Compose `Tooltip` + `LinkButton href={getBranchDetailsUrl(name)}`, following `branches-table/cells/branch-name-cell.tsx` | **EXTEND, do not reuse** — that cell hard-depends on `useAuth()`, `StickyLeftCell` and a selection checkbox |
 | Search field | `SearchInput` — `{value, onChange, placeholder, onPressReset, …}` (`shared/components/inputs/search-input.tsx`), pure and controlled, plus `useDebounce` (`shared/hooks/useDebounce.ts`) | **USE AS-IS** |
-| Branch-status filter | `BranchStatusEnum` — `{value, onChange, defaultOpen?}` (`entities/branches/ui/filters/branch-status-enum.tsx`), fully controlled | **USE AS-IS** with card-scoped state |
-| Empty state | `NoDataFound` — `{message?, icon?}` (`shared/components/errors/no-data-found.tsx`), already `col-span-full py-12` | **USE AS-IS** — card-safe |
-| Permission-denied state | `UnauthorizedScreen` — `{className?, message?, icon?}` (`shared/components/errors/unauthorized-screen.tsx`) | **USE WITH PROPS** — page-shaped `flex-1 p-8`, needs a `className` override |
+| Branch-status filter | `BranchStatusEnum` — `{value, onChange, defaultOpen?}` (`entities/branches/ui/filters/branch-status-enum.tsx`), fully controlled | **USE WITH PROPS** — it renders **nothing in its trigger when `value === null`**, an empty unnamed button that FR-025 forbids: pass an `aria-label` and a placeholder. It also offers all seven `BranchStatus` values including `MERGED` and `DELETING`, which the contract guarantees are **never returned** — restrict to the five returnable statuses, or selecting either always yields the empty state |
+| Empty state | `NoDataFound` — `{message?, icon?}` (`shared/components/errors/no-data-found.tsx`), already `col-span-full py-12`. **Default export** | **USE AS-IS** — card-safe |
+| Permission-denied state | `UnauthorizedScreen` — `{className?, message?, icon?}` (`shared/components/errors/unauthorized-screen.tsx`). **Default export** | **USE WITH PROPS** — page-shaped `flex-1 p-8`, needs a `className` override |
 | Error state | `ErrorScreen` — `{className?, message?, icon?, hideIcon?}` (`shared/components/errors/error-screen.tsx`) | **USE WITH PROPS** — same override |
-| Loading state | `ObjectTableSkeleton` — `{headerCount: number}` (`entities/nodes/object/ui/object-table/object-table-skeleton.tsx`) | **USE AS-IS** — emits bare grid cells, valid only inside the grid table |
+| Loading state | `ObjectTableSkeleton` — `{headerCount: number}` (`entities/nodes/object/ui/object-table/object-table-skeleton.tsx`) | **EXTEND, do not use as-is** — it hardcodes **20 rows** and a disabled `Checkbox` in column 0 of every row. This card has no selection column and supports page sizes 10/20/50, so as-is it ships a phantom checkbox **and** a guaranteed layout jump at pageSize 10 — precisely what FR-023's loading clause forbids. Add optional `rowCount` / `showSelection` props (additive, default = today's behaviour), or render a local skeleton |
 | Info icon beside a value | `Tooltip` from `@infrahub/ui` with `nonInteractiveTrigger` + `InfoIcon`, per `entities/branches/ui/branch-details/branch-attributes.tsx` | **USE AS-IS** |
 | Copy affordance (full hashes, details card only) | `CopyToClipboardButton` — `{data, …AriaButtonProps}` (`shared/components/buttons/copy-to-clipboard-button.tsx`), already wrapped in a `Copied!`/`Copy` Tooltip | **USE AS-IS** |
 
@@ -331,10 +399,32 @@ actually built are:
 **Custom `gridTemplateColumns` is required**: `DataTable`'s default reserves a trailing 2.5rem
 actions column this card must not have.
 
-**The one knowing divergence from the canvas** is paging: page controls with the position in the URL,
-not "Load more". A "load more" affordance cannot express a position in the URL (incompatible with
-FR-011) and cannot serve the "jump to the failing branch among 200" journey. **Raise this on T094 in
-IFC-3101**, the existing forum for unresolved canvas decisions — not in a separate conversation.
+### Divergence register — all of it, not just paging
+
+An earlier revision called paging "the one place where this feature knowingly diverges from the
+canvas." That was wrong, and it understated the divergence the designer is most likely to care about.
+**Take this whole register to T094 in IFC-3101** — the existing forum for unresolved canvas
+decisions — as one conversation, not five.
+
+| # | Canvas says | This feature does | Why | Needs sign-off? |
+|---|---|---|---|---|
+| D-a | **ONE `Details` card** split by two internal group headers (`Repository` / `On this branch`). `design.md:18-36` states in terms that it "does not introduce a second card for branch-local Git values" | **Two separate cards** (FR-018, FR-018a) | The clarification session of 2026-09-10 settled on two cards with "On this branch" as a card title and the branch name as a caption | **Yes — this is the big one.** A designer ruled explicitly against it |
+| D-b | `Showing 5 of 12 · Load more` footer | Page controls, position in the URL | "Load more" cannot express a position in a URL, so it is incompatible with FR-011's reload-and-share requirement | Yes |
+| D-c | Status column headed `Import status` (read-write) / `Git state` (read-only) | The schema's own `sync_status` label | FR-005 forbids a hardcoded label that differs from the schema's, and renaming the attribute is out of scope per the PRD | Yes — the canvas labels simply cannot be rendered without violating FR-005 |
+| D-d | Read-only card has **no search toolbar** (`design.md:442`) and no pagination | Search and pagination on both kinds | The read-only kind returns *every* branch, so it can exceed one page; asymmetry would be arbitrary | Yes |
+| D-e | `tag` / `branch` pill beside the tracked ref | Dropped | No field in the contract carries the distinction; deriving it from the ref string is guesswork | Low risk |
+| D-f | Explanatory footer on the read-only card | Kept as designed | The designer flagged it as a question for the team, not a blocker | No |
+
+**On D-b's justification specifically**: rest it on **URL-shareability**, which is sound on its own.
+An earlier revision also argued "load more" cannot serve the *"jump to the failing branch among 200"*
+journey — but page controls do not serve that journey either. FR-013 filters only the **branch
+lifecycle** `BranchStatus`, FR-016 defers `sync_status__value` to IFC-3127, and there is no sort
+control. In this slice, finding the failing branch among 200 means paging through them looking for a
+red chip. That is a real limitation of the slice, not an argument for either paging shape, and
+SC-002 should not be read as claiming otherwise.
+
+**Timing matters**: pagination is **work unit 1**. If D-b is raised late it is built first and
+rejected last. Raise the register before unit 1 starts.
 
 ## Accessibility mechanics (FR-025) — adopt before the card is written, not after
 
@@ -353,42 +443,87 @@ locating it by accessible name is a data-flow assertion, not a colour dependency
 `backgroundColor` **only** — never the derived text colour, which `DropdownCell` computes with
 `lch(from …)` and which serialises inconsistently.
 
+Two mechanics the resolution needs to actually work:
+
+- **Assert `element.style.backgroundColor`, not `getComputedStyle(…).backgroundColor`.** The latter
+  returns a normalised `rgb(…)` while the schema supplies hex (`#60a5fa`), so a naive equality against
+  the fixture value fails. `element.style` preserves the authored value. (Normalising both sides is
+  equally fine — but pick one and write it down, or every test author picks differently.)
+- **`DropdownCell` is a bare `<span>` with no role**, so "locate by accessible name" is in practice
+  `within(row).getByText(...)`. Write that shape explicitly. Left unstated, the first implementer
+  reaches for `getByRole`, finds nothing, and falls back to `getByTestId` — defeating FR-025 exactly
+  as this section predicts.
+
+**The pagination controls need their own accessible names** — `aria-current` on the active page and
+an announced page change. They have no a11y requirement today, and three future migrations will
+inherit whatever this ships.
+
 ## Verified by review, not by test
 
 Two requirements cannot be honestly verified by test. Recording them as such is deliberate: a green
 test that proves nothing is worse than an honest note.
 
 - **FR-008** ("no row value may depend on data outside the graph read") is unfalsifiable in a test
-  that mocks the only source it has. Nearest honest substitute: assert the api mock is called
-  **exactly once per render**, in a file that mocks nothing else.
+  that mocks the only source it has. **Verify it against two structural facts instead**: the card
+  imports exactly one api module, and the selection set omits `node_metadata` entirely. Both are
+  readable from the source in seconds and neither can drift silently.
+
+  *Rejected substitute*: "the api mock is called exactly once per render." It measures render-loop
+  stability, not data provenance, and it breaks the first time a legitimate refetch is added — a
+  test that fails for the wrong reason teaches people to delete tests.
+
 - **FR-017** (the three legacy paginated pages behave as today) would need three regression files for
   three pages that have **no tests at all** — more cost than the requirement buys, and the resulting
-  tests would be the only coverage those files have. The honest guarantee is **zero diff**:
-  `git diff --exit-code` on `pagination.tsx` and `usePagination.ts`, plus the FR-011 key-scoping unit
-  test proving the new hook *cannot* collide with `QSP.PAGINATION`.
+  tests would be the only coverage those files have. The honest guarantee is **zero diff** on
+  `frontend/app/src/shared/components/ui/pagination.tsx` and
+  `frontend/app/src/shared/hooks/usePagination.ts`, plus the FR-011 key-scoping unit test proving the
+  new hook *cannot* collide with `QSP.PAGINATION`.
+
+  > **Get the path right, and put the check in CI.** An earlier revision named
+  > `shared/components/pagination.tsx` — one directory up from where the file actually lives. `git
+  > diff --exit-code` with a pathspec matching nothing **exits 0 silently**, so that check would have
+  > passed forever no matter what was edited. A guarantee that lives only in a Definition-of-Done
+  > checkbox is not a guarantee: this belongs as one step in the `frontend-lint` job, diffing against
+  > the merge base.
 
 ## Work units
 
 Parallel groups separated by `───`. Units within a group share no file and have no sequential
 dependency.
 
+> The spec carries **32** requirement statements — FR-001…FR-028 **plus** FR-003a, FR-010a, FR-011a
+> and FR-018a. They are enumerated individually below: an earlier revision wrote unit 5's as the range
+> "002–006", which silently swallowed FR-003a.
+
 | # | Unit | Key files | FRs |
 |---|---|---|---|
-| 1 | Pagination utils + hook + component | `shared/utils/table-pagination.ts`, `shared/hooks/use-table-pagination.ts`, `shared/components/table/table-pagination.tsx` | 010, 010a, 011, 011a, 017 |
-| 2 | Query, model, mapper, use case | `entities/repository/{api,domain/model,domain/use-cases,ui/queries}/…` | 001, 008, 009, 013, 016, 023 |
-| 3 | Partition rule | `entities/repository/domain/rules/partition-attributes-by-branch-support.ts` | 019, 022 |
-| 4 | Test factories | `tests/fake/repository.ts`, `tests/fake/dropdown.ts` | — |
+| 1 | Pagination utils + hook + component | `shared/utils/table-pagination.ts`, `shared/hooks/use-table-pagination.ts`, `shared/components/table/table-pagination.tsx` | 010, 010a, 011, 017 |
+| 2 | Query, model, mapper, use case | `entities/repository/{api,domain/model,domain/use-cases,ui/queries}/…` | 001, 008, 009, 016 |
+| 3 | Partition rule (attributes **and** relationships) | `entities/repository/domain/rules/partition-fields-by-branch-support.ts` | 019, 022 |
+| 4 | Test factories **+ the pairing helper and its lint guard** | `tests/fake/repository.ts`, `tests/fake/dropdown.ts`, `tests/helpers/expect-server-driven-change.ts` | — (enables 001, 009, 012–015) |
 | ─── | | | |
-| 5 | Columns, cells, filters | `…/repository-branches-card/columns.tsx`, `cells/`, `…/use-repository-branch-filters.ts` | 002–006, 012–015 |
+| 5 | Columns, cells, filters | `…/repository-branches-card/columns.tsx`, `cells/`, `…/use-repository-branch-filters.ts` | 002, 003, 003a, 004, 005, 006, 012, 013, 014, 015 |
 | ─── | | | |
-| 6 | The branches card | `…/repository-branches-card.tsx` | 007, 023, 024, 025, 027 |
-| 7 | The details split | `…/repository-object-details.tsx` + the kind gate in `object-details.tsx` | 018, 018a, 020, 021, 022 |
+| 6 | The branches card **+ its ErrorBoundary** | `…/repository-branches-card.tsx`, `…/repository-branches-card-boundary.tsx` | 007, 011a, 023, 027 |
+| 7 | The details split | `…/repository-details-card.tsx`, `…/repository-object-details.tsx` + the kind gate in `object-details.tsx` | 018, 018a, 020, 021, 022, 024, 025 |
 | ─── | | | |
 | 8 | E2E | `tests/e2e/repository/test_repository_branches_card.py` | 026 |
 | 9 | Knowledge note + `shared-components.md` + changelog fragment | `dev/knowledge/frontend/table-pagination.md`, `dev/knowledge/frontend/shared-components.md`, `changelog/` | 028 |
 
-**Dependencies**: 1–4 are fully independent. 5 depends on 2 and 4. 6 depends on 1, 4, 5. 7 depends
-on 3. 8 depends on 6 and 7. 9 depends on 1 and 6.
+**Dependencies**: 1–4 are fully independent. 5 depends on 2 and 4. 6 depends on 1, 4, 5. **7 depends
+on 3 and 6** — FR-018a asserts the document order of *three* cards, and FR-024 and FR-025 are
+composition properties of the assembled page, not of the branches card alone. 8 depends on 6 and 7.
+9 depends on 1 and 6.
+
+**Unit 4 has no FR behind it and that is correct** — it is fixtures. But it now also owns D2's
+pairing helper and lint guard, which must exist *before* any card test is written (see D2).
+
+**FR-011a** ("paging works with the table inside a fixed-height card, with no page-level scroll
+container") is listed against unit 6 rather than unit 1: the component is unit 1's, but the
+requirement can only be *verified* once there is a card to put it in.
+
+**FR-013** is exercised in both unit 2 (the wire-value mapping) and unit 5 (the filter control). Unit
+2 owns the test that the hyphenated wire value is sent.
 
 ## Risks, ranked by likelihood of actually biting
 
@@ -396,7 +531,13 @@ on 3. 8 depends on 6 and 7. 9 depends on 1 and 6.
    *every* test. This is the failure that would make the whole suite decorative.
 2. **URL bleed between tests.** `render.tsx` uses `BrowserRouter`, so nuqs writes to real
    `window.location`. Without an `afterEach` history reset, paging tests become order-dependent — the
-   classic "passes alone, fails in a full run".
+   classic "passes alone, fails in a full run". Reset **`window.location.search`**, not just
+   `history.state`, and do it in a **shared setup file** so a new test file cannot silently opt out.
+
+   *(Checked and cleared during critique: `render.tsx` mounts `NuqsAdapter` **outside**
+   `BrowserRouter`, which reads like a latent crash. It is not — `createAdapterProvider` only puts the
+   hook into context; `useNavigate` / `useSearchParams` execute in the consuming component, inside the
+   Router. The `afterEach` reset is the right fix and no sharper one is needed.)*
 3. **`DataTable` geometry inside a `Card`.** `min-w-max` plus a sticky first cell inside a rounded
    card will overflow unless an explicit `gridTemplateColumns` is passed and the body scrolls
    horizontally *within* the card.
@@ -414,6 +555,14 @@ on 3. 8 depends on 6 and 7. 9 depends on 1 and 6.
 8. **Row identity.** The contract guarantees one row per branch, so synthesise `id` from `name.value`
    **in the mapper**. Do **not** relax `DataTable<T extends NodeCore>` or its `getRowId` — that
    touches every table in the app.
+9. **Grid style identity.** `DataTable` memoizes its grid `style` on
+   `[allHeaders.length, gridTemplateColumns]`. An inline arrow passed from a parent that re-renders on
+   every search keystroke changes identity each render. **Define `gridTemplateColumns` at module
+   scope.** The React Compiler will usually hoist it — module scope is the fix that does not depend on
+   that. (Manual memoization is forbidden in this repo, so this is the available lever.)
+10. **Duplicate `urlKey`s.** Making `urlKey` required prevents *accidental* sharing but not two call
+    sites passing the same string. Add a dev-mode duplicate-key warning in `use-table-pagination.ts`,
+    and state the constraint in the FR-028 knowledge note.
 
 ## Deliberately not doing
 
@@ -437,8 +586,10 @@ Each argued and then cut by the refactor-friendly framing:
 | Violation | Why needed | Simpler alternative rejected because |
 |---|---|---|
 | **A second pagination mechanism** alongside the legacy `Pagination` / `usePagination` | The legacy component is hard-wired to a single global `QSP.PAGINATION` key, so two paginated tables on one route move together — which this card would immediately break (FR-011). It also assumes the table is the page-level scroll area, which is false inside a card (FR-011a). | Generalising the legacy component in place would put this feature's regression risk on **three unrelated pages that have no tests at all**. The duplication is temporary and signposted: FR-028's knowledge note names the new component as the intended successor, and migrating the three call sites is tracked as follow-on work. |
-| **A new shared primitive `CommitHash`** | Nothing in the app renders a monospace, truncating, short-form hash; the only `font-mono` usage is unrelated and there is no short-hash helper. Two call sites exist on arrival (table cells, non-copyable; details rows, copyable), satisfying Principle VII's two-caller bar. | Inlining the mono/truncate/short-form logic in both call sites would duplicate the hash-shortening rule — the exact thing that later drifts between the two. It composes `CopyToClipboardButton` rather than reimplementing copying. |
-| **Two `ObjectDataDisplay` instances** mounting two metadata `Sheet`s (D1) | The alternative edits a file every object-detail page depends on. | See D1 — the refactor framing's own risk register ranked that edit as its highest-blast-radius item. A duplicated closed dialog in the tree is not a behaviour change. |
+| **A new shared primitive `CommitHash`** | Nothing in the app renders a monospace, truncating, short-form hash; the only `font-mono` usage is unrelated and there is no short-hash helper. Two call sites exist on arrival (table cells, non-copyable; details rows, copyable). | Inlining the mono/truncate/short-form logic in both call sites would duplicate the hash-shortening rule — the exact thing that later drifts between the two. It composes `CopyToClipboardButton` rather than reimplementing copying. **Stated honestly**: Principle VII's "two existing callers" bar is met by two callers that both arrive *with this feature* — the letter rather than the spirit. Accepted as a small, self-contained primitive whose alternative is duplicated logic. |
+| **Two `ObjectDataDisplay` instances** mounting two metadata `Sheet`s, inside a new local `RepositoryDetailsCard` (D1) | The alternative edits a file every object-detail page depends on. `ObjectDetailsCard` itself cannot be reused — it hardcodes its title and test id. | See D1 — the refactor framing's own risk register ranked that edit as its highest-blast-radius item. A duplicated closed dialog in the tree is not a behaviour change, and the local wrapper is ~15 lines of `Card` + `CardHeader` around the genuinely reusable `ObjectDataDisplay`. |
+| **A card-scoped `ErrorBoundary`** around the branches card | FR-024 as written holds only for **query** failures: the use case's throw lands in react-query's `isError` and renders in place. A **render-time** failure — a mapper crash on an unexpected preview-window shape, or `DropdownCell` handed a null — propagates to `error-boundary-router` and blanks the whole route. The app has no card-scoped boundary, and the nullable-field risk is the one expected to bite during the preview window. | Relying on the mapper's guards alone makes FR-024 true only for the failure kind that was anticipated. ~15 lines makes it true for all of them. |
+| **No E2E for `CoreReadOnlyRepository`** (FR-027) | The e2e data set contains no `CoreReadOnlyRepository`; the fixture is shared with IFC-3153 and is not budgeted here. The kind differs from the read-write one only by title, row set and one column — all presentation over the same query, with the row-set rule enforced server-side. | Adding the fixture here duplicates work IFC-3153 owns. Component tests cover the three differences. Recorded rather than silent, and flagged to IFC-3153 so the fixture owner inherits the gap. |
 
 ## Phase 0 — Research
 
@@ -472,6 +623,19 @@ branches card; branch name links, no row-action menu).
 delegates to `AGENTS.md`; it carries no `<!-- SPECKIT START -->` / `<!-- SPECKIT END -->` markers, so
 there is no managed block to refresh. Running `/speckit-agent-context-update` here would clobber a
 hand-written file. This is a standing project decision, not a one-off omission.
+
+## Open questions — carried, not invented
+
+Recorded here and carried into the PR body. None blocks implementation; each has a named owner who is
+not the implementer.
+
+| # | Question | Owner | Current working assumption |
+|---|---|---|---|
+| Q1 | The divergence register above, D-a in particular — two cards where the canvas ruled for one | Designer, via T094 on IFC-3101 | Build two cards per the 2026-09-10 clarification. Raise before work unit 1 starts |
+| Q2 | If the epic branch is released before IFC-3127 lands, users see fabricated commit hashes and sync statuses with nothing marking them as placeholders. Gate the card, add a preview banner, or accept? | Epic owner (IFC-3104 / INFP-671) | No banner — the fabricated values reach no user while this lives on the epic branch alongside IFC-3127 |
+| Q3 | IFC-3131 is this card's stated manual-validation gate, but its instructions are written by IFC-3132, which has not landed. Is the gate real? | Epic owner | [quickstart.md](quickstart.md)'s validation scenarios serve as the acceptance checklist. They are near-verbatim what IFC-3131 needs, so they can be lifted into it |
+| Q4 | Four user-facing state strings (loading, empty, denied, failed) are unpinned, including the "all branches have Git sync disabled" case. The canvas draws none of them | Product + designer | Strings are pinned in the [UI contract](contracts/repository-branch-status-ui.md) §4 so copy can be reviewed without reading code |
+| Q5 | Dropping `Last import` makes `Syncing` indistinguishable from stuck, and with no `import_error` and no task-log link a user reaches "branch X is in error" and stops | Epic IFC-3101 | Accepted for this slice. The dead-end is real and closes when the drift column and import-error surface land |
 
 ## Phase 2 — Tasks
 

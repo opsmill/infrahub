@@ -34,12 +34,19 @@ own_values_only           ✗
 ```
 
 **This is how FR-016 is enforced — structurally.** A variable that cannot be expressed cannot be
-sent. That is stronger than any runtime guard and it cannot rot: there is no code path to forget to
-guard, and no reviewer needs to remember the rule.
+sent. There is no code path to forget to guard, and no reviewer needs to remember the rule.
 
-The backend accepts-but-ignores these three during the IFC-3127 preview window, so sending one would
-silently render an unfiltered row set as though it were filtered. They are **deferred, not dropped** —
-once IFC-3127 lifts the restriction they become buildable as follow-on work outside this spec.
+**What actually happens if one is sent**: the backend **rejects it with a `ValidationError`** while
+the stub serves placeholder values — the resolver raises it for any of the three that would narrow the
+rows, and the frozen SDL says so in terms. So the failure mode being prevented is a **loud whole-card
+failure**, not a silently-wrong row set.
+
+> IFC-3130's Jira description says these are "accepted but ignored". That is wrong; the contract
+> wins. An earlier revision of these documents propagated the ticket's wording and overstated
+> FR-016's risk as a result.
+
+They are **deferred, not dropped** — once IFC-3127 lifts the restriction they become buildable as
+follow-on work outside this spec.
 
 FR-016's component test pins the absence anyway, asserting these arguments appear in no request the
 feature makes.
@@ -73,6 +80,10 @@ substitute drawn from `updated_at`, from data it never requested.
 **`sync_status` selects `label` and `color` from the schema** (FR-004, FR-005). The card holds no
 label map and no colour map. A value the test invents must render with that invented label and
 colour — which is exactly how FR-004 is verified.
+
+**The column header is the schema's `sync_status` label**, whatever it is. The design canvas heads
+this column `Import status` (read-write) and `Git state` (read-only); FR-005 forbids rendering either,
+because neither is the schema's own. This document names no canvas label as a column name.
 
 ---
 
@@ -139,16 +150,25 @@ something false. They differ by **component**, not by a hand-written string.
 
 Four distinguishable states. Each has exactly one component, so no two can render the same text.
 
-| State | Component | Distinguishing fact |
-|---|---|---|
-| Loading | `ObjectTableSkeleton` (`headerCount`) | Occupies its space; no layout jump when rows arrive |
-| Populated | `DataTable` + `TablePagination` | Rows, the count pill, and the window statement |
-| Empty | `NoDataFound` | "no branches" — **never** shown for a denial |
-| Failed — denied | `UnauthorizedScreen` (with a `className` override; its default is page-shaped `flex-1 p-8`) | The user is told they cannot see the list |
-| Failed — other | `ErrorScreen` (same override) | A failure distinct from both empty and loading |
+| State | Component | Copy | Distinguishing fact |
+|---|---|---|---|
+| Loading | `ObjectTableSkeleton`, `rowCount` = the current page size | — | Occupies its space; **no layout jump** when rows arrive |
+| Populated | `DataTable` + `TablePagination` | — | Rows, the count pill, and the window statement |
+| Empty — no match | `NoDataFound` | `No branch matches these filters` | Follows a filter the user set |
+| Empty — none in scope | `NoDataFound` | `No branch of this repository synchronises with Git` | The repository genuinely has no in-scope branches — a different fact from "your filter matched nothing" |
+| Failed — denied | `UnauthorizedScreen` (with a `className` override; its default is page-shaped `flex-1 p-8`) | `You do not have permission to view this repository's branches` | The user is told they cannot see the list |
+| Failed — other | `ErrorScreen` (same override) | `The branches could not be loaded` | A failure distinct from both empty and loading |
+
+**The strings are pinned here deliberately.** The canvas draws none of these states, so left
+unspecified the components' defaults would silently become the user-facing copy — including the
+"no branch synchronises with Git" case, which is specific enough that a generic default would be
+actively misleading. Pinning them here lets copy be reviewed without reading code.
 
 **A failure here must not blank the rest of the page** (FR-024) — both details cards continue to
-render while the branches query is failed.
+render while the branches query is failed. This holds for query failures by construction (the throw
+lands in react-query's `isError` and renders in place). It holds for **render-time** failures — a
+mapper crash, a null reaching `DropdownCell` — only because of the **card-scoped `ErrorBoundary`**;
+without it such a failure propagates to `error-boundary-router` and blanks the whole route.
 
 > **A fifth, column-scoped state will be needed** when IFC-3101's drift column lands: that column
 > arrives as a *second* query with independent failure states. Build the **column slot**, not the
@@ -163,7 +183,7 @@ render while the branches query is failed.
 | Card title (FR-007) | `Branches` | `Infrahub branches` |
 | Row set | branches with `sync_with_git` true | **every** branch, including those with Git sync disabled |
 | `ref` column | absent (`ref` is null) | present — the ref that branch tracks |
-| Columns | Branch · Import status · Commit | Branch · Import status · Commit · Ref |
+| Columns | Branch · *`sync_status`'s schema label* · Commit | Branch · *`sync_status`'s schema label* · Commit · Ref |
 | E2E coverage | yes (FR-026) | **no — deliberately** (FR-027) |
 
 **FR-027 is a recorded gap, not an oversight.** The e2e data set contains no `CoreReadOnlyRepository`;
