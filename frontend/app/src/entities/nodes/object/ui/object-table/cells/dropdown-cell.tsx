@@ -1,6 +1,10 @@
 import type { Dropdown } from "@/shared/api/graphql/generated/types";
 
-export function DropdownCell({ dropdown }: { dropdown: Dropdown }) {
+export function DropdownCell({
+  dropdown,
+}: {
+  dropdown: Pick<Dropdown, "value" | "label" | "color">;
+}) {
   return (
     <span
       className="truncate rounded-full px-2.5 py-1"
