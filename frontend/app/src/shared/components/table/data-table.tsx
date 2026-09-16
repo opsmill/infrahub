@@ -34,6 +34,8 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
   toolbarActions?: ObjectTableSelectionToolbarProps["renderMore"];
   enableRowSelection?: RowSelectionOptions<T>["enableRowSelection"];
   gridTemplateColumns?: (columnCount: number) => string;
+  skeletonRowCount?: number;
+  skeletonShowSelection?: boolean;
 }
 
 /**
@@ -63,6 +65,8 @@ export function DataTable<T extends NodeCore>({
   toolbarActions,
   enableRowSelection,
   gridTemplateColumns = defaultGridTemplateColumns,
+  skeletonRowCount,
+  skeletonShowSelection,
   ...props
 }: DataTableProps<T>) {
   const { isAuthenticated } = useAuth();
@@ -127,7 +131,13 @@ export function DataTable<T extends NodeCore>({
 
       {!isLoading && allRows.length === 0 && renderEmpty?.()}
 
-      {isLoading && <ObjectTableSkeleton headerCount={allHeaders.length} />}
+      {isLoading && (
+        <ObjectTableSkeleton
+          headerCount={allHeaders.length}
+          rowCount={skeletonRowCount}
+          showSelection={skeletonShowSelection}
+        />
+      )}
 
       {count !== undefined &&
         Array.from({ length: allHeaders.length }).map((_, index) => (
