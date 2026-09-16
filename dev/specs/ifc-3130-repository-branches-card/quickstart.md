@@ -174,14 +174,10 @@ git diff --exit-code origin/cross-branch-repo-status-infp-671 -- \
 
 Any output is a failure.
 
-> **Note the `ui/` segment.** An earlier revision of this file named
-> `shared/components/pagination.tsx`, one directory up from where the file lives. `git diff
-> --exit-code` with a pathspec matching **nothing exits 0**, so that check passed unconditionally no
-> matter what was edited. If you change these paths, verify the command fails when it should by
-> touching one of the files deliberately.
->
-> This belongs in CI (one step in `frontend-lint`, diffing against the merge base) rather than in a
-> human checklist — a guarantee nobody runs is not a guarantee.
+> **Note the `ui/` segment.** `git diff --exit-code` with a pathspec matching **nothing exits 0**, so
+> a wrong path passes unconditionally. If you change these paths, verify the command fails when it
+> should by touching one of the files deliberately. This belongs in CI (a step in `frontend-lint`,
+> diffing against the merge base) rather than in a human checklist.
 
 ### End-to-end (FR-026)
 

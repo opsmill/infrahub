@@ -69,16 +69,13 @@ dropdown value appears, so the card is fully buildable and screenshottable again
 Two consequences this plan must honour:
 
 - `sync_status__value`, `internal_status__value` and `own_values_only` are **rejected with a
-  `ValidationError`** while the stub serves placeholder values — *not* accepted-and-ignored. The
-  resolver raises it for any of the three that would narrow the rows, and the frozen SDL says so in
-  terms. (IFC-3130's own Jira description says "accepted but ignored"; **the contract wins** — an
-  earlier revision of this plan propagated the ticket's wording.)
+  `ValidationError`** while the stub serves placeholder values. The resolver raises it for any of the
+  three that would narrow the rows. (IFC-3130's Jira description says "accepted but ignored"; the
+  contract wins.)
 
-  **FR-016 is still enforced structurally**: the gql.tada document simply does not declare those three
-  variables, and a variable that cannot be expressed cannot be sent. But the failure mode being
-  prevented is a **loud whole-card failure**, not silently-wrong data — so FR-016 is lower-risk than
-  an earlier revision claimed, and the guarantee is about not shipping a broken card rather than
-  about not lying to the user.
+  **FR-016 is enforced structurally**: the gql.tada document does not declare those three variables,
+  and a variable that cannot be expressed cannot be sent. The failure mode prevented is a **loud
+  whole-card failure**, not silently-wrong data.
 - Nothing in this feature may depend on the values being real (SC-008). When IFC-3127 merges, the
   values become real **with no contract change and no code change here**.
 
@@ -157,9 +154,6 @@ Four decisions where the three framings diverged. Settled; not to be revisited d
 
 ### D1 — Two derived `ModelSchema` objects, rendered through a local `RepositoryDetailsCard`
 
-> **Revised after critique (E3).** The decision's *reasoning* survives intact; the component it named
-> does not. Recorded here rather than rewritten, because the reasoning is what matters.
-
 Build two derived `ModelSchema` objects with partitioned fields, and render each through a **thin
 local `RepositoryDetailsCard`** in `entities/repository/ui/` that composes `Card` + `CardHeader` +
 the existing **`ObjectDataDisplay`**.
@@ -169,16 +163,13 @@ today's behaviour). Both reach the same place, but the derived-schema route **to
 every object-detail page depends on** — the one change in this feature that could break unrelated
 pages, and the refactor framing's own risk register ranked that edit as its highest-blast-radius item.
 
-*Why not the original `ObjectDetailsCard`*: it **hardcodes the literal `Details`** in its `CardHeader`
-and hardcodes `data-testid="object-details"`, and exposes no title, caption or test-id prop. It
-therefore cannot produce FR-018's "On this branch" card with its branch-name caption, and two
-instances would emit the same test id. "Hand each to the unchanged `ObjectDetailsCard`" was not
-implementable as written.
+*Why not `ObjectDetailsCard`*: it **hardcodes the literal `Details`** in its `CardHeader` and
+hardcodes `data-testid="object-details"`, exposing no title, caption or test-id prop. It cannot
+produce FR-018's "On this branch" card, and two instances would collide on test id.
 
-*Why the local card is better than either original option*: `ObjectDataDisplay` is the genuinely
-reusable part and it is reused unchanged. The wrapper is ~15 lines of `Card` + `CardHeader`. It keeps
-**zero shared-file edits** — D1's whole point — while freeing both titles, the caption slot and
-distinct test ids. Neither original framing found it.
+*Why the local card*: `ObjectDataDisplay` is the genuinely reusable part and is reused unchanged. The
+wrapper is ~15 lines. It keeps **zero shared-file edits** — D1's whole point — while freeing both
+titles, the caption slot and distinct test ids.
 
 *Cost accepted*: two `ObjectDataDisplay` instances mount two metadata `Sheet`s, both default closed —
 a duplicated dialog in the tree, not a behaviour change.
@@ -401,8 +392,6 @@ actions column this card must not have.
 
 ### Divergence register — all of it, not just paging
 
-An earlier revision called paging "the one place where this feature knowingly diverges from the
-canvas." That was wrong, and it understated the divergence the designer is most likely to care about.
 **Take this whole register to T094 in IFC-3101** — the existing forum for unresolved canvas
 decisions — as one conversation, not five.
 
@@ -415,13 +404,12 @@ decisions — as one conversation, not five.
 | D-e | `tag` / `branch` pill beside the tracked ref | Dropped | No field in the contract carries the distinction; deriving it from the ref string is guesswork | Low risk |
 | D-f | Explanatory footer on the read-only card | Kept as designed | The designer flagged it as a question for the team, not a blocker | No |
 
-**On D-b's justification specifically**: rest it on **URL-shareability**, which is sound on its own.
-An earlier revision also argued "load more" cannot serve the *"jump to the failing branch among 200"*
-journey — but page controls do not serve that journey either. FR-013 filters only the **branch
-lifecycle** `BranchStatus`, FR-016 defers `sync_status__value` to IFC-3127, and there is no sort
-control. In this slice, finding the failing branch among 200 means paging through them looking for a
-red chip. That is a real limitation of the slice, not an argument for either paging shape, and
-SC-002 should not be read as claiming otherwise.
+**D-b rests on URL-shareability alone**, which is sufficient. It does *not* rest on serving the
+*"jump to the failing branch among 200"* journey, because page controls do not serve that journey
+either: FR-013 filters only the **branch lifecycle** `BranchStatus`, FR-016 defers
+`sync_status__value` to IFC-3127, and there is no sort control. In this slice, finding the failing
+branch among 200 means paging through them looking for a red chip. That is a limitation of the
+slice, not an argument for either paging shape, and SC-002 should not be read as claiming otherwise.
 
 **Timing matters**: pagination is **work unit 1**. If D-b is raised late it is built first and
 rejected last. Raise the register before unit 1 starts.
@@ -433,8 +421,8 @@ which defeats FR-025. Two changes make the requirement reachable:
 
 - Each row carries `role="row"` with an accessible name including the branch name, so
   `getByRole("row", { name: /feat\/bgp-policies/ })` works and cells can be scoped with `within(row)`.
-  **Without this, FR-003 can only be written as a whole-table text assertion, which passes whenever
-  *any* row carries the default marker.**
+  Otherwise FR-003 can only be written as a whole-table text assertion, which passes whenever *any*
+  row carries the default marker.
 - The default marker is `<Badge aria-label="Default branch">default</Badge>`.
 
 **FR-004 and FR-025 conflict on their face**, and the resolution must be written into both tests:
@@ -479,12 +467,9 @@ test that proves nothing is worse than an honest note.
   `frontend/app/src/shared/hooks/usePagination.ts`, plus the FR-011 key-scoping unit test proving the
   new hook *cannot* collide with `QSP.PAGINATION`.
 
-  > **Get the path right, and put the check in CI.** An earlier revision named
-  > `shared/components/pagination.tsx` — one directory up from where the file actually lives. `git
-  > diff --exit-code` with a pathspec matching nothing **exits 0 silently**, so that check would have
-  > passed forever no matter what was edited. A guarantee that lives only in a Definition-of-Done
-  > checkbox is not a guarantee: this belongs as one step in the `frontend-lint` job, diffing against
-  > the merge base.
+  > **Note the `ui/` segment**, and put the check in CI. `git diff --exit-code` with a pathspec
+  > matching nothing **exits 0 silently**, so a wrong path passes forever. This belongs as a step in
+  > the `frontend-lint` job, diffing against the merge base, not in a Definition-of-Done checkbox.
 
 ## Work units
 
@@ -492,8 +477,7 @@ Parallel groups separated by `───`. Units within a group share no file and
 dependency.
 
 > The spec carries **32** requirement statements — FR-001…FR-028 **plus** FR-003a, FR-010a, FR-011a
-> and FR-018a. They are enumerated individually below: an earlier revision wrote unit 5's as the range
-> "002–006", which silently swallowed FR-003a.
+> and FR-018a. Enumerate them individually; a range like "002–006" silently omits FR-003a.
 
 | # | Unit | Key files | FRs |
 |---|---|---|---|
@@ -534,10 +518,9 @@ requirement can only be *verified* once there is a card to put it in.
    classic "passes alone, fails in a full run". Reset **`window.location.search`**, not just
    `history.state`, and do it in a **shared setup file** so a new test file cannot silently opt out.
 
-   *(Checked and cleared during critique: `render.tsx` mounts `NuqsAdapter` **outside**
-   `BrowserRouter`, which reads like a latent crash. It is not — `createAdapterProvider` only puts the
-   hook into context; `useNavigate` / `useSearchParams` execute in the consuming component, inside the
-   Router. The `afterEach` reset is the right fix and no sharper one is needed.)*
+   `render.tsx` mounts `NuqsAdapter` **outside** `BrowserRouter`, which reads like a latent crash. It
+   is not: `createAdapterProvider` only puts the hook into context; `useNavigate` / `useSearchParams`
+   execute in the consuming component, inside the Router. The `afterEach` reset is the right fix.
 3. **`DataTable` geometry inside a `Card`.** `min-w-max` plus a sticky first cell inside a rounded
    card will overflow unless an explicit `gridTemplateColumns` is passed and the body scrolls
    horizontally *within* the card.
