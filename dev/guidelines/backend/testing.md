@@ -388,6 +388,26 @@ The deadline applies to every wait, not only polls: wrap a bare `await event.wai
 regression into a whole-suite hang that only pytest-timeout ends, minutes later, with the cause
 hidden.
 
+### Never assert on elapsed time
+
+`assert elapsed_seconds < N` encodes the speed of the machine that wrote it. It passes on a fast
+runner with the regression present, flakes on a loaded one without it, and the margin narrows every
+time the fixture grows, so it is both a weak guard and a source of flakes. This covers any assertion
+whose outcome depends on how fast the host is, wall-clock gaps between events included.
+
+A deadline that only bounds a wait is not such an assertion: it is a guard that turns a hang into a
+fast failure, and nothing the test asserts depends on how long it took.
+
+Hold the shape instead of the duration:
+
+- Count the work. When a fix turns a scan into a lookup, assert the number of calls, queries or
+  comparisons; a counting double fails identically on every machine.
+- Keep the measurement out of the suite. The numbers that justified the change belong in the commit
+  message or the pull request, where they are read once, not in an assertion CI re-runs forever.
+
+When the behavior under test genuinely is a schedule, inject the clock as above so the schedule
+becomes a value the test reads exactly, rather than a duration it races.
+
 ## Exception Testing
 
 When testing that code raises an exception, use the `match` parameter of `pytest.raises` to validate the error message:
