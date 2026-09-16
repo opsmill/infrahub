@@ -34,8 +34,7 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
   gridTemplateColumns?: (columnCount: number) => string;
   skeletonRowCount?: number;
   skeletonShowSelection?: boolean;
-  // Opt in only where every column also carries `role="cell"` / `role="columnheader"`: a table whose
-  // rows own no cells reads worse than no table semantics at all.
+  // Requires every rendered header and cell to carry `role="columnheader"` / `role="cell"`.
   semanticTable?: boolean;
 }
 
