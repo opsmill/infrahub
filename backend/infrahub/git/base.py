@@ -1146,11 +1146,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 cmd.push("--dry-run", "--porcelain", "--delete", url, f"refs/heads/{WRITE_ACCESS_PROBE_REF}")
             except GitCommandError as exc:
                 try:
-                    cls._raise_enriched_error_static(name=name, location=url, error=exc)
+                    cls._raise_enriched_error_static(name=name, location=url, error=exc, is_write_operation=True)
                 except RepositoryPermissionError as classified:
-                    # The read check already passed, so an authorization denial on the write service
-                    # specifically means the credentials can read but not push. A credential failure
-                    # (bad or missing token) keeps its own message and propagates unchanged.
+                    # The read check already passed, so a write-service denial means read-but-not-push.
                     raise RepositoryPermissionError(
                         identifier=name,
                         message=(
@@ -1177,7 +1175,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     @staticmethod
     def _raise_enriched_error_static(
-        error: GitCommandError, name: str, location: str, branch_name: str | None = None
+        error: GitCommandError,
+        name: str,
+        location: str,
+        branch_name: str | None = None,
+        is_write_operation: bool = False,
     ) -> NoReturn:
         """Translate a raw ``git`` CLI failure into a typed repository error.
 
@@ -1195,10 +1197,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):
           - not-a-repo / missing: "Repository not found", "does not appear to be a git".
           - TLS: "SSL certificate problem", "server certificate verification failed".
           - credentials: "Authentication failed for", "could not read Username".
-          - permission: "Write access to repository not granted", "Permission to ... denied",
-            "The requested URL returned error: 403", "not allowed to push" (GitLab), "permission
-            denied for writing" (Gitea) - authenticated but not authorized to push.
-        These are stable user-facing git/curl strings, but keyed on text — revisit them if
+          - permission (only when ``is_write_operation``): "Write access to repository not granted",
+            "Permission to ... denied", "The requested URL returned error: 403", "not allowed to
+            push" (GitLab), "permission denied for writing" (Gitea) - authenticated but not
+            authorized to push. Read operations can return 403 for reasons unrelated to write access
+            (rate limiting, SSO/IP enforcement), so they must not be classified as a push denial.
+        These are stable user-facing git/curl strings, but keyed on text - revisit them if
         git or libcurl change their wording.
 
         Raises:
@@ -1256,7 +1260,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 message=f"Unable to pull the branch {branch_name} for repository {name}, there are conflicts that must be resolved.",
             ) from error
 
-        if (
+        if is_write_operation and (
             "Write access to repository not granted" in error.stderr
             or "The requested URL returned error: 403" in error.stderr
             or ("Permission to" in error.stderr and "denied" in error.stderr)

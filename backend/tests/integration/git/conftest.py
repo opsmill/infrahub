@@ -213,7 +213,7 @@ def gogs_server() -> Generator[GogsServer, None, None]:
         # Wait for the home page (not /install) to be available before calling the API.
         _wait_for_http(f"{base_url}/", timeout=30)
 
-        # Create the users via the Gogs CLI — more reliable than the install form's
+        # Create the users via the Gogs CLI - more reliable than the install form's
         # optional admin section, which is silently skipped on some Gogs versions. The
         # read-only user is the credential that can read but not push in the write-probe tests.
         _create_gogs_user(container, GOGS_ADMIN, GOGS_PASSWORD, GOGS_EMAIL, admin=True)

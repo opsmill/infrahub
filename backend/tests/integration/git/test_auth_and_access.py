@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.exceptions import RepositoryCredentialsError, RepositoryPermissionError
 from infrahub.git.repository import InfrahubRepository
@@ -29,6 +30,7 @@ from tests.integration.git.conftest import (
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
+    from infrahub.core.protocols import CoreRepository
     from infrahub.database import InfrahubDatabase
     from tests.helpers.git import GogsServer
 
@@ -95,7 +97,7 @@ class TestAuthAndAccess(TestInfrahubApp):
 
         The typed exception's own message is a static placeholder from the exception
         class. The remote's response text reaches the caller through the chained
-        `GitCommandError`'s stderr — without the typed exception, callers cannot
+        `GitCommandError`'s stderr - without the typed exception, callers cannot
         distinguish auth failures from other git errors, and without the chain,
         the remote's diagnostic text is lost.
         """
@@ -111,23 +113,31 @@ class TestAuthAndAccess(TestInfrahubApp):
         self,
         no_write_access_dataset: dict,
         client: InfrahubClient,
+        db: InfrahubDatabase,
     ) -> None:
         """Pushing as a read-only user raises a typed RepositoryPermissionError whose cause carries the 403.
 
         A read-only credential clones successfully but is denied at push time; the caller gets a typed
         permission error rather than raw git output, and the remote's HTTP 403 response is still
-        reachable on the exception's chained cause.
+        reachable on the exception's chained cause. A transient push failure must not degrade the
+        repository's recorded operational status.
         """
         repo_name = no_write_access_dataset["repo_name"]
         readonly_url = no_write_access_dataset["readonly_url"]
+        node_id = no_write_access_dataset["node_id"]
 
-        # Successful clone — read-only access is sufficient.
+        # Successful clone - read-only access is sufficient.
         infrahub_repo = await InfrahubRepository.new(
-            id=no_write_access_dataset["node_id"],
+            id=node_id,
             name=repo_name,
             location=readonly_url,
             client=client,
         )
+
+        repo_before: CoreRepository = await NodeManager.get_one(
+            db=db, id=node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        status_before = repo_before.operational_status.value
 
         # Make a local commit on main so there is something to push.
         git_repo = infrahub_repo.get_git_repo_main()
@@ -144,3 +154,8 @@ class TestAuthAndAccess(TestInfrahubApp):
 
         # The remote's response is preserved on the chained cause, not swallowed by the typed error.
         assert "403" in str(exc_info.value.__cause__)
+
+        repo_after: CoreRepository = await NodeManager.get_one(
+            db=db, id=node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        assert repo_after.operational_status.value == status_before

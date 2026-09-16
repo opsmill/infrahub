@@ -292,8 +292,8 @@ class _RaisingWorktree:
 class _FailingPushRepository(InfrahubRepository):
     """An InfrahubRepository whose worktree's origin push always fails with a preset transport error.
 
-    Records every operational status the classifier writes so the test can assert the status update is
-    executed, not only that the typed error is raised. The double keeps it in memory; it does not persist.
+    Records every operational status write so the test can assert a transient push failure leaves the
+    recorded status untouched. The double keeps it in memory; it does not persist.
     """
 
     push_error: GitCommandError
@@ -311,7 +311,6 @@ class PushErrorCase:
     name: str
     stderr: str
     expected: type[RepositoryError]
-    expected_status: RepositoryOperationalStatus
 
 
 @pytest.mark.parametrize(
@@ -321,24 +320,23 @@ class PushErrorCase:
             name="credentials",
             stderr="fatal: Authentication failed for 'https://gitlab.example.com/net/repo.git/'",
             expected=RepositoryCredentialsError,
-            expected_status=RepositoryOperationalStatus.ERROR_CRED,
         ),
         PushErrorCase(
             name="connection",
             stderr="fatal: unable to access 'https://gitlab.example.com/net/repo.git/': "
             "Could not resolve host: gitlab.example.com",
             expected=RepositoryConnectionError,
-            expected_status=RepositoryOperationalStatus.ERROR_CONNECTION,
         ),
     ],
     ids=lambda c: c.name,
 )
 async def test_push_classifies_transport_error(case: PushErrorCase) -> None:
-    """A transport-level GitCommandError from the underlying push is classified and its status persisted.
+    """A transport-level GitCommandError from the underlying push is classified without persisting status.
 
     Such a failure leaves no porcelain status line for GitPython to parse, so it re-raises
-    GitCommandError instead of reporting on push_info.flags; push() must route it through the
-    classifier, which both raises the typed error and writes the matching operational status.
+    GitCommandError instead of reporting on push_info.flags; push() routes it through the classifier
+    to raise the typed error, but a transient push failure must not degrade the recorded operational
+    status - that is owned by the connect probe and periodic sync.
     """
     repository = _FailingPushRepository(
         id=UUIDT.new(),
@@ -358,7 +356,7 @@ async def test_push_classifies_transport_error(case: PushErrorCase) -> None:
     with pytest.raises(case.expected):
         await repository.push("main")
 
-    assert repository.recorded_statuses == [case.expected_status]
+    assert repository.recorded_statuses == []
 
 
 @pytest.fixture

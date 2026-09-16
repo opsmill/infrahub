@@ -322,10 +322,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         try:
             push_infos = repo.remotes.origin.push(refspec=f"HEAD:refs/heads/{remote_branch}")
         except GitCommandError as exc:
-            # A transport-level failure (403, expired token, connection refused, TLS) leaves no
-            # porcelain status line to parse, so GitPython re-raises here rather than reporting it
-            # on push_info.flags. Route it through the same classifier a fetch failure uses.
-            await self._raise_enriched_error(error=exc, branch_name=branch_name)
+            # A transport-level failure raises here with no porcelain status line to classify from flags.
+            self._raise_enriched_error_static(
+                error=exc, name=self.name, location=self.location, branch_name=branch_name, is_write_operation=True
+            )
         for push_info in push_infos:
             if push_info.flags & push_info.ERROR:
                 raise RepositoryError(
