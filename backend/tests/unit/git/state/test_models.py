@@ -5,7 +5,13 @@ from datetime import UTC, datetime
 import pytest
 
 from infrahub.core.constants import RepositoryCommitState, RepositoryGitCondition, RepositoryGitUnavailableReason
-from infrahub.git.state.models import BranchDriftResult, CommitEntry, CommitLogResult, GitStateFacts
+from infrahub.git.state.models import (
+    BranchDriftResult,
+    BranchDriftRow,
+    CommitEntry,
+    CommitLogResult,
+    GitStateFacts,
+)
 
 HEAD = "3333333333333333333333333333333333333333"
 IMPORTED = "1111111111111111111111111111111111111111"
@@ -48,14 +54,24 @@ def test_a_warm_up_belongs_to_the_not_cloned_reason() -> None:
 
 
 def test_drift_rows_survive_an_unavailable_column() -> None:
-    """FR-022: the rows are graph-resolved, so they stand whatever the git-derived column says."""
+    """The rows are graph-resolved, so they stand whatever the git-derived column says."""
+    row = BranchDriftRow(
+        branch_name="main",
+        git_ref="trunk",
+        tracked_commit=IMPORTED,
+        remote_head=None,
+        condition=RepositoryGitCondition.UNAVAILABLE,
+    )
+
     result = BranchDriftResult(
+        branches=(row,),
         unavailable_reason=RepositoryGitUnavailableReason.TIMEOUT,
         error_message="No worker answered within the configured time.",
     )
 
+    assert result.branches == (row,)
     assert result.unavailable_reason is RepositoryGitUnavailableReason.TIMEOUT
-    assert result.branches == ()
+    assert result.error_message == "No worker answered within the configured time."
 
 
 def test_an_error_message_belongs_to_an_unavailable_result() -> None:
