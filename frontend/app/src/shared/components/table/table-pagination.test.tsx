@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader } from "@infrahub/ui";
 import { useState } from "react";
 import { describe, expect, test } from "vitest";
 
-import { DEFAULT_PAGE_SIZE, getPageWindow } from "@/shared/utils/table-pagination";
+import { getPageWindow, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
 import { render } from "../../../../tests/components/render";
 import { TablePagination } from "./table-pagination";
@@ -14,8 +14,7 @@ interface PagedCardProps {
 
 const PagedCard = ({ totalCount, initialPage = 1 }: PagedCardProps) => {
   const [page, setPage] = useState(initialPage);
-  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
-  const { firstRow, lastRow } = getPageWindow(page, pageSize, totalCount);
+  const { firstRow, lastRow } = getPageWindow(page, PAGE_SIZE, totalCount);
   const rows = Array.from({ length: Math.max(lastRow - firstRow + 1, 0) }, (_, index) => (
     <li key={firstRow + index}>{`Branch ${firstRow + index}`}</li>
   ));
@@ -30,9 +29,8 @@ const PagedCard = ({ totalCount, initialPage = 1 }: PagedCardProps) => {
 
       <TablePagination
         onPageChange={setPage}
-        onPageSizeChange={setPageSize}
         page={page}
-        pageSize={pageSize}
+        pageSize={PAGE_SIZE}
         totalCount={totalCount}
       />
     </Card>
@@ -134,19 +132,6 @@ describe("TablePagination", () => {
 
     // THEN
     await expect.element(component.getByRole("button", { name: "Next page" })).toBeDisabled();
-  });
-
-  test("resizes the page from the labelled page-size selector", async () => {
-    // GIVEN
-    const component = await render(<PagedCard totalCount={45} />);
-
-    // WHEN
-    await component.getByRole("button", { name: /Rows per page/ }).click();
-    await component.getByRole("option", { name: "50" }).click();
-
-    // THEN
-    await expect.element(component.getByText("Showing 1 to 45 of 45")).toBeVisible();
-    await expect.element(component.getByText("Branch 45", { exact: true })).toBeVisible();
   });
 
   test("states an empty set without offering a second page", async () => {

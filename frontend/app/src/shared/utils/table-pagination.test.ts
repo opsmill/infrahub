@@ -2,33 +2,19 @@ import { describe, expect, test } from "vitest";
 
 import {
   clampPage,
-  DEFAULT_PAGE_SIZE,
   formatPageWindow,
   getOffset,
   getPageFromOffset,
   getPageItems,
   getPageWindow,
   getTotalPages,
-  isPageSize,
-  PAGE_SIZE_OPTIONS,
+  PAGE_SIZE,
   toPageNumber,
 } from "./table-pagination";
 
-describe("page sizes", () => {
-  test("offers 10, 20 and 50", () => {
-    expect(PAGE_SIZE_OPTIONS).toEqual([10, 20, 50]);
-  });
-
-  test("defaults to 10", () => {
-    expect(DEFAULT_PAGE_SIZE).toBe(10);
-  });
-
-  test("accepts an offered size", () => {
-    expect(isPageSize(50)).toBe(true);
-  });
-
-  test("rejects a size that is not offered", () => {
-    expect(isPageSize(25)).toBe(false);
+describe("page size", () => {
+  test("holds ten rows", () => {
+    expect(PAGE_SIZE).toBe(10);
   });
 });
 

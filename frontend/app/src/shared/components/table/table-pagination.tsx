@@ -1,4 +1,4 @@
-import { buttonVariants, Select, SelectItem, SelectList, SelectTrigger } from "@infrahub/ui";
+import { buttonVariants } from "@infrahub/ui";
 
 import { Icon } from "@/shared/components/display/icon";
 import { classNames } from "@/shared/utils/common";
@@ -7,7 +7,6 @@ import {
   formatPageWindow,
   getPageItems,
   getTotalPages,
-  PAGE_SIZE_OPTIONS,
 } from "@/shared/utils/table-pagination";
 
 export interface TablePaginationProps {
@@ -15,7 +14,6 @@ export interface TablePaginationProps {
   pageSize: number;
   totalCount: number;
   onPageChange: (page: number) => void;
-  onPageSizeChange: (pageSize: number) => void;
   className?: string;
 }
 
@@ -34,7 +32,6 @@ export function TablePagination({
   pageSize,
   totalCount,
   onPageChange,
-  onPageSizeChange,
   className,
 }: TablePaginationProps) {
   const totalPages = getTotalPages(totalCount, pageSize);
@@ -48,29 +45,9 @@ export function TablePagination({
         className
       )}
     >
-      <div className="flex items-center gap-2">
-        <p className="text-foreground-muted" role="status">
-          {formatPageWindow(currentPage, pageSize, totalCount)}
-        </p>
-
-        <Select
-          aria-label="Rows per page"
-          onChange={(value) => {
-            onPageSizeChange(Number(value));
-          }}
-          value={pageSize}
-        >
-          <SelectTrigger className="w-auto" size="sm" />
-
-          <SelectList width="content">
-            {PAGE_SIZE_OPTIONS.map((option) => (
-              <SelectItem id={option} key={option}>
-                {String(option)}
-              </SelectItem>
-            ))}
-          </SelectList>
-        </Select>
-      </div>
+      <p className="text-foreground-muted" role="status">
+        {formatPageWindow(currentPage, pageSize, totalCount)}
+      </p>
 
       <div className="flex items-center gap-1">
         <button
