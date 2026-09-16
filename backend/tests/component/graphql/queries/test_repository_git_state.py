@@ -88,6 +88,20 @@ query RepositoryCommits($id: String!) {
 }
 """
 
+COMMITS_QUERY_THROUGH_A_FRAGMENT = """
+query RepositoryCommits($id: String!) {
+  InfrahubRepositoryCommits(repository_id: $id) {
+    repository_id
+    ...GitState
+  }
+}
+
+fragment GitState on RepositoryCommits {
+  condition
+  remote_head
+}
+"""
+
 DRIFT_QUERY = """
 query RepositoryBranchDrift($id: String!) {
   InfrahubRepositoryBranchDrift(repository_id: $id) {
@@ -593,6 +607,44 @@ async def test_a_root_field_selected_twice_still_answers_every_selection(
     assert response.data["InfrahubRepositoryCommits"] == {
         "repository_id": repository.id,
         "condition": RepositoryGitCondition.NOT_TRACKED.name,
+    }
+    assert recording_reader.commit_requests == [
+        _expected_request(
+            repository_id=repository.id,
+            infrahub_branch_name=default_branch.name,
+            git_ref=REPOSITORY_DEFAULT_BRANCH,
+            imported_commit=MAIN_COMMIT,
+            include_pending_count=False,
+        )
+    ]
+
+
+async def test_git_fields_reached_through_a_fragment_still_ask_the_reader(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    repository: Node,
+    no_import_filters: None,
+    recording_reader: RecordingRepositoryGitStateReader,
+) -> None:
+    """A fragment is how a generated client selects fields, and the gate reads the selection."""
+    response = await graphql_query(
+        query=COMMITS_QUERY_THROUGH_A_FRAGMENT,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert response.data["InfrahubRepositoryCommits"] == {
+        "repository_id": repository.id,
+        "condition": RepositoryGitCondition.NOT_TRACKED.name,
+        "remote_head": None,
     }
     assert recording_reader.commit_requests == [
         _expected_request(

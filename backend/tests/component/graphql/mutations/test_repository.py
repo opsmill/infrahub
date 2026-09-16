@@ -348,8 +348,46 @@ async def test_check_refs_refuses_a_read_write_repository(
     )
 
     assert result.errors
-    assert result.errors[0].message == (
-        f"Node {repo.id} is a CoreRepository, not a CoreReadOnlyRepository. "
-        "Checking remote refs is only supported for read-only repositories."
+    assert result.errors[0].message == f"Unable to find the node {repo.id} / CoreReadOnlyRepository in the database."
+    assert recorder.submit_calls == []
+
+
+async def test_check_refs_refuses_another_kind_without_naming_it(
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+    default_branch: Branch,
+    create_test_admin: Node,
+    default_permission_backend: None,
+) -> None:
+    recorder = WorkflowRecorder()
+    service = await InfrahubServices.new(database=db, message_bus=BusRecorder(), workflow=recorder)
+    account_session = AccountSession(
+        authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+    )
+
+    tag = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
+    await tag.new(db=db, name="not-a-repository")
+    await tag.save(db=db)
+
+    other_kind = await graphql_mutation(
+        query=CHECK_REFS_MUTATION,
+        db=db,
+        variables={"id": tag.id},
+        service=service,
+        account_session=account_session,
+    )
+    made_up_id = await graphql_mutation(
+        query=CHECK_REFS_MUTATION,
+        db=db,
+        variables={"id": "18d39e83-1ef7-d650-5424-000000000000"},
+        service=service,
+        account_session=account_session,
+    )
+
+    assert other_kind.errors
+    assert made_up_id.errors
+    assert other_kind.errors[0].message == f"Unable to find the node {tag.id} / CoreReadOnlyRepository in the database."
+    assert made_up_id.errors[0].message == (
+        "Unable to find the node 18d39e83-1ef7-d650-5424-000000000000 / CoreReadOnlyRepository in the database."
     )
     assert recorder.submit_calls == []

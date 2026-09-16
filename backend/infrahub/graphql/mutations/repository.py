@@ -12,7 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.git.models import (
     GitReadOnlyRepositoryImportCommit,
     GitRepositoryImportObjects,
@@ -301,15 +301,18 @@ class ReadOnlyRepositoryCheckRefs(Mutation):
 
         repo = await NodeManager.get_one_by_id_or_default_filter(
             db=graphql_context.db,
-            kind=InfrahubKind.GENERICREPOSITORY,
+            kind=InfrahubKind.READONLYREPOSITORY,
             id=str(data.id),
             branch=branch,
         )
 
+        # The lookup validates the requested kind only when it falls back to the default filter, so
+        # the id of any other node resolves here. Naming the kind it found would disclose it to a
+        # caller holding nothing but the update permission checked above, so this answers exactly as
+        # the lookup does for an id that exists nowhere.
         if repo.get_kind() != InfrahubKind.READONLYREPOSITORY:
-            raise ValidationError(
-                f"Node {data.id} is a {repo.get_kind()}, not a {InfrahubKind.READONLYREPOSITORY}. "
-                "Checking remote refs is only supported for read-only repositories."
+            raise NodeNotFoundError(
+                branch_name=branch.name, node_type=InfrahubKind.READONLYREPOSITORY, identifier=str(data.id)
             )
 
         workflow = await graphql_context.active_service.workflow.submit_workflow(
