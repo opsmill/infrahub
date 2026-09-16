@@ -152,11 +152,12 @@ page, and that moving to page 2 returns different rows.
 ### Work unit 5a — the new primitive and the display columns
 
 - [ ] T022 [P] [US1] Implement `CommitHash` in
-      `frontend/app/src/shared/components/display/commit-hash.tsx` — monospace, truncating, short-form,
-      with a `copyable` prop that **composes `CopyToClipboardButton`** rather than reimplementing
-      copying. Its accessible name carries the **full** hash (FR-025), since table cells offer no copy
-      affordance. Copy affordances appear only on full hashes in the details card, never in table
-      cells.
+      `frontend/app/src/shared/components/display/commit-hash.tsx` — monospace, truncating, short-form
+      (7 characters, git's own default abbreviation and what the design uses), with a `copyable` prop
+      that **composes `CopyToClipboardButton`** rather than reimplementing copying. The full hash goes
+      on `title`, **not** `aria-label`: ARIA forbids naming a role-less element and Biome's
+      `a11y/useAriaPropsSupportedByRole` rejects it. Copy affordances appear only on full hashes in the
+      details card, never in table cells.
 - [ ] T023 [P] [US1] Component-test `CommitHash` in `commit-hash.test.tsx`: truncation, the full value
       in the accessible name, and `copyable` on/off.
 - [ ] T024 [US1] Implement the branch-name cell in
