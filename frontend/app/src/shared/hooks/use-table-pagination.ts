@@ -1,17 +1,10 @@
 import { parseAsInteger, useQueryStates } from "nuqs";
 import { useEffect } from "react";
 
-import {
-  DEFAULT_PAGE_SIZE,
-  getOffset,
-  isPageSize,
-  type PageSize,
-  toPageNumber,
-} from "@/shared/utils/table-pagination";
+import { getOffset, PAGE_SIZE, toPageNumber } from "@/shared/utils/table-pagination";
 
 export interface UseTablePaginationOptions {
   urlKey: string;
-  defaultPageSize?: PageSize;
 }
 
 export interface TablePaginationState {
@@ -19,7 +12,6 @@ export interface TablePaginationState {
   pageSize: number;
   offset: number;
   setPage: (page: number) => void;
-  setPageSize: (pageSize: number) => void;
   resetPage: () => void;
 }
 
@@ -52,35 +44,22 @@ function useUniqueUrlKey(urlKey: string) {
   }, [urlKey]);
 }
 
-export function useTablePagination({
-  urlKey,
-  defaultPageSize = DEFAULT_PAGE_SIZE,
-}: UseTablePaginationOptions): TablePaginationState {
+export function useTablePagination({ urlKey }: UseTablePaginationOptions): TablePaginationState {
   useUniqueUrlKey(urlKey);
 
   const [params, setParams] = useQueryStates(
-    {
-      page: parseAsInteger.withDefault(1),
-      pageSize: parseAsInteger.withDefault(defaultPageSize),
-    },
-    { urlKeys: { page: `${urlKey}_page`, pageSize: `${urlKey}_size` } }
+    { page: parseAsInteger.withDefault(1) },
+    { urlKeys: { page: `${urlKey}_page` } }
   );
 
   const page = toPageNumber(params.page);
-  const pageSize = isPageSize(params.pageSize) ? params.pageSize : defaultPageSize;
 
   return {
     page,
-    pageSize,
-    offset: getOffset(page, pageSize),
+    pageSize: PAGE_SIZE,
+    offset: getOffset(page, PAGE_SIZE),
     setPage: (nextPage) => {
       setParams({ page: toPageNumber(nextPage) });
-    },
-    setPageSize: (nextPageSize) => {
-      setParams({
-        page: 1,
-        pageSize: isPageSize(nextPageSize) ? nextPageSize : defaultPageSize,
-      });
     },
     resetPage: () => {
       setParams({ page: 1 });

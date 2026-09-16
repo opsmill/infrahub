@@ -197,7 +197,7 @@ The position and size of the slice of rows currently shown.
 ```text
 PageWindow
   page      number   1-based, for display and for the controls
-  pageSize  number   default 10; selectable from 10, 20, 50
+  pageSize  number   fixed at 10; not user-selectable, not carried in the URL
   ⟶ derived for the wire:
   limit     number   = pageSize
   offset    number   = (page - 1) * pageSize

@@ -71,7 +71,7 @@ repo-root `tests/e2e/`
 `pages/`)
 
 **Performance Goals**: One request per page view regardless of branch count (SC-003); rows
-transferred bounded by page size (default 10), not by branch count
+transferred bounded by the fixed page size (10), not by branch count
 
 **Constraints**: Server-side paging, counting, filtering and ordering only — no client-side
 narrowing of any kind (FR-015). The card must not blank the rest of the page on failure (FR-024).
@@ -361,7 +361,7 @@ react-query `queryOptions` layer and holds none; putting the document there woul
 |---|---|---|
 | `object-details.tsx` | the `isOfKind` gate | The feature's single behavioural entry point, and its entire rollback path |
 | `object-table/cells/dropdown-cell.tsx` | the `dropdown` prop widened from the full generated `Dropdown` to `Pick<Dropdown, "value" \| "label" \| "color">` | **Type-only.** Strictly more permissive, no runtime change; the component already reads only those three fields |
-| `object-table/object-table-skeleton.tsx` | optional `rowCount` (default 20) and `showSelection` (default `true`) props | **Additive.** Both defaults reproduce the previous behaviour, so no existing caller changes. The card passes its page size and turns the selection checkbox off, through `DataTable` — without them the skeleton ships a phantom checkbox and a layout jump at page size 10, which FR-023's loading clause forbids |
+| `object-table/object-table-skeleton.tsx` | optional `rowCount` (default 20) and `showSelection` (default `true`) props | **Additive.** Both defaults reproduce the previous behaviour, so no existing caller changes. The card passes its page size and turns the selection checkbox off, through `DataTable` — without them the skeleton ships a phantom checkbox and a layout jump at this card's page size of 10, which FR-023's loading clause forbids |
 | `shared/components/table/data-table.tsx` | `role="table"` on the grid container and `role="row"` on each row wrapper, plus optional `skeletonRowCount` / `skeletonShowSelection` pass-throughs to `ObjectTableSkeleton` | **App-wide a11y change.** Every table gains table semantics. Required by FR-025: the row wrapper lives here, so `within(row)` scoping cannot be achieved from the card's own files. Both roles are needed together — an orphan `row` is invalid ARIA. Carries one `useFocusableInteractive` suppression, because Biome treats `row` as interactive though that only holds inside a grid/treegrid |
 
 The middle two are widenings, so no existing caller can break. Reverting the gate alone still removes
@@ -387,7 +387,7 @@ each assumed more had to be built than actually does.
 | Empty state | `NoDataFound` — `{message?, icon?}` (`shared/components/errors/no-data-found.tsx`), already `col-span-full py-12`. **Default export** | **USE AS-IS** — card-safe |
 | Permission-denied state | `UnauthorizedScreen` — `{className?, message?, icon?}` (`shared/components/errors/unauthorized-screen.tsx`). **Default export** | **USE WITH PROPS** — page-shaped `flex-1 p-8`, needs a `className` override |
 | Error state | `ErrorScreen` — `{className?, message?, icon?, hideIcon?}` (`shared/components/errors/error-screen.tsx`) | **USE WITH PROPS** — same override |
-| Loading state | `ObjectTableSkeleton` — `{headerCount, rowCount?, showSelection?}` (`entities/nodes/object/ui/object-table/object-table-skeleton.tsx`) | **EXTENDED** — it previously hardcoded 20 rows and a disabled `Checkbox` in column 0 of every row. This card has no selection column and supports page sizes 10/20/50, so as-is it shipped a phantom checkbox **and** a guaranteed layout jump at page size 10 — precisely what FR-023's loading clause forbids. `rowCount` (default 20) and `showSelection` (default `true`) are additive; the card reaches them through `DataTable`'s `skeletonRowCount` / `skeletonShowSelection` |
+| Loading state | `ObjectTableSkeleton` — `{headerCount, rowCount?, showSelection?}` (`entities/nodes/object/ui/object-table/object-table-skeleton.tsx`) | **EXTENDED** — it previously hardcoded 20 rows and a disabled `Checkbox` in column 0 of every row. This card has no selection column and holds 10 rows a page, so as-is it shipped a phantom checkbox **and** a guaranteed layout jump — precisely what FR-023's loading clause forbids. `rowCount` (default 20) and `showSelection` (default `true`) are additive; the card reaches them through `DataTable`'s `skeletonRowCount` / `skeletonShowSelection` |
 | Info icon beside a value | `Tooltip` from `@infrahub/ui` with `nonInteractiveTrigger` + `InfoIcon`, per `entities/branches/ui/branch-details/branch-attributes.tsx` | **USE AS-IS** |
 | Copy affordance (full hashes, details card only) | `CopyToClipboardButton` — `{data, …AriaButtonProps}` (`shared/components/buttons/copy-to-clipboard-button.tsx`), already wrapped in a `Copied!`/`Copy` Tooltip | **USE AS-IS** |
 
@@ -640,9 +640,12 @@ support metadata, the testing patterns a new test must follow, and the backend c
 in a document three plan framings were run against.
 
 **No `NEEDS CLARIFICATION` remain.** The spec's Clarifications section settled six questions on
-2026-09-10 (new paging component; page controls over "load more"; default size 20 from 10/20/50;
-"On this branch" title with a branch-name caption; placement below the details card and above the
-branches card; branch name links, no row-action menu).
+2026-09-10 (new paging component; page controls over "load more"; the page size; "On this branch"
+title with a branch-name caption; placement below the details card and above the branches card;
+branch name links, no row-action menu). The page-size answer was revised on 2026-09-16 to **a single
+fixed size of 10 with no page-size selector** — no user story asks for a page-size control, and one
+size makes FR-011b's height guarantee unconditional. The Performance Goals line above records the
+same figure.
 
 ## Phase 1 — Design & Contracts
 

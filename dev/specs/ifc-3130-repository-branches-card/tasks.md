@@ -11,7 +11,8 @@
 every FR carries a stated verification method.
 
 **Status**: T001–T055 are on the branch (work units 1–7, less the US3 filters). Outstanding:
-T056–T064 (US3 filters), T065–T066 (e2e), T067–T070 (documentation and changelog), T071–T078 (gates).
+T056–T064 (US3 filters), T065–T066 (e2e), T067–T070 (documentation and changelog), T071–T077 (gates),
+and T078 (the per-kind empty-state message, a work-unit-6 follow-up rather than a gate).
 A ticked box means the file exists at the path named.
 
 ---
@@ -103,7 +104,7 @@ page, and that moving to page 2 returns different rows.
 - [x] T009 [P] [US1] Unit-test `table-pagination.ts` in `table-pagination.test.ts`: boundary cases at
       page 1, the last page, an exact multiple of page size, a single page, and zero rows (FR-010a
       must read correctly when the set is smaller than one page).
-- [x] T010 [US1] Implement `useTablePagination({urlKey, defaultPageSize})` in
+- [x] T010 [US1] Implement `useTablePagination({urlKey})` in
       `frontend/app/src/shared/hooks/use-table-pagination.ts`. **`urlKey` is a required prop and is
       never defaulted** — that is the whole of FR-011's collision guarantee. Add a dev-mode warning
       when two mounted instances share a key. Covers FR-011.
@@ -113,13 +114,13 @@ page, and that moving to page 2 returns different rows.
       it is half of FR-017's guarantee alongside T071's zero-diff check. Covers FR-011, FR-017.
 - [x] T012 [US1] Implement the **controlled** `TablePagination` component in
       `frontend/app/src/shared/components/table/table-pagination.tsx` — props `{page, pageSize,
-      totalCount, onPageChange, onPageSizeChange}`, knowing nothing about URLs. Previous/next, direct
-      page selection, and a page-size selector offering 10 / 20 / 50 (default 10). Covers FR-010,
+      totalCount, onPageChange}`, knowing nothing about URLs. Previous/next and direct page
+      selection; **no page-size control** — the page holds a fixed 10 rows. Covers FR-010,
       FR-010a. Building it uncontrolled would rebuild the exact defect that makes the legacy
       component unmigratable.
 - [x] T013 [US1] Give `TablePagination` its accessible names (FR-025): `aria-current="page"` on the
-      active page, named previous/next controls, a labelled page-size selector, and an announced page
-      change. Three future migrations inherit whatever this ships.
+      active page, named previous/next controls, and an announced page change. Three future
+      migrations inherit whatever this ships.
 - [x] T014 [US1] Component-test `TablePagination` in `table-pagination.test.tsx` rendering it inside a
       **fixed-height card with no page-level scroll container**, asserting paging works there
       (FR-011a). Locate every control by accessible name.
@@ -205,7 +206,9 @@ page, and that moving to page 2 returns different rows.
       Use `DataTable` **directly** — not `BranchesTable` (zero props, hardcoded filters) and not
       `BranchesDataTable` (mounts a `fixed bottom-10` viewport-anchored toolbar). **Do not pass
       `count`.** Title `Branches` on the read-write kind, `Infrahub branches` on the read-only kind,
-      with the total in the count badge. Covers FR-001, FR-007, FR-009.
+      with the total in the count badge. Reserve a full page of height — page size plus header row —
+      whenever the total exceeds one page, and reserve nothing when it does not (FR-011b). Covers
+      FR-001, FR-007, FR-009, FR-011b.
 - [x] T028 [US1] Wire the card header: the count goes in `badgeContent`; give the header an explicit
       `aria-label` and **assert the count by the badge's own accessible name, not the heading's** —
       `Content.CardTitle` renders its title as `<h1>` with the badge as a sibling, so the count is not
@@ -218,7 +221,8 @@ page, and that moving to page 2 returns different rows.
       override; their defaults are page-shaped `flex-1 p-8`). Both are **default** exports.
 - [x] T030 [US1] Implement the loading state. `ObjectTableSkeleton` **cannot be used as-is**: it
       hardcoded 20 rows and a disabled `Checkbox` in column 0, shipping a phantom checkbox and a
-      guaranteed layout jump at page size 10 — what FR-023's loading clause forbids. Delivered as
+      guaranteed layout jump against this card's 10-row page — what FR-023's loading clause forbids.
+      Delivered as
       optional `rowCount` (default 20) and `showSelection` (default `true`) props on the skeleton,
       reached from the card through `DataTable`'s `skeletonRowCount` / `skeletonShowSelection`
       pass-throughs. Both defaults reproduce the previous behaviour, so no existing caller changes.
@@ -231,11 +235,17 @@ page, and that moving to page 2 returns different rows.
       `expectServerDrivenChange`. Assert one request produced the rendered rows **and** the stated
       total (FR-001), and that the total exceeds the row count when the set is larger than a page
       (FR-009).
-- [x] T033 [US1] Component-test paging: a page change and a page-size change each issue a new request
-      with the corresponding window, **and** the previous page's rows are no longer rendered — rows are
-      replaced, not accumulated (FR-010). Use `expectServerDrivenChange` for both halves.
+- [x] T033 [US1] Component-test paging: a page change issues a new request with the corresponding
+      window, **and** the previous page's rows are no longer rendered — rows are replaced, not
+      accumulated (FR-010). Use `expectServerDrivenChange`. Assert too that **no page-size control is
+      rendered**, which is the other half of FR-010 now that the page size is fixed.
 - [x] T034 [US1] Component-test FR-010a's window statement for a set larger than one page and for one
       smaller, asserting the **full visible text**.
+- [x] T034a [US1] Component-test FR-011b's height reservation in `repository-branches-card.test.tsx`:
+      on a **short last page** of a set larger than one page, assert the table's container reserves a
+      full page plus the header row even though fewer rows came back, and assert the reservation is
+      absent for a set that fits one page. The short last page is the case the reservation exists for
+      — a test on a full first page would pass without it.
 - [x] T035 [US1] Component-test FR-004 and FR-025 together: locate the chip by accessible name with
       `within(row).getByText(...)` — `DropdownCell` is a bare `<span>` with no role, so `getByRole`
       will not find it — then assert **`element.style.backgroundColor`** (not
@@ -542,12 +552,12 @@ pagination is the first thing built.
 | FR-010a | T008, T012, T034 | | FR-025 | T013, T022, T026, T035, T055 |
 | FR-011 | T010, T011 | | FR-026 | T065, T066 |
 | FR-011a | T014 | | FR-027 | T039, T077 |
-| FR-011b | T027 | | | |
+| FR-011b | T027, T034a | | | |
 | FR-012 | T057, T060 | | FR-028 | T067 |
 | FR-013 | T059, T061 | | | |
 | FR-014 | T056, T062 | | | |
 
-**78 tasks.** Setup 1 (T001) · foundational 6 (T002–T007) · US1 32 (T008–T039) · US2 16 (T040–T055)
-· US3 9 (T056–T064) · polish and gates 14 (T065–T078).
+**79 tasks.** Setup 1 (T001) · foundational 6 (T002–T007) · US1 33 (T008–T039, T034a) · US2 16
+(T040–T055) · US3 9 (T056–T064) · polish and gates 14 (T065–T078).
 
-**55 done** (T001–T055) · **23 open** (T056–T078).
+**56 done** (T001–T055, T034a) · **23 open** (T056–T078).

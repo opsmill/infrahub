@@ -100,14 +100,13 @@ describe("RepositoryBranchesCard", () => {
     expect(component.getByRole("row").elements()).toHaveLength(BRANCH_NAMES_BEFORE.length + 1);
   });
 
-  test("replaces the rows on a page change and on a page-size change", async () => {
+  test("replaces the rows on a page change", async () => {
     // GIVEN
     const firstPage = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
     const secondPage = generateRepositoryBranchStatusPayloadAfter({ count: 45 });
     apiMock
       .mockResolvedValueOnce(toApiResult(firstPage))
-      .mockResolvedValueOnce(toApiResult(secondPage))
-      .mockResolvedValue(toApiResult(firstPage));
+      .mockResolvedValue(toApiResult(secondPage));
 
     // WHEN
     const component = await renderCard();
@@ -129,20 +128,20 @@ describe("RepositoryBranchesCard", () => {
       rowVisibleAfter: "release-2-0",
     });
     expect(component.getByRole("row", { name: /feature-auth/ }).elements()).toHaveLength(0);
+  });
+
+  test("offers no page-size control", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(
+      toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
+    );
 
     // WHEN
-    await component.getByRole("button", { name: /Rows per page/ }).click();
-    await component.getByRole("option", { name: "20" }).click();
+    const component = await renderCard();
 
     // THEN
-    await expectServerDrivenChange({
-      apiMock,
-      callIndex: 2,
-      variables: { branchName: CURRENT_BRANCH, id: REPOSITORY_ID, limit: 20, offset: 0 },
-      payload: toApiResult(firstPage),
-      rowVisibleAfter: "feature-auth",
-    });
-    expect(component.getByRole("row", { name: /release-2-0/ }).elements()).toHaveLength(0);
+    await expect.element(component.getByRole("navigation", { name: "Pagination" })).toBeVisible();
+    expect(component.getByRole("button", { name: /Rows per page/ }).elements()).toHaveLength(0);
   });
 
   test("states the window it is showing of a set larger than one page", async () => {
@@ -172,7 +171,8 @@ describe("RepositoryBranchesCard", () => {
   });
 
   test("reserves a page of height so a short last page does not move the page below it", async () => {
-    // GIVEN a set larger than one page, whose last page holds fewer rows than a full one
+    // GIVEN the last page of a set larger than one page, holding fewer rows than a full page
+    window.history.replaceState(null, "", `?${PAGINATION_URL_KEY}_page=5`);
     apiMock.mockResolvedValue(
       toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
     );
@@ -183,9 +183,10 @@ describe("RepositoryBranchesCard", () => {
     // THEN the table keeps the height of a full page — header row included — however few rows
     // the current page returned
     await expect
-      .element(component.getByText("Showing 1 to 10 of 45", { exact: true }))
+      .element(component.getByText("Showing 41 to 45 of 45", { exact: true }))
       .toBeVisible();
     const table = component.getByRole("table").element();
+    expect(component.getByRole("row").elements().length).toBeLessThan(10 + 1);
     expect(table.parentElement?.style.minHeight).toBe(`${(10 + 1) * 40}px`);
   });
 

@@ -4,7 +4,7 @@ import { render } from "../../../tests/components/render";
 import { useTablePagination } from "./use-table-pagination";
 
 const Probe = ({ urlKey }: { urlKey: string }) => {
-  const { page, pageSize, offset, setPage, setPageSize } = useTablePagination({ urlKey });
+  const { page, pageSize, offset, setPage } = useTablePagination({ urlKey });
 
   return (
     <section aria-label={urlKey}>
@@ -20,21 +20,12 @@ const Probe = ({ urlKey }: { urlKey: string }) => {
       >
         Next
       </button>
-
-      <button
-        onClick={() => {
-          setPageSize(50);
-        }}
-        type="button"
-      >
-        Fifty per page
-      </button>
     </section>
   );
 };
 
 describe("useTablePagination", () => {
-  test("starts on the first page at the default size", async () => {
+  test("starts on the first page at the fixed size", async () => {
     // GIVEN
     const urlKey = "branches";
 
@@ -82,18 +73,16 @@ describe("useTablePagination", () => {
     await expect.element(component.getByText("offset 20")).toBeVisible();
   });
 
-  test("returns to the first page when the page size changes", async () => {
+  test("keeps the page size out of the url", async () => {
     // GIVEN
     const component = await render(<Probe urlKey="branches" />);
-    await component.getByRole("button", { name: "Next" }).click();
-    await expect.element(component.getByText("page 2")).toBeVisible();
 
     // WHEN
-    await component.getByRole("button", { name: "Fifty per page" }).click();
+    await component.getByRole("button", { name: "Next" }).click();
 
     // THEN
-    await expect.element(component.getByText("page 1")).toBeVisible();
-    await expect.element(component.getByText("size 50")).toBeVisible();
+    await expect.poll(() => window.location.search).toContain("branches_page=2");
+    expect(window.location.search).not.toContain("branches_size");
   });
 
   test("leaves a table under a different url key where it was", async () => {
