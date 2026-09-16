@@ -295,8 +295,6 @@ branch and assert only the second card's values change.
 - [ ] T050 [US2] Component-test FR-019 with a schema carrying an **invented** attribute, asserting it
       lands in the card its declared branch support dictates.
 - [ ] T051 [US2] Component-test that each relationship label appears **exactly once** on the page.
-      Without this assertion, T041 regresses silently the first time a branch-aware relationship is
-      added.
 - [ ] T052 [US2] Component-test FR-020: a non-repository kind renders exactly one details card,
       unchanged from today.
 - [ ] T053 [US2] Component-test FR-021 on the read-only kind: an attribute that kind does not define
