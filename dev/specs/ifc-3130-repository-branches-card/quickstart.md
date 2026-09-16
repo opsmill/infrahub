@@ -36,9 +36,14 @@ They are stable across reloads and every dropdown value appears, so the card is 
 screenshottable. What you must **not** do is let anything depend on the values being real (SC-008) —
 when IFC-3127 lands, the values become real with no contract change and no code change here.
 
-Three arguments are accepted-but-ignored today, so a filter on them would *appear* to do nothing.
-This feature never sends them: they are not declared in the gql.tada document at all. See
+Three arguments — `sync_status__value`, `internal_status__value`, `own_values_only` — are **rejected
+with a `ValidationError`** today (not accepted-and-ignored, as IFC-3130's Jira description says). This
+feature never sends them: they are not declared in the gql.tada document at all. See
 [the UI contract](contracts/repository-branch-status-ui.md).
+
+**Who sees the fabricated values**: nobody, as long as this stays on the `cross-branch-repo-status-infp-671`
+epic branch, where IFC-3127 also lands. That is why there is no preview banner. If the epic branch is
+ever released with IFC-3127 outstanding, revisit it — see open question Q2 in [plan.md](plan.md).
 
 ---
 
@@ -139,14 +144,16 @@ Vitest runs in **browser mode**. Coverage to expect:
 
 | Level | What |
 |---|---|
-| Unit | `table-pagination.ts` arithmetic; `use-table-pagination.ts` key scoping (two probes, different keys, one unmoved after the other pages); `partition-attributes-by-branch-support.ts`; the use case's error mapping over a raw `extensions` payload |
-| Component | Every FR carrying a component-test verification — both card kinds, the four states, the paging and filter requests, the two details cards, the document order |
+| Unit | `table-pagination.ts` arithmetic; `use-table-pagination.ts` key scoping (two probes, different keys, one unmoved after the other pages); `partition-fields-by-branch-support.ts` — **one case per `BranchSupportType` value (`aware`, `agnostic`, `local`) plus the node-level fallback**; the use case's error mapping over a raw `extensions` payload |
+| Component | Every FR carrying a component-test verification — both card kinds, the four states, the paging and filter requests, the two details cards, the document order, and **each relationship label appearing exactly once on the page** |
 
 **Two rules that make or break this suite:**
 
 1. **Mock at `…/api/get-repository-branch-status-from-api`, never the hook.** Every request assertion
    must be paired *in the same test* with a rendered-output assertion drawn from a **different
-   payload**. Without the pairing the suite is decorative — see
+   payload**. Use `expectServerDrivenChange(...)` from `tests/helpers/` — its signature makes both
+   halves required, and direct `apiMock.mock.calls[...]` access is lint-blocked in the card's test
+   files precisely so this cannot be skipped. See
    [the UI contract](contracts/repository-branch-status-ui.md).
 2. **Reset `window.history` in `afterEach`.** `tests/components/render.tsx` uses `BrowserRouter`, so
    nuqs writes to the real `window.location`; without the reset the paging tests become
@@ -161,11 +168,20 @@ touched at all:
 
 ```bash
 git diff --exit-code origin/cross-branch-repo-status-infp-671 -- \
-  frontend/app/src/shared/components/pagination.tsx \
+  frontend/app/src/shared/components/ui/pagination.tsx \
   frontend/app/src/shared/hooks/usePagination.ts
 ```
 
 Any output is a failure.
+
+> **Note the `ui/` segment.** An earlier revision of this file named
+> `shared/components/pagination.tsx`, one directory up from where the file lives. `git diff
+> --exit-code` with a pathspec matching **nothing exits 0**, so that check passed unconditionally no
+> matter what was edited. If you change these paths, verify the command fails when it should by
+> touching one of the files deliberately.
+>
+> This belongs in CI (one step in `frontend-lint`, diffing against the merge base) rather than in a
+> human checklist — a guarantee nobody runs is not a guarantee.
 
 ### End-to-end (FR-026)
 
