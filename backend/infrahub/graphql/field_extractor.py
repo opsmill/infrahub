@@ -28,9 +28,15 @@ class GraphQLFieldExtractor:
         self.fragments = info.fragments
 
     def get_fields(self) -> dict[str, Any]:
-        """Extract fields from the GraphQL selection set."""
-        fields = self._extract_fields(selection_set=self.info.field_nodes[0].selection_set)
-        return fields or {}
+        """Extract the union of the fields requested across every node sharing the response key.
+
+        A response key selected more than once (the same root field repeated as siblings) is
+        resolved once with every node in ``field_nodes``, so all of their selections are merged.
+        """
+        fields: dict[str, Any] = {}
+        for field_node in self.info.field_nodes:
+            self._merge_fields(target=fields, source=self._extract_fields(field_node.selection_set) or {})
+        return fields
 
     def _extract_fields(self, selection_set: SelectionSetNode | None) -> dict[str, Any] | None:
         """Collect the union of every field a selection set requests, as a tree of nested dicts.

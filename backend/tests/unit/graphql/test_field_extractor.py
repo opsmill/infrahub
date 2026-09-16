@@ -102,6 +102,18 @@ def test_a_field_selected_twice_keeps_both_nested_selections() -> None:
     assert fields == {"edges": {"node": {"name": None, "id": None}}}
 
 
+def test_same_root_field_selected_twice_keeps_both_selections() -> None:
+    """A root field repeated as siblings is resolved once with every node, so both selections merge."""
+    fields = _extract("""
+        query {
+          BuiltinTag { count }
+          BuiltinTag { edges { node { name { value } } } }
+        }
+    """)
+
+    assert fields == {"count": None, "edges": {"node": {"name": {"value": None}}}}
+
+
 def test_sibling_inline_fragments_keep_both_nested_selections() -> None:
     """Two inline fragments selecting the same field keep the sub-selections of both."""
     fields = _extract("""
