@@ -851,16 +851,23 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        node = await cls.get_one(
-            id=id,
-            fields=fields,
-            at=at,
-            branch=branch,
-            include_metadata=include_metadata,
-            db=db,
-            prefetch_relationships=prefetch_relationships,
-            branch_agnostic=branch_agnostic,
-        )
+        try:
+            node = await cls.get_one(
+                id=id,
+                kind=kind,
+                fields=fields,
+                at=at,
+                branch=branch,
+                include_metadata=include_metadata,
+                db=db,
+                prefetch_relationships=prefetch_relationships,
+                branch_agnostic=branch_agnostic,
+            )
+        except NodeNotFoundError:
+            # An id that resolves to a node of another kind is treated as unresolved, so the
+            # outcome is indistinguishable from an id that exists nowhere and cannot be used to
+            # read back the kind of an arbitrary node.
+            node = None
         if node:
             return node
 
@@ -1066,18 +1073,27 @@ class NodeManager:
         node_schema = node.get_schema()
 
         kind_validation = None
+        kind_matches = True
         if kind:
             node_schema_validation = get_schema(db=db, branch=branch, node_schema=kind)
             kind_validation = node_schema_validation.kind
+            # A generic lists every node that inherits it in ``used_by``; that is the authoritative
+            # match because implicit bases such as ``CoreNode`` are absent from a node's ``inherit_from``.
+            kind_matches = (
+                node_schema.kind == kind_validation
+                or kind_validation in node_schema.inherit_from
+                or (
+                    isinstance(node_schema_validation, GenericSchema)
+                    and node_schema.kind in node_schema_validation.used_by
+                )
+            )
 
         # Temporary list of exception to the validation of the kind
         kind_validation_exceptions = [
             ("CoreChangeThread", "CoreObjectThread"),  # issue/3318
         ]
 
-        if kind_validation and (
-            node_schema.kind != kind_validation and kind_validation not in node_schema.inherit_from
-        ):
+        if kind_validation and not kind_matches:
             for item in kind_validation_exceptions:
                 if item[0] == kind_validation and item[1] == node.get_kind():
                     return node
