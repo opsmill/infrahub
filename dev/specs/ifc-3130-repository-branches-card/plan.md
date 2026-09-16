@@ -312,8 +312,22 @@ changelog/                                              # NEW Towncrier fragment
 **Structure Decision**: Feature-Sliced, following the repository's existing `entities/<slice>/{api,domain,ui}`
 layout exactly. The branches card is **inside the repository entity** because it is repository-scoped
 presentation; the pagination trio is in **`shared/`** because FR-028 declares it the intended
-successor for every future table. `object-details.tsx` is the **only** shared file edited, and only
-to add the kind gate.
+successor for every future table.
+
+**The gql.tada document lives in `api/get-repository-branch-status-from-api.ts`**, next to the api
+boundary — that is where every gql.tada document in this codebase lives. `ui/queries/` is the
+react-query `queryOptions` layer and holds none; putting the document there would force an
+`api/ → ui/` import, which `dev/knowledge/frontend/entities-structure.md` prohibits.
+
+**Two shared files are edited, both minimally:**
+
+| File | Edit | Risk |
+|---|---|---|
+| `object-details.tsx` | add the `isOfKind` gate | The feature's single behavioural entry point, and its entire rollback path |
+| `object-table/cells/dropdown-cell.tsx` | widen the `dropdown` prop from the full generated `Dropdown` to `Pick<Dropdown, "value" \| "label" \| "color">` | **Type-only.** Strictly more permissive, no runtime change; the component already reads only those three fields |
+
+The second is a widening, so no existing caller can break. Reverting the gate alone still removes the
+feature.
 
 **The card stays inside the detail route's outlet**, never replacing the page shell — IFC-3150 adds
 its Commits tab as a sibling route on the same page.
