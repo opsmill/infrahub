@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { RepositoryBranchesCardBoundary } from "@/entities/repository/ui/repository-branches-card/repository-branches-card-boundary";
 
@@ -13,10 +13,10 @@ describe("RepositoryBranchesCardBoundary", () => {
     vi.restoreAllMocks();
   });
 
-  test("renders what it wraps while nothing fails", async () => {
+  it("renders what it wraps while nothing fails", async () => {
     // WHEN
     const component = await render(
-      <RepositoryBranchesCardBoundary resetKeys={["repo-1", 1, 10]}>
+      <RepositoryBranchesCardBoundary resetKeys={["repo-1", 1]}>
         <p>feature-auth</p>
       </RepositoryBranchesCardBoundary>
     );
@@ -25,7 +25,7 @@ describe("RepositoryBranchesCardBoundary", () => {
     await expect.element(component.getByText("feature-auth", { exact: true })).toBeVisible();
   });
 
-  test("holds a render failure inside the card instead of letting it escape", async () => {
+  it("holds a render failure inside the card instead of letting it escape", async () => {
     // GIVEN
     vi.spyOn(console, "error").mockImplementation(() => undefined);
 
@@ -34,7 +34,7 @@ describe("RepositoryBranchesCardBoundary", () => {
       <div>
         <h2>Repository details</h2>
 
-        <RepositoryBranchesCardBoundary resetKeys={["repo-1", 1, 10]}>
+        <RepositoryBranchesCardBoundary resetKeys={["repo-1", 1]}>
           <Exploding />
         </RepositoryBranchesCardBoundary>
       </div>
@@ -49,11 +49,11 @@ describe("RepositoryBranchesCardBoundary", () => {
       .toBeVisible();
   });
 
-  test("shows the next page of branches once the query inputs move on", async () => {
+  it("shows the next page of branches once the query inputs move on", async () => {
     // GIVEN a card left in its failed state by a row that threw
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const component = await render(
-      <RepositoryBranchesCardBoundary resetKeys={["repo-1", 1, 10]}>
+      <RepositoryBranchesCardBoundary resetKeys={["repo-1", 1]}>
         <Exploding />
       </RepositoryBranchesCardBoundary>
     );
@@ -63,7 +63,7 @@ describe("RepositoryBranchesCardBoundary", () => {
 
     // WHEN the page changes and the new row set renders
     await component.rerender(
-      <RepositoryBranchesCardBoundary resetKeys={["repo-1", 2, 10]}>
+      <RepositoryBranchesCardBoundary resetKeys={["repo-1", 2]}>
         <p>release-2-0</p>
       </RepositoryBranchesCardBoundary>
     );

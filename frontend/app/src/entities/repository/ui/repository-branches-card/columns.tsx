@@ -13,10 +13,9 @@ import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/mode
 
 const columnHelper = createColumnHelper<RepositoryBranchStatusRow>();
 
-// Declared once so the table's memoised grid style keeps a stable identity; the default tracks
-// reserve a trailing row-action column this card does not have.
+// Declared once so the memoised grid style keeps a stable identity across renders.
 export const branchesGridTemplateColumns = (columnCount: number) =>
-  `repeat(${columnCount - 1}, fit-content(${COLUMN_MAX_WIDTH})) 1fr`;
+  columnCount > 1 ? `repeat(${columnCount - 1}, fit-content(${COLUMN_MAX_WIDTH})) 1fr` : "1fr";
 
 function findAttribute(schema: ModelSchema, name: string): AttributeSchema | undefined {
   return schema.attributes?.find((attribute) => attribute.name === name);
@@ -44,7 +43,7 @@ function getCommitColumn(
     header: () => <TableColumnHeaderSimple columnSchema={columnSchema} role="columnheader" />,
     cell: ({ row }) => (
       <TableCell role="cell">
-        {row.original.commit && <CommitHash hash={row.original.commit} copyable={false} />}
+        {row.original.commit && <CommitHash hash={row.original.commit} />}
       </TableCell>
     ),
   });
@@ -64,8 +63,6 @@ function getRefColumn(
   });
 }
 
-// Each column exists only where the viewed kind declares its attribute, which is what keeps `ref`
-// off the read-write repository without a kind list.
 export function getRepositoryBranchesColumns(
   schema: ModelSchema
 ): Array<ColumnDef<RepositoryBranchStatusRow, unknown>> {

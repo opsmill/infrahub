@@ -9,7 +9,7 @@ import { TablePagination } from "@/shared/components/table/table-pagination";
 import { Badge } from "@/shared/components/ui/badge";
 import { useTablePagination } from "@/shared/hooks/use-table-pagination";
 import { formatNumberDisplay } from "@/shared/utils/number";
-import { PAGE_SIZE } from "@/shared/utils/table-pagination";
+import { clampPage, getOffset, getTotalPages, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
 import { READONLY_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import {
@@ -96,8 +96,7 @@ function RepositoryBranchesBody({
           columns={columns}
           data={data.rows}
           gridTemplateColumns={branchesGridTemplateColumns}
-          // The card exposes no filter yet, so a total of zero can only mean the repository has no
-          // branch in scope; a page past the end returns no row while the total stays positive.
+          // The card exposes no filter yet, so only a total of zero can mean there is nothing to show.
           renderEmpty={
             data.count === 0
               ? () => (
@@ -138,10 +137,17 @@ export function RepositoryBranchesCard({ repositoryId, schema }: RepositoryBranc
     urlKey: PAGINATION_URL_KEY,
   });
 
+  // The server's own total is the only thing that can say which page is the last real one, so a url
+  // asking for a page past the end is answered once and then re-asked at the last page's offset.
+  const requested = useGetRepositoryBranchStatus({ id: repositoryId, limit: pageSize, offset });
+  const currentPage = requested.data
+    ? clampPage(page, getTotalPages(requested.data.count, pageSize))
+    : page;
+
   const { data, error, isPending } = useGetRepositoryBranchStatus({
     id: repositoryId,
     limit: pageSize,
-    offset,
+    offset: getOffset(currentPage, pageSize),
   });
 
   return (
@@ -150,19 +156,20 @@ export function RepositoryBranchesCard({ repositoryId, schema }: RepositoryBranc
         <h2 id={titleId}>{title}</h2>
 
         {data && (
-          <Badge aria-label={`${data.count} branches`} role="status">
-            {formatNumberDisplay(data.count)}
+          <Badge>
+            {formatNumberDisplay(data.count)}{" "}
+            <span className="sr-only">{data.count === 1 ? "branch" : "branches"}</span>
           </Badge>
         )}
       </CardHeader>
 
-      <RepositoryBranchesCardBoundary resetKeys={[repositoryId, page]}>
+      <RepositoryBranchesCardBoundary resetKeys={[repositoryId, currentPage]}>
         <RepositoryBranchesBody
           data={data}
           error={error}
           isPending={isPending}
           onPageChange={setPage}
-          page={page}
+          page={currentPage}
           schema={schema}
         />
       </RepositoryBranchesCardBoundary>

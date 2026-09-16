@@ -1,6 +1,9 @@
 import { CombinedError } from "@urql/core";
 import { GraphQLError } from "graphql";
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { CELL_HEIGHT_PX } from "@/shared/components/table/style";
+import { getTotalPages, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
 import { getRepositoryBranchStatusFromApi } from "@/entities/repository/api/get-repository-branch-status-from-api";
 import {
@@ -80,7 +83,7 @@ describe("RepositoryBranchesCard", () => {
     window.history.replaceState(null, "", window.location.pathname);
   });
 
-  test("renders the branches one request returned and states the server's own total", async () => {
+  it("renders the branches one request returned and states the server's own total", async () => {
     // GIVEN
     const payload = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
     apiMock.mockResolvedValue(toApiResult(payload));
@@ -92,15 +95,15 @@ describe("RepositoryBranchesCard", () => {
     await expectServerDrivenChange({
       apiMock,
       callIndex: 0,
-      variables: { branchName: CURRENT_BRANCH, id: REPOSITORY_ID, limit: 10, offset: 0 },
+      variables: { branchName: CURRENT_BRANCH, id: REPOSITORY_ID, limit: PAGE_SIZE, offset: 0 },
       payload: toApiResult(payload),
       rowVisibleAfter: "feature-auth",
     });
-    await expect.element(component.getByRole("status", { name: "45 branches" })).toBeVisible();
+    await expect.element(component.getByText("45 branches", { exact: true })).toBeVisible();
     expect(component.getByRole("row").elements()).toHaveLength(BRANCH_NAMES_BEFORE.length + 1);
   });
 
-  test("replaces the rows on a page change", async () => {
+  it("replaces the rows on a page change", async () => {
     // GIVEN
     const firstPage = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
     const secondPage = generateRepositoryBranchStatusPayloadAfter({ count: 45 });
@@ -113,7 +116,7 @@ describe("RepositoryBranchesCard", () => {
     await expectServerDrivenChange({
       apiMock,
       callIndex: 0,
-      variables: { branchName: CURRENT_BRANCH, id: REPOSITORY_ID, limit: 10, offset: 0 },
+      variables: { branchName: CURRENT_BRANCH, id: REPOSITORY_ID, limit: PAGE_SIZE, offset: 0 },
       payload: toApiResult(firstPage),
       rowVisibleAfter: "feature-auth",
     });
@@ -123,14 +126,19 @@ describe("RepositoryBranchesCard", () => {
     await expectServerDrivenChange({
       apiMock,
       callIndex: 1,
-      variables: { branchName: CURRENT_BRANCH, id: REPOSITORY_ID, limit: 10, offset: 10 },
+      variables: {
+        branchName: CURRENT_BRANCH,
+        id: REPOSITORY_ID,
+        limit: PAGE_SIZE,
+        offset: PAGE_SIZE,
+      },
       payload: toApiResult(secondPage),
       rowVisibleAfter: "release-2-0",
     });
     expect(component.getByRole("row", { name: /feature-auth/ }).elements()).toHaveLength(0);
   });
 
-  test("offers no page-size control", async () => {
+  it("offers no page-size control", async () => {
     // GIVEN
     apiMock.mockResolvedValue(
       toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
@@ -144,7 +152,7 @@ describe("RepositoryBranchesCard", () => {
     expect(component.getByRole("button", { name: /Rows per page/ }).elements()).toHaveLength(0);
   });
 
-  test("states the window it is showing of a set larger than one page", async () => {
+  it("states the window it is showing of a set larger than one page", async () => {
     // GIVEN
     apiMock.mockResolvedValue(
       toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
@@ -159,7 +167,7 @@ describe("RepositoryBranchesCard", () => {
       .toBeVisible();
   });
 
-  test("states the window it is showing of a set smaller than one page", async () => {
+  it("states the window it is showing of a set smaller than one page", async () => {
     // GIVEN
     apiMock.mockResolvedValue(toApiResult(generateRepositoryBranchStatusPayloadBefore()));
 
@@ -170,12 +178,12 @@ describe("RepositoryBranchesCard", () => {
     await expect.element(component.getByText("Showing 1 to 3 of 3", { exact: true })).toBeVisible();
   });
 
-  test("reserves a page of height so a short last page does not move the page below it", async () => {
+  it("reserves a page of height so a short last page does not move the page below it", async () => {
     // GIVEN the last page of a set larger than one page, holding fewer rows than a full page
-    window.history.replaceState(null, "", `?${PAGINATION_URL_KEY}_page=5`);
-    apiMock.mockResolvedValue(
-      toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
-    );
+    const count = 45;
+    const lastPage = getTotalPages(count, PAGE_SIZE);
+    window.history.replaceState(null, "", `?${PAGINATION_URL_KEY}_page=${lastPage}`);
+    apiMock.mockResolvedValue(toApiResult(generateRepositoryBranchStatusPayloadBefore({ count })));
 
     // WHEN
     const component = await renderCard();
@@ -186,11 +194,11 @@ describe("RepositoryBranchesCard", () => {
       .element(component.getByText("Showing 41 to 45 of 45", { exact: true }))
       .toBeVisible();
     const table = component.getByRole("table").element();
-    expect(component.getByRole("row").elements().length).toBeLessThan(10 + 1);
-    expect(table.parentElement?.style.minHeight).toBe(`${(10 + 1) * 40}px`);
+    expect(component.getByRole("row").elements().length).toBeLessThan(PAGE_SIZE + 1);
+    expect(table.parentElement?.style.minHeight).toBe(`${(PAGE_SIZE + 1) * CELL_HEIGHT_PX}px`);
   });
 
-  test("reserves no height when every row fits on one page", async () => {
+  it("reserves no height when every row fits on one page", async () => {
     // GIVEN a set that fits one page, so no paging can shorten it
     apiMock.mockResolvedValue(toApiResult(generateRepositoryBranchStatusPayloadBefore()));
 
@@ -203,7 +211,7 @@ describe("RepositoryBranchesCard", () => {
     expect(table.parentElement?.style.minHeight).toBe("");
   });
 
-  test("renders the chip label and colour the payload supplied for that branch", async () => {
+  it("renders the chip label and colour the payload supplied for that branch", async () => {
     // GIVEN
     const invented = generateInventedDropdown();
     apiMock.mockResolvedValue(
@@ -237,7 +245,7 @@ describe("RepositoryBranchesCard", () => {
     ).toHaveLength(0);
   });
 
-  test("heads the status column with the label the schema gives it", async () => {
+  it("heads the status column with the label the schema gives it", async () => {
     // GIVEN
     const renamedSchema: ModelSchema = generateNodeSchema({
       kind: "CoreRepository",
@@ -257,7 +265,7 @@ describe("RepositoryBranchesCard", () => {
     expect(component.getByText("Sync status", { exact: true }).elements()).toHaveLength(0);
   });
 
-  test("renders no upstream comparison and no import timestamp for a branch that carries one", async () => {
+  it("renders no upstream comparison and no import timestamp for a branch that carries one", async () => {
     // GIVEN
     apiMock.mockResolvedValue(
       toApiResult({
@@ -289,21 +297,23 @@ describe("RepositoryBranchesCard", () => {
     expect(component.getByText(/Upstream/).elements()).toHaveLength(0);
   });
 
-  test("holds the table's space with no rows while the branches are loading", async () => {
+  it("holds the table's space with placeholder rows while the branches are loading", async () => {
     // GIVEN
     apiMock.mockReturnValue(new Promise<never>(() => undefined));
 
     // WHEN
     const component = await renderCard();
 
-    // THEN
+    // THEN a full page of rows, each row holding one cell per column, and nothing else
     await expect.element(component.getByRole("table")).toBeVisible();
-    expect(component.getByRole("cell").elements()).toHaveLength(0);
+    const columnCount = component.getByRole("columnheader").elements().length;
+    expect(component.getByRole("row").elements()).toHaveLength(PAGE_SIZE + 1);
+    expect(component.getByRole("cell").elements()).toHaveLength(PAGE_SIZE * columnCount);
     expect(component.getByRole("checkbox").elements()).toHaveLength(0);
     expect(component.getByText("No data").elements()).toHaveLength(0);
   });
 
-  test("says a read-only repository has no branches at all when the server returns none", async () => {
+  it("says a read-only repository has no branches at all when the server returns none", async () => {
     // GIVEN a kind whose row set is every branch, so an empty set cannot be about Git sync
     apiMock.mockResolvedValue(toApiResult(generateRepositoryBranchStatusPage({ rows: [] })));
 
@@ -321,7 +331,7 @@ describe("RepositoryBranchesCard", () => {
     ).toHaveLength(0);
   });
 
-  test("says the repository has no branch in scope when the server returns none", async () => {
+  it("says the repository has no branch in scope when the server returns none", async () => {
     // GIVEN
     apiMock.mockResolvedValue(toApiResult(generateRepositoryBranchStatusPage({ rows: [] })));
 
@@ -336,12 +346,15 @@ describe("RepositoryBranchesCard", () => {
       .toBeVisible();
   });
 
-  test("leaves a way back when the url asks for a page past the last one", async () => {
+  it("leaves a way back when the url asks for a page past the last one", async () => {
     // GIVEN a url pointing beyond the end of a set that does hold branches
-    window.history.replaceState(null, "", `?${PAGINATION_URL_KEY}_page=9`);
-    apiMock.mockResolvedValue(
-      toApiResult(generateRepositoryBranchStatusPage({ rows: [], count: 45 }))
+    const count = 45;
+    window.history.replaceState(
+      null,
+      "",
+      `?${PAGINATION_URL_KEY}_page=${getTotalPages(count, PAGE_SIZE) + 1}`
     );
+    apiMock.mockResolvedValue(toApiResult(generateRepositoryBranchStatusPage({ rows: [], count })));
 
     // WHEN
     const component = await renderCard();
@@ -356,7 +369,38 @@ describe("RepositoryBranchesCard", () => {
     ).toHaveLength(0);
   });
 
-  test("says no branch matches the filters when a filter is set", async () => {
+  it("falls back to the last real page when the url asks for one past the end", async () => {
+    // GIVEN a url pointing beyond the end of a set that does hold branches
+    const count = 45;
+    const lastPage = getTotalPages(count, PAGE_SIZE);
+    const lastPagePayload = generateRepositoryBranchStatusPayloadBefore({ count });
+    window.history.replaceState(null, "", `?${PAGINATION_URL_KEY}_page=${lastPage + 1}`);
+    apiMock
+      .mockResolvedValueOnce(toApiResult(generateRepositoryBranchStatusPage({ rows: [], count })))
+      .mockResolvedValue(toApiResult(lastPagePayload));
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN the card asks again at the last page's offset and shows the rows it returns
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: {
+        branchName: CURRENT_BRANCH,
+        id: REPOSITORY_ID,
+        limit: PAGE_SIZE,
+        offset: (lastPage - 1) * PAGE_SIZE,
+      },
+      payload: toApiResult(lastPagePayload),
+      rowVisibleAfter: "feature-auth",
+    });
+    await expect
+      .element(component.getByText("Showing 41 to 45 of 45", { exact: true }))
+      .toBeVisible();
+  });
+
+  it("says no branch matches the filters when a filter is set", async () => {
     // WHEN
     const component = await render(<RepositoryBranchesEmpty hasFilters listsEveryBranch={false} />);
 
@@ -371,7 +415,7 @@ describe("RepositoryBranchesCard", () => {
     ).toHaveLength(0);
   });
 
-  test("says the branches may not be viewed when the server denies permission", async () => {
+  it("says the branches may not be viewed when the server denies permission", async () => {
     // GIVEN
     apiMock.mockRejectedValue(
       new Error("nope", {
@@ -406,7 +450,7 @@ describe("RepositoryBranchesCard", () => {
     ).toHaveLength(0);
   });
 
-  test("says the branches could not be loaded when the request fails for another reason", async () => {
+  it("says the branches could not be loaded when the request fails for another reason", async () => {
     // GIVEN
     apiMock.mockRejectedValue(new TypeError("Failed to fetch"));
 
@@ -424,7 +468,7 @@ describe("RepositoryBranchesCard", () => {
     ).toHaveLength(0);
   });
 
-  test("keeps the repository title and rows out of a failed card", async () => {
+  it("keeps the repository title and rows out of a failed card", async () => {
     // GIVEN
     apiMock.mockRejectedValue(new TypeError("Failed to fetch"));
 
@@ -439,7 +483,7 @@ describe("RepositoryBranchesCard", () => {
     expect(component.getByRole("row").elements()).toHaveLength(0);
   });
 
-  test("lists every branch of a read-only repository under its own title", async () => {
+  it("lists every branch of a read-only repository under its own title", async () => {
     // GIVEN
     apiMock.mockResolvedValue(
       toApiResult(
@@ -448,7 +492,6 @@ describe("RepositoryBranchesCard", () => {
             generateReadOnlyRepositoryBranchStatus({ name: { value: "main" } }),
             generateReadOnlyRepositoryBranchStatus({
               name: { value: "docs-only" },
-              sync_with_git: { value: false },
               ref: { value: "refs/heads/docs" },
             }),
           ],

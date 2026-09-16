@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader } from "@infrahub/ui";
 import { useState } from "react";
-import { describe, expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { getPageWindow, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
@@ -38,7 +38,7 @@ const PagedCard = ({ totalCount, initialPage = 1 }: PagedCardProps) => {
 };
 
 describe("TablePagination", () => {
-  test("states the window and the total", async () => {
+  it("states the window and the total", async () => {
     // GIVEN
     const totalCount = 45;
 
@@ -49,7 +49,7 @@ describe("TablePagination", () => {
     await expect.element(component.getByText("Showing 1 to 10 of 45")).toBeVisible();
   });
 
-  test("marks the page being shown as the current one", async () => {
+  it("marks the page being shown as the current one", async () => {
     // GIVEN
     const totalCount = 45;
 
@@ -65,7 +65,7 @@ describe("TablePagination", () => {
       .not.toHaveAttribute("aria-current");
   });
 
-  test("shows the next page of rows from inside a fixed-height card", async () => {
+  it("shows the next page of rows from inside a fixed-height card", async () => {
     // GIVEN
     const component = await render(<PagedCard totalCount={45} />);
 
@@ -77,7 +77,7 @@ describe("TablePagination", () => {
     await expect.element(component.getByText("Branch 1", { exact: true })).not.toBeInTheDocument();
   });
 
-  test("announces the window it moved to", async () => {
+  it("announces the window it moved to", async () => {
     // GIVEN
     const component = await render(<PagedCard totalCount={45} />);
 
@@ -88,7 +88,7 @@ describe("TablePagination", () => {
     await expect.element(component.getByRole("status")).toHaveTextContent("Showing 11 to 20 of 45");
   });
 
-  test("goes back to the previous page", async () => {
+  it("goes back to the previous page", async () => {
     // GIVEN
     const component = await render(<PagedCard initialPage={2} totalCount={45} />);
 
@@ -100,7 +100,7 @@ describe("TablePagination", () => {
     await expect.element(component.getByText("Showing 1 to 10 of 45")).toBeVisible();
   });
 
-  test("jumps to a page chosen directly", async () => {
+  it("jumps to a page chosen directly", async () => {
     // GIVEN
     const component = await render(<PagedCard totalCount={45} />);
 
@@ -112,7 +112,7 @@ describe("TablePagination", () => {
     await expect.element(component.getByText("Showing 41 to 45 of 45")).toBeVisible();
   });
 
-  test("cannot leave the first page backwards", async () => {
+  it("cannot leave the first page backwards", async () => {
     // GIVEN
     const totalCount = 45;
 
@@ -123,7 +123,7 @@ describe("TablePagination", () => {
     await expect.element(component.getByRole("button", { name: "Previous page" })).toBeDisabled();
   });
 
-  test("cannot leave the last page forwards", async () => {
+  it("cannot leave the last page forwards", async () => {
     // GIVEN
     const totalCount = 45;
 
@@ -134,7 +134,7 @@ describe("TablePagination", () => {
     await expect.element(component.getByRole("button", { name: "Next page" })).toBeDisabled();
   });
 
-  test("states an empty set without offering a second page", async () => {
+  it("states an empty set without offering a second page", async () => {
     // GIVEN
     const totalCount = 0;
 

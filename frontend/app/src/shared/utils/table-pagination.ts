@@ -21,9 +21,6 @@ export const clampPage = (page: number, totalPages: number) =>
 
 export const getOffset = (page: number, pageSize: number) => (toPageNumber(page) - 1) * pageSize;
 
-export const getPageFromOffset = (offset: number, pageSize: number) =>
-  Math.floor(Math.max(offset, 0) / pageSize) + 1;
-
 export const getPageWindow = (page: number, pageSize: number, totalCount: number): PageWindow => {
   const currentPage = clampPage(page, getTotalPages(totalCount, pageSize));
   const rows = Math.max(totalCount, 0);
