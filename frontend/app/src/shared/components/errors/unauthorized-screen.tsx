@@ -8,11 +8,17 @@ type tUnauthorized = {
   className?: string;
   message?: string;
   icon?: ReactElement;
+  defaultOpen?: boolean;
 };
 
 const DEFAULT_MESSAGE = "Sorry, you are not authorized to access this view.";
 
-export default function UnauthorizedScreen({ className, message, icon }: tUnauthorized) {
+export default function UnauthorizedScreen({
+  className,
+  message,
+  icon,
+  defaultOpen,
+}: tUnauthorized) {
   return (
     <div className={classNames("flex flex-1 flex-col items-center justify-center p-8", className)}>
       {icon || (
@@ -25,6 +31,7 @@ export default function UnauthorizedScreen({ className, message, icon }: tUnauth
       <Accordion
         title={"You can't access this view"}
         className="flex w-full flex-col items-center text-center"
+        defaultOpen={defaultOpen}
       >
         <div>{message ?? DEFAULT_MESSAGE}</div>
       </Accordion>
