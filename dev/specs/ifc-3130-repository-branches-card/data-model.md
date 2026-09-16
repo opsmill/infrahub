@@ -156,6 +156,17 @@ all land repository-wide and the branch-scoped derived schema gets `relationship
 
 **Pinned by test**: each relationship label appears **exactly once** on the page.
 
+**One constraint on filtering `relationships`.** `ObjectDataDisplay` reads `objectSchema.relationships`
+**twice**: once through `getRelationshipsVisibleInDataDisplay` for what it renders, and again in an
+independent `.find()` that locates an attribute's `<attr>__from_resource_pool` companion. A derived
+schema whose `relationships` array is filtered therefore loses the pool badge for any attribute whose
+companion landed in the other partition.
+
+This does not bite here — the repository schema declares no resource-pool relationships — but it
+constrains any later extension of the two-card split to other kinds. If one is needed, the
+branch-scoped schema must retain the pool companions of its own attributes rather than taking a blanket
+`relationships: []`.
+
 **Shape**: a **pure function**, unit-testable without rendering. It takes a `ModelSchema` and returns
 two field sets; the caller builds two derived `ModelSchema` objects from them (D1) and hands each to
 `ObjectDataDisplay` via the local `RepositoryDetailsCard` (see D1's revision).
