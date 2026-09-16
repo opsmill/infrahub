@@ -4,14 +4,22 @@ This document is a transcription of the Claude Design canvas **"Git sync visibil
 (`Git sync visibility.dc.html`), a four-section multi-artboard design filed under
 **INFP-671 · Git repository sync visibility**.
 
-- **Section 1 — "The repository page" is the scope of IFC-3130.** It is transcribed
+- **Section 1 — "The repository page" is the area IFC-3130 works in.** It is transcribed
   exhaustively below (artboards 1a, 1b, 1c).
 - **Sections 2, 3 and 4 belong to other tickets** (the Commits tab, the branch list,
   the branch detail view). They are summarised in one short paragraph each at the end,
   purely so a reader knows what is deliberately out of scope.
 
-Everything below is what the canvas shows. Labels, copy and hex values are verbatim.
-No implementation is proposed here.
+**This is a verbatim transcription of the canvas, including everything IFC-3130 does not
+build.** Section 1 draws a `Last import` column, an `Upstream` column, `N behind` pills and
+a row-action menu, all of which the ticket puts out of scope; it also uses labels
+(`Import status`, `Git state`) that FR-005 forbids rendering, and one `Details` card where
+the feature ships two. Nothing here is a statement of what ships. Read it against
+**[plan.md](plan.md)**, whose *Design-to-spec reconciliation* table says column by column
+what is built and whose *divergence register* lists every place this feature departs from
+the canvas.
+
+Labels, copy and hex values below are verbatim. No implementation is proposed here.
 
 ---
 
@@ -37,7 +45,7 @@ across two cards.
 
 ---
 
-## Section 1 — The repository page (IFC-3130 scope)
+## Section 1 — The repository page (the area IFC-3130 works in, drawn in full)
 
 ### Section intro copy (verbatim)
 

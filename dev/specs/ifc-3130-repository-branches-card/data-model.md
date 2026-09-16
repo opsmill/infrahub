@@ -124,21 +124,29 @@ repositoryWide ⇔ (field.branch ?? node.branch) === "agnostic"
 **`local` counts as branch-scoped.** Both `aware` and `local` vary per branch; they differ only in
 merge behaviour, which is irrelevant to presentation.
 
-Against the real schema (`backend/infrahub/core/schema/definitions/core/repository.py`):
+Against the real schema
+(`backend/infrahub/core/schema/definitions/core/repository.py::core_repository`,
+`::core_read_only_repository`, `::core_generic_repository`):
 
 | Field | Kind | `branch` |
 |---|---|---|
-| `commit` | `CoreRepository` | **LOCAL** (:53) |
-| `commit` | `CoreGenericRepository` | **LOCAL** (:216) |
-| `sync_status` | `CoreGenericRepository` | **LOCAL** (:250) |
-| `internal_status` | `CoreGenericRepository` | **LOCAL** (:166) |
-| `ref` | `CoreReadOnlyRepository` | AWARE (:83) |
-| `commit` | `CoreReadOnlyRepository` | AWARE (:91) |
-| *node level* | both kinds | AGNOSTIC (:32, :69) |
+| `commit` | `CoreRepository` | **LOCAL** |
+| `commit` | `CoreGenericRepository` | **LOCAL** |
+| `sync_status` | `CoreGenericRepository` | **LOCAL** |
+| `internal_status` | `CoreGenericRepository` | **LOCAL** |
+| `ref` | `CoreReadOnlyRepository` | AWARE |
+| `commit` | `CoreReadOnlyRepository` | AWARE |
+| *node level* | all three | AGNOSTIC |
 
 A rule of `branch === "aware" ? branchScoped : repositoryWide` therefore puts **`commit` and
 `sync_status` in the repository-wide card on the read-write kind** — the two values this feature
 exists to disambiguate — making SC-004 false while read-only tests still pass.
+
+**`internal_status` lands in the branch-scoped card**, because it is declared LOCAL. The design
+canvas groups `Internal status` under `Repository`, i.e. repository-wide. **The schema wins** —
+FR-019 derives the division from branch support, not from where a field was drawn.
+[design.md](design.md) transcribes the canvas and is left as drawn; the divergence is registered as
+D-g in [plan.md](plan.md).
 
 **Required test coverage**: one unit case per enum value, `local` included, plus one case exercising
 the node-level fallback. Node-level `branch` is a **required** field on `NodeSchemaRead`,
@@ -149,7 +157,8 @@ no third branch to handle.
 
 `ObjectDataDisplay` renders **attributes *and* relationships**. Handing it two derived `ModelSchema`
 objects that each keep the full `relationships` array would render `credential`, `tags`,
-`transformations`, `queries` and `checks` **twice** — once per card.
+`transformations`, `queries`, `checks`, `generators` and `groups_objects` **twice** — once
+per card.
 
 `RelationshipSchemaRead` carries `branch?: BranchSupportType | null` just as attributes do, so the
 same rule applies unchanged. On the repository kinds today every relationship is AGNOSTIC, so they
@@ -188,7 +197,7 @@ The position and size of the slice of rows currently shown.
 ```text
 PageWindow
   page      number   1-based, for display and for the controls
-  pageSize  number   default 20; selectable from 10, 20, 50
+  pageSize  number   default 10; selectable from 10, 20, 50
   ⟶ derived for the wire:
   limit     number   = pageSize
   offset    number   = (page - 1) * pageSize

@@ -37,8 +37,9 @@ screenshottable. What you must **not** do is let anything depend on the values b
 when IFC-3127 lands, the values become real with no contract change and no code change here.
 
 Three arguments — `sync_status__value`, `internal_status__value`, `own_values_only` — are **rejected
-with a `ValidationError`** today (not accepted-and-ignored, as IFC-3130's Jira description says). This
-feature never sends them: they are not declared in the gql.tada document at all. See
+with a `ValidationError`** today. IFC-3130's Jira description says the opposite, "accepted but
+ignored"; the ticket is wrong and needs editing by its owner (plan.md open question Q6). This feature
+never sends them: they are not declared in the gql.tada document at all. See
 [the UI contract](contracts/repository-branch-status-ui.md).
 
 **Who sees the fabricated values**: nobody, as long as this stays on the `cross-branch-repo-status-infp-671`
@@ -114,7 +115,7 @@ client-side, on rows already received, which FR-015 forbids.
 | To see | Do |
 |---|---|
 | Loading | Throttle the network; the card must occupy its space and not jump when rows arrive |
-| Empty | A `CoreRepository` all of whose branches have Git sync disabled |
+| Empty | A `CoreRepository` all of whose branches have Git sync disabled. The message is per kind: a `CoreReadOnlyRepository` with no branches must **not** mention Git synchronisation, because its row set is every branch |
 | Denied | A user without view permission covering non-default branches — **must not** read as "no branches" |
 | Failed | Stop the backend; **the rest of the page, both details cards included, must still render** (FR-024) |
 
@@ -164,7 +165,8 @@ Vitest runs in **browser mode**. Coverage to expect:
 ### FR-017 — the zero-diff guarantee
 
 The three legacy paginated pages have no tests, so the honest guarantee is that their paging is not
-touched at all:
+touched at all. Run from the **repository root** — the pathspecs are repo-root relative, and a
+pathspec that matches nothing exits 0:
 
 ```bash
 git diff --exit-code origin/cross-branch-repo-status-infp-671 -- \
@@ -181,8 +183,16 @@ Any output is a failure.
 
 ### End-to-end (FR-026)
 
+Run from the **repository root**, not `frontend/app`, and against a **locally built** image — with
+`INFRAHUB_TESTING_IMAGE_VER` unset and no `INFRAHUB_ADDRESS`, the suite boots its testcontainers
+stack from the published image and exercises released code instead of this branch:
+
 ```bash
-uv run pytest -c tests/e2e/pytest.ini tests/e2e/repository/test_repository_branches_card.py -m shard_branches_repo
+uv run invoke dev.build                      # once per backend change
+
+INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false \
+  uv run pytest -c tests/e2e/pytest.ini \
+  tests/e2e/repository/test_repository_branches_card.py -m shard_branches_repo
 ```
 
 The test must carry a **module-level `pytestmark`** with `shard_branches_repo` — `conftest.py`'s

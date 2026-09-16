@@ -6,6 +6,7 @@ import { BRANCHES_LOAD_FAILED } from "@/entities/repository/ui/repository-branch
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 import { render } from "../../../../tests/components/render";
+import { generateBranch } from "../../../../tests/fake/branch";
 import {
   generateNodeAttributeWithMetadata,
   generateRelationshipNodeWithMetadata,
@@ -25,8 +26,7 @@ const apiMock = vi.mocked(getRepositoryBranchStatusFromApi);
 
 const permission = generatePermission();
 
-// The name of the branch the shared test wrapper makes current.
-const CURRENT_BRANCH_NAME = "test-branch";
+const CURRENT_BRANCH_NAME = generateBranch().name;
 
 const repositoryWideAttributes = [
   generateAttributeSchema({

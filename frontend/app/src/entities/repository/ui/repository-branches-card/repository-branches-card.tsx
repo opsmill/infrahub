@@ -4,10 +4,12 @@ import { useId } from "react";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import { DataTable } from "@/shared/components/table/data-table";
+import { CELL_HEIGHT_PX } from "@/shared/components/table/style";
 import { TablePagination } from "@/shared/components/table/table-pagination";
 import { Badge } from "@/shared/components/ui/badge";
 import { useTablePagination } from "@/shared/hooks/use-table-pagination";
 import { formatNumberDisplay } from "@/shared/utils/number";
+import { SMALLEST_PAGE_SIZE } from "@/shared/utils/table-pagination";
 
 import { READONLY_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import {
@@ -30,7 +32,7 @@ import { RepositoryBranchesEmpty } from "@/entities/repository/ui/repository-bra
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
-const PAGINATION_URL_KEY = "branches";
+export const PAGINATION_URL_KEY = "branches";
 
 interface RepositoryBranchesBodyProps {
   schema: ModelSchema;
@@ -77,6 +79,7 @@ function RepositoryBranchesBody({
           data={[]}
           gridTemplateColumns={branchesGridTemplateColumns}
           isLoading
+          semanticTable
           skeletonRowCount={pageSize}
           skeletonShowSelection={false}
         />
@@ -84,20 +87,40 @@ function RepositoryBranchesBody({
     );
   }
 
+  // A short last page would otherwise shrink the card and move everything below it.
+  const hasMultiplePages = data.count > pageSize;
+
   return (
     <>
-      <div className="overflow-x-auto">
+      <div
+        className="overflow-x-auto"
+        style={
+          hasMultiplePages
+            ? { minHeight: (Math.min(pageSize, SMALLEST_PAGE_SIZE) + 1) * CELL_HEIGHT_PX }
+            : undefined
+        }
+      >
         <DataTable
           columns={columns}
           data={data.rows}
           gridTemplateColumns={branchesGridTemplateColumns}
-          // The card exposes no filter yet, so an empty result can only mean the repository has no
-          // branch in scope.
-          renderEmpty={() => <RepositoryBranchesEmpty hasFilters={false} />}
+          // The card exposes no filter yet, so a total of zero can only mean the repository has no
+          // branch in scope; a page past the end returns no row while the total stays positive.
+          renderEmpty={
+            data.count === 0
+              ? () => (
+                  <RepositoryBranchesEmpty
+                    hasFilters={false}
+                    listsEveryBranch={isOfKind(READONLY_REPOSITORY_KIND, schema)}
+                  />
+                )
+              : undefined
+          }
+          semanticTable
         />
       </div>
 
-      {data.rows.length > 0 && (
+      {data.count > 0 && (
         <TablePagination
           onPageChange={onPageChange}
           onPageSizeChange={onPageSizeChange}
@@ -142,7 +165,7 @@ export function RepositoryBranchesCard({ repositoryId, schema }: RepositoryBranc
         )}
       </CardHeader>
 
-      <RepositoryBranchesCardBoundary>
+      <RepositoryBranchesCardBoundary resetKeys={[repositoryId, page, pageSize]}>
         <RepositoryBranchesBody
           data={data}
           error={error}
