@@ -2624,16 +2624,9 @@ async def register_ipam_extended_schema(default_branch: Branch, register_ipam_sc
 async def register_ipam_kind_override_schema(
     default_branch: Branch, register_ipam_extended_schema: SchemaBranch
 ) -> SchemaBranch:
-    """Schema to exercise from_pool target-kind overrides.
+    """Schema exercising the from_pool target-kind override.
 
-    Adds a *second* concrete kind behind each builtin IP generic (so `used_by` holds more than
-    one option and an override is observable), plus two nodes whose relationships peer at the
-    *bare* generics. No other component fixture points a relationship at a bare generic.
-
-    Also adds a *narrower* IP generic on each side (`TestNarrowPrefix` / `TestNarrowAddress`),
-    used by a single concrete kind. A peer at one of those accepts strictly less than the bare
-    builtin generic, which is what makes a reservation created under the broad generic
-    observably illegal for the narrow one.
+    A second concrete kind behind each builtin IP generic, plus a narrower generic on each side.
     """
     SCHEMA: dict[str, Any] = {
         "generics": [
@@ -2723,6 +2716,62 @@ async def register_ipam_kind_override_schema(
     schema_branch = registry.schema.register_schema(schema=SchemaRoot(**SCHEMA), branch=default_branch.name)
     default_branch.update_schema_hash()
     return schema_branch
+
+
+@pytest.fixture
+async def kind_override_prefix_pool(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_kind_override_schema: SchemaBranch,
+    ip_dataset_prefix_v4: dict[str, Any],
+) -> CoreIPPrefixPool:
+    """A prefix pool whose default kind is IpamIPPrefix, with TestIPPrefix as a sibling."""
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
+    await pool.new(
+        db=db,
+        name="pool1",
+        default_prefix_length=24,
+        default_prefix_type="IpamIPPrefix",
+        resources=[ip_dataset_prefix_v4["net141"]],
+        ip_namespace=ip_dataset_prefix_v4["ns1"],
+    )
+    await pool.save(db=db)
+    return pool
+
+
+@pytest.fixture
+async def kind_override_address_pool(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_kind_override_schema: SchemaBranch,
+    ip_dataset_prefix_v4: dict[str, Any],
+) -> CoreIPAddressPool:
+    """An address pool whose default kind is IpamIPAddress, with TestIPAddress as a sibling."""
+    address_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+
+    pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db, branch=default_branch)
+    await pool.new(
+        db=db,
+        name="pool1",
+        default_address_type="IpamIPAddress",
+        resources=[ip_dataset_prefix_v4["net145"]],
+        ip_namespace=ip_dataset_prefix_v4["ns1"],
+    )
+    await pool.save(db=db)
+    return pool
+
+
+@pytest.fixture
+async def kind_override_pools(
+    init_nodes_registry: None,
+    kind_override_prefix_pool: CoreIPPrefixPool,
+    kind_override_address_pool: CoreIPAddressPool,
+) -> dict[str, Node]:
+    return {"prefix_pool": kind_override_prefix_pool, "address_pool": kind_override_address_pool}
 
 
 @pytest.fixture

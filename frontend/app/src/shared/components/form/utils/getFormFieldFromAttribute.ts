@@ -174,12 +174,8 @@ export const getFormFieldFromAttribute = ({
     const fromPoolName = `${attributeSchema.name}${FROM_RESOURCE_POOL_SUFFIX}`;
     const hasFromPoolRelationship = schema.relationships?.some((r) => r.name === fromPoolName);
 
-    // A number attribute reaches a pool by two independent routes: a template's schema grows a
-    // `<name>_from_resource_pool` relationship, while on a plain node the only evidence is a
-    // CoreNumberPool configured for this kind and attribute. Both land on `pool` — the shape
-    // every other pool-backed field already uses — so one gate drives the value-or-pool tabs
-    // everywhere. `fromPoolRelationshipName` stays keyed to the relationship alone, because
-    // that is what decides where a pool value is submitted.
+    // A number attribute reaches a pool two ways: a template's `<name>_from_resource_pool`, or a
+    // CoreNumberPool for this kind and attribute. Only the relationship decides where it is submitted.
     const numberField: DynamicNumberFieldProps = {
       ...basicFormFieldProps,
       type: "Number",
@@ -189,8 +185,7 @@ export const getFormFieldFromAttribute = ({
               kind: NUMBER_POOL_KIND,
               defaultAllocatedObjectKind: schema.kind!,
               fromPoolRelationshipName: hasFromPoolRelationship ? fromPoolName : undefined,
-              // Pre-fetched rather than queried: CoreNumberPool has to be narrowed to this
-              // node kind and attribute, which the caller already did.
+              // Pre-fetched: narrowing CoreNumberPool to this kind and attribute is the caller's job.
               options: numberPools,
             }
           : undefined,

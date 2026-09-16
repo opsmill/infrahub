@@ -28,9 +28,7 @@ export const makePoolSource = ({
     return source;
   }
 
-  // Address and prefix pools both support the prefix-length and target-kind overrides; the
-  // from-pool list only ever surfaces these three kinds, so anything else falls back to
-  // IP address.
+  // Only the three pool kinds ever reach here, so anything else falls back to IP address.
   const ipKind = kind === IP_PREFIX_POOL ? IP_PREFIX_POOL : IP_ADDRESS_POOL;
   const source: IpPoolSource = { type: "pool", id, label, kind: ipKind };
   if (fromTemplate) source.fromTemplate = true;

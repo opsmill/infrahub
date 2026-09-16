@@ -42,14 +42,10 @@ class CoreIPAddressPool(Node):
         data = data or {}
         pool_name = str(self.get_attribute("name").value)
 
-        # Only the caller's explicit choice is validated against the peer, never the pool's
-        # own default: see validate_allocated_kind. Resolved before the reservation lookup
-        # so an existing reservation can be checked against it too.
+        # Only an explicitly requested kind is validated; the pool's own default is left alone.
         requested_address_type = address_type or data.get("address_type")
 
-        # Deliberately outside the pool lock: this check needs nothing but the pool's name and
-        # the requested kind, so a request that can never succeed must not queue behind the
-        # allocations of every other caller of this pool.
+        # Outside the pool lock: a request that can never succeed must not queue behind other allocations.
         validate_allocated_kind(
             db=db,
             branch=branch,
@@ -87,19 +83,6 @@ class CoreIPAddressPool(Node):
                             reserved_value=node.get_attribute("address").value,
                             reserved_kind=node.get_kind(),
                             requested_kind=requested_address_type,
-                        )
-                        # The reservation may have been created under a peer more permissive than
-                        # this caller's — the standalone mutation validates against the broad
-                        # BuiltinIPAddress generic, a relationship against its own narrower peer.
-                        # Relationship.set_peer performs no kind check, so without this the
-                        # reserved node would be attached to a peer that cannot hold it.
-                        validate_allocated_kind(
-                            db=db,
-                            branch=branch,
-                            pool_kind="IPAddressPool",
-                            pool_name=pool_name,
-                            requested_kind=node.get_kind(),
-                            peer_kind=peer_kind,
                         )
                         return node
 

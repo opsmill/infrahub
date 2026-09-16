@@ -23,12 +23,8 @@ export interface PoolAllocationPanelProps
 }
 
 /**
- * The "From pool" tab of every pool-backed field: which pool to allocate from, and the two
- * overrides of that pool's defaults.
- *
- * This tab *stages* a new allocation; it never displays a resolved one. Once an allocation
- * resolves the field holds a real object, so the value tab shows it and the label badges the
- * pool — which is why no field opens here, even when its value came from a pool.
+ * The "From pool" tab: which pool to allocate from, plus the two overrides of that pool's
+ * defaults. It stages a new allocation and never displays a resolved one.
  */
 export const PoolAllocationPanel = ({
   name,
@@ -42,14 +38,12 @@ export const PoolAllocationPanel = ({
   disabled,
   onChange,
 }: PoolAllocationPanelProps) => {
-  // A template allocates through `<name>_from_resource_pool`, typed as a plain RelatedNodeInput,
-  // which carries neither override — offering them would promise what the save drops.
+  // `<name>_from_resource_pool` is a plain RelatedNodeInput carrying neither override, so
+  // offering them would promise what the save drops.
   const canOverrideAllocation = !fromPoolRelationshipName;
 
   return (
     <Col className="gap-4">
-      {/* Unlabelled on purpose: the tab and the placeholder already name it, and a label here
-          would sit directly beneath the field's own. Only the optional overrides are labelled. */}
       <PoolCombobox
         poolKind={poolKind}
         poolDefaultAllocatedObjectKind={poolDefaultAllocatedObjectKind}
@@ -61,8 +55,7 @@ export const PoolAllocationPanel = ({
         onChange={onChange}
       />
 
-      {/* Each override hides itself when it does not apply, so the row can end up empty — and an
-          empty flex item still takes the parent's `gap-4`. `empty:hidden` removes the hole. */}
+      {/* An override that hides itself leaves an empty flex item still taking the parent's gap; `empty:hidden` removes the hole. */}
       {canOverrideAllocation && (
         <Row className="items-start gap-4 empty:hidden">
           <PoolPrefixLengthField
@@ -70,8 +63,7 @@ export const PoolAllocationPanel = ({
             poolKind={poolKind}
             value={value}
             disabled={disabled}
-            // 112px: the label plus its help button measures ~105px and wraps rather than
-            // truncating, so anything narrower puts the "?" on its own line.
+            // 112px: the label plus its help button measures ~105px and wraps below that.
             className="w-28 shrink-0"
           />
 

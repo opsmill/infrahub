@@ -630,9 +630,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 if hfid_str:
                     data_from_pool["identifier"] = f"hfid={hfid_str} rel={self.name}"
 
-            # Every from_pool field is forwarded generically as a kwarg to whichever pool the id
-            # resolves to, so `peer_kind` may only be added for the pool kinds whose get_resource
-            # accepts it — CoreNumberPool.get_resource would raise TypeError otherwise.
+            # from_pool fields are forwarded as kwargs to whichever pool the id resolves to, so
+            # only pools whose get_resource accepts peer_kind may be given it.
             pool_labels = pool.get_labels()
             if InfrahubKind.IPADDRESSPOOL in pool_labels or InfrahubKind.IPPREFIXPOOL in pool_labels:
                 data_from_pool["peer_kind"] = self.schema.peer

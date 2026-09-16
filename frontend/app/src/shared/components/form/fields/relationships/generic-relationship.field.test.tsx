@@ -144,24 +144,19 @@ describe("GenericRelationshipField", () => {
   });
 
   test("offers every implementation of the generic as a kind option", async () => {
-    // GIVEN a generic peer implemented by two concrete nodes
     const component = await render(
       <TestForm>
         <GenericRelationshipField {...defaultProps} defaultValue={DEFAULT_FORM_FIELD_VALUE} />
       </TestForm>
     );
 
-    // WHEN the user opens the kind picker
     await component.getByRole("combobox", { name: "Kind" }).click();
 
-    // THEN both `used_by` entries are resolved to options — one schema lookup per entry,
-    // none of them dropped.
     await expect.element(component.getByRole("option", { name: /Device A/ })).toBeVisible();
     await expect.element(component.getByRole("option", { name: /Device B/ })).toBeVisible();
   });
 
   test("auto-selects the kind when the generic has a single implementation", async () => {
-    // GIVEN a generic implemented by exactly one node
     const soleGeneric = generateGenericSchema({
       kind: "TestSoleGeneric",
       name: "SoleGeneric",
@@ -171,7 +166,6 @@ describe("GenericRelationshipField", () => {
     });
     store.set(genericSchemasAtom, [soleGeneric]);
 
-    // WHEN the field renders against it
     const component = await render(
       <TestForm>
         <GenericRelationshipField
@@ -188,16 +182,13 @@ describe("GenericRelationshipField", () => {
       </TestForm>
     );
 
-    // THEN the only kind is picked for the user, so the node input is immediately usable
     await expect
       .element(component.getByRole("combobox", { name: "Kind" }))
       .toHaveTextContent("Device A");
     await expect.poll(() => component.getByText("Select a kind first").query()).toBeNull();
   });
 
-  // A relationship whose peer is the *generic* BuiltinIPAddress: `getPoolKindFromSchema` sets
-  // `field.pool` for it, and the generic branch renders the pool UI, so "allocate from pool" is
-  // reachable for these relationships.
+  // Peer is the *generic* BuiltinIPAddress, which is what makes the pool UI reachable.
   describe("allocate from pool on a generic IP peer", () => {
     const ipGeneric = generateGenericSchema({
       kind: "BuiltinIPAddress",
@@ -221,8 +212,6 @@ describe("GenericRelationshipField", () => {
       inherit_from: ["BuiltinIPAddress"],
     });
 
-    // Same shape, but implemented by a single node: with only one candidate kind there is
-    // nothing to override.
     const soleIpGeneric = generateGenericSchema({
       kind: "SoleIPAddress",
       name: "SoleIPAddress",
@@ -243,8 +232,7 @@ describe("GenericRelationshipField", () => {
       label: "Number Pool",
     });
 
-    // Not fresh object literals, so the extra pool-default field survives assignment to
-    // `getRelationships`' NodeCore[] return type without an assertion.
+    // Not fresh object literals: excess-property checking would reject the extra pool default.
     const addressPoolNode = {
       id: "pool-1",
       display_label: "Loopbacks pool",
@@ -252,8 +240,7 @@ describe("GenericRelationshipField", () => {
       default_address_type: { value: "IpamIPAddress" },
     };
 
-    // A second address pool, so a re-allocation has somewhere else to go: re-picking the pool a
-    // value already came from deliberately restores that allocation rather than staging a new one.
+    // A second address pool, since re-picking the original pool restores its allocation instead of staging one.
     const otherAddressPoolNode = {
       id: "pool-2",
       display_label: "Management pool",
@@ -267,8 +254,7 @@ describe("GenericRelationshipField", () => {
       __typename: "CoreNumberPool",
     };
 
-    // What a pool-backed relationship holds once its allocation has resolved: the allocated
-    // address itself, still carrying the pool as its source.
+    // A resolved allocation: the address itself, still sourced from the pool.
     const allocatedValue = {
       source: {
         type: "pool" as const,
@@ -294,8 +280,7 @@ describe("GenericRelationshipField", () => {
       relationship: ipRelationshipSchema,
       pool: {
         kind: "CoreIPAddressPool",
-        // `getFormFieldFromRelationship` sets this to the peer schema kind, which for a
-        // generic peer is the generic itself — no pool's default_address_type equals it.
+        // A generic peer's schema kind is the generic itself, which no pool default equals.
         defaultAllocatedObjectKind: "BuiltinIPAddress",
       },
     };
@@ -311,14 +296,12 @@ describe("GenericRelationshipField", () => {
     });
 
     test("presents the two ways of satisfying the field as tabs, starting on Object", async () => {
-      // GIVEN a from-pool-capable relationship pointing at the generic, with no value yet
       const component = await render(
         <TestForm>
           <GenericRelationshipField {...poolProps} defaultValue={DEFAULT_FORM_FIELD_VALUE} />
         </TestForm>
       );
 
-      // THEN both tabs are offered and the object one is active, since nothing is allocated
       await expect
         .element(component.getByRole("tab", { name: "Object" }))
         .toHaveAttribute("data-state", "active");
@@ -328,16 +311,12 @@ describe("GenericRelationshipField", () => {
     });
 
     test("opens on the object tab when the value came from a pool, badged with that pool", async () => {
-      // GIVEN an allocation that has already resolved to a concrete address
       const component = await render(
         <TestForm defaultValues={{ primary_address: allocatedValue }}>
           <GenericRelationshipField {...poolProps} defaultValue={allocatedValue} />
         </TestForm>
       );
 
-      // THEN the object tab is the one shown: the pool tab is for staging a *new* allocation and
-      // has nothing to show for one that resolved, while the object tab holds the allocated
-      // address and the label names the pool it came from.
       await expect
         .element(component.getByRole("tab", { name: "Object" }))
         .toHaveAttribute("data-state", "active");
@@ -349,7 +328,6 @@ describe("GenericRelationshipField", () => {
         .element(component.getByTestId("source-pool-badge"))
         .toHaveTextContent("Loopbacks pool");
 
-      // AND neither override is offered: a resolved allocation cannot be re-cut.
       await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
       await expect.poll(() => component.getByTestId("pool-prefix-length-input").query()).toBeNull();
     });
@@ -359,7 +337,6 @@ describe("GenericRelationshipField", () => {
         peer === "CoreIPAddressPool" ? [addressPoolNode, otherAddressPoolNode] : []
       );
 
-      // GIVEN a field holding an address already allocated from "Loopbacks pool"
       const onSubmit = vi.fn();
       const component = await render(
         <TestForm defaultValues={{ primary_address: allocatedValue }} onSubmit={onSubmit}>
@@ -368,13 +345,10 @@ describe("GenericRelationshipField", () => {
       );
       await expect.element(component.getByText("10.0.0.1/24")).toBeVisible();
 
-      // WHEN the user goes to the pool tab and allocates from a different pool
       await component.getByRole("tab", { name: "From pool" }).click();
       await component.getByTestId("select-open-pool-option-button").click();
       await component.getByRole("option", { name: "Management pool" }).click();
 
-      // THEN a fresh allocation is staged, with the type override back in reach — this is the
-      // path that replaces opening on the pool tab.
       await expect
         .element(component.getByTestId("select-value"))
         .toHaveTextContent("Management pool");
@@ -397,7 +371,6 @@ describe("GenericRelationshipField", () => {
     });
 
     test("offers the pool without making the user choose a kind first", async () => {
-      // GIVEN the field on its object tab, where no kind is chosen yet
       const component = await render(
         <TestForm>
           <GenericRelationshipField {...poolProps} defaultValue={DEFAULT_FORM_FIELD_VALUE} />
@@ -405,11 +378,8 @@ describe("GenericRelationshipField", () => {
       );
       await expect.element(component.getByText("Select a kind first")).toBeVisible();
 
-      // WHEN the user switches to the pool tab without touching the kind picker
       await component.getByRole("tab", { name: "From pool" }).click();
 
-      // THEN the pool is selectable straight away: the kind gate belongs to the object
-      // picker, and a pool allocation has no use for it.
       await expect
         .element(component.getByTestId("select-open-pool-option-button"))
         .toBeInTheDocument();
@@ -417,7 +387,6 @@ describe("GenericRelationshipField", () => {
     });
 
     test("keeps the kind picker on the object tab and out of the pool tab", async () => {
-      // GIVEN the field on its object tab
       const component = await render(
         <TestForm>
           <GenericRelationshipField {...poolProps} defaultValue={DEFAULT_FORM_FIELD_VALUE} />
@@ -425,17 +394,13 @@ describe("GenericRelationshipField", () => {
       );
       await expect.element(component.getByRole("combobox", { name: "Kind" })).toBeVisible();
 
-      // WHEN the user switches to the pool tab
       await component.getByRole("tab", { name: "From pool" }).click();
 
-      // THEN the kind picker is gone: it filters the object list, and the pool's own default
-      // kind is what an allocation targets — "Type to allocate" overrides that instead.
       await expect.poll(() => component.getByRole("combobox", { name: "Kind" }).query()).toBeNull();
       await expect.element(component.getByRole("combobox", { name: "Pool" })).toBeVisible();
     });
 
     test("filters the pool list by the generic's implementations, not by a single default kind", async () => {
-      // GIVEN the field's pool tab
       const component = await render(
         <TestForm>
           <GenericRelationshipField {...poolProps} defaultValue={DEFAULT_FORM_FIELD_VALUE} />
@@ -443,13 +408,9 @@ describe("GenericRelationshipField", () => {
       );
       await component.getByRole("tab", { name: "From pool" }).click();
 
-      // WHEN the user opens the pool list
       await component.getByTestId("select-open-pool-option-button").click();
 
-      // THEN the pool query is filtered over the whole `used_by` set, which the tab reads from
-      // the peer generic rather than from the object tab. Pinning the singular
-      // `default_address_type__value` to the generic matches no pool at all, and pinning it to
-      // a selected kind would defeat allocating a B from an A-defaulted pool.
+      // Filtering by a single kind would hide the pools that default to a sibling kind.
       await expect
         .poll(
           () =>
@@ -462,7 +423,6 @@ describe("GenericRelationshipField", () => {
     });
 
     test("leaves the allocation on the pool's own kind until the override is used", async () => {
-      // GIVEN a form whose submitted data we capture
       const onSubmit = vi.fn();
       const component = await render(
         <TestForm onSubmit={onSubmit}>
@@ -470,14 +430,11 @@ describe("GenericRelationshipField", () => {
         </TestForm>
       );
 
-      // WHEN the user allocates from a pool and submits, without ever picking a kind
       await component.getByRole("tab", { name: "From pool" }).click();
       await component.getByTestId("select-open-pool-option-button").click();
       await component.getByRole("option", { name: "Loopbacks pool" }).click();
       await component.getByRole("button", { name: "Submit" }).click();
 
-      // THEN no allocated kind is sent: the pool's own default kind rides on the source, where
-      // the override field reads it as its placeholder. Same payload as before the tabs.
       await expect.poll(() => onSubmit.mock.calls.length).toBeGreaterThan(0);
       expect(onSubmit.mock.calls[0]?.[0]?.primary_address).toEqual({
         source: {
@@ -493,7 +450,6 @@ describe("GenericRelationshipField", () => {
     });
 
     test("submits the node picked on the object tab", async () => {
-      // GIVEN a pool-capable field and a node reachable under one of the generic's kinds
       const onSubmit = vi.fn();
       vi.mocked(getRelationships).mockImplementation(async ({ peer }) => {
         if (peer === "CoreIPAddressPool") return [addressPoolNode];
@@ -509,14 +465,12 @@ describe("GenericRelationshipField", () => {
         </TestForm>
       );
 
-      // WHEN the user picks a kind and a node on the object tab, then submits
       await component.getByRole("combobox", { name: "Kind" }).click();
       await component.getByRole("option", { name: /Ipam IP Address/ }).click();
       await component.getByRole("combobox", { name: "Ipam IP Address" }).click();
       await component.getByRole("option", { name: "10.0.0.1/24" }).click();
       await component.getByRole("button", { name: "Submit" }).click();
 
-      // THEN a plain user-sourced node is sent, untouched by the pool tab
       await expect.poll(() => onSubmit.mock.calls.length).toBeGreaterThan(0);
       expect(onSubmit.mock.calls[0]?.[0]?.primary_address).toEqual({
         source: { type: "user" },
@@ -525,7 +479,6 @@ describe("GenericRelationshipField", () => {
     });
 
     test("clears the staged value when the user switches tabs", async () => {
-      // GIVEN an allocation staged on the pool tab
       const component = await render(
         <TestForm>
           <GenericRelationshipField {...poolProps} defaultValue={DEFAULT_FORM_FIELD_VALUE} />
@@ -538,12 +491,9 @@ describe("GenericRelationshipField", () => {
         .element(component.getByTestId("select-value"))
         .toHaveTextContent("Loopbacks pool");
 
-      // WHEN the user goes to the object tab and back
       await component.getByRole("tab", { name: "Object" }).click();
       await component.getByRole("tab", { name: "From pool" }).click();
 
-      // THEN the allocation is gone: a value cannot be both picked and allocated, and this is
-      // what stops the nested from-pool fields (prefix length, allocated kind) leaking across.
       await expect.poll(() => component.getByTestId("select-value").query()).toBeNull();
       await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
     });
@@ -556,14 +506,11 @@ describe("GenericRelationshipField", () => {
       );
       await component.getByRole("tab", { name: "From pool" }).click();
 
-      // THEN nothing to override before an allocation exists
       await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
 
-      // WHEN the user allocates from a pool
       await component.getByTestId("select-open-pool-option-button").click();
       await component.getByRole("option", { name: "Loopbacks pool" }).click();
 
-      // THEN the override appears, empty, hinting the pool default it would otherwise use
       await expect.element(component.getByTestId("pool-kind-select")).toBeVisible();
       await expect
         .element(component.getByTestId("pool-kind-select"))
@@ -580,9 +527,7 @@ describe("GenericRelationshipField", () => {
       await component.getByTestId("select-open-pool-option-button").click();
       await component.getByRole("option", { name: "Loopbacks pool" }).click();
 
-      // A bare combobox reads as a required choice; the label and its help text are what say
-      // the pool already has a default and that touching this replaces it. The tooltip mounts
-      // its text only while hovered, so assert it that way rather than via a description.
+      // The tooltip mounts its text only while hovered, so assert it that way.
       await expect.element(component.getByText("Type to allocate")).toBeVisible();
       await component.getByRole("button", { name: "?" }).last().hover();
       await expect
@@ -601,12 +546,10 @@ describe("GenericRelationshipField", () => {
       await component.getByTestId("select-open-pool-option-button").click();
       await component.getByRole("option", { name: "Loopbacks pool" }).click();
 
-      // WHEN the user overrides the target kind with a sibling implementation
       await component.getByTestId("pool-kind-select").click();
       await component.getByRole("option", { name: /Test IP Address/ }).click();
       await component.getByRole("button", { name: "Submit" }).click();
 
-      // THEN it rides in the value, which is what the mutation sends
       await expect.poll(() => onSubmit.mock.calls.length).toBeGreaterThan(0);
       expect(onSubmit.mock.calls[0]?.[0]?.primary_address).toEqual({
         source: {
@@ -622,7 +565,6 @@ describe("GenericRelationshipField", () => {
     });
 
     test("hides the kind override when the generic has a single implementation", async () => {
-      // GIVEN a generic peer with exactly one candidate kind
       const component = await render(
         <TestForm>
           <GenericRelationshipField
@@ -640,18 +582,15 @@ describe("GenericRelationshipField", () => {
         </TestForm>
       );
 
-      // WHEN the user allocates from a pool
       await component.getByRole("tab", { name: "From pool" }).click();
       await component.getByTestId("select-open-pool-option-button").click();
       await component.getByRole("option", { name: "Loopbacks pool" }).click();
 
-      // THEN the prefix-length override still shows, but a one-option kind dropdown does not
       await expect.element(component.getByTestId("pool-prefix-length-input")).toBeVisible();
       await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
     });
 
     test("hides the kind override when the value is a resolved node", async () => {
-      // GIVEN a field whose pool allocation already resolved to a concrete address
       const component = await render(
         <TestForm defaultValues={{ primary_address: allocatedValue }}>
           <GenericRelationshipField {...poolProps} defaultValue={allocatedValue} />
@@ -659,12 +598,8 @@ describe("GenericRelationshipField", () => {
       );
       await expect.element(component.getByText("10.0.0.1/24")).toBeVisible();
 
-      // WHEN the user goes looking for the override on the pool tab
       await component.getByRole("tab", { name: "From pool" }).click();
 
-      // THEN the pool selector is reachable, but there is nothing left to re-target: the
-      // address exists, so its kind can no longer change. Only a fresh allocation, staged from
-      // this tab, can name another kind.
       await expect
         .element(component.getByTestId("select-open-pool-option-button"))
         .toBeInTheDocument();
@@ -673,7 +608,6 @@ describe("GenericRelationshipField", () => {
     });
 
     test("hides the kind override for a number pool", async () => {
-      // GIVEN the same generic peer wired to a number pool, where a target kind is meaningless
       const component = await render(
         <TestForm>
           <GenericRelationshipField
@@ -684,18 +618,15 @@ describe("GenericRelationshipField", () => {
         </TestForm>
       );
 
-      // WHEN the user allocates from the number pool
       await component.getByRole("tab", { name: "From pool" }).click();
       await component.getByTestId("select-open-pool-option-button").click();
       await component.getByRole("option", { name: "VLAN ids pool" }).click();
 
-      // THEN neither IP-only override is offered
       await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
       await expect.poll(() => component.getByTestId("pool-prefix-length-input").query()).toBeNull();
     });
 
     test("disables both tabs when the field is disabled", async () => {
-      // GIVEN a disabled field (a read-only or inherited value)
       const component = await render(
         <TestForm>
           <GenericRelationshipField
@@ -706,8 +637,6 @@ describe("GenericRelationshipField", () => {
         </TestForm>
       );
 
-      // THEN neither mode can be entered — before the tabs, a disabled field kept a live
-      // pool button.
       await expect.element(component.getByRole("tab", { name: "Object" })).toBeDisabled();
       await expect.element(component.getByRole("tab", { name: "From pool" })).toBeDisabled();
     });

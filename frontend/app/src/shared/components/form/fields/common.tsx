@@ -48,9 +48,7 @@ export const LabelFormField = ({
 }: LabelFormFieldProps) => {
   return (
     <div className={classNames("flex flex-col gap-0.5", className)}>
-      {/* The provenance badges below are capped to `h-5`, the line box of a default-variant
-          label, so that a value gaining or losing a source does not change this row's height
-          and nudge everything beneath it down. */}
+      {/* Badges are capped to the default label's line box so gaining or losing a source cannot shift this row's height. */}
       <div className="flex min-h-4 flex-wrap items-center gap-1">
         <FormLabel {...props}>
           {label} {required && "*"}

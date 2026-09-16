@@ -48,9 +48,8 @@ export type NumberPoolSource = PoolSourceBase & {
 export type PoolSource = IpPoolSource | NumberPoolSource;
 
 /**
- * What a pool picker emits when the user chooses a pool: the pool itself, the per-allocation
- * overrides, and the pool's own defaults. The defaults are routed to the field's `source` so the
- * overrides can show them as placeholders; they are never serialized.
+ * What a pool picker emits: the pool, the per-allocation overrides, and the pool's own defaults —
+ * the defaults go to the field's `source` as placeholders and are never serialized.
  */
 export type PoolValue = {
   from_pool: {
@@ -59,10 +58,7 @@ export type PoolValue = {
     /** The pool's own `__typename` (e.g. `CoreIPAddressPool`), not the kind to allocate. */
     kind: string;
     prefixLength?: number;
-    /**
-     * Concrete node kind to allocate, when the relationship peers at a generic
-     * (e.g. `IpamIPAddress` for a `BuiltinIPAddress` peer). Distinct from `kind` above.
-     */
+    /** Concrete node kind to allocate when the peer is a generic; distinct from `kind` above. */
     allocatedKind?: string;
     /** Pool default prefix length, routed to the field's source metadata (not sent). */
     defaultPrefixLength?: number | null;
@@ -181,25 +177,14 @@ export type FormRelationshipValue =
 
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
 
-/**
- * Everything a field needs to offer "allocate from a pool" as one of the two ways of filling
- * itself in. Its presence is the single gate on the value-or-pool tabs, so every pool-backed
- * field presents the choice identically.
- */
+/** Its presence is the single gate on the value-or-pool tabs. */
 export type FormFieldPool = {
   /** The pool kind to allocate from, e.g. `CoreIPAddressPool`. */
   kind: string;
   defaultAllocatedObjectKind: string;
-  /**
-   * `<name>_from_resource_pool`, when the schema has one. A pool value is submitted through
-   * that relationship instead of the field itself.
-   */
+  /** `<name>_from_resource_pool`, when the schema has one: a pool value is submitted through it instead of the field. */
   fromPoolRelationshipName?: string;
-  /**
-   * Pools to offer instead of querying for them. A number pool is configured for one node kind
-   * and one attribute, which only the field builder can resolve, so those arrive pre-fetched;
-   * IP pools are queried live and leave this unset.
-   */
+  /** Pools to offer instead of querying: a number pool is narrowed per node kind and attribute, which only the field builder can resolve. */
   options?: Array<NodeCore>;
 };
 

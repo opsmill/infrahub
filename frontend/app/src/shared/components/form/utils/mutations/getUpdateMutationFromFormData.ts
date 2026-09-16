@@ -26,10 +26,8 @@ export const getUpdateMutationFromFormData = ({
       defaultValue?.source?.type === "pool" &&
       defaultValue.source.id === fieldData.source.id
     ) {
-      // Re-selecting the field's original pool is normally a no-op: allocation is
-      // idempotent on the reservation identifier, so the mask cannot be changed that way.
-      // A different allocated kind is the exception — no reservation identifier is sent,
-      // so it is a real request and must not be dropped from the mutation.
+      // Allocation is idempotent on the reservation identifier, but none is sent for the kind, so
+      // a different allocated kind is a real request and must not be dropped.
       const requestedKind =
         fieldData.value && typeof fieldData.value === "object" && "from_pool" in fieldData.value
           ? fieldData.value.from_pool.allocatedKind
@@ -53,13 +51,8 @@ export const getUpdateMutationFromFormData = ({
               field.type === "relationship"
                 ? { [field.name]: null }
                 : { [field.name]: { value: null } };
-            // `<rel>_from_resource_pool` peers at the pool kind itself, so GraphQL types it
-            // as a plain RelatedNodeInput — which has no `prefixlen` and no `address_type`,
-            // and rejects the whole query if either is sent. The backend could not honour
-            // them there anyway: the relationship stores only a pointer to the pool, and
-            // `create.py` allocates with `pool.get_resource(...)`, passing no prefix length
-            // and no kind. Overrides only reach the API through the direct
-            // `{ [field.name]: { from_pool } }` payload below.
+            // `<rel>_from_resource_pool` is typed as a plain RelatedNodeInput: sending `prefixlen` or
+            // `address_type` there is rejected by GraphQL, so the overrides ride on the payload below.
             return {
               ...acc,
               ...clearField,

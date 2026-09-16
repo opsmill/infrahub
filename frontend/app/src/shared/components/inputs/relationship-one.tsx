@@ -31,7 +31,7 @@ export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value
   options?: Array<Node>;
   parent?: { name?: string; value?: string };
   addNewInitialObject?: NodeFieldsWithMetadata;
-  /** Shown while nothing is picked, mirroring the pool control's "Select a pool". */
+  /** Shown while nothing is picked. */
   placeholder?: string;
   ref?: React.Ref<React.ComponentRef<typeof PopoverTrigger>>;
 }

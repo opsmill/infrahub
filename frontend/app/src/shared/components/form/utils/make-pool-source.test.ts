@@ -79,7 +79,6 @@ describe("makePoolSource", () => {
       id: "p3",
       kind: NUMBER_POOL_KIND,
       label: "Numbers",
-      // Both defaults are meaningless for number pools and must be dropped
       defaultPrefixLength: 24,
       defaultAllocatedKind: "IpamIPAddress",
     });

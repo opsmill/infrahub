@@ -21,7 +21,7 @@ export interface PoolKindOption {
 
 export interface PoolKindSelectProps {
   value: string | null | undefined;
-  /** Kinds the allocation may target; the caller supplies them, this makes no lookup. */
+  /** Kinds the allocation may target. */
   options: Array<PoolKindOption>;
   /** Pool's default target kind, shown as a hint of the kind allocated when left blank. */
   placeholder?: string;
@@ -33,10 +33,8 @@ export interface PoolKindSelectProps {
 }
 
 /**
- * Compact editor for a from-pool allocation's target-kind override. The pool field decides
- * when it is shown and which kinds are candidates; this just edits the choice.
- * Re-picking the selected kind emits `null` so react-hook-form writes the empty state,
- * which is what makes the pool's own default apply again.
+ * Re-picking the selected kind emits `null` so react-hook-form writes the empty state, which is
+ * what makes the pool's own default apply again.
  */
 export function PoolKindSelect({
   value,

@@ -54,9 +54,7 @@ describe("getFormFieldFromAttribute", () => {
     });
 
     it("attaches pool metadata from the pre-fetched pools alone, with no companion relationship", () => {
-      // A plain node never grows `<name>_from_resource_pool` — only its template does — so the
-      // existence of a number pool for this attribute is the only evidence the field can offer
-      // one. It still has to land on `pool`, or the value-or-pool tabs would never appear.
+      // A plain node has no `<name>_from_resource_pool`, so an existing number pool is the only evidence.
       const attributeSchema = generateAttributeSchema({
         name: "weight",
         kind: ATTRIBUTE_KIND.NUMBER,
@@ -92,7 +90,6 @@ describe("getFormFieldFromAttribute", () => {
       expect(field.pool).toEqual({
         kind: "CoreNumberPool",
         defaultAllocatedObjectKind: "TestNode",
-        // No relationship, so a pool value is submitted on the field itself — exactly as before.
         fromPoolRelationshipName: undefined,
         options: [numberPool],
       });
@@ -131,7 +128,6 @@ describe("getFormFieldFromAttribute", () => {
         ],
       });
 
-      // A pool for a sibling attribute is no pool for this field, so nothing is offered.
       expect(field.pool).toBeUndefined();
     });
 

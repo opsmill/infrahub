@@ -29,13 +29,8 @@ export const getCreateMutationFromFormData = (
       const fromPoolField = field.pool?.fromPoolRelationshipName;
       if ("from_pool" in fieldData.value) {
         if (fromPoolField) {
-          // `<rel>_from_resource_pool` peers at the pool kind itself, so GraphQL types it
-          // as a plain RelatedNodeInput — which has no `prefixlen` and no `address_type`,
-          // and rejects the whole query if either is sent. The backend could not honour
-          // them there anyway: the relationship stores only a pointer to the pool, and
-          // `create.py` allocates with `pool.get_resource(...)`, passing no prefix length
-          // and no kind. Overrides only reach the API through the direct
-          // `{ [field.name]: { from_pool } }` payload below.
+          // `<rel>_from_resource_pool` is typed as a plain RelatedNodeInput: sending `prefixlen` or
+          // `address_type` there is rejected by GraphQL, so the overrides ride on the payload below.
           return { ...acc, [fromPoolField]: { id: fieldData.value.from_pool.id } };
         }
         return {

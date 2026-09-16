@@ -60,8 +60,6 @@ describe("updateRelationshipFieldValue - from-pool", () => {
   });
 
   it("restores the existing allocation when the original pool is re-selected with the kind it already holds", () => {
-    // The requested kind matches the resolved value's own `__typename`, so there is
-    // nothing to re-allocate — the resolved value is restored.
     const result = updateRelationshipFieldValue(
       {
         from_pool: {
@@ -78,9 +76,7 @@ describe("updateRelationshipFieldValue - from-pool", () => {
   });
 
   it("creates a pending allocation when the original pool is re-selected with a different kind", () => {
-    // Unlike the mask, the kind is not idempotent on the reservation: the form sends no
-    // reservation identifier, so asking the same pool for another kind is a legitimate
-    // fresh allocation. Restoring the old-kind value here would silently drop the change.
+    // No reservation identifier is sent for the kind, so a different kind is a fresh allocation, not a no-op.
     const result = updateRelationshipFieldValue(
       {
         from_pool: {
@@ -119,8 +115,7 @@ describe("updateRelationshipFieldValue - from-pool", () => {
       original
     );
 
-    // `kind` is the pool's own __typename and only reaches the source; `allocatedKind` is
-    // the target node kind and rides in the value, which is what the mutation sends.
+    // `kind` is the pool's own __typename; `allocatedKind` is what the mutation sends.
     expect(result).toEqual({
       source: {
         type: "pool",
@@ -172,8 +167,6 @@ describe("updateRelationshipFieldValue - from-pool", () => {
       original
     );
 
-    // Like defaultPrefixLength, the pool default lives on the source only — it is a hint
-    // for the override placeholder, never part of what the mutation sends.
     expect(result).toEqual({
       source: {
         type: "pool",
@@ -209,9 +202,6 @@ describe("updateRelationshipFieldValue - from-pool", () => {
 });
 
 describe("updateAttributeFieldValue - from-pool", () => {
-  // An attribute allocated from a pool carries a `from_pool` value (attributes are not
-  // nodes), so the kind it points at is the `allocatedKind` recorded in that value rather
-  // than a resolved node's `__typename`. Re-selecting the same pool restores it unchanged.
   const original: FormAttributeValue = {
     source: { type: "pool", id: "loopbacks", kind: "CoreIPAddressPool", label: "Loopbacks pool" },
     value: { from_pool: { id: "loopbacks", prefixLength: 24, allocatedKind: "IpamIPAddress" } },
@@ -279,8 +269,7 @@ describe("updateAttributeFieldValue - from-pool", () => {
   });
 
   it("creates a pending allocation when the original pool is re-selected with a different kind", () => {
-    // Same escape hatch as the relationship twin: a different kind is a real request,
-    // not a no-op, so it must not collapse back onto the existing allocation.
+    // A different kind is a real request, not a no-op, so it must not collapse back.
     const result = updateAttributeFieldValue(
       {
         from_pool: {

@@ -1521,44 +1521,6 @@ mutation PrefixPoolGetResourceWithPrefixType($pool_id: String!, $prefix_type: St
 """
 
 
-@pytest.fixture
-async def kind_override_pools(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    default_ipnamespace: Node,
-    register_ipam_kind_override_schema: SchemaBranch,
-    init_nodes_registry: None,
-    ip_dataset_prefix_v4: dict[str, Any],
-) -> dict[str, Node]:
-    """A prefix pool and an address pool, both defaulting to the Ipam* kinds."""
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
-    address_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
-
-    prefix_pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
-    await prefix_pool.new(
-        db=db,
-        name="prefix-pool",
-        default_prefix_length=24,
-        default_prefix_type="IpamIPPrefix",
-        resources=[ip_dataset_prefix_v4["net141"]],
-        ip_namespace=ip_dataset_prefix_v4["ns1"],
-    )
-    await prefix_pool.save(db=db)
-
-    address_pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db, branch=default_branch)
-    await address_pool.new(
-        db=db,
-        name="address-pool",
-        default_address_type="IpamIPAddress",
-        resources=[ip_dataset_prefix_v4["net145"]],
-        ip_namespace=ip_dataset_prefix_v4["ns1"],
-    )
-    await address_pool.save(db=db)
-
-    default_branch.update_schema_hash()
-    return {"prefix_pool": prefix_pool, "address_pool": address_pool}
-
-
 async def test_create_from_pool_with_address_type_override(
     db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
 ) -> None:

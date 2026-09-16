@@ -41,8 +41,7 @@ export function PoolPrefixLengthInput({
         focusWithinStyle,
         "w-18 gap-1",
         invalid && inputErrorStyle,
-        // `inputStyle`'s `disabled:` variants key off the element that carries the attribute,
-        // which here is the inner input rather than this wrapper.
+        // `inputStyle`'s `disabled:` variants key off the inner input, not this wrapper.
         disabled && "cursor-not-allowed opacity-60",
         className
       )}

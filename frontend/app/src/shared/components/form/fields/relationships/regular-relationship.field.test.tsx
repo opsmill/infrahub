@@ -18,8 +18,7 @@ import { NodeRelationshipField } from "./regular-relationship.field";
 vi.mock("@/entities/nodes/relationships/domain/use-cases/get-relationships");
 
 describe("NodeRelationshipField", () => {
-  // A concrete IP peer: the relationship pins the kind an allocation targets, so a pool is
-  // offered but there is nothing for a type override to choose between.
+  // A concrete IP peer pins the allocated kind, so a pool is offered but no type override.
   const ipamAddress = generateNodeSchema({
     kind: "IpamIPAddress",
     name: "IPAddress",
@@ -34,8 +33,7 @@ describe("NodeRelationshipField", () => {
     relationships: [],
   });
 
-  // Not a fresh object literal, so the extra pool-default field survives assignment to
-  // `getRelationships`' NodeCore[] return type without an assertion.
+  // Not a fresh object literal: excess-property checking would reject the extra pool default.
   const addressPoolNode = {
     id: "pool-1",
     display_label: "Loopbacks pool",
@@ -43,8 +41,7 @@ describe("NodeRelationshipField", () => {
     default_address_type: { value: "IpamIPAddress" },
   };
 
-  // A second pool, so a re-allocation has somewhere else to go: re-picking the pool a value
-  // already came from deliberately restores that allocation rather than staging a new one.
+  // A second pool, since re-picking the original pool restores its allocation instead of staging one.
   const otherAddressPoolNode = {
     id: "pool-2",
     display_label: "Management pool",
@@ -58,8 +55,7 @@ describe("NodeRelationshipField", () => {
     __typename: "IpamIPAddress",
   };
 
-  // What a pool-backed relationship holds once its allocation has resolved: the allocated node
-  // itself, still carrying the pool as its source.
+  // A resolved allocation: the node itself, still sourced from the pool.
   const allocatedValue = {
     source: {
       type: "pool" as const,
@@ -140,9 +136,6 @@ describe("NodeRelationshipField", () => {
       </TestForm>
     );
 
-    // The pool tab is for staging a *new* allocation; it has nothing to show for one that has
-    // already resolved. The object tab holds the allocated address, and the label says which
-    // pool it came from — strictly more than the pool tab could offer.
     await expect
       .element(component.getByRole("tab", { name: "Object" }))
       .toHaveAttribute("data-state", "active");
@@ -154,7 +147,6 @@ describe("NodeRelationshipField", () => {
       .element(component.getByTestId("source-pool-badge"))
       .toHaveTextContent("Loopbacks pool");
 
-    // And neither override is offered: a resolved allocation cannot be re-cut.
     await expect.poll(() => component.getByTestId("pool-prefix-length-input").query()).toBeNull();
     await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
   });
@@ -174,13 +166,10 @@ describe("NodeRelationshipField", () => {
     );
     await expect.element(component.getByText("10.0.0.1/24")).toBeVisible();
 
-    // WHEN the user goes to the pool tab and allocates from a different pool
     await component.getByRole("tab", { name: "From pool" }).click();
     await component.getByTestId("select-open-pool-option-button").click();
     await component.getByRole("option", { name: "Management pool" }).click();
 
-    // THEN a fresh allocation is staged, mask override and all — this is the path that
-    // replaces opening on the pool tab.
     await expect
       .element(component.getByTestId("select-value"))
       .toHaveTextContent("Management pool");
@@ -213,7 +202,6 @@ describe("NodeRelationshipField", () => {
     await component.getByTestId("select-open-pool-option-button").click();
     await component.getByRole("option", { name: "Loopbacks pool" }).click();
 
-    // The mask can still be re-cut; the kind cannot, since the relationship already names it.
     await expect.element(component.getByTestId("pool-prefix-length-input")).toBeVisible();
     await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
   });
@@ -237,9 +225,7 @@ describe("NodeRelationshipField", () => {
     await component.getByTestId("select-open-pool-option-button").click();
     await component.getByRole("option", { name: "Loopbacks pool" }).click();
 
-    // A template submits through `<name>_from_resource_pool`, whose input type carries neither
-    // field, so an override typed here would be dropped in silence. The pool itself still
-    // works — only the overrides go.
+    // A template submits through `<name>_from_resource_pool`, whose input carries neither override.
     await expect.element(component.getByTestId("select-value")).toHaveTextContent("Loopbacks pool");
     await expect.poll(() => component.getByTestId("pool-prefix-length-input").query()).toBeNull();
     await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
@@ -306,8 +292,6 @@ describe("NodeRelationshipField", () => {
     await component.getByRole("tab", { name: "Object" }).click();
     await component.getByRole("tab", { name: "From pool" }).click();
 
-    // A value cannot be both picked and allocated; this is also what stops the nested
-    // from-pool fields leaking across a switch.
     await expect.poll(() => component.getByTestId("select-value").query()).toBeNull();
     await expect.poll(() => component.getByTestId("pool-prefix-length-input").query()).toBeNull();
   });
@@ -319,7 +303,6 @@ describe("NodeRelationshipField", () => {
       </TestForm>
     );
 
-    // Before the tabs, a disabled field kept a live pool button.
     await expect.element(component.getByRole("tab", { name: "Object" })).toBeDisabled();
     await expect.element(component.getByRole("tab", { name: "From pool" })).toBeDisabled();
   });
@@ -331,8 +314,7 @@ describe("NodeRelationshipField", () => {
       </TestForm>
     );
 
-    // No field opens on the pool tab, and a disabled tab cannot be pressed, so open the panel
-    // first and let the field be disabled underneath it.
+    // A disabled tab cannot be pressed, so open the panel before disabling the field.
     await component.getByRole("tab", { name: "From pool" }).click();
     await component.rerender(
       <TestForm>
@@ -340,8 +322,7 @@ describe("NodeRelationshipField", () => {
       </TestForm>
     );
 
-    // The pool panel stays on screen even though the strip is locked, so its controls have to
-    // refuse on their own.
+    // The panel stays mounted while the strip is locked, so its controls must refuse on their own.
     await expect.element(component.getByTestId("select-open-pool-option-button")).toBeDisabled();
   });
 });

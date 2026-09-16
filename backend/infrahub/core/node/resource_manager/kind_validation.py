@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from infrahub.core.schema import GenericSchema
 from infrahub.exceptions import ValidationError
@@ -9,33 +9,24 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
+PoolKind = Literal["IPAddressPool", "IPPrefixPool"]
+
 
 def validate_allocated_kind(
     *,
     db: InfrahubDatabase,
     branch: Branch,
-    pool_kind: str,
+    pool_kind: PoolKind,
     pool_name: str,
     requested_kind: str | None,
     peer_kind: str | None,
 ) -> None:
     """Guard an explicitly requested allocation kind against the kind it must satisfy.
 
-    IP pools carry a default target kind (`default_address_type` / `default_prefix_type`), and a
-    caller may override it per allocation. The override is only legal when the resulting node can
-    actually sit where it is being put: either it is `peer_kind` itself, or `peer_kind` is a
-    generic that the requested kind inherits from.
-
-    `peer_kind` is a relationship's declared peer when allocating through a relationship, and the
-    builtin IP generic when allocating through the standalone pool mutations — hence the neutral
-    name and wording.
-
-    Only the *explicitly requested* kind is validated. The pool's own default is deliberately left
-    alone: re-validating it would newly reject pools whose default is not in the peer's `used_by`
-    and break working setups.
-
-    A `None` `peer_kind` means the caller has no peer context (`Node.new()`, migrations) and the
-    allocation stays unconstrained, as it was before this validation existed.
+    Legal when the requested kind is `peer_kind` itself, or a kind implementing it when
+    `peer_kind` is a generic. The pool's own default is deliberately not validated: doing so
+    would newly reject pools whose default is outside the peer's `used_by`. A `None` `peer_kind`
+    leaves the allocation unconstrained.
 
     Raises:
         ValidationError: when the requested kind cannot satisfy the peer.

@@ -52,9 +52,8 @@ export const PopoverContent = ({
 };
 
 /**
- * The shared `Tabs` primitive, dressed for a popover: the strip spans the popover's width and
- * the active trigger takes the popover's own background so it covers the strip's border where
- * it overlaps it. Everything else is the primitive's.
+ * The shared `Tabs` primitive dressed for a popover: the active trigger takes the popover's own
+ * background so it covers the strip's border where it overlaps.
  */
 export const PopoverTabs = Tabs;
 

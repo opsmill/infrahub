@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from infrahub.exceptions import ValidationError
+
+if TYPE_CHECKING:
+    from .kind_validation import PoolKind
 
 
 def validate_reserved_prefix_length(
     *,
-    pool_kind: str,
+    pool_kind: PoolKind,
     pool_name: str,
     reserved_value: Any,
     prefixlen: int | None,
@@ -43,7 +46,7 @@ def validate_reserved_prefix_length(
 
 def validate_reserved_kind(
     *,
-    pool_kind: str,
+    pool_kind: PoolKind,
     pool_name: str,
     reserved_value: Any,
     reserved_kind: str,
@@ -51,11 +54,8 @@ def validate_reserved_kind(
 ) -> None:
     """Guard re-allocation of an existing pool reservation against a conflicting target kind.
 
-    The counterpart of validate_reserved_prefix_length for the allocated object's kind. A
-    reservation's node keeps the kind it was created with, so a caller re-allocating the same
-    identifier with an explicit, different kind gets a clear error rather than silently
-    receiving a node of the original kind. An absent or matching kind is a no-op and the
-    existing reservation is reused.
+    A reservation's node keeps the kind it was created with, so an explicit, different kind
+    errors rather than silently returning the original. An absent or matching kind is a no-op.
 
     Raises:
         ValidationError: when an explicit kind conflicts with the reservation.

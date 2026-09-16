@@ -4,13 +4,8 @@ import type { AllocateResourceInput } from "@/entities/resource-manager/api/allo
 import { IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
 
 /**
- * Build the GetResource input from a pool-sourced IP field (pool id, node attrs, prefix
- * length, target kind).
- *
- * The standalone GetResource mutations name the target kind per pool kind —
- * `address_type` for an IP address pool, `prefix_type` for an IP prefix pool — while the
- * prefix length is `prefix_length` for both. An unrecognized pool kind falls back to the
- * address-pool field name, matching `buildFromPoolPayload`.
+ * The target kind is named per pool kind (`address_type` vs `prefix_type`); an unrecognized
+ * pool kind falls back to the address-pool field name.
  */
 export const buildAllocateResourceInput = ({
   poolId,

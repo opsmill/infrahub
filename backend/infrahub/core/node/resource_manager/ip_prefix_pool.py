@@ -47,14 +47,10 @@ class CoreIPPrefixPool(Node):
         data = data or {}
         pool_name = str(self.get_attribute("name").value)
 
-        # Validated before anything is allocated, and only for the caller's explicit choice —
-        # never the pool's own default: see validate_allocated_kind. Resolved before the
-        # reservation lookup so an existing reservation can be checked against it too.
+        # Only an explicitly requested kind is validated; the pool's own default is left alone.
         requested_prefix_type = prefix_type or data.get("prefix_type", None)
 
-        # Deliberately outside the pool lock: this check needs nothing but the pool's name and
-        # the requested kind, so a request that can never succeed must not queue behind the
-        # allocations of every other caller of this pool.
+        # Outside the pool lock: a request that can never succeed must not queue behind other allocations.
         validate_allocated_kind(
             db=db,
             branch=branch,
@@ -89,19 +85,6 @@ class CoreIPPrefixPool(Node):
                             reserved_value=node.get_attribute("prefix").value,
                             reserved_kind=node.get_kind(),
                             requested_kind=requested_prefix_type,
-                        )
-                        # The reservation may have been created under a peer more permissive than
-                        # this caller's — the standalone mutation validates against the broad
-                        # BuiltinIPPrefix generic, a relationship against its own narrower peer.
-                        # Relationship.set_peer performs no kind check, so without this the
-                        # reserved node would be attached to a peer that cannot hold it.
-                        validate_allocated_kind(
-                            db=db,
-                            branch=branch,
-                            pool_kind="IPPrefixPool",
-                            pool_name=pool_name,
-                            requested_kind=node.get_kind(),
-                            peer_kind=peer_kind,
                         )
                         return node
 

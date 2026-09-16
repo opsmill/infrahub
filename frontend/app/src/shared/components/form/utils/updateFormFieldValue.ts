@@ -11,21 +11,15 @@ import type {
 import { makePoolSource } from "@/shared/components/form/utils/make-pool-source";
 
 /**
- * The concrete node kind a pool field's current value points at. A resolved relationship
- * holds the allocated node, so its kind is that node's `__typename`; a value still
- * awaiting allocation holds the requested `allocatedKind` instead. Anything else (a plain
- * attribute value, a list, an empty field) points at no kind.
+ * The concrete kind a pool field's value points at: a resolved node's `__typename`, or the
+ * requested `allocatedKind` while the allocation is still pending.
  */
 export const getAllocatedKind = (value: FormFieldValue["value"]): string | undefined => {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return undefined;
   return "from_pool" in value ? value.from_pool.allocatedKind : value.__typename;
 };
 
-/**
- * Whether re-selecting the field's original pool would leave the allocated kind alone.
- * True when the picker asks for no particular kind, or asks for the one the field already
- * holds — in both cases there is nothing new to allocate.
- */
+/** Whether re-selecting the field's original pool would leave the allocated kind alone. */
 const keepsAllocatedKind = (requestedKind: string | undefined, current: FormFieldValue["value"]) =>
   !requestedKind || requestedKind === getAllocatedKind(current);
 
@@ -57,9 +51,8 @@ export const updateAttributeFieldValue = (
       // unchanged. Allocation is idempotent on the reservation identifier, so the
       // original pool cannot be re-allocated with a different mask — show the
       // resolved value rather than a pending allocation with an editable length.
-      // The kind is the exception: the form sends no reservation identifier, so asking
-      // the same pool for a different kind is a legitimate fresh allocation and must
-      // fall through instead of silently reverting to the old-kind value.
+      // No reservation identifier is sent for the kind, so a different kind is a fresh allocation
+      // and must fall through.
       return defaultValue;
     }
     return {
@@ -76,8 +69,7 @@ export const updateAttributeFieldValue = (
           ...(newValue.from_pool.prefixLength !== undefined && {
             prefixLength: newValue.from_pool.prefixLength,
           }),
-          // The concrete kind to allocate for a generic peer. Kept in the value (not the
-          // source) because, unlike `defaultPrefixLength`, it is sent to the API.
+          // Kept in the value rather than the source because it is sent to the API.
           ...(newValue.from_pool.allocatedKind !== undefined && {
             allocatedKind: newValue.from_pool.allocatedKind,
           }),
@@ -103,9 +95,8 @@ export const updateRelationshipFieldValue = (
       // unchanged. Allocation is idempotent on the reservation identifier, so the
       // original pool cannot be re-allocated with a different mask — show the
       // resolved value rather than a pending allocation with an editable length.
-      // The kind is the exception: the form sends no reservation identifier, so asking
-      // the same pool for a different kind is a legitimate fresh allocation and must
-      // fall through instead of silently reverting to the old-kind value.
+      // No reservation identifier is sent for the kind, so a different kind is a fresh allocation
+      // and must fall through.
       return defaultValue;
     }
     return {
@@ -122,8 +113,7 @@ export const updateRelationshipFieldValue = (
           ...(newValue.from_pool.prefixLength !== undefined && {
             prefixLength: newValue.from_pool.prefixLength,
           }),
-          // The concrete kind to allocate for a generic peer. Kept in the value (not the
-          // source) because, unlike `defaultPrefixLength`, it is sent to the API.
+          // Kept in the value rather than the source because it is sent to the API.
           ...(newValue.from_pool.allocatedKind !== undefined && {
             allocatedKind: newValue.from_pool.allocatedKind,
           }),

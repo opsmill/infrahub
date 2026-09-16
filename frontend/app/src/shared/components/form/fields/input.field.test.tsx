@@ -22,8 +22,7 @@ describe("InputField", () => {
     relationships: [],
   });
 
-  // Not a fresh object literal, so the extra pool-default field survives assignment to
-  // `getRelationships`' NodeCore[] return type without an assertion.
+  // Not a fresh object literal: excess-property checking would reject the extra pool default.
   const prefixPoolNode = {
     id: "pool-1",
     display_label: "Site prefixes pool",
@@ -31,8 +30,7 @@ describe("InputField", () => {
     default_prefix_type: { value: "IpamIPPrefix" },
   };
 
-  // A second pool, so a re-allocation has somewhere else to go: re-picking the pool a value
-  // already came from deliberately restores that allocation rather than staging a new one.
+  // A second pool, since re-picking the original pool restores its allocation instead of staging one.
   const otherPrefixPoolNode = {
     id: "pool-2",
     display_label: "Datacentre prefixes pool",
@@ -40,9 +38,8 @@ describe("InputField", () => {
     default_prefix_type: { value: "IpamIPPrefix" },
   };
 
-  // What a pool-backed field holds once its allocation has resolved: the prefix itself, still
-  // carrying the pool as its source. `AttributeValueFromPool["value"]` only spells out the
-  // *pending* marker, so this casts exactly as `getDefaultValueFromPool` does for real data.
+  // A resolved allocation: the prefix itself, still sourced from the pool. The type only spells
+  // out the pending marker, hence the cast.
   const allocatedValue: FormAttributeValue = {
     source: {
       type: "pool",
@@ -53,7 +50,6 @@ describe("InputField", () => {
     value: "10.0.0.0/16" as unknown as AttributeValueFromPool["value"],
   };
 
-  // The `prefix` attribute of an IP prefix node: pool-capable while creating the object.
   const poolProps: InputFieldProps = {
     name: "prefix",
     label: "Prefix",
@@ -111,8 +107,6 @@ describe("InputField", () => {
 
     await component.getByRole("textbox").fill("10.0.0.0/16");
 
-    // The value tab is always an editable input now: the "Allocated by pool" button that used
-    // to stand in its place, needing a click before anything could be typed, is gone.
     await expect.element(component.getByRole("textbox")).toHaveValue("10.0.0.0/16");
     await expect.poll(() => component.getByText("Allocated by pool").query()).toBeNull();
   });
@@ -124,9 +118,6 @@ describe("InputField", () => {
       </TestForm>
     );
 
-    // The pool tab is for staging a *new* allocation; it has nothing to show for one that has
-    // already resolved. The value tab holds the allocated prefix, and the label says where it
-    // came from — strictly more than the pool tab could offer.
     await expect
       .element(component.getByRole("tab", { name: "Value" }))
       .toHaveAttribute("data-state", "active");
@@ -138,7 +129,6 @@ describe("InputField", () => {
       .element(component.getByTestId("source-pool-badge"))
       .toHaveTextContent("Site prefixes pool");
 
-    // And neither override is offered: a resolved allocation cannot be re-cut.
     await expect.poll(() => component.getByTestId("pool-prefix-length-input").query()).toBeNull();
     await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
   });
@@ -156,13 +146,10 @@ describe("InputField", () => {
     );
     await expect.element(component.getByRole("textbox")).toHaveValue("10.0.0.0/16");
 
-    // WHEN the user goes to the pool tab and allocates from a different pool
     await component.getByRole("tab", { name: "From pool" }).click();
     await component.getByTestId("select-open-pool-option-button").click();
     await component.getByRole("option", { name: "Datacentre prefixes pool" }).click();
 
-    // THEN a fresh allocation is staged, mask override and all — this is the path that
-    // replaces opening on the pool tab.
     await expect
       .element(component.getByTestId("select-value"))
       .toHaveTextContent("Datacentre prefixes pool");
@@ -195,7 +182,6 @@ describe("InputField", () => {
     await component.getByTestId("select-open-pool-option-button").click();
     await component.getByRole("option", { name: "Site prefixes pool" }).click();
 
-    // The attribute belongs to the node being created, so its kind is already settled.
     await expect.element(component.getByTestId("pool-prefix-length-input")).toBeVisible();
     await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
   });
@@ -261,12 +247,10 @@ describe("InputField", () => {
 
     await component.getByRole("tab", { name: "Value" }).click();
 
-    // The typed value starts empty rather than inheriting the allocation…
     await expect.element(component.getByRole("textbox")).toHaveValue("");
 
     await component.getByRole("tab", { name: "From pool" }).click();
 
-    // …and the allocation is gone on the way back, along with its nested override fields.
     await expect.poll(() => component.getByTestId("select-value").query()).toBeNull();
     await expect.poll(() => component.getByTestId("pool-prefix-length-input").query()).toBeNull();
   });
@@ -278,8 +262,7 @@ describe("InputField", () => {
       </TestForm>
     );
 
-    // No field opens on the pool tab, and a disabled tab cannot be pressed, so open the panel
-    // first and let the field be disabled underneath it.
+    // A disabled tab cannot be pressed, so open the panel before disabling the field.
     await component.getByRole("tab", { name: "From pool" }).click();
     await component.rerender(
       <TestForm>
@@ -287,7 +270,6 @@ describe("InputField", () => {
       </TestForm>
     );
 
-    // Before the tabs, a disabled field kept a live pool button.
     await expect.element(component.getByRole("tab", { name: "Value" })).toBeDisabled();
     await expect.element(component.getByRole("tab", { name: "From pool" })).toBeDisabled();
     await expect.element(component.getByTestId("select-open-pool-option-button")).toBeDisabled();
@@ -300,8 +282,7 @@ describe("InputField", () => {
       </TestForm>
     );
 
-    // The override only exists for a pending allocation, so stage one before the field is
-    // disabled — afterwards the strip is locked and the panel unreachable.
+    // The override only exists for a pending allocation, so stage one before disabling.
     await component.getByRole("tab", { name: "From pool" }).click();
     await component.getByTestId("select-open-pool-option-button").click();
     await component.getByRole("option", { name: "Site prefixes pool" }).click();

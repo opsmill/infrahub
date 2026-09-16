@@ -29,10 +29,8 @@ import {
 import { validateNumberAttribute } from "@/entities/schema/domain/rules/validation/validate-number-attribute";
 
 /**
- * Pool defaults injected into the relationship query, keyed by pool kind because
- * `default_address_type` and `default_prefix_type` each exist on only one of the two IP pool
- * types — selecting both would make the query invalid against either. Module-level so the
- * object identity, and with it the query cache key, stays stable.
+ * Keyed by pool kind: `default_address_type` and `default_prefix_type` each exist on only one IP
+ * pool type, so selecting both invalidates the query. Module-level to keep the cache key stable.
  */
 const ADDRESS_POOL_ADDITIONAL_FIELDS = {
   default_prefix_length: { value: true },
@@ -68,10 +66,8 @@ type PoolFilterQuery =
   | undefined;
 
 /**
- * Non-IP pools are not filtered by allocated kind at all. For IP pools the plural `__values`
- * filter applies whenever the caller knows the full set of allocatable kinds (see
- * `allocatableKinds`); the singular `__value` filter is the concrete-peer case, where the
- * relationship pins the allocation to one kind.
+ * The plural `__values` filter applies when the full allocatable set is known; the singular
+ * `__value` is the concrete-peer case, where the relationship pins one kind.
  */
 function getPoolFilterQuery(
   poolKind: string,
@@ -94,11 +90,7 @@ function getPoolFilterQuery(
 
 const isIpPool = (poolKind: string) => poolKind === IP_ADDRESS_POOL || poolKind === IP_PREFIX_POOL;
 
-/**
- * The `from_pool` marker of an allocation still awaiting the API, or `null` when the field
- * holds anything else — a resolved node, a plain value, nothing. Both overrides only ever
- * apply to a pending allocation: a resolved one cannot be re-cut.
- */
+/** The `from_pool` marker of a pending allocation, or `null`; both overrides apply only while pending. */
 function getPendingFromPool(value: FormFieldValue) {
   return value.source?.type === "pool" &&
     value.value &&
@@ -112,18 +104,11 @@ export interface PoolComboboxProps {
   poolKind: string;
   poolDefaultAllocatedObjectKind: string;
   /**
-   * Every kind the peer generic is implemented by. When set, the pool list is filtered over
-   * the whole set rather than pinned to one kind: `poolDefaultAllocatedObjectKind` is the
-   * generic itself for a generic peer (no pool defaults to it), and filtering by the kind
-   * the user selected would hide pools that default to a sibling kind — exactly the pools
-   * this feature exists to allocate from.
+   * Every kind the peer generic is implemented by. Filtering by a single selected kind would
+   * hide the pools that default to a sibling kind.
    */
   allocatableKinds?: string[];
-  /**
-   * Pools to offer instead of querying for them; see `FormFieldPool.options`. A number pool
-   * belongs to one node kind and one attribute, a narrowing only the field builder can make,
-   * so those arrive pre-fetched.
-   */
+  /** Pools to offer instead of querying: a number pool is narrowed per node kind and attribute. */
   options?: Array<NodeCore>;
   selectedPoolId: string | null;
   value: FormFieldValue;
@@ -133,10 +118,7 @@ export interface PoolComboboxProps {
   onChange: (value: PoolValue | null) => void;
 }
 
-/**
- * Picks the pool an allocation is cut from, as the "From pool" panel's own value: the trigger
- * spans the panel and names the selected pool itself. Renders no layout of its own.
- */
+/** Picks the pool an allocation is cut from. Renders no layout of its own. */
 export function PoolCombobox({
   poolDefaultAllocatedObjectKind,
   poolKind,
@@ -156,7 +138,6 @@ export function PoolCombobox({
     allocatableKinds
   );
 
-  // The pool's name rides on the source, so the trigger names it without a second fetch.
   const selectedPoolLabel = value.source?.type === "pool" ? value.source.label : null;
 
   return (
@@ -165,9 +146,8 @@ export function PoolCombobox({
         id={id}
         disabled={disabled}
         aria-label="Pool"
-        // The panel shows no "Pool" label — the tab already names it — so the one piece of
-        // non-obvious information, that nothing is allocated until the form is saved, rides
-        // here rather than in a label description.
+        // There is no label to hang it on, and "nothing is allocated until the form is saved" is
+        // the one thing a user cannot infer.
         title="Pool to allocate from when the form is saved"
         className="cursor-pointer"
         data-testid="select-open-pool-option-button"
@@ -214,8 +194,7 @@ export function PoolCombobox({
                   from_pool: {
                     id: pool.id,
                     name: pool.display_label,
-                    // The pool's own kind; the kind to allocate is `allocatedKind`, set by
-                    // `PoolKindOverrideField`.
+                    // The pool's own kind; the kind to allocate is `allocatedKind`.
                     kind: pool.__typename,
                     defaultPrefixLength: pool.default_prefix_length?.value ?? null,
                     defaultAllocatedKind:
@@ -249,8 +228,7 @@ export interface PoolPrefixLengthFieldProps {
 
 /**
  * Overrides the mask of a pending from-pool allocation. Owns the whole visibility decision
- * (hence the bare `null`) so no caller has to restate it: only a pending allocation from an
- * IP pool can still be re-cut.
+ * (hence the bare `null`): only a pending allocation from an IP pool can still be re-cut.
  */
 export function PoolPrefixLengthField({
   name,
@@ -263,15 +241,13 @@ export function PoolPrefixLengthField({
 
   if (!getPendingFromPool(value) || !isIpPool(poolKind)) return null;
 
-  // Pool default, shown as the override placeholder (carried on the source, no extra fetch).
+  // Pool default, shown as the override placeholder.
   const defaultPrefixLength =
     value.source?.type === "pool" && value.source.kind !== NUMBER_POOL_KIND
       ? value.source.defaultPrefixLength
       : null;
 
   return (
-    // gap-2 between a label and its control, matching the plain fields (`space-y-2` in
-    // input.field / number.field).
     <Col className={classNames("gap-2", className)}>
       <LabelFormField
         label="Prefix length"
@@ -285,10 +261,8 @@ export function PoolPrefixLengthField({
       />
       <FormField
         name={`${name}.value.from_pool.prefixLength`}
-        // Whatever clears a from-pool allocation replaces the host field's whole value, which
-        // already takes this nested value with it — so nothing leaks by opting out of the
-        // unmount unregister. Opting *in* crashes: react-hook-form's `unset` walks
-        // `<name>.value.from_pool` on unmount, and by then `value` is the reset `null`.
+        // No unmount unregister: clearing the allocation already replaces the host field's whole
+        // value, and opting in crashes — RHF's `unset` walks `<name>.value.from_pool` after it is null.
         shouldUnregister={false}
         rules={{
           validate: (prefixLength: number | null | undefined) => {
@@ -330,11 +304,8 @@ export interface PoolKindOverrideFieldProps {
 }
 
 /**
- * Overrides the target kind of a pending from-pool allocation. Rendered *below* the pool row
- * rather than inside it, so it reads as its own control instead of another slot in the value
- * input. Owns the whole visibility decision (hence the bare `null`) so no caller has to
- * restate it: there must be a pending allocation from an IP pool, and more than one candidate
- * kind — a single-option dropdown would be no override at all.
+ * Overrides the target kind of a pending from-pool allocation. Owns the whole visibility
+ * decision (hence the bare `null`): a pending IP allocation, and more than one candidate kind.
  */
 export function PoolKindOverrideField({
   name,
@@ -348,8 +319,7 @@ export function PoolKindOverrideField({
 
   if (!getPendingFromPool(value) || !isIpPool(poolKind) || options.length <= 1) return null;
 
-  // Pool default, shown as the placeholder so an empty override reads as "allocate the
-  // pool's own kind" (carried on the source, no extra fetch).
+  // Pool default as placeholder, so an empty override reads as "allocate the pool's own kind".
   const defaultAllocatedKind =
     value.source?.type === "pool" && value.source.kind !== NUMBER_POOL_KIND
       ? value.source.defaultAllocatedKind
@@ -357,15 +327,12 @@ export function PoolKindOverrideField({
   const defaultOption = options.find((option) => option.kind === defaultAllocatedKind);
   const defaultKindName = defaultOption?.label ?? defaultAllocatedKind;
 
-  // Spelled out because the control is otherwise indistinguishable from a required choice:
-  // leaving it alone is legitimate and means "let the pool decide".
+  // Spelled out because the control is otherwise indistinguishable from a required choice.
   const description = defaultKindName
     ? `This pool allocates a "${defaultKindName}" by default. Pick another type to override it for this allocation, or leave it as it is to keep the pool's default.`
     : "Pick the type of object to allocate, or leave it as it is to keep the pool's default.";
 
   return (
-    // gap-2 between a label and its control, matching the plain fields (`space-y-2` in
-    // input.field / number.field) so this override sits on the same rhythm.
     <Col className={classNames("gap-2", className)}>
       <LabelFormField
         label="Type to allocate"
@@ -376,8 +343,7 @@ export function PoolKindOverrideField({
       <Row>
         <FormField
           name={`${name}.value.from_pool.allocatedKind`}
-          // Same as the prefix-length override: the host field's value carries this one away
-          // when it is cleared, and unregistering on unmount would walk an already-null path.
+          // No unmount unregister, for the same reason as the prefix-length override.
           shouldUnregister={false}
           render={({ field, fieldState }) => (
             <PoolKindSelect

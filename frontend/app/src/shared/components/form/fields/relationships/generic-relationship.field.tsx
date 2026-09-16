@@ -4,14 +4,8 @@ import { useFormContext } from "react-hook-form";
 
 import { Col } from "@/shared/components/container";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import {
-  FieldTabs,
-  FieldTabsContent,
-  FieldTabsList,
-  FieldTabsTrigger,
-} from "@/shared/components/form/field-tabs";
 import { LabelFormField } from "@/shared/components/form/fields/common";
-import { PoolAllocationPanel } from "@/shared/components/form/pool-allocation-panel";
+import { PoolBackedField } from "@/shared/components/form/pool-backed-field";
 import type {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
@@ -51,19 +45,9 @@ interface GenericOption extends Node {
   badge: string;
 }
 
-const OBJECT_TAB = "object";
-const POOL_TAB = "from-pool";
-type FieldTab = typeof OBJECT_TAB | typeof POOL_TAB;
-
 /**
- * Maps the stored field value onto what `RelationshipInput` renders. The two shapes genuinely
- * differ, so this narrows at the boundary instead of asserting:
- * - `FormRelationshipValue["value"]` may be an array (cardinality-many); this field only ever
- *   renders a single peer, so an array has nothing to display.
- * - `NodeCore.display_label` is optional, `Node.display_label` is not. Keeping a nullish label
- *   as `""` leaves `getNodeLabel` on its hfid/id fallback, exactly as before.
- * - the stored from-pool value is a bare marker; the pool's own name and kind live on the
- *   field's `source`, so recombine them rather than inventing values.
+ * Narrows the stored value to the single peer the picker renders: an array (cardinality-many)
+ * and a from-pool marker are not one, and a nullish label stays `""` for the hfid/id fallback.
  */
 const toRelationshipInputValue = (
   fieldData: FormRelationshipValue | undefined
@@ -209,24 +193,6 @@ export const GenericRelationshipField = ({
     form.setValue(name, DEFAULT_FORM_FIELD_VALUE, { shouldDirty: true });
   };
 
-  // A field satisfied from a pool offers the two ways of satisfying it as tabs. The kind picker
-  // belongs to the object tab alone: the pool list is deliberately filtered over the generic's
-  // whole `used_by` (see `allocatableKinds`), so a kind chosen for the object picker would
-  // contradict the pool the user then picks. From the pool tab the pool's own default kind
-  // applies, overridable per allocation.
-  const [activeTab, setActiveTab] = useState<FieldTab>(OBJECT_TAB);
-
-  // Switching tabs abandons whatever was staged under the old one, so the field goes back to
-  // the value it had on open — not to empty. Restoring the default is what makes merely looking
-  // at the other tab a no-op: `getUpdateMutationFromFormData` skips a field that deep-equals its
-  // default, so nothing is submitted, and on an edit form the existing value is not silently
-  // cleared. It also stops the nested `${name}.value.from_pool.*` fields surviving a switch.
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab === POOL_TAB ? POOL_TAB : OBJECT_TAB);
-    setSelectedParent(null);
-    form.setValue(name, defaultValue ?? DEFAULT_FORM_FIELD_VALUE, { shouldDirty: true });
-  };
-
   return (
     <div className="space-y-2">
       <FormField
@@ -238,7 +204,6 @@ export const GenericRelationshipField = ({
           // RHF hands back `undefined` until this field's default lands, so normalise to the
           // empty value the pool controls expect rather than letting it reach them raw.
           const fieldData: FormRelationshipValue = field.value ?? DEFAULT_FORM_FIELD_VALUE;
-          const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
 
           const onChange = (newValue: Node | PoolValue | null) => {
             field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
@@ -297,8 +262,28 @@ export const GenericRelationshipField = ({
             );
           };
 
-          const objectPanel = (
-            <>
+          return (
+            <PoolBackedField
+              name={name}
+              label={label}
+              description={description}
+              unique={unique}
+              required={!!rules?.required}
+              fieldData={fieldData}
+              defaultValue={defaultValue}
+              pool={pool}
+              allocatableKinds={genericOptions.map((option) => ({
+                kind: option.id,
+                label: option.display_label,
+                namespace: option.badge,
+              }))}
+              valueTabLabel="Object"
+              disabled={props.disabled}
+              untabbedClassName="rounded-md border border-border p-3"
+              onPoolChange={onChange}
+              onTabSwitch={() => setSelectedParent(null)}
+            >
+              {/* The kind picker is object-tab only: the pool list spans the generic's whole `used_by`, so a picked kind would contradict the chosen pool. */}
               <GenericSchemaPicker
                 genericOptions={genericOptions}
                 selectedGeneric={selectedGeneric}
@@ -325,73 +310,7 @@ export const GenericRelationshipField = ({
               )}
 
               {renderObjectValue()}
-            </>
-          );
-
-          // Rendered inside the field so it can carry `fieldData`: that is what puts the
-          // provenance badge (pool / profile / template) beside the label, as the untabbed
-          // relationship field does. Without it a pool-allocated field looks unsourced.
-          const fieldLabel = (
-            <LabelFormField
-              label={label}
-              unique={unique}
-              required={!!rules?.required}
-              description={description}
-              fieldData={fieldData}
-            />
-          );
-
-          if (!pool) {
-            return (
-              <>
-                {fieldLabel}
-                <Col className="rounded-md border border-border p-3">{objectPanel}</Col>
-              </>
-            );
-          }
-
-          return (
-            <FieldTabs
-              value={activeTab}
-              onValueChange={handleTabChange}
-              // Switching discards the staged value, so it must take a deliberate press rather
-              // than merely arrowing across the strip.
-              activationMode="manual"
-            >
-              {fieldLabel}
-
-              <FieldTabsList>
-                <FieldTabsTrigger value={OBJECT_TAB} disabled={props.disabled}>
-                  Object
-                </FieldTabsTrigger>
-                <FieldTabsTrigger value={POOL_TAB} disabled={props.disabled}>
-                  From pool
-                </FieldTabsTrigger>
-              </FieldTabsList>
-
-              <FieldTabsContent value={OBJECT_TAB}>{objectPanel}</FieldTabsContent>
-
-              <FieldTabsContent value={POOL_TAB}>
-                <PoolAllocationPanel
-                  name={name}
-                  poolKind={pool.kind}
-                  poolDefaultAllocatedObjectKind={pool.defaultAllocatedObjectKind}
-                  // Straight from the peer generic's `used_by`: the pool filter and the type
-                  // override share it, and neither depends on the object tab's selection.
-                  allocatableKinds={genericOptions.map((option) => ({
-                    kind: option.id,
-                    label: option.display_label,
-                    namespace: option.badge,
-                  }))}
-                  options={pool.options}
-                  fromPoolRelationshipName={pool.fromPoolRelationshipName}
-                  selectedPoolId={selectedPoolId}
-                  value={fieldData}
-                  disabled={props.disabled}
-                  onChange={onChange}
-                />
-              </FieldTabsContent>
-            </FieldTabs>
+            </PoolBackedField>
           );
         }}
       />

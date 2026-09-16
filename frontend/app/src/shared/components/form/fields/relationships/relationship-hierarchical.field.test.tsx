@@ -31,8 +31,7 @@ describe("RelationshipHierarchicalField", () => {
     relationships: [],
   });
 
-  // Not a fresh object literal, so the extra pool-default field survives assignment to
-  // `getRelationships`' NodeCore[] return type without an assertion.
+  // Not a fresh object literal: excess-property checking would reject the extra pool default.
   const prefixPoolNode = {
     id: "pool-1",
     display_label: "Site prefixes pool",
@@ -40,8 +39,7 @@ describe("RelationshipHierarchicalField", () => {
     default_prefix_type: { value: "IpamIPPrefix" },
   };
 
-  // A second pool, so a re-allocation has somewhere else to go: re-picking the pool a value
-  // already came from deliberately restores that allocation rather than staging a new one.
+  // A second pool, since re-picking the original pool restores its allocation instead of staging one.
   const otherPrefixPoolNode = {
     id: "pool-2",
     display_label: "Datacentre prefixes pool",
@@ -55,8 +53,7 @@ describe("RelationshipHierarchicalField", () => {
     __typename: "IpamIPPrefix",
   };
 
-  // What a pool-backed relationship holds once its allocation has resolved: the allocated node
-  // itself, still carrying the pool as its source.
+  // A resolved allocation: the node itself, still sourced from the pool.
   const allocatedValue = {
     source: {
       type: "pool" as const,
@@ -131,8 +128,7 @@ describe("RelationshipHierarchicalField", () => {
       </TestForm>
     );
 
-    // A pool only ever satisfies a field holding one value, so the strip must not appear even
-    // though the schema handed this field a pool.
+    // A pool only satisfies a cardinality-one field, so no strip even though the schema gave one.
     await expect.element(component.getByText("IP Prefix")).toBeVisible();
     await expect.poll(() => component.getByRole("tab", { name: "From pool" }).query()).toBeNull();
   });
@@ -159,9 +155,6 @@ describe("RelationshipHierarchicalField", () => {
       </TestForm>
     );
 
-    // The pool tab is for staging a *new* allocation; it has nothing to show for one that has
-    // already resolved. The object tab holds the allocated prefix, and the label names the pool
-    // it came from, so both the value and its provenance are legible.
     await expect
       .element(component.getByRole("tab", { name: "Object" }))
       .toHaveAttribute("data-state", "active");
@@ -174,7 +167,6 @@ describe("RelationshipHierarchicalField", () => {
       .toHaveTextContent("Site prefixes pool");
     await expect.poll(() => component.getByText("Allocated by pool").query()).toBeNull();
 
-    // And neither override is offered: a resolved allocation cannot be re-cut.
     await expect.poll(() => component.getByTestId("pool-prefix-length-input").query()).toBeNull();
     await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
   });
@@ -194,13 +186,10 @@ describe("RelationshipHierarchicalField", () => {
     );
     await expect.element(component.getByText("10.0.0.0/16")).toBeVisible();
 
-    // WHEN the user goes to the pool tab and allocates from a different pool
     await component.getByRole("tab", { name: "From pool" }).click();
     await component.getByTestId("select-open-pool-option-button").click();
     await component.getByRole("option", { name: "Datacentre prefixes pool" }).click();
 
-    // THEN a fresh allocation is staged, mask override and all — this is the path that
-    // replaces opening on the pool tab.
     await expect
       .element(component.getByTestId("select-value"))
       .toHaveTextContent("Datacentre prefixes pool");
@@ -292,8 +281,7 @@ describe("RelationshipHierarchicalField", () => {
       </TestForm>
     );
 
-    // No field opens on the pool tab, and a disabled tab cannot be pressed, so open the panel
-    // first and let the field be disabled underneath it.
+    // A disabled tab cannot be pressed, so open the panel before disabling the field.
     await component.getByRole("tab", { name: "From pool" }).click();
     await component.rerender(
       <TestForm>
@@ -305,8 +293,6 @@ describe("RelationshipHierarchicalField", () => {
       </TestForm>
     );
 
-    // The field never forwarded `disabled` at all before, so a read-only field kept a live
-    // pool button beside a live picker.
     await expect.element(component.getByRole("tab", { name: "Object" })).toBeDisabled();
     await expect.element(component.getByRole("tab", { name: "From pool" })).toBeDisabled();
     await expect.element(component.getByTestId("select-open-pool-option-button")).toBeDisabled();

@@ -1,16 +1,6 @@
-import { useState } from "react";
-import { useFormContext } from "react-hook-form";
-
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import {
-  FieldTabs,
-  FieldTabsContent,
-  FieldTabsList,
-  FieldTabsTrigger,
-} from "@/shared/components/form/field-tabs";
-import { LabelFormField } from "@/shared/components/form/fields/common";
 import { usePreventScrollOnNumberInput } from "@/shared/components/form/fields/usePreventScrollOnNumber";
-import { PoolAllocationPanel } from "@/shared/components/form/pool-allocation-panel";
+import { PoolBackedField } from "@/shared/components/form/pool-backed-field";
 import type { DynamicNumberFieldProps, FormAttributeValue } from "@/shared/components/form/type";
 import {
   updateAttributeFieldValue,
@@ -22,10 +12,6 @@ import { Input, type InputProps } from "@/shared/components/ui/input";
 export interface NumberFieldProps
   extends Omit<DynamicNumberFieldProps, "type" | "onChange">,
     Omit<InputProps, "defaultValue" | "name"> {}
-
-const VALUE_TAB = "value";
-const POOL_TAB = "from-pool";
-type FieldTab = typeof VALUE_TAB | typeof POOL_TAB;
 
 const NumberField = ({
   defaultValue,
@@ -39,18 +25,6 @@ const NumberField = ({
   ...props
 }: NumberFieldProps) => {
   const numRef = usePreventScrollOnNumberInput();
-  const form = useFormContext();
-
-  const [activeTab, setActiveTab] = useState<FieldTab>(VALUE_TAB);
-
-  // Switching tabs abandons whatever was staged under the old one, so the field goes back
-  // to the value it had on open — not to empty. That makes merely looking at the other tab
-  // a no-op: `getUpdateMutationFromFormData` skips a field that deep-equals its default, so
-  // nothing is submitted and an existing value is never silently cleared.
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab === POOL_TAB ? POOL_TAB : VALUE_TAB);
-    form.setValue(name, defaultValue ?? DEFAULT_FORM_FIELD_VALUE, { shouldDirty: true });
-  };
 
   return (
     <FormField
@@ -61,10 +35,22 @@ const NumberField = ({
       shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value ?? DEFAULT_FORM_FIELD_VALUE;
-        const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
 
-        const valuePanel = (
-          <>
+        return (
+          <PoolBackedField
+            name={name}
+            label={label}
+            description={description}
+            unique={unique}
+            required={!!rules?.required}
+            fieldData={fieldData}
+            defaultValue={defaultValue}
+            // A number pool has no mask and allocates a plain number, so neither override applies.
+            pool={pool}
+            valueTabLabel="Value"
+            disabled={props.disabled}
+            onPoolChange={(value) => field.onChange(updateAttributeFieldValue(value, defaultValue))}
+          >
             <FormInput>
               <Input
                 {...field}
@@ -80,68 +66,7 @@ const NumberField = ({
             </FormInput>
 
             <FormMessage />
-          </>
-        );
-
-        // Rendered inside the field so it can carry `fieldData`: that is what puts the
-        // provenance badge (pool / profile / template) beside the label.
-        const fieldLabel = (
-          <LabelFormField
-            label={label}
-            unique={unique}
-            required={!!rules?.required}
-            description={description}
-            fieldData={fieldData}
-          />
-        );
-
-        if (!pool) {
-          return (
-            <div className="space-y-2">
-              {fieldLabel}
-              {valuePanel}
-            </div>
-          );
-        }
-
-        return (
-          <FieldTabs
-            value={activeTab}
-            onValueChange={handleTabChange}
-            // Switching discards the staged value, so it must take a deliberate press rather
-            // than merely arrowing across the strip.
-            activationMode="manual"
-          >
-            {fieldLabel}
-
-            <FieldTabsList>
-              <FieldTabsTrigger value={VALUE_TAB} disabled={props.disabled}>
-                Value
-              </FieldTabsTrigger>
-              <FieldTabsTrigger value={POOL_TAB} disabled={props.disabled}>
-                From pool
-              </FieldTabsTrigger>
-            </FieldTabsList>
-
-            <FieldTabsContent value={VALUE_TAB}>{valuePanel}</FieldTabsContent>
-
-            <FieldTabsContent value={POOL_TAB}>
-              <PoolAllocationPanel
-                name={name}
-                poolKind={pool.kind}
-                poolDefaultAllocatedObjectKind={pool.defaultAllocatedObjectKind}
-                // Neither override applies to a number pool: it has no mask, and the value it
-                // allocates is a number rather than an object with a kind. Both controls
-                // withhold themselves, so the panel is the pool alone.
-                options={pool.options}
-                fromPoolRelationshipName={pool.fromPoolRelationshipName}
-                selectedPoolId={selectedPoolId}
-                value={fieldData}
-                disabled={props.disabled}
-                onChange={(value) => field.onChange(updateAttributeFieldValue(value, defaultValue))}
-              />
-            </FieldTabsContent>
-          </FieldTabs>
+          </PoolBackedField>
         );
       }}
     />

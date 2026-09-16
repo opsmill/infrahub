@@ -25,17 +25,15 @@ describe("NumberField", () => {
     __typename: "CoreNumberPool",
   };
 
-  // A second pool, so a re-allocation has somewhere else to go: re-picking the pool a value
-  // already came from deliberately restores that allocation rather than staging a new one.
+  // A second pool, since re-picking the original pool restores its allocation instead of staging one.
   const otherNumberPoolNode = {
     id: "number-pool-2",
     display_label: "Loopback ids pool",
     __typename: "CoreNumberPool",
   };
 
-  // What a pool-backed field holds once its allocation has resolved: the number itself, still
-  // carrying the pool as its source. `AttributeValueFromPool["value"]` only spells out the
-  // *pending* marker, so this casts exactly as `getDefaultValueFromPool` does for real data.
+  // A resolved allocation: the number itself, still sourced from the pool. The type only spells
+  // out the pending marker, hence the cast.
   const allocatedValue: FormAttributeValue = {
     source: {
       type: "pool",
@@ -46,9 +44,7 @@ describe("NumberField", () => {
     value: 42 as unknown as AttributeValueFromPool["value"],
   };
 
-  // A number pool is configured for one node kind and one attribute, so the candidates are
-  // pre-fetched and handed over on `pool.options` rather than queried — the one place the
-  // converged channel still differs from an IP pool.
+  // A number pool is narrowed per node kind and attribute, so its candidates arrive pre-fetched rather than queried.
   const poolProps: NumberFieldProps = {
     name: "vlan_id",
     label: "VLAN id",
@@ -120,8 +116,6 @@ describe("NumberField", () => {
     await component.getByTestId("select-open-pool-option-button").click();
     await component.getByRole("option", { name: "VLAN ids pool" }).click();
 
-    // A number pool has no mask, and what it allocates is a number rather than an object with
-    // a kind, so both overrides withhold themselves and the panel is the pool alone.
     await expect.poll(() => component.getByTestId("pool-prefix-length-input").query()).toBeNull();
     await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
   });
@@ -133,9 +127,6 @@ describe("NumberField", () => {
       </TestForm>
     );
 
-    // The pool tab is for staging a *new* allocation; it has nothing to show for one that has
-    // already resolved. The value tab holds the allocated number, and the label says where it
-    // came from — strictly more than the pool tab could offer.
     await expect
       .element(component.getByRole("tab", { name: "Value" }))
       .toHaveAttribute("data-state", "active");
@@ -147,7 +138,6 @@ describe("NumberField", () => {
       .element(component.getByTestId("source-pool-badge"))
       .toHaveTextContent("VLAN ids pool");
 
-    // And neither override is offered: a resolved allocation cannot be re-cut.
     await expect.poll(() => component.getByTestId("pool-prefix-length-input").query()).toBeNull();
     await expect.poll(() => component.getByTestId("pool-kind-select").query()).toBeNull();
   });
@@ -169,13 +159,10 @@ describe("NumberField", () => {
     );
     await expect.element(component.getByRole("spinbutton")).toHaveValue(42);
 
-    // WHEN the user goes to the pool tab and allocates from a different pool
     await component.getByRole("tab", { name: "From pool" }).click();
     await component.getByTestId("select-open-pool-option-button").click();
     await component.getByRole("option", { name: "Loopback ids pool" }).click();
 
-    // THEN a fresh allocation is staged — this is the path that replaces opening on the
-    // pool tab.
     await expect
       .element(component.getByTestId("select-value"))
       .toHaveTextContent("Loopback ids pool");
@@ -207,8 +194,7 @@ describe("NumberField", () => {
     await component.getByRole("option", { name: "VLAN ids pool" }).click();
     await component.getByRole("button", { name: "Submit" }).click();
 
-    // A number pool source carries no defaults: `makePoolSource` drops the prefix length and
-    // target kind for it, exactly as the old number-pool button did.
+    // A number pool source carries no prefix length and no target kind.
     await expect.poll(() => onSubmit.mock.calls.length).toBeGreaterThan(0);
     expect(onSubmit.mock.calls[0]?.[0]?.vlan_id).toEqual({
       source: {
@@ -265,7 +251,6 @@ describe("NumberField", () => {
       </TestForm>
     );
 
-    // Before the tabs, a disabled number field kept a live pool button.
     await expect.element(component.getByRole("tab", { name: "Value" })).toBeDisabled();
     await expect.element(component.getByRole("tab", { name: "From pool" })).toBeDisabled();
   });
