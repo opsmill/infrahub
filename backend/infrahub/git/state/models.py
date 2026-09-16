@@ -16,12 +16,6 @@ class CommitEntry:
     hash: str
     """Full commit hash."""
 
-    short_hash: str
-    """First 7 characters of the hash."""
-
-    summary: str
-    """First line of the commit message."""
-
     message: str
     """Full commit message."""
 
@@ -34,6 +28,16 @@ class CommitEntry:
     """Timezone-aware."""
 
     state: RepositoryCommitState
+
+    @property
+    def short_hash(self) -> str:
+        """First 7 characters of the hash."""
+        return self.hash[:7]
+
+    @property
+    def summary(self) -> str:
+        """First line of the commit message."""
+        return self.message.split("\n", 1)[0]
 
 
 @dataclass(frozen=True)

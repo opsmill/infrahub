@@ -226,8 +226,6 @@ async def test_commit_log_answers_the_infrahub_side_fields_for_the_request_branc
             commits=(
                 CommitEntry(
                     hash=REMOTE_HEAD,
-                    short_hash=REMOTE_HEAD[:7],
-                    summary="Add a widget",
                     message="Add a widget\n\nWith a body.",
                     author_name="Ada Lovelace",
                     authored_at=FETCHED_AT,

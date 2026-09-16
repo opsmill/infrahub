@@ -123,9 +123,9 @@ assertions readable in tests, and it is how support tells "this branch imported 
 ```text
 CommitEntry
   hash: str            full SHA
-  short_hash: str      first 7 characters
-  summary: str         first line of the message
   message: str         full message
+  short_hash           property, first 7 characters of the hash
+  summary              property, first line of the message
   author_name: str
   authored_at: datetime (tz-aware)
   committed_at: datetime (tz-aware)
