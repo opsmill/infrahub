@@ -331,13 +331,7 @@ class PushErrorCase:
     ids=lambda c: c.name,
 )
 async def test_push_classifies_transport_error(case: PushErrorCase) -> None:
-    """A transport-level GitCommandError from the underlying push is classified without persisting status.
-
-    Such a failure leaves no porcelain status line for GitPython to parse, so it re-raises
-    GitCommandError instead of reporting on push_info.flags; push() routes it through the classifier
-    to raise the typed error, but a transient push failure must not degrade the recorded operational
-    status - that is owned by the connect probe and periodic sync.
-    """
+    """A transport-level push GitCommandError is classified into a typed RepositoryError without writing status."""
     repository = _FailingPushRepository(
         id=UUIDT.new(),
         name="push-repo",
