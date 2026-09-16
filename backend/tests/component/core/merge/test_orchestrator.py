@@ -249,12 +249,7 @@ def full_regeneration_after_merge() -> Generator[None, None, None]:
 
 
 class TestMergeChangelogCollection:
-    """The node changelogs of a merge are collected once the merge is committed and writes are allowed again.
-
-    Collecting them reads the graph, so it must not extend the write-protected window, and it must not be
-    able to roll back a merge that has already succeeded. The node events drive the post-merge recompute,
-    so a collection failure is reported rather than dispatched as an empty event set.
-    """
+    """The node changelogs of a merge are collected once it is committed and writes are allowed again."""
 
     async def test_collects_once_write_protection_is_lifted(
         self,
@@ -294,7 +289,7 @@ class TestMergeChangelogCollection:
         assert harness.rollback_handler.calls == 0
         assert source_branch.status == BranchStatus.MERGED
 
-    async def test_collection_failure_is_reported_on_the_committed_merge(
+    async def test_collection_failure_propagates_but_branch_is_merged(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
@@ -314,13 +309,13 @@ class TestMergeChangelogCollection:
             steps=[],
         )
 
-        with pytest.raises(RuntimeError, match=r"^changelog collection failed$"):
+        with pytest.raises(RuntimeError, match="changelog collection failed"):
             await harness.orchestrator.merge(context=_context(default_branch))
 
-        # The merge stays committed and unprotected, and the follow-ups that do not depend on the
-        # node events have run; only the event dispatch is withheld.
+        # Collection occurs after the point of no return, so it does not roll the merge back. It does
+        # stop subsequent post-merge work, ensuring the failed flow remains visible and retryable.
         assert harness.rollback_handler.calls == 0
         assert source_branch.status == BranchStatus.MERGED
         assert await merge_write_blocker.get() is None
-        assert harness.steps == ["follow_ups"]
+        assert harness.steps == []
         assert harness.post_merge_dispatcher.dispatched_node_events == []

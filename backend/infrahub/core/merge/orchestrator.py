@@ -193,21 +193,18 @@ class BranchMergeOrchestrator:
         # Persisted only past the point of no return, so a rolled-back merge leaves no entry behind.
         merge_diff_cache_key = await self._cache_diff_summary(branch_diff=branch_diff)
 
-        # Reads the source branch: after the write protection is lifted, before the follow-ups that
-        # may schedule that branch's deletion. A failure fails the task; the merge stays committed.
-        try:
-            changelog_collector = self.changelog_collector_factory(
-                diff=branch_diff, db=self.db, branch=self.source_branch
-            )
-            node_events = await changelog_collector.collect_changelogs()
-        finally:
-            await self.post_merge_dispatcher.run_follow_ups(
-                branch=self.source_branch,
-                context=context,
-                proposed_change_id=proposed_change_id,
-                ipam_node_details=ipam_node_details,
-                merge_diff_cache_key=merge_diff_cache_key,
-            )
+        # Collect changelogs only after write protection is lifted, but before follow-ups, which may
+        # schedule deletion of the source branch the collector reads.
+        changelog_collector = self.changelog_collector_factory(diff=branch_diff, db=self.db, branch=self.source_branch)
+        node_events = await changelog_collector.collect_changelogs()
+
+        await self.post_merge_dispatcher.run_follow_ups(
+            branch=self.source_branch,
+            context=context,
+            proposed_change_id=proposed_change_id,
+            ipam_node_details=ipam_node_details,
+            merge_diff_cache_key=merge_diff_cache_key,
+        )
 
         await self.post_merge_dispatcher.dispatch_events(
             branch=self.source_branch,
