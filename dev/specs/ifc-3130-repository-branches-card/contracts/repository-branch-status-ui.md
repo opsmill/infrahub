@@ -41,9 +41,7 @@ the stub serves placeholder values — the resolver raises it for any of the thr
 rows, and the frozen SDL says so in terms. So the failure mode being prevented is a **loud whole-card
 failure**, not a silently-wrong row set.
 
-> IFC-3130's Jira description says these are "accepted but ignored". That is wrong; the contract
-> wins. An earlier revision of these documents propagated the ticket's wording and overstated
-> FR-016's risk as a result.
+> IFC-3130's Jira description says these are "accepted but ignored". That is wrong; the contract wins.
 
 They are **deferred, not dropped** — once IFC-3127 lifts the restriction they become buildable as
 follow-on work outside this spec.

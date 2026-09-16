@@ -110,7 +110,7 @@ partitionFieldsByBranchSupport(schema: ModelSchema)
   → { repositoryWide: { attributes, relationships }, branchScoped: { attributes, relationships } }
 ```
 
-### The three-value mapping — get this wrong and the feature inverts
+### The three-value mapping
 
 `BranchSupportType` is **`"aware" | "agnostic" | "local"`** (`types.generated.ts`), not a boolean.
 The rule is:
@@ -123,8 +123,7 @@ repositoryWide ⇔ (field.branch ?? node.branch) === "agnostic"
 **`local` counts as branch-scoped.** Both `aware` and `local` vary per branch; they differ only in
 merge behaviour, which is irrelevant to presentation.
 
-This is not a detail. Against the real schema
-(`backend/infrahub/core/schema/definitions/core/repository.py`):
+Against the real schema (`backend/infrahub/core/schema/definitions/core/repository.py`):
 
 | Field | Kind | `branch` |
 |---|---|---|
@@ -136,10 +135,9 @@ This is not a detail. Against the real schema
 | `commit` | `CoreReadOnlyRepository` | AWARE (:91) |
 | *node level* | both kinds | AGNOSTIC (:32, :69) |
 
-So a rule of `branch === "aware" ? branchScoped : repositoryWide` would put **`commit` and
-`sync_status` — the two values this feature exists to disambiguate — in the repository-wide card on
-the read-write kind**, making SC-004 actively false while every test that only checked the read-only
-kind still passed.
+A rule of `branch === "aware" ? branchScoped : repositoryWide` therefore puts **`commit` and
+`sync_status` in the repository-wide card on the read-write kind** — the two values this feature
+exists to disambiguate — making SC-004 false while read-only tests still pass.
 
 **Required test coverage**: one unit case per enum value, `local` included, plus one case exercising
 the node-level fallback. Node-level `branch` is a **required** field on `NodeSchemaRead`,
@@ -156,8 +154,7 @@ objects that each keep the full `relationships` array would render `credential`,
 same rule applies unchanged. On the repository kinds today every relationship is AGNOSTIC, so they
 all land repository-wide and the branch-scoped derived schema gets `relationships: []`.
 
-**Pinned by test**: each relationship label appears **exactly once** on the page. Without that
-assertion this regresses silently the first time a branch-aware relationship is added.
+**Pinned by test**: each relationship label appears **exactly once** on the page.
 
 **Shape**: a **pure function**, unit-testable without rendering. It takes a `ModelSchema` and returns
 two field sets; the caller builds two derived `ModelSchema` objects from them (D1) and hands each to
