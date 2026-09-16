@@ -16,14 +16,8 @@ import {
 } from "@/entities/repository/domain/rules/derive-git-status";
 import { getFailingRepositoriesUrl } from "@/entities/repository/ui/routing/repository-urls";
 
-/** Matches the task indicator's cadence so the two header controls behave alike. */
 const REFETCH_INTERVAL = 10_000;
 
-/**
- * Each state names the condition rather than the control, so the text stands on its own when
- * read by assistive technology. Repositories are not per-branch, so the empty case does not
- * describe itself as a property of the current branch.
- */
 const TOOLTIP_BY_STATUS: Record<GitStatusValue, string> = {
   loading: "Checking Git status",
   "check-failed": "Git status could not be checked",
@@ -36,8 +30,6 @@ function GitStatusGlyph({ status }: { status: GitStatusValue }) {
   if (status === "loading") return <Spinner />;
 
   if (status === "check-failed") {
-    // Muted, never the danger colour: a viewer who cannot read repositories fails this
-    // lookup on every page, and an alarm they can never clear would drown out a real one.
     return <Icon icon="mdi:error-outline" className="size-4 text-foreground-muted" />;
   }
 
@@ -52,7 +44,7 @@ function GitStatusGlyph({ status }: { status: GitStatusValue }) {
 export function GitStatus() {
   const { currentBranch } = useCurrentBranch();
 
-  // Always query the current repository state, regardless of the selected time frame.
+  // `atDate: null` keeps both counts on current state, whatever time frame is selected.
   const countOptions = (filters?: typeof REPOSITORY_ERROR_IMPORT_FILTER) =>
     getObjectsCountQueryOptions({
       objectKind: GENERIC_REPOSITORY_KIND,
@@ -80,7 +72,6 @@ export function GitStatus() {
 
   const content = (
     <>
-      {/* Fixed slot, so the header cannot shift as the glyph inside it changes. */}
       <span className="flex size-4 items-center justify-center" data-testid="git-status-glyph">
         <GitStatusGlyph status={status} />
       </span>
@@ -102,9 +93,7 @@ export function GitStatus() {
     "data-testid": "git-status",
   } as const;
 
-  // With no repositories there is nowhere to navigate to, so the control is a button rather
-  // than a link. It stays hoverable while looking disabled, because a control that cannot be
-  // hovered cannot show the tooltip that explains why it is inactive.
+  // `isDisabledAndFocusable` keeps the tooltip reachable; `isDisabled` would block hover.
   if (status === "inert") {
     return (
       <Tooltip message={tooltipContent}>

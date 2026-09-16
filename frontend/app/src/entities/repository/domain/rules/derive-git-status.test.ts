@@ -73,8 +73,7 @@ describe("deriveGitStatus", () => {
   });
 
   it("returns inert when the branch has no repositories and the failing lookup errored", () => {
-    // GIVEN a branch with no repositories, so the failing count is necessarily zero and its
-    // failed lookup cannot change the answer
+    // GIVEN
     const input: DeriveGitStatusInput = {
       ...settled,
       totalCount: 0,
@@ -106,7 +105,7 @@ describe("deriveGitStatus", () => {
   });
 
   it("returns inert when the total is zero and the failing lookup is still pending", () => {
-    // GIVEN no repositories, so the failing count cannot change the answer even once it lands
+    // GIVEN
     const input: DeriveGitStatusInput = {
       ...settled,
       totalCount: 0,
@@ -117,7 +116,7 @@ describe("deriveGitStatus", () => {
     // WHEN
     const status = deriveGitStatus(input);
 
-    // THEN it resolves immediately rather than waiting on a lookup whose result is irrelevant
+    // THEN
     expect(status).toBe("inert");
   });
 
