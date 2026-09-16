@@ -7,9 +7,9 @@ export type GitStatus = "loading" | "check-failed" | "inert" | "error" | "neutra
 /**
  * Both lookups' outcomes, flattened.
  *
- * A count is only read once its lookup reports neither pending nor errored, so a pending flag
- * must mean "no value has arrived yet" — not "a value is being refreshed", and not a
- * placeholder standing in for one.
+ * A pending flag must mean "no value has arrived yet" — not "a value is being refreshed" — and
+ * a count must be absent while its lookup is pending rather than standing in as a placeholder.
+ * A count of zero is therefore always a real answer.
  */
 export interface DeriveGitStatusInput {
   totalIsPending: boolean;

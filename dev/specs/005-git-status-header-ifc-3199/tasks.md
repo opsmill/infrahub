@@ -54,7 +54,7 @@ neither of the other stories built.
 
 - [x] T008 [US1] Create `frontend/app/src/entities/repository/domain/rules/derive-git-status.ts` exporting the five-member `GitStatus` union and the pure derivation function, implementing the six-step precedence exactly as ordered in `data-model.md`. Its input type takes `isPending` booleans — **not** `isFetching` — with a comment saying why *(T005 goes green; critique E2, E4)*
 
-- [x] T009 [US1] Create `frontend/app/src/entities/repository/ui/git-status.tsx`: two `useObjectsCount` calls against `GENERIC_REPOSITORY_KIND` (one unfiltered, one filtered on the error value) at a 10s refresh, folded through `deriveGitStatus`, rendering `LinkButton` + `Tooltip` + `Pulse` in the task indicator's shape *(T006, T007 go green; FR-002, FR-004, FR-005, FR-007, FR-012)*
+- [x] T009 [US1] Create `frontend/app/src/entities/repository/ui/git-status.tsx`: two `useQuery` calls composing `getObjectsCountQueryOptions` against `GENERIC_REPOSITORY_KIND` (one unfiltered, one filtered on the error value) at a 10s refresh, pinned to the present — NOT `useObjectsCount`, which inherits the time-frame selection, folded through `deriveGitStatus`, rendering `LinkButton` + `Tooltip` + `Pulse` in the task indicator's shape *(T006, T007 go green; FR-002, FR-004, FR-005, FR-007, FR-012)*
 
 - [x] T010 [US1] Neutralise the time-machine date in `git-status.tsx` so both lookups always ask about now, rather than inheriting `atDate` from `datetimeAtom` through `useObjectsCount`. If the hook cannot express this, surface the trade-off rather than absorbing it *(FR-014; critique E1 — the indicator must never report historical health in the present tense)*
 

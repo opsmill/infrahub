@@ -373,31 +373,27 @@ describe("GitStatus", () => {
     }
   });
 
-  test("keeps a resolved state through a background refetch", async () => {
+  test("keeps a resolved state when the refresh interval fires", async () => {
     // GIVEN a resolved error state
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     onBranch({ name: "branch1" });
     mockCounts({ total: 3, failing: 1 });
     const component = await render(<GitStatus />);
-    await expect
-      .element(
-        component.getByRole("link", { name: "Repositories failed to import on this branch" })
-      )
-      .toBeVisible();
-    const callsAfterFirstLoad = getObjectsCountFromApiMock.mock.calls.length;
+    const indicator = component.getByRole("link", {
+      name: "Repositories failed to import on this branch",
+    });
+    await expect.element(indicator).toBeVisible();
+    const callsBefore = getObjectsCountFromApiMock.mock.calls.length;
 
-    // WHEN the lookups run again in the background, as the refresh interval makes them do
-    await component.rerender(<GitStatus />);
+    // WHEN the refresh interval elapses
+    await vi.advanceTimersByTimeAsync(10_000);
 
-    // THEN the resolved state stays put. Reading the refetching flag rather than the initial
-    // pending flag would drop the indicator back to its loading treatment on every poll.
-    await expect
-      .element(
-        component.getByRole("link", { name: "Repositories failed to import on this branch" })
-      )
-      .toBeVisible();
-    expect(getObjectsCountFromApiMock.mock.calls.length).toBeGreaterThanOrEqual(
-      callsAfterFirstLoad
-    );
+    // THEN the lookups ran again, and the resolved state stayed put. Reading the refetching
+    // flag rather than the initial pending flag would drop the indicator back to its loading
+    // treatment on every poll.
+    expect(getObjectsCountFromApiMock.mock.calls.length).toBeGreaterThan(callsBefore);
+    await expect.element(indicator).toBeVisible();
+    vi.useRealTimers();
   });
 
   test("counts every repository kind through the generic kind", async () => {
