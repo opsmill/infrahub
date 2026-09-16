@@ -306,10 +306,8 @@ class ReadOnlyRepositoryCheckRefs(Mutation):
             branch=branch,
         )
 
-        # The lookup validates the requested kind only when it falls back to the default filter, so
-        # the id of any other node resolves here. Naming the kind it found would disclose it to a
-        # caller holding nothing but the update permission checked above, so this answers exactly as
-        # the lookup does for an id that exists nowhere.
+        # The lookup does not enforce the kind it is given, and a mismatch answers exactly as an id
+        # that exists nowhere, so neither can be told from the other.
         if repo.get_kind() != InfrahubKind.READONLYREPOSITORY:
             raise NodeNotFoundError(
                 branch_name=branch.name, node_type=InfrahubKind.READONLYREPOSITORY, identifier=str(data.id)

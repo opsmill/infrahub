@@ -133,8 +133,9 @@ uv run pytest backend/tests/unit/git/state/test_classification.py backend/tests/
 
    The warm-up is not observable from the API and is not meant to be: it is an internal workflow, so
    it carries no namespace tag and `InfrahubTask` does not list it, and the answer carries no id for
-   it. That one burst of reads starts exactly one warm-up is asserted by T044 against a recording
-   cache and `WorkflowRecorder`; on a live stack, look for the run in Prefect.
+   it. That one burst of reads starts exactly one warm-up is T044's coverage, against a recording
+   cache and `WorkflowRecorder`, and is not written yet; on a live stack, look for the run in
+   Prefect.
 
 6. Freshness: `fetched_at` changes after a fetch on the answering worker. For a read-only
    repository, `checked_at` advances after a check cycle even when the remote has not moved, while

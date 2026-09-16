@@ -36,8 +36,9 @@ class CommitEntry:
 
     @property
     def summary(self) -> str:
-        """First line of the commit message."""
-        return self.message.split("\n", 1)[0]
+        """First line of the commit message, whichever line ending it carries."""
+        lines = self.message.splitlines()
+        return lines[0] if lines else ""
 
 
 @dataclass(frozen=True)
@@ -71,8 +72,12 @@ class GitStateFacts:
         """
         if self.imported is None and self.imported_resolvable is not None:
             raise ValueError("imported_resolvable cannot be measured without an imported commit")
-        if self.imported_resolvable is False and self.imported_is_ancestor_of_head is not None:
-            raise ValueError("An unresolvable imported commit cannot be tested for ancestry")
+        if self.imported_is_ancestor_of_head is not None and (
+            self.imported_resolvable is not True or self.head is None
+        ):
+            raise ValueError("Ancestry is only measured for an imported commit the clone resolved, against a head")
+        if self.pending_count is not None and self.imported_is_ancestor_of_head is not True:
+            raise ValueError("A pending count is only measured when the imported commit is an ancestor of the head")
 
 
 @dataclass(frozen=True)
