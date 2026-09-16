@@ -1,18 +1,29 @@
-from typing import Any
+from collections.abc import Mapping, Sequence
+from typing import Any, Protocol
 
 from graphql import (
     FieldNode,
+    FragmentDefinitionNode,
     FragmentSpreadNode,
-    GraphQLResolveInfo,
     InlineFragmentNode,
     SelectionSetNode,
 )
 
 
+class GraphQLFieldExtractionInfo(Protocol):
+    """The parts of a GraphQL resolve info that field extraction reads."""
+
+    @property
+    def field_nodes(self) -> Sequence[FieldNode]: ...
+
+    @property
+    def fragments(self) -> Mapping[str, FragmentDefinitionNode]: ...
+
+
 class GraphQLFieldExtractor:
     """Class to extract fields from a GraphQL selection set."""
 
-    def __init__(self, info: GraphQLResolveInfo) -> None:
+    def __init__(self, info: GraphQLFieldExtractionInfo) -> None:
         self.info = info
         self.fragments = info.fragments
 
@@ -58,6 +69,6 @@ class GraphQLFieldExtractor:
                 target[name] = value
 
 
-def extract_graphql_fields(info: GraphQLResolveInfo) -> dict[str, Any]:
+def extract_graphql_fields(info: GraphQLFieldExtractionInfo) -> dict[str, Any]:
     graphql_extractor = GraphQLFieldExtractor(info=info)
     return graphql_extractor.get_fields()

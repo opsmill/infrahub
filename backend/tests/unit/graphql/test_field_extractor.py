@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any
 
-from graphql import FragmentDefinitionNode, OperationDefinitionNode, parse
+from graphql import FieldNode, FragmentDefinitionNode, OperationDefinitionNode, parse
 
 from infrahub.graphql.field_extractor import extract_graphql_fields
-
-if TYPE_CHECKING:
-    from graphql import FieldNode, GraphQLResolveInfo
 
 
 @dataclass(frozen=True)
@@ -27,10 +24,10 @@ def _extract(query: str) -> dict[str, Any]:
     document = parse(query)
     operation = next(node for node in document.definitions if isinstance(node, OperationDefinitionNode))
     fragments = {node.name.value: node for node in document.definitions if isinstance(node, FragmentDefinitionNode)}
-    field_nodes = [cast("FieldNode", selection) for selection in operation.selection_set.selections]
+    field_nodes = [selection for selection in operation.selection_set.selections if isinstance(selection, FieldNode)]
 
     info = _ResolveInfoStub(field_nodes=field_nodes, fragments=fragments)
-    return extract_graphql_fields(info=cast("GraphQLResolveInfo", info))
+    return extract_graphql_fields(info=info)
 
 
 def test_a_fragment_spread_inside_an_inline_fragment_is_expanded() -> None:
