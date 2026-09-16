@@ -146,7 +146,7 @@ describe("GitStatus", () => {
     await initPointerTracking(component.locator);
     await indicator.hover();
 
-    // THEN the tooltip still fires. No other call site in this codebase combines LinkButton
+    // THEN the tooltip still fires while the control is inert
     await expect
       .element(component.getByRole("tooltip", { name: "No Git repositories configured" }))
       .toBeVisible();
@@ -311,8 +311,7 @@ describe("GitStatus", () => {
     // WHEN
     await render(<GitStatus />);
 
-    // THEN the lookups carry no historical date: a past "all clear" would be reported in the
-    // present tense, which is the failure this indicator exists to prevent
+    // THEN
     expect(getObjectsCountFromApiMock).toHaveBeenCalledTimes(2);
     for (const call of getObjectsCountFromApiMock.mock.calls) {
       expect(call[0].atDate).toBeNull();
@@ -341,8 +340,7 @@ describe("GitStatus", () => {
     // WHEN
     const component = await render(<GitStatus />);
 
-    // THEN no button is findable by the accessible-name substring "branch", which the e2e
-    // suite uses to locate the branch selector
+    // THEN no button here is findable by the accessible-name substring "branch"
     await expect.element(component.getByRole(role, { name })).toBeVisible();
     for (const button of [...component.container.querySelectorAll("button")]) {
       expect(button.getAttribute("aria-label")?.toLowerCase() ?? "").not.toContain("branch");
