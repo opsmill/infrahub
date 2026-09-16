@@ -88,7 +88,7 @@ export function DataTable<T extends NodeCore>({
   // Without it the tracks compress until columns are unreadably narrow instead of
   // keeping their width and letting the table scroll horizontally.
   return (
-    <div className="grid min-w-max content-start" style={style} {...props}>
+    <div role="table" className="grid min-w-max content-start" style={style} {...props}>
       {allHeaders.map((header) => {
         return flexRender(header.column.columnDef.header, {
           ...header.getContext(),
@@ -98,7 +98,10 @@ export function DataTable<T extends NodeCore>({
 
       {allRows.map((row) => {
         return (
-          <div key={row.id} className="group contents" data-testid="data-table-row">
+          // The grid is a table semantically, so rows carry `role="row"` under the container's
+          // `role="table"` — an orphan row role is invalid ARIA and reads inconsistently.
+          // biome-ignore lint/a11y/useFocusableInteractive: rows are interactive only inside a grid/treegrid; this is a static table, so they stay out of the tab order.
+          <div key={row.id} role="row" className="group contents" data-testid="data-table-row">
             {row.getVisibleCells().map((cell) => {
               return flexRender(cell.column.columnDef.cell, {
                 ...cell.getContext(),

@@ -185,7 +185,11 @@ page, and that moving to page 2 returns different rows.
 - [ ] T026 [US1] Give each row `role="row"` with an accessible name including the branch name, so
       `getByRole("row", {name: /…/})` works and cells can be scoped with `within(row)`. Without this,
       FR-003 can only be written as a whole-table text assertion, which passes whenever **any** row
-      carries the default marker. Covers FR-025.
+      carries the default marker. **This cannot be done from the card's own files** — the row wrapper
+      lives in `shared/components/table/data-table.tsx`. Add `role="row"` there **and `role="table"`
+      on its grid container**: an orphan `row` is invalid ARIA and reads inconsistently. Biome's
+      `useFocusableInteractive` fires on `row` regardless and needs a one-line suppression (a wrapped
+      two-line `biome-ignore` is not honoured). Covers FR-025.
 
 ### Work unit 6 — the card
 
