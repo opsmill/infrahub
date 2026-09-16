@@ -102,7 +102,8 @@ page, and that moving to page 2 returns different rows.
       when two mounted instances share a key. Covers FR-011.
 - [ ] T011 [US1] Unit-test `use-table-pagination.ts` in `use-table-pagination.test.ts`: render two
       probes with **different** `urlKey`s and assert one is unmoved after the other pages. This is
-      the test that proves the new hook cannot collide with the legacy global `QSP.PAGINATION`.
+      the test that proves the new hook cannot collide with the legacy global `QSP.PAGINATION`, and
+      it is half of FR-017's guarantee alongside T071's zero-diff check. Covers FR-011, FR-017.
 - [ ] T012 [US1] Implement the **controlled** `TablePagination` component in
       `frontend/app/src/shared/components/table/table-pagination.tsx` — props `{page, pageSize,
       totalCount, onPageChange, onPageSizeChange}`, knowing nothing about URLs. Previous/next, direct
@@ -263,7 +264,7 @@ branch and assert only the second card's values change.
 - [ ] T042 [US2] Unit-test the rule in `partition-fields-by-branch-support.test.ts` with **one case per
       `BranchSupportType` value** — `aware`, `agnostic`, `local` — plus a case exercising the
       node-level fallback for a field that declares no `branch`. Node-level `branch` is required on
-      every `ModelSchema` member, so the fallback is total.
+      every `ModelSchema` member, so the fallback is total. Covers FR-019.
 
 ### Work unit 7 — the details split
 
@@ -366,7 +367,8 @@ total** narrow — proving the narrowing happened before the page boundary, not 
       `demo_edge_repo` fixture. Covers FR-026.
 - [ ] T066 **Poll the heading total; never assert it once.** Ten `sync_with_git=True` branches each
       trigger real git-worker branch creation, and the card can render before all rows exist — a
-      single assertion races the worker.
+      single assertion races the worker. Poll the **count badge** by its own accessible name, not the
+      heading: the badge is a sibling of the `<h1>`, not part of its accessible name. Covers FR-026.
 
 ### Work unit 9 — documentation and changelog
 
@@ -416,33 +418,39 @@ total** narrow — proving the narrowing happened before the page boundary, not 
 
 ## Dependencies
 
+> **Unit 5 is split across two phases here.** [plan.md](plan.md) treats it as one unit ("columns,
+> cells, filters"); this file splits it into **5a** (the display columns and cells, which US1 needs)
+> and **5b** (the filters, which are US3's whole content). The split exists so each user story stays
+> independently shippable — US1 must not wait on filtering it does not use. The files and FRs are
+> unchanged; only the sequencing differs.
+
 ```text
 Phase 1 (T001)
       │
 Phase 2 — unit 4 (T002–T007)          BLOCKING: no card test may precede T006/T007
       │
-      ├─────────────┬──────────────┬────────────────┐
-      ▼             ▼              ▼                ▼
-  unit 1         unit 2        unit 3           (unit 5a needs unit 2)
- T008–T014     T015–T021      T040–T042
-      │             │              │
-      └──────┬──────┘              │
-             ▼                     │
-        unit 5a  T022–T026         │
-             │                     │
-             ▼                     │
-        unit 6   T027–T039         │
-             │                     │
-             ├─────────────────────┘
-             ▼
-        unit 7   T043–T055     (needs BOTH unit 3 and unit 6)
-             │
-             ├──────────────▶ unit 5b (filters) T056–T064
-             ▼
-        unit 8   T065–T066
-             │
-             ▼
-        unit 9   T067–T070  +  gates T071–T077
+      ├───────────────┬───────────────┐
+      ▼               ▼               ▼
+  unit 1           unit 2          unit 3
+ T008–T014       T015–T021       T040–T042
+      │               │               │
+      │               ▼               │
+      │          unit 5a  T022–T026   │        (needs units 2 and 4 — NOT unit 1)
+      │               │               │
+      └───────┬───────┘               │
+              ▼                       │
+         unit 6   T027–T039           │        (needs units 1, 4, 5a)
+              │                       │
+              ├───────────────────────┘
+              ▼
+         unit 7   T043–T055                    (needs BOTH unit 3 and unit 6)
+              │
+              ├──────────────▶ unit 5b (filters) T056–T064   (needs units 2, 4, 6)
+              ▼
+         unit 8   T065–T066
+              │
+              ▼
+         unit 9   T067–T070  +  gates T071–T077
 ```
 
 **Parallel groups** — safe to run concurrently, no shared file:
