@@ -40,9 +40,9 @@ def test_workflow_definition_flow_names() -> None:
     assert not duplicates, f"Duplicate flow names found: {', '.join(duplicates)}"
 
 
-def test_the_warm_up_workflow_is_queryable_as_a_task() -> None:
-    """Its run id is handed to API clients, and every task query filters on the namespace tag."""
-    assert TAG_NAMESPACE in GIT_REPOSITORY_WARM_UP.get_tags()
+def test_the_warm_up_workflow_stays_out_of_the_task_list() -> None:
+    """A read triggers it, not a person, and every task query filters on the namespace tag."""
+    assert TAG_NAMESPACE not in GIT_REPOSITORY_WARM_UP.get_tags()
 
 
 def test_workflows_sorted() -> None:
