@@ -319,12 +319,13 @@ boundary — that is where every gql.tada document in this codebase lives. `ui/q
 react-query `queryOptions` layer and holds none; putting the document there would force an
 `api/ → ui/` import, which `dev/knowledge/frontend/entities-structure.md` prohibits.
 
-**Two shared files are edited, both minimally:**
+**Three shared files are edited:**
 
 | File | Edit | Risk |
 |---|---|---|
 | `object-details.tsx` | add the `isOfKind` gate | The feature's single behavioural entry point, and its entire rollback path |
 | `object-table/cells/dropdown-cell.tsx` | widen the `dropdown` prop from the full generated `Dropdown` to `Pick<Dropdown, "value" \| "label" \| "color">` | **Type-only.** Strictly more permissive, no runtime change; the component already reads only those three fields |
+| `shared/components/table/data-table.tsx` | `role="table"` on the grid container and `role="row"` on each row wrapper | **App-wide a11y change.** Every table gains table semantics. Required by FR-025: the row wrapper lives here, so `within(row)` scoping cannot be achieved from the card's own files. Both roles are needed together — an orphan `row` is invalid ARIA. Carries one `useFocusableInteractive` suppression, because Biome treats `row` as interactive though that only holds inside a grid/treegrid |
 
 The second is a widening, so no existing caller can break. Reverting the gate alone still removes the
 feature.
@@ -447,10 +448,10 @@ locating it by accessible name is a data-flow assertion, not a colour dependency
 
 Two mechanics the resolution needs to actually work:
 
-- **Assert `element.style.backgroundColor`, not `getComputedStyle(…).backgroundColor`.** The latter
-  returns a normalised `rgb(…)` while the schema supplies hex (`#60a5fa`), so a naive equality against
-  the fixture value fails. `element.style` preserves the authored value. (Normalising both sides is
-  equally fine — but pick one and write it down, or every test author picks differently.)
+- **Normalise both sides before comparing.** React writes styles through the CSSOM, so
+  `element.style.backgroundColor` normalises hex to `rgb(…)` exactly as `getComputedStyle` does —
+  asserting against the raw fixture hex fails with `expected 'rgb(76, 29, 149)' to be '#4c1d95'`.
+  Push the fixture value through a throwaway element and compare the two normalised strings.
 - **`DropdownCell` is a bare `<span>` with no role**, so "locate by accessible name" is in practice
   `within(row).getByText(...)`. Write that shape explicitly. Left unstated, the first implementer
   reaches for `getByRole`, finds nothing, and falls back to `getByTestId` — defeating FR-025 exactly
