@@ -54,20 +54,20 @@ feature makes.
 
 ### Selection set
 
+**The rule: select what a rendered column or the row model needs, and nothing else.** The backend
+node offers more than this card uses; a field selected "in case" is a field FR-006 has to be argued
+about later.
+
 ```graphql
 InfrahubRepositoryBranchStatus(...) {
   count                    # ← the ONLY source of the stated total
   edges {
     node {
-      name          { value }
-      status        { value }
-      is_default    { value }
-      sync_with_git { value }
-      branched_from { value }
-      commit        { value }
-      sync_status   { value label color description }
-      internal_status { value label color description }
-      ref           { value }      # CoreReadOnlyRepository only; null for CoreRepository
+      name        { value }
+      is_default  { value }         # the default-branch marker
+      commit      { value }
+      sync_status { value label color description }
+      ref         { value }         # CoreReadOnlyRepository only; null for CoreRepository
     }
     # node_metadata: NOT SELECTED — see below
   }
@@ -77,6 +77,9 @@ InfrahubRepositoryBranchStatus(...) {
 **`node_metadata` is not selected.** It carries `updated_at`, and not asking for it is the cheapest
 possible structural guarantee for FR-006: the card cannot render a "Last import" timestamp, or any
 substitute drawn from `updated_at`, from data it never requested.
+
+The row set's own rules — which branches appear per kind (§5), and the server's default ordering —
+are enforced by the resolver, so this document neither selects nor sends anything to express them.
 
 **`sync_status` selects `label` and `color` from the schema** (FR-004, FR-005). The card holds no
 label map and no colour map. A value the test invents must render with that invented label and
@@ -154,7 +157,7 @@ so no two can render the same text. Empty and failed each split in two by cause.
 
 | State | Component | Copy | Distinguishing fact |
 |---|---|---|---|
-| Loading | `ObjectTableSkeleton`, `rowCount` = the page size | — | Occupies its space; **no layout jump** when rows arrive |
+| Loading | `ObjectTableSkeleton`, `rowCount` = the page size | — | Occupies a full page of space, so a set of **at least one full page** arrives with no layout jump. A smaller set shrinks the card to the rows returned — see FR-023 |
 | Populated | `DataTable` + `TablePagination` | — | Rows, the count pill, and the window statement |
 | Empty — no match | `NoDataFound` | `No branch matches these filters` | Follows a filter the user set |
 | Empty — none in scope, `CoreRepository` | `NoDataFound` | `No branch of this repository synchronises with Git` | The row set *is* the `sync_with_git` branches, so an empty set means none of them syncs |

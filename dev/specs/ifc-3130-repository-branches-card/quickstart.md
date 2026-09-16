@@ -99,6 +99,9 @@ values changing with the branch; an empty titled box where a partition has no at
 
 ### US3 — Isolate a branch in a large repository
 
+> The card's filters are work unit 5b, which [plan.md](plan.md)'s delivery status still records as
+> outstanding. Until they land there is no search field to type into and this scenario cannot be run.
+
 1. Type a fragment of a known branch name into the card's search.
 2. **Expect** only matching branches listed, **and the stated total to narrow with them** — that is
    the tell that the filter was applied server-side, before the page boundary.
@@ -114,7 +117,7 @@ client-side, on rows already received, which FR-015 forbids.
 
 | To see | Do |
 |---|---|
-| Loading | Throttle the network; the card must occupy its space and not jump when rows arrive |
+| Loading | Throttle the network. The card must occupy a full page of space. On a repository with **at least one full page** of branches, nothing may jump when the rows arrive; on a smaller set the card shrinks to the rows returned, which is expected (FR-023) |
 | Empty | A `CoreRepository` all of whose branches have Git sync disabled. The message is per kind: a `CoreReadOnlyRepository` with no branches must **not** mention Git synchronisation, because its row set is every branch |
 | Denied | A user without view permission covering non-default branches — **must not** read as "no branches" |
 | Failed | Stop the backend; **the rest of the page, both details cards included, must still render** (FR-024) |
@@ -202,9 +205,9 @@ collection hook fails CI for any file with no shard marker or more than one, and
 It runs against the **`demo_edge_repo`** fixture and must assert rendered row data, a page change and
 a name filter.
 
-> **Poll the heading total; never assert it once.** Ten `sync_with_git=True` branches each trigger
-> real git-worker branch creation, and the card can render before all rows exist — a single assertion
-> races the worker (risk 6).
+> **Poll the count badge by its own accessible name; never assert the total once.** Ten
+> `sync_with_git=True` branches each trigger real git-worker branch creation, and the card can render
+> before all rows exist — a single assertion races the worker (risk 6).
 
 ### The full CI gate
 
@@ -233,4 +236,4 @@ cd frontend/app && pnpm test               # vitest, browser mode
 - [ ] `dev/knowledge/frontend/table-pagination.md` exists and names both components (FR-028)
 - [ ] `CommitHash` added to `dev/knowledge/frontend/shared-components.md` and justified in the PR body
 - [ ] A Towncrier changelog fragment exists in `changelog/`
-- [ ] The paging divergence from the design canvas is raised on **T094 in IFC-3101**
+- [ ] The divergence register in [plan.md](plan.md) is raised in full on **T094 in IFC-3101**

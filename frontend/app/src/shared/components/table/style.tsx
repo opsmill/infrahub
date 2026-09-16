@@ -16,7 +16,7 @@ export const WIDE_COLUMN_MAX_WIDTH = "25rem";
 // column.
 export const cellsStyle = "flex min-w-0 items-center gap-1.5 p-2 text-sm h-10";
 
-// The numeric twin of the `h-10` above, for callers that reserve height in pixels.
+// The numeric twin of the `h-10` above.
 export const CELL_HEIGHT_PX = 40;
 
 export const cellHeaderStyle =

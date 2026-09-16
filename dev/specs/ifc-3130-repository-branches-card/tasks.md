@@ -10,10 +10,9 @@
 **Tests are required for this feature** — the constitution's Test Discipline principle applies, and
 every FR carries a stated verification method.
 
-**Status**: T001–T055 are on the branch (work units 1–7, less the US3 filters). Outstanding:
-T056–T064 (US3 filters), T065–T066 (e2e), T067–T070 (documentation and changelog), T071–T077 (gates),
-and T078 (the per-kind empty-state message, a work-unit-6 follow-up rather than a gate).
-A ticked box means the file exists at the path named.
+**Status**: T001–T055, T034a and T078 are on the branch (work units 1–7, less the US3 filters).
+Outstanding: T056–T064 (US3 filters), T065–T066 (e2e), T067–T070 (documentation and changelog) and
+T071–T077 (gates). A ticked box means the file exists at the path named.
 
 ---
 
@@ -141,11 +140,12 @@ page, and that moving to page 2 returns different rows.
 - [x] T016 [P] [US1] Define the row model and `RepositoryBranchStatusError` (with
       `code: "PERMISSION_DENIED" | "UNKNOWN"`) in
       `frontend/app/src/entities/repository/domain/model/repository-branch-status.ts`.
-- [x] T017 [US1] Implement the mapper in the same module. **Guard every nullable field in the mapper,
-      never at the call site**: `is_default?.value ?? false`, `sync_with_git?.value ?? false`,
-      `commit?.value ?? null`, `ref?.value ?? null`, and `sync_status` → `null` when the `Dropdown` or
-      its `value` is absent (`DropdownCell` requires non-null). **Synthesise `id` from `name.value`** —
-      do not relax `DataTable<T extends NodeCore>` or its `getRowId`.
+- [x] T017 [US1] Implement the mapper in the same module. **Guard every nullable selected field in the
+      mapper, never at the call site** — the wire field may be absent entirely, not merely
+      `{value: null}`, so each guard covers both: a boolean falls back to `false`, a text value to
+      `null`, and a `Dropdown` to `null` whenever the dropdown or its `value` is missing
+      (`DropdownCell` requires non-null). **Synthesise `id` from `name.value`** — do not relax
+      `DataTable<T extends NodeCore>` or its `getRowId`.
 - [x] T018 [US1] Implement the api boundary
       `frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts`. **This
       module is the mock point for every test in this feature** — keep it thin and free of logic worth
@@ -170,8 +170,10 @@ page, and that moving to page 2 returns different rows.
       on `title`, **not** `aria-label`: ARIA forbids naming a role-less element and Biome's
       `a11y/useAriaPropsSupportedByRole` rejects it. Copy affordances appear only on full hashes in the
       details card, never in table cells.
-- [x] T023 [P] [US1] Component-test `CommitHash` in `commit-hash.test.tsx`: truncation, the full value
-      in the accessible name, and `copyable` on/off.
+- [x] T023 [P] [US1] Component-test `CommitHash` in `commit-hash.test.tsx`: truncation, a hash shorter
+      than the short form left untouched, the full value reachable through `title` (`getByTitle`, not
+      an accessible-name query — T022 keeps it off `aria-label`), and `copyable` on/off, the copy
+      button naming the full hash.
 - [x] T024 [US1] Implement the branch-name cell in
       `frontend/app/src/entities/repository/ui/repository-branches-card/cells/branch-name-cell.tsx`.
       **Compose `Tooltip` + `LinkButton href={getBranchDetailsUrl(name)}`; do not reuse
@@ -194,10 +196,15 @@ page, and that moving to page 2 returns different rows.
       `getByRole("row", {name: /…/})` works and cells can be scoped with `within(row)`. Without this,
       FR-003 can only be written as a whole-table text assertion, which passes whenever **any** row
       carries the default marker. **This cannot be done from the card's own files** — the row wrapper
-      lives in `shared/components/table/data-table.tsx`. Add `role="row"` there **and `role="table"`
-      on its grid container**: an orphan `row` is invalid ARIA and reads inconsistently. Biome's
-      `useFocusableInteractive` fires on `row` regardless and needs a one-line suppression (a wrapped
-      two-line `biome-ignore` is not honoured). Covers FR-025.
+      lives in `shared/components/table/data-table.tsx`.
+      Add the roles there behind an **opt-in `semanticTable` prop defaulting to `false`**, never
+      unconditionally: an unconditional change gives every table in the app new semantics that nothing
+      asked for or tests. It sets `role="table"` on the grid container **and** `role="row"` on each row
+      wrapper together — an orphan `row` is invalid ARIA. Biome's `useFocusableInteractive` fires on
+      `row` regardless and needs a one-line suppression (a wrapped two-line `biome-ignore` is not
+      honoured).
+      The card completes the tree from its own files: `TableColumnHeaderSimple` takes an optional
+      `role` for `columnheader`, and `TableCell` already forwards `role="cell"`. Covers FR-025.
 
 ### Work unit 6 — the card
 
@@ -209,10 +216,12 @@ page, and that moving to page 2 returns different rows.
       with the total in the count badge. Reserve a full page of height — page size plus header row —
       whenever the total exceeds one page, and reserve nothing when it does not (FR-011b). Covers
       FR-001, FR-007, FR-009, FR-011b.
-- [x] T028 [US1] Wire the card header: the count goes in `badgeContent`; give the header an explicit
-      `aria-label` and **assert the count by the badge's own accessible name, not the heading's** —
-      `Content.CardTitle` renders its title as `<h1>` with the badge as a sibling, so the count is not
-      part of the heading's accessible name.
+- [x] T028 [US1] Wire the card header as `CardHeader` + an `<h2 id>` the `Card`'s `aria-labelledby`
+      points at, with the count in a sibling `Badge` carrying its own accessible name. **Do not use
+      `Content.CardTitle`** — it is a page-level title component and renders its title as `<h1>`, so
+      three cards on this page would each claim a top-level heading. **Assert the count by the badge's
+      accessible name, never the heading's**: a sibling badge is not part of the heading's name under
+      either shape.
 - [x] T029 [US1] Implement the four card states (FR-023) using the strings pinned in
       [contracts/repository-branch-status-ui.md](contracts/repository-branch-status-ui.md) §4:
       `NoDataFound` for both empty cases (filtered vs none-in-scope — **different strings**; the
@@ -312,7 +321,7 @@ branch and assert only the second card's values change.
       `ModelSchema` objects from T040's partition and render each through `RepositoryDetailsCard` —
       repository-wide first, then `On this branch` with **the branch name as a caption beneath the
       title**. Pass it as `RepositoryDetailsCard`'s `caption` prop; there is no `description` slot to
-      look for — that belongs to `Content.CardTitle`, which T043 deliberately does not use.
+      look for — that belongs to `Content.CardTitle`, which no card on this page uses (T028).
       Covers FR-018.
 - [x] T045 [US2] Render nothing at all for a partition with no attributes **and** no relationships — a
       card with nothing to show must not appear as an empty titled box (FR-022).
@@ -399,7 +408,7 @@ total** narrow — proving the narrowing happened before the page boundary, not 
 
 ### Work unit 6 follow-up — the read-only empty state
 
-- [ ] T078 Make the none-in-scope empty message per kind in
+- [x] T078 Make the none-in-scope empty message per kind in
       `frontend/app/src/entities/repository/ui/repository-branches-card/messages.ts` and its call
       site. The shipped string, `No branch of this repository synchronises with Git`, is true only
       for `CoreRepository`, whose row set *is* the `sync_with_git` branches. On
@@ -417,10 +426,11 @@ total** narrow — proving the narrowing happened before the page boundary, not 
       `shard_branches_repo` — `tests/e2e/conftest.py`'s collection hook runs *before* the `-m` filter,
       so a file with no shard marker (or two) fails CI in every shard job. Run against the
       `demo_edge_repo` fixture. Covers FR-026.
-- [ ] T066 **Poll the heading total; never assert it once.** Ten `sync_with_git=True` branches each
-      trigger real git-worker branch creation, and the card can render before all rows exist — a
-      single assertion races the worker. Poll the **count badge** by its own accessible name, not the
-      heading: the badge is a sibling of the `<h1>`, not part of its accessible name. Covers FR-026.
+- [ ] T066 **Poll the count badge; never assert the total once.** Ten `sync_with_git=True` branches
+      each trigger real git-worker branch creation, and the card can render before all rows exist — a
+      single assertion races the worker. Poll the badge **by its own accessible name**, not the card
+      heading: the badge is the heading's sibling, not part of its accessible name (T028). Covers
+      FR-026.
 
 ### Work unit 9 — documentation and changelog
 
@@ -459,10 +469,10 @@ total** narrow — proving the narrowing happened before the page boundary, not 
       `frontend-lint` has **no path filter** and runs on every PR.
 - [ ] T075 Walk [quickstart.md](quickstart.md)'s manual validation scenarios for both repository kinds.
       These double as IFC-3131's instructions, which have not been written (open question Q3).
-- [ ] T076 Raise the **divergence register** from [plan.md](plan.md) on **T094 in IFC-3101** — all six
-      divergences as one conversation, not just paging. Do this **before T012**: pagination is built
-      first and would otherwise be rejected last. Note the register's largest item is the two-card
-      split, which the canvas explicitly ruled against.
+- [ ] T076 Raise the **divergence register** from [plan.md](plan.md) on **T094 in IFC-3101** — every
+      row as one conversation, not just paging. Do this **before T012**: pagination is built first and
+      would otherwise be rejected last. The register's largest row is the two-card split, which the
+      canvas explicitly ruled against.
 - [ ] T077 Note the missing `CoreReadOnlyRepository` e2e fixture on **IFC-3153**, so its owner inherits
       the gap rather than it living only in this spec (FR-027).
 
@@ -558,6 +568,6 @@ pagination is the first thing built.
 | FR-014 | T056, T062 | | | |
 
 **79 tasks.** Setup 1 (T001) · foundational 6 (T002–T007) · US1 33 (T008–T039, T034a) · US2 16
-(T040–T055) · US3 9 (T056–T064) · polish and gates 14 (T065–T078).
+(T040–T055) · US3 9 (T056–T064) · polish and gates 13 (T065–T077) · work-unit-6 follow-up 1 (T078).
 
-**56 done** (T001–T055, T034a) · **23 open** (T056–T078).
+**57 done** (T001–T055, T034a, T078) · **22 open** (T056–T077).

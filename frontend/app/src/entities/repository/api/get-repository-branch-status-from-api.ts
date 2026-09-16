@@ -1,9 +1,8 @@
 import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 import type { BranchContextParams } from "@/shared/api/types";
 
-// `sync_status__value`, `internal_status__value` and `own_values_only` are deliberately not
-// declared: the backend rejects all three with a ValidationError while the resolver serves
-// placeholder values, and `node_metadata` is not selected so no `updated_at` can reach the card.
+// The backend rejects `sync_status__value`, `internal_status__value` and `own_values_only` with a
+// ValidationError for as long as the resolver serves placeholder values.
 const REPOSITORY_BRANCH_STATUS = graphql(`
   query REPOSITORY_BRANCH_STATUS(
     $id: String!
@@ -27,28 +26,13 @@ const REPOSITORY_BRANCH_STATUS = graphql(`
           name {
             value
           }
-          status {
-            value
-          }
           is_default {
-            value
-          }
-          sync_with_git {
-            value
-          }
-          branched_from {
             value
           }
           commit {
             value
           }
           sync_status {
-            value
-            label
-            color
-            description
-          }
-          internal_status {
             value
             label
             color

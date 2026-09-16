@@ -1,6 +1,7 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { DataTable } from "@/shared/components/table/data-table";
+import { COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
 
 import {
   mapRepositoryBranchStatusPage,
@@ -67,7 +68,7 @@ const renderTable = (schema: ModelSchema, nodes: RepositoryBranchStatusWire[]) =
   );
 
 describe("getRepositoryBranchesColumns", () => {
-  test("shows the branch name, its sync status and its imported commit on each row", async () => {
+  it("shows the branch name, its sync status and its imported commit on each row", async () => {
     // GIVEN
     const nodes = [
       generateRepositoryBranchStatus({
@@ -88,7 +89,7 @@ describe("getRepositoryBranchesColumns", () => {
     await expect.element(row.getByText("8f3c2a1", { exact: true })).toBeVisible();
   });
 
-  test("marks only the default branch's row as the default", async () => {
+  it("marks only the default branch's row as the default", async () => {
     // GIVEN
     const nodes = [
       generateRepositoryBranchStatus({ name: { value: "main" }, is_default: { value: true } }),
@@ -110,7 +111,7 @@ describe("getRepositoryBranchesColumns", () => {
     ).toHaveLength(0);
   });
 
-  test("takes each header from the schema's own label", async () => {
+  it("takes each header from the schema's own label", async () => {
     // GIVEN
     const renamedSchema: ModelSchema = generateNodeSchema({
       attributes: [
@@ -128,7 +129,7 @@ describe("getRepositoryBranchesColumns", () => {
     expect(component.getByText("Sync status", { exact: true }).elements()).toHaveLength(0);
   });
 
-  test("renders the chip label and colour the payload supplies", async () => {
+  it("renders the chip label and colour the payload supplies", async () => {
     // GIVEN
     const invented = generateInventedDropdown();
     const nodes = [
@@ -146,7 +147,7 @@ describe("getRepositoryBranchesColumns", () => {
     expect(chip.element().style.backgroundColor).toBe(asRenderedColour(invented.color ?? ""));
   });
 
-  test("leaves the ref column out of a schema that does not declare one", async () => {
+  it("leaves the ref column out of a schema that does not declare one", async () => {
     // WHEN
     const component = await renderTable(repositorySchema, [generateRepositoryBranchStatus()]);
 
@@ -154,7 +155,7 @@ describe("getRepositoryBranchesColumns", () => {
     expect(component.getByText("Ref", { exact: true }).elements()).toHaveLength(0);
   });
 
-  test("shows the ref a branch tracks when the schema declares one", async () => {
+  it("shows the ref a branch tracks when the schema declares one", async () => {
     // GIVEN
     const nodes = [
       generateRepositoryBranchStatus({
@@ -173,7 +174,7 @@ describe("getRepositoryBranchesColumns", () => {
       .toBeVisible();
   });
 
-  test("renders no row-action control", async () => {
+  it("renders no row-action control", async () => {
     // WHEN
     const component = await renderTable(repositorySchema, [generateRepositoryBranchStatus()]);
 
@@ -181,9 +182,14 @@ describe("getRepositoryBranchesColumns", () => {
     expect(component.getByRole("row").getByRole("button").elements()).toHaveLength(0);
   });
 
-  test("reserves no trailing row-action track", () => {
+  it("reserves no trailing row-action track", () => {
     // THEN
-    expect(branchesGridTemplateColumns(3)).toBe("repeat(2, fit-content(20rem)) 1fr");
+    expect(branchesGridTemplateColumns(3)).toBe(`repeat(2, fit-content(${COLUMN_MAX_WIDTH})) 1fr`);
     expect(branchesGridTemplateColumns(4)).not.toContain("2.5rem");
+  });
+
+  it("emits a single track rather than an empty repeat for a lone column", () => {
+    // THEN
+    expect(branchesGridTemplateColumns(1)).toBe("1fr");
   });
 });

@@ -1,4 +1,6 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
+
+import { PAGE_SIZE } from "@/shared/utils/table-pagination";
 
 import { render } from "../../../tests/components/render";
 import { useTablePagination } from "./use-table-pagination";
@@ -25,7 +27,7 @@ const Probe = ({ urlKey }: { urlKey: string }) => {
 };
 
 describe("useTablePagination", () => {
-  test("starts on the first page at the fixed size", async () => {
+  it("starts on the first page at the fixed size", async () => {
     // GIVEN
     const urlKey = "branches";
 
@@ -34,11 +36,11 @@ describe("useTablePagination", () => {
 
     // THEN
     await expect.element(component.getByText("page 1")).toBeVisible();
-    await expect.element(component.getByText("size 10")).toBeVisible();
+    await expect.element(component.getByText(`size ${PAGE_SIZE}`)).toBeVisible();
     await expect.element(component.getByText("offset 0")).toBeVisible();
   });
 
-  test("derives the offset from the page it moves to", async () => {
+  it("derives the offset from the page it moves to", async () => {
     // GIVEN
     const component = await render(<Probe urlKey="branches" />);
 
@@ -47,10 +49,10 @@ describe("useTablePagination", () => {
 
     // THEN
     await expect.element(component.getByText("page 2")).toBeVisible();
-    await expect.element(component.getByText("offset 10")).toBeVisible();
+    await expect.element(component.getByText(`offset ${PAGE_SIZE}`)).toBeVisible();
   });
 
-  test("carries the page in the url under its own key", async () => {
+  it("carries the page in the url under its own key", async () => {
     // GIVEN
     const component = await render(<Probe urlKey="branches" />);
 
@@ -61,7 +63,7 @@ describe("useTablePagination", () => {
     await expect.poll(() => window.location.search).toContain("branches_page=2");
   });
 
-  test("reads the page it was given in the url", async () => {
+  it("reads the page it was given in the url", async () => {
     // GIVEN
     window.history.replaceState(null, "", `${window.location.pathname}?branches_page=3`);
 
@@ -70,10 +72,10 @@ describe("useTablePagination", () => {
 
     // THEN
     await expect.element(component.getByText("page 3")).toBeVisible();
-    await expect.element(component.getByText("offset 20")).toBeVisible();
+    await expect.element(component.getByText(`offset ${PAGE_SIZE * 2}`)).toBeVisible();
   });
 
-  test("keeps the page size out of the url", async () => {
+  it("keeps the page size out of the url", async () => {
     // GIVEN
     const component = await render(<Probe urlKey="branches" />);
 
@@ -85,7 +87,7 @@ describe("useTablePagination", () => {
     expect(window.location.search).not.toContain("branches_size");
   });
 
-  test("leaves a table under a different url key where it was", async () => {
+  it("leaves a table under a different url key where it was", async () => {
     // GIVEN
     const component = await render(
       <>

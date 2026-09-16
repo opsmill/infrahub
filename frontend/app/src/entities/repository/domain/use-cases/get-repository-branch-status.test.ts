@@ -1,6 +1,6 @@
 import { CombinedError } from "@urql/core";
 import { GraphQLError } from "graphql";
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getRepositoryBranchStatusFromApi } from "@/entities/repository/api/get-repository-branch-status-from-api";
 import { RepositoryBranchStatusError } from "@/entities/repository/domain/model/repository-branch-status";
@@ -38,7 +38,7 @@ describe("getRepositoryBranchStatus", () => {
     vi.clearAllMocks();
   });
 
-  test("forwards its parameters to the api boundary and maps the page", async () => {
+  it("forwards its parameters to the api boundary and maps the page", async () => {
     vi.mocked(getRepositoryBranchStatusFromApi).mockResolvedValue({
       data: { InfrahubRepositoryBranchStatus: generateRepositoryBranchStatusPayloadBefore() },
     });
@@ -50,31 +50,31 @@ describe("getRepositoryBranchStatus", () => {
     expect(page.count).toBe(3);
   });
 
-  test("maps a PERMISSION_DENIED payload to the PERMISSION_DENIED code", async () => {
+  it("maps a PERMISSION_DENIED payload to the PERMISSION_DENIED code", async () => {
     rejectWithExtensions({ code: "PERMISSION_DENIED", http_status: 403, data: {} });
 
     await expect(codeOf(getRepositoryBranchStatus(PARAMS))).resolves.toBe("PERMISSION_DENIED");
   });
 
-  test("maps any other catalogue payload to the UNKNOWN code", async () => {
+  it("maps any other catalogue payload to the UNKNOWN code", async () => {
     rejectWithExtensions({ code: "NODE_NOT_FOUND", http_status: 404, data: {} });
 
     await expect(codeOf(getRepositoryBranchStatus(PARAMS))).resolves.toBe("UNKNOWN");
   });
 
-  test("maps an unrecognised payload to the UNKNOWN code", async () => {
+  it("maps an unrecognised payload to the UNKNOWN code", async () => {
     rejectWithExtensions({ somethingElse: true });
 
     await expect(codeOf(getRepositoryBranchStatus(PARAMS))).resolves.toBe("UNKNOWN");
   });
 
-  test("maps a network failure carrying no extensions to the UNKNOWN code", async () => {
+  it("maps a network failure carrying no extensions to the UNKNOWN code", async () => {
     vi.mocked(getRepositoryBranchStatusFromApi).mockRejectedValue(new TypeError("Failed to fetch"));
 
     await expect(codeOf(getRepositoryBranchStatus(PARAMS))).resolves.toBe("UNKNOWN");
   });
 
-  test("keeps the original failure as the cause", async () => {
+  it("keeps the original failure as the cause", async () => {
     const networkError = new TypeError("Failed to fetch");
     vi.mocked(getRepositoryBranchStatusFromApi).mockRejectedValue(networkError);
 

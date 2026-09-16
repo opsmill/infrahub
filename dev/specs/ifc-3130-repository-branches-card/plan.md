@@ -16,9 +16,9 @@ minimal-change, refactor-friendly, test-first), [design.md](design.md), [researc
 
 ## Delivery status
 
-This document describes the **design as delivered** on `ple-branches-card-ifc-3130`. Work units 1–7
-are on the branch at the paths named below; work units 8 and 9 are not. [tasks.md](tasks.md) is the
-only place that tracks work still to do — a ticked box there means the file exists on this branch.
+This document describes the **design as delivered** on `ple-branches-card-ifc-3130`, at the paths
+named below. [tasks.md](tasks.md) is the only place that tracks work still to do — a ticked box there
+means the file exists on this branch.
 
 | Work unit | Status |
 |---|---|
@@ -127,7 +127,7 @@ Result: **PASS**, with four justified complexity entries.*
 |---|---|---|
 | **I. Schema-Driven Integrity** | Yes — **conditional** | The card division is derived from each field's `branch` support declaration (FR-019), and every label and column header comes from the schema (FR-005) — never from a field-name list held in the frontend. This is what makes SC-005 free. Generated files under `src/shared/api/graphql/generated/` are **regenerated, never hand-edited**; the base branch already carries them, so codegen must produce zero drift. **The condition**: this is schema-*shaped* until the rule names all three `BranchSupportType` values. `local` is the one that matters — see [data-model.md](data-model.md) §2. Reads PASS only once that mapping and its per-value tests exist. |
 | **II. Branch-Safe by Default** | Yes | Read-only; writes nothing, so no merge behaviour to specify. The one branch-semantics risk — a branch showing a value inherited from its **origin** branch at its fork point — is correct behaviour, pinned by acceptance scenario US1-4 and US1-7, and rendered as an ordinary value rather than as an error or an empty cell. This feature computes no inheritance itself. |
-| **III. Type Safety & Explicit Contracts** | Yes | The query is typed end-to-end through gql.tada against the frozen contract. No `any`; `unknown` + type guards where a boundary is loose. The nullable contract fields (`is_default`, `sync_with_git` as `NonRequiredBooleanValueField`; `sync_status` nullable while `DropdownCell` requires non-null) are guarded **in the mapper**, not at the call site. The page window and filter set are explicit inputs, never ambient state. Errors are typed (`RepositoryBranchStatusError` with a `code` union) rather than bare `Error`. |
+| **III. Type Safety & Explicit Contracts** | Yes | The query is typed end-to-end through gql.tada against the frozen contract. No `any`; `unknown` + type guards where a boundary is loose. The nullable contract fields ([data-model.md](data-model.md) §1) are guarded **in the mapper**, not at the call site. The page window and filter set are explicit inputs, never ambient state. Errors are typed (`RepositoryBranchStatusError` with a `code` union) rather than bare `Error`. |
 | **IV. Test Discipline** | Yes — **with one recorded deviation** | Unit tests for the pure pagination arithmetic and the partition rule (one case per `BranchSupportType` value); component tests (Vitest browser mode) for every FR carrying a component-test verification; E2E at `tests/e2e/repository/` with the `shard_branches_repo` marker against `demo_edge_repo` (FR-026). The backend slice deferred the epic's E2E requirement to this card, so it lands here. Test files mirror source structure. **Two requirements are honestly recorded as verified by review rather than by test** — see [below](#verified-by-review-not-by-test). **The deviation**: the constitution says E2E "MUST be included for all user-facing features"; FR-027 knowingly ships `CoreReadOnlyRepository` without it. Defensible, but Governance requires a deviation be recorded in Complexity Tracking — it now is. |
 | **V. Query Performance & Efficiency** | Yes | One request per page (SC-003). Server-side count, filters and ordering; no client-side narrowing (FR-015). `node_metadata` is **not selected at all** — the cheapest possible guarantee for FR-006. Row transfer bounded by page size. |
 | **VI. Security & Input Boundaries** | Partial (N/A by shape) | No user input reaches a query language here — the filter values are bound as typed GraphQL variables. Authorization is the server's: the resolver raises `PermissionDeniedError` (a `ForwardableError`, HTTP 403) and the card renders `UnauthorizedScreen` for it (FR-023), distinct from the empty state, so a denial is never mistaken for "no branches" (SC-007). No error message exposes internal detail. |
@@ -239,6 +239,12 @@ Two mechanisms, both delivered in **work unit 4** so that units 5 and 6 had no o
    `expectServerDrivenChange` (FR-016, whose `toMatchObject` matching is partial by design) goes
    through a helper in `tests/helpers/` instead, where the guard does not apply.
 
+   **Why it is not repo-wide.** `mock.calls` is a legitimate assertion in tests that are not
+   request/response pairs, and `expectServerDrivenChange` only fits a test that renders a card
+   against an api mock — so a global ban would fail existing suites it offers no replacement for.
+   Widening it is a sweep of the existing call sites, not a config change, and belongs with whoever
+   does that sweep.
+
 This is the one decision in the plan that **cannot be retrofitted cheaply**: once twenty unpaired
 tests exist, the helper is a migration rather than a default.
 
@@ -291,17 +297,22 @@ dev/specs/ifc-3130-repository-branches-card/
 
 ### Source Code (repository root)
 
-Everything unmarked is on the branch. `OUTSTANDING` marks the two work units not yet written.
+Everything unmarked is on the branch. `OUTSTANDING` marks what is not yet written — work unit 5b's
+filters, and work units 8 and 9. Files marked `edited` already existed; see the shared-file table
+above for what each edit is and what it risks.
 
 ```text
 frontend/app/src/
 ├── shared/
 │   ├── utils/table-pagination.ts                      # pure paging arithmetic
 │   ├── hooks/use-table-pagination.ts                  # URL-scoped, required urlKey
+│   ├── api/graphql/error-handling.ts                  # edited — hasThrownCatalogueCode
 │   └── components/
 │       ├── table/
-│       │   ├── data-table.tsx                         # reused (do not pass `count`)
+│       │   ├── data-table.tsx                         # edited (do not pass `count`)
+│       │   ├── style.tsx                              # edited — CELL_HEIGHT_PX
 │       │   └── table-pagination.tsx                   # controlled, card-safe
+│       ├── errors/unauthorized-screen.tsx             # edited — defaultOpen
 │       └── display/commit-hash.tsx                    # the one justified new primitive
 │
 └── entities/
@@ -312,7 +323,9 @@ frontend/app/src/
     │   │   ├── use-cases/get-repository-branch-status.ts
     │   │   └── rules/partition-fields-by-branch-support.ts     # pure, unit-testable
     │   └── ui/
-    │       ├── queries/get-repository-branch-status.query.ts   # react-query queryOptions
+    │       ├── queries/
+    │       │   ├── get-repository-branch-status.query.ts       # react-query queryOptions
+    │       │   └── repository.query-keys.ts                    # the slice's query-key factory
     │       ├── repository-branches-card/
     │       │   ├── repository-branches-card.tsx
     │       │   ├── repository-branches-card-boundary.tsx       # card-scoped ErrorBoundary
@@ -324,16 +337,24 @@ frontend/app/src/
     │       ├── repository-details-card.tsx                     # Card + CardHeader + ObjectDataDisplay
     │       └── repository-object-details.tsx                   # the two-card split
     │
-    └── nodes/object/ui/object-details/
-        └── object-details.tsx                          # edited — the isOfKind gate only
+    └── nodes/object/ui/
+        ├── object-details/object-details.tsx           # edited — the isOfKind gate only
+        └── object-table/
+            ├── object-table-skeleton.tsx               # edited — rowCount, showSelection
+            └── cells/
+                ├── dropdown-cell.tsx                   # edited — widened prop type
+                └── table-column-header-simple.tsx      # edited — optional role
 
-frontend/app/tests/
-├── fake/repository.ts                                  # row factories
-├── fake/dropdown.ts
-└── helpers/expect-server-driven-change.ts              # D2's pairing rule, mechanically enforced
-
-frontend/app/lint/
-└── no-direct-api-mock-calls.grit                       # D2's lint guard, scoped by a biome override
+frontend/app/
+├── biome.jsonc                                         # edited — the override attaching the guard
+├── vitest.config.ts                                    # edited — setupFiles
+├── tests/
+│   ├── setup.ts                                        # the shared afterEach URL reset
+│   ├── fake/repository.ts                              # row factories
+│   ├── fake/dropdown.ts
+│   └── helpers/expect-server-driven-change.ts          # D2's pairing rule, mechanically enforced
+└── lint/
+    └── no-direct-api-mock-calls.grit                   # D2's lint guard, scoped by the override
 
 tests/e2e/repository/
 └── test_repository_branches_card.py                    # OUTSTANDING — marker: shard_branches_repo
@@ -355,17 +376,21 @@ boundary — that is where every gql.tada document in this codebase lives. `ui/q
 react-query `queryOptions` layer and holds none; putting the document there would force an
 `api/ → ui/` import, which `dev/knowledge/frontend/entities-structure.md` prohibits.
 
-**Four shared files are edited, all four on the branch:**
+**Eight shared files are edited, all eight on the branch:**
 
 | File | Edit | Risk |
 |---|---|---|
-| `object-details.tsx` | the `isOfKind` gate | The feature's single behavioural entry point, and its entire rollback path |
+| `object-details.tsx` | the `isOfKind` gate | **Behavioural.** The feature's single entry point, and its entire rollback path |
+| `shared/components/table/data-table.tsx` | an opt-in `semanticTable` flag putting `role="table"` on the grid container and `role="row"` on each row wrapper, plus optional `skeletonRowCount` / `skeletonShowSelection` pass-throughs to `ObjectTableSkeleton` | **Additive.** `semanticTable` defaults to `false`, so no existing table gains or loses semantics; only this card opts in. Required by FR-025: the row wrapper lives here, so `within(row)` scoping cannot be reached from the card's own files. Both roles are set together — an orphan `row` is invalid ARIA. Carries one `useFocusableInteractive` suppression, because Biome treats `row` as interactive though that only holds inside a grid/treegrid |
 | `object-table/cells/dropdown-cell.tsx` | the `dropdown` prop widened from the full generated `Dropdown` to `Pick<Dropdown, "value" \| "label" \| "color">` | **Type-only.** Strictly more permissive, no runtime change; the component already reads only those three fields |
-| `object-table/object-table-skeleton.tsx` | optional `rowCount` (default 20) and `showSelection` (default `true`) props | **Additive.** Both defaults reproduce the previous behaviour, so no existing caller changes. The card passes its page size and turns the selection checkbox off, through `DataTable` — without them the skeleton ships a phantom checkbox and a layout jump at this card's page size of 10, which FR-023's loading clause forbids |
-| `shared/components/table/data-table.tsx` | `role="table"` on the grid container and `role="row"` on each row wrapper, plus optional `skeletonRowCount` / `skeletonShowSelection` pass-throughs to `ObjectTableSkeleton` | **App-wide a11y change.** Every table gains table semantics. Required by FR-025: the row wrapper lives here, so `within(row)` scoping cannot be achieved from the card's own files. Both roles are needed together — an orphan `row` is invalid ARIA. Carries one `useFocusableInteractive` suppression, because Biome treats `row` as interactive though that only holds inside a grid/treegrid |
+| `object-table/cells/table-column-header-simple.tsx` | optional `role`, forwarded to the header element | **Additive.** Undefined by default, so an existing header renders exactly as it did. The card passes `columnheader`, which is what completes `semanticTable`'s header row — a `row` of plain `<div>`s is invalid ARIA |
+| `object-table/object-table-skeleton.tsx` | optional `rowCount` (default 20) and `showSelection` (default `true`), plus the row and cell roles a table that opted into `semanticTable` needs while it is still loading | **Additive.** Every default reproduces the previous behaviour, so no existing caller changes. The card passes its page size and turns the selection checkbox off, through `DataTable` — without them the skeleton ships a phantom checkbox and a layout jump at this card's page size, which FR-023's loading clause forbids |
+| `shared/components/errors/unauthorized-screen.tsx` | optional `defaultOpen`, forwarded to the `Accordion` it already renders | **Additive.** Undefined leaves the accordion at its own default, so existing callers are unchanged. The card opens it, because a collapsed explanation inside a card reads as an empty card |
+| `shared/api/graphql/error-handling.ts` | new `hasThrownCatalogueCode`, unwrapping the bare `Error` the transport rethrows before reading its catalogue code | **New export, plus a bundling change.** `CombinedError` moves from a type-only import to a value import — `instanceof` needs the class — so `@urql/core` now reaches the runtime bundle of anything importing this module, where before it was erased at compile time. Harmless while every importer already talks to GraphQL; worth re-checking if this module is ever pulled into one that does not |
+| `shared/components/table/style.tsx` | new `CELL_HEIGHT_PX` constant | **Additive.** Nothing reads it unless it imports it. It is the numeric twin of the `h-10` in `cellsStyle` and the pairing is held by hand, so a change to either must carry the other or FR-011b's reservation silently stops matching a row |
 
-The middle two are widenings, so no existing caller can break. Reverting the gate alone still removes
-the feature.
+The seven additive edits cannot break an existing caller: every new prop is optional and every
+default reproduces today's behaviour. Reverting the gate alone still removes the feature.
 
 **The card stays inside the detail route's outlet**, never replacing the page shell — IFC-3150 adds
 its Commits tab as a sibling route on the same page.
@@ -377,7 +402,7 @@ each assumed more had to be built than actually does.
 
 | Need | Use | Verdict |
 |---|---|---|
-| Branches card header: title + count pill | `Content.CardTitle` — `{title, description, end, badgeContent, reload, isReloadLoading, className}` (`shared/components/layout/content.tsx`) | **USE WITH PROPS** — `badgeContent` is the count. It renders its title as `<h1>`: the card header carries an explicit `aria-label`, and the count is **polled by the badge's own accessible name**, not the heading's (the count is a sibling `<Badge>`, not part of the heading's name) |
+| Branches card header: title + count pill | **Not `Content.CardTitle`.** `Card` + `CardHeader` with an `<h2 id>` the card's `aria-labelledby` points at, and a sibling `Badge` carrying the count | **LOCAL COMPOSITION** — `Content.CardTitle` is a page-level title component that renders its title as `<h1>`, so several cards on one page would each claim a top-level heading. The count is a sibling badge either way and never part of the heading's accessible name, so it carries its own — poll **the badge's** name, never the heading's |
 | Details card header: title + branch-name caption | **Not `Content.CardTitle`.** The local `RepositoryDetailsCard` composes `Card` + `CardHeader` with an `<h2>` title and an optional `caption` paragraph beneath it, both referenced from the card's `aria-labelledby` | **LOCAL WRAPPER (D1)** — `Content.CardTitle` is a page-level title inside a card, and neither of its slots is the caption slot this needs: `end` renders right-aligned *beside* the title, `description` is styled as page-level lede. The `caption` prop puts the branch name beneath the title and inside the card's accessible name, which FR-018 and FR-025 both require |
 | `default` row marker | `BranchDefaultBadge` (`entities/branches/ui/branch-list-item/branch-default-badge.tsx`) — already renders the literal `default` | **USE AS-IS** |
 | Branch link target | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` (`entities/branches/ui/routing/branch-urls.ts`) | **USE AS-IS** |
@@ -385,11 +410,11 @@ each assumed more had to be built than actually does.
 | Search field | `SearchInput` — `{value, onChange, placeholder, onPressReset, …}` (`shared/components/inputs/search-input.tsx`), pure and controlled, plus `useDebounce` (`shared/hooks/useDebounce.ts`) | **USE AS-IS** |
 | Branch-status filter | `BranchStatusEnum` — `{value, onChange, defaultOpen?}` (`entities/branches/ui/filters/branch-status-enum.tsx`), fully controlled | **USE WITH PROPS** — it renders **nothing in its trigger when `value === null`**, an empty unnamed button that FR-025 forbids: pass an `aria-label` and a placeholder. It also offers all seven `BranchStatus` values including `MERGED` and `DELETING`, which the contract guarantees are **never returned** — restrict to the five returnable statuses, or selecting either always yields the empty state |
 | Empty state | `NoDataFound` — `{message?, icon?}` (`shared/components/errors/no-data-found.tsx`), already `col-span-full py-12`. **Default export** | **USE AS-IS** — card-safe |
-| Permission-denied state | `UnauthorizedScreen` — `{className?, message?, icon?}` (`shared/components/errors/unauthorized-screen.tsx`). **Default export** | **USE WITH PROPS** — page-shaped `flex-1 p-8`, needs a `className` override |
+| Permission-denied state | `UnauthorizedScreen` — `{className?, message?, icon?, defaultOpen?}` (`shared/components/errors/unauthorized-screen.tsx`). **Default export** | **EXTENDED** — page-shaped `flex-1 p-8`, so it needs a `className` override; and its explanation sits in an `Accordion` that starts closed, which inside a card reads as an empty card. `defaultOpen` is additive and forwarded to that accordion |
 | Error state | `ErrorScreen` — `{className?, message?, icon?, hideIcon?}` (`shared/components/errors/error-screen.tsx`) | **USE WITH PROPS** — same override |
 | Loading state | `ObjectTableSkeleton` — `{headerCount, rowCount?, showSelection?}` (`entities/nodes/object/ui/object-table/object-table-skeleton.tsx`) | **EXTENDED** — it previously hardcoded 20 rows and a disabled `Checkbox` in column 0 of every row. This card has no selection column and holds 10 rows a page, so as-is it shipped a phantom checkbox **and** a guaranteed layout jump — precisely what FR-023's loading clause forbids. `rowCount` (default 20) and `showSelection` (default `true`) are additive; the card reaches them through `DataTable`'s `skeletonRowCount` / `skeletonShowSelection` |
 | Info icon beside a value | `Tooltip` from `@infrahub/ui` with `nonInteractiveTrigger` + `InfoIcon`, per `entities/branches/ui/branch-details/branch-attributes.tsx` | **USE AS-IS** |
-| Copy affordance (full hashes, details card only) | `CopyToClipboardButton` — `{data, …AriaButtonProps}` (`shared/components/buttons/copy-to-clipboard-button.tsx`), already wrapped in a `Copied!`/`Copy` Tooltip | **USE AS-IS** |
+| Copy affordance on a full hash | `CopyToClipboardButton` — `{data, …AriaButtonProps}` (`shared/components/buttons/copy-to-clipboard-button.tsx`), already wrapped in a `Copied!`/`Copy` Tooltip | **USE AS-IS** |
 
 **`UnauthorizedScreen` existing is what makes FR-023's denied-vs-empty distinction cheap** — the two
 states differ by *component*, not by a hand-written string.
@@ -401,8 +426,10 @@ Nothing in the app renders a monospace, truncating, short-form hash. The only `f
 `src/shared/components/display/commit-hash.tsx` is justified.
 
 It **composes** `CopyToClipboardButton` rather than reimplementing copying, and takes `copyable` as a
-prop: the design places copy affordances **only** on the full hashes in the details card, never in
-table cells.
+prop: the design places copy affordances **only** on full hashes, never in table cells. The details
+cards render their attribute values through `ObjectDataDisplay`, which knows nothing of this
+primitive, so the card's table cells are its only call site here — see
+[Complexity Tracking](#complexity-tracking).
 
 ### Reuse traps — do not walk into these
 
@@ -445,8 +472,9 @@ actions column this card must not have.
 
 ### Divergence register — all of it, not just paging
 
-**Take this whole register to T094 in IFC-3101** — the existing forum for unresolved canvas
-decisions — as one conversation, not seven.
+**This register is the single record of where this feature departs from the canvas.** Every other
+document points here rather than restating a row. **Take the whole of it to T094 in IFC-3101** — the
+existing forum for unresolved canvas decisions — as one conversation, not row by row.
 
 | # | Canvas says | This feature does | Why | Needs sign-off? |
 |---|---|---|---|---|
@@ -474,10 +502,18 @@ raising it first.
 `DataTable` emits `data-testid="data-table-row"`, and the path of least resistance is `getByTestId`,
 which defeats FR-025. Two changes make the requirement reachable, and both are in place:
 
-- Each row carries `role="row"` with an accessible name including the branch name, so
-  `getByRole("row", { name: /feat\/bgp-policies/ })` works and cells can be scoped with `within(row)`.
-  Otherwise FR-003 can only be written as a whole-table text assertion, which passes whenever *any*
-  row carries the default marker.
+- **`DataTable`'s `semanticTable` flag**, which this card sets. It puts `role="table"` on the grid
+  container and `role="row"` on each row wrapper, so `getByRole("row", { name: /feat\/bgp-policies/ })`
+  works and cells can be scoped with `within(row)`. Otherwise FR-003 can only be written as a
+  whole-table text assertion, which passes whenever *any* row carries the default marker. The card's
+  own columns complete the tree — every header passes `role="columnheader"` and every cell
+  `role="cell"`, because a `row` of plain `<div>`s is invalid ARIA. Everything else the grid emits
+  inside the table — the skeleton rows, the empty state, the count footer — follows the same flag,
+  so the tree is valid in every card state rather than only once rows have arrived.
+
+  **The flag is opt-in and defaults to `false`**, so a table that does not ask for the roles renders
+  exactly as it did. That is what keeps this out of the app-wide-a11y-change class: the roles reach
+  one card, and the next table to want them opts in deliberately.
 - The default marker is `<Badge aria-label="Default branch">default</Badge>`.
 
 **FR-004 and FR-025 conflict on their face**, and the resolution is written into both tests:
@@ -578,15 +614,17 @@ requirement can only be *verified* once there is a card to put it in.
 3. **`DataTable` geometry inside a `Card`.** `min-w-max` plus a sticky first cell inside a rounded
    card will overflow unless an explicit `gridTemplateColumns` is passed and the body scrolls
    horizontally *within* the card.
-4. **Nullable contract fields.** `is_default` and `sync_with_git` are `NonRequiredBooleanValueField`;
-   `sync_status` is a nullable `Dropdown` while `DropdownCell` requires non-null. Guard in the mapper;
-   likely to appear during the preview window.
+4. **Nullable contract fields.** Most of the node's fields may be absent entirely, not merely
+   `{value: null}` — `is_default` is a `NonRequiredBooleanValueField`, and `sync_status` is a
+   nullable `Dropdown` while `DropdownCell` requires non-null. Guard in the mapper; likely to appear
+   during the preview window. The full nullability table is in [data-model.md](data-model.md) §1.
 5. **Filter/page coupling (FR-014).** With independent URL keys, resetting the page on a filter change
    is a manual call, easy to forget on one of the two filters. Put the reset inside a single
    `setFilters` wrapper.
 6. **E2E cost and flake.** Ten `sync_with_git=True` branches each trigger real git-worker branch
-   creation; the card can render before all rows exist, so a total assertion races. **Poll the
-   heading total** rather than asserting once.
+   creation; the card can render before all rows exist, so a total assertion races. **Poll the count
+   badge by its own accessible name** rather than asserting once — the badge is the card heading's
+   sibling, so the total is never part of the heading's name.
 7. **FR-006 asserted by absence.** `not.toHaveTextContent("ago")` passes for a card rendering nothing.
    Pair it with a positive assertion in the same test.
 8. **Row identity.** The contract guarantees one row per branch, so synthesise `id` from `name.value`
@@ -623,7 +661,7 @@ Each argued and then cut by the refactor-friendly framing:
 | Violation | Why needed | Simpler alternative rejected because |
 |---|---|---|
 | **A second pagination mechanism** alongside the legacy `Pagination` / `usePagination` | The legacy component is hard-wired to a single global `QSP.PAGINATION` key, so two paginated tables on one route move together — which this card would immediately break (FR-011). It also assumes the table is the page-level scroll area, which is false inside a card (FR-011a). | Generalising the legacy component in place would put this feature's regression risk on **three unrelated pages that have no tests at all**. The duplication is temporary and signposted: FR-028's knowledge note names the new component as the intended successor, and migrating the three call sites is tracked as follow-on work. |
-| **A new shared primitive `CommitHash`** | Nothing in the app renders a monospace, truncating, short-form hash; the only `font-mono` usage is unrelated and there is no short-hash helper. Two call sites exist on arrival (table cells, non-copyable; details rows, copyable). | Inlining the mono/truncate/short-form logic in both call sites would duplicate the hash-shortening rule — the exact thing that later drifts between the two. It composes `CopyToClipboardButton` rather than reimplementing copying. **Stated honestly**: Principle VII's "two existing callers" bar is met by two callers that both arrive *with this feature* — the letter rather than the spirit. Accepted as a small, self-contained primitive whose alternative is duplicated logic. |
+| **A new shared primitive `CommitHash`** | Nothing in the app renders a monospace, truncating, short-form hash; the only `font-mono` usage is unrelated and there is no short-hash helper. | Inlining the mono/truncate/short-form logic would put the hash-shortening rule at the call site, which is the thing that drifts once a second caller appears. It composes `CopyToClipboardButton` rather than reimplementing copying. **Stated honestly**: Principle VII's "two existing callers" bar is **not** met — the card's table cells are the only call site, and the `copyable` branch exists for the full-hash presentation the design places in the details card, which renders through `ObjectDataDisplay` and does not reach this primitive. Accepted as a small, self-contained primitive whose alternative is the rule inlined in a cell renderer. |
 | **Two `ObjectDataDisplay` instances** mounting two metadata `Sheet`s, inside a new local `RepositoryDetailsCard` (D1) | The alternative edits a file every object-detail page depends on. `ObjectDetailsCard` itself cannot be reused — it hardcodes its title and test id. | See D1 — the refactor framing's own risk register ranked that edit as its highest-blast-radius item. A duplicated closed dialog in the tree is not a behaviour change, and the local wrapper is ~15 lines of `Card` + `CardHeader` around the genuinely reusable `ObjectDataDisplay`. |
 | **A card-scoped `ErrorBoundary`** around the branches card | FR-024 as written holds only for **query** failures: the use case's throw lands in react-query's `isError` and renders in place. A **render-time** failure — a mapper crash on an unexpected preview-window shape, or `DropdownCell` handed a null — propagates to `error-boundary-router` and blanks the whole route. The app has no card-scoped boundary, and the nullable-field risk is the one expected to bite during the preview window. | Relying on the mapper's guards alone makes FR-024 true only for the failure kind that was anticipated. ~15 lines makes it true for all of them. |
 | **No E2E for `CoreReadOnlyRepository`** (FR-027) | The e2e data set contains no `CoreReadOnlyRepository`; the fixture is shared with IFC-3153 and is not budgeted here. The kind differs from the read-write one only by title, row set and one column — all presentation over the same query, with the row-set rule enforced server-side. | Adding the fixture here duplicates work IFC-3153 owns. Component tests cover the three differences. Recorded rather than silent, and flagged to IFC-3153 so the fixture owner inherits the gap. |
