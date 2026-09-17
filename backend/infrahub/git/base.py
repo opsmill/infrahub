@@ -1189,8 +1189,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
           - credentials: "Authentication failed for", "could not read Username".
           - permission (only when ``is_write_operation``): "Write access to repository not granted",
             "Permission to ... denied", "The requested URL returned error: 403", "not allowed to
-            push" (GitLab), "permission denied for writing" (Gitea) - authenticated but not
-            authorized to push. Read operations can return 403 for reasons unrelated to write access
+            push"/"not allowed to upload code" (GitLab), "permission denied for writing" (Gitea) -
+            authenticated but not authorized to push. Read operations can return 403 for reasons unrelated to write access
             (rate limiting, SSO/IP enforcement), so they must not be classified as a push denial.
         These are stable user-facing git/curl strings, but keyed on text - revisit them if
         git or libcurl change their wording.
@@ -1255,6 +1255,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             or "The requested URL returned error: 403" in error.stderr
             or ("Permission to" in error.stderr and "denied" in error.stderr)
             or "not allowed to push" in error.stderr
+            or "not allowed to upload code" in error.stderr
             or "permission denied for writing" in error.stderr.lower()
         ):
             raise RepositoryPermissionError(identifier=name) from error

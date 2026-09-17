@@ -355,12 +355,10 @@ async def test_push_classifies_transport_error(case: PushErrorCase) -> None:
 
 
 class _BranchSyncRepository(InfrahubRepository):
-    """Drives collect_pending_imports over two new branches, one of whose git push fails.
+    """Stubs every collaborator of the collection loop with an in-memory result.
 
-    Every collaborator the collection loop calls is stubbed to an in-memory result so the test
-    isolates a single behavior: a per-branch push failure records that branch as failed without
-    aborting collection of the others. ``git_pushed_branches`` records the branches whose push
-    succeeded so the test can assert the survivor was still processed.
+    One new branch's git push raises a connection error; the other succeeds. ``git_pushed_branches``
+    holds the branches whose push succeeded.
     """
 
     connection_error_branch: str

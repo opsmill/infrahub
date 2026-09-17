@@ -93,6 +93,13 @@ ENRICHMENT_CASES = [
         is_write_operation=True,
     ),
     EnrichmentCase(
+        name="permission_gitlab_not_allowed_upload",
+        stderr="remote: You are not allowed to upload code.\nfatal: unable to access ...",
+        expected=RepositoryPermissionError,
+        command=["git", "push", "--dry-run", "--porcelain", "--delete"],
+        is_write_operation=True,
+    ),
+    EnrichmentCase(
         name="permission_gitea_denied_writing",
         stderr="remote: Gitea: User permission denied for writing.\nfatal: unable to access ...",
         expected=RepositoryPermissionError,
