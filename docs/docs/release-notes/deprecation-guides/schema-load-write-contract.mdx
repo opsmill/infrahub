@@ -191,8 +191,9 @@ nodes[0].relationships[0].cardinality: Input should be 'one' or 'many' (received
 
 Every entry in `result.errors` carries the field path in `.field` and the full message in
 `.message`, and the same three pieces the server responds with: `.loc`, `.input` and
-`.reason`. Reading those three reproduces the server's `detail` entry offline. `result.raise_for_status()` raises a `ValueError` joining all the messages when
-the payload is invalid. Each entry in `result.warnings` additionally carries the schema kind
+`.reason`. Reading those three reproduces the server's `detail` entry offline.
+`result.raise_for_status()` raises a `ValueError` joining all the messages when the payload
+is invalid. Each entry in `result.warnings` additionally carries the schema kind
 and element that set the field in `.kind` and `.element`, and in `.name` the field named
 relative to them — so a nested block is unambiguous (`parameters.id` rather than `id`, which
 *is* settable on the attribute itself).
