@@ -152,8 +152,11 @@ something false. They differ by **component**, not by a hand-written string.
 
 ## 4. Card states (FR-023)
 
-Four distinguishable states — loading, populated, empty and failed — each with exactly one component,
-so no two can render the same text. Empty and failed each split in two by cause.
+Four distinguishable states — loading, populated, empty and failed. Each state's message-bearing
+component is its own, so no two can render the same text. Loading, populated and empty all render
+inside `DataTable` — the skeleton, the rows, and the empty message respectively, with
+`TablePagination` beside it when populated; failed replaces the table outright. Empty and failed each
+split in two by cause.
 
 | State | Component | Copy | Distinguishing fact |
 |---|---|---|---|
