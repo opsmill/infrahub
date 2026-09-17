@@ -41,7 +41,7 @@ from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExha
 from infrahub.pools.default_allocator import DefaultPoolAllocator
 from infrahub.pools.noop_allocator import NoOpPoolAllocator
 from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
-from infrahub.templates.node_applier import NodeTemplateApplier, get_relationship_names_to_read
+from infrahub.templates.node_applier import NodeTemplateApplier, TemplatePoolFields, get_relationship_names_to_read
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
@@ -523,16 +523,16 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def handle_object_template(
         self, fields: dict, db: InfrahubDatabase, errors: list, process_pools: bool = True
-    ) -> set[str]:
+    ) -> TemplatePoolFields:
         """Fill the `fields` parameters with values from an object template if one is in use.
 
         The template is read from the database unless `_object_template` already holds the one to apply.
 
-        Returns the set of field names that have pending pool allocations (deferred in preview mode).
+        Returns which fields the template left for a pool, allocated and pending.
         """
         object_template_field = fields.get(OBJECT_TEMPLATE_RELATIONSHIP_NAME)
         if not object_template_field:
-            return set()
+            return TemplatePoolFields()
 
         try:
             template: CoreObjectTemplate = self._object_template or await self._read_object_template(
@@ -549,7 +549,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     }
                 )
             )
-            return set()
+            return TemplatePoolFields()
 
         self._object_template = template
         # Hand the template over as the node it is: it has just been read, and the relationship layer
@@ -558,17 +558,17 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         fields[OBJECT_TEMPLATE_RELATIONSHIP_NAME] = {**object_template_field, "id": template}
         pool_allocator = DefaultPoolAllocator(db=db, branch=self._branch) if process_pools else NoOpPoolAllocator()
         applier = NodeTemplateApplier(db=db, branch=self._branch, pool_allocator=pool_allocator)
-        applied_fields = await applier.apply(
+        applied = await applier.apply(
             template=template, target_schema=self._schema, target_id=self.id, user_fields=fields
         )
 
         # Update fields dict in-place with applied values
         # Only add new keys, don't overwrite existing ones (user fields take precedence)
-        for key, value in applied_fields.items():
+        for key, value in applied.fields.items():
             if key not in fields:
                 fields[key] = value
 
-        return applier.pool_pending_fields
+        return applied.pools
 
     async def _get_profile_provided_mandatory_fields(
         self, db: InfrahubDatabase, fields: dict[str, Any]
@@ -607,7 +607,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         errors = []
         # Backfill fields with the ones from the template if there's one
-        pool_pending_fields = await self.handle_object_template(
+        template_pools = await self.handle_object_template(
             fields=fields, db=db, errors=errors, process_pools=process_pools
         )
 
@@ -617,9 +617,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 self._profile_provided_rels,
             ) = await self._get_profile_provided_mandatory_fields(db=db, fields=fields)
 
-            errors.extend(self._validate_mandatory_attributes(fields=fields, pool_pending_fields=pool_pending_fields))
             errors.extend(
-                self._validate_mandatory_relationships(fields=fields, pool_pending_fields=pool_pending_fields)
+                self._validate_mandatory_attributes(fields=fields, pool_pending_fields=template_pools.pending)
+            )
+            errors.extend(
+                self._validate_mandatory_relationships(fields=fields, pool_pending_fields=template_pools.pending)
             )
 
             if errors:
@@ -636,7 +638,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         errors.extend(await self._process_fields_relationships(fields=fields, db=db))
         errors.extend(
             await self._process_fields_attributes(
-                fields=fields, db=db, process_pools=process_pools, pool_pending_fields=pool_pending_fields
+                fields=fields, db=db, process_pools=process_pools, template_pools=template_pools
             )
         )
 
@@ -711,7 +713,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return errors
 
     async def _process_fields_attributes(
-        self, fields: dict, db: InfrahubDatabase, process_pools: bool, pool_pending_fields: set[str] | None = None
+        self, fields: dict, db: InfrahubDatabase, process_pools: bool, template_pools: TemplatePoolFields | None = None
     ) -> list[ValidationError]:
         errors: list[ValidationError] = []
 
@@ -737,12 +739,18 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 )
                 if not self._existing:
                     attribute: BaseAttribute = getattr(self, attr_schema.name)
-                    await self.handle_pool(db=db, attribute=attribute, allocate_resources=process_pools)
+                    allocated_pool_id = template_pools.allocated.get(attr_schema.name) if template_pools else None
+                    if allocated_pool_id is not None:
+                        # The template drew the number already; naming the pool here records which
+                        # one accounts for it, it does not ask for a second number.
+                        attribute.from_pool = {"id": allocated_pool_id}
+                    else:
+                        await self.handle_pool(db=db, attribute=attribute, allocate_resources=process_pools)
 
                     if attr_schema.name in self._profile_provided_attrs:
                         continue
 
-                    if pool_pending_fields and attr_schema.name in pool_pending_fields:
+                    if template_pools and attr_schema.name in template_pools.pending:
                         continue
 
                     if process_pools or attribute.from_pool is None:

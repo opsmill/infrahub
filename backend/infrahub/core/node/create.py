@@ -243,7 +243,8 @@ async def allocate_from_resource_pools(
     Handles two cases:
     - Relationship pools (IP address/prefix): allocates a new node and sets it as the relationship peer
     - Attribute pools (Number): allocates a value and sets it on the attribute
-    The pool is set as the source of the attribute/relationship in either case
+    An IP pool is recorded as the source of the relationship. A number pool is not written to the
+    attribute's source: it is derived from the reservation record the allocation leaves behind.
     """
     template_schema = template.get_schema()
     obj_schema = obj.get_schema()
@@ -268,7 +269,8 @@ async def allocate_from_resource_pools(
             attribute = obj.get_attribute(name=original_name)
             attribute.value = allocated_value
             attribute.is_default = False
-            attribute.source = pool.id  # type: ignore[assignment]
+            # Naming the pool records which one accounts for the number; the value is already drawn.
+            attribute.from_pool = {"id": pool.id}
         elif original_name in obj_schema.relationship_names:
             # IP pool: allocate a node and set it as the relationship peer
             allocated_resource = await pool.get_resource(  # type: ignore[attr-defined]
