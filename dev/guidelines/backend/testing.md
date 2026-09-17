@@ -14,7 +14,7 @@ Tests are organized by type:
 - **Integration tests** (`tests/integration/`): Require Neo4j via testcontainers
 - **Integration Docker tests** (`tests/integration_docker/`): Integration tests that run in a full environment with containers
 
-**Pick the cheapest tier the logic actually needs.** If the unit under test operates purely on in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test in `tests/unit/` without database fixtures — do not default to a component test just because nearby tests use one. Reach for the database (component) or a container (integration/integration_docker) only when the behavior genuinely depends on it.
+**Pick the cheapest tier the logic actually needs.** If the unit under test operates purely on in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test in `tests/unit/` without database fixtures — do not default to a component test just because nearby tests use one. Reach for the database (component) or a container (integration/integration_docker) only when the behavior genuinely depends on it. A `Query` subclass is the standing example: its Cypher and the rows it reads back are database behavior, so it is covered at the component layer against the real database — directly or through the resolver or manager that calls it — never by a unit test that hand-builds `QueryResult` rows.
 
 Note that at some point the current integration tests will be merged with the functional tests and the `tests/integration_docker` tests will move to `tests/integration`.
 
@@ -58,6 +58,24 @@ Skip tests that test the framework rather than our integration:
 A useful rule of thumb: if the test would still pass after we delete our implementation and reinstall the library, the test belongs to the library, not us.
 
 **The exception is a bound that encodes a domain invariant.** `Field(ge=1)` on a multiplier that must never shrink the value it scales is not arbitrary tuning — it is a rule about how the feature behaves, and deleting it changes behavior with nothing failing. Assert those, but write the test against the invariant rather than the mechanism: name it for the rule, not for the constraint (`test_<what must hold>`, not `test_field_rejects_zero`), cover the boundary value that must stay legal, and add a test that the **shipped defaults** satisfy the invariant. Cross-field `model_validator` logic is ours outright and always warrants a test.
+
+**Skip a test that duplicates coverage the suite already has.** Before writing one, find the existing coverage by tracing the code's callers to the test that asserts their output. A grep for the class or method name is not a coverage check: the component suite drives most core classes through the resolver or manager that calls them, so the name never appears in the test that covers it. A `Query` subclass whose counts surface as a GraphQL field is covered by the component test that asserts the field against the real database; a unit test that hand-builds `QueryResult` rows for the same method re-asserts a mapping while missing the one thing that can break — what the driver actually returns. When the higher layer leaves a case unasserted, add the case to that test rather than opening a unit file beside it.
+
+```python
+# ❌ Bad - fabricates driver output, so it passes whatever the real query returns
+def test_each_row_is_mapped_to_its_branch() -> None:
+    query = CountChangesByBranch(branch_names=["main", "feature"])
+    query.results = [QueryResult(data=["main", 3], labels=["branch_name", "num_changes"])]
+
+    assert query.get_counts_by_branch() == {"main": 3, "feature": 0}
+
+# ✅ Good - the component test that already drives the query asserts the field it populates,
+#           against the real database
+async def test_one_attribute_change_is_counted(db: InfrahubDatabase, diff_branch: Branch) -> None:
+    result = await run_diff_tree_query(db=db, branch=diff_branch)
+
+    assert result.data["DiffTree"]["num_untracked_diff_changes"] == 2
+```
 
 ## Async tests
 
