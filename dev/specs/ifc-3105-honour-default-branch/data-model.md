@@ -70,7 +70,8 @@ Factories (the single resolution point, D1):
   and `location` (a caller-supplied `location` wins over the node's).
 - Both factories also set `infrahub_branch_name` on the instance from their parameter, so the branch
   the node was read on and the branch the object reports are one value. This changes which branch
-  `_update_operational_status` writes on for every `get_initialized_repo` caller; see
+  `_update_operational_status` names for every `get_initialized_repo` caller, with no change to the
+  value an operator reads back because the attribute is branch-agnostic; see
   `contracts/repository-object.md`.
 - `InfrahubRepository.resolve_checkout_ref()` returns `self.default_branch` without a graph read.
 

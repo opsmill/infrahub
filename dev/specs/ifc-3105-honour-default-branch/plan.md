@@ -274,12 +274,13 @@ factories and the connectivity flow respectively.
   `merge_git_repository` is the second, and it is the easiest to miss because it does not go through
   `get_initialized_repo`. The three-question table in `contracts/repository-object.md` is the check to
   apply to every touched call site, exhaustively — the table earns nothing if a site is skipped.
-- **`operational_status` moves branch.** The factories now set `infrahub_branch_name`, which
-  `_update_operational_status` reads (`git/base.py:247`). Every `get_initialized_repo` caller
-  previously left it `None` and wrote the status on the platform default branch; those writes now
-  land on the operation's branch. This is the intended shape (one branch, one meaning) and is pinned
-  by a unit row in D7, but it is an operator-visible change riding along with a bug fix and belongs in
-  the PR description.
+- **The `operational_status` write names a different branch.** The factories now set
+  `infrahub_branch_name`, which `_update_operational_status` reads (`git/base.py:247`). Every
+  `get_initialized_repo` caller previously left it `None` and named the platform default branch;
+  those writes now name the operation's branch. This is the intended shape (one branch, one meaning)
+  and is pinned by a unit row in D7. It is **not** operator-visible: the attribute is
+  `BranchSupportType.AGNOSTIC`, so one value is shared across branches regardless of which branch a
+  write names.
 - **Warm-clone paths gain a graph read.** Operations that previously succeeded on a warm clone with
   the API degraded now need one GraphQL read at construction. The 30 s factory cache limits this on
   the hot paths but not on the refresh fan-out flows. The read is wrapped as `RepositoryError` so

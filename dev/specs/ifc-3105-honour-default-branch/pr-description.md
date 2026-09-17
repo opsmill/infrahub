@@ -29,8 +29,6 @@ This is PR 2 of 4 in that spec's breakdown. It targets the feature branch, not `
 
 - A repository's configured default branch is now correct on every operation, whether or not the
   worker already had a clone. This is the fix.
-- `operational_status` is written on the branch the operation ran on, instead of always on the
-  platform default branch. It is branch scoped, so this is visible to operators.
 - The repository's location is now known on every construction. When it differs from the URL the
   clone was made with, the object re-points `origin` and fetches. That self healing path previously
   ran only where a location was passed explicitly.
@@ -46,6 +44,10 @@ This is PR 2 of 4 in that spec's breakdown. It targets the feature branch, not `
   model because the model is a pydantic data holder (`.agents/rules/backend-component-design.md`).
 - `get_initialized_repo` and both factories take a required `infrahub_branch_name`, which also joins
   the factory's 30 second cache key because `internal_status` is branch scoped.
+- The factories set `infrahub_branch_name` on the object, so `_update_operational_status` names the
+  branch the operation ran on rather than always the platform default. That attribute is
+  `BranchSupportType.AGNOSTIC`, so the value operators see does not change - it is the write path
+  becoming consistent, not a behavioural difference.
 - The base class lost the optional field and the fallback property, and answers its three former
   uses through abstract hooks. With the property gone, mypy's `attr-defined` check enforces that no
   base class code reads a default branch the read-only kind does not have.
@@ -58,36 +60,27 @@ This is PR 2 of 4 in that spec's breakdown. It targets the feature branch, not `
   removed fallback computed for them anyway.
 - No new mypy or `ty` suppressions. `ty` reports 116 diagnostics, unchanged from the base commit.
 
-### Suggested review order
-
-The diff is 69 files, but roughly 1,200 of the ~2,100 added lines are mechanical test migration. The
-commits are ordered so you can take them one at a time:
-
-| # | Commit | What it is | What to look for |
-|---|---|---|---|
-| 1 | 30b7377ab | resolver | Small, self contained. Nothing calls it yet. |
-| 2 | 143607daa | reproduction | **Fails at this commit.** Read this to understand the bug. |
-| 3 | 6bd8a870b | object contract | **The heart of the change.** Worth the most attention. |
-| 4 | a2ac53232 | call sites | 30 sites, one added argument each. Two real corrections hide here (webhook, user-check kind). |
-| 5 | 1b6d54de3 | test migration | Mechanical, the bulk of the line count. Skim. |
-| 6 | 8520f3ff1 | added coverage | Test only. |
-| 7 | 1dfd1a0b4 | docs | Changelog, knowledge page, regenerated reference. |
-| 8 | 50636e7a0 | review fixes | Responses to cubic: four real bugs, detailed in the commit body. |
-| 9 | f3e1a0df8 | review fixes | Replaces an assertion that could never hold. |
-| 10 | 9cbf009af | review fixes | Drops an unverified claim about branch local status. |
-| 11 | 0d82c2815 | gate record | Spec bookkeeping only. |
-
 ## How to review
 
-**Focus here**
+The diff is 69 files, but roughly 1,200 of the ~2,100 added lines are mechanical test migration.
+Read it by area rather than commit by commit:
 
-- `backend/infrahub/git/repository.py` and `git/base.py` - the contract change (commit 3).
-- `backend/infrahub/git/graph_settings.py` - 60 lines, the single resolution point.
-- The five call sites that name a branch explicitly rather than taking one from a model. Each
-  carries a one line why. A missing branch is a loud `TypeError`; the wrong branch is silent, so
-  these are the ones worth checking:
-  `git_branch_create`, `git_branch_delete`, `branch_deleted`, `merge_git_repository`, and the
-  webhook.
+1. `backend/infrahub/git/graph_settings.py` - 60 lines, the single resolution point. Start here.
+2. `backend/infrahub/git/repository.py` and `git/base.py` - the contract change: two required
+   fields, the fallback property and the optional field gone from the base, three abstract hooks
+   in their place. **The heart of the change, and worth the most attention.**
+3. `backend/infrahub/git/tasks.py` - the fan-outs and the periodic sync, where a wrong branch
+   would be silent rather than loud.
+4. The five call sites that name a branch explicitly rather than taking one from a model. Each
+   carries a one line why. A missing branch is a loud `TypeError`; the wrong branch is silent:
+   `git_branch_create`, `git_branch_delete`, `branch_deleted`, `merge_git_repository`, and the
+   transform webhook.
+5. `backend/tests/functional/git/test_repository_default_branch.py` - the reproduction. It fails
+   on the base commit `0a9cf432a`; read it to see the bug rather than the fix.
+
+Two commits are worth opening as commits: 143607daa, which adds that reproduction and fails at
+that point in the history, and 6bd8a870b, which is the object contract in isolation. Everything
+after them is call site adoption, test migration and responses to review.
 
 **Skim**
 

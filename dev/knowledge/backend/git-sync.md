@@ -25,7 +25,9 @@ the repository node and returns its default branch, internal status and location
   exists only there until its proposed change merges.
 - **The factories set `infrahub_branch_name` on the instance** from that parameter, so the branch the
   node was read on and the branch the object reports are one value. `_update_operational_status`
-  reads it, so status writes land on the branch the operation ran on.
+  reads it, so status writes name the branch the operation ran on. That attribute is
+  `BranchSupportType.AGNOSTIC`, though, so its value is shared across branches and the named branch
+  has no observable effect on what an operator sees.
 - **The read-only kind has no default branch at all.** It tracks a single `ref`, and the three
   branch-mapping hooks below are the identity on it.
 
