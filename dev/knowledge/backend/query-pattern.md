@@ -278,7 +278,11 @@ CALL (attr) {
 }
 ```
 
-Similarly, `CALL ... IN TRANSACTIONS` requires the `MATCH` to be outside the subquery — transform the input first with `MATCH`, then `CALL` only the write operations:
+### Batched writes: server-side or driver-side
+
+Use `CALL { ... } IN TRANSACTIONS` when the rows to write come from the graph: a `MATCH` streams the candidates and each batch commits on its own, so the transaction memory a run needs is bounded by the batch size and the fan-out of its rows, not by the dataset; a row that reaches many edges or attributes, such as `DETACH DELETE` on a high-degree vertex, still holds all of them in its batch. The branch-agnostic retirement, the rollback and the `delete_all_nodes` helper are written this way. Neo4j accepts it only in an auto-commit transaction, so a query that may run inside a caller's transaction needs a plain fallback when `db.is_transaction` is set, and Memgraph does not support it at all.
+
+The `MATCH` that produces the rows stays outside the subquery — transform the input first, then `CALL` only the write operations:
 
 ```cypher
 UNWIND $updates AS update
@@ -288,6 +292,10 @@ CALL (update, attr, old_r, old_av) {
     // write operations here
 } IN TRANSACTIONS OF 500 ROWS
 ```
+
+Add `IN n CONCURRENT TRANSACTIONS` when the batches write disjoint subgraphs, with no vertex two batches would both lock, such as a root. Add `ON ERROR RETRY THEN FAIL` when those concurrent batches can still deadlock on an incidental shared vertex, a parent link or a peer: the server replays the failed batch instead of failing the statement and leaving the client to re-run everything. Committed batches stay committed whichever `ON ERROR` mode is chosen, and per-batch progress is only visible afterwards through `REPORT STATUS AS s`.
+
+Do not use it to push a payload the client already holds. The whole payload travels as one parameter and sits in the outer transaction's memory before the first batch runs, and the concurrency stays inside that one statement. Driver-side batches, one `db.start_session()` per batch under a semaphore with each batch wrapped in `retry_db_transaction`, stream small messages and overlap Python parameter building with database work. For the diff save they were roughly twice as fast as the concurrent server-side form, whose parameter transfer alone took as long as the whole driver-side save.
 
 ## Result Dataclass Pattern
 
