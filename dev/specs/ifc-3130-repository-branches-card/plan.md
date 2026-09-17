@@ -10,9 +10,11 @@ and codegen regenerates to zero drift.
 [plan-synthesis.md](plan-synthesis.md) (the merged output of three parallel plan framings —
 minimal-change, refactor-friendly, test-first), [design.md](design.md), [research.md](research.md).
 
-> **Precedence.** `plan-synthesis.md` outranks `research.md` wherever they disagree; it corrected
-> four of research.md's claims against source. Those corrections are restated in
-> [Corrections carried forward](#corrections-carried-forward) and are authoritative here.
+> **Authority.** This plan, [spec.md](spec.md) and [tasks.md](tasks.md) are authoritative.
+> `plan-synthesis.md` and `research.md` are superseded planning inputs, frozen as the record of how
+> the feature was framed; build nothing from either, and read anything they state that this plan
+> contradicts as out of date. The four claims of `research.md` that were corrected against source
+> are restated under [Corrections carried forward](#corrections-carried-forward).
 
 ## Delivery status
 
@@ -282,8 +284,8 @@ detail only on `.cause`. Two independently testable levels result: a use-case un
 ```text
 dev/specs/ifc-3130-repository-branches-card/
 ├── spec.md                       # 33 requirement statements, 3 user stories, success criteria
-├── research.md                   # Phase 0 — codebase and toolchain facts (superseded in 4 places)
-├── plan-synthesis.md             # Merged output of three parallel plan framings
+├── research.md                   # Phase 0 — codebase and toolchain facts (superseded planning input)
+├── plan-synthesis.md             # Merged output of three parallel plan framings (superseded planning input)
 ├── design.md                     # Verbatim transcription of the design canvas
 ├── plan.md                       # This file
 ├── data-model.md                 # Phase 1 output
@@ -391,6 +393,14 @@ react-query `queryOptions` layer and holds none; putting the document there woul
 
 The seven additive edits cannot break an existing caller: every new prop is optional and every
 default reproduces today's behaviour. Reverting the gate alone still removes the feature.
+
+**Three test-harness files change too**, and one of them has the branch's widest reach:
+
+| File | Edit | Risk |
+|---|---|---|
+| `frontend/app/tests/setup.ts` | **new** — a global `afterEach` clearing `window.location.search` | **Broadest on the branch.** It runs for *every* test file, not just this feature's. Without it nuqs state survives into the next file and the paging tests pass alone but fail in a full run; with it, any test that deliberately leaves a query string behind loses it between cases |
+| `frontend/app/vitest.config.ts` | registers that file as `setupFiles` | **Additive.** There was no `setupFiles` entry before |
+| `frontend/app/biome.jsonc` | an `overrides` entry attaching the GritQL plugin to the branches-card test glob | **Scoped.** No file outside that glob is linted differently |
 
 **The card stays inside the detail route's outlet**, never replacing the page shell — IFC-3150 adds
 its Commits tab as a sibling route on the same page.
@@ -514,7 +524,9 @@ which defeats FR-025. Two changes make the requirement reachable, and both are i
   **The flag is opt-in and defaults to `false`**, so a table that does not ask for the roles renders
   exactly as it did. That is what keeps this out of the app-wide-a11y-change class: the roles reach
   one card, and the next table to want them opts in deliberately.
-- The default marker is `<Badge aria-label="Default branch">default</Badge>`.
+- The default marker is a badge whose visible text is `default`. It carries no author-supplied name:
+  ARIA does not expose one on a role-less element, so the visible text is the name, located with
+  `within(row)` + `getByText`.
 
 **FR-004 and FR-025 conflict on their face**, and the resolution is written into both tests:
 colour may never be used to *locate* an element, but asserting a chip's `backgroundColor` **after**

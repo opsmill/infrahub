@@ -1,5 +1,11 @@
 # Research: codebase and toolchain facts
 
+> **Superseded planning input — build nothing from this document.**
+> [plan.md](plan.md), [spec.md](spec.md) and [tasks.md](tasks.md) are authoritative. This document
+> is kept as the record of what the codebase looked like when the feature was framed; four of its
+> claims were later contradicted by reading source and are corrected in plan.md's
+> *Corrections carried forward*. It is not updated as the design moves.
+
 Verified by reading the source in this worktree, not inferred. Every claim carries a path, and
 where a line number is given it was read at the commit this branch was cut from — treat the path as
 stable and the line as a hint.
