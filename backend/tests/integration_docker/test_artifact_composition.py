@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from git import Repo
 from infrahub_sdk.protocols import CoreArtifact, CoreRepository
 from infrahub_sdk.schema import NodeSchema, SchemaRoot
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
@@ -22,6 +23,10 @@ pytestmark = pytest.mark.shard_a
 
 # Must stay off "main" to cover repositories whose default branch is not the platform one.
 SECTION_GIT_DEFAULT_BRANCH = "production"
+# The stack's own default branch, read as a literal because this process never builds the registry.
+PLATFORM_DEFAULT_BRANCH = "main"
+REGENERATED_ARTIFACT_PREFIX = "! Regenerated section config for"
+DECOY_ARTIFACT_PREFIX = "! Platform default branch config for"
 
 
 async def wait_for_artifacts(
@@ -46,6 +51,32 @@ async def wait_for_artifacts(
         await asyncio.sleep(interval)
 
     raise TimeoutError(f"Artifacts not ready after {retries * interval}s (filter: {expected_name})")
+
+
+async def wait_for_artifact_contents(
+    client: InfrahubClient, expected_name: str, expected: set[str], interval: int = 5, retries: int = 24
+) -> set[str]:
+    """Poll until the stored artifact contents match, then return them.
+
+    Waits for the periodic repository sync to pick the new commit up and for the regeneration it
+    triggers to land, so the budget covers more than one sync cycle.
+
+    Raises:
+        TimeoutError: When the contents do not match within the retry budget.
+
+    """
+    contents: set[str] = set()
+    for _ in range(retries):
+        artifacts = await wait_for_artifacts(client=client, expected_name=expected_name)
+        contents = set()
+        for artifact in artifacts:
+            if artifact.storage_id.value:
+                contents.add(await client.object_store.get(identifier=artifact.storage_id.value))
+        if contents == expected:
+            return contents
+        await asyncio.sleep(interval)
+
+    raise TimeoutError(f"Artifact contents {contents} did not reach {expected} after {retries * interval}s")
 
 
 class TestArtifactComposition(TestInfrahubDockerClient, SchemaCarPerson):
@@ -109,6 +140,43 @@ class TestArtifactComposition(TestInfrahubDockerClient, SchemaCarPerson):
 
         repository = await client.get(kind=CoreRepository, name__value="section-config")
         assert repository.operational_status.value == RepositoryOperationalStatus.ONLINE.value
+
+    async def test_regeneration_on_a_warm_clone_reads_the_configured_default_branch(
+        self, client: InfrahubClient, remote_repos_dir: Path
+    ) -> None:
+        """Regenerating on a worker that already has a clone renders from the configured default branch.
+
+        The remote gains a branch named after the platform default holding a different template, so a
+        regeneration that resolves the wrong branch produces output rather than an error. The assertion
+        is therefore on the artifact's content, not on the regeneration completing.
+        """
+        remote_path = remote_repos_dir / "section-config"
+        remote = Repo(remote_path)
+        template = remote_path / "templates/person_section.j2"
+
+        # A decoy on the branch named after Infrahub's own default branch. It collides with the
+        # mapped default branch, so it is never imported and stays a remote-tracking ref -- which is
+        # exactly the state a warm clone holds it in.
+        remote.git.checkout("-b", PLATFORM_DEFAULT_BRANCH)
+        template.write_text(f"{DECOY_ARTIFACT_PREFIX} {{{{ data.TestingPerson.edges[0].node.name.value }}}}\n")
+        remote.index.add([str(template)])
+        remote.index.commit("Template on the platform default branch")
+
+        remote.git.checkout(SECTION_GIT_DEFAULT_BRANCH)
+        template.write_text(f"{REGENERATED_ARTIFACT_PREFIX} {{{{ data.TestingPerson.edges[0].node.name.value }}}}\n")
+        remote.index.add([str(template)])
+        remote.index.commit("Advance the configured default branch")
+
+        contents = await wait_for_artifact_contents(
+            client=client,
+            expected_name="person-section",
+            expected={
+                f"{REGENERATED_ARTIFACT_PREFIX} John Doe",
+                f"{REGENERATED_ARTIFACT_PREFIX} Jane Doe",
+            },
+        )
+
+        assert not any(content.startswith(DECOY_ARTIFACT_PREFIX) for content in contents)
 
     async def test_add_composite_repo(self, client: InfrahubClient, remote_repos_dir: Path) -> None:
         repo = GitRepo(
