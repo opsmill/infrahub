@@ -204,6 +204,14 @@ The three map one-to-one onto the `loc`, `input` and `reason` of the SDK validat
 details, so `infrahubctl` and any other client can name the field without parsing text.
 The mapping requires the SDK error detail to expose `loc`, `input` and `reason`; bump the
 `python_sdk` pointer alongside any change to that shape.
+
+Each entry carries its reason twice, in `msg` and in `ctx.reason`, because it is built from a
+message *template* whose placeholder the reason fills at render time. The template parameter is
+typed as a literal, so passing the runtime reason in its place would need a type-checker
+suppression the repo does not allow. The duplication is the cost of that constraint, not a
+signal that consumers should read `ctx`: `msg` is the rendered reason and stays the field to
+read.
+
 After changing a field's `visibility` (or adding a field), run
 `invoke backend.generate` and commit the regenerated SDK models alongside the backend
 change; CI fails if the generated artifact is stale.
