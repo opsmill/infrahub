@@ -415,8 +415,7 @@ async def git_branch_create(
 ) -> None:
     log = get_run_logger()
     # Read on the default branch: the branch being created is not guaranteed to be visible to this
-    # worker's client yet. One unreadable repository is isolated, so it does not stop the branch
-    # being created in the others this fan-out covers.
+    # worker's client yet.
     try:
         repo = await InfrahubRepository.init(
             id=repository_id,
@@ -467,8 +466,7 @@ async def git_branch_delete(
     log = get_run_logger()
     await add_branch_tag(branch_name=branch)
     # Read on the default branch: this fan-out runs after the Infrahub branch has been deleted, so
-    # reading the node on it would raise. One unreadable repository is isolated, so it does not stop
-    # the branch being deleted in the others this fan-out covers.
+    # reading the node on it would raise.
     try:
         repo = await InfrahubRepository.init(
             id=repository_id,

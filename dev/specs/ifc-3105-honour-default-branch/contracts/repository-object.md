@@ -61,10 +61,11 @@ object carries two answers to question (b) below.
 
 **One consequence in the write path, intended and pinned by a test.**
 `_update_operational_status` sends `branch_name=self.infrahub_branch_name or registry.default_branch`
-(`git/base.py:247`). Today `_get_initialized_repo` omits the field (`git/repository.py:477`, `:480`),
-so every downstream flow names the platform default branch no matter where it runs; afterwards those
-writes name the branch the operation ran on, which is the branch whose node it read. The read-only
-write-back reads the same field (`git/repository.py:441-442`, `:460`). `operational_status` is
+(`git/base.py::_update_operational_status`). Today `git/repository.py::_get_initialized_repo` omits
+the field, so every downstream flow names the platform default branch no matter where it runs;
+afterwards those writes name the branch the operation ran on, which is the branch whose node it read.
+The read-only write-back reads the same field (`git/repository.py::sync_from_remote` and
+`::update_latest_commit`). `operational_status` is
 declared `BranchSupportType.AGNOSTIC`, so one value is shared across branches and nothing an operator
 reads back changes; research.md D7 carries the unit row that asserts which branch the mutation names.
 
