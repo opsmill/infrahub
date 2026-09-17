@@ -271,9 +271,8 @@ class InfrahubMutationMixin:
             )
 
         # The retry covers the reads a create makes before it opens its transaction, so that a
-        # database too saturated to serve them is replayed rather than reported. It ends at the
-        # commit: reading the node back is retried on its own, so that failing to render an object
-        # never creates a second one.
+        # database too saturated to serve them is replayed rather than reported. Reading the node
+        # back is a scope of its own, so that failing to render an object never creates a second one.
         obj = await run_with_retry(db=db, name="object_create", func=create_object)
 
         async def read_object_back() -> dict[str, Any]:
