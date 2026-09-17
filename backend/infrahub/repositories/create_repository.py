@@ -101,7 +101,6 @@ class RepositoryFinalizer:
                 repository_id=obj.id,
                 repository_name=obj.name.value,
                 location=obj.location.value,
-                default_branch_name=obj.default_branch.value,
                 infrahub_branch_name=branch.name,
                 infrahub_branch_id=str(branch.get_uuid()),
                 internal_status=obj.internal_status.value,

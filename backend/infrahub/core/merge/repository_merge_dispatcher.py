@@ -86,7 +86,6 @@ class RepositoryMergeDispatcher:
                     source_branch=self.source_branch.name,
                     destination_branch=self.destination_branch.name,
                     destination_branch_id=str(self.destination_branch.get_uuid()),
-                    default_branch=repo.default_branch.value,
                     repository_kind=InfrahubKind.REPOSITORY,
                 )
                 await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})

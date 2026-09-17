@@ -23,6 +23,7 @@ async def transform_python(message: TransformPythonData) -> Any:
         repository_id=message.repository_id,
         name=message.repository_name,
         repository_kind=message.repository_kind,
+        infrahub_branch_name=message.branch,
         commit=message.commit,
     )
 
@@ -47,6 +48,7 @@ async def transform_render_jinja2_template(message: TransformJinjaTemplateData) 
         repository_id=message.repository_id,
         name=message.repository_name,
         repository_kind=message.repository_kind,
+        infrahub_branch_name=message.branch,
         commit=message.commit,
     )
 

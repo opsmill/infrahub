@@ -2,6 +2,7 @@ from prefect import flow
 
 from infrahub import lock
 from infrahub.core.constants import RepositoryOperationalStatus
+from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError, RepositoryError
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
@@ -53,6 +54,7 @@ async def fetch(message: messages.RefreshGitFetch) -> None:
         repository_id=message.repository_id,
         name=message.repository_name,
         repository_kind=message.repository_kind,
+        infrahub_branch_name=message.infrahub_branch_name,
     )
 
     # Hold the repo lock so the hard reset doesn't interleave with other git
@@ -86,5 +88,8 @@ async def branch_deleted(message: messages.RefreshGitRepositoryBranchDeleted) ->
         repository_id=message.repository_id,
         name=message.repository_name,
         repository_kind=message.repository_kind,
+        # The branch this message names has just been deleted, so the repository node can only be
+        # read on the default branch.
+        infrahub_branch_name=registry.default_branch,
     )
     await repo.delete_local_branch(branch_name=message.branch_name)
