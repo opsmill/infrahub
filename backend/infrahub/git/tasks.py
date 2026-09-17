@@ -28,6 +28,7 @@ from infrahub.core.constants import (
     RepositoryInternalStatus,
     RepositoryOperationalStatus,
     RepositorySyncStatus,
+    Severity,
     ValidatorConclusion,
 )
 from infrahub.core.manager import NodeManager
@@ -97,18 +98,18 @@ class ImportStatusOutcome:
     """The check result derived from the synchronization status of a repository on a branch."""
 
     conclusion: ValidatorConclusion
-    severity: str
+    severity: Severity
     message: str
 
 
 def evaluate_import_status(*, sync_status: str, repository_name: str, branch_name: str) -> ImportStatusOutcome:
     """Decide whether the objects of a repository are usable on a branch, given its sync status."""
     if sync_status != RepositorySyncStatus.ERROR_IMPORT.value:
-        return ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity="info", message="")
+        return ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity=Severity.INFO, message="")
 
     return ImportStatusOutcome(
         conclusion=ValidatorConclusion.FAILURE,
-        severity="critical",
+        severity=Severity.CRITICAL,
         message=(
             f"The last import of the objects from repository '{repository_name}' on branch '{branch_name}' failed, "
             f"so the objects registered for this repository do not match the content of the branch. Merging would "
@@ -1183,7 +1184,7 @@ async def run_check_repository_import_status(model: CheckRepositoryImportStatus)
         existing_check.created_at.value = Timestamp().to_string()
         existing_check.message.value = outcome.message
         existing_check.conclusion.value = outcome.conclusion.value
-        existing_check.severity.value = outcome.severity
+        existing_check.severity.value = outcome.severity.value
         await existing_check.save()
     else:
         check = await client.create(
@@ -1196,7 +1197,7 @@ async def run_check_repository_import_status(model: CheckRepositoryImportStatus)
                 "created_at": Timestamp().to_string(),
                 "message": outcome.message,
                 "conclusion": outcome.conclusion.value,
-                "severity": outcome.severity,
+                "severity": outcome.severity.value,
             },
         )
         await check.save()

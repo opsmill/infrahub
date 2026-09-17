@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from infrahub.core.constants import RepositoryInternalStatus, RepositorySyncStatus, ValidatorConclusion
+from infrahub.core.constants import RepositoryInternalStatus, RepositorySyncStatus, Severity, ValidatorConclusion
 from infrahub.core.registry import registry
 from infrahub.git import InfrahubRepository
 from infrahub.git.tasks import (
@@ -133,7 +133,7 @@ def test_evaluate_import_status_passes_without_import_error(case: ImportStatusCa
         sync_status=case.sync_status, repository_name="dealership-car", branch_name="remove-ca"
     )
 
-    assert outcome == ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity="info", message="")
+    assert outcome == ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity=Severity.INFO, message="")
 
 
 def test_evaluate_import_status_fails_on_import_error() -> None:
@@ -145,7 +145,7 @@ def test_evaluate_import_status_fails_on_import_error() -> None:
 
     assert outcome == ImportStatusOutcome(
         conclusion=ValidatorConclusion.FAILURE,
-        severity="critical",
+        severity=Severity.CRITICAL,
         message=(
             "The last import of the objects from repository 'dealership-car' on branch 'remove-ca' failed, so the "
             "objects registered for this repository do not match the content of the branch. Merging would apply "
