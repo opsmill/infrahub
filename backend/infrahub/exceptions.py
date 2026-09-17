@@ -128,7 +128,10 @@ class RepositoryPermissionError(RepositoryError):
         super().__init__(
             identifier=identifier,
             message=message
-            or f"Access to repository {identifier} was denied; the credentials are not authorized for the operation.",
+            or (
+                f"Write access to repository {identifier} was denied. The credentials can read but "
+                "not push; grant the token write access to the repository."
+            ),
         )
 
 

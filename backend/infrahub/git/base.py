@@ -1145,17 +1145,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             try:
                 cmd.push("--dry-run", "--porcelain", "--delete", url, f"refs/heads/{WRITE_ACCESS_PROBE_REF}")
             except GitCommandError as exc:
-                try:
-                    cls._raise_enriched_error_static(name=name, location=url, error=exc, is_write_operation=True)
-                except RepositoryPermissionError as classified:
-                    # The read check already passed, so a write-service denial means read-but-not-push.
-                    raise RepositoryPermissionError(
-                        identifier=name,
-                        message=(
-                            f"Write access to repository {name} was denied. The credentials can read but "
-                            "not push; grant the token write access to the repository."
-                        ),
-                    ) from classified
+                cls._raise_enriched_error_static(name=name, location=url, error=exc, is_write_operation=True)
 
     async def _raise_enriched_error(self, error: GitCommandError, branch_name: str | None = None) -> NoReturn:
         try:

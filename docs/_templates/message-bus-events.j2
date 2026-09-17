@@ -33,7 +33,7 @@ For more detailed explanations on how these events are used within Infrahub, see
 | Key | Description | Type | Default Value |
 |-----|-------------|------|---------------|
 {% for field in event.fields -%}
-{{ "| **{}** | {} | {} | {} |".format(field.name, field.description | replace("\n", " "), field.type, field.default if field.default is not none else "None") }}
+{{ "| **{}** | {} | {} | {} |".format(field.name, field.description | replace("\n", " "), field.type, field.default if field.default is not none and field.default != "" else "None") }}
 {% endfor -%}
 <!-- vale on -->
 {% endfor %}
@@ -59,7 +59,7 @@ For more detailed explanations on how these events are used within Infrahub, see
 | Key | Description | Type | Default Value |
 |-----|-------------|------|---------------|
 {% for field in event.fields -%}
-{{ "| **{}** | {} | {} | {} |".format(field.name, field.description | replace("\n", " "), field.type, field.default if field.default is not none else "None") }}
+{{ "| **{}** | {} | {} | {} |".format(field.name, field.description | replace("\n", " "), field.type, field.default if field.default is not none and field.default != "" else "None") }}
 {% endfor -%}
 <!-- vale on -->
 {% endfor %}

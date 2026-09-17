@@ -11,6 +11,7 @@ import pytest
 from git import Repo
 from git.exc import GitCommandError
 from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.branch import BranchData
 from infrahub_sdk.uuidt import UUIDT
 from pydantic import Field
 
@@ -23,7 +24,7 @@ from infrahub.exceptions import (
     RepositoryError,
 )
 from infrahub.git import InfrahubRepository
-from infrahub.git.repository import FailedImport, ImportStep
+from infrahub.git.repository import FailedImport, ImportStep, PendingObjectImport
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.test_client import dummy_async_request
 
@@ -351,6 +352,102 @@ async def test_push_classifies_transport_error(case: PushErrorCase) -> None:
         await repository.push("main")
 
     assert repository.recorded_statuses == []
+
+
+class _BranchSyncRepository(InfrahubRepository):
+    """Drives collect_pending_imports over two new branches, one of whose git push fails.
+
+    Every collaborator the collection loop calls is stubbed to an in-memory result so the test
+    isolates a single behavior: a per-branch push failure records that branch as failed without
+    aborting collection of the others. ``git_pushed_branches`` records the branches whose push
+    succeeded so the test can assert the survivor was still processed.
+    """
+
+    connection_error_branch: str
+    git_pushed_branches: list[str] = Field(default_factory=list)
+
+    async def fetch(self) -> bool:
+        return True
+
+    async def compare_local_remote(self) -> tuple[list[str], list[str]]:
+        return (["branch01", "branch02"], [])
+
+    async def _exclude_read_only_branches(
+        self, new_branches: list[str], updated_branches: list[str]
+    ) -> tuple[list[str], list[str]]:
+        return (new_branches, updated_branches)
+
+    def validate_remote_branch(self, branch_name: str) -> bool:
+        return True
+
+    def _get_mapped_target_branch(self, branch_name: str) -> str:
+        return branch_name
+
+    async def create_branch_in_graph(self, branch_name: str) -> BranchData:
+        return BranchData(
+            id=str(UUIDT.new()),
+            name=branch_name,
+            description=None,
+            sync_with_git=True,
+            is_default=False,
+            has_schema_changes=False,
+            graph_version=1,
+            status="OPEN",
+            origin_branch="main",
+            branched_from="2024-01-01",
+        )
+
+    async def create_branch_in_git(
+        self, branch_name: str, branch_id: str | None = None, push_origin: bool = True
+    ) -> bool:
+        if branch_name == self.connection_error_branch:
+            raise RepositoryConnectionError(identifier=self.name)
+        self.git_pushed_branches.append(branch_name)
+        return True
+
+    def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
+        return f"commit-{branch_name}"
+
+    def create_commit_worktree(self, commit: str) -> bool:
+        return True
+
+    async def update_commit_value(self, branch_name: str, commit: str) -> bool:
+        return True
+
+    async def _collect_staging_imports(
+        self, staging_branch: str | None, updated_branches: list[str]
+    ) -> list[PendingObjectImport]:
+        return []
+
+
+async def test_collect_pending_imports_isolates_per_branch_push_failure() -> None:
+    """A connection failure while pushing one new branch is recorded, not raised over the others."""
+    repository = _BranchSyncRepository(
+        id=UUIDT.new(),
+        name="sync-repo",
+        default_branch_name="main",
+        location="https://gitlab.example.com/net/repo.git",
+        has_origin=True,
+        cache_repo=None,
+        is_read_only=False,
+        internal_status="active",
+        reinitialized=False,
+        infrahub_branch_name="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        connection_error_branch="branch01",
+    )
+
+    collected = await repository.collect_pending_imports()
+
+    assert collected.imports == [PendingObjectImport(infrahub_branch_name="branch02", commit="commit-branch02")]
+    assert collected.failed_imports == [
+        FailedImport(
+            branch_name="branch01",
+            step=ImportStep.COLLECTION,
+            reason=str(RepositoryConnectionError(identifier="sync-repo")),
+        )
+    ]
+    assert repository.git_pushed_branches == ["branch02"]
 
 
 @pytest.fixture

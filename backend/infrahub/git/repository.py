@@ -19,8 +19,6 @@ from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.exceptions import (
     CommitNotFoundError,
-    RepositoryConnectionError,
-    RepositoryCredentialsError,
     RepositoryError,
 )
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
@@ -203,10 +201,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     commit = self.get_commit_value(branch_name=branch_name, remote=False)
                     self.create_commit_worktree(commit=commit)
                     await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
-                except (RepositoryConnectionError, RepositoryCredentialsError):
-                    # The remote itself is unreachable or unauthorized; iterating the remaining
-                    # branches is pointless, so let it abort the whole sync.
-                    raise
                 except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
                     # Isolate per-branch git failures so the other branches are still collected;
                     # graph errors are left to propagate.
@@ -226,8 +220,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
                 try:
                     commit_after = await self.pull(branch_name=branch_name)
-                except (RepositoryConnectionError, RepositoryCredentialsError):
-                    raise
                 except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
                     # Isolate per-branch git failures so the other branches are still collected;
                     # graph errors are left to propagate.

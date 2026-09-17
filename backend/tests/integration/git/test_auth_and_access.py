@@ -148,7 +148,10 @@ class TestAuthAndAccess(TestInfrahubApp):
 
         with pytest.raises(
             RepositoryPermissionError,
-            match=rf"^Access to repository {repo_name} was denied; the credentials are not authorized for the operation\.$",
+            match=(
+                rf"^Write access to repository {repo_name} was denied\. The credentials can read but "
+                r"not push; grant the token write access to the repository\.$"
+            ),
         ) as exc_info:
             await infrahub_repo.push("main")
 
