@@ -4,7 +4,7 @@ import asyncio
 import functools
 import random
 import time
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, nullcontext
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Coroutine, TypeVar
@@ -683,6 +683,19 @@ async def _wait_before_retry(exc: TransientError | ClientError, attempt: int, na
 def retry_db_transaction(
     name: str,
 ) -> Callable[[Callable[..., Coroutine[Any, Any, R]]], Callable[..., Coroutine[Any, Any, R]]]:
+    """Replay the decorated function when the database errors transiently.
+
+    Only the outermost retry scope replays, so decorating a function that already runs inside one
+    costs nothing. The decorated function has to own whatever transaction it runs in: this has no
+    way to reach the database that function uses, so it cannot tell that a transaction the caller
+    opened has already been failed by the error, and replaying work on such a transaction only
+    raises again.
+
+    Args:
+        name: Label to record failed attempts against in the retry metric.
+
+    """
+
     def func_wrapper(func: Callable[..., Coroutine[Any, Any, R]]) -> Callable[..., Coroutine[Any, Any, R]]:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> R:
@@ -729,6 +742,7 @@ async def run_in_transaction_with_retry[T](
     name: str,
     func: Callable[[InfrahubDatabase], Coroutine[Any, Any, T]],
     lock_names: list[str] | None = None,
+    metrics: bool = False,
 ) -> T:
     """Run `func` in a database transaction, replaying it when the database errors transiently.
 
@@ -746,6 +760,9 @@ async def run_in_transaction_with_retry[T](
         name: Label to record failed attempts against in the retry metric.
         func: Receives the transaction to run against and returns the result.
         lock_names: Locks to hold for the duration of each attempt.
+        metrics: Whether to record acquisition and hold times for those locks. The registry keeps
+            one object per lock name with the flag it was first built with, so a name shared with a
+            caller that records them has to pass True here too.
 
     Returns:
         Whatever `func` returns.
@@ -757,14 +774,16 @@ async def run_in_transaction_with_retry[T](
     """
 
     async def run_attempt() -> T:
+        locks = (
+            lock.InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=metrics)
+            if lock_names
+            else nullcontext()
+        )
         if db.is_transaction:
-            async with lock.InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False):
+            async with locks:
                 return await func(db)
 
-        async with (
-            lock.InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False),
-            db.start_transaction() as dbt,
-        ):
+        async with locks, db.start_transaction() as dbt:
             return await func(dbt)
 
     return await run_with_retry(db=db, name=name, func=run_attempt)
