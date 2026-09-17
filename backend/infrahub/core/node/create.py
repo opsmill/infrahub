@@ -18,7 +18,7 @@ from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.relationship.model import PeerWithRelationshipMetadata
 from infrahub.core.schema import GenericSchema
-from infrahub.database import run_in_transaction_with_retry
+from infrahub.database import run_in_transaction_with_retry, run_with_retry
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.templates.node_applier import get_relationship_names_to_read
@@ -506,43 +506,48 @@ async def create_node(
 
     fields_to_validate = list(data)
 
-    preview_obj = await node_class.init(db=db, schema=schema, branch=branch)
-    await preview_obj.new(db=db, process_pools=False, **data)
-    schema_branch = db.schema.get_schema_branch(name=branch.name)
-    lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
-    # The preview read the object template to work out the lock names; the node created under the
-    # lock is built from that same template rather than reading it again.
-    object_template = preview_obj._object_template
-
     node_schema: NonGenericSchemaTypes = schema
 
-    async def create_in_transaction(dbt: InfrahubDatabase) -> Node:
-        node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=dbt, branch=branch)
+    async def create_under_locks() -> Node:
+        preview_obj = await node_class.init(db=db, schema=schema, branch=branch)
+        await preview_obj.new(db=db, process_pools=False, **data)
+        schema_branch = db.schema.get_schema_branch(name=branch.name)
+        lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
+        # The preview read the object template to work out the lock names; the node created under the
+        # lock is built from that same template rather than reading it again.
+        object_template = preview_obj._object_template
 
-        obj = await _do_create_node(
-            node_class=node_class,
-            node_constraint_runner=node_constraint_runner,
-            # A replayed attempt must not inherit the side effects the rolled-back one recorded.
-            creation_context=NodeCreationContext(),
-            db=dbt,
-            schema=node_schema,
-            branch=branch,
-            fields_to_validate=fields_to_validate,
-            data=data,
-            at=at,
-            user_id=user_id,
-            object_template=object_template,
+        async def create_in_transaction(dbt: InfrahubDatabase) -> Node:
+            node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=dbt, branch=branch)
+
+            obj = await _do_create_node(
+                node_class=node_class,
+                node_constraint_runner=node_constraint_runner,
+                # A replayed attempt must not inherit the side effects the rolled-back one recorded.
+                creation_context=NodeCreationContext(),
+                db=dbt,
+                schema=node_schema,
+                branch=branch,
+                fields_to_validate=fields_to_validate,
+                data=data,
+                at=at,
+                user_id=user_id,
+                object_template=object_template,
+            )
+
+            # The node was written from its in-memory state, so the profiles it is linked to are the ones
+            # its payload or its template set on it; there is nothing to read back.
+            if _has_profiles_set(node=obj):
+                node_profiles_applier = NodeProfilesApplier(db=dbt, branch=branch)
+                await node_profiles_applier.apply_profiles(node=obj)
+                await obj.save(db=dbt, user_id=user_id)
+
+            return obj
+
+        return await run_in_transaction_with_retry(
+            db=db, name="object_create", func=create_in_transaction, lock_names=lock_names
         )
 
-        # The node was written from its in-memory state, so the profiles it is linked to are the ones
-        # its payload or its template set on it; there is nothing to read back.
-        if _has_profiles_set(node=obj):
-            node_profiles_applier = NodeProfilesApplier(db=dbt, branch=branch)
-            await node_profiles_applier.apply_profiles(node=obj)
-            await obj.save(db=dbt, user_id=user_id)
-
-        return obj
-
-    return await run_in_transaction_with_retry(
-        db=db, name="object_create", func=create_in_transaction, lock_names=lock_names
-    )
+    # The preview that works out the lock names reads the object template, and a saturated database
+    # fails that read before it fails the write, so the scope replaying it sits outside the transaction.
+    return await run_with_retry(db=db, name="object_create", func=create_under_locks)

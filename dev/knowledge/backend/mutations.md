@@ -21,8 +21,8 @@ GraphQL mutations for creating, updating, upserting, and deleting nodes. All mut
 
 ```
 mutate_create()
-  -> run_with_retry("object_create")   # covers the reads below, before the transaction opens
-       -> create_node()                # create.py
+  -> create_node()                     # create.py
+       -> run_with_retry("object_create")  # replays everything below: the reads and the transaction
             -> preview node (process_pools=False) for lock calculation and template read
             -> run_in_transaction_with_retry(lock_names)  # locks, then the transaction
                  -> _do_create_node()

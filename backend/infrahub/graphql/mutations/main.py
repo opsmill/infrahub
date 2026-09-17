@@ -258,26 +258,22 @@ class InfrahubMutationMixin:
         db = database or graphql_context.db
         schema = cls._meta.active_schema
 
-        async def create_object() -> Node:
-            create_data = dict(data)
-            create_data.update(override_data or {})
+        create_data = dict(data)
+        create_data.update(override_data or {})
 
-            return await create_node(
-                data=create_data,
-                db=db,
-                branch=branch,
-                schema=schema,
-                user_id=graphql_context.assigned_user_id,
-            )
-
-        # The retry covers the reads a create makes before it opens its transaction, so that a
-        # database too saturated to serve them is replayed rather than reported. Reading the node
-        # back is a scope of its own, so that failing to render an object never creates a second one.
-        obj = await run_with_retry(db=db, name="object_create", func=create_object)
+        obj = await create_node(
+            data=create_data,
+            db=db,
+            branch=branch,
+            schema=schema,
+            user_id=graphql_context.assigned_user_id,
+        )
 
         async def read_object_back() -> dict[str, Any]:
             return await build_graphql_response(info=info, db=db, obj=obj)
 
+        # Reading the node back is a scope of its own, so that failing to render an object never
+        # replays the create and leaves a second one behind.
         graphql_response = await run_with_retry(db=db, name="object_create_response", func=read_object_back)
         return obj, cls(**graphql_response)
 
