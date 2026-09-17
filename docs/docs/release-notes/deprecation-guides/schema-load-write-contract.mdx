@@ -116,6 +116,41 @@ nodes[0].attributes[0]: Input tag 'NotAKind' found using 'kind' does not match a
 `GET /api/schema` is unchanged: it still returns the read-only fields such as `inherited`
 and `used_by`.
 
+### How the server reports a rejection
+
+`POST /api/schema/load` and `POST /api/schema/check` reject an invalid payload with a `422`
+request-validation response. Each violation is one entry in `detail`, located on the field
+that caused it:
+
+```json
+{
+  "detail": [
+    {
+      "type": "value_error",
+      "loc": ["body", "schemas", 0, "nodes", 0, "attributes", 0, "optionl"],
+      "msg": "Unknown field, it is not part of the schema",
+      "input": true,
+      "ctx": { "reason": "Unknown field, it is not part of the schema" }
+    }
+  ]
+}
+```
+
+- `loc` runs from the position of the schema in the request body down to the offending field.
+  Integers index into the enclosing list, so `["body", "schemas", 0, "nodes", 0, "attributes",
+  0, "optionl"]` is the `optionl` key of the first attribute of the first node of the first
+  submitted schema.
+- `input` is the value received at that location.
+- `msg` is the reason on its own, without the location or the value. It is repeated in
+  `ctx.reason`.
+
+Reading the field from `loc` and the value from `input` is what lets a client name the problem
+without parsing `msg`. An invalid attribute `kind` is the one case where `loc` stops at the
+attribute rather than at a field, for the reason given above, and `input` is then the whole
+attribute mapping.
+
+A payload with several violations produces one entry per offending field.
+
 ## Who is affected
 
 You are affected if you submit schemas to `POST /api/schema/load` — directly, through
@@ -155,7 +190,8 @@ nodes[0].relationships[0].cardinality: Input should be 'one' or 'many' (received
 ```
 
 Every entry in `result.errors` carries the field path in `.field` and the full message in
-`.message`. `result.raise_for_status()` raises a `ValueError` joining all the messages when
+`.message`, and the same three pieces the server responds with: `.loc`, `.input` and
+`.reason`. Reading those three reproduces the server's `detail` entry offline. `result.raise_for_status()` raises a `ValueError` joining all the messages when
 the payload is invalid. Each entry in `result.warnings` additionally carries the schema kind
 and element that set the field in `.kind` and `.element`, and in `.name` the field named
 relative to them — so a nested block is unambiguous (`parameters.id` rather than `id`, which
