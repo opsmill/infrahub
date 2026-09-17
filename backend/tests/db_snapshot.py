@@ -588,7 +588,9 @@ class DbSnapshotterDeduplicated:
     Captures the state of all nodes, attributes, and relationships on the database, removing duplicated edges/vertices
 
     Notes:
-    - Does not account for the IS_RESERVED edge type
+    - Does not account for the IS_RESERVED edge type. A number pool's record points at the
+      per-object Attribute vertex, which this snapshot does bind, but only its outbound property
+      edges are read, so an inbound record is invisible here.
     - Does not fully account for the same attribute/relationship being removed and re-added on the same branch.
       - for example, if I do the following updates
         - (t0) n.car.name = "a"
