@@ -32,4 +32,4 @@
 ## Notes
 
 - Sources: Notion P1 addendum (precedence 1), Notion revised PRD (precedence 2), Notion base PRD INFP-308 (precedence 3).
-- Two items the spec deliberately defers to planning: the deprecation log behaviour for core attributes, and the validation identifier for the `ranges` parameter change.
+- Two items the spec deliberately defers: the deprecation log behaviour for core attributes is decided at planning time, and the validation identifier for the `ranges` parameter change is confirmed at implementation time.
