@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_sdk.schema import GenericSchemaAPI as SDKGenericSchema
-from infrahub_sdk.schema import format_error_location, validate_schema
+from infrahub_sdk.schema import validate_schema
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.initialization import create_account
@@ -17,7 +17,7 @@ from infrahub.core.schema.basenode_schema import OPTIONAL_TEXT_FIELDS
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_relationships
 from infrahub.database import InfrahubDatabase
-from tests.helpers.schema_errors import error_paths
+from tests.helpers.schema_errors import dotted_path, error_paths
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -706,7 +706,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         detail = response.json()["detail"]
         assert len(detail) == 1, detail
         # The invalid kind fails the attribute discriminator, so the location stops at the attribute.
-        assert format_error_location(loc=detail[0]["loc"]) == "body.schemas[0].nodes[0].attributes[0]"
+        assert dotted_path(loc=detail[0]["loc"]) == "body.schemas[0].nodes[0].attributes[0]"
         assert detail[0]["input"] == {"name": "name", "kind": "NotARealKind"}
         assert "Input tag 'NotARealKind' found using 'kind' does not match any of the expected tags" in detail[0]["msg"]
 
