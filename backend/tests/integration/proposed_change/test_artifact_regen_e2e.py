@@ -86,6 +86,7 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
             name=git_repo.name,
             location=git_repo.path,
             client=client,
+            infrahub_branch_name="main",
         )
 
         commit = repo.get_commit_value(branch_name="main")

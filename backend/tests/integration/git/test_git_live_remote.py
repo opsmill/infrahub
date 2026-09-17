@@ -156,6 +156,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
                 name=auth_failure_dataset["repo_name"],
                 location=auth_failure_dataset["bad_url"],
                 client=client,
+                infrahub_branch_name="main",
             )
 
         updated: CoreRepository = await NodeManager.get_one(
@@ -225,6 +226,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             id=repository.id,
             name=repo_name,
             client=client,
+            infrahub_branch_name="main",
         )
 
         _push_commit_to_remote(gogs_server.container, repo_name, "remote_advance.txt")
@@ -269,6 +271,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             id=repository.id,
             name=repo_name,
             client=client,
+            infrahub_branch_name="main",
         )
 
         # push_origin=False keeps the remote clean; the conflict is purely local.

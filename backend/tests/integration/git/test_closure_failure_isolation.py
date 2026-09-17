@@ -68,6 +68,7 @@ class TestClosureFailureIsolation(TestInfrahubApp):
             name=git_repo.name,
             location=git_repo.path,
             client=client,
+            infrahub_branch_name="main",
         )
 
     async def test_malformed_transform_is_isolated_at_import(

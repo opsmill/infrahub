@@ -90,7 +90,11 @@ class TestTransforms(TestInfrahubApp):
 
         # Initialize the repository on the file system
         return await InfrahubRepository.new(
-            id=obj.id, name=git_repo_car_dealership.name, location=git_repo_car_dealership.path, client=client
+            id=obj.id,
+            name=git_repo_car_dealership.name,
+            location=git_repo_car_dealership.path,
+            client=client,
+            infrahub_branch_name="main",
         )
 
     async def test_transform_jinja(

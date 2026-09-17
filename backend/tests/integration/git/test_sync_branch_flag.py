@@ -48,6 +48,7 @@ class TestSyncBranchFlag(TestInfrahubApp):
             name=git_repo_car_dealership.name,
             location=git_repo_car_dealership.path,
             client=client,
+            infrahub_branch_name="main",
         )
 
         # The branch is created after the clone so the sync treats it as a new remote branch.

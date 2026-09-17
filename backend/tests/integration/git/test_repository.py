@@ -114,6 +114,7 @@ class TestCreateRepository(TestInfrahubApp):
             repository_id=repository.id,
             name=repository.name.value,
             repository_kind=InfrahubKind.REPOSITORY,
+            infrahub_branch_name="main",
         )
 
         with patch("git.remote.Remote.fetch", side_effect=GitCommandError("fetch", stderr=stderr)):
@@ -171,6 +172,7 @@ class TestRepositoryChangedFiles(TestInfrahubApp):
             repository_id=repository.id,
             name=repository.name.value,
             repository_kind=InfrahubKind.REPOSITORY,
+            infrahub_branch_name="main",
         )
 
         # Have commits from oldest to youngest

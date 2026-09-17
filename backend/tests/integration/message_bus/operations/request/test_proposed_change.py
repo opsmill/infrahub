@@ -154,7 +154,9 @@ class TestProposedChange(TestInfrahubApp):
             message_bus=bus, client=client, workflow=WorkflowLocalExecution(), database=db, cache=RedisCache()
         )
 
-        repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
+        repo = await InfrahubRepository.new(
+            id=obj.id, name=file_repo.name, location=file_repo.path, client=client, infrahub_branch_name="main"
+        )
         await sync_repository(repo)
 
         result = await graphql_mutation(

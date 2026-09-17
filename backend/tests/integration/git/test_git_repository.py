@@ -128,6 +128,7 @@ class TestInfrahubClient:
             name=git_repo_infrahub_demo_edge_integration.name,
             location=git_repo_infrahub_demo_edge_integration.path,
             client=client,
+            infrahub_branch_name="main",
         )
 
     async def test_import_schema_files(
@@ -388,7 +389,11 @@ class TestGetMissingFile(TestInfrahubApp):
 
         # Initialize the repository on the file system
         repo = await InfrahubRepository.new(
-            id=obj.id, name=git_repo_car_dealership.name, location=git_repo_car_dealership.path, client=client
+            id=obj.id,
+            name=git_repo_car_dealership.name,
+            location=git_repo_car_dealership.path,
+            client=client,
+            infrahub_branch_name="main",
         )
 
         commit = repo.get_commit_value(branch_name="main")

@@ -50,6 +50,7 @@ class TestSyncMergedBranch(TestInfrahubApp):
             name=git_repo_car_dealership.name,
             location=git_repo_car_dealership.path,
             client=client,
+            infrahub_branch_name="main",
         )
 
         # The branch has been merged: it is read-only but its branch object persists in the graph.

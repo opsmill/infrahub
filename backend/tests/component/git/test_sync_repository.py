@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 from git import Repo
-from infrahub_sdk import Config, InfrahubClient
 from prefect import flow
 
 from infrahub import config
@@ -18,7 +17,7 @@ from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.workers.dependencies import clear_singletons
 from tests.adapters.message_bus import BusRecorder
 from tests.conftest import TestHelper
-from tests.helpers.test_client import dummy_async_request
+from tests.helpers.git import build_repository_client, clone_repository
 
 
 @dataclass
@@ -92,13 +91,21 @@ async def _build_repository(
     )
     await node.save(db=db)
 
-    repo = await InfrahubRepository.new(
+    client = build_repository_client(
+        repository_id=node.id,
+        name="test-repository",
+        location=str(source_dir),
+        default_branch=git_default_branch,
+        internal_status=RepositoryInternalStatus(internal_status),
+        schema_branches=("main", "staging-x"),
+    )
+    repo = await clone_repository(
         id=node.id,
         name="test-repository",
         location=str(source_dir),
-        default_branch_name=git_default_branch,
-        internal_status=internal_status,
-        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        default_branch=git_default_branch,
+        internal_status=RepositoryInternalStatus(internal_status),
+        client=client,
         update_commit_value=False,
     )
     return node, repo
@@ -137,7 +144,6 @@ async def test_sync_broadcasts_synced_commit(
         await sync_repository_from_origin(
             repository=node,
             repo=repo,
-            active_internal_status=scenario.active_internal_status,
             staging_branch=scenario.staging_branch,
             infrahub_branch=infrahub_branch,
             infrahub_branch_id="branch-id",
