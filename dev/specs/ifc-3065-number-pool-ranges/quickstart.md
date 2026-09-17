@@ -74,7 +74,7 @@ cd backend && uv run pytest tests/query_benchmark/test_number_pool_allocation.py
 uv run invoke backend.generate
 uv run invoke schema.generate-graphqlschema
 uv run invoke schema.generate-jsonschema
-cd frontend/app && pnpm codegen
+cd frontend/app && pnpm codegen:graphql && pnpm codegen && pnpm codegen:openapi
 uv run invoke docs.generate
 uv run invoke docs.validate
 ```
