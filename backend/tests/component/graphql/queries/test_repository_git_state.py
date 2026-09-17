@@ -725,6 +725,9 @@ async def test_commit_log_reports_the_unavailable_placeholder(
 
 
 def _drift_rows(answer: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Key the rows by branch, refusing to key away a branch the answer listed twice."""
+    branch_names = [edge["node"]["branch_name"] for edge in answer["edges"]]
+    assert sorted(branch_names) == sorted(set(branch_names)), f"duplicate branch rows: {branch_names}"
     return {edge["node"]["branch_name"]: edge["node"] for edge in answer["edges"]}
 
 
@@ -818,11 +821,7 @@ async def test_drift_still_tracks_a_synced_branch_the_import_filters_exclude(
     synced_branch: Branch,
     import_filters_excluding_branch2: None,
 ) -> None:
-    """Being synchronised with Git admits a branch whatever the filters say, so drift ignores them here.
-
-    The commit-log resolver reaches the filters because it answers for the request branch whether or
-    not that branch syncs; the drift row set has already dropped every branch that does not.
-    """
+    """A synchronised branch keeps its ref and its row even when the import filters exclude its name."""
     response = await graphql_query(
         query=DRIFT_QUERY,
         db=db,
@@ -983,6 +982,11 @@ async def test_drift_answers_as_of_the_requested_time(
     repo = await NodeManager.get_one(db=db, id=repository.id, branch=default_branch, raise_on_error=True)
     repo.commit.value = REMOTE_HEAD
     await repo.save(db=db)
+
+    # Without this the test passes even if the write never landed, since the older value is also
+    # what the past answer should carry.
+    reloaded = await NodeManager.get_one(db=db, id=repository.id, branch=default_branch, raise_on_error=True)
+    assert reloaded.commit.value == REMOTE_HEAD
 
     response = await graphql_query(
         query=DRIFT_QUERY,
