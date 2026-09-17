@@ -185,9 +185,9 @@ export const getFormFieldFromAttribute = ({
               kind: NUMBER_POOL_KIND,
               defaultAllocatedObjectKind: schema.kind!,
               fromPoolRelationshipName: hasFromPoolRelationship ? fromPoolName : undefined,
-              // Pre-fetched: narrowing CoreNumberPool to this kind and attribute is the caller's job.
-              // Left undefined when nothing was pre-fetched, so the pool select queries instead.
-              options: numberPools.length ? numberPools : undefined,
+              // Narrowing CoreNumberPool to this kind and attribute is the caller's job, so a
+              // supplied list that matches nothing means none apply. Only an absent list queries.
+              options: pools === undefined ? undefined : numberPools,
             }
           : undefined,
     };

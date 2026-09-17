@@ -49,11 +49,11 @@ describe("getFormFieldFromAttribute", () => {
         kind: "CoreNumberPool",
         defaultAllocatedObjectKind: "TestTemplate",
         fromPoolRelationshipName: "weight_from_resource_pool",
-        options: undefined,
+        options: [],
       });
     });
 
-    it("leaves the options unset when no pre-fetched pool matches the attribute", () => {
+    it("keeps the options empty when a supplied pool list matches nothing", () => {
       const attributeSchema = generateAttributeSchema({
         name: "weight",
         kind: ATTRIBUTE_KIND.NUMBER,
@@ -91,6 +91,40 @@ describe("getFormFieldFromAttribute", () => {
             attributeName: "height",
           },
         ],
+      });
+
+      expect(field.pool?.options).toEqual([]);
+    });
+
+    it("leaves the options unset when no pool list is supplied", () => {
+      const attributeSchema = generateAttributeSchema({
+        name: "weight",
+        kind: ATTRIBUTE_KIND.NUMBER,
+      });
+
+      const schema = generateNodeSchema({
+        kind: "TestTemplate",
+        attributes: [attributeSchema],
+        relationships: [
+          generateRelationshipSchema({
+            name: `weight${FROM_RESOURCE_POOL_SUFFIX}`,
+            peer: "CoreNumberPool",
+            cardinality: "one",
+            optional: true,
+          }),
+        ],
+      });
+
+      const field = getFormFieldFromAttribute({
+        auth: undefined,
+        isDefaultBranch: undefined,
+        attributeSchema,
+        currentObject: undefined,
+        objectTemplate: undefined,
+        schema,
+        isFilterForm: false,
+        isUpdate: false,
+        isBulkUpdate: false,
       });
 
       expect(field.pool?.options).toBeUndefined();
