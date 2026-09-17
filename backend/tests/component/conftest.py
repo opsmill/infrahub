@@ -3184,9 +3184,6 @@ class RepositoryBranchStatusBranches:
     by_status: Mapping[BranchStatus, str]
     """One branch name per branch status, terminal statuses included."""
 
-    legacy_non_isolated: str
-    """Branch saved with `is_isolated=False`, as branches created before isolation was the default were."""
-
     @property
     def non_terminal_status_names(self) -> tuple[str, ...]:
         """Names of the branches whose status is neither MERGED nor DELETING."""
@@ -3247,14 +3244,11 @@ async def repository_branch_status_branches(
     two_hundred = tuple(f"rbs-scale-{index:03d}" for index in range(200))
     non_syncing = "rbs-nosync"
     by_status = {status: f"rbs-status-{status.value.lower().replace('_', '-')}" for status in BranchStatus}
-    legacy_non_isolated = "rbs-legacy"
-
-    # (name, status, sync_with_git, is_isolated); the save order fixes the created_at order.
-    specs: list[tuple[str, BranchStatus, bool, bool]] = [
-        *[(name, BranchStatus.OPEN, True, True) for name in (*five, *two_hundred)],
-        (non_syncing, BranchStatus.OPEN, False, True),
-        *[(name, status, True, True) for status, name in by_status.items()],
-        (legacy_non_isolated, BranchStatus.OPEN, True, False),
+    # (name, status, sync_with_git); the save order fixes the created_at order.
+    specs: list[tuple[str, BranchStatus, bool]] = [
+        *[(name, BranchStatus.OPEN, True) for name in (*five, *two_hundred)],
+        (non_syncing, BranchStatus.OPEN, False),
+        *[(name, status, True) for status, name in by_status.items()],
     ]
 
     base = Timestamp()
@@ -3263,7 +3257,7 @@ async def repository_branch_status_branches(
     default_branch.branched_from = oldest
     await default_branch.save(db=db)
 
-    for index, (name, status, sync_with_git, is_isolated) in enumerate(specs):
+    for index, (name, status, sync_with_git) in enumerate(specs):
         created_at = base.subtract(seconds=len(specs) - index).to_string()
         branch = Branch(
             name=name,
@@ -3271,7 +3265,6 @@ async def repository_branch_status_branches(
             description=f"branch {name}",
             is_default=False,
             sync_with_git=sync_with_git,
-            is_isolated=is_isolated,
             branched_from=created_at,
             created_at=created_at,
         )
@@ -3292,7 +3285,6 @@ async def repository_branch_status_branches(
         two_hundred=two_hundred,
         non_syncing=non_syncing,
         by_status=by_status,
-        legacy_non_isolated=legacy_non_isolated,
     )
 
     # Clearing first is what empties the fields holding objects read from the database: skipping

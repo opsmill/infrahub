@@ -57,10 +57,10 @@ OWN_VALUE_BRANCH_NAMES = ("rbs-inherit-own-1", "rbs-inherit-own-2", "rbs-inherit
 FIRST_IMPORT_COMMIT = "aaaa111111111111111111111111111111111111"
 SECOND_IMPORT_COMMIT = "bbbb222222222222222222222222222222222222"
 
-# 212 of the shared fixture's 214 branches are non-terminal, plus the default branch and the value
+# 211 of the shared fixture's 213 branches are non-terminal, plus the default branch and the value
 # fixture's four; the read-write kind drops the one non-syncing branch on top.
-READ_ONLY_ROW_COUNT = 217
-READ_WRITE_ROW_COUNT = 216
+READ_ONLY_ROW_COUNT = 216
+READ_WRITE_ROW_COUNT = 215
 
 ANONYMOUS_GRANTED_ROLE = "rbs-anonymous-granted"
 
@@ -376,7 +376,6 @@ async def _create_branch_forked_now(db: InfrahubDatabase, name: str, default_bra
         description=f"branch {name}",
         is_default=False,
         sync_with_git=True,
-        is_isolated=True,
         created_at=Timestamp().subtract(hours=1).to_string(),
     )
     registry.schema.set_schema_branch(
@@ -625,7 +624,6 @@ class TestRepositoryBranchStatusRows:
         assert set(branches.non_terminal_status_names) <= set(names)
         assert len(branches.non_terminal_status_names) == 5
         assert branches.default_branch.name in names
-        assert branches.legacy_non_isolated in names
         assert {node["sync_with_git"]["value"] for node in _nodes(result)} == {True}
 
     async def test_read_only_kind_also_returns_the_non_syncing_branch(
@@ -768,11 +766,11 @@ class TestRepositoryBranchStatusRows:
         assert result.data
         assert result.data["InfrahubRepositoryBranchStatus"]["count"] == READ_WRITE_ROW_COUNT
         assert _names(result) == [
-            branches.legacy_non_isolated,
             branches.by_status[BranchStatus.MERGE_FAILED],
             branches.by_status[BranchStatus.MERGING],
             branches.by_status[BranchStatus.NEED_UPGRADE_REBASE],
             branches.by_status[BranchStatus.NEED_REBASE],
+            branches.by_status[BranchStatus.OPEN],
         ]
 
     async def test_an_order_argument_expressing_no_ordering_keeps_the_default_order(

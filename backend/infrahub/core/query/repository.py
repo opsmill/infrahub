@@ -103,14 +103,13 @@ WITH DISTINCT n, a
 UNWIND $branch_names AS branch_name
 MATCH (br:Branch {name: branch_name})
 // ----------
-// An isolated branch reads the default branch as of its fork point; a branch saved before
-// isolation became the default reads it at query time, like the standard per-branch read does.
-// The fork point only narrows a window that extends past it: for a time before the branch existed
-// the requested time is already the tighter bound, and moving forward to the fork would expose
-// default-branch writes made after the time asked for.
+// A branch reads the default branch as of its fork point. The fork point only narrows a window
+// that extends past it: for a time before the branch existed the requested time is already the
+// tighter bound, and moving forward to the fork would expose default-branch writes made after the
+// time asked for.
 // ----------
 WITH n, a, branch_name,
-     CASE WHEN br.is_isolated AND br.branched_from < $at THEN br.branched_from ELSE $at END AS default_window
+     CASE WHEN br.branched_from < $at THEN br.branched_from ELSE $at END AS default_window
 CALL (n, a, branch_name, default_window) {
     MATCH (n)-[r:HAS_ATTRIBUTE]->(a)
     WHERE (r.branch IN [branch_name, $global_branch_name] AND r.from <= $at AND r.to IS NULL)

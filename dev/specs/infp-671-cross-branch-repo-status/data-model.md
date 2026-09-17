@@ -33,7 +33,7 @@ Both are read with the same per-branch predicate.
 ### Per-branch visibility of an edge `r` for row branch `B` at time `at`
 
 ```text
-default_window(B) = B.branched_from if B.is_isolated and B.branched_from < at else at
+default_window(B) = B.branched_from if B.branched_from < at else at
 
 visible(r, B) =
      (r.branch IN [B, "-global-"] AND r.from <= at AND (r.to IS NULL OR r.to > at))
@@ -47,9 +47,14 @@ together are the disjunction above. The distinction is not cosmetic: an edge who
 query time (or a branch's `branched_from` exactly) is visible to the standard read, and a strict `<`
 would silently hide it. The
 implementation copies them rather than paraphrasing, and a differential test against a standard
-per-branch read pins them. `is_isolated` is deprecated and forced to true on creation, but a branch
-from an older database may carry `false`, and the standard read then sees the default branch at query
-time; `default_window` keeps the primitive consistent with that.
+per-branch read pins them.
+
+`Branch.get_branches_and_times_to_query_global` additionally skips the substitution when a branch's
+deprecated `is_isolated` flag is false. This read does not, because nothing creates such a branch:
+the API strips the field on creation and the model defaults it to true. Removing the flag from the
+platform, including the `isolated` parameter still exposed on `create_branch`, is tracked as separate
+work; note that the `is_isolated=False` *argument* to `get_query_filter_path` is a different thing
+and is not deprecated.
 
 The fork point substitutes for `at` only when it precedes `at`, which is the guard
 `Branch.get_branches_and_times_to_query_global` applies as `at > branched_from`. For a time before

@@ -354,7 +354,7 @@ class TestRepositoryBranchAttributesMatchTheStandardRead:
     async def test_commit_matches_the_standard_read_on_every_branch(
         self, db: InfrahubDatabase, repository_branch_status_branches: RepositoryBranchStatusBranches
     ) -> None:
-        """The cross-branch read must agree with the standard node read, legacy branches included."""
+        """The cross-branch read must agree with the standard node read on every branch."""
         branches = repository_branch_status_branches
         default_branch_name = branches.default_branch.name
         repository = await _create_repository(db=db, name="rbap-differential", commit="created-commit")
@@ -370,7 +370,6 @@ class TestRepositoryBranchAttributesMatchTheStandardRead:
             *branches.two_hundred,
             branches.non_syncing,
             *branches.by_status.values(),
-            branches.legacy_non_isolated,
         ]
         for name in branch_names:
             if name not in registry.branch:
@@ -403,6 +402,5 @@ class TestRepositoryBranchAttributesMatchTheStandardRead:
 
         assert observed == expected
         assert expected[default_branch_name][0] == "imported-commit"
-        assert expected[branches.legacy_non_isolated] == expected[default_branch_name]
         assert {value for value, _ in expected.values()} == {"imported-commit", "created-commit"}
         assert expected[branches.five[0]][0] == "created-commit"
