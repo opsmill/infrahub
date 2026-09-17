@@ -179,7 +179,8 @@ page, and that moving to page 2 returns different rows.
       **Compose `Tooltip` + `LinkButton href={getBranchDetailsUrl(name)}`; do not reuse
       `branches-table/cells/branch-name-cell.tsx`**, which hard-depends on `useAuth()`,
       `StickyLeftCell` and a selection checkbox. Use `BranchDefaultBadge` as-is for the default
-      marker, with `aria-label="Default branch"`. Covers FR-003, FR-003a.
+      marker. Do not add an `aria-label` to it — it is a role-less element, so ARIA exposes no
+      author name and its visible `default` text is the name. Covers FR-003, FR-003a.
 - [x] T025 [US1] Define the columns in
       `frontend/app/src/entities/repository/ui/repository-branches-card/columns.tsx` — Branch,
       `sync_status` (via the existing `DropdownCell`), Commit, plus **Ref on the read-only kind only**.

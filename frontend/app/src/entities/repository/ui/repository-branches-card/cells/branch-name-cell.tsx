@@ -27,7 +27,7 @@ export function BranchNameCell({ name, isDefault, role }: BranchNameCellProps) {
         </LinkButton>
       </Tooltip>
 
-      {isDefault && <BranchDefaultBadge aria-label="Default branch" />}
+      {isDefault && <BranchDefaultBadge />}
     </TableCell>
   );
 }

@@ -1,13 +1,23 @@
 # Plan synthesis
 
+> **Superseded planning input — build nothing from this document.**
+> [plan.md](plan.md), [spec.md](spec.md) and [tasks.md](tasks.md) are authoritative for every
+> requirement, file path, work unit, dependency and verification strategy. This document is kept
+> only as the record of how the three parallel plan framings were merged, and it is frozen at the
+> moment that merge happened. Where it disagrees with the authoritative three — and it does, on
+> work units, page size, file names and how FR-008 is verified — the authoritative three are right
+> and this document is out of date by design. Do not generate tasks, tests or code from it, and do
+> not update it to match today's design: rewriting it would destroy the record it exists to hold.
+
 Three plans were produced in parallel from different framings — minimal-change, refactor-friendly,
 test-first — against [spec.md](spec.md), [research.md](research.md) and [design.md](design.md).
 This document is the merged result: where they agreed it records the decision once, where they
-disagreed it picks and says why. It is the input to `/speckit-plan`.
+disagreed it picks and says why. It was the input to `/speckit-plan`.
 
 ## Corrections the three plans found in the inputs
 
-All three verified source rather than trusting `research.md`. Four corrections, now authoritative:
+All three verified source rather than trusting `research.md`. Four corrections, carried forward into
+`plan.md`:
 
 1. **`renderAt` is not exported** from `frontend/app/tests/components/render.tsx`. It is a private
    helper in `src/shared/components/ui/link-tab.test.tsx`, and it overrides the whole wrapper —

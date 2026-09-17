@@ -144,7 +144,7 @@ export function DataTable<T extends NodeCore>({
         renderEmpty &&
         wrapAsRow(
           semanticTable ? (
-            <div className="contents" role="cell">
+            <div aria-colspan={allHeaders.length} className="contents" role="cell">
               {renderEmpty()}
             </div>
           ) : (

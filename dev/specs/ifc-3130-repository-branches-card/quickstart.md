@@ -42,9 +42,11 @@ ignored"; the ticket is wrong and needs editing by its owner (plan.md open quest
 never sends them: they are not declared in the gql.tada document at all. See
 [the UI contract](contracts/repository-branch-status-ui.md).
 
-**Who sees the fabricated values**: nobody, as long as this stays on the `cross-branch-repo-status-infp-671`
-epic branch, where IFC-3127 also lands. That is why there is no preview banner. If the epic branch is
-ever released with IFC-3127 outstanding, revisit it — see open question Q2 in [plan.md](plan.md).
+**Who sees the fabricated values**: you do, running the card locally, which is exactly what makes it
+buildable and screenshottable today. **No end user does**, as long as this stays on the
+`cross-branch-repo-status-infp-671` epic branch, where IFC-3127 also lands — which is why there is no
+preview banner. If the epic branch is ever released with IFC-3127 outstanding, revisit it — see open
+question Q2 in [plan.md](plan.md).
 
 ---
 
@@ -149,7 +151,7 @@ Vitest runs in **browser mode**. Coverage to expect:
 | Level | What |
 |---|---|
 | Unit | `table-pagination.ts` arithmetic; `use-table-pagination.ts` key scoping (two probes, different keys, one unmoved after the other pages); `partition-fields-by-branch-support.ts` — **one case per `BranchSupportType` value (`aware`, `agnostic`, `local`) plus the node-level fallback**; the use case's error mapping over a raw `extensions` payload |
-| Component | Every FR carrying a component-test verification — both card kinds, the four states, the paging and filter requests, the two details cards, the document order, and **each relationship label appearing exactly once on the page** |
+| Component | Every FR carrying a component-test verification — both card kinds, the four states, the paging requests, the two details cards, the document order, and **each relationship label appearing exactly once on the page**. The filter requests land with work unit 5b, still outstanding |
 
 **Two rules that make or break this suite:**
 
@@ -184,7 +186,12 @@ Any output is a failure.
 > should by touching one of the files deliberately. This belongs in CI (a step in `frontend-lint`,
 > diffing against the merge base) rather than in a human checklist.
 
-### End-to-end (FR-026)
+### End-to-end (FR-026) — pending
+
+> `tests/e2e/repository/test_repository_branches_card.py` is work unit 8, which
+> [plan.md](plan.md)'s delivery status still records as outstanding. Until the file lands the command
+> below fails on a missing path; it is the invocation to use once it does, and the requirements after
+> it are what the test must satisfy.
 
 Run from the **repository root**, not `frontend/app`, and against a **locally built** image — with
 `INFRAHUB_TESTING_IMAGE_VER` unset and no `INFRAHUB_ADDRESS`, the suite boots its testcontainers

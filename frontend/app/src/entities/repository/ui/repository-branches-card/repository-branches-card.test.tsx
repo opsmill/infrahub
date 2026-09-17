@@ -103,6 +103,19 @@ describe("RepositoryBranchesCard", () => {
     expect(component.getByRole("row").elements()).toHaveLength(BRANCH_NAMES_BEFORE.length + 1);
   });
 
+  it("reads a total of one as a single branch", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(
+      toApiResult(generateRepositoryBranchStatusPage({ rows: [generateRepositoryBranchStatus()] }))
+    );
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN
+    await expect.element(component.getByText("1 branch", { exact: true })).toBeVisible();
+  });
+
   it("replaces the rows on a page change", async () => {
     // GIVEN
     const firstPage = generateRepositoryBranchStatusPayloadBefore({ count: 45 });

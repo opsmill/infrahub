@@ -75,6 +75,30 @@ describe("useTablePagination", () => {
     await expect.element(component.getByText(`offset ${PAGE_SIZE * 2}`)).toBeVisible();
   });
 
+  it("falls back to the first page when the url carries a page below one", async () => {
+    // GIVEN
+    window.history.replaceState(null, "", `${window.location.pathname}?branches_page=0`);
+
+    // WHEN
+    const component = await render(<Probe urlKey="branches" />);
+
+    // THEN
+    await expect.element(component.getByText("page 1")).toBeVisible();
+    await expect.element(component.getByText("offset 0")).toBeVisible();
+  });
+
+  it("falls back to the first page when the url carries a page that is not a number", async () => {
+    // GIVEN
+    window.history.replaceState(null, "", `${window.location.pathname}?branches_page=not-a-page`);
+
+    // WHEN
+    const component = await render(<Probe urlKey="branches" />);
+
+    // THEN
+    await expect.element(component.getByText("page 1")).toBeVisible();
+    await expect.element(component.getByText("offset 0")).toBeVisible();
+  });
+
   it("keeps the page size out of the url", async () => {
     // GIVEN
     const component = await render(<Probe urlKey="branches" />);
