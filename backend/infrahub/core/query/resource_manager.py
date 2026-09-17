@@ -176,6 +176,12 @@ class IPAddressPoolSetReserved(Query):
 
 
 class NumberPoolGetAllocated(Query):
+    """Report each number the pool has allocated together with the branch that holds it.
+
+    Reports any active value on any branch for the given NumberPool along with its parent object ID,
+    branch, and reservation identifier.
+    """
+
     name = "numberpool_get_allocated"
     type = QueryType.READ
 
@@ -200,27 +206,14 @@ class NumberPoolGetAllocated(Query):
         self.params.update(branch_params)
 
         query = """
-        MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]-(a:Attribute {name: $node_attribute})-[hv:HAS_VALUE]-(av:AttributeValueIndexed)
-        MATCH (a)-[hs:HAS_SOURCE]-(pool:%(number_pool_kind)s)-[ir:IS_RESERVED]->(av)
-        CALL (a, pool) {
-            MATCH (a)-[hs_int:HAS_SOURCE]->(pool)
-            WHERE hs_int.status = "active"
-                AND hs_int.to IS NULL
-                AND NOT EXISTS {
-                    MATCH (a)-[hs_deleted:HAS_SOURCE {branch: hs_int.branch, status: "deleted"}]->(pool)
-                    WHERE hs_deleted.from > hs_int.from
-                }
-            RETURN true AS hs_active
-            LIMIT 1
-        }
-        WITH n, ha, a, hv, av, hs, pool, ir, hs_active
+        MATCH (pool:Node:%(number_pool_kind)s { uuid: $pool_id })-[ir:IS_RESERVED]->(a:Attribute {name: $node_attribute})
+        MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]->(a)-[hv:HAS_VALUE]->(av:AttributeValueIndexed)
         WHERE
-            hs_active = TRUE
-            AND pool.uuid = $pool_id
-            AND av.value >= $start_range and av.value <= $end_range
-            AND all(r in [ha, hv, hs] WHERE (%(branch_filter)s))
+            av.value >= $start_range and av.value <= $end_range
+            AND all(r in [ha, hv, ir] WHERE (%(branch_filter)s))
             AND ha.status = "active"
             AND hv.status = "active"
+            AND ir.status = "active"
         """ % {
             "node": self.pool.node.value,
             "number_pool_kind": InfrahubKind.NUMBERPOOL,
