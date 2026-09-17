@@ -62,11 +62,15 @@ class RepositoryFinalizer:
                     message=message, response_class=GitRepositoryConnectivityResponse
                 )
             except WorkerTimeoutError:
-                log.warning("repository_removed_after_connectivity_timeout", name=obj.name.value, id=obj.id)
+                log.warning("repository_removal_after_connectivity_timeout", name=obj.name.value, id=obj.id)
                 try:
                     await obj.delete(db=db)
                 except Exception:
+                    # Surfaced here rather than raised, so a failed cleanup cannot replace the
+                    # timeout the caller needs to see.
                     log.exception("repository_removal_failed", name=obj.name.value, id=obj.id)
+                else:
+                    log.warning("repository_removed", name=obj.name.value, id=obj.id)
                 raise
 
             if response.data.success is False:

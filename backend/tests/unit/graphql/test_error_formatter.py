@@ -199,14 +199,22 @@ CASES = [
         exc=WorkerTimeoutError(operation="git.repository.connectivity", timeout_seconds=30),
         expected_code="WORKER_TIMEOUT",
         expected_http_status=504,
-        expected_data={"operation": "git.repository.connectivity", "timeout_seconds": 30},
+        expected_data={
+            "operation": "git.repository.connectivity",
+            "timeout_seconds": 30,
+            "retry_after_seconds": 30,
+        },
     ),
     CodeCase(
         name="worker_timeout_sub_second",
         exc=WorkerTimeoutError(operation="git.repository.connectivity", timeout_seconds=0.25),
         expected_code="WORKER_TIMEOUT",
         expected_http_status=504,
-        expected_data={"operation": "git.repository.connectivity", "timeout_seconds": 1},
+        expected_data={
+            "operation": "git.repository.connectivity",
+            "timeout_seconds": 1,
+            "retry_after_seconds": 1,
+        },
     ),
 ]
 

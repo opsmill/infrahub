@@ -74,6 +74,7 @@ export interface UniquenessViolationData {
 export interface WorkerTimeoutData {
   operation: string;
   timeout_seconds: number;
+  retry_after_seconds: number;
 }
 
 export const ERROR_CODES = {

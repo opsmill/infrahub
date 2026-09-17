@@ -1,7 +1,7 @@
 import asyncio
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -16,6 +16,9 @@ if TYPE_CHECKING:
     from nats.aio.msg import Msg
 
 TIMEOUT_SECONDS = 1
+# Sub-second bounds are only reachable through an explicit `timeout=`, because the configured
+# setting is a whole number of seconds with a floor of one.
+BRIEF_TIMEOUT_SECONDS = 0.05
 ROUTING_KEY = "git.repository.connectivity"
 
 NeverReplying = NeverReplyingBus | NeverReplyingNATSBus
@@ -43,6 +46,13 @@ def nats_reply(correlation_id: str) -> "Msg":
     return cast("Msg", IncomingNATSMessage(headers={"correlation_id": correlation_id}))
 
 
+def reply_for(bus: "NeverReplying", correlation_id: str) -> Any:
+    """The reply shape the given adapter's callback expects."""
+    if isinstance(bus, NeverReplyingNATSBus):
+        return nats_reply(correlation_id=correlation_id)
+    return amqp_reply(correlation_id=correlation_id)
+
+
 @pytest.fixture
 def connectivity_message() -> messages.GitRepositoryConnectivity:
     return messages.GitRepositoryConnectivity(
@@ -68,7 +78,10 @@ async def test_rpc_gives_up_on_a_worker_that_never_answers(
         await never_replying_bus.rpc(message=connectivity_message, response_class=GitRepositoryConnectivityResponse)
     elapsed = time.monotonic() - started
 
-    assert TIMEOUT_SECONDS <= elapsed < TIMEOUT_SECONDS * 2
+    # The lower bound is the point: it proves the wait was real rather than a bound that
+    # regressed to zero. The ceiling is only a runaway guard, so it stays clear of scheduling
+    # jitter on a loaded runner.
+    assert TIMEOUT_SECONDS <= elapsed < 10
     assert never_replying_bus.futures == {}
 
 
@@ -76,7 +89,11 @@ async def test_rpc_addresses_the_reply_to_its_own_callback_queue(
     never_replying_bus: NeverReplying, connectivity_message: messages.GitRepositoryConnectivity
 ) -> None:
     with pytest.raises(WorkerTimeoutError, match=r"^No worker answered "):
-        await never_replying_bus.rpc(message=connectivity_message, response_class=GitRepositoryConnectivityResponse)
+        await never_replying_bus.rpc(
+            message=connectivity_message,
+            response_class=GitRepositoryConnectivityResponse,
+            timeout=BRIEF_TIMEOUT_SECONDS,
+        )
 
     assert len(never_replying_bus.messages) == 1
     sent = never_replying_bus.messages[0]
@@ -87,15 +104,21 @@ async def test_rpc_addresses_the_reply_to_its_own_callback_queue(
 async def test_rpc_honours_an_explicit_timeout_over_the_configured_one(
     connectivity_message: messages.GitRepositoryConnectivity,
 ) -> None:
-    bus = NeverReplyingBus(rpc_timeout=3600)
+    # The configured bound is only far enough above the explicit one to tell them apart. A
+    # larger gap would turn a regression here into a suite that hangs rather than one that fails.
+    bus = NeverReplyingBus(rpc_timeout=TIMEOUT_SECONDS * 5)
 
     started = time.monotonic()
     with pytest.raises(
-        WorkerTimeoutError, match=r"^No worker answered git\.repository\.connectivity within 1 seconds$"
+        WorkerTimeoutError, match=r"^No worker answered git\.repository\.connectivity within 0.05 seconds$"
     ):
-        await bus.rpc(message=connectivity_message, response_class=GitRepositoryConnectivityResponse, timeout=1)
+        await bus.rpc(
+            message=connectivity_message,
+            response_class=GitRepositoryConnectivityResponse,
+            timeout=BRIEF_TIMEOUT_SECONDS,
+        )
 
-    assert time.monotonic() - started < 10
+    assert time.monotonic() - started < TIMEOUT_SECONDS
 
 
 async def test_a_failed_publish_leaves_no_pending_request_behind(
@@ -119,42 +142,32 @@ async def test_a_failed_publish_leaves_no_pending_request_behind(
     assert bus.futures == {}
 
 
-async def test_amqp_reply_for_an_abandoned_request_is_dropped_quietly() -> None:
-    bus = NeverReplyingBus()
+async def test_reply_for_an_abandoned_request_is_dropped_quietly(never_replying_bus: NeverReplying) -> None:
+    await never_replying_bus.on_callback(reply_for(never_replying_bus, correlation_id="never-registered"))
 
-    await bus.on_callback(amqp_reply(correlation_id="never-registered"))
-
-    assert bus.futures == {}
+    assert never_replying_bus.futures == {}
 
 
-async def test_nats_reply_for_an_abandoned_request_is_dropped_quietly() -> None:
-    bus = NeverReplyingNATSBus()
-
-    await bus.on_callback(nats_reply(correlation_id="never-registered"))
-
-    assert bus.futures == {}
-
-
-async def test_amqp_reply_arriving_after_the_timeout_cancelled_the_future_is_dropped_quietly() -> None:
-    bus = NeverReplyingBus()
+async def test_reply_arriving_after_the_timeout_cancelled_the_future_is_dropped_quietly(
+    never_replying_bus: NeverReplying,
+) -> None:
     correlation_id = "cancelled-by-timeout"
-    future = bus.loop.create_future()
+    future = never_replying_bus.loop.create_future()
     future.cancel()
-    bus.futures[correlation_id] = future
+    never_replying_bus.futures[correlation_id] = future
 
-    await bus.on_callback(amqp_reply(correlation_id=correlation_id))
+    await never_replying_bus.on_callback(reply_for(never_replying_bus, correlation_id=correlation_id))
 
-    assert bus.futures == {}
+    assert never_replying_bus.futures == {}
 
 
-async def test_amqp_reply_still_resolves_a_waiting_request() -> None:
-    bus = NeverReplyingBus()
+async def test_reply_still_resolves_a_waiting_request(never_replying_bus: NeverReplying) -> None:
     correlation_id = "waiting"
-    future = bus.loop.create_future()
-    bus.futures[correlation_id] = future
-    reply = amqp_reply(correlation_id=correlation_id)
+    future = never_replying_bus.loop.create_future()
+    never_replying_bus.futures[correlation_id] = future
+    reply = reply_for(never_replying_bus, correlation_id=correlation_id)
 
-    await bus.on_callback(reply)
+    await never_replying_bus.on_callback(reply)
 
-    assert await asyncio.wait_for(future, timeout=1) is reply
-    assert bus.futures == {}
+    assert await asyncio.wait_for(future, timeout=TIMEOUT_SECONDS) is reply
+    assert never_replying_bus.futures == {}

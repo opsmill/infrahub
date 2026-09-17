@@ -209,7 +209,7 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
             CatalogueEntry(
                 description=(
                     "No worker answered the request within the time allowed. "
-                    "The failure is transient; the request may be retried."
+                    "The failure is transient; retry after the number of seconds the payload reports."
                 ),
                 stability="evolving",
                 http_status=504,

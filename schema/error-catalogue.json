@@ -352,7 +352,7 @@
       }
     },
     "WORKER_TIMEOUT": {
-      "description": "No worker answered the request within the time allowed. The failure is transient; the request may be retried.",
+      "description": "No worker answered the request within the time allowed. The failure is transient; retry after the number of seconds the payload reports.",
       "stability": "evolving",
       "http_status": 504,
       "data_schema": {
@@ -365,11 +365,16 @@
           "timeout_seconds": {
             "title": "Timeout Seconds",
             "type": "integer"
+          },
+          "retry_after_seconds": {
+            "title": "Retry After Seconds",
+            "type": "integer"
           }
         },
         "required": [
           "operation",
-          "timeout_seconds"
+          "timeout_seconds",
+          "retry_after_seconds"
         ],
         "title": "WorkerTimeoutData",
         "type": "object"

@@ -80,6 +80,7 @@ class SchemaNotFoundData(PayloadBase):
 class WorkerTimeoutData(PayloadBase):
     operation: str
     timeout_seconds: int
+    retry_after_seconds: int
 
 
 class UndefinedErrorData(PayloadBase):

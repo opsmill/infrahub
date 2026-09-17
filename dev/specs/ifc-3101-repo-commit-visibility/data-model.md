@@ -264,7 +264,7 @@ user would read it to mean, and null for a read-only repository whose remote has
 
 | Code | HTTP | Exception | Payload |
 | --- | --- | --- | --- |
-| `WORKER_TIMEOUT` | 504 | `infrahub.exceptions::WorkerTimeoutError` | `WorkerTimeoutData(operation: str, timeout_seconds: int)` |
+| `WORKER_TIMEOUT` | 504 | `infrahub.exceptions::WorkerTimeoutError` | `WorkerTimeoutData(operation: str, timeout_seconds: int, retry_after_seconds: int)` |
 
 Stability `evolving`. Registered in `infrahub.errors.catalogue::CATALOGUE`, built in
 `infrahub.graphql.error_formatter::_build_payload`.

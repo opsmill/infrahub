@@ -95,7 +95,7 @@ uv run pytest backend/tests/unit/git/state/test_classification.py backend/tests/
 
 1. Timeout, shared-path PR: stop every task worker, run the commit-view query. Expected within
    `INFRAHUB_BROKER_RPC_TIMEOUT` seconds (default 30): a `WORKER_TIMEOUT` error with
-   `http_status 504` and `data.timeout_seconds`. Run the drift query with the workers still
+   `http_status 504` and `data.retry_after_seconds`. Run the drift query with the workers still
    stopped and expect the opposite: no error, every branch row present with its Infrahub-side values,
    `remote_head` null, and `unavailable.reason: TIMEOUT` on the column alone. `GET /api/file/...`
    inherits the same bound and now fails with 504 instead of hanging; its separate defect, where a
