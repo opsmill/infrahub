@@ -1,1 +1,0 @@
-Fixed the diff save of a large branch writing its batches of nodes one at a time: the diff nodes are now created in one pass and their fields are written by several database transactions at once, bounded by the new `diff_save_concurrency` database setting.
