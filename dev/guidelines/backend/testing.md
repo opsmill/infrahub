@@ -153,13 +153,8 @@ import pytest
 @dataclass
 class MyFunctionTestCase:
     name: str
-    """Descriptive name for the test scenario (used as test ID)."""
-
     input_value: str
-    """The input to pass to the function."""
-
     expected: bool
-    """The expected return value."""
 
 
 MY_FUNCTION_TEST_CASES: list[MyFunctionTestCase] = [
@@ -181,7 +176,6 @@ MY_FUNCTION_TEST_CASES: list[MyFunctionTestCase] = [
     [pytest.param(tc, id=tc.name) for tc in MY_FUNCTION_TEST_CASES],
 )
 def test_my_function(test_case: MyFunctionTestCase) -> None:
-    """Test that my_function handles various inputs correctly."""
     result = my_function(value=test_case.input_value)
     assert result == test_case.expected
 ```
@@ -192,22 +186,17 @@ def test_my_function(test_case: MyFunctionTestCase) -> None:
 
 2. **Use descriptive names** that explain the scenario: `empty_dict_returns_false`, `nested_key_found_at_second_level`, `invalid_input_raises_error`.
 
-3. **Document fields with inline docstrings** (per Python standards):
+3. **Leave a field undocumented when its name says what it holds.** An inline docstring below a
+   field is for the one that needs explaining (see [Python standards](python.md#docstrings)):
 
    ```python
    @dataclass
    class QueryTestCase:
        name: str
-       """Descriptive name for the test scenario."""
-
        query: str
-       """The Cypher query to execute."""
-
        params: dict[str, Any]
-       """Parameters to pass to the query."""
-
        expected_count: int
-       """Expected number of results."""
+       """Rows visible on the branch, not rows matched before the branch filter."""
    ```
 
 4. **Define test cases as module-level constants** with uppercase names and type hints:
