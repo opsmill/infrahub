@@ -81,6 +81,64 @@ async def test_convert_object_type_with_profile_error(
     )
 
 
+async def test_convert_object_type_already_converted_returns_not_found(
+    db: InfrahubDatabase, schemas_conversion: dict[str, Any], default_branch: Branch
+) -> None:
+    """Re-converting a node whose id was consumed by a prior conversion reports a not-found error."""
+    schema = SchemaRoot(**schemas_conversion)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    person1 = await Node.init(db=db, schema="TestconvPerson1")
+    await person1.new(db=db, name="John")
+    await person1.save(db=db)
+    person1_node_id = person1.id
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    mapping = {
+        "name": ConversionFieldInput(source_field="name"),
+        "age": ConversionFieldInput(data=ConversionFieldValue(attribute_value=30)),
+    }
+    mapping_dict = {field_name: model.model_dump(mode="json") for field_name, model in mapping.items()}
+
+    first_result = await graphql(
+        schema=gql_params.schema,
+        source=CONVERT_OBJECT_TYPE_MUTATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "node_id": person1_node_id,
+            "target_kind": "TestconvPerson2",
+            "fields_mapping": mapping_dict,
+        },
+    )
+
+    assert first_result.errors is None
+    assert first_result.data
+    assert first_result.data["ConvertObjectType"]["ok"] is True
+
+    second_result = await graphql(
+        schema=gql_params.schema,
+        source=CONVERT_OBJECT_TYPE_MUTATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "node_id": person1_node_id,
+            "target_kind": "TestconvPerson2",
+            "fields_mapping": mapping_dict,
+        },
+    )
+
+    assert second_result.errors
+    assert len(second_result.errors) == 1
+    expected_message = (
+        f"\n        Unable to find the node {person1_node_id} / Node in the database."
+        f"\n        {default_branch.name} | Node | {person1_node_id}\n        "
+    )
+    assert second_result.errors[0].message == expected_message
+
+
 CONVERT_OBJECT_TYPE_MUTATION = """
 mutation ConvertObjectType(
     $node_id: String!
