@@ -97,7 +97,7 @@ async def _build_repository(
         location=str(source_dir),
         default_branch=git_default_branch,
         internal_status=RepositoryInternalStatus(internal_status),
-        schema_branches=("main", "staging-x"),
+        query_branches=("main", "staging-x"),
     )
     repo = await clone_repository(
         id=node.id,

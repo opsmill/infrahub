@@ -412,7 +412,7 @@ class TransformWebhook(Webhook):
                 id=self.repository_id, name=self.repository_name, client=client, infrahub_branch_name=branch
             )
 
-        commit = repo.get_commit_value(branch_name=branch)
+        commit = repo.get_commit_for_infrahub_branch(branch_name=branch)
 
         return await repo.execute_python_transform.with_options(timeout_seconds=self.transform_timeout)(
             branch_name=branch,

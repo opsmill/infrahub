@@ -65,8 +65,12 @@ this list.
 | 13 | `git/tasks.py` | `merge_git_repository` | read-write | **explicit** `model.destination_branch`; drops `default_branch_name=model.default_branch` (T019) | [x] |
 | 14 | `git/tasks.py` | `import_read_only_repository_last_commit` | read-only | unchanged | [x] |
 
-Five of these need their branch named explicitly rather than taken from a model field: rows 2, 9, 10
-and 13, plus row 3 of list 1 (`branch_deleted`) and row 1 of list 1 (`GitFileGet.branch_name`).
+Five sites name their branch explicitly rather than taking it from a model field: rows 2, 9, 10 and
+13 above, plus row 3 of list 1 (`branch_deleted`).
+
+Two more are the opposite case — the model carried no branch, so one was added to it: row 1 of list 1
+(`GitFileGet.branch_name`) and row 14 (`GitDiffNamesOnly.infrahub_branch_name`). Their producers
+already held the branch.
 
 ## 3. Test files constructing a repository object (23 files, 64 sites)
 

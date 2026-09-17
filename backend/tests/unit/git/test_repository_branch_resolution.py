@@ -2,8 +2,7 @@
 
 Omitting the branch fails loudly at call time, but passing the wrong one does not: a repository whose
 default branch is not Infrahub's own would simply be read on the wrong branch. These pin the
-expression each call site forwards, by reading the source rather than instrumenting the flows, which
-would otherwise need most of the worker stood up to observe one argument.
+expression each call site forwards.
 """
 
 from __future__ import annotations

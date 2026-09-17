@@ -306,8 +306,9 @@ the read-write kind (more code, same effect, and keeps the field on the base); k
   `validate_remote_branch` **moves to the read-write class**: it is reached only through
   `collect_pending_imports`, which is defined on `InfrahubRepository`, so no read-only caller exists.
 - Question (b), the Infrahub branch a commit is recorded against: `create_locally` takes a required
-  `checkout_ref: str` and records the commit against `infrahub_branch_name`, which is also a required
-  parameter. **Amended during implementation**: this decision originally fell back to
+  `checkout_ref: str` and records the commit against `infrahub_branch_name`, which is a required
+  parameter but still nullable (`str | None`): a caller may clone without recording, and recording
+  with no branch raises. **Amended during implementation**: this decision originally fell back to
   `registry.default_branch` when no branch was named. That fallback proved unreachable once the
   factories were required to supply a branch — the only caller that could pass `None` records nothing
   — so it is deleted, and recording a commit with no branch raises instead. The platform default

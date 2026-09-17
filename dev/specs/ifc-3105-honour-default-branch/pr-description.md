@@ -34,7 +34,15 @@ differently per worker.
    operators can see. It is the intended shape — one branch, one meaning — and is pinned by a unit
    test asserting which branch the mutation names.
 
-2. **User checks now resolve the repository by its real kind.** `run_user_check` hard-coded
+2. **The repository's location is now known on every construction.** The resolver returns it
+   alongside the default branch, where previously `get_initialized_repo` left it unset. `init`
+   re-points the clone's `origin` and fetches when the configured location differs from the one the
+   clone was made with, so that self-healing path — which used to run only on the paths that passed a
+   location explicitly — now runs on every downstream flow. Intended, but it adds a fetch where the
+   two disagree, and it is what made several integration fixtures fail: they declared a GitHub URL on
+   the node while cloning from a local path.
+
+3. **User checks now resolve the repository by its real kind.** `run_user_check` hard-coded
    `repository_kind=InfrahubKind.REPOSITORY` while also running for read-only repositories. That was
    invisible while construction read nothing from the graph. The kind is now threaded from the
    proposed change's repository list through `TriggerRepositoryUserChecks`, `UserCheckDefinitionData`

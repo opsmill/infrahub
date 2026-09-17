@@ -414,18 +414,20 @@ async def git_branch_create(
     message_bus: InfrahubMessageBus,
 ) -> None:
     log = get_run_logger()
-    # Read on the default branch because this runs in the branch-create fan-out, where the new branch
-    # may not be visible to this worker's client yet. Neither resolved value can affect the outcome:
-    # the branch being created is never Infrahub's default branch, so the remote-branch mapping
-    # returns it unchanged. Getting an object here that needs no branch at all means splitting the
-    # repository class by capability, which is structural work tracked separately.
-    repo = await InfrahubRepository.init(
-        id=repository_id,
-        name=repository_name,
-        location=repository_location,
-        client=client,
-        infrahub_branch_name=registry.default_branch,
-    )
+    # Read on the default branch: the branch being created is not guaranteed to be visible to this
+    # worker's client yet. One unreadable repository is isolated, so it does not stop the branch
+    # being created in the others this fan-out covers.
+    try:
+        repo = await InfrahubRepository.init(
+            id=repository_id,
+            name=repository_name,
+            location=repository_location,
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+    except RepositoryError as exc:
+        log.warning(f"Skipping branch creation for repository '{repository_name}' - {exc.message}")
+        return
 
     async with lock.registry.get(name=repository_name, namespace="repository"):
         await repo.create_branch_in_git(branch_name=branch, branch_id=branch_id, push_origin=True)
@@ -464,17 +466,21 @@ async def git_branch_delete(
 ) -> None:
     log = get_run_logger()
     await add_branch_tag(branch_name=branch)
-    # Read on the default branch because this fan-out runs after the Infrahub branch has been
-    # deleted, so reading the node on it would raise. Neither resolved value is used here: deleting a
-    # remote branch goes through no branch-name mapping. As above, avoiding the read means splitting
-    # the repository class by capability.
-    repo = await InfrahubRepository.init(
-        id=repository_id,
-        name=repository_name,
-        location=repository_location,
-        client=client,
-        infrahub_branch_name=registry.default_branch,
-    )
+    # Read on the default branch: this fan-out runs after the Infrahub branch has been deleted, so
+    # reading the node on it would raise. One unreadable repository is isolated, so it does not stop
+    # the branch being deleted in the others this fan-out covers.
+    try:
+        repo = await InfrahubRepository.init(
+            id=repository_id,
+            name=repository_name,
+            location=repository_location,
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+    except RepositoryError as exc:
+        log.warning(f"Skipping branch deletion for repository '{repository_name}' - {exc.message}")
+        return
+
     async with lock.registry.get(name=repository_name, namespace="repository"):
         if not repo.origin_has_branch(branch):
             return
@@ -733,32 +739,10 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
 
     client = get_client()
 
-    # The merge lands on the destination branch, and the staging decision below comes from the model
-    # rather than from the object, so the destination is the branch to resolve on.
-    repo = await InfrahubRepository.init(
-        id=model.repository_id,
-        name=model.repository_name,
-        client=client,
-        infrahub_branch_name=model.destination_branch,
-    )
-
-    if (
-        model.internal_status == RepositoryInternalStatus.STAGING.value
-        and model.repository_kind == InfrahubKind.REPOSITORY
-    ):
-        log.info(f"Merging {model.repository_kind}")
-        repo_source = await client.get(kind=CoreGenericRepository, id=model.repository_id, branch=model.source_branch)
-        repo_main = await client.get(kind=CoreGenericRepository, id=model.repository_id)
-        repo_main.internal_status.value = RepositoryInternalStatus.ACTIVE.value
-        repo_main.sync_status.value = repo_source.sync_status.value
-
-        commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
-        repo_main.commit.value = commit
-
-        await repo_main.save()
-        log.info(f"Finished merging {model.repository_kind}")
-
-    elif model.repository_kind == InfrahubKind.READONLYREPOSITORY:
+    # A read-only repository merges by copying two attributes between branches and never touches a
+    # local clone, so it must not build a read-write repository object: its node is not a
+    # CoreRepository, and resolving one would raise.
+    if model.repository_kind == InfrahubKind.READONLYREPOSITORY:
         repo_source = await client.get(kind=CoreReadOnlyRepository, id=model.repository_id, branch=model.source_branch)
         repo_destination = await client.get(
             kind=CoreReadOnlyRepository, id=model.repository_id, branch=model.destination_branch
@@ -775,6 +759,29 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
             await repo_destination.save()
 
             log.info(f"Finished merging {model.repository_kind}")
+        return
+
+    # The merge lands on the destination branch, and the staging decision below comes from the model
+    # rather than from the object, so the destination is the branch to resolve on.
+    repo = await InfrahubRepository.init(
+        id=model.repository_id,
+        name=model.repository_name,
+        client=client,
+        infrahub_branch_name=model.destination_branch,
+    )
+
+    if model.internal_status == RepositoryInternalStatus.STAGING.value:
+        log.info(f"Merging {model.repository_kind}")
+        repo_source = await client.get(kind=CoreGenericRepository, id=model.repository_id, branch=model.source_branch)
+        repo_main = await client.get(kind=CoreGenericRepository, id=model.repository_id)
+        repo_main.internal_status.value = RepositoryInternalStatus.ACTIVE.value
+        repo_main.sync_status.value = repo_source.sync_status.value
+
+        commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
+        repo_main.commit.value = commit
+
+        await repo_main.save()
+        log.info(f"Finished merging {model.repository_kind}")
 
     else:
         async with lock.registry.get(name=model.repository_name, namespace="repository"):

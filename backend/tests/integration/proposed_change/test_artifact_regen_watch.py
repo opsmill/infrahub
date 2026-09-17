@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from infrahub_sdk.protocols import CoreTransformJinja2
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
@@ -74,7 +74,8 @@ class TestWatchConfigImport(TestInfrahubApp):
             db=db,
             name=git_repo.name,
             description="test repository",
-            location="git@github.com:mock/test.git",
+            location=git_repo.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 
@@ -154,7 +155,8 @@ class TestWatchConfigRegen(ArtifactRegenGateHarness):
             db=db,
             name=git_repo.name,
             description="test repository",
-            location="git@github.com:mock/test.git",
+            location=git_repo.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await repo_node.save(db=db)
 

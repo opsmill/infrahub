@@ -10,7 +10,7 @@ from infrahub_sdk.protocols import CoreCheckDefinition, CoreGraphQLQuery, CoreTr
 
 from infrahub import config
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
@@ -118,7 +118,8 @@ class TestInfrahubClient:
             db=db,
             name=git_repo_infrahub_demo_edge_integration.name,
             description="test repository",
-            location="git@github.com:mock/test.git",
+            location=git_repo_infrahub_demo_edge_integration.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 
@@ -383,7 +384,8 @@ class TestGetMissingFile(TestInfrahubApp):
             db=db,
             name=git_repo_car_dealership.name,
             description="test repository",
-            location="git@github.com:mock/test.git",
+            location=git_repo_car_dealership.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 

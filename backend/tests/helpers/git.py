@@ -35,7 +35,7 @@ def build_repository_client(
     location: str,
     default_branch: str,
     internal_status: RepositoryInternalStatus = RepositoryInternalStatus.ACTIVE,
-    schema_branches: tuple[str, ...] = ("main",),
+    query_branches: tuple[str, ...] = ("main",),
 ) -> InfrahubClient:
     """Return a client that answers the one repository read a read-write construction performs.
 
@@ -61,14 +61,21 @@ def build_repository_client(
         payload: dict | None = None,
     ) -> httpx.Response:
         request = httpx.Request(method="POST", url="http://mock")
-        if InfrahubKind.REPOSITORY in (payload or {}).get("query", ""):
+        query = (payload or {}).get("query", "")
+        # Only the construction read is answered with a node. Requiring `default_branch` keeps
+        # mutations such as CoreRepositoryUpdate, which also name the kind, on the empty-success path.
+        if InfrahubKind.REPOSITORY in query and "default_branch" in query:
             data = {InfrahubKind.REPOSITORY: {"count": 1, "edges": [{"node": node}]}}
             return httpx.Response(status_code=200, json={"data": data}, request=request)
         return httpx.Response(status_code=200, json={"data": {}}, request=request)
 
     client = InfrahubClient(config=Config(requester=requester))
-    for branch in schema_branches:
-        client.schema.set_cache(schema=registry.schema.get_sdk_schema_branch(name="main"), branch=branch)
+    # An Infrahub branch inherits the default branch's schema, and no caller here diverges it, so the
+    # one schema is cached under every branch this client will be asked to query. Caching per branch
+    # from the registry would instead fail for a branch that exists only in the graph.
+    schema = registry.schema.get_sdk_schema_branch(name=registry.default_branch)
+    for branch in query_branches:
+        client.schema.set_cache(schema=schema, branch=branch)
     return client
 
 

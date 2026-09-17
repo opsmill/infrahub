@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
@@ -84,7 +84,10 @@ class TestTransforms(TestInfrahubApp):
             db=db,
             name=git_repo_car_dealership.name,
             description="test repository",
-            location="git@github.com:mock/test.git",
+            # The node's location has to be the one the clone was made from. A later construction
+            # resolves it from the node, and a mismatch makes the object re-point origin and fetch.
+            location=git_repo_car_dealership.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 

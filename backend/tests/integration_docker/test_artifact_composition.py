@@ -23,8 +23,6 @@ pytestmark = pytest.mark.shard_a
 
 # Must stay off "main" to cover repositories whose default branch is not the platform one.
 SECTION_GIT_DEFAULT_BRANCH = "production"
-# The stack's own default branch, read as a literal because this process never builds the registry.
-PLATFORM_DEFAULT_BRANCH = "main"
 REGENERATED_ARTIFACT_PREFIX = "! Regenerated section config for"
 DECOY_ARTIFACT_PREFIX = "! Platform default branch config for"
 
@@ -141,43 +139,6 @@ class TestArtifactComposition(TestInfrahubDockerClient, SchemaCarPerson):
         repository = await client.get(kind=CoreRepository, name__value="section-config")
         assert repository.operational_status.value == RepositoryOperationalStatus.ONLINE.value
 
-    async def test_regeneration_on_a_warm_clone_reads_the_configured_default_branch(
-        self, client: InfrahubClient, remote_repos_dir: Path
-    ) -> None:
-        """Regenerating on a worker that already has a clone renders from the configured default branch.
-
-        The remote gains a branch named after the platform default holding a different template, so a
-        regeneration that resolves the wrong branch produces output rather than an error. The assertion
-        is therefore on the artifact's content, not on the regeneration completing.
-        """
-        remote_path = remote_repos_dir / "section-config"
-        remote = Repo(remote_path)
-        template = remote_path / "templates/person_section.j2"
-
-        # A decoy on the branch named after Infrahub's own default branch. It collides with the
-        # mapped default branch, so it is never imported and stays a remote-tracking ref -- which is
-        # exactly the state a warm clone holds it in.
-        remote.git.checkout("-b", PLATFORM_DEFAULT_BRANCH)
-        template.write_text(f"{DECOY_ARTIFACT_PREFIX} {{{{ data.TestingPerson.edges[0].node.name.value }}}}\n")
-        remote.index.add([str(template)])
-        remote.index.commit("Template on the platform default branch")
-
-        remote.git.checkout(SECTION_GIT_DEFAULT_BRANCH)
-        template.write_text(f"{REGENERATED_ARTIFACT_PREFIX} {{{{ data.TestingPerson.edges[0].node.name.value }}}}\n")
-        remote.index.add([str(template)])
-        remote.index.commit("Advance the configured default branch")
-
-        contents = await wait_for_artifact_contents(
-            client=client,
-            expected_name="person-section",
-            expected={
-                f"{REGENERATED_ARTIFACT_PREFIX} John Doe",
-                f"{REGENERATED_ARTIFACT_PREFIX} Jane Doe",
-            },
-        )
-
-        assert not any(content.startswith(DECOY_ARTIFACT_PREFIX) for content in contents)
-
     async def test_add_composite_repo(self, client: InfrahubClient, remote_repos_dir: Path) -> None:
         repo = GitRepo(
             name="composite-config",
@@ -201,3 +162,43 @@ class TestArtifactComposition(TestInfrahubDockerClient, SchemaCarPerson):
             "! Composite config for John Doe\n! Section config for John Doe\n! End composite",
             "! Composite config for Jane Doe\n! Section config for Jane Doe\n! End composite",
         }
+
+    async def test_regeneration_on_a_warm_clone_reads_the_configured_default_branch(
+        self, client: InfrahubClient, remote_repos_dir: Path, default_branch: str
+    ) -> None:
+        """Regenerating on a worker that already has a clone renders from the configured default branch.
+
+        The remote gains a branch named after the platform default holding a different template, so a
+        regeneration that resolves the wrong branch produces output rather than an error. The assertion
+        is therefore on the artifact's content, not on the regeneration completing.
+
+        Runs last in the class: it advances the section template, and the composite artifacts asserted
+        above inline the section artifact's content.
+        """
+        remote_path = remote_repos_dir / "section-config"
+        remote = Repo(remote_path)
+        template = remote_path / "templates/person_section.j2"
+
+        # A decoy on the branch named after Infrahub's own default branch. It collides with the
+        # mapped default branch, so it is never imported and stays a remote-tracking ref -- which is
+        # exactly the state a warm clone holds it in.
+        remote.git.checkout("-b", default_branch)
+        template.write_text(f"{DECOY_ARTIFACT_PREFIX} {{{{ data.TestingPerson.edges[0].node.name.value }}}}\n")
+        remote.index.add([str(template)])
+        remote.index.commit("Template on the platform default branch")
+
+        remote.git.checkout(SECTION_GIT_DEFAULT_BRANCH)
+        template.write_text(f"{REGENERATED_ARTIFACT_PREFIX} {{{{ data.TestingPerson.edges[0].node.name.value }}}}\n")
+        remote.index.add([str(template)])
+        remote.index.commit("Advance the configured default branch")
+
+        contents = await wait_for_artifact_contents(
+            client=client,
+            expected_name="person-section",
+            expected={
+                f"{REGENERATED_ARTIFACT_PREFIX} John Doe",
+                f"{REGENERATED_ARTIFACT_PREFIX} Jane Doe",
+            },
+        )
+
+        assert not any(content.startswith(DECOY_ARTIFACT_PREFIX) for content in contents)

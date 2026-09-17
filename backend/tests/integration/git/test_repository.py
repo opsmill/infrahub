@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from git import GitCommandError
 
-from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.exceptions import CommitNotFoundError, RepositoryError
@@ -148,6 +148,7 @@ class TestRepositoryChangedFiles(TestInfrahubApp):
             description="test repository",
             location=file_repo.path,
             commit=file_repo.repo.commit("main").hexsha,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 

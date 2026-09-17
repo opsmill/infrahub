@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.protocols import CoreTransformJinja2
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
 from tests.helpers.file_repo import FileRepo
@@ -59,7 +59,8 @@ class TestClosureFailureIsolation(TestInfrahubApp):
             db=db,
             name=git_repo.name,
             description="test repository",
-            location="git@github.com:mock/test.git",
+            location=git_repo.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 

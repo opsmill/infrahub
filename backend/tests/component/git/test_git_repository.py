@@ -584,6 +584,7 @@ async def test_merge_writes_back_to_non_main_default_branch(
 
 async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
     db: InfrahubDatabase,
+    default_branch: Branch,
     register_core_models_schema: None,
     dependency_provider: Provider,
     prefect_test_fixture: None,
@@ -622,8 +623,8 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
         repository_id=repo_node.id,
         repository_name=str(git_upstream_repo_01["name"]),
         source_branch=branch01.name,
-        destination_branch="main",
-        destination_branch_id=branch01.id,
+        destination_branch=default_branch.name,
+        destination_branch_id=str(default_branch.get_uuid()),
         internal_status=RepositoryInternalStatus.ACTIVE.value,
         repository_kind=InfrahubKind.REPOSITORY,
     )

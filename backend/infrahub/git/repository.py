@@ -514,11 +514,20 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 
     @classmethod
     async def new(cls, **kwargs: Any) -> InfrahubReadOnlyRepository:
-        if "ref" not in kwargs or "infrahub_branch_name" not in kwargs:
+        """Clone a read-only repository locally on the ref it tracks.
+
+        Raises:
+            ValueError: When the ref or the Infrahub branch is missing, either absent or None. The
+                clone has to check something out, so neither can be defaulted.
+
+        """
+        if not kwargs.get("ref") or not kwargs.get("infrahub_branch_name"):
             raise ValueError("ref and infrahub_branch_name are mandatory to initialize a new Read-Only repository")
 
         self = cls(**kwargs)
-        await self.create_locally(checkout_ref=self.ref, infrahub_branch_name=self.infrahub_branch_name)
+        await self.create_locally(
+            checkout_ref=await self.resolve_checkout_ref(), infrahub_branch_name=self.infrahub_branch_name
+        )
         log.info("Created new repository locally.", repository=self.name)
         return self
 

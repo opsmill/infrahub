@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from git.repo import Repo
 
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
@@ -42,6 +42,7 @@ class TestSyncMergedBranch(TestInfrahubApp):
             name=git_repo_car_dealership.name,
             description="test repository",
             location=git_repo_car_dealership.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 

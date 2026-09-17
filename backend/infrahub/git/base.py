@@ -595,6 +595,15 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
         raise NotImplementedError()
 
+    def get_commit_for_infrahub_branch(self, branch_name: str, remote: bool = False) -> str:
+        """Return the commit tracked for an Infrahub branch name.
+
+        `get_commit_value` takes a branch as the remote names it. A caller holding an Infrahub branch
+        has to map it first, because the remote has no branch named after Infrahub's default branch
+        when this repository's default branch differs.
+        """
+        return self.get_commit_value(branch_name=self._get_mapped_remote_branch(branch_name=branch_name), remote=remote)
+
     def has_conflicting_changes(self, target_branch: str, source_branch: str) -> bool:
         """Check if merging source_branch into target_branch would produce conflicts.
 

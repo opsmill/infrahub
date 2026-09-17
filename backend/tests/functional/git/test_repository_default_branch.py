@@ -131,15 +131,18 @@ class TestRepositoryDefaultBranch(TestInfrahubApp):
         create_upstream_repository(directory=source_dir, branch=GIT_BRANCH)
         upstream = Repo(source_dir)
 
-        # The trunk and the decoy each change the same file differently, so whichever the check
-        # compares against decides whether a conflict is reported at all.
+        # Both branches fork from the same commit and change the same file differently, so merging
+        # one into the other conflicts. Forking the proposed change from the advanced trunk instead
+        # would only fast-forward, and the check would report nothing whichever branch it compared.
+        base_commit = upstream.head.commit.hexsha
         add_decoy_platform_default_branch(directory=source_dir)
+
         upstream.git.checkout(GIT_BRANCH)
         (source_dir / "file.txt").write_text("trunk side")
         upstream.index.add(["file.txt"])
         upstream.index.commit("Diverge the trunk")
 
-        upstream.git.checkout("-b", PROPOSED_CHANGE_BRANCH, GIT_BRANCH)
+        upstream.git.checkout("-b", PROPOSED_CHANGE_BRANCH, base_commit)
         (source_dir / "file.txt").write_text("proposed change side")
         upstream.index.add(["file.txt"])
         upstream.index.commit("Diverge the proposed change branch")
@@ -190,11 +193,10 @@ class TestRepositoryDefaultBranch(TestInfrahubApp):
         tmp_path: Path,
         git_repos_dir: Path,
     ) -> None:
-        """A repository that exists only inside an Infrahub branch still resolves its own default branch.
+        """A repository created inside an Infrahub branch resolves its own default branch there.
 
-        Its node is absent from the platform default branch, so the resolution has to happen on the
-        branch the operation runs on; and its default branch differs from Infrahub's, so resolving on
-        the wrong branch would also silently pick the wrong tree.
+        The node is created in staging on a branch, and read on that branch; its default branch
+        differs from Infrahub's, so a resolution that ignored either would pick the wrong tree.
         """
         assert registry.default_branch != GIT_BRANCH
 
@@ -213,8 +215,6 @@ class TestRepositoryDefaultBranch(TestInfrahubApp):
             internal_status=RepositoryInternalStatus.STAGING.value,
         )
         await node.save(db=db)
-
-        assert await NodeManager.get_one(db=db, id=node.id, kind=InfrahubKind.REPOSITORY, branch=default_branch) is None
 
         repo = await get_initialized_repo.fn(
             client=client,

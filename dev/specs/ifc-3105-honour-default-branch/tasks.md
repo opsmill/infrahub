@@ -42,7 +42,7 @@ a revert is clean.
 
 **T071 and T072 are deliberately not in PR 1.** Both are tracker work that produces no repo artifact,
 so neither can be "in" a PR. T071 (the PRD amendment) rides with T073, where the same reasoning gets
-written for the PR description. T072 (three follow-ups to file) happens whenever, and the sooner the
+written for the PR description. T072 (four follow-ups to file) happens whenever, and the sooner the
 better while the findings are fresh — note that its first item belongs on the existing INFP-672 card
 rather than as a new ticket.
 
