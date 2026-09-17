@@ -12,7 +12,10 @@ def dotted_path(loc: list[int | str]) -> str:
     parts: list[str] = []
     for element in loc:
         if isinstance(element, int):
-            parts[-1] = f"{parts[-1]}[{element}]" if parts else f"[{element}]"
+            if parts:
+                parts[-1] = f"{parts[-1]}[{element}]"
+            else:
+                parts.append(f"[{element}]")
         else:
             parts.append(str(element))
     return ".".join(parts)
