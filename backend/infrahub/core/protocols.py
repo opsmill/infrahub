@@ -501,9 +501,16 @@ class CoreNodeTriggerRule(CoreTriggerRule):
 class CoreNumberPool(CoreResourcePool, LineageSource):
     node: String
     node_attribute: String
-    start_range: Integer
-    end_range: Integer
+    start_range: IntegerOptional
+    end_range: IntegerOptional
     pool_type: Enum
+    ranges: RelationshipManager[CoreNumberPoolRange]
+
+
+class CoreNumberPoolRange(CoreWeightedPoolResource):
+    start: Integer
+    end: Integer
+    pool: RelationshipManager[CoreNumberPool]
 
 
 class CoreObjectPermission(CoreBasePermission):

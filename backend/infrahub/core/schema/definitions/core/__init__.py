@@ -94,6 +94,7 @@ from .resource_pool import (
     core_ip_pool,
     core_ip_prefix_pool,
     core_number_pool,
+    core_number_pool_range,
     core_resource_pool,
     core_weighted_pool_resource,
 )
@@ -196,6 +197,7 @@ core_models_mixed: CoreModelsMixedType = {
         core_ip_prefix_pool,
         core_ip_address_pool,
         core_number_pool,
+        core_number_pool_range,
         core_global_permission,
         core_object_permission,
         core_account_role,
