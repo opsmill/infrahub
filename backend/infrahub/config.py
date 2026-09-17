@@ -31,6 +31,7 @@ from infrahub.log import get_logger
 from infrahub.tls.context_builder import TlsContextBuilder
 
 if TYPE_CHECKING:
+    from infrahub.git.state.reader import RepositoryGitStateReader
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
     from infrahub.services.adapters.workflow import InfrahubWorkflow
@@ -1780,6 +1781,7 @@ class Override:
     message_bus: InfrahubMessageBus | None = None
     cache: InfrahubCache | None = None
     workflow: InfrahubWorkflow | None = None
+    repository_git_state_reader: RepositoryGitStateReader | None = None
 
 
 @dataclass

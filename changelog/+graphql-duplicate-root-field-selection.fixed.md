@@ -1,0 +1,1 @@
+Answer every selection of a GraphQL root field that a query names more than once without an alias. Only the first occurrence's selection set was read, so the fields selected by the later ones were left out of the response or returned empty.

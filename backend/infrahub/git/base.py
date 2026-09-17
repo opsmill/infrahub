@@ -33,6 +33,7 @@ from infrahub.exceptions import (
     RepositoryInvalidBranchError,
     RepositoryInvalidFileSystemError,
 )
+from infrahub.git.branch_mapping import get_mapped_remote_branch
 from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
 from infrahub.git.utils import branch_name_in_import_sync_branches
@@ -1202,9 +1203,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     def _get_mapped_remote_branch(self, branch_name: str) -> str:
         """Returns the remote branch for Git Repositories."""
-        if branch_name != self.default_branch and branch_name == registry.default_branch:
-            return self.default_branch
-        return branch_name
+        return get_mapped_remote_branch(
+            branch_name=branch_name,
+            repository_default_branch=self.default_branch,
+            infrahub_default_branch=registry.default_branch,
+        )
 
     def _get_mapped_target_branch(self, branch_name: str) -> str:
         """Returns the target branch within Infrahub."""

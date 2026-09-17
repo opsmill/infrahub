@@ -1,4 +1,3 @@
-import re
 from collections import defaultdict
 from typing import Any
 
@@ -21,6 +20,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 
 from .. import config
+from .branch_mapping import branch_name_matches_import_filters
 from .models import RepositoryBranchInfo, RepositoryData
 
 
@@ -187,7 +187,7 @@ async def fetch_proposed_change_generator_definition_targets(
 
 
 def branch_name_in_import_sync_branches(branch_short_name: str) -> bool:
-    for branch_filter in config.SETTINGS.git.import_sync_branch_names:
-        if re.fullmatch(branch_filter, branch_short_name) or branch_filter == branch_short_name:
-            return True
-    return False
+    return branch_name_matches_import_filters(
+        branch_short_name=branch_short_name,
+        import_sync_branch_names=config.SETTINGS.git.import_sync_branch_names,
+    )

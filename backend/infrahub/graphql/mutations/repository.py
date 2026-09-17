@@ -12,7 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.git.models import (
     GitReadOnlyRepositoryImportCommit,
     GitRepositoryImportObjects,
@@ -25,6 +25,7 @@ from infrahub.message_bus.messages.git_repository_connectivity import GitReposit
 from infrahub.permissions.types import define_object_permission_from_branch
 from infrahub.repositories.create_repository import RepositoryFinalizer
 from infrahub.workflows.catalogue import (
+    GIT_READ_ONLY_REPOSITORY_CHECK_REFS,
     GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
     GIT_REPOSITORIES_IMPORT_OBJECTS,
     GIT_REPOSITORIES_PULL_READ_ONLY,
@@ -270,6 +271,52 @@ class ReadOnlyRepositoryImportLastCommit(Mutation):
             workflow=GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
             context=graphql_context.get_context(),
             parameters={"model": model},
+        )
+        task = {"id": workflow.id}
+        return cls(ok=True, task=task)
+
+
+class ReadOnlyRepositoryCheckRefs(Mutation):
+    class Arguments:
+        data = IdentifierInput(required=True)
+
+    ok = Boolean()
+    task = Field(TaskInfo, required=False)
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: IdentifierInput,
+    ) -> Self:
+        graphql_context: GraphqlContext = info.context
+        branch = graphql_context.branch
+
+        schema = registry.get_node_schema(name=InfrahubKind.READONLYREPOSITORY, branch=branch.name, duplicate=False)
+        permission = define_object_permission_from_branch(
+            schema=schema, action=PermissionAction.UPDATE, branch_name=branch.name
+        )
+        graphql_context.active_permissions.raise_for_permission(permission=permission)
+
+        repo = await NodeManager.get_one_by_id_or_default_filter(
+            db=graphql_context.db,
+            kind=InfrahubKind.READONLYREPOSITORY,
+            id=str(data.id),
+            branch=branch,
+        )
+
+        # The lookup does not enforce the kind it is given, and a mismatch answers exactly as an id
+        # that exists nowhere, so neither can be told from the other.
+        if repo.get_kind() != InfrahubKind.READONLYREPOSITORY:
+            raise NodeNotFoundError(
+                branch_name=branch.name, node_type=InfrahubKind.READONLYREPOSITORY, identifier=str(data.id)
+            )
+
+        workflow = await graphql_context.active_service.workflow.submit_workflow(
+            workflow=GIT_READ_ONLY_REPOSITORY_CHECK_REFS,
+            context=graphql_context.get_context(),
+            parameters={"repository_id": repo.get_id()},
         )
         task = {"id": workflow.id}
         return cls(ok=True, task=task)

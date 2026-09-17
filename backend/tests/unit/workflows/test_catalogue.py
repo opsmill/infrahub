@@ -7,8 +7,8 @@ import pytest
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.workers.dependencies import get_installation_type
 from infrahub.workflows import catalogue
-from infrahub.workflows.catalogue import get_workflows
-from infrahub.workflows.constants import WorkflowPriority
+from infrahub.workflows.catalogue import GIT_REPOSITORY_WARM_UP, get_workflows
+from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowPriority
 from infrahub.workflows.models import WorkflowDefinition
 
 
@@ -38,6 +38,11 @@ def test_workflow_definition_flow_names() -> None:
     name_counter = Counter(flow_names)
     duplicates = [name for name, count in name_counter.items() if count > 1]
     assert not duplicates, f"Duplicate flow names found: {', '.join(duplicates)}"
+
+
+def test_the_warm_up_workflow_stays_out_of_the_task_list() -> None:
+    """A read triggers it, not a person, and every task query filters on the namespace tag."""
+    assert TAG_NAMESPACE not in GIT_REPOSITORY_WARM_UP.get_tags()
 
 
 def test_workflows_sorted() -> None:
