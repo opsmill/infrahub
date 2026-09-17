@@ -69,7 +69,7 @@ Five sites name their branch explicitly rather than taking it from a model field
 13 above, plus row 3 of list 1 (`branch_deleted`).
 
 Two more are the opposite case — the model carried no branch, so one was added to it: row 1 of list 1
-(`GitFileGet.branch_name`) and row 14 (`GitDiffNamesOnly.infrahub_branch_name`). Their producers
+(`GitFileGet.branch_name`) and row 14 of list 1 (`GitDiffNamesOnly.infrahub_branch_name`). Their producers
 already held the branch.
 
 ## 3. Test files constructing a repository object (23 files, 64 sites)

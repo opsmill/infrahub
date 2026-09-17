@@ -25,7 +25,7 @@ differently per worker.
 - The base class answers its three former uses of the default branch through abstract hooks, with
   identity implementations on the read-only kind.
 
-## Two operator-visible changes riding along
+## Operator-visible changes riding along
 
 1. **`operational_status` now writes on the branch the operation ran on.** The factories set
    `infrahub_branch_name` on the object, and `_update_operational_status` reads it. Every

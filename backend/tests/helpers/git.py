@@ -62,8 +62,8 @@ def build_repository_client(
     ) -> httpx.Response:
         request = httpx.Request(method="POST", url="http://mock")
         query = (payload or {}).get("query", "")
-        # Only the construction read is answered with a node. Requiring `default_branch` keeps
-        # mutations such as CoreRepositoryUpdate, which also name the kind, on the empty-success path.
+        # Only the construction read, which selects default_branch, returns a node; every other
+        # query naming the repository kind gets an empty success.
         if InfrahubKind.REPOSITORY in query and "default_branch" in query:
             data = {InfrahubKind.REPOSITORY: {"count": 1, "edges": [{"node": node}]}}
             return httpx.Response(status_code=200, json={"data": data}, request=request)

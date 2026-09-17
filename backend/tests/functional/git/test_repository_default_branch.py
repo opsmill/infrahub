@@ -227,6 +227,23 @@ class TestRepositoryDefaultBranch(TestInfrahubApp):
         assert repo.get_git_repo_main().active_branch.name == GIT_BRANCH
         assert not (repo.directory_default / DECOY_FILE).exists()
 
+        # The status is branch-local, so it is what proves the node was read on the branch the
+        # operation runs on. The repository node itself is branch-agnostic and visible everywhere.
+        assert isinstance(repo, InfrahubRepository)
+        assert repo.internal_status is RepositoryInternalStatus.STAGING
+
+        _get_initialized_repo.cache_clear()
+        on_default_branch = await get_initialized_repo.fn(
+            client=client,
+            repository_id=node.id,
+            name="repository-created-inside-a-branch",
+            repository_kind=InfrahubKind.REPOSITORY,
+            infrahub_branch_name=registry.default_branch,
+        )
+
+        assert isinstance(on_default_branch, InfrahubRepository)
+        assert on_default_branch.internal_status is not RepositoryInternalStatus.STAGING
+
     async def test_on_demand_clone_checks_out_configured_default_branch(
         self,
         db: InfrahubDatabase,
