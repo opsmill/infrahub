@@ -7,6 +7,7 @@ from prefect import task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
+from infrahub import config
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreTransformPython as CoreTransformPythonNode
 from infrahub.core.registry import registry
@@ -150,6 +151,9 @@ async def gather_trigger_computed_attribute_python(
     triggers_python = []
     triggers_python_query = []
 
+    # Read once, so one gather cannot build some automations for one answer and some for another.
+    live_only = config.SETTINGS.main.coalesce_python_recompute_after_merge
+
     repositories = await get_repositories_commit_per_branch(db=db)
 
     # Keyed by attribute and by transform: an attribute gets its own automation even when it shares
@@ -185,6 +189,7 @@ async def gather_trigger_computed_attribute_python(
             trigger_python = ComputedAttrPythonTriggerDefinition.from_object(
                 computed_attribute=branches[branch_scope],
                 branch=branch_scope,
+                live_only=live_only,
                 branches_out_of_scope=branches_out_of_scope,
             )
             triggers_python.append(trigger_python)
@@ -200,6 +205,7 @@ async def gather_trigger_computed_attribute_python(
                     kind=kind,
                     computed_attribute=branches[branch_scope],
                     branch=branch_scope,
+                    live_only=live_only,
                     branches_out_of_scope=branches_out_of_scope,
                 )
                 triggers_python_query.append(trigger_python_query)

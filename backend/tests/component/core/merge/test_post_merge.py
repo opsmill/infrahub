@@ -6,6 +6,8 @@ from uuid import uuid4
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
+from infrahub.core.changelog.models import AttributeChangelog, NodeChangelog
+from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.merge.post_merge import PostMergeDispatcher
 from infrahub.core.merge.python_target_resolution import DisabledPythonTargetResolver
@@ -57,6 +59,19 @@ def _derived_value_schema_diff(default_branch: Branch) -> tuple[SchemaDiff, str]
     return base_schema.diff(other=candidate), candidate.get_hash()
 
 
+def _a_merged_car() -> tuple[DiffAction, NodeChangelog]:
+    """One merged data change, so the dispatch reaches the resolver the scope is read from."""
+    return (
+        DiffAction.UPDATED,
+        NodeChangelog(
+            node_id=str(uuid4()),
+            node_kind="TestCar",
+            display_label="Accord",
+            attributes={"name": AttributeChangelog(name="name", value="Accord", kind="Text")},
+        ),
+    )
+
+
 async def _schema_scope_handed_over(
     db: InfrahubDatabase,
     source_branch: Branch,
@@ -77,7 +92,7 @@ async def _schema_scope_handed_over(
     await dispatcher.dispatch_events(
         branch=source_branch,
         proposed_change_id=None,
-        node_events=[],
+        node_events=[_a_merged_car()],
         context=_context(default_branch),
         schema_diff=schema_diff,
         schema_hash=schema_hash,
@@ -186,7 +201,7 @@ class TestPostMergeSchemaEvent:
 
         failing = FailingInfrahubEvent(failing_kind=SchemaUpdatedEvent)
         assert await _schema_scope_handed_over(db, source_branch, default_branch, failing) is None
-        assert [type(event).__name__ for event in failing.events] == ["BranchMergedEvent"]
+        assert [type(event).__name__ for event in failing.events] == ["BranchMergedEvent", "NodeUpdatedEvent"]
 
 
 class TestPostMergeBranchMergedEvent:

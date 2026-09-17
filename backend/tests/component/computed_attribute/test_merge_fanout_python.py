@@ -1,10 +1,8 @@
 """Measure the node fan-out of a Python computed-attribute recompute.
 
-On merge/rebase a Python computed attribute is refreshed by dispatching one
-recompute per affected attribute, which then resolves the nodes to process. This
-records how many nodes that resolution selects. Today it selects every node of
-the kind regardless of how many changed; once the recompute is scoped to the
-changed nodes the same test pins the affected-only count.
+A recompute is dispatched per affected attribute and then resolves the nodes to
+process. This records how many nodes that resolution selects, so a widening that
+reaches the whole kind is visible as a number.
 """
 
 from __future__ import annotations

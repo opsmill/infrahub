@@ -35,6 +35,8 @@ const seedColumnsInUrl = ({ hidden, shown }: { hidden?: string; shown?: string }
   window.history.replaceState(null, "", `${window.location.pathname}?${search}`);
 };
 
+const getHiddenColumnsInUrl = () => new URLSearchParams(window.location.search).get("hide_columns");
+
 describe("ColumnsPicker", () => {
   beforeEach(() => {
     window.history.replaceState(null, "", window.location.pathname);
@@ -96,5 +98,35 @@ describe("ColumnsPicker", () => {
     await expect
       .element(component.getByRole("button", { name: "Columns" }).getByText(/^\d+$/))
       .not.toBeInTheDocument();
+  });
+
+  // Here rather than in columns-editor.test.tsx: the only place the Popover and the editor compose.
+  test("keeps the popover open after a column is toggled", async () => {
+    // GIVEN
+    const component = await render(<ColumnsPicker schema={objectSchema} />);
+    await component.getByRole("button", { name: "Columns" }).click();
+
+    // WHEN
+    await component.getByRole("menuitem", { name: "Description" }).click();
+
+    // THEN
+    await expect.poll(getHiddenColumnsInUrl).toBe("description");
+    // aria-expanded, not menu visibility: the popover fades out, so the menu lingers in the DOM.
+    await expect
+      .element(component.getByRole("button", { name: /^Columns/ }))
+      .toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("hides several columns in one visit without reopening the popover", async () => {
+    // GIVEN
+    const component = await render(<ColumnsPicker schema={objectSchema} />);
+    await component.getByRole("button", { name: "Columns" }).click();
+
+    // WHEN
+    await component.getByRole("menuitem", { name: "Description" }).click();
+    await component.getByRole("menuitem", { name: "Status" }).click();
+
+    // THEN
+    await expect.poll(getHiddenColumnsInUrl).toBe("description,status");
   });
 });

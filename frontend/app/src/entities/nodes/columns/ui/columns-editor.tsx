@@ -85,6 +85,8 @@ export function ColumnsEditor({ schema, surface }: ColumnsEditorProps) {
           aria-label="Toggle columns"
           className="max-h-72"
           emptyMessage="No fields match"
+          // Columns are settings, not commands: the enclosing DialogTrigger would close on each one.
+          shouldCloseOnSelect={false}
         >
           {columnCandidates.map((columnCandidate) => {
             const { name, fieldSchema } = columnCandidate;

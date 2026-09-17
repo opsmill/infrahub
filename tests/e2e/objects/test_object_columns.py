@@ -11,7 +11,9 @@ devices (the schema default order starts at atl1-core1).
 
 `exact=True` is load-bearing on every "Description" locator: InfraDevice also
 carries a `computed_description` attribute, whose "Computed Description" label
-substring-matches Playwright's default name matching.
+substring-matches Playwright's default name matching. It only works on a
+hidden column: a picker item for a column that is on screen appends an
+sr-only "visible" to its accessible name.
 """
 
 from __future__ import annotations
@@ -39,9 +41,11 @@ class TestObjectColumns:
         description_header = table.get_by_role("button", name="Description", exact=True)
         name_header = table.get_by_role("button", name="Name", exact=True)
         columns_button = admin_page.get_by_role("button", name=re.compile(r"^Columns"))
-        description_item = admin_page.get_by_role("menu", name="Toggle columns").get_by_role(
-            "menuitem", name="Description", exact=True
-        )
+        type_header = table.get_by_role("button", name="Type", exact=True)
+        columns_menu = admin_page.get_by_role("menu", name="Toggle columns")
+        description_item = columns_menu.get_by_role("menuitem", name="Description", exact=True)
+        # anchored, not exact: type is on screen, so the item reads "Type visible"
+        type_item = columns_menu.get_by_role("menuitem", name=re.compile(r"^Type\b"))
 
         # open a shared link that hides one column
         await admin_page.goto("/objects/InfraDevice?hide_columns=description")
@@ -64,5 +68,15 @@ class TestObjectColumns:
 
         # back to the default: no param left behind, column on screen again
         await expect(admin_page).not_to_have_url(re.compile(r"hide_columns"))
+        await expect(description_header).to_be_visible()
+        await expect(first_row_link).to_have_text("atl1-core1")
+
+        # the popover survived the toggle, so a second column needs no return trip to the toolbar
+        # (checked on the trigger: the menu lingers in the DOM for the fade-out either way)
+        await expect(columns_button).to_have_attribute("aria-expanded", "true")
+        await type_item.click()
+
+        await expect(admin_page).to_have_url(re.compile(r"hide_columns=type"))
+        await expect(type_header).not_to_be_visible()
         await expect(description_header).to_be_visible()
         await expect(first_row_link).to_have_text("atl1-core1")

@@ -247,7 +247,12 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       link: { type: 'generated-index', slug: 'branches-and-change-control' },
       items: [
-        { type: 'doc', id: 'immutable-history/overview', label: 'Immutable History' },
+        {
+          type: 'category',
+          label: 'Immutable History',
+          link: { type: 'doc', id: 'immutable-history/overview' }, // hub
+          items: ['immutable-history/query-historical-data'],
+        },
         {
           type: 'category',
           label: 'Branches',
@@ -520,7 +525,7 @@ const sidebars: SidebarsConfig = {
       link: { type: 'generated-index', slug: 'development-resources' },
       items: [
         { type: 'doc', id: 'development-resources/developer-guide', label: 'Developer Guide' },
-        { type: 'doc', id: 'development-resources/sbom', label: 'Software Bill of Materials (SBOM)' },
+        { type: 'doc', id: 'development-resources/sbom', label: 'Image signing and SBOM' },
         { type: 'doc', id: 'development-resources/testcontainers', label: 'Integration testing with Testcontainers' },
         {
           type: 'category',

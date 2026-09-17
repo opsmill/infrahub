@@ -100,9 +100,9 @@ If you want to evaluate Infrahub against your own schema and dataset size, reach
 
 ### What does a high-availability Infrahub deployment look like?
 
-A production Infrahub deployment runs as a single clustered instance with component-level redundancy: database clustering with automatic leader election, cache failover, and mirrored message queues. This is the default topology we recommend for most organisations, and it is what the [Community vs Enterprise](../overview/community-vs-enterprise.mdx) page describes under the HA tiers.
+Infrahub Enterprise runs every component redundantly, so an individual component failure does not take the platform down. A highly available deployment uses a Neo4j cluster with automatic failover, Redis Sentinel for cache failover, a RabbitMQ cluster for the message bus, PostgreSQL replication for the task manager database, several API server and worker replicas, and redundant load balancers in front of the API layer. Kubernetes is the recommended topology for it, and the [Community vs Enterprise](../overview/community-vs-enterprise.mdx) page describes the HA tiers.
 
-Running a single logical instance means one schema, one resource allocation authority for IPs, prefixes, and identifiers, and one target for monitoring and upgrades.
+A highly available deployment is still one logical instance: one schema, one resource allocation authority for IPs, prefixes, and identifiers, and one target for monitoring and upgrades. See [High availability](../deploy-manage/install-configure/production-deployment/high-availability.mdx) for the architecture and for Terraform and Helm deployment examples.
 
 ### Can I run multiple Infrahub instances?
 
@@ -121,7 +121,11 @@ No. A single Infrahub instance is designed as one clustered deployment in one re
 
 ### How do I back up and restore Infrahub?
 
-Database backup is a routine, automated operation, with native support for S3-compatible object storage. Compressed backups for large production deployments typically fall in the single-digit to tens of gigabytes range. See the [database backup and restore topic](../deploy-manage/maintain-upgrade/database-backup/overview) for step-by-step guidance and scheduling recommendations.
+Automate database backups alongside your files and artifacts, and store everything in S3-compatible cloud storage. A backup is a single archive containing the graph database and the task manager database. The backup tool writes a SHA256 checksum for every file and verifies them before a restore writes anything.
+
+Files and artifacts are stored in object storage rather than in the graph database, which references them by `storage_id`. Capture both at the same point, so a restore finds the content the graph expects. Compressed backups for large production deployments typically fall in the single-digit to tens of gigabytes range.
+
+See the [backup and restore guide](../deploy-manage/maintain-upgrade/database-backup/backup-and-restore) for the procedure, or [cluster backup and restore](../deploy-manage/maintain-upgrade/database-backup/cluster-backup-and-restore) for a Neo4j cluster. The [database backup topic](../deploy-manage/maintain-upgrade/database-backup/overview) covers how backup and restore work, and the [Infrahub Backup documentation](https://docs.infrahub.app/backup/) has the commands, the S3 settings, scheduling, and retention.
 
 ### What are realistic recovery targets for Infrahub?
 
@@ -131,9 +135,15 @@ In deployment patterns where data-plane agents enforce their last-known desired 
 
 ### How do I upgrade Infrahub?
 
-The `infrahub upgrade` command handles schema and database migrations. On Kubernetes, Helm runs the upgrade as a job during the release update and manages rolling pod updates. For VM-based deployments, documented procedures define the stop/upgrade/restart sequence with safety checks.
+Upgrading is a routine operation, not a major project. The schema is stored in Infrahub rather than in application code, so a new release does not require redesigning it or rebuilding the integrations that read it.
 
-We recommend a full database backup before every upgrade and validation in a staging environment that mirrors production topology. The [upgrade guide](../deploy-manage/maintain-upgrade/upgrade/overview) has the detailed steps.
+`infrahub upgrade` applies the database migrations and updates the core schema, the menu, the permissions, and the task manager configuration for the new version. Run `infrahub upgrade --check` first to report the pending migrations and the branches that need a rebase, without writing anything.
+
+Upgrades are supported from the previous minor version, so anything further behind moves one version at a time. A minor release can also include breaking changes that need work first, such as renaming a schema element or updating a GraphQL query. Check the release notes for each version in between.
+
+On Kubernetes, the Helm chart can run the upgrade as a pre-upgrade hook job, which you enable with `upgrade.enabled`. On Docker Compose, the sequence is stop the instance, fetch the new compose file, run the upgrade, and start again. Neither path is zero downtime, so plan a maintenance window. [Bare metal deployments](../deploy-manage/install-configure/install/enterprise.mdx) are supported, and we provide the upgrade procedure on request.
+
+We recommend a full database backup before every upgrade and validation in a staging environment that mirrors production topology. The [upgrade guide](../deploy-manage/maintain-upgrade/upgrade/overview) has the detailed steps for each edition and deployment method.
 
 ### What monitoring and observability does Infrahub provide?
 

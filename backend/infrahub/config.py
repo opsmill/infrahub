@@ -223,9 +223,11 @@ class MainSettings(BaseSettings):
     )
     coalesce_python_recompute_after_merge: bool = Field(
         default=True,
-        description="When enabled, the coalesced merge and rebase pass also recomputes Python transform "
-        "computed attributes, alongside the per-node tasks that still run; when disabled, only those "
-        "per-node tasks recompute them.",
+        description="When enabled, the coalesced merge and rebase pass recomputes Python transform "
+        "computed attributes, and their per-node tasks only run for a live write; when disabled, "
+        "the pass recomputes none of them and those per-node tasks run for a merge and a rebase "
+        "too. The per-node side of a change takes effect once those automations are rebuilt, which "
+        "`infrahub upgrade` does.",
     )
     merge_failure_grace_period_seconds: int = Field(
         default=180,
@@ -482,7 +484,14 @@ class BrokerSettings(BaseSettings):
         default=2, description="The maximum number of concurrent messages fetched by each worker", ge=1
     )
     virtualhost: str = Field(default="/", description="The virtual host to connect to")
-    driver: BrokerDriver = BrokerDriver.RabbitMQ
+    driver: BrokerDriver = Field(
+        default=BrokerDriver.RabbitMQ,
+        description=(
+            "Message bus implementation. RabbitMQ is the recommended and fully supported driver. "
+            "NATS JetStream is experimental and not feature-complete: some functionality does not currently "
+            "work, so it is not recommended for production."
+        ),
+    )
 
     @property
     def service_port(self) -> int:
@@ -499,7 +508,14 @@ class CacheSettings(BaseSettings):
         default=None, ge=1, le=65535, description="Specified if running on a non default port (6379)"
     )
     database: int = Field(default=0, ge=0, le=15, description="Id of the database to use")
-    driver: CacheDriver = CacheDriver.Redis
+    driver: CacheDriver = Field(
+        default=CacheDriver.Redis,
+        description=(
+            "Cache implementation. Redis is the recommended and fully supported driver. "
+            "NATS JetStream is experimental and not feature-complete: some functionality does not currently "
+            "work, so it is not recommended for production."
+        ),
+    )
     username: str = ""
     password: str = ""
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")

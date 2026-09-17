@@ -9,6 +9,7 @@ import typer
 from anyio.abc import TaskStatus
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import Error as SdkError
+from prefect import Flow
 from prefect import settings as prefect_settings
 from prefect.client.schemas.objects import FlowRun
 from prefect.context import AsyncClientContext
@@ -39,12 +40,28 @@ from infrahub.workers.dependencies import (
     get_workflow,
     set_component_type,
 )
-from infrahub.workers.utils import inject_service_parameter, load_flow_function
+from infrahub.workers.utils import get_parameter_name, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
 WORKER_QUERY_SECONDS = "2"
 WORKER_DEFAULT_RESULT_STORAGE_BLOCK = f"redisstoragecontainer/{TASK_RESULT_STORAGE_NAME}"
 DEFAULT_TASK_LOGGERS = ["infrahub.tasks"]
+
+
+def inject_service_parameter(func: Flow, parameters: dict[str, Any], service: InfrahubServices) -> None:
+    """Inject the worker's service into ``parameters`` if the flow declares one.
+
+    The service holds this worker's connections (database, cache, ...), so it never travels in the
+    server payload. This mutates ``parameters``.
+
+    Raises:
+        ValueError: When ``parameters`` already contains an ``InfrahubServices`` instance.
+
+    """
+    if service_parameter_name := get_parameter_name(func=func, types=[InfrahubServices.__name__, InfrahubServices]):
+        if any(isinstance(param_value, InfrahubServices) for param_value in parameters.values()):
+            raise ValueError(f"{func.name} parameters contains an InfrahubServices object while it should be injected")
+        parameters[service_parameter_name] = service
 
 
 class InfrahubWorkerAsyncConfiguration(BaseJobConfiguration):

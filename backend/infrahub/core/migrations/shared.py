@@ -13,7 +13,7 @@ from infrahub.core import registry
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.query import Query  # noqa: TC001
-from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema, SchemaRoot, internal_schema
+from infrahub.core.schema import MainSchemaTypes  # noqa: TC001
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import is_retriable_db_error, retry_db_transaction
 
@@ -21,7 +21,7 @@ from .query import MigrationBaseQuery  # noqa: TC001
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.schema import AttributeSchema, RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
 MIGRATION_LOG_TIME_FORMAT = "[%Y-%m-%d %H:%M:%S]"
@@ -283,18 +283,6 @@ class GraphMigration(BaseMigration):
 class InternalSchemaMigration(BaseMigration):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     migrations: Sequence[SchemaMigration] = Field(..., description="")
-
-    @staticmethod
-    def get_internal_schema() -> SchemaBranch:
-        from infrahub.core.schema.schema_branch import SchemaBranch  # noqa: PLC0415  # avoid circular import
-
-        # load the internal schema from
-        schema = SchemaRoot(**internal_schema)
-        schema_branch = SchemaBranch(cache={}, name="default_branch")
-        schema_branch.load_schema(schema=schema)
-        schema_branch.process()
-
-        return schema_branch
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         result = MigrationResult()
