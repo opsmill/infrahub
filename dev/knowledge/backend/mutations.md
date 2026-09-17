@@ -21,23 +21,25 @@ GraphQL mutations for creating, updating, upserting, and deleting nodes. All mut
 
 ```
 mutate_create()
-  -> create_node()                    # create.py
-       -> preview node (process_pools=False) for lock calculation
-       -> acquire InfrahubMultiLock
-       -> _do_create_node()
-            -> NodeCreationContext     # tracks side-effect nodes for events
-            -> Node.new()
-                 -> _process_fields()  # validates, hydrates attrs & rels
-                 -> _process_macros()  # evaluates mandatory computed attrs
-            -> NodeConstraintRunner.check()
-            -> Node.save()
-                 -> resolve_relationships()  # loads peers with extra_filters
-                 -> _create()
-                      -> add_human_friendly_id()
-                      -> add_display_label()
-                      -> NodeCreateAllQuery  # bulk Neo4j insert
-            -> handle_template_relationships()  # template instantiation, read a level at a time
-       -> apply profiles if applicable
+  -> run_with_retry("object_create")   # covers the reads below, before the transaction opens
+       -> create_node()                # create.py
+            -> preview node (process_pools=False) for lock calculation and template read
+            -> run_in_transaction_with_retry(lock_names)  # locks, then the transaction
+                 -> _do_create_node()
+                      -> NodeCreationContext     # tracks side-effect nodes for events
+                      -> Node.new()
+                           -> _process_fields()  # validates, hydrates attrs & rels
+                           -> _process_macros()  # evaluates mandatory computed attrs
+                      -> NodeConstraintRunner.check()
+                      -> Node.save()
+                           -> resolve_relationships()  # loads peers with extra_filters
+                           -> _create()
+                                -> add_human_friendly_id()
+                                -> add_display_label()
+                                -> NodeCreateAllQuery  # bulk Neo4j insert
+                      -> handle_template_relationships()  # template instantiation, read a level at a time
+                 -> apply profiles if applicable   # inside the transaction and the locks
+  -> run_with_retry("object_create_response")      # build_graphql_response(), a scope of its own
   -> emit NodeCreatedEvent
 ```
 
@@ -84,22 +86,35 @@ mutate_upsert()
 
 ## Transaction Retry
 
-`retry_db_transaction` (in `backend/infrahub/database/__init__.py`) replays the *entire* wrapped
-function when Neo4j raises a `TransientError` — or a `ClientError` coded
-`Neo.ClientError.Statement.EntityNotFound`. Its placement is therefore semantics-bearing, not
-decoration:
+Three helpers in `backend/infrahub/database/__init__.py` replay work when Neo4j raises a
+`TransientError`, or a `ClientError` coded `Neo.ClientError.Statement.EntityNotFound`:
 
-- Wrap only a scope whose writes are fully contained in a transaction the retry can roll back. The
-  create path is the trap: `create_node()` commits its own transaction and then does post-commit
-  work (profiles, response reads), so a decorator on the whole mutation replays a commit that
-  already succeeded and creates a duplicate node. The update path keeps its response build inside
-  `db.start_transaction()`, which is what makes it replay-safe.
-- Skip the retry when `db.is_transaction` — a caller-supplied transaction is already failed after a
-  `TransientError`, and replaying inside it raises instead of recovering; the caller owns the retry.
-- Check whether an already-retried caller reaches the code: nested retries multiply attempts.
-  Upsert is the case to watch, and today it is safe — it reaches only the undecorated
-  `mutate_create` and `_call_mutate_update`, never the decorated `mutate_update`, so it is the
-  single retry point. Routing it through a decorated method would start multiplying attempts.
+| Helper | Opens a transaction | Use for |
+|--------|--------------------|---------|
+| `retry_db_transaction(name)` | no (the function does) | decorating a mutation that owns its transaction |
+| `run_with_retry(db, name, func)` | no | a scope of reads, or work whose transaction sits inside it |
+| `run_in_transaction_with_retry(db, name, func, lock_names)` | yes | work that needs a transaction, and the locks around it |
+
+**Only the outermost scope replays.** A context-local claim makes that structural: an inner scope
+runs its work once and lets the error travel out to the scope that already owns the replay, so
+layers cannot multiply into `retry_limit` raised to their nesting depth. Nesting is therefore safe
+by construction: a custom mutation may add a scope of its own without checking what encloses it.
+
+What still needs care:
+
+- **A caller-owned transaction is already failed** by a `TransientError`, and replaying work on it
+  raises instead of recovering. `run_with_retry` and `run_in_transaction_with_retry` check
+  `db.is_transaction` and run once; `retry_db_transaction` cannot, since it has no way to reach the
+  database its function uses, so do not decorate a function that is handed a transaction.
+- **A scope that encloses a commit replays it.** A transient error raised by the commit itself is
+  ambiguous (Neo4j may have applied the transaction), so the replay can create a second node where
+  the kind has no uniqueness constraint, hfid, or default filter. `object_create` is such a scope:
+  it covers the reads a create makes *and* the transaction they feed, because those reads are what
+  a saturated database fails first. Reading the node back is a separate scope for that reason, so a
+  failure to render never re-runs the create.
+- **Locks are held per attempt, not across the backoff.** `run_in_transaction_with_retry` acquires
+  them inside each attempt and releases them before sleeping. When the caller already owns the
+  transaction the locks move inside it, so they no longer cover the caller's commit.
 
 ## Relationship Resolution During Mutations
 
