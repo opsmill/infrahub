@@ -337,7 +337,7 @@ async def test_allocate_from_number_pool_with_excluded_values(
     ticket = await Node.init(db=db, schema=speeding_ticket.kind)
     await ticket.new(db=db, title="ticket2", ticket_id={"from_pool": {"id": np1.id}})
     await ticket.save(db=db)
-    assert ticket.ticket_id.value == 10
+    assert ticket.get_attribute(name="ticket_id").value == 10
 
     utilization = await resolve_number_pool_utilization(db=db, pool=np1, at=Timestamp(), branch=default_branch)
 
@@ -345,3 +345,87 @@ async def test_allocate_from_number_pool_with_excluded_values(
     nb_excluded_values = 4
     total_pool_length = np1.end_range.value - np1.start_range.value + 1 - nb_excluded_values
     assert utilization["edges"][0]["node"]["utilization"] == nb_values_used_in_pool / total_pool_length * 100
+
+
+@pytest.fixture
+async def ticket_schema(db: InfrahubDatabase, register_core_models_schema: SchemaBranch) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    await initialize_registry(db=db)
+
+
+@pytest.fixture
+async def ticket_pool(db: InfrahubDatabase, ticket_schema: None) -> CoreNumberPool:
+    pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
+    await pool.new(db=db, name="pool1", node=TICKET.kind, node_attribute="ticket_id", start_range=1, end_range=10)
+    await pool.save(db=db)
+    return pool
+
+
+@pytest.fixture
+async def ticket(db: InfrahubDatabase, ticket_pool: CoreNumberPool) -> Node:
+    """A ticket holding the pool's first number, and the record that accounts for it."""
+    node = await Node.init(db=db, schema=TICKET.kind)
+    await node.new(db=db, title="ticket1", ticket_id={"from_pool": {"id": ticket_pool.id}})
+    await node.save(db=db)
+    return node
+
+
+class TestNumberPoolGetResource:
+    """What `get_resource` does about a reservation the pool may already hold."""
+
+    @staticmethod
+    def _ticket_id_schema(ticket: Node) -> AttributeSchema:
+        return ticket.get_schema().get_attribute(name="ticket_id")
+
+    async def test_the_attribute_keeps_the_number_it_already_holds(
+        self, db: InfrahubDatabase, default_branch: Branch, ticket_pool: CoreNumberPool, ticket: Node
+    ) -> None:
+        assert ticket.get_attribute("ticket_id").value == 1
+
+        again = await ticket_pool.get_resource(
+            db=db,
+            branch=default_branch,
+            attribute=self._ticket_id_schema(ticket),
+            identifier=ticket.get_id(),
+            attribute_id=ticket.get_attribute("ticket_id").id,
+        )
+
+        assert again == 1, "asking again for an attribute the pool already accounts for must not draw a second number"
+        assert await ticket_pool.get_used(db=db, branch=default_branch) == [1]
+
+    async def test_an_attribute_with_no_vertex_yet_draws_a_number(
+        self, db: InfrahubDatabase, default_branch: Branch, ticket_pool: CoreNumberPool, ticket: Node
+    ) -> None:
+        """An object still being built has no attribute to carry a record, so there is nothing to look up."""
+        drawn = await ticket_pool.get_resource(
+            db=db,
+            branch=default_branch,
+            attribute=self._ticket_id_schema(ticket),
+            identifier=ticket.get_id(),
+            attribute_id=None,
+        )
+
+        assert drawn == 2, "with no attribute to anchor on the pool draws the next number rather than reusing one"
+        assert await ticket_pool.get_used(db=db, branch=default_branch) == [1], (
+            "and records nothing, because the caller writing the attribute writes the record"
+        )
+
+    async def test_a_record_another_pool_holds_is_not_its_own(
+        self, db: InfrahubDatabase, default_branch: Branch, ticket: Node
+    ) -> None:
+        """The lookup is scoped to the asking pool."""
+        second_pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
+        await second_pool.new(
+            db=db, name="pool2", node=TICKET.kind, node_attribute="ticket_id", start_range=100, end_range=110
+        )
+        await second_pool.save(db=db)
+
+        drawn = await second_pool.get_resource(
+            db=db,
+            branch=default_branch,
+            attribute=self._ticket_id_schema(ticket),
+            identifier=ticket.get_id(),
+            attribute_id=ticket.get_attribute("ticket_id").id,
+        )
+
+        assert drawn == 100, "the record belongs to the other pool, so this one draws from its own range"

@@ -94,21 +94,19 @@ class CoreNumberPool(Node):
         branch: Branch,
         attribute: AttributeSchema,
         identifier: str,
+        attribute_id: str | None = None,
         at: Timestamp | None = None,
     ) -> int:
         async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
-            # NOTE: ideally we should use the HFID as the identifier (if available)
-            # one of the challenge with using the HFID is that it might change over time
-            # so we need to ensure that the identifier is stable, or we need to handle the case where the identifier changes
-
-            # Check if there is already a resource allocated with this identifier
-            # if not, pull all existing number and allocate the next available
-            # TODO add support for branch, if the node is reserved with this id in another branch we should return an error
-            query_get = await NumberPoolGetReserved.init(db=db, branch=branch, pool_id=self.id, identifier=identifier)
-            await query_get.execute(db=db)
-            reservation = query_get.get_reservation()
-            if reservation is not None:
-                return reservation
+            # If the attribute already exists, try to get its pool reservation
+            if attribute_id is not None:
+                query_get = await NumberPoolGetReserved.init(
+                    db=db, branch=branch, pool_id=self.id, identifier=identifier
+                )
+                await query_get.execute(db=db)
+                reservation = query_get.get_reservation()
+                if reservation is not None:
+                    return reservation
 
             # If we have not returned a value we need to find one if avaiable
             number = await self.get_next(db=db, branch=branch, attribute=attribute)
