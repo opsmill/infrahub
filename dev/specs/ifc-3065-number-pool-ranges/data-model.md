@@ -35,8 +35,12 @@ Validation (mutation layer and schema declaration):
 |------|---------------|
 | `start <= end` | range mutation, `NumberPoolParameters` |
 | No overlap with another range of the same pool; error names the clashing ranges | range mutation, pool mutation after a `ranges` edit, `NumberPoolParameters` |
-| Intersection with the attribute's `[min_value, max_value]` is not empty | range mutation |
 | Parent pool `pool_type == Schema` | range create / update / delete refused, pointing at the default-branch schema |
+
+A range partly or wholly outside the attribute's `[min_value, max_value]` is accepted. The
+effective-space calculator clips it, and a range clipped to nothing counts as exhausted for
+fullness. The pool decides where allocation draws from; the attribute's domain decides which
+values are valid.
 
 ### CoreNumberPool (changed)
 
