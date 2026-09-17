@@ -484,6 +484,7 @@ GIT_READ_ONLY_REPOSITORIES_CHECK_REFS = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.git.tasks",
     function="check_read_only_repositories_refs",
+    cron="* * * * *",
     concurrency_limit=1,
     concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
 )

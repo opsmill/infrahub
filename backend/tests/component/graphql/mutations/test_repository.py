@@ -13,7 +13,12 @@ from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.git.models import GitReadOnlyRepositoryImportCommit, GitRepositoryImportObjects
+from infrahub.git.models import (
+    GitReadOnlyRepositoryCheckRefs,
+    GitReadOnlyRepositoryImportCommit,
+    GitRepositoryImportObjects,
+    TrackedRef,
+)
 from infrahub.graphql.mutations.repository import cleanup_payload
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -317,7 +322,24 @@ async def test_check_refs_submits_the_check_for_a_read_only_repository(
     assert result.data
     submissions = recorder.get_submit_calls_for(workflow=GIT_READ_ONLY_REPOSITORY_CHECK_REFS)
     assert len(submissions) == 1
-    assert submissions[0]["parameters"] == {"repository_id": repo.id}
+    # A recorder accepts any parameter dict, so bind it against the flow as well: a renamed
+    # parameter would otherwise pass every test here and fail only when a run is dispatched.
+    GIT_READ_ONLY_REPOSITORY_CHECK_REFS.load_function().validate_parameters(parameters=submissions[0]["parameters"])
+    assert submissions[0]["parameters"] == {
+        "model": GitReadOnlyRepositoryCheckRefs(
+            repository_id=repo.id,
+            repository_name="test-check-refs-repo",
+            location="/tmp/check-refs-repo",
+            refs=[
+                TrackedRef(
+                    infrahub_branch_name=default_branch.name,
+                    infrahub_branch_id=default_branch.get_id(),
+                    ref="main",
+                    commit=None,
+                )
+            ],
+        )
+    }
     assert result.data["InfrahubReadOnlyRepositoryCheckRefs"]["task"]["id"]
 
 

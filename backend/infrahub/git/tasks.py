@@ -1,3 +1,5 @@
+import asyncio
+import time
 from typing import Any
 
 from git.exc import InvalidGitRepositoryError
@@ -19,8 +21,9 @@ from infrahub_sdk.uuidt import UUIDT
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
+from prefect.runtime import flow_run
 
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.context import InfrahubContext
 from infrahub.core.constants import (
     InfrahubKind,
@@ -36,7 +39,14 @@ from infrahub.message_bus import Meta, messages
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.validators.tasks import start_validator
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workers.dependencies import get_client, get_database, get_event_service, get_message_bus, get_workflow
+from infrahub.workers.dependencies import (
+    get_cache,
+    get_client,
+    get_database,
+    get_event_service,
+    get_message_bus,
+    get_workflow,
+)
 
 from ..core.timestamp import Timestamp
 from ..core.validators.checks_runner import run_checks_and_update_validator
@@ -54,6 +64,7 @@ from .models import (
     CheckRepositoryMergeConflicts,
     GitDiffNamesOnly,
     GitDiffNamesOnlyResponse,
+    GitReadOnlyRepositoryCheckRefs,
     GitReadOnlyRepositoryImportCommit,
     GitRepositoryAdd,
     GitRepositoryAddReadOnly,
@@ -67,6 +78,10 @@ from .models import (
     UserCheckData,
     UserCheckDefinitionData,
 )
+from .refs_check.checker import ReadOnlyRepositoryRefsChecker
+from .refs_check.constants import REFS_CHECK_CONCURRENCY
+from .refs_check.factory import build_check_refs_model, build_refs_checker, build_refs_scheduler
+from .refs_check.models import RefsCheckCycleSummary, RefsCheckOutcome, RefsCheckResult
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
 from .sync import RepositoryAdder, RepositoryFileImporter, RepositorySyncer
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
@@ -841,18 +856,120 @@ async def warm_up_git_repository(repository_id: str) -> None:
     log.info(f"Warm up of repository {repository_id} is not implemented yet")
 
 
+@task(
+    name="git-read-only-repository-refs-check",
+    task_run_name="Check remote refs of repository {model.repository_name}",
+    cache_policy=NONE,
+)
+async def check_repository_refs(
+    model: GitReadOnlyRepositoryCheckRefs, checker: ReadOnlyRepositoryRefsChecker, run_id: str
+) -> RefsCheckResult:
+    return await checker.check(model, run_id=run_id)
+
+
+async def _check_due_repository(
+    *,
+    semaphore: asyncio.Semaphore,
+    model: GitReadOnlyRepositoryCheckRefs,
+    checker: ReadOnlyRepositoryRefsChecker,
+    run_id: str,
+) -> RefsCheckResult:
+    # The semaphore is taken outside the task so a repository waiting its turn does not spend the
+    # check's own budget queueing.
+    async with semaphore:
+        return await check_repository_refs(model=model, checker=checker, run_id=run_id)
+
+
 @flow(name="git-read-only-repositories-check-refs", flow_run_name="Check remote refs of read only git repositories")
-async def check_read_only_repositories_refs() -> None:
+async def check_read_only_repositories_refs() -> RefsCheckCycleSummary:
     log = get_run_logger()
-    log.info("Checking remote refs of read only repositories is not implemented yet")
+
+    db = await get_database()
+    cache = await get_cache()
+    scheduler = build_refs_scheduler(cache=cache, interval_mins=config.SETTINGS.git.read_only_refs_check_interval_mins)
+    checker = build_refs_checker(
+        cache=cache,
+        message_bus=await get_message_bus(),
+        lock_registry=lock.registry,
+        client=get_client(),
+        scheduler=scheduler,
+    )
+    run_id = flow_run.id or str(UUIDT())
+
+    async with db.start_session() as dbs:
+        repositories = await get_repositories_commit_per_branch(db=dbs, kind=InfrahubKind.READONLYREPOSITORY)
+
+    branch_ids = {name: branch.get_id() for name, branch in registry.branch.items()}
+
+    started = time.monotonic()
+    models = []
+    for repository_data in repositories.values():
+        model = build_check_refs_model(repository_data=repository_data, branch_ids=branch_ids)
+        if model is not None:
+            models.append(model)
+
+    due_models = await scheduler.select_due(models)
+
+    semaphore = asyncio.Semaphore(REFS_CHECK_CONCURRENCY)
+    outcomes = await asyncio.gather(
+        *(
+            _check_due_repository(semaphore=semaphore, model=model, checker=checker, run_id=run_id)
+            for model in due_models
+        ),
+        return_exceptions=True,
+    )
+
+    results = []
+    for model, outcome in zip(due_models, outcomes, strict=True):
+        if isinstance(outcome, RefsCheckResult):
+            results.append(outcome)
+            continue
+        if not isinstance(outcome, Exception):
+            # Cancellation and interpreter shutdown belong to whoever raised them.
+            raise outcome
+        reason = repr(outcome)
+        log.warning(f"Refs check of {model.repository_name} did not complete: {reason}")
+        await scheduler.retry_soon(model.repository_id)
+        results.append(
+            RefsCheckResult(
+                repository_id=model.repository_id,
+                repository_name=model.repository_name,
+                outcome=RefsCheckOutcome.FAILED,
+                failure_reason=reason,
+            )
+        )
+
+    summary = RefsCheckCycleSummary(
+        results=tuple(results),
+        not_due=len(models) - len(due_models),
+        duration_seconds=time.monotonic() - started,
+    )
+    log.info(
+        f"Checked the remote refs of {summary.checked_count} read only repositories in "
+        f"{summary.duration_seconds:.1f}s: {summary.moved_count} moved, {summary.failed_count} failed, "
+        f"{summary.claimed_elsewhere_count} already running, {summary.not_due} not due"
+    )
+    return summary
 
 
-@flow(name="git-read-only-repository-check-refs", flow_run_name="Check remote refs of repository {repository_id}")
-async def check_read_only_repository_refs(repository_id: str) -> None:
-    await add_tags(nodes=[repository_id])
+@flow(
+    name="git-read-only-repository-check-refs",
+    flow_run_name="Check remote refs of repository {model.repository_name}",
+)
+async def check_read_only_repository_refs(model: GitReadOnlyRepositoryCheckRefs) -> RefsCheckResult:
+    await add_tags(nodes=[model.repository_id])
 
-    log = get_run_logger()
-    log.info(f"Checking remote refs of repository {repository_id} is not implemented yet")
+    cache = await get_cache()
+    checker = build_refs_checker(
+        cache=cache,
+        message_bus=await get_message_bus(),
+        lock_registry=lock.registry,
+        client=get_client(),
+        scheduler=build_refs_scheduler(
+            cache=cache, interval_mins=config.SETTINGS.git.read_only_refs_check_interval_mins
+        ),
+    )
+    return await checker.check(model, run_id=flow_run.id or str(UUIDT()))
 
 
 @flow(

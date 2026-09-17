@@ -11,8 +11,8 @@ from infrahub.core.constants import InfrahubKind, PermissionAction, PermissionDe
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.services import InfrahubServices
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.message_bus import BusRecorder
+from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.graphql import graphql_mutation, graphql_query
 from tests.helpers.permissions import define_permissions
 
@@ -79,7 +79,8 @@ async def tag(db: InfrahubDatabase, default_branch: Branch, register_core_models
 
 @pytest.fixture
 async def service(db: InfrahubDatabase) -> InfrahubServices:
-    return await InfrahubServices.new(database=db, message_bus=BusRecorder(), workflow=WorkflowLocalExecution())
+    # These tests are about who may reach the mutation, not about what it triggers.
+    return await InfrahubServices.new(database=db, message_bus=BusRecorder(), workflow=WorkflowRecorder())
 
 
 async def _account_session(db: InfrahubDatabase, name: str, permissions: list[ObjectPermission]) -> AccountSession:
