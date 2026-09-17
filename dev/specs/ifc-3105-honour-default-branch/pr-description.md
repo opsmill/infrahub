@@ -63,16 +63,19 @@ This is PR 2 of 4 in that spec's breakdown. It targets the feature branch, not `
 The diff is 69 files, but roughly 1,200 of the ~2,100 added lines are mechanical test migration. The
 commits are ordered so you can take them one at a time:
 
-| # | Commit | What to look for |
-|---|---|---|
-| 1 | `30b7377` resolver | Small, self contained. Nothing calls it yet. |
-| 2 | `143607d` reproduction | **Fails at this commit.** Read this to understand the bug. |
-| 3 | `6bd8a87` object contract | **The heart of the change.** Worth the most attention. |
-| 4 | `a2ac532` call sites | 30 sites, one added argument each. Two real corrections hide here (webhook, user-check kind). |
-| 5 | `1b6d54d` test migration | Mechanical, the bulk of the line count. Skim. |
-| 6 | `8520f3f` added coverage | Test only. |
-| 7 | `1dfd1a0` docs | Changelog, knowledge page, regenerated reference. |
-| 8-11 | review fixes | Responses to cubic and to CI. |
+| # | Commit | What it is | What to look for |
+|---|---|---|---|
+| 1 | 30b7377ab | resolver | Small, self contained. Nothing calls it yet. |
+| 2 | 143607daa | reproduction | **Fails at this commit.** Read this to understand the bug. |
+| 3 | 6bd8a870b | object contract | **The heart of the change.** Worth the most attention. |
+| 4 | a2ac53232 | call sites | 30 sites, one added argument each. Two real corrections hide here (webhook, user-check kind). |
+| 5 | 1b6d54de3 | test migration | Mechanical, the bulk of the line count. Skim. |
+| 6 | 8520f3ff1 | added coverage | Test only. |
+| 7 | 1dfd1a0b4 | docs | Changelog, knowledge page, regenerated reference. |
+| 8 | 50636e7a0 | review fixes | Responses to cubic: four real bugs, detailed in the commit body. |
+| 9 | f3e1a0df8 | review fixes | Replaces an assertion that could never hold. |
+| 10 | 9cbf009af | review fixes | Drops an unverified claim about branch local status. |
+| 11 | 0d82c2815 | gate record | Spec bookkeeping only. |
 
 ## How to review
 
@@ -132,7 +135,7 @@ functional/git 6 passed; full functional tier 241 passed.
 
 **Evidence the guards bite, not just pass:**
 
-- The reproduction was written first and **fails on the base commit** `0a9cf432a` with
+- The reproduction was written first and **fails on the base commit** 0a9cf432a with
   `assert 'content' == 'trunk content'`: the warm construction pulls the platform default branch, so
   the configured branch's new commit never arrives. The remote carries both branches, so a wrong
   resolution reads the wrong tree rather than erroring.
