@@ -818,6 +818,17 @@ async def test_number_pool_utilization(
 
     pool_id = create_ok.data["CoreNumberPoolCreate"]["object"]["id"]
 
+    range_created = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_NUMBER_POOL_RANGE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"pool_id": pool_id, "start": 1, "end": 10},
+    )
+    assert not range_created.errors
+    assert range_created.data
+    range_id = range_created.data["CoreNumberPoolRangeCreate"]["object"]["id"]
+
     first = await graphql(
         schema=gql_params.schema,
         source=CREATE_TICKET,
@@ -875,11 +886,13 @@ async def test_number_pool_utilization(
     assert not utilization.errors
     assert utilization.data
 
-    # Number pools tied to an attribute always has a count of 1
+    # The pool reports its totals, and the one range it holds reports its own underneath
     assert utilization.data["InfrahubResourcePoolUtilization"]["count"] == 1
     assert utilization.data["InfrahubResourcePoolUtilization"]["utilization"] == 30.0
-    assert utilization.data["InfrahubResourcePoolUtilization"]["edges"][0]["node"]["display_label"] == "pool1"
-    assert utilization.data["InfrahubResourcePoolUtilization"]["edges"][0]["node"]["utilization"] == 30.0
+    range_edge = utilization.data["InfrahubResourcePoolUtilization"]["edges"][0]["node"]
+    assert range_edge["id"] == range_id
+    assert range_edge["kind"] == InfrahubKind.NUMBERPOOLRANGE
+    assert range_edge["utilization"] == 30.0
 
     allocation = await graphql(
         schema=gql_params.schema,
@@ -955,6 +968,18 @@ mutation CreateNumberPool(
       display_label
       id
     }
+  }
+}
+"""
+
+
+CREATE_NUMBER_POOL_RANGE = """
+mutation CreateNumberPoolRange($pool_id: String!, $start: BigInt!, $end: BigInt!) {
+  CoreNumberPoolRangeCreate(
+    data: { start: { value: $start }, end: { value: $end }, pool: { id: $pool_id } }
+  ) {
+    ok
+    object { id }
   }
 }
 """

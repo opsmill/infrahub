@@ -10,6 +10,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.protocols import CoreNumberPoolRange
 from infrahub.core.query.ipam import IPPrefixUtilization
 from infrahub.core.query.resource_manager import (
     IPAddressPoolGetIdentifiers,
@@ -310,34 +311,73 @@ async def resolve_number_pool_allocation(
     return response
 
 
+def _percentage(count: int, size: int) -> float:
+    if size <= 0:
+        return 0.0
+    return (count / size) * 100
+
+
+def _range_edge(range_node: CoreNumberPoolRange, used_default_branch: set[int], used_branches: set[int]) -> dict:
+    start = range_node.start.value
+    end = range_node.end.value
+    size = end - start + 1
+    in_default_branch = len({value for value in used_default_branch if start <= value <= end})
+    in_branches = len({value for value in used_branches if start <= value <= end})
+    weight = range_node.allocation_weight.value
+
+    return {
+        "node": {
+            "id": range_node.get_id(),
+            "kind": InfrahubKind.NUMBERPOOLRANGE,
+            "display_label": f"{start}-{end}",
+            "weight": weight or 0,
+            "utilization": _percentage(in_default_branch + in_branches, size),
+            "utilization_default_branch": _percentage(in_default_branch, size),
+            "utilization_branches": _percentage(in_branches, size),
+        }
+    }
+
+
 async def resolve_number_pool_utilization(
     db: InfrahubDatabase, pool: Node, at: Timestamp | str | None, branch: Branch
 ) -> dict:
-    """Returns a mapping containg utilization info of a number pool.
+    """Returns a mapping containing utilization info of a number pool.
 
-    The utilization is calculated as the percentage of the total number of values in the pool that are not excluded for the corresponding attribute.
+    Pool totals are the percentage of the pool's values that are in use. Each range the pool holds
+    reports its own figures underneath, so a range about to run out is visible on its own.
+
+    The two denominators differ. A range counts every value between its bounds, while the pool
+    total subtracts the excluded values declared on the target attribute. Neither applies the
+    attribute's min and max. A range spanning the whole pool therefore reports a percentage of its
+    own, and the range figures are indicative rather than exact until size, utilization, allocation
+    order and fullness are all derived from one effective-space calculation.
     """
     core_number_pool = await registry.manager.get_one_by_id_or_default_filter(db=db, id=pool.id, kind=CoreNumberPool)
     number_pool = NumberUtilizationGetter(db=db, pool=core_number_pool, at=at, branch=branch)
     await number_pool.load_data()
 
+    ranges = await registry.manager.query(
+        db=db,
+        schema=CoreNumberPoolRange,
+        filters={"pool__ids": [pool.get_id()]},
+        branch=branch,
+        at=at,
+        branch_agnostic=True,
+    )
+    ranges.sort(key=lambda range_node: range_node.start.value)
+
     return {
-        "count": 1,
+        "count": len(ranges),
         "utilization": number_pool.utilization,
         "utilization_default_branch": number_pool.utilization_default_branch,
         "utilization_branches": number_pool.utilization_branches,
         "edges": [
-            {
-                "node": {
-                    "id": pool.get_id(),
-                    "kind": "CoreNumberPool",
-                    "display_label": pool.name.value,  # type: ignore[attr-defined]
-                    "weight": 1,
-                    "utilization": number_pool.utilization,
-                    "utilization_default_branch": number_pool.utilization_default_branch,
-                    "utilization_branches": number_pool.utilization_branches,
-                }
-            }
+            _range_edge(
+                range_node=range_node,
+                used_default_branch=number_pool.used_default_branch,
+                used_branches=number_pool.used_branches,
+            )
+            for range_node in ranges
         ],
     }
 
