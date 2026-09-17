@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 import pytest
@@ -11,6 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreValidator
 from infrahub.git.constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME
 from infrahub.proposed_change.constants import ProposedChangeState
+from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -102,23 +104,37 @@ class TestProposedChangeRepositoryImportStatus(TestInfrahubApp):
         await repository.save()
 
     @staticmethod
-    async def _get_repository_validator(db: InfrahubDatabase, proposed_change_id: str, name: str) -> CoreValidator:
-        proposed_change: InternalCoreProposedChange = await NodeManager.get_one(
-            db=db, id=proposed_change_id, kind=InfrahubKind.PROPOSEDCHANGE, raise_on_error=True
-        )
-        peers = await proposed_change.validations.get_peers(db=db, peer_type=CoreValidator)
-        validators = [peer for peer in peers.values() if peer.label.value == f"Repository Validator: {name}"]
-        assert len(validators) == 1
-        return validators[0]
+    async def _wait_for_repository_validator(
+        db: InfrahubDatabase, proposed_change_id: str, name: str, conclusion: ValidatorConclusion
+    ) -> CoreValidator:
+        """Return the repository validator for `name` once it reports `conclusion`.
+
+        Raises:
+            AssertionError: if it does not reach that conclusion within the wait window.
+
+        """
+        label = f"Repository Validator: {name}"
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
+            proposed_change: InternalCoreProposedChange = await NodeManager.get_one(
+                db=db, id=proposed_change_id, kind=InfrahubKind.PROPOSEDCHANGE, raise_on_error=True
+            )
+            peers = await proposed_change.validations.get_peers(db=db, peer_type=CoreValidator)
+            validators = [peer for peer in peers.values() if peer.label.value == label]
+            if len(validators) == 1 and validators[0].conclusion.value.value == conclusion.value:
+                return validators[0]
+            await asyncio.sleep(1)
+        raise AssertionError(f"'{label}' did not reach conclusion '{conclusion.value}'")
 
     @pytest.mark.parametrize("repository_name", [MANAGED_REPOSITORY, READ_ONLY_REPOSITORY])
     async def test_failed_import_fails_the_repository_validator(
         self, db: InfrahubDatabase, proposed_change_id: str, client: InfrahubClient, repository_name: str
     ) -> None:
-        validator = await self._get_repository_validator(
-            db=db, proposed_change_id=proposed_change_id, name=repository_name
+        validator = await self._wait_for_repository_validator(
+            db=db,
+            proposed_change_id=proposed_change_id,
+            name=repository_name,
+            conclusion=ValidatorConclusion.FAILURE,
         )
-        assert validator.conclusion.value.value == ValidatorConclusion.FAILURE.value
 
         checks = await client.filters(kind=CoreStandardCheck, validator__ids=validator.id)
         assert [check.name.value for check in checks] == [IMPORT_STATUS_CHECK_NAME]
@@ -152,10 +168,12 @@ class TestProposedChangeRepositoryImportStatus(TestInfrahubApp):
         await client.execute_graphql(query=RERUN_REPOSITORY_CHECKS, variables={"id": proposed_change_id})
 
         for repository_name in repository_ids:
-            validator = await self._get_repository_validator(
-                db=db, proposed_change_id=proposed_change_id, name=repository_name
+            validator = await self._wait_for_repository_validator(
+                db=db,
+                proposed_change_id=proposed_change_id,
+                name=repository_name,
+                conclusion=ValidatorConclusion.SUCCESS,
             )
-            assert validator.conclusion.value.value == ValidatorConclusion.SUCCESS.value
 
             checks = await client.filters(kind=CoreStandardCheck, validator__ids=validator.id)
             assert [check.name.value for check in checks] == [IMPORT_STATUS_CHECK_NAME]
