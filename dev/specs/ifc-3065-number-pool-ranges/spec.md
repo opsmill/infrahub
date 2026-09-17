@@ -1,6 +1,6 @@
 # Feature Specification: Number Pools P1 — Weighted Ranges
 
-**Feature Branch**: `pmi-number-pools-part1`
+**Feature Branch**: `feature-number-pools-1.12`
 
 **Created**: 2026-09-17
 

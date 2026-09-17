@@ -2,7 +2,7 @@
 
 **Feature**: [spec.md](spec.md) | **Plan**: [plan.md](plan.md) | **Date**: 2026-09-17
 
-Code references are `module::Symbol` against branch `pmi-number-pools-part1` (based on `stable`).
+Code references are `module::Symbol` against branch `feature-number-pools-1.12` (based on `stable`).
 
 ## Current state, verified
 

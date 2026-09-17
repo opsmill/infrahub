@@ -1,6 +1,6 @@
 # Implementation Plan: Number Pools P1 — Weighted Ranges
 
-**Branch**: `pmi-number-pools-part1` | **Date**: 2026-09-17 | **Spec**: [spec.md](spec.md)
+**Branch**: `feature-number-pools-1.12` | **Date**: 2026-09-17 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `dev/specs/ifc-3065-number-pool-ranges/spec.md`
 
