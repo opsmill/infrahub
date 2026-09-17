@@ -131,7 +131,7 @@ PR 2 must land before PR 3: without the migration, allocation over ranges would 
 
 **Goal**: `parameters.ranges` end to end, both write surfaces guarded, deprecation warnings, SDK contract
 
-**Independent Test**: `cd backend && uv run pytest tests/unit/core/schema/test_number_pool_parameters.py tests/component/pools tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py tests/component/core/schema/test_attribute_parameters.py && uv run pytest backend/tests/integration/schema_lifecycle/test_attribute_parameters_update.py`
+**Independent Test**: `cd backend && uv run pytest tests/unit/core/schema/test_number_pool_parameters.py tests/component/pools tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py tests/component/core/schema/test_attribute_parameters.py && uv run pytest tests/integration/schema_lifecycle/test_attribute_parameters_update.py`
 
 ### Tests
 

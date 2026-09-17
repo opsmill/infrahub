@@ -31,7 +31,7 @@ Expected: 101 allocations from 100-200 ascending on a pool with 100-200 (weight 
 
 ```bash
 cd backend && uv run pytest tests/component/core/migrations/graph/m079_number_pool_ranges
-uv run pytest backend/tests/unit/core/graph/test_graph_version.py
+uv run pytest tests/unit/core/graph/test_graph_version.py
 ```
 
 Expected: every pre-existing pool holds one range with its old bounds, figures unchanged, second run creates nothing, `GRAPH_VERSION` matches the migration number.
@@ -48,7 +48,7 @@ Expected: removal of a range holding allocations succeeds and hides them; re-add
 
 ```bash
 cd backend && uv run pytest tests/component/pools tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py tests/component/core/schema/test_attribute_parameters.py
-uv run pytest backend/tests/integration/schema_lifecycle/test_attribute_parameters_update.py
+uv run pytest tests/integration/schema_lifecycle/test_attribute_parameters_update.py
 ```
 
 Expected: ranges materialised at pool creation, reconciled on a default-branch edit, unsafe change refused naming objects, direct edits refused through both mutations.
