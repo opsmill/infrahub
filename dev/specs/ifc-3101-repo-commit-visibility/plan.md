@@ -152,7 +152,7 @@ backend/tests/
 ├── component/core/query/test_repository_branch_values.py         # NEW  per-branch resolution, inheritance, query count at 5 vs 200 branches
 ├── component/graphql/queries/test_repository_git_state.py        # NEW  resolvers, permission, laziness
 ├── component/graphql/mutations/test_repository.py                # EDIT  check-refs mutation with WorkflowRecorder
-├── component/services/adapters/message_bus/test_rpc_timeout.py   # NEW
+├── unit/services/adapters/message_bus/test_rpc_timeout.py        # NEW  no broker: the doubles open no connection
 ├── component/message_bus/operations/git/test_commit_log.py       # NEW  handler on FileRepo fixtures, NOT_CLONED path
 ├── component/message_bus/operations/git/test_branch_heads.py     # NEW
 ├── component/git/test_check_refs.py                              # NEW  due check, ls-remote only when idle, lock scope

@@ -14,6 +14,7 @@ from infrahub.exceptions import (
     PermissionDeniedError,
     SchemaNotFoundError,
     UniquenessViolationError,
+    WorkerTimeoutError,
 )
 
 from .exceptions import (
@@ -37,6 +38,7 @@ from .payloads import (
     TokenExpiredData,
     UndefinedErrorData,
     UniquenessViolationData,
+    WorkerTimeoutData,
 )
 
 
@@ -200,6 +202,19 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
                 http_status=423,
                 payload_model=MergeRecoveryRequiredData,
                 exception_class=MergeRecoveryRequiredError,
+            ),
+        ),
+        (
+            "WORKER_TIMEOUT",
+            CatalogueEntry(
+                description=(
+                    "No worker answered the request within the time allowed. "
+                    "The failure is transient; the request may be retried."
+                ),
+                stability="evolving",
+                http_status=504,
+                payload_model=WorkerTimeoutData,
+                exception_class=WorkerTimeoutError,
             ),
         ),
         (

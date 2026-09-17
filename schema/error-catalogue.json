@@ -351,6 +351,30 @@
         "type": "object"
       }
     },
+    "WORKER_TIMEOUT": {
+      "description": "No worker answered the request within the time allowed. The failure is transient; the request may be retried.",
+      "stability": "evolving",
+      "http_status": 504,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "timeout_seconds": {
+            "title": "Timeout Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "operation",
+          "timeout_seconds"
+        ],
+        "title": "WorkerTimeoutData",
+        "type": "object"
+      }
+    },
     "UNDEFINED_ERROR": {
       "description": "An error not yet covered by the catalogue. Its occurrence indicates a catalogue gap and should be triaged.",
       "stability": "stable",

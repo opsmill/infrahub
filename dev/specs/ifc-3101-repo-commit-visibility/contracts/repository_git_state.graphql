@@ -178,7 +178,7 @@ extend type Mutation {
 #     "extensions": {
 #       "code": "WORKER_TIMEOUT",
 #       "http_status": 504,
-#       "data": { "operation": "git.commit_log.get", "timeout_seconds": 30, "retry_after_seconds": 30 }
+#       "data": { "operation": "git.commit_log.get", "timeout_seconds": 30 }
 #     }
 #   }]
 # }

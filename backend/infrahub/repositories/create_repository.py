@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, cast
 
 from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.core.constants.infrahubkind import READONLYREPOSITORY, REPOSITORY
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import ValidationError, WorkerTimeoutError
 from infrahub.git.models import GitRepositoryAdd, GitRepositoryAddReadOnly
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
@@ -46,6 +46,8 @@ class RepositoryFinalizer:
 
         Raises:
             ValidationError: When connectivity to the remote repository cannot be established.
+            WorkerTimeoutError: When no worker answered the connectivity check in time; the
+                repository is removed first.
             ValueError: When the repository kind is neither a regular nor a read-only repository.
 
         """
@@ -55,9 +57,17 @@ class RepositoryFinalizer:
                 repository_name=obj.name.value,
                 repository_location=obj.location.value,
             )
-            response = await self.services.message_bus.rpc(
-                message=message, response_class=GitRepositoryConnectivityResponse
-            )
+            try:
+                response = await self.services.message_bus.rpc(
+                    message=message, response_class=GitRepositoryConnectivityResponse
+                )
+            except WorkerTimeoutError:
+                log.warning("repository_removed_after_connectivity_timeout", name=obj.name.value, id=obj.id)
+                try:
+                    await obj.delete(db=db)
+                except Exception:
+                    log.exception("repository_removal_failed", name=obj.name.value, id=obj.id)
+                raise
 
             if response.data.success is False:
                 await obj.delete(db=db)

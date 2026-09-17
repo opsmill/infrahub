@@ -9,6 +9,7 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
 from infrahub.components import ComponentType
+from infrahub.exceptions import WorkerTimeoutError
 from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.operations import execute_message
@@ -91,11 +92,19 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
     async def on_callback(self, message: AbstractIncomingMessage) -> None:
         if message.correlation_id:
-            future: asyncio.Future = self.futures.pop(message.correlation_id)
+            future: asyncio.Future | None = self.futures.pop(message.correlation_id, None)
 
-            if future:
+            # A reply that arrives after its caller gave up finds the future gone, or already
+            # cancelled by the timeout in the turn before the waiter resumed.
+            if future is not None and not future.done():
                 future.set_result(message)
-                return
+            else:
+                get_logger().debug(
+                    "Discarding reply with no pending request",
+                    correlation_id=message.correlation_id,
+                    routing_key=message.routing_key,
+                )
+            return
 
         clear_log_context()
         if message.routing_key in messages.MESSAGE_MAP:
@@ -205,8 +214,15 @@ class RabbitMQMessageBus(InfrahubMessageBus):
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         await self.channel.default_exchange.publish(self.format_message(message=message), routing_key=routing_key)
 
-    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(
+        self,
+        message: InfrahubMessage,
+        response_class: type[ResponseClass],
+        timeout: float | None = None,  # noqa: ASYNC109 part of the published bus contract
+    ) -> ResponseClass:
         correlation_id = str(UUIDT())
+        bound = timeout if timeout is not None else self.settings.rpc_timeout
+        routing_key = messages.ROUTING_KEY_MAP.get(type(message), "")
 
         future = self.loop.create_future()
         self.futures[correlation_id] = future
@@ -215,9 +231,23 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         request_id = log_data.get("request_id", "")
         message.meta = Meta(request_id=request_id, correlation_id=correlation_id, reply_to=self.callback_queue.name)
 
-        await self.send(message=message)
+        try:
+            await self.send(message=message)
 
-        response: AbstractIncomingMessage = await future
+            try:
+                async with asyncio.timeout(bound):
+                    response: AbstractIncomingMessage = await future
+            except TimeoutError as exc:
+                get_logger().warning(
+                    "No worker answered within the allowed time",
+                    correlation_id=correlation_id,
+                    routing_key=routing_key,
+                    timeout_seconds=bound,
+                )
+                raise WorkerTimeoutError(operation=routing_key, timeout_seconds=bound) from exc
+        finally:
+            self.futures.pop(correlation_id, None)
+
         data = ujson.loads(response.body)
         return response_class(**data)
 
