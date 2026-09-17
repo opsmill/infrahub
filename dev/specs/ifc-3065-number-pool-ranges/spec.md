@@ -41,6 +41,9 @@ P1 delivers **several weighted ranges per number pool**, for pools a user create
 
 ## User Scenarios & Testing *(mandatory)*
 
+The priority on each user story is the order in which this slice is built. It is not the slice
+name from the Scope table above: every user story below belongs to slice P1.
+
 ### User Story 1 - A pool over a space with gaps, drawn in the order I choose (Priority: P1)
 
 An operator creates one pool holding VLANs 100–200 and 205–300, weights 100–200 to be drained first, allocates until it is empty, watches allocation move to 205–300, and reads a utilization figure measured against both ranges together. The pool reports itself full only when both ranges are exhausted.
