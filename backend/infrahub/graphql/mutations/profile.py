@@ -73,8 +73,9 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
             # Handle both single relationships and lists
             items = [rel_data] if not isinstance(rel_data, list) else rel_data
             for item in items:
-                # Check if from_pool is present and has a non-None value
-                # (graphene InputObjectType may include keys with None values for unset fields)
+                # An unset field is absent from the input rather than present as a None value, and
+                # an explicit null names no pool either, so only a `from_pool` carrying an actual
+                # pool reference reaches the raise.
                 if isinstance(item, dict) and item.get("from_pool") is not None:
                     raise ValidationError(
                         {rel_name: "Resource pools cannot be used as the source for relationship values in Profiles"}
