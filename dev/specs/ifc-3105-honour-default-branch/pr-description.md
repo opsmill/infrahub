@@ -1,86 +1,171 @@
-# Resolve the configured repository default branch once, at every construction [IFC-3105]
+# Why
 
-## What was wrong
+A repository can be configured with a default branch that is not `main` - the remote branch Infrahub
+maps onto its own default branch. That value was read from the graph **only when a worker cloned the
+repository for the first time**. Every later construction of the repository object on that worker
+left it unset and silently fell back to Infrahub's own default branch.
 
-A read-write repository's configured default branch was read from the graph only when a worker cloned
-the repository for the first time. Every later construction of the per-flow repository object on that
-worker omitted it and inherited a silent fallback to Infrahub's own default branch. Artifact
-generation, transforms, generators, computed attributes and proposed-change checks therefore ran
-against the wrong branch whenever the worker's clone was already warm — intermittently, and
-differently per worker.
+The result is an intermittent, per-worker bug: artifact generation, transforms, generators, computed
+attributes and proposed change checks run against the wrong branch whenever the worker's clone
+happens to be warm. Depending on the remote you either get output built from the wrong branch's
+files, or a failure naming a branch the operator never configured.
+
+**Goal:** resolve the configured default branch once, at every construction, on the Infrahub branch
+the operation runs on, and make the broken state impossible to construct.
+
+**Non-goals:** rejecting a misconfigured default branch when a repository is connected (US3), and
+surfacing skipped colliding branches in the task log (US4). Both are specced and land as separate
+PRs on top of this one.
+
+Jira: [IFC-3105](https://opsmill.atlassian.net/browse/IFC-3105)
+Epic: [INFP-670](https://opsmill.atlassian.net/browse/INFP-670)
+Spec set: `dev/specs/ifc-3105-honour-default-branch/`
+
+This is PR 2 of 4 in that spec's breakdown. It targets the feature branch, not `stable`.
 
 ## What changed
 
-- `InfrahubRepository` declares `default_branch` and `internal_status` as **required** fields with no
-  defaults. The optional field and the fallback property are gone from the shared base, so no
-  base-class code can read a default branch that a read-only repository does not have.
-- `git/graph_settings.py` holds the single resolution point: one SDK read of the repository node,
-  performed by `InfrahubRepository.init` / `.new` and nowhere else.
-- `get_initialized_repo` and both factories take a required `infrahub_branch_name`, which is also part
-  of the factory's 30-second cache key. All 16 factory call sites and the 14 direct construction sites
-  pass it.
-- The models and flow parameters that used to carry the default branch no longer do:
-  `GitRepositoryAdd.default_branch_name`, `GitRepositoryMerge.default_branch`, and the
-  `default_branch_name` / `internal_status` parameters of the sync child flow.
-- The base class answers its three former uses of the default branch through abstract hooks, with
-  identity implementations on the read-only kind.
+**Behavioural**
 
-## Operator-visible changes riding along
+- A repository's configured default branch is now correct on every operation, whether or not the
+  worker already had a clone. This is the fix.
+- `operational_status` is written on the branch the operation ran on, instead of always on the
+  platform default branch. It is branch scoped, so this is visible to operators.
+- The repository's location is now known on every construction. When it differs from the URL the
+  clone was made with, the object re-points `origin` and fetches. That self healing path previously
+  ran only where a location was passed explicitly.
+- User checks resolve the repository by its real kind. `run_user_check` hard coded the read-write
+  kind while also running for read-only repositories.
 
-1. **`operational_status` now writes on the branch the operation ran on.** The factories set
-   `infrahub_branch_name` on the object, and `_update_operational_status` reads it. Every
-   `get_initialized_repo` caller previously left it unset and wrote the status on the platform default
-   branch regardless of where it ran. `operational_status` is branch-scoped, so this moves a value
-   operators can see. It is the intended shape — one branch, one meaning — and is pinned by a unit
-   test asserting which branch the mutation names.
+**Implementation**
 
-2. **The repository's location is now known on every construction.** The resolver returns it
-   alongside the default branch, where previously `get_initialized_repo` left it unset. `init`
-   re-points the clone's `origin` and fetches when the configured location differs from the one the
-   clone was made with, so that self-healing path — which used to run only on the paths that passed a
-   location explicitly — now runs on every downstream flow. Intended, but it adds a fetch where the
-   two disagree, and it is what made several integration fixtures fail: they declared a GitHub URL on
-   the node while cloning from a local path.
+- `InfrahubRepository` declares `default_branch` and `internal_status` as required pydantic fields.
+  Omitting either raises at construction, so there is no bypass.
+- `git/graph_settings.py` is the single resolution point: one SDK read, performed by
+  `InfrahubRepository.init` / `.new` and nowhere else. It is a module rather than a method on the
+  model because the model is a pydantic data holder (`.agents/rules/backend-component-design.md`).
+- `get_initialized_repo` and both factories take a required `infrahub_branch_name`, which also joins
+  the factory's 30 second cache key because `internal_status` is branch scoped.
+- The base class lost the optional field and the fallback property, and answers its three former
+  uses through abstract hooks. With the property gone, mypy's `attr-defined` check enforces that no
+  base class code reads a default branch the read-only kind does not have.
 
-3. **User checks now resolve the repository by its real kind.** `run_user_check` hard-coded
-   `repository_kind=InfrahubKind.REPOSITORY` while also running for read-only repositories. That was
-   invisible while construction read nothing from the graph. The kind is now threaded from the
-   proposed change's repository list through `TriggerRepositoryUserChecks`, `UserCheckDefinitionData`
-   and `UserCheckData`. Two existing functional tests in `test_convert_repositories.py` caught this.
+**What stayed the same**
 
-## Cost, and the follow-up that removes it
+- No schema, migration, GraphQL or REST change.
+- No new dependency.
+- Read-only repositories behave exactly as before: their hooks are the identity, which is what the
+  removed fallback computed for them anyway.
+- No new mypy or `ty` suppressions. `ty` reports 116 diagnostics, unchanged from the base commit.
 
-Every read-write construction now performs one SDK read. The 16 `get_initialized_repo` callers are
-amortised by the existing 30-second cache, but some paths are not: the periodic sync pays two per
-repository per cycle, and `merge_git_repository`, the two branch-lifecycle fan-outs and the transform
-webhook each pay one per event.
+### Suggested review order
 
-`git_branch_create` and `git_branch_delete` are the sharpest case — they need only local clone and
-worktree operations, and neither resolved value can affect their outcome, yet they must construct the
-full object to get one. The remedy is not an optional field, which is the shape this change deletes,
-but smaller objects and settings resolved at the composition root. Both are recorded in
-`plan.md` Complexity Tracking, filed under T072, and noted against `infp-546` Story 3.
+The diff is 69 files, but roughly 1,200 of the ~2,100 added lines are mechanical test migration. The
+commits are ordered so you can take them one at a time:
 
-## Verification
+| # | Commit | What to look for |
+|---|---|---|
+| 1 | `30b7377` resolver | Small, self contained. Nothing calls it yet. |
+| 2 | `143607d` reproduction | **Fails at this commit.** Read this to understand the bug. |
+| 3 | `6bd8a87` object contract | **The heart of the change.** Worth the most attention. |
+| 4 | `a2ac532` call sites | 30 sites, one added argument each. Two real corrections hide here (webhook, user-check kind). |
+| 5 | `1b6d54d` test migration | Mechanical, the bulk of the line count. Skim. |
+| 6 | `8520f3f` added coverage | Test only. |
+| 7 | `1dfd1a0` docs | Changelog, knowledge page, regenerated reference. |
+| 8-11 | review fixes | Responses to cubic and to CI. |
 
-- `backend/tests/functional/git/test_repository_default_branch.py::test_warm_clone_operation_targets_configured_default_branch`
-  is the reproduction. It was written first and **fails on the base commit** (`0a9cf432a`): the warm
-  construction pulls the platform-default branch, so the trunk's new commit never arrives
-  (`assert 'content' == 'trunk content'`). The remote carries both branches, so the wrong resolution
-  succeeds while reading the wrong tree rather than erroring.
-- **FR-009 mutation check, performed**: reverting `InfrahubRepository.push`'s refspec from
-  `HEAD:refs/heads/<remote>` to the bare branch name makes
-  `pytest backend/tests/component/git/test_git_repository.py -k non_main_default_branch` fail
-  (1 failed); restoring the refspec makes it pass (1 passed). The guard bites.
-- Baselines and per-tier counts: `dev/specs/ifc-3105-honour-default-branch/baseline.md`.
+## How to review
 
-## Not included
+**Focus here**
 
-No Playwright e2e test. This is a backend change with no frontend work, and every operator-visible
-effect rides on UI that already exists — the connect form renders whatever validation error the API
-returns, and the node Tasks tab already lists node-tagged runs. There is no new browser behaviour to
-pin (plan Constitution Check, Principle IV).
+- `backend/infrahub/git/repository.py` and `git/base.py` - the contract change (commit 3).
+- `backend/infrahub/git/graph_settings.py` - 60 lines, the single resolution point.
+- The five call sites that name a branch explicitly rather than taking one from a model. Each
+  carries a one line why. A missing branch is a loud `TypeError`; the wrong branch is silent, so
+  these are the ones worth checking:
+  `git_branch_create`, `git_branch_delete`, `branch_deleted`, `merge_git_repository`, and the
+  webhook.
 
-The PRD's request for the skipped-branch condition as persistent repository state is superseded by an
-owner decision of 2026-09-04 that a dedicated status surface for it is overkill, not left undone.
-That work is US4 and is not in this pull request.
+**Skim**
+
+- `backend/tests/` outside `unit/git` - 36 files, almost all one line changes adopting the new
+  signature.
+- `docs/docs/reference/message-bus-events.mdx` - regenerated, not hand edited.
+
+**Where I would like extra scrutiny**
+
+1. **`internal_status` now comes from the node, whose schema default is `inactive`.** The object
+   used to default to `active` on its own. A repository node created without an explicit status
+   therefore syncs nothing now. Production sets it explicitly in `RepositoryFinalizer.post_create`,
+   so I believe there is no live exposure, but that is a judgement worth a second opinion. It did
+   break several test fixtures that relied on the old implicit default.
+2. **The cost.** Every read-write construction performs one SDK read. The 16 `get_initialized_repo`
+   callers are amortised by the existing 30 second cache, but the periodic sync pays two per
+   repository per cycle, and `merge_git_repository`, the two branch lifecycle fan-outs and the
+   transform webhook each pay one per event.
+
+**Alternative considered**
+
+Carrying the default branch in the message payloads instead of reading it. Rejected: the Infrahub
+branch has to be threaded to all 30 sites regardless (the status is branch scoped), so this would
+thread two values instead of one; a carried value is a snapshot that can go stale between enqueue and
+execution in exactly the shape of this bug; and most producers do not hold it either, so the read
+moves upstream rather than disappearing. The follow up that removes the redundant reads without
+reintroducing a carrier is filed under T072 and noted against `infp-546`.
+
+## How to test
+
+```bash
+# The reproduction. Passes here; fails on the base commit.
+uv run pytest backend/tests/functional/git/test_repository_default_branch.py
+
+# The local gate for this PR
+uv run invoke format lint
+uv run pytest backend/tests/unit/git
+uv run pytest backend/tests/component/git/test_sync_repository.py \
+               backend/tests/component/git/test_git_repository.py
+uv run pytest backend/tests/functional/git
+```
+
+Results as of the last run: unit/git 218 passed; component 69 passed and 1 pre-existing xfail;
+functional/git 6 passed; full functional tier 241 passed.
+
+**Evidence the guards bite, not just pass:**
+
+- The reproduction was written first and **fails on the base commit** `0a9cf432a` with
+  `assert 'content' == 'trunk content'`: the warm construction pulls the platform default branch, so
+  the configured branch's new commit never arrives. The remote carries both branches, so a wrong
+  resolution reads the wrong tree rather than erroring.
+- Reverting `InfrahubRepository.push`'s refspec to the bare branch name makes
+  `pytest backend/tests/component/git/test_git_repository.py -k non_main_default_branch` fail, and
+  restoring it makes it pass.
+
+## Impact & rollout
+
+- **Backward compatibility:** `GitFileGet` and `GitDiffNamesOnly` gain required fields, so API and
+  task workers must be upgraded together. No in flight message compatibility across versions is
+  required. No schema or API change.
+- **Performance:** one extra SDK read per read-write repository construction, detailed above.
+- **Config/env changes:** none.
+- **Deployment notes:** safe to deploy; no coordinated release beyond the usual API and worker
+  upgrade.
+
+## Checklist
+
+- [x] Tests added/updated
+- [x] Changelog entry added (`changelog/+ifc-3105-warm-clone-default-branch.fixed.md`)
+- [ ] External docs updated - not applicable, no user facing surface changes in this PR
+- [x] Internal .md docs updated (`dev/knowledge/backend/git-sync.md`)
+- [x] I have reviewed AI generated content
+
+<!--
+Not included, so a reviewer does not have to ask:
+
+No Playwright e2e test. Backend only change with no frontend work; every operator visible effect
+rides on UI that already exists, so there is no new browser behaviour to pin (plan Constitution
+Check, Principle IV).
+
+The PRD asks for the skipped branch condition as persistent repository state. That is superseded by
+an owner decision of 2026-09-04 that a dedicated status surface for it is overkill, not left undone.
+It is US4 and not in this PR.
+-->
