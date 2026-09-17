@@ -70,7 +70,8 @@ Factories (the single resolution point, D1):
   and `location` (a caller-supplied `location` wins over the node's).
 - Both factories also set `infrahub_branch_name` on the instance from their parameter, so the branch
   the node was read on and the branch the object reports are one value. This changes which branch
-  `_update_operational_status` writes on for every `get_initialized_repo` caller; see
+  `_update_operational_status` names for every `get_initialized_repo` caller, with no change to the
+  value an operator reads back because the attribute is branch-agnostic; see
   `contracts/repository-object.md`.
 - `InfrahubRepository.resolve_checkout_ref()` returns `self.default_branch` without a graph read.
 
@@ -197,6 +198,18 @@ Response model unchanged: `message`, `success`, `operational_status`.
 |---|---|---|
 | `GitRepositoryAdd` | `default_branch_name` | **removed** (FR-003) |
 | `GitRepositoryMerge` | `default_branch` | **removed** (FR-003) |
+| `GitDiffNamesOnly` | `infrahub_branch_name` | **new, required**. The flow had no branch of its own to forward to the factory; its producer (`core/diff/branch_differ.py`) already holds one |
+| `TriggerRepositoryUserChecks` | `repository_kind` | **new, required**, see below |
+| `UserCheckDefinitionData` | `repository_kind` | **new, required**, see below |
+| `UserCheckData` | `repository_kind` | **new, required**, see below |
+
+**Why the user-check models gain a kind.** `run_user_check` hard-coded
+`repository_kind=InfrahubKind.REPOSITORY`, but user checks also run for read-only repositories. That
+mismatch was invisible while construction read nothing from the graph; once it reads the node by
+kind, a read-only repository fails to resolve. The kind is already known upstream — the proposed
+change's repository list carries `read_only` — so it is threaded through rather than guessed. Found
+by two existing functional tests (`test_convert_repositories.py`) that this feature would otherwise
+have broken.
 
 ### Flow parameters
 

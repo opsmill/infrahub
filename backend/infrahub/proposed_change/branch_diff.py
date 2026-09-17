@@ -44,6 +44,7 @@ class RepositoryFileDiffer(Protocol):
         repository_id: str,
         repository_name: str,
         repository_kind: str,
+        infrahub_branch_name: str,
         source_commit: str,
         destination_commit: str,
     ) -> RepositoryFileDiff: ...
@@ -66,6 +67,7 @@ class GitRepositoryFileDiffer:
         repository_id: str,
         repository_name: str,
         repository_kind: str,
+        infrahub_branch_name: str,
         source_commit: str,
         destination_commit: str,
     ) -> RepositoryFileDiff:
@@ -74,6 +76,7 @@ class GitRepositoryFileDiffer:
             repository_id=repository_id,
             name=repository_name,
             repository_kind=repository_kind,
+            infrahub_branch_name=infrahub_branch_name,
         )
         files_changed, files_added, files_removed = await git_repo.calculate_diff_between_commits(
             first_commit=destination_commit, second_commit=source_commit
@@ -101,6 +104,7 @@ class RepositoryFileDiffPopulator:
                 repository_id=repo.repository_id,
                 repository_name=repo.repository_name,
                 repository_kind=repo.kind,
+                infrahub_branch_name=repo.source_branch,
                 source_commit=repo.source_commit,
                 destination_commit=repo.destination_commit,
             )

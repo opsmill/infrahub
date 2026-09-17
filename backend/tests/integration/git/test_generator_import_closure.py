@@ -96,6 +96,7 @@ class TestGeneratorImportClosure(TestInfrahubApp):
             repository_id=repository_id,
             name="car-dealership",
             repository_kind=InfrahubKind.REPOSITORY,
+            infrahub_branch_name="main",
         )
         assert isinstance(repo, InfrahubRepository)
 

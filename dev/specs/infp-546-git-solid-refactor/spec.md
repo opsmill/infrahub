@@ -116,6 +116,19 @@ As a developer of code that consumes a repository object (for read or for read/w
 
 **Why this priority**: Protocols are a purely additive change with zero behavioral risk. They become the stable boundary that subsequent extraction work can rely on. They also allow consumers that only need a subset of capabilities to express that at the type level.
 
+> **Added by IFC-3105: the same split is needed at construction, not only in the types.** That feature
+> makes the repository's default branch and internal status required constructor fields, which is the
+> right fix for its defect but means every caller pays for them. Several callers demonstrably cannot
+> use either value: `git_branch_create` and `git_branch_delete` need only local clone and worktree
+> operations (the branch being created is never Infrahub's default branch, so the branch-name mapping
+> returns its input; deleting a remote branch uses no mapping at all), and the branch-diff calculator
+> only reads two commits. Each now performs one graph read per event to obtain values it cannot act
+> on. A type-level protocol does not relieve this — the caller still constructs a concrete object — so
+> this story needs a construction-level counterpart: a narrower capability to build, or settings
+> resolved at the composition root and passed in. The repository class currently bundles at least five
+> concerns: local clone and worktree management, branch-name mapping, graph write-back, object import,
+> and staging decisions.
+
 **Pull-request shape**: One pull request to introduce the protocol module and its exports; one or more follow-up pull requests — one per caller — to migrate existing consumers to depend on the protocol. The protocol pull request is mergeable and useful on its own even if no caller is migrated. Two or more pull requests total.
 
 **Independent Test**: Two protocol types are defined (one for the read-only capability set, one for the full read/write set) and re-exported from the existing repository module. At least one existing caller in the backend that today receives the union of the two concrete classes is updated to type its parameter against the protocol instead, and tests still pass.

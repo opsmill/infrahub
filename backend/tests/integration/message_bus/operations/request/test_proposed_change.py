@@ -11,7 +11,7 @@ from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
 from infrahub.git.sync import RepositoryFileImporter, RepositorySyncer
@@ -145,6 +145,7 @@ class TestProposedChange(TestInfrahubApp):
             description="test repository",
             location=file_repo.path,
             commit=file_repo.repo.commit("main").hexsha,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 
@@ -154,7 +155,9 @@ class TestProposedChange(TestInfrahubApp):
             message_bus=bus, client=client, workflow=WorkflowLocalExecution(), database=db, cache=RedisCache()
         )
 
-        repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
+        repo = await InfrahubRepository.new(
+            id=obj.id, name=file_repo.name, location=file_repo.path, client=client, infrahub_branch_name="main"
+        )
         await sync_repository(repo)
 
         result = await graphql_mutation(

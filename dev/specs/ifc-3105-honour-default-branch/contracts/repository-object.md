@@ -59,14 +59,15 @@ construct with the value they read the node on, so the object never holds one br
 while having been resolved against another. Without this the parameter shadows the field and the
 object carries two answers to question (b) below.
 
-**One behavioural consequence, intended and pinned by a test.** `_update_operational_status` sends
-`branch_name=self.infrahub_branch_name or registry.default_branch` (`git/base.py:247`). Today
-`_get_initialized_repo` omits the field (`git/repository.py:477`, `:480`), so every downstream flow
-writes `operational_status` on the platform default branch no matter where it runs; afterwards those
-writes land on the branch the operation ran on, which is the branch whose node it read. The read-only
-write-back reads the same field (`git/repository.py:441-442`, `:460`). `operational_status` is
-branch-scoped, so this moves an operator-visible value; research.md D7 carries the unit row that
-asserts which branch the mutation names.
+**One consequence in the write path, intended and pinned by a test.**
+`_update_operational_status` sends `branch_name=self.infrahub_branch_name or registry.default_branch`
+(`git/base.py::_update_operational_status`). Today `git/repository.py::_get_initialized_repo` omits
+the field, so every downstream flow names the platform default branch no matter where it runs;
+afterwards those writes name the branch the operation ran on, which is the branch whose node it read.
+The read-only write-back reads the same field (`git/repository.py::sync_from_remote` and
+`::update_latest_commit`). `operational_status` is
+declared `BranchSupportType.AGNOSTIC`, so one value is shared across branches and nothing an operator
+reads back changes; research.md D7 carries the unit row that asserts which branch the mutation names.
 
 If that move is unwanted for an unrelated reason, the correction is for `_update_operational_status`
 to name `registry.default_branch` outright — not to leave the field unset, which only relocates the
@@ -179,13 +180,20 @@ async def _raise_enriched_error(self, error: GitCommandError, branch_name: str |
 ## `create_locally`
 
 ```python
-async def create_locally(self, checkout_ref: str, infrahub_branch_name: str | None = None, update_commit_value: bool = True) -> bool
+async def create_locally(self, checkout_ref: str, infrahub_branch_name: str | None, update_commit_value: bool = True) -> bool
 ```
 
 - `checkout_ref` is required. The read-write kind passes `self.default_branch`; the read-only kind
   passes its resolved `ref`.
-- The commit is recorded against `infrahub_branch_name` when given, otherwise against the Infrahub
-  default branch.
+- `infrahub_branch_name` is a **required parameter** (still nullable). Recording a commit without a
+  branch raises `RepositoryError` rather than falling back to the Infrahub default branch.
+
+  This is stronger than originally specified, which had the commit recorded against the Infrahub
+  default branch when no branch was named. That fallback turned out to be dead: the read-write `new`
+  passes the branch its required parameter supplies, the read-only `new` already rejects a missing
+  one, and `init` passes `update_commit_value=False` so it records nothing. A dead fallback is the
+  shape the next caller drifts into, which is how this defect arose, so it is absent rather than
+  unreachable.
 
 ## Removed carriers (FR-003)
 
@@ -199,8 +207,16 @@ async def create_locally(self, checkout_ref: str, infrahub_branch_name: str | No
 | `core/merge/repository_merge_dispatcher.py::RepositoryMergeDispatcher.merge_core_repositories` | stops setting `default_branch` on the merge model |
 | `git/tasks.py::merge_git_repository` | stops passing `default_branch_name=model.default_branch` to `InfrahubRepository.init` and passes `infrahub_branch_name=model.destination_branch` instead (research.md D4) |
 
-After the change, `grep -rn "default_branch_name" backend/infrahub/` returns nothing, and
-`grep -rn "default_branch" backend/infrahub/git/models.py` returns nothing.
+After the change, both of these return nothing:
+
+```bash
+grep -rn "default_branch_name" backend/infrahub/git backend/infrahub/repositories backend/infrahub/core/merge
+grep -n "default_branch" backend/infrahub/git/models.py
+```
+
+The first is scoped to the packages this feature touches rather than to `backend/infrahub/`, because
+`default_branch_name` is an ordinary local variable name elsewhere — `core/migrations/graph/` alone
+has a dozen uses — so the repo-wide form never returns nothing and proves nothing.
 
 ### Deliberately kept: `GitRepositoryAdd.internal_status`
 

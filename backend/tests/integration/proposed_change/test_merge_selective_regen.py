@@ -155,11 +155,15 @@ class _MergeSelectiveRegenBase(TestInfrahubApp):
         sources_dir = git_sources_dir / self.__class__.__name__
         git_repo = FileRepo(name="artifact-regen-e2e", sources_directory=sources_dir)
         repo_node = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
-        await repo_node.new(
-            db=db, name=git_repo.name, description="test repository", location="git@github.com:mock/test.git"
-        )
+        await repo_node.new(db=db, name=git_repo.name, description="test repository", location=git_repo.path)
         await repo_node.save(db=db)
-        repo = await InfrahubRepository.new(id=repo_node.id, name=git_repo.name, location=git_repo.path, client=client)
+        repo = await InfrahubRepository.new(
+            id=repo_node.id,
+            name=git_repo.name,
+            location=git_repo.path,
+            client=client,
+            infrahub_branch_name="main",
+        )
         commit = repo.get_commit_value(branch_name="main")
         config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
         assert config_file

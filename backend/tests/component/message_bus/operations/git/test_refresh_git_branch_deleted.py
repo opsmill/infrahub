@@ -4,12 +4,16 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.git import InfrahubRepository
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
-from infrahub.workers.dependencies import build_message_bus
+from infrahub.workers.dependencies import build_client, build_message_bus
 from tests.conftest import TestHelper
+from tests.helpers.git import build_repository_client
 
 
 async def test_branch_deleted(
-    git_fixture_repo: InfrahubRepository, helper: TestHelper, dependency_provider: Provider
+    git_fixture_repo: InfrahubRepository,
+    helper: TestHelper,
+    dependency_provider: Provider,
+    register_core_models_schema: None,
 ) -> None:
     branch_name = "test-branch-to-delete"
     branch_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
@@ -28,7 +32,16 @@ async def test_branch_deleted(
 
     routing_key = ROUTING_KEY_MAP[type(message)]
     bus_simulator = await helper.get_message_bus_simulator()
-    with dependency_provider.scope(build_message_bus, lambda: bus_simulator):
+    client = build_repository_client(
+        repository_id=str(git_fixture_repo.id),
+        name=git_fixture_repo.name,
+        location=git_fixture_repo.get_location(),
+        default_branch="main",
+    )
+    with (
+        dependency_provider.scope(build_message_bus, lambda: bus_simulator),
+        dependency_provider.scope(build_client, lambda: client),
+    ):
         await bus_simulator.publish(message=message, routing_key=routing_key)
 
     local_branches = git_fixture_repo.get_branches_from_local(include_worktree=False)
