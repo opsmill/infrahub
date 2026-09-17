@@ -131,12 +131,9 @@ async def test_convert_object_type_already_converted_returns_not_found(
     )
 
     assert second_result.errors
-    assert len(second_result.errors) == 1
-    expected_message = (
-        f"\n        Unable to find the node {person1_node_id} / Node in the database."
-        f"\n        {default_branch.name} | Node | {person1_node_id}\n        "
-    )
-    assert second_result.errors[0].message == expected_message
+    assert [error.message for error in second_result.errors] == [
+        f"Unable to find the node {person1_node_id} / Node in the database."
+    ]
 
 
 CONVERT_OBJECT_TYPE_MUTATION = """

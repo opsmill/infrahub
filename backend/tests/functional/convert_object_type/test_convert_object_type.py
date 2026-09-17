@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from tests.helpers.test_client import InfrahubTestClient
 
 CONVERT_OBJECT_MUTATION = """
     mutation($node_id: String!, $target_kind: String!, $fields_mapping: GenericScalar!) {
@@ -154,6 +155,54 @@ class TestConvertObjectType(TestInfrahubApp):
         assert res_node["name"]["value"] == "Jack"
         assert res_node["height"]["value"] == 170
         assert res_node["favorite_color"]["value"] == "blue"
+
+    async def test_convert_already_converted_node_reports_not_found_over_http(
+        self,
+        client: InfrahubClient,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+        schemas_conversion: dict,
+    ) -> None:
+        """The public response carries the not-found error in the GraphQL envelope under a 200 status line."""
+        response = await client.schema.load(schemas=[schemas_conversion])
+        assert len(response.errors) == 0, response.errors
+
+        person = await client.create(kind="TestconvPerson1", name="Jane")
+        await person.save()
+        person_id = str(person.id)
+
+        mapping = {
+            "name": ConversionFieldInput(source_field="name"),
+            "age": ConversionFieldInput(data=ConversionFieldValue(attribute_value=30)),
+        }
+        payload = {
+            "query": CONVERT_OBJECT_MUTATION,
+            "variables": {
+                "node_id": person_id,
+                "target_kind": "TestconvPerson2",
+                "fields_mapping": {name: model.model_dump(mode="json") for name, model in mapping.items()},
+            },
+        }
+        headers = {"X-INFRAHUB-KEY": api_admin_token}
+
+        first = await test_client.post("/graphql", json=payload, headers=headers)
+        assert first.status_code == 200
+        assert "errors" not in first.json()
+        assert first.json()["data"]["ConvertObjectType"]["ok"] is True
+
+        second = await test_client.post("/graphql", json=payload, headers=headers)
+        assert second.status_code == 200
+        body = second.json()
+        assert body["data"] == {"ConvertObjectType": None}
+        assert [error["message"] for error in body["errors"]] == [
+            f"Unable to find the node {person_id} / Node in the database."
+        ]
+        assert body["errors"][0]["path"] == ["ConvertObjectType"]
+        assert body["errors"][0]["extensions"] == {
+            "code": "NODE_NOT_FOUND",
+            "http_status": 404,
+            "data": {"node_kind": "Node", "identifier": person_id},
+        }
 
 
 class TestConvertObjectTypeResourcePool(TestInfrahubApp):
