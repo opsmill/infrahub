@@ -258,8 +258,9 @@ The outer `MATCH` returns one row per matching edge, and the graph keeps one `HA
 The section above resolves one branch's view. When a read needs the *same* attributes as *many* branches resolve them - a per-branch status table, a cross-branch integrity check - do not loop the single-branch query once per branch. Drive the branch set through the statement as a parameter, so the query count stays flat as branches are added:
 
 ```cypher
-MATCH (n:Node)-[:HAS_ATTRIBUTE]->(a:Attribute)
-WHERE n.uuid IN $node_ids AND a.name IN $attribute_names
+MATCH (n:Node) WHERE n.uuid IN $node_ids
+MATCH (n)-[:HAS_ATTRIBUTE]->(a:Attribute)
+WHERE a.name IN $attribute_names
 WITH DISTINCT n, a
 UNWIND $branch_names AS branch_name
 MATCH (br:Branch {name: branch_name})

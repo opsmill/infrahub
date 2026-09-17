@@ -31,8 +31,10 @@ class RepositoryBranchAttributesQuery(Query):
 
 - Constructor takes primitives only. `at` and `db` arrive through the base `Query.init` path; the
   query binds `$at` from `self.at`.
-- One statement: `MATCH (n:Node)-[:HAS_ATTRIBUTE]->(a:Attribute) WHERE n.uuid IN $repository_ids AND
-  a.name IN $attribute_names`, `WITH DISTINCT n, a`, then `UNWIND $branch_names AS branch_name MATCH
+- One statement: `MATCH (n:Node) WHERE n.uuid IN $repository_ids`, then `MATCH
+  (n)-[:HAS_ATTRIBUTE]->(a:Attribute) WHERE a.name IN $attribute_names` as a separate match so the
+  node seek is pinned rather than left to the planner's choice between the `node_uuid` and
+  `attr_name` indexes, `WITH DISTINCT n, a`, then `UNWIND $branch_names AS branch_name MATCH
   (br:Branch {name: branch_name})` carrying `n, a, branch_name` and the default-branch window, one
   `CALL` subquery electing the visible `HAS_ATTRIBUTE` edge and one electing the visible `HAS_VALUE`
   edge, both with the per-branch predicate in [data-model.md](../data-model.md) and the standard

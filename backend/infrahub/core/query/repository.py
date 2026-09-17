@@ -90,8 +90,9 @@ class RepositoryBranchAttributesQuery(Query):
         }
 
         query = """
-MATCH (n:Node)-[:HAS_ATTRIBUTE]->(a:Attribute)
-WHERE n.uuid IN $repository_ids AND a.name IN $attribute_names
+MATCH (n:Node) WHERE n.uuid IN $repository_ids
+MATCH (n)-[:HAS_ATTRIBUTE]->(a:Attribute)
+WHERE a.name IN $attribute_names
 // ----------
 // One HAS_ATTRIBUTE edge exists per branch that touched the attribute, so the match above yields
 // one row per edge; the election below has to run once per (node, attribute, branch) instead.
