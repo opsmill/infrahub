@@ -1,6 +1,6 @@
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { usePreventScrollOnNumberInput } from "@/shared/components/form/fields/usePreventScrollOnNumber";
-import { PoolSelector } from "@/shared/components/form/pool-selector";
+import { PoolBackedField } from "@/shared/components/form/pool-backed-field";
 import type { DynamicNumberFieldProps, FormAttributeValue } from "@/shared/components/form/type";
 import {
   updateAttributeFieldValue,
@@ -20,7 +20,7 @@ const NumberField = ({
   name,
   rules,
   unique,
-  pools,
+  pool,
   shouldUnregister,
   ...props
 }: NumberFieldProps) => {
@@ -34,50 +34,39 @@ const NumberField = ({
       defaultValue={defaultValue}
       shouldUnregister={shouldUnregister}
       render={({ field }) => {
-        const fieldData: FormAttributeValue = field.value;
-
-        const numberInput = (
-          <Input
-            {...field}
-            ref={numRef}
-            type="number"
-            value={(fieldData?.value as number) ?? ""}
-            onChange={(event) => {
-              const value = event.target.valueAsNumber;
-              field.onChange(updateFormFieldValue(isNaN(value) ? null : value, defaultValue));
-            }}
-            {...props}
-          />
-        );
+        const fieldData: FormAttributeValue = field.value ?? DEFAULT_FORM_FIELD_VALUE;
 
         return (
-          <div className="space-y-2">
-            <LabelFormField
-              label={label}
-              unique={unique}
-              required={!!rules?.required}
-              description={description}
-              fieldData={fieldData}
-            />
-
+          <PoolBackedField
+            name={name}
+            label={label}
+            description={description}
+            unique={unique}
+            required={!!rules?.required}
+            fieldData={fieldData}
+            defaultValue={defaultValue}
+            // A number pool has no mask and allocates a plain number, so neither override applies.
+            pool={pool}
+            valueTabLabel="Value"
+            disabled={props.disabled}
+            onPoolChange={(value) => field.onChange(updateAttributeFieldValue(value, defaultValue))}
+          >
             <FormInput>
-              {pools && pools.length > 0 ? (
-                <PoolSelector
-                  onChange={(value) =>
-                    field.onChange(updateAttributeFieldValue(value, defaultValue))
-                  }
-                  value={fieldData}
-                  pools={pools}
-                >
-                  {numberInput}
-                </PoolSelector>
-              ) : (
-                numberInput
-              )}
+              <Input
+                {...field}
+                ref={numRef}
+                type="number"
+                value={typeof fieldData?.value === "number" ? fieldData.value : ""}
+                onChange={(event) => {
+                  const value = event.target.valueAsNumber;
+                  field.onChange(updateFormFieldValue(isNaN(value) ? null : value, defaultValue));
+                }}
+                {...props}
+              />
             </FormInput>
 
             <FormMessage />
-          </div>
+          </PoolBackedField>
         );
       }}
     />

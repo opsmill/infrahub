@@ -156,6 +156,106 @@ async def test_get_resource_accepts_size_alias(
     assert same_both.id == first.id
 
 
+async def test_get_resource_prefix_type_overrides_pool_default(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_prefix_pool: CoreIPPrefixPool
+) -> None:
+    """An explicit prefix_type wins over the pool's default_prefix_type."""
+    node = await kind_override_prefix_pool.get_resource(
+        db=db, branch=default_branch, prefix_type="TestIPPrefix", peer_kind=InfrahubKind.IPPREFIX
+    )
+
+    assert node.get_kind() == "TestIPPrefix"
+
+
+async def test_get_resource_prefix_type_falls_back_to_pool_default(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_prefix_pool: CoreIPPrefixPool
+) -> None:
+    """Without an explicit kind the pool's default kind is allocated."""
+    node = await kind_override_prefix_pool.get_resource(db=db, branch=default_branch, peer_kind=InfrahubKind.IPPREFIX)
+
+    assert node.get_kind() == "IpamIPPrefix"
+
+
+async def test_get_resource_prefix_type_not_allowed_for_peer_raises(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_prefix_pool: CoreIPPrefixPool
+) -> None:
+    """A kind outside the peer generic's used_by is rejected."""
+    with pytest.raises(ValidationError, match=re.escape("'TestMandatoryPrefix' is not a valid kind")):
+        await kind_override_prefix_pool.get_resource(
+            db=db, branch=default_branch, prefix_type="TestMandatoryPrefix", peer_kind=InfrahubKind.IPPREFIX
+        )
+
+
+async def test_get_resource_prefix_type_from_data_dict_is_validated(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_prefix_pool: CoreIPPrefixPool
+) -> None:
+    """The untyped `data` dict is the second door into prefix_type and must be validated too."""
+    with pytest.raises(ValidationError, match=re.escape("'TestMandatoryPrefix' is not a valid kind")):
+        await kind_override_prefix_pool.get_resource(
+            db=db,
+            branch=default_branch,
+            data={"prefix_type": "TestMandatoryPrefix"},
+            peer_kind=InfrahubKind.IPPREFIX,
+        )
+
+
+async def test_get_resource_prefix_type_rejected_for_concrete_peer(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_prefix_pool: CoreIPPrefixPool
+) -> None:
+    """A sibling kind is not allocatable when the relationship peer is a concrete kind."""
+    with pytest.raises(ValidationError, match=re.escape("'TestIPPrefix' is not a valid kind")):
+        await kind_override_prefix_pool.get_resource(
+            db=db, branch=default_branch, prefix_type="TestIPPrefix", peer_kind="IpamIPPrefix"
+        )
+
+    node = await kind_override_prefix_pool.get_resource(
+        db=db, branch=default_branch, prefix_type="IpamIPPrefix", peer_kind="IpamIPPrefix"
+    )
+    assert node.get_kind() == "IpamIPPrefix"
+
+
+async def test_get_resource_without_peer_kind_is_unconstrained(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_prefix_pool: CoreIPPrefixPool
+) -> None:
+    """With no peer kind given, the requested prefix_type is allocated without validation."""
+    node = await kind_override_prefix_pool.get_resource(db=db, branch=default_branch, prefix_type="TestIPPrefix")
+
+    assert node.get_kind() == "TestIPPrefix"
+
+
+async def test_get_resource_conflicting_prefix_type_raises(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    kind_override_prefix_pool: CoreIPPrefixPool,
+) -> None:
+    """Re-allocating the same reservation identifier with a different explicit kind errors."""
+    first = await kind_override_prefix_pool.get_resource(db=db, identifier="item1", branch=default_branch)
+    assert first.get_kind() == "IpamIPPrefix"
+
+    expected_error = (
+        f"IPPrefixPool: pool1 | This resource is already allocated as "
+        f"{first.get_attribute('prefix').value} of kind IpamIPPrefix; its kind cannot be "
+        "changed, only IpamIPPrefix can be used."
+    )
+    with pytest.raises(ValidationError, match=rf"^{re.escape(expected_error)}$"):
+        await kind_override_prefix_pool.get_resource(
+            db=db, identifier="item1", branch=default_branch, prefix_type="TestIPPrefix"
+        )
+
+    with pytest.raises(ValidationError, match=rf"^{re.escape(expected_error)}$"):
+        await kind_override_prefix_pool.get_resource(
+            db=db, identifier="item1", branch=default_branch, data={"prefix_type": "TestIPPrefix"}
+        )
+
+    same = await kind_override_prefix_pool.get_resource(
+        db=db, identifier="item1", branch=default_branch, prefix_type="IpamIPPrefix"
+    )
+    assert same.id == first.id
+
+    same_no_kind = await kind_override_prefix_pool.get_resource(db=db, identifier="item1", branch=default_branch)
+    assert same_no_kind.id == first.id
+
+
 async def test_get_next_weighted(
     db: InfrahubDatabase,
     default_branch: Branch,

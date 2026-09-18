@@ -127,6 +127,73 @@ async def test_get_resource_conflicting_prefixlen_raises(
     assert same_no_prefixlen.id == first.id
 
 
+async def test_get_resource_address_type_overrides_pool_default(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_address_pool: CoreIPAddressPool
+) -> None:
+    """An explicit address_type wins over the pool's default_address_type."""
+    node = await kind_override_address_pool.get_resource(
+        db=db, branch=default_branch, address_type="TestIPAddress", peer_kind=InfrahubKind.IPADDRESS
+    )
+
+    assert node.get_kind() == "TestIPAddress"
+
+
+async def test_get_resource_address_type_falls_back_to_pool_default(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_address_pool: CoreIPAddressPool
+) -> None:
+    """Without an explicit kind the pool's default kind is allocated."""
+    node = await kind_override_address_pool.get_resource(db=db, branch=default_branch, peer_kind=InfrahubKind.IPADDRESS)
+
+    assert node.get_kind() == "IpamIPAddress"
+
+
+async def test_get_resource_address_type_not_allowed_for_peer_raises(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_address_pool: CoreIPAddressPool
+) -> None:
+    """A kind outside the peer generic's used_by is rejected."""
+    with pytest.raises(ValidationError, match=re.escape("'TestMandatoryAddress' is not a valid kind")):
+        await kind_override_address_pool.get_resource(
+            db=db, branch=default_branch, address_type="TestMandatoryAddress", peer_kind=InfrahubKind.IPADDRESS
+        )
+
+
+async def test_get_resource_address_type_from_data_dict_is_validated(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_address_pool: CoreIPAddressPool
+) -> None:
+    """The untyped `data` dict is the second door into address_type and must be validated too."""
+    with pytest.raises(ValidationError, match=re.escape("'TestMandatoryAddress' is not a valid kind")):
+        await kind_override_address_pool.get_resource(
+            db=db,
+            branch=default_branch,
+            data={"address_type": "TestMandatoryAddress"},
+            peer_kind=InfrahubKind.IPADDRESS,
+        )
+
+
+async def test_get_resource_address_type_rejected_for_concrete_peer(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_address_pool: CoreIPAddressPool
+) -> None:
+    """A sibling kind is not allocatable when the relationship peer is a concrete kind."""
+    with pytest.raises(ValidationError, match=re.escape("'TestIPAddress' is not a valid kind")):
+        await kind_override_address_pool.get_resource(
+            db=db, branch=default_branch, address_type="TestIPAddress", peer_kind="IpamIPAddress"
+        )
+
+    node = await kind_override_address_pool.get_resource(
+        db=db, branch=default_branch, address_type="IpamIPAddress", peer_kind="IpamIPAddress"
+    )
+    assert node.get_kind() == "IpamIPAddress"
+
+
+async def test_get_resource_without_peer_kind_is_unconstrained(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_address_pool: CoreIPAddressPool
+) -> None:
+    """With no peer kind given, the requested address_type is allocated without validation."""
+    node = await kind_override_address_pool.get_resource(db=db, branch=default_branch, address_type="TestIPAddress")
+
+    assert node.get_kind() == "TestIPAddress"
+
+
 async def test_get_next_full(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -147,3 +214,42 @@ async def test_get_next_full(
 
     with pytest.raises(PoolExhaustedError, match="There are no more addresses available in this pool"):
         await pool.get_next(db=db, prefixlen=30)
+
+
+async def test_get_resource_conflicting_address_type_raises(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    kind_override_address_pool: CoreIPAddressPool,
+) -> None:
+    """A reservation keeps the kind it was allocated with.
+
+    Re-allocating the same identifier with a different explicit kind errors; with the same kind,
+    or none at all, it returns the original resource.
+    """
+    first = await kind_override_address_pool.get_resource(
+        db=db, identifier="item1", branch=default_branch, prefixlen=30
+    )
+    assert first.get_kind() == "IpamIPAddress"
+
+    expected_error = (
+        f"IPAddressPool: pool1 | This resource is already allocated as "
+        f"{first.get_attribute('address').value} of kind IpamIPAddress; its kind cannot be "
+        "changed, only IpamIPAddress can be used."
+    )
+    with pytest.raises(ValidationError, match=rf"^{re.escape(expected_error)}$"):
+        await kind_override_address_pool.get_resource(
+            db=db, identifier="item1", branch=default_branch, address_type="TestIPAddress"
+        )
+
+    with pytest.raises(ValidationError, match=rf"^{re.escape(expected_error)}$"):
+        await kind_override_address_pool.get_resource(
+            db=db, identifier="item1", branch=default_branch, data={"address_type": "TestIPAddress"}
+        )
+
+    same = await kind_override_address_pool.get_resource(
+        db=db, identifier="item1", branch=default_branch, address_type="IpamIPAddress"
+    )
+    assert same.id == first.id
+
+    same_no_kind = await kind_override_address_pool.get_resource(db=db, identifier="item1", branch=default_branch)
+    assert same_no_kind.id == first.id

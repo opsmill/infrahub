@@ -18004,6 +18004,7 @@ export type IpAddressPoolGetResourceInput = {
 };
 
 export type IpAddressPoolInput = {
+  address_type?: InputMaybe<Scalars['String']['input']>;
   data?: InputMaybe<Scalars['GenericScalar']['input']>;
   id: Scalars['String']['input'];
   identifier?: InputMaybe<Scalars['String']['input']>;

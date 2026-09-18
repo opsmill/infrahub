@@ -1,23 +1,50 @@
-import { IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
+import { IP_PREFIX_POOL, NUMBER_POOL_KIND } from "@/entities/resource-manager/domain/model/pool";
+
+export type FromPoolPayload = {
+  id: string;
+  prefixlen?: number;
+  size?: number;
+  address_type?: string;
+  prefix_type?: string;
+};
 
 /**
  * Build the `from_pool` payload for a pending pool allocation, keeping only the fields
- * the API accepts. The prefix length is included only when the user entered a concrete
- * number: the nested prefix-length field registers an `undefined` value when untouched,
- * and serializing that as `undefined` is invalid GraphQL.
+ * the API accepts. An override is included only when the user supplied it: the nested fields
+ * register `undefined` when untouched, which is invalid GraphQL.
  *
- * The from-pool input names the prefix length differently per pool kind: an IP address
- * pool takes `prefixlen` (the new address's mask), an IP prefix pool takes `size` (the
- * carved-out subnet's prefix length). The client value model stores it as `prefixLength`
- * either way; this maps it to the field the pool's input expects.
+ * Both overrides are named per pool kind — an address pool takes `prefixlen`/`address_type`, a
+ * prefix pool takes `size`/`prefix_type` — and an unrecognized kind falls back to the former.
+ * A number pool accepts neither, so it always yields the bare id.
  */
 export const buildFromPoolPayload = (
-  fromPool: { id: string; prefixLength?: number | null },
+  fromPool: { id: string; prefixLength?: number | null; allocatedKind?: string | null },
   poolKind?: string
-): { id: string; prefixlen?: number; size?: number } => {
-  const { id, prefixLength } = fromPool;
-  if (typeof prefixLength !== "number") {
-    return { id };
+): FromPoolPayload => {
+  const { id, prefixLength, allocatedKind } = fromPool;
+  const payload: FromPoolPayload = { id };
+
+  if (poolKind === NUMBER_POOL_KIND) {
+    return payload;
   }
-  return poolKind === IP_PREFIX_POOL ? { id, size: prefixLength } : { id, prefixlen: prefixLength };
+
+  const isPrefixPool = poolKind === IP_PREFIX_POOL;
+
+  if (typeof prefixLength === "number") {
+    if (isPrefixPool) {
+      payload.size = prefixLength;
+    } else {
+      payload.prefixlen = prefixLength;
+    }
+  }
+
+  if (allocatedKind) {
+    if (isPrefixPool) {
+      payload.prefix_type = allocatedKind;
+    } else {
+      payload.address_type = allocatedKind;
+    }
+  }
+
+  return payload;
 };

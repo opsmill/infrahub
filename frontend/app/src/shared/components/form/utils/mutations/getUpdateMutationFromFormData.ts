@@ -1,12 +1,8 @@
 import { isDeepEqual } from "remeda";
 
-import type {
-  AttributeValueFromPool,
-  DynamicFieldProps,
-  FormFieldValue,
-  RelationshipValueFromPool,
-} from "@/shared/components/form/type";
+import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { buildFromPoolPayload } from "@/shared/components/form/utils/mutations/buildFromPoolMutationValue";
+import { getAllocatedKind } from "@/shared/components/form/utils/updateFormFieldValue";
 
 type GetUpdateMutationFromFormDataParams = {
   fields: Array<DynamicFieldProps>;
@@ -24,12 +20,21 @@ export const getUpdateMutationFromFormData = ({
       return acc;
     }
 
+    const defaultValue = field.defaultValue;
     if (
       fieldData.source?.type === "pool" &&
-      (field.defaultValue as AttributeValueFromPool | RelationshipValueFromPool)?.source?.id ===
-        fieldData?.source?.id
+      defaultValue?.source?.type === "pool" &&
+      defaultValue.source.id === fieldData.source.id
     ) {
-      return acc;
+      // Allocation is idempotent on the reservation identifier, but none is sent for the kind, so
+      // a different allocated kind is a real request and must not be dropped.
+      const requestedKind =
+        fieldData.value && typeof fieldData.value === "object" && "from_pool" in fieldData.value
+          ? fieldData.value.from_pool.allocatedKind
+          : undefined;
+      if (!requestedKind || requestedKind === getAllocatedKind(defaultValue.value)) {
+        return acc;
+      }
     }
 
     const fromPoolField = field.pool?.fromPoolRelationshipName;
@@ -41,15 +46,25 @@ export const getUpdateMutationFromFormData = ({
           typeof fieldData.value === "object" &&
           "from_pool" in fieldData.value
         ) {
-          const fromPool = buildFromPoolPayload(fieldData.value.from_pool, fieldData.source.kind);
           if (fromPoolField) {
             const clearField =
               field.type === "relationship"
                 ? { [field.name]: null }
                 : { [field.name]: { value: null } };
-            return { ...acc, ...clearField, [fromPoolField]: fromPool };
+            // `<rel>_from_resource_pool` is typed as a plain RelatedNodeInput: sending `prefixlen` or
+            // `address_type` there is rejected by GraphQL, so the overrides ride on the payload below.
+            return {
+              ...acc,
+              ...clearField,
+              [fromPoolField]: { id: fieldData.value.from_pool.id },
+            };
           }
-          return { ...acc, [field.name]: { from_pool: fromPool } };
+          return {
+            ...acc,
+            [field.name]: {
+              from_pool: buildFromPoolPayload(fieldData.value.from_pool, fieldData.source.kind),
+            },
+          };
         }
         return { ...acc, [field.name]: fieldData.value };
       }
