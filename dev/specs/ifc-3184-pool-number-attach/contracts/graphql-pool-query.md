@@ -1,7 +1,7 @@
 # Contract: pool query surface
 
 **Status**: **published contract change** — governed by
-[ADR 0010](../../../dev/adr/0010-generated-user-facing-schema-contract.md).
+[ADR 0010](../../../adr/0010-generated-user-facing-schema-contract.md).
 
 **Owner**: `backend/infrahub/graphql/queries/resource_manager.py`
 

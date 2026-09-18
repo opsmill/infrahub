@@ -2,6 +2,7 @@ from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.data_deleter import BranchDataDeleter
