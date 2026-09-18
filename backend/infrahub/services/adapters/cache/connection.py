@@ -39,6 +39,12 @@ REDIS_COMMAND_RETRIES: int = 10
 REDIS_RETRY_BACKOFF_BASE: float = 0.01
 REDIS_RETRY_BACKOFF_CAP: float = 1.0
 
+# PING a connection that has been idle longer than this before a command goes out, and re-establish
+# it when the PING fails. A pooled connection to a demoted master would otherwise sit unnoticed until
+# a caller trips over it. redis-py runs no such check by default (0); prefect-redis runs one every
+# 20s, so the cache and the lock connections keep to the same interval on both paths.
+REDIS_HEALTH_CHECK_INTERVAL: int = 20
+
 
 def _url_connection_defaults() -> dict[str, Any]:
     """Connection options applied to every URL-configured connection.
@@ -52,7 +58,10 @@ def _url_connection_defaults() -> dict[str, Any]:
     from redis.retry import Retry  # noqa: PLC0415
 
     backoff = ExponentialWithJitterBackoff(base=REDIS_RETRY_BACKOFF_BASE, cap=REDIS_RETRY_BACKOFF_CAP)
-    return {"retry": Retry(backoff, retries=REDIS_COMMAND_RETRIES)}
+    return {
+        "retry": Retry(backoff, retries=REDIS_COMMAND_RETRIES),
+        "health_check_interval": REDIS_HEALTH_CHECK_INTERVAL,
+    }
 
 
 def validate_redis_url(url: str) -> None:
@@ -99,6 +108,7 @@ def build_redis_connection(settings: CacheSettings) -> redis.Redis:
             port=settings.service_port,
             db=settings.database,
             credential_provider=credential_provider,
+            health_check_interval=REDIS_HEALTH_CHECK_INTERVAL,
             ssl=settings.tls_enabled,
             ssl_cert_reqs="optional" if not settings.tls_insecure else "none",
             ssl_check_hostname=not settings.tls_insecure,

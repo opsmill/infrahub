@@ -18,6 +18,7 @@ from redis.asyncio.sentinel import (
 
 from infrahub.config import CacheSettings
 from infrahub.services.adapters.cache.connection import (
+    REDIS_HEALTH_CHECK_INTERVAL,
     aclose_redis_connection,
     build_redis_connection,
     validate_redis_url,
@@ -117,6 +118,17 @@ def test_url_connection_inherits_the_redis_py_socket_bounds() -> None:
     assert connection.socket_keepalive_options == REDIS_PY_KEEPALIVE_OPTIONS
     assert connection.socket_connect_timeout == REDIS_PY_SOCKET_TIMEOUTS
     assert connection.socket_timeout == REDIS_PY_SOCKET_TIMEOUTS
+
+
+def test_health_check_interval_pings_idle_connections() -> None:
+    """Both paths PING a connection idle past the interval, and a URL option still overrides it."""
+    url_pool = _build("redis://cache:6379/0").connection_pool
+    scalar_pool = build_redis_connection(CacheSettings(address="redis.internal")).connection_pool
+    overridden_pool = _build("redis://cache:6379/0?health_check_interval=7").connection_pool
+
+    assert url_pool.connection_kwargs["health_check_interval"] == REDIS_HEALTH_CHECK_INTERVAL
+    assert scalar_pool.connection_kwargs["health_check_interval"] == REDIS_HEALTH_CHECK_INTERVAL
+    assert overridden_pool.connection_kwargs["health_check_interval"] == 7
 
 
 def test_url_query_option_overrides_a_socket_bound() -> None:
