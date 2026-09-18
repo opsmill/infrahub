@@ -27,6 +27,9 @@ const profilesRelationship = generateRelationshipSchema({
 const getGeneratedQuery = () =>
   vi.mocked(graphqlClient.query).mock.calls[0]![0].query as unknown as string;
 
+const getSentVariables = () =>
+  vi.mocked(graphqlClient.query).mock.calls[0]![0].variables as Record<string, unknown>;
+
 describe("getObjectForEditingFromApi", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -97,5 +100,24 @@ describe("getObjectForEditingFromApi", () => {
     // THEN
     expect(getGeneratedQuery()).toContain("profiles");
     expect(getGeneratedQuery()).toContain("profile_priority");
+  });
+
+  it("declares the object id as a variable instead of inlining it", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({ relationships: [] });
+
+    // WHEN
+    await getObjectForEditingFromApi({
+      schema,
+      objectId: "object-id",
+      branchName: "main",
+      atDate: null,
+    });
+
+    // THEN
+    expect(getGeneratedQuery()).toContain("$ids: [ID]");
+    expect(getGeneratedQuery()).toContain("ids: $ids");
+    expect(getGeneratedQuery()).not.toContain('ids: ["object-id"]');
+    expect(getSentVariables()).toEqual({ ids: ["object-id"] });
   });
 });
