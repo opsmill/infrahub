@@ -37,6 +37,33 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 SDK_BASE = REPO_ROOT / "python_sdk" / "infrahub_sdk" / "exceptions" / "base.py"
 CATALOGUE_PATH = REPO_ROOT / "schema" / "error-catalogue.json"
 
+# What the SDK's hand-written module contributes, stated here rather than read from the submodule.
+# The generator's rules are about what it is told, so binding them to whichever SDK commit the
+# pointer happens to pin would make them fail on the lag between the two repositories rather than on
+# a defect. `test_sdk_surface_matches_the_pinned_submodule` is where the two are held together.
+ADOPTED_CODES = {
+    "BRANCH_NOT_FOUND": "BranchNotFoundError",
+    "NODE_NOT_FOUND": "NodeNotFoundError",
+    "SCHEMA_NOT_FOUND": "SchemaNotFoundError",
+}
+DEFINED_NAMES = frozenset(
+    {
+        "ApiError",
+        "BranchNotFoundError",
+        "Error",
+        "FileNotValidError",
+        "GraphQLError",
+        "InvalidResponseError",
+        "NodeInvalidError",
+        "NodeNotFoundError",
+        "RateLimitError",
+        "ResourceNotDefinedError",
+        "SchemaNotFoundError",
+        "UNDEFINED_ERROR_CODE",
+        "ValidationError",
+    }
+)
+
 
 @pytest.fixture(scope="module")
 def catalogue() -> dict[str, Any]:
@@ -45,13 +72,15 @@ def catalogue() -> dict[str, Any]:
 
 @pytest.fixture(scope="module")
 def sdk_exceptions() -> tuple[dict[str, str], set[str]]:
+    """Parsed from the submodule, which only carries the package once the SDK side has landed."""
+    if not SDK_BASE.exists():
+        pytest.skip(f"the python_sdk pointer predates {SDK_BASE.name}; nothing to compare against yet")
     return scan_sdk_exceptions(SDK_BASE)
 
 
 @pytest.fixture
-def build(catalogue: dict[str, Any], sdk_exceptions: tuple[dict[str, str], set[str]]) -> Callable[..., dict[str, Any]]:
+def build(catalogue: dict[str, Any]) -> Callable[..., dict[str, Any]]:
     """Build the render context from a mutated copy of the real catalogue."""
-    default_adopted, defined = sdk_exceptions
 
     def _build(
         mutate: Callable[[dict[str, Any]], None] | None = None, adopted: dict[str, str] | None = None
@@ -59,7 +88,7 @@ def build(catalogue: dict[str, Any], sdk_exceptions: tuple[dict[str, str], set[s
         working = copy.deepcopy(catalogue)
         if mutate is not None:
             mutate(working)
-        return build_bindings_context(working, adopted or default_adopted, defined)
+        return build_bindings_context(working, adopted or ADOPTED_CODES, set(DEFINED_NAMES))
 
     return _build
 
@@ -178,19 +207,18 @@ def test_required_field_carries_no_default_and_optional_field_carries_its_own() 
 # --------------------------------------------------------------------------------------------------
 
 
-def test_adoption_reads_declared_codes_and_ignores_inherited_ones(
-    sdk_exceptions: tuple[dict[str, str], set[str]],
-) -> None:
+def test_sdk_surface_matches_the_pinned_submodule(sdk_exceptions: tuple[dict[str, str], set[str]]) -> None:
+    """Hold the stand-in above against the SDK the pointer actually pins.
+
+    Skips until the pointer carries the exceptions package. Once it does, this is what stops the
+    rest of the module testing the generator against a surface the SDK no longer has.
+    """
     adopted, defined = sdk_exceptions
 
-    assert adopted == {
-        "BRANCH_NOT_FOUND": "BranchNotFoundError",
-        "NODE_NOT_FOUND": "NodeNotFoundError",
-        "SCHEMA_NOT_FOUND": "SchemaNotFoundError",
-    }
+    assert adopted == ADOPTED_CODES
     # It subclasses an adopted class and clears CODE, so it represents no code of its own.
     assert "NodeInvalidError" not in adopted.values()
-    assert {"NodeInvalidError", "GraphQLError", "ApiError", "UNDEFINED_ERROR_CODE"} <= defined
+    assert defined >= DEFINED_NAMES
 
 
 def test_adoption_walk_reads_both_annotated_and_plain_assignments(tmp_path: Path) -> None:
@@ -449,34 +477,26 @@ def test_derived_name_colliding_with_a_hand_written_class_aborts(
         build(mutate)
 
 
-def test_collision_is_cleared_by_adopting_the_code(
-    build: Callable[..., dict[str, Any]], sdk_exceptions: tuple[dict[str, str], set[str]]
-) -> None:
-    adopted, _ = sdk_exceptions
-
+def test_collision_is_cleared_by_adopting_the_code(build: Callable[..., dict[str, Any]]) -> None:
     def mutate(working: dict[str, Any]) -> None:
         entry = copy.deepcopy(working["codes"]["UNIQUENESS_VIOLATION"])
         entry["data_schema"]["title"] = "RateLimitData"
         working["codes"]["RATE_LIMIT"] = entry
 
-    context = build(mutate, adopted={**adopted, "RATE_LIMIT": "RateLimitError"})
+    context = build(mutate, adopted={**ADOPTED_CODES, "RATE_LIMIT": "RateLimitError"})
 
     assert dict(context["code_to_exception"])["RATE_LIMIT"] == "RateLimitError"
     assert "RateLimitError" in context["base_imports"]
 
 
-def test_adopting_a_transport_owned_code_aborts(
-    build: Callable[..., dict[str, Any]], sdk_exceptions: tuple[dict[str, str], set[str]]
-) -> None:
+def test_adopting_a_transport_owned_code_aborts(build: Callable[..., dict[str, Any]]) -> None:
     """Adoption must not put a 401/403 code back in the lookup: the response decides those."""
-    adopted, _ = sdk_exceptions
-
     with pytest.raises(
         ErrorCatalogueGenerationError,
         match=r'adopts "PERMISSION_DENIED" on PermissionDeniedError, but the catalogue gives it HTTP 403, '
         r"which the SDK resolves from the response instead",
     ):
-        build(adopted={**adopted, "PERMISSION_DENIED": "PermissionDeniedError"})
+        build(adopted={**ADOPTED_CODES, "PERMISSION_DENIED": "PermissionDeniedError"})
 
 
 def test_required_naming_an_absent_property_aborts(build: Callable[..., dict[str, Any]]) -> None:
