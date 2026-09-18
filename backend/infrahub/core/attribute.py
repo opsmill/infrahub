@@ -679,6 +679,18 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             return AttributeDBNodeType.DEFAULT
         return AttributeDBNodeType.INDEXED
 
+    async def get_source(self, db: InfrahubDatabase) -> Node | None:
+        """Return what the value came from: a caller-set source, or the pool that allocated it.
+
+        An attribute still in memory reports the same source a later read of it will report.
+        """
+        if source := await super().get_source(db=db):
+            return source
+        if self.from_pool and (pool_id := self.from_pool.get("id")):
+            # `registry.manager` is `NodeManager`, reached indirectly because importing it here is a cycle.
+            return await registry.manager.get_one(db=db, id=pool_id, branch=self.branch, at=self.at)
+        return None
+
     def get_create_data(self, node_schema: MainSchemaTypes) -> AttributeCreateData:
         branch = self.branch
         hierarchy_level = branch.hierarchy_level

@@ -477,7 +477,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             ) from exc
 
         if not allocate_resources:
-            attribute.source = number_pool.id
             return
 
         if (
@@ -498,7 +497,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 ) from exc
 
             attribute.value = next_free
-            attribute.source = number_pool.id
         else:
             raise ValidationError(
                 {

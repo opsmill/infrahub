@@ -765,6 +765,12 @@ class NodeListGetAttributeQuery(Query):
         return bool(self.include_metadata & (MetadataOptions.CREATED_AT | MetadataOptions.CREATED_BY))
 
     def _add_source_to_query(self, branch_filter_str: str) -> None:
+        """Resolve the attribute's source, falling back to the number pool that accounts for it.
+
+        A number pool source is derived from the branch-agnostic reservation record, not a HAS_SOURCE
+        edge. A source the user set wins, so attaching a pool to an attribute that already carries a
+        source changes nothing the user sees.
+        """
         if not self._include_source:
             return
         source_query = """
@@ -775,10 +781,25 @@ CALL (a) {
     ORDER BY rel_source.branch_level DESC, rel_source.from DESC, rel_source.status ASC
     LIMIT 1
 }
+CALL (a) {
+    OPTIONAL MATCH (pool_source:Node)-[rel_reserved:IS_RESERVED]->(a)
+    WHERE rel_reserved.branch = $global_branch_name
+      AND rel_reserved.status = "active"
+      AND rel_reserved.from <= $at_source
+      AND (rel_reserved.to IS NULL OR rel_reserved.to > $at_source)
+    RETURN pool_source
+    ORDER BY rel_reserved.from DESC
+    LIMIT 1
+}
 WITH *,
-    CASE WHEN rel_source.status = "active" THEN source ELSE NULL END AS source,
+    CASE
+        WHEN rel_source.status = "active" THEN source
+        ELSE pool_source
+    END AS source,
     CASE WHEN rel_source.status = "active" THEN rel_source ELSE NULL END AS rel_source
         """ % {"branch_filter": branch_filter_str}
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        self.params["at_source"] = self.at.to_string()
         self.add_to_query(source_query)
         self.return_labels.extend(["source", "rel_source"])
 
