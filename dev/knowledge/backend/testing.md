@@ -173,7 +173,7 @@ pytest session, so the session-scoped container fixtures above execute **once pe
 workers means four Neo4j containers, each with its own graph.
 
 That per-worker isolation is what makes the destructive fixtures safe. `empty_database` runs
-`delete_all_nodes`, which is a bare `MATCH (n) DETACH DELETE n` over the entire graph, and several
+`delete_all_nodes`, which detaches and deletes every vertex in the graph, and several
 tests assert on global counts rather than on nodes they can identify as their own. Both are only
 correct while a worker owns its database outright.
 
