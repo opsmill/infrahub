@@ -108,6 +108,12 @@ values changing with the branch; an empty titled box where a partition has no at
 4. Change the filter. **Expect** to be returned to page 1 (FR-014).
 5. Filter to something matching nothing. **Expect** an explicit "nothing matched", not a spinner and
    not a blank frame.
+6. Open the filter button and pick **Status**. **Expect** the five statuses a repository's branches
+   can actually carry, and neither `MERGED` nor `DELETING`.
+7. Open the order button. **Expect** exactly two fields — created and updated — and no branch name,
+   sync status, commit or ref, because the contract cannot order by them (FR-012a).
+8. Order by updated, descending, from page 2. **Expect** to land on page 1 of the reordered set, and
+   **no** timestamp column to appear (FR-006).
 
 **What would be wrong**: rows narrowing while the total stays put — that means the filtering happened
 client-side, on rows already received, which FR-015 forbids.

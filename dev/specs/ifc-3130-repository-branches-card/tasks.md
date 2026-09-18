@@ -10,9 +10,10 @@
 **Tests are required for this feature** — the constitution's Test Discipline principle applies, and
 every FR carries a stated verification method.
 
-**Status**: T001–T064 (there is no T007), T034a and T078 are on the branch — work units 1–7 complete,
-US3 filters included.
+**Status**: T001–T064 (there is no T007), T034a, T078 and T080–T084 are on the branch — work units
+1–7 complete, US3 filters and ordering included.
 Outstanding: T065–T066 (e2e), T067–T070 (documentation and changelog) and T071–T077 (gates).
+T079 and T085 are follow-ups blocked on backend work.
 A ticked box means the file exists at the path named.
 
 ---
@@ -356,26 +357,25 @@ branch and assert only the second card's values change.
 
 ## Phase 5: User Story 3 — Isolate the branch you care about (P3)
 
-**Goal**: Narrow the list by name fragment or branch status, server-side, with the total narrowing too.
+**Goal**: Narrow the list by name fragment or branch status and order it, server-side, with the total
+narrowing too — through the object table's own toolbar and column menus.
 
 **Independent test**: Type a fragment matching a known subset; assert both the rows **and the stated
 total** narrow — proving the narrowing happened before the page boundary, not after.
 
-- [x] T056 [US3] Implement `useRepositoryBranchFilters` in
-      `frontend/app/src/entities/repository/ui/repository-branches-card/use-repository-branch-filters.ts`,
-      holding name-fragment and branch-status state **card-scoped**. **Put the page reset inside a
-      single `setFilters` wrapper** — with independent URL keys the FR-014 reset is a manual call, and
-      splitting it across two filters' call sites is how one of them gets forgotten.
-- [x] T057 [US3] Wire the search field using **`SearchInput`** (pure, controlled) plus `useDebounce`.
-      **Do not use `FilterSearchInput`** — it is the obvious grab, already used with the exact
-      placeholder "Search branches", but it writes the **global** `QSP.FILTER` via `useSearch` →
-      `useFilters`. Covers FR-012.
-- [x] T058 [US3] Wire the status filter using **`BranchStatusEnum`** with card-scoped state. **Do not
-      use `BranchStatusFilterForm`** — it writes through `useFilters()`'s single global key. Pass an
-      `aria-label` and a placeholder: it renders **nothing in its trigger when `value === null`**, an
-      empty unnamed button that FR-025 forbids. Restrict its options to the five **returnable**
-      statuses — the contract guarantees `MERGED` and `DELETING` are never returned, so offering them
-      yields a permanently empty result.
+- [x] ~~T056~~ [US3] **Superseded by T080.** Implemented `useRepositoryBranchFilters` holding
+      name-fragment and branch-status state card-scoped, with the page reset inside a single
+      `setFilters` wrapper. The hook and its `_name` / `_status` URL keys are gone: filters now come
+      from `useFilters()` on the product-wide key. Only paging stays card-scoped.
+- [x] ~~T057~~ [US3] **Superseded by T081.** Wired the search field with the pure `SearchInput` plus
+      `useDebounce` rather than `FilterSearchInput`, to keep the product-wide filter key out of the
+      card. `FilterSearchInput` is now what the card uses. Covers FR-012.
+- [x] ~~T058~~ [US3] **Superseded by T081.** Wired the status filter with `BranchStatusEnum` and
+      card-scoped state. The status filter now goes through the same `AttributeFilterForm` as every
+      other enum attribute. The restriction to the five **returnable** statuses survives the change —
+      the contract guarantees `MERGED` and `DELETING` are never returned, so offering them yields a
+      permanently empty result — and is now expressed as the `enum` of the card's own `status`
+      attribute schema.
 - [x] T059 [US3] Send the schema's own wire values (FR-013): the branch status enum is **`BranchStatus`**
       on the wire even though the backend symbol is `InfrahubBranchStatus`. A re-cased form of a member
       (`Rebase needed`, `need_rebase`) must not be sent in place of `NEED_REBASE`.
@@ -402,6 +402,46 @@ total** narrow — proving the narrowing happened before the page boundary, not 
       `frontend/app/tests/helpers/expect-variables-absent.ts`, walking every recorded call and
       asserting none carries any of `names`, and call it from the test. The helper owns the one
       `mock.calls` read, keeping it out of the card's test files where the pairing rule applies.
+
+### Work unit 5b rework — the object table's own filter and order controls
+
+The card shipped a bespoke toolbar (a plain search box and a status combobox) on card-scoped URL
+keys. It looked like nothing else in the product. These tasks replace it with the object table's own
+controls on the product-wide keys; see [plan.md](plan.md)'s "State ownership" for why the collision
+risk those keys carry is not reachable on this route.
+
+- [x] T080 [US3] Delete
+      `frontend/app/src/entities/repository/ui/repository-branches-card/use-repository-branch-filters.ts`
+      and its `_name` / `_status` URL keys, and read filters from `useFilters()` instead. **Leave
+      `useTablePagination({urlKey})` exactly as it is** — FR-011 requires the paging position to be
+      card-scoped, and the legacy global `QSP.PAGINATION` is deliberately avoided (FR-017). Derive the
+      requested page from the query it was chosen for rather than resetting it in an effect: an effect
+      spends one request on the stale page window before the reset lands (FR-014).
+- [x] T081 [US3] Build the card toolbar in
+      `frontend/app/src/entities/repository/ui/repository-branches-card/repository-branches-toolbar.tsx`
+      in the shape of `ObjectsManagerToolbar`: `FilterSearchInput`, `SortPicker` and `FilterPicker` on
+      one row, `ActiveFilterTags` beneath. The card header keeps its title and count badge. The search
+      field writes `any__value`, which the card maps onto the contract's `name__value` +
+      `partial_match`. Covers FR-012, FR-013.
+- [x] T082 [US3] Give `FilterPicker` its field list as a `FilterDefinition[]` instead of deriving it
+      from a `ModelSchema`. Deriving it always appended the four node-metadata filters, none of which
+      this contract can apply, so the card could not otherwise have offered exactly its own two
+      fields. `getFilterPickerCount` takes the same list; the object toolbar passes
+      `getFilterDefinitions(selectedSchema)` and is unchanged in effect.
+- [x] T083 [US3] Swap `TableColumnHeaderSimple` for `TableColumnHeader` in the card's `columns.tsx`,
+      adding a `role` pass-through to `TableColumnHeader` so a `semanticTable` grid item still carries
+      `columnheader` while the trigger keeps its own button role. `sync_status`, `commit` and `ref`
+      pass `isDisabled`: the contract has no filter argument for them and no way to order by them, so
+      a menu there would promise narrowing that is silently dropped.
+- [x] T084 [US3] Declare `$order: MetadataOrderInput` in
+      `frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts` and map the
+      applied sort onto `order: { node_metadata: { created_at | updated_at: ASC|DESC } }`. Hand
+      `SortPicker` a schema declaring **no** sortable field of its own, so the offered fields are
+      exactly the two node-metadata timestamps `InfrahubNodeMetadataOrder` exposes. **This does not
+      breach FR-006**: the order is applied server-side and the selection set still never asks for
+      `node_metadata`, so no timestamp is ever displayed. Component-test the order argument paired
+      with a rendered-row change, that no rendered column is offered as an order field, and that an
+      order change returns to the first page. Covers FR-012a, FR-014.
 
 **Checkpoint**: All three user stories complete.
 
@@ -443,6 +483,18 @@ total** narrow — proving the narrowing happened before the page boundary, not 
       absent from every request, and T064's `expectVariablesAbsent` asserts it; both exist only for
       the preview window and would otherwise fail the moment this filter works. `internal_status__value`
       and `own_values_only` stay deferred — nothing in this card needs them.
+
+### Work unit 5b follow-up — ordering by the card's own columns · **BLOCKED on a contract change**
+
+- [ ] T085 Offer branch name, sync status and commit as order fields, once the contract's `order`
+      argument can express them. `InfrahubRepositoryBranchStatus` takes a `MetadataOrderInput`, whose
+      only member is an `InfrahubNodeMetadataOrder` of `created_at` and `updated_at`. There is no way
+      to ask for "by sync status, failures first" — the order a user staring at 200 branches actually
+      wants. **Unlike T079 this needs a backend schema change, not just the lifting of a rejection**:
+      the input type itself has to grow the fields. When it does, the work is to widen the card's sort
+      schema from one declaring no sortable field to one carrying the row's own attributes, and to map
+      those fields onto the widened input. Nothing in the frontend's sort machinery changes — it is
+      already schema-driven.
 
 ### Work unit 8 — end to end
 
@@ -533,7 +585,8 @@ Phase 2 — unit 4 (T002–T006)          BLOCKING: no card test may precede T00
               ▼
          unit 7   T043–T055                    (needs BOTH unit 3 and unit 6)
               │
-              ├──────────────▶ unit 5b (filters) T056–T064   (needs units 2, 4, 6)
+              ├──────────────▶ unit 5b (filters, order) T056–T064, T080–T084
+              │                                              (needs units 2, 4, 6)
               ▼
          unit 8   T065–T066
               │
@@ -564,13 +617,13 @@ repository page.
 **Increment 2 = User Story 2** (T040–T055). Resolves the second half of the reported confusion and is
 valuable even without the table.
 
-**Increment 3 = User Story 3** (T056–T064). What makes US1 usable at real scale rather than merely
-correct.
+**Increment 3 = User Story 3** (T056–T064, reworked by T080–T084). What makes US1 usable at real
+scale rather than merely correct.
 
 **Then Phase 6.** T076 is the exception to the ordering — raise the divergence register early, because
 pagination is the first thing built.
 
-## Coverage — all 33 requirement statements
+## Coverage — all 34 requirement statements
 
 | FR | Tasks | | FR | Tasks |
 |---|---|---|---|---|
@@ -589,12 +642,16 @@ pagination is the first thing built.
 | FR-011 | T010, T011 | | FR-026 | T065, T066 |
 | FR-011a | T014 | | FR-027 | T039, T077 |
 | FR-011b | T027, T034a | | | |
-| FR-012 | T057, T060 | | FR-028 | T067 |
-| FR-013 | T059, T061 | | | |
-| FR-014 | T056, T062 | | | |
+| FR-012 | T081, T060 | | FR-028 | T067 |
+| FR-012a | T084 | | | |
+| FR-013 | T059, T061, T081 | | | |
+| FR-014 | T080, T062, T084 | | | |
 
-**79 tasks.** Setup 1 (T001) · foundational 5 (T002–T006) · US1 33 (T008–T039, T034a) · US2 16
-(T040–T055) · US3 9 (T056–T064) · polish and gates 13 (T065–T077) · follow-ups 2 (T078, T079).
-The numbering skips T007; nothing is renumbered, so every other task keeps the id it was assigned.
+**85 tasks.** Setup 1 (T001) · foundational 5 (T002–T006) · US1 33 (T008–T039, T034a) · US2 16
+(T040–T055) · US3 14 (T056–T064, T080–T084) · polish and gates 13 (T065–T077) · follow-ups 3 (T078,
+T079, T085). The numbering skips T007; nothing is renumbered, so every other task keeps the id it was
+assigned, including the three the 5b rework supersedes (T056–T058, struck through rather than deleted
+so the reversal stays legible).
 
-**65 done** (T001–T064 less T007, plus T034a and T078) · **14 open** (T065–T077, and T079 blocked on IFC-3127).
+**70 done** (T001–T064 less T007, plus T034a, T078 and T080–T084) · **15 open** (T065–T077, plus T079
+blocked on IFC-3127 and T085 blocked on a contract change).

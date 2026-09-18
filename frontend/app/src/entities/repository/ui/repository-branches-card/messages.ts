@@ -1,7 +1,5 @@
 export const BRANCHES_TITLE = "Branches";
 export const SEARCH_BRANCHES_LABEL = "Search branches";
-export const BRANCH_STATUS_FILTER_LABEL = "Filter by branch status";
-export const BRANCH_STATUS_FILTER_PLACEHOLDER = "Branch status";
 export const READ_ONLY_BRANCHES_TITLE = "Infrahub branches";
 export const NO_BRANCH_MATCHES_FILTERS = "No branch matches these filters";
 // A read-only repository lists every branch, so an empty set there means the repository has no
