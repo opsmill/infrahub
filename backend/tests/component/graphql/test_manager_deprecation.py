@@ -2,6 +2,7 @@ from typing import Any
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants.schema import PARENT_CHILD_IDENTIFIER
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -118,4 +119,69 @@ async def test_deprecated_relationship_field_on_node_type(
         "old_name": DEPRECATED_ATTR_MESSAGE,
         "old_owner": DEPRECATED_REL_MESSAGE,
         "old_crew": DEPRECATED_REL_MANY_MESSAGE,
+    }
+
+
+DEPRECATED_HIERARCHY_PARENT_MESSAGE = "parent is deprecated, use region instead"
+DEPRECATED_HIERARCHY_CHILDREN_MESSAGE = "children is deprecated, use sites instead"
+
+HIERARCHY_DEPRECATION_SCHEMA = SchemaRoot(
+    generics=[
+        {
+            "name": "Place",
+            "namespace": "Testing",
+            "hierarchical": True,
+            "attributes": [{"name": "name", "kind": "Text"}],
+        }
+    ],
+    nodes=[
+        {
+            "name": "Region",
+            "namespace": "Testing",
+            "hierarchy": "TestingPlace",
+            "attributes": [{"name": "name", "kind": "Text"}],
+            "relationships": [
+                {
+                    "name": "parent",
+                    "peer": "TestingPlace",
+                    "identifier": PARENT_CHILD_IDENTIFIER,
+                    "kind": "Hierarchy",
+                    "cardinality": "one",
+                    "direction": "outbound",
+                    "optional": True,
+                    "deprecation": DEPRECATED_HIERARCHY_PARENT_MESSAGE,
+                },
+                {
+                    "name": "children",
+                    "peer": "TestingPlace",
+                    "identifier": PARENT_CHILD_IDENTIFIER,
+                    "kind": "Hierarchy",
+                    "cardinality": "many",
+                    "direction": "inbound",
+                    "optional": True,
+                    "deprecation": DEPRECATED_HIERARCHY_CHILDREN_MESSAGE,
+                },
+            ],
+        }
+    ],
+)
+
+
+async def test_deprecated_hierarchy_relationships_on_node_type(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    reset_graphql_schema_between_tests: None,
+) -> None:
+    """The hierarchy fields are rebuilt away from the relationship loop and carry the reason all the same."""
+    schema_branch = register_core_models_schema
+    schema_branch.load_schema(schema=HIERARCHY_DEPRECATION_SCHEMA)
+    schema_branch.process()
+    gqlm = GraphQLSchemaManager(schema=schema_branch)
+    gqlm.generate_object_types()
+
+    node_type = gqlm.get_type(name="TestingRegion")
+    assert _deprecated_fields(node_type) == {
+        "parent": DEPRECATED_HIERARCHY_PARENT_MESSAGE,
+        "children": DEPRECATED_HIERARCHY_CHILDREN_MESSAGE,
     }

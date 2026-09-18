@@ -485,11 +485,21 @@ class GraphQLSchemaManager:
                 peer_type = self.get_type(name=f"NestedPaginated{hierarchy_name}")
                 peer_type_edge = self.get_type(name=f"NestedEdged{hierarchy_name}")
 
+                parent_rel = node_schema.get_relationship_or_none(name="parent")
+                children_rel = node_schema.get_relationship_or_none(name="children")
+
                 node_type._meta.fields["parent"] = graphene.Field(
-                    peer_type_edge, required=True, resolver=single_relationship_resolver
+                    peer_type_edge,
+                    required=True,
+                    resolver=single_relationship_resolver,
+                    deprecation_reason=parent_rel.deprecation if parent_rel else None,
                 )
                 node_type._meta.fields["children"] = graphene.Field(
-                    peer_type, required=True, resolver=many_relationship_resolver, **peer_filters
+                    peer_type,
+                    required=True,
+                    resolver=many_relationship_resolver,
+                    deprecation_reason=children_rel.deprecation if children_rel else None,
+                    **peer_filters,
                 )
                 node_type._meta.fields["ancestors"] = graphene.Field(
                     peer_type, required=True, resolver=ancestors_resolver, **peer_filters
