@@ -46,6 +46,9 @@ GENERATED_MODULE_NAMES = frozenset(
         "exception_from_payload",
     }
 )
+# Members the generated exception binds for itself. A payload field taking one of these would be
+# assigned over it in __init__, so the catalogue has to rename. Names starting with an underscore
+# are refused outright, which covers __init__ and every other dunder the class relies on.
 RESERVED_MEMBER_NAMES = frozenset(
     {
         "CODE",
@@ -53,6 +56,7 @@ RESERVED_MEMBER_NAMES = frozenset(
         "code",
         "errors",
         "extensions",
+        "from_payload",
         "http_status",
         "message",
         "model_config",
@@ -163,7 +167,7 @@ def payload_fields(data_schema: dict[str, Any], code: str) -> list[dict[str, Any
             f"The generated model would drop the field and accept a payload without it."
         )
 
-    reserved = [name for name in properties if name in RESERVED_MEMBER_NAMES]
+    reserved = [name for name in properties if name in RESERVED_MEMBER_NAMES or name.startswith("_")]
     if reserved:
         raise ErrorCatalogueGenerationError(
             f'Catalogue code "{code}" declares payload field(s) {reserved}, which the generated '
