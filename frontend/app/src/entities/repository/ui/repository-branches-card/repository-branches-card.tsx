@@ -156,7 +156,7 @@ export function RepositoryBranchesCard({ repositoryId, schema }: RepositoryBranc
         <h2 id={titleId}>{title}</h2>
 
         {data && (
-          <Badge>
+          <Badge className="tabular-nums">
             {formatNumberDisplay(data.count)}{" "}
             <span className="sr-only">{data.count === 1 ? "branch" : "branches"}</span>
           </Badge>
