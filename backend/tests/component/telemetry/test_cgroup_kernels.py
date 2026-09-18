@@ -158,9 +158,13 @@ def test_reader_against_real_cgroups(case: KernelCase, probe_image: str) -> None
 
     reading = json.loads(result.stdout.strip().splitlines()[-1])
 
-    # A CPU quota never narrows the reported core count: 'available' is what the host
-    # has, 'assigned' is what is enforced, and the audit needs both separately.
-    assert reading["processor_available"] == reading["host_processor_available"]
+    # 'available' is what the process can use, the host's count capped by the quota; the
+    # JVM reports the database the same way, so the figures are comparable across components.
+    host_count = reading["host_processor_available"]
+    if case.expected_assigned is None:
+        assert reading["processor_available"] == host_count
+    else:
+        assert reading["processor_available"] == min(host_count, case.expected_assigned)
     assert reading["processor_available"] >= 1
 
     assert reading["processor_assigned"] == case.expected_assigned

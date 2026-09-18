@@ -44,6 +44,11 @@ def _render(diagnostics: ResourceDiagnostics, console: Console) -> None:
     host.add_row("memory total", _format_bytes(diagnostics.host_memory_total))
     console.print(host)
 
+    if reading.processor_assigned is None:
+        console.print(
+            "[yellow]No CPU limit is enforced on this process, so processor_available is the host's "
+            "logical count rather than an allocation.[/yellow]"
+        )
     if diagnostics.memory_limit is None:
         console.print(
             "[yellow]No memory limit is enforced on this process, so memory_total is host capacity "

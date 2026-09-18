@@ -20,7 +20,7 @@ No services. Point the reader at fixture cgroup files.
 - **Fractional**: `cpu.max = "150000 100000"` → `processor_assigned == 2` (rounded up).
 - **Non-Linux / missing files**: `processor_assigned is None`; `processor_available` and `memory_*` still come from psutil.
 
-**Expected**: all cases pass; `processor_available` is always logical (`psutil.cpu_count(logical=True)`), never physical.
+**Expected**: all cases pass; `processor_available` is logical, never physical, and equals the host's `psutil.cpu_count(logical=True)` capped by the quota — `cpu.max = "100000 100000"` → `processor_available == 1` on any host.
 
 ## Scenario 2 — Unit: aggregation (`backend/tests/unit/telemetry/test_aggregation.py`)
 

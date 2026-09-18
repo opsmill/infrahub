@@ -17,7 +17,7 @@
     "database": {
       // ... existing database fields ...
       "system_info": {
-        "processor_available": 32,           // existing — DB cores available (logical)
+        "processor_available": 32,           // existing — CPUs the DB can use (JVM, quota-aware)
         "processor_assigned": null,          // NEW — worker_limit; null today
         "memory_total": 67435982848,         // existing — bytes
         "memory_available": 47034888192      // existing — free bytes
@@ -26,7 +26,7 @@
     "workers": {
       "total": 2,                            // existing — all worker processes
       "active": 2,                           // existing
-      "processor_available": 8,              // NEW — git_agent fleet, sum over hosts
+      "processor_available": 8,              // NEW — usable CPUs, git_agent fleet, sum over hosts
       "processor_assigned": null,            // NEW — cgroup quota; null if unbounded
       "memory_total": 8589934592,            // NEW — bytes
       "memory_available": 6442450944         // NEW — free bytes
@@ -45,6 +45,7 @@
 ## Field semantics
 
 - **Units**: `processor_*` are logical CPUs (vCPUs); `memory_*` are bytes. **Usage** = `memory_total − memory_available`, uniformly across all three components.
+- **`processor_available`** is the logical CPUs the component can actually use: the host's count capped by any enforced CPU quota — the JVM's rule for the database figure, applied to server and workers too — so the figure is comparable across components. Without a quota it is the whole host's count. **`processor_assigned`** is the enforced quota itself and may exceed `processor_available` when set above the host's count.
 - **`null`** means "not measured / not applicable / unbounded" — NOT zero. Treat `null` distinctly from `0`.
   - `processor_assigned = null` ⇒ no enforced/configured CPU limit (unlimited).
 - **All `processor_assigned` fields are `null` in this release** — Infrahub does not enforce core limits yet. They are live reads that self-populate once a limit is configured: the DB reads `server.cypher.parallel.worker_limit` (`0`/auto → `null`); server and workers read their container CPU quota (unlimited → `null`). No payload-shape change when they light up.
