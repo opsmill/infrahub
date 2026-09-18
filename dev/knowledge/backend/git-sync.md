@@ -46,8 +46,9 @@ two kinds of query:
   and the per-branch values live only in `RepositoryData.branches` and `RepositoryData.branch_info`.
 
 `REPOSITORY_BRANCH_READ_CHUNK_SIZE` is 100 and is defined in `backend/infrahub/git/constants.py`. It
-is not a setting, so for N non-global branches the read always costs `1 + ceil(N / 100)` queries
-rather than one query per branch.
+is not a setting, so for N non-global branches the read costs `1 + ceil(N / 100)` queries rather than
+one query per branch. When no repository exists the function returns after the node query, so the
+cost is a single query.
 
 The `RepositoryBranchAttributesReader` that runs those queries is constructed once at the top of
 `get_repositories_commit_per_branch`, before the chunk loop, and reused for every chunk.
