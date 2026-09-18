@@ -339,6 +339,10 @@ class InfrahubLockRegistry:
 
         Dropping the reference is not enough for a Sentinel connection: redis-py keeps a client per
         Sentinel daemon on the pool, and those are what ``aclose_redis_connection`` releases.
+
+        The caller has to own the registry it closes. The module-level ``registry`` is not closed on
+        server shutdown: it is process-wide, outlives any one application instance, and the server
+        process exits right after, which releases the pool anyway.
         """
         if self._redis_connection is None:
             return
@@ -403,17 +407,3 @@ def _init_lock_ttl_seconds() -> int:
 def initialize_lock(local_only: bool = False, service: InfrahubServices | None = None) -> None:
     global registry
     registry = InfrahubLockRegistry(local_only=local_only, service=service)
-
-
-async def shutdown_lock() -> None:
-    """Release the global registry's connection, mirroring :func:`initialize_lock`.
-
-    Only a process with a shutdown path calls this; a CLI command or a migration ends instead, which
-    releases the sockets with it.
-    """
-    global registry
-    if registry is None:
-        return
-
-    await registry.close()
-    registry = None

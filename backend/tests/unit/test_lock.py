@@ -12,8 +12,6 @@ from infrahub.lock import (
     GLOBAL_WORKER_TASKMGR_INIT_LOCK,
     InfrahubLockRegistry,
     get_worker_id_from_lock_token,
-    initialize_lock,
-    shutdown_lock,
 )
 
 
@@ -201,15 +199,3 @@ async def test_registry_that_owns_no_connection_closes_cleanly() -> None:
     await registry.close()
 
     assert registry.connection is None
-
-
-async def test_shutdown_lock_clears_the_global_registry(monkeypatch: pytest.MonkeyPatch) -> None:
-    """shutdown_lock mirrors initialize_lock, so a second shutdown has nothing left to close."""
-    # The registry is a module global other tests share; monkeypatch puts theirs back afterwards.
-    monkeypatch.setattr(lock, "registry", None)
-    initialize_lock(local_only=True)
-
-    await shutdown_lock()
-    await shutdown_lock()
-
-    assert lock.registry is None
