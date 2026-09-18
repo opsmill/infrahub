@@ -1,19 +1,22 @@
 """Read this process's CPU and memory allocation and aggregate it across a fleet.
 
-Each process reports the logical CPU count it can see, the CPU quota enforced on
-it by its container control group (``None`` when nothing is enforced), and its
-memory capacity and free memory. The process's own control group is resolved
-from ``/proc/self/cgroup`` and every level up to the root is consulted, because
-a limit may be enforced on an ancestor — under a private cgroup namespace (the
-modern container default) that path collapses to the apparent root, while a host
-namespace or a systemd service exposes the full hierarchy. cgroup v2 is read
-first, then v1; a host with neither — a developer laptop, an unusual mount —
-falls back to the whole-host figures from psutil and reports no CPU quota.
-Limits above a private namespace root (for example a pod-level limit when the
-container itself has none) are invisible from inside and cannot be reported.
+Each process reports the logical CPUs it can use — the host's count capped by
+the CPU quota its container control group enforces — that quota itself (``None``
+when nothing is enforced), and its memory capacity and free memory. The cap is
+the rule the JVM applies when it reports the database's processors, so the
+figure means the same thing for every component. The process's own control
+group is resolved from ``/proc/self/cgroup`` and every level up to the root is
+consulted, because a limit may be enforced on an ancestor — under a private
+cgroup namespace (the modern container default) that path collapses to the
+apparent root, while a host namespace or a systemd service exposes the full
+hierarchy. cgroup v2 is read first, then v1; a host with neither — a developer
+laptop, an unusual mount — falls back to the whole-host figures from psutil and
+reports no CPU quota. Limits above a private namespace root (for example a
+pod-level limit when the container itself has none) are invisible from inside
+and cannot be reported.
 
 The values that cannot change for the lifetime of a process (the host identifier,
-the logical CPU count, the enforced CPU quota and the memory capacity) are read
+the usable CPU count, the enforced CPU quota and the memory capacity) are read
 once and cached; only free memory is re-read, since it moves with usage.
 
 Aggregation collapses the several processes of one container into a single
@@ -138,6 +141,19 @@ def _quota_to_cores(quota: int, period: int) -> int | None:
     if quota <= 0 or period <= 0:
         return None
     return math.ceil(quota / period)
+
+
+def _usable_processors(host_count: int | None, quota_cores: int | None) -> int | None:
+    """The logical CPUs the process can use: the host's count capped by the enforced quota.
+
+    A quota above the host's count grants nothing extra, so the host figure stands;
+    without a quota, or with no host figure to cap, whichever is known is returned.
+    """
+    if host_count is None:
+        return quota_cores
+    if quota_cores is None:
+        return host_count
+    return min(host_count, quota_cores)
 
 
 def _own_cgroup_dirs(cgroup_root: Path, proc_cgroup: Path) -> list[Path]:
@@ -301,7 +317,7 @@ class ResourceDiagnostics:
 class ProcessResources:
     """Read and cache this process's static resource facts, refreshing free memory.
 
-    The host identifier, logical CPU count, enforced CPU quota and memory capacity
+    The host identifier, usable CPU count, enforced CPU quota and memory capacity
     are fixed for the lifetime of a process and are read once; each read re-reads
     only free memory, which moves with usage.
     """
@@ -315,10 +331,13 @@ class ProcessResources:
         cgroup_dirs = _own_cgroup_dirs(cgroup_root=self._cgroup_root, proc_cgroup=self._proc_cgroup)
         memory_limit, memory_current_path = _read_cgroup_memory_limit(cgroup_dirs)
         memory_total = memory_limit if memory_limit is not None else _host_memory_total()
+        processor_assigned = _read_cgroup_cpu_quota(cgroup_dirs)
         return _StaticResources(
             host=socket.gethostname(),
-            processor_available=psutil.cpu_count(logical=True),
-            processor_assigned=_read_cgroup_cpu_quota(cgroup_dirs),
+            processor_available=_usable_processors(
+                host_count=psutil.cpu_count(logical=True), quota_cores=processor_assigned
+            ),
+            processor_assigned=processor_assigned,
             memory_total=memory_total,
             memory_limit=memory_limit,
             memory_current_path=memory_current_path,
@@ -332,15 +351,19 @@ class ProcessResources:
             return static.memory_limit - current
         return _host_memory_available()
 
-    def read(self) -> WorkerResourceReading:
+    def _static_resources(self) -> _StaticResources:
         if self._static is None:
             self._static = self._read_static()
+        return self._static
+
+    def read(self) -> WorkerResourceReading:
+        static = self._static_resources()
         return WorkerResourceReading(
-            host=self._static.host,
-            processor_available=self._static.processor_available,
-            processor_assigned=self._static.processor_assigned,
-            memory_total=self._static.memory_total,
-            memory_available=self._read_memory_available(self._static),
+            host=static.host,
+            processor_available=static.processor_available,
+            processor_assigned=static.processor_assigned,
+            memory_total=static.memory_total,
+            memory_available=self._read_memory_available(static),
         )
 
     def diagnose(self) -> ResourceDiagnostics:
@@ -370,7 +393,7 @@ class ProcessResources:
             proc_cgroup=_read_text_file(self._proc_cgroup),
             cgroup_v2_root=(self._cgroup_root / "cgroup.controllers").exists(),
             cgroup_v1_root=(self._cgroup_root / "cpu" / "cpu.cfs_quota_us").exists(),
-            memory_limit=self._static.memory_limit if self._static is not None else None,
+            memory_limit=self._static_resources().memory_limit,
             levels=levels,
             host_processor_available=psutil.cpu_count(logical=True),
             host_memory_total=_host_memory_total(),

@@ -8,7 +8,7 @@ Every component reports the same four fields:
 
 | Field | Meaning |
 |-------|---------|
-| `processor_available` | Logical CPUs detected/visible (vCPUs). |
+| `processor_available` | Logical CPUs (vCPUs) the component can use: the host's count capped by the enforced CPU quota, the rule the JVM applies to the database figure. |
 | `processor_assigned` | Configured/enforced CPU limit; `None` when unbounded. |
 | `memory_total` | Memory capacity in bytes (cgroup limit when set, else host total). |
 | `memory_available` | Free memory in bytes. Usage is derived as `memory_total − memory_available` — the same representation the database already uses (no separate `*_used` field). |
@@ -56,7 +56,7 @@ Written by each process into `workers:resources:{component}:worker:{WORKER_IDENT
 | Field | Type | Source |
 |-------|------|--------|
 | `host` | `str` | `socket.gethostname()` (container id). Dedup key. |
-| `processor_available` | `int \| None` | `psutil.cpu_count(logical=True)` (logical CPUs). |
+| `processor_available` | `int \| None` | `psutil.cpu_count(logical=True)` capped by the cgroup CPU quota (D2 correction — psutil alone is not container-aware). |
 | `processor_assigned` | `int \| None` | cgroup CPU quota (D3/D5); `None` if unbounded. |
 | `memory_total` | `int \| None` | cgroup `memory.max` if set, else `psutil.virtual_memory().total`. |
 | `memory_available` | `int \| None` | (`memory.max − memory.current`) if cgroup-limited, else `psutil.virtual_memory().available`. |
@@ -73,7 +73,7 @@ Static fields (`host`, `processor_available`, `processor_assigned`, `memory_tota
 | **server** → new `server` block | dedup-sum api_server hosts | dedup-sum; `None` if any host unbounded | dedup-sum | dedup-sum |
 | **workers** → `workers` block (new fields) | dedup-sum git_agent hosts | dedup-sum; `None` if any host unbounded | dedup-sum | dedup-sum |
 
-Every `processor_assigned` is a **live read that returns `None` today** (nothing enforced yet) and self-populates once a limit is configured — see D3. `processor_assigned` is never derived from `processor_available`.
+Every `processor_assigned` is a **live read that returns `None` today** (nothing enforced yet) and self-populates once a limit is configured — see D3. `processor_assigned` is never derived from `processor_available`; the derivation runs the other way only — `processor_available` is capped by the quota that `processor_assigned` reports.
 
 ## Aggregation rules (server + workers) — D8/D9
 

@@ -67,11 +67,28 @@ CPU_QUOTA_CASES = [
         expected_assigned=3,
     ),
     CpuQuotaCase(
+        name="v2_single_core",
+        files={"cpu.max": "100000 100000"},
+        expected_assigned=1,
+    ),
+    CpuQuotaCase(
+        name="v2_quota_above_host_count",
+        files={"cpu.max": "102400000 100000"},
+        expected_assigned=1024,
+    ),
+    CpuQuotaCase(
         name="missing_files",
         files={},
         expected_assigned=None,
     ),
 ]
+
+
+def _usable_cores(assigned: int | None) -> int:
+    """The host's logical count, capped by the quota when one is enforced."""
+    host_count = psutil.cpu_count(logical=True)
+    assert host_count is not None
+    return host_count if assigned is None else min(host_count, assigned)
 
 
 @pytest.mark.parametrize("case", CPU_QUOTA_CASES, ids=[case.name for case in CPU_QUOTA_CASES])
@@ -84,12 +101,21 @@ def test_cgroup_cpu_quota(case: CpuQuotaCase, tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("case", CPU_QUOTA_CASES, ids=[case.name for case in CPU_QUOTA_CASES])
-def test_processor_available_is_always_logical(case: CpuQuotaCase, tmp_path: Path) -> None:
+def test_processor_available_is_the_host_count_capped_by_the_quota(case: CpuQuotaCase, tmp_path: Path) -> None:
     _write_cgroup_files(tmp_path, case.files)
 
     reading = ProcessResources(cgroup_root=tmp_path).read()
 
-    assert reading.processor_available == psutil.cpu_count(logical=True)
+    assert reading.processor_available == _usable_cores(case.expected_assigned)
+
+
+def test_single_core_quota_reports_one_usable_processor(tmp_path: Path) -> None:
+    _write_cgroup_files(tmp_path, {"cpu.max": "100000 100000"})
+
+    reading = ProcessResources(cgroup_root=tmp_path).read()
+
+    assert reading.processor_available == 1
+    assert reading.processor_assigned == 1
 
 
 @dataclass
@@ -271,6 +297,7 @@ def test_cgroup_path_resolution_cpu(case: CgroupPathCase, tmp_path: Path) -> Non
     reading = _process_resources_for(case, tmp_path).read()
 
     assert reading.processor_assigned == case.expected_assigned
+    assert reading.processor_available == _usable_cores(case.expected_assigned)
 
 
 @pytest.mark.parametrize("case", CGROUP_PATH_CASES, ids=[case.name for case in CGROUP_PATH_CASES])
