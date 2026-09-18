@@ -136,6 +136,47 @@ async def test_get_repositories_commit_per_branch_branches(
     }
 
 
+async def test_get_repositories_commit_per_branch_repository_created_on_a_branch(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch, default_branch: Branch
+) -> None:
+    """A repository created on a user branch, and staged there, is still read off the default branch.
+
+    The repository kinds are branch-agnostic, so the node lands on the global branch whatever branch
+    it was created from and the single default-branch query for the nodes finds it. Were that not
+    so, the repository would drop out of the result with no error at all.
+    """
+    branch = await create_branch(db=db, branch_name="branch-that-adds-a-repository")
+    repo = await Node.init(db=db, schema=InfrahubKind.REPOSITORY, branch=branch)
+    await repo.new(
+        db=db,
+        name="repo-on-branch",
+        default_branch=default_branch.name,
+        commit="commit-on-branch",
+        location="location-on-branch",
+    )
+    await repo.save(db=db)
+
+    repo_on_branch = await NodeManager.get_one(db=db, id=repo.id, branch=branch)
+    repo_on_branch.internal_status.value = RepositoryInternalStatus.STAGING.value
+    await repo_on_branch.save(db=db)
+
+    repositories = await get_repositories_commit_per_branch(db=db)
+
+    assert set(repositories) == {"repo-on-branch"}
+    assert repositories["repo-on-branch"].model_dump(exclude=["repository"]) == {
+        "repository_id": repo.id,
+        "repository_name": "repo-on-branch",
+        "branches": {
+            "branch-that-adds-a-repository": "commit-on-branch",
+            "main": "commit-on-branch",
+        },
+        "branch_info": {
+            "branch-that-adds-a-repository": {"internal_status": "staging"},
+            "main": {"internal_status": "inactive"},
+        },
+    }
+
+
 async def test_get_repositories_commit_per_branch_without_a_commit_on_a_branch(
     db: InfrahubDatabase, register_core_models_schema: SchemaBranch, repository_01: Node
 ) -> None:
