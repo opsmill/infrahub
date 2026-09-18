@@ -36,15 +36,15 @@ where nothing else has moved the numbers.
 
 ### 1a. Read the ground truth first
 
-- [ ] T001 [US1] Read `dev/knowledge/backend/database-schema.md` (edge activity, priority
+- [X] T001 [US1] Read `dev/knowledge/backend/database-schema.md` (edge activity, priority
       resolution, soft-delete semantics) and `dev/knowledge/backend/query-pattern.md` before touching
       any Cypher. Architectural intent is often the answer — `AGENTS.md`, *Always Do*.
-- [ ] T002 [US1] Read `core/query/agnostic_retention.py::UNRETAINED_AGNOSTIC_FIELD_PREDICATE` and its
+- [X] T002 [US1] Read `core/query/agnostic_retention.py::UNRETAINED_AGNOSTIC_FIELD_PREDICATE` and its
       module docstring in full. Its per-branch-then-max contract is the shape T018 reuses.
 
 ### 1b. Tests first — the two confirmed defects
 
-- [ ] T003 [P] [US1] Promote `artifacts/test_fr036a_repro.py` into
+- [X] T003 [P] [US1] Promote `artifacts/test_fr036a_repro.py` into
       `backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py`. Keep all
       four cases; strip the issue references per `dev/guidelines/backend/testing.md` (*"do not
       describe which bug a test prevents"* — name the behaviour instead). **Must fail** before T018.
@@ -86,30 +86,30 @@ where nothing else has moved the numbers.
       ever stop being `-global-`, revisit this **together with** the query shapes — an index alone
       would still not be reachable. Removed while m079 already owns the `GRAPH_VERSION` 78 → 79 bump,
       so it needed no migration of its own.
-- [ ] T007 [US1] Rewrite `core/query/resource_manager.py::NumberPoolGetUsed` and `::NumberPoolGetFree`
+- [X] T007 [US1] Rewrite `core/query/resource_manager.py::NumberPoolGetUsed` and `::NumberPoolGetFree`
       to traverse `(pool)-[:IS_RESERVED]->(:Attribute)-[:HAS_VALUE]->(:AttributeValueIndexed)` and
       `(:Attribute)<-[:HAS_ATTRIBUTE]-(:Node)`. Drop the `n.uuid = res.identifier` join.
-- [ ] T008 [US1] Rewrite `::NumberPoolGetReserved` to resolve **forward** through `HAS_VALUE`, so a
+- [X] T008 [US1] Rewrite `::NumberPoolGetReserved` to resolve **forward** through `HAS_VALUE`, so a
       record pointing at an abandoned `Attribute` reports nothing rather than reporting the edge
       (FR-030c). Add the missing `status` predicate.
-- [ ] T009 [US1] Rewrite `::NumberPoolGetAllocated`: remove the `hs_active` gate entirely (FR-030c),
+- [X] T009 [US1] Rewrite `::NumberPoolGetAllocated`: remove the `hs_active` gate entirely (FR-030c),
       reach the node through the record instead of `HAS_SOURCE`, and **add the branch/time/status
       predicate on the reservation edge that it does not have today** (risk R8).
-- [ ] T010 [US1] Rewrite `::NumberPoolSetReserved` from a bare `CREATE` to match-close-create,
+- [X] T010 [US1] Rewrite `::NumberPoolSetReserved` from a bare `CREATE` to match-close-create,
       targeting the `Attribute` vertex and writing `provenance`. See
       [`contracts/reservation-ledger.md`](./contracts/reservation-ledger.md).
-- [ ] T011 [US1] Thread the `Attribute` vertex id through
+- [X] T011 [US1] Thread the `Attribute` vertex id through
       `core/node/resource_manager/number_pool.py::CoreNumberPool.get_resource` → `::reserve` → the
       ledger, and restate the idempotency lookup as "is there a live record from this pool on **this
       attribute**". Without this, T010 has no target to close. *(Critique E2.)*
-- [ ] T012 [P] [US1] Rewrite the five source-gate tests in
+- [X] T012 [P] [US1] Rewrite the five source-gate tests in
       `backend/tests/component/core/resource_manager/test_number_pool_query.py::TestNumberPoolGetAllocated`
       — they pin behaviour FR-030c deletes.
-- [ ] T013 [P] [US1] Re-anchor `backend/tests/helpers/agnostic_edges.py::pool_reservation_edges`: the
+- [X] T013 [P] [US1] Re-anchor `backend/tests/helpers/agnostic_edges.py::pool_reservation_edges`: the
       `->(:AttributeValue)` target and the identifier filter both go. Update its callers, including
       `component/core/agnostic_retirement/test_on_node_delete.py::…::test_a_value_freed_by_retirement_is_allocatable_again_from_its_pool`,
       which asserts the literal edge tuple.
-- [ ] T014 [P] [US1] Re-check `backend/tests/db_snapshot.py::DbSnapshotterDeduplicated` — its
+- [X] T014 [P] [US1] Re-check `backend/tests/db_snapshot.py::DbSnapshotterDeduplicated` — its
       docstring says it does not account for `IS_RESERVED`, which changes meaning once the edge hangs
       off `Attribute`.
 
@@ -156,7 +156,7 @@ where nothing else has moved the numbers.
 
       Cover both branch supports in the test, so the agnostic case cannot stand in for the aware one
       again.
-- [ ] T018 [US1] Implement cross-branch liveness as a **union** (FR-036a) in the queries from T007,
+- [X] T018 [US1] Implement cross-branch liveness as a **union** (FR-036a) in the queries from T007,
       reusing the *shape* of `UNRETAINED_AGNOSTIC_FIELD_PREDICATE`: per-branch window
       `(branch @ $at) ∪ (origin @ min(branched_from,$at)) ∪ (-global- @ $at)`, per-branch resolution
       `ORDER BY branch_level DESC, from DESC, status ASC LIMIT 1`, `branch.status <> "DELETING"`,
@@ -168,22 +168,22 @@ where nothing else has moved the numbers.
 
 ### 1e. The pool leaves `HAS_SOURCE`
 
-- [ ] T020 [US1] Stop writing the pool to `source`: remove `attribute.source = number_pool.id` from
+- [X] T020 [US1] Stop writing the pool to `source`: remove `attribute.source = number_pool.id` from
       both branches of `core/node/__init__.py::Node.handle_pool` and from the template allocation path
       in `core/node/create.py`.
-- [ ] T021 [US1] Add the derivation to
+- [X] T021 [US1] Add the derivation to
       `core/query/node.py::NodeListGetAttributeQuery._add_source_to_query`: one `OPTIONAL MATCH` for
       the inbound `-global-` `IS_RESERVED` on the already-bound `Attribute`, plus a `CASE` preferring
       the user's edge. **Return the pool vertex, not its uuid** — extraction reads
       `result.get_node("source").labels` and those labels select the concrete GraphQL type. Stays
       inside the `_include_source` gate.
-- [ ] T022 [P] [US1] Component test: a pooled attribute with no user source resolves `source` to the
+- [X] T022 [P] [US1] Component test: a pooled attribute with no user source resolves `source` to the
       pool **and the correct GraphQL kind**, with no stored source edge. Assert the resolved kind, not
       only the uuid — an implementation returning an id alone passes a uuid assertion and still breaks
       `__kind__`. *(Risk R7.)*
-- [ ] T023 [P] [US1] Component test: a **user-set, non-pool** source on a pooled attribute changes the
+- [X] T023 [P] [US1] Component test: a **user-set, non-pool** source on a pooled attribute changes the
       reported source and changes **nothing** the pool reports. No such test exists today (SC-019).
-- [ ] T024 [P] [US1] Fix the inaccurate comment in
+- [X] T024 [P] [US1] Fix the inaccurate comment in
       `graphql/mutations/profile.py::InfrahubProfileMutation._validate_no_resource_pools_in_data`
       claiming graphene includes unset fields as `None` keys. It does not, and a reviewer will read
       the new resolver against it.
