@@ -157,10 +157,10 @@ Vitest runs in **browser mode**. Coverage to expect:
 
 1. **Mock at `…/api/get-repository-branch-status-from-api`, never the hook.** Every request assertion
    must be paired *in the same test* with a rendered-output assertion drawn from a **different
-   payload**. Use `expectServerDrivenChange(...)` from `tests/helpers/` — its signature makes both
-   halves required, and direct `apiMock.mock.calls[...]` access is lint-blocked in the card's test
-   files precisely so this cannot be skipped. See
-   [the UI contract](contracts/repository-branch-status-ui.md).
+   payload**. Use `expectServerDrivenChange(...)` from `tests/helpers/` — every argument is required,
+   so omitting the rendered-output half is a type error. Reading `apiMock.mock.calls[...]` directly
+   in a card test file compiles and defeats the pairing; keeping it out of those files is on the
+   reviewer. See [the UI contract](contracts/repository-branch-status-ui.md).
 2. **Reset `window.history` in `afterEach`.** `tests/components/render.tsx` uses `BrowserRouter`, so
    nuqs writes to the real `window.location`; without the reset the paging tests become
    order-dependent — passing alone, failing in a full run. Do **not** reach for `renderAt` from

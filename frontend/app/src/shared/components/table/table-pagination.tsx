@@ -45,7 +45,7 @@ export function TablePagination({
         className
       )}
     >
-      <p className="text-foreground-muted" role="status">
+      <p className="text-foreground-muted tabular-nums" role="status">
         {formatPageWindow(currentPage, pageSize, totalCount)}
       </p>
 

@@ -193,13 +193,5 @@
       "enabled": true
     }
   },
-  "overrides": [
-    {
-      "includes": [
-        "src/entities/repository/ui/repository-branches-card/**/*.test.tsx"
-      ],
-      "plugins": ["./lint/no-direct-api-mock-calls.grit"]
-    }
-  ],
   "extends": ["ultracite/biome/core", "ultracite/biome/react"]
 }
