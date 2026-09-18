@@ -290,6 +290,7 @@ class NodeCreateAllQuery(NodeQuery):
             "status: rel.status, hierarchy: rel.hierarchical, from: $at, from_user_id: $user_id }"
         )
         pool_reservation_subquery = """
+            WITH *
             CALL (a, attr) {
                 UNWIND attr.pool_prop AS prop
                 MATCH (pool:%(number_pool)s { uuid: prop.peer_id })
