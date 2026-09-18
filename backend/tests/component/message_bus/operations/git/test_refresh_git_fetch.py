@@ -1,9 +1,12 @@
 import re
 from pathlib import Path
 
+import httpx
 import pytest
 from fast_depends import Provider
 from git import Repo
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.types import HTTPMethod
 from pytest_httpx import HTTPXMock
 
 from infrahub.core.constants import InfrahubKind
@@ -63,6 +66,69 @@ async def test_fan_out_pins_to_orchestrator_commit_when_upstream_advances(
 
     worktree = git_fixture_repo.get_git_repo_worktree(identifier=branch_name)
     assert str(worktree.head.commit) == pinned_sha
+
+
+class RecordingRequester:
+    """Answers every SDK call with an empty payload and keeps the tracker each one carried."""
+
+    def __init__(self) -> None:
+        self.trackers: list[str | None] = []
+
+    async def __call__(
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: dict,
+        timeout: int,  # noqa: ASYNC109
+        payload: dict | None = None,
+    ) -> httpx.Response:
+        self.trackers.append(headers.get("X-Infrahub-Tracker"))
+        return httpx.Response(
+            status_code=200, json={"data": {}}, request=httpx.Request(method="POST", url="http://mock")
+        )
+
+
+async def test_fan_out_converges_the_local_copy_without_writing_the_tracked_commit(
+    git_fixture_repo: InfrahubRepository,
+    git_sources_dir: Path,
+    dependency_provider: Provider,
+) -> None:
+    """A pinned fan-out brings the new objects in and leaves the tracked commit in the graph alone."""
+    requester = RecordingRequester()
+    recording_client = InfrahubClient(config=Config(requester=requester, insert_tracker=True))
+
+    branch_name = "main"
+    branch_id = "8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba"
+
+    upstream = Repo(str(git_sources_dir / "test_base"))
+    new_file = git_sources_dir / "test_base" / "moved_upstream.txt"
+    new_file.write_text("the tracked ref moved upstream", encoding="utf-8")
+    upstream.index.add(["moved_upstream.txt"])
+    upstream.index.commit("Tracked ref moved upstream")
+    moved_sha = str(upstream.head.commit)
+
+    message = messages.RefreshGitFetch(
+        location=str(git_sources_dir / "test_base"),
+        repository_id=str(git_fixture_repo.id),
+        repository_name=git_fixture_repo.name,
+        # The read-only kind, which is the only one the refs check broadcasts for, and which
+        # routes the handler through a different repository class than its sibling tests.
+        repository_kind=InfrahubKind.READONLYREPOSITORY,
+        infrahub_branch_name=branch_name,
+        infrahub_branch_id=branch_id,
+        commit=moved_sha,
+    )
+
+    with dependency_provider.scope(build_client, lambda: recording_client):
+        await fetch.fn(message=message)
+
+    worktree = git_fixture_repo.get_git_repo_worktree(identifier=branch_name)
+    assert str(worktree.head.commit) == moved_sha
+
+    # The status write proves the handler reached the graph at all, so the absence below is a
+    # decision rather than an unexercised path.
+    assert "mutation-repository-update-operational-status" in requester.trackers
+    assert "mutation-repository-update-commit" not in requester.trackers
 
 
 @pytest.mark.httpx_mock(should_mock=lambda request: request.url.host == "mock")

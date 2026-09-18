@@ -7,16 +7,18 @@ import httpx
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 
 from infrahub import config
-from infrahub.core.constants import InfrahubKind, MetadataOptions, PermissionAction
+from infrahub.core.constants import InfrahubKind, MetadataOptions, PermissionAction, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.git.models import (
+    GitReadOnlyRepositoryCheckRefs,
     GitReadOnlyRepositoryImportCommit,
     GitRepositoryImportObjects,
     GitRepositoryPullReadOnly,
+    TrackedRef,
 )
 from infrahub.graphql.types.common import IdentifierInput
 from infrahub.log import get_logger
@@ -313,10 +315,37 @@ class ReadOnlyRepositoryCheckRefs(Mutation):
                 branch_name=branch.name, node_type=InfrahubKind.READONLYREPOSITORY, identifier=str(data.id)
             )
 
+        # A checkable repository needs all three: a URL and a ref to compare, and a completed first
+        # import, without which this worker holds no local copy to compare the remote against.
+        location = repo.location.value
+        ref = repo.ref.value
+        if not location or not ref:
+            raise ValidationError(
+                f"Repository {repo.get_id()} cannot be checked: it has no {'location' if not location else 'ref'}."
+            )
+        if repo.internal_status.value != RepositoryInternalStatus.ACTIVE.value:
+            raise ValidationError(
+                f"Repository {repo.get_id()} cannot be checked on branch {branch.name}: "
+                f"it is {repo.internal_status.value} there, not active."
+            )
+
+        # Only the request branch's ref is checked: it is the one the caller is looking at.
+        model = GitReadOnlyRepositoryCheckRefs(
+            repository_id=repo.get_id(),
+            repository_name=str(repo.name.value),
+            location=location,
+            refs=(
+                TrackedRef(
+                    infrahub_branch_name=branch.name,
+                    infrahub_branch_id=str(branch.get_uuid()),
+                    ref=ref,
+                ),
+            ),
+        )
         workflow = await graphql_context.active_service.workflow.submit_workflow(
             workflow=GIT_READ_ONLY_REPOSITORY_CHECK_REFS,
             context=graphql_context.get_context(),
-            parameters={"repository_id": repo.get_id()},
+            parameters={"model": model},
         )
         task = {"id": workflow.id}
         return cls(ok=True, task=task)
