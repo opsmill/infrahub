@@ -41,13 +41,18 @@ run. Anything else a flow returns is traversed, pickled, and stored for nothing.
 - If a flow must return a large object tree, set `persist_result=False` on the decorator and
   return the value inside Prefect's `quote()`. `quote()` stops the traversal; it does not stop
   persistence, which is why both are needed.
-- Keep the flow's type annotations honest: mypy does not model `quote` as generic, so annotate the
-  flow with a bare `quote` and unquote in a typed wrapper instead of at every call site.
+- Keep the flow's type annotations honest: `quote` derives from `tuple[T]`, which mypy types as a
+  plain tuple, so `quote[...]` is rejected and `unquote()` comes back untyped. Annotate the flow with
+  a bare `quote` and restore the payload type in one typed wrapper with a positive `isinstance`
+  check that returns the value, never with `cast()`.
 
 ```python
 async def _update_diffs(self, ...) -> tuple[EnrichedDiffs, set[NodeIdentifier]]:
     quoted = await self._update_diffs_flow(...)
-    return cast("tuple[EnrichedDiffs, set[NodeIdentifier]]", quoted.unquote())
+    enriched_diffs, node_identifiers_to_drop = quoted.unquote()
+    if not isinstance(enriched_diffs, EnrichedDiffs) or not isinstance(node_identifiers_to_drop, set):
+        raise TypeError("expected (EnrichedDiffs, set) from the update-diff flow")
+    return enriched_diffs, node_identifiers_to_drop
 
 @flow(name="update-diff", validate_parameters=False, persist_result=False)
 async def _update_diffs_flow(self, ...) -> quote:
