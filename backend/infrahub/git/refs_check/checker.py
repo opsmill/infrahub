@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 
     from ..models import GitReadOnlyRepositoryCheckRefs
     from .gateway import CheckRefFormat, RepositoryRefsGateway
+    from .tracked_commit import TrackedCommitReader
 
 log = get_logger()
 
@@ -79,17 +80,19 @@ class RefsCheckScheduler:
         return due
 
     async def retry_soon(self, repository_id: str) -> None:
-        """Bring the next check of a repository forward after a failed one.
+        """Bring the next scheduled check of a repository forward after a failed one.
 
         Shortening the due key rather than dropping it is what keeps a permanently broken
         repository from being retried on every tick of the schedule, where it would occupy a
         concurrency slot at the expense of repositories that can still be checked.
+
+        A repository the schedule is not spacing has no due key, and gains none here: writing one
+        would let a failed check asked for by hand suppress the scheduled checks that follow it.
         """
-        await self._cache.set(
-            key=refs_check_due_key(repository_id),
-            value=datetime.now(tz=UTC).isoformat(),
-            expires=self._retry_seconds,
-        )
+        key = refs_check_due_key(repository_id)
+        if await self._cache.get(key=key) is None:
+            return
+        await self._cache.set(key=key, value=datetime.now(tz=UTC).isoformat(), expires=self._retry_seconds)
 
 
 class ReadOnlyRepositoryRefsChecker:
@@ -108,6 +111,7 @@ class ReadOnlyRepositoryRefsChecker:
         gateway: RepositoryRefsGateway,
         ref_validator: RefNameValidator,
         scheduler: RefsCheckScheduler,
+        tracked_commit_reader: TrackedCommitReader,
         claim_ttl_seconds: int,
         detect_timeout_seconds: float,
     ) -> None:
@@ -117,6 +121,7 @@ class ReadOnlyRepositoryRefsChecker:
         self._gateway = gateway
         self._ref_validator = ref_validator
         self._scheduler = scheduler
+        self._tracked_commit_reader = tracked_commit_reader
         self._claim_ttl_seconds = claim_ttl_seconds
         self._detect_timeout_seconds = detect_timeout_seconds
 
@@ -151,17 +156,19 @@ class ReadOnlyRepositoryRefsChecker:
             # The bound covers the listing only. Convergence takes the repository lock, which
             # carries no expiry, so a cancellation landing inside it could leave that lock held
             # for good and block every later operation on the repository.
-            async with asyncio.timeout(self._detect_timeout_seconds):
-                movements = await self._detect_movements(model)
+            try:
+                async with asyncio.timeout(self._detect_timeout_seconds):
+                    movements = await self._detect_movements(model)
+            except TimeoutError:
+                reason = f"Timed out after {self._detect_timeout_seconds}s reading the remote refs."
+                log.warning("Refs check timed out", repository=model.repository_name, reason=reason)
+                return await self._record_failure(model, reason=reason, contacted_remote=True)
+
             if movements:
                 # Convergence is unbounded, so take the claim's lease again rather than spending
                 # what the listing left of it.
                 await self._renew_claim(model, run_id=run_id)
                 await self._converge(model, movements)
-        except TimeoutError:
-            reason = f"Timed out after {self._detect_timeout_seconds}s reading the remote refs."
-            log.warning("Refs check timed out", repository=model.repository_name, reason=reason)
-            return await self._record_failure(model, reason=reason, contacted_remote=True)
         except RepositoryError as exc:
             reason = str(exc)
             log.warning("Refs check failed", repository=model.repository_name, reason=reason)
@@ -188,20 +195,27 @@ class ReadOnlyRepositoryRefsChecker:
         )
 
     async def _release_claim(self, model: GitReadOnlyRepositoryCheckRefs, *, run_id: str) -> None:
-        """Drop the claim only while it is still this run's.
+        """Drop the claim only while it is still this run's, best effort.
 
         A check that outlived its claim must not delete the one a later run has since taken, which
         would leave that run unprotected and admit the overlapping fetch the claim exists to stop.
+
+        This runs in a ``finally``, so letting it raise would discard the outcome of a check that
+        has already listed the remote and converged the pool. The claim expires on its own, so a
+        release that could not happen costs one interval of checks rather than the result.
         """
-        holder = await self._cache.get(key=refs_check_running_key(model.repository_id))
-        if holder is not None and holder != run_id:
-            log.info(
-                "Leaving the refs check claim in place, it now belongs to another run",
-                repository=model.repository_name,
-                held_by=holder,
-            )
-            return
-        await self._cache.delete(key=refs_check_running_key(model.repository_id))
+        try:
+            holder = await self._cache.get(key=refs_check_running_key(model.repository_id))
+            if holder is not None and holder != run_id:
+                log.info(
+                    "Leaving the refs check claim in place, it now belongs to another run",
+                    repository=model.repository_name,
+                    held_by=holder,
+                )
+                return
+            await self._cache.delete(key=refs_check_running_key(model.repository_id))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Could not release the refs check claim", repository=model.repository_name, reason=str(exc))
 
     async def _first_invalid_ref(self, model: GitReadOnlyRepositoryCheckRefs) -> str | None:
         for ref in self._tracked_ref_names(model):
@@ -238,23 +252,21 @@ class ReadOnlyRepositoryRefsChecker:
 
     async def _detect_movements(self, model: GitReadOnlyRepositoryCheckRefs) -> list[RefMovement]:
         movements: list[RefMovement] = []
-        for ref in self._tracked_ref_names(model):
-            local_head = await self._gateway.read_local_head(model, ref)
-            remote_head = await self._gateway.read_remote_head(model, ref)
-            if remote_head is None:
-                log.info("Tracked ref is absent from the remote", repository=model.repository_name, ref=ref)
+        for heads in await self._gateway.read_heads(model, self._tracked_ref_names(model)):
+            if heads.remote_head is None:
+                log.info("Tracked ref is absent from the remote", repository=model.repository_name, ref=heads.ref)
                 continue
-            if remote_head == local_head:
+            if heads.remote_head == heads.local_head:
                 continue
 
             log.info(
                 "Tracked ref moved upstream",
                 repository=model.repository_name,
-                ref=ref,
-                previous_head=local_head,
-                new_head=remote_head,
+                ref=heads.ref,
+                previous_head=heads.local_head,
+                new_head=heads.remote_head,
             )
-            movements.append(RefMovement(ref=ref, previous_head=local_head, new_head=remote_head))
+            movements.append(RefMovement(ref=heads.ref, previous_head=heads.local_head, new_head=heads.remote_head))
 
         return movements
 
@@ -271,9 +283,15 @@ class ReadOnlyRepositoryRefsChecker:
             for tracked in model.refs:
                 if tracked.ref not in moved_refs:
                     continue
-                if tracked.commit is None:
-                    # Nothing imported on this branch yet, so there is no commit to pin the pool
-                    # to; an unpinned broadcast would move every worker onto the new head.
+                # Read under the lock rather than carried in with the request: an import that
+                # landed since the check started has already moved the pool to its own commit, and
+                # pinning to the commit read before the lock would reset every worker back off it.
+                commit = await self._tracked_commit_reader.read(
+                    repository_id=model.repository_id, branch_name=tracked.infrahub_branch_name
+                )
+                if commit is None:
+                    # Nothing imported on this branch, so there is no commit to pin the pool to;
+                    # an unpinned broadcast would move every worker onto the new head.
                     log.info(
                         "Not converging a branch with no imported commit",
                         repository=model.repository_name,
@@ -292,6 +310,6 @@ class ReadOnlyRepositoryRefsChecker:
                         repository_kind=InfrahubKind.READONLYREPOSITORY,
                         infrahub_branch_name=tracked.infrahub_branch_name,
                         infrahub_branch_id=tracked.infrahub_branch_id,
-                        commit=tracked.commit,
+                        commit=commit,
                     )
                 )

@@ -10,7 +10,13 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import RepositoryError
 from infrahub.git.models import GitReadOnlyRepositoryCheckRefs, TrackedRef
 from infrahub.git.refs_check.checker import ReadOnlyRepositoryRefsChecker, RefNameValidator, RefsCheckScheduler
-from infrahub.git.refs_check.models import RefMovement, RefsCheckCycleSummary, RefsCheckOutcome, RefsCheckResult
+from infrahub.git.refs_check.models import (
+    RefHeads,
+    RefMovement,
+    RefsCheckCycleSummary,
+    RefsCheckOutcome,
+    RefsCheckResult,
+)
 from infrahub.git.state.cache_keys import refs_check_due_key, refs_check_last_key, refs_check_running_key
 from infrahub.message_bus import InfrahubMessage, messages
 from tests.adapters.cache import ClaimAwareCache
@@ -18,6 +24,8 @@ from tests.adapters.lock import LockTimeline, RecordingLockRegistry
 from tests.adapters.message_bus import BusRecorder
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.message_bus.types import MessageTTL
 
 REPOSITORY_ID = "1f2e3d4c-5b6a-4978-8765-4321abcdef00"
@@ -44,20 +52,18 @@ class RecordingRefsGateway:
         self.local_heads = local_heads
         self.remote_heads = remote_heads
         self.remote_error = remote_error
-        self.local_reads: list[str] = []
-        self.remote_reads: list[str] = []
+        self.listings: list[list[str]] = []
         self.fetches: list[str] = []
 
-    async def read_local_head(self, model: GitReadOnlyRepositoryCheckRefs, ref: str) -> str | None:
-        self.local_reads.append(ref)
-        return self.local_heads.get(ref)
-
-    async def read_remote_head(self, model: GitReadOnlyRepositoryCheckRefs, ref: str) -> str | None:
+    async def read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: Sequence[str]) -> tuple[RefHeads, ...]:
         self.timeline.checkpoint("ls-remote")
-        self.remote_reads.append(ref)
+        self.listings.append(list(refs))
         if self.remote_error is not None:
             raise self.remote_error
-        return self.remote_heads.get(ref)
+        return tuple(
+            RefHeads(ref=ref, local_head=self.local_heads.get(ref), remote_head=self.remote_heads.get(ref))
+            for ref in refs
+        )
 
     async def fetch(self, model: GitReadOnlyRepositoryCheckRefs) -> None:
         self.timeline.checkpoint("fetch")
@@ -71,12 +77,9 @@ class HangingRefsGateway:
         self.timeline = timeline
         self.fetches: list[str] = []
 
-    async def read_local_head(self, model: GitReadOnlyRepositoryCheckRefs, ref: str) -> str | None:
-        return LOCAL_HEAD
-
-    async def read_remote_head(self, model: GitReadOnlyRepositoryCheckRefs, ref: str) -> str | None:
+    async def read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: Sequence[str]) -> tuple[RefHeads, ...]:
         await asyncio.sleep(30)
-        return REMOTE_HEAD
+        return tuple(RefHeads(ref=ref, local_head=LOCAL_HEAD, remote_head=REMOTE_HEAD) for ref in refs)
 
     async def fetch(self, model: GitReadOnlyRepositoryCheckRefs) -> None:
         self.timeline.checkpoint("fetch")
@@ -106,15 +109,33 @@ class CheckTimeFailingCache(ClaimAwareCache):
         return await super().set(key=key, value=value, expires=expires, not_exists=not_exists)
 
 
-class CrashingRefsGateway:
-    async def read_local_head(self, model: GitReadOnlyRepositoryCheckRefs, ref: str) -> str | None:
-        raise RuntimeError("the worker died mid-check")
+class ClaimReleaseFailingCache(ClaimAwareCache):
+    """Fails only the claim release, the way a cache blip during that one call would."""
 
-    async def read_remote_head(self, model: GitReadOnlyRepositoryCheckRefs, ref: str) -> str | None:
+    async def delete(self, key: str) -> None:
+        if key == refs_check_running_key(REPOSITORY_ID):
+            raise ConnectionError("cache unreachable")
+        await super().delete(key=key)
+
+
+class CrashingRefsGateway:
+    async def read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: Sequence[str]) -> tuple[RefHeads, ...]:
         raise RuntimeError("the worker died mid-check")
 
     async def fetch(self, model: GitReadOnlyRepositoryCheckRefs) -> None:
         raise RuntimeError("the worker died mid-check")
+
+
+class RecordingTrackedCommitReader:
+    """Answers with the commit each branch has imported, recording every branch it was asked about."""
+
+    def __init__(self, commits: dict[str, str | None] | None = None) -> None:
+        self.commits = {"main": IMPORTED_COMMIT} if commits is None else commits
+        self.reads: list[str] = []
+
+    async def read(self, *, repository_id: str, branch_name: str) -> str | None:
+        self.reads.append(branch_name)
+        return self.commits.get(branch_name)
 
 
 def build_model(
@@ -127,15 +148,7 @@ def build_model(
         repository_id=repository_id,
         repository_name=repository_name,
         location=LOCATION,
-        refs=refs
-        or [
-            TrackedRef(
-                infrahub_branch_name="main",
-                infrahub_branch_id="main-branch-id",
-                ref="stable",
-                commit=IMPORTED_COMMIT,
-            )
-        ],
+        refs=refs or [TrackedRef(infrahub_branch_name="main", infrahub_branch_id="main-branch-id", ref="stable")],
     )
 
 
@@ -145,6 +158,7 @@ def build_checker(
     bus: BusRecorder,
     timeline: LockTimeline,
     gateway: RecordingRefsGateway | CrashingRefsGateway,
+    tracked_commit_reader: RecordingTrackedCommitReader | None = None,
 ) -> ReadOnlyRepositoryRefsChecker:
     return ReadOnlyRepositoryRefsChecker(
         cache=cache,
@@ -153,6 +167,7 @@ def build_checker(
         gateway=gateway,
         ref_validator=RefNameValidator(check_ref_format=lambda _: True),
         scheduler=build_scheduler(cache),
+        tracked_commit_reader=tracked_commit_reader or RecordingTrackedCommitReader(),
         claim_ttl_seconds=180,
         detect_timeout_seconds=30,
     )
@@ -191,7 +206,7 @@ async def test_an_unchanged_remote_lists_refs_and_transfers_nothing() -> None:
 
     result = await checker.check(build_model(), run_id="run-1")
 
-    assert gateway.remote_reads == ["stable"]
+    assert gateway.listings == [["stable"]]
     assert gateway.fetches == []
     assert bus.messages == []
     assert result.movements == ()
@@ -224,27 +239,17 @@ async def test_a_moved_ref_is_broadcast_once_per_branch_pinned_to_the_imported_c
     other_branch_commit = "dddddddddddddddddddddddddddddddddddddddd"
     model = build_model(
         refs=[
-            TrackedRef(
-                infrahub_branch_name="main",
-                infrahub_branch_id="main-branch-id",
-                ref="stable",
-                commit=IMPORTED_COMMIT,
-            ),
-            TrackedRef(
-                infrahub_branch_name="feature",
-                infrahub_branch_id="feature-branch-id",
-                ref="stable",
-                commit=other_branch_commit,
-            ),
-            TrackedRef(
-                infrahub_branch_name="quiet",
-                infrahub_branch_id="quiet-branch-id",
-                ref="untouched",
-                commit=IMPORTED_COMMIT,
-            ),
+            TrackedRef(infrahub_branch_name="main", infrahub_branch_id="main-branch-id", ref="stable"),
+            TrackedRef(infrahub_branch_name="feature", infrahub_branch_id="feature-branch-id", ref="stable"),
+            TrackedRef(infrahub_branch_name="quiet", infrahub_branch_id="quiet-branch-id", ref="untouched"),
         ]
     )
-    checker = build_checker(cache=ClaimAwareCache(), bus=bus, timeline=timeline, gateway=gateway)
+    reader = RecordingTrackedCommitReader(
+        {"main": IMPORTED_COMMIT, "feature": other_branch_commit, "quiet": IMPORTED_COMMIT}
+    )
+    checker = build_checker(
+        cache=ClaimAwareCache(), bus=bus, timeline=timeline, gateway=gateway, tracked_commit_reader=reader
+    )
 
     result = await checker.check(model, run_id="run-1")
 
@@ -259,6 +264,8 @@ async def test_a_moved_ref_is_broadcast_once_per_branch_pinned_to_the_imported_c
         ("feature", other_branch_commit),
     ]
     assert {message.repository_kind for message in broadcast} == {InfrahubKind.READONLYREPOSITORY}
+    # The branch whose ref did not move is never asked about, so a quiet branch costs no read.
+    assert reader.reads == ["main", "feature"]
 
 
 async def test_a_branch_with_nothing_imported_yet_is_fetched_but_not_broadcast() -> None:
@@ -270,27 +277,89 @@ async def test_a_branch_with_nothing_imported_yet_is_fetched_but_not_broadcast()
     )
     model = build_model(
         refs=[
-            TrackedRef(
-                infrahub_branch_name="main",
-                infrahub_branch_id="main-branch-id",
-                ref="stable",
-                commit=IMPORTED_COMMIT,
-            ),
-            TrackedRef(
-                infrahub_branch_name="never-imported",
-                infrahub_branch_id="never-imported-id",
-                ref="stable",
-                commit=None,
-            ),
+            TrackedRef(infrahub_branch_name="main", infrahub_branch_id="main-branch-id", ref="stable"),
+            TrackedRef(infrahub_branch_name="never-imported", infrahub_branch_id="never-imported-id", ref="stable"),
         ]
     )
-    checker = build_checker(cache=ClaimAwareCache(), bus=bus, timeline=timeline, gateway=gateway)
+    checker = build_checker(
+        cache=ClaimAwareCache(),
+        bus=bus,
+        timeline=timeline,
+        gateway=gateway,
+        tracked_commit_reader=RecordingTrackedCommitReader({"main": IMPORTED_COMMIT, "never-imported": None}),
+    )
 
     result = await checker.check(model, run_id="run-1")
 
     assert [movement.ref for movement in result.movements] == ["stable"]
     assert gateway.fetches == [REPOSITORY_NAME]
     assert [message.infrahub_branch_name for message in bus.messages] == ["main"]
+
+
+async def test_the_broadcast_pins_the_commit_read_while_the_lock_is_held() -> None:
+    """An import that lands between the listing and the lock has already moved the pool.
+
+    Broadcasting the commit as it stood before the lock would hard-reset every worker back off the
+    commit that import left behind, so the value has to be read once the lock is held.
+    """
+    timeline = LockTimeline()
+    bus = BusRecorder()
+    gateway = RecordingRefsGateway(
+        timeline=timeline, local_heads={"stable": LOCAL_HEAD}, remote_heads={"stable": REMOTE_HEAD}
+    )
+    imported_meanwhile = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    reader = RecordingTrackedCommitReader({"main": imported_meanwhile})
+    checker = build_checker(
+        cache=ClaimAwareCache(), bus=bus, timeline=timeline, gateway=gateway, tracked_commit_reader=reader
+    )
+
+    await checker.check(build_model(), run_id="run-1")
+
+    assert [message.commit for message in bus.messages] == [imported_meanwhile]
+    assert reader.reads == ["main"]
+
+
+async def test_a_branch_whose_repository_vanished_before_the_lock_is_not_broadcast() -> None:
+    timeline = LockTimeline()
+    bus = BusRecorder()
+    gateway = RecordingRefsGateway(
+        timeline=timeline, local_heads={"stable": LOCAL_HEAD}, remote_heads={"stable": REMOTE_HEAD}
+    )
+    checker = build_checker(
+        cache=ClaimAwareCache(),
+        bus=bus,
+        timeline=timeline,
+        gateway=gateway,
+        tracked_commit_reader=RecordingTrackedCommitReader({}),
+    )
+
+    result = await checker.check(build_model(), run_id="run-1")
+
+    assert [movement.ref for movement in result.movements] == ["stable"]
+    assert gateway.fetches == [REPOSITORY_NAME]
+    assert bus.messages == []
+
+
+async def test_every_distinct_tracked_ref_is_read_in_one_listing() -> None:
+    """Two branches following one ref cost one listing, and two refs still cost one between them."""
+    timeline = LockTimeline()
+    gateway = RecordingRefsGateway(
+        timeline=timeline,
+        local_heads={"stable": LOCAL_HEAD, "release": LOCAL_HEAD},
+        remote_heads={"stable": LOCAL_HEAD, "release": LOCAL_HEAD},
+    )
+    model = build_model(
+        refs=[
+            TrackedRef(infrahub_branch_name="main", infrahub_branch_id="main-branch-id", ref="stable"),
+            TrackedRef(infrahub_branch_name="feature", infrahub_branch_id="feature-branch-id", ref="stable"),
+            TrackedRef(infrahub_branch_name="other", infrahub_branch_id="other-branch-id", ref="release"),
+        ]
+    )
+    checker = build_checker(cache=ClaimAwareCache(), bus=BusRecorder(), timeline=timeline, gateway=gateway)
+
+    await checker.check(model, run_id="run-1")
+
+    assert gateway.listings == [["stable", "release"]]
 
 
 async def test_a_second_trigger_while_one_is_in_flight_reports_the_claim_and_contacts_nothing() -> None:
@@ -307,7 +376,7 @@ async def test_a_second_trigger_while_one_is_in_flight_reports_the_claim_and_con
 
     assert result.outcome is RefsCheckOutcome.SKIPPED_CLAIMED
     assert result.claimed_by == "run-already-running"
-    assert gateway.remote_reads == []
+    assert gateway.listings == []
     assert gateway.fetches == []
     assert bus.messages == []
     assert cache.storage[refs_check_running_key(REPOSITORY_ID)] == "run-already-running"
@@ -328,11 +397,11 @@ async def test_a_check_that_outlived_its_claim_leaves_the_later_run_s_claim_alon
     model = build_model()
 
     # Stand in for the claim expiring mid-run and a later run taking it.
-    async def take_over(_model: GitReadOnlyRepositoryCheckRefs, ref: str) -> str | None:
+    async def take_over(_model: GitReadOnlyRepositoryCheckRefs, refs: Sequence[str]) -> tuple[RefHeads, ...]:
         await cache.set(key=refs_check_running_key(REPOSITORY_ID), value="run-2")
-        return LOCAL_HEAD
+        return tuple(RefHeads(ref=ref, local_head=LOCAL_HEAD, remote_head=LOCAL_HEAD) for ref in refs)
 
-    gateway.read_remote_head = take_over  # type: ignore[method-assign]
+    gateway.read_heads = take_over  # type: ignore[method-assign]
 
     await checker.check(model, run_id="run-1")
 
@@ -466,6 +535,50 @@ async def test_a_failed_check_time_write_does_not_replace_the_reason_the_check_f
     assert refs_check_running_key(REPOSITORY_ID) not in cache.storage
 
 
+async def test_a_failed_claim_release_does_not_cost_the_result_of_the_check_it_ends() -> None:
+    """The claim expires on its own, so a release that could not happen costs one interval.
+
+    Letting it raise out of the ``finally`` would instead discard the outcome of a check that has
+    already listed the remote and converged the pool, and have the cycle retry all of it.
+    """
+    timeline = LockTimeline()
+    bus = BusRecorder()
+    gateway = RecordingRefsGateway(
+        timeline=timeline, local_heads={"stable": LOCAL_HEAD}, remote_heads={"stable": REMOTE_HEAD}
+    )
+    checker = build_checker(cache=ClaimReleaseFailingCache(), bus=bus, timeline=timeline, gateway=gateway)
+
+    result = await checker.check(build_model(), run_id="run-1")
+
+    assert result.outcome is RefsCheckOutcome.COMPLETED
+    assert [movement.ref for movement in result.movements] == ["stable"]
+    assert [message.commit for message in bus.messages] == [IMPORTED_COMMIT]
+
+
+async def test_a_check_asked_for_by_hand_does_not_start_spacing_the_scheduled_ones() -> None:
+    """Only the schedule writes the due key, so a failure outside it must not invent one.
+
+    A repository checked on demand is not being spaced by the schedule; writing a due key here
+    would suppress the scheduled checks that follow a manual one that happened to fail.
+    """
+    cache = ClaimAwareCache()
+    timeline = LockTimeline()
+    gateway = RecordingRefsGateway(
+        timeline=timeline,
+        local_heads={"stable": LOCAL_HEAD},
+        remote_heads={},
+        remote_error=RepositoryError(identifier=REPOSITORY_NAME, message="fatal: unable to access remote"),
+    )
+    checker = build_checker(cache=cache, bus=BusRecorder(), timeline=timeline, gateway=gateway)
+    model = build_model()
+
+    result = await checker.check(model, run_id="run-1")
+
+    assert result.failed is True
+    assert refs_check_due_key(REPOSITORY_ID) not in cache.storage
+    assert await build_scheduler(cache).select_due([model]) == [model]
+
+
 async def test_an_unexpected_programming_error_is_not_recorded_as_a_repository_failure() -> None:
     """A bug must surface as a crash, not as a per-cycle "this remote failed" that never stops."""
     cache = ClaimAwareCache()
@@ -502,9 +615,11 @@ async def test_an_unresponsive_remote_is_abandoned_without_taking_the_repository
         gateway=gateway,
         ref_validator=RefNameValidator(check_ref_format=lambda _: True),
         scheduler=build_scheduler(cache),
+        tracked_commit_reader=RecordingTrackedCommitReader(),
         claim_ttl_seconds=180,
         detect_timeout_seconds=0.05,
     )
+    await build_scheduler(cache).select_due([build_model()])
 
     result = await checker.check(build_model(), run_id="run-1")
 
@@ -638,6 +753,7 @@ async def test_an_invalid_ref_is_refused_before_the_remote_is_contacted() -> Non
         gateway=gateway,
         ref_validator=RefNameValidator(check_ref_format=lambda _: False),
         scheduler=build_scheduler(cache),
+        tracked_commit_reader=RecordingTrackedCommitReader(),
         claim_ttl_seconds=180,
         detect_timeout_seconds=30,
     )
@@ -645,8 +761,7 @@ async def test_an_invalid_ref_is_refused_before_the_remote_is_contacted() -> Non
     result = await checker.check(build_model(), run_id="run-1")
 
     assert result.failure_reason == "Refusing to check the invalid ref 'stable'."
-    assert gateway.remote_reads == []
-    assert gateway.local_reads == []
+    assert gateway.listings == []
     # It never asked the remote anything, so the cycle must not count it among the ones it checked.
     assert result.contacted_remote is False
     assert RefsCheckCycleSummary(results=(result,), not_due=0, duration_seconds=0.0).checked_count == 0

@@ -15,11 +15,15 @@ from infrahub.git.refs_check.checker import RefNameValidator
 from infrahub.git.refs_check.factory import build_check_refs_model
 from infrahub.git.refs_check.gateway import (
     GitRepositoryRefsGateway,
-    _list_remote_head,
+    _list_remote_heads,
     _resolve_local_head,
     parse_ls_remote,
     select_remote_head,
 )
+from infrahub.git.refs_check.models import RefHeads
+
+LIST_KILL_AFTER_SECONDS = 110
+FETCH_KILL_AFTER_SECONDS = 900
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -177,6 +181,10 @@ def build_remote_and_clone(tmp_path: Path) -> Repo:
     return Repo.clone_from(str(tmp_path / "origin"), str(tmp_path / "clone"))
 
 
+def list_remote_heads(clone: Repo, *refs: str) -> dict[str, str | None]:
+    return _list_remote_heads(clone, refs, kill_after_seconds=LIST_KILL_AFTER_SECONDS)
+
+
 def test_an_annotated_tag_is_listed_through_the_commit_the_local_read_resolves(tmp_path: Path) -> None:
     """The remote head of an annotated tag must be its commit, not the tag object pointing at it.
 
@@ -185,25 +193,44 @@ def test_an_annotated_tag_is_listed_through_the_commit_the_local_read_resolves(t
     """
     clone = build_remote_and_clone(tmp_path)
 
-    assert _list_remote_head(clone, "annotated") == _resolve_local_head(clone, "annotated")
+    assert list_remote_heads(clone, "annotated") == {"annotated": _resolve_local_head(clone, "annotated")}
 
 
 def test_a_lightweight_tag_is_listed_through_its_own_sha(tmp_path: Path) -> None:
     clone = build_remote_and_clone(tmp_path)
 
-    assert _list_remote_head(clone, "lightweight") == _resolve_local_head(clone, "lightweight")
+    assert list_remote_heads(clone, "lightweight") == {"lightweight": _resolve_local_head(clone, "lightweight")}
 
 
 def test_a_branch_is_listed_through_its_head(tmp_path: Path) -> None:
     clone = build_remote_and_clone(tmp_path)
 
-    assert _list_remote_head(clone, "stable") == _resolve_local_head(clone, "stable")
+    assert list_remote_heads(clone, "stable") == {"stable": _resolve_local_head(clone, "stable")}
 
 
 def test_a_ref_missing_from_the_remote_has_no_head(tmp_path: Path) -> None:
     clone = build_remote_and_clone(tmp_path)
 
-    assert _list_remote_head(clone, "never-existed") is None
+    assert list_remote_heads(clone, "never-existed") == {"never-existed": None}
+
+
+def test_every_ref_is_resolved_by_a_single_listing(tmp_path: Path) -> None:
+    """One connection answers every tracked ref, each through the namespace its own read applies."""
+    clone = build_remote_and_clone(tmp_path)
+
+    assert list_remote_heads(clone, "stable", "annotated", "lightweight", "never-existed") == {
+        "stable": _resolve_local_head(clone, "stable"),
+        "annotated": _resolve_local_head(clone, "annotated"),
+        "lightweight": _resolve_local_head(clone, "lightweight"),
+        "never-existed": None,
+    }
+
+
+def test_an_empty_request_does_not_list_the_whole_remote(tmp_path: Path) -> None:
+    """``ls-remote`` with no pattern answers with every ref the remote has, which is not nothing."""
+    clone = build_remote_and_clone(tmp_path)
+
+    assert list_remote_heads(clone) == {}
 
 
 REPOSITORY_ID = "8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba"
@@ -237,7 +264,15 @@ def build_local_copy(tmp_path: Path, *, origin: str) -> GitReadOnlyRepositoryChe
         repository_id=REPOSITORY_ID,
         repository_name="local-copy",
         location=origin,
-        refs=(TrackedRef(infrahub_branch_name="main", infrahub_branch_id="main-id", ref="stable", commit=None),),
+        refs=(TrackedRef(infrahub_branch_name="main", infrahub_branch_id="main-id", ref="stable"),),
+    )
+
+
+def build_gateway() -> GitRepositoryRefsGateway:
+    return GitRepositoryRefsGateway(
+        client=InfrahubClient(config=Config(address="http://mock")),
+        list_kill_after_seconds=LIST_KILL_AFTER_SECONDS,
+        fetch_kill_after_seconds=FETCH_KILL_AFTER_SECONDS,
     )
 
 
@@ -250,19 +285,21 @@ async def test_the_gateway_presents_a_git_failure_as_a_repository_error(
     from the directory check that runs before it.
     """
     model = build_local_copy(tmp_path, origin=str(tmp_path / "no-such-remote"))
-    gateway = GitRepositoryRefsGateway(client=InfrahubClient(config=Config(address="http://mock")))
 
     with pytest.raises(RepositoryError, match=r"no-such-remote"):
-        await gateway.read_remote_head(model, "stable")
+        await build_gateway().read_heads(model, ["stable"])
 
 
 async def test_the_gateway_reads_a_local_head_from_a_valid_copy(
     tmp_path: Path, restore_repositories_directory: None
 ) -> None:
-    model = build_local_copy(tmp_path, origin=str(tmp_path / "no-such-remote"))
-    gateway = GitRepositoryRefsGateway(client=InfrahubClient(config=Config(address="http://mock")))
+    """The local side resolves even for a ref the copy does not hold, and answers with nothing."""
+    model = build_local_copy(tmp_path, origin=str(tmp_path / "origin"))
+    Repo.init(tmp_path / "origin", bare=True)
 
-    assert await gateway.read_local_head(model, "no-such-ref") is None
+    assert await build_gateway().read_heads(model, ["no-such-ref"]) == (
+        RefHeads(ref="no-such-ref", local_head=None, remote_head=None),
+    )
 
 
 @dataclass
@@ -306,12 +343,9 @@ def test_every_branch_tracking_a_ref_becomes_a_tracked_ref() -> None:
     )
 
     assert model is not None
-    assert [
-        (tracked.infrahub_branch_name, tracked.infrahub_branch_id, tracked.ref, tracked.commit)
-        for tracked in model.refs
-    ] == [
-        ("main", "main-id", "stable", "aaa"),
-        ("feature", "feature-id", "other", "bbb"),
+    assert [(tracked.infrahub_branch_name, tracked.infrahub_branch_id, tracked.ref) for tracked in model.refs] == [
+        ("main", "main-id", "stable"),
+        ("feature", "feature-id", "other"),
     ]
 
 

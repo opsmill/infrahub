@@ -8,7 +8,13 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, RepositoryInternalStatus
 
 from ..models import GitReadOnlyRepositoryCheckRefs, TrackedRef
 from .checker import ReadOnlyRepositoryRefsChecker, RefNameValidator, RefsCheckScheduler
-from .constants import REFS_CHECK_CLAIM_TTL_SECONDS, REFS_CHECK_RETRY_SECONDS, REFS_CHECK_TIMEOUT_SECONDS
+from .constants import (
+    REFS_CHECK_CLAIM_TTL_SECONDS,
+    REFS_CHECK_FETCH_TIMEOUT_SECONDS,
+    REFS_CHECK_GIT_KILL_MARGIN_SECONDS,
+    REFS_CHECK_RETRY_SECONDS,
+    REFS_CHECK_TIMEOUT_SECONDS,
+)
 from .gateway import GitRepositoryRefsGateway, git_check_ref_format
 
 if TYPE_CHECKING:
@@ -22,6 +28,7 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
     from ..models import RepositoryData
+    from .tracked_commit import TrackedCommitReader
 
 
 def build_check_refs_model(
@@ -44,7 +51,6 @@ def build_check_refs_model(
             infrahub_branch_name=branch_name,
             infrahub_branch_id=branch_ids[branch_name],
             ref=info.ref,
-            commit=repository_data.branches.get(branch_name),
         )
         for branch_name, info in repository_data.branch_info.items()
         if info.ref
@@ -70,14 +76,24 @@ def build_refs_checker(
     lock_registry: InfrahubLockRegistry,
     client: InfrahubClient,
     scheduler: RefsCheckScheduler,
+    tracked_commit_reader: TrackedCommitReader,
 ) -> ReadOnlyRepositoryRefsChecker:
+    # Sooner than the wall-clock ceiling on the listing, so a hung remote ends as a git failure
+    # with the process gone rather than as an abandoned await over a process still running.
+    list_kill_after_seconds = REFS_CHECK_TIMEOUT_SECONDS - REFS_CHECK_GIT_KILL_MARGIN_SECONDS
+    gateway = GitRepositoryRefsGateway(
+        client=client,
+        list_kill_after_seconds=list_kill_after_seconds,
+        fetch_kill_after_seconds=REFS_CHECK_FETCH_TIMEOUT_SECONDS,
+    )
     return ReadOnlyRepositoryRefsChecker(
         cache=cache,
         message_bus=message_bus,
         lock_registry=lock_registry,
-        gateway=GitRepositoryRefsGateway(client=client),
+        gateway=gateway,
         ref_validator=RefNameValidator(check_ref_format=git_check_ref_format),
         scheduler=scheduler,
+        tracked_commit_reader=tracked_commit_reader,
         claim_ttl_seconds=REFS_CHECK_CLAIM_TTL_SECONDS,
         detect_timeout_seconds=REFS_CHECK_TIMEOUT_SECONDS,
     )

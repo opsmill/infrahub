@@ -334,7 +334,6 @@ class ReadOnlyRepositoryCheckRefs(Mutation):
                     infrahub_branch_name=branch.name,
                     infrahub_branch_id=str(branch.get_uuid()),
                     ref=ref,
-                    commit=repo.commit.value,
                 ),
             ),
         )

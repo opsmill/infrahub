@@ -19,9 +19,10 @@ from infrahub.exceptions import RepositoryError
 
 from ..repository import InfrahubReadOnlyRepository
 from .constants import REMOTE_TRANSPORT_ENVIRONMENT
+from .models import RefHeads
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Sequence
 
     from git import Repo
     from infrahub_sdk.client import InfrahubClient
@@ -93,9 +94,7 @@ class RepositoryRefsGateway(Protocol):
 
     """
 
-    async def read_local_head(self, model: GitReadOnlyRepositoryCheckRefs, ref: str) -> str | None: ...
-
-    async def read_remote_head(self, model: GitReadOnlyRepositoryCheckRefs, ref: str) -> str | None: ...
+    async def read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: Sequence[str]) -> tuple[RefHeads, ...]: ...
 
     async def fetch(self, model: GitReadOnlyRepositoryCheckRefs) -> None: ...
 
@@ -111,28 +110,41 @@ def _resolve_local_head(git_repo: Repo, ref: str) -> str | None:
     return None
 
 
-def _fetch_moved_refs(git_repo: Repo) -> None:
+def _fetch_moved_refs(git_repo: Repo, *, kill_after_seconds: float) -> None:
     """Bring the moved refs in, forcing tag updates rather than refusing them.
 
     git refuses to update an existing tag without being forced. The commits a moved tag used to
     point at stay readable because each imported commit has a worktree of its own holding it.
     """
     with git_repo.git.custom_environment(**REMOTE_TRANSPORT_ENVIRONMENT):
-        git_repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True, force=True)
-
-
-def _list_remote_head(git_repo: Repo, ref: str) -> str | None:
-    with git_repo.git.custom_environment(**REMOTE_TRANSPORT_ENVIRONMENT):
-        output = git_repo.git.ls_remote(
-            "origin",
-            "--",
-            f"refs/heads/{ref}",
-            f"refs/tags/{ref}",
-            # The peeled line an annotated tag also publishes. Without it the listing returns the
-            # tag object while the local read returns the commit, and the two can never agree.
-            f"refs/tags/{ref}^{{}}",
+        git_repo.remotes.origin.fetch(
+            prune=True, tags=True, prune_tags=True, force=True, kill_after_timeout=kill_after_seconds
         )
-    return select_remote_head(parse_ls_remote(str(output)), ref)
+
+
+def _ref_patterns(ref: str) -> tuple[str, str, str]:
+    # The third is the peeled line an annotated tag also publishes. Without it the listing returns
+    # the tag object while the local read returns the commit, and the two can never agree.
+    return (f"refs/heads/{ref}", f"refs/tags/{ref}", f"refs/tags/{ref}^{{}}")
+
+
+def _list_remote_heads(git_repo: Repo, refs: Sequence[str], *, kill_after_seconds: float) -> dict[str, str | None]:
+    """Resolve every ref against the remote in one listing.
+
+    ``kill_after_seconds`` is what actually bounds this: git applies no network timeout of its own,
+    and abandoning the caller's await would leave the process running.
+    """
+    if not refs:
+        # An ls-remote with no pattern lists the entire remote, which is not what an empty request
+        # is asking for.
+        return {}
+
+    patterns = [pattern for ref in refs for pattern in _ref_patterns(ref)]
+    with git_repo.git.custom_environment(**REMOTE_TRANSPORT_ENVIRONMENT):
+        output = git_repo.git.ls_remote("origin", "--", *patterns, kill_after_timeout=kill_after_seconds)
+
+    heads = parse_ls_remote(str(output))
+    return {ref: select_remote_head(heads, ref) for ref in refs}
 
 
 class GitRepositoryRefsGateway:
@@ -141,8 +153,12 @@ class GitRepositoryRefsGateway:
     The local copy is opened without initialization, so a refs check never clones and never pulls.
     """
 
-    def __init__(self, client: InfrahubClient) -> None:
+    def __init__(
+        self, client: InfrahubClient, *, list_kill_after_seconds: float, fetch_kill_after_seconds: float
+    ) -> None:
         self._client = client
+        self._list_kill_after_seconds = list_kill_after_seconds
+        self._fetch_kill_after_seconds = fetch_kill_after_seconds
 
     def _open(self, model: GitReadOnlyRepositoryCheckRefs) -> InfrahubReadOnlyRepository:
         repo = InfrahubReadOnlyRepository(  # type: ignore[call-arg]
@@ -155,11 +171,11 @@ class GitRepositoryRefsGateway:
         repo.validate_local_directories()
         return repo
 
-    def _read_local_head(self, model: GitReadOnlyRepositoryCheckRefs, ref: str) -> str | None:
-        return _resolve_local_head(self._open(model).get_git_repo_main(), ref)
-
-    def _read_remote_head(self, model: GitReadOnlyRepositoryCheckRefs, ref: str) -> str | None:
-        return _list_remote_head(self._open(model).get_git_repo_main(), ref)
+    def _read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: Sequence[str]) -> tuple[RefHeads, ...]:
+        git_repo = self._open(model).get_git_repo_main()
+        local_heads = {ref: _resolve_local_head(git_repo, ref) for ref in refs}
+        remote_heads = _list_remote_heads(git_repo, refs, kill_after_seconds=self._list_kill_after_seconds)
+        return tuple(RefHeads(ref=ref, local_head=local_heads[ref], remote_head=remote_heads[ref]) for ref in refs)
 
     def _fetch(self, model: GitReadOnlyRepositoryCheckRefs) -> None:
         repo = self._open(model)
@@ -168,15 +184,11 @@ class GitRepositoryRefsGateway:
                 identifier=model.repository_name,
                 message=f"The local copy of {model.repository_name} has no remote to fetch the moved refs from.",
             )
-        _fetch_moved_refs(repo.get_git_repo_main())
+        _fetch_moved_refs(repo.get_git_repo_main(), kill_after_seconds=self._fetch_kill_after_seconds)
 
-    async def read_local_head(self, model: GitReadOnlyRepositoryCheckRefs, ref: str) -> str | None:
+    async def read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: Sequence[str]) -> tuple[RefHeads, ...]:
         with _as_repository_error(model.repository_name):
-            return await asyncio.to_thread(self._read_local_head, model, ref)
-
-    async def read_remote_head(self, model: GitReadOnlyRepositoryCheckRefs, ref: str) -> str | None:
-        with _as_repository_error(model.repository_name):
-            return await asyncio.to_thread(self._read_remote_head, model, ref)
+            return await asyncio.to_thread(self._read_heads, model, refs)
 
     async def fetch(self, model: GitReadOnlyRepositoryCheckRefs) -> None:
         with _as_repository_error(model.repository_name):

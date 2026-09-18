@@ -82,6 +82,7 @@ from .refs_check.checker import ReadOnlyRepositoryRefsChecker
 from .refs_check.constants import REFS_CHECK_CONCURRENCY
 from .refs_check.factory import build_check_refs_model, build_refs_checker, build_refs_scheduler
 from .refs_check.models import RefsCheckCycleSummary, RefsCheckOutcome, RefsCheckResult
+from .refs_check.tracked_commit import GraphTrackedCommitReader
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
 from .sync import RepositoryAdder, RepositoryFileImporter, RepositorySyncer
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
@@ -893,6 +894,7 @@ async def check_read_only_repositories_refs() -> RefsCheckCycleSummary:
         lock_registry=lock.registry,
         client=get_client(),
         scheduler=scheduler,
+        tracked_commit_reader=GraphTrackedCommitReader(db=db),
     )
     run_id = flow_run.id or str(UUIDT())
 
@@ -965,6 +967,7 @@ async def check_read_only_repository_refs(model: GitReadOnlyRepositoryCheckRefs)
     await add_tags(nodes=[model.repository_id])
 
     cache = await get_cache()
+    db = await get_database()
     checker = build_refs_checker(
         cache=cache,
         message_bus=await get_message_bus(),
@@ -973,6 +976,7 @@ async def check_read_only_repository_refs(model: GitReadOnlyRepositoryCheckRefs)
         scheduler=build_refs_scheduler(
             cache=cache, interval_mins=config.SETTINGS.git.read_only_refs_check_interval_mins
         ),
+        tracked_commit_reader=GraphTrackedCommitReader(db=db),
     )
     return await checker.check(model, run_id=flow_run.id or str(UUIDT()))
 

@@ -335,7 +335,6 @@ async def test_check_refs_submits_the_check_for_a_read_only_repository(
                     infrahub_branch_name=default_branch.name,
                     infrahub_branch_id=str(default_branch.get_uuid()),
                     ref="main",
-                    commit=None,
                 )
             ],
         )

@@ -7,6 +7,19 @@ from enum import StrEnum
 
 
 @dataclass(frozen=True)
+class RefHeads:
+    """What one tracked ref resolves to on each side, as a single read of the repository saw it."""
+
+    ref: str
+
+    local_head: str | None
+    """What this worker's copy resolved the ref to, absent when it held no such ref."""
+
+    remote_head: str | None
+    """What the remote publishes for the ref, absent when the remote carries no such ref."""
+
+
+@dataclass(frozen=True)
 class RefMovement:
     """A tracked ref whose remote head no longer matches the local view of it."""
 

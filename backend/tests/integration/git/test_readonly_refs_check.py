@@ -18,6 +18,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.git.models import GitReadOnlyRepositoryCheckRefs, TrackedRef
 from infrahub.git.refs_check.checker import ReadOnlyRepositoryRefsChecker, RefNameValidator, RefsCheckScheduler
 from infrahub.git.refs_check.gateway import GitRepositoryRefsGateway, git_check_ref_format
+from infrahub.git.refs_check.tracked_commit import GraphTrackedCommitReader
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from tests.adapters.cache import ClaimAwareCache
 from tests.adapters.lock import LockTimeline, RecordingLockRegistry
@@ -135,35 +136,31 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
         return {"repo_name": repo_name, "node_id": node.id, "location": repo_url, "ref": "release"}
 
     def build_checker(
-        self, cache: ClaimAwareCache, bus: BusRecorder, timeline: LockTimeline, client: InfrahubClient
+        self,
+        cache: ClaimAwareCache,
+        bus: BusRecorder,
+        timeline: LockTimeline,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
     ) -> ReadOnlyRepositoryRefsChecker:
         return ReadOnlyRepositoryRefsChecker(
             cache=cache,
             message_bus=bus,
             lock_registry=RecordingLockRegistry(timeline=timeline),
-            gateway=GitRepositoryRefsGateway(client=client),
+            gateway=GitRepositoryRefsGateway(client=client, list_kill_after_seconds=110, fetch_kill_after_seconds=900),
             ref_validator=RefNameValidator(check_ref_format=git_check_ref_format),
             scheduler=RefsCheckScheduler(cache=cache, interval_seconds=900, retry_seconds=300),
+            tracked_commit_reader=GraphTrackedCommitReader(db=db),
             claim_ttl_seconds=180,
             detect_timeout_seconds=120,
         )
 
     async def build_model(self, db: InfrahubDatabase, dataset: dict) -> GitReadOnlyRepositoryCheckRefs:
-        repository: CoreReadOnlyRepository = await NodeManager.get_one(
-            db=db, id=dataset["node_id"], kind=InfrahubKind.READONLYREPOSITORY, raise_on_error=True
-        )
         return GitReadOnlyRepositoryCheckRefs(
             repository_id=dataset["node_id"],
             repository_name=dataset["repo_name"],
             location=dataset["location"],
-            refs=(
-                TrackedRef(
-                    infrahub_branch_name="main",
-                    infrahub_branch_id="main-branch-id",
-                    ref=dataset["ref"],
-                    commit=repository.commit.value,
-                ),
-            ),
+            refs=(TrackedRef(infrahub_branch_name="main", infrahub_branch_id="main-branch-id", ref=dataset["ref"]),),
         )
 
     async def tracked_commit(self, db: InfrahubDatabase, dataset: dict) -> str | None:
@@ -195,7 +192,7 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
         timeline: LockTimeline,
     ) -> None:
         model = await self.build_model(db, branch_tracking_dataset)
-        checker = self.build_checker(cache, bus, timeline, client)
+        checker = self.build_checker(cache, bus, timeline, client, db)
         lock_name = f"repository.{branch_tracking_dataset['repo_name']}"
 
         result = await checker.check(model, run_id="step01")
@@ -223,7 +220,7 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
         advance_branch(gogs_server.container, branch_tracking_dataset["repo_name"], "advanced.txt")
 
         model = await self.build_model(db, branch_tracking_dataset)
-        checker = self.build_checker(cache, bus, timeline, client)
+        checker = self.build_checker(cache, bus, timeline, client, db)
         lock_name = f"repository.{branch_tracking_dataset['repo_name']}"
 
         result = await checker.check(model, run_id="step02")
@@ -253,7 +250,7 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
         rewrite_branch_head(gogs_server.container, branch_tracking_dataset["repo_name"])
 
         model = await self.build_model(db, branch_tracking_dataset)
-        checker = self.build_checker(cache, bus, timeline, client)
+        checker = self.build_checker(cache, bus, timeline, client, db)
 
         result = await checker.check(model, run_id="step03")
 
@@ -276,7 +273,7 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
         check of a tag that has not moved, and no fetch could ever make the two agree.
         """
         model = await self.build_model(db, tag_tracking_dataset)
-        checker = self.build_checker(cache, bus, timeline, client)
+        checker = self.build_checker(cache, bus, timeline, client, db)
         messages_before = len(bus.messages)
 
         result = await checker.check(model, run_id="step04")
@@ -303,7 +300,7 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
         move_tag(gogs_server.container, tag_tracking_dataset["repo_name"], "release")
 
         model = await self.build_model(db, tag_tracking_dataset)
-        checker = self.build_checker(cache, bus, timeline, client)
+        checker = self.build_checker(cache, bus, timeline, client, db)
 
         result = await checker.check(model, run_id="step05")
 
@@ -330,7 +327,7 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
         delete_tag(gogs_server.container, tag_tracking_dataset["repo_name"], "release")
 
         model = await self.build_model(db, tag_tracking_dataset)
-        checker = self.build_checker(cache, bus, timeline, client)
+        checker = self.build_checker(cache, bus, timeline, client, db)
 
         result = await checker.check(model, run_id="step06")
 

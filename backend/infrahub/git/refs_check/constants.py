@@ -15,6 +15,20 @@ so abandoning a run part-way through releasing it would block the repository ind
 REFS_CHECK_CLAIM_MARGIN_SECONDS: Final = 60
 """Added to the listing ceiling so a claim outlives the step that can wait on an unresponsive host."""
 
+REFS_CHECK_GIT_KILL_MARGIN_SECONDS: Final = 10
+"""How much sooner the listing subprocess is killed than the wall-clock ceiling above it.
+
+Abandoning the await does not stop the git process behind it, so without this the ceiling would
+leave a worker thread and a git child alive for as long as the remote holds the connection open.
+"""
+
+REFS_CHECK_FETCH_TIMEOUT_SECONDS: Final = 900
+"""Ceiling on the transfer, enforced by killing the git process.
+
+Generous, because a first transfer of a large repository is legitimately slow, but present because
+this step holds the repository lock and a transfer that never ends would hold it for good.
+"""
+
 REFS_CHECK_CLAIM_TTL_SECONDS: Final = REFS_CHECK_TIMEOUT_SECONDS + REFS_CHECK_CLAIM_MARGIN_SECONDS
 
 REFS_CHECK_CONCURRENCY: Final = 5
@@ -27,8 +41,8 @@ Sooner than a full interval, because a failure is usually transient; later than 
 the schedule, because a permanent one would otherwise be retried every minute forever.
 """
 
-# git applies no network timeout of its own. These bind the HTTP transport only, so an SSH remote
-# is still bounded by the caller's own ceiling rather than by these.
+# git applies no network timeout of its own. These end an HTTP transfer that has stalled below a
+# trickle; every transport, SSH included, is bounded instead by the kill timeout git is given.
 REMOTE_TRANSPORT_ENVIRONMENT: Final[Mapping[str, str]] = MappingProxyType(
     {"GIT_HTTP_LOW_SPEED_LIMIT": "1000", "GIT_HTTP_LOW_SPEED_TIME": "20"}
 )

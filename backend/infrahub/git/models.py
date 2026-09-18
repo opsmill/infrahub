@@ -158,16 +158,18 @@ class GitReadOnlyRepositoryImportCommit(BaseModel):
 
 
 class TrackedRef(BaseModel):
-    """A git ref a read-only repository follows on one Infrahub branch, with the commit pinned there."""
+    """A git ref a read-only repository follows on one Infrahub branch.
+
+    It deliberately carries no commit: the commit a convergence pins the pool to is read when the
+    repository lock is held, and one carried from here could already have been superseded by an
+    import that ran in between.
+    """
 
     model_config = ConfigDict(frozen=True)
 
     infrahub_branch_name: str = Field(..., description="Infrahub branch pinning this ref")
     infrahub_branch_id: str = Field(..., description="Id of the Infrahub branch pinning this ref")
     ref: str = Field(..., description="Branch or tag followed on the external repository")
-    commit: str | None = Field(
-        default=None, description="Commit currently imported on that branch, absent until a first import ran"
-    )
 
 
 class GitReadOnlyRepositoryCheckRefs(BaseModel):
