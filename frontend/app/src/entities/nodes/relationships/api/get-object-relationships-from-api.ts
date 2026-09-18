@@ -79,8 +79,10 @@ export type GetObjectRelationshipsFromApiParams = ContextParams &
 export const getObjectRelationshipsFromApi = ({
   branchName,
   atDate,
-  limit,
-  offset,
+  // The pagination bounds used to be inlined into the document with these defaults;
+  // keep defaulting them here so an omitted bound still reaches the API as 0, not null.
+  limit = 0,
+  offset = 0,
   parentId,
   ...params
 }: GetObjectRelationshipsFromApiParams) => {
