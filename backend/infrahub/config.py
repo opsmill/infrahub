@@ -557,8 +557,10 @@ class BrokerSettings(BaseSettings):
 
 
 # Scalar connection settings that a configured INFRAHUB_CACHE_URL supersedes.
+# tls_ca_file is deliberately absent: the URL's scheme decides whether TLS is used, but the CA to
+# verify against is still read from the setting (and from the global tls.ca_bundle that fills it).
 CACHE_URL_SUPERSEDED_FIELDS = frozenset(
-    {"address", "port", "database", "username", "password", "tls_enabled", "tls_insecure", "tls_ca_file"}
+    {"address", "port", "database", "username", "password", "tls_enabled", "tls_insecure"}
 )
 
 
@@ -590,7 +592,9 @@ class CacheSettings(BaseSettings):
             "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster. TLS is tuned with the redis-py "
             "query parameters ssl_cert_reqs, ssl_check_hostname and ssl_ca_certs; on a Sentinel URL these "
             "ssl_* options are shared with the Sentinel daemon connections, so ?ssl_cert_reqs=none (or "
-            "?ssl_ca_certs=/path/ca.pem for a private CA) covers the whole topology. The Sentinel daemons "
+            "?ssl_ca_certs=/path/ca.pem for a private CA) covers the whole topology. A TLS URL without "
+            "?ssl_ca_certs= verifies against cache.tls_ca_file, which the global tls.ca_bundle fills. "
+            "The Sentinel daemons "
             "can be authenticated separately with the sentinel_username and sentinel_password query "
             "parameters. See the high availability guide for details. Ignored when driver is not redis."
         ),
