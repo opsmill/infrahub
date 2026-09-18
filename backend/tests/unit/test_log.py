@@ -54,6 +54,16 @@ def test_decorator_registers_type_in_the_shared_registry() -> None:
     assert TracebackSuppressionFilter(_TRACEBACK_SUPPRESSED_TYPES).filter(_record(_ExpectedFailureError())) is False
 
 
+def test_startup_silences_the_http_client_loggers() -> None:
+    """Importing infrahub.log configures logging for the process, which is what pins these loggers.
+
+    httpx logs through both the httpx and httpcore namespaces; both must stay pinned to ERROR or a
+    DEBUG root level floods the logs with per-round-trip transport tracing.
+    """
+    assert logging.getLogger("httpx").level == logging.ERROR
+    assert logging.getLogger("httpcore").level == logging.ERROR
+
+
 def test_startup_installs_the_filter_on_the_prefect_run_loggers() -> None:
     """Importing infrahub.log configures logging for the process, which is what installs the filter."""
     installed_on = [
