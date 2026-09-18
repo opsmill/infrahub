@@ -396,8 +396,8 @@ Exceptions where positional arguments are acceptable:
 
 ## Testing
 
-Test tiers, fixtures and assertion standards are in [Python Testing Standards](testing.md). Test
-files mirror source: `infrahub/core/node.py` → `tests/unit/core/test_node.py`.
+Test tiers, file layout, fixtures and assertion standards are in
+[Python Testing Standards](testing.md).
 
 ## See Also
 

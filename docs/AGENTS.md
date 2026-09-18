@@ -77,6 +77,7 @@ For the complete style guide including terminology, see `docs/development/style-
 - **Present tense**: "Infrahub uses branches to isolate changes"
 - **Professional but approachable**: Avoid "simple", "easy", or "just"
 - **Literal words**: much of the audience reads English as a second or third language. Avoid figurative phrasing — "carry" (for have), "lives on" (for is stored on), "walk" (for traverse), "reach for" (for use). Say the literal thing.
+- **FAQ answers stay short**: a couple of sentences plus a link to the topical page; detail that needs paragraphs (constraints, edition caveats, step-by-step procedure) belongs on the linked page, not in the FAQ. Never present a capability as the default when it requires explicit deployment or configuration.
 
 ### Infrahub Terminology
 
@@ -94,8 +95,6 @@ Capitalize these Infrahub-specific terms when referring to the feature:
 **Never use "transform" or "transforms" as a noun.** Always use "Transformation" or "Transformations".
 
 **Call a populated instance an "object", not a "node"**, in user-facing text (docs, error messages, UI copy). "Node" stays where it names a schema kind — the counterpart of "Generic" — which is the term the schema docs and the UI already use.
-
-**FAQ answers stay short.** A couple of sentences plus a link to the topical page; detail that needs paragraphs (constraints, edition caveats, step-by-step procedure) belongs on the linked page, not in the FAQ. Never present a capability as the default when it requires explicit deployment or configuration.
 
 ## Documentation Workflow
 

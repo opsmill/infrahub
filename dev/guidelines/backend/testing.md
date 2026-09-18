@@ -28,7 +28,7 @@ GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null uv run pytest backend/te
 
 With an empty config `commit.gpgsign` defaults to off, and dulwich falls back to your OS username/host for the commit author, so no `[user]` block is needed. CI does not sign commits, so this only affects local runs.
 
-Test files mirror source structure: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
+Test files mirror source structure: `backend/infrahub/core/node/standard.py` → `backend/tests/unit/core/node/test_standard.py`
 
 ## Test Documentation
 
@@ -55,7 +55,7 @@ Skip tests that test the framework rather than our integration:
 
 A useful rule of thumb: if the test would still pass after we delete our implementation and reinstall the library, the test belongs to the library, not us.
 
-Also skip tests that string-match generated query text. A test asserting the built Cypher contains or equals a given string pins the implementation, not the behavior: it breaks on a harmless rewording and still passes on a query that is wrong in ways the string never captured. Assert the query's observable behavior (a component test against the database), and state the reasoning behind the query's shape in its own comments or docstring.
+**Skip tests that string-match a feature query's generated text.** A test asserting the built Cypher contains or equals a given string pins the implementation, not the behavior: it breaks on a harmless rewording and still passes on a query that is wrong in ways the string never captured. Assert the query's observable behavior (a component test against the database), and state the reasoning behind the query's shape in its own comments or docstring. Exact query-text assertions belong only where the string *is* the output contract — the query-building infrastructure itself (assembly, parameter interpolation).
 
 **The exception is a bound that encodes a domain invariant.** `Field(ge=1)` on a multiplier that must never shrink the value it scales is not arbitrary tuning — it is a rule about how the feature behaves, and deleting it changes behavior with nothing failing. Assert those, but write the test against the invariant rather than the mechanism: name it for the rule, not for the constraint (`test_<what must hold>`, not `test_field_rejects_zero`), cover the boundary value that must stay legal, and add a test that the **shipped defaults** satisfy the invariant. Cross-field `model_validator` logic is ours outright and always warrants a test.
 
