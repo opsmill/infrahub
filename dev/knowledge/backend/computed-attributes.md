@@ -128,7 +128,7 @@ Besides the transform-lifecycle triggers, each `(kind, attribute)` has data-path
 - It recomputes the one attribute named in `computed_attribute_name`. Every caller submits one flow per attribute, so processing every Python attribute of the kind would run each transform once per attribute of that kind.
 - The transform's git repository is initialized once for the whole batch and shared across the per-node executions. Transform execution must not mutate the shared checkout.
 - Each node's read still runs individually with `update_group=True`, keeping the node subscribed to the transform's query group (the reverse index that routes future source changes to affected readers).
-- A coalesced pass tells the flow so through `coalesced` and `recompute_depth`: its writes are stamped with the recompute origin and drive the next chain level, instead of re-entering the live per-node paths with no depth guard.
+- A coalesced pass tells the flow so through `coalesced` and `recompute_depth`: its writes are stamped with the recompute origin and drive the next chain level, instead of re-entering the live per-node paths with no depth guard. A third flag, `widened`, marks the batches a resolution could not narrow, and only those may skip an attribute nothing can compute.
 - The recomputed values persist through the shared bulk recompute writer (bounded transactions), not via per-node GraphQL mutations. The writer's skip-unchanged gating is per node, not per value: a save that produces no effective change emits no event and dispatches no follow-on recompute, which is what keeps a wide fan-out from echoing into further waves. A node whose save changes another of its fields still emits an event.
 - A node whose transform raises or returns a non-string is skipped with its previous value intact and a logged reason; the rest of the batch persists. The flow ends with a `submitted/written/skipped` summary line.
 - Each submission carries the branch tag at creation so the flow run stays visible in branch-filtered task queries; tags added mid-run do not survive later in-flow tag updates.
@@ -136,7 +136,7 @@ Besides the transform-lifecycle triggers, each `(kind, attribute)` has data-path
 
 ### Invariants
 
-- **Over-recompute is acceptable, under-recompute is not.** Any fallback or error path recomputes rather than risk a stale value.
+- **Over-recompute is acceptable, under-recompute is not.** Any fallback or error path recomputes rather than risk a stale value. The one exception is a widened run whose attribute the database has nothing to run for, no transform configured or none in the branch: nothing can compute it until that changes, and the recompute that follows covers it then.
 - **The `origin=live` filter** keeps merge and rebase replays out; those are handled by the coalesced merge/rebase recompute path, so the lifecycle triggers do not fire a second time.
 - **The recompute write targets the attribute's own node kind, not `CoreTransformPython`,** so it never re-fires the lifecycle triggers (no loop).
 - **A null fingerprint** (a pre-upgrade node) is treated as unknown: the first import stamps a value and recomputes once, then self-heals.
