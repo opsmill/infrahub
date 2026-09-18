@@ -33,9 +33,10 @@ which remote branches get imported, how many queries a sync run costs, or why a 
 per-branch view the sync flow and the Python computed-attribute trigger gather both read. It issues
 two kinds of query:
 
-- One `NodeManager.query` on the default branch reads the repository nodes. Every branch-agnostic
-  field the callers take off the node, including `location`, `ref` and `default_branch`, therefore
-  holds the default branch's value.
+- One `NodeManager.query` on the default branch reads the repository nodes. Every field other than
+  `commit` and `internal_status` therefore holds the default branch's value: the branch-agnostic
+  `location` and `default_branch`, which no branch can hold its own value for, and the branch-aware
+  `ref`, whose per-branch value is deliberately not read.
 - One `RepositoryBranchAttributesQuery` (`backend/infrahub/core/query/repository.py`) per chunk of
   `REPOSITORY_BRANCH_READ_CHUNK_SIZE` branch names resolves `commit` and `internal_status` for every
   repository on every branch in that chunk. Those two are the only attributes resolved per branch.
@@ -45,8 +46,7 @@ is not a setting, so for N non-global branches the read always costs `1 + ceil(N
 rather than one query per branch.
 
 The `RepositoryBranchAttributesReader` that runs those queries is constructed once at the top of
-`get_repositories_commit_per_branch`, the entry point of the flow and therefore its composition
-root. No component further down the call chain builds one.
+`get_repositories_commit_per_branch`, before the chunk loop, and reused for every chunk.
 
 The global branch (`-global-`) is filtered out of the branch names before the chunk loop, so it is
 never a key of `RepositoryData.branches` or `RepositoryData.branch_info`. Callers that index those

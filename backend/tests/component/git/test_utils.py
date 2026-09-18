@@ -1,10 +1,11 @@
 import math
+from collections.abc import Generator
 
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -20,6 +21,15 @@ REPOSITORY_NODES_QUERY_NAME = "node_get_list"
 
 BRANCH_COUNT = 200
 """Branch names the read resolves, the default branch included, so the chunk bound is exercised."""
+
+
+@pytest.fixture(autouse=True)
+def branch_registry_restored() -> Generator[None, None, None]:
+    """Undo the branch-cache entries a test adds, so the tests stay independent of each other."""
+    original = dict(registry.branch)
+    yield
+    registry.branch.clear()
+    registry.branch.update(original)
 
 
 @pytest.fixture
@@ -79,9 +89,11 @@ async def test_get_repositories_commit_per_branch_non_main_default_branch(
 async def test_get_repositories_commit_per_branch_branches(
     db: InfrahubDatabase, register_core_models_schema: SchemaBranch, repository_01: Node, repository_02: Node
 ) -> None:
+    """`commit` and `internal_status` are resolved per branch, not taken off the default branch."""
     branch2 = await create_branch(db=db, branch_name="branch2")
     repo01_branch = await NodeManager.get_one(db=db, id=repository_01.id, branch=branch2)
     repo01_branch.commit.value = "commit21"
+    repo01_branch.internal_status.value = RepositoryInternalStatus.STAGING.value
     await repo01_branch.save(db=db)
 
     branch3 = await create_branch(db=db, branch_name="branch3")
@@ -102,7 +114,7 @@ async def test_get_repositories_commit_per_branch_branches(
             "main": "commit01",
         },
         "branch_info": {
-            "branch2": {"internal_status": "inactive"},
+            "branch2": {"internal_status": "staging"},
             "branch3": {"internal_status": "inactive"},
             "main": {"internal_status": "inactive"},
         },
@@ -197,5 +209,5 @@ async def test_get_repositories_commit_per_branch_reads_the_branches_in_chunks(
     assert set(repositories) == {"repo01", "repo02"}
     assert repositories["repo01"].branches == dict.fromkeys(branch_names, "commit01")
     assert repositories["repo02"].branches == dict.fromkeys(branch_names, "commit02")
-    assert counting_db.count_for(ATTRIBUTES_QUERY_NAME) <= math.ceil(BRANCH_COUNT / REPOSITORY_BRANCH_READ_CHUNK_SIZE)
+    assert counting_db.count_for(ATTRIBUTES_QUERY_NAME) == math.ceil(BRANCH_COUNT / REPOSITORY_BRANCH_READ_CHUNK_SIZE)
     assert counting_db.count_for(REPOSITORY_NODES_QUERY_NAME) == 1

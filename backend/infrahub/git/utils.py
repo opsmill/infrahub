@@ -106,11 +106,13 @@ async def get_repositories_commit_per_branch(
                 )
                 internal_status_value = internal_status.value if internal_status is not None else None
                 if internal_status_value is None:
-                    log.warning(
-                        f"No internal status resolved for repository {repository_name} on branch {branch_name}, "
-                        f"treating it as {RepositoryInternalStatus.INACTIVE.value}"
-                    )
                     internal_status_value = RepositoryInternalStatus.INACTIVE.value
+                    log.warning(
+                        "No internal status resolved for the repository on this branch, using the fallback",
+                        repository=repository_name,
+                        branch=branch_name,
+                        internal_status=internal_status_value,
+                    )
                 repository_data.branch_info[branch_name] = RepositoryBranchInfo(internal_status=internal_status_value)
 
     return repositories
