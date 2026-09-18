@@ -124,7 +124,7 @@ class CoreNumberPool(Node):
             # If we have not returned a value we need to find one if avaiable
             number = await self.get_next(db=db, branch=branch, attribute=attribute)
             if attribute_id is not None:
-                # Cannot reserve with an Attribute to link
+                # Cannot reserve without an Attribute to link
                 await self.reserve(
                     db=db,
                     identifier=identifier,

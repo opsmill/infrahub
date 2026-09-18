@@ -476,6 +476,10 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
             ) from exc
 
+        # A pool named rather than identified still has to be recorded by its id: the reservation is
+        # written by matching the pool vertex on `uuid`.
+        attribute.from_pool = {"id": number_pool.get_id()}
+
         if not allocate_resources:
             return
 
