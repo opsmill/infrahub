@@ -102,6 +102,21 @@ where nothing else has moved the numbers.
       `core/node/resource_manager/number_pool.py::CoreNumberPool.get_resource` → `::reserve` → the
       ledger, and restate the idempotency lookup as "is there a live record from this pool on **this
       attribute**". Without this, T010 has no target to close. *(Critique E2.)*
+
+      **Amended 2026-09-18 — the second clause is struck.** Threading the `Attribute` id into the
+      write shipped, so T010 has its target. Scoping the *lookup* to the attribute did not: the PRD
+      owner dropped `attribute_id` from `::NumberPoolGetReserved`, which stays keyed on the pool and
+      the object's uuid. For the case the ledger serves — one live record per pool per object — the
+      attribute id bought nothing the identifier did not already give.
+
+      What the identifier-scoped lookup costs is a branch that runs `node.attribute.add` after the
+      default branch already ran it. The migration `CREATE`s an attribute vertex per branch run, the
+      branch's own vertex wins branch-priority resolution, the lookup finds no record on it, and a
+      second number is drawn. Measured: `main` holds 1 and the branch holds 2, both records
+      `-global-` and active under the same identifier, `get_used` reporting `[1, 2]`. That
+      over-reports, which I3 permits. Deleting the branch closes its value edges and the number frees
+      again (`[1, 2]` → `[1]`); what survives is an orphaned attribute vertex carrying a dangling
+      record, the leak T017a tracks rather than a wrong answer.
 - [X] T012 [P] [US1] Rewrite the five source-gate tests in
       `backend/tests/component/core/resource_manager/test_number_pool_query.py::TestNumberPoolGetAllocated`
       — they pin behaviour FR-030c deletes.
@@ -163,6 +178,17 @@ where nothing else has moved the numbers.
       `count(DISTINCT … node.uuid)`, then an aggregate across branches. A **new** predicate, not a
       call to the existing one — that one resolves whether a *field* is retained, this resolves which
       *values* an attribute holds. Makes T003 pass.
+
+      **Amended 2026-09-18 — the prescribed shape is struck; the invariant it serves is met.** The
+      shipped `reserved_values_query` carries no branch filter at all, and that omission *is* the
+      union: every live `HAS_VALUE` counts whatever branch wrote it, so a number stays taken while
+      any branch holds it. There is no per-branch window to build, no per-branch resolution to order
+      and no aggregate to take across branches.
+
+      The record is `-global-`, so it has no branch of its own to resolve, and liveness reads forward
+      through the value edge instead of back through the object. The only branch predicate left is
+      the `DELETING` exclusion, which the task also called for. FR-036a stays one-sided by the same
+      construction: omitting a filter can only add numbers to the taken set, never remove one.
 - [ ] T019 [P] [US1] Property-style unit test for one-sidedness (invariant I3): for any branch set,
       the union result is a superset of every single-branch result. *(Critique E10.)*
 
