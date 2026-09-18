@@ -1,8 +1,4 @@
-"""Reading the commit Infrahub has imported for a repository, at the moment it is asked for.
-
-The refs check needs this value at the point it broadcasts, not at the point it was scheduled, so
-it is read through this interface rather than carried along with the check request.
-"""
+"""Reading the commit a read-only repository has imported on one Infrahub branch."""
 
 from __future__ import annotations
 

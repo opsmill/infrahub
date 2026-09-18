@@ -22,7 +22,7 @@ from .constants import REMOTE_TRANSPORT_ENVIRONMENT
 from .models import RefHeads
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Sequence
+    from collections.abc import Iterator
 
     from git import Repo
     from infrahub_sdk.client import InfrahubClient
@@ -94,7 +94,9 @@ class RepositoryRefsGateway(Protocol):
 
     """
 
-    async def read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: Sequence[str]) -> tuple[RefHeads, ...]: ...
+    async def read_heads(
+        self, model: GitReadOnlyRepositoryCheckRefs, refs: tuple[str, ...]
+    ) -> tuple[RefHeads, ...]: ...
 
     async def fetch(self, model: GitReadOnlyRepositoryCheckRefs) -> None: ...
 
@@ -128,7 +130,7 @@ def _ref_patterns(ref: str) -> tuple[str, str, str]:
     return (f"refs/heads/{ref}", f"refs/tags/{ref}", f"refs/tags/{ref}^{{}}")
 
 
-def _list_remote_heads(git_repo: Repo, refs: Sequence[str], *, kill_after_seconds: float) -> dict[str, str | None]:
+def _list_remote_heads(git_repo: Repo, refs: tuple[str, ...], *, kill_after_seconds: float) -> dict[str, str | None]:
     """Resolve every ref against the remote in one listing.
 
     ``kill_after_seconds`` is what actually bounds this: git applies no network timeout of its own,
@@ -171,7 +173,7 @@ class GitRepositoryRefsGateway:
         repo.validate_local_directories()
         return repo
 
-    def _read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: Sequence[str]) -> tuple[RefHeads, ...]:
+    def _read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: tuple[str, ...]) -> tuple[RefHeads, ...]:
         git_repo = self._open(model).get_git_repo_main()
         local_heads = {ref: _resolve_local_head(git_repo, ref) for ref in refs}
         remote_heads = _list_remote_heads(git_repo, refs, kill_after_seconds=self._list_kill_after_seconds)
@@ -186,7 +188,7 @@ class GitRepositoryRefsGateway:
             )
         _fetch_moved_refs(repo.get_git_repo_main(), kill_after_seconds=self._fetch_kill_after_seconds)
 
-    async def read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: Sequence[str]) -> tuple[RefHeads, ...]:
+    async def read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: tuple[str, ...]) -> tuple[RefHeads, ...]:
         with _as_repository_error(model.repository_name):
             return await asyncio.to_thread(self._read_heads, model, refs)
 

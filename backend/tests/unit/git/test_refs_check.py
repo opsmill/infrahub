@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -226,11 +227,64 @@ def test_every_ref_is_resolved_by_a_single_listing(tmp_path: Path) -> None:
     }
 
 
-def test_an_empty_request_does_not_list_the_whole_remote(tmp_path: Path) -> None:
-    """``ls-remote`` with no pattern answers with every ref the remote has, which is not nothing."""
-    clone = build_remote_and_clone(tmp_path)
+class RecordingGit:
+    """Stands in for ``repo.git``, recording each ls-remote and answering with a fixed listing."""
 
-    assert list_remote_heads(clone) == {}
+    def __init__(self, output: str = "") -> None:
+        self.output = output
+        self.calls: list[tuple[str, ...]] = []
+
+    @contextmanager
+    def custom_environment(self, **_kwargs: str) -> Iterator[None]:
+        yield
+
+    def ls_remote(self, *args: str, **_kwargs: object) -> str:
+        self.calls.append(args)
+        return self.output
+
+
+@dataclass
+class RecordingRepo:
+    git: RecordingGit
+
+
+def test_one_listing_covers_every_ref_rather_than_one_per_ref() -> None:
+    """The saving is the connection count, which the returned mapping alone cannot show."""
+    recorder = RecordingGit("1111111111111111111111111111111111111111\trefs/heads/stable\n")
+
+    heads = _list_remote_heads(
+        RecordingRepo(git=recorder),  # type: ignore[arg-type]
+        ("stable", "release"),
+        kill_after_seconds=LIST_KILL_AFTER_SECONDS,
+    )
+
+    assert heads == {"stable": "1111111111111111111111111111111111111111", "release": None}
+    assert recorder.calls == [
+        (
+            "origin",
+            "--",
+            "refs/heads/stable",
+            "refs/tags/stable",
+            "refs/tags/stable^{}",
+            "refs/heads/release",
+            "refs/tags/release",
+            "refs/tags/release^{}",
+        )
+    ]
+
+
+def test_an_empty_request_never_reaches_git() -> None:
+    """``ls-remote`` with no pattern answers with every ref the remote has, which is not nothing."""
+    recorder = RecordingGit()
+
+    heads = _list_remote_heads(
+        RecordingRepo(git=recorder),  # type: ignore[arg-type]
+        (),
+        kill_after_seconds=LIST_KILL_AFTER_SECONDS,
+    )
+
+    assert heads == {}
+    assert recorder.calls == []
 
 
 REPOSITORY_ID = "8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba"
@@ -287,7 +341,7 @@ async def test_the_gateway_presents_a_git_failure_as_a_repository_error(
     model = build_local_copy(tmp_path, origin=str(tmp_path / "no-such-remote"))
 
     with pytest.raises(RepositoryError, match=r"no-such-remote"):
-        await build_gateway().read_heads(model, ["stable"])
+        await build_gateway().read_heads(model, ("stable",))
 
 
 async def test_the_gateway_reads_a_local_head_from_a_valid_copy(
@@ -297,7 +351,7 @@ async def test_the_gateway_reads_a_local_head_from_a_valid_copy(
     model = build_local_copy(tmp_path, origin=str(tmp_path / "origin"))
     Repo.init(tmp_path / "origin", bare=True)
 
-    assert await build_gateway().read_heads(model, ["no-such-ref"]) == (
+    assert await build_gateway().read_heads(model, ("no-such-ref",)) == (
         RefHeads(ref="no-such-ref", local_head=None, remote_head=None),
     )
 

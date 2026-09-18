@@ -297,11 +297,7 @@ async def test_a_branch_with_nothing_imported_yet_is_fetched_but_not_broadcast()
 
 
 async def test_the_broadcast_pins_the_commit_read_while_the_lock_is_held() -> None:
-    """An import that lands between the listing and the lock has already moved the pool.
-
-    Broadcasting the commit as it stood before the lock would hard-reset every worker back off the
-    commit that import left behind, so the value has to be read once the lock is held.
-    """
+    """The broadcast pins whatever commit is imported when the lock is held, not an earlier one."""
     timeline = LockTimeline()
     bus = BusRecorder()
     gateway = RecordingRefsGateway(

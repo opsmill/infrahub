@@ -7,7 +7,7 @@ import httpx
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 
 from infrahub import config
-from infrahub.core.constants import InfrahubKind, MetadataOptions, PermissionAction
+from infrahub.core.constants import InfrahubKind, MetadataOptions, PermissionAction, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.registry import registry
@@ -315,13 +315,18 @@ class ReadOnlyRepositoryCheckRefs(Mutation):
                 branch_name=branch.name, node_type=InfrahubKind.READONLYREPOSITORY, identifier=str(data.id)
             )
 
-        # Coercing an absent value with str() would send the literal "None" as a ref or a URL, and
-        # the check would then report a clean result for a repository it never really looked at.
+        # A checkable repository needs all three: a URL and a ref to compare, and a completed first
+        # import, without which this worker holds no local copy to compare the remote against.
         location = repo.location.value
         ref = repo.ref.value
         if not location or not ref:
             raise ValidationError(
                 f"Repository {repo.get_id()} cannot be checked: it has no {'location' if not location else 'ref'}."
+            )
+        if repo.internal_status.value != RepositoryInternalStatus.ACTIVE.value:
+            raise ValidationError(
+                f"Repository {repo.get_id()} cannot be checked on branch {branch.name}: "
+                f"it is {repo.internal_status.value} there, not active."
             )
 
         # Only the request branch's ref is checked: it is the one the caller is looking at.

@@ -307,7 +307,13 @@ async def test_check_refs_submits_the_check_for_a_read_only_repository(
 
     repository_model = registry.schema.get_node_schema(name=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
     repo = await Node.init(schema=repository_model, db=db, branch=default_branch)
-    await repo.new(db=db, name="test-check-refs-repo", location="/tmp/check-refs-repo", ref="main")
+    await repo.new(
+        db=db,
+        name="test-check-refs-repo",
+        location="/tmp/check-refs-repo",
+        ref="main",
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+    )
     await repo.save(db=db)
 
     result = await graphql_mutation(
@@ -340,6 +346,46 @@ async def test_check_refs_submits_the_check_for_a_read_only_repository(
         )
     }
     assert result.data["InfrahubReadOnlyRepositoryCheckRefs"]["task"]["id"]
+
+
+async def test_check_refs_refuses_a_repository_that_is_not_active_on_the_branch(
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+    default_branch: Branch,
+    create_test_admin: Node,
+    default_permission_backend: None,
+) -> None:
+    """A staging repository has no completed import, so this worker holds no copy to compare."""
+    recorder = WorkflowRecorder()
+    service = await InfrahubServices.new(database=db, message_bus=BusRecorder(), workflow=recorder)
+    account_session = AccountSession(
+        authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+    )
+
+    repository_model = registry.schema.get_node_schema(name=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
+    repo = await Node.init(schema=repository_model, db=db, branch=default_branch)
+    await repo.new(
+        db=db,
+        name="test-staging-repo",
+        location="/tmp/staging-repo",
+        ref="main",
+        internal_status=RepositoryInternalStatus.STAGING.value,
+    )
+    await repo.save(db=db)
+
+    result = await graphql_mutation(
+        query=CHECK_REFS_MUTATION,
+        db=db,
+        variables={"id": repo.id},
+        service=service,
+        account_session=account_session,
+    )
+
+    assert result.errors
+    assert result.errors[0].message == (
+        f"Repository {repo.id} cannot be checked on branch {default_branch.name}: it is staging there, not active."
+    )
+    assert recorder.get_submit_calls_for(workflow=GIT_READ_ONLY_REPOSITORY_CHECK_REFS) == []
 
 
 async def test_check_refs_refuses_a_read_write_repository(

@@ -195,14 +195,10 @@ class ReadOnlyRepositoryRefsChecker:
         )
 
     async def _release_claim(self, model: GitReadOnlyRepositoryCheckRefs, *, run_id: str) -> None:
-        """Drop the claim only while it is still this run's, best effort.
+        """Drop the claim only while it is still this run's.
 
-        A check that outlived its claim must not delete the one a later run has since taken, which
-        would leave that run unprotected and admit the overlapping fetch the claim exists to stop.
-
-        This runs in a ``finally``, so letting it raise would discard the outcome of a check that
-        has already listed the remote and converged the pool. The claim expires on its own, so a
-        release that could not happen costs one interval of checks rather than the result.
+        Never raises: a claim that could not be released is logged and left to expire, so that a
+        check which has already converged the pool still reports what it did.
         """
         try:
             holder = await self._cache.get(key=refs_check_running_key(model.repository_id))
@@ -271,9 +267,9 @@ class ReadOnlyRepositoryRefsChecker:
         return movements
 
     @staticmethod
-    def _tracked_ref_names(model: GitReadOnlyRepositoryCheckRefs) -> list[str]:
+    def _tracked_ref_names(model: GitReadOnlyRepositoryCheckRefs) -> tuple[str, ...]:
         """Return each distinct tracked ref once, so two branches on one ref cost one listing."""
-        return list(dict.fromkeys(tracked.ref for tracked in model.refs))
+        return tuple(dict.fromkeys(tracked.ref for tracked in model.refs))
 
     async def _converge(self, model: GitReadOnlyRepositoryCheckRefs, movements: list[RefMovement]) -> None:
         moved_refs = {movement.ref for movement in movements}
