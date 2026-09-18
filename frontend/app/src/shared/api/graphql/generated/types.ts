@@ -10917,7 +10917,10 @@ export type CoreNumberPool = CoreNode & CoreResourcePool & LineageSource & {
   __typename: 'CoreNumberPool';
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
-  /** The end of the pool's single range. Null unless the pool holds exactly one range. */
+  /**
+   * The end of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated end_range is deprecated, use ranges instead
+   */
   end_range: Maybe<NumberAttribute>;
   /** Human friendly identifier */
   hfid: Maybe<Array<Scalars['String']['output']>>;
@@ -10932,7 +10935,10 @@ export type CoreNumberPool = CoreNode & CoreResourcePool & LineageSource & {
   /** Defines how this number pool was created */
   pool_type: Maybe<TextAttribute>;
   ranges: NestedPaginatedCoreNumberPoolRange;
-  /** The start of the pool's single range. Null unless the pool holds exactly one range. */
+  /**
+   * The start of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated start_range is deprecated, use ranges instead
+   */
   start_range: Maybe<NumberAttribute>;
   subscriber_of_groups: NestedPaginatedCoreGroup;
 };
@@ -11040,7 +11046,10 @@ export type CoreNumberPoolCreate = {
 
 export type CoreNumberPoolCreateInput = {
   description?: InputMaybe<TextAttributeCreate>;
-  /** The end of the pool's single range. Null unless the pool holds exactly one range. */
+  /**
+   * The end of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated end_range is deprecated, use ranges instead
+   */
   end_range?: InputMaybe<NumberAttributeCreate>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -11050,7 +11059,10 @@ export type CoreNumberPoolCreateInput = {
   /** The attribute of the selected model */
   node_attribute?: InputMaybe<TextAttributeCreate>;
   ranges?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
-  /** The start of the pool's single range. Null unless the pool holds exactly one range. */
+  /**
+   * The start of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated start_range is deprecated, use ranges instead
+   */
   start_range?: InputMaybe<NumberAttributeCreate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -11223,7 +11235,10 @@ export type CoreNumberPoolUpdate = {
 
 export type CoreNumberPoolUpdateInput = {
   description?: InputMaybe<TextAttributeUpdate>;
-  /** The end of the pool's single range. Null unless the pool holds exactly one range. */
+  /**
+   * The end of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated end_range is deprecated, use ranges instead
+   */
   end_range?: InputMaybe<NumberAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -11234,7 +11249,10 @@ export type CoreNumberPoolUpdateInput = {
   /** The attribute of the selected model */
   node_attribute?: InputMaybe<TextAttributeUpdate>;
   ranges?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
-  /** The start of the pool's single range. Null unless the pool holds exactly one range. */
+  /**
+   * The start of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated start_range is deprecated, use ranges instead
+   */
   start_range?: InputMaybe<NumberAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -11248,7 +11266,10 @@ export type CoreNumberPoolUpsert = {
 
 export type CoreNumberPoolUpsertInput = {
   description?: InputMaybe<TextAttributeUpdate>;
-  /** The end of the pool's single range. Null unless the pool holds exactly one range. */
+  /**
+   * The end of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated end_range is deprecated, use ranges instead
+   */
   end_range?: InputMaybe<NumberAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -11259,7 +11280,10 @@ export type CoreNumberPoolUpsertInput = {
   /** The attribute of the selected model */
   node_attribute?: InputMaybe<TextAttributeUpdate>;
   ranges?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
-  /** The start of the pool's single range. Null unless the pool holds exactly one range. */
+  /**
+   * The start of the pool's single range. Null unless the pool holds exactly one range.
+   * @deprecated start_range is deprecated, use ranges instead
+   */
   start_range?: InputMaybe<NumberAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };

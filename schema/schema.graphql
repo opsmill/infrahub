@@ -5049,7 +5049,7 @@ type CoreNumberPool implements CoreNode & CoreResourcePool & LineageSource {
   """
   The end of the pool's single range. Null unless the pool holds exactly one range.
   """
-  end_range: NumberAttribute
+  end_range: NumberAttribute @deprecated(reason: "end_range is deprecated, use ranges instead")
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -5068,7 +5068,7 @@ type CoreNumberPool implements CoreNode & CoreResourcePool & LineageSource {
   """
   The start of the pool's single range. Null unless the pool holds exactly one range.
   """
-  start_range: NumberAttribute
+  start_range: NumberAttribute @deprecated(reason: "start_range is deprecated, use ranges instead")
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
 
@@ -5083,7 +5083,7 @@ input CoreNumberPoolCreateInput {
   """
   The end of the pool's single range. Null unless the pool holds exactly one range.
   """
-  end_range: NumberAttributeCreate
+  end_range: NumberAttributeCreate @deprecated(reason: "end_range is deprecated, use ranges instead")
   id: String
   member_of_groups: [RelatedNodeInput]
   name: TextAttributeCreate
@@ -5095,7 +5095,7 @@ input CoreNumberPoolCreateInput {
   """
   The start of the pool's single range. Null unless the pool holds exactly one range.
   """
-  start_range: NumberAttributeCreate
+  start_range: NumberAttributeCreate @deprecated(reason: "start_range is deprecated, use ranges instead")
   subscriber_of_groups: [RelatedNodeInput]
 }
 
@@ -5205,7 +5205,7 @@ input CoreNumberPoolUpdateInput {
   """
   The end of the pool's single range. Null unless the pool holds exactly one range.
   """
-  end_range: NumberAttributeUpdate
+  end_range: NumberAttributeUpdate @deprecated(reason: "end_range is deprecated, use ranges instead")
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -5218,7 +5218,7 @@ input CoreNumberPoolUpdateInput {
   """
   The start of the pool's single range. Null unless the pool holds exactly one range.
   """
-  start_range: NumberAttributeUpdate
+  start_range: NumberAttributeUpdate @deprecated(reason: "start_range is deprecated, use ranges instead")
   subscriber_of_groups: [RelatedNodeInput]
 }
 
@@ -5233,7 +5233,7 @@ input CoreNumberPoolUpsertInput {
   """
   The end of the pool's single range. Null unless the pool holds exactly one range.
   """
-  end_range: NumberAttributeUpdate
+  end_range: NumberAttributeUpdate @deprecated(reason: "end_range is deprecated, use ranges instead")
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -5246,7 +5246,7 @@ input CoreNumberPoolUpsertInput {
   """
   The start of the pool's single range. Null unless the pool holds exactly one range.
   """
-  start_range: NumberAttributeUpdate
+  start_range: NumberAttributeUpdate @deprecated(reason: "start_range is deprecated, use ranges instead")
   subscriber_of_groups: [RelatedNodeInput]
 }
 
