@@ -217,7 +217,7 @@ class TestConvertObjectTypeResourcePool(TestInfrahubApp):
         # Check the state of the pool before converting the object
         query1 = await NumberPoolGetReserved.init(db=db, pool_id=pool.id, branch=default_branch)
         await query1.execute(db=db)
-        reservations_before = {item.identifier: item.value for item in query1.get_reservations()}
+        reservations_before = {item.identifier: item.value for item in query1.get_data()}
 
         response = await client.execute_graphql(
             query=CONVERT_OBJECT_MUTATION,
@@ -233,6 +233,6 @@ class TestConvertObjectTypeResourcePool(TestInfrahubApp):
 
         query1 = await NumberPoolGetReserved.init(db=db, pool_id=pool.id, branch=default_branch)
         await query1.execute(db=db)
-        reservations_after = {item.identifier: item.value for item in query1.get_reservations()}
+        reservations_after = {item.identifier: item.value for item in query1.get_data()}
 
         assert reservations_after[new_id] == reservations_before[str(persons["jack"].id)]
