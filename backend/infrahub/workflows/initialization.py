@@ -53,14 +53,15 @@ def build_cache_connection_string(cache: CacheSettings) -> str:
     The result-storage block understands the full redis://, rediss://, redis+sentinel:// and
     rediss+sentinel:// grammar, so a configured ``cache.url`` (single-node or Sentinel, with any TLS
     query parameters) is passed through unchanged and follows master failover just like the cache and
-    lock connections. When no URL is set the scalar connection settings are assembled into a
-    single-node redis://|rediss:// URL.
+    lock connections. The URL belongs to the Redis driver alone, as ``CacheSettings`` documents, so
+    under any other driver it is ignored here too. When no URL applies the scalar connection settings
+    are assembled into a single-node redis://|rediss:// URL.
 
     Raises:
         ValueError: When ``INFRAHUB_CACHE_USERNAME`` is set without ``INFRAHUB_CACHE_PASSWORD``.
 
     """
-    if cache.url is not None:
+    if cache.url is not None and cache.driver == config.CacheDriver.Redis:
         return cache.url.get_secret_value()
 
     if cache.username and not cache.password:
