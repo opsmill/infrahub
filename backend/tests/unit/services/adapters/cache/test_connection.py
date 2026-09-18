@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import socket
 from dataclasses import dataclass, field
 from typing import Any
 from unittest.mock import AsyncMock
@@ -7,6 +8,7 @@ from unittest.mock import AsyncMock
 import pytest
 from pydantic import SecretStr
 from pydantic_core import ValidationError
+from redis.asyncio import Redis
 from redis.asyncio.connection import Connection, SSLConnection
 from redis.asyncio.sentinel import (
     SentinelConnectionPool,
@@ -16,14 +18,16 @@ from redis.asyncio.sentinel import (
 
 from infrahub.config import CacheSettings
 from infrahub.services.adapters.cache.connection import (
-    REDIS_COMMAND_RETRIES,
-    REDIS_SOCKET_CONNECT_TIMEOUT,
-    REDIS_SOCKET_KEEPALIVE_OPTIONS,
-    REDIS_SOCKET_TIMEOUT,
     aclose_redis_connection,
     build_redis_connection,
     validate_redis_url,
 )
+
+# The socket bounds a Sentinel pool relies on to drop a dead master, asserted against the values
+# redis-py 8 defaults to rather than against its own constants, so a bump that loosens them fails
+# here instead of silently stretching a failover.
+REDIS_PY_SOCKET_TIMEOUTS = 5
+REDIS_PY_KEEPALIVE_OPTIONS = {socket.TCP_KEEPIDLE: 30, socket.TCP_KEEPINTVL: 5, socket.TCP_KEEPCNT: 3}
 
 
 def _build(url: str) -> Any:
@@ -89,23 +93,39 @@ def test_omitted_port_and_db_fall_back_to_the_redis_py_defaults() -> None:
     assert (connection.host, connection.port, connection.db) == ("cache", 6379, 0)
 
 
-def test_url_connection_applies_ha_defaults() -> None:
-    """Every URL-configured connection gets the keepalive, timeout and retry hardening."""
-    kwargs = _build("redis://cache:6379/0").connection_pool.connection_kwargs
+def test_url_connection_retries_like_the_client_default() -> None:
+    """Redis.from_url hands the pool no retry policy, so the client default has to be rebuilt.
 
-    assert kwargs["socket_keepalive"] is True
-    assert kwargs["socket_keepalive_options"] == REDIS_SOCKET_KEEPALIVE_OPTIONS
-    assert kwargs["socket_connect_timeout"] == REDIS_SOCKET_CONNECT_TIMEOUT
-    assert kwargs["socket_timeout"] == REDIS_SOCKET_TIMEOUT
-    assert kwargs["retry"].get_retries() == REDIS_COMMAND_RETRIES
+    Compared against the policy redis-py installs when it builds the pool itself, which is what the
+    scalar path gets, so a redis-py change to either the count or the backoff fails here.
+    """
+    pool = _build("redis://cache:6379/0").connection_pool
+    connection = pool.connection_class(**pool.connection_kwargs)
+    client_default = Redis().connection_pool.connection_kwargs["retry"]
+
+    assert connection.retry.get_retries() == client_default.get_retries()
+    assert type(connection.retry._backoff) is type(client_default._backoff)
+    assert vars(connection.retry._backoff) == vars(client_default._backoff)
 
 
-def test_url_query_option_overrides_ha_default() -> None:
-    """The HA settings are defaults: an explicit query option in the URL wins."""
-    kwargs = _build("redis://cache:6379/0?socket_timeout=7").connection_pool.connection_kwargs
+def test_url_connection_inherits_the_redis_py_socket_bounds() -> None:
+    """The keepalive and the connect/read bounds come from redis-py, so nothing pins them here."""
+    pool = _build("redis://cache:6379/0").connection_pool
+    connection = pool.connection_class(**pool.connection_kwargs)
 
-    assert kwargs["socket_timeout"] == 7.0
-    assert kwargs["socket_connect_timeout"] == REDIS_SOCKET_CONNECT_TIMEOUT
+    assert connection.socket_keepalive is True
+    assert connection.socket_keepalive_options == REDIS_PY_KEEPALIVE_OPTIONS
+    assert connection.socket_connect_timeout == REDIS_PY_SOCKET_TIMEOUTS
+    assert connection.socket_timeout == REDIS_PY_SOCKET_TIMEOUTS
+
+
+def test_url_query_option_overrides_a_socket_bound() -> None:
+    """A URL query option wins over the redis-py default it replaces, and only over that one."""
+    pool = _build("redis://cache:6379/0?socket_timeout=7").connection_pool
+    connection = pool.connection_class(**pool.connection_kwargs)
+
+    assert connection.socket_timeout == 7.0
+    assert connection.socket_connect_timeout == REDIS_PY_SOCKET_TIMEOUTS
 
 
 def test_max_connections_reaches_the_pool() -> None:
@@ -203,11 +223,19 @@ def test_build_redis_connection_from_sentinel_url(case: SentinelCase) -> None:
 
 
 def test_sentinel_daemons_inherit_socket_options() -> None:
-    """The daemon connections get the same connect/read bounds, so discovery skips a dead daemon."""
+    """The daemon connections carry the same connect/read bounds, so discovery skips a dead daemon."""
     manager = _build("redis+sentinel://s1:26379/svc?sentinel_password=sp").connection_pool.sentinel_manager
+    daemon_kwargs = manager.sentinels[0].connection_pool.connection_kwargs
 
-    assert manager.sentinel_kwargs["socket_connect_timeout"] == REDIS_SOCKET_CONNECT_TIMEOUT
-    assert manager.sentinel_kwargs["socket_timeout"] == REDIS_SOCKET_TIMEOUT
+    assert daemon_kwargs["socket_connect_timeout"] == REDIS_PY_SOCKET_TIMEOUTS
+    assert daemon_kwargs["socket_timeout"] == REDIS_PY_SOCKET_TIMEOUTS
+
+
+def test_sentinel_daemons_share_a_socket_option_from_the_url() -> None:
+    """A socket option set on the URL reaches the daemons too, not just the data nodes."""
+    manager = _build("redis+sentinel://s1:26379/svc?socket_timeout=7").connection_pool.sentinel_manager
+
+    assert manager.sentinel_kwargs["socket_timeout"] == 7.0
 
 
 def test_sentinel_credentials_do_not_leak_to_the_daemons() -> None:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import socket
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -23,31 +22,22 @@ if TYPE_CHECKING:
 # ssl_ca_certs, ...) applied to the data-node connections, and on a TLS scheme the ssl_* options are
 # shared with the daemon connections so one private CA covers the whole topology.
 
-# Tight TCP keepalive so a silently-dead server (a network partition or frozen host that never sends
-# FIN/RST) is noticed in roughly TCP_KEEPIDLE + TCP_KEEPCNT * TCP_KEEPINTVL seconds instead of the OS
-# default (~2h on Linux), letting a Sentinel pool re-resolve the promoted master promptly. The probes
-# only fire on an otherwise-idle socket and a healthy peer answers them. These are redis-py 8's own
-# defaults, which prefect-redis relies on; they are pinned explicitly so a later redis-py default
-# would not silently stretch the window in which a Sentinel pool keeps a dead master.
-_KEEPALIVE_TIMERS: tuple[tuple[str, int], ...] = (
-    ("TCP_KEEPIDLE", 30),
-    ("TCP_KEEPINTVL", 5),
-    ("TCP_KEEPCNT", 3),
-)
-REDIS_SOCKET_KEEPALIVE_OPTIONS: dict[int, int] = {
-    int(getattr(socket, name)): value for name, value in _KEEPALIVE_TIMERS if hasattr(socket, name)
-}
-
-# Bound the connect and per-command read so a connection to a server that has just failed over fails
-# fast and the pool reconnects, instead of hanging on the dead address until the OS gives up (tens of
-# seconds of SYN retries). On a Sentinel pool reconnecting re-resolves the promoted master, and the
-# same bounds on the daemon connections let discovery skip a dead daemon promptly. Cache and lock
-# operations are short round-trips with no long blocking reads, so a finite read timeout is safe.
-REDIS_SOCKET_CONNECT_TIMEOUT: float = 5.0
-REDIS_SOCKET_TIMEOUT: float = 5.0
-# Retry a command across reconnections so a failover in progress is followed transparently rather
-# than surfaced to the caller.
-REDIS_COMMAND_RETRIES: int = 5
+# Nothing tunes the socket here: redis-py 8 already connects with TCP keepalive (30s idle, 5s
+# interval, 3 probes) and bounds the connect and per-command read at 5s, on the data-node and the
+# Sentinel daemon connections alike. Those are the bounds a Sentinel pool needs to notice a
+# silently-dead master and re-resolve the promoted one, and the scalar path below gets them from the
+# same defaults, so pinning them again would only duplicate the pin on redis-py in pyproject.toml.
+# The command retry policy is the one thing that has to be passed: redis-py applies its client-level
+# default only when it builds the pool itself, which is the scalar path below, while Redis.from_url
+# and Sentinel.master_for take a pool carrying just what the URL spelled out, leaving a
+# URL-configured connection with no retry at all. prefect-redis leaves that gap to the caller, so the
+# client default is rebuilt here and both paths follow a failover the same way: the command is
+# retried across reconnections until the pool resolves the promoted master, instead of the
+# ConnectionError reaching the cache or the lock. The values below are redis-py's own defaults and
+# test_url_connection_retries_like_the_client_default holds them to that.
+REDIS_COMMAND_RETRIES: int = 10
+REDIS_RETRY_BACKOFF_BASE: float = 0.01
+REDIS_RETRY_BACKOFF_CAP: float = 1.0
 
 
 def _url_connection_defaults() -> dict[str, Any]:
@@ -58,16 +48,11 @@ def _url_connection_defaults() -> dict[str, Any]:
     """
     # Imported lazily so this module stays importable (and cheap) without pulling in redis; the
     # settings validator only needs the URL grammar, not a client.
-    from redis.backoff import ExponentialBackoff  # noqa: PLC0415
+    from redis.backoff import ExponentialWithJitterBackoff  # noqa: PLC0415
     from redis.retry import Retry  # noqa: PLC0415
 
-    return {
-        "socket_keepalive": True,
-        "socket_keepalive_options": REDIS_SOCKET_KEEPALIVE_OPTIONS,
-        "socket_connect_timeout": REDIS_SOCKET_CONNECT_TIMEOUT,
-        "socket_timeout": REDIS_SOCKET_TIMEOUT,
-        "retry": Retry(ExponentialBackoff(cap=1.0, base=0.2), retries=REDIS_COMMAND_RETRIES),
-    }
+    backoff = ExponentialWithJitterBackoff(base=REDIS_RETRY_BACKOFF_BASE, cap=REDIS_RETRY_BACKOFF_CAP)
+    return {"retry": Retry(backoff, retries=REDIS_COMMAND_RETRIES)}
 
 
 def validate_redis_url(url: str) -> None:
