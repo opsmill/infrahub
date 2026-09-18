@@ -127,6 +127,35 @@ where nothing else has moved the numbers.
 - [ ] T017 [P] [US1] Component test: attribute **removal** closes the record via
       `AttributeRemoveQuery`'s existing `close_unretained_agnostic_fields` call. No code change
       expected — confirm the inheritance.
+
+      **Amended 2026-09-17: the inheritance holds only for a branch-agnostic attribute.**
+      `core/query/node_agnostic_retirement.py` gates the sweep on `anchor.branch =
+      $global_branch_name`, where `anchor` is the `HAS_ATTRIBUTE` edge. A branch-aware attribute
+      carries that edge on its own branch, so the sweep never reaches it and the record survives.
+      Keep this task scoped to the agnostic case it already covers; the aware case is T017a.
+
+- [ ] T017a [US1] **Retire the reservation record when the object is deleted, whatever the
+      attribute's branch support.** Deleting an object today leaves its `-global-` `IS_RESERVED`
+      edge active and open when the tracked attribute is branch-aware: measured on a `TestingTicket`
+      whose `ticket_id` inherits `AWARE`, where `HAS_ATTRIBUTE` and `HAS_VALUE` are both closed by
+      the delete and the reservation edge is untouched. One orphan accumulates per deleted object,
+      for the lifetime of the pool.
+
+      The number is still released, because the reads resolve forward and the delete closes
+      `HAS_VALUE` — so this is not a reporting defect today. It matters because the record's
+      remaining job is attribution: an orphan says a pool accounts for a number on an object that no
+      longer exists, and nothing sweeps it. Test coverage currently hides this —
+      `component/core/agnostic_retirement/test_on_node_delete.py::…::test_a_value_freed_by_retirement_is_allocatable_again_from_its_pool`
+      uses an agnostic schema, so it passes while the aware case leaks.
+
+      Decide first whether the sweep can be reached at all: the `anchor.branch` condition identifies
+      agnostic *fields*, while the reservation edge is `-global-` regardless of the attribute's
+      branch support, so this likely needs its own arm rather than a relaxed condition. If it is a
+      code change rather than inherited behaviour, records already leaked need a migration behaviour
+      to clear them — `m079`'s orphan sweep only covers the legacy shape.
+
+      Cover both branch supports in the test, so the agnostic case cannot stand in for the aware one
+      again.
 - [ ] T018 [US1] Implement cross-branch liveness as a **union** (FR-036a) in the queries from T007,
       reusing the *shape* of `UNRETAINED_AGNOSTIC_FIELD_PREDICATE`: per-branch window
       `(branch @ $at) ∪ (origin @ min(branched_from,$at)) ∪ (-global- @ $at)`, per-branch resolution
@@ -317,6 +346,20 @@ count dropped by one, and the number is offered again.
       only that record; the other still reports 50 (FR-028a).
 - [ ] T058 [P] [US3] Component test: detach on a branch, then delete that branch — no branch reports a
       pool source and the pool reports nothing for it (SC-020).
+- [ ] T058a [US3] Revisit
+      `backend/tests/component/core/resource_manager/test_number_pool_query.py::TestNumberPoolGetAllocated`.
+      Its five source-gate tests were inverted in Phase 1: clearing, reassigning or merging a change to
+      an attribute's `source` used to drop the number from what the pool reports, and now leaves it
+      reported, because FR-030c makes the record the only thing that answers. They read as "clearing
+      the source does not detach", which is the whole of what detaching meant before this phase
+      existed.
+
+      Once `DETACH` lands, they are the wrong shape: they still exercise the *only* way a user could
+      previously take a number off a pool, but say nothing about the way that replaces it. Either
+      extend them so each source manipulation is paired with a real detach on the same attribute —
+      proving the two are independent — or move the source-independence assertion to one test and give
+      detach its own, rather than leaving five tests describing a gesture that no longer means
+      anything.
 
 **Checkpoint**: detach works and is permanent, symmetric with allocation.
 
