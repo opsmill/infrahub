@@ -55,8 +55,9 @@ TLS_URL_SCHEMES = frozenset({"rediss", "rediss+sentinel"})
 def _is_tls_url(url: str) -> bool:
     """Whether the URL's scheme selects TLS.
 
-    A prefix check rather than ``urlsplit``: a Sentinel URL carries several members in its netloc,
-    which ``urlsplit`` rejects.
+    The scheme is cut off by hand rather than read with ``urlsplit``, which raises
+    ``ValueError: Invalid IPv6 URL`` on a Sentinel URL whose bracketed member is not the first one,
+    as in ``rediss+sentinel://sentinel-a:26379,[2001:db8::1]:26379/mymaster``.
     """
     scheme, separator, _ = url.partition("://")
     return bool(separator) and scheme.lower() in TLS_URL_SCHEMES
