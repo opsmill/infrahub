@@ -50,6 +50,20 @@ Responses are correlated using `correlation_id` in message metadata.
 
 **Examples**: `GitFileGet` → `GitFileGetResponse`
 
+#### Every RPC call is bounded
+
+`rpc()` never waits indefinitely. Both the publish and the wait for the reply run under a single
+timeout, so a broker that withholds its publish confirmation is bounded the same way a worker that
+never answers is. The bound defaults to `INFRAHUB_BROKER_RPC_TIMEOUT` (30 seconds, minimum 1); an
+individual call can override it with `timeout=`.
+
+When the bound elapses, `rpc()` raises `WorkerTimeoutError`. Callers must decide what that means for
+their operation. The GraphQL layer surfaces it as HTTP 504 with the `WORKER_TIMEOUT` error code and
+a `retry_after_seconds` hint. A caller that has already written to the database before the RPC is
+responsible for undoing that write, because the creating mutations do not run in a transaction: see
+`RepositoryFinalizer.post_create`, which removes the repository before re-raising so the name is not
+left taken by a repository that was never cloned.
+
 ## Message Structure
 
 ### Base Message

@@ -12,6 +12,7 @@ from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 
 from infrahub import config
 from infrahub.components import ComponentType
+from infrahub.exceptions import WorkerTimeoutError
 from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.operations import execute_message
@@ -94,11 +95,19 @@ class NATSMessageBus(InfrahubMessageBus):
 
                 if message.headers and "correlation_id" in message.headers:
                     span.set_attribute("correlation_id", message.headers["correlation_id"])
-                    future: asyncio.Future = self.futures.pop(message.headers["correlation_id"])
+                    future: asyncio.Future | None = self.futures.pop(message.headers["correlation_id"], None)
 
-                    if future:
+                    # A reply that arrives after its caller gave up finds the future gone, or
+                    # already cancelled by the timeout in the turn before the waiter resumed.
+                    if future is not None and not future.done():
                         future.set_result(message)
-                        return
+                    else:
+                        get_logger().debug(
+                            "Discarding reply with no pending request",
+                            correlation_id=message.headers["correlation_id"],
+                            routing_key=message.subject,
+                        )
+                    return
 
                 clear_log_context()
                 if message.subject in messages.MESSAGE_MAP:
@@ -280,8 +289,15 @@ class NATSMessageBus(InfrahubMessageBus):
             headers=headers,
         )
 
-    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(
+        self,
+        message: InfrahubMessage,
+        response_class: type[ResponseClass],
+        timeout: float | None = None,  # noqa: ASYNC109 part of the published bus contract
+    ) -> ResponseClass:
         correlation_id = str(UUIDT())
+        bound = timeout if timeout is not None else self.settings.rpc_timeout
+        routing_key = messages.ROUTING_KEY_MAP.get(type(message), "")
 
         future = self.loop.create_future()
         self.futures[correlation_id] = future
@@ -292,8 +308,25 @@ class NATSMessageBus(InfrahubMessageBus):
             request_id=request_id, correlation_id=correlation_id, reply_to=self.callback_queue.config.name
         )
 
-        await self.send(message=message)
+        # The publish sits inside the bound because it awaits a broker acknowledgement, which a
+        # stalled stream withholds indefinitely.
+        published = False
+        try:
+            async with asyncio.timeout(bound):
+                await self.send(message=message)
+                published = True
+                response: Msg = await future
+        except TimeoutError as exc:
+            get_logger().warning(
+                "No worker answered within the allowed time",
+                correlation_id=correlation_id,
+                routing_key=routing_key,
+                timeout_seconds=bound,
+                stage="awaiting_reply" if published else "publishing",
+            )
+            raise WorkerTimeoutError(operation=routing_key, timeout_seconds=bound) from exc
+        finally:
+            self.futures.pop(correlation_id, None)
 
-        response: Msg = await future
         data = ujson.loads(response.data)
         return response_class(**data)
