@@ -299,7 +299,7 @@ Do not write a one-off `resolveUuid` function.
 
 ## GraphQL variables, not inlined values
 
-The backend caches parsed and validated GraphQL documents in an LRU keyed on the exact query string (`backend/infrahub/graphql/execution.py`). A query that inlines a per-request value into the document produces a distinct string on every request: each one pays parse + validate again and evicts useful cache entries.
+The backend caches parsed documents by query string in `cached_parse` and validation results by schema and parsed document in `cached_validate` (`backend/infrahub/graphql/execution.py`). A query that inlines a per-request value into the document produces a distinct string on every request, which misses both caches: each one pays parse + validate again and evicts useful entries.
 
 When generating a query, pass every per-request value as a GraphQL variable:
 
