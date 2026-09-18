@@ -257,14 +257,6 @@ disable_error_code = [
     "return-value",
 ]
 
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.query.diff"
-disable_error_code = [
-    "assignment",
-    "call-overload",
-]
-
 [[tool.mypy.overrides]]
 module = "infrahub.core.query.node"
 disable_error_code = [
@@ -1250,7 +1242,6 @@ include = [
     "backend/infrahub/core/merge/**",
     "backend/infrahub/core/node/**",
     "backend/infrahub/core/query/__init__.py",
-    "backend/infrahub/core/query/diff.py",
     "backend/infrahub/core/query/node.py",
     "backend/infrahub/core/query/relationship.py",
     "backend/infrahub/core/relationship/**",
