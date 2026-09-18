@@ -26,6 +26,7 @@ import {
 } from "../../../../../tests/fake/repository";
 import { generateAttributeSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
 import { expectServerDrivenChange } from "../../../../../tests/helpers/expect-server-driven-change";
+import { expectVariablesAbsent } from "../../../../../tests/helpers/expect-variables-absent";
 
 vi.mock("@/entities/repository/api/get-repository-branch-status-from-api");
 
@@ -68,6 +69,19 @@ function toApiResult<TPage>(page: TPage) {
 function renderCard(schema: ModelSchema = repositorySchema) {
   return render(<RepositoryBranchesCard repositoryId={REPOSITORY_ID} schema={schema} />);
 }
+
+const FIRST_PAGE_VARIABLES = {
+  branchName: CURRENT_BRANCH,
+  id: REPOSITORY_ID,
+  limit: PAGE_SIZE,
+  offset: 0,
+};
+
+const DEFERRED_FILTER_ARGUMENTS = [
+  "sync_status__value",
+  "internal_status__value",
+  "own_values_only",
+];
 
 // The CSSOM rewrites an authored hex colour as `rgb(…)`, so the fixture value has to go through the
 // same normalisation before it can be compared.
@@ -525,6 +539,244 @@ describe("RepositoryBranchesCard", () => {
       .toBeVisible();
     expect(
       component.getByRole("heading", { name: "Branches", exact: true }).elements()
+    ).toHaveLength(0);
+  });
+
+  it("narrows the rows and the total to the fragment the server matched", async () => {
+    // GIVEN
+    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const matched = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
+    apiMock.mockResolvedValueOnce(toApiResult(unfiltered)).mockResolvedValue(toApiResult(matched));
+
+    // WHEN
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unfiltered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await component.getByRole("searchbox", { name: "Search branches" }).fill("release");
+
+    // THEN
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, name__value: "release", partial_match: true },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+    await expect.element(component.getByText("3 branches", { exact: true })).toBeVisible();
+  });
+
+  it("narrows the rows and the total to the status the server matched", async () => {
+    // GIVEN
+    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const matched = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
+    apiMock.mockResolvedValueOnce(toApiResult(unfiltered)).mockResolvedValue(toApiResult(matched));
+
+    // WHEN
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unfiltered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await component.getByRole("combobox", { name: "Filter by branch status" }).click();
+    await component.getByRole("option", { name: "Open" }).click();
+
+    // THEN
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, status__value: "OPEN" },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+    await expect.element(component.getByText("3 branches", { exact: true })).toBeVisible();
+  });
+
+  it("sends the schema's wire value for a status whose visible label is title-cased", async () => {
+    // GIVEN
+    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const matched = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
+    apiMock.mockResolvedValueOnce(toApiResult(unfiltered)).mockResolvedValue(toApiResult(matched));
+
+    // WHEN
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unfiltered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await component.getByRole("combobox", { name: "Filter by branch status" }).click();
+    await component.getByRole("option", { name: "Rebase needed", exact: true }).click();
+
+    // THEN the screaming-snake wire value goes out, not the chip's own wording
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, status__value: "NEED_REBASE" },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+  });
+
+  it("offers no status the repository's branches can never carry", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(
+      toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
+    );
+
+    // WHEN
+    const component = await renderCard();
+    await component.getByRole("combobox", { name: "Filter by branch status" }).click();
+
+    // THEN
+    await expect.element(component.getByRole("option", { name: "Open" })).toBeVisible();
+    expect(component.getByRole("option", { name: "Merged", exact: true }).elements()).toHaveLength(
+      0
+    );
+    expect(
+      component.getByRole("option", { name: "Deleting", exact: true }).elements()
+    ).toHaveLength(0);
+  });
+
+  it("returns to the first page when a filter changes", async () => {
+    // GIVEN a card already showing the second page
+    const firstPage = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const secondPage = generateRepositoryBranchStatusPayloadAfter({ count: 45 });
+    const filtered = generateRepositoryBranchStatusPage({
+      rows: [generateRepositoryBranchStatus({ name: { value: "release-candidate" } })],
+    });
+    apiMock
+      .mockResolvedValueOnce(toApiResult(firstPage))
+      .mockResolvedValueOnce(toApiResult(secondPage))
+      .mockResolvedValue(toApiResult(filtered));
+
+    // WHEN
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(firstPage),
+      rowVisibleAfter: "feature-auth",
+    });
+    await component.getByRole("button", { name: "Page 2" }).click();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, offset: PAGE_SIZE },
+      payload: toApiResult(secondPage),
+      rowVisibleAfter: "release-2-0",
+    });
+    await component.getByRole("searchbox", { name: "Search branches" }).fill("release");
+
+    // THEN
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 2,
+      variables: { ...FIRST_PAGE_VARIABLES, name__value: "release", partial_match: true },
+      payload: toApiResult(filtered),
+      rowVisibleAfter: "release-candidate",
+    });
+  });
+
+  it("asks the server again rather than reducing the rows it already holds", async () => {
+    // GIVEN a second payload holding rows the fragment does not match, so a browser-side filter
+    // could not have produced it
+    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const serverAnswer = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
+    apiMock
+      .mockResolvedValueOnce(toApiResult(unfiltered))
+      .mockResolvedValue(toApiResult(serverAnswer));
+
+    // WHEN
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unfiltered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await component.getByRole("searchbox", { name: "Search branches" }).fill("release");
+
+    // THEN
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, name__value: "release", partial_match: true },
+      payload: toApiResult(serverAnswer),
+      rowVisibleAfter: "hotfix-tls",
+    });
+    expect(component.getByRole("row", { name: /feature-auth/ }).elements()).toHaveLength(0);
+  });
+
+  it("sends no deferred attribute filter on any request it makes", async () => {
+    // GIVEN
+    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const matched = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
+    apiMock.mockResolvedValueOnce(toApiResult(unfiltered)).mockResolvedValue(toApiResult(matched));
+
+    // WHEN every argument the card can send is in play
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unfiltered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await component.getByRole("searchbox", { name: "Search branches" }).fill("release");
+    await component.getByRole("combobox", { name: "Filter by branch status" }).click();
+    await component.getByRole("option", { name: "Open" }).click();
+
+    // THEN
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 2,
+      variables: {
+        ...FIRST_PAGE_VARIABLES,
+        name__value: "release",
+        partial_match: true,
+        status__value: "OPEN",
+      },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+    expectVariablesAbsent({ apiMock, names: DEFERRED_FILTER_ARGUMENTS });
+  });
+
+  it("says no branch matches the filters once a filter empties the set", async () => {
+    // GIVEN
+    apiMock
+      .mockResolvedValueOnce(
+        toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
+      )
+      .mockResolvedValue(toApiResult(generateRepositoryBranchStatusPage({ rows: [] })));
+
+    // WHEN
+    const component = await renderCard();
+    await expect.element(component.getByRole("row", { name: /feature-auth/ })).toBeVisible();
+    await component
+      .getByRole("searchbox", { name: "Search branches" })
+      .fill("nothing-matches-this");
+
+    // THEN
+    await expect
+      .element(component.getByText("No branch matches these filters", { exact: true }))
+      .toBeVisible();
+    expect(
+      component
+        .getByText("No branch of this repository synchronises with Git", { exact: true })
+        .elements()
     ).toHaveLength(0);
   });
 });
