@@ -308,20 +308,23 @@ class NATSMessageBus(InfrahubMessageBus):
             request_id=request_id, correlation_id=correlation_id, reply_to=self.callback_queue.config.name
         )
 
+        # The publish sits inside the bound because it awaits a broker acknowledgement, which a
+        # stalled stream withholds indefinitely.
+        published = False
         try:
-            await self.send(message=message)
-
-            try:
-                async with asyncio.timeout(bound):
-                    response: Msg = await future
-            except TimeoutError as exc:
-                get_logger().warning(
-                    "No worker answered within the allowed time",
-                    correlation_id=correlation_id,
-                    routing_key=routing_key,
-                    timeout_seconds=bound,
-                )
-                raise WorkerTimeoutError(operation=routing_key, timeout_seconds=bound) from exc
+            async with asyncio.timeout(bound):
+                await self.send(message=message)
+                published = True
+                response: Msg = await future
+        except TimeoutError as exc:
+            get_logger().warning(
+                "No worker answered within the allowed time",
+                correlation_id=correlation_id,
+                routing_key=routing_key,
+                timeout_seconds=bound,
+                stage="awaiting_reply" if published else "publishing",
+            )
+            raise WorkerTimeoutError(operation=routing_key, timeout_seconds=bound) from exc
         finally:
             self.futures.pop(correlation_id, None)
 

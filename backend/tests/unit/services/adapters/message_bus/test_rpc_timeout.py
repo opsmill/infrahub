@@ -6,10 +6,15 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 
 from infrahub.exceptions import WorkerTimeoutError
-from infrahub.message_bus import InfrahubMessage, messages
+from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import GitRepositoryConnectivityResponse
-from infrahub.message_bus.types import MessageTTL
-from tests.adapters.message_bus import CALLBACK_QUEUE_NAME, NeverReplyingBus, NeverReplyingNATSBus
+from tests.adapters.message_bus import (
+    CALLBACK_QUEUE_NAME,
+    NeverReplyingBus,
+    NeverReplyingNATSBus,
+    StalledPublishBus,
+    UnreachableBrokerBus,
+)
 
 if TYPE_CHECKING:
     from aio_pika.abc import AbstractIncomingMessage
@@ -85,7 +90,9 @@ async def test_rpc_gives_up_on_a_worker_that_never_answers(
 async def test_rpc_addresses_the_reply_to_its_own_callback_queue(
     never_replying_bus: NeverReplying, connectivity_message: messages.GitRepositoryConnectivity
 ) -> None:
-    with pytest.raises(WorkerTimeoutError, match=r"^No worker answered "):
+    with pytest.raises(
+        WorkerTimeoutError, match=r"^No worker answered git\.repository\.connectivity within 0\.05 seconds$"
+    ):
         await never_replying_bus.rpc(
             message=connectivity_message,
             response_class=GitRepositoryConnectivityResponse,
@@ -120,21 +127,30 @@ async def test_rpc_honours_an_explicit_timeout_over_the_configured_one(
 async def test_a_failed_publish_leaves_no_pending_request_behind(
     connectivity_message: messages.GitRepositoryConnectivity,
 ) -> None:
-    class UnpublishableBus(NeverReplyingBus):
-        async def publish(
-            self,
-            message: InfrahubMessage,
-            routing_key: str,
-            delay: MessageTTL | None = None,
-            is_retry: bool = False,
-        ) -> None:
-            raise ConnectionResetError("broker went away")
-
-    bus = UnpublishableBus()
+    bus = UnreachableBrokerBus()
 
     with pytest.raises(ConnectionResetError, match=r"^broker went away$"):
         await bus.rpc(message=connectivity_message, response_class=GitRepositoryConnectivityResponse)
 
+    assert bus.futures == {}
+
+
+async def test_a_publish_that_never_completes_is_bounded_too(
+    connectivity_message: messages.GitRepositoryConnectivity,
+) -> None:
+    bus = StalledPublishBus(rpc_timeout=CONFIGURED_TIMEOUT_SECONDS)
+
+    started = time.monotonic()
+    with pytest.raises(
+        WorkerTimeoutError, match=r"^No worker answered git\.repository\.connectivity within 0\.05 seconds$"
+    ):
+        await bus.rpc(
+            message=connectivity_message,
+            response_class=GitRepositoryConnectivityResponse,
+            timeout=BRIEF_TIMEOUT_SECONDS,
+        )
+
+    assert time.monotonic() - started < 10
     assert bus.futures == {}
 
 

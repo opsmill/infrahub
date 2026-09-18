@@ -1,3 +1,4 @@
+import asyncio
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeVar, cast
@@ -133,8 +134,37 @@ class NeverReplyingBus(RabbitMQMessageBus):
         raise ValueError("NeverReplyingBus.reply should not be called")
 
 
+class UnreachableBrokerBus(NeverReplyingBus):
+    """Fails every publish the way a broker that cannot be reached does."""
+
+    async def publish(
+        self,
+        message: InfrahubMessage,
+        routing_key: str,
+        delay: MessageTTL | None = None,
+        is_retry: bool = False,
+    ) -> None:
+        raise ConnectionResetError("broker went away")
+
+
+class StalledPublishBus(NeverReplyingBus):
+    """Never completes a publish, the way a broker withholding its confirmation does."""
+
+    async def publish(
+        self,
+        message: InfrahubMessage,
+        routing_key: str,
+        delay: MessageTTL | None = None,
+        is_retry: bool = False,
+    ) -> None:
+        await asyncio.Event().wait()
+
+
 class NeverReplyingNATSBus(NATSMessageBus):
-    """The NATS counterpart of `NeverReplyingBus`, with the same restrictions."""
+    """Records every published message and never delivers a reply, so any rpc call times out.
+
+    No connection is opened; only `rpc` and `send` are supported.
+    """
 
     def __init__(self, rpc_timeout: int = 1) -> None:
         super().__init__(component_type=ComponentType.API_SERVER, settings=BrokerSettings(rpc_timeout=rpc_timeout))
