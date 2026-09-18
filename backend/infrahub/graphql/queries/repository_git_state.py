@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
 
 from graphene import Field, Int, String
 
 from infrahub import config
 from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
     InfrahubKind,
     PermissionAction,
     RepositoryGitCondition,
@@ -13,7 +15,9 @@ from infrahub.core.constants import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericRepository
+from infrahub.core.query.repository import BranchScope, RepositoryBranchValuesQuery
 from infrahub.core.registry import registry
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.git.branch_mapping import get_mapped_remote_branch, remote_branch_is_imported
 from infrahub.git.state.factory import build_repository_git_state_reader
@@ -27,7 +31,9 @@ if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.account import ObjectPermission
+    from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
+    from infrahub.database import InfrahubDatabase
     from infrahub.git.state.models import CommitLogResult
     from infrahub.graphql.initialization import GraphqlContext
 
@@ -151,6 +157,35 @@ def _resolve_paging(limit: int | None, offset: int | None) -> tuple[int, int]:
     return resolved_limit, resolved_offset
 
 
+def _resolve_remote_branch(
+    repository_default_branch: str | None, infrahub_branch_name: str, branch_is_synced_with_git: bool
+) -> str | None:
+    """Return the remote branch this Infrahub branch reads.
+
+    Returns None when the repository names no default branch, and when a sync would not import the
+    branch this one maps to.
+    """
+    if not repository_default_branch:
+        return None
+
+    remote_branch = get_mapped_remote_branch(
+        branch_name=infrahub_branch_name,
+        repository_default_branch=repository_default_branch,
+        infrahub_default_branch=registry.default_branch,
+    )
+    # Calling a branch untracked that a sync would still import onto would contradict the commit
+    # reported next to it.
+    if not remote_branch_is_imported(
+        remote_branch_name=remote_branch,
+        branch_is_synced_with_git=branch_is_synced_with_git,
+        repository_default_branch=repository_default_branch,
+        infrahub_default_branch=registry.default_branch,
+        import_sync_branch_names=config.SETTINGS.git.import_sync_branch_names,
+    ):
+        return None
+    return remote_branch
+
+
 def _resolve_git_ref(
     repository: CoreGenericRepository, infrahub_branch_name: str, branch_is_synced_with_git: bool
 ) -> str | None:
@@ -162,29 +197,119 @@ def _resolve_git_ref(
     """
     match repository.get_kind():
         case InfrahubKind.REPOSITORY:
-            repository_default_branch = cast("CoreRepository", repository).default_branch.value
-            if not repository_default_branch:
-                return None
-            remote_branch = get_mapped_remote_branch(
-                branch_name=infrahub_branch_name,
-                repository_default_branch=repository_default_branch,
-                infrahub_default_branch=registry.default_branch,
-            )
-            # Calling a branch untracked that a sync would still import onto would contradict the
-            # imported_commit answered next to it.
-            if not remote_branch_is_imported(
-                remote_branch_name=remote_branch,
+            return _resolve_remote_branch(
+                repository_default_branch=cast("CoreRepository", repository).default_branch.value,
+                infrahub_branch_name=infrahub_branch_name,
                 branch_is_synced_with_git=branch_is_synced_with_git,
-                repository_default_branch=repository_default_branch,
-                infrahub_default_branch=registry.default_branch,
-                import_sync_branch_names=config.SETTINGS.git.import_sync_branch_names,
-            ):
-                return None
-            return remote_branch
+            )
         case InfrahubKind.READONLYREPOSITORY:
             return cast("CoreReadOnlyRepository", repository).ref.value or None
         case unsupported_kind:
             raise ValidationError(f"Reading git state is not supported for a {unsupported_kind}")
+
+
+@dataclass(frozen=True)
+class _DriftRead:
+    """What one repository kind's drift rows are read from."""
+
+    branches: list[Branch]
+    attribute_names: set[str]
+    ref_is_tracked_per_branch: bool
+    """True when a branch's git_ref is the ref it tracks, rather than a remote branch mapped from its name."""
+
+
+def _viewable_branches(graphql_context: GraphqlContext, kind: str, branches: list[Branch]) -> list[Branch]:
+    """Drop the branches the caller holds no view permission for.
+
+    The decision turns only on whether a branch is the default one, so the one covering every other
+    branch is resolved once rather than once per branch.
+    """
+    others = [branch for branch in branches if branch.name != registry.default_branch]
+    if not others or graphql_context.active_permissions.has_permission(
+        permission=_view_permission(kind=kind, branch_name=others[0].name)
+    ):
+        return branches
+    return [branch for branch in branches if branch.name == registry.default_branch]
+
+
+def _drift_branches(graphql_context: GraphqlContext, kind: str, at: Timestamp) -> list[Branch]:
+    """Return the branches a drift row may be reported for.
+
+    A branch on its way out has no drift worth reporting, and one that did not exist at the
+    requested time has none to report either.
+    """
+    branches = [
+        branch
+        for branch in registry.branch.values()
+        if branch.name != GLOBAL_BRANCH_NAME and not branch.is_terminal and Timestamp(branch.get_created_at()) <= at
+    ]
+    return _viewable_branches(graphql_context=graphql_context, kind=kind, branches=branches)
+
+
+def _drift_read(repository: CoreGenericRepository, branches: list[Branch]) -> _DriftRead:
+    """Decide the values to read, which is the one place the repository kind is dispatched on.
+
+    Raises:
+        ValidationError: When the repository kind has no git state to read.
+
+    """
+    match repository.get_kind():
+        case InfrahubKind.REPOSITORY:
+            # A branch Git never synchronises has no remote counterpart to drift from.
+            return _DriftRead(
+                branches=[branch for branch in branches if branch.sync_with_git],
+                attribute_names={"commit"},
+                ref_is_tracked_per_branch=False,
+            )
+        case InfrahubKind.READONLYREPOSITORY:
+            return _DriftRead(branches=branches, attribute_names={"commit", "ref"}, ref_is_tracked_per_branch=True)
+        case unsupported_kind:
+            raise ValidationError(f"Reading git state is not supported for a {unsupported_kind}")
+
+
+async def _resolve_drift_rows(
+    db: InfrahubDatabase, request_branch: Branch, repository: CoreGenericRepository, at: Timestamp, read: _DriftRead
+) -> list[dict[str, Any]]:
+    """Resolve one row per branch from the graph, with no git-derived value in any of them."""
+    query = await RepositoryBranchValuesQuery.init(
+        db=db,
+        branch=request_branch,
+        at=at,
+        repository_id=repository.get_id(),
+        branch_scopes=[BranchScope.from_branch(branch=branch, at=at) for branch in read.branches],
+        attribute_names=read.attribute_names,
+    )
+    await query.execute(db=db)
+    values = {(row.branch_name, row.attribute_name): row.value for row in query.get_data()}
+
+    repository_default_branch = (
+        None if read.ref_is_tracked_per_branch else cast("CoreRepository", repository).default_branch.value
+    )
+
+    rows = []
+    for branch in read.branches:
+        tracked_commit = values.get((branch.name, "commit")) or None
+        git_ref = (
+            values.get((branch.name, "ref")) or None
+            if read.ref_is_tracked_per_branch
+            else _resolve_remote_branch(
+                repository_default_branch=repository_default_branch,
+                infrahub_branch_name=branch.name,
+                branch_is_synced_with_git=branch.sync_with_git,
+            )
+        )
+        rows.append(
+            {
+                "branch_name": branch.name,
+                "git_ref": git_ref,
+                "tracked_commit": tracked_commit,
+                "remote_head": None,
+                "condition": (
+                    RepositoryGitCondition.NOT_TRACKED if git_ref is None else RepositoryGitCondition.UNAVAILABLE
+                ),
+            }
+        )
+    return rows
 
 
 class RepositoryCommitsResolver:
@@ -280,10 +405,21 @@ class RepositoryBranchDriftResolver:
         graphql_context: GraphqlContext = info.context
 
         repository = await load_repository_for_view(graphql_context=graphql_context, repository_id=repository_id)
+        at = graphql_context.at or Timestamp()
+        rows = await _resolve_drift_rows(
+            db=graphql_context.db,
+            request_branch=graphql_context.branch,
+            repository=repository,
+            at=at,
+            read=_drift_read(
+                repository=repository,
+                branches=_drift_branches(graphql_context=graphql_context, kind=repository.get_kind(), at=at),
+            ),
+        )
 
         return {
             "repository_id": repository.get_id(),
-            "edges": [],
+            "edges": [{"node": row} for row in rows],
             "unavailable": _unavailable_payload(result=None, reason=RepositoryGitUnavailableReason.NOT_IMPLEMENTED),
         }
 

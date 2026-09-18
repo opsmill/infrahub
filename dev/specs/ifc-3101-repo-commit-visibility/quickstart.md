@@ -35,11 +35,10 @@ uv run invoke dev.build && uv run invoke dev.start   # full stack with at least 
    the column's unavailable state set. Switch to another Infrahub branch and confirm the commit-view
    answer follows it.
 
-   The rows arrive with the per-branch graph query, which is its own pull request. Until it lands,
-   the drift query answers with the repository id and the column's unavailable state and no rows at
-   all: the resolver has no per-branch tracked commit to put in a row, and inventing one from the
-   request branch's value would report the wrong commit for every other branch. Run the row half of
-   this step against the per-branch-query pull request, not against the contract one.
+   Every row's `condition` is `UNAVAILABLE` until the worker read path ships, except a branch with
+   no tracked ref, or with nothing tracked or inherited, which reports `NOT_TRACKED` from the graph
+   alone. Add `?at=` with a timestamp from before an import and confirm the rows report the commit
+   that was tracked then, not the current one.
 
    The branch-switch half does hold from the contract pull request onward, and is worth running
    because it exercises the branch mapping in both directions: on the default branch `git_ref` is
