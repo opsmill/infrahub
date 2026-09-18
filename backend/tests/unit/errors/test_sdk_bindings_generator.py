@@ -8,6 +8,7 @@ at all. These cover the rules and the refusals.
 
 from __future__ import annotations
 
+import ast
 import copy
 import json
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ from infrahub.errors.sdk_bindings import (
     load_catalogue,
     payload_fields,
     python_type,
+    render_bindings,
     scan_sdk_exceptions,
     validate_catalogue,
 )
@@ -37,10 +39,8 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 SDK_BASE = REPO_ROOT / "python_sdk" / "infrahub_sdk" / "exceptions" / "base.py"
 CATALOGUE_PATH = REPO_ROOT / "schema" / "error-catalogue.json"
 
-# What the SDK's hand-written module contributes, stated here rather than read from the submodule.
-# The generator's rules are about what it is told, so binding them to whichever SDK commit the
-# pointer happens to pin would make them fail on the lag between the two repositories rather than on
-# a defect. `test_sdk_surface_matches_the_pinned_submodule` is where the two are held together.
+# The SDK surface the generator is given. It must stay a subset of what the submodule's module
+# actually defines, which `test_sdk_surface_matches_the_pinned_submodule` asserts.
 ADOPTED_CODES = {
     "BRANCH_NOT_FOUND": "BranchNotFoundError",
     "NODE_NOT_FOUND": "NodeNotFoundError",
@@ -429,7 +429,20 @@ def test_malformed_entry_aborts(build: Callable[..., dict[str, Any]], case: Entr
 
 
 @pytest.mark.parametrize(
-    "field_name", ["code", "http_status", "message", "errors", "query", "variables", "model_config", "self"]
+    "field_name",
+    [
+        "code",
+        "http_status",
+        "message",
+        "errors",
+        "query",
+        "variables",
+        "model_config",
+        "self",
+        "from_payload",
+        "__init__",
+        "_private",
+    ],
 )
 def test_payload_field_colliding_with_an_exception_member_aborts(
     build: Callable[..., dict[str, Any]], field_name: str
@@ -594,3 +607,49 @@ def test_bindings_state_distinguishes_uncommitted_from_stale(case: StateCase) ->
     )
 
     assert state is case.expected
+
+
+# --------------------------------------------------------------------------------------------------
+# The rendered module
+# --------------------------------------------------------------------------------------------------
+
+TEMPLATE_DIR = REPO_ROOT / "backend" / "templates"
+
+
+@pytest.fixture(scope="module")
+def rendered(catalogue: dict[str, Any]) -> str:
+    return render_bindings(catalogue, ADOPTED_CODES, set(DEFINED_NAMES), TEMPLATE_DIR)
+
+
+def test_rendered_module_carries_every_name_the_context_declares(
+    rendered: str, build: Callable[..., dict[str, Any]]
+) -> None:
+    """The context is only an instruction; this is what actually lands in the SDK."""
+    module = ast.parse(rendered)
+    functions = {node.name for node in module.body if isinstance(node, ast.FunctionDef)}
+    classes = {node.name for node in module.body if isinstance(node, ast.ClassDef)}
+    context = build()
+
+    assert {model["name"] for model in context["payload_models"]} <= classes
+    assert {entry["name"] for entry in context["exception_classes"]} <= classes
+    assert {builder["name"] for builder in context["builders"]} <= functions
+    assert "exception_from_payload" in functions
+
+
+def test_rendered_module_dispatches_only_codes_that_have_a_class(
+    rendered: str, build: Callable[..., dict[str, Any]], catalogue: dict[str, Any]
+) -> None:
+    transport_owned = {code for code, entry in catalogue["codes"].items() if entry["http_status"] in {401, 403}}
+
+    for code, _ in build()["code_to_exception"]:
+        assert f'"{code}": _build_{code.lower()}' in rendered
+    for code in transport_owned:
+        assert f'"{code}": _build_' not in rendered
+
+
+def test_render_refuses_output_that_does_not_parse(catalogue: dict[str, Any], tmp_path: Path) -> None:
+    """The parse gate keeps a broken render out of the submodule, where ruff would find it instead."""
+    (tmp_path / "generate_sdk_errors.j2").write_text("def (\n", encoding="utf-8")
+
+    with pytest.raises(ErrorCatalogueGenerationError, match=r"^The rendered bindings do not parse \(.+"):
+        render_bindings(catalogue, ADOPTED_CODES, set(DEFINED_NAMES), tmp_path)
