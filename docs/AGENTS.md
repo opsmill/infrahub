@@ -95,6 +95,8 @@ Capitalize these Infrahub-specific terms when referring to the feature:
 
 **Call a populated instance an "object", not a "node"**, in user-facing text (docs, error messages, UI copy). "Node" stays where it names a schema kind — the counterpart of "Generic" — which is the term the schema docs and the UI already use.
 
+**FAQ answers stay short.** A couple of sentences plus a link to the topical page; detail that needs paragraphs (constraints, edition caveats, step-by-step procedure) belongs on the linked page, not in the FAQ. Never present a capability as the default when it requires explicit deployment or configuration.
+
 ## Documentation Workflow
 
 1. **Choose documentation type** using the table above (if not specified)

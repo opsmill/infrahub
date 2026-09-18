@@ -155,6 +155,13 @@ class NodeDiffBuilder:
     changed_attributes: list[str]  # Will be appended to during processing
 ```
 
+**Don't store what you can derive.** A field whose value restates another field, or is cheaply
+computed from one (a boolean mirroring `other is not None`, a summary line cut from a message),
+goes out of sync the moment one is written without the other — expose it as a `property` instead.
+When only some combinations of field values are producible, reject the impossible ones in
+`__post_init__` (or a model validator) so an inconsistent instance fails at construction rather
+than surfacing as a downstream bug.
+
 **Document an attribute with an inline docstring below it**, not in the class docstring, and only
 when the name does not already say what the field holds:
 
@@ -320,18 +327,16 @@ async def create_branch(db: InfrahubDatabase, name: str, description: str | None
 
 ## Query Pattern
 
-Use the Query class pattern for database operations:
+Database reads and writes go through the `Query` class pattern — the lifecycle, Cypher
+conventions and result dataclasses are in [Query Pattern](../../knowledge/backend/query-pattern.md).
 
-```python
-from infrahub.core.query import Query
+## Methods stay on the instance
 
-class MyQuery(Query):
-    name: str = "my_query"
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
-        self.params["node_id"] = kwargs["node_id"]
-        self.add_to_query("MATCH (n:Node {uuid: $node_id}) RETURN n")
-```
+A private helper that happens to read no instance state is still an instance method. Do not demote
+it to a `@staticmethod`, a `@classmethod`, or a module-level function to satisfy a
+"method could be a function" hint — the repo suppresses ruff's `PLR6301` deliberately. The demotion
+rewrites call sites and tests for zero behavior change, and the next edit that needs `self`
+reverses it.
 
 ## Type Hints
 
@@ -391,13 +396,8 @@ Exceptions where positional arguments are acceptable:
 
 ## Testing
 
-- Unit tests: no external dependencies only file access
-- Component tests: Similar to unit tests with regards to small testing scope but can require database access
-- Integration tests: require Neo4j via testcontainers
-- Test files mirror source: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
-- Async tests auto-configured via pytest-asyncio
-
-For additional information around testing patterns refer to [./testing.md](./testing.md)
+Test tiers, fixtures and assertion standards are in [Python Testing Standards](testing.md). Test
+files mirror source: `infrahub/core/node.py` → `tests/unit/core/test_node.py`.
 
 ## See Also
 

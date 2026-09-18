@@ -6,8 +6,7 @@ Typing rules for the Python backend. The hard rules — no new suppression, no `
 over `getattr` — live in `.agents/rules/python-typing.md`; this page is their fuller reference.
 
 - All function parameters and return types must be type-hinted
-- Use `str | None` for optional strings (Python 3.10+)
-- Use `list[Type]` instead of `List[Type]` (Python 3.9+)
+- Write built-in generics and PEP 604 unions (`list[str]`, `str | None`); the `typing.List`/`Optional` spellings are legacy and ruff flags them
 
 ## Type a closed value set as an enum, not `str`
 
