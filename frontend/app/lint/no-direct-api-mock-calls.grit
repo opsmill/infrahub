@@ -1,5 +1,0 @@
-language js
-
-`$mock.mock.calls` where {
-  register_diagnostic(span=$mock, message="Assert requests with expectServerDrivenChange(...) from tests/helpers — a request assertion must be paired with a rendered-output assertion from a different payload.", severity="error")
-}

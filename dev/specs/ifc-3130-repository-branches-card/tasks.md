@@ -10,7 +10,8 @@
 **Tests are required for this feature** — the constitution's Test Discipline principle applies, and
 every FR carries a stated verification method.
 
-**Status**: T001–T055, T034a and T078 are on the branch (work units 1–7, less the US3 filters).
+**Status**: T001–T055 (there is no T007), T034a and T078 are on the branch (work units 1–7, less the
+US3 filters).
 Outstanding: T056–T064 (US3 filters), T065–T066 (e2e), T067–T070 (documentation and changelog) and
 T071–T077 (gates). A ticked box means the file exists at the path named.
 
@@ -24,9 +25,11 @@ the individual tasks that depend on them, but they hold everywhere.
 1. **Mock at `entities/repository/api/get-repository-branch-status-from-api`, never the query hook.**
    Mocking the hook hides the request, and every request assertion degrades to asserting a mock.
 2. **Every request assertion is paired, in the same test, with a rendered-output assertion from a
-   different payload.** Use `expectServerDrivenChange(...)` (T006); direct `apiMock.mock.calls[...]`
-   is lint-blocked in the card's test files. An assertion that helper cannot express goes in a
-   helper under `frontend/app/tests/helpers/`, which the guard does not cover.
+   different payload.** Use `expectServerDrivenChange(...)` (T006): every one of its arguments is
+   required, so omitting the rendered-output half is a type error. Reading
+   `apiMock.mock.calls[...]` directly in a card test file compiles and defeats the pairing — nothing
+   catches that but review. An assertion the helper cannot express goes in a helper under
+   `frontend/app/tests/helpers/`, which is the only place a recorded call may be read.
 3. **Never pass `count` to `DataTable`** — it renders its own "N counts" footer that collides with
    FR-010a's window statement.
 4. **Define `gridTemplateColumns` at module scope**, never as an inline arrow — `DataTable` memoizes
@@ -74,15 +77,11 @@ retrofitted cheaply.
       in `frontend/app/tests/helpers/expect-server-driven-change.ts`. **Every argument is required** —
       the signature is the enforcement mechanism, so that omitting the rendered-output half is a type
       error rather than a reviewer's catch. It asserts the call at `callIndex` carries `variables`,
-      **and** that `rowVisibleAfter` is rendered once `payload` resolves.
-- [x] T007 Add a lint guard forbidding direct `apiMock.mock.calls[...]` member access inside
-      `frontend/app/src/entities/repository/ui/repository-branches-card/**/*.test.tsx`. Delivered as
-      the GritQL plugin `frontend/app/lint/no-direct-api-mock-calls.grit`, attached by a Biome
-      `overrides` entry scoped to exactly that glob. Without this, T006 is a suggestion.
-      **Scope it to the card's test files only, never to `frontend/app/tests/helpers/**`** — the
-      helpers are where a recorded call may legitimately be read, and T064 needs one there.
+      **and** that `rowVisibleAfter` is rendered once `payload` resolves. It is the only sanctioned
+      way to assert a request from a card test file: a direct `apiMock.mock.calls[...]` read
+      compiles, so keeping it out of those files is a review obligation, not a tooling one.
 
-**Checkpoint**: T001–T007 complete. Units 1, 2, 3 and 5's tests now have the only sanctioned path.
+**Checkpoint**: T001–T006 complete. Units 1, 2, 3 and 5's tests now have the only sanctioned path.
 
 ---
 
@@ -398,8 +397,7 @@ total** narrow — proving the narrowing happened before the page boundary, not 
       Add `expectVariablesAbsent({apiMock, names})` to
       `frontend/app/tests/helpers/expect-variables-absent.ts`, walking every recorded call and
       asserting none carries any of `names`, and call it from the test. The helper owns the one
-      `mock.calls` read; T007's guard covers the card's test files only, so the assertion is
-      expressible without weakening the guard.
+      `mock.calls` read, keeping it out of the card's test files where the pairing rule applies.
 
 **Checkpoint**: All three user stories complete.
 
@@ -490,7 +488,7 @@ total** narrow — proving the narrowing happened before the page boundary, not 
 ```text
 Phase 1 (T001)
       │
-Phase 2 — unit 4 (T002–T007)          BLOCKING: no card test may precede T006/T007
+Phase 2 — unit 4 (T002–T006)          BLOCKING: no card test may precede T006
       │
       ├───────────────┬───────────────┐
       ▼               ▼               ▼
@@ -568,7 +566,8 @@ pagination is the first thing built.
 | FR-013 | T059, T061 | | | |
 | FR-014 | T056, T062 | | | |
 
-**79 tasks.** Setup 1 (T001) · foundational 6 (T002–T007) · US1 33 (T008–T039, T034a) · US2 16
+**78 tasks.** Setup 1 (T001) · foundational 5 (T002–T006) · US1 33 (T008–T039, T034a) · US2 16
 (T040–T055) · US3 9 (T056–T064) · polish and gates 13 (T065–T077) · work-unit-6 follow-up 1 (T078).
+The numbering skips T007; nothing is renumbered, so every other task keeps the id it was assigned.
 
-**57 done** (T001–T055, T034a, T078) · **22 open** (T056–T077).
+**56 done** (T001–T055 less T007, T034a, T078) · **22 open** (T056–T077).

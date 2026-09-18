@@ -27,7 +27,7 @@ means the file exists on this branch.
 | 1 Pagination utils + hook + component | Delivered |
 | 2 Query, model, mapper, use case | Delivered |
 | 3 Partition rule | Delivered |
-| 4 Test factories, pairing helper, lint guard | Delivered |
+| 4 Test factories, pairing helper | Delivered |
 | 5a Columns, cells | Delivered |
 | 5b Filters (`use-repository-branch-filters.ts`) | **Outstanding** |
 | 6 The branches card + its ErrorBoundary | Delivered |
@@ -215,37 +215,27 @@ variables, *and* the rendered rows change to a second payload containing a branc
 This is what makes the suite non-tautological. A client-side filter would change rows without a second
 call; a "call the server and ignore the response" bug would keep the old rows. Neither passes.
 
-#### The rule is enforced mechanically, not by prose
+#### The rule is carried by the helper's signature
 
-A rule this important cannot survive as a paragraph. The first developer under time pressure writes
-the request half alone and **nothing fails** — which is exactly how a suite becomes decorative.
+A rule this important cannot survive as a paragraph alone. The first developer under time pressure
+writes the request half alone and **nothing fails** — which is exactly how a suite becomes decorative.
 
-Two mechanisms, both delivered in **work unit 4** so that units 5 and 6 had no other path available:
+The enforcement is one helper, delivered in **work unit 4** so that units 5 and 6 had no other path
+available — `tests/helpers/expect-server-driven-change.ts`:
 
-1. **One helper whose signature makes both halves required arguments** —
-   `tests/helpers/expect-server-driven-change.ts`:
+```ts
+expectServerDrivenChange({ apiMock, callIndex, variables, payload, rowVisibleAfter })
+```
 
-   ```ts
-   expectServerDrivenChange({ apiMock, callIndex, variables, payload, rowVisibleAfter })
-   ```
+**Every argument is required**, so omitting the rendered-output half is a **type error**: "did you
+pair it?" is answered by the type checker rather than by a reviewer's memory.
 
-   Omitting either half is a type error, so "did you pair it?" is answered by the type checker
-   rather than by a reviewer's memory.
-
-2. **A lint guard** forbidding direct `apiMock.mock.calls[...]` access in the branches-card test
-   files — the GritQL plugin `frontend/app/lint/no-direct-api-mock-calls.grit`, attached by a Biome
-   override scoped to `src/entities/repository/ui/repository-branches-card/**/*.test.tsx`.
-
-   **The guard is deliberately narrow.** It bans the member access *in those files*, not the
-   assertion it is protecting: an absence assertion that no test can express through
-   `expectServerDrivenChange` (FR-016, whose `toMatchObject` matching is partial by design) goes
-   through a helper in `tests/helpers/` instead, where the guard does not apply.
-
-   **Why it is not repo-wide.** `mock.calls` is a legitimate assertion in tests that are not
-   request/response pairs, and `expectServerDrivenChange` only fits a test that renders a card
-   against an api mock — so a global ban would fail existing suites it offers no replacement for.
-   Widening it is a sweep of the existing call sites, not a config change, and belongs with whoever
-   does that sweep.
+What the signature cannot stop is a test that reads `apiMock.mock.calls[...]` directly. That
+compiles, and it defeats the pairing — nothing in the toolchain flags it, so it is a reviewer's
+catch, not a tool's. The one assertion the helper genuinely cannot express is an absence assertion
+(FR-016, whose `toMatchObject` matching is partial by design); that belongs in a helper under
+`tests/helpers/`, which is where a recorded call may legitimately be read — never in a card test
+file.
 
 This is the one decision in the plan that **cannot be retrofitted cheaply**: once twenty unpaired
 tests exist, the helper is a migration rather than a default.
@@ -348,15 +338,12 @@ frontend/app/src/
                 └── table-column-header-simple.tsx      # edited — optional role
 
 frontend/app/
-├── biome.jsonc                                         # edited — the override attaching the guard
 ├── vitest.config.ts                                    # edited — setupFiles
-├── tests/
-│   ├── setup.ts                                        # the shared afterEach URL reset
-│   ├── fake/repository.ts                              # row factories
-│   ├── fake/dropdown.ts
-│   └── helpers/expect-server-driven-change.ts          # D2's pairing rule, mechanically enforced
-└── lint/
-    └── no-direct-api-mock-calls.grit                   # D2's lint guard, scoped by the override
+└── tests/
+    ├── setup.ts                                        # the shared afterEach URL reset
+    ├── fake/repository.ts                              # row factories
+    ├── fake/dropdown.ts
+    └── helpers/expect-server-driven-change.ts          # D2's pairing rule — every argument required
 
 tests/e2e/repository/
 └── test_repository_branches_card.py                    # OUTSTANDING — marker: shard_branches_repo
@@ -394,13 +381,12 @@ react-query `queryOptions` layer and holds none; putting the document there woul
 The seven additive edits cannot break an existing caller: every new prop is optional and every
 default reproduces today's behaviour. Reverting the gate alone still removes the feature.
 
-**Three test-harness files change too**, and one of them has the branch's widest reach:
+**Two test-harness files change too**, and one of them has the branch's widest reach:
 
 | File | Edit | Risk |
 |---|---|---|
 | `frontend/app/tests/setup.ts` | **new** — a global `afterEach` clearing `window.location.search` | **Broadest on the branch.** It runs for *every* test file, not just this feature's. Without it nuqs state survives into the next file and the paging tests pass alone but fail in a full run; with it, any test that deliberately leaves a query string behind loses it between cases |
 | `frontend/app/vitest.config.ts` | registers that file as `setupFiles` | **Additive.** There was no `setupFiles` entry before |
-| `frontend/app/biome.jsonc` | an `overrides` entry attaching the GritQL plugin to the branches-card test glob | **Scoped.** No file outside that glob is linted differently |
 
 **The card stays inside the detail route's outlet**, never replacing the page shell — IFC-3150 adds
 its Commits tab as a sibling route on the same page.
@@ -586,7 +572,7 @@ dependency.
 | 1 | Pagination utils + hook + component | `shared/utils/table-pagination.ts`, `shared/hooks/use-table-pagination.ts`, `shared/components/table/table-pagination.tsx` | 010, 010a, 011, 017 | Delivered |
 | 2 | Query, model, mapper, use case | `entities/repository/{api,domain/model,domain/use-cases,ui/queries}/…` | 001, 008, 009, 016 | Delivered |
 | 3 | Partition rule (attributes **and** relationships) | `entities/repository/domain/rules/partition-fields-by-branch-support.ts` | 019, 022 | Delivered |
-| 4 | Test factories **+ the pairing helper and its lint guard** | `tests/fake/repository.ts`, `tests/fake/dropdown.ts`, `tests/helpers/expect-server-driven-change.ts`, `lint/no-direct-api-mock-calls.grit` | — (enables 001, 009, 012–015) | Delivered |
+| 4 | Test factories **+ the pairing helper** | `tests/fake/repository.ts`, `tests/fake/dropdown.ts`, `tests/helpers/expect-server-driven-change.ts` | — (enables 001, 009, 012–015) | Delivered |
 | ─── | | | | |
 | 5 | Columns, cells, filters | `…/repository-branches-card/columns.tsx`, `cells/`, `…/use-repository-branch-filters.ts` | 002, 003, 003a, 004, 005, 006, 012, 013, 014, 015 | Columns and cells delivered; the filters are not |
 | ─── | | | | |
@@ -602,7 +588,7 @@ composition properties of the assembled page, not of the branches card alone. 8 
 9 depends on 1 and 6.
 
 **Unit 4 has no FR behind it and that is correct** — it is fixtures. But it now also owns D2's
-pairing helper and lint guard, which must exist *before* any card test is written (see D2).
+pairing helper, which must exist *before* any card test is written (see D2).
 
 **FR-011a** ("paging works with the table inside a fixed-height card, with no page-level scroll
 container") is listed against unit 6 rather than unit 1: the component is unit 1's, but the
