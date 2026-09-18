@@ -71,9 +71,7 @@ export type getRelationshipsFromApiParams = ContextParams & GenerateRelationship
 
 export const getRelationshipsFromApi = async ({
   peer,
-  // The pagination and search bounds used to be inlined into the document with these
-  // defaults; keep defaulting them here so omitted values still reach the API as 0 and
-  // the empty string rather than null.
+  // Omitted bounds are sent as explicit zeroes and an empty search rather than null.
   limit = 0,
   offset = 0,
   search = "",

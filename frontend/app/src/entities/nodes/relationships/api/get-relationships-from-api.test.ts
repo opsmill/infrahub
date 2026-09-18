@@ -96,8 +96,7 @@ describe("getRelationshipsFromApi", () => {
       atDate: null,
     });
 
-    // THEN — the bounds used to be inlined with these defaults; moving them into variables
-    // must not turn an omitted bound into a null.
+    // THEN
     expect(sentVariables()).toMatchObject({ limit: 0, offset: 0, search: "" });
   });
 });
