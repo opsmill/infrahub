@@ -94,7 +94,7 @@ async def get_used_numbers_in_pool(db: InfrahubDatabase, pool: CoreNumberPool, b
 async def get_reservations(db: InfrahubDatabase, pool: CoreNumberPool, branch: Branch) -> dict[str, int]:
     query1 = await NumberPoolGetReserved.init(db=db, pool_id=pool.get_id(), branch=branch)
     await query1.execute(db=db)
-    return {item.identifier: item.value for item in query1.get_reservations()}
+    return {item.identifier: item.value for item in query1.get_data()}
 
 
 class TestNumberPoolGetUsed:

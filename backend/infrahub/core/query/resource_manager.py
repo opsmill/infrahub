@@ -338,15 +338,6 @@ class NumberPoolGetReserved(Query):
             for result in self.get_results()
         ]
 
-    def get_reservations(self) -> Generator[NumberPoolIdentifierData]:
-        """Yield reservations as typed dataclass instances.
-
-        Yields:
-            NumberPoolIdentifierData for each reservation.
-
-        """
-        yield from self.get_data()
-
 
 class PoolChangeReserved(Query):
     """Change the identifier on all pools.
@@ -401,16 +392,34 @@ class PoolChangeReserved(Query):
         self.return_labels = ["pool.uuid AS pool_id", "r", "new_rel"]
 
 
-"""
-Important!: The relationship IS_RESERVED for Number is not being cleaned up when the node or the branch is deleted
-I think this is something we should address in the future.
-It works for now because the query has been updated to match the identifier in IS_RESERVED with the UUID of the related node
-But in the future, if we need to use an identifier that is not the UUID, we will need to clean up the relationships
-This will be especially important as we want to support upsert with NumberPool
-"""
+def reserved_values_query() -> str:
+    """Cypher fragment to find all Attributes reserved for a given NumberPool
+
+    Finds every active value of each reserved Attribute on every non-deleting branch.
+
+    Final values are res (IS_RESERVED edge) and value (an active Attribute value).
+    """
+    return """
+    MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(attr:Attribute { name: $attribute_name })
+    WHERE res.status = "active" AND res.from <= $at AND (res.to IS NULL OR res.to > $at)
+    MATCH (attr)-[hv:HAS_VALUE]->(av:AttributeValueIndexed)
+    WHERE hv.status = "active"
+      AND hv.from <= $at AND (hv.to IS NULL OR hv.to > $at)
+      AND NOT EXISTS {
+          MATCH (deleting:Branch { name: hv.branch })
+          WHERE deleting.status = "DELETING"
+      }
+    WITH DISTINCT res, av.value AS value
+    """ % {"number_pool": InfrahubKind.NUMBERPOOL}
 
 
 class NumberPoolGetUsed(Query):
+    """A pool is branch-agnostic, and so is the set of numbers it accounts for.
+
+    The read carries no branch filter at all: the record is global, and a value counts while any
+    branch holds it.
+    """
+
     name = "number_pool_get_used"
     type = QueryType.READ
 
@@ -428,38 +437,18 @@ class NumberPoolGetUsed(Query):
         self.params["start_range"] = self.pool.start_range.value
         self.params["end_range"] = self.pool.end_range.value
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
-        )
-
-        self.params.update(branch_params)
         self.params["attribute_name"] = self.pool.node_attribute.value
+        self.params["at"] = self.at.to_string()
 
         query = """
-        MATCH (pool:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(av:AttributeValueIndexed)
-        WHERE toInteger(av.value) >= $start_range and toInteger(av.value) <= $end_range
-        CALL (pool, res, av) {
-            MATCH (pool)-[res]->(av)<-[hv:HAS_VALUE]-(attr:Attribute)<-[ha:HAS_ATTRIBUTE]-(n:%(node)s)
-            WHERE
-                n.uuid = res.identifier AND
-                attr.name = $attribute_name AND
-                all(r in [res, hv, ha] WHERE (%(branch_filter)s))
-            ORDER BY res.branch_level DESC, hv.branch_level DESC, ha.branch_level DESC,
-                res.from DESC, hv.from DESC, ha.from DESC,
-                res.status ASC, hv.status ASC, ha.status ASC
-            RETURN (res.status = "active" AND hv.status = "active" AND ha.status = "active") AS is_active
-            LIMIT 1
-        }
-        WITH av, res, is_active
-        WHERE is_active = True
+        %(reserved_values)s
+        WHERE toInteger(value) >= $start_range and toInteger(value) <= $end_range
         """ % {
-            "branch_filter": branch_filter,
-            "number_pool": InfrahubKind.NUMBERPOOL,
-            "node": self.pool.node.value,
+            "reserved_values": reserved_values_query(),
         }
 
         self.add_to_query(query)
-        self.return_labels = ["DISTINCT(av.value) as value", "res.identifier as identifier"]
+        self.return_labels = ["DISTINCT(value) as value", "res.identifier as identifier"]
         self.order_by = ["value"]
 
     def iter_results(self) -> Generator[NumberPoolIdentifierData]:
@@ -477,6 +466,12 @@ class NumberPoolGetUsed(Query):
 
 
 class NumberPoolGetFree(Query):
+    """A pool is branch-agnostic, and so is the set of numbers it accounts for.
+
+    The read carries no branch filter at all: the record is global, and a value counts while any
+    branch holds it.
+    """
+
     name = "number_pool_get_free"
     type = QueryType.READ
 
@@ -500,31 +495,13 @@ class NumberPoolGetFree(Query):
         self.params["end_range"] = self.max_value if self.max_value is not None else self.pool.end_range.value
         self.limit = 1  # Query only works at returning a single, free entry
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
-        )
-
-        self.params.update(branch_params)
         self.params["attribute_name"] = self.pool.node_attribute.value
+        self.params["at"] = self.at.to_string()
 
         query = """
-        MATCH (pool:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(av:AttributeValueIndexed)
-        WHERE toInteger(av.value) >= $start_range and toInteger(av.value) <= $end_range
-        CALL (pool, res, av) {
-            MATCH (pool)-[res]->(av)<-[hv:HAS_VALUE]-(attr:Attribute)<-[ha:HAS_ATTRIBUTE]-(n:%(node)s)
-            WHERE
-                n.uuid = res.identifier AND
-                attr.name = $attribute_name AND
-                all(r in [res, hv, ha] WHERE (%(branch_filter)s))
-            ORDER BY res.branch_level DESC, hv.branch_level DESC, ha.branch_level DESC,
-                res.from DESC, hv.from DESC, ha.from DESC,
-                res.status ASC, hv.status ASC, ha.status ASC
-            RETURN (res.status = "active" AND hv.status = "active" AND ha.status = "active") AS is_active
-            LIMIT 1
-        }
-        WITH av, res, is_active
-        WHERE is_active = True
-        WITH DISTINCT toInteger(av.value) AS used_value
+        %(reserved_values)s
+        WHERE toInteger(value) >= $start_range and toInteger(value) <= $end_range
+        WITH DISTINCT toInteger(value) AS used_value
         ORDER BY used_value ASC
         WITH [$start_range - 1] + collect(used_value) AS nums
         UNWIND range(0, size(nums) - 1) AS idx
@@ -536,9 +513,7 @@ class NumberPoolGetFree(Query):
         WHERE is_free = true OR is_last = true
         WITH number AS free_number, is_free, is_last
         """ % {
-            "branch_filter": branch_filter,
-            "number_pool": InfrahubKind.NUMBERPOOL,
-            "node": self.pool.node.value,
+            "reserved_values": reserved_values_query(),
         }
 
         self.add_to_query(query)
