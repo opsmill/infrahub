@@ -155,7 +155,7 @@ The cache connection URL enables TLS through its scheme: `rediss://` for a singl
 | `sentinel_username` | Username to authenticate to the Sentinel daemons, independent of the data-node credentials. |
 | `sentinel_password` | Password to authenticate to the Sentinel daemons, independent of the data-node credentials. |
 
-Any other query parameter is passed through to the Redis client as a standard connection option (for example `max_connections`, `socket_timeout`, `health_check_interval`). Infrahub checks a connection that has been idle for more than 20 seconds before a command uses it, so one left pointing at a demoted master is re-established rather than failing the command; set `health_check_interval` on the URL to change that interval.
+Any other query parameter is passed through to the Redis client as a standard connection option (for example `max_connections`, `socket_timeout`, `health_check_interval`). Infrahub checks a connection that has been idle for more than 20 seconds before a command uses it, so one whose server has become unreachable is re-established instead of failing the command; set `health_check_interval` on the URL to change that interval. A master that Sentinel demoted while it stayed reachable still answers that check, so the next write is what discovers the change: Redis replies `READONLY`, the client drops the connection, and the retry lands on the promoted master.
 
 On a `rediss+sentinel://` URL the `ssl_*` parameters are shared with the Sentinel daemon connections, so a single setting covers both the data nodes and the daemons. Verify against a private certificate authority by supplying a CA bundle:
 
