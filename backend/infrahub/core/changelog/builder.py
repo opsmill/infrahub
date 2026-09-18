@@ -6,6 +6,7 @@ from infrahub.core.manager import NodeManager
 
 from .diff import DiffChangelogCollector
 from .enrichment import node_label_loader
+from .hfid_resolver import ChangelogHfidResolver
 from .models import RelationshipChangelogGetter
 
 if TYPE_CHECKING:
@@ -19,12 +20,13 @@ if TYPE_CHECKING:
 def build_diff_changelog_collector(
     diff: EnrichedDiffRoot, db: InfrahubDatabase, branch: Branch, migration_tracker: MigrationTracker | None = None
 ) -> DiffChangelogCollector:
-    """Build a changelog collector whose label loader reads from the same database and branch."""
+    """Build a changelog collector whose HFID resolver reads from the same database and branch."""
+    label_loader = node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
     return DiffChangelogCollector(
         diff=diff,
         db=db,
         branch=branch,
-        label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many),
+        hfid_resolver=ChangelogHfidResolver(label_loader=label_loader),
         migration_tracker=migration_tracker,
     )
 
