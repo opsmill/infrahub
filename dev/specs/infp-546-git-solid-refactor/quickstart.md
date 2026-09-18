@@ -72,7 +72,7 @@ Say you want to recognize `"too many redirects"` and raise `RepositoryConnection
    ErrorRule(matcher=any_substring("too many redirects"), factory=_connection_error),
    ```
 
-   If your new pattern needs a *different* exception class, add one named builder above the `ERROR_RULES` definition (alongside `_connection_error`, `_credentials_error`, etc.) and reference it from the new rule. `raise_enriched` still does not change.
+   If your new pattern needs a different exception class, or the same class with different constructor arguments such as a message, add one named builder above the `ERROR_RULES` definition (alongside `_connection_error`, `_credentials_error`, etc.) and reference it from the new rule. `raise_enriched` still does not change.
 
 3. Add a unit test in `backend/tests/unit/git/test_errors.py`:
 
