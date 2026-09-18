@@ -41,6 +41,9 @@ describe("getObjectRelationshipsFromApi", () => {
     expect(generatedQuery()).toContain("$parentIds: [ID]");
     expect(generatedQuery()).toContain("$limit: Int");
     expect(generatedQuery()).toContain("$offset: Int");
+    expect(generatedQuery()).toContain("ids: $parentIds");
+    expect(generatedQuery()).toContain("limit: $limit");
+    expect(generatedQuery()).toContain("offset: $offset");
     expect(generatedQuery()).not.toContain('ids: ["parent-id"]');
     expect(generatedQuery()).not.toContain("limit: 10");
     expect(generatedQuery()).not.toContain("offset: 20");
@@ -55,8 +58,7 @@ describe("getObjectRelationshipsFromApi", () => {
     // WHEN
     await callWith({});
 
-    // THEN — the bounds used to be inlined with these defaults; moving them into variables
-    // must not turn an omitted bound into a null.
+    // THEN
     expect(sentVariables()).toMatchObject({ limit: 0, offset: 0 });
   });
 });
