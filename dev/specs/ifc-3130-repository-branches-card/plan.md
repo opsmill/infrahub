@@ -29,7 +29,7 @@ means the file exists on this branch.
 | 3 Partition rule | Delivered |
 | 4 Test factories, pairing helper | Delivered |
 | 5a Columns, cells | Delivered |
-| 5b Filters (`use-repository-branch-filters.ts`) | Delivered |
+| 5b Filters and order (`repository-branches-toolbar.tsx`, `branch-row-fields.ts`, `to-repository-branch-arguments.ts`) | Delivered |
 | 6 The branches card + its ErrorBoundary | Delivered |
 | 7 The details split | Delivered |
 | 8 E2E | **Outstanding** |
@@ -325,7 +325,9 @@ frontend/app/src/
     │       │   ├── messages.ts                                 # the pinned state copy
     │       │   ├── columns.tsx
     │       │   ├── cells/
-    │       │   └── use-repository-branch-filters.ts            # work unit 5b
+    │       │   ├── repository-branches-toolbar.tsx             # work unit 5b — search, order, filter
+    │       │   ├── branch-row-fields.ts                        # the two filterable fields + the sort schema
+    │       │   └── to-repository-branch-arguments.ts           # filters and order → query arguments
     │       ├── repository-details-card.tsx                     # Card + CardHeader + ObjectDataDisplay
     │       └── repository-object-details.tsx                   # the two-card split
     │
@@ -403,8 +405,10 @@ each assumed more had to be built than actually does.
 | `default` row marker | `BranchDefaultBadge` (`entities/branches/ui/branch-list-item/branch-default-badge.tsx`) — already renders the literal `default` | **USE AS-IS** |
 | Branch link target | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` (`entities/branches/ui/routing/branch-urls.ts`) | **USE AS-IS** |
 | Branch link cell | Compose `Tooltip` + `LinkButton href={getBranchDetailsUrl(name)}`, following `branches-table/cells/branch-name-cell.tsx` | **EXTEND, do not reuse** — that cell hard-depends on `useAuth()`, `StickyLeftCell` and a selection checkbox |
-| Search field | `SearchInput` — `{value, onChange, placeholder, onPressReset, …}` (`shared/components/inputs/search-input.tsx`), pure and controlled, plus `useDebounce` (`shared/hooks/useDebounce.ts`) | **USE AS-IS** |
-| Branch-status filter | `BranchStatusEnum` — `{value, onChange, defaultOpen?}` (`entities/branches/ui/filters/branch-status-enum.tsx`), fully controlled | **USE WITH PROPS** — it renders **nothing in its trigger when `value === null`**, an empty unnamed button that FR-025 forbids: pass an `aria-label` and a placeholder. It also offers all seven `BranchStatus` values including `MERGED` and `DELETING`, which the contract guarantees are **never returned** — restrict to the five returnable statuses, or selecting either always yields the empty state |
+| Search field | `FilterSearchInput` (`entities/nodes/object/ui/filters/filter-search-input.tsx`) — debounced, writes the product-wide filter key through `useSearch` → `useFilters` | **USE AS-IS**, passing `aria-label` and `placeholder`. The card maps the resulting `any__value` onto the contract's `name__value` + `partial_match`, which is what "search branches" means here |
+| Filter button and forms | `FilterPicker` + `ActiveFilterTags` + `FieldFilterForm` (`entities/nodes/object/ui/filters/`, `entities/nodes/filters/ui/active-filter-tags.tsx`) | **EXTENDED, minimally** — `FilterPicker` derived its field list from a `ModelSchema` and therefore always appended the four node-metadata filters, none of which this contract can apply. It now takes the `FilterDefinition[]` directly (the object toolbar passes `getFilterDefinitions(schema)`, unchanged in effect), so a caller whose backend narrows on two fields can offer exactly two |
+| Branch-status filter | The branch row's synthetic `status` attribute schema, filtered through the same `AttributeFilterForm` every other enum attribute uses | **USE AS-IS** — `BRANCH_FIELD_SCHEMAS.status` already models it; the card narrows its `enum` to the five statuses the contract can return, because `MERGED` and `DELETING` are guaranteed never to appear and offering either yields a permanently empty result |
+| Order button and column menus | `SortPicker` (`entities/nodes/sort/ui/sort-picker.tsx`) and `TableColumnHeader` (`entities/nodes/object/ui/object-table/cells/table-column-header.tsx`) | **USE AS-IS / EXTENDED** — `TableColumnHeader` gained a `role` pass-through so a `semanticTable` grid item still carries `columnheader`; the trigger keeps its own button role inside it. `SortPicker` reads its options from a schema, so the card hands it one declaring **no** sortable field of its own, leaving exactly the two node-metadata timestamps the contract's order input can express |
 | Empty state | `NoDataFound` — `{message?, icon?}` (`shared/components/errors/no-data-found.tsx`), already `col-span-full py-12`. **Default export** | **USE AS-IS** — card-safe |
 | Permission-denied state | `UnauthorizedScreen` — `{className?, message?, icon?, defaultOpen?}` (`shared/components/errors/unauthorized-screen.tsx`). **Default export** | **EXTENDED** — page-shaped `flex-1 p-8`, so it needs a `className` override; and its explanation sits in an `Accordion` that starts closed, which inside a card reads as an empty card. `defaultOpen` is additive and forwarded to that accordion |
 | Error state | `ErrorScreen` — `{className?, message?, icon?, hideIcon?}` (`shared/components/errors/error-screen.tsx`) | **USE WITH PROPS** — same override |
@@ -427,20 +431,42 @@ cards render their attribute values through `ObjectDataDisplay`, which knows not
 primitive, so the card's table cells are its only call site here — see
 [Complexity Tracking](#complexity-tracking).
 
+### State ownership — which URL key owns what
+
+**Filters and order are product-wide; only paging is card-scoped.** This reverses an earlier reading
+of the same facts, and the reversal is deliberate:
+
+- `useFilters()` and `useSort()` read and write the single product-wide filter and order keys, and
+  every filterable table in the app is built on them. Giving this card its own keys bought isolation
+  at the price of a second, card-only filter UI that looked and behaved like nothing else in the
+  product. The card therefore uses the shared keys and the shared controls.
+- The collision those keys can cause is real but not reachable here: the only other filterable table
+  on this page's route family is the **Commits tab**, a sibling route, so the two are never mounted
+  together. A second filterable table added to *this* route would have to be reconciled before it
+  ships — noted as an edge case in [spec.md](spec.md).
+- **Paging stays card-scoped** (`useTablePagination({urlKey})`, FR-011). It is the one piece of state
+  a second table on the same route genuinely would share, and the legacy global `QSP.PAGINATION` is
+  deliberately avoided (FR-017).
+- Because the filter and order controls write keys this card does not own, the first page is
+  **derived** from the query the page was chosen for rather than reset on arrival — resetting it in
+  an effect spends one request on the stale page window before the reset lands (FR-014).
+
 ### Reuse traps — do not walk into these
 
-1. **`FilterSearchInput`** (`entities/nodes/object/ui/filters/filter-search-input.tsx`) is the obvious
-   grab: it is already used with the exact placeholder `"Search branches"` at `branches-list.tsx`.
-   It writes **global `QSP.FILTER`** via `useSearch` → `useFilters`. Use the underlying `SearchInput`.
-2. **`useFilters()`** (`entities/nodes/filters/ui/hooks/use-filters.ts`) infects `FilterSearchInput`,
-   `BranchesEmpty`, `BranchStatusFilterForm`, `BranchStatusHeader` **and `BranchesTable` itself**.
-3. **`BranchesTable` takes zero props** — filters, columns and empty state are all hardcoded, so it
+1. **`BranchesTable` takes zero props** — filters, columns and empty state are all hardcoded, so it
    cannot be reused in a card. `BranchesDataTable` *is* prop-driven but mounts `BranchesToolbar`,
    which renders a **`fixed bottom-10` viewport-anchored** toolbar and needs a Router. **Use
    `DataTable` directly.**
-4. **`BranchStatusFilterForm` cannot be reused** — it writes through `useFilters()`'s single global
-   `QSP.FILTER` key and would collide exactly as `usePagination` does. Use `BranchStatusEnum` with
-   card-scoped state.
+2. **`BranchStatusEnum` is not the status control here.** It is a bespoke combobox rendering
+   `BranchStatusBadge` chips; going through `AttributeFilterForm` instead is what makes the status
+   filter look and behave like every other field filter, at the cost of showing the enum's own wire
+   values rather than title-cased chips.
+3. **`getFilterDefinitions(schema)` always appends the four node-metadata filters.** None of them can
+   be applied by this contract, so the card passes its own `FilterDefinition[]` to `FilterPicker`
+   rather than letting it derive one from a schema.
+4. **A column header whose filter the contract cannot apply must be `isDisabled`.** `sync_status`,
+   `commit` and `ref` have no filter argument and no place in the order input, so their headers carry
+   no menu — offering one would promise narrowing that is silently dropped.
 5. **Test-provider requirements**: `DataTable` and `BranchesDataTable` call `useAuth()`;
    `useCurrentBranch` needs the jotai provider; any `nuqs` state needs `NuqsAdapter`. All are in
    `tests/components/render.tsx` — which is precisely why copying `link-tab.test.tsx`'s private
@@ -485,9 +511,11 @@ existing forum for unresolved canvas decisions — as one conversation, not row 
 **D-b rests on URL-shareability alone**, which is sufficient. It does *not* rest on serving the
 *"jump to the failing branch among 200"* journey, because page controls do not serve that journey
 either: FR-013 filters only the **branch lifecycle** `BranchStatus`, FR-016 defers
-`sync_status__value` to IFC-3127, and there is no sort control. In this slice, finding the failing
-branch among 200 means paging through them looking for a red chip. That is a limitation of the
-slice, not an argument for either paging shape, and SC-002 should not be read as claiming otherwise.
+`sync_status__value` to IFC-3127, and the order control reaches only the two node-metadata
+timestamps the contract's `MetadataOrderInput` exposes (FR-012a) — not the sync status a user would
+actually want to sort by. In this slice, finding the failing branch among 200 means paging through
+them looking for a red chip. That is a limitation of the slice, not an argument for either paging
+shape, and SC-002 should not be read as claiming otherwise.
 
 **The register is still unraised** (T076). Pagination and the two-card split are both already
 built, so a rejection now costs a rebuild rather than a redirection — which is the cost of not
@@ -574,7 +602,7 @@ dependency.
 | 3 | Partition rule (attributes **and** relationships) | `entities/repository/domain/rules/partition-fields-by-branch-support.ts` | 019, 022 | Delivered |
 | 4 | Test factories **+ the pairing helper** | `tests/fake/repository.ts`, `tests/fake/dropdown.ts`, `tests/helpers/expect-server-driven-change.ts` | — (enables 001, 009, 012–015) | Delivered |
 | ─── | | | | |
-| 5 | Columns, cells, filters | `…/repository-branches-card/columns.tsx`, `cells/`, `…/use-repository-branch-filters.ts` | 002, 003, 003a, 004, 005, 006, 012, 013, 014, 015 | Delivered |
+| 5 | Columns, cells, filters, order | `…/repository-branches-card/columns.tsx`, `cells/`, `…/repository-branches-toolbar.tsx`, `…/branch-row-fields.ts`, `…/to-repository-branch-arguments.ts` | 002, 003, 003a, 004, 005, 006, 012, 012a, 013, 014, 015 | Delivered |
 | ─── | | | | |
 | 6 | The branches card **+ its ErrorBoundary** | `…/repository-branches-card.tsx`, `…/repository-branches-card-boundary.tsx` | 007, 011a, 023, 027 | Delivered |
 | 7 | The details split | `…/repository-details-card.tsx`, `…/repository-object-details.tsx` + the kind gate in `object-details.tsx` | 018, 018a, 020, 021, 022, 024, 025 | Delivered |

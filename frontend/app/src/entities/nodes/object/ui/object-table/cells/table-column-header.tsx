@@ -46,6 +46,7 @@ export interface TableColumnHeaderProps {
   schema?: ModelSchema;
   isDisabled?: boolean;
   className?: string;
+  role?: React.AriaRole;
 }
 
 export function TableColumnHeader({
@@ -53,9 +54,12 @@ export function TableColumnHeader({
   schema,
   isDisabled,
   className,
+  role,
 }: TableColumnHeaderProps) {
   if (isDisabled) {
-    return <TableColumnHeaderSimple columnSchema={columnSchema} className={className} />;
+    return (
+      <TableColumnHeaderSimple columnSchema={columnSchema} className={className} role={role} />
+    );
   }
 
   if (schema && !isRelationshipSchema(columnSchema) && isSortableAttribute(columnSchema)) {
@@ -64,6 +68,7 @@ export function TableColumnHeader({
         schema={schema}
         attributeSchema={columnSchema}
         className={className}
+        role={role}
       />
     );
   }
@@ -74,23 +79,26 @@ export function TableColumnHeader({
         schema={schema}
         relationshipSchema={columnSchema}
         className={className}
+        role={role}
       />
     );
   }
 
-  return <ColumnHeaderMenu columnSchema={columnSchema} className={className} />;
+  return <ColumnHeaderMenu columnSchema={columnSchema} className={className} role={role} />;
 }
 
 interface SortableAttributeColumnHeaderProps {
   schema: ModelSchema;
   attributeSchema: AttributeSchema;
   className?: string;
+  role?: React.AriaRole;
 }
 
 function SortableAttributeColumnHeader({
   schema,
   attributeSchema,
   className,
+  role,
 }: SortableAttributeColumnHeaderProps) {
   const { customSort, setCustomSort } = useSort(schema);
   const activeSort = findSortForField(customSort, attributeSchema);
@@ -107,6 +115,7 @@ function SortableAttributeColumnHeader({
     <ColumnHeaderMenu
       columnSchema={attributeSchema}
       className={className}
+      role={role}
       activeSort={activeSort}
       sortItems={
         <>
@@ -134,12 +143,14 @@ interface SortableRelationshipColumnHeaderProps {
   schema: ModelSchema;
   relationshipSchema: RelationshipSchema;
   className?: string;
+  role?: React.AriaRole;
 }
 
 function SortableRelationshipColumnHeader({
   schema,
   relationshipSchema,
   className,
+  role,
 }: SortableRelationshipColumnHeaderProps) {
   const { customSort, setCustomSort } = useSort(schema);
   const { schema: peerSchema } = useSchema(relationshipSchema.peer);
@@ -149,7 +160,7 @@ function SortableRelationshipColumnHeader({
   );
 
   if (sortableAttributes.length === 0) {
-    return <ColumnHeaderMenu columnSchema={relationshipSchema} className={className} />;
+    return <ColumnHeaderMenu columnSchema={relationshipSchema} className={className} role={role} />;
   }
 
   const selectSort = (sort: Sort) => {
@@ -166,6 +177,7 @@ function SortableRelationshipColumnHeader({
     <ColumnHeaderMenu
       columnSchema={relationshipSchema}
       className={className}
+      role={role}
       activeSort={activeSort}
       sortItems={
         <SubmenuTrigger>
@@ -202,6 +214,7 @@ function SortableRelationshipColumnHeader({
 interface ColumnHeaderMenuProps {
   columnSchema: AttributeSchema | RelationshipSchema;
   className?: string;
+  role?: React.AriaRole;
   activeSort?: Sort | null;
   sortItems?: React.ReactNode;
 }
@@ -209,6 +222,7 @@ interface ColumnHeaderMenuProps {
 function ColumnHeaderMenu({
   columnSchema,
   className,
+  role,
   activeSort = null,
   sortItems,
 }: ColumnHeaderMenuProps) {
@@ -226,7 +240,18 @@ function ColumnHeaderMenu({
     setShowFilterForm(false);
   };
 
-  return (
+  // A semantic table needs a grid item carrying `columnheader`, and the trigger has to keep its own
+  // button role, so the role goes on a transparent wrapper rather than on the trigger.
+  const wrap = (content: React.ReactNode) =>
+    role ? (
+      <div role={role} className="contents">
+        {content}
+      </div>
+    ) : (
+      content
+    );
+
+  return wrap(
     <>
       <MenuTrigger>
         <Button

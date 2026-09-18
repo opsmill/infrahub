@@ -6,7 +6,7 @@ import { TableCell } from "@/shared/components/table/table-cell";
 
 import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
 import { DropdownCell } from "@/entities/nodes/object/ui/object-table/cells/dropdown-cell";
-import { TableColumnHeaderSimple } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-simple";
+import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import type { RepositoryBranchStatusRow } from "@/entities/repository/domain/model/repository-branch-status";
 import { BranchNameCell } from "@/entities/repository/ui/repository-branches-card/cells/branch-name-cell";
 import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -21,12 +21,15 @@ function findAttribute(schema: ModelSchema, name: string): AttributeSchema | und
   return schema.attributes?.find((attribute) => attribute.name === name);
 }
 
+// Sync status, commit and ref have no filter argument on the contract and no place in its order
+// input, so their headers are disabled rather than offering a menu that could not be honoured.
+
 function getSyncStatusColumn(
   columnSchema: AttributeSchema
 ): ColumnDef<RepositoryBranchStatusRow, unknown> {
   return columnHelper.display({
     id: "sync_status",
-    header: () => <TableColumnHeaderSimple columnSchema={columnSchema} role="columnheader" />,
+    header: () => <TableColumnHeader columnSchema={columnSchema} isDisabled role="columnheader" />,
     cell: ({ row }) => (
       <TableCell role="cell">
         {row.original.syncStatus && <DropdownCell dropdown={row.original.syncStatus} />}
@@ -40,7 +43,7 @@ function getCommitColumn(
 ): ColumnDef<RepositoryBranchStatusRow, unknown> {
   return columnHelper.display({
     id: "commit",
-    header: () => <TableColumnHeaderSimple columnSchema={columnSchema} role="columnheader" />,
+    header: () => <TableColumnHeader columnSchema={columnSchema} isDisabled role="columnheader" />,
     cell: ({ row }) => (
       <TableCell role="cell">
         {row.original.commit && <CommitHash hash={row.original.commit} />}
@@ -54,7 +57,7 @@ function getRefColumn(
 ): ColumnDef<RepositoryBranchStatusRow, unknown> {
   return columnHelper.display({
     id: "ref",
-    header: () => <TableColumnHeaderSimple columnSchema={columnSchema} role="columnheader" />,
+    header: () => <TableColumnHeader columnSchema={columnSchema} isDisabled role="columnheader" />,
     cell: ({ row }) => (
       <TableCell role="cell">
         <span className="truncate">{row.original.ref}</span>
@@ -74,7 +77,7 @@ export function getRepositoryBranchesColumns(
     columnHelper.display({
       id: "name",
       header: () => (
-        <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.name} role="columnheader" />
+        <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.name} role="columnheader" />
       ),
       cell: ({ row }) => (
         <BranchNameCell name={row.original.name} isDefault={row.original.isDefault} role="cell" />

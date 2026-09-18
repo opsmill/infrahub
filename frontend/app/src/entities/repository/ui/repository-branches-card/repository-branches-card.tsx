@@ -1,43 +1,42 @@
 import { Card, CardHeader } from "@infrahub/ui";
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
-import { SearchInput } from "@/shared/components/inputs/search-input";
 import { DataTable } from "@/shared/components/table/data-table";
 import { CELL_HEIGHT_PX } from "@/shared/components/table/style";
 import { TablePagination } from "@/shared/components/table/table-pagination";
 import { Badge } from "@/shared/components/ui/badge";
-import { useTablePagination } from "@/shared/hooks/use-table-pagination";
+import { type TablePaginationState, useTablePagination } from "@/shared/hooks/use-table-pagination";
 import { formatNumberDisplay } from "@/shared/utils/number";
 import { clampPage, getOffset, getTotalPages, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
-import { BranchStatusEnum } from "@/entities/branches/ui/filters/branch-status-enum";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
+import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
 import { READONLY_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import {
   RepositoryBranchStatusError,
   type RepositoryBranchStatusPage,
 } from "@/entities/repository/domain/model/repository-branch-status";
 import { useGetRepositoryBranchStatus } from "@/entities/repository/ui/queries/get-repository-branch-status.query";
+import { BRANCH_ROW_SORT_SCHEMA } from "@/entities/repository/ui/repository-branches-card/branch-row-fields";
 import {
   branchesGridTemplateColumns,
   getRepositoryBranchesColumns,
 } from "@/entities/repository/ui/repository-branches-card/columns";
 import {
-  BRANCH_STATUS_FILTER_LABEL,
-  BRANCH_STATUS_FILTER_PLACEHOLDER,
   BRANCHES_LOAD_FAILED,
   BRANCHES_PERMISSION_DENIED,
   BRANCHES_TITLE,
   READ_ONLY_BRANCHES_TITLE,
-  SEARCH_BRANCHES_LABEL,
 } from "@/entities/repository/ui/repository-branches-card/messages";
 import { RepositoryBranchesCardBoundary } from "@/entities/repository/ui/repository-branches-card/repository-branches-card-boundary";
 import { RepositoryBranchesEmpty } from "@/entities/repository/ui/repository-branches-card/repository-branches-empty";
+import { RepositoryBranchesToolbar } from "@/entities/repository/ui/repository-branches-card/repository-branches-toolbar";
 import {
-  FILTERABLE_BRANCH_STATUSES,
-  useRepositoryBranchFilters,
-} from "@/entities/repository/ui/repository-branches-card/use-repository-branch-filters";
+  hasRepositoryBranchFilters,
+  toRepositoryBranchArguments,
+} from "@/entities/repository/ui/repository-branches-card/to-repository-branch-arguments";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
@@ -140,33 +139,55 @@ interface RepositoryBranchesCardProps {
   schema: ModelSchema;
 }
 
+/**
+ * The page to ask the server for. Filters and order live on the global url keys, so they change from
+ * controls this card does not own and a page can only be honoured for the query it was chosen for.
+ * Deriving it rather than resetting it on arrival is what keeps a filter change from spending a
+ * request on the old page window first.
+ */
+function useQueryScopedPage(
+  querySignature: string,
+  { page, setPage }: Pick<TablePaginationState, "page" | "setPage">
+): Pick<TablePaginationState, "page" | "setPage"> {
+  const [signatureWhenChosen, setSignatureWhenChosen] = useState(querySignature);
+  const isChosenForThisQuery = signatureWhenChosen === querySignature;
+
+  useEffect(() => {
+    if (isChosenForThisQuery) return;
+
+    setPage(1);
+  }, [isChosenForThisQuery]);
+
+  return {
+    page: isChosenForThisQuery ? page : 1,
+    setPage: (nextPage) => {
+      setSignatureWhenChosen(querySignature);
+      setPage(nextPage);
+    },
+  };
+}
+
 export function RepositoryBranchesCard({ repositoryId, schema }: RepositoryBranchesCardProps) {
   const titleId = useId();
   const title = isOfKind(READONLY_REPOSITORY_KIND, schema)
     ? READ_ONLY_BRANCHES_TITLE
     : BRANCHES_TITLE;
-  const { page, pageSize, offset, setPage } = useTablePagination({
-    urlKey: PAGINATION_URL_KEY,
-  });
-  const { filters, hasFilters, nameInput, setNameInput, setStatus } = useRepositoryBranchFilters({
-    urlKey: PAGINATION_URL_KEY,
-    onFilterChange: () => {
-      setPage(1);
-    },
-  });
+  const pagination = useTablePagination({ urlKey: PAGINATION_URL_KEY });
+  const [filters] = useFilters();
+  const { appliedSort } = useSort(BRANCH_ROW_SORT_SCHEMA);
 
-  const filterVariables = {
-    ...(filters.name === "" ? {} : { name__value: filters.name, partial_match: true }),
-    ...(filters.status === null ? {} : { status__value: filters.status }),
-  };
+  const queryArguments = toRepositoryBranchArguments(filters, appliedSort);
+  const querySignature = JSON.stringify(queryArguments);
+  const { page, setPage } = useQueryScopedPage(querySignature, pagination);
+  const pageSize = pagination.pageSize;
 
   // The server's own total is the only thing that can say which page is the last real one, so a url
   // asking for a page past the end is answered once and then re-asked at the last page's offset.
   const requested = useGetRepositoryBranchStatus({
     id: repositoryId,
     limit: pageSize,
-    offset,
-    ...filterVariables,
+    offset: getOffset(page, pageSize),
+    ...queryArguments,
   });
   const currentPage = requested.data
     ? clampPage(page, getTotalPages(requested.data.count, pageSize))
@@ -176,7 +197,7 @@ export function RepositoryBranchesCard({ repositoryId, schema }: RepositoryBranc
     id: repositoryId,
     limit: pageSize,
     offset: getOffset(currentPage, pageSize),
-    ...filterVariables,
+    ...queryArguments,
   });
 
   return (
@@ -190,33 +211,15 @@ export function RepositoryBranchesCard({ repositoryId, schema }: RepositoryBranc
             <span className="sr-only">{data.count === 1 ? "branch" : "branches"}</span>
           </Badge>
         )}
-
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <SearchInput
-            aria-label={SEARCH_BRANCHES_LABEL}
-            className="h-9 max-w-xs rounded-xl"
-            onChange={setNameInput}
-            placeholder={SEARCH_BRANCHES_LABEL}
-            value={nameInput}
-          />
-
-          <BranchStatusEnum
-            aria-label={BRANCH_STATUS_FILTER_LABEL}
-            onChange={setStatus}
-            options={FILTERABLE_BRANCH_STATUSES}
-            placeholder={BRANCH_STATUS_FILTER_PLACEHOLDER}
-            value={filters.status}
-          />
-        </div>
       </CardHeader>
 
-      <RepositoryBranchesCardBoundary
-        resetKeys={[repositoryId, currentPage, filters.name, filters.status ?? ""]}
-      >
+      <RepositoryBranchesToolbar />
+
+      <RepositoryBranchesCardBoundary resetKeys={[repositoryId, currentPage, querySignature]}>
         <RepositoryBranchesBody
           data={data}
           error={error}
-          hasFilters={hasFilters}
+          hasFilters={hasRepositoryBranchFilters(filters)}
           isPending={isPending}
           onPageChange={setPage}
           page={currentPage}
