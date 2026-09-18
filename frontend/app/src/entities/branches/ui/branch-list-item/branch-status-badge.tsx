@@ -53,6 +53,20 @@ export function BranchStatusBadge({
         </Badge>
       );
     }
+    case BranchStatus.MERGING: {
+      return (
+        <Badge className={classNames(pillStyle, className)} variant="blue" {...props}>
+          Merging
+        </Badge>
+      );
+    }
+    case BranchStatus.MERGE_FAILED: {
+      return (
+        <Badge className={classNames(pillStyle, className)} variant="red" {...props}>
+          Merge failed
+        </Badge>
+      );
+    }
     default: {
       return null;
     }
