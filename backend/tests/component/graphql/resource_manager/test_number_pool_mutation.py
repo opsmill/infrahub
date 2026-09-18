@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import pytest
 
 from infrahub.core import registry
@@ -11,6 +13,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.manager import registry as graphql_registry
+from infrahub.graphql.mutations.resource_manager import BOUNDS_NOT_CLEARABLE, BOUNDS_REQUIRED
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.graphql import graphql
@@ -210,6 +213,146 @@ async def test_test_number_pool_creation_errors(
     assert "The selected attribute is not of the kind Number" in str(wrong_attribute.errors[0])
     assert invalid_range.errors
     assert "start_range can't be larger than end_range" in str(invalid_range.errors[0])
+
+
+CREATE_NUMBER_POOL_WITH_BOUNDS = """
+mutation CreateNumberPool($name: String!) {
+  CoreNumberPoolCreate(
+    data: {
+      name: {value: $name},
+      node: {value: "TestingTicket"},
+      node_attribute: {value: "ticket_id"},
+      %s
+    }
+  ) {
+    ok
+    object { id start_range { value } end_range { value } }
+  }
+}
+"""
+
+
+UNKNOWN_RANGE_ID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+
+
+@dataclass
+class MissingBoundsCase:
+    name: str
+    bounds: str
+
+
+MISSING_BOUNDS_CASES = [
+    MissingBoundsCase(name="neither_bound", bounds=""),
+    MissingBoundsCase(name="start_only", bounds="start_range: {value: 1}"),
+    MissingBoundsCase(name="end_only", bounds="end_range: {value: 9}"),
+    MissingBoundsCase(name="start_null", bounds="start_range: {value: null}, end_range: {value: 9}"),
+    MissingBoundsCase(name="end_null", bounds="start_range: {value: 1}, end_range: {value: null}"),
+    MissingBoundsCase(name="both_null", bounds="start_range: {value: null}, end_range: {value: null}"),
+    MissingBoundsCase(name="empty_inputs", bounds="start_range: {}, end_range: {}"),
+    MissingBoundsCase(name="ranges_without_bounds", bounds='ranges: [{id: "%s"}]' % UNKNOWN_RANGE_ID),
+]
+
+
+@pytest.mark.parametrize("case", MISSING_BOUNDS_CASES, ids=lambda case: case.name)
+async def test_number_pool_create_requires_both_bounds(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, case: MissingBoundsCase
+) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_NUMBER_POOL_WITH_BOUNDS % case.bounds,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"name": "bounds-pool"},
+    )
+
+    assert [error.message for error in result.errors or []] == [BOUNDS_REQUIRED]
+    assert await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch) == 0
+
+
+async def test_number_pool_create_accepts_equal_bounds(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_NUMBER_POOL_WITH_BOUNDS % "start_range: {value: 5}, end_range: {value: 5}",
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"name": "equal-bounds-pool"},
+    )
+
+    assert not result.errors
+    assert result.data
+    created = result.data["CoreNumberPoolCreate"]["object"]
+    assert (created["start_range"]["value"], created["end_range"]["value"]) == (5, 5)
+
+
+QUERY_POOLS_WITH_RANGES = """
+query PoolsWithRanges {
+  CoreNumberPool {
+    count
+    edges {
+      node {
+        id
+        ranges { edges { node { id start { value } end { value } } } }
+      }
+    }
+  }
+}
+"""
+
+
+UPDATE_NUMBER_POOL_BOUND = """
+mutation UpdateNumberPool($id: String!) {
+  CoreNumberPoolUpdate(data: {id: $id, %s}) {
+    ok
+  }
+}
+"""
+
+
+@pytest.mark.parametrize(
+    "bound", ["start_range: {value: null}", "end_range: {value: null}"], ids=["start_null", "end_null"]
+)
+async def test_number_pool_update_rejects_clearing_a_bound(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, bound: str
+) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    created = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_NUMBER_POOL_WITH_BOUNDS % "start_range: {value: 10}, end_range: {value: 20}",
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"name": "clearing-pool"},
+    )
+    assert not created.errors
+    assert created.data
+    pool_id = created.data["CoreNumberPoolCreate"]["object"]["id"]
+
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=UPDATE_NUMBER_POOL_BOUND % bound,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": pool_id},
+    )
+
+    assert [error.message for error in result.errors or []] == [BOUNDS_NOT_CLEARABLE]
+
+    pool = await NodeManager.get_one(id=pool_id, db=db, branch=default_branch)
+    assert pool is not None
+    assert (pool.start_range.value, pool.end_range.value) == (10, 20)
 
 
 async def test_test_number_pool_update(
