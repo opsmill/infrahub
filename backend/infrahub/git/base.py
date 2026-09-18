@@ -32,8 +32,14 @@ from infrahub.exceptions import (
     RepositoryFileNotFoundError,
     RepositoryInvalidBranchError,
     RepositoryInvalidFileSystemError,
+    RepositoryPermissionError,
 )
-from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
+from infrahub.git.constants import (
+    BRANCHES_DIRECTORY_NAME,
+    COMMITS_DIRECTORY_NAME,
+    TEMPORARY_DIRECTORY_NAME,
+    WRITE_ACCESS_PROBE_REF,
+)
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
 from infrahub.git.utils import branch_name_in_import_sync_branches
 from infrahub.git.worktree import Worktree
@@ -1096,7 +1102,14 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         return path
 
     @classmethod
-    def check_connectivity(cls, name: str, url: str) -> None:
+    def check_connectivity(cls, name: str, url: str, require_write: bool = False) -> None:
+        """Validate that the remote is reachable and the credentials suffice.
+
+        ``ls-remote`` only exercises the read-gated ``upload-pack`` service, so a read-write
+        repository whose credentials can read but not push still passes. When ``require_write``
+        is set the write-access probe is run in addition, so a missing push permission is caught
+        at connect time rather than at the first branch creation or merge.
+        """
         # Use a neutral working directory so git doesn't discover a .git pointer
         # from the process CWD (e.g. worktree builds where /source/.git is a
         # pointer file referencing a host path absent from a container).
@@ -1105,6 +1118,34 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             cmd.ls_remote("--tags", url)
         except GitCommandError as exc:
             cls._raise_enriched_error_static(name=name, location=url, error=exc)
+
+        if require_write:
+            cls._check_write_access(name=name, url=url)
+
+    @classmethod
+    def _check_write_access(cls, name: str, url: str) -> None:
+        """Confirm the credentials can push, not only read.
+
+        Authorization to ``receive-pack`` is checked before refs are advertised, so a dry-run
+        delete of a throwaway ref reaches the write-gated service while ``--dry-run`` sends no
+        ref update and no pack. The remote is never mutated, even when the probe ref happens to
+        exist on it. ``git push`` needs a repository to run from - unlike ``ls-remote`` - so the
+        probe runs from a throwaway ``git init``-ed directory.
+
+        Raises:
+            RepositoryPermissionError: When the credentials authenticate but are not allowed to push.
+            RepositoryCredentialsError: When the push service rejects the credentials.
+            RepositoryConnectionError: When the remote is unreachable.
+            RepositoryError: For any other git failure.
+
+        """
+        with tempfile.TemporaryDirectory() as probe_dir:
+            cmd = git.cmd.Git(working_dir=probe_dir)
+            cmd.init()
+            try:
+                cmd.push("--dry-run", "--porcelain", "--delete", url, f"refs/heads/{WRITE_ACCESS_PROBE_REF}")
+            except GitCommandError as exc:
+                cls._raise_enriched_error_static(name=name, location=url, error=exc, is_write_operation=True)
 
     async def _raise_enriched_error(self, error: GitCommandError, branch_name: str | None = None) -> NoReturn:
         try:
@@ -1115,6 +1156,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             status_by_error: dict[type[RepositoryError], RepositoryOperationalStatus] = {
                 RepositoryConnectionError: RepositoryOperationalStatus.ERROR_CONNECTION,
                 RepositoryCredentialsError: RepositoryOperationalStatus.ERROR_CRED,
+                RepositoryPermissionError: RepositoryOperationalStatus.ERROR_CRED,
             }
             await self._update_operational_status(
                 status=status_by_error.get(type(exc), RepositoryOperationalStatus.ERROR)
@@ -1123,7 +1165,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     @staticmethod
     def _raise_enriched_error_static(
-        error: GitCommandError, name: str, location: str, branch_name: str | None = None
+        error: GitCommandError,
+        name: str,
+        location: str,
+        branch_name: str | None = None,
+        is_write_operation: bool = False,
     ) -> NoReturn:
         """Translate a raw ``git`` CLI failure into a typed repository error.
 
@@ -1141,13 +1187,19 @@ class InfrahubRepositoryBase(BaseModel, ABC):
           - not-a-repo / missing: "Repository not found", "does not appear to be a git".
           - TLS: "SSL certificate problem", "server certificate verification failed".
           - credentials: "Authentication failed for", "could not read Username".
-        These are stable user-facing git/curl strings, but keyed on text — revisit them if
+          - permission (only when ``is_write_operation``): "Write access to repository not granted",
+            "Permission to ... denied", "The requested URL returned error: 403", "not allowed to
+            push"/"not allowed to upload code" (GitLab), "permission denied for writing" (Gitea) -
+            authenticated but not authorized to push. Read operations can return 403 for reasons unrelated to write access
+            (rate limiting, SSO/IP enforcement), so they must not be classified as a push denial.
+        These are stable user-facing git/curl strings, but keyed on text - revisit them if
         git or libcurl change their wording.
 
         Raises:
             RepositoryConnectionError: When the remote is unreachable or a gateway/proxy in
                 front of it returns a 5xx.
             RepositoryCredentialsError: When authentication fails or credentials cannot be resolved.
+            RepositoryPermissionError: When the credentials authenticate but lack write access.
             RepositoryInvalidBranchError: When the requested branch or pathspec does not exist.
             RepositoryError: For any other git failure, including the generic fallthrough.
 
@@ -1197,6 +1249,16 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 identifier=name,
                 message=f"Unable to pull the branch {branch_name} for repository {name}, there are conflicts that must be resolved.",
             ) from error
+
+        if is_write_operation and (
+            "Write access to repository not granted" in error.stderr
+            or "The requested URL returned error: 403" in error.stderr
+            or ("Permission to" in error.stderr and "denied" in error.stderr)
+            or "not allowed to push" in error.stderr
+            or "not allowed to upload code" in error.stderr
+            or "permission denied for writing" in error.stderr.lower()
+        ):
+            raise RepositoryPermissionError(identifier=name) from error
 
         raise RepositoryError(identifier=name, message=error.stderr) from error
 

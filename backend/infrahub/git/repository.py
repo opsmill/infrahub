@@ -19,8 +19,6 @@ from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.exceptions import (
     CommitNotFoundError,
-    RepositoryConnectionError,
-    RepositoryCredentialsError,
     RepositoryError,
 )
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
@@ -203,10 +201,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     commit = self.get_commit_value(branch_name=branch_name, remote=False)
                     self.create_commit_worktree(commit=commit)
                     await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
-                except (RepositoryConnectionError, RepositoryCredentialsError):
-                    # The remote itself is unreachable or unauthorized; iterating the remaining
-                    # branches is pointless, so let it abort the whole sync.
-                    raise
                 except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
                     # Isolate per-branch git failures so the other branches are still collected;
                     # graph errors are left to propagate.
@@ -226,8 +220,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
                 try:
                     commit_after = await self.pull(branch_name=branch_name)
-                except (RepositoryConnectionError, RepositoryCredentialsError):
-                    raise
                 except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
                     # Isolate per-branch git failures so the other branches are still collected;
                     # graph errors are left to propagate.
@@ -299,7 +291,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         """Push a given branch to the remote Origin repository.
 
         Raises:
-            RepositoryError: When the remote rejects the push.
+            RepositoryError: When the remote rejects the push at the ref level.
+            RepositoryConnectionError: When the push fails to reach the remote.
+            RepositoryCredentialsError: When authentication fails at push time.
+            RepositoryPermissionError: When the credentials authenticate but lack write access.
 
         """
         if not self.has_origin:
@@ -316,7 +311,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         # Push the worktree HEAD, not the bare branch name: the local branch checked out in this
         # worktree may not be named after the remote branch (it differs when the repository's
         # default branch is not the Infrahub default), so a bare refspec would have no local source.
-        push_infos = repo.remotes.origin.push(refspec=f"HEAD:refs/heads/{remote_branch}")
+        try:
+            push_infos = repo.remotes.origin.push(refspec=f"HEAD:refs/heads/{remote_branch}")
+        except GitCommandError as exc:
+            # A transport-level failure raises here with no porcelain status line to classify from flags.
+            self._raise_enriched_error_static(
+                error=exc, name=self.name, location=self.location, branch_name=branch_name, is_write_operation=True
+            )
         for push_info in push_infos:
             if push_info.flags & push_info.ERROR:
                 raise RepositoryError(
