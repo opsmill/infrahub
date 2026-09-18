@@ -6,9 +6,10 @@ from urllib.parse import quote
 
 import pytest
 import redis
+from pydantic import SecretStr
 from redis.connection import Connection, SSLConnection
 
-from infrahub.config import CacheSettings
+from infrahub.config import CacheDriver, CacheSettings
 from infrahub.workflows.initialization import build_cache_connection_string
 
 # CA settings are validated at load, so the cases need a bundle that exists.
@@ -201,6 +202,17 @@ class ConnectionStringCase:
 def test_build_cache_connection_string(case: ConnectionStringCase) -> None:
     cache = CacheSettings(**case.cache_kwargs)
     assert build_cache_connection_string(cache) == case.expected_url
+
+
+def test_cache_url_is_ignored_for_a_non_redis_driver() -> None:
+    """CacheSettings documents the URL as Redis-only, so NATS keeps the scalar result-storage URL."""
+    cache = CacheSettings(
+        driver=CacheDriver.NATS,
+        address="nats.internal",
+        url=SecretStr("redis+sentinel://s1:26379,s2:26379/mymaster"),
+    )
+
+    assert build_cache_connection_string(cache) == "redis://nats.internal:4222/0"
 
 
 def test_username_without_password_raises() -> None:
