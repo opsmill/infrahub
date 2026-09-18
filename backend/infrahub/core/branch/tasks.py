@@ -14,7 +14,8 @@ from infrahub.core.branch.creator import BranchCreator
 from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.delete_coordinator import BranchDeleteOrchestrator
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
+from infrahub.core.changelog.builder import build_diff_changelog_collector
+from infrahub.core.changelog.diff import MigrationTracker
 from infrahub.core.constants import PROFILES_RELATIONSHIP_NAME, SYSTEM_USER_ID, DiffAction, MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
@@ -89,10 +90,12 @@ from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from logging import Logger, LoggerAdapter
 
+    from infrahub.core.changelog.models import NodeChangelog
     from infrahub.core.merge.recompute_coalescing import PythonTargetResolver
-    from infrahub.core.models import SchemaUpdateConstraintInfo
+    from infrahub.core.models import SchemaUpdateConstraintInfo, SchemaUpdateMigrationInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
@@ -177,6 +180,30 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
                 meta=EventMeta(branch=obj, context=event_context),
             )
         )
+
+
+async def _collect_rebase_changelogs(
+    db: InfrahubDatabase,
+    branch: Branch,
+    branch_diff: EnrichedDiffRoot | None,
+    default_branch_diff: EnrichedDiffRoot | None,
+    migrations: list[SchemaUpdateMigrationInfo],
+) -> tuple[Sequence[tuple[DiffAction, NodeChangelog]], Sequence[tuple[DiffAction, NodeChangelog]]]:
+    """Return the changelogs of the branch's own changes and of the default-branch changes a rebase absorbs."""
+    branch_changelogs: Sequence[tuple[DiffAction, NodeChangelog]] = []
+    if branch_diff is not None:
+        branch_changelogs = await build_diff_changelog_collector(
+            diff=branch_diff, db=db, branch=branch
+        ).collect_changelogs()
+    default_branch_changelogs: Sequence[tuple[DiffAction, NodeChangelog]] = []
+    if default_branch_diff is not None:
+        default_branch_changelogs = await build_diff_changelog_collector(
+            diff=default_branch_diff,
+            db=db,
+            branch=branch,
+            migration_tracker=MigrationTracker(migrations=migrations),
+        ).collect_changelogs()
+    return branch_changelogs, default_branch_changelogs
 
 
 @flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
@@ -390,21 +417,16 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     )
     events: list[InfrahubEvent] = [rebase_event]
     changes: list[MergeChange] = []
-    branch_changelogs = (
-        DiffChangelogCollector(diff=branch_diff, branch=user_branch, db=db).collect_changelogs()
-        if branch_diff is not None
-        else []
-    )
-    default_branch_changelogs = (
-        DiffChangelogCollector(
-            diff=default_branch_diff,
+    # The database session used for the rebase has already closed here, so open a fresh one for the
+    # changelog's own database reads.
+    async with database.start_session() as changelog_db:
+        branch_changelogs, default_branch_changelogs = await _collect_rebase_changelogs(
+            db=changelog_db,
             branch=user_branch,
-            db=db,
-            migration_tracker=MigrationTracker(migrations=migrations),
-        ).collect_changelogs()
-        if default_branch_diff is not None
-        else []
-    )
+            branch_diff=branch_diff,
+            default_branch_diff=default_branch_diff,
+            migrations=migrations,
+        )
     for action, node_changelog in [*branch_changelogs, *default_branch_changelogs]:
         mutation_action = MutationAction.from_diff_action(diff_action=action)
         meta = EventMeta.from_parent(parent=rebase_event, branch=user_branch)
