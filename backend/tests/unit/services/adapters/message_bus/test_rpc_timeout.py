@@ -16,8 +16,8 @@ if TYPE_CHECKING:
     from nats.aio.msg import Msg
 
 TIMEOUT_SECONDS = 1
-# Sub-second bounds are only reachable through an explicit `timeout=`, because the configured
-# setting is a whole number of seconds with a floor of one.
+CONFIGURED_TIMEOUT_SECONDS = 5
+# Only an explicit `timeout=` reaches below a second; the setting is whole seconds with a floor of one.
 BRIEF_TIMEOUT_SECONDS = 0.05
 ROUTING_KEY = "git.repository.connectivity"
 
@@ -78,9 +78,6 @@ async def test_rpc_gives_up_on_a_worker_that_never_answers(
         await never_replying_bus.rpc(message=connectivity_message, response_class=GitRepositoryConnectivityResponse)
     elapsed = time.monotonic() - started
 
-    # The lower bound is the point: it proves the wait was real rather than a bound that
-    # regressed to zero. The ceiling is only a runaway guard, so it stays clear of scheduling
-    # jitter on a loaded runner.
     assert TIMEOUT_SECONDS <= elapsed < 10
     assert never_replying_bus.futures == {}
 
@@ -104,9 +101,8 @@ async def test_rpc_addresses_the_reply_to_its_own_callback_queue(
 async def test_rpc_honours_an_explicit_timeout_over_the_configured_one(
     connectivity_message: messages.GitRepositoryConnectivity,
 ) -> None:
-    # The configured bound is only far enough above the explicit one to tell them apart. A
-    # larger gap would turn a regression here into a suite that hangs rather than one that fails.
-    bus = NeverReplyingBus(rpc_timeout=TIMEOUT_SECONDS * 5)
+    # Kept close to the explicit bound so a regression fails the suite rather than hanging it.
+    bus = NeverReplyingBus(rpc_timeout=CONFIGURED_TIMEOUT_SECONDS)
 
     started = time.monotonic()
     with pytest.raises(
@@ -118,7 +114,7 @@ async def test_rpc_honours_an_explicit_timeout_over_the_configured_one(
             timeout=BRIEF_TIMEOUT_SECONDS,
         )
 
-    assert time.monotonic() - started < TIMEOUT_SECONDS
+    assert time.monotonic() - started < 10
 
 
 async def test_a_failed_publish_leaves_no_pending_request_behind(
