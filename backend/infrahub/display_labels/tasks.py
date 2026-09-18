@@ -4,7 +4,8 @@ from prefect import flow
 from prefect.logging import get_run_logger
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
-from infrahub.core.recompute.bulk_write import DISPLAY_LABEL_FIELD, AttributeValueWrite
+from infrahub.core.constants.schema import DISPLAY_LABEL_ATTRIBUTE_NAME
+from infrahub.core.recompute.bulk_write import AttributeValueWrite
 from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
 from infrahub.core.registry import registry
 from infrahub.display_labels.graphql_queries import DisplayLabelNodeIDQuery
@@ -76,7 +77,7 @@ async def process_display_label(
     for node in update_candidates:
         value = await jinja_template.render(variables=node.variables)
         if value != node.display_label_value:
-            writes.append(AttributeValueWrite(node_id=node.node_id, field=DISPLAY_LABEL_FIELD, value=value))
+            writes.append(AttributeValueWrite(node_id=node.node_id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value=value))
 
     dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch, coalesced=object_ids is not None)
     await dispatcher.dispatch(

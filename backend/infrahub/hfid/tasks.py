@@ -3,7 +3,8 @@ from __future__ import annotations
 from prefect import flow
 from prefect.logging import get_run_logger
 
-from infrahub.core.recompute.bulk_write import HFID_FIELD, AttributeValueWrite
+from infrahub.core.constants.schema import HFID_ATTRIBUTE_NAME
+from infrahub.core.recompute.bulk_write import AttributeValueWrite
 from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
 from infrahub.core.registry import registry
 from infrahub.events import BranchDeletedEvent
@@ -68,7 +69,7 @@ async def process_hfid(
     for node in update_candidates:
         rendered_hfid = [node.variables[component] for component in hfid_definition.hfid if component in node.variables]
         if rendered_hfid != node.hfid_value:
-            writes.append(AttributeValueWrite(node_id=node.node_id, field=HFID_FIELD, value=rendered_hfid))
+            writes.append(AttributeValueWrite(node_id=node.node_id, field=HFID_ATTRIBUTE_NAME, value=rendered_hfid))
 
     dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch, coalesced=object_ids is not None)
     await dispatcher.dispatch(

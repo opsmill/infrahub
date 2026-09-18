@@ -8,6 +8,7 @@ from infrahub_sdk.utils import str_to_bool
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.constants.schema import HFID_ATTRIBUTE_NAME
 from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.exceptions import SchemaNotFoundError
 
@@ -115,7 +116,7 @@ class DiffChangelogCollector:
     @staticmethod
     def _hfid_from_diff(node_changelog: NodeChangelog) -> list[str] | None:
         """Recover a node's HFID from the human-friendly-id attribute the diff carries for it."""
-        attribute = node_changelog.attributes.get("human_friendly_id")
+        attribute = node_changelog.attributes.get(HFID_ATTRIBUTE_NAME)
         if attribute is None:
             return None
         raw = attribute.value if attribute.value is not None else attribute.value_previous
