@@ -10,10 +10,10 @@
 **Tests are required for this feature** — the constitution's Test Discipline principle applies, and
 every FR carries a stated verification method.
 
-**Status**: T001–T055 (there is no T007), T034a and T078 are on the branch (work units 1–7, less the
-US3 filters).
-Outstanding: T056–T064 (US3 filters), T065–T066 (e2e), T067–T070 (documentation and changelog) and
-T071–T077 (gates). A ticked box means the file exists at the path named.
+**Status**: T001–T064 (there is no T007), T034a and T078 are on the branch — work units 1–7 complete,
+US3 filters included.
+Outstanding: T065–T066 (e2e), T067–T070 (documentation and changelog) and T071–T077 (gates).
+A ticked box means the file exists at the path named.
 
 ---
 
@@ -361,35 +361,39 @@ branch and assert only the second card's values change.
 **Independent test**: Type a fragment matching a known subset; assert both the rows **and the stated
 total** narrow — proving the narrowing happened before the page boundary, not after.
 
-- [ ] T056 [US3] Implement `useRepositoryBranchFilters` in
+- [x] T056 [US3] Implement `useRepositoryBranchFilters` in
       `frontend/app/src/entities/repository/ui/repository-branches-card/use-repository-branch-filters.ts`,
       holding name-fragment and branch-status state **card-scoped**. **Put the page reset inside a
       single `setFilters` wrapper** — with independent URL keys the FR-014 reset is a manual call, and
       splitting it across two filters' call sites is how one of them gets forgotten.
-- [ ] T057 [US3] Wire the search field using **`SearchInput`** (pure, controlled) plus `useDebounce`.
+- [x] T057 [US3] Wire the search field using **`SearchInput`** (pure, controlled) plus `useDebounce`.
       **Do not use `FilterSearchInput`** — it is the obvious grab, already used with the exact
       placeholder "Search branches", but it writes the **global** `QSP.FILTER` via `useSearch` →
       `useFilters`. Covers FR-012.
-- [ ] T058 [US3] Wire the status filter using **`BranchStatusEnum`** with card-scoped state. **Do not
+- [x] T058 [US3] Wire the status filter using **`BranchStatusEnum`** with card-scoped state. **Do not
       use `BranchStatusFilterForm`** — it writes through `useFilters()`'s single global key. Pass an
       `aria-label` and a placeholder: it renders **nothing in its trigger when `value === null`**, an
       empty unnamed button that FR-025 forbids. Restrict its options to the five **returnable**
       statuses — the contract guarantees `MERGED` and `DELETING` are never returned, so offering them
       yields a permanently empty result.
-- [ ] T059 [US3] Send the schema's own wire values (FR-013): the branch status enum is **`BranchStatus`**
-      on the wire even though the backend symbol is `InfrahubBranchStatus`, and `sync_status` values
-      are **hyphenated** (`in-sync`, `error-import`) even though their labels are title-cased and the
-      backend enum members are underscored. A re-cased or underscored form must not be sent.
-- [ ] T060 [US3] Component-test FR-012 with `expectServerDrivenChange`: the request carries the
+- [x] T059 [US3] Send the schema's own wire values (FR-013): the branch status enum is **`BranchStatus`**
+      on the wire even though the backend symbol is `InfrahubBranchStatus`. A re-cased form of a member
+      (`Rebase needed`, `need_rebase`) must not be sent in place of `NEED_REBASE`.
+      **Correction, 2026-09-18**: this task also required the **hyphenated `sync_status` wire values**
+      (`in-sync`, `error-import`). That half was stale — it described the deferred sync-status filter,
+      which FR-016 keeps out of this feature and the backend rejects until IFC-3127 lands. There is no
+      `sync_status` filter to send a wire value for, so only the `BranchStatus` half applies.
+- [x] T060 [US3] Component-test FR-012 with `expectServerDrivenChange`: the request carries the
       fragment **and** `partial_match: true`, **and** the rendered rows change to a second payload's
       row set, **and** the displayed total follows the server's count.
-- [ ] T061 [US3] Component-test FR-013 twice: the request carries the status and the total follows the
-      server's count; and a chip whose visible label is title-cased sends the **hyphenated** wire
-      value.
-- [ ] T062 [US3] Component-test FR-014: the request after a filter change carries a zero offset.
-- [ ] T063 [US3] Component-test FR-015: a filter change issues a **new request** rather than reducing
+- [x] T061 [US3] Component-test FR-013 twice: the request carries the status and the total follows the
+      server's count; and a chip whose visible label is title-cased (`Rebase needed`) sends the
+      enum member's own wire value (`NEED_REBASE`). **Corrected with T059** — the second half named
+      the hyphenated `sync_status` wire value, which this feature never sends.
+- [x] T062 [US3] Component-test FR-014: the request after a filter change carries a zero offset.
+- [x] T063 [US3] Component-test FR-015: a filter change issues a **new request** rather than reducing
       the rendered rows in place. This is the test that catches a client-side filter.
-- [ ] T064 [US3] Component-test FR-016: `sync_status__value`, `internal_status__value` and
+- [x] T064 [US3] Component-test FR-016: `sync_status__value`, `internal_status__value` and
       `own_values_only` are absent from **every** request the feature makes. The gql.tada document
       cannot express them (T015), so this pins a structural fact rather than guarding a runtime one.
       **`expectServerDrivenChange` cannot carry this assertion** — it matches variables with
@@ -416,6 +420,29 @@ total** narrow — proving the narrowing happened before the page boundary, not 
       strings pinned in
       [contracts/repository-branch-status-ui.md](contracts/repository-branch-status-ui.md) §4, and
       extend T038's state test to assert the read-only string on the read-only kind.
+
+### Work unit 5b follow-up — the sync-status filter · **BLOCKED on IFC-3127**
+
+- [ ] T079 Add the sync-status filter to the branches card, once **IFC-3127** lifts the backend's
+      rejection of `sync_status__value`. Today the resolver raises a `ValidationError` for it while
+      the stub serves placeholder attribute values, so the gql.tada document deliberately does not
+      declare it and FR-016 asserts it is never sent. **This is the filter the feature most wants** —
+      "show me the branches that failed to import" is the job the card exists for, and the two
+      shipped filters (branch name, branch lifecycle status) cannot express it.
+
+      **No contract change is needed.** `sync_status__value` is already an argument on
+      `InfrahubRepositoryBranchStatus`; it is only rejected. When IFC-3127 lands, the work is:
+      declare the variable in
+      `frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts`, add it to
+      `useRepositoryBranchFilters` under its own card-scoped URL key, mount a control in the card
+      header beside the two existing ones, and send the schema's own **hyphenated** wire values
+      (`in-sync`, `error-import`) — not the title-cased labels and not the backend's underscored
+      enum members.
+
+      **Retire FR-016 and T064 in the same change.** FR-016 requires `sync_status__value` to be
+      absent from every request, and T064's `expectVariablesAbsent` asserts it; both exist only for
+      the preview window and would otherwise fail the moment this filter works. `internal_status__value`
+      and `own_values_only` stay deferred — nothing in this card needs them.
 
 ### Work unit 8 — end to end
 
@@ -566,8 +593,8 @@ pagination is the first thing built.
 | FR-013 | T059, T061 | | | |
 | FR-014 | T056, T062 | | | |
 
-**78 tasks.** Setup 1 (T001) · foundational 5 (T002–T006) · US1 33 (T008–T039, T034a) · US2 16
-(T040–T055) · US3 9 (T056–T064) · polish and gates 13 (T065–T077) · work-unit-6 follow-up 1 (T078).
+**79 tasks.** Setup 1 (T001) · foundational 5 (T002–T006) · US1 33 (T008–T039, T034a) · US2 16
+(T040–T055) · US3 9 (T056–T064) · polish and gates 13 (T065–T077) · follow-ups 2 (T078, T079).
 The numbering skips T007; nothing is renumbered, so every other task keeps the id it was assigned.
 
-**56 done** (T001–T055 less T007, T034a, T078) · **22 open** (T056–T077).
+**65 done** (T001–T064 less T007, plus T034a and T078) · **14 open** (T065–T077, and T079 blocked on IFC-3127).

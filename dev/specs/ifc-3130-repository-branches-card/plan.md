@@ -29,7 +29,7 @@ means the file exists on this branch.
 | 3 Partition rule | Delivered |
 | 4 Test factories, pairing helper | Delivered |
 | 5a Columns, cells | Delivered |
-| 5b Filters (`use-repository-branch-filters.ts`) | **Outstanding** |
+| 5b Filters (`use-repository-branch-filters.ts`) | Delivered |
 | 6 The branches card + its ErrorBoundary | Delivered |
 | 7 The details split | Delivered |
 | 8 E2E | **Outstanding** |
@@ -289,9 +289,9 @@ dev/specs/ifc-3130-repository-branches-card/
 
 ### Source Code (repository root)
 
-Everything unmarked is on the branch. `OUTSTANDING` marks what is not yet written — work unit 5b's
-filters, and work units 8 and 9. Files marked `edited` already existed; see the shared-file table
-above for what each edit is and what it risks.
+Everything unmarked is on the branch. `OUTSTANDING` marks what is not yet written — work units 8
+and 9. Files marked `edited` already existed; see the shared-file table above for what each edit is
+and what it risks.
 
 ```text
 frontend/app/src/
@@ -325,7 +325,7 @@ frontend/app/src/
     │       │   ├── messages.ts                                 # the pinned state copy
     │       │   ├── columns.tsx
     │       │   ├── cells/
-    │       │   └── use-repository-branch-filters.ts            # OUTSTANDING — work unit 5b
+    │       │   └── use-repository-branch-filters.ts            # work unit 5b
     │       ├── repository-details-card.tsx                     # Card + CardHeader + ObjectDataDisplay
     │       └── repository-object-details.tsx                   # the two-card split
     │
@@ -574,7 +574,7 @@ dependency.
 | 3 | Partition rule (attributes **and** relationships) | `entities/repository/domain/rules/partition-fields-by-branch-support.ts` | 019, 022 | Delivered |
 | 4 | Test factories **+ the pairing helper** | `tests/fake/repository.ts`, `tests/fake/dropdown.ts`, `tests/helpers/expect-server-driven-change.ts` | — (enables 001, 009, 012–015) | Delivered |
 | ─── | | | | |
-| 5 | Columns, cells, filters | `…/repository-branches-card/columns.tsx`, `cells/`, `…/use-repository-branch-filters.ts` | 002, 003, 003a, 004, 005, 006, 012, 013, 014, 015 | Columns and cells delivered; the filters are not |
+| 5 | Columns, cells, filters | `…/repository-branches-card/columns.tsx`, `cells/`, `…/use-repository-branch-filters.ts` | 002, 003, 003a, 004, 005, 006, 012, 013, 014, 015 | Delivered |
 | ─── | | | | |
 | 6 | The branches card **+ its ErrorBoundary** | `…/repository-branches-card.tsx`, `…/repository-branches-card-boundary.tsx` | 007, 011a, 023, 027 | Delivered |
 | 7 | The details split | `…/repository-details-card.tsx`, `…/repository-object-details.tsx` + the kind gate in `object-details.tsx` | 018, 018a, 020, 021, 022, 024, 025 | Delivered |

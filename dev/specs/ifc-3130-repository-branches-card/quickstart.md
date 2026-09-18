@@ -101,9 +101,6 @@ values changing with the branch; an empty titled box where a partition has no at
 
 ### US3 — Isolate a branch in a large repository
 
-> The card's filters are work unit 5b, which [plan.md](plan.md)'s delivery status still records as
-> outstanding. Until they land there is no search field to type into and this scenario cannot be run.
-
 1. Type a fragment of a known branch name into the card's search.
 2. **Expect** only matching branches listed, **and the stated total to narrow with them** — that is
    the tell that the filter was applied server-side, before the page boundary.
