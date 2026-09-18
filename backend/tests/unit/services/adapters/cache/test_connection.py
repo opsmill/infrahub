@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock
+from urllib.parse import urlsplit
 
 import pytest
 from pydantic import SecretStr
@@ -136,6 +137,17 @@ def test_tls_url_ca_bundle_reaches_the_sentinel_daemons() -> None:
     manager = _build("rediss+sentinel://s1:26379/svc", tls_ca_file=CA_BUNDLE).connection_pool.sentinel_manager
 
     assert manager.sentinel_kwargs["ssl_ca_certs"] == CA_BUNDLE
+
+
+def test_tls_is_detected_on_a_sentinel_url_urlsplit_cannot_parse() -> None:
+    """The scheme is read by hand because urlsplit rejects this member arrangement."""
+    url = "rediss+sentinel://sentinel-a:26379,[2001:db8::1]:26379/mymaster"
+    with pytest.raises(ValueError, match="Invalid IPv6 URL"):
+        urlsplit(url)
+
+    kwargs = _build(url, tls_ca_file=CA_BUNDLE).connection_pool.connection_kwargs
+
+    assert kwargs["ssl_ca_certs"] == CA_BUNDLE
 
 
 def test_url_ssl_ca_certs_option_overrides_the_configured_bundle() -> None:
