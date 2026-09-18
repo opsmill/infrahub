@@ -32,8 +32,8 @@ REDIS_PY_SOCKET_TIMEOUTS = 5
 REDIS_PY_KEEPALIVE_OPTIONS = {socket.TCP_KEEPIDLE: 30, socket.TCP_KEEPINTVL: 5, socket.TCP_KEEPCNT: 3}
 
 
-def _build(url: str) -> Any:
-    return build_redis_connection(CacheSettings(url=SecretStr(url)))
+def _build(url: str, **cache_kwargs: Any) -> Any:
+    return build_redis_connection(CacheSettings(url=SecretStr(url), **cache_kwargs))
 
 
 CA_BUNDLE = str(Path(__file__).parents[3] / "test_data" / "ca-bundle.pem")
@@ -126,36 +126,30 @@ def test_url_connection_inherits_the_redis_py_socket_bounds() -> None:
 
 def test_tls_url_verifies_against_the_configured_ca_bundle() -> None:
     """A TLS URL trusts cache.tls_ca_file, which the global INFRAHUB_TLS_CA_BUNDLE fills in."""
-    settings = CacheSettings(url=SecretStr("rediss://cache:6379/0"), tls_ca_file=CA_BUNDLE)
-
-    kwargs = build_redis_connection(settings).connection_pool.connection_kwargs
+    kwargs = _build("rediss://cache:6379/0", tls_ca_file=CA_BUNDLE).connection_pool.connection_kwargs
 
     assert kwargs["ssl_ca_certs"] == CA_BUNDLE
 
 
 def test_tls_url_ca_bundle_reaches_the_sentinel_daemons() -> None:
     """One CA covers the data nodes and the daemons, which authenticate the same topology."""
-    settings = CacheSettings(url=SecretStr("rediss+sentinel://s1:26379/svc"), tls_ca_file=CA_BUNDLE)
-
-    manager = build_redis_connection(settings).connection_pool.sentinel_manager
+    manager = _build("rediss+sentinel://s1:26379/svc", tls_ca_file=CA_BUNDLE).connection_pool.sentinel_manager
 
     assert manager.sentinel_kwargs["ssl_ca_certs"] == CA_BUNDLE
 
 
 def test_url_ssl_ca_certs_option_overrides_the_configured_bundle() -> None:
     """The setting is a default; a CA spelled out on the URL wins."""
-    settings = CacheSettings(url=SecretStr(f"rediss://cache:6379/0?ssl_ca_certs={CA_BUNDLE}"), tls_ca_file=CA_BUNDLE)
+    url = f"rediss://cache:6379/0?ssl_ca_certs={CA_BUNDLE}"
 
-    kwargs = build_redis_connection(settings).connection_pool.connection_kwargs
+    kwargs = _build(url, tls_ca_file=CA_BUNDLE).connection_pool.connection_kwargs
 
     assert kwargs["ssl_ca_certs"] == CA_BUNDLE
 
 
 def test_plaintext_url_ignores_the_configured_ca_bundle() -> None:
     """Without TLS there is nothing to verify, and redis-py rejects an ssl_* option on the pool."""
-    settings = CacheSettings(url=SecretStr("redis://cache:6379/0"), tls_ca_file=CA_BUNDLE)
-
-    kwargs = build_redis_connection(settings).connection_pool.connection_kwargs
+    kwargs = _build("redis://cache:6379/0", tls_ca_file=CA_BUNDLE).connection_pool.connection_kwargs
 
     assert "ssl_ca_certs" not in kwargs
 
