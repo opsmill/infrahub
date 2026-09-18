@@ -176,10 +176,15 @@ describe("getRepositoryBranchesColumns", () => {
 
   it("renders no row-action control", async () => {
     // WHEN
-    const component = await renderTable(repositorySchema, [generateRepositoryBranchStatus()]);
+    const component = await renderTable(repositorySchema, [
+      generateRepositoryBranchStatus({ name: { value: "main" } }),
+    ]);
 
     // THEN
-    expect(component.getByRole("row").getByRole("button").elements()).toHaveLength(0);
+    await expect.element(component.getByRole("row", { name: /main/ })).toBeVisible();
+    expect(
+      component.getByRole("row", { name: /main/ }).getByRole("button").elements()
+    ).toHaveLength(0);
   });
 
   it("reserves no trailing row-action track", () => {

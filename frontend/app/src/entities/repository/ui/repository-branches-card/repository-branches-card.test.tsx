@@ -91,6 +91,25 @@ function asRenderedColour(colour: string): string {
   return probe.style.backgroundColor;
 }
 
+type RenderedCard = Awaited<ReturnType<typeof renderCard>>;
+
+async function openFilterField(component: RenderedCard, field: string) {
+  await component.getByRole("button", { name: "Filter", exact: true }).click();
+  await component.getByRole("option", { name: field, exact: true }).click();
+}
+
+async function applyBranchStatusFilter(component: RenderedCard, status: string) {
+  await openFilterField(component, "Status");
+  await component.getByRole("option", { name: status, exact: true }).click();
+  await component.getByRole("button", { name: "Apply", exact: true }).click();
+}
+
+async function applySort(component: RenderedCard, field: string, direction: string) {
+  await component.getByRole("button", { name: "Sort", exact: true }).click();
+  await component.getByRole("menuitem", { name: field, exact: true }).click();
+  await component.getByRole("menuitem", { name: direction, exact: true }).click();
+}
+
 describe("RepositoryBranchesCard", () => {
   beforeEach(() => {
     apiMock.mockReset();
@@ -585,8 +604,7 @@ describe("RepositoryBranchesCard", () => {
       payload: toApiResult(unfiltered),
       rowVisibleAfter: "feature-auth",
     });
-    await component.getByRole("combobox", { name: "Filter by branch status" }).click();
-    await component.getByRole("option", { name: "Open" }).click();
+    await applyBranchStatusFilter(component, "OPEN");
 
     // THEN
     await expectServerDrivenChange({
@@ -599,7 +617,7 @@ describe("RepositoryBranchesCard", () => {
     await expect.element(component.getByText("3 branches", { exact: true })).toBeVisible();
   });
 
-  it("sends the schema's wire value for a status whose visible label is title-cased", async () => {
+  it("sends the schema's own wire value for a multi-word status", async () => {
     // GIVEN
     const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
     const matched = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
@@ -614,10 +632,9 @@ describe("RepositoryBranchesCard", () => {
       payload: toApiResult(unfiltered),
       rowVisibleAfter: "feature-auth",
     });
-    await component.getByRole("combobox", { name: "Filter by branch status" }).click();
-    await component.getByRole("option", { name: "Rebase needed", exact: true }).click();
+    await applyBranchStatusFilter(component, "NEED_REBASE");
 
-    // THEN the screaming-snake wire value goes out, not the chip's own wording
+    // THEN the screaming-snake wire value goes out, not a re-cased form of it
     await expectServerDrivenChange({
       apiMock,
       callIndex: 1,
@@ -635,15 +652,17 @@ describe("RepositoryBranchesCard", () => {
 
     // WHEN
     const component = await renderCard();
-    await component.getByRole("combobox", { name: "Filter by branch status" }).click();
+    await openFilterField(component, "Status");
 
     // THEN
-    await expect.element(component.getByRole("option", { name: "Open" })).toBeVisible();
-    expect(component.getByRole("option", { name: "Merged", exact: true }).elements()).toHaveLength(
+    await expect
+      .element(component.getByRole("option", { name: "OPEN", exact: true }))
+      .toBeVisible();
+    expect(component.getByRole("option", { name: "MERGED", exact: true }).elements()).toHaveLength(
       0
     );
     expect(
-      component.getByRole("option", { name: "Deleting", exact: true }).elements()
+      component.getByRole("option", { name: "DELETING", exact: true }).elements()
     ).toHaveLength(0);
   });
 
@@ -735,8 +754,7 @@ describe("RepositoryBranchesCard", () => {
       rowVisibleAfter: "feature-auth",
     });
     await component.getByRole("searchbox", { name: "Search branches" }).fill("release");
-    await component.getByRole("combobox", { name: "Filter by branch status" }).click();
-    await component.getByRole("option", { name: "Open" }).click();
+    await applyBranchStatusFilter(component, "OPEN");
 
     // THEN
     await expectServerDrivenChange({
@@ -752,6 +770,106 @@ describe("RepositoryBranchesCard", () => {
       rowVisibleAfter: "release-2-0",
     });
     expectVariablesAbsent({ apiMock, names: DEFERRED_FILTER_ARGUMENTS });
+  });
+
+  it("offers only the two timestamps the contract is able to order by", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(
+      toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
+    );
+
+    // WHEN
+    const component = await renderCard(readOnlyRepositorySchema);
+    await component.getByRole("button", { name: "Sort", exact: true }).click();
+
+    // THEN nothing the card renders as a column is offered, because the order input cannot express it
+    await expect
+      .element(component.getByRole("menuitem", { name: "Created at", exact: true }))
+      .toBeVisible();
+    await expect
+      .element(component.getByRole("menuitem", { name: "Updated at", exact: true }))
+      .toBeVisible();
+    for (const column of ["Branch", "Status", "Sync status", "Commit", "Ref"]) {
+      expect(
+        component.getByRole("menuitem", { name: column, exact: true }).elements()
+      ).toHaveLength(0);
+    }
+  });
+
+  it("replaces the rows with the set the server returned for the chosen order", async () => {
+    // GIVEN
+    const unordered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const reordered = generateRepositoryBranchStatusPayloadAfter({ count: 45 });
+    apiMock.mockResolvedValueOnce(toApiResult(unordered)).mockResolvedValue(toApiResult(reordered));
+
+    // WHEN
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unordered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await applySort(component, "Updated at", "Descending");
+
+    // THEN
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: {
+        ...FIRST_PAGE_VARIABLES,
+        order: { node_metadata: { updated_at: "DESC" } },
+      },
+      payload: toApiResult(reordered),
+      rowVisibleAfter: "release-2-0",
+    });
+    expect(component.getByRole("row", { name: /feature-auth/ }).elements()).toHaveLength(0);
+  });
+
+  it("returns to the first page when the sort changes", async () => {
+    // GIVEN a card already showing the second page
+    const firstPage = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const secondPage = generateRepositoryBranchStatusPayloadAfter({ count: 45 });
+    const reordered = generateRepositoryBranchStatusPage({
+      rows: [generateRepositoryBranchStatus({ name: { value: "release-candidate" } })],
+      count: 45,
+    });
+    apiMock
+      .mockResolvedValueOnce(toApiResult(firstPage))
+      .mockResolvedValueOnce(toApiResult(secondPage))
+      .mockResolvedValue(toApiResult(reordered));
+
+    // WHEN
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(firstPage),
+      rowVisibleAfter: "feature-auth",
+    });
+    await component.getByRole("button", { name: "Page 2" }).click();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, offset: PAGE_SIZE },
+      payload: toApiResult(secondPage),
+      rowVisibleAfter: "release-2-0",
+    });
+    await applySort(component, "Created at", "Ascending");
+
+    // THEN
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 2,
+      variables: {
+        ...FIRST_PAGE_VARIABLES,
+        order: { node_metadata: { created_at: "ASC" } },
+      },
+      payload: toApiResult(reordered),
+      rowVisibleAfter: "release-candidate",
+    });
   });
 
   it("says no branch matches the filters once a filter empties the set", async () => {

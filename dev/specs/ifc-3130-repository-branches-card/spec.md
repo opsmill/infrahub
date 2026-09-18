@@ -78,7 +78,7 @@ A user reading a repository's details can see at a glance which values are the s
 
 ### User Story 3 - Isolate the branch you care about in a large repository (Priority: P3)
 
-A user with a repository of many branches narrows the list to the branch or branches they are looking for, by name fragment or by branch status, and the total count narrows with it.
+A user with a repository of many branches narrows the list to the branch or branches they are looking for, by name fragment or by branch status, and the total count narrows with it. They order the list by when its branches were created or last touched, using the same toolbar and the same column menus every other table in the product offers.
 
 **Why this priority**: It is what makes Story 1 usable at real scale rather than merely correct. It is third because paging alone already reaches every branch.
 
@@ -90,6 +90,7 @@ A user with a repository of many branches narrows the list to the branch or bran
 2. **Given** an active name filter that matches more rows than one page holds, **When** the user moves to the next page, **Then** the filter still applies and paging walks the filtered set.
 3. **Given** an active filter, **When** the user changes the filter, **Then** the view returns to the first page rather than leaving the user on a page that no longer exists.
 4. **Given** a filter matching no branch, **When** the results return, **Then** the card states that nothing matched, rather than appearing to be loading or broken.
+5. **Given** a card showing a page other than the first, **When** the user changes the order, **Then** the view returns to the first page of the newly-ordered set.
 
 ---
 
@@ -101,6 +102,8 @@ A user with a repository of many branches narrows the list to the branch or bran
 - **The query fails for any other reason** (network, server error). The card must report a failure state distinct from both "empty" and "loading", and must not blank the rest of the page.
 - **While the data is loading.** The card must occupy a full page of space and indicate loading, rather than appearing empty and then jumping (FR-023, which states what happens when fewer rows than that arrive).
 - **A second paginated table on the same route.** Paging state is carried in the URL; two tables sharing one URL key would move together. The paging state for this card must be independent of any other paginated table.
+- **Filter and order state shared with another table.** Filters and order are carried on the product-wide URL keys every filterable table uses, so two such tables on one route would filter and order together. The sibling Commits tab is a separate route, so the two are never on screen at once; a second filterable table added to *this* route would have to be reconciled before it ships.
+- **A filter or order the contract cannot express.** The card offers only the fields the query can actually narrow and order by. Nothing may be offered in the toolbar or a column menu that would then be silently dropped on the way to the server.
 - **A branch name long enough to overflow its column**, and a commit value long enough to overflow its own. Neither may push the table wider than the card or paint over another column.
 - **The repository-wide card is empty of branch-scoped attributes, or vice versa.** A card with no rows to show must not render as an empty titled box.
 - **Values shown are placeholders.** During the preview window the backend fabricates the four attribute values from the branch name. The card must be indistinguishable in behaviour from the finished one; nothing in this feature may depend on the values being real.
@@ -108,8 +111,8 @@ A user with a repository of many branches narrows the list to the branch or bran
 
 ## Requirements *(mandatory)*
 
-> **33 requirement statements**: FR-001…FR-028 plus FR-003a, FR-010a, FR-011a, FR-011b and FR-018a. Refer to
-> them individually — a range like "FR-002–006" silently omits FR-003a.
+> **34 requirement statements**: FR-001…FR-028 plus FR-003a, FR-010a, FR-011a, FR-011b, FR-012a and FR-018a.
+> Refer to them individually — a range like "FR-002–006" silently omits FR-003a.
 
 ### Functional Requirements — the branches card
 
@@ -123,7 +126,7 @@ A user with a repository of many branches narrows the list to the branch or bran
 - **FR-007**: The card MUST be titled exactly `Branches` on a read-write repository and `Infrahub branches` on a read-only repository, following the design canvas verbatim, and MUST carry the total count beside the title. _Verify_: component tests per kind asserting the complete title string including the count.
 - **FR-008**: The rows MUST render whether or not any git-derived column ever exists. No row value may depend on data outside the graph read. _Verify_: **by review against two structural facts** — the card imports exactly one api module, and the query's selection set omits `node_metadata` entirely. Both are readable from source in seconds and neither can drift silently. This requirement is deliberately **not** pinned by a call-count assertion: "the api mock is called exactly once per render" measures render-loop stability rather than data provenance, and breaks the first time a legitimate refetch is added.
 
-### Functional Requirements — paging and filtering
+### Functional Requirements — paging, filtering and ordering
 
 - **FR-009**: Paging MUST be server-side: the request MUST ask for one page, and the stated total MUST be the server's count of all matching rows, not the number of rows received. _Verify_: component test asserting the request carries a page window and that the displayed total exceeds the row count when the set is larger than a page.
 - **FR-010**: The user MUST be able to move between pages using previous/next controls and direct page selection. A page holds a fixed 10 rows; the card MUST NOT offer a page-size control. Rows MUST be replaced page by page, not accumulated. _Verify_: component test asserting a page change issues a new request with the corresponding window, that the previous page's rows are no longer rendered after it, and that no page-size control is rendered.
@@ -131,9 +134,10 @@ A user with a repository of many branches narrows the list to the branch or bran
 - **FR-011**: Paging position MUST be reflected in the URL so it survives a reload and can be shared, and MUST be independent of the paging state of any other table on the same route. _Verify_: unit test on the paging state asserting two independently-keyed instances do not affect one another; component test asserting the URL carries the position and that a reload restores the same page.
 - **FR-011a**: The paging controls MUST be a new component built for a table inside a card, and MUST NOT require the table to be the page-level scroll area. _Verify_: component test rendering the table inside a fixed-height card and asserting paging works with no page-level scroll container present.
 - **FR-011b**: Moving between pages MUST NOT change the height of the card. A last page holding fewer rows than a full one otherwise shortens the card, moving everything below it and taking the window's scrollbar with it — the same class of layout jump FR-023 forbids while loading, and equally disruptive. The table MUST therefore reserve the height of a full page — the page size plus the header row — whenever more than one page exists, and MUST reserve nothing when every row fits on one page, so a short table carries no dead space. Because the page size is fixed (FR-010), the reservation always matches exactly what a full page occupies. _Verify_: component test asserting the reserved height on a **short last page** of a set larger than one page, and its absence for a set that fits one.
-- **FR-012**: Branch-name filtering MUST be a partial match applied server-side, and the total MUST narrow with it. _Verify_: component test asserting the request carries the fragment and the partial-match flag, and that the displayed total follows the server's count.
-- **FR-013**: Branch-status filtering MUST be applied server-side, and the total MUST narrow with it. Every filter MUST send the schema's own wire value — the branch status enum is `BranchStatus` on the wire even though the backend symbol is `InfrahubBranchStatus`, and `sync_status` values are hyphenated (`in-sync`, `error-import`) even though their labels are title-cased and the backend enum members are underscored. A re-cased or underscored form MUST NOT be sent. _Verify_: component test asserting the request carries the status and the displayed total follows the server's count; a second asserting the hyphenated wire value is sent for a chip whose visible label is title-cased.
-- **FR-014**: Changing any filter MUST reset the view to the first page. _Verify_: component test asserting the request after a filter change carries a zero offset.
+- **FR-012**: Branch-name filtering MUST be a partial match applied server-side, and the total MUST narrow with it. The filtering controls MUST be the object table's own — a search field inline with an order button and a filter button, active-filter tags beneath them, and a per-column menu in each header the contract can narrow on — reading and writing the product-wide filter and order URL keys rather than keys of this card's own. Only the paging position stays card-scoped (FR-011). _Verify_: component test asserting the request carries the fragment and the partial-match flag, and that the displayed total follows the server's count.
+- **FR-012a**: The user MUST be able to order the rows server-side, and the card MUST offer only the fields the contract's order input can express. That input reaches branch node metadata alone, so the offered fields are the created and updated timestamps and nothing else; branch name, sync status, commit and ref MUST NOT be offered as order fields while the contract cannot order by them. Ordering by a timestamp does not conflict with FR-006: the order is applied server-side and the selection set still never asks for `node_metadata`, so no timestamp is ever displayed. _Verify_: component test asserting the request carries the order argument for the chosen field and direction and that the rendered rows follow the server's answer; a second asserting no column the card renders is offered as an order field.
+- **FR-013**: Branch-status filtering MUST be applied server-side, and the total MUST narrow with it. Every filter MUST send the schema's own wire value — the branch status enum is `BranchStatus` on the wire even though the backend symbol is `InfrahubBranchStatus`. A re-cased or otherwise reformatted form MUST NOT be sent. The card MUST offer only the five statuses the contract can return: `MERGED` and `DELETING` are guaranteed never to appear in the row set, so offering either would yield a permanently empty result. _Verify_: component test asserting the request carries the status and the displayed total follows the server's count; a second asserting a multi-word member goes out as `NEED_REBASE`; a third asserting the two unreachable statuses are not offered.
+- **FR-014**: Changing any filter or the order MUST reset the view to the first page, and MUST NOT spend a request on the old page window on the way there. _Verify_: component tests asserting the first request issued after a filter change and after an order change each carry a zero offset.
 - **FR-015**: No filtering, ordering or counting may be performed on rows already received. _Verify_: component test asserting that a filter change issues a new request rather than reducing the rendered rows in place.
 - **FR-016**: This feature MUST NOT send the attribute-value filters (`sync_status__value`, `internal_status__value`) or the own-values-only flag, which the backend rejects during the preview window. These three are named in IFC-3130's own scope; they are **deferred, not dropped** — they become buildable once IFC-3127 lifts the rejection, as follow-on work outside this spec. _Verify_: component test asserting these arguments are absent from every request the feature makes.
 - **FR-017**: Every page that already offers paging MUST continue to behave exactly as it does today — same default page size, same size options, same position in the URL. _Verify_: the three existing paginated views render and page unchanged; the simplest guarantee, and the one this feature adopts, is that the paging they use is not altered at all.
@@ -170,7 +174,7 @@ A user with a repository of many branches narrows the list to the branch or bran
 ### Measurable Outcomes
 
 - **SC-001**: An operator can determine the sync status and imported commit of every branch of a repository without switching branch and without opening a worker log.
-- **SC-002**: An operator can isolate the branches of a large repository that match a name fragment or a branch status in one interaction, with the stated total reflecting the match.
+- **SC-002**: An operator can isolate the branches of a large repository that match a name fragment or a branch status in one interaction, with the stated total reflecting the match, and can reorder what remains by when those branches were created or last touched.
 - **SC-003**: Opening a repository page issues one request for the branch rows regardless of how many branches the repository has, and the number of rows transferred is bounded by the page size rather than by the branch count.
 - **SC-004**: A reader of the repository page can state, for any value shown, whether it is the same on every branch or belongs only to the branch they are viewing, without consulting the schema.
 - **SC-005**: A branch-scoped attribute added to the repository schema after this feature ships appears in the correct card with no change to this feature's code.
