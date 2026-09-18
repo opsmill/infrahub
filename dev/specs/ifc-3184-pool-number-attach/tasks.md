@@ -187,6 +187,22 @@ where nothing else has moved the numbers.
       `graphql/mutations/profile.py::InfrahubProfileMutation._validate_no_resource_pools_in_data`
       claiming graphene includes unset fields as `None` keys. It does not, and a reviewer will read
       the new resolver against it.
+- [ ] T024a [US1] Component test: allocating from a pool **named** rather than identified leaves a
+      reservation record. `handle_pool` accepts either — `number_pool_id` is a uuid or a pool name,
+      resolved through `registry.manager.query(filters={"name__value": ...})` — and the name path had
+      no coverage asserting a record at all.
+
+      It was broken and nothing caught it: `from_pool` kept the name the caller gave, so
+      `get_create_data` emitted `pool_prop` carrying a name while `NodeCreateAllQuery` matches the
+      pool vertex on `uuid`. Every by-name allocation wrote no record, and therefore no pool
+      accounting and, once the pool left `HAS_SOURCE`, no source either. The only test that noticed
+      was `component/graphql/resource_manager/test_number_pool_lookup_by_name.py`, and only
+      incidentally, because it happened to assert `source_id`.
+
+      Assert the record directly with `pool_reservation_edges`, as
+      `migrations/schema/test_node_attribute_add.py` and the `m076` heal tests do, rather than
+      inferring it from the source the record produces. Cover both entry points in the same test so
+      the uuid path cannot stand in for the name path.
 
 ### 1f. Migration `m079`
 
