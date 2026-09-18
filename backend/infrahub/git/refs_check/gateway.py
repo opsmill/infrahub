@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 
 from git.cmd import Git
-from git.exc import BadName, GitCommandError, GitError
+from git.exc import BadName, GitError
 
 from infrahub.exceptions import RepositoryError
 
@@ -37,7 +37,9 @@ def git_check_ref_format(ref: str) -> bool:
         # --allow-onelevel: tracked refs are short names such as "main" or "release", which
         # check-ref-format rejects without it.
         Git().check_ref_format("--allow-onelevel", ref)
-    except GitCommandError:
+    except GitError:
+        # GitCommandError means git rejected the name. Its siblings, such as a missing git binary,
+        # mean the name could not be judged; both leave the ref unusable for this check.
         return False
     return True
 

@@ -313,6 +313,32 @@ async def test_a_second_trigger_while_one_is_in_flight_reports_the_claim_and_con
     assert cache.storage[refs_check_running_key(REPOSITORY_ID)] == "run-already-running"
 
 
+async def test_a_check_that_outlived_its_claim_leaves_the_later_run_s_claim_alone() -> None:
+    """Convergence is unbounded, so a slow check can finish after its own claim has expired.
+
+    Deleting whatever is under the key at that point would strip the protection from the run that
+    has since taken it, which is the overlap the claim exists to prevent.
+    """
+    cache = ClaimAwareCache()
+    timeline = LockTimeline()
+    gateway = RecordingRefsGateway(
+        timeline=timeline, local_heads={"stable": LOCAL_HEAD}, remote_heads={"stable": LOCAL_HEAD}
+    )
+    checker = build_checker(cache=cache, bus=BusRecorder(), timeline=timeline, gateway=gateway)
+    model = build_model()
+
+    # Stand in for the claim expiring mid-run and a later run taking it.
+    async def take_over(_model: GitReadOnlyRepositoryCheckRefs, ref: str) -> str | None:
+        await cache.set(key=refs_check_running_key(REPOSITORY_ID), value="run-2")
+        return LOCAL_HEAD
+
+    gateway.read_remote_head = take_over  # type: ignore[method-assign]
+
+    await checker.check(model, run_id="run-1")
+
+    assert cache.storage[refs_check_running_key(REPOSITORY_ID)] == "run-2"
+
+
 async def test_a_crashed_run_releases_its_in_flight_key() -> None:
     cache = ClaimAwareCache()
     timeline = LockTimeline()
@@ -494,18 +520,25 @@ async def test_an_unresponsive_remote_is_abandoned_without_taking_the_repository
 async def test_the_cycle_record_counts_each_repository_by_what_happened_to_it() -> None:
     summary = RefsCheckCycleSummary(
         results=(
-            RefsCheckResult(repository_id="a", repository_name="quiet", outcome=RefsCheckOutcome.COMPLETED),
+            RefsCheckResult(
+                repository_id="a",
+                repository_name="quiet",
+                outcome=RefsCheckOutcome.COMPLETED,
+                contacted_remote=True,
+            ),
             RefsCheckResult(
                 repository_id="b",
                 repository_name="moved",
                 outcome=RefsCheckOutcome.COMPLETED,
                 movements=(RefMovement(ref="stable", previous_head=LOCAL_HEAD, new_head=REMOTE_HEAD),),
+                contacted_remote=True,
             ),
             RefsCheckResult(
                 repository_id="c",
                 repository_name="broken",
                 outcome=RefsCheckOutcome.FAILED,
                 failure_reason="unreachable",
+                contacted_remote=True,
             ),
             RefsCheckResult(
                 repository_id="d",
@@ -601,3 +634,7 @@ async def test_an_invalid_ref_is_refused_before_the_remote_is_contacted() -> Non
 
     assert result.failure_reason == "Refusing to check the invalid ref 'stable'."
     assert gateway.remote_reads == []
+    assert gateway.local_reads == []
+    # It never asked the remote anything, so the cycle must not count it among the ones it checked.
+    assert result.contacted_remote is False
+    assert RefsCheckCycleSummary(results=(result,), not_due=0, duration_seconds=0.0).checked_count == 0

@@ -899,7 +899,9 @@ async def check_read_only_repositories_refs() -> RefsCheckCycleSummary:
     async with db.start_session() as dbs:
         repositories = await get_repositories_commit_per_branch(db=dbs, kind=InfrahubKind.READONLYREPOSITORY)
 
-    branch_ids = {name: branch.get_id() for name, branch in registry.branch.items()}
+    # The branch UUID, not get_id()'s database element id: it travels in the convergence broadcast
+    # and a worker missing the worktree creates it under whatever it is given.
+    branch_ids = {name: str(branch.get_uuid()) for name, branch in registry.branch.items()}
 
     started = time.monotonic()
     models = []
@@ -936,6 +938,9 @@ async def check_read_only_repositories_refs() -> RefsCheckCycleSummary:
                 repository_name=model.repository_name,
                 outcome=RefsCheckOutcome.FAILED,
                 failure_reason=reason,
+                # The check was dispatched and did not report back, so whether it reached the
+                # remote is unknown; counting it as checked is the honest reading.
+                contacted_remote=True,
             )
         )
 

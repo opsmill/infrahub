@@ -84,4 +84,11 @@ def build_refs_checker(
 
 
 def build_refs_scheduler(*, cache: InfrahubCache, interval_mins: int) -> RefsCheckScheduler:
-    return RefsCheckScheduler(cache=cache, interval_seconds=interval_mins * 60, retry_seconds=REFS_CHECK_RETRY_SECONDS)
+    interval_seconds = interval_mins * 60
+    return RefsCheckScheduler(
+        cache=cache,
+        interval_seconds=interval_seconds,
+        # Never longer than the interval itself, or a short interval would make a failed
+        # repository wait longer than a healthy one rather than less.
+        retry_seconds=min(REFS_CHECK_RETRY_SECONDS, interval_seconds),
+    )

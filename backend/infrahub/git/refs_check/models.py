@@ -46,6 +46,14 @@ class RefsCheckResult:
     movements: tuple[RefMovement, ...] = ()
     failure_reason: str | None = None
 
+    contacted_remote: bool = False
+    """Whether this check got as far as listing the remote.
+
+    A check refused before that point - because another run held the repository, or because a
+    tracked ref is not a name git would accept - never asked the remote anything, and counting it
+    as one the cycle checked would overstate what the cycle did.
+    """
+
     def __post_init__(self) -> None:
         if self.movements and self.outcome is not RefsCheckOutcome.COMPLETED:
             raise ValueError(f"A {self.outcome} check cannot carry movements")
@@ -53,6 +61,8 @@ class RefsCheckResult:
             raise ValueError(f"A {self.outcome} check must carry a failure reason if and only if it failed")
         if (self.claimed_by is not None) and self.outcome is not RefsCheckOutcome.SKIPPED_CLAIMED:
             raise ValueError(f"A {self.outcome} check cannot name the run that holds the claim")
+        if self.contacted_remote and self.outcome is RefsCheckOutcome.SKIPPED_CLAIMED:
+            raise ValueError("A check that never got the claim cannot have contacted the remote")
 
     @property
     def moved(self) -> bool:
@@ -61,10 +71,6 @@ class RefsCheckResult:
     @property
     def failed(self) -> bool:
         return self.outcome is RefsCheckOutcome.FAILED
-
-    @property
-    def contacted_remote(self) -> bool:
-        return self.outcome is not RefsCheckOutcome.SKIPPED_CLAIMED
 
 
 @dataclass(frozen=True)

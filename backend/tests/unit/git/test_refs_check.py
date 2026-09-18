@@ -7,6 +7,7 @@ import pytest
 from git import Repo
 from infrahub_sdk import Config, InfrahubClient
 
+from infrahub import config
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.exceptions import RepositoryError
 from infrahub.git.models import GitReadOnlyRepositoryCheckRefs, RepositoryBranchInfo, RepositoryData, TrackedRef
@@ -21,6 +22,7 @@ from infrahub.git.refs_check.gateway import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
 
@@ -204,22 +206,63 @@ def test_a_ref_missing_from_the_remote_has_no_head(tmp_path: Path) -> None:
     assert _list_remote_head(clone, "never-existed") is None
 
 
-async def test_the_gateway_presents_a_git_failure_as_a_repository_error(tmp_path: Path) -> None:
-    """``GitCommandError`` is one leaf of the git error tree, not its root.
+REPOSITORY_ID = "8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba"
 
-    A directory that is no longer a git repository raises a sibling of it, and the check handles
-    one exception type rather than every shape git can fail in.
-    """
-    gateway = GitRepositoryRefsGateway(client=InfrahubClient(config=Config(address="http://mock")))
-    model = GitReadOnlyRepositoryCheckRefs(
-        repository_id="8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba",
-        repository_name="never-cloned",
-        location=str(tmp_path / "absent"),
+
+@pytest.fixture
+def restore_repositories_directory() -> Iterator[None]:
+    original = config.SETTINGS.git.repositories_directory
+    yield
+    config.SETTINGS.git.repositories_directory = original
+
+
+def build_local_copy(tmp_path: Path, *, origin: str) -> GitReadOnlyRepositoryCheckRefs:
+    """Lay out a repository on disk the way the worker expects to find one, pointed at ``origin``."""
+    config.SETTINGS.git.repositories_directory = str(tmp_path / "repositories")
+    root = tmp_path / "repositories" / REPOSITORY_ID
+    for name in ("branches", "commits", "temp"):
+        (root / name).mkdir(parents=True)
+
+    main = Repo.init(root / "main")
+    with main.config_writer() as writer:
+        writer.set_value("user", "email", "test@example.com")
+        writer.set_value("user", "name", "Test")
+    (root / "main" / "file.txt").write_text("content", encoding="utf-8")
+    main.index.add(["file.txt"])
+    main.index.commit("initial")
+    main.create_remote("origin", origin)
+    (root / "commits" / str(main.head.commit)).mkdir()
+
+    return GitReadOnlyRepositoryCheckRefs(
+        repository_id=REPOSITORY_ID,
+        repository_name="local-copy",
+        location=origin,
         refs=(TrackedRef(infrahub_branch_name="main", infrahub_branch_id="main-id", ref="stable", commit=None),),
     )
 
-    with pytest.raises(RepositoryError):
-        await gateway.read_local_head(model, "stable")
+
+async def test_the_gateway_presents_a_git_failure_as_a_repository_error(
+    tmp_path: Path, restore_repositories_directory: None
+) -> None:
+    """``GitCommandError`` is one leaf of the git error tree, not its root.
+
+    The local copy here is valid, so the failure comes from the git command itself rather than
+    from the directory check that runs before it.
+    """
+    model = build_local_copy(tmp_path, origin=str(tmp_path / "no-such-remote"))
+    gateway = GitRepositoryRefsGateway(client=InfrahubClient(config=Config(address="http://mock")))
+
+    with pytest.raises(RepositoryError, match=r"no-such-remote"):
+        await gateway.read_remote_head(model, "stable")
+
+
+async def test_the_gateway_reads_a_local_head_from_a_valid_copy(
+    tmp_path: Path, restore_repositories_directory: None
+) -> None:
+    model = build_local_copy(tmp_path, origin=str(tmp_path / "no-such-remote"))
+    gateway = GitRepositoryRefsGateway(client=InfrahubClient(config=Config(address="http://mock")))
+
+    assert await gateway.read_local_head(model, "no-such-ref") is None
 
 
 @dataclass

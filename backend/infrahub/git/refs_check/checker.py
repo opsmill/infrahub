@@ -142,25 +142,34 @@ class ReadOnlyRepositoryRefsChecker:
             )
 
         try:
+            invalid_ref = await self._first_invalid_ref(model)
+            if invalid_ref is not None:
+                reason = f"Refusing to check the invalid ref '{invalid_ref}'."
+                log.warning("Refs check refused", repository=model.repository_name, reason=reason)
+                return await self._record_failure(model, reason=reason, contacted_remote=False)
+
             # The bound covers the listing only. Convergence takes the repository lock, which
             # carries no expiry, so a cancellation landing inside it could leave that lock held
             # for good and block every later operation on the repository.
             async with asyncio.timeout(self._detect_timeout_seconds):
                 movements = await self._detect_movements(model)
             if movements:
+                # Convergence is unbounded, so take the claim's lease again rather than spending
+                # what the listing left of it.
+                await self._renew_claim(model, run_id=run_id)
                 await self._converge(model, movements)
         except TimeoutError:
             reason = f"Timed out after {self._detect_timeout_seconds}s reading the remote refs."
             log.warning("Refs check timed out", repository=model.repository_name, reason=reason)
-            return await self._record_failure(model, reason=reason)
+            return await self._record_failure(model, reason=reason, contacted_remote=True)
         except RepositoryError as exc:
             reason = str(exc)
             log.warning("Refs check failed", repository=model.repository_name, reason=reason)
-            return await self._record_failure(model, reason=reason)
+            return await self._record_failure(model, reason=reason, contacted_remote=True)
         finally:
             # Release before stamping: the claim suppresses every later check until it expires,
             # where a missing check time only leaves one reading absent.
-            await self._cache.delete(key=refs_check_running_key(model.repository_id))
+            await self._release_claim(model, run_id=run_id)
             await self._record_check_time(model)
 
         return RefsCheckResult(
@@ -168,15 +177,48 @@ class ReadOnlyRepositoryRefsChecker:
             repository_name=model.repository_name,
             outcome=RefsCheckOutcome.COMPLETED,
             movements=tuple(movements),
+            contacted_remote=True,
         )
 
-    async def _record_failure(self, model: GitReadOnlyRepositoryCheckRefs, *, reason: str) -> RefsCheckResult:
+    async def _renew_claim(self, model: GitReadOnlyRepositoryCheckRefs, *, run_id: str) -> None:
+        await self._cache.set(
+            key=refs_check_running_key(model.repository_id),
+            value=run_id,
+            expires=self._claim_ttl_seconds,
+        )
+
+    async def _release_claim(self, model: GitReadOnlyRepositoryCheckRefs, *, run_id: str) -> None:
+        """Drop the claim only while it is still this run's.
+
+        A check that outlived its claim must not delete the one a later run has since taken, which
+        would leave that run unprotected and admit the overlapping fetch the claim exists to stop.
+        """
+        holder = await self._cache.get(key=refs_check_running_key(model.repository_id))
+        if holder is not None and holder != run_id:
+            log.info(
+                "Leaving the refs check claim in place, it now belongs to another run",
+                repository=model.repository_name,
+                held_by=holder,
+            )
+            return
+        await self._cache.delete(key=refs_check_running_key(model.repository_id))
+
+    async def _first_invalid_ref(self, model: GitReadOnlyRepositoryCheckRefs) -> str | None:
+        for ref in self._tracked_ref_names(model):
+            if not await self._ref_validator.is_valid(ref):
+                return ref
+        return None
+
+    async def _record_failure(
+        self, model: GitReadOnlyRepositoryCheckRefs, *, reason: str, contacted_remote: bool
+    ) -> RefsCheckResult:
         await self._scheduler.retry_soon(model.repository_id)
         return RefsCheckResult(
             repository_id=model.repository_id,
             repository_name=model.repository_name,
             outcome=RefsCheckOutcome.FAILED,
             failure_reason=reason,
+            contacted_remote=contacted_remote,
         )
 
     async def _record_check_time(self, model: GitReadOnlyRepositoryCheckRefs) -> None:
@@ -197,11 +239,6 @@ class ReadOnlyRepositoryRefsChecker:
     async def _detect_movements(self, model: GitReadOnlyRepositoryCheckRefs) -> list[RefMovement]:
         movements: list[RefMovement] = []
         for ref in self._tracked_ref_names(model):
-            if not await self._ref_validator.is_valid(ref):
-                raise RepositoryError(
-                    identifier=model.repository_name, message=f"Refusing to check the invalid ref '{ref}'."
-                )
-
             local_head = await self._gateway.read_local_head(model, ref)
             remote_head = await self._gateway.read_remote_head(model, ref)
             if remote_head is None:

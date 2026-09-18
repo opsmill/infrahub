@@ -332,7 +332,7 @@ class ReadOnlyRepositoryCheckRefs(Mutation):
             refs=(
                 TrackedRef(
                     infrahub_branch_name=branch.name,
-                    infrahub_branch_id=branch.get_id(),
+                    infrahub_branch_id=str(branch.get_uuid()),
                     ref=ref,
                     commit=repo.commit.value,
                 ),

@@ -111,7 +111,9 @@ async def test_fan_out_converges_the_local_copy_without_writing_the_tracked_comm
         location=str(git_sources_dir / "test_base"),
         repository_id=str(git_fixture_repo.id),
         repository_name=git_fixture_repo.name,
-        repository_kind=InfrahubKind.REPOSITORY,
+        # The read-only kind, which is the only one the refs check broadcasts for, and which
+        # routes the handler through a different repository class than its sibling tests.
+        repository_kind=InfrahubKind.READONLYREPOSITORY,
         infrahub_branch_name=branch_name,
         infrahub_branch_id=branch_id,
         commit=moved_sha,
