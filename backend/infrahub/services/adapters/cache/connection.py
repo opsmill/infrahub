@@ -45,6 +45,19 @@ REDIS_RETRY_BACKOFF_CAP: float = 1.0
 # 20s, so the cache and the lock connections keep to the same interval on both paths.
 REDIS_HEALTH_CHECK_INTERVAL: int = 20
 
+# The schemes that select TLS; on the others an ssl_* option has nothing to configure.
+TLS_URL_SCHEMES = frozenset({"rediss", "rediss+sentinel"})
+
+
+def _is_tls_url(url: str) -> bool:
+    """Whether the URL's scheme selects TLS.
+
+    A prefix check rather than ``urlsplit``: a Sentinel URL carries several members in its netloc,
+    which ``urlsplit`` rejects.
+    """
+    scheme, separator, _ = url.partition("://")
+    return bool(separator) and scheme.lower() in TLS_URL_SCHEMES
+
 
 def _url_connection_defaults() -> dict[str, Any]:
     """Connection options applied to every URL-configured connection.
@@ -86,7 +99,9 @@ def build_redis_connection(settings: CacheSettings) -> redis.Redis:
     """Build the Redis connection shared by the cache adapter and the lock registry.
 
     When ``settings.url`` is set it is authoritative and selects single-node or Sentinel mode from
-    its scheme. Otherwise the scalar connection settings are used (single-node).
+    its scheme. Otherwise the scalar connection settings are used (single-node). Either way the
+    connection verifies against ``settings.tls_ca_file`` when TLS is on, so a private CA configured
+    once through the global ``INFRAHUB_TLS_CA_BUNDLE`` covers the cache as well.
 
     Close the result with :func:`aclose_redis_connection`.
     """
@@ -117,7 +132,15 @@ def build_redis_connection(settings: CacheSettings) -> redis.Redis:
 
     from prefect_redis.connection import redis_from_url  # noqa: PLC0415
 
-    return redis_from_url(settings.url.get_secret_value(), asynchronous=True, **_url_connection_defaults())
+    url = settings.url.get_secret_value()
+    options = _url_connection_defaults()
+    if settings.tls_ca_file is not None and _is_tls_url(url):
+        # The CA the deployment configured, either as INFRAHUB_CACHE_TLS_CA_FILE or through the
+        # global INFRAHUB_TLS_CA_BUNDLE that fills it, is the default for a TLS URL; an explicit
+        # ?ssl_ca_certs= still wins. On a rediss+sentinel:// URL prefect-redis shares the ssl_*
+        # options with the daemon connections, so the one CA covers the whole topology.
+        options["ssl_ca_certs"] = settings.tls_ca_file
+    return redis_from_url(url, asynchronous=True, **options)
 
 
 async def aclose_redis_connection(connection: redis.Redis) -> None:

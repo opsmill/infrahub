@@ -163,6 +163,8 @@ On a `rediss+sentinel://` URL the `ssl_*` parameters are shared with the Sentine
 INFRAHUB_CACHE_URL: rediss+sentinel://cache-redis:26379/mymaster?ssl_ca_certs=/etc/ssl/redis-ca.pem
 ```
 
+Without `ssl_ca_certs` on the URL, a TLS connection verifies against `INFRAHUB_CACHE_TLS_CA_FILE`, or against the global `INFRAHUB_TLS_CA_BUNDLE` that fills it, so a private certificate authority configured once for the whole deployment covers the cache too.
+
 :::warning
 
 For a self-signed certificate, disable verification with `ssl_cert_reqs=none` and `ssl_check_hostname=false`. This exposes the connection to interception, so restrict it to test and development environments:
