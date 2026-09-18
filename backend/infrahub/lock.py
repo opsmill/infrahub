@@ -315,12 +315,16 @@ class InfrahubLockRegistry:
         service: InfrahubServices | None = None,
         name_generator: LockNameGenerator | None = None,
     ) -> None:
+        # Only a Redis-backed registry owns its connection; the NATS path borrows the service's and a
+        # local-only registry has none. close() releases what is owned here, nothing else.
+        self._redis_connection: redis.Redis | None = None
         if not local_only:
             if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
                 # Imported lazily to avoid a startup import cycle through the services package.
                 from infrahub.services.adapters.cache.connection import build_redis_connection  # noqa: PLC0415
 
-                self.connection = build_redis_connection(config.SETTINGS.cache)
+                self._redis_connection = build_redis_connection(config.SETTINGS.cache)
+                self.connection = self._redis_connection
             else:
                 self.connection = service
         else:
@@ -329,6 +333,22 @@ class InfrahubLockRegistry:
         self.token = token or str(uuid.uuid4())
         self.locks: dict[str, InfrahubLock] = {}
         self.name_generator = name_generator or LockNameGenerator()
+
+    async def close(self) -> None:
+        """Release the Redis connection this registry owns, if it owns one.
+
+        Dropping the reference is not enough for a Sentinel connection: redis-py keeps a client per
+        Sentinel daemon on the pool, and those are what ``aclose_redis_connection`` releases.
+        """
+        if self._redis_connection is None:
+            return
+
+        # Imported lazily for the same reason as the builder above.
+        from infrahub.services.adapters.cache.connection import aclose_redis_connection  # noqa: PLC0415
+
+        await aclose_redis_connection(self._redis_connection)
+        self._redis_connection = None
+        self.connection = None
 
     def get_existing(
         self,
@@ -383,3 +403,17 @@ def _init_lock_ttl_seconds() -> int:
 def initialize_lock(local_only: bool = False, service: InfrahubServices | None = None) -> None:
     global registry
     registry = InfrahubLockRegistry(local_only=local_only, service=service)
+
+
+async def shutdown_lock() -> None:
+    """Release the global registry's connection, mirroring :func:`initialize_lock`.
+
+    Only a process with a shutdown path calls this; a CLI command or a migration ends instead, which
+    releases the sockets with it.
+    """
+    global registry
+    if registry is None:
+        return
+
+    await registry.close()
+    registry = None
