@@ -195,7 +195,7 @@ async def test_resource_utilization(
                 "node": {
                     "id": whole.get_id(),
                     "kind": InfrahubKind.NUMBERPOOLRANGE,
-                    "display_label": "1-10",
+                    "display_label": "1 - 10",
                     "weight": 0,
                     "utilization": 10,
                     "utilization_default_branch": 10,
@@ -217,7 +217,7 @@ async def test_resource_utilization(
                 "node": {
                     "id": lower.get_id(),
                     "kind": InfrahubKind.NUMBERPOOLRANGE,
-                    "display_label": "1-5",
+                    "display_label": "1 - 5",
                     "weight": 10,
                     "utilization": 40,
                     "utilization_default_branch": 40,
@@ -228,7 +228,7 @@ async def test_resource_utilization(
                 "node": {
                     "id": upper.get_id(),
                     "kind": InfrahubKind.NUMBERPOOLRANGE,
-                    "display_label": "6-10",
+                    "display_label": "6 - 10",
                     "weight": 0,
                     "utilization": 0,
                     "utilization_default_branch": 0,
@@ -237,6 +237,9 @@ async def test_resource_utilization(
             },
         ],
     }
+
+    for range_node, edge in zip((lower, upper), utilization_np2["edges"], strict=True):
+        assert edge["node"]["display_label"] == await range_node.get_display_label(db=db)
 
 
 async def test_allocate_from_number_pool_for_generic(

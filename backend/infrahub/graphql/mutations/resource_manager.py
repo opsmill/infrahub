@@ -272,13 +272,14 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
                     input_value="start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
                 )
 
-            start_value = number_pool.start_range.value  # type: ignore[attr-defined]
-            end_value = number_pool.end_range.value  # type: ignore[attr-defined]
-            if start_value is None or end_value is None:
-                raise ValidationError(input_value=BOUNDS_NOT_CLEARABLE)
+            if "start_range" in data.keys() or "end_range" in data.keys():
+                start_value = number_pool.start_range.value  # type: ignore[attr-defined]
+                end_value = number_pool.end_range.value  # type: ignore[attr-defined]
+                if start_value is None or end_value is None:
+                    raise ValidationError(input_value=BOUNDS_NOT_CLEARABLE)
 
-            if start_value > end_value:
-                raise ValidationError(input_value="start_range can't be larger than end_range")
+                if start_value > end_value:
+                    raise ValidationError(input_value="start_range can't be larger than end_range")
 
         return number_pool, result
 
