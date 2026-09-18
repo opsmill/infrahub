@@ -75,6 +75,22 @@ def test_returns_config() -> None:
     assert cfg.ldap.enabled is False
 ```
 
+## One database session per concurrent path
+
+A Neo4j session carries a single connection and cannot serve two coroutines at once, and everything reached through one `InfrahubDatabase` shares its session. Racing two calls on the same one wedges the connection: one coroutine raises `read() called while another coroutine is already waiting for incoming data`, the other parks on the socket where `asyncio.wait_for` cannot cancel it. `db` is module-scoped, so the wedge takes every later test in the module with it.
+
+```python
+# Good - a session per racing call
+async with db.start_session() as db_1, db.start_session() as db_2:
+    await asyncio.gather(build_coordinator(db_1).update(), build_coordinator(db_2).update())
+
+# Bad - both calls queue on the module's one connection
+coordinator = build_coordinator(db)
+await asyncio.gather(coordinator.update(), coordinator.update())
+```
+
+Code that opens a session of its own is safe to race: flows do, pinned by [`test_flow_session_convention.py`](../../../backend/tests/unit/workflows/test_flow_session_convention.py), and so does GraphQL execution. A component a test calls directly does not.
+
 ## Test Schemas
 
 Many tests require schemas to be loaded before they can run. Over time this has led to duplicated schema definitions scattered across test files. To reduce duplication and ease maintenance, shared helper schemas are available in [`tests/helpers/schema/`](../../../backend/tests/helpers/schema/).
