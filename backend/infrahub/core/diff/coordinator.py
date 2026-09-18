@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Iterable, Literal, Sequence, cast, overload
+from typing import TYPE_CHECKING, Iterable, Literal, Sequence, overload
 from uuid import uuid4
 
 from opentelemetry import trace
@@ -498,9 +498,14 @@ class DiffCoordinator:
             tracking_id=tracking_id,
             force_branch_refresh=force_branch_refresh,
         )
-        # mypy does not model quote as generic, so the flow is annotated with a bare quote and
-        # the payload type is restored here
-        return cast("tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]", quoted.unquote())
+        # mypy types a tuple[T] subclass as a plain tuple, so the payload type is restored by narrowing
+        enriched_diffs, node_identifiers_to_drop = quoted.unquote()
+        if not isinstance(enriched_diffs, EnrichedDiffsMetadata) or not isinstance(node_identifiers_to_drop, set):
+            raise TypeError(
+                f"expected (EnrichedDiffsMetadata, set) from the update-diff flow, got"
+                f" ({type(enriched_diffs).__name__}, {type(node_identifiers_to_drop).__name__})"
+            )
+        return enriched_diffs, node_identifiers_to_drop
 
     # The enriched diff can hold millions of objects. Prefect would otherwise walk every one of
     # them looking for futures when the flow returns, and the task worker would pickle the whole
