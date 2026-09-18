@@ -1154,6 +1154,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 node_changelog.create_relationship(relationship=rel)
 
         node_changelog.display_label = await self.get_display_label(db=db)
+        node_changelog.hfid = await self.get_hfid(db=db)
         return node_changelog
 
     async def _update(
@@ -1197,6 +1198,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         )
 
         node_changelog.display_label = await self.get_display_label(db=db)
+        node_changelog.hfid = await self.get_hfid(db=db)
 
         if node_changelog.has_changes:
             await self._add_parent_to_changelog(
@@ -1252,6 +1254,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         node_changelog = NodeChangelog(
             node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label(db=db)
         )
+        node_changelog.hfid = await self.get_hfid(db=db)
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)

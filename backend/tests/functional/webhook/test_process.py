@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import httpx
 import pytest
 
+from infrahub.core.changelog.models import NodeChangelog, RelationshipCardinalityOneChangelog
 from infrahub.core.constants import InfrahubKind
 from infrahub.webhook.models import EventContext
 from infrahub.webhook.tasks import convert_node_to_webhook, webhook_process
@@ -131,6 +132,55 @@ class TestWebhookProcess(TestInfrahubApp):
 
         run = only_new_run(await read_send_runs(flow_run_querier), before)
         assert WorkflowTag.RELATED_NODE.render(identifier=webhook1.id) in run.tags
+
+    async def test_process_standard_webhook_preserves_enriched_changelog(
+        self,
+        db: InfrahubDatabase,
+        webhook1: Node,
+        webhook_deployment: None,
+        dependency_provider: Provider,
+    ) -> None:
+        changelog = NodeChangelog(
+            node_id="17d0a5e0-0000-0000-0000-000000000001",
+            node_kind="TestCar",
+            display_label="Jesko",
+            hfid=["Jesko"],
+        )
+        changelog.relationships["owner"] = RelationshipCardinalityOneChangelog(
+            name="owner",
+            peer_id="17d0a5e0-0000-0000-0000-000000000002",
+            peer_kind="TestPerson",
+            peer_display_label="John",
+            peer_hfid=["John"],
+        )
+        event_payload = {"data": changelog.model_dump(), "context": BRANCH_CREATED_PAYLOAD["context"]}
+
+        http = MemoryHTTP()
+        http.add_post_response(
+            url=WEBHOOK_TARGET_URL,
+            response=httpx.Response(request=httpx.Request(method="POST", url=WEBHOOK_TARGET_URL), status_code=200),
+        )
+        with dependency_provider.scope(build_http_service, lambda: http):
+            await webhook_process(
+                webhook_id=webhook1.id,
+                webhook_name="Webhook1",
+                webhook_kind=InfrahubKind.STANDARDWEBHOOK,
+                branch_name="main",
+                event_id="ce3b7013-4abb-4945-89de-1f56da4ff636",
+                event_type="infrahub.node.updated",
+                event_occured_at="2025-02-28T08:37:09.969Z",
+                event_payload=event_payload,
+            )
+
+        assert len(http.posts) == 1
+        payload = http.posts[0].json
+        assert payload is not None
+        delivered = payload["data"]
+        assert delivered["display_label"] == "Jesko"
+        assert delivered["hfid"] == ["Jesko"]
+        owner = delivered["relationships"]["owner"]
+        assert owner["peer_display_label"] == "John"
+        assert owner["peer_hfid"] == ["John"]
 
     async def test_process_webhook_failure_is_classified(
         self,
