@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
-from infrahub.core.constants import BranchSupportType, RelationshipStatus
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, RelationshipStatus
 from infrahub.core.query import Query
 
 if TYPE_CHECKING:
@@ -50,20 +50,20 @@ class AttributeRenameQuery(Query):
 
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
 
         self.params["user_id"] = self.user_id
 
+        # `branch` and `branch_level` are set per copied edge, because a branch-agnostic edge keeps
+        # the global branch it was written on instead of moving to the renaming branch.
         self.params["rel_props_create"] = {
-            "branch": self.branch.name,
-            "branch_level": self.branch.hierarchy_level,
             "status": RelationshipStatus.ACTIVE.value,
             "from": self.at.to_string(),
             "from_user_id": self.user_id,
         }
 
         self.params["rel_props_delete"] = {
-            "branch": self.branch.name,
-            "branch_level": self.branch.hierarchy_level,
             "status": RelationshipStatus.DELETED.value,
             "from": self.at.to_string(),
             "from_user_id": self.user_id,
@@ -123,12 +123,16 @@ class AttributeRenameQuery(Query):
         CALL (peer_node, r, new_attr) {
             WITH peer_node, r, new_attr
             WHERE startNode(r) = peer_node
-            CREATE (new_attr)<-[:$(type(r)) $rel_props_create ]-(peer_node)
+            CREATE (new_attr)<-[new_edge:$(type(r)) $rel_props_create ]-(peer_node)
+            SET new_edge.branch = CASE WHEN r.branch = $global_branch_name THEN $global_branch_name ELSE $branch_name END
+            SET new_edge.branch_level = CASE WHEN r.branch = $global_branch_name THEN r.branch_level ELSE $branch_level END
         }
         CALL (peer_node, r, new_attr) {
             WITH peer_node, r, new_attr
             WHERE endNode(r) = peer_node
-            CREATE (new_attr)-[:$(type(r)) $rel_props_create ]->(peer_node)
+            CREATE (new_attr)-[new_edge:$(type(r)) $rel_props_create ]->(peer_node)
+            SET new_edge.branch = CASE WHEN r.branch = $global_branch_name THEN $global_branch_name ELSE $branch_name END
+            SET new_edge.branch_level = CASE WHEN r.branch = $global_branch_name THEN r.branch_level ELSE $branch_level END
         }
         """ % {"branch_filter": branch_filter, "add_uuid": add_uuid}
         self.add_to_query(query)
@@ -141,17 +145,22 @@ class AttributeRenameQuery(Query):
             // --------------
             CALL (peer_node, r, active_attr) {
                 WITH peer_node, r, active_attr
-                WHERE r.branch <> $branch_name AND startNode(r) = peer_node
-                CREATE (active_attr)<-[:$(type(r)) $rel_props_delete ]-(peer_node)
+                WHERE NOT r.branch IN [$branch_name, $global_branch_name] AND startNode(r) = peer_node
+                CREATE (active_attr)<-[shadow_edge:$(type(r)) $rel_props_delete ]-(peer_node)
+                SET shadow_edge.branch = $branch_name, shadow_edge.branch_level = $branch_level
             }
             CALL (peer_node, r, active_attr) {
                 WITH peer_node, r, active_attr
-                WHERE r.branch <> $branch_name AND endNode(r) = peer_node
-                CREATE (active_attr)-[:$(type(r)) $rel_props_delete ]->(peer_node)
+                WHERE NOT r.branch IN [$branch_name, $global_branch_name] AND endNode(r) = peer_node
+                CREATE (active_attr)-[shadow_edge:$(type(r)) $rel_props_delete ]->(peer_node)
+                SET shadow_edge.branch = $branch_name, shadow_edge.branch_level = $branch_level
             }
+            // --------------
+            // Close edges on this branch and the global branch
+            // --------------
             CALL (r) {
                 WITH r
-                WHERE r.branch = $branch_name
+                WHERE r.branch IN [$branch_name, $global_branch_name]
                 SET r.to = $current_time, r.to_user_id = $user_id
             }
             RETURN DISTINCT new_attr
@@ -161,7 +170,7 @@ class AttributeRenameQuery(Query):
             query = """
             CALL (r) {
                 WITH r
-                WHERE r.branch = $branch_name
+                WHERE r.branch IN [$branch_name, $global_branch_name]
                 SET r.to = $current_time, r.to_user_id = $user_id
             }
             WITH new_attr, active_node

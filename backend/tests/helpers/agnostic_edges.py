@@ -53,6 +53,10 @@ class EdgeState:
     to_time: str | None
     to_user_id: str | None = None
     """Who closed the edge. `None` on an open edge, and on one closed before the actor was recorded."""
+    direction: str | None = None
+    """`"outbound"` or `"inbound"` relative to the vertex the query anchored on, where a query
+    reports it. Copying an edge onto a new vertex is direction-specific, so a test that cannot see
+    the direction cannot say which half of a copy went wrong."""
 
     @property
     def is_open(self) -> bool:
