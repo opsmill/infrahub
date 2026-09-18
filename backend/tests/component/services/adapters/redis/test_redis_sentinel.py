@@ -34,3 +34,5 @@ async def test_sentinel_lock_acquire_release(redis_sentinel: dict[int, int] | No
     assert await lock.locked() is True
     await lock.release()
     assert await lock.locked() is False
+
+    await registry.close()
