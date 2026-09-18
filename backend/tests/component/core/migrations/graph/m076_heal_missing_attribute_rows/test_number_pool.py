@@ -133,11 +133,10 @@ class TestNumberPoolHeal:
     async def test_every_allocation_left_a_reservation_record(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, seeded: PoolSeed, healed: PoolHealRun
     ) -> None:
-        """The record is what the pool accounts for a number by, and what its source is derived from.
+        """A healed attribute carries an open reservation record from the pool that supplied its number.
 
-        `test_distinct_values_sourced_from_the_pool` reads the source the record produces; this reads
-        the record itself, so a heal that allocated a value without recording it cannot pass by
-        leaving the derivation intact.
+        The record is what the pool accounts for the number by, so a heal that wrote a value without
+        it would hand the same number out again.
         """
         nodes = await NodeManager.get_many(
             db=db,

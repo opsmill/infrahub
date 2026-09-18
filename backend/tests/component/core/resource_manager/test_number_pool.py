@@ -15,6 +15,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.queries.resource_manager import resolve_number_pool_utilization
+from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.schema import TICKET, load_schema
 
 
@@ -411,21 +412,35 @@ class TestNumberPoolGetResource:
         )
 
     async def test_a_record_another_pool_holds_is_not_its_own(
-        self, db: InfrahubDatabase, default_branch: Branch, ticket: Node
+        self, db: InfrahubDatabase, default_branch: Branch, ticket_pool: CoreNumberPool, ticket: Node
     ) -> None:
-        """The lookup is scoped to the asking pool."""
+        """The lookup is scoped to the asking pool, and the attribute ends up accounted for by one pool.
+
+        An attribute belongs to a single pool, so drawing from another one hands the attribute over:
+        the record the first pool held is closed as the second pool's is opened.
+        """
         second_pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
         await second_pool.new(
             db=db, name="pool2", node=TICKET.kind, node_attribute="ticket_id", start_range=100, end_range=110
         )
         await second_pool.save(db=db)
 
+        attribute_id = ticket.get_attribute("ticket_id").id
         drawn = await second_pool.get_resource(
             db=db,
             branch=default_branch,
             attribute=self._ticket_id_schema(ticket),
             identifier=ticket.get_id(),
-            attribute_id=ticket.get_attribute("ticket_id").id,
+            attribute_id=attribute_id,
         )
 
         assert drawn == 100, "the record belongs to the other pool, so this one draws from its own range"
+
+        drawn_records = await pool_reservation_edges(db=db, pool_id=second_pool.get_id(), attribute_id=attribute_id)
+        assert [record.is_open for record in drawn_records] == [True], (
+            "drawing a number has to leave the record that accounts for it"
+        )
+        handed_over = await pool_reservation_edges(db=db, pool_id=ticket_pool.get_id(), attribute_id=attribute_id)
+        assert [record.is_open for record in handed_over] == [False], (
+            "the pool that held the attribute before must no longer account for it"
+        )

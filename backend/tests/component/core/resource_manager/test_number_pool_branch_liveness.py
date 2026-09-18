@@ -116,6 +116,30 @@ class TestBranchLiveness:
             f"the pool allocated ticket_id={held}, which the default branch still holds"
         )
 
+    async def test_a_number_every_branch_has_released_is_free_again(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, pool: CoreNumberPool
+    ) -> None:
+        """The other half of the union: once no branch holds the number any more, the pool offers it."""
+        ticket = await _new_ticket(db=db, pool=pool, title="released-everywhere")
+        assert ticket.get_attribute("ticket_id").value == 5, "the tests before this one hold 1 through 4"
+        assert await pool.get_used(db=db, branch=default_branch_scope_class) == [1, 2, 3, 4, 5, POOL_END]
+
+        branch = await create_branch(branch_name="liveness-released-everywhere", db=db)
+        on_branch = await NodeManager.get_one(db=db, id=ticket.id, branch=branch, raise_on_error=True)
+        await on_branch.delete(db=db)
+        assert await pool.get_used(db=db, branch=default_branch_scope_class) == [1, 2, 3, 4, 5, POOL_END], (
+            "one branch letting go is not every branch letting go"
+        )
+
+        await ticket.delete(db=db)
+
+        assert await pool.get_used(db=db, branch=default_branch_scope_class) == [1, 2, 3, 4, POOL_END], (
+            "with no branch holding it, the number stops counting as used"
+        )
+        assert await pool.get_free(db=db, branch=default_branch_scope_class) == 5, (
+            "and the pool offers it again rather than skipping past it"
+        )
+
 
 async def test_a_held_number_is_never_allocated_when_the_attribute_is_not_unique(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch

@@ -483,15 +483,15 @@ class TestCreateRecordsItsReservation:
         """A created object reaches the graph with its number and the record accounting for it at once.
 
         The record is written by the query that writes the value, so no separate ledger write is
-        issued and no `fields` list can narrow it away. Were the value to land on its own, the
-        number would read as free and the next object would be handed the same one.
+        issued. Were the value to land on its own, the number would read as free and the next object
+        would be handed the same one.
         """
         incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
 
         counting_db = CountingInfrahubDatabase.from_db(db=db)
         first = await Node.init(db=counting_db, schema=incident_schema, branch=default_branch.name)
         await first.new(db=counting_db, title="Incident #1")
-        await first.save(db=counting_db, fields=["title"])
+        await first.save(db=counting_db)
 
         assert counting_db.count_for(NodeCreateAllQuery.name) == 1
         assert counting_db.count_for(NumberPoolSetReserved.name) == 0, (
