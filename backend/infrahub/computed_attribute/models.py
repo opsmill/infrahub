@@ -91,10 +91,10 @@ class PythonTransformComputedAttribute(BaseModel):
     computed_attribute: PythonDefinition
     default_schema: bool
     branch_name: str
-    branch_commit: dict[str, str] = field(default_factory=dict)
+    branch_commit: dict[str, str | None] = field(default_factory=dict)
 
     @computed_field
-    def repository_commit(self) -> str:
+    def repository_commit(self) -> str | None:
         return self.branch_commit[self.branch_name]
 
     def populate_branch_commit(self, repository_data: RepositoryData | None = None) -> None:
