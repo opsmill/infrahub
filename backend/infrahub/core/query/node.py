@@ -18,9 +18,11 @@ from infrahub.core.constants import (
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
     AttributeDBNodeType,
+    InfrahubKind,
     MetadataOptions,
     RelationshipDirection,
     RelationshipHierarchyDirection,
+    RelationshipStatus,
 )
 from infrahub.core.constants import (
     NODE_METADATA_PREFIX as _NODE_METADATA_PREFIX,
@@ -33,6 +35,7 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
+from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
@@ -262,6 +265,17 @@ class NodeCreateAllQuery(NodeQuery):
             "from_user_id": self.user_id,
         }
 
+        # A number pool's reservation record lives on the global branch.
+        global_branch = registry.get_global_branch()
+        self.params["pool_rel_prop"] = {
+            "branch": global_branch.name,
+            "branch_level": global_branch.hierarchy_level,
+            "status": RelationshipStatus.ACTIVE.value,
+            "from": at.to_string(),
+            "identifier": self.node.id,
+            "provenance": PoolRecordProvenance.ALLOCATED.value,
+        }
+
         # set all the property strings that we reuse
         # include the create/updated_at/by metadata if on default or global branch
         attr_edge_prop_str = "{ branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, from_user_id: $user_id }"
@@ -275,6 +289,13 @@ class NodeCreateAllQuery(NodeQuery):
             "{ branch: rel.branch, branch_level: rel.branch_level, "
             "status: rel.status, hierarchy: rel.hierarchical, from: $at, from_user_id: $user_id }"
         )
+        pool_reservation_subquery = """
+            CALL (a, attr) {
+                UNWIND attr.pool_prop AS prop
+                MATCH (pool:%(number_pool)s { uuid: prop.peer_id })
+                CREATE (pool)-[:IS_RESERVED $pool_rel_prop]->(a)
+            }""" % {"number_pool": InfrahubKind.NUMBERPOOL}
+
         rel_vertex_prop_str = "{ uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support"
         if self.branch.is_default or self.branch.is_global:
             rel_vertex_prop_str += ", created_at: $at, created_by: $user_id, updated_at: $at, updated_by: $user_id"
@@ -336,7 +357,12 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
-        }""" % {"attr_edge": attr_edge_prop_str, "attr_vertex": attr_vertex_prop_str}
+%(pool_reservation)s
+        }""" % {
+            "attr_edge": attr_edge_prop_str,
+            "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
+        }
 
         attrs_indexed_query = """
         WITH distinct n
@@ -358,7 +384,12 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
-        }""" % {"attr_edge": attr_edge_prop_str, "attr_vertex": attr_vertex_prop_str}
+%(pool_reservation)s
+        }""" % {
+            "attr_edge": attr_edge_prop_str,
+            "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
+        }
 
         attrs_iphost_query = """
         WITH distinct n
@@ -382,11 +413,13 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
+%(pool_reservation)s
         }
         """ % {
             "iphost_prop": ", ".join(iphost_prop_list),
             "attr_edge": attr_edge_prop_str,
             "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
         }
 
         attrs_ipnetwork_query = """
@@ -411,11 +444,13 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
+%(pool_reservation)s
         }
         """ % {
             "ipnetwork_prop": ", ".join(ipnetwork_prop_list),
             "attr_edge": attr_edge_prop_str,
             "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
         }
 
         deepest_branch = await registry.get_branch(db=db, branch=deepest_branch_name)

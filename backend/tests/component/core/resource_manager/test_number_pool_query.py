@@ -1,11 +1,11 @@
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
-
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.data_deleter import BranchDataDeleter
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -14,11 +14,14 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.protocols import CoreNumberPool as CoreNumberPoolProtocol
+from infrahub.core.query.node import NodeCreateAllQuery
 from infrahub.core.query.resource_manager import (
     NumberPoolGetAllocated,
     NumberPoolGetReserved,
     NumberPoolGetUsed,
+    NumberPoolSetReserved,
     PoolChangeReserved,
+    PoolRecordProvenance,
 )
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -27,6 +30,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
 
 REQUEST = NodeSchema(
     name="Request",
@@ -435,3 +439,94 @@ class TestPoolChangeReserved:
         reservations_before = await get_reservations(db=db, pool=incident_pool, branch=default_branch)
         assert len(reservations_before) == 3
         assert reservations_before["new_id"] == 2
+
+
+async def live_record_count(db: InfrahubDatabase, node_id: str, attribute_name: str) -> int:
+    """How many reservation records the object's attribute carries right now."""
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
+        WITH DISTINCT a
+        MATCH ()-[e:IS_RESERVED]->(a)
+        WHERE e.status = "active" AND e.to IS NULL
+        RETURN count(e) AS live
+        """,
+        params={"node_id": node_id, "attribute_name": attribute_name},
+    )
+    return int(results[0]["live"])
+
+
+async def reservation_and_value_edges(db: InfrahubDatabase, node_id: str, attribute_name: str) -> dict[str, Any]:
+    """The live reservation record on the object's attribute, beside the edge carrying its value."""
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
+        WITH DISTINCT a
+        MATCH (pool)-[record:IS_RESERVED]->(a)-[value:HAS_VALUE]->()
+        WHERE record.status = "active" AND record.to IS NULL
+        RETURN properties(record) AS record, value.from AS value_from, pool.uuid AS pool_id
+        """,
+        params={"node_id": node_id, "attribute_name": attribute_name},
+    )
+    return dict(results[0])
+
+
+class TestCreateRecordsItsReservation:
+    async def test_a_create_writes_the_value_and_its_record_in_one_step(
+        self,
+        db: InfrahubDatabase,
+        register_test_schema: SchemaBranch,
+        default_branch: Branch,
+        run_number_pool_validation: None,
+    ) -> None:
+        """A created object reaches the graph with its number and the record accounting for it at once.
+
+        The record is written by the query that writes the value, so no separate ledger write is
+        issued and no `fields` list can narrow it away. Were the value to land on its own, the
+        number would read as free and the next object would be handed the same one.
+        """
+        incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+
+        counting_db = CountingInfrahubDatabase.from_db(db=db)
+        first = await Node.init(db=counting_db, schema=incident_schema, branch=default_branch.name)
+        await first.new(db=counting_db, title="Incident #1")
+        await first.save(db=counting_db, fields=["title"])
+
+        assert counting_db.count_for(NodeCreateAllQuery.name) == 1
+        assert counting_db.count_for(NumberPoolSetReserved.name) == 0, (
+            "the query that writes the value writes the record, so no separate reservation write is issued"
+        )
+
+        first_number = first.get_attribute(name="number").value
+        assert first_number is not None
+
+        pools: list[CoreNumberPoolProtocol] = await NodeManager.query(
+            db=db, schema=CoreNumberPoolProtocol, branch=default_branch
+        )
+        incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+
+        assert await live_record_count(db=db, node_id=first.get_id(), attribute_name="number") == 1
+        reservations = await get_reservations(db=db, pool=incident_pool, branch=default_branch)
+        assert reservations == {first.get_id(): first_number}
+        assert await get_used_numbers_in_pool(db=db, pool=incident_pool, branch=default_branch) == [first_number]
+
+        edges = await reservation_and_value_edges(db=db, node_id=first.get_id(), attribute_name="number")
+        assert edges["pool_id"] == incident_pool.get_id()
+        assert edges["record"]["from"] == edges["value_from"], (
+            "the record and the value must begin at the same instant, leaving no window between them"
+        )
+        assert edges["record"] == {
+            "branch": GLOBAL_BRANCH_NAME,
+            "branch_level": 1,
+            "status": "active",
+            "from": edges["value_from"],
+            "identifier": first.get_id(),
+            "provenance": PoolRecordProvenance.ALLOCATED.value,
+        }
+
+        second = await Node.init(db=db, schema=incident_schema, branch=default_branch.name)
+        await second.new(db=db, title="Incident #2")
+        await second.save(db=db)
+        assert second.get_attribute(name="number").value != first_number, (
+            "the number the first object holds must not be handed out again"
+        )

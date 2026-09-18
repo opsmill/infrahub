@@ -90,6 +90,7 @@ class AttributeCreateData(BaseModel):
     is_protected: bool
     source_prop: list[NodePropertyData] = Field(default_factory=list)
     owner_prop: list[NodePropertyData] = Field(default_factory=list)
+    pool_prop: list[NodePropertyData] = Field(default_factory=list)
 
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
@@ -704,6 +705,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         if self.owner_id:
             data.owner_prop.append(NodePropertyData(name="owner", peer_id=self.owner_id))
+
+        # Add the pool ID if this attribute came from a pool.
+        if self.from_pool and self.value is not None and (pool_id := self.from_pool.get("id")):
+            data.pool_prop.append(NodePropertyData(name="pool", peer_id=pool_id))
 
         return data
 
