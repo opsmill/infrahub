@@ -1,0 +1,1 @@
+Fixed `INFRAHUB_HTTP_TLS_INSECURE` being ignored when a CA bundle was configured alongside it, which made the clients that reach the Infrahub API keep validating certificates. Disabling verification no longer requires removing the bundle first, matching the documented precedence and the behavior of the other components.
