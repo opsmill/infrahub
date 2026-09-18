@@ -91,8 +91,7 @@ class RepositoryBranchValuesQuery(Query):
         self.branch_scopes = branch_scopes
         self.attribute_names = sorted(attribute_names)
         super().__init__(**kwargs)
-        # The result can never exceed one row per branch and attribute, so this bound is exact. It
-        # has to be non-zero: execute() reads a falsy limit as "unpaginated" and pages the read.
+        # Never zero, because a falsy limit is read as "unpaginated" and pages the read.
         self.limit = max(len(self.branch_scopes) * len(self.attribute_names), 1)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
@@ -113,11 +112,8 @@ class RepositoryBranchValuesQuery(Query):
         query = """
         MATCH (repository:Node { uuid: $repository_id })-[:HAS_ATTRIBUTE]->(attr:Attribute)
         WHERE attr.name IN $attribute_names
-        // ----------
-        // One HAS_ATTRIBUTE edge exists per branch that touched the attribute, so the match above
-        // yields one row per edge. Deduplicating here also keeps the uuid seek and the attribute
-        // expansion above the branch loop, so they run once instead of once per branch.
-        // ----------
+        // Deduplicating keeps the uuid seek and the attribute expansion above the branch loop, so
+        // they run once instead of once per branch.
         WITH DISTINCT repository, attr
         UNWIND $branch_scopes AS scope
         CALL (repository, attr, scope) {

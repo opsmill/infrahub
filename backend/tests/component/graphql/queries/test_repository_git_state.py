@@ -933,7 +933,7 @@ async def test_drift_lists_every_branch_of_a_read_only_repository(
     }
 
 
-async def test_drift_reports_a_read_only_branch_with_nothing_tracked_as_not_tracked(
+async def test_drift_reports_a_read_only_branch_with_a_ref_but_nothing_tracked_as_unavailable(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
@@ -941,6 +941,7 @@ async def test_drift_reports_a_read_only_branch_with_nothing_tracked_as_not_trac
     service: InfrahubServices,
     untracked_read_only_repository: Node,
 ) -> None:
+    """A ref the branch resolves is tracked, so an empty tracked commit is a drift answer not yet produced."""
     branch = await create_branch(branch_name="branch2", db=db)
 
     response = await graphql_query(
@@ -959,13 +960,13 @@ async def test_drift_reports_a_read_only_branch_with_nothing_tracked_as_not_trac
             branch_name=default_branch.name,
             git_ref=READ_ONLY_REF,
             tracked_commit=None,
-            condition=RepositoryGitCondition.NOT_TRACKED,
+            condition=RepositoryGitCondition.UNAVAILABLE,
         ),
         branch.name: _drift_row(
             branch_name=branch.name,
             git_ref=READ_ONLY_REF,
             tracked_commit=None,
-            condition=RepositoryGitCondition.NOT_TRACKED,
+            condition=RepositoryGitCondition.UNAVAILABLE,
         ),
     }
 
@@ -1010,9 +1011,42 @@ async def test_drift_answers_as_of_the_requested_time(
     }
 
 
+async def test_drift_omits_a_branch_created_after_the_requested_time(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    repository: Node,
+) -> None:
+    before_the_branch_existed = Timestamp()
+    await create_branch(branch_name="branch2", db=db)
+
+    response = await graphql_query(
+        query=DRIFT_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session_admin,
+        at=before_the_branch_existed,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert _drift_rows(response.data["InfrahubRepositoryBranchDrift"]) == {
+        default_branch.name: _drift_row(
+            branch_name=default_branch.name,
+            git_ref=REPOSITORY_DEFAULT_BRANCH,
+            tracked_commit=MAIN_COMMIT,
+            condition=RepositoryGitCondition.UNAVAILABLE,
+        )
+    }
+
+
 async def test_drift_refuses_a_kind_with_no_git_state(
     db: InfrahubDatabase, default_branch: Branch, create_test_admin: Node
 ) -> None:
     """Both concrete repository kinds are handled, so this pins what a third one would surface."""
     with pytest.raises(ValidationError, match=r"^Reading git state is not supported for a CoreAccount$"):
-        _drift_read(repository=create_test_admin)
+        _drift_read(repository=create_test_admin, branches=[])

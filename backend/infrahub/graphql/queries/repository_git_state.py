@@ -218,22 +218,44 @@ class _DriftRead:
     """True when a branch's git_ref is the ref it tracks, rather than a remote branch mapped from its name."""
 
 
-def _drift_read(repository: CoreGenericRepository) -> _DriftRead:
-    """Decide the row set and the values to read, which is the one place the kind is dispatched on.
+def _viewable_branches(graphql_context: GraphqlContext, kind: str, branches: list[Branch]) -> list[Branch]:
+    """Drop the branches the caller holds no view permission for.
+
+    The decision turns only on whether a branch is the default one, so the one covering every other
+    branch is resolved once rather than once per branch.
+    """
+    others = [branch for branch in branches if branch.name != registry.default_branch]
+    if not others or graphql_context.active_permissions.has_permission(
+        permission=_view_permission(kind=kind, branch_name=others[0].name)
+    ):
+        return branches
+    return [branch for branch in branches if branch.name == registry.default_branch]
+
+
+def _drift_branches(graphql_context: GraphqlContext, kind: str, at: Timestamp) -> list[Branch]:
+    """Return the branches a drift row may be reported for.
+
+    A branch on its way out has no drift worth reporting, and one that did not exist at the
+    requested time has none to report either.
+    """
+    branches = [
+        branch
+        for branch in registry.branch.values()
+        if branch.name != GLOBAL_BRANCH_NAME and not branch.is_terminal and Timestamp(branch.get_created_at()) <= at
+    ]
+    return _viewable_branches(graphql_context=graphql_context, kind=kind, branches=branches)
+
+
+def _drift_read(repository: CoreGenericRepository, branches: list[Branch]) -> _DriftRead:
+    """Decide the values to read, which is the one place the repository kind is dispatched on.
 
     Raises:
         ValidationError: When the repository kind has no git state to read.
 
     """
-    # A branch on its way out has no drift worth reporting.
-    branches = [
-        branch for branch in registry.branch.values() if branch.name != GLOBAL_BRANCH_NAME and not branch.is_terminal
-    ]
-
     match repository.get_kind():
         case InfrahubKind.REPOSITORY:
-            # A branch Git never synchronises has no remote counterpart to drift from, so it gets no
-            # row rather than a row reporting it untracked.
+            # A branch Git never synchronises has no remote counterpart to drift from.
             return _DriftRead(
                 branches=[branch for branch in branches if branch.sync_with_git],
                 attribute_names={"commit"},
@@ -283,9 +305,7 @@ async def _resolve_drift_rows(
                 "tracked_commit": tracked_commit,
                 "remote_head": None,
                 "condition": (
-                    RepositoryGitCondition.NOT_TRACKED
-                    if git_ref is None or tracked_commit is None
-                    else RepositoryGitCondition.UNAVAILABLE
+                    RepositoryGitCondition.NOT_TRACKED if git_ref is None else RepositoryGitCondition.UNAVAILABLE
                 ),
             }
         )
@@ -385,12 +405,16 @@ class RepositoryBranchDriftResolver:
         graphql_context: GraphqlContext = info.context
 
         repository = await load_repository_for_view(graphql_context=graphql_context, repository_id=repository_id)
+        at = graphql_context.at or Timestamp()
         rows = await _resolve_drift_rows(
             db=graphql_context.db,
             request_branch=graphql_context.branch,
             repository=repository,
-            at=graphql_context.at or Timestamp(),
-            read=_drift_read(repository=repository),
+            at=at,
+            read=_drift_read(
+                repository=repository,
+                branches=_drift_branches(graphql_context=graphql_context, kind=repository.get_kind(), at=at),
+            ),
         )
 
         return {

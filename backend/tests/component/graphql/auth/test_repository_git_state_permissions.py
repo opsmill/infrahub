@@ -8,6 +8,7 @@ from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import InfrahubKind, PermissionAction, PermissionDecision
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.services import InfrahubServices
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 IMPORTED_COMMIT = "1111111111111111111111111111111111111111"
+BRANCH_COMMIT = "2222222222222222222222222222222222222222"
 
 COMMITS_QUERY = """
 query RepositoryCommits($id: String!) {
@@ -37,6 +39,14 @@ query RepositoryBranchDrift($id: String!) {
   InfrahubRepositoryBranchDrift(repository_id: $id) {
     repository_id
     unavailable { reason }
+  }
+}
+"""
+
+DRIFT_QUERY_WITH_ROWS = """
+query RepositoryBranchDrift($id: String!) {
+  InfrahubRepositoryBranchDrift(repository_id: $id) {
+    edges { node { branch_name tracked_commit } }
   }
 }
 """
@@ -136,6 +146,98 @@ async def test_repository_view_permission_reads_both_queries(
     assert not drift.errors
     assert drift.data
     assert drift.data["InfrahubRepositoryBranchDrift"]["repository_id"] == repository.id
+
+
+async def _synced_branch_tracking_its_own_commit(db: InfrahubDatabase, repository: Node) -> Branch:
+    """A read-write repository reports a row only for a branch Git synchronises, so opt this one in."""
+    branch = await create_branch(branch_name="branch2", db=db)
+    branch.sync_with_git = True
+    await branch.save(db=db)
+
+    repo_on_branch = await NodeManager.get_one(db=db, id=repository.id, branch=branch, raise_on_error=True)
+    repo_on_branch.commit.value = BRANCH_COMMIT
+    await repo_on_branch.save(db=db)
+
+    return branch
+
+
+async def test_drift_answers_only_the_default_branch_without_the_other_branches_decision(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    service: InfrahubServices,
+    repository: Node,
+) -> None:
+    """The request branch's decision gates the query, so every other branch's row needs its own."""
+    await _synced_branch_tracking_its_own_commit(db=db, repository=repository)
+
+    session = await _account_session(
+        db=db,
+        name="default-branch-repository-viewer",
+        permissions=[
+            ObjectPermission(
+                namespace="Core",
+                name="Repository",
+                action=PermissionAction.VIEW.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
+            )
+        ],
+    )
+
+    response = await graphql_query(
+        query=DRIFT_QUERY_WITH_ROWS,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert response.data["InfrahubRepositoryBranchDrift"]["edges"] == [
+        {"node": {"branch_name": default_branch.name, "tracked_commit": IMPORTED_COMMIT}}
+    ]
+
+
+async def test_drift_answers_every_branch_with_the_other_branches_decision(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    service: InfrahubServices,
+    repository: Node,
+) -> None:
+    branch = await _synced_branch_tracking_its_own_commit(db=db, repository=repository)
+
+    session = await _account_session(
+        db=db,
+        name="all-branches-repository-viewer",
+        permissions=[
+            ObjectPermission(
+                namespace="Core",
+                name="Repository",
+                action=PermissionAction.VIEW.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
+            )
+        ],
+    )
+
+    response = await graphql_query(
+        query=DRIFT_QUERY_WITH_ROWS,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session,
+    )
+
+    assert not response.errors
+    assert response.data
+    rows = {
+        edge["node"]["branch_name"]: edge["node"]["tracked_commit"]
+        for edge in response.data["InfrahubRepositoryBranchDrift"]["edges"]
+    }
+    assert rows == {default_branch.name: IMPORTED_COMMIT, branch.name: BRANCH_COMMIT}
 
 
 async def test_missing_repository_view_permission_denies_both_queries(
