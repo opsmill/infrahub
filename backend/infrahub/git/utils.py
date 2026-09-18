@@ -1,3 +1,4 @@
+import itertools
 import re
 from collections import defaultdict
 from typing import Any
@@ -14,59 +15,105 @@ from infrahub_sdk.protocols import (
 from infrahub_sdk.types import Order
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.order import OrderModel
+from infrahub.core.repository_branch_status.reader import RepositoryBranchAttributesReader
 from infrahub.database import InfrahubDatabase
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
+from infrahub.log import get_logger
 
 from .. import config
+from .constants import REPOSITORY_BRANCH_READ_CHUNK_SIZE
 from .models import RepositoryBranchInfo, RepositoryData
+
+log = get_logger("infrahub.git")
 
 
 async def get_repositories_commit_per_branch(
     db: InfrahubDatabase,
     kind: str = InfrahubKind.GENERICREPOSITORY,
 ) -> dict[str, RepositoryData]:
-    """Get a list of all repositories and their commit on each branches.
+    """Get a list of all repositories and their commit on each branch.
 
-    This method is similar to 'get_list_repositories' method in the Python SDK.
+    The repository nodes come from one query on the default branch, so every field read off a node
+    carries the default branch's value. `commit` and `internal_status` are additionally resolved per
+    branch, in fixed-size chunks of branch names, so the read costs one query for the nodes plus one
+    per chunk rather than one per branch. The global branch is never a key of the result.
 
-    NOTE: At some point, we should refactor this function to use a single Database query instead of one per branch
+    Args:
+        db: Database connection instance.
+        kind: Repository kind to read; the generic covers both repository kinds.
+
+    Returns:
+        One entry per repository, keyed by repository name.
+
     """
-    repositories: dict[str, RepositoryData] = {}
+    reader = RepositoryBranchAttributesReader(
+        db=db, default_branch_name=registry.default_branch, global_branch_name=GLOBAL_BRANCH_NAME
+    )
 
-    for branch in list(registry.branch.values()):
-        repos: list[CoreRepository | CoreReadOnlyRepository] = await NodeManager.query(
-            db=db,
-            branch=branch,
-            fields={
-                "id": None,
-                "name": None,
-                "commit": None,
-                "internal_status": None,
-                "location": None,
-                "ref": None,
-                "default_branch": None,
-            },
-            schema=kind,
-            order=OrderModel(disable=True),
+    repos: list[CoreRepository | CoreReadOnlyRepository] = await NodeManager.query(
+        db=db,
+        branch=registry.default_branch,
+        fields={
+            "id": None,
+            "name": None,
+            "commit": None,
+            "internal_status": None,
+            "location": None,
+            "ref": None,
+            "default_branch": None,
+        },
+        schema=kind,
+        order=OrderModel(disable=True),
+    )
+
+    repositories: dict[str, RepositoryData] = {
+        repository.name.value: RepositoryData(
+            repository_id=repository.get_id(),
+            repository_name=repository.name.value,
+            repository=repository,
+            branches={},
         )
+        for repository in repos
+    }
+    if not repositories:
+        return repositories
 
-        for repository in repos:
-            repo_name = repository.name.value
-            if repo_name not in repositories:
-                repositories[repo_name] = RepositoryData(
-                    repository_id=repository.get_id(),
-                    repository_name=repo_name,
-                    repository=repository,
-                    branches={},
+    repository_ids = [repository_data.repository_id for repository_data in repositories.values()]
+    branch_names = [name for name in registry.branch if name != GLOBAL_BRANCH_NAME]
+
+    for chunk in itertools.batched(branch_names, REPOSITORY_BRANCH_READ_CHUNK_SIZE):
+        attributes = await reader.read(
+            repository_ids=repository_ids,
+            branch_names=chunk,
+            attribute_names=("commit", "internal_status"),
+        )
+        for repository_name, repository_data in repositories.items():
+            for branch_name in chunk:
+                commit = attributes.get(
+                    repository_id=repository_data.repository_id,
+                    branch_name=branch_name,
+                    attribute_name="commit",
                 )
+                repository_data.branches[branch_name] = commit.value if commit is not None else None
 
-            repositories[repo_name].branches[branch.name] = repository.commit.value
-            repositories[repo_name].branch_info[branch.name] = RepositoryBranchInfo(
-                internal_status=repository.internal_status.value
-            )
+                internal_status = attributes.get(
+                    repository_id=repository_data.repository_id,
+                    branch_name=branch_name,
+                    attribute_name="internal_status",
+                )
+                internal_status_value = internal_status.value if internal_status is not None else None
+                if internal_status_value is None:
+                    internal_status_value = RepositoryInternalStatus.INACTIVE.value
+                    log.warning(
+                        "No internal status resolved for the repository on this branch, using the fallback",
+                        repository=repository_name,
+                        branch=branch_name,
+                        fallback_internal_status=internal_status_value,
+                    )
+                repository_data.branch_info[branch_name] = RepositoryBranchInfo(internal_status=internal_status_value)
 
     return repositories
 
