@@ -4,7 +4,10 @@ import type { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { FormField } from "@/shared/components/ui/form";
 
 import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
-import { BranchStatusEnum } from "@/entities/branches/ui/filters/branch-status-enum";
+import {
+  ALL_BRANCH_STATUSES,
+  BranchStatusEnum,
+} from "@/entities/branches/ui/filters/branch-status-enum";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import { getCurrentFilterCondition } from "@/entities/nodes/filters/ui/get-current-filter-condition";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
@@ -91,6 +94,7 @@ export function BranchStatusFilterForm({ onSuccess }: BranchStatusFilterFormProp
             <BranchStatusEnum
               value={field.value as BranchStatus | null}
               onChange={field.onChange}
+              options={ALL_BRANCH_STATUSES}
               defaultOpen
             />
           )}
