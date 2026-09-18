@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 
 from infrahub.computed_attribute.gather import (
+    gather_python_transform_attributes,
     gather_trigger_computed_attribute_jinja2,
     gather_trigger_computed_attribute_python,
 )
@@ -298,6 +299,33 @@ async def test_gather_trigger_computed_attribute_python_fires_once_per_branch(
             )
             == expected_owners
         )
+
+
+async def test_gather_trigger_computed_attribute_python_resolves_every_non_global_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_computed_attr: None,
+    transform01: Node,
+) -> None:
+    """The per-branch commit map is keyed by every non-global branch and by nothing else.
+
+    A branch missing from it makes the gather raise a KeyError when it reads that branch's commit.
+    """
+    for branch_name in ("branch2", "branch3"):
+        await create_branch(branch_name=branch_name, db=db)
+
+    non_global_branch_names = sorted(name for name, branch in registry.branch.items() if not branch.is_global)
+    assert non_global_branch_names == ["branch2", "branch3", "main"]
+
+    triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+
+    assert {trigger.branch for trigger in triggers} == {"main"}
+    assert {trigger.branch for trigger in trigger_queries} == {"main"}
+
+    for branch_name in non_global_branch_names:
+        computed_attributes = await gather_python_transform_attributes(db=db, branch_name=branch_name)
+        assert [attribute.repository_commit for attribute in computed_attributes] == ["commit02"]
+        assert sorted(computed_attributes[0].branch_commit) == non_global_branch_names
 
 
 @dataclass
