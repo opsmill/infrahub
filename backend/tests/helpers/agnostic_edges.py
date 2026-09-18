@@ -379,15 +379,19 @@ async def remove_attribute_on_branch(
     )
 
 
-async def pool_reservation_edges(db: InfrahubDatabase, pool_id: str, identifier: str) -> list[EdgeState]:
-    """Every reservation edge a pool holds under one identifier, on any branch."""
+async def pool_reservation_edges(db: InfrahubDatabase, pool_id: str, attribute_id: str) -> list[EdgeState]:
+    """Every reservation edge a pool holds on one attribute, on any branch.
+
+    Keyed on the attribute vertex: the record hangs off it, and a pool holds a record on the
+    same-named attribute of every object it has served, so the name alone would return them all.
+    """
     results = await db.execute_query(
         query="""
-        MATCH (:Node {uuid: $pool_id})-[e:IS_RESERVED {identifier: $identifier}]->(:AttributeValue)
+        MATCH (:Node {uuid: $pool_id})-[e:IS_RESERVED]->(:Attribute {uuid: $attribute_id})
         RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
                e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id
         """,
-        params={"pool_id": pool_id, "identifier": identifier},
+        params={"pool_id": pool_id, "attribute_id": attribute_id},
     )
     return [EdgeState(**dict(result)) for result in results]
 

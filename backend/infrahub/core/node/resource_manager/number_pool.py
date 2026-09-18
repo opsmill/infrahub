@@ -10,6 +10,7 @@ from infrahub.core.query.resource_manager import (
     NumberPoolGetTaken,
     NumberPoolGetUsed,
     NumberPoolSetReserved,
+    PoolRecordProvenance,
 )
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.exceptions import PoolExhaustedError
@@ -81,10 +82,22 @@ class CoreNumberPool(Node):
 
         return query.get_taken_values()
 
-    async def reserve(self, db: InfrahubDatabase, number: int, identifier: str, at: Timestamp | None = None) -> None:
-        """Reserve a number in the pool for a specific identifier."""
+    async def reserve(
+        self,
+        db: InfrahubDatabase,
+        identifier: str,
+        attribute_id: str,
+        provenance: PoolRecordProvenance,
+        at: Timestamp | None = None,
+    ) -> None:
+        """Record that this pool accounts for the attribute, whatever value it holds."""
         query = await NumberPoolSetReserved.init(
-            db=db, pool_id=self.get_id(), identifier=identifier, reserved=number, at=at
+            db=db,
+            pool_id=self.get_id(),
+            identifier=identifier,
+            attribute_id=attribute_id,
+            provenance=provenance,
+            at=at,
         )
         await query.execute(db=db)
 
@@ -94,25 +107,31 @@ class CoreNumberPool(Node):
         branch: Branch,
         attribute: AttributeSchema,
         identifier: str,
+        attribute_id: str | None = None,
         at: Timestamp | None = None,
     ) -> int:
         async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
-            # NOTE: ideally we should use the HFID as the identifier (if available)
-            # one of the challenge with using the HFID is that it might change over time
-            # so we need to ensure that the identifier is stable, or we need to handle the case where the identifier changes
-
-            # Check if there is already a resource allocated with this identifier
-            # if not, pull all existing number and allocate the next available
-            # TODO add support for branch, if the node is reserved with this id in another branch we should return an error
-            query_get = await NumberPoolGetReserved.init(db=db, branch=branch, pool_id=self.id, identifier=identifier)
-            await query_get.execute(db=db)
-            reservation = query_get.get_reservation()
-            if reservation is not None:
-                return reservation
+            # If the attribute already exists, try to get its pool reservation
+            if attribute_id is not None:
+                query_get = await NumberPoolGetReserved.init(
+                    db=db, branch=branch, pool_id=self.id, identifier=identifier
+                )
+                await query_get.execute(db=db)
+                reservation = query_get.get_reservation()
+                if reservation is not None:
+                    return reservation
 
             # If we have not returned a value we need to find one if avaiable
             number = await self.get_next(db=db, branch=branch, attribute=attribute)
-            await self.reserve(db=db, number=number, identifier=identifier, at=at)
+            if attribute_id is not None:
+                # Cannot reserve without an Attribute to link
+                await self.reserve(
+                    db=db,
+                    identifier=identifier,
+                    attribute_id=attribute_id,
+                    provenance=PoolRecordProvenance.ALLOCATED,
+                    at=at,
+                )
             return number
 
     async def get_next(self, db: InfrahubDatabase, branch: Branch, attribute: AttributeSchema) -> int:

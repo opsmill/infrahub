@@ -18,9 +18,11 @@ from infrahub.core.constants import (
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
     AttributeDBNodeType,
+    InfrahubKind,
     MetadataOptions,
     RelationshipDirection,
     RelationshipHierarchyDirection,
+    RelationshipStatus,
 )
 from infrahub.core.constants import (
     NODE_METADATA_PREFIX as _NODE_METADATA_PREFIX,
@@ -33,6 +35,7 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
+from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
@@ -262,6 +265,17 @@ class NodeCreateAllQuery(NodeQuery):
             "from_user_id": self.user_id,
         }
 
+        # A number pool's reservation record lives on the global branch.
+        global_branch = registry.get_global_branch()
+        self.params["pool_rel_prop"] = {
+            "branch": global_branch.name,
+            "branch_level": global_branch.hierarchy_level,
+            "status": RelationshipStatus.ACTIVE.value,
+            "from": at.to_string(),
+            "identifier": self.node.id,
+            "provenance": PoolRecordProvenance.ALLOCATED.value,
+        }
+
         # set all the property strings that we reuse
         # include the create/updated_at/by metadata if on default or global branch
         attr_edge_prop_str = "{ branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, from_user_id: $user_id }"
@@ -275,6 +289,14 @@ class NodeCreateAllQuery(NodeQuery):
             "{ branch: rel.branch, branch_level: rel.branch_level, "
             "status: rel.status, hierarchy: rel.hierarchical, from: $at, from_user_id: $user_id }"
         )
+        pool_reservation_subquery = """
+            WITH *
+            CALL (a, attr) {
+                UNWIND attr.pool_prop AS prop
+                MATCH (pool:%(number_pool)s { uuid: prop.peer_id })
+                CREATE (pool)-[:IS_RESERVED $pool_rel_prop]->(a)
+            }""" % {"number_pool": InfrahubKind.NUMBERPOOL}
+
         rel_vertex_prop_str = "{ uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support"
         if self.branch.is_default or self.branch.is_global:
             rel_vertex_prop_str += ", created_at: $at, created_by: $user_id, updated_at: $at, updated_by: $user_id"
@@ -336,7 +358,12 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
-        }""" % {"attr_edge": attr_edge_prop_str, "attr_vertex": attr_vertex_prop_str}
+%(pool_reservation)s
+        }""" % {
+            "attr_edge": attr_edge_prop_str,
+            "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
+        }
 
         attrs_indexed_query = """
         WITH distinct n
@@ -358,7 +385,12 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
-        }""" % {"attr_edge": attr_edge_prop_str, "attr_vertex": attr_vertex_prop_str}
+%(pool_reservation)s
+        }""" % {
+            "attr_edge": attr_edge_prop_str,
+            "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
+        }
 
         attrs_iphost_query = """
         WITH distinct n
@@ -382,11 +414,13 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
+%(pool_reservation)s
         }
         """ % {
             "iphost_prop": ", ".join(iphost_prop_list),
             "attr_edge": attr_edge_prop_str,
             "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
         }
 
         attrs_ipnetwork_query = """
@@ -411,11 +445,13 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
+%(pool_reservation)s
         }
         """ % {
             "ipnetwork_prop": ", ".join(ipnetwork_prop_list),
             "attr_edge": attr_edge_prop_str,
             "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
         }
 
         deepest_branch = await registry.get_branch(db=db, branch=deepest_branch_name)
@@ -730,6 +766,12 @@ class NodeListGetAttributeQuery(Query):
         return bool(self.include_metadata & (MetadataOptions.CREATED_AT | MetadataOptions.CREATED_BY))
 
     def _add_source_to_query(self, branch_filter_str: str) -> None:
+        """Resolve the attribute's source, falling back to the number pool that accounts for it.
+
+        A number pool source is derived from the branch-agnostic reservation record, not a HAS_SOURCE
+        edge. A source the user set wins, so attaching a pool to an attribute that already carries a
+        source changes nothing the user sees.
+        """
         if not self._include_source:
             return
         source_query = """
@@ -740,10 +782,25 @@ CALL (a) {
     ORDER BY rel_source.branch_level DESC, rel_source.from DESC, rel_source.status ASC
     LIMIT 1
 }
+CALL (a) {
+    OPTIONAL MATCH (pool_source:Node)-[rel_reserved:IS_RESERVED]->(a)
+    WHERE rel_reserved.branch = $global_branch_name
+      AND rel_reserved.status = "active"
+      AND rel_reserved.from <= $at_source
+      AND (rel_reserved.to IS NULL OR rel_reserved.to > $at_source)
+    RETURN pool_source
+    ORDER BY rel_reserved.from DESC
+    LIMIT 1
+}
 WITH *,
-    CASE WHEN rel_source.status = "active" THEN source ELSE NULL END AS source,
+    CASE
+        WHEN rel_source.status = "active" THEN source
+        ELSE pool_source
+    END AS source,
     CASE WHEN rel_source.status = "active" THEN rel_source ELSE NULL END AS rel_source
         """ % {"branch_filter": branch_filter_str}
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        self.params["at_source"] = self.at.to_string()
         self.add_to_query(source_query)
         self.return_labels.extend(["source", "rel_source"])
 
