@@ -112,6 +112,11 @@ Pass-through cases that bypass admission entirely:
   never be shed.
 - CORS preflights (`OPTIONS` advertising `access-control-request-method`) — see
   [Known limitations](#known-limitations).
+- Page navigations — a `GET` whose `Accept` lists `text/html` as a media range of its own. The frontend is served by
+  a catch-all (`GET /{rest_of_path:path}`), so its paths cannot be enumerated as exclusions and
+  the request is recognised by what it asks for instead. Shedding one replaces the app with the
+  error envelope in the address bar, and the retry that recovers a shed request ships inside
+  that app — see [Known limitations](#known-limitations).
 
 ## The admission decision
 
@@ -284,6 +289,13 @@ class — are clearer and directly testable, with the cancellation path modelled
   backend is busy. CORS now answers preflights before the gate sees them, but the exemption is
   kept so the guarantee does not rest on middleware ordering. Only genuine preflights (`OPTIONS`
   with `access-control-request-method`) are exempt.
+- **Page navigations are recognised by `Accept`** — the exemption keys off a request header, so
+  a caller that sends `Accept: text/html` on a `GET` to a gated path is exempted too. Priority is
+  already a self-declared claim the gate trusts ([ADR 0008](../../adr/0008-client-declared-request-priority.md)),
+  so this adds no trust that was not already extended. `Sec-Fetch-Dest: document` is a narrower
+  signal — a browser sets it and page scripts cannot override it, though any non-browser client
+  still sends what it likes — but browsers omit fetch-metadata headers over plain HTTP to a
+  non-local host, which is exactly where a deployment would still be broken.
 - **Metrics accounting on client disconnect** — `offered_total` is incremented before a request
   acquires a slot, but a client that disconnects while queued produces neither an admission nor a
   rejection. So `offered_total == admitted_total + rejected_total` holds only absent cancellations;
