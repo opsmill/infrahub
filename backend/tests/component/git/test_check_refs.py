@@ -608,6 +608,18 @@ class InvalidResultCase:
             ),
             id="a_completed_check_cannot_name_a_claim_holder",
         ),
+        pytest.param(
+            InvalidResultCase(
+                name="a_check_that_lost_the_claim_cannot_have_contacted_the_remote",
+                kwargs={
+                    "outcome": RefsCheckOutcome.SKIPPED_CLAIMED,
+                    "claimed_by": "another-run",
+                    "contacted_remote": True,
+                },
+                expected_message="^A check that never got the claim cannot have contacted the remote$",
+            ),
+            id="a_check_that_lost_the_claim_cannot_have_contacted_the_remote",
+        ),
     ],
 )
 async def test_a_result_cannot_describe_two_outcomes_at_once(case: InvalidResultCase) -> None:

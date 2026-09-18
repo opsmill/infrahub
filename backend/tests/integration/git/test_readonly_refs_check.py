@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 import pytest
+from git import Blob
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
@@ -155,14 +156,14 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
             repository_id=dataset["node_id"],
             repository_name=dataset["repo_name"],
             location=dataset["location"],
-            refs=[
+            refs=(
                 TrackedRef(
                     infrahub_branch_name="main",
                     infrahub_branch_id="main-branch-id",
                     ref=dataset["ref"],
                     commit=repository.commit.value,
-                )
-            ],
+                ),
+            ),
         )
 
     async def tracked_commit(self, db: InfrahubDatabase, dataset: dict) -> str | None:
@@ -182,7 +183,7 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
         repo.validate_local_directories()
         assert commit in {worktree.identifier for worktree in repo.get_worktrees()}
         tree = repo.get_git_repo_main().commit(commit).tree
-        assert ".infrahub.yml" in [entry.path for entry in tree.traverse()]
+        assert ".infrahub.yml" in [blob.path for blob in tree.traverse() if isinstance(blob, Blob)]
 
     async def test_step01_an_unchanged_remote_reports_no_movement_and_takes_no_lock(
         self,
