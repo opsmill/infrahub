@@ -32,5 +32,9 @@ class RepositoryBranchAttributesSource(Protocol):
         Returns:
             A lookup holding one value per repository, branch and attribute name that resolved.
 
+        Raises:
+            ResourceMultipleFoundError: If the read produced two values for the same repository,
+                branch and attribute name.
+
         """
         ...

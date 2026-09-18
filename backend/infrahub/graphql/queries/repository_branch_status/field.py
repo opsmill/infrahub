@@ -5,12 +5,13 @@ from typing import TYPE_CHECKING
 from graphene import Argument, Boolean, Field, Int, String
 
 from infrahub.core import registry
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.repository_branch_status.reader import RepositoryBranchAttributesReader
 from infrahub.graphql.types.enums import InfrahubBranchStatus
 from infrahub.graphql.types.metadata import MetadataOrderInput
 from infrahub.graphql.types.repository_branch_status import InfrahubRepositoryBranchStatusType
 
 from .resolver import RepositoryBranchStatusResolver
-from .stub import StubRepositoryBranchAttributesSource
 
 if TYPE_CHECKING:
     from infrahub.core.repository_branch_status.interface import RepositoryBranchAttributesSource
@@ -20,23 +21,25 @@ _DESCRIPTION = (
     "Status of one repository as seen from every relevant branch, one row per branch. "
     "Resolved entirely from the graph; never contacts a task worker. "
     "Requires view permission on the repository's kind covering both the default and non-default "
-    "branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER)."
-    " (preview: attribute values are placeholders, not yet read from the graph, so "
-    "sync_status__value, internal_status__value and own_values_only are rejected)"
+    "branches (ALLOW_ALL, or ALLOW_DEFAULT plus ALLOW_OTHER). "
+    "Always reports the present: a request carrying an 'at' query parameter is rejected, because "
+    "the branch list this query builds its rows from has no historical form."
 )
 
 
-def build_attribute_source(db: InfrahubDatabase) -> RepositoryBranchAttributesSource:  # noqa: ARG001
+def build_attribute_source(db: InfrahubDatabase) -> RepositoryBranchAttributesSource:
     """Build the source the resolver reads the repository's per-branch attribute values from.
 
     Args:
         db: Database connection the source reads through.
 
     Returns:
-        The attribute source, which currently serves placeholder values.
+        The attribute source.
 
     """
-    return StubRepositoryBranchAttributesSource(default_branch_name=registry.default_branch)
+    return RepositoryBranchAttributesReader(
+        db=db, default_branch_name=registry.default_branch, global_branch_name=GLOBAL_BRANCH_NAME
+    )
 
 
 InfrahubRepositoryBranchStatus = Field(

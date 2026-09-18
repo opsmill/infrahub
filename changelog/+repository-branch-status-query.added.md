@@ -1,0 +1,1 @@
+Added the `InfrahubRepositoryBranchStatus` GraphQL query, returning one row per branch with the repository's `commit`, `sync_status` and `internal_status` as that branch resolves them, plus `ref` for a read-only repository, filterable with `name__value`, `partial_match`, `status__value`, `sync_status__value`, `internal_status__value`, and `own_values_only`.

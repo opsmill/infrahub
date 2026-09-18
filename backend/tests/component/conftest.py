@@ -3184,9 +3184,6 @@ class RepositoryBranchStatusBranches:
     by_status: Mapping[BranchStatus, str]
     """One branch name per branch status, terminal statuses included."""
 
-    legacy_non_isolated: str
-    """Branch saved with `is_isolated=False`, as branches created before isolation was the default were."""
-
     @property
     def non_terminal_status_names(self) -> tuple[str, ...]:
         """Names of the branches whose status is neither MERGED nor DELETING."""
@@ -3198,8 +3195,14 @@ class RepositoryBranchStatusBranches:
         return tuple(name for status, name in self.by_status.items() if status in TERMINAL_BRANCH_STATUSES)
 
 
+_REGISTRY_FIELDS_BACKED_BY_DATABASE_ROWS = frozenset({"branch", "_schema", "_default_ipnamespace"})
+"""Registry fields whose values describe rows in the database rather than registered types."""
+
+
 @pytest.fixture(scope="module")
-async def repository_branch_status_branches(db: InfrahubDatabase) -> RepositoryBranchStatusBranches:
+async def repository_branch_status_branches(
+    db: InfrahubDatabase,
+) -> AsyncGenerator[RepositoryBranchStatusBranches, None]:
     """Bootstrap a database holding every branch shape the cross-branch repository status read must cover.
 
     Creation timestamps are set explicitly and increase with the save order, so an ordering assertion
@@ -3212,13 +3215,20 @@ async def repository_branch_status_branches(db: InfrahubDatabase) -> RepositoryB
     here; a test that writes repository values creates its own so the writes cannot leak into another
     test sharing the database.
 
+    Teardown empties the database again and restores the registered types the snapshot held, leaving
+    the fields that describe database rows cleared so the registry matches the emptied database. The
+    next module in the worker inherits neither these branches nor a registry pointing at rows that
+    no longer exist, and is expected to bootstrap its own.
+
     Args:
         db: Database connection instance.
 
-    Returns:
+    Yields:
         Every branch saved, grouped by the property that makes each interesting.
 
     """
+    registry_state = dict(vars(registry))
+
     registry.delete_all()
     await delete_all_nodes(db=db)
     await create_root_node(db=db)
@@ -3234,14 +3244,11 @@ async def repository_branch_status_branches(db: InfrahubDatabase) -> RepositoryB
     two_hundred = tuple(f"rbs-scale-{index:03d}" for index in range(200))
     non_syncing = "rbs-nosync"
     by_status = {status: f"rbs-status-{status.value.lower().replace('_', '-')}" for status in BranchStatus}
-    legacy_non_isolated = "rbs-legacy"
-
-    # (name, status, sync_with_git, is_isolated); the save order fixes the created_at order.
-    specs: list[tuple[str, BranchStatus, bool, bool]] = [
-        *[(name, BranchStatus.OPEN, True, True) for name in (*five, *two_hundred)],
-        (non_syncing, BranchStatus.OPEN, False, True),
-        *[(name, status, True, True) for status, name in by_status.items()],
-        (legacy_non_isolated, BranchStatus.OPEN, True, False),
+    # (name, status, sync_with_git); the save order fixes the created_at order.
+    specs: list[tuple[str, BranchStatus, bool]] = [
+        *[(name, BranchStatus.OPEN, True) for name in (*five, *two_hundred)],
+        (non_syncing, BranchStatus.OPEN, False),
+        *[(name, status, True) for status, name in by_status.items()],
     ]
 
     base = Timestamp()
@@ -3250,7 +3257,7 @@ async def repository_branch_status_branches(db: InfrahubDatabase) -> RepositoryB
     default_branch.branched_from = oldest
     await default_branch.save(db=db)
 
-    for index, (name, status, sync_with_git, is_isolated) in enumerate(specs):
+    for index, (name, status, sync_with_git) in enumerate(specs):
         created_at = base.subtract(seconds=len(specs) - index).to_string()
         branch = Branch(
             name=name,
@@ -3258,7 +3265,6 @@ async def repository_branch_status_branches(db: InfrahubDatabase) -> RepositoryB
             description=f"branch {name}",
             is_default=False,
             sync_with_git=sync_with_git,
-            is_isolated=is_isolated,
             branched_from=created_at,
             created_at=created_at,
         )
@@ -3272,15 +3278,23 @@ async def repository_branch_status_branches(db: InfrahubDatabase) -> RepositoryB
     )
     query_branch.update_schema_hash()
 
-    return RepositoryBranchStatusBranches(
+    yield RepositoryBranchStatusBranches(
         default_branch=default_branch,
         query_branch_name=query_branch.name,
         five=five,
         two_hundred=two_hundred,
         non_syncing=non_syncing,
         by_status=by_status,
-        legacy_non_isolated=legacy_non_isolated,
     )
+
+    # Clearing first is what empties the fields holding objects read from the database: skipping
+    # them in the restore below would otherwise leave this module's branches and schemas in place,
+    # describing rows the wipe above just deleted.
+    await delete_all_nodes(db=db)
+    registry.delete_all()
+    for name, value in registry_state.items():
+        if name not in _REGISTRY_FIELDS_BACKED_BY_DATABASE_ROWS:
+            setattr(registry, name, value)
 
 
 async def make_repository_pair(
