@@ -3,6 +3,7 @@ from copy import deepcopy
 import pytest
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch, initialize_registry
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
@@ -149,19 +150,17 @@ class TestNumberPoolAllocation:
 async def test_resource_utilization(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    """Allocates:
-
-    - 1 ticket in first number pool
-    - 2 tickets in second number pool
-    and verifies resource pool utilization.
-
-    """
+    """Each pool reports its own totals, and each range it holds reports its own figures underneath."""
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     await initialize_registry(db=db)
 
     np1 = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await np1.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
     await np1.save(db=db)
+
+    whole = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOLRANGE)
+    await whole.new(db=db, start=1, end=10, pool=np1.get_id())
+    await whole.save(db=db)
 
     ticket1_np1 = await Node.init(db=db, schema=TICKET.kind)
     await ticket1_np1.new(db=db, title="ticket1_np1", ticket_id={"from_pool": {"id": np1.id}})
@@ -171,13 +170,18 @@ async def test_resource_utilization(
     await np2.new(db=db, name="pool2", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
     await np2.save(db=db)
 
-    ticket1_np2 = await Node.init(db=db, schema=TICKET.kind)
-    await ticket1_np2.new(db=db, title="ticket1_np2", ticket_id={"from_pool": {"id": np2.id}})
-    await ticket1_np2.save(db=db)
+    lower = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOLRANGE)
+    await lower.new(db=db, start=1, end=5, allocation_weight=10, pool=np2.get_id())
+    await lower.save(db=db)
 
-    ticket2_np2 = await Node.init(db=db, schema=TICKET.kind)
-    await ticket2_np2.new(db=db, title="ticket2_np2", ticket_id={"from_pool": {"id": np2.id}})
-    await ticket2_np2.save(db=db)
+    upper = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOLRANGE)
+    await upper.new(db=db, start=6, end=10, pool=np2.get_id())
+    await upper.save(db=db)
+
+    for index in range(2):
+        ticket = await Node.init(db=db, schema=TICKET.kind)
+        await ticket.new(db=db, title=f"ticket{index}_np2", ticket_id={"from_pool": {"id": np2.id}})
+        await ticket.save(db=db)
 
     utilization_np1 = await resolve_number_pool_utilization(db=db, pool=np1, at=Timestamp(), branch=default_branch)
 
@@ -189,10 +193,10 @@ async def test_resource_utilization(
         "edges": [
             {
                 "node": {
-                    "id": np1.get_id(),
-                    "kind": "CoreNumberPool",
-                    "display_label": "pool1",
-                    "weight": 1,
+                    "id": whole.get_id(),
+                    "kind": InfrahubKind.NUMBERPOOLRANGE,
+                    "display_label": "1 - 10",
+                    "weight": 0,
                     "utilization": 10,
                     "utilization_default_branch": 10,
                     "utilization_branches": 0,
@@ -204,24 +208,38 @@ async def test_resource_utilization(
     utilization_np2 = await resolve_number_pool_utilization(db=db, pool=np2, at=Timestamp(), branch=default_branch)
 
     assert utilization_np2 == {
-        "count": 1,
+        "count": 2,
         "utilization": 20,
         "utilization_default_branch": 20,
         "utilization_branches": 0,
         "edges": [
             {
                 "node": {
-                    "id": np2.get_id(),
-                    "kind": "CoreNumberPool",
-                    "display_label": "pool2",
-                    "weight": 1,
-                    "utilization": 20,
-                    "utilization_default_branch": 20,
+                    "id": lower.get_id(),
+                    "kind": InfrahubKind.NUMBERPOOLRANGE,
+                    "display_label": "1 - 5",
+                    "weight": 10,
+                    "utilization": 40,
+                    "utilization_default_branch": 40,
                     "utilization_branches": 0,
                 }
-            }
+            },
+            {
+                "node": {
+                    "id": upper.get_id(),
+                    "kind": InfrahubKind.NUMBERPOOLRANGE,
+                    "display_label": "6 - 10",
+                    "weight": 0,
+                    "utilization": 0,
+                    "utilization_default_branch": 0,
+                    "utilization_branches": 0,
+                }
+            },
         ],
     }
+
+    for range_node, edge in zip((lower, upper), utilization_np2["edges"], strict=True):
+        assert edge["node"]["display_label"] == await range_node.get_display_label(db=db)
 
 
 async def test_allocate_from_number_pool_for_generic(
@@ -280,7 +298,7 @@ async def test_allocate_from_number_pool_for_generic(
     assert recreated_ticket2.ticket_id.value == 2
 
     utilization = await resolve_number_pool_utilization(db=db, pool=np1, at=Timestamp(), branch=default_branch)
-    assert utilization["edges"][0]["node"]["utilization"] == 20.0
+    assert utilization["utilization"] == 20.0
 
 
 async def test_allocate_from_number_pool_with_excluded_values(
@@ -344,4 +362,4 @@ async def test_allocate_from_number_pool_with_excluded_values(
     nb_values_used_in_pool = 1
     nb_excluded_values = 4
     total_pool_length = np1.end_range.value - np1.start_range.value + 1 - nb_excluded_values
-    assert utilization["edges"][0]["node"]["utilization"] == nb_values_used_in_pool / total_pool_length * 100
+    assert utilization["utilization"] == nb_values_used_in_pool / total_pool_length * 100

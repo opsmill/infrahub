@@ -160,6 +160,11 @@ class IPAddressPoolGetResource(Mutation):
         return cls(**result)
 
 
+BOUNDS_DESCRIBE_ONE_RANGE = "start_range and end_range are the two bounds of a single range"
+BOUNDS_REQUIRED = f"{BOUNDS_DESCRIBE_ONE_RANGE}, both are required"
+BOUNDS_NOT_CLEARABLE = f"{BOUNDS_DESCRIBE_ONE_RANGE}, neither can be cleared"
+
+
 class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     def __init_subclass_with_meta__(
@@ -205,8 +210,13 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         if attribute.kind != "Number":
             raise ValidationError(input_value="The selected attribute is not of the kind Number")
 
-        start_range = data["start_range"].value
-        end_range = data["end_range"].value
+        start_range_input = data.get("start_range")
+        end_range_input = data.get("end_range")
+        start_range = start_range_input.value if start_range_input else None
+        end_range = end_range_input.value if end_range_input else None
+        if start_range is None or end_range is None:
+            raise ValidationError(input_value=BOUNDS_REQUIRED)
+
         if start_range > end_range:
             raise ValidationError(input_value="start_range can't be larger than end_range")
 
@@ -262,8 +272,14 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
                     input_value="start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
                 )
 
-            if number_pool.start_range.value > number_pool.end_range.value:  # type: ignore[attr-defined]
-                raise ValidationError(input_value="start_range can't be larger than end_range")
+            if "start_range" in data.keys() or "end_range" in data.keys():
+                start_value = number_pool.start_range.value  # type: ignore[attr-defined]
+                end_value = number_pool.end_range.value  # type: ignore[attr-defined]
+                if start_value is None or end_value is None:
+                    raise ValidationError(input_value=BOUNDS_NOT_CLEARABLE)
+
+                if start_value > end_value:
+                    raise ValidationError(input_value="start_range can't be larger than end_range")
 
         return number_pool, result
 
