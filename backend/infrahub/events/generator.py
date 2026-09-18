@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING, cast
 
 from infrahub.core.branch import Branch
+from infrahub.core.changelog.builder import build_relationship_changelog_getter
 from infrahub.core.changelog.models import (
     NodeChangelog,
     RelationshipCardinalityManyChangelog,
     RelationshipCardinalityOneChangelog,
-    RelationshipChangelogGetter,
 )
 from infrahub.core.constants import DiffAction, InfrahubKind, MutationAction
 from infrahub.core.mutation_context import RecordedNode
@@ -79,7 +79,9 @@ async def generate_node_mutation_events(
         else None
     )
     node_changelogs = (
-        await RelationshipChangelogGetter(db=db, branch=branch).get_changelogs(primary_changelog=node.node_changelog)
+        await build_relationship_changelog_getter(db=db, branch=branch).get_changelogs(
+            primary_changelog=node.node_changelog
+        )
         if main_node_changed
         else []
     )

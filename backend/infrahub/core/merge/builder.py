@@ -6,6 +6,7 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 from infrahub import lock
+from infrahub.core.changelog.builder import build_diff_changelog_collector
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
@@ -174,6 +175,7 @@ async def build_branch_merge_orchestrator(
         diff_summary_cache=DiffSummaryCache(
             cache=cache, serializer=diff_summary_serializer, key_namespace="branch_merge"
         ),
+        changelog_collector_factory=build_diff_changelog_collector,
         logger=logger,
     )
 
