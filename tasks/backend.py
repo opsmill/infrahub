@@ -1,3 +1,4 @@
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -369,9 +370,10 @@ def format_and_lint(context: Context) -> None:
 
 @task
 def generate(context: Context) -> None:
-    """Generate internal backend models."""
+    """Generate the internal backend models and the artefacts Infrahub produces for the Python SDK."""
     _generate_schemas(context=context)
     _generate_protocols(context=context)
+    _generate_sdk_error_bindings(context=context)
 
 
 GRAPHQL_QUERY_FILES = [
@@ -426,6 +428,90 @@ def validate_generated(context: Context, docker: bool = False) -> None:  # noqa:
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
+    _generate_sdk_error_bindings(context=context)
+    _check_sdk_error_bindings_committed(context=context)
+
+
+ERROR_CATALOGUE_SOURCE = "schema/error-catalogue.json"
+SDK_SUBMODULE = "python_sdk"
+SDK_EXCEPTIONS_BASE = "infrahub_sdk/exceptions/base.py"
+SDK_ERROR_BINDINGS = "infrahub_sdk/exceptions/catalogue.py"
+
+
+def _run_stdout(context: Context, command: str) -> str:
+    """Stdout of a command that must succeed, with the command's own stderr reported when it does not.
+
+    Raises:
+        ErrorCatalogueGenerationError: when the command exits non-zero.
+
+    """
+    from infrahub.errors.sdk_bindings import ErrorCatalogueGenerationError
+
+    result = context.run(command, hide=True, warn=True)
+    if result is None:
+        return ""
+    if result.exited != 0:
+        raise ErrorCatalogueGenerationError(f"`{command}` exited {result.exited}: {result.stderr.strip()}")
+    return result.stdout.strip()
+
+
+def _check_sdk_error_bindings_committed(
+    context: Context, repo_base: Path = REPO_BASE, submodule: str = SDK_SUBMODULE, bindings: str = SDK_ERROR_BINDINGS
+) -> None:
+    """Fail when the generated error bindings are missing from, or stale against, the submodule's HEAD.
+
+    A file absent from HEAD and a committed file gone stale need different fixes, so the two are
+    reported separately.
+
+    Raises:
+        ErrorCatalogueGenerationError: when the submodule is not checked out.
+
+    """
+    from infrahub.errors.sdk_bindings import BindingsState, ErrorCatalogueGenerationError, classify_bindings_state
+
+    with context.cd(str(repo_base)):
+        # Git's repository discovery walks upwards, so `git -C python_sdk` silently answers for the
+        # superproject when the submodule is not checked out. Every answer below would then describe
+        # the wrong repository.
+        toplevel = _run_stdout(context, f"git -C {submodule} rev-parse --show-toplevel")
+        if Path(toplevel).resolve() != (repo_base / submodule).resolve():
+            raise ErrorCatalogueGenerationError(
+                f"{submodule} is not a checked-out Git repository. "
+                f"Run `git submodule update --init {submodule}` and try again."
+            )
+
+        # A submodule with no commits yet has no HEAD to ask, which is the same answer as a HEAD that
+        # does not carry the file.
+        head = context.run(f"git -C {submodule} rev-parse --verify --quiet HEAD", hide=True, warn=True)
+        at_head = ""
+        if head is not None and head.exited == 0:
+            at_head = _run_stdout(context, f"git -C {submodule} ls-tree HEAD -- {bindings}")
+        working_tree = _run_stdout(
+            context,
+            f"git -C {submodule} status --porcelain --untracked-files=all -- {bindings}",
+        )
+        if at_head and working_tree:
+            context.run(f"git -C {submodule} diff -- {bindings}", warn=True)
+
+    state = classify_bindings_state(tracked_at_head=bool(at_head), working_tree_differs=bool(working_tree))
+    if state is BindingsState.UP_TO_DATE:
+        return
+
+    print()
+    if state is BindingsState.NOT_COMMITTED:
+        print(f"ERROR: {submodule}/{bindings} is generated but is not committed in the SDK.")
+        print()
+        print("Fix: commit it in the Python SDK repository, then bump the submodule pointer here.")
+    else:
+        print(f"ERROR: {submodule}/{bindings} is out of date with {ERROR_CATALOGUE_SOURCE}.")
+        print()
+        print("Fix:")
+        print("  uv run invoke backend.generate")
+        print()
+        print("Then commit the regenerated file in the Python SDK repository and push again.")
+    print()
+    sys.exit(1)
+
 
 @task(name="export-error-catalogue")
 def export_error_catalogue(context: Context, output: str = "schema/error-catalogue.json") -> None:  # noqa: ARG001
@@ -438,6 +524,23 @@ def export_error_catalogue(context: Context, output: str = "schema/error-catalog
 
     written = write_catalogue(destination)
     print(f" - [{NAMESPACE}] Wrote error catalogue to {written}")
+
+
+def _generate_sdk_error_bindings(context: Context) -> None:
+    """Render the SDK's error catalogue bindings into the submodule."""
+    from infrahub.errors.sdk_bindings import load_catalogue, render_bindings, scan_sdk_exceptions
+
+    catalogue = load_catalogue(REPO_BASE / ERROR_CATALOGUE_SOURCE)
+    adopted, defined = scan_sdk_exceptions(REPO_BASE / SDK_SUBMODULE / SDK_EXCEPTIONS_BASE)
+    rendered = render_bindings(
+        catalogue=catalogue, adopted=adopted, defined=defined, template_dir=REPO_BASE / "backend" / "templates"
+    )
+
+    output = REPO_BASE / SDK_SUBMODULE / SDK_ERROR_BINDINGS
+    output.write_text(rendered, encoding="utf-8")
+
+    execute_command(context=context, command=f'ruff format "{output}"')
+    execute_command(context=context, command=f'ruff check --fix "{output}"')
 
 
 def _generate_schemas(context: Context) -> None:
