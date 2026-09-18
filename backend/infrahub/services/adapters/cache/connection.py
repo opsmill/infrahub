@@ -40,9 +40,12 @@ REDIS_RETRY_BACKOFF_BASE: float = 0.01
 REDIS_RETRY_BACKOFF_CAP: float = 1.0
 
 # PING a connection that has been idle longer than this before a command goes out, and re-establish
-# it when the PING fails. A pooled connection to a demoted master would otherwise sit unnoticed until
-# a caller trips over it. redis-py runs no such check by default (0); prefect-redis runs one every
-# 20s, so the cache and the lock connections keep to the same interval on both paths.
+# it when the PING fails. A pooled connection whose server has gone unreachable would otherwise sit
+# unnoticed until a caller trips over it. A demoted master that is still reachable answers the PING,
+# so that case is caught elsewhere: redis-py turns the READONLY reply into a ConnectionError on a
+# Sentinel-managed connection and the retry above re-resolves the promoted master. redis-py runs no
+# such check by default (0); prefect-redis runs one every 20s, so the cache and the lock connections
+# keep to the same interval on both paths.
 REDIS_HEALTH_CHECK_INTERVAL: int = 20
 
 # The schemes that select TLS; on the others an ssl_* option has nothing to configure.
