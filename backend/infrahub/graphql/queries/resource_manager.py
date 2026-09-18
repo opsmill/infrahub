@@ -317,7 +317,9 @@ def _percentage(count: int, size: int) -> float:
     return (count / size) * 100
 
 
-def _range_edge(range_node: CoreNumberPoolRange, used_default_branch: set[int], used_branches: set[int]) -> dict:
+async def _range_edge(
+    db: InfrahubDatabase, range_node: CoreNumberPoolRange, used_default_branch: set[int], used_branches: set[int]
+) -> dict:
     start = range_node.start.value
     end = range_node.end.value
     size = end - start + 1
@@ -329,7 +331,7 @@ def _range_edge(range_node: CoreNumberPoolRange, used_default_branch: set[int], 
         "node": {
             "id": range_node.get_id(),
             "kind": InfrahubKind.NUMBERPOOLRANGE,
-            "display_label": f"{start}-{end}",
+            "display_label": await range_node.get_display_label(db=db),
             "weight": weight or 0,
             "utilization": _percentage(in_default_branch + in_branches, size),
             "utilization_default_branch": _percentage(in_default_branch, size),
@@ -372,7 +374,8 @@ async def resolve_number_pool_utilization(
         "utilization_default_branch": number_pool.utilization_default_branch,
         "utilization_branches": number_pool.utilization_branches,
         "edges": [
-            _range_edge(
+            await _range_edge(
+                db=db,
                 range_node=range_node,
                 used_default_branch=number_pool.used_default_branch,
                 used_branches=number_pool.used_branches,

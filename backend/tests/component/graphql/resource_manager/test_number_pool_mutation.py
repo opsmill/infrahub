@@ -309,6 +309,45 @@ query PoolsWithRanges {
 """
 
 
+RENAME_NUMBER_POOL = """
+mutation RenameNumberPool($id: String!, $name: String!) {
+  CoreNumberPoolUpdate(data: {id: $id, name: {value: $name}}) {
+    ok
+    object { name { value } }
+  }
+}
+"""
+
+
+async def test_number_pool_update_untouched_bounds_are_not_validated(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """An update that leaves the bounds alone succeeds whatever the pool holds in them."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    default_branch.update_schema_hash()
+
+    pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+    await pool.new(db=db, name="bound-less", node="TestingTicket", node_attribute="ticket_id")
+    await pool.save(db=db)
+
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=RENAME_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": pool.get_id(), "name": "bound-less-renamed"},
+    )
+
+    assert not result.errors
+    assert result.data
+    assert result.data["CoreNumberPoolUpdate"]["object"]["name"]["value"] == "bound-less-renamed"
+
+    reloaded = await NodeManager.get_one(id=pool.get_id(), db=db, branch=default_branch)
+    assert reloaded is not None
+    assert (reloaded.start_range.value, reloaded.end_range.value) == (None, None)
+
+
 UPDATE_NUMBER_POOL_BOUND = """
 mutation UpdateNumberPool($id: String!) {
   CoreNumberPoolUpdate(data: {id: $id, %s}) {
