@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Generator, Unpack
 
 from infrahub.core import registry
@@ -10,6 +11,13 @@ from infrahub.core.query import Query, QueryInitKwargs, QueryResult, QueryType
 if TYPE_CHECKING:
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.database import InfrahubDatabase
+
+
+class PoolRecordProvenance(StrEnum):
+    """How the number the attribute currently holds got there."""
+
+    ALLOCATED = "allocated"
+    PROVIDED = "provided"
 
 
 @dataclass(frozen=True)
@@ -614,26 +622,39 @@ class NumberPoolGetTaken(Query):
 
 
 class NumberPoolSetReserved(Query):
+    """Record that a number pool accounts for an attribute.
+
+    Check if the requested reservation already exists. If not, or if the provenance differs, then
+    close the active reservation and create the new one.
+    """
+
     name = "numberpool_set_reserved"
     type = QueryType.WRITE
 
     def __init__(
         self,
         pool_id: str,
-        reserved: int,
         identifier: str,
+        attribute_id: str,
+        provenance: PoolRecordProvenance,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool_id = pool_id
-        self.reserved = reserved
         self.identifier = identifier
+        self.attribute_id = attribute_id
+        self.provenance = provenance
 
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
-        self.params["reserved"] = self.reserved
         self.params["identifier"] = self.identifier
+        self.params["at"] = self.at.to_string()
+        self.params["provenance"] = self.provenance.value
+        # A record written before provenance existed carries none, and an absent provenance already
+        # reads as an allocation.
+        self.params["allocated_provenance"] = PoolRecordProvenance.ALLOCATED.value
+        self.params["attribute_id"] = self.attribute_id
 
         global_branch = registry.get_global_branch()
         self.params["rel_prop"] = {
@@ -642,18 +663,41 @@ class NumberPoolSetReserved(Query):
             "status": RelationshipStatus.ACTIVE.value,
             "from": self.at.to_string(),
             "identifier": self.identifier,
+            "provenance": self.provenance.value,
         }
 
         query = """
-        MATCH (pool:%(number_pool)s { uuid: $pool_id })
-        MERGE (value:AttributeValue:AttributeValueIndexed { value: $reserved, is_default: false })
-        WITH value, pool
+        // ----------
+        // Get the NumberPool and Attribute we are interested in
+        // ----------
+        MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })
+        MATCH (attr:Attribute { uuid: $attribute_id })
+        WITH pool, attr
         LIMIT 1
-        CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(value)
+        // ----------
+        // Only continue if the expected reservation is not active, accounting for change of provenance
+        // ----------
+        WHERE NOT EXISTS {
+            MATCH (pool)-[mine:IS_RESERVED]->(attr)
+            WHERE mine.status = "active" AND mine.to IS NULL
+              AND coalesce(mine.provenance, $allocated_provenance) = $provenance
+        }
+        // ----------
+        // Close any active reservations
+        // ----------
+        OPTIONAL MATCH ()-[live:IS_RESERVED]->(attr)
+        WHERE live.status = "active" AND live.to IS NULL
+        SET live.to = $at
+        WITH DISTINCT pool, attr
+        LIMIT 1
+        // ----------
+        // Create the new reservation
+        // ----------
+        CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(attr)
         """ % {"number_pool": InfrahubKind.NUMBERPOOL}
 
         self.add_to_query(query)
-        self.return_labels = ["value"]
+        self.return_labels = ["attr.uuid AS attribute_id", "rel"]
 
 
 class PrefixPoolGetIdentifiers(Query):
@@ -676,7 +720,7 @@ class PrefixPoolGetIdentifiers(Query):
         self.params["prefixes"] = self.prefixes
 
         query = """
-        MATCH (pool:%(ipaddress_pool)s { uuid: $pool_id })-[reservation:IS_RESERVED]->(allocated:BuiltinIPPrefix)
+        MATCH (pool:Node:%(ipaddress_pool)s { uuid: $pool_id })-[reservation:IS_RESERVED]->(allocated:BuiltinIPPrefix)
         WHERE allocated.uuid in $prefixes
         """ % {"ipaddress_pool": InfrahubKind.IPPREFIXPOOL}
         self.add_to_query(query)
