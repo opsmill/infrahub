@@ -30,6 +30,7 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import SchemaPath
+from infrahub.core.protocols import CoreNumberPool as CoreNumberPoolProtocol
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
@@ -49,6 +50,7 @@ from tests.component.core.migrations.schema.metadata_helpers import (
 )
 from tests.component.core.node.test_branch_agnostic_edges import assert_no_global_edges_with_wrong_branch_level
 from tests.db_snapshot import DbSnapshotter
+from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.edge_timestamps import assert_edge_timestamps
 
 
@@ -902,12 +904,22 @@ async def test_migration_agnostic_numberpool_attribute(
     ) == AttributeEdgeBranches(
         branch_support=BranchSupportType.AGNOSTIC.value,
         owning_edge=(GLOBAL_BRANCH_NAME, 1),
+        # No `HAS_SOURCE`: the pool is never stored as the attribute's source
         property_edges=(
-            ("HAS_SOURCE", GLOBAL_BRANCH_NAME, 1),
             ("HAS_VALUE", GLOBAL_BRANCH_NAME, 1),
             ("IS_PROTECTED", GLOBAL_BRANCH_NAME, 1),
         ),
     )
+
+    # Verify pool reservation is in place
+    pools = await NodeManager.query(db=db, schema=CoreNumberPoolProtocol, branch=branch)
+    rack_unit_pool = next(pool for pool in pools if pool.get_attribute("node").value == "TestServer")
+    for server in servers:
+        attribute = servers_map[server.get_id()].get_attribute("rack_unit")
+        records = await pool_reservation_edges(db=db, pool_id=rack_unit_pool.get_id(), attribute_id=attribute.id)
+        assert [(edge.edge_type, edge.branch, edge.status, edge.to_time) for edge in records] == [
+            ("IS_RESERVED", GLOBAL_BRANCH_NAME, "active", None)
+        ], f"the migration allocated {attribute.value} for {server.get_id()} but left no record of it"
 
 
 PROBE_GENERIC = GenericSchema(

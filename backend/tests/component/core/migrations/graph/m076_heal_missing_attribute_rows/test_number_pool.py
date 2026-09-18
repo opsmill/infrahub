@@ -4,7 +4,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind, MetadataOptions
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
@@ -18,6 +18,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from tests.db_snapshot import DbSnapshotter
+from tests.helpers.agnostic_edges import pool_reservation_edges
 
 from .conftest import (
     build_generic,
@@ -129,6 +130,27 @@ class TestNumberPoolHeal:
         for node in nodes.values():
             assert node.get_attribute(name="rack_unit").source_id == seeded.pool_uuid
 
+    async def test_every_allocation_left_a_reservation_record(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, seeded: PoolSeed, healed: PoolHealRun
+    ) -> None:
+        """The record is what the pool accounts for a number by, and what its source is derived from.
+
+        `test_distinct_values_sourced_from_the_pool` reads the source the record produces; this reads
+        the record itself, so a heal that allocated a value without recording it cannot pass by
+        leaving the derivation intact.
+        """
+        nodes = await NodeManager.get_many(
+            db=db,
+            branch=default_branch_scope_class,
+            ids=[*seeded.damaged_uuids, seeded.runtime_server_uuid],
+        )
+        for node_id, node in nodes.items():
+            attribute = node.get_attribute(name="rack_unit")
+            records = await pool_reservation_edges(db=db, pool_id=seeded.pool_uuid, attribute_id=attribute.id)
+            assert [(edge.edge_type, edge.branch, edge.status, edge.to_time) for edge in records] == [
+                ("IS_RESERVED", GLOBAL_BRANCH_NAME, "active", None)
+            ], f"{node_id} holds rack_unit={attribute.value} with no record accounting for it"
+
     async def test_healed_row_matches_runtime_row_shape(
         self, db: InfrahubDatabase, seeded: PoolSeed, healed: PoolHealRun
     ) -> None:
@@ -142,9 +164,10 @@ class TestNumberPoolHeal:
         # The healed row is structurally identical to the runtime-written row,
         # differing only in its allocated number
         assert healed_shape == runtime_shape
-        assert healed_shape.edge_types == {"HAS_VALUE", "IS_PROTECTED", "HAS_SOURCE"}
+        # The pool is not stored as the attribute's source on either row; it is derived from the
+        # reservation record, which `test_distinct_values_sourced_from_the_pool` reads back.
+        assert healed_shape.edge_types == {"HAS_VALUE", "IS_PROTECTED"}
         assert healed_shape.edge("HAS_VALUE").peer[1] is False
-        assert healed_shape.edge("HAS_SOURCE").peer[1] == seeded.pool_uuid
         assert healed_value != runtime_value
 
     async def test_second_run_allocates_nothing_new(

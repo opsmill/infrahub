@@ -452,12 +452,16 @@ class Migration076(MigrationRequiringRebase):
                 nodes = await NodeManager.get_many(db=dbt, branch=branch, ids=list(uuid_batch))
                 for node_uuid in sorted(nodes):
                     node = nodes[node_uuid]
-                    number = await number_pool.get_resource(  # type: ignore[attr-defined]
-                        db=dbt, branch=branch, identifier=node_uuid, attribute=attribute, at=migration_input.at
-                    )
                     node_attribute = node.get_attribute(name=attribute.name)
+                    number = await number_pool.get_resource(  # type: ignore[attr-defined]
+                        db=dbt,
+                        branch=branch,
+                        identifier=node_uuid,
+                        attribute=attribute,
+                        attribute_id=node_attribute.id,
+                        at=migration_input.at,
+                    )
                     node_attribute.value = number
-                    node_attribute.set_source(number_pool.get_id())
                     await node.save(db=dbt, fields=[attribute.name], at=migration_input.at)
                     repaired += 1
             if multiple_batches:
