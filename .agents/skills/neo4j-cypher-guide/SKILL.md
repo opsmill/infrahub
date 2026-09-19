@@ -210,6 +210,59 @@ Before finalizing any generated query:
 5. **Use EXISTS for existence checks** - More efficient than counting
 6. **Profile queries** - Use PROFILE to identify bottlenecks
 
+## Planner gotcha: node labels can cost you a relationship-property index
+
+Whether a pattern is seeded from a relationship-property index or from a
+`NodeByLabelScan` is a cost-model decision, and with Infrahub's handful of
+branch values the cost model is stacked against the relationship index.
+Index statistics only tell the planner how many distinct values the indexed
+property has, so it prices a `{branch: $branch_name}` seek as an equal share
+of all edges — even when the target branch holds a fraction of a percent of
+them — and a label scan over an endpoint followed by an expand comes out
+cheaper. Confirm with `EXPLAIN` / `PROFILE` before rewriting: the entry
+operator should be `DirectedRelationshipIndexSeek` or
+`UndirectedRelationshipIndexSeek`, not `NodeByLabelScan`.
+
+When the plan shows a label scan, either force the seek or take the label
+scan out of the planner's options:
+
+- **Hint the index** and keep the labels: name the relationship and add
+  `USING INDEX r:REL_TYPE(branch)` after the `MATCH`. The labels are checked
+  in a filter directly above the seek, and the result set is unchanged.
+- **Strip the labels** from the entry pattern:
+  - Remove **every** node label in the pattern — not just on the rel's
+    endpoints, but on all node placeholders the pattern touches.
+  - Keep **only the targeted indexed property** inline on the relationship.
+    Extra inline filters (status, type combinations, etc.) can be enough to
+    push the planner away from the relationship-index seek.
+  - Re-apply the labels and any non-indexed filtering **after a planning
+    barrier** — a `WITH DISTINCT` or an aggregation. A `WHERE n:Node` on the
+    same `MATCH`, or after a plain `WITH`, is normalised back into the
+    pattern and brings the label scan back.
+
+```cypher
+// Label scan: :Node / :Attribute make NodeByLabelScan + Expand look cheaper
+// than the REL_TYPE(branch) relationship-property index.
+MATCH (n:Node)-[:REL_TYPE {branch: $branch_name}]->(p:Attribute)
+
+// Index hint: same pattern, same result set, seek forced.
+MATCH (n:Node)-[r:REL_TYPE {branch: $branch_name}]->(p:Attribute)
+USING INDEX r:REL_TYPE(branch)
+
+// Stripped labels: no node labels anywhere, only the indexed {branch} field
+// inline. Without the labels this matches more than the original, so restore
+// them behind a DISTINCT (or an aggregation), where they cannot be pushed
+// back into the entry pattern. DISTINCT over n, r, p keeps one row per edge.
+MATCH (n)-[r:REL_TYPE {branch: $branch_name}]->(p)
+WITH DISTINCT n, r, p
+WHERE n:Node AND p:Attribute  // labels here, after the rel-index seek
+```
+
+The same applies when the indexed edge sits deeper in a multi-hop pattern:
+a label on any node placeholder along the way is one more label-scan
+candidate for the planner to price, so keep them all label-free (or hint the
+index) and check the entry operator in the plan.
+
 ## Modern Cypher Features
 
 ### Label Expressions
