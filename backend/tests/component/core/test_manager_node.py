@@ -229,6 +229,90 @@ async def test_get_one_by_id_or_default_filter(
     assert node2.id == criticality_low.id
 
 
+async def test_get_one_by_id_or_default_filter_rejects_other_kind(
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
+) -> None:
+    # An id that resolves to a node of another kind must raise rather than return that node, and
+    # the error must be indistinguishable from an id that exists nowhere so the lookup cannot be
+    # used to read back the kind of an arbitrary node.
+    person = car_person_generics_data["p1"]
+    missing_id = str(UUIDT())
+
+    with pytest.raises(
+        NodeNotFoundError, match=rf"^\s*Unable to find the node {person.id} / TestElectricCar in the database\."
+    ) as wrong_kind:
+        await NodeManager.get_one_by_id_or_default_filter(db=db, id=person.id, kind="TestElectricCar")
+
+    with pytest.raises(
+        NodeNotFoundError, match=rf"^\s*Unable to find the node {missing_id} / TestElectricCar in the database\."
+    ) as nonexistent:
+        await NodeManager.get_one_by_id_or_default_filter(db=db, id=missing_id, kind="TestElectricCar")
+
+    assert wrong_kind.value.message == nonexistent.value.message.replace(missing_id, person.id)
+    assert "TestPerson" not in str(wrong_kind.value)
+
+
+async def test_get_one_by_id_or_default_filter_allows_inherited_generic(
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
+) -> None:
+    electric_car = car_person_generics_data["c1"]
+
+    node = await NodeManager.get_one_by_id_or_default_filter(db=db, id=electric_car.id, kind="TestCar")
+
+    assert isinstance(node, Node)
+    assert node.id == electric_car.id
+    assert node.get_kind() == "TestElectricCar"
+
+
+async def test_get_one_by_id_or_default_filter_default_filter_validates_kind(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: SchemaBranch,
+    criticality_low: Node,
+    car_person_schema: SchemaBranch,
+) -> None:
+    resolved = await NodeManager.get_one_by_id_or_default_filter(
+        db=db, id=criticality_low.name.value, kind=criticality_schema.kind
+    )
+    assert resolved.id == criticality_low.id
+
+    with pytest.raises(NodeNotFoundError, match=rf"Unable to find the node {criticality_low.name.value} / TestPerson"):
+        await NodeManager.get_one_by_id_or_default_filter(db=db, id=criticality_low.name.value, kind="TestPerson")
+
+
+async def test_relationship_get_node_resolves_source(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    # Saving a node with a relationship runs Relationship._create -> get_node against the source
+    # node's own kind; a relationship kind ("Generic"/"Component"/...) there is not a schema name.
+    person = await Node.init(db=db, schema="TestPerson")
+    await person.new(db=db, name="John", height=180)
+    await person.save(db=db)
+
+    car = await Node.init(db=db, schema="TestCar")
+    await car.new(db=db, name="volt", nbr_seats=4, is_electric=True, owner=person.id)
+    await car.save(db=db)
+
+    reloaded = await NodeManager.get_one(db=db, id=car.id)
+    peer = await reloaded.owner.get_peer(db=db)
+    assert peer.id == person.id
+
+
+async def test_get_one_by_id_or_default_filter_allows_core_node_generic(
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
+) -> None:
+    # CoreNode is the universal base and is absent from every node's inherit_from, so the kind
+    # check must accept it via the generic's used_by. Relationships with peer=CoreNode (group
+    # members/subscribers) resolve their peer through this path.
+    person = car_person_generics_data["p1"]
+
+    node = await NodeManager.get_one_by_id_or_default_filter(db=db, id=person.id, kind="CoreNode")
+
+    assert isinstance(node, Node)
+    assert node.id == person.id
+    assert node.get_kind() == "TestPerson"
+
+
 async def test_get_one_missing_class_kind_reports_str_node_type(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
