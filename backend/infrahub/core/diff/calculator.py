@@ -11,6 +11,7 @@ from infrahub.core.query.diff import (
     DiffFieldNodesQuery,
     DiffFieldPathsQuery,
     DiffMigratedKindNodesQuery,
+    DiffNodeNodesQuery,
     DiffNodePathsQuery,
     DiffPropertyNodesQuery,
     DiffPropertyPathsQuery,
@@ -85,7 +86,7 @@ class DiffCalculator:
         limit: int,
         node_chunk_size: int,
     ) -> None:
-        """Run a field- or property-level calculation one chunk of changed nodes at a time.
+        """Run one level of the calculation one chunk of changed nodes at a time.
 
         Paging the paths query by rows re-runs its match over every edge changed on the branch for each page.
         Listing the changed nodes first and scoping each run of the paths query to a chunk of them keeps every
@@ -195,11 +196,13 @@ class DiffCalculator:
         )
 
         log.info("Beginning diff node-level calculation queries for branch")
-        await self._run_diff_calculation_query(
+        await self._run_node_scoped_calculation_queries(
             diff_parser=diff_parser,
-            query_class=DiffNodePathsQuery,
+            nodes_query_class=DiffNodeNodesQuery,
+            paths_query_class=DiffNodePathsQuery,
             calculation_request=calculation_request,
             limit=node_limit,
+            node_chunk_size=node_limit,
         )
         log.info("Diff node-level calculation queries for branch complete")
 

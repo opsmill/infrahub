@@ -1,6 +1,6 @@
 import random
 from collections import defaultdict
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import Generator
 from uuid import uuid4
 
@@ -23,6 +23,8 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ResourceMultipleFoundError, ResourceNotFoundError
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
+from tests.helpers.db_session_tracker import SessionTrackingInfrahubDatabase
 from tests.helpers.diff_factories import (
     EnrichedAttributeFactory,
     EnrichedConflictFactory,
@@ -35,6 +37,18 @@ from tests.helpers.diff_factories import (
 
 from ..get_one_node import get_one_diff_node
 from .base import DiffRepositoryTestBase
+
+
+@dataclass
+class SaveConcurrencyCase:
+    name: str
+    diff_save_concurrency: int
+
+
+SAVE_CONCURRENCY_CASES = [
+    SaveConcurrencyCase(name="one_batch_at_a_time", diff_save_concurrency=1),
+    SaveConcurrencyCase(name="three_batches_at_a_time", diff_save_concurrency=3),
+]
 
 
 class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
@@ -780,6 +794,90 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         assert {n.uuid for n in retrieved_diff.nodes} == {
             n.uuid for n in sorted(nodes_by_kind["KindOne"], key=lambda x: x.uuid)[7:]
         }
+
+    @pytest.fixture
+    def small_query_size_limit(self) -> Generator[int, None, None]:
+        original_size = config.SETTINGS.database.query_size_limit
+        config.SETTINGS.database.query_size_limit = 50
+        yield 50
+        config.SETTINGS.database.query_size_limit = original_size
+
+    def _build_repository(self, db: InfrahubDatabase) -> DiffRepository:
+        return DiffRepository(
+            db=db, deserializer=EnrichedDiffDeserializer(DiffParentNodeAdder()), max_save_batch_size=30
+        )
+
+    def _build_branch_diff(self, num_nodes: int, num_sub_fields: int) -> EnrichedDiffRoot:
+        return EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=self._build_nodes(num_nodes=num_nodes, num_sub_fields=num_sub_fields),
+            tracking_id=NameTrackingId(name="the-best-diff"),
+        )
+
+    async def _get_saved_branch_diff(self, diff_repository: DiffRepository) -> EnrichedDiffRoot:
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+        )
+        assert len(retrieved) == 1
+        diff_root = retrieved[0]
+        assert diff_root.exists_on_database is True
+        diff_root.exists_on_database = False
+        return diff_root
+
+    @pytest.mark.parametrize("case", SAVE_CONCURRENCY_CASES, ids=lambda c: c.name)
+    async def test_save_writes_as_many_node_batches_at_once_as_configured(
+        self, db: InfrahubDatabase, reset_database: None, monkeypatch: pytest.MonkeyPatch, case: SaveConcurrencyCase
+    ) -> None:
+        monkeypatch.setattr(config.SETTINGS.database, "diff_save_concurrency", case.diff_save_concurrency)
+        tracking_db = SessionTrackingInfrahubDatabase.from_db(db=db)
+        diff_repository = self._build_repository(db=tracking_db)
+        enriched_diff = self._build_branch_diff(num_nodes=20, num_sub_fields=2)
+
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+        )
+
+        assert tracking_db.session_usage.max_open_sessions == case.diff_save_concurrency
+        assert tracking_db.session_usage.open_sessions == 0
+        assert await self._get_saved_branch_diff(diff_repository=diff_repository) == enriched_diff
+
+    async def test_save_inside_a_transaction_keeps_every_batch_on_it(
+        self, db: InfrahubDatabase, reset_database: None, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(config.SETTINGS.database, "diff_save_concurrency", 3)
+        tracking_db = SessionTrackingInfrahubDatabase.from_db(db=db)
+        enriched_diff = self._build_branch_diff(num_nodes=20, num_sub_fields=2)
+
+        async with tracking_db.start_transaction() as transaction_db:
+            await self._save_single_diff(
+                diff_repository=self._build_repository(db=transaction_db),
+                enriched_diff=enriched_diff,
+                do_summary_counts=False,
+            )
+
+        assert tracking_db.session_usage.max_open_sessions == 0
+        assert await self._get_saved_branch_diff(diff_repository=self._build_repository(db=db)) == enriched_diff
+
+    async def test_save_creates_diff_nodes_one_query_size_limit_chunk_at_a_time(
+        self, db: InfrahubDatabase, reset_database: None, small_query_size_limit: int
+    ) -> None:
+        counting_db = CountingInfrahubDatabase.from_db(db=db)
+        diff_repository = self._build_repository(db=counting_db)
+        enriched_diff = self._build_branch_diff(num_nodes=120, num_sub_fields=1)
+
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+        )
+
+        # 120 branch nodes in chunks of 50, then one chunk for the two nodes of the base diff
+        assert counting_db.count_for("enriched_diff_nodes_create") == 4
+        assert await self._get_saved_branch_diff(diff_repository=diff_repository) == enriched_diff
 
     async def test_update_existing(
         self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database: None
