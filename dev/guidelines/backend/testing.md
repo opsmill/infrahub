@@ -16,8 +16,6 @@ Tests are organized by type:
 
 **Pick the cheapest tier the logic actually needs.** If the unit under test operates purely on in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test in `tests/unit/` without database fixtures — do not default to a component test just because nearby tests use one. Reach for the database (component) or a container (integration/integration_docker) only when the behavior genuinely depends on it.
 
-Note that at some point the current integration tests will be merged with the functional tests and the `tests/integration_docker` tests will move to `tests/integration`.
-
 ### Running integration_docker tests locally
 
 Repo-based `tests/integration_docker/` tests build throwaway git repositories with dulwich (`porcelain.commit`), which honors your global `commit.gpgsign` setting. If you sign commits and the `gpg` Python bindings (gpgme) are not installed — common on macOS — repository setup fails with a misleading `ModuleNotFoundError: No module named 'gpg'`. That takes down every repo-based test plus any test that depends on the repo, showing up as cascading, confusing assertion failures.
@@ -30,7 +28,7 @@ GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null uv run pytest backend/te
 
 With an empty config `commit.gpgsign` defaults to off, and dulwich falls back to your OS username/host for the commit author, so no `[user]` block is needed. CI does not sign commits, so this only affects local runs.
 
-Test files mirror source structure: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
+Test files mirror source structure: `backend/infrahub/core/node/standard.py` → `backend/tests/unit/core/node/test_standard.py`
 
 ## Test Documentation
 
@@ -56,6 +54,8 @@ Skip tests that test the framework rather than our integration:
 - A test that only asserts a Pydantic model has a particular field duplicates the type system.
 
 A useful rule of thumb: if the test would still pass after we delete our implementation and reinstall the library, the test belongs to the library, not us.
+
+**Skip tests that string-match a feature query's generated text.** A test asserting the built Cypher contains or equals a given string pins the implementation, not the behavior: it breaks on a harmless rewording and still passes on a query that is wrong in ways the string never captured. Assert the query's observable behavior (a component test against the database), and state the reasoning behind the query's shape in its own comments or docstring. Exact query-text assertions belong only where the string *is* the output contract — the query-building infrastructure itself (assembly, parameter interpolation).
 
 **The exception is a bound that encodes a domain invariant.** `Field(ge=1)` on a multiplier that must never shrink the value it scales is not arbitrary tuning — it is a rule about how the feature behaves, and deleting it changes behavior with nothing failing. Assert those, but write the test against the invariant rather than the mechanism: name it for the rule, not for the constraint (`test_<what must hold>`, not `test_field_rejects_zero`), cover the boundary value that must stay legal, and add a test that the **shipped defaults** satisfy the invariant. Cross-field `model_validator` logic is ours outright and always warrants a test.
 
@@ -432,11 +432,8 @@ When testing GraphQL mutations or queries that return errors, always assert on t
 # Bad - only checks that some error occurred
 assert result.errors
 
-# Bad - a substring check passes for any error that mentions the ID
-assert TEMPLATE_ID in str(result.errors[0])
-
-# Bad - slightly better but still a substring match, any error containing
-# this text passes even if the overall message changed
+# Bad - a substring check passes for any error that mentions the text,
+# even if the overall message changed
 assert f"The template requested {{'id': '{TEMPLATE_ID}'}} was not found." in str(result.errors[0])
 
 # Good - exact match on the error message

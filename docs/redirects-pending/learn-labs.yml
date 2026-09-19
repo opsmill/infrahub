@@ -1,0 +1,21 @@
+---
+feature: Infrahub Labs
+pr: https://github.com/opsmill/infrahub/pull/10661
+description: |
+  The five lab pages under learn/labs/ were removed in favour of the labs
+  catalogue at https://docs.infrahub.app/labs, which describes every lab in
+  full, including labs outside this repository. The catalogue is served
+  outside this Docusaurus project, so these redirects may need server-level
+  handling (or `createRedirects`) rather than the client-redirects plugin
+  when they are aggregated.
+redirects:
+  - from: /docs/learn/labs/overview
+    to: /labs
+  - from: /docs/learn/labs/fundamentals-to-expert
+    to: /labs
+  - from: /docs/learn/labs/infrahub-introduction
+    to: /labs
+  - from: /docs/learn/labs/schema-deep-dive
+    to: /labs
+  - from: /docs/learn/labs/deploy-first-configuration
+    to: /labs
