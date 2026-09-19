@@ -19,7 +19,7 @@ from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.profile_schema import ProfileSchema
 from infrahub.core.schema.template_schema import TemplateSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import retry_db_transaction
+from infrahub.database import retry_db_transaction, run_with_retry
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.errors.validation import raise_classified_from_validation_error
 from infrahub.events.generator import generate_node_mutation_events
@@ -269,7 +269,12 @@ class InfrahubMutationMixin:
             user_id=graphql_context.assigned_user_id,
         )
 
-        graphql_response = await build_graphql_response(info=info, db=db, obj=obj)
+        async def read_object_back() -> dict[str, Any]:
+            return await build_graphql_response(info=info, db=db, obj=obj)
+
+        # Reading the node back is a scope of its own, so that failing to render an object never
+        # replays the create and leaves a second one behind.
+        graphql_response = await run_with_retry(db=db, name="object_create_response", func=read_object_back)
         return obj, cls(**graphql_response)
 
     @classmethod
