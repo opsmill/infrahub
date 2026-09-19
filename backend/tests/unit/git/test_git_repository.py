@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 from collections.abc import Iterator
@@ -250,6 +251,59 @@ async def test_pull_infrahub_default_branch_pulls_repository_default_branch(
 
     commit_after = await repository.pull(branch_name="main", update_commit_value=False)
     assert commit_after == new_commit
+
+
+async def test_concurrent_init_clones_the_missing_directory_once(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Concurrent initializations of an absent clone must produce exactly one clone.
+
+    Cloning deletes whatever is on disk first, so a second clone running alongside would wipe the
+    directory the first one just built and invalidate the git objects opened against it.
+    """
+    repos_dir = tmp_path / "repositories"
+    repos_dir.mkdir()
+    monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
+
+    source_dir = tmp_path / "source-repo"
+    source_dir.mkdir()
+    source = Repo.init(source_dir, initial_branch="main")
+    with source.config_writer() as cfg:
+        cfg.set_value("user", "name", "Test")
+        cfg.set_value("user", "email", "test@test.local")
+    (source_dir / "data.txt").write_text("v1\n", encoding="utf-8")
+    source.index.add(["data.txt"])
+    source.index.commit("commit 1")
+
+    clone_count = 0
+    create_locally = InfrahubRepository.create_locally
+
+    async def counting_create_locally(self: InfrahubRepository, *args: Any, **kwargs: Any) -> bool:
+        nonlocal clone_count
+        clone_count += 1
+        # Hand control back to the event loop so the two initializations actually interleave.
+        await asyncio.sleep(0)
+        return await create_locally(self, *args, **kwargs)
+
+    monkeypatch.setattr(InfrahubRepository, "create_locally", counting_create_locally)
+
+    init_kwargs: dict[str, Any] = {
+        "id": UUIDT.new(),
+        "name": "concurrently-initialized-repo",
+        "location": str(source_dir),
+        "default_branch_name": "main",
+        "client": InfrahubClient(config=Config(requester=dummy_async_request)),
+    }
+    first, second = await asyncio.gather(
+        InfrahubRepository.init(**init_kwargs),
+        InfrahubRepository.init(**init_kwargs),
+    )
+
+    assert clone_count == 1
+    assert [first.reinitialized, second.reinitialized].count(True) == 1
+    for repository in (first, second):
+        assert repository.validate_local_directories()
 
 
 def test_check_connectivity_ignores_cwd_git_pointer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

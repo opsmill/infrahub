@@ -26,6 +26,19 @@ Read this before reasoning about which remote branches get imported or why a git
   other remote branches are imported during sync; branches created in Infrahub with
   `sync_with_git` are imported regardless.
 
+## Cloning and the repository lock
+
+Creating the local copy deletes whatever is already at the repository directory before cloning
+into it. The creation primitive does not take the repository lock itself, so every caller that
+reaches it holds that lock and re-checks that the copy is still absent once it is held. Two flows
+on the same worker can otherwise ask for the same repository at the same time — a periodic sync
+and a refresh request, say — and the second clone wipes the directory the first one just built,
+invalidating the git objects already opened against it and leaving the sync unable to resolve a
+commit.
+
+The lock is reentrant per context, so a caller that already holds it for a wider critical section
+pays nothing extra.
+
 ## Git error surfacing
 
 `git merge` writes conflict output to **stdout**, not stderr. GitPython's `GitCommandError.stderr`

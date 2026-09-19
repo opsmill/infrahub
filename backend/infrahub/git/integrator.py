@@ -242,21 +242,30 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     class that uses an "InfrahubRepository" or "InfrahubReadOnlyRepository" as input
     """
 
+    def _has_valid_local_directories(self) -> bool:
+        """Return whether the local clone is usable, without raising when it is simply absent."""
+        try:
+            self.validate_local_directories()
+        except RepositoryInvalidFileSystemError:
+            return False
+        return True
+
     @classmethod
     async def init(cls, commit: str | None = None, **kwargs: Any) -> Self:
         self = cls(**kwargs)
         log = get_logger()
-        try:
-            self.validate_local_directories()
-        except RepositoryInvalidFileSystemError:
+        if not self._has_valid_local_directories():
             await self.ensure_location_is_defined()
-            await self.create_locally(
-                checkout_ref=await self.resolve_checkout_ref(),
-                infrahub_branch_name=self.infrahub_branch_name,
-                update_commit_value=False,
-            )
-            self.reinitialized = True
-            log.info(f"Initialized the local directory for {self.name} because it was missing.")
+            # Cloning deletes and rebuilds the shared on-disk copy, so it has to be serialized.
+            async with lock.registry.get(name=self.name, namespace="repository"):
+                if not self._has_valid_local_directories():
+                    await self.create_locally(
+                        checkout_ref=await self.resolve_checkout_ref(),
+                        infrahub_branch_name=self.infrahub_branch_name,
+                        update_commit_value=False,
+                    )
+                    self.reinitialized = True
+                    log.info(f"Initialized the local directory for {self.name} because it was missing.")
 
         # An existing clone keeps whatever origin URL it was first cloned with, so re-point it when the
         # configured location has since changed, so subsequent fetches target the current remote.
