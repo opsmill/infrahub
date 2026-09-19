@@ -171,3 +171,31 @@ async def test_reentrant_lock_allows_nested_acquisitions() -> None:
         "outer released",
         "waiter acquired",
     ]
+
+
+async def test_registry_closes_the_connection_it_owns(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A Redis-backed registry releases its client; a Sentinel pool's daemon clients go with it."""
+    closed: list[object] = []
+
+    async def _record(connection: object) -> None:
+        closed.append(connection)
+
+    monkeypatch.setattr(config.SETTINGS.cache, "driver", config.CacheDriver.Redis)
+    monkeypatch.setattr("infrahub.services.adapters.cache.connection.aclose_redis_connection", _record)
+    registry = InfrahubLockRegistry()
+    connection = registry.connection
+
+    await registry.close()
+    await registry.close()
+
+    assert closed == [connection]
+    assert registry.connection is None
+
+
+async def test_registry_that_owns_no_connection_closes_cleanly() -> None:
+    """A local-only registry has nothing to release, so closing it is a no-op."""
+    registry = InfrahubLockRegistry(local_only=True)
+
+    await registry.close()
+
+    assert registry.connection is None
