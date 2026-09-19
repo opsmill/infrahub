@@ -22,13 +22,13 @@ const sidebars: SidebarsConfig = {
 
     {
       type: 'category',
-      label: 'Get started',
+      label: 'Introduction',
       collapsible: false,
       collapsed: false,
       items: [
         {
           type: 'category',
-          label: 'Introduction',
+          label: 'Overview',
           collapsible: true,
           collapsed: true,
           items: [
@@ -40,7 +40,7 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
-          label: 'Getting Started',
+          label: 'Get Started',
           collapsible: true,
           collapsed: true,
           items: [
