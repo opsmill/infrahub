@@ -228,7 +228,13 @@ scan out of the planner's options:
 
 - **Hint the index** and keep the labels: name the relationship and add
   `USING INDEX r:REL_TYPE(branch)` after the `MATCH`. The labels are checked
-  in a filter directly above the seek, and the result set is unchanged.
+  in a filter directly above the seek, and the result set is unchanged. The
+  hint is a contract: the same `MATCH` must bind `r` with that type and put
+  a predicate on that property, or the query fails to compile (`42N77`), and
+  an index must exist on that type and property — with the default
+  `dbms.cypher.hints_error=false` a hint on an unindexed type is silently
+  ignored and the query falls back to a type scan. Only emit it for the edge
+  types and properties listed in `backend/infrahub/core/graph/index.py`.
 - **Strip the labels** from the entry pattern:
   - Remove **every** node label in the pattern — not just on the rel's
     endpoints, but on all node placeholders the pattern touches.
