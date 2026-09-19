@@ -24,7 +24,7 @@ artifact_definitions:
     transformation: "switch-config-template"
 ```
 
-When the group's membership changes, the next artifact generation run picks up the new members automatically. See [artifacts](../artifacts/overview) for the full specification.
+Group membership decides which objects an artifact definition covers, not when Infrahub generates them. The next artifact generation run for the definition includes the new members, and a run starts only when a Proposed Change pipeline runs, a branch is merged, the definition changes, or you request one. See [when artifacts regenerate](../artifacts/overview#when-artifacts-regenerate) for what each of those means.
 
 ## Target a group from a Transformation
 
@@ -61,6 +61,8 @@ As the Generator runs, Infrahub automatically tracks the objects it produces in 
 | `CoreGeneratorGroup` | **Output** — tracks objects the Generator produced | Infrahub, automatically via SDK tracking |
 
 Downstream automation (artifact definitions, Checks) can target either group, depending on whether you want to operate on the inputs or the produced objects.
+
+Adding a member does not start a Generator run on its own. For the five things that do, and how to run a Generator as soon as an object joins the group, see [how Generators are executed](../generators/overview#how-generators-are-executed).
 
 See [Generator overview](../generators/overview) for full details, including the difference between Standard and Generator groups.
 
