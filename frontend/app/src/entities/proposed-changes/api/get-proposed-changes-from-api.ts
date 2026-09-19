@@ -1,4 +1,4 @@
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import {
@@ -31,7 +31,7 @@ export interface ProposedChangesFromApiParams extends PaginationParams {
 export const getProposedChangesFromApi = async ({
   schema,
   limit = DEFAULT_PAGE_SIZE,
-  offset,
+  offset = 0,
   filters,
   sort,
   getAttributesVisible,
@@ -45,10 +45,14 @@ export const getProposedChangesFromApi = async ({
   const queryString = jsonToGraphQLQuery({
     query: {
       __name: `Get${PROPOSED_CHANGE_OBJECT}`,
+      __variables: {
+        limit: "Int",
+        offset: "Int",
+      },
       [schemaKindToQuery]: {
         __args: {
-          limit,
-          offset,
+          limit: new VariableType("limit"),
+          offset: new VariableType("offset"),
           ...addOrderByToRequest(sort?.length ? sort : [PROPOSED_CHANGE_DEFAULT_SORT]),
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
@@ -91,5 +95,6 @@ export const getProposedChangesFromApi = async ({
   const query = graphql(queryString);
   return graphqlClient.query({
     query,
+    variables: { limit, offset },
   });
 };
