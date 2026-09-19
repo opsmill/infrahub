@@ -80,7 +80,7 @@ OpsMill maintains a set of officially supported projects that help teams develop
 |---|---|
 | [`infrahub-sdk-python`](https://github.com/opsmill/infrahub-sdk-python) | Python SDK and the `infrahubctl` CLI — build integrations and manage Infrahub from code |
 | [`infrahub-vscode`](https://github.com/opsmill/infrahub-vscode) | VS Code extension with schema validation, GraphQL query support, and schema visualization |
-| [`schema-library`](https://github.com/opsmill/schema-library) | Reusable schemas for common infrastructure patterns — a starting point for modeling |
+| [Infrahub Marketplace](https://marketplace.infrahub.app) | Curated catalog to scaffold your Infrahub instance — currently schemas and schema collections |
 | [`infrahub-mcp`](https://github.com/opsmill/infrahub-mcp) | MCP server exposing Infrahub data to Claude, Cursor, and other AI agents |
 | [`infrahub-skills`](https://github.com/opsmill/infrahub-skills) | AI skills that give coding assistants knowledge of Infrahub conventions and data models |
 
