@@ -210,28 +210,44 @@ Before finalizing any generated query:
 5. **Use EXISTS for existence checks** - More efficient than counting
 6. **Profile queries** - Use PROFILE to identify bottlenecks
 
-## Planner gotcha: strip labels to keep relationship-property indexes
+## Planner gotcha: node labels can cost you a relationship-property index
 
-The Neo4j planner is heavily biased toward `NodeByLabelScan` and will pick
-it over a relationship-property index whenever a node label is present in
-the pattern — even when the rel-property index is dramatically more
-selective. If your intended entry point is a relationship-property index
-(e.g. an index on `REL_TYPE.branch` matched via `{branch: $branch_name}`):
+Whether a pattern is seeded from a relationship-property index or from a
+`NodeByLabelScan` is a cost-model decision, and with Infrahub's handful of
+branch values the cost model is stacked against the relationship index.
+Index statistics only tell the planner how many distinct values the indexed
+property has, so it prices a `{branch: $branch_name}` seek as an equal share
+of all edges — even when the target branch holds a fraction of a percent of
+them — and a label scan over an endpoint followed by an expand comes out
+cheaper. Confirm with `EXPLAIN` / `PROFILE` before rewriting: the entry
+operator should be `DirectedRelationshipIndexSeek` or
+`UndirectedRelationshipIndexSeek`, not `NodeByLabelScan`.
 
-- Remove **every** node label in the pattern — not just on the rel's
-  endpoints, but on all node placeholders the pattern touches.
-- Keep **only the targeted indexed property** inline on the relationship.
-  Extra inline filters (status, type combinations, etc.) can be enough to
-  push the planner away from the relationship-index seek.
-- Apply any label / non-indexed filtering **after** the entry has resolved,
-  in a follow-on `MATCH` or `WHERE`.
+When the plan shows a label scan, either force the seek or take the label
+scan out of the planner's options:
+
+- **Hint the index** and keep the labels: name the relationship and add
+  `USING INDEX r:REL_TYPE(branch)` after the `MATCH`. The labels are checked
+  in a filter directly above the seek, and the result set is unchanged.
+- **Strip the labels** from the entry pattern:
+  - Remove **every** node label in the pattern — not just on the rel's
+    endpoints, but on all node placeholders the pattern touches.
+  - Keep **only the targeted indexed property** inline on the relationship.
+    Extra inline filters (status, type combinations, etc.) can be enough to
+    push the planner away from the relationship-index seek.
+  - Apply any label / non-indexed filtering **after** the entry has resolved,
+    in a follow-on `MATCH` or `WHERE`.
 
 ```cypher
-// WRONG — :Node / :Attribute labels cause a NodeByLabelScan even though
-// REL_TYPE(branch) has a relationship-property index.
+// Label scan: :Node / :Attribute make NodeByLabelScan + Expand look cheaper
+// than the REL_TYPE(branch) relationship-property index.
 MATCH (n:Node)-[:REL_TYPE {branch: $branch_name}]->(p:Attribute)
 
-// CORRECT — no node labels anywhere, only the indexed {branch} field inline.
+// Index hint: same pattern, same result set, seek forced.
+MATCH (n:Node)-[r:REL_TYPE {branch: $branch_name}]->(p:Attribute)
+USING INDEX r:REL_TYPE(branch)
+
+// Stripped labels: no node labels anywhere, only the indexed {branch} field inline.
 MATCH (n)-[:REL_TYPE {branch: $branch_name}]->()
 
 // If you need label filtering afterwards, do it in a follow-on step:
@@ -240,12 +256,10 @@ WITH DISTINCT n
 MATCH (n:Node)-[r_node]-(...)  // labels here, after the rel-index seek
 ```
 
-The same rule applies when the indexed edge sits deeper in a multi-hop
-pattern: every node placeholder along the way must be label-free, or the
-planner switches to a label scan as its entry. Always confirm with
-`EXPLAIN` / `PROFILE` that the entry operator is
-`DirectedRelationshipIndexSeek` or `UndirectedRelationshipIndexSeek`, not
-`NodeByLabelScan`.
+The same applies when the indexed edge sits deeper in a multi-hop pattern:
+a label on any node placeholder along the way is one more label-scan
+candidate for the planner to price, so keep them all label-free (or hint the
+index) and check the entry operator in the plan.
 
 ## Modern Cypher Features
 
