@@ -301,3 +301,4 @@ Before submitting your workflow:
 - [ADR-0003: Asynchronous Tasks](../../adr/0003-asynchronous-tasks.md) - Architectural decision
 - [Events System](../../knowledge/backend/events.md) - Event-driven workflow triggers
 - [Python Coding Standards](../../guidelines/backend/python.md) - Code style requirements
+- [Prefect Flow and Task Payloads](../../guidelines/backend/prefect-payloads.md) - What flows may return and tasks may receive
