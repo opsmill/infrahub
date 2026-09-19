@@ -111,6 +111,7 @@ class EnrichedDiffNodesCreateQuery(Query):
         }
         query = """
 MERGE (diff_root:DiffRoot {uuid: $root_uuid})
+// this same-value write takes the root's lock, so a concurrent save waits and finds the node instead of creating it
 SET diff_root.uuid = $root_uuid
 WITH diff_root
 UNWIND $node_identifiers AS node_identifier
