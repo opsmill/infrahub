@@ -235,8 +235,10 @@ scan out of the planner's options:
   - Keep **only the targeted indexed property** inline on the relationship.
     Extra inline filters (status, type combinations, etc.) can be enough to
     push the planner away from the relationship-index seek.
-  - Apply any label / non-indexed filtering **after** the entry has resolved,
-    in a follow-on `MATCH` or `WHERE`.
+  - Re-apply the labels and any non-indexed filtering **after a planning
+    barrier** — a `WITH DISTINCT` or an aggregation. A `WHERE n:Node` on the
+    same `MATCH`, or after a plain `WITH`, is normalised back into the
+    pattern and brings the label scan back.
 
 ```cypher
 // Label scan: :Node / :Attribute make NodeByLabelScan + Expand look cheaper
@@ -247,13 +249,13 @@ MATCH (n:Node)-[:REL_TYPE {branch: $branch_name}]->(p:Attribute)
 MATCH (n:Node)-[r:REL_TYPE {branch: $branch_name}]->(p:Attribute)
 USING INDEX r:REL_TYPE(branch)
 
-// Stripped labels: no node labels anywhere, only the indexed {branch} field inline.
-MATCH (n)-[:REL_TYPE {branch: $branch_name}]->()
-
-// If you need label filtering afterwards, do it in a follow-on step:
-MATCH (n)-[:REL_TYPE {branch: $branch_name}]->()
-WITH DISTINCT n
-MATCH (n:Node)-[r_node]-(...)  // labels here, after the rel-index seek
+// Stripped labels: no node labels anywhere, only the indexed {branch} field
+// inline. Without the labels this matches more than the original, so restore
+// them behind a DISTINCT (or an aggregation), where they cannot be pushed
+// back into the entry pattern. DISTINCT over n, r, p keeps one row per edge.
+MATCH (n)-[r:REL_TYPE {branch: $branch_name}]->(p)
+WITH DISTINCT n, r, p
+WHERE n:Node AND p:Attribute  // labels here, after the rel-index seek
 ```
 
 The same applies when the indexed edge sits deeper in a multi-hop pattern:
