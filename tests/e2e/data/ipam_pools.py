@@ -5,8 +5,8 @@ prefixes" / "Create IPv6 IP from IPv6 Prefix pool" section of ``run()`` in
 ``models/infrastructure_edge.py`` (lines ~2626-2770) plus the network
 constants it uses (lines ~557-565). The allocation order and the
 save/``allow_upsert`` mix are preserved call by call: downstream tests assert
-the deterministic next-free values (172.16.0.31/16 from the management pool,
-203.111.0.248/29 from the external pool) and the exact prefix tree
+the deterministic next-free values (with the 2-site slim: 172.16.0.13/16 from
+the management pool, 203.111.0.96/29 from the external pool) and the exact prefix tree
 (10.0.0.0/16 loopbacks, 10.1.0.0/16 interconnections, 10.2.0.0/16 left
 empty, and the six sequential /110 IPv6 prefixes).
 """

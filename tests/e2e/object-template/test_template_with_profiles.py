@@ -2,7 +2,7 @@
 
 Serial: create a device profile, a device template that uses it, then a device
 from the template — verifying the profile values are inherited (via metadata).
-Shares one branch + the created profile/template; depends on data_sites
+Shares one branch + the created profile/template; depends on data_site_atl1
 (atl1-core1 in the device list; Cisco IOS via its org_registry dependency),
 data_profiles_groups (upstream_profile) and data_patch_template
 (Regular_Patch_Panel).
@@ -32,7 +32,7 @@ class TestTemplateWithProfiles:
     async def template_branch(
         self,
         infrahub_client: InfrahubClient,
-        data_sites: SitesHandle,
+        data_site_atl1: SitesHandle,
         data_profiles_groups: ProfilesGroupsHandle,
         data_patch_template: PatchTemplateHandle,
     ) -> AsyncGenerator[str, None]:
