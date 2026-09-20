@@ -426,7 +426,9 @@ class ProcessResources:
             current = _read_int_file(memory_current_path)
             if current is None:
                 return None
-            return memory_limit - current
+            # A live limit lowered below current usage (a shrink not yet reclaimed or
+            # OOM-killed) would otherwise report negative bytes available.
+            return max(0, memory_limit - current)
         return _host_memory_available()
 
     def _read_dynamic(self, identity: _ProcessIdentity) -> _DynamicResources:

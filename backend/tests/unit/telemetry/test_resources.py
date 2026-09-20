@@ -220,6 +220,12 @@ MEMORY_CASES = [
         expected_available=8589934592 - 2147483648,
     ),
     MemoryCase(
+        name="v2_limit_lowered_below_current_usage_clamps_to_zero",
+        files={"memory.max": "1073741824", "memory.current": "2147483648"},
+        expected_total=1073741824,
+        expected_available=0,
+    ),
+    MemoryCase(
         name="v2_unlimited_falls_back_to_host",
         files={"memory.max": "max"},
         expected_total=None,
