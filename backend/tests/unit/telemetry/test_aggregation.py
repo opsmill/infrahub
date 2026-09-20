@@ -1,11 +1,14 @@
 """Unit tests for the fleet resource aggregation.
 
 Aggregation deduplicates readings by host (the several processes of one container
-report identical values), then sums each field across the distinct hosts. A field
-is ``None`` (unknown or unbounded) when no reading carried it or when any
-contributing host reports it as ``None`` because it is genuinely unbounded — a
-fleet that includes an unbounded node has no finite total. Only the four resource
-figures are returned; the worker count is tracked separately by the caller.
+report identical values), then sums each field across the distinct hosts. Three
+of the four fields sum whatever hosts actually reported, so one host's read
+failure on a single field only undercounts that field rather than nulling the
+whole aggregate. ``processor_assigned`` is the exception: a contributing host's
+``None`` there is a real value (no CPU limit enforced), and a fleet with one
+unbounded host has no finite assignment, so that field alone nulls the whole
+aggregate. Only the four resource figures are returned; the worker count is
+tracked separately by the caller.
 """
 
 from __future__ import annotations
@@ -98,6 +101,49 @@ def test_field_is_none_when_any_contributing_host_is_unbounded() -> None:
     result = aggregate(readings)
 
     assert result.processor_assigned is None
+
+
+def test_one_hosts_field_failure_undercounts_only_that_field() -> None:
+    # w2 is a genuine per-field read failure, not the fully-null failed() reading:
+    # its memory_available read failed while processor_available and memory_total
+    # succeeded. That field sums only the reporting host; the others still sum both.
+    readings = [
+        _reading("w1", processor_available=4, memory_total=8, memory_available=6),
+        _reading("w2", processor_available=4, memory_total=8, memory_available=None),
+    ]
+
+    result = aggregate(readings)
+
+    assert result.processor_available == 8
+    assert result.memory_total == 16
+    assert result.memory_available == 6
+
+
+def test_processor_available_field_failure_undercounts_only_that_field() -> None:
+    readings = [
+        _reading("w1", processor_available=4, memory_total=8, memory_available=6),
+        _reading("w2", processor_available=None, memory_total=8, memory_available=6),
+    ]
+
+    result = aggregate(readings)
+
+    assert result.processor_available == 4
+    assert result.memory_total == 16
+    assert result.memory_available == 12
+
+
+def test_processor_assigned_still_nulls_entirely_on_any_contributing_none() -> None:
+    # Unlike the sum-of-reporters fields above, processor_assigned keeps the
+    # all-or-null rule: one unbounded host still nulls the whole aggregate.
+    readings = [
+        _reading("w1", processor_available=4, memory_total=8, memory_available=6, processor_assigned=4),
+        _reading("w2", processor_available=4, memory_total=8, memory_available=6, processor_assigned=None),
+    ]
+
+    result = aggregate(readings)
+
+    assert result.processor_assigned is None
+    assert result.processor_available == 8
 
 
 def test_no_readings_yields_all_none() -> None:

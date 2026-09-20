@@ -400,26 +400,43 @@ class ProcessResources:
         )
 
 
-def _sum_over_hosts(values: list[int | None]) -> int | None:
+def _sum_all_or_none(values: list[int | None]) -> int | None:
     """Sum the per-host values for one field, or ``None`` when it cannot be summed.
 
-    No values (no host contributed) and any ``None`` value (a host that is
-    genuinely unbounded, so the fleet has no finite total) both collapse to
-    ``None``. Otherwise the finite per-host values are summed.
+    Used only for ``processor_assigned``, where a contributing host's ``None``
+    is a real value (no quota enforced), not a gap: one unbounded host means
+    the fleet has no finite assignment, so it nulls the whole aggregate rather
+    than being summed as zero. No values at all collapses to ``None`` too.
     """
     if not values or any(value is None for value in values):
         return None
     return sum(value for value in values if value is not None)
 
 
+def _sum_reporters(values: list[int | None]) -> int | None:
+    """Sum whatever hosts reported a value for one field, or ``None`` if none did.
+
+    Here a ``None`` from a contributing host is never a legitimate value —
+    unlike an unbounded ``processor_assigned`` — so it can only be a read that
+    failed for that one field. The fleet total is still finite, so the field
+    is undercounted rather than nulled.
+    """
+    reported = [value for value in values if value is not None]
+    if not reported:
+        return None
+    return sum(reported)
+
+
 def aggregate(readings: Iterable[WorkerResourceReading]) -> ResourceAggregate:
     """Collapse per-process readings into one figure per field for a component.
 
     Readings are deduplicated by host (processes on one host report identical
-    values) and each field is then summed across the distinct hosts. A host whose
-    read failed (every figure ``None``) is skipped, and a host that never reported
-    is simply absent, so both undercount the sum — a gap the separately-tracked
-    worker count exposes — rather than nulling the whole fleet.
+    values). A host whose read failed outright (every figure ``None``) is
+    skipped, and a host that never reported is simply absent, so both undercount
+    the sum — a gap the separately-tracked worker count exposes — rather than
+    nulling the whole fleet. The same holds for a host that reported only some
+    fields; ``processor_assigned`` is the one exception, since a ``None`` there
+    is itself a real reading rather than a gap.
     """
     by_host: dict[str, WorkerResourceReading] = {}
     for reading in readings:
@@ -429,8 +446,8 @@ def aggregate(readings: Iterable[WorkerResourceReading]) -> ResourceAggregate:
 
     deduped = list(by_host.values())
     return ResourceAggregate(
-        processor_available=_sum_over_hosts([reading.processor_available for reading in deduped]),
-        processor_assigned=_sum_over_hosts([reading.processor_assigned for reading in deduped]),
-        memory_total=_sum_over_hosts([reading.memory_total for reading in deduped]),
-        memory_available=_sum_over_hosts([reading.memory_available for reading in deduped]),
+        processor_available=_sum_reporters([reading.processor_available for reading in deduped]),
+        processor_assigned=_sum_all_or_none([reading.processor_assigned for reading in deduped]),
+        memory_total=_sum_reporters([reading.memory_total for reading in deduped]),
+        memory_available=_sum_reporters([reading.memory_available for reading in deduped]),
     )
