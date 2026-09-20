@@ -49,7 +49,6 @@ WORKER_DEFAULT_RESULT_STORAGE_BLOCK = f"redisstoragecontainer/{TASK_RESULT_STORA
 DEFAULT_TASK_LOGGERS = ["infrahub.tasks"]
 
 
-<<<<<<< HEAD
 def inject_service_parameter(func: Flow, parameters: dict[str, Any], service: InfrahubServices) -> None:
     """Inject the worker's service into ``parameters`` if the flow declares one.
 
@@ -64,7 +63,8 @@ def inject_service_parameter(func: Flow, parameters: dict[str, Any], service: In
         if any(isinstance(param_value, InfrahubServices) for param_value in parameters.values()):
             raise ValueError(f"{func.name} parameters contains an InfrahubServices object while it should be injected")
         parameters[service_parameter_name] = service
-=======
+
+
 def build_worker_client_config(log: Any | None = None) -> Config:
     """Build the SDK configuration the worker uses for its own client to the Infrahub API.
 
@@ -82,7 +82,6 @@ def build_worker_client_config(log: Any | None = None) -> Config:
         )
     )
     return client_config
->>>>>>> origin/stable
 
 
 class InfrahubWorkerAsyncConfiguration(BaseJobConfiguration):
