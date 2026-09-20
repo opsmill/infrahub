@@ -185,3 +185,146 @@ async def test_deprecated_hierarchy_relationships_on_node_type(
         "parent": DEPRECATED_HIERARCHY_PARENT_MESSAGE,
         "children": DEPRECATED_HIERARCHY_CHILDREN_MESSAGE,
     }
+
+
+DEPRECATED_GENERIC_HIERARCHY_PARENT_MESSAGE = "parent is deprecated, use zone instead"
+DEPRECATED_GENERIC_HIERARCHY_CHILDREN_MESSAGE = "children is deprecated, use spots instead"
+
+GENERIC_HIERARCHY_DEPRECATION_SCHEMA = SchemaRoot(
+    generics=[
+        {
+            "name": "Spot",
+            "namespace": "Testing",
+            "hierarchical": True,
+            "attributes": [{"name": "name", "kind": "Text"}],
+            "relationships": [
+                {
+                    "name": "parent",
+                    "peer": "TestingSpot",
+                    "identifier": PARENT_CHILD_IDENTIFIER,
+                    "kind": "Hierarchy",
+                    "cardinality": "one",
+                    "direction": "outbound",
+                    "optional": True,
+                    "deprecation": DEPRECATED_GENERIC_HIERARCHY_PARENT_MESSAGE,
+                },
+                {
+                    "name": "children",
+                    "peer": "TestingSpot",
+                    "identifier": PARENT_CHILD_IDENTIFIER,
+                    "kind": "Hierarchy",
+                    "cardinality": "many",
+                    "direction": "inbound",
+                    "optional": True,
+                    "deprecation": DEPRECATED_GENERIC_HIERARCHY_CHILDREN_MESSAGE,
+                },
+            ],
+        }
+    ],
+    nodes=[
+        {
+            "name": "Zone",
+            "namespace": "Testing",
+            "hierarchy": "TestingSpot",
+            "inherit_from": ["TestingSpot"],
+            "attributes": [{"name": "name", "kind": "Text"}],
+        }
+    ],
+)
+
+
+async def test_deprecated_hierarchy_relationships_on_generic_interface(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    reset_graphql_schema_between_tests: None,
+) -> None:
+    """A hierarchical generic carries its own parent and children deprecation on the interface."""
+    schema_branch = register_core_models_schema
+    schema_branch.load_schema(schema=GENERIC_HIERARCHY_DEPRECATION_SCHEMA)
+    schema_branch.process()
+    gqlm = GraphQLSchemaManager(schema=schema_branch)
+    gqlm.generate_object_types()
+
+    interface = gqlm.get_type(name="TestingSpot")
+    assert _deprecated_fields(interface) == {
+        "parent": DEPRECATED_GENERIC_HIERARCHY_PARENT_MESSAGE,
+        "children": DEPRECATED_GENERIC_HIERARCHY_CHILDREN_MESSAGE,
+    }
+
+
+DEPRECATED_INHERITED_REL_MESSAGE = "old_pilot is deprecated, use pilot instead"
+DEPRECATED_INHERITED_REL_MANY_MESSAGE = "old_fleet is deprecated, use fleet instead"
+
+DEPRECATED_INHERITED_FIELDS = {
+    "old_pilot": DEPRECATED_INHERITED_REL_MESSAGE,
+    "old_fleet": DEPRECATED_INHERITED_REL_MANY_MESSAGE,
+}
+
+INHERITED_RELATIONSHIP_DEPRECATION_SCHEMA = SchemaRoot(
+    generics=[
+        {
+            "name": "Aircraft",
+            "namespace": "Testing",
+            "attributes": [{"name": "name", "kind": "Text"}],
+            "relationships": [
+                {
+                    "name": "old_pilot",
+                    "peer": "TestingCrew",
+                    "identifier": "aircraft__pilot",
+                    "cardinality": "one",
+                    "optional": True,
+                    "kind": "Attribute",
+                    "deprecation": DEPRECATED_INHERITED_REL_MESSAGE,
+                },
+                {
+                    "name": "old_fleet",
+                    "peer": "TestingCrew",
+                    "identifier": "aircraft__fleet",
+                    "cardinality": "many",
+                    "optional": True,
+                    "kind": "Attribute",
+                    "deprecation": DEPRECATED_INHERITED_REL_MANY_MESSAGE,
+                },
+            ],
+        }
+    ],
+    nodes=[
+        {
+            "name": "Crew",
+            "namespace": "Testing",
+            "attributes": [{"name": "name", "kind": "Text"}],
+        },
+        {
+            "name": "Plane",
+            "namespace": "Testing",
+            "inherit_from": ["TestingAircraft"],
+            "attributes": [{"name": "wings", "kind": "Number", "optional": True}],
+        },
+    ],
+)
+
+
+async def test_deprecated_relationship_declared_on_a_generic(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    reset_graphql_schema_between_tests: None,
+) -> None:
+    """A relationship deprecated on a generic carries the reason on the interface and on each heir."""
+    schema_branch = register_core_models_schema
+    schema_branch.load_schema(schema=INHERITED_RELATIONSHIP_DEPRECATION_SCHEMA)
+    schema_branch.process()
+    gqlm = GraphQLSchemaManager(schema=schema_branch)
+    gqlm.generate_object_types()
+
+    assert _deprecated_fields(gqlm.get_type(name="TestingAircraft")) == DEPRECATED_INHERITED_FIELDS
+    assert _deprecated_fields(gqlm.get_type(name="TestingPlane")) == DEPRECATED_INHERITED_FIELDS
+
+    node_schema = schema_branch.get(name="TestingPlane", duplicate=False)
+    for input_type in (
+        gqlm.generate_graphql_mutation_create_input(schema=node_schema),
+        gqlm.generate_graphql_mutation_update_input(schema=node_schema),
+        gqlm.generate_graphql_mutation_upsert_input(schema=node_schema),
+    ):
+        assert _deprecated_fields(input_type) == DEPRECATED_INHERITED_FIELDS
