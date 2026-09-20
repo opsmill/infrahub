@@ -121,15 +121,9 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
-<<<<<<< HEAD
             <span className="text-foreground-muted">
-              Offers a collection of schemas designed to streamline and standardize
-              infrastructure-related data structures.
-=======
-            <span className="text-gray-500">
               A curated, tested catalog of schemas and collections to jump-start and extend your
               Infrahub instance.
->>>>>>> origin/stable
             </span>
           </GettingStartedContentItem>
 
