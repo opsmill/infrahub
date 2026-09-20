@@ -59,9 +59,8 @@ async def get_processor_assigned(db: InfrahubDatabase) -> int | None:
     """Read the configured Cypher-parallelism core cap, or ``None`` when unbounded.
 
     A missing setting or a non-positive/unparseable value maps to ``None`` — the
-    same reading a deployment with no configured limit yields. A failure to run the
-    query is left to raise so the caller's degradation boundary logs it, rather than
-    being swallowed silently here.
+    same reading a deployment with no configured limit yields. A failure to run
+    the query propagates rather than being swallowed here.
     """
     query = """
     SHOW SETTINGS YIELD name, value
@@ -94,9 +93,8 @@ async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoDa
         memory_total=results[0]["memory_total"]["value"],
         memory_available=results[0]["memory_available"]["value"],
         processor_available=results[0]["processor_available"]["value"],
-        # The assigned read is a separate source from the JMX figures above; a failure
-        # to reach it must null only this field rather than the whole system-info block,
-        # so it degrades independently even when it raises outside its own catch.
+        # Wrapped independently so this read degrades to None on its own rather
+        # than failing the whole system-info block.
         processor_assigned=await safe_metric(get_processor_assigned(db=db)),
     )
 

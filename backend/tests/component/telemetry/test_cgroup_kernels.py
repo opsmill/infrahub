@@ -181,9 +181,10 @@ def test_reader_against_real_cgroups(case: KernelCase, probe_image: str) -> None
     assert reading["processor_available"] >= 1
 
     assert reading["processor_assigned"] == case.expected_assigned
+    assert reading["memory_available"] is not None
     if case.expected_memory_total is None:
         assert reading["memory_total"] == reading["host_memory_total"]
+        assert reading["memory_available"] >= 0
     else:
         assert reading["memory_total"] == case.expected_memory_total
-    assert reading["memory_available"] is not None
-    assert reading["memory_available"] >= 0
+        assert 0 <= reading["memory_available"] <= case.expected_memory_total

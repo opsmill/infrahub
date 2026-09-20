@@ -86,9 +86,9 @@ class WorkerResourceReading(BaseModel):
     def failed(cls) -> WorkerResourceReading:
         """The reading written when a process's self-read failed outright.
 
-        It carries no figures and a host stand-in, so it is recognisable as
-        failed (see ``is_failed``) and is dropped from aggregation rather than
-        summed or used for host dedup.
+        It carries no figures and a host stand-in, so a reading with every
+        figure ``None`` is recognisable as failed and is dropped from
+        aggregation rather than summed or used for host dedup.
         """
         return cls(host="unknown")
 

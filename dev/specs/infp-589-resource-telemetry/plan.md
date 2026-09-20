@@ -26,7 +26,7 @@ Technical approach: reuse the existing telemetry gatherer, the `safe_metric` deg
 
 **Performance Goals**: Cold daily path; cost is negligible. Reads are O(active workers) cache keys (already scanned today) plus a handful of local file reads per process at heartbeat time
 
-**Constraints**: MUST NOT block or fail the snapshot; each metric degrades independently to `null`; payload changes are additive with a version bump; **no new third-party dependency**; cgroup v2 primary with a v1 fallback, `null` where neither is present
+**Constraints**: MUST NOT block or fail the snapshot; each metric degrades independently to `null`; payload changes are additive, with the version bump gated on receiving-service confirmation rather than made this phase; **no new third-party dependency**; cgroup v2 primary with a v1 fallback, `null` where neither is present
 
 **Scale/Scope**: A few components and a small number of workers per deployment (default `replicas: 2`). Trivial scale
 
@@ -40,11 +40,11 @@ Technical approach: reuse the existing telemetry gatherer, the `safe_metric` deg
 | II. Branch-Safe by Default | ✅ Pass | Resource figures are deployment-level, not branch-scoped. Where the gather touches the graph (existing node counts) it already runs on the default branch; no cross-branch writes, no merge semantics. |
 | III. Type Safety & Explicit Contracts | ✅ Pass | New/extended resource fields are typed Pydantic (`int \| None`), never untyped dicts — extending `TelemetryDatabaseSystemInfoData`/`TelemetryWorkerData` and adding `TelemetryServerData`. |
 | IV. Test Discipline | ✅ Pass | Unit tests for cgroup parsing + aggregation; component test for end-to-end gather incl. the FR-005 partial-report and FR-003 unlimited→`null` edges. Test files mirror source. |
-| V. Query Performance & Efficiency | ✅ Pass | No new DB query — reuses the existing JMX call and the existing `workers:*` cache scan. No N+1, no large result sets. |
+| V. Query Performance & Efficiency | ✅ Pass | Reuses the existing JMX call and the existing `workers:*` cache scan; adds one new lightweight `SHOW SETTINGS` read for `processor_assigned`. No N+1, no large result sets. |
 | VI. Security & Input Boundaries | ✅ Pass | Reads only local, trusted `/sys/fs/cgroup` files — no user input, no injection surface. Cores/RAM are not PII; transmission remains gated by the existing opt-out. |
 | VII. Simplicity & Maintainability | ✅ Pass (1 justified complexity) | Reuses `safe_metric`, the heartbeat channel, and the JMX path; zero new deps. Host-dedup aggregation is the one non-obvious element — justified in Complexity Tracking. |
 
-**Governance Ask-First gates**: New dependency — **none** (psutil already direct; cgroup reads are stdlib). DB schema/migration — **none**. Auth — **none**. GraphQL/REST schema — **none** (telemetry payload is an internal contract with the receiving service, coordinated cross-team, not an Infrahub API). CI/CD — **none**.
+**Governance Ask-First gates**: New dependency — **none added**, but `psutil` is promoted from dev-only to a production runtime dependency (Ask-First confirmed, research D1). DB schema/migration — **none**. Auth — **none**. GraphQL/REST schema — **none** (telemetry payload is an internal contract with the receiving service, coordinated cross-team, not an Infrahub API). CI/CD — **none**.
 
 ## Project Structure
 
@@ -68,7 +68,6 @@ backend/infrahub/telemetry/
 ├── models.py            # extend TelemetryDatabaseSystemInfoData (processor_assigned) +
 │                        #   TelemetryWorkerData (processor_*/memory_* fields); add
 │                        #   TelemetryServerData + server field on TelemetryData
-├── constants.py         # bump TELEMETRY_VERSION (payload_format)
 ├── resources.py         # NEW: read logical cores + memory (psutil) and the cgroup limit
 │                        #   (stdlib); host identifier; per-process ComponentResources
 ├── database.py          # add processor_assigned to system_info via
@@ -77,8 +76,8 @@ backend/infrahub/telemetry/
 └── tasks.py             # gather: aggregate hosts → extended workers fields + new server block
 
 backend/infrahub/services/
-└── component.py         # heartbeat self-reports this process's resources;
-                         # WorkerInfo captures component type + resource value + host
+└── component.py         # heartbeat self-reports this process's resources via
+                         #   read_worker_resources(); WorkerInfo is unchanged
 
 backend/tests/unit/telemetry/
 ├── test_resources.py    # NEW: cgroup v2/v1 parsing, unlimited→null, host detection
@@ -90,7 +89,7 @@ backend/tests/component/telemetry/
                          #     the existing workers.total / workers.active counts
 ```
 
-**Structure Decision**: Single backend project. All changes are confined to `backend/infrahub/telemetry/` (a new `resources.py` reader, three new Pydantic models, gather wiring, a version bump) and one existing collaborator, `backend/infrahub/services/component.py` (heartbeat self-report + `WorkerInfo` extension). No new top-level package, no cross-cutting refactor. This honors Principle VII and the backend-component-design rule (the reader is a small, injectable unit; the gatherer already follows the DI/builder pattern established in the parent telemetry work).
+**Structure Decision**: Single backend project. All changes are confined to `backend/infrahub/telemetry/` (a new `resources.py` reader, three new Pydantic models, gather wiring) and one existing collaborator, `backend/infrahub/services/component.py` (heartbeat self-report via `read_worker_resources()`; `WorkerInfo` unchanged). No new top-level package, no cross-cutting refactor. This honors Principle VII and the backend-component-design rule (the reader is a small, injectable unit; the gatherer already follows the DI/builder pattern established in the parent telemetry work).
 
 ## Complexity Tracking
 

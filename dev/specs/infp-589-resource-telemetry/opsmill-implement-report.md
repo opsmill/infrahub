@@ -1,6 +1,8 @@
 # Implementation Report: Licensing Resource-Allocation Telemetry
 
-**Status: DONE**
+**Snapshot as of commit `37c6c0944`** — a point-in-time record of the chunk-by-chunk implementation and its review, not a live description of the branch. Review-response commits landed afterward (branch head was `4505e21dc` when this note was added); check `git log` for the current state rather than treating the evidence below as final.
+
+**Status: DONE** (as of the snapshot commit above)
 
 | | |
 |---|---|
@@ -34,9 +36,9 @@ Docker was available, so **all** tests (unit + component) executed locally and p
 | Test id (file / group) | Type | Run command | Passed at (ISO 8601) | Environment | Verbatim pass line |
 |---|---|---|---|---|---|
 | `backend/tests/unit/telemetry/test_resources.py` (cgroup/host reader; 21 cases) | unit | `uv run pytest backend/tests/unit/telemetry/` | 2026-07-21T16:16Z | pure; no services | `63 passed` (whole unit dir, final) |
-| `backend/tests/unit/telemetry/test_aggregation.py` (dedup/sum/undercount/null + failed-read drop; 8) | unit | `uv run pytest backend/tests/unit/telemetry/` | 2026-07-21T16:2x Z (post-review) | pure | `63 passed` |
-| `backend/tests/unit/telemetry/test_database.py` (`_worker_limit_from_value`; 7 cases) | unit | `uv run pytest backend/tests/unit/telemetry/` | 2026-07-21T16:2x Z (post-review) | pure | `63 passed` |
-| `backend/tests/component/telemetry/test_resources.py` (aggregate+server dedup, backward-compat, opt-out, 4× degradation, E1 count-invariant; 8 tests) | component | `DOCKER_HOST=… uv run pytest backend/tests/component/telemetry/` | 2026-07-21T16:2x Z (post-review) | testcontainers Neo4j + Prefect harness | `44 passed` (whole telemetry component suite, final) |
+| `backend/tests/unit/telemetry/test_aggregation.py` (dedup/sum/undercount/null + failed-read drop; 8) | unit | `uv run pytest backend/tests/unit/telemetry/` | not recorded (post-review pass, same run as above) | pure | `63 passed` |
+| `backend/tests/unit/telemetry/test_database.py` (`_worker_limit_from_value`; 7 cases) | unit | `uv run pytest backend/tests/unit/telemetry/` | not recorded (post-review pass, same run as above) | pure | `63 passed` |
+| `backend/tests/component/telemetry/test_resources.py` (aggregate+server dedup, backward-compat, opt-out, 4× degradation, E1 count-invariant; 8 tests) | component | `DOCKER_HOST=… uv run pytest backend/tests/component/telemetry/` | not recorded (post-review pass) | testcontainers Neo4j + Prefect harness | `44 passed` (whole telemetry component suite, final) |
 
 Final orchestrator-run verification after the review fixes: unit `63 passed`, telemetry component `44 passed`, `uv run invoke format` clean, `ruff`+`mypy` on changed modules clean.
 

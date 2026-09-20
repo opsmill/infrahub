@@ -8,7 +8,7 @@ whole aggregate. ``processor_assigned`` is the exception: a contributing host's
 ``None`` there is a real value (no CPU limit enforced), and a fleet with one
 unbounded host has no finite assignment, so that field alone nulls the whole
 aggregate. Only the four resource figures are returned; the worker count is
-tracked separately by the caller.
+not part of this aggregate.
 """
 
 from __future__ import annotations
@@ -63,9 +63,8 @@ def test_distinct_hosts_are_summed() -> None:
 
 
 def test_undercount_sums_only_the_reporting_hosts() -> None:
-    # Three worker processes ran, but only two distinct hosts wrote a reading; the
-    # aggregate sums those two. The caller's worker count (tracked separately)
-    # still reflects all three, so the gap is detectable.
+    # Three worker processes ran, but only two distinct hosts wrote a reading;
+    # the aggregate sums only those two, undercounting rather than nulling.
     readings = [
         _reading("w1", processor_available=4),
         _reading("w2", processor_available=4),
