@@ -37,10 +37,20 @@ async def branch_merged(
 
 
 @flow(name="branch-purge-tasks", flow_run_name="Purge tasks for deleted branch '{branch_name}'")
-async def purge_deleted_branch_tasks(branch_name: str) -> None:
+async def purge_deleted_branch_tasks(branch_name: str, deletion_task_id: str | None = None) -> None:
+    """Remove the settled tasks of a deleted branch.
+
+    Args:
+        deletion_task_id: The task that performed the deletion, left in place: the caller that
+            asked for the branch to be deleted may still be waiting on that task, and a read
+            which finds it gone fails their request.
+
+    """
     log = get_run_logger()
     async with get_client(sync_client=False) as prefect_client:
         purger = BranchFlowRunPurger(
             client=PrefectClientAdapter(client=prefect_client), filter_builder=FlowRunFilterBuilder(), log=log
         )
-        await purger.purge_for_branch(branch_name=branch_name)
+        await purger.purge_for_branch(
+            branch_name=branch_name, excluded_ids=[deletion_task_id] if deletion_task_id else None
+        )

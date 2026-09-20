@@ -23,7 +23,7 @@ def make_run() -> FlowRun:
 
 
 class InMemoryPurgeClient:
-    """A faithful in-memory client: a deleted run no longer matches the filter on the next read."""
+    """A faithful in-memory client: a deleted or excluded run no longer matches the filter."""
 
     def __init__(self, flow_runs: list[FlowRun] | None = None) -> None:
         self.runs: list[FlowRun] = list(flow_runs or [])
@@ -39,7 +39,10 @@ class InMemoryPurgeClient:
         sort: FlowRunSort | None = None,
     ) -> list[FlowRun]:
         self.read_filters.append(flow_run_filter)
-        return self.runs[:limit]
+        excluded: set[UUID] = set()
+        if flow_run_filter is not None and flow_run_filter.id is not None and flow_run_filter.id.not_any_:
+            excluded = set(flow_run_filter.id.not_any_)
+        return [run for run in self.runs if run.id not in excluded][:limit]
 
     async def delete_flow_run(self, flow_run_id: UUID) -> None:
         self.deleted.append(flow_run_id)
@@ -149,6 +152,18 @@ class TestBranchFlowRunPurger:
         assert client.runs == []
         assert _messages(caplog, logging.WARNING) == []
         assert _messages(caplog, logging.INFO) == ["Purged 3 flow run(s) for deleted branch 'feature-x'"]
+
+    async def test_leaves_an_excluded_run_in_place(self, caplog: pytest.LogCaptureFixture) -> None:
+        caplog.set_level(logging.INFO, logger=LOGGER_NAME)
+        runs = [make_run() for _ in range(3)]
+        client = InMemoryPurgeClient(flow_runs=runs)
+
+        await _purger(client).purge_for_branch(branch_name=BRANCH_NAME, excluded_ids=[str(runs[1].id)])
+
+        assert client.deleted == [runs[0].id, runs[2].id]
+        assert [run.id for run in client.runs] == [runs[1].id]
+        assert _messages(caplog, logging.WARNING) == []
+        assert _messages(caplog, logging.INFO) == ["Purged 2 flow run(s) for deleted branch 'feature-x'"]
 
     async def test_scopes_to_the_branch_tag_and_terminal_states(self) -> None:
         client = InMemoryPurgeClient(flow_runs=[make_run()])
