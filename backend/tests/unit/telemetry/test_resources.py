@@ -364,24 +364,51 @@ def test_host_identifier_is_populated(tmp_path: Path) -> None:
     assert reading.host == socket.gethostname()
 
 
-def test_static_fields_are_cached_only_free_memory_refreshes(tmp_path: Path) -> None:
-    # A cgroup-limited memory reading recomputes free memory from ``memory.current``
-    # on each read, while capacity stays fixed.
+def test_limit_values_refresh_between_reads(tmp_path: Path) -> None:
+    # A live reconfiguration (a ``docker update --cpus``, a Kubernetes in-place
+    # pod resize) rewrites the cgroup limit files without restarting the process,
+    # so the CPU quota and memory capacity must reflect it on the next read
+    # rather than staying at whatever was true when the process started.
     _write_cgroup_files(
         tmp_path,
-        {"memory.max": "8589934592", "memory.current": "1073741824"},
+        {"cpu.max": "100000 100000", "memory.max": "8589934592", "memory.current": "1073741824"},
     )
     reader = ProcessResources(cgroup_root=tmp_path)
 
     first = reader.read()
+    assert first.processor_assigned == 1
     assert first.memory_total == 8589934592
     assert first.memory_available == 8589934592 - 1073741824
 
-    (tmp_path / "memory.current").write_text("2147483648")
+    (tmp_path / "cpu.max").write_text("400000 100000")
+    (tmp_path / "memory.max").write_text("4294967296")
+    (tmp_path / "memory.current").write_text("536870912")
     second = reader.read()
 
-    assert second.memory_total == 8589934592
-    assert second.memory_available == 8589934592 - 2147483648
+    assert second.processor_assigned == 4
+    assert second.processor_available == _usable_cores(4)
+    assert second.memory_total == 4294967296
+    assert second.memory_available == 4294967296 - 536870912
+
+
+def test_cgroup_path_resolution_is_cached_after_first_read(tmp_path: Path) -> None:
+    # Resolving the process's own cgroup walks /proc/self/cgroup and its
+    # ancestors, and that path cannot move without a container restart, so it
+    # must not be re-resolved on every read the way the limit values are.
+    cgroup_root = tmp_path / "cgroup"
+    cgroup_root.mkdir()
+    _write_cgroup_files(cgroup_root, {"a/cpu.max": "100000 100000"})
+    proc_cgroup = tmp_path / "proc_self_cgroup"
+    proc_cgroup.write_text("0::/a\n")
+    reader = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup)
+
+    first = reader.read()
+    assert first.processor_assigned == 1
+
+    proc_cgroup.unlink()
+    second = reader.read()
+
+    assert second.processor_assigned == 1
 
 
 def test_diagnostics_report_the_enforced_memory_limit(tmp_path: Path) -> None:
