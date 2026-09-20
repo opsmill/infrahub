@@ -5,6 +5,7 @@ class FakeLogger:
     def __init__(self) -> None:
         self.info_logs: list[str | None] = []
         self.error_logs: list[str | None] = []
+        self.exception_logs: list[str | None] = []
 
     def debug(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
         """Send a debug event."""
@@ -24,3 +25,4 @@ class FakeLogger:
 
     def exception(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
         """Send an exception event."""
+        self.exception_logs.append(event)

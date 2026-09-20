@@ -1,0 +1,1 @@
+Fixed the diff update of a branch with an open proposed change stalling for minutes after the diff was saved when the branch holds tens of thousands of changed objects, which also blocked every other task on that worker for the duration.

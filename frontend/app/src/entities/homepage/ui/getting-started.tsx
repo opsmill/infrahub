@@ -110,20 +110,26 @@ export const GettingStarted = ({ className }: { className?: string }) => {
 
           <GettingStartedContentItem>
             <GettingStartedContentItem.Title>
-              <Icon icon={"mdi:cloud-json"} className="size-4" />
-              Schema Library
+              <Icon icon={"mdi:storefront-outline"} className="size-4" />
+              Marketplace
               <GettingStartedContentItem.Link
-                href={"https://github.com/opsmill/schema-library/"}
+                href={"https://marketplace.infrahub.app/"}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Docs
+                Browse
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
+<<<<<<< HEAD
             <span className="text-foreground-muted">
               Offers a collection of schemas designed to streamline and standardize
               infrastructure-related data structures.
+=======
+            <span className="text-gray-500">
+              A curated, tested catalog of schemas and collections to jump-start and extend your
+              Infrahub instance.
+>>>>>>> origin/stable
             </span>
           </GettingStartedContentItem>
 

@@ -124,12 +124,27 @@ class DiffCalculationQuery(DiffQuery):
         diff_branch_from_time: Timestamp,
         current_node_field_specifiers: NodeFieldSpecifierMap | None = None,
         new_node_field_specifiers: NodeFieldSpecifierMap | None = None,
+        node_uuids: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
+        """Read one level of the paths that changed on a branch.
+
+        Args:
+            base_branch: Branch the diff branch is compared against.
+            diff_branch_from_time: Time the diff branch was branched from the base branch.
+            current_node_field_specifiers: Fields the previous diff already covered; their base-branch changes are
+                read from the diff's from time.
+            new_node_field_specifiers: Fields changed on the diff branch for the first time; their base-branch
+                changes are read from the branched-from time.
+            node_uuids: Restrict the field- and property-level queries to these nodes instead of every node with a
+                change on the branch. The node-level and migrated-kind queries do not use it.
+
+        """
         self.base_branch = base_branch
         self.diff_branch_from_time = diff_branch_from_time
         self.current_node_field_specifiers = current_node_field_specifiers
         self.new_node_field_specifiers = new_node_field_specifiers
+        self.node_uuids = node_uuids
 
         super().__init__(**kwargs)
 
@@ -258,6 +273,7 @@ END AS diff_rel_paths, has_more_data
             "branch_agnostic": BranchSupportType.AGNOSTIC.value,
             "limit": self.limit or config.SETTINGS.database.query_size_limit,
             "offset": self.offset or 0,
+            "node_uuids": self.node_uuids,
         }
 
 
@@ -433,7 +449,13 @@ class DiffFieldPathsQuery(DiffCalculationQuery):
                 else None,
             }
         )
-        if new_uuids is None and current_uuids is None:
+        if self.node_uuids is not None:
+            entry_clause = """
+MATCH (p:Node)
+WHERE p.uuid IN $node_uuids
+WITH p
+"""
+        elif new_uuids is None and current_uuids is None:
             entry_clause = """
 MATCH (p)-[:HAS_ATTRIBUTE|IS_RELATED {branch: $branch_name}]-(q)
 WITH DISTINCT p
@@ -643,7 +665,13 @@ class DiffPropertyPathsQuery(DiffCalculationQuery):
                 else None,
             }
         )
-        if new_uuids is None and current_uuids is None:
+        if self.node_uuids is not None:
+            entry_clause = """
+MATCH (n:Node)
+WHERE n.uuid IN $node_uuids
+WITH n
+"""
+        elif new_uuids is None and current_uuids is None:
             entry_clause = """
 MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(p)
     -[:IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE {branch: $branch_name}]->()
@@ -873,6 +901,61 @@ WITH n, p, type(diff_rel) AS drt, head(collect(diff_rel_path)) AS diff_path, has
         self.add_to_query(self.get_relationship_peer_side_query(db=db))
         self.add_to_query("UNWIND diff_rel_paths AS diff_path")
         self.return_labels = ["DISTINCT diff_path AS diff_path", "has_more_data"]
+
+
+class DiffChangedNodesQuery(DiffCalculationQuery):
+    """List the nodes a field- or property-level calculation has to visit on the branch.
+
+    The paths queries page their rows with SKIP and LIMIT, so every page re-runs their match over each edge
+    changed on the branch. Running them one chunk of the uuids listed here at a time keeps every match small.
+    The only condition is the time window on the changed edge, which the paths queries apply as well, so the
+    list is a superset of the nodes they return paths for and partitioning by it loses no row.
+    """
+
+    def get_node_uuids(self) -> list[str]:
+        result = self.get_result()
+        if result is None:
+            return []
+        return result.get_as_list_of_type("node_uuids", str)
+
+
+class DiffFieldNodesQuery(DiffChangedNodesQuery):
+    name = "diff_field_nodes"
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params.update(self.get_params())
+        query = """
+// -------------------------------------
+// Identify nodes with an attribute/relationship added/removed on branch
+// -------------------------------------
+MATCH (p:Node)-[diff_rel:HAS_ATTRIBUTE|IS_RELATED {branch: $branch_name}]-()
+WHERE (
+    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
+    OR ($from_time <= diff_rel.to < $to_time)
+)
+        """
+        self.add_to_query(query)
+        self.return_labels = ["collect(DISTINCT p.uuid) AS node_uuids"]
+
+
+class DiffPropertyNodesQuery(DiffChangedNodesQuery):
+    name = "diff_property_nodes"
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params.update(self.get_params())
+        query = """
+// -------------------------------------
+// Identify nodes with a property added/removed on branch
+// -------------------------------------
+MATCH (n:Node)-[:HAS_ATTRIBUTE|IS_RELATED]-(:Attribute|Relationship)
+    -[diff_rel:IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE {branch: $branch_name}]->()
+WHERE (
+    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
+    OR ($from_time <= diff_rel.to < $to_time)
+)
+        """
+        self.add_to_query(query)
+        self.return_labels = ["collect(DISTINCT n.uuid) AS node_uuids"]
 
 
 @dataclass

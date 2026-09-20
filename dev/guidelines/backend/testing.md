@@ -75,6 +75,22 @@ def test_returns_config() -> None:
     assert cfg.ldap.enabled is False
 ```
 
+## One database session per concurrent path
+
+A Neo4j session carries a single connection and cannot serve two coroutines at once, and everything reached through one `InfrahubDatabase` shares its session. Racing two calls on the same one wedges the connection: one coroutine raises `read() called while another coroutine is already waiting for incoming data`, the other parks on the socket where `asyncio.wait_for` cannot cancel it. `db` is module-scoped, so the wedge takes every later test in the module with it.
+
+```python
+# Good - a session per racing call
+async with db.start_session() as db_1, db.start_session() as db_2:
+    await asyncio.gather(build_coordinator(db_1).update(), build_coordinator(db_2).update())
+
+# Bad - both calls queue on the module's one connection
+coordinator = build_coordinator(db)
+await asyncio.gather(coordinator.update(), coordinator.update())
+```
+
+Code that opens a session of its own is safe to race: flows do, pinned by [`test_flow_session_convention.py`](../../../backend/tests/unit/workflows/test_flow_session_convention.py), and so does GraphQL execution. A component a test calls directly does not.
+
 ## Test Schemas
 
 Many tests require schemas to be loaded before they can run. Over time this has led to duplicated schema definitions scattered across test files. To reduce duplication and ease maintenance, shared helper schemas are available in [`tests/helpers/schema/`](../../../backend/tests/helpers/schema/).
@@ -153,13 +169,8 @@ import pytest
 @dataclass
 class MyFunctionTestCase:
     name: str
-    """Descriptive name for the test scenario (used as test ID)."""
-
     input_value: str
-    """The input to pass to the function."""
-
     expected: bool
-    """The expected return value."""
 
 
 MY_FUNCTION_TEST_CASES: list[MyFunctionTestCase] = [
@@ -181,7 +192,6 @@ MY_FUNCTION_TEST_CASES: list[MyFunctionTestCase] = [
     [pytest.param(tc, id=tc.name) for tc in MY_FUNCTION_TEST_CASES],
 )
 def test_my_function(test_case: MyFunctionTestCase) -> None:
-    """Test that my_function handles various inputs correctly."""
     result = my_function(value=test_case.input_value)
     assert result == test_case.expected
 ```
@@ -192,22 +202,17 @@ def test_my_function(test_case: MyFunctionTestCase) -> None:
 
 2. **Use descriptive names** that explain the scenario: `empty_dict_returns_false`, `nested_key_found_at_second_level`, `invalid_input_raises_error`.
 
-3. **Document fields with inline docstrings** (per Python standards):
+3. **Leave a field undocumented when its name says what it holds.** An inline docstring below a
+   field is for the one that needs explaining (see [Python standards](python.md#docstrings)):
 
    ```python
    @dataclass
    class QueryTestCase:
        name: str
-       """Descriptive name for the test scenario."""
-
        query: str
-       """The Cypher query to execute."""
-
        params: dict[str, Any]
-       """Parameters to pass to the query."""
-
        expected_count: int
-       """Expected number of results."""
+       """Rows visible on the branch, not rows matched before the branch filter."""
    ```
 
 4. **Define test cases as module-level constants** with uppercase names and type hints:
@@ -387,6 +392,26 @@ The deadline applies to every wait, not only polls: wrap a bare `await event.wai
 `asyncio.wait_for(..., timeout=...)`, with margin for a loaded runner. An unbounded await turns a
 regression into a whole-suite hang that only pytest-timeout ends, minutes later, with the cause
 hidden.
+
+### Never assert on elapsed time
+
+`assert elapsed_seconds < N` encodes the speed of the machine that wrote it. It passes on a fast
+runner with the regression present, flakes on a loaded one without it, and the margin narrows every
+time the fixture grows, so it is both a weak guard and a source of flakes. This covers any assertion
+whose outcome depends on how fast the host is, wall-clock gaps between events included.
+
+A deadline that only bounds a wait is not such an assertion: it is a guard that turns a hang into a
+fast failure, and nothing the test asserts depends on how long it took.
+
+Hold the shape instead of the duration:
+
+- Count the work. When a fix turns a scan into a lookup, assert the number of calls, queries or
+  comparisons; a counting double fails identically on every machine.
+- Keep the measurement out of the suite. The numbers that justified the change belong in the commit
+  message or the pull request, where they are read once, not in an assertion CI re-runs forever.
+
+When the behavior under test genuinely is a schedule, inject the clock as above so the schedule
+becomes a value the test reads exactly, rather than a duration it races.
 
 ## Exception Testing
 
