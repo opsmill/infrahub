@@ -449,7 +449,10 @@ class GraphQLSchemaManager:
                 if rel.cardinality == RelationshipCardinality.ONE:
                     peer_type = self.get_type(name=f"NestedEdged{peer_schema.kind}")
                     node_type._meta.fields[rel.name] = graphene.Field(
-                        peer_type, resolver=single_relationship_resolver, required=True
+                        peer_type,
+                        resolver=single_relationship_resolver,
+                        required=True,
+                        deprecation_reason=rel.deprecation,
                     )
 
                 elif rel.cardinality == RelationshipCardinality.MANY:
@@ -461,7 +464,11 @@ class GraphQLSchemaManager:
                         peer_filters["include_descendants"] = graphene.Boolean()
 
                     node_type._meta.fields[rel.name] = graphene.Field(
-                        peer_type, required=True, resolver=many_relationship_resolver, **peer_filters
+                        peer_type,
+                        required=True,
+                        resolver=many_relationship_resolver,
+                        deprecation_reason=rel.deprecation,
+                        **peer_filters,
                     )
 
             if (isinstance(node_schema, NodeSchema) and node_schema.hierarchy) or (
@@ -478,11 +485,21 @@ class GraphQLSchemaManager:
                 peer_type = self.get_type(name=f"NestedPaginated{hierarchy_name}")
                 peer_type_edge = self.get_type(name=f"NestedEdged{hierarchy_name}")
 
+                parent_rel = node_schema.get_relationship_or_none(name="parent")
+                children_rel = node_schema.get_relationship_or_none(name="children")
+
                 node_type._meta.fields["parent"] = graphene.Field(
-                    peer_type_edge, required=True, resolver=single_relationship_resolver
+                    peer_type_edge,
+                    required=True,
+                    resolver=single_relationship_resolver,
+                    deprecation_reason=parent_rel.deprecation if parent_rel else None,
                 )
                 node_type._meta.fields["children"] = graphene.Field(
-                    peer_type, required=True, resolver=many_relationship_resolver, **peer_filters
+                    peer_type,
+                    required=True,
+                    resolver=many_relationship_resolver,
+                    deprecation_reason=children_rel.deprecation if children_rel else None,
+                    **peer_filters,
                 )
                 node_type._meta.fields["ancestors"] = graphene.Field(
                     peer_type, required=True, resolver=ancestors_resolver, **peer_filters
@@ -631,7 +648,9 @@ class GraphQLSchemaManager:
             attr_kind = get_attr_kind(schema, attr)
             attr_type = self.get_type(name=get_attribute_type(kind=attr_kind).get_graphql_type_name())
             req = "" if attr.optional else " (required)"
-            main_attrs[attr.name] = graphene.Field(attr_type, description=f"{attr.description}{req}")
+            main_attrs[attr.name] = graphene.Field(
+                attr_type, description=f"{attr.description}{req}", deprecation_reason=attr.deprecation
+            )
 
         object_hash = md5hash.hexdigest()
 
@@ -666,7 +685,9 @@ class GraphQLSchemaManager:
         for attr in schema.attributes:
             attr_kind = get_attr_kind(node_schema=schema, attr_schema=attr)
             attr_type = self.get_type(name=get_attribute_type(kind=attr_kind).get_graphql_type_name())
-            main_attrs[attr.name] = graphene.Field(attr_type, description=attr.description)
+            main_attrs[attr.name] = graphene.Field(
+                attr_type, description=attr.description, deprecation_reason=attr.deprecation
+            )
 
         interface_object = registry.get_interface_type(reference_hash=interface_hash, schema_hash=self.schema_hash)
         if not interface_object:
@@ -788,7 +809,9 @@ class GraphQLSchemaManager:
             attr_kind = get_attr_kind(schema, attr)
             attr_type = get_attribute_type(kind=attr_kind).get_graphql_create()
 
-            attrs[attr.name] = graphene.InputField(attr_type, description=attr.description)
+            attrs[attr.name] = graphene.InputField(
+                attr_type, description=attr.description, deprecation_reason=attr.deprecation
+            )
 
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
@@ -797,10 +820,14 @@ class GraphQLSchemaManager:
             input_type = self._get_related_input_type(relationship=rel)
 
             if rel.cardinality == RelationshipCardinality.ONE:
-                attrs[rel.name] = graphene.InputField(input_type, description=rel.description)
+                attrs[rel.name] = graphene.InputField(
+                    input_type, description=rel.description, deprecation_reason=rel.deprecation
+                )
 
             elif rel.cardinality == RelationshipCardinality.MANY:
-                attrs[rel.name] = graphene.InputField(graphene.List(input_type), description=rel.description)
+                attrs[rel.name] = graphene.InputField(
+                    graphene.List(input_type), description=rel.description, deprecation_reason=rel.deprecation
+                )
 
         input_name = f"{schema.kind}CreateInput"
         md5hash = hashlib.md5(usedforsecurity=False)
@@ -836,7 +863,9 @@ class GraphQLSchemaManager:
                 continue
             attr_kind = get_attr_kind(schema, attr)
             attr_type = get_attribute_type(kind=attr_kind).get_graphql_update()
-            attrs[attr.name] = graphene.InputField(attr_type, required=False, description=attr.description)
+            attrs[attr.name] = graphene.InputField(
+                attr_type, required=False, description=attr.description, deprecation_reason=attr.deprecation
+            )
 
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
@@ -845,11 +874,16 @@ class GraphQLSchemaManager:
             input_type = self._get_related_input_type(relationship=rel)
 
             if rel.cardinality == RelationshipCardinality.ONE:
-                attrs[rel.name] = graphene.InputField(input_type, required=False, description=rel.description)
+                attrs[rel.name] = graphene.InputField(
+                    input_type, required=False, description=rel.description, deprecation_reason=rel.deprecation
+                )
 
             elif rel.cardinality == RelationshipCardinality.MANY:
                 attrs[rel.name] = graphene.InputField(
-                    graphene.List(input_type), required=False, description=rel.description
+                    graphene.List(input_type),
+                    required=False,
+                    description=rel.description,
+                    deprecation_reason=rel.deprecation,
                 )
 
         input_name = f"{schema.kind}UpdateInput"
@@ -890,7 +924,9 @@ class GraphQLSchemaManager:
             attr_kind = get_attr_kind(schema, attr)
             attr_type = get_attribute_type(kind=attr_kind).get_graphql_update()
 
-            attrs[attr.name] = graphene.InputField(attr_type, description=attr.description)
+            attrs[attr.name] = graphene.InputField(
+                attr_type, description=attr.description, deprecation_reason=attr.deprecation
+            )
 
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
@@ -899,10 +935,14 @@ class GraphQLSchemaManager:
             input_type = self._get_related_input_type(relationship=rel)
 
             if rel.cardinality == RelationshipCardinality.ONE:
-                attrs[rel.name] = graphene.InputField(input_type, description=rel.description)
+                attrs[rel.name] = graphene.InputField(
+                    input_type, description=rel.description, deprecation_reason=rel.deprecation
+                )
 
             elif rel.cardinality == RelationshipCardinality.MANY:
-                attrs[rel.name] = graphene.InputField(graphene.List(input_type), description=rel.description)
+                attrs[rel.name] = graphene.InputField(
+                    graphene.List(input_type), description=rel.description, deprecation_reason=rel.deprecation
+                )
 
         input_name = f"{schema.kind}UpsertInput"
         md5hash = hashlib.md5(usedforsecurity=False)
