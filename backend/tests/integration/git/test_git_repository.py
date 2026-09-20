@@ -390,6 +390,7 @@ class TestInfrahubClient:
             name=git_repo_same_repo_trigger_rule.name,
             description="trigger rule test repository",
             location="git@github.com:mock/trigger-rule.git",
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 
@@ -398,6 +399,7 @@ class TestInfrahubClient:
             name=git_repo_same_repo_trigger_rule.name,
             location=git_repo_same_repo_trigger_rule.path,
             client=client,
+            infrahub_branch_name="main",
         )
 
     async def test_import_resolves_trigger_rules_referencing_generator_definition(
