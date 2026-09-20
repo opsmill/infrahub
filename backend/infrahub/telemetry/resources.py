@@ -15,9 +15,11 @@ reports no CPU quota. Limits above a private namespace root (for example a
 pod-level limit when the container itself has none) are invisible from inside
 and cannot be reported.
 
-The values that cannot change for the lifetime of a process (the host identifier,
-the usable CPU count, the enforced CPU quota and the memory capacity) are read
-once and cached; only free memory is re-read, since it moves with usage.
+The host identifier, the resolved control-group path and the host's logical
+CPU count cannot change without a container restart and are read once and
+cached. The enforced CPU quota and the memory capacity can change while the
+process runs — a live quota update, an in-place pod resize, a systemd unit
+reload — so, like free memory, they are re-read on every call.
 
 Aggregation collapses the several processes of one container into a single
 contribution (they share a host and a control group, so their readings are
@@ -104,15 +106,23 @@ class ResourceAggregate:
 
 
 @dataclass(frozen=True)
-class _StaticResources:
-    """The per-process facts that never change while the process lives."""
+class _ProcessIdentity:
+    """The per-process facts that cannot change without a container restart."""
 
     host: str
+    cgroup_dirs: list[Path]
+    host_processor_count: int | None
+
+
+@dataclass(frozen=True)
+class _DynamicResources:
+    """Resource figures that can change while the process runs and are re-read on every call."""
+
     processor_available: int | None
     processor_assigned: int | None
     memory_total: int | None
     memory_limit: int | None
-    memory_current_path: Path | None
+    memory_available: int | None
 
 
 def _read_text_file(path: Path) -> str | None:
@@ -315,60 +325,73 @@ class ResourceDiagnostics:
 
 
 class ProcessResources:
-    """Read and cache this process's static resource facts, refreshing free memory.
+    """Read this process's resource facts, caching only what a container restart would change.
 
-    The host identifier, usable CPU count, enforced CPU quota and memory capacity
-    are fixed for the lifetime of a process and are read once; each read re-reads
-    only free memory, which moves with usage.
+    The host identifier, the resolved control-group path and the host's logical
+    CPU count are fixed for the lifetime of a process and are read once. The
+    enforced CPU quota and memory capacity can be reconfigured while the process
+    keeps running, so, like free memory, each read re-reads them.
     """
 
     def __init__(self, cgroup_root: Path = CGROUP_ROOT, proc_cgroup: Path = PROC_SELF_CGROUP) -> None:
         self._cgroup_root = cgroup_root
         self._proc_cgroup = proc_cgroup
-        self._static: _StaticResources | None = None
+        self._identity: _ProcessIdentity | None = None
 
-    def _read_static(self) -> _StaticResources:
-        cgroup_dirs = _own_cgroup_dirs(cgroup_root=self._cgroup_root, proc_cgroup=self._proc_cgroup)
-        memory_limit, memory_current_path = _read_cgroup_memory_limit(cgroup_dirs)
-        memory_total = memory_limit if memory_limit is not None else _host_memory_total()
-        processor_assigned = _read_cgroup_cpu_quota(cgroup_dirs)
-        return _StaticResources(
+    def _read_identity(self) -> _ProcessIdentity:
+        return _ProcessIdentity(
             host=socket.gethostname(),
+            cgroup_dirs=_own_cgroup_dirs(cgroup_root=self._cgroup_root, proc_cgroup=self._proc_cgroup),
+            host_processor_count=psutil.cpu_count(logical=True),
+        )
+
+    def _process_identity(self) -> _ProcessIdentity:
+        if self._identity is None:
+            self._identity = self._read_identity()
+        return self._identity
+
+    def _read_memory_available(self, memory_limit: int | None, memory_current_path: Path | None) -> int | None:
+        if memory_limit is not None and memory_current_path is not None:
+            current = _read_int_file(memory_current_path)
+            if current is None:
+                return None
+            return memory_limit - current
+        return _host_memory_available()
+
+    def _read_dynamic(self, identity: _ProcessIdentity) -> _DynamicResources:
+        processor_assigned = _read_cgroup_cpu_quota(identity.cgroup_dirs)
+        memory_limit, memory_current_path = _read_cgroup_memory_limit(identity.cgroup_dirs)
+        memory_total = memory_limit if memory_limit is not None else _host_memory_total()
+        return _DynamicResources(
             processor_available=_usable_processors(
-                host_count=psutil.cpu_count(logical=True), quota_cores=processor_assigned
+                host_count=identity.host_processor_count, quota_cores=processor_assigned
             ),
             processor_assigned=processor_assigned,
             memory_total=memory_total,
             memory_limit=memory_limit,
-            memory_current_path=memory_current_path,
+            memory_available=self._read_memory_available(
+                memory_limit=memory_limit, memory_current_path=memory_current_path
+            ),
         )
 
-    def _read_memory_available(self, static: _StaticResources) -> int | None:
-        if static.memory_limit is not None and static.memory_current_path is not None:
-            current = _read_int_file(static.memory_current_path)
-            if current is None:
-                return None
-            return static.memory_limit - current
-        return _host_memory_available()
-
-    def _static_resources(self) -> _StaticResources:
-        if self._static is None:
-            self._static = self._read_static()
-        return self._static
+    @staticmethod
+    def _build_reading(identity: _ProcessIdentity, dynamic: _DynamicResources) -> WorkerResourceReading:
+        return WorkerResourceReading(
+            host=identity.host,
+            processor_available=dynamic.processor_available,
+            processor_assigned=dynamic.processor_assigned,
+            memory_total=dynamic.memory_total,
+            memory_available=dynamic.memory_available,
+        )
 
     def read(self) -> WorkerResourceReading:
-        static = self._static_resources()
-        return WorkerResourceReading(
-            host=static.host,
-            processor_available=static.processor_available,
-            processor_assigned=static.processor_assigned,
-            memory_total=static.memory_total,
-            memory_available=self._read_memory_available(static),
-        )
+        identity = self._process_identity()
+        return self._build_reading(identity, self._read_dynamic(identity))
 
     def diagnose(self) -> ResourceDiagnostics:
         """Return a reading alongside the cgroup evidence behind it."""
-        cgroup_dirs = _own_cgroup_dirs(cgroup_root=self._cgroup_root, proc_cgroup=self._proc_cgroup)
+        identity = self._process_identity()
+        cgroup_dirs = identity.cgroup_dirs
         levels = [
             CgroupLevel(
                 path=str(directory),
@@ -387,15 +410,15 @@ class ProcessResources:
         if v1_files:
             levels.append(CgroupLevel(path=f"{root} (v1 controllers)", files=v1_files))
 
-        reading = self.read()
+        dynamic = self._read_dynamic(identity)
         return ResourceDiagnostics(
-            reading=reading,
+            reading=self._build_reading(identity, dynamic),
             proc_cgroup=_read_text_file(self._proc_cgroup),
             cgroup_v2_root=(self._cgroup_root / "cgroup.controllers").exists(),
             cgroup_v1_root=(self._cgroup_root / "cpu" / "cpu.cfs_quota_us").exists(),
-            memory_limit=self._static_resources().memory_limit,
+            memory_limit=dynamic.memory_limit,
             levels=levels,
-            host_processor_available=psutil.cpu_count(logical=True),
+            host_processor_available=identity.host_processor_count,
             host_memory_total=_host_memory_total(),
         )
 
