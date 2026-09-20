@@ -39,12 +39,12 @@ def test_resolve_initial_import_branch_uses_git_default(
         id=uuid4(),
         name="test-repository",
         location="git@github.com:mock/test-repository.git",
-        default_branch_name="production",
+        default_branch="production",
         has_origin=True,
         cache_repo=None,
         is_read_only=False,
-        internal_status=RepositoryInternalStatus.ACTIVE.value,
-        infrahub_branch_name=None,
+        internal_status=RepositoryInternalStatus.ACTIVE,
+        infrahub_branch_name="main",
         reinitialized=case.reinitialized,
     )
 

@@ -9,7 +9,7 @@ import pytest
 
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, RepositoryInternalStatus
 from infrahub.core.convert_object_type.object_conversion import ConversionFieldInput, ConversionFieldValue
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -551,7 +551,8 @@ class TestConvertRepository(TestInfrahubApp):
             name=repository.name.value,
             location=repository.location.value,
             client=service.client,
-            default_branch_name=branch.name,
+            default_branch=branch.name,
+            internal_status=RepositoryInternalStatus.ACTIVE,
             infrahub_branch_name=branch.name,
         )
         repo_intern.validate_local_directories()

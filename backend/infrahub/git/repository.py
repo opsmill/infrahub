@@ -3,26 +3,32 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal
+from uuid import UUID  # noqa: TC003
 
 from cachetools import TTLCache
 from cachetools.keys import hashkey
 from cachetools_async import cached
 from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
-from infrahub_sdk.protocols import CoreReadOnlyRepository, CoreRepository
+from infrahub_sdk.protocols import CoreReadOnlyRepository
 from prefect import task
 from prefect.cache_policies import NONE
+from prefect.logging import get_run_logger
 from pydantic import Field
+from pydantic import ValidationError as PydanticValidationError
 
 from infrahub import config
+from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
+from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CommitNotFoundError,
     RepositoryConnectionError,
     RepositoryCredentialsError,
     RepositoryError,
 )
+from infrahub.git.graph_settings import resolve_graph_settings
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_logger
 
@@ -75,23 +81,152 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     Eventually we should rename this class InfrahubIntegratedRepository
     """
 
+    default_branch: str = Field(
+        ..., description="Remote branch this repository maps onto Infrahub's own default branch"
+    )
+    internal_status: RepositoryInternalStatus = Field(..., description="Internal status: Active, Inactive, Staging")
+
     @classmethod
-    async def new(cls, update_commit_value: bool = True, **kwargs: Any) -> InfrahubRepository:
-        self = cls(**kwargs)
+    async def init(
+        cls,
+        *,
+        id: str | UUID,
+        name: str,
+        client: InfrahubClient,
+        infrahub_branch_name: str,
+        commit: str | None = None,
+        location: str | None = None,
+    ) -> InfrahubRepository:
+        """Build the repository object for an operation running on a given Infrahub branch."""
+        self = await cls._build(
+            id=id,
+            name=name,
+            client=client,
+            infrahub_branch_name=infrahub_branch_name,
+            location=location,
+        )
+        await self.initialize_local(commit=commit)
+        return self
+
+    @classmethod
+    async def new(
+        cls,
+        *,
+        id: str | UUID,
+        name: str,
+        client: InfrahubClient,
+        infrahub_branch_name: str,
+        location: str | None = None,
+        update_commit_value: bool = True,
+    ) -> InfrahubRepository:
+        """Clone the repository locally for an operation running on a given Infrahub branch."""
+        self = await cls._build(
+            id=id,
+            name=name,
+            client=client,
+            infrahub_branch_name=infrahub_branch_name,
+            location=location,
+        )
         await self.create_locally(
-            infrahub_branch_name=self.infrahub_branch_name, update_commit_value=update_commit_value
+            checkout_ref=self.default_branch,
+            infrahub_branch_name=infrahub_branch_name,
+            update_commit_value=update_commit_value,
         )
         log.info("Created new repository locally.", repository=self.name)
         return self
 
-    async def resolve_checkout_ref(self) -> str:
-        if not self.default_branch_name:
-            repository = await self.sdk.get(
-                kind=CoreRepository, name__value=self.name, exclude=["tags", "credential"], raise_when_missing=True
-            )
-            self.default_branch_name = repository.default_branch.value
+    @classmethod
+    async def _build(
+        cls,
+        *,
+        id: str | UUID,
+        name: str,
+        client: InfrahubClient,
+        infrahub_branch_name: str,
+        location: str | None,
+    ) -> InfrahubRepository:
+        """Resolve the repository's graph-held configuration once, then construct the object with it.
 
+        A caller-supplied location wins over the node's: it is the one value a caller can
+        legitimately know better, and both a local test remote and the add flow rely on that.
+        """
+        settings = await resolve_graph_settings(
+            client=client,
+            repository_id=str(id),
+            repository_name=name,
+            infrahub_branch_name=infrahub_branch_name,
+        )
+        return cls(
+            id=id,
+            name=name,
+            client=client,
+            infrahub_branch_name=infrahub_branch_name,
+            default_branch=settings.default_branch,
+            internal_status=settings.internal_status,
+            location=location or settings.location,
+        )
+
+    async def resolve_checkout_ref(self) -> str:
         return self.default_branch
+
+    def _get_mapped_remote_branch(self, branch_name: str) -> str:
+        if branch_name != self.default_branch and branch_name == registry.default_branch:
+            return self.default_branch
+        return branch_name
+
+    def _get_mapped_target_branch(self, branch_name: str) -> str:
+        if branch_name == self.default_branch and branch_name != registry.default_branch:
+            return registry.default_branch
+        return branch_name
+
+    def _resolve_worktree_identifier(self, branch_name: str) -> str:
+        if branch_name == self.default_branch and branch_name != registry.default_branch:
+            return "main"
+        return branch_name
+
+    def validate_remote_branch(self, branch_name: str) -> bool:
+        """Process a remote branch to validate that we can use it safely.
+
+        - Make sure that the branch name won't conflict with infrahub's default branch
+        - Make sure that a representation of the branch can be created in the database
+        - Warn (but do not block) when the branch would conflict with the default branch on merge
+        """
+        if branch_name == registry.default_branch and branch_name != self.default_branch:
+            # If the default branch of Infrahub and the git repository differs we map the repository
+            # default branch to that of Infrahub. In that scenario we can't import a branch from the
+            # repository if it matches the default branch of Infrahub
+            log.warning("Ignoring import of mismatched default branch", branch=branch_name, repository=self.name)
+            return False
+
+        try:
+            # Check if the branch can be created in the database
+            Branch(name=branch_name)
+        except PydanticValidationError as e:
+            log.warning(
+                "Git branch failed validation.", branch_name=branch_name, errors=[error["msg"] for error in e.errors()]
+            )
+            return False
+
+        # Surface a warning when the branch conflicts with the default branch so users
+        # know a future merge will be rejected, but still allow the import to proceed.
+        try:
+            has_conflicts = self.has_conflicting_changes(target_branch=self.default_branch, source_branch=branch_name)
+        except GitCommandError as exc:
+            log.error(
+                "Unable to determine merge conflicts for branch",
+                branch=branch_name,
+                repository=self.name,
+                error=str(exc),
+            )
+            return True
+
+        if has_conflicts:
+            get_run_logger().warning(
+                f"Remote branch {branch_name} conflicts with {self.default_branch}; "
+                "the merge will be rejected until the conflict is resolved upstream"
+            )
+
+        return True
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
         branches = {}
@@ -169,7 +304,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         failed_imports: list[FailedImport] = []
 
         # TODO need to handle properly the situation when a branch is not valid.
-        if self.internal_status == RepositoryInternalStatus.ACTIVE.value:
+        if self.internal_status == RepositoryInternalStatus.ACTIVE:
             # A branch that has been merged (or is being deleted) is read-only: recording its commit
             # would be rejected by the graph and abort the whole sync, so drop those branches here.
             new_branches, updated_branches = await self._exclude_read_only_branches(new_branches, updated_branches)
@@ -261,7 +396,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         self, staging_branch: str | None, updated_branches: list[str]
     ) -> list[PendingObjectImport]:
         if not (
-            self.internal_status == RepositoryInternalStatus.STAGING.value
+            self.internal_status == RepositoryInternalStatus.STAGING
             and staging_branch
             and self.default_branch in updated_branches
         ):
@@ -369,19 +504,41 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
     """Repository with only read-only access to the remote repo."""
 
     is_read_only: bool = True
-    ref: str | None = Field(None, description="Ref to track on the external repository")
+    ref: str | None = Field(default=None, description="Ref to track on the external repository")
+
+    @classmethod
+    async def init(cls, commit: str | None = None, **kwargs: Any) -> InfrahubReadOnlyRepository:
+        self = cls(**kwargs)
+        await self.initialize_local(commit=commit)
+        return self
 
     @classmethod
     async def new(cls, **kwargs: Any) -> InfrahubReadOnlyRepository:
-        if "ref" not in kwargs or "infrahub_branch_name" not in kwargs:
+        """Clone a read-only repository locally on the ref it tracks.
+
+        Raises:
+            ValueError: When the ref or the Infrahub branch is missing, either absent or None. The
+                clone has to check something out, so neither can be defaulted.
+
+        """
+        if not kwargs.get("ref") or not kwargs.get("infrahub_branch_name"):
             raise ValueError("ref and infrahub_branch_name are mandatory to initialize a new Read-Only repository")
 
         self = cls(**kwargs)
-        await self.create_locally(checkout_ref=self.ref, infrahub_branch_name=self.infrahub_branch_name)
+        await self.create_locally(
+            checkout_ref=await self.resolve_checkout_ref(), infrahub_branch_name=self.infrahub_branch_name
+        )
         log.info("Created new repository locally.", repository=self.name)
         return self
 
     async def resolve_checkout_ref(self) -> str:
+        """Return the single ref this repository tracks, reading it from the graph when unset.
+
+        Raises:
+            RepositoryError: When the node carries no ref. The attribute is mandatory in the schema,
+                so this is a corrupted node rather than a case to paper over with a default.
+
+        """
         ref = self.ref
         if not ref:
             repository = await self.sdk.get(
@@ -390,12 +547,23 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
                 exclude=["tags", "credential"],
                 raise_when_missing=True,
             )
-            # `ref` is a mandatory attribute defaulting to "main", so the fallback is unreachable in
-            # practice; it keeps the return type honest the way the CoreRepository sibling above does.
-            ref = repository.ref.value or self.default_branch
+            ref = repository.ref.value
+            if not ref:
+                raise RepositoryError(
+                    identifier=self.name, message=f"Read-only repository {self.name} has no ref configured."
+                )
             self.ref = ref
 
         return ref
+
+    def _get_mapped_remote_branch(self, branch_name: str) -> str:
+        return branch_name
+
+    def _get_mapped_target_branch(self, branch_name: str) -> str:
+        return branch_name
+
+    def _resolve_worktree_identifier(self, branch_name: str) -> str:
+        return branch_name
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:  # noqa: ARG002
         """Always get the latest commit for this repository's ref on the remote.
@@ -463,7 +631,11 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 @cached(
     TTLCache(maxsize=100, ttl=30),
     key=lambda *_, **kwargs: hashkey(
-        kwargs.get("repository_id"), kwargs.get("name"), kwargs.get("repository_kind"), kwargs.get("commit")
+        kwargs.get("repository_id"),
+        kwargs.get("name"),
+        kwargs.get("repository_kind"),
+        kwargs.get("commit"),
+        kwargs.get("infrahub_branch_name"),
     ),
 )
 async def _get_initialized_repo(
@@ -471,13 +643,18 @@ async def _get_initialized_repo(
     repository_id: str,
     name: str,
     repository_kind: str,
+    infrahub_branch_name: str,
     commit: str | None = None,
 ) -> InfrahubReadOnlyRepository | InfrahubRepository:
     if repository_kind == InfrahubKind.REPOSITORY:
-        return await InfrahubRepository.init(id=repository_id, name=name, commit=commit, client=client)
+        return await InfrahubRepository.init(
+            id=repository_id, name=name, commit=commit, client=client, infrahub_branch_name=infrahub_branch_name
+        )
 
     if repository_kind == InfrahubKind.READONLYREPOSITORY:
-        return await InfrahubReadOnlyRepository.init(id=repository_id, name=name, commit=commit, client=client)
+        return await InfrahubReadOnlyRepository.init(
+            id=repository_id, name=name, commit=commit, client=client, infrahub_branch_name=infrahub_branch_name
+        )
 
     raise NotImplementedError(f"The repository kind {repository_kind} has not been implemented")
 
@@ -492,6 +669,7 @@ async def get_initialized_repo(
     repository_id: str,
     name: str,
     repository_kind: str,
+    infrahub_branch_name: str,
     commit: str | None = None,
 ) -> InfrahubReadOnlyRepository | InfrahubRepository:
     return await _get_initialized_repo(
@@ -499,5 +677,6 @@ async def get_initialized_repo(
         repository_id=repository_id,
         name=name,
         repository_kind=repository_kind,
+        infrahub_branch_name=infrahub_branch_name,
         commit=commit,
     )

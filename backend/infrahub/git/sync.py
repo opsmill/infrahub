@@ -75,8 +75,6 @@ class RepositoryAdder:
                 location=model.location,
                 client=self._client,
                 infrahub_branch_name=model.infrahub_branch_name,
-                internal_status=model.internal_status,
-                default_branch_name=model.default_branch_name,
             )
             default_commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
             repo.create_commit_worktree(commit=default_commit)

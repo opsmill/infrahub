@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from git import GitCommandError
 
-from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.exceptions import CommitNotFoundError, RepositoryError
@@ -114,6 +114,7 @@ class TestCreateRepository(TestInfrahubApp):
             repository_id=repository.id,
             name=repository.name.value,
             repository_kind=InfrahubKind.REPOSITORY,
+            infrahub_branch_name="main",
         )
 
         with patch("git.remote.Remote.fetch", side_effect=GitCommandError("fetch", stderr=stderr)):
@@ -147,6 +148,7 @@ class TestRepositoryChangedFiles(TestInfrahubApp):
             description="test repository",
             location=file_repo.path,
             commit=file_repo.repo.commit("main").hexsha,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 
@@ -171,6 +173,7 @@ class TestRepositoryChangedFiles(TestInfrahubApp):
             repository_id=repository.id,
             name=repository.name.value,
             repository_kind=InfrahubKind.REPOSITORY,
+            infrahub_branch_name="main",
         )
 
         # Have commits from oldest to youngest

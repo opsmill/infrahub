@@ -83,6 +83,7 @@ from tests.helpers.constants import (
 )
 from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.git import clone_repository
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_prefect_server_container
@@ -1289,7 +1290,7 @@ def git_upstream_repo_01(git_sources_dir: Path) -> dict[str, str | Path]:
 @pytest.fixture
 async def git_repo_01(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_01 as remote."""
-    return await InfrahubRepository.new(
+    return await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),

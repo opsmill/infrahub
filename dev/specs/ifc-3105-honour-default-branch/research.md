@@ -306,9 +306,14 @@ the read-write kind (more code, same effect, and keeps the field on the base); k
   `validate_remote_branch` **moves to the read-write class**: it is reached only through
   `collect_pending_imports`, which is defined on `InfrahubRepository`, so no read-only caller exists.
 - Question (b), the Infrahub branch a commit is recorded against: `create_locally` takes a required
-  `checkout_ref: str` and records the commit against `infrahub_branch_name` when given, otherwise
-  against `registry.default_branch`. The platform default is the honest answer to "which Infrahub
-  branch" when no branch was named; it is never the trunk.
+  `checkout_ref: str` and records the commit against `infrahub_branch_name`, which is a required
+  parameter but still nullable (`str | None`): a caller may clone without recording, and recording
+  with no branch raises. **Amended during implementation**: this decision originally fell back to
+  `registry.default_branch` when no branch was named. That fallback proved unreachable once the
+  factories were required to supply a branch — the only caller that could pass `None` records nothing
+  — so it is deleted, and recording a commit with no branch raises instead. The platform default
+  would have been the honest answer to "which Infrahub branch", but an unreachable fallback is still
+  a place for the next caller to drift into.
 - Question (c), the branch name in an error: `_raise_enriched_error` passes `branch_name` through
   unchanged, `None` included. The static classifier omits the branch from the two messages that use
   it when none was given. `fetch` keeps passing no branch.
@@ -350,20 +355,23 @@ shadow it: the object would hold one branch in the field and have been resolved 
 which is question (b) ambiguous again one layer up. So the factories construct with the value they
 read the node on, and the field stops being `None` on the `get_initialized_repo` path.
 
-That has one behavioural consequence, and it is intended rather than incidental.
+That has one consequence in the write path, and it is intended rather than incidental.
 `_update_operational_status` sends `branch_name=self.infrahub_branch_name or registry.default_branch`
-(`git/base.py:247`). Today `_get_initialized_repo` omits the field (`git/repository.py:477`, `:480`),
-so every downstream flow writes `operational_status` on the platform default branch regardless of
-where it runs. After this change those writes land on the branch the operation runs on, which is the
-branch whose repository node the operation actually read. The same applies to the read-only
-write-back, which passes the field straight to `update_commit_value`
-(`git/repository.py:441-442`, `:460`). `operational_status` is branch-scoped, so this is an
-operator-visible move on the surface SC-005 relies on and is pinned by a test (D7).
+(`git/base.py::_update_operational_status`). Today `git/repository.py::_get_initialized_repo` omits
+the field, so every downstream flow names the platform default branch regardless of where it runs.
+After this change those writes name the branch the operation runs on, which is the branch whose
+repository node the operation actually read. The same applies to the read-only write-back, which
+passes the field straight to `update_commit_value` (`git/repository.py::sync_from_remote` and
+`::update_latest_commit`). It is not an operator-visible
+move: `operational_status` is declared `BranchSupportType.AGNOSTIC`
+(`core/schema/definitions/core/repository.py`), so one value is shared across branches whichever
+branch a write names, and SC-005 rests on that single value plus the linked task run rather than on a
+per-branch status. Which branch the mutation names is pinned by a test (D7).
 
 **Alternative considered**: leave the field unset and use the parameter only for the graph read. That
-keeps `operational_status` writing on the default branch, but leaves the object carrying two
+keeps `operational_status` naming the default branch, but leaves the object carrying two
 different answers to "which Infrahub branch am I", which is precisely what D3 exists to remove. If
-the status write must stay on the default branch for an unrelated reason, the fix is for
+the status write must keep naming the default branch for an unrelated reason, the fix is for
 `_update_operational_status` to name `registry.default_branch` outright rather than to inherit
 whatever the field happens to hold.
 

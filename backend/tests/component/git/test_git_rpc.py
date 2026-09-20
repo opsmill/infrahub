@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
 import pytest
-from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk import InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 from typing_extensions import Self
 
@@ -35,7 +35,7 @@ from infrahub.workers.dependencies import build_client, build_message_bus, build
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_DIFF_NAMES_ONLY, GIT_REPOSITORIES_MERGE
 from tests.adapters.lock import LockTimeline, RecordingImporter, RecordingLockRegistry
 from tests.adapters.message_bus import BusSimulator
-from tests.helpers.test_client import dummy_async_request
+from tests.helpers.git import build_repository_client
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -93,7 +93,6 @@ class TestAddRepository:
             repository_id=repo_id,
             repository_name=git_upstream_repo_01["name"],
             location=str(git_upstream_repo_01["path"]),
-            default_branch_name=self.default_branch_name,
             infrahub_branch_name=self.default_branch_name,
             infrahub_branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
             internal_status="active",
@@ -114,8 +113,6 @@ class TestAddRepository:
                 location=str(git_upstream_repo_01["path"]),
                 client=ANY,
                 infrahub_branch_name=self.default_branch_name,
-                internal_status="active",
-                default_branch_name=self.default_branch_name,
             )
             self.mock_repo.build_import_plan.assert_awaited_once_with(
                 infrahub_branch_name=self.default_branch_name,
@@ -149,11 +146,15 @@ async def test_git_rpc_merge(
         destination_branch="main",
         destination_branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
         internal_status=RepositoryInternalStatus.ACTIVE.value,
-        default_branch="main",
         repository_kind=InfrahubKind.REPOSITORY,
     )
 
-    client = InfrahubClient(config=Config(requester=dummy_async_request))
+    client = build_repository_client(
+        repository_id=str(repo.id),
+        name=repo.name,
+        location=repo.get_location(),
+        default_branch="main",
+    )
     bus_simulator = await helper.get_message_bus_simulator()
     workflow = WorkflowLocalExecution()
     with (
@@ -176,6 +177,8 @@ async def test_git_rpc_merge(
 
 async def test_git_rpc_diff(
     prefect_test_fixture: None,
+    dependency_provider: Provider,
+    register_core_models_schema: None,
     git_repo_01: InfrahubRepository,
     branch01: BranchData,
     branch02: BranchData,
@@ -195,30 +198,35 @@ async def test_git_rpc_diff(
         repository_id=str(repo.id),
         repository_name=repo.name,
         repository_kind=InfrahubKind.REPOSITORY,
+        infrahub_branch_name="main",
         first_commit=commit_branch01,
         second_commit=commit_branch02,
     )
 
     bus_simulator = await helper.get_message_bus_simulator()
-    service = await InfrahubServices.new(
-        client=InfrahubClient(), message_bus=bus_simulator, workflow=WorkflowLocalExecution()
+    client = build_repository_client(
+        repository_id=str(repo.id), name=repo.name, location=repo.get_location(), default_branch="main"
     )
-    diff = await service.workflow.execute_workflow(
-        workflow=GIT_REPOSITORIES_DIFF_NAMES_ONLY, parameters={"model": model}
-    )
-    assert diff.files_changed == ["README.md", "test_files/sports.yml"]
+    service = await InfrahubServices.new(client=client, message_bus=bus_simulator, workflow=WorkflowLocalExecution())
+    with dependency_provider.scope(build_client, lambda: client):
+        diff = await service.workflow.execute_workflow(
+            workflow=GIT_REPOSITORIES_DIFF_NAMES_ONLY, parameters={"model": model}
+        )
+        assert diff.files_changed == ["README.md", "test_files/sports.yml"]
 
     model = GitDiffNamesOnly(
         repository_id=str(repo.id),
         repository_name=repo.name,
         repository_kind=InfrahubKind.REPOSITORY,
+        infrahub_branch_name="main",
         first_commit=commit_branch01,
         second_commit=commit_main,
     )
-    diff = await service.workflow.execute_workflow(
-        workflow=GIT_REPOSITORIES_DIFF_NAMES_ONLY, parameters={"model": model}
-    )
-    assert diff.files_changed == ["test_files/sports.yml"]
+    with dependency_provider.scope(build_client, lambda: client):
+        diff = await service.workflow.execute_workflow(
+            workflow=GIT_REPOSITORIES_DIFF_NAMES_ONLY, parameters={"model": model}
+        )
+        assert diff.files_changed == ["test_files/sports.yml"]
 
 
 class TestAddReadOnly:
@@ -388,6 +396,7 @@ class TestPullReadOnly:
 @pytest.mark.usefixtures("git_repos_dir")
 async def test_add_git_repository_scopes_import_build_and_apply(
     prefect_test_fixture: None,
+    register_core_models_schema: None,
     git_upstream_repo_01: dict[str, str],
 ) -> None:
     """The default-branch import builds outside the lock and applies under it.
@@ -396,12 +405,17 @@ async def test_add_git_repository_scopes_import_build_and_apply(
     re-acquires it so that concurrent imports of the same repository are serialized.
     """
     timeline = LockTimeline()
-    client = InfrahubClient(config=Config(requester=dummy_async_request))
+    repository_id = str(UUIDT())
+    client = build_repository_client(
+        repository_id=repository_id,
+        name=git_upstream_repo_01["name"],
+        location=str(git_upstream_repo_01["path"]),
+        default_branch="main",
+    )
     model = GitRepositoryAdd(
-        repository_id=str(UUIDT()),
+        repository_id=repository_id,
         repository_name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
-        default_branch_name="main",
         infrahub_branch_name="main",
         infrahub_branch_id=str(UUIDT()),
         internal_status=RepositoryInternalStatus.INACTIVE.value,
