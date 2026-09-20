@@ -8,6 +8,7 @@ files under a temporary cgroup root, so no host state or patching is needed.
 
 from __future__ import annotations
 
+import logging
 import socket
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -462,3 +463,106 @@ def test_diagnostics_expose_the_limit_files_found_at_each_level(tmp_path: Path) 
     assert diagnostics.levels[1].files == {"memory.max": "4294967296", "memory.current": "1073741824"}
     assert diagnostics.levels[2].files == {}
     assert diagnostics.memory_limit == 4294967296
+
+
+def test_leaf_cpu_max_absent_still_falls_through_to_ancestor(tmp_path: Path) -> None:
+    """A leaf with no ``cpu.max`` file at all (ENOENT) is the normal per-level case.
+
+    It must keep falling through to an ancestor's limit exactly as before — only a
+    genuine read failure (not a missing file) should stop that fallback.
+    """
+    cgroup_root = tmp_path / "cgroup"
+    (cgroup_root / "a" / "b").mkdir(parents=True)  # leaf exists but carries no cpu.max of its own
+    (cgroup_root / "a" / "cpu.max").write_text("200000 100000")
+    proc_cgroup = tmp_path / "proc_self_cgroup"
+    proc_cgroup.write_text("0::/a/b\n")
+
+    reading = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).read()
+
+    assert reading.processor_assigned == 2
+
+
+def test_unreadable_leaf_cpu_max_reports_unknown_instead_of_ancestor_value(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A leaf ``cpu.max`` that exists but cannot be read must not be treated as absent.
+
+    Falling through to the ancestor's looser limit would silently overstate the
+    component's CPU allocation, so the quota is reported as unknown instead. Using a
+    directory where a file is expected is a portable, root-independent way to trigger
+    a genuine (non-ENOENT) read failure.
+    """
+    cgroup_root = tmp_path / "cgroup"
+    cgroup_root.mkdir()
+    (cgroup_root / "a" / "b").mkdir(parents=True)
+    (cgroup_root / "a" / "b" / "cpu.max").mkdir()  # a directory, not a file: read raises IsADirectoryError
+    (cgroup_root / "a" / "cpu.max").write_text("200000 100000")
+    proc_cgroup = tmp_path / "proc_self_cgroup"
+    proc_cgroup.write_text("0::/a/b\n")
+
+    with caplog.at_level(logging.WARNING, logger="infrahub.telemetry.resources"):
+        reading = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).read()
+
+    assert reading.processor_assigned is None
+    assert reading.processor_available is None
+    warnings = [
+        record
+        for record in caplog.records
+        if "reporting the CPU quota as unknown" in record.message and "cpu.max" in record.message
+    ]
+    assert len(warnings) == 1
+
+
+def test_unreadable_memory_max_reports_unknown_instead_of_ancestor_value(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    cgroup_root = tmp_path / "cgroup"
+    cgroup_root.mkdir()
+    (cgroup_root / "a" / "b").mkdir(parents=True)
+    (cgroup_root / "a" / "b" / "memory.max").mkdir()
+    (cgroup_root / "a" / "memory.max").write_text("4294967296")
+    (cgroup_root / "a" / "memory.current").write_text("1073741824")
+    proc_cgroup = tmp_path / "proc_self_cgroup"
+    proc_cgroup.write_text("0::/a/b\n")
+
+    with caplog.at_level(logging.WARNING, logger="infrahub.telemetry.resources"):
+        reading = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).read()
+
+    assert reading.memory_total is None
+    assert reading.memory_available is None
+    warnings = [
+        record
+        for record in caplog.records
+        if "reporting memory as unknown" in record.message and "memory.max" in record.message
+    ]
+    assert len(warnings) == 1
+
+
+def test_unreadable_cpu_max_does_not_affect_memory_fields(tmp_path: Path) -> None:
+    """CPU and memory are collected independently: a CPU-only failure must not null memory."""
+    cgroup_root = tmp_path / "cgroup"
+    cgroup_root.mkdir()
+    (cgroup_root / "cpu.max").mkdir()
+    (cgroup_root / "memory.max").write_text("8589934592")
+    (cgroup_root / "memory.current").write_text("1073741824")
+
+    reading = ProcessResources(cgroup_root=cgroup_root).read()
+
+    assert reading.processor_assigned is None
+    assert reading.processor_available is None
+    assert reading.memory_total == 8589934592
+    assert reading.memory_available == 8589934592 - 1073741824
+
+
+def test_unreadable_memory_max_does_not_affect_cpu_fields(tmp_path: Path) -> None:
+    cgroup_root = tmp_path / "cgroup"
+    cgroup_root.mkdir()
+    (cgroup_root / "memory.max").mkdir()
+    (cgroup_root / "cpu.max").write_text("400000 100000")
+
+    reading = ProcessResources(cgroup_root=cgroup_root).read()
+
+    assert reading.memory_total is None
+    assert reading.memory_available is None
+    assert reading.processor_assigned == 4
+    assert reading.processor_available == _usable_cores(4)
