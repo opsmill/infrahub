@@ -8,13 +8,13 @@
 
 Extend the daily telemetry payload **in place** to report logical CPU cores (available + assigned) and memory (total + available) for the **database** (on its existing `system_info`), the **worker fleet** (on the existing `workers` section), and the **API server** (a new `server` section), all using the existing `processor_*`/`memory_*` field names, so a deployment can be audited against its contracted tier from a single snapshot — including offline/air-gapped deployments.
 
-Technical approach: reuse the existing telemetry gatherer, the `safe_metric` degradation boundary, the existing database JMX query, and the existing worker-heartbeat cache channel. The database row is derived from the JMX system-info the payload already collects. The server and worker rows are self-reported by each process into its heartbeat and aggregated by the gatherer. CPU/RAM figures come from `psutil` (already a direct dependency) plus stdlib `/sys/fs/cgroup` reads for the enforced allocation limit. Because multiple `api_server` processes share one container/cgroup, the aggregation deduplicates by host before summing. No new dependency, no database schema change, no branch-scoped data.
+Technical approach: reuse the existing telemetry gatherer, the `safe_metric` degradation boundary, the existing database JMX query, and the existing worker-heartbeat cache channel. The database row is derived from the JMX system-info the payload already collects. The server and worker rows are self-reported by each process into its heartbeat and aggregated by the gatherer. CPU/RAM figures come from `psutil` (promoted from a dev-only to a production runtime dependency — research D1) plus stdlib `/sys/fs/cgroup` reads for the enforced allocation limit. Because multiple `api_server` processes share one container/cgroup, the aggregation deduplicates by host before summing. No new dependency, no database schema change, no branch-scoped data.
 
 ## Technical Context
 
 **Language/Version**: Python 3.14 (backend)
 
-**Primary Dependencies**: Pydantic 2.12 (typed payload models), Prefect 3.7 (gather flow/tasks), `psutil==6.1.0` (already a direct dependency — host logical CPU count + memory), stdlib `os`/`socket` + `/sys/fs/cgroup` reads (enforced cgroup limit), Neo4j driver (existing JMX for the database row), Redis-backed `InfrahubCache` (existing heartbeat channel)
+**Primary Dependencies**: Pydantic 2.12 (typed payload models), Prefect 3.7 (gather flow/tasks), `psutil==6.1.0` (promoted from dev-only to a production runtime dependency — host logical CPU count + memory), stdlib `os`/`socket` + `/sys/fs/cgroup` reads (enforced cgroup limit), Neo4j driver (existing JMX for the database row), Redis-backed `InfrahubCache` (existing heartbeat channel)
 
 **Storage**: telemetry snapshot persisted via the existing snapshot repository; per-process resource readings transit through the cache heartbeat (TTL-bound), never persisted separately
 

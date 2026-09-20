@@ -90,8 +90,8 @@ CPU_QUOTA_CASES = [
 def _usable_cores(assigned: int | None) -> int:
     """The host's logical count, capped by the quota and by this test process's real CPU affinity.
 
-    Mirrors the production cap exactly (including the real, ambient affinity reading) so these
-    fixture-driven cases hold whether or not the machine running them enforces a cpuset restriction.
+    Reads the real, ambient affinity mask rather than a fixed value, so the expected figure holds
+    whether or not the machine running the test enforces a cpuset restriction.
     """
     host_count = psutil.cpu_count(logical=True)
     assert host_count is not None

@@ -19,8 +19,9 @@ No services. Point the reader at fixture cgroup files.
 - **cgroup v1, unlimited**: `cpu.cfs_quota_us = -1` → `processor_assigned is None`.
 - **Fractional**: `cpu.max = "150000 100000"` → `processor_assigned == 2` (rounded up).
 - **Missing cgroup files** (the `missing_files` fixture case, standing in for non-Linux): `processor_assigned is None`; `processor_available` and `memory_*` still come from psutil. This exercises the fallback path itself, not an actual non-Linux platform — there is no platform-gated test.
+- **CPU-affinity cap without a quota** (the `cpuset_without_quota_caps_available_by_affinity` real-kernel case in `backend/tests/component/telemetry/test_cgroup_kernels.py`, mirrored by the `only_affinity_known` case in `backend/tests/unit/telemetry/test_resources.py`): a `cpuset` restriction with no CPU-time quota configured still caps `processor_available` to the pinned CPU count.
 
-**Expected**: all cases pass; `processor_available` is logical, never physical, and equals the host's `psutil.cpu_count(logical=True)` capped by the quota — `cpu.max = "100000 100000"` → `processor_available == 1` on any host.
+**Expected**: all cases pass; `processor_available` is logical, never physical, and equals the host's `psutil.cpu_count(logical=True)` capped by the tightest of the CPU quota and the process's CPU-affinity mask (a `cpuset` restriction can cap it even with no quota configured) — `cpu.max = "100000 100000"` → `processor_available == 1` on any host.
 
 ## Scenario 2 — Unit: aggregation (`backend/tests/unit/telemetry/test_aggregation.py`)
 

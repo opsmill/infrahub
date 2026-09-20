@@ -68,7 +68,7 @@ Phase 0 decisions. Each resolves an unknown surfaced while planning against the 
   - For a field where any *contributing* host is `null` because it is genuinely unbounded (e.g. one worker host has no cgroup CPU quota) → the aggregate for that field is `null`: a fleet containing an unbounded node has no finite total.
 - **Rationale**: keeps `null` meaning "unknown / unbounded" throughout (no separate measured-empty `0` the consumer would have to distinguish), and makes an undercount observable via the worker count rather than silently nulling the fleet.
 
-## D10 — Payload version bump + receiving-service coordination
+## D10 — Payload version bump + receiving-service coordination (superseded by D13)
 
 - **Decision**: Increment `TELEMETRY_VERSION` (`payload_format`, currently `"20260628"`) to the change date. All new fields are additive; no existing field is renamed or removed.
 - **Rationale**: FR-008. The receiving cloud processor + data mart must tolerate the new block and the new version — a cross-team dependency tracked outside this branch. Additive-only + version bump lets older ingestion ignore what it does not recognise rather than break.
@@ -88,7 +88,7 @@ Phase 0 decisions. Each resolves an unknown surfaced while planning against the 
 
 ## D13 — Additive-only is the invariant; the version bump is gated
 
-- **Decision**: The payload change is additive-only (no existing field renamed/removed/retyped). The `payload_format` identifier is **not** incremented until the receiving service confirms it tolerates the new `resources` block; until then the fields ship under the existing version.
+- **Decision**: The payload change is additive-only (no existing field renamed/removed/retyped). The `payload_format` identifier is **not** incremented until the receiving service confirms it tolerates the new fields; until then the fields ship under the existing version.
 - **Rationale**: a version-strict receiver could break on an unexpected version string — the exact regression to avoid. Additive-under-existing-version guarantees current ingestion is untouched, and the bump becomes a coordinated follow-up rather than a unilateral producer change.
 
 ## D14 — Extend existing payload sections in place; one new `server` block

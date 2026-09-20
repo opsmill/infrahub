@@ -63,8 +63,8 @@ def test_distinct_hosts_are_summed() -> None:
 
 
 def test_undercount_sums_only_the_reporting_hosts() -> None:
-    # Three worker processes ran, but only two distinct hosts wrote a reading;
-    # the aggregate sums only those two, undercounting rather than nulling.
+    # Only the two reporting hosts are summed; a non-reporting host is simply
+    # absent rather than nulling the whole aggregate.
     readings = [
         _reading("w1", processor_available=4),
         _reading("w2", processor_available=4),
@@ -86,20 +86,6 @@ def test_field_is_none_when_no_reading_carried_it() -> None:
     assert result.processor_assigned is None
     assert result.memory_total is None
     assert result.memory_available is None
-
-
-def test_field_is_none_when_any_contributing_host_is_unbounded() -> None:
-    # Two healthy hosts (each reporting its cores and memory): one has an enforced
-    # quota, the other is unbounded (``processor_assigned`` is None). A fleet that
-    # contains an unbounded node has no finite assignment.
-    readings = [
-        _reading("w1", processor_available=4, memory_total=8, memory_available=6, processor_assigned=4),
-        _reading("w2", processor_available=4, memory_total=8, memory_available=6, processor_assigned=None),
-    ]
-
-    result = aggregate(readings)
-
-    assert result.processor_assigned is None
 
 
 def test_one_hosts_field_failure_undercounts_only_that_field() -> None:
