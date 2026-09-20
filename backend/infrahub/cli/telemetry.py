@@ -73,6 +73,12 @@ def _render(diagnostics: ResourceDiagnostics, console: Console) -> None:
     console.print(levels)
 
 
+def _to_json(diagnostics: ResourceDiagnostics) -> str:
+    payload = asdict(diagnostics) | {"reading": diagnostics.reading.model_dump()}
+    # Paths are the point of this output, so keep the slashes unescaped for a reader.
+    return ujson.dumps(payload, indent=2, escape_forward_slashes=False)
+
+
 @app.command(name="probe-resources")
 def probe_resources(
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON instead of tables."),
@@ -87,9 +93,7 @@ def probe_resources(
     diagnostics = ProcessResources().diagnose()
 
     if as_json:
-        payload = asdict(diagnostics) | {"reading": diagnostics.reading.model_dump()}
-        # Paths are the point of this output, so keep the slashes unescaped for a reader.
-        print(ujson.dumps(payload, indent=2, escape_forward_slashes=False))
+        print(_to_json(diagnostics))
         return
 
     _render(diagnostics=diagnostics, console=Console())
