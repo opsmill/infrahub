@@ -88,6 +88,6 @@ Given the active processes of a component type, each with a reading `{host, …}
 
 ## Validation rules
 
-- Byte and core counts are non-negative when present.
+- Byte and core counts are non-negative when present — enforced via Pydantic `ge=0` constraints.
 - All new fields default to `None`, so partial degradation never fails model construction.
-- The `server` block and the new `workers` / `system_info` fields are always present on a produced snapshot, even if every value is `None` (FR-006, FR-007).
+- The `server` block and the new `workers` / `system_info` fields are always present on every produced snapshot; `system_info` itself remains `None` when the database is unreachable or not Neo4j, in which case the whole block — including the new `processor_assigned` field — is absent rather than null-valued (FR-006, FR-007).

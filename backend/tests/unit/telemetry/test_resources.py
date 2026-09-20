@@ -3,7 +3,9 @@
 The reader parses the container control group (cgroup v2 first, then v1) for the
 enforced CPU quota and the memory limit, and falls back to whole-host figures
 from psutil when no control group is present. Every case is driven from fixture
-files under a temporary cgroup root, so no host state or patching is needed.
+files under a temporary cgroup root, so the cgroup inputs are fixture-isolated
+and need no patching; the host's logical CPU count and CPU-affinity mask are
+still read live from the real environment for the capping math.
 """
 
 from __future__ import annotations

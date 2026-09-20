@@ -18,7 +18,7 @@ No services. Point the reader at fixture cgroup files.
 - **cgroup v1, CPU limited**: `cpu.cfs_quota_us = 200000`, `cpu.cfs_period_us = 100000` → `processor_assigned == 2`.
 - **cgroup v1, unlimited**: `cpu.cfs_quota_us = -1` → `processor_assigned is None`.
 - **Fractional**: `cpu.max = "150000 100000"` → `processor_assigned == 2` (rounded up).
-- **Non-Linux / missing files**: `processor_assigned is None`; `processor_available` and `memory_*` still come from psutil.
+- **Missing cgroup files** (the `missing_files` fixture case, standing in for non-Linux): `processor_assigned is None`; `processor_available` and `memory_*` still come from psutil. This exercises the fallback path itself, not an actual non-Linux platform — there is no platform-gated test.
 
 **Expected**: all cases pass; `processor_available` is logical, never physical, and equals the host's `psutil.cpu_count(logical=True)` capped by the quota — `cpu.max = "100000 100000"` → `processor_available == 1` on any host.
 

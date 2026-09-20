@@ -51,6 +51,7 @@ Phase 0 decisions. Each resolves an unknown surfaced while planning against the 
 
 - **Decision**: Host identifier = `socket.gethostname()`. Under Docker/Kubernetes this is the container ID (per container, shared by all processes inside it).
 - **Rationale**: enables D8. Stdlib, no privilege needed.
+- **Assumption**: this assumes one container per component process group (one hostname per api_server or git_agent container) — true of every sized Infrahub deployment. A multi-container pod sharing one hostname across different component types would need a different dedup key.
 
 ## D8 — Aggregate over distinct hosts, not processes
 
