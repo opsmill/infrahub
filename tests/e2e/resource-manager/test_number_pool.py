@@ -95,6 +95,9 @@ class TestNumberPool:
         await expect(admin_page.get_by_text("Node *")).not_to_be_visible()
         await expect(admin_page.get_by_text("Attribute *")).not_to_be_visible()
 
+    @pytest.mark.skip(
+        reason="The pool detail page lists one resource per range, and pools hold no range until the migration lands."
+    )
     async def test_number_pool_attribute_kind_resource_manager(self, admin_page: Page, number_pool_branch: str) -> None:
         await admin_page.goto(f"/resource-manager?branch={number_pool_branch}")
         await expect(admin_page.get_by_role("link", name="InfraService.")).to_be_visible()

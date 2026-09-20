@@ -5046,7 +5046,9 @@ input CoreNodeUpdateInput {
 type CoreNumberPool implements CoreNode & CoreResourcePool & LineageSource {
   description: TextAttribute
   display_label: String
-  """The end range for the pool (required)"""
+  """
+  The end of the pool's single range. Null unless the pool holds exactly one range.
+  """
   end_range: NumberAttribute
   """Human friendly identifier"""
   hfid: [String!]
@@ -5062,7 +5064,10 @@ type CoreNumberPool implements CoreNode & CoreResourcePool & LineageSource {
   node_attribute: TextAttribute
   """Defines how this number pool was created"""
   pool_type: TextAttribute
-  """The start range for the pool (required)"""
+  ranges(allocation_weight__is_protected: Boolean, allocation_weight__owner__id: ID, allocation_weight__source__id: ID, allocation_weight__value: BigInt, allocation_weight__values: [BigInt], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], end__is_protected: Boolean, end__owner__id: ID, end__source__id: ID, end__value: BigInt, end__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, start__is_protected: Boolean, start__owner__id: ID, start__source__id: ID, start__value: BigInt, start__values: [BigInt]): NestedPaginatedCoreNumberPoolRange!
+  """
+  The start of the pool's single range. Null unless the pool holds exactly one range.
+  """
   start_range: NumberAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
@@ -5075,7 +5080,9 @@ type CoreNumberPoolCreate {
 
 input CoreNumberPoolCreateInput {
   description: TextAttributeCreate
-  """The end range for the pool"""
+  """
+  The end of the pool's single range. Null unless the pool holds exactly one range.
+  """
   end_range: NumberAttributeCreate
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -5084,7 +5091,10 @@ input CoreNumberPoolCreateInput {
   node: TextAttributeCreate
   """The attribute of the selected model"""
   node_attribute: TextAttributeCreate
-  """The start range for the pool"""
+  ranges: [RelatedNodeInput]
+  """
+  The start of the pool's single range. Null unless the pool holds exactly one range.
+  """
   start_range: NumberAttributeCreate
   subscriber_of_groups: [RelatedNodeInput]
 }
@@ -5092,6 +5102,96 @@ input CoreNumberPoolCreateInput {
 """A pool of number resources"""
 type CoreNumberPoolDelete {
   ok: Boolean
+}
+
+"""A range of numbers a number pool allocates from"""
+type CoreNumberPoolRange implements CoreNode & CoreWeightedPoolResource {
+  """
+  Weight determines allocation priority, resources with higher values are selected first.
+  """
+  allocation_weight: NumberAttribute
+  display_label: String
+  """The last number of the range, included (required)"""
+  end: NumberAttribute
+  """Human friendly identifier"""
+  hfid: [String!]
+  """Unique identifier"""
+  id: String!
+  member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  pool: NestedEdgedCoreNumberPool!
+  """The first number of the range, included (required)"""
+  start: NumberAttribute
+  subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+}
+
+"""A range of numbers a number pool allocates from"""
+type CoreNumberPoolRangeCreate {
+  object: CoreNumberPoolRange
+  ok: Boolean
+}
+
+input CoreNumberPoolRangeCreateInput {
+  """
+  Weight determines allocation priority, resources with higher values are selected first.
+  """
+  allocation_weight: NumberAttributeCreate
+  """The last number of the range, included"""
+  end: NumberAttributeCreate
+  id: String
+  member_of_groups: [RelatedNodeInput]
+  pool: RelatedNodeInput
+  """The first number of the range, included"""
+  start: NumberAttributeCreate
+  subscriber_of_groups: [RelatedNodeInput]
+}
+
+"""A range of numbers a number pool allocates from"""
+type CoreNumberPoolRangeDelete {
+  ok: Boolean
+}
+
+"""A range of numbers a number pool allocates from"""
+type CoreNumberPoolRangeUpdate {
+  object: CoreNumberPoolRange
+  ok: Boolean
+}
+
+input CoreNumberPoolRangeUpdateInput {
+  """
+  Weight determines allocation priority, resources with higher values are selected first.
+  """
+  allocation_weight: NumberAttributeUpdate
+  """The last number of the range, included"""
+  end: NumberAttributeUpdate
+  hfid: [String]
+  id: String
+  member_of_groups: [RelatedNodeInput]
+  pool: RelatedNodeInput
+  """The first number of the range, included"""
+  start: NumberAttributeUpdate
+  subscriber_of_groups: [RelatedNodeInput]
+}
+
+"""A range of numbers a number pool allocates from"""
+type CoreNumberPoolRangeUpsert {
+  object: CoreNumberPoolRange
+  ok: Boolean
+}
+
+input CoreNumberPoolRangeUpsertInput {
+  """
+  Weight determines allocation priority, resources with higher values are selected first.
+  """
+  allocation_weight: NumberAttributeUpdate
+  """The last number of the range, included"""
+  end: NumberAttributeUpdate
+  hfid: [String]
+  id: String
+  member_of_groups: [RelatedNodeInput]
+  pool: RelatedNodeInput
+  """The first number of the range, included"""
+  start: NumberAttributeUpdate
+  subscriber_of_groups: [RelatedNodeInput]
 }
 
 """A pool of number resources"""
@@ -5102,7 +5202,9 @@ type CoreNumberPoolUpdate {
 
 input CoreNumberPoolUpdateInput {
   description: TextAttributeUpdate
-  """The end range for the pool"""
+  """
+  The end of the pool's single range. Null unless the pool holds exactly one range.
+  """
   end_range: NumberAttributeUpdate
   hfid: [String]
   id: String
@@ -5112,7 +5214,10 @@ input CoreNumberPoolUpdateInput {
   node: TextAttributeUpdate
   """The attribute of the selected model"""
   node_attribute: TextAttributeUpdate
-  """The start range for the pool"""
+  ranges: [RelatedNodeInput]
+  """
+  The start of the pool's single range. Null unless the pool holds exactly one range.
+  """
   start_range: NumberAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
@@ -5125,7 +5230,9 @@ type CoreNumberPoolUpsert {
 
 input CoreNumberPoolUpsertInput {
   description: TextAttributeUpdate
-  """The end range for the pool"""
+  """
+  The end of the pool's single range. Null unless the pool holds exactly one range.
+  """
   end_range: NumberAttributeUpdate
   hfid: [String]
   id: String
@@ -5135,7 +5242,10 @@ input CoreNumberPoolUpsertInput {
   node: TextAttributeUpdate
   """The attribute of the selected model"""
   node_attribute: TextAttributeUpdate
-  """The start range for the pool"""
+  ranges: [RelatedNodeInput]
+  """
+  The start of the pool's single range. Null unless the pool holds exactly one range.
+  """
   start_range: NumberAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
@@ -8099,6 +8209,12 @@ type EdgedCoreNumberPool {
   node_metadata: InfrahubNodeMetadata
 }
 
+"""A range of numbers a number pool allocates from"""
+type EdgedCoreNumberPoolRange {
+  node: CoreNumberPoolRange
+  node_metadata: InfrahubNodeMetadata
+}
+
 """Component template to create pre-shaped objects."""
 type EdgedCoreObjectComponentTemplate {
   node: CoreObjectComponentTemplate
@@ -9716,6 +9832,14 @@ type Mutation {
   CoreNumberPoolCreate(context: ContextInput, data: CoreNumberPoolCreateInput!): CoreNumberPoolCreate
   """A pool of number resources"""
   CoreNumberPoolDelete(context: ContextInput, data: DeleteInput!): CoreNumberPoolDelete
+  """A range of numbers a number pool allocates from"""
+  CoreNumberPoolRangeCreate(context: ContextInput, data: CoreNumberPoolRangeCreateInput!): CoreNumberPoolRangeCreate
+  """A range of numbers a number pool allocates from"""
+  CoreNumberPoolRangeDelete(context: ContextInput, data: DeleteInput!): CoreNumberPoolRangeDelete
+  """A range of numbers a number pool allocates from"""
+  CoreNumberPoolRangeUpdate(context: ContextInput, data: CoreNumberPoolRangeUpdateInput!): CoreNumberPoolRangeUpdate
+  """A range of numbers a number pool allocates from"""
+  CoreNumberPoolRangeUpsert(context: ContextInput, data: CoreNumberPoolRangeUpsertInput!): CoreNumberPoolRangeUpsert
   """A pool of number resources"""
   CoreNumberPoolUpdate(context: ContextInput, data: CoreNumberPoolUpdateInput!): CoreNumberPoolUpdate
   """A pool of number resources"""
@@ -10450,6 +10574,14 @@ type NestedEdgedCoreNumberPool {
   relationship_metadata: InfrahubRelationshipMetadata
 }
 
+"""A range of numbers a number pool allocates from"""
+type NestedEdgedCoreNumberPoolRange {
+  node: CoreNumberPoolRange
+  node_metadata: InfrahubNodeMetadata
+  properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata
+}
+
 """Component template to create pre-shaped objects."""
 type NestedEdgedCoreObjectComponentTemplate {
   node: CoreObjectComponentTemplate
@@ -11174,6 +11306,13 @@ type NestedPaginatedCoreNodeTriggerRule {
 type NestedPaginatedCoreNumberPool {
   count: Int!
   edges: [NestedEdgedCoreNumberPool!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""A range of numbers a number pool allocates from"""
+type NestedPaginatedCoreNumberPoolRange {
+  count: Int!
+  edges: [NestedEdgedCoreNumberPoolRange!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -11997,6 +12136,13 @@ type PaginatedCoreNodeTriggerRule {
 type PaginatedCoreNumberPool {
   count: Int!
   edges: [EdgedCoreNumberPool!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""A range of numbers a number pool allocates from"""
+type PaginatedCoreNumberPoolRange {
+  count: Int!
+  edges: [EdgedCoreNumberPoolRange!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -21101,6 +21247,26 @@ type Query {
     pool_type__source__id: ID
     pool_type__value: String
     pool_type__values: [String]
+    ranges__allocation_weight__is_protected: Boolean
+    ranges__allocation_weight__owner__id: ID
+    ranges__allocation_weight__source__id: ID
+    ranges__allocation_weight__value: BigInt
+    ranges__allocation_weight__values: [BigInt]
+    ranges__display_label__isnull: Boolean
+    ranges__display_label__value: String
+    ranges__display_label__values: [String]
+    ranges__end__is_protected: Boolean
+    ranges__end__owner__id: ID
+    ranges__end__source__id: ID
+    ranges__end__value: BigInt
+    ranges__end__values: [BigInt]
+    ranges__ids: [ID]
+    ranges__isnull: Boolean
+    ranges__start__is_protected: Boolean
+    ranges__start__owner__id: ID
+    ranges__start__source__id: ID
+    ranges__start__value: BigInt
+    ranges__start__values: [BigInt]
     start_range__is_protected: Boolean
     start_range__isnull: Boolean
     start_range__owner__id: ID
@@ -21121,6 +21287,125 @@ type Query {
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
   ): PaginatedCoreNumberPool!
+  CoreNumberPoolRange(
+    allocation_weight__is_protected: Boolean
+    allocation_weight__isnull: Boolean
+    allocation_weight__owner__id: ID
+    allocation_weight__source__id: ID
+    allocation_weight__value: BigInt
+    allocation_weight__values: [BigInt]
+    any__is_protected: Boolean
+    any__owner__id: ID
+    any__source__id: ID
+    any__value: String
+    any__values: [String]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    end__is_protected: Boolean
+    end__isnull: Boolean
+    end__owner__id: ID
+    end__source__id: ID
+    end__value: BigInt
+    end__values: [BigInt]
+    ids: [ID]
+    limit: Int
+    member_of_groups__description__value: String
+    member_of_groups__description__values: [String]
+    member_of_groups__display_label__isnull: Boolean
+    member_of_groups__display_label__value: String
+    member_of_groups__display_label__values: [String]
+    member_of_groups__group_type__value: String
+    member_of_groups__group_type__values: [String]
+    member_of_groups__ids: [ID]
+    member_of_groups__isnull: Boolean
+    member_of_groups__label__value: String
+    member_of_groups__label__values: [String]
+    member_of_groups__name__value: String
+    member_of_groups__name__values: [String]
+    """Filter by exact creation timestamp"""
+    node_metadata__created_at: DateTime
+    """Filter for objects created after this timestamp"""
+    node_metadata__created_at__after: DateTime
+    """Filter for objects created before this timestamp"""
+    node_metadata__created_at__before: DateTime
+    """Filter by exact creator account UUID"""
+    node_metadata__created_by__id: ID
+    """Filter by list of creator account UUIDs"""
+    node_metadata__created_by__ids: [ID]
+    """Filter by exact update timestamp"""
+    node_metadata__updated_at: DateTime
+    """Filter for objects updated after this timestamp"""
+    node_metadata__updated_at__after: DateTime
+    """Filter for objects updated before this timestamp"""
+    node_metadata__updated_at__before: DateTime
+    """Filter by exact updater account UUID"""
+    node_metadata__updated_by__id: ID
+    """Filter by list of updater account UUIDs"""
+    node_metadata__updated_by__ids: [ID]
+    offset: Int
+    order: OrderInput
+    partial_match: Boolean
+    pool__description__is_protected: Boolean
+    pool__description__owner__id: ID
+    pool__description__source__id: ID
+    pool__description__value: String
+    pool__description__values: [String]
+    pool__display_label__isnull: Boolean
+    pool__display_label__value: String
+    pool__display_label__values: [String]
+    pool__end_range__is_protected: Boolean
+    pool__end_range__owner__id: ID
+    pool__end_range__source__id: ID
+    pool__end_range__value: BigInt
+    pool__end_range__values: [BigInt]
+    pool__ids: [ID]
+    pool__isnull: Boolean
+    pool__name__is_protected: Boolean
+    pool__name__owner__id: ID
+    pool__name__source__id: ID
+    pool__name__value: String
+    pool__name__values: [String]
+    pool__node__is_protected: Boolean
+    pool__node__owner__id: ID
+    pool__node__source__id: ID
+    pool__node__value: String
+    pool__node__values: [String]
+    pool__node_attribute__is_protected: Boolean
+    pool__node_attribute__owner__id: ID
+    pool__node_attribute__source__id: ID
+    pool__node_attribute__value: String
+    pool__node_attribute__values: [String]
+    pool__pool_type__is_protected: Boolean
+    pool__pool_type__owner__id: ID
+    pool__pool_type__source__id: ID
+    pool__pool_type__value: String
+    pool__pool_type__values: [String]
+    pool__start_range__is_protected: Boolean
+    pool__start_range__owner__id: ID
+    pool__start_range__source__id: ID
+    pool__start_range__value: BigInt
+    pool__start_range__values: [BigInt]
+    start__is_protected: Boolean
+    start__isnull: Boolean
+    start__owner__id: ID
+    start__source__id: ID
+    start__value: BigInt
+    start__values: [BigInt]
+    subscriber_of_groups__description__value: String
+    subscriber_of_groups__description__values: [String]
+    subscriber_of_groups__display_label__isnull: Boolean
+    subscriber_of_groups__display_label__value: String
+    subscriber_of_groups__display_label__values: [String]
+    subscriber_of_groups__group_type__value: String
+    subscriber_of_groups__group_type__values: [String]
+    subscriber_of_groups__ids: [ID]
+    subscriber_of_groups__isnull: Boolean
+    subscriber_of_groups__label__value: String
+    subscriber_of_groups__label__values: [String]
+    subscriber_of_groups__name__value: String
+    subscriber_of_groups__name__values: [String]
+  ): PaginatedCoreNumberPoolRange!
   CoreObjectComponentTemplate(
     any__is_protected: Boolean
     any__owner__id: ID
