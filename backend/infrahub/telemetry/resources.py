@@ -464,6 +464,16 @@ class ProcessResources:
             memory_limit = None
             memory_total = None
             memory_available = None
+        except RESOURCE_READ_FAILURES as exc:
+            # No cgroup limit applies, so these figures fall back to psutil's whole-host
+            # read; a failure there is a host-level read failure, not a missing cgroup limit.
+            log.warning(
+                "Host memory read failed; reporting memory as unknown (host=%s): %s",
+                identity.host,
+                exc,
+            )
+            memory_total = None
+            memory_available = None
 
         return _DynamicResources(
             processor_available=processor_available,
