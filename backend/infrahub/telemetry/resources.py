@@ -28,6 +28,7 @@ identical) and sums across distinct hosts.
 
 from __future__ import annotations
 
+import logging
 import math
 import socket
 from dataclasses import dataclass
@@ -40,6 +41,11 @@ from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
+# Stdlib logging, not ``infrahub.log``: this module is also imported standalone
+# (bind-mounted into a bare probe image with no ``infrahub`` distribution) by the
+# real-kernel component tests, so it cannot depend on the package's own logging setup.
+log = logging.getLogger(__name__)
 
 CGROUP_ROOT = Path("/sys/fs/cgroup")
 PROC_SELF_CGROUP = Path("/proc/self/cgroup")
@@ -142,6 +148,42 @@ def _read_int_file(path: Path) -> int | None:
         return None
 
 
+class _CgroupLimitUnreadableError(Exception):
+    """A cgroup limit file exists but its read failed, as opposed to the file being absent."""
+
+    def __init__(self, path: Path) -> None:
+        super().__init__(str(path))
+        self.path: Path = path
+
+
+def _read_cgroup_limit_file(path: Path) -> str | None:
+    """Read one cgroup limit file, or ``None`` when nothing is configured at this level.
+
+    A permission or I/O error is never mistaken for "no limit at this level" and
+    cannot make an unenforced ancestor look effective.
+
+    Raises:
+        _CgroupLimitUnreadableError: The file exists but the read itself failed.
+
+    """
+    try:
+        return path.read_text().strip()
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError) as exc:
+        raise _CgroupLimitUnreadableError(path) from exc
+
+
+def _read_cgroup_int_limit(path: Path) -> int | None:
+    content = _read_cgroup_limit_file(path)
+    if content is None:
+        return None
+    try:
+        return int(content)
+    except ValueError:
+        return None
+
+
 def _quota_to_cores(quota: int, period: int) -> int | None:
     """Convert a CPU-time quota/period pair to whole cores, rounding up.
 
@@ -219,15 +261,23 @@ def _read_cgroup_cpu_quota(cgroup_dirs: list[Path]) -> int | None:
     ``cpu.max`` at any level is treated as cgroup v1, whose ``cpu.cfs_quota_us``
     / ``cpu.cfs_period_us`` pair (quota ``-1`` = unbounded) lives at the
     controller mount root inside a container.
+
+    Raises:
+        _CgroupLimitUnreadableError: A limit file exists but cannot be read, so
+            the level must not be treated as absent and fallen through to a
+            less restrictive one.
+
     """
-    v2_lines = [line for directory in cgroup_dirs if (line := _read_text_file(directory / "cpu.max")) is not None]
+    v2_lines = [
+        line for directory in cgroup_dirs if (line := _read_cgroup_limit_file(directory / "cpu.max")) is not None
+    ]
     if v2_lines:
         cores = [value for line in v2_lines if (value := _parse_cpu_max(line)) is not None]
         return min(cores) if cores else None
 
     root = cgroup_dirs[-1]
-    quota = _read_int_file(root / "cpu" / "cpu.cfs_quota_us")
-    period = _read_int_file(root / "cpu" / "cpu.cfs_period_us")
+    quota = _read_cgroup_int_limit(root / "cpu" / "cpu.cfs_quota_us")
+    period = _read_cgroup_int_limit(root / "cpu" / "cpu.cfs_period_us")
     if quota is None or period is None:
         return None
     return _quota_to_cores(quota=quota, period=period)
@@ -243,11 +293,17 @@ def _read_cgroup_memory_limit(cgroup_dirs: list[Path]) -> tuple[int | None, Path
     with no readable ``memory.max`` at any level is treated as cgroup v1, whose
     ``memory.limit_in_bytes`` reports a near-``INT64_MAX`` sentinel when
     unbounded. ``(None, None)`` means no limit is enforced anywhere.
+
+    Raises:
+        _CgroupLimitUnreadableError: A limit file exists but cannot be read, so
+            the level must not be treated as absent and fallen through to a
+            less restrictive one.
+
     """
     limits: list[tuple[int, Path]] = []
     v2_seen = False
     for directory in cgroup_dirs:
-        raw = _read_text_file(directory / "memory.max")
+        raw = _read_cgroup_limit_file(directory / "memory.max")
         if raw is None:
             continue
         v2_seen = True
@@ -264,7 +320,7 @@ def _read_cgroup_memory_limit(cgroup_dirs: list[Path]) -> tuple[int | None, Path
         return limit, directory / "memory.current"
 
     root = cgroup_dirs[-1]
-    v1_limit = _read_int_file(root / "memory" / "memory.limit_in_bytes")
+    v1_limit = _read_cgroup_int_limit(root / "memory" / "memory.limit_in_bytes")
     if v1_limit is None or v1_limit >= _CGROUP_MEMORY_UNLIMITED_THRESHOLD:
         return None, None
     return v1_limit, root / "memory" / "memory.usage_in_bytes"
@@ -359,19 +415,45 @@ class ProcessResources:
         return _host_memory_available()
 
     def _read_dynamic(self, identity: _ProcessIdentity) -> _DynamicResources:
-        processor_assigned = _read_cgroup_cpu_quota(identity.cgroup_dirs)
-        memory_limit, memory_current_path = _read_cgroup_memory_limit(identity.cgroup_dirs)
-        memory_total = memory_limit if memory_limit is not None else _host_memory_total()
-        return _DynamicResources(
-            processor_available=_usable_processors(
+        try:
+            processor_assigned = _read_cgroup_cpu_quota(identity.cgroup_dirs)
+            processor_available = _usable_processors(
                 host_count=identity.host_processor_count, quota_cores=processor_assigned
-            ),
+            )
+        except _CgroupLimitUnreadableError as exc:
+            # The quota at one level is unknown, so the most-restrictive-level-wins
+            # computation cannot be trusted; reporting host capacity here would risk
+            # overstating the allocation rather than the safe direction, unknown.
+            log.warning(
+                "Cgroup CPU limit file %s exists but could not be read; reporting the CPU quota as unknown (host=%s)",
+                exc.path,
+                identity.host,
+            )
+            processor_assigned = None
+            processor_available = None
+
+        try:
+            memory_limit, memory_current_path = _read_cgroup_memory_limit(identity.cgroup_dirs)
+            memory_total = memory_limit if memory_limit is not None else _host_memory_total()
+            memory_available = self._read_memory_available(
+                memory_limit=memory_limit, memory_current_path=memory_current_path
+            )
+        except _CgroupLimitUnreadableError as exc:
+            log.warning(
+                "Cgroup memory limit file %s exists but could not be read; reporting memory as unknown (host=%s)",
+                exc.path,
+                identity.host,
+            )
+            memory_limit = None
+            memory_total = None
+            memory_available = None
+
+        return _DynamicResources(
+            processor_available=processor_available,
             processor_assigned=processor_assigned,
             memory_total=memory_total,
             memory_limit=memory_limit,
-            memory_available=self._read_memory_available(
-                memory_limit=memory_limit, memory_current_path=memory_current_path
-            ),
+            memory_available=memory_available,
         )
 
     @staticmethod
