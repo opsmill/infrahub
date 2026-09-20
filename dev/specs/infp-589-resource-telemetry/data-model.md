@@ -31,7 +31,7 @@ Already carries `total`, `active` (the worker count — kept as-is). Add the tas
 
 `processor_available`, `processor_assigned`, `memory_total`, `memory_available` — the fleet aggregate summed over distinct git_agent hosts.
 
-**Scope note**: `total`/`active` retain their existing meaning (all worker processes, api_server + git_agent, by identity). The new resource fields are the **git_agent (task-worker) fleet** specifically; api_server resources live in the new `server` block. This asymmetry is documented in the contract.
+**Scope note**: `total`/`active` retain their existing meaning (all worker processes, api_server + git_agent, by identity). The new resource fields are the **git_agent (task-worker) fleet** specifically; api_server resources live in the new `server` block. This asymmetry is documented in the contract — a consumer must not average `processor_available` over `total`, since the two fields describe different populations. A per-block host count, so each block is self-describing, is a candidate for the next gated `payload_format` bump (research D13); not added this phase.
 
 ## New model
 
