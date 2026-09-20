@@ -24,9 +24,9 @@
       }
     },
     "workers": {
-      "total": 2,                            // existing — all worker processes
-      "active": 2,                           // existing
-      "processor_available": 8,              // NEW — usable CPUs, git_agent fleet, sum over hosts
+      "total": 2,                            // existing — ALL workers (api_server + git_agent); do not divide processor_* by this
+      "active": 2,                           // existing — same scope as total
+      "processor_available": 8,              // NEW — usable CPUs, git_agent fleet ONLY, sum over hosts
       "processor_assigned": null,            // NEW — cgroup quota; null if unbounded
       "memory_total": 8589934592,            // NEW — bytes
       "memory_available": 6442450944         // NEW — free bytes
@@ -50,6 +50,7 @@
   - `processor_assigned = null` ⇒ either no enforced/configured CPU limit (unlimited), or the read failed/was unavailable. The two are indistinguishable from this field alone.
 - **All `processor_assigned` fields are `null` in this release** — Infrahub does not enforce core limits yet. They are live reads that self-populate once a limit is configured: the DB reads `server.cypher.parallel.worker_limit` (`0`/auto → `null`); server and workers read their container CPU quota (unlimited → `null`). No payload-shape change when they light up.
 - **`workers.total` / `active`** keep their existing meaning: all worker processes (api_server + git_agent). The new `workers.processor_*` / `memory_*` are the **git_agent (task-worker) fleet** aggregate; api_server resources are in the `server` block. So `workers.total` and the `workers` resource fields are scoped differently by design.
+  - **Do not** compute `workers.processor_available / workers.total` as a per-worker average — `total` counts api_server + git_agent, `processor_available` covers git_agent only, so the result mixes two different fleets. A per-block host/worker count, so each block is self-describing, is a candidate for the next gated `payload_format` bump (research D13); not added this phase.
 - **Aggregates** (`workers.*`, `server.*`) are summed over **distinct hosts**, so multiple processes in one container are counted once. The per-process host identifier used for that dedup is internal and never emitted.
 - **Undercount signal**: if fewer hosts contributed than there are active workers, the git_agent resource fields undercount; `workers.total`/`active` (unchanged) expose the discrepancy.
 
