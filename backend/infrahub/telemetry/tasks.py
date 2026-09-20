@@ -8,6 +8,7 @@ from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
+from pydantic import ValidationError
 
 from infrahub import __version__, config
 from infrahub.core import registry, utils
@@ -15,6 +16,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
+from infrahub.log import get_run_logger as get_infrahub_logger
 from infrahub.services.component import InfrahubComponent
 from infrahub.workers.dependencies import get_component, get_database, get_http
 
@@ -38,6 +40,9 @@ from .resources import ResourceAggregate, WorkerResourceReading, aggregate
 from .snapshot import TelemetrySnapshot
 from .task_manager import gather_activity_24h, gather_prefect_information
 from .utils import determine_infrahub_type, safe_metric
+
+# Infrahub's logger, not Prefect's: this is used outside a task/flow run.
+log = get_infrahub_logger()
 
 
 @task(name="telemetry-schema-information", task_run_name="Gather Schema Information", cache_policy=NONE)
@@ -150,6 +155,31 @@ def _resource_fields(resources: ResourceAggregate | None) -> dict[str, int | Non
     }
 
 
+def _build_worker_data(total: int, active: int, resources: ResourceAggregate | None) -> TelemetryWorkerData:
+    """Build the worker block, degrading its resource figures to null rather than failing the gather.
+
+    Every per-host reading behind ``resources`` is already validated non-negative
+    where it is read back out of the cache, so this should never actually trip —
+    but a block built from several independently-sourced figures should not be
+    able to take the whole snapshot down with it if a future constraint here
+    catches something that earlier validation did not.
+    """
+    try:
+        return TelemetryWorkerData(total=total, active=active, **_resource_fields(resources))
+    except ValidationError as exc:
+        log.warning("Worker resource figures failed validation; reporting them as null: %s", exc)
+        return TelemetryWorkerData(total=total, active=active)
+
+
+def _build_server_data(resources: ResourceAggregate | None) -> TelemetryServerData:
+    """Build the server block, degrading its resource figures to null rather than failing the gather."""
+    try:
+        return TelemetryServerData(**_resource_fields(resources))
+    except ValidationError as exc:
+        log.warning("Server resource figures failed validation; reporting them as null: %s", exc)
+        return TelemetryServerData()
+
+
 class AnonymousTelemetryGatherer:
     """Assemble the full telemetry payload from its injected metric sources."""
 
@@ -195,12 +225,12 @@ class AnonymousTelemetryGatherer:
             infrahub_type=determine_infrahub_type(),
             python_version=platform.python_version(),
             platform=platform.machine(),
-            workers=TelemetryWorkerData(
+            workers=_build_worker_data(
                 total=len(workers),
                 active=len([w for w in workers if w.active]),
-                **_resource_fields(workers_resources),
+                resources=workers_resources,
             ),
-            server=TelemetryServerData(**_resource_fields(server_resources)),
+            server=_build_server_data(resources=server_resources),
             branches=TelemetryBranchData(
                 total=len(registry.branch),
                 active=await safe_metric(self.active_branch_counter.gather()),
