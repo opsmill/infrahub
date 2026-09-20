@@ -83,8 +83,8 @@ Given the active processes of a component type, each with a reading `{host, …}
 2. For each field, **sum across distinct hosts**.
 3. **Null-vs-undercount**:
    - no host reported field *f* → aggregate *f* = `None`;
-   - a contributing host has *f* = `None` because it is genuinely unbounded → aggregate *f* = `None`;
-   - some hosts reported, some did not → sum the reporters (**undercount**). `workers.total`/`active` (unchanged) still reflect all workers, so the gap is detectable.
+   - a contributing host has *f* = `None` because it is genuinely unbounded (`processor_assigned` only) → aggregate *f* = `None`;
+   - some hosts reported, some did not — whether a host never reported at all, or a contributing host's read of this one field failed while its other fields succeeded → sum the reporters (**undercount**). `workers.total`/`active` (unchanged) still reflect all workers, so the gap is detectable.
 
 ## Validation rules
 
