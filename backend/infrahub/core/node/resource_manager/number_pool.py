@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub import lock
 from infrahub.core import registry
+from infrahub.core.protocols import CoreNumberPoolRange
 from infrahub.core.query.resource_manager import (
     NumberPoolGetFree,
     NumberPoolGetReserved,
@@ -18,6 +19,8 @@ from .. import Node
 from ..lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema import AttributeSchema
     from infrahub.core.timestamp import Timestamp
@@ -38,6 +41,54 @@ class CoreNumberPool(Node):
             sum_excluded_values += end_range - start_range + 1
 
         return len(attribute.parameters.get_excluded_single_values()) + sum_excluded_values
+
+    async def load_ranges(self, db: InfrahubDatabase) -> list[CoreNumberPoolRange]:
+        """Return the ranges the pool allocates from, lowest start first.
+
+        Args:
+            db: Database connection.
+
+        Returns:
+            The range nodes linked to this pool, ordered by their start value.
+
+        """
+        pool_ranges = await registry.manager.query(
+            db=db,
+            schema=CoreNumberPoolRange,
+            filters={"pool__ids": [self.get_id()]},
+            branch_agnostic=True,
+        )
+        return sorted(pool_ranges, key=lambda pool_range: int(pool_range.start.value))
+
+    async def sync_shorthand_from_ranges(
+        self, db: InfrahubDatabase, ranges: Sequence[CoreNumberPoolRange] | None = None
+    ) -> None:
+        """Mirror the range set onto the deprecated shorthand attributes.
+
+        The shorthand carries the bounds of the single range a pool holds, and is null for a pool
+        holding no range or more than one. This is the only writer of those two attributes, and
+        every write path that changes the range set calls it.
+
+        Args:
+            db: Database connection.
+            ranges: The pool's ranges when the caller already holds them; loaded when omitted.
+
+        """
+        if ranges is None:
+            ranges = await self.load_ranges(db=db)
+
+        start: int | None = None
+        end: int | None = None
+        if len(ranges) == 1:
+            start = int(ranges[0].start.value)
+            end = int(ranges[0].end.value)
+
+        if self.start_range.value == start and self.end_range.value == end:  # type: ignore[attr-defined]
+            return
+
+        self.start_range.value = start  # type: ignore[attr-defined]
+        self.end_range.value = end  # type: ignore[attr-defined]
+        await self.save(db=db)
 
     async def get_used(
         self,

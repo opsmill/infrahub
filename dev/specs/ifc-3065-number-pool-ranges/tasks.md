@@ -64,14 +64,14 @@ PR 2 must land before PR 3: without the migration, allocation over ranges would 
 
 ### Tests
 
-- [ ] T012 [P] [US2] Component tests in `backend/tests/component/core/migrations/graph/m079_number_pool_ranges/test_migration.py`: pre-79 fixture with a user pool and a schema pool holding allocations; after the run each pool has one range with the old bounds and no weight, allocated values and utilization unchanged, shorthand still populated; second run creates no range; `validate_migration` passes; the range kind and the `ranges` relationship exist in the database schema
-- [ ] T013 [P] [US2] Component test in `backend/tests/component/core/resource_manager/test_number_pool.py`: `sync_shorthand_from_ranges` sets the bounds for one range and `None` for zero or two ranges
+- [X] T012 [P] [US2] Component tests in `backend/tests/component/core/migrations/graph/m079_number_pool_ranges/test_migration.py`: pre-79 fixture with a user pool and a schema pool holding allocations; after the run each pool has one range with the old bounds and no weight, allocated values and utilization unchanged, shorthand still populated; second run creates no range; `validate_migration` passes; the range kind and the `ranges` relationship exist in the database schema
+- [X] T013 [P] [US2] Component test in `backend/tests/component/core/resource_manager/test_number_pool.py`: `sync_shorthand_from_ranges` sets the bounds for one range and `None` for zero or two ranges
 
 ### Implementation
 
-- [ ] T014 [US2] Add `load_ranges(db) -> list[PoolRange-like]` and `sync_shorthand_from_ranges(db, pool, ranges)` on `CoreNumberPool` in `backend/infrahub/core/node/resource_manager/number_pool.py` (the single writer of the shorthand)
-- [ ] T015 [US2] Create `backend/infrahub/core/migrations/graph/m079_number_pool_ranges/` (`__init__.py`, `migration.py`) as an `ArbitraryMigration`: bootstrap the range kind and the `ranges` relationship into the database schema when absent (m073 pattern), create one range per live pool without ranges through the Node API, call the shorthand sync, `validate_migration` counts pools without ranges, `minimum_version = 78`
-- [ ] T016 [US2] Bump `GRAPH_VERSION = 79` in `backend/infrahub/core/graph/__init__.py`
+- [X] T014 [US2] Add `load_ranges(db) -> list[PoolRange-like]` and `sync_shorthand_from_ranges(db, pool, ranges)` on `CoreNumberPool` in `backend/infrahub/core/node/resource_manager/number_pool.py` (the single writer of the shorthand)
+- [X] T015 [US2] Create `backend/infrahub/core/migrations/graph/m079_number_pool_ranges/` (`__init__.py`, `migration.py`) as an `ArbitraryMigration`: bootstrap the range kind and the `ranges` relationship into the database schema when absent (m073 pattern), create one range per live pool without ranges through the Node API, call the shorthand sync, `validate_migration` counts pools without ranges, `minimum_version = 78`
+- [X] T016 [US2] Bump `GRAPH_VERSION = 79` in `backend/infrahub/core/graph/__init__.py`
 
 **Checkpoint**: upgrade path verified; allocation still reads the shorthand, which the mirror keeps correct
 

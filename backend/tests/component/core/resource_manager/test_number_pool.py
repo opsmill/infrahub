@@ -5,6 +5,7 @@ import pytest
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch, initialize_registry
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
@@ -363,3 +364,43 @@ async def test_allocate_from_number_pool_with_excluded_values(
     nb_excluded_values = 4
     total_pool_length = np1.end_range.value - np1.start_range.value + 1 - nb_excluded_values
     assert utilization["utilization"] == nb_values_used_in_pool / total_pool_length * 100
+
+
+async def _add_range(db: InfrahubDatabase, pool: CoreNumberPool, start: int, end: int) -> Node:
+    pool_range = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOLRANGE)
+    await pool_range.new(db=db, start=start, end=end, pool=pool.get_id())
+    await pool_range.save(db=db)
+    return pool_range
+
+
+async def test_sync_shorthand_from_ranges(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """The shorthand carries the bounds of a single range and is null for any other range count."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    await initialize_registry(db=db)
+
+    pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
+    await pool.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
+    await pool.save(db=db)
+
+    await pool.sync_shorthand_from_ranges(db=db)
+    assert pool.start_range.value is None
+    assert pool.end_range.value is None
+
+    first = await _add_range(db=db, pool=pool, start=100, end=200)
+    await pool.sync_shorthand_from_ranges(db=db)
+    assert pool.start_range.value == 100
+    assert pool.end_range.value == 200
+
+    await _add_range(db=db, pool=pool, start=300, end=400)
+    await pool.sync_shorthand_from_ranges(db=db)
+    assert pool.start_range.value is None
+    assert pool.end_range.value is None
+
+    reloaded = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool.get_id(), kind=CoreNumberPool)
+    assert reloaded.start_range.value is None
+    assert reloaded.end_range.value is None
+
+    assert [(item.start.value, item.end.value) for item in await pool.load_ranges(db=db)] == [(100, 200), (300, 400)]
+    assert first.get_id() in {item.get_id() for item in await pool.load_ranges(db=db)}
