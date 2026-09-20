@@ -1,10 +1,8 @@
 """Measure the node fan-out of a Python computed-attribute recompute.
 
-On merge/rebase a Python computed attribute is refreshed by dispatching one
-recompute per affected attribute, which then resolves the nodes to process. This
-records how many nodes that resolution selects. Today it selects every node of
-the kind regardless of how many changed; once the recompute is scoped to the
-changed nodes the same test pins the affected-only count.
+A recompute is dispatched per affected attribute and then resolves the nodes to
+process. This records how many nodes that resolution selects, so a widening that
+reaches the whole kind is visible as a number.
 """
 
 from __future__ import annotations
@@ -74,6 +72,12 @@ class TestMergeFanoutPython(ScopedRecomputeTestBase):
             ids.update(call["parameters"].get("object_ids") or [])
         return ids
 
+    def _chain_parameters(self, recorder: WorkflowRecorder) -> list[tuple[bool, int]]:
+        return [
+            (call["parameters"]["coalesced"], call["parameters"]["recompute_depth"])
+            for call in recorder.get_submit_calls_for(self.WORKFLOW)
+        ]
+
     async def test_recompute_fans_out_to_every_node_of_the_kind(
         self,
         transform_dataset: set[str],
@@ -88,6 +92,9 @@ class TestMergeFanoutPython(ScopedRecomputeTestBase):
             computed_attribute_name="computed_desc_python",
             computed_attribute_kind="TestCar",
             context=self._context(admin_account, default_branch),
+            coalesced=True,
+            recompute_depth=2,
         )
 
         assert self._fanned_out_ids(workflow_recorder) == car_ids
+        assert self._chain_parameters(workflow_recorder) == [(True, 2)]

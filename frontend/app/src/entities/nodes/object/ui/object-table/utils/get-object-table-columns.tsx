@@ -32,7 +32,11 @@ import {
   TableRelationshipCell,
 } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
-import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 
@@ -93,15 +97,24 @@ export function getObjectGenericColumns(schema: ModelSchema): Array<ColumnDef<No
     : [];
 }
 
-export function getObjectFieldsColumns(
-  schema: ModelSchema,
-  headerProps?: Partial<TableColumnHeaderProps>
-): Array<ColumnDef<NodeObject, NodeAttribute | NodeRelationship>> {
+function getDefaultFieldsColumnSchemas(
+  schema: ModelSchema
+): Array<AttributeSchema | RelationshipSchema> {
   const attributes = getAttributesVisibleInListView(schema.attributes ?? []);
   const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []).filter(
     (rel) => !isFromResourcePoolRelationship(rel.name)
   );
-  const sortedColumns = sortByOrderWeight([...attributes, ...relationships]);
+  return sortByOrderWeight([...attributes, ...relationships]);
+}
+
+export function getObjectFieldsColumns(
+  schema: ModelSchema,
+  headerProps?: Partial<TableColumnHeaderProps>,
+  fields?: Array<AttributeSchema | RelationshipSchema>
+): Array<ColumnDef<NodeObject, NodeAttribute | NodeRelationship>> {
+  // When `fields` is provided the caller has already resolved and ordered the field list,
+  // so we build a column for each one instead of deriving the default visible set here.
+  const sortedColumns = fields ?? getDefaultFieldsColumnSchemas(schema);
 
   return sortedColumns.map((columnSchema) => {
     return columnHelper.accessor(columnSchema.name, {
@@ -150,14 +163,24 @@ export function getObjectFieldsColumns(
   });
 }
 
+export interface GetObjectTableColumnsOptions {
+  /** Spread onto every schema-derived column header, e.g. `{ isDisabled: true }`. */
+  headerProps?: Partial<TableColumnHeaderProps>;
+  /** Extra query params to carry onto the identity column's links. */
+  identifierOverrideParams?: overrideQueryParams[];
+  /** An already-resolved, already-ordered field list; omit to derive the default visible set. */
+  fields?: Array<AttributeSchema | RelationshipSchema>;
+}
+
 export const getObjectTableColumns = (
   schema: ModelSchema,
-  headerProps?: Partial<TableColumnHeaderProps>,
-  identifierOverrideParams?: overrideQueryParams[]
+  options: GetObjectTableColumnsOptions = {}
 ): Array<ColumnDef<NodeObject>> => {
+  const { headerProps, identifierOverrideParams, fields } = options;
+
   return [
     ...getObjectIdentifierColumns(schema, identifierOverrideParams),
     ...getObjectGenericColumns(schema),
-    ...getObjectFieldsColumns(schema, headerProps),
+    ...getObjectFieldsColumns(schema, headerProps, fields),
   ] as Array<ColumnDef<NodeObject>>;
 };

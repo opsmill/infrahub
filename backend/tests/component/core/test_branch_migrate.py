@@ -14,6 +14,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.workers.dependencies import build_database
+from tests.helpers.dependency_override import override_dependency
 
 
 async def test_migrate_branch_publishes_migrated_branch(
@@ -34,7 +35,7 @@ async def test_migrate_branch_publishes_migrated_branch(
         branch=default_branch,
         account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
     )
-    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
+    with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
         await migrate_branch(branch=branch.name, context=context, send_events=False)
 
     migrated_branch = await Branch.get_by_name(db=db, name=branch.name)

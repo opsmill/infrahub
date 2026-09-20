@@ -100,7 +100,7 @@ The goal is to fix typing violations so that error codes can be removed from `di
 6. **Fix the violations**: For each affected file:
    - Add proper type annotations
    - Fix type mismatches
-   - Add appropriate type: ignore comments ONLY when the fix would be too complex or break functionality
+   - A scoped `# type: ignore[code]  # reason` only to grandfather a pre-existing violation unrelated to the rule being cleared — never for a violation the fix introduces, and never `cast()` (see `dev/guidelines/backend/typing.md`)
    - Use typing constructs like `TypeVar`, `overload`, etc. where appropriate
    - Maintain code functionality and readability
 
@@ -154,13 +154,13 @@ assert value is not None
 value.some_method()
 ```
 
-### `arg-type` - Widen parameter type or cast value
+### `arg-type` - Fix the contract or narrow the value
 
 ```python
-# Option 1: Widen the parameter type in the function signature
+# Option 1: Correct the annotation when the wider type is the real contract — never widen just to silence the checker
 def process(value: str | int) -> None: ...
 
-# Option 2: Add runtime type check
+# Option 2: Narrow with a positive runtime check — never cast()
 if isinstance(value, str):
     process(value)
 ```

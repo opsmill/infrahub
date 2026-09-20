@@ -16,7 +16,12 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.workers.dependencies import build_cache, build_database, build_event_service, build_workflow
+from infrahub.workers.dependencies import (
+    build_cache,
+    build_component,
+    build_database,
+    build_event_service,
+)
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     DISPLAY_LABELS_PROCESS_JINJA2,
@@ -25,6 +30,8 @@ from infrahub.workflows.catalogue import (
 from tests.adapters.cache import MemoryCache
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.component import build_worker_component
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.merge_recompute.dataset import (
     PROFILE_NODE_KIND,
     PROFILE_PEER_KIND,
@@ -33,6 +40,7 @@ from tests.helpers.merge_recompute.dataset import (
     seed_branch,
 )
 from tests.helpers.schema import load_schema
+from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
     from fast_depends import Provider
@@ -68,6 +76,7 @@ async def test_merge_submits_one_coalesced_recompute_per_target(
     workflow_recorder = WorkflowRecorder()
     event_recorder = MemoryInfrahubEvent()
     cache = MemoryCache()
+    component = await build_worker_component(db=db, cache=cache)
     context = InfrahubContext.init(
         branch=default_branch,
         account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
@@ -78,10 +87,11 @@ async def test_merge_submits_one_coalesced_recompute_per_target(
     assert pre_merge_destination_changed_at is not None
 
     with (
-        dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
-        dependency_provider.scope(build_event_service, lambda: event_recorder),
-        dependency_provider.scope(build_workflow, lambda: workflow_recorder),
-        dependency_provider.scope(build_cache, lambda: cache),
+        override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
+        override_dependency(build_event_service, lambda: event_recorder, dependency_provider=dependency_provider),
+        override_workflow(workflow_recorder, dependency_provider=dependency_provider),
+        override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+        override_dependency(build_component, lambda: component, dependency_provider=dependency_provider),
     ):
         await merge_branch(branch=seeded.branch_name, context=context)
 
@@ -129,16 +139,18 @@ async def test_rebase_submits_one_coalesced_recompute_per_target(
     workflow_recorder = WorkflowRecorder()
     event_recorder = MemoryInfrahubEvent()
     cache = MemoryCache()
+    component = await build_worker_component(db=db, cache=cache)
     context = InfrahubContext.init(
         branch=default_branch,
         account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
     )
 
     with (
-        dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
-        dependency_provider.scope(build_event_service, lambda: event_recorder),
-        dependency_provider.scope(build_workflow, lambda: workflow_recorder),
-        dependency_provider.scope(build_cache, lambda: cache),
+        override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
+        override_dependency(build_event_service, lambda: event_recorder, dependency_provider=dependency_provider),
+        override_workflow(workflow_recorder, dependency_provider=dependency_provider),
+        override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+        override_dependency(build_component, lambda: component, dependency_provider=dependency_provider),
     ):
         await rebase_branch(branch=seeded.branch_name, context=context, send_events=True)
 
@@ -192,15 +204,17 @@ async def test_merge_delete_peer_coalesces_reader_recompute_by_own_id(
     recorder = WorkflowRecorder()
     event_recorder = MemoryInfrahubEvent()
     cache = MemoryCache()
+    component = await build_worker_component(db=db, cache=cache)
     context = InfrahubContext.init(
         branch=default_branch,
         account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
     )
     with (
-        dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
-        dependency_provider.scope(build_event_service, lambda: event_recorder),
-        dependency_provider.scope(build_workflow, lambda: recorder),
-        dependency_provider.scope(build_cache, lambda: cache),
+        override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
+        override_dependency(build_event_service, lambda: event_recorder, dependency_provider=dependency_provider),
+        override_workflow(recorder, dependency_provider=dependency_provider),
+        override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+        override_dependency(build_component, lambda: component, dependency_provider=dependency_provider),
     ):
         await merge_branch(branch=branch.name, context=context)
 

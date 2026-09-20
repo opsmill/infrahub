@@ -18,7 +18,7 @@ export function useDismiss(
   ref: RefObject<HTMLElement | null>,
   onDismiss: (event: Event) => void,
   active = true,
-  options?: UseDismissOptions,
+  options?: UseDismissOptions
 ) {
   const onDismissRef = useRef(onDismiss);
   onDismissRef.current = onDismiss;

@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import type React from "react";
-
 import { PencilIcon, PlusIcon } from "lucide-react";
+import type React from "react";
 
 import { Button, type ButtonProps, buttonVariants } from "./button";
 
@@ -32,7 +31,7 @@ type Story = StoryObj<typeof meta>;
 
 function ColumnLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[10px] font-medium tracking-wider text-subtle-muted uppercase">
+    <div className="font-medium text-[10px] text-subtle-muted uppercase tracking-wider">
       {children}
     </div>
   );
@@ -53,10 +52,10 @@ export const AllVariants: Story = {
     const renderRow = (
       label: string,
       variant: ButtonProps["variant"],
-      rowProps: Partial<ButtonProps> = {},
+      rowProps: Partial<ButtonProps> = {}
     ) => (
       <div key={label} className="contents">
-        <div className="text-sm font-medium text-subtle">{label}</div>
+        <div className="font-medium text-sm text-subtle">{label}</div>
 
         <div className="flex flex-wrap items-center gap-2">
           {SIZES.map((size) => (

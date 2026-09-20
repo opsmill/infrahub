@@ -28,8 +28,8 @@ dependencies = [
     "redis[hiredis]==6.0.0",
     "typer==0.19.2",
     "click>=8.3,<9",
-    "prefect==3.7.5",
-    "prefect-redis==0.2.14",
+    "prefect==3.8.6",
+    "prefect-redis==0.2.15",
     "ujson>=5,<6",
     "Jinja2>=3,<4",
     "gitpython>=3.1.50,<4",
@@ -124,6 +124,7 @@ dev = [
     "prek>=0.3.0",
     "coverage==7.14.1",
     "pytest-playwright-asyncio>=0.8.0",
+    "zizmor>=1.30.0",
 ]
 
 # test-scale = [
@@ -282,14 +283,6 @@ disable_error_code = [
 ]
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.query.subquery"
-disable_error_code = [
-    "arg-type",
-    "assignment",
-    "index",
-]
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.schema.basenode_schema"
 disable_error_code = [
     "arg-type",
@@ -431,13 +424,6 @@ disable_error_code = [
     "return-value",
 ]
 
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations"
-disable_error_code = [
-    "operator",
-    "return",
-]
-
 [tool.ruff]
 line-length = 120
 target-version = "py312"
@@ -532,6 +518,9 @@ ignorelist = [
     "property",
     "type",
 ]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"infrahub.workflows.initialization.setup_task_manager".msg = "The raw setup belongs to the application's own startup. Tests use tests.helpers.task_manager.setup_task_manager_once(), which runs it once per Prefect server and bounds it with a timeout."
 
 [tool.ruff.lint.isort]
 known-first-party = ["infrahub"]
@@ -1264,7 +1253,6 @@ include = [
     "backend/infrahub/core/query/diff.py",
     "backend/infrahub/core/query/node.py",
     "backend/infrahub/core/query/relationship.py",
-    "backend/infrahub/core/query/subquery.py",
     "backend/infrahub/core/relationship/**",
     "backend/infrahub/core/schema/**",
     "backend/infrahub/core/validators/**",
@@ -1278,7 +1266,6 @@ invalid-argument-type = "ignore"
 include = [
     "backend/infrahub/core/manager.py",
     "backend/infrahub/core/node/__init__.py",
-    "backend/infrahub/core/query/subquery.py",
     "backend/infrahub/core/regeneration/members.py",
     "backend/infrahub/core/schema/basenode_schema.py",
     "backend/infrahub/core/schema/manager.py",
@@ -1759,17 +1746,6 @@ include = ["backend/infrahub/message_bus/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
-
-[[tool.ty.overrides]]
-include = ["backend/infrahub/message_bus/operations/__init__.py"]
-
-[tool.ty.overrides.rules]
-##################################################################################################
-# COMMAND_MAP is a heterogeneous dispatch table: each handler takes a specific InfrahubMessage   #
-# subtype, but the dispatch site only has the base type. Scoped to this file so the rest of      #
-# message_bus/ stays enforced.                                                                    #
-##################################################################################################
-invalid-argument-type = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/artifacts/**"]

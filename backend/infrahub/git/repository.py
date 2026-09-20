@@ -13,7 +13,6 @@ from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.protocols import CoreReadOnlyRepository
 from prefect import task
 from prefect.cache_policies import NONE
-from prefect.logging import get_run_logger
 from pydantic import Field
 from pydantic import ValidationError as PydanticValidationError
 
@@ -30,12 +29,12 @@ from infrahub.exceptions import (
 )
 from infrahub.git.graph_settings import resolve_graph_settings
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
-from infrahub.log import get_logger
+from infrahub.log import get_run_logger
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
 
-log = get_logger()
+log = get_run_logger()
 
 
 @dataclass
@@ -132,7 +131,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             infrahub_branch_name=infrahub_branch_name,
             update_commit_value=update_commit_value,
         )
-        log.info("Created new repository locally.", repository=self.name)
+        log.info("Created new repository locally: %s", self.name)
         return self
 
     @classmethod
@@ -195,7 +194,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             # If the default branch of Infrahub and the git repository differs we map the repository
             # default branch to that of Infrahub. In that scenario we can't import a branch from the
             # repository if it matches the default branch of Infrahub
-            log.warning("Ignoring import of mismatched default branch", branch=branch_name, repository=self.name)
+            log.warning("Ignoring import of mismatched default branch %s of repository %s", branch_name, self.name)
             return False
 
         try:
@@ -203,7 +202,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             Branch(name=branch_name)
         except PydanticValidationError as e:
             log.warning(
-                "Git branch failed validation.", branch_name=branch_name, errors=[error["msg"] for error in e.errors()]
+                "Git branch %s failed validation: %s",
+                branch_name,
+                ", ".join(error["msg"] for error in e.errors()),
             )
             return False
 
@@ -213,15 +214,15 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             has_conflicts = self.has_conflicting_changes(target_branch=self.default_branch, source_branch=branch_name)
         except GitCommandError as exc:
             log.error(
-                "Unable to determine merge conflicts for branch",
-                branch=branch_name,
-                repository=self.name,
-                error=str(exc),
+                "Unable to determine merge conflicts for branch %s of repository %s: %s",
+                branch_name,
+                self.name,
+                exc,
             )
             return True
 
         if has_conflicts:
-            get_run_logger().warning(
+            log.warning(
                 f"Remote branch {branch_name} conflicts with {self.default_branch}; "
                 "the merge will be rejected until the conflict is resolved upstream"
             )
@@ -261,18 +262,28 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             return
 
         for failed in failed_imports:
+            # extra= preserves step and reason as discrete LogRecord fields so log shippers
+            # and alert rules can filter on them, even though the message already contains them.
             log.warning(
-                "Failed to synchronize branch, skipping it.",
-                repository=self.name,
-                branch=failed.branch_name,
-                step=failed.step.value,
-                reason=failed.reason,
+                "Failed to synchronize branch %s of repository %s at step %s: %s",
+                failed.branch_name,
+                self.name,
+                failed.step.value,
+                failed.reason,
+                extra={
+                    "repository": self.name,
+                    "branch": failed.branch_name,
+                    "step": failed.step.value,
+                    "reason": failed.reason,
+                },
             )
 
-        branches = ", ".join(failed.branch_name for failed in failed_imports)
+        branch_summaries = "; ".join(
+            f"{failed.branch_name} (step={failed.step.value}): {failed.reason}" for failed in failed_imports
+        )
         raise RepositoryError(
             identifier=self.name,
-            message=f"Unable to synchronize the following branches of repository {self.name}: {branches}",
+            message=f"Unable to synchronize the following branches of repository {self.name}: {branch_summaries}",
         )
 
     async def collect_pending_imports(self, staging_branch: str | None = None) -> CollectedImports:
@@ -289,7 +300,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             GraphQLError: When a branch or commit update against the database fails.
 
         """
-        log.info("Starting the synchronization.", repository=self.name)
+        log.info("Starting the synchronization of %s.", self.name)
 
         await self.fetch()
 
@@ -298,7 +309,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         if not new_branches and not updated_branches:
             return CollectedImports()
 
-        log.debug(f"New Branches {new_branches}, Updated Branches {updated_branches}", repository=self.name)
+        log.debug("New Branches %s, Updated Branches %s for %s", new_branches, updated_branches, self.name)
 
         imports: list[PendingObjectImport] = []
         failed_imports: list[FailedImport] = []
@@ -366,9 +377,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
                 elif commit_after is True:
                     log.warning(
-                        f"An update was detected but the commit remained the same after pull() ({commit_after}).",
-                        repository=self.name,
-                        branch=branch_name,
+                        "An update was detected but the commit remained the same after pull() (%s) for branch %s of repository %s.",
+                        commit_after,
+                        branch_name,
+                        self.name,
                     )
 
         imports.extend(
@@ -412,9 +424,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         if commit_after is True:
             log.warning(
-                f"An update was detected but the commit remained the same after pull() ({commit_after}).",
-                repository=self.name,
-                branch=self.default_branch,
+                "An update was detected but the commit remained the same after pull() (%s) for branch %s of repository %s.",
+                commit_after,
+                self.default_branch,
+                self.name,
             )
         return []
 
@@ -429,7 +442,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             return False
 
         log.debug(
-            f"Pushing the latest update to the remote origin for the branch '{branch_name}'", repository=self.name
+            "Pushing the latest update to the remote origin for the branch '%s' of repository %s.",
+            branch_name,
+            self.name,
         )
 
         repo = self.get_git_repo_worktree(identifier=branch_name)
@@ -528,7 +543,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         await self.create_locally(
             checkout_ref=await self.resolve_checkout_ref(), infrahub_branch_name=self.infrahub_branch_name
         )
-        log.info("Created new repository locally.", repository=self.name)
+        log.info("Created new repository locally: %s", self.name)
         return self
 
     async def resolve_checkout_ref(self) -> str:
@@ -584,7 +599,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
             except BadName:
                 ...
         if not commit:
-            log.error(f"No object found for refs {refs} on repository {self.name}")
+            log.error("No object found for refs %s on repository %s", refs, self.name)
             raise ValueError(f"Ref {self.ref} not found.")
 
         return str(commit)
@@ -620,7 +635,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
             try:
                 latest_commit = git_repo.git.rev_parse(self.ref)
             except GitCommandError as err:
-                log.error(f"No object found for ref {self.ref} on repository {self.name}")
+                log.error("No object found for ref %s on repository %s", self.ref, self.name)
                 raise ValueError(f"Ref {self.ref} not found.") from err
         latest_commit = str(git_repo.commit(latest_commit))
         synced_from_remote = await self.sync_from_remote(commit=latest_commit)

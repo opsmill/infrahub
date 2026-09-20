@@ -5,6 +5,7 @@ import re
 from inspect import isclass
 from typing import TYPE_CHECKING, Any
 
+from infrahub.constants.database import DatabaseType
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.models import NodeKind
 from infrahub.core.query import QueryType
@@ -132,13 +133,45 @@ async def count_nodes(db: InfrahubDatabase, label: str | None = None) -> int:
     return result[0][0]
 
 
-async def delete_all_nodes(db: InfrahubDatabase) -> list[Record]:
-    query = """
-    MATCH (n)
-    DETACH DELETE n
-    """
+DELETE_ALL_NODES_BATCH_SIZE = 10_000
+"""Vertices detached and deleted per transaction by ``delete_all_nodes``.
 
-    params: dict = {}
+Each batch commits on its own, so a graph of any size can be wiped without a single transaction
+having to hold every deleted vertex and edge in the heap.
+"""
+
+
+async def delete_all_nodes(db: InfrahubDatabase, batch_size: int = DELETE_ALL_NODES_BATCH_SIZE) -> list[Record]:
+    """Delete every vertex and edge of the graph database.
+
+    On Neo4j the vertices are deleted in batches of ``batch_size``, each committed on its own, as
+    long as the connection is in auto-commit mode: Neo4j only accepts ``CALL ... IN TRANSACTIONS``
+    in an implicit transaction, so a caller that is already inside an explicit transaction gets a
+    single-statement delete instead. Memgraph has no batched transactions and always gets the
+    single statement.
+
+    Args:
+        db: Database connection.
+        batch_size: Number of vertices deleted per transaction in the batched case.
+
+    Returns:
+        The records returned by the delete query, always empty.
+
+    """
+    params: dict[str, Any] = {}
+    if db.db_type is DatabaseType.MEMGRAPH or db.is_transaction:
+        query = """
+        MATCH (n)
+        DETACH DELETE n
+        """
+    else:
+        query = """
+        MATCH (n)
+        CALL (n) {
+            DETACH DELETE n
+        } IN TRANSACTIONS OF $batch_size ROWS
+        """
+        params["batch_size"] = batch_size
 
     return await db.execute_query(query=query, params=params, name="delete_all_nodes")
 

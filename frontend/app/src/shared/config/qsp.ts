@@ -4,6 +4,8 @@ export const QSP = {
   KIND: "kind",
   DATETIME: "at",
   FILTER: "filters",
+  HIDE_COLUMNS: "hide_columns",
+  SHOW_COLUMNS: "show_columns",
   PAGINATION: "pagination",
   PROPOSED_CHANGES_STATE: "pr_state",
   QUERY: "query",

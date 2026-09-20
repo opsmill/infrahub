@@ -12,10 +12,6 @@
     "build-storybook": "storybook build",
     "chromatic": "chromatic",
     "dev": "vite",
-    "format": "oxfmt --write",
-    "format:check": "oxfmt --check",
-    "lint": "oxlint",
-    "lint:fix": "oxlint --fix",
     "storybook": "storybook dev -p 6006"
   },
   "dependencies": {
@@ -38,8 +34,6 @@
     "babel-plugin-react-compiler": "catalog:",
     "chromatic": "^18.2.0",
     "globals": "^17.10.0",
-    "oxfmt": "^0.63.0",
-    "oxlint": "^1.78.0",
     "react": "catalog:",
     "react-dom": "catalog:",
     "storybook": "10.5.7",

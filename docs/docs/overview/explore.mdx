@@ -81,6 +81,20 @@ Demo DC is an end-to-end reference implementation you can actually learn from. T
 
 <ReferenceLink title="Demo DC" url="$(base_url)demo-dc" openInNewTab />
 
+- **Demo OTN**
+
+Demo OTN is an optical transport reference implementation that models a European research core down to the fiber span and the wavelength. This demo includes:
+
+- Schema-driven optical modelling: conduits, fiber spans, optical multiplex sections, ROADMs, amplifiers, transponders, mux/demux, regenerators, the DWDM frequency grid and the CWDM wavelength plan
+- Provisioning from intent: Generators pick the route and the optical mode, allocate a grid position, and build the carriers, ports and client mappings behind a single service object
+- Link budget computed from the modelled plant: loss, OSNR, dispersion and latency over the ordered chain of spans and amplifiers, with Checks that fail a service that does not close
+- Impact analysis: name a fiber section and get the wavelengths, terabits, services and customers behind it, plus the conduits each span shares
+- Capacity planning that accounts for quantisation: free spectrum as blocks, and how many of the 96 anchors will actually take another carrier per mode
+- Diversity validation read off the conduits rather than the sections, so two services sharing a duct are not reported as diverse
+- Artifact-rendered network and ODU maps, generated per branch from the model
+
+<ReferenceLink title="Demo OTN" url="$(base_url)demo-otn" openInNewTab />
+
 - **Demo Service Catalog**
 
 The Service Catalog demo demonstrates how Infrahub can be used to manage and deploy services within an ISP environment. It walks through the process of creating a service catalog using Infrahub and Streamlit. From modeling services in the schema, codifying them in Generator, to making these capabilities accessible across the organization via a Streamlit app. This demo provides a comprehensive, end-to-end overview of the workflow.

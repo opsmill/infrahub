@@ -31,11 +31,13 @@ from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_client, build_message_bus, build_workflow
+from infrahub.workers.dependencies import build_client, build_message_bus
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_DIFF_NAMES_ONLY, GIT_REPOSITORIES_MERGE
 from tests.adapters.lock import LockTimeline, RecordingImporter, RecordingLockRegistry
 from tests.adapters.message_bus import BusSimulator
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import build_repository_client
+from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -71,7 +73,7 @@ class TestAddRepository:
         self.recorder = BusSimulator()
         self.service = await InfrahubServices.new(client=self.client, message_bus=self.recorder)
 
-        with dependency_provider.scope(build_message_bus, lambda: self.recorder):
+        with override_dependency(build_message_bus, lambda: self.recorder, dependency_provider=dependency_provider):
             self.mock_repo = AsyncMock(spec=InfrahubRepository)
             self.mock_repo.default_branch = self.default_branch_name
             self.mock_repo.infrahub_branch_name = self.default_branch_name
@@ -158,9 +160,9 @@ async def test_git_rpc_merge(
     bus_simulator = await helper.get_message_bus_simulator()
     workflow = WorkflowLocalExecution()
     with (
-        dependency_provider.scope(build_client, lambda: client),
-        dependency_provider.scope(build_message_bus, lambda: bus_simulator),
-        dependency_provider.scope(build_workflow, lambda: workflow),
+        override_dependency(build_client, lambda: client, dependency_provider=dependency_provider),
+        override_dependency(build_message_bus, lambda: bus_simulator, dependency_provider=dependency_provider),
+        override_workflow(workflow, dependency_provider=dependency_provider),
     ):
         context = InfrahubContext(
             branch=BranchContext(name=branch01.name, id=branch01.id),
@@ -208,7 +210,7 @@ async def test_git_rpc_diff(
         repository_id=str(repo.id), name=repo.name, location=repo.get_location(), default_branch="main"
     )
     service = await InfrahubServices.new(client=client, message_bus=bus_simulator, workflow=WorkflowLocalExecution())
-    with dependency_provider.scope(build_client, lambda: client):
+    with override_dependency(build_client, lambda: client, dependency_provider=dependency_provider):
         diff = await service.workflow.execute_workflow(
             workflow=GIT_REPOSITORIES_DIFF_NAMES_ONLY, parameters={"model": model}
         )
@@ -222,7 +224,7 @@ async def test_git_rpc_diff(
         first_commit=commit_branch01,
         second_commit=commit_main,
     )
-    with dependency_provider.scope(build_client, lambda: client):
+    with override_dependency(build_client, lambda: client, dependency_provider=dependency_provider):
         diff = await service.workflow.execute_workflow(
             workflow=GIT_REPOSITORIES_DIFF_NAMES_ONLY, parameters={"model": model}
         )
@@ -236,7 +238,7 @@ class TestAddReadOnly:
         self.recorder = BusSimulator()
         self.service = await InfrahubServices.new(client=self.client, message_bus=self.recorder)
 
-        with dependency_provider.scope(build_message_bus, lambda: self.recorder):
+        with override_dependency(build_message_bus, lambda: self.recorder, dependency_provider=dependency_provider):
             lock_patcher = patch("infrahub.git.tasks.lock")
             self.mock_infra_lock = lock_patcher.start()
             self.mock_infra_lock.registry = AsyncMock(spec=InfrahubLockRegistry)
@@ -295,9 +297,9 @@ class TestPullReadOnly:
         self.service = await InfrahubServices.new(client=self.client, workflow=self.workflow, message_bus=self.recorder)
 
         with (
-            dependency_provider.scope(build_message_bus, lambda: self.recorder),
-            dependency_provider.scope(build_workflow, lambda: self.workflow),
-            dependency_provider.scope(build_client, lambda: self.client),
+            override_dependency(build_message_bus, lambda: self.recorder, dependency_provider=dependency_provider),
+            override_workflow(self.workflow, dependency_provider=dependency_provider),
+            override_dependency(build_client, lambda: self.client, dependency_provider=dependency_provider),
         ):
             self.commit = str(UUIDT())
             self.infrahub_branch_name = "read-only-branch"

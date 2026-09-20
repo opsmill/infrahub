@@ -29,6 +29,7 @@ class RelatedNodeInput(InputObjectType):
 
 class IPAddressPoolInput(GenericPoolInput):
     prefixlen = Int(required=False)
+    address_type = String(required=False)
 
 
 class IPPrefixPoolInput(GenericPoolInput):

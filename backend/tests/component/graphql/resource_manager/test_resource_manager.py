@@ -1444,3 +1444,222 @@ class TestNumberPoolUpsertImmutableFields:
         )
         assert update_changed_node.errors
         assert str(update_changed_node.errors[0].message) == "The fields 'node' or 'node_attribute' can't be changed."
+
+
+CREATE_GENERIC_ADDRESS_OWNER_FROM_POOL = """
+mutation CreateGenericAddressOwnerFromPool($name: String!, $pool_id: String!, $address_type: String!) {
+    TestGenericAddressOwnerCreate(data: {
+        name: { value: $name }
+        address: {
+            from_pool: {
+                id: $pool_id
+                address_type: $address_type
+            }
+        }
+    }) {
+        ok
+        object {
+            address {
+                node {
+                    __typename
+                }
+            }
+        }
+    }
+}
+"""
+
+CREATE_GENERIC_PREFIX_OWNER_FROM_POOL = """
+mutation CreateGenericPrefixOwnerFromPool($name: String!, $pool_id: String!, $prefix_type: String!) {
+    TestGenericPrefixOwnerCreate(data: {
+        name: { value: $name }
+        prefix: {
+            from_pool: {
+                id: $pool_id
+                prefix_type: $prefix_type
+            }
+        }
+    }) {
+        ok
+        object {
+            prefix {
+                node {
+                    __typename
+                }
+            }
+        }
+    }
+}
+"""
+
+ADDRESS_POOL_GET_RESOURCE_WITH_ADDRESS_TYPE = """
+mutation AddressPoolGetResourceWithAddressType($pool_id: String!, $address_type: String!) {
+    InfrahubIPAddressPoolGetResource(data: {
+        id: $pool_id
+        address_type: $address_type
+    }) {
+        ok
+        node {
+            kind
+        }
+    }
+}
+"""
+
+PREFIX_POOL_GET_RESOURCE_WITH_PREFIX_TYPE = """
+mutation PrefixPoolGetResourceWithPrefixType($pool_id: String!, $prefix_type: String!) {
+    InfrahubIPPrefixPoolGetResource(data: {
+        id: $pool_id
+        prefix_type: $prefix_type
+    }) {
+        ok
+        node {
+            kind
+        }
+    }
+}
+"""
+
+
+async def test_create_from_pool_with_address_type_override(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
+) -> None:
+    """from_pool.address_type is exposed on the GraphQL input and overrides the pool default."""
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_GENERIC_ADDRESS_OWNER_FROM_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "name": "server1",
+            "pool_id": kind_override_pools["address_pool"].id,
+            "address_type": "TestIPAddress",
+        },
+    )
+
+    assert not result.errors
+    assert result.data
+    assert result.data["TestGenericAddressOwnerCreate"]["ok"]
+    assert result.data["TestGenericAddressOwnerCreate"]["object"]["address"]["node"]["__typename"] == "TestIPAddress"
+
+
+async def test_create_from_pool_with_invalid_address_type(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
+) -> None:
+    """A from_pool.address_type outside the relationship's generic is rejected."""
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_GENERIC_ADDRESS_OWNER_FROM_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "name": "server2",
+            "pool_id": kind_override_pools["address_pool"].id,
+            "address_type": "TestMandatoryAddress",
+        },
+    )
+
+    assert result.errors
+    assert "'TestMandatoryAddress' is not a valid kind" in str(result.errors[0].message)
+
+
+async def test_create_from_pool_with_prefix_type_override(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
+) -> None:
+    """from_pool.prefix_type is exposed on the GraphQL input and overrides the pool default."""
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_GENERIC_PREFIX_OWNER_FROM_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "name": "site1",
+            "pool_id": kind_override_pools["prefix_pool"].id,
+            "prefix_type": "TestIPPrefix",
+        },
+    )
+
+    assert not result.errors
+    assert result.data
+    assert result.data["TestGenericPrefixOwnerCreate"]["ok"]
+    assert result.data["TestGenericPrefixOwnerCreate"]["object"]["prefix"]["node"]["__typename"] == "TestIPPrefix"
+
+
+async def test_create_from_pool_with_invalid_prefix_type(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
+) -> None:
+    """A from_pool.prefix_type outside the relationship's generic is rejected."""
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_GENERIC_PREFIX_OWNER_FROM_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "name": "site2",
+            "pool_id": kind_override_pools["prefix_pool"].id,
+            "prefix_type": "TestMandatoryPrefix",
+        },
+    )
+
+    assert result.errors
+    assert "'TestMandatoryPrefix' is not a valid kind" in str(result.errors[0].message)
+
+
+async def test_address_pool_get_resource_validates_address_type(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
+) -> None:
+    """The standalone allocate mutation is validated against the BuiltinIPAddress generic."""
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    allowed = await graphql(
+        schema=gql_params.schema,
+        source=ADDRESS_POOL_GET_RESOURCE_WITH_ADDRESS_TYPE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"pool_id": kind_override_pools["address_pool"].id, "address_type": "TestIPAddress"},
+    )
+    assert not allowed.errors
+    assert allowed.data
+    assert allowed.data["InfrahubIPAddressPoolGetResource"]["node"]["kind"] == "TestIPAddress"
+
+    rejected = await graphql(
+        schema=gql_params.schema,
+        source=ADDRESS_POOL_GET_RESOURCE_WITH_ADDRESS_TYPE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"pool_id": kind_override_pools["address_pool"].id, "address_type": "TestMandatoryAddress"},
+    )
+    assert rejected.errors
+    assert "'TestMandatoryAddress' is not a valid kind" in str(rejected.errors[0].message)
+
+
+async def test_prefix_pool_get_resource_validates_prefix_type(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_pools: dict[str, Node]
+) -> None:
+    """The standalone allocate mutation is validated against the BuiltinIPPrefix generic."""
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    allowed = await graphql(
+        schema=gql_params.schema,
+        source=PREFIX_POOL_GET_RESOURCE_WITH_PREFIX_TYPE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"pool_id": kind_override_pools["prefix_pool"].id, "prefix_type": "TestIPPrefix"},
+    )
+    assert not allowed.errors
+    assert allowed.data
+    assert allowed.data["InfrahubIPPrefixPoolGetResource"]["node"]["kind"] == "TestIPPrefix"
+
+    rejected = await graphql(
+        schema=gql_params.schema,
+        source=PREFIX_POOL_GET_RESOURCE_WITH_PREFIX_TYPE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"pool_id": kind_override_pools["prefix_pool"].id, "prefix_type": "TestMandatoryPrefix"},
+    )
+    assert rejected.errors
+    assert "'TestMandatoryPrefix' is not a valid kind" in str(rejected.errors[0].message)

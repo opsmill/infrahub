@@ -12,10 +12,10 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.hfid.tasks import trigger_update_hfid
-from infrahub.workers.dependencies import build_workflow
 from infrahub.workflows.catalogue import HFID_PROCESS
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -68,7 +68,7 @@ class TestHFIDTaskOptimization(TestInfrahubApp):
         prefect_test_fixture: None,
     ) -> None:
         recorder = WorkflowRecorder()
-        with dependency_provider.scope(build_workflow, lambda: recorder):
+        with override_workflow(recorder, dependency_provider=dependency_provider):
             await trigger_update_hfid(
                 branch_name=default_branch.name,
                 kind=InfrahubKind.TAG,

@@ -5,6 +5,7 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import { IP_ADDRESS_AVAILABLE_KIND } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import { getIpAddressTableColumns } from "@/entities/ipam/ip-addresses/ui/get-ip-address-table-columns";
 import { useGetIpAddressList } from "@/entities/ipam/ip-addresses/ui/queries/get-ip-address-list.query";
+import { useColumnVisibility } from "@/entities/nodes/columns/ui/hooks/use-column-visibility";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
@@ -19,8 +20,9 @@ export interface IpAddressTableProps {
 }
 
 export function IpAddressTable({ baseFilters = [] }: IpAddressTableProps) {
-  const { filters, selectedSchema, permission } = useObjectTableContext();
+  const { filters, selectedSchema, permission, columnSurface } = useObjectTableContext();
   const { customSort } = useSort(selectedSchema);
+  const { columnVisibility } = useColumnVisibility(selectedSchema, columnSurface);
   const allFilters = [...baseFilters, ...filters];
 
   const { data: count } = useObjectsCount({
@@ -46,6 +48,7 @@ export function IpAddressTable({ baseFilters = [] }: IpAddressTableProps) {
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
       <DataTable
         columnOrder={IP_ADDRESS_TABLE_COLUMN_ORDER}
+        columnVisibility={columnVisibility}
         columns={columns}
         count={count}
         data={flatData}

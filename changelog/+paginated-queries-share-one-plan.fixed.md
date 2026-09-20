@@ -1,0 +1,1 @@
+Fixed large listings slowing down as they page through results: Neo4j planned every page of a paginated database query from scratch because the page bounds were written into the query text, and all pages now share one cached plan.

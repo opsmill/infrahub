@@ -64,15 +64,12 @@ class RejectingGate(DefinitionGate):
 class NoImpactResolver(ImpactedSubscriberResolver):
     """A resolver that reports no impacted subscribers."""
 
-    def __init__(self) -> None:
-        pass
-
     async def resolve(
         self,
         *,
         query_payload: str,
         diff_summary: list[NodeDiff],
-        target_branch: str,
+        query_branch: str,
         subscriber_kind: str,
         every_target: list[str],
     ) -> TargetSelection:

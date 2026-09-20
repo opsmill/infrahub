@@ -63,6 +63,7 @@ from infrahub.exceptions import (
     TransformError,
 )
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
+from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 from infrahub.git.closure_builder.dispatcher import build_default_closure_builder
 from infrahub.git.fingerprint.composer import (
     ArtifactDefinitionFingerprintInput,
@@ -82,6 +83,7 @@ if TYPE_CHECKING:
 
     from infrahub_sdk.checks import InfrahubCheck
     from infrahub_sdk.ctl.utils import YamlFileVar
+    from infrahub_sdk.schema import MainSchemaTypesAPI
     from infrahub_sdk.schema.repository import InfrahubRepositoryArtifactDefinitionConfig
     from infrahub_sdk.transforms import InfrahubTransform
 
@@ -412,6 +414,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 local_artifact_defs=plan.artifact_definitions,
                 fingerprint_composer=fingerprint_composer,
             )
+            # Generator actions and trigger rules are imported last: they reference the definitions
+            # created above, which in turn reference groups imported as objects, forming a cycle a
+            # single objects pass cannot satisfy on a first import.
+            await self.import_deferred_objects(
+                branch_name=plan.infrahub_branch_name,
+                commit=plan.commit,
+                config_file=plan.config_file,
+            )  # type: ignore[call-overload]
 
         # Any import failure must stamp the repository sync status as errored before being re-raised
         except Exception as exc:  # noqa: BLE001
@@ -1242,6 +1252,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     dependencies_complete=definition.closure.complete,
                     watch=definition.config.watch,
                     parameters=definition.config.parameters,
+                    file_path=canonicalize_path(str(definition.config.file_path)),
                     class_name=definition.config.class_name,
                     convert_query_response=definition.config.convert_query_response,
                     target_group_id=await self._resolve_target_group_id(
@@ -1404,7 +1415,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             transforms.extend(
                 await self.get_python_transforms(
                     module=module,
-                    file_path=file_info.relative_path_file,
                     transform=transform,
                     dependencies=list(closure.dependencies),
                     dependencies_complete=closure.complete,
@@ -1437,6 +1447,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     dependencies=tuple(transform.dependencies),
                     dependencies_complete=transform.dependencies_complete,
                     watch=transform.watch,
+                    file_path=canonicalize_path(transform.file_path),
                     class_name=transform.class_name,
                     convert_query_response=transform.convert_query_response,
                 )
@@ -1498,13 +1509,35 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         return data_files
 
+    @staticmethod
+    def _object_depends_on_definitions(schema: MainSchemaTypesAPI) -> bool:
+        """Whether an object of this kind references a definition created later in the import.
+
+        Generator actions point at a generator definition that the import creates from a
+        dedicated config section, so they must be reconciled after those definitions rather
+        than alongside the groups the definitions target. Trigger rules are deferred as a
+        whole because the action they point at is only known once the document is resolved;
+        the ones bound to another action kind are deferred without needing to be.
+
+        Other action kinds, ``CoreGroupAction`` today, only reference objects imported in the
+        regular pass and stay there.
+        """
+        kinds = {schema.kind, *schema.inherit_from}
+        return bool({InfrahubKind.GENERATORACTION, InfrahubKind.TRIGGERRULE}.intersection(kinds))
+
     async def _load_objects(
         self,
         paths: list[Path],
         branch: str,
         file_type: type[InfrahubFile],
+        defer: bool | None = None,
     ) -> None:
         """Load one or multiple objects files into Infrahub.
+
+        ``defer`` selects which documents to load by their reconciliation ordering: ``False``
+        loads the documents that do not depend on repository-defined definitions, ``True`` loads
+        the generator actions and trigger rules that may reference such a definition, and ``None``
+        loads every document.
 
         Raises:
             ValueError: When a referenced schema lacks both ``human_friendly_id`` and ``default_filter``.
@@ -1513,7 +1546,16 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         log = get_run_logger()
         files = await self._load_yamlfile_from_disk(paths=paths, file_type=file_type)
 
+        selected = []
         for file in files:
+            if defer is not None:
+                file.validate_content()
+                schema = await self.sdk.schema.get(kind=file.spec.kind, branch=branch)
+                if self._object_depends_on_definitions(schema=schema) is not defer:
+                    continue
+            selected.append(file)
+
+        for file in selected:
             await file.validate_format(client=self.sdk, branch=branch)
             schema = await self.sdk.schema.get(kind=file.spec.kind, branch=branch)
             if not schema.human_friendly_id and not schema.default_filter:
@@ -1522,19 +1564,27 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     "should have a `human_friendly_id` defined to avoid creating duplicated objects."
                 )
 
-        for file in files:
+        for file in selected:
             log.info(f"Loading objects defined in {file.location}")
             await file.process(client=self.sdk, branch=branch)
 
     async def _import_file_paths(
-        self, branch_name: str, commit: str, files_pathes: list[Path], object_type: RepositoryObjects
+        self,
+        branch_name: str,
+        commit: str,
+        files_pathes: list[Path],
+        object_type: RepositoryObjects,
+        defer: bool | None = None,
+        tracking_suffix: str = "",
     ) -> None:
         branch_wt = self.get_worktree(identifier=commit or branch_name)
         file_pathes = [branch_wt.directory / file_path for file_path in files_pathes]
 
+        # A tracking_suffix isolates a subset of the same object_type in its own group so its
+        # delete_unused reconciliation does not remove members tracked by the other subset.
         # We currently assume there can't be concurrent imports, but if so, we might need to clone the client before tracking here.
         async with self.sdk.start_tracking(
-            identifier=f"group-repo-{object_type.value}-{self.id}",
+            identifier=f"group-repo-{object_type.value}{tracking_suffix}-{self.id}",
             delete_unused_nodes=True,
             branch=branch_name,
             group_type="CoreRepositoryGroup",
@@ -1545,6 +1595,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 paths=file_pathes,
                 branch=branch_name,
                 file_type=file_type,
+                defer=defer,
             )
 
     @task(name="import-objects", task_run_name="Import Objects", cache_policy=NONE)
@@ -1559,12 +1610,36 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             commit=commit,
             files_pathes=config_file.objects,
             object_type=RepositoryObjects.OBJECT,
+            defer=False,
         )
         await self._import_file_paths(
             branch_name=branch_name,
             commit=commit,
             files_pathes=config_file.menus,
             object_type=RepositoryObjects.MENU,
+        )
+
+    @task(name="import-deferred-objects", task_run_name="Import Deferred Objects", cache_policy=NONE)
+    async def import_deferred_objects(
+        self,
+        branch_name: str,
+        commit: str,
+        config_file: InfrahubRepositoryConfig,
+    ) -> None:
+        """Import the objects that reference definitions created earlier in the import.
+
+        Generator actions and trigger rules resolve mandatory relationships to definitions the
+        import creates from dedicated config sections, so they are reconciled here, after those
+        definitions exist, in a tracking group of their own so reconciling them does not delete
+        the objects imported before the definitions.
+        """
+        await self._import_file_paths(
+            branch_name=branch_name,
+            commit=commit,
+            files_pathes=config_file.objects,
+            object_type=RepositoryObjects.OBJECT,
+            defer=True,
+            tracking_suffix="-deferred",
         )
 
     @task(name="check-definition-get", task_run_name="Get Check Definition", cache_policy=NONE)
@@ -1607,7 +1682,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def get_python_transforms(
         self,
         module: types.ModuleType,
-        file_path: str,
         transform: InfrahubPythonTransformConfig,
         dependencies: list[str],
         dependencies_complete: bool,
@@ -1615,6 +1689,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         log = get_run_logger()
         if transform.class_name not in dir(module):
             return []
+
+        # The manifest-declared path is the only source for `file_path`: the dependency closure
+        # and the fingerprint are both keyed on it, and a path derived from the filesystem
+        # instead can resolve outside the worktree and turn absolute.
+        file_path = str(transform.file_path)
 
         transforms = []
         transform_class = getattr(module, transform.class_name)

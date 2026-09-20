@@ -34,6 +34,11 @@ def union_watch_files(
     closure but still counts as a declaration, so completeness is unaffected; the entry is
     logged as a warning so the mismatch is visible rather than silently under-regenerating.
 
+    A closure that stays empty is the exception and is never trusted. It names no file, so
+    nothing can ever match it and a definition carrying one would silently stop regenerating
+    for good. Reaching that state means auto-detection found nothing and every declared entry
+    matched nothing either, which is a broken declaration rather than a closed list.
+
     Raises:
         git.exc.GitCommandError: If git cannot enumerate a watch entry (for example a
             pathspec that escapes the repository). The caller isolates this so the
@@ -51,7 +56,7 @@ def union_watch_files(
         logger=logger,
     )
     merged = tuple(sorted(set(result.dependencies) | expanded))
-    return ClosureResult(dependencies=merged, complete=True, unresolved=result.unresolved)
+    return ClosureResult(dependencies=merged, complete=bool(merged), unresolved=result.unresolved)
 
 
 def _expand_watch_files(

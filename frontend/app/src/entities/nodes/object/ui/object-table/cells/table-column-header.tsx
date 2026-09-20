@@ -1,5 +1,11 @@
 import { Menu, MenuItem, MenuSeparator, MenuTrigger, Popover, SubmenuTrigger } from "@infrahub/ui";
-import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, ListFilterIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpDownIcon,
+  ArrowUpIcon,
+  EyeOffIcon,
+  ListFilterIcon,
+} from "lucide-react";
 import React from "react";
 import { Button } from "react-aria-components";
 
@@ -11,11 +17,16 @@ import {
 } from "@/shared/components/table/style";
 import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 
+import { useColumnVisibility } from "@/entities/nodes/columns/ui/hooks/use-column-visibility";
 import { isFieldFiltered } from "@/entities/nodes/filters/domain/rules/is-field-filtered";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
 import { TableColumnHeaderSimple } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-simple";
+import {
+  useColumnSurface,
+  useSupportsColumnVisibility,
+} from "@/entities/nodes/object/ui/object-table/object-table-context";
 import {
   SORT_DIRECTION,
   type Sort,
@@ -78,7 +89,7 @@ export function TableColumnHeader({
     );
   }
 
-  return <ColumnHeaderMenu columnSchema={columnSchema} className={className} />;
+  return <ColumnHeaderMenu columnSchema={columnSchema} schema={schema} className={className} />;
 }
 
 interface SortableAttributeColumnHeaderProps {
@@ -106,6 +117,7 @@ function SortableAttributeColumnHeader({
   return (
     <ColumnHeaderMenu
       columnSchema={attributeSchema}
+      schema={schema}
       className={className}
       activeSort={activeSort}
       sortItems={
@@ -149,7 +161,9 @@ function SortableRelationshipColumnHeader({
   );
 
   if (sortableAttributes.length === 0) {
-    return <ColumnHeaderMenu columnSchema={relationshipSchema} className={className} />;
+    return (
+      <ColumnHeaderMenu columnSchema={relationshipSchema} schema={schema} className={className} />
+    );
   }
 
   const selectSort = (sort: Sort) => {
@@ -165,6 +179,7 @@ function SortableRelationshipColumnHeader({
   return (
     <ColumnHeaderMenu
       columnSchema={relationshipSchema}
+      schema={schema}
       className={className}
       activeSort={activeSort}
       sortItems={
@@ -201,6 +216,11 @@ function SortableRelationshipColumnHeader({
 
 interface ColumnHeaderMenuProps {
   columnSchema: AttributeSchema | RelationshipSchema;
+  /**
+   * The table's own schema: both the sort and the hide entry act against it, so a header given none
+   * offers neither.
+   */
+  schema?: ModelSchema;
   className?: string;
   activeSort?: Sort | null;
   sortItems?: React.ReactNode;
@@ -208,6 +228,7 @@ interface ColumnHeaderMenuProps {
 
 function ColumnHeaderMenu({
   columnSchema,
+  schema,
   className,
   activeSort = null,
   sortItems,
@@ -265,6 +286,7 @@ function ColumnHeaderMenu({
               <ListFilterIcon />
               <span>Filter</span>
             </MenuItem>
+            {schema ? <HideColumnMenuItem schema={schema} field={columnSchema.name} /> : null}
           </Menu>
         </Popover>
       </MenuTrigger>
@@ -281,6 +303,38 @@ function ColumnHeaderMenu({
           <AttributeFilterForm attributeSchema={columnSchema} onSuccess={closeFilterForm} />
         )}
       </Popover>
+    </>
+  );
+}
+
+/**
+ * A separate component because `schema` is optional on the menu: the hook cannot be called
+ * conditionally in `ColumnHeaderMenu`. It owns its leading separator too, so that gating the entry
+ * off cannot leave a dangling separator behind in the menu.
+ *
+ * Renders nothing unless the table honours the column-visibility params: this header is shared with
+ * tables that render their own columns (proposed changes, role management), where a hide would
+ * write `hide_columns` and change nothing — with no `ColumnsPicker` in their toolbar to undo it.
+ *
+ * The surface must come from the table's own context, not the default. `hideColumn` itself is
+ * surface-independent, but the hook's write path re-serialises the *validated* lists, so a name
+ * only another surface has a candidate for — `ip_prefix` on an IP address table — would be erased
+ * from `hide_columns` by a write made under the object surface.
+ */
+function HideColumnMenuItem({ schema, field }: { schema: ModelSchema; field: string }) {
+  const supportsColumnVisibility = useSupportsColumnVisibility();
+  const columnSurface = useColumnSurface();
+  const { hideColumn } = useColumnVisibility(schema, columnSurface);
+
+  if (!supportsColumnVisibility) return null;
+
+  return (
+    <>
+      <MenuSeparator />
+      <MenuItem textValue="Hide column" onAction={() => hideColumn(field)}>
+        <EyeOffIcon />
+        <span>Hide column</span>
+      </MenuItem>
     </>
   );
 }

@@ -30,7 +30,7 @@ export function ThemeSwitchMenuItem() {
       {/* Tags what this item switches *to*. Only dark is pre-release, so the item offering the way
           back to light carries no tag. */}
       {!isDark && (
-        <span className="ml-auto rounded-md border border-transparent bg-yellow-100 px-1.5 py-0.5 text-xs font-semibold text-yellow-900 dark:bg-yellow-400/20 dark:text-yellow-300">
+        <span className="ml-auto rounded-md border border-transparent bg-yellow-100 px-1.5 py-0.5 font-semibold text-xs text-yellow-900 dark:bg-yellow-400/20 dark:text-yellow-300">
           alpha
         </span>
       )}

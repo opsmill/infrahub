@@ -29,7 +29,7 @@ export function ExportMenu({ onExport, label = "Export diagram" }: ExportMenuPro
         triggerRef.current?.focus();
       }
     },
-    open,
+    open
   );
 
   const handleExport = (format: ExportFormat) => {
@@ -58,7 +58,7 @@ export function ExportMenu({ onExport, label = "Export diagram" }: ExportMenuPro
           className={cn(
             open
               ? "bg-selected text-selected-foreground shadow-selected data-hovered:bg-selected-highlight"
-              : "text-subtle",
+              : "text-subtle"
           )}
         >
           <Icon icon="mdi:download" className="text-lg" />
@@ -70,23 +70,23 @@ export function ExportMenu({ onExport, label = "Export diagram" }: ExportMenuPro
           className="absolute bottom-full left-1/2 mb-2 min-w-[120px] -translate-x-1/2 rounded-lg border bg-popover py-1 shadow-lg backdrop-blur-lg"
         >
           <Button
-            // oxlint-disable-next-line jsx-a11y/no-autofocus -- moving focus into the menu on open is the WAI-ARIA menu pattern, not a page-load autofocus
+            // Moving focus into the menu on open is the WAI-ARIA menu pattern, not a page-load autofocus.
             autoFocus
             variant="ghost"
             size="sm"
             onPress={() => handleExport("png")}
-            className="w-full justify-start rounded-none px-3 py-2 text-subtle text-sm"
+            className="w-full justify-start rounded-none px-3 py-2 text-sm text-subtle"
           >
-            <Icon icon="mdi:image-outline" className="text-subtle-muted text-lg" />
+            <Icon icon="mdi:image-outline" className="text-lg text-subtle-muted" />
             PNG
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onPress={() => handleExport("svg")}
-            className="w-full justify-start rounded-none px-3 py-2 text-subtle text-sm"
+            className="w-full justify-start rounded-none px-3 py-2 text-sm text-subtle"
           >
-            <Icon icon="mdi:file-code-outline" className="text-subtle-muted text-lg" />
+            <Icon icon="mdi:file-code-outline" className="text-lg text-subtle-muted" />
             SVG
           </Button>
         </div>

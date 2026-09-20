@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-
 import { CopyIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import React from "react";
 
@@ -22,7 +21,7 @@ type Story = StoryObj<typeof meta>;
 
 function ColumnLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-xxs font-medium tracking-wider text-subtle-muted uppercase">
+    <div className="font-medium text-subtle-muted text-xxs uppercase tracking-wider">
       {children}
     </div>
   );
@@ -124,7 +123,7 @@ export const AllVariants: Story = {
             {disabledItems()}
           </Menu>
         </MenuSurface>
-        <p className="text-xxs text-subtle-muted">Hover the disabled item to see the tooltip.</p>
+        <p className="text-subtle-muted text-xxs">Hover the disabled item to see the tooltip.</p>
       </div>
       <MenuSurface>
         <Menu aria-label="Picker menu with a disabled item" variant="picker">
@@ -185,7 +184,7 @@ function PickerWithSubmenuRender() {
           </Autocomplete>
         </Popover>
       </MenuTrigger>
-      <p className="text-xs text-subtle-muted">Picked: {picked ?? "—"}</p>
+      <p className="text-subtle-muted text-xs">Picked: {picked ?? "—"}</p>
     </div>
   );
 }

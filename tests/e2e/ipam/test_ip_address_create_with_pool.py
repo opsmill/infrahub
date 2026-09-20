@@ -39,7 +39,6 @@ class TestAllocateIpAddressWithPool:
         await admin_page.get_by_test_id("create-object-button").click()
 
         await select_pool(admin_page, "Management addresses pool")
-        await expect(admin_page.get_by_label("Address *")).to_contain_text("Allocated by pool")
         await expect(admin_page.get_by_test_id("source-pool-badge")).to_contain_text("Management addresses pool")
         await admin_page.get_by_label("Description").fill("address from pool")
         await admin_page.get_by_role("button", name="Save").click()
@@ -59,7 +58,7 @@ class TestAllocateIpAddressWithPool:
         await admin_page.get_by_test_id("create-object-button").click()
 
         await select_pool(admin_page, "Management addresses pool")
-        await expect(admin_page.get_by_label("Address *")).to_contain_text("Allocated by pool")
+        await expect(admin_page.get_by_test_id("source-pool-badge")).to_contain_text("Management addresses pool")
 
         # The pool's default prefix length is surfaced as a placeholder.
         await expect(admin_page.get_by_test_id("pool-prefix-length-input")).to_have_attribute("placeholder", "16")

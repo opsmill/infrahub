@@ -18,7 +18,7 @@ export function Toolbar({ className, ...props }: ToolbarProps) {
     <AriaToolbar
       className={cn(
         "flex items-center gap-2 rounded-xl border bg-popover px-3 py-2 shadow-xl backdrop-blur-lg",
-        className,
+        className
       )}
       {...props}
     />

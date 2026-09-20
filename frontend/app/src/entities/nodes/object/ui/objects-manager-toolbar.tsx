@@ -2,6 +2,7 @@ import { queryClient } from "@/shared/api/rest/client";
 import { Col, Row } from "@/shared/components/container";
 import { ObjectCreateFormTrigger } from "@/shared/components/form/object-create-form-trigger";
 
+import { ColumnsPicker } from "@/entities/nodes/columns/ui/columns-picker";
 import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/active-object-filter-tags";
 import { FilterPicker } from "@/entities/nodes/object/ui/filters/filter-picker";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
@@ -12,7 +13,14 @@ import { SortPicker } from "@/entities/nodes/sort/ui/sort-picker";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 
 export function ObjectsManagerToolbar() {
-  const { selectedSchema, baseSchema, filters, permission } = useObjectTableContext();
+  const {
+    selectedSchema,
+    baseSchema,
+    filters,
+    permission,
+    columnSurface,
+    supportsColumnVisibility,
+  } = useObjectTableContext();
 
   return (
     <Col className="shrink-0 gap-0">
@@ -24,6 +32,12 @@ export function ObjectsManagerToolbar() {
         <FilterSearchInput schema={selectedSchema} />
 
         <SortPicker schema={selectedSchema} />
+
+        {/* Only tables that honour the column-visibility params get the picker: elsewhere it
+            would write the URL and change nothing. */}
+        {supportsColumnVisibility && (
+          <ColumnsPicker schema={selectedSchema} surface={columnSurface} />
+        )}
 
         <FilterPicker schema={selectedSchema} filters={filters} />
 

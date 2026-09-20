@@ -22,7 +22,7 @@ jobs:
       date: ${{ steps.date.outputs.date }}
     steps:
       - name: Checkout development branch
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: develop
       - name: Set GIT ref
@@ -36,7 +36,7 @@ jobs:
         id: date
       - name: Set docker image meta data
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: |
             ${{ vars.HARBOR_HOST }}/${{ github.repository }}
@@ -72,7 +72,7 @@ jobs:
       date: ${{ steps.date.outputs.date }}
     steps:
       - name: Checkout stable branch
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: stable
       - name: Set GIT ref
@@ -86,7 +86,7 @@ jobs:
         id: date
       - name: Set docker image meta data
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: |
             ${{ vars.HARBOR_HOST }}/${{ github.repository }}

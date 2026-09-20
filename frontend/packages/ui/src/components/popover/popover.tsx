@@ -18,10 +18,10 @@ const popoverStyles = tv({
   ],
   variants: {
     isEntering: {
-      true: "pointer-events-none animate-in fade-in-0 zoom-in-95",
+      true: "fade-in-0 zoom-in-95 pointer-events-none animate-in",
     },
     isExiting: {
-      true: "animate-out fade-out-0 zoom-out-95",
+      true: "fade-out-0 zoom-out-95 animate-out",
     },
     width: {
       trigger: "w-(--trigger-width)",
@@ -36,14 +36,15 @@ const popoverDialogStyles = tv({
 });
 
 export interface PopoverProps
-  extends AriaPopoverProps, Pick<VariantProps<typeof popoverStyles>, "width"> {}
+  extends AriaPopoverProps,
+    Pick<VariantProps<typeof popoverStyles>, "width"> {}
 
 export function Popover({ className, width = "content", ...props }: PopoverProps) {
   return (
     <AriaPopover
       offset={4}
       className={composeAriaClassName(className, (renderProps) =>
-        popoverStyles({ ...renderProps, width }),
+        popoverStyles({ ...renderProps, width })
       )}
       {...props}
     />

@@ -57,6 +57,10 @@ class RelationshipSchema(GeneratedRelationshipSchema):
             raise ValueError("RelationshipSchema is not initialized")
         return self.identifier
 
+    def mirrors(self, other: RelationshipSchema) -> bool:
+        """True when the two declarations can be the two ends of one edge: one identifier, mirrored directions."""
+        return self.get_identifier() == other.get_identifier() and self.direction.neighbor_direction == other.direction
+
     def get_id(self) -> str:
         if not self.id:
             raise InitializationError("The relationship schema has not been saved yet and doesn't have an id")

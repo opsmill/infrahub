@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal, assert_never
+from typing import TYPE_CHECKING, Any, Literal, Protocol, assert_never
 
 from infrahub.display_labels.scoping import derive_display_label_targets
 from infrahub.events.limits import get_submission_chunk_size
@@ -24,6 +24,7 @@ log = get_logger()
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
+    from infrahub.computed_attribute.scoping import ChangedElementSet
     from infrahub.core.recompute.bulk_write import WrittenNode
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.events.models import EventContext
@@ -132,6 +133,27 @@ class CoalescedRecompute:
     @property
     def fallback_used(self) -> bool:
         return any(not target.precise for target in self.targets)
+
+    def with_targets(self, targets: Iterable[AffectedTarget]) -> CoalescedRecompute:
+        """The same recompute plus more targets, deduplicated against the ones already held."""
+        return CoalescedRecompute(branch=self.branch, targets=self.targets | frozenset(targets))
+
+
+class PythonTargetResolver(Protocol):
+    """The Python transform computed attributes a merge or rebase change set affects.
+
+    ``schema_changed_elements`` names the schema elements a merge changed, so the resolver can drop
+    the pairs the schema-driven backfill already refreshes. It is ``None`` wherever no schema change
+    is replayed, which is every rebase and every chained level.
+    """
+
+    async def resolve(
+        self,
+        *,
+        changes: Iterable[MergeChange],
+        branch: str,
+        schema_changed_elements: ChangedElementSet | None,
+    ) -> list[AffectedTarget]: ...
 
 
 @dataclass
@@ -461,9 +483,13 @@ class CoalescedRecomputeSubmitter:
                         "computed_attribute_name": submission.attribute_name,
                         "computed_attribute_kind": submission.target_kind,
                         "context": context,
+                        "coalesced": True,
+                        "recompute_depth": recompute_depth,
                     }
-                # The transform flow does not take part in the bounded chain yet, so it has no depth.
-                return COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM, parameters | attribute_parameters
+                return (
+                    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
+                    parameters | attribute_parameters | {"coalesced": True, "recompute_depth": recompute_depth},
+                )
             case "display_label":
                 return DISPLAY_LABELS_PROCESS_JINJA2, parameters | {
                     "target_kind": submission.target_kind,
@@ -512,22 +538,91 @@ class CoalescedRecomputeSubmitter:
         return submitted
 
 
+def _every_python_attribute_widened(schema_branch: SchemaBranch) -> list[AffectedTarget]:
+    """Every Python computed attribute the schema declares, each over its whole kind.
+
+    Never raises, and never reads the database: a worker behind on the schema widens what the
+    schema branch it is given declares.
+    """
+    return [
+        AffectedTarget(
+            family=PYTHON_COMPUTED_ATTRIBUTE,
+            target_kind=kind,
+            attribute_name=attribute.name,
+            reads_across_relationship=False,
+            reader_lookups=frozenset(),
+            precise=False,
+            whole_kind=True,
+        )
+        for kind, attributes in schema_branch.computed_attributes.get_python_attributes_per_node().items()
+        for attribute in attributes
+    ]
+
+
+async def _resolve_python_targets(
+    *,
+    resolver: PythonTargetResolver,
+    changes: list[MergeChange],
+    branch: str,
+    schema_changed_elements: ChangedElementSet | None,
+    schema_branch: SchemaBranch,
+) -> list[AffectedTarget]:
+    """The affected Python targets, or every declared one widened when the resolution fails.
+
+    Never raises: this is the only family that reads the database, and the four are submitted
+    together.
+    """
+    if not changes:
+        # Targets come only from the changes, and the schema half is the backfill's. The read-set
+        # index loads before the changes are read, so resolving would pay the gather for nothing,
+        # and a failure in it would widen every attribute over nothing.
+        return []
+
+    try:
+        return await resolver.resolve(changes=changes, branch=branch, schema_changed_elements=schema_changed_elements)
+    except Exception:
+        log.exception(
+            "Widening every Python computed attribute on branch %s to its whole kind: the resolution failed", branch
+        )
+        return _every_python_attribute_widened(schema_branch)
+
+
 class MergeRecomputeCoordinator:
     """Build the coalesced recompute for a merge or rebase change set and submit it.
 
     Build and submit are always run together, so this holds one of each and hands the builder's
-    output to the submitter.
+    output to the submitter. The Python transform family is derived separately, since it reads the
+    database and the query groups instead of the schema alone.
     """
 
-    def __init__(self, builder: CoalescedRecomputeBuilder, submitter: CoalescedRecomputeSubmitter) -> None:
+    def __init__(
+        self,
+        builder: CoalescedRecomputeBuilder,
+        submitter: CoalescedRecomputeSubmitter,
+        python_resolver: PythonTargetResolver,
+    ) -> None:
         self.builder = builder
         self.submitter = submitter
+        self.python_resolver = python_resolver
 
     async def run(
-        self, *, changes: Iterable[MergeChange], branch: str, context: EventContext
+        self,
+        *,
+        changes: Iterable[MergeChange],
+        branch: str,
+        context: EventContext,
+        schema_changed_elements: ChangedElementSet | None = None,
     ) -> list[CoalescedSubmission]:
-        coalesced = self.builder.build(changes=changes, branch=branch)
-        return await self.submitter.submit(coalesced=coalesced, context=context)
+        change_list = list(changes)
+        coalesced = self.builder.build(changes=change_list, branch=branch)
+        python_targets = await _resolve_python_targets(
+            resolver=self.python_resolver,
+            changes=change_list,
+            branch=branch,
+            schema_changed_elements=schema_changed_elements,
+            schema_branch=self.builder.schema_branch,
+        )
+        return await self.submitter.submit(coalesced=coalesced.with_targets(python_targets), context=context)
 
 
 def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
@@ -538,6 +633,10 @@ def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
     """
     target_count = (
         len(schema_branch.computed_attributes.get_jinja2_target_map())
+        + sum(
+            len(attributes)
+            for attributes in schema_branch.computed_attributes.get_python_attributes_per_node().values()
+        )
         + len(schema_branch.display_labels.get_template_nodes())
         + len(schema_branch.hfids.get_template_nodes())
     )
@@ -547,9 +646,15 @@ def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
 class RecomputeChainSubmitter:
     """Dispatch the next recompute level for a set of derived-value writes, as one coalesced pass."""
 
-    def __init__(self, builder: CoalescedRecomputeBuilder, submitter: CoalescedRecomputeSubmitter) -> None:
+    def __init__(
+        self,
+        builder: CoalescedRecomputeBuilder,
+        submitter: CoalescedRecomputeSubmitter,
+        python_resolver: PythonTargetResolver,
+    ) -> None:
         self.builder = builder
         self.submitter = submitter
+        self.python_resolver = python_resolver
 
     async def submit(
         self,
@@ -585,4 +690,13 @@ class RecomputeChainSubmitter:
             for node in written
         ]
         coalesced = self.builder.build(changes=changes, branch=branch)
-        return await self.submitter.submit(coalesced=coalesced, context=context, recompute_depth=next_depth)
+        python_targets = await _resolve_python_targets(
+            resolver=self.python_resolver,
+            changes=changes,
+            branch=branch,
+            schema_changed_elements=None,
+            schema_branch=self.builder.schema_branch,
+        )
+        return await self.submitter.submit(
+            coalesced=coalesced.with_targets(python_targets), context=context, recompute_depth=next_depth
+        )

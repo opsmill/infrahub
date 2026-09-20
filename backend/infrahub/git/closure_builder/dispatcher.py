@@ -7,7 +7,6 @@ from jinja2 import TemplateError
 
 from infrahub.git.closure_builder.jinja2_closure import Jinja2Closure
 from infrahub.git.closure_builder.jinja2_reference_resolver import Jinja2ReferenceResolver
-from infrahub.git.closure_builder.post_processing import append_manifest_path
 from infrahub.git.closure_builder.python_closure import PythonClosure
 from infrahub.git.closure_builder.result import ClosureResult
 from infrahub.git.closure_builder.watch import union_watch_files
@@ -33,8 +32,7 @@ class AggregatedTransformClosureBuilder:
     Tries each injected builder in order and delegates to the first whose
     `supports` returns True. Failures in `ISOLATED_FAILURES` produce a fallback
     `ClosureResult` with `complete=False` so a single broken transform does not
-    abort import of the rest of the repository. The canonical manifest path is
-    always merged into a successful result.
+    abort import of the rest of the repository.
     """
 
     def __init__(
@@ -50,9 +48,8 @@ class AggregatedTransformClosureBuilder:
         try:
             builder = self._select(transform_config=transform_config)
             raw = builder.build(transform_config=transform_config, worktree_root=worktree_root)
-            with_manifest = append_manifest_path(result=raw)
             return union_watch_files(
-                result=with_manifest,
+                result=raw,
                 transform_config=transform_config,
                 worktree_root=worktree_root,
                 logger=self._logger,

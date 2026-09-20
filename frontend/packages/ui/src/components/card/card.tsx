@@ -1,5 +1,4 @@
 import type React from "react";
-
 import { cn, tv, type VariantProps } from "tailwind-variants";
 
 const cardVariants = tv({
@@ -17,7 +16,8 @@ const cardVariants = tv({
 });
 
 export interface CardProps
-  extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof cardVariants> {
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof cardVariants> {
   ref?: React.Ref<HTMLDivElement>;
 }
 
@@ -38,9 +38,9 @@ export function CardHeader({ className, ref, ...props }: CardHeaderProps) {
         "border-b",
         "bg-card-header",
         "px-3 py-2",
-        "text-sm font-medium tracking-tight text-card-header-foreground",
+        "font-medium text-card-header-foreground text-sm tracking-tight",
         "shadow-card-header",
-        className,
+        className
       )}
       {...props}
     />

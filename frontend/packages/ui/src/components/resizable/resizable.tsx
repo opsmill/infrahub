@@ -20,7 +20,7 @@ export function ResizableHandle({ className, ...props }: ResizablePrimitive.Sepa
         "aria-[orientation=horizontal]:h-0.5 aria-[orientation=horizontal]:w-full",
         "hover:bg-cyan-600",
         "focus-visible:bg-cyan-600",
-        className,
+        className
       )}
       {...props}
     />

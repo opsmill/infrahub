@@ -78,7 +78,11 @@ Never add a marker, attribute, or `type: ignore` to production code so a test ca
 
 ## Don't leak process-global state
 
-Every test in an xdist worker shares one interpreter. Change `logging` levels/handlers/filters, `structlog` config, module-level registries/singletons, class attributes (your own or a third-party library's), `sys.path`/`sys.modules` or env vars only through a save/restore fixture (change it, `yield`, restore it), or `monkeypatch` where it applies. Never call an application startup routine such as `infrahub.log.configure_logging` from a test — it owns the whole process and undoes nothing, so it reconfigures every later test in the worker. Install only the piece under test and remove it after the `yield`. See `dev/guidelines/backend/testing.md` §"Leave process-global state as you found it".
+Every test in an xdist worker shares one interpreter. Change `logging` levels/handlers/filters, `structlog` config, module-level registries/singletons, class attributes (your own or a third-party library's), `sys.path`/`sys.modules` or env vars only through a save/restore fixture (change it, `yield`, restore it), or `monkeypatch` where it applies. Never call an application startup routine such as `infrahub.log.configure_logging` from a test — it owns the whole process and undoes nothing, so it reconfigures every later test in the worker. Install only the piece under test and remove it after the `yield`. Never call `dependency_provider.scope` around code that may raise: it skips its cleanup on an exception, so a `pytest.raises` around the call leaks the double to every later test on the worker. Use `backend/tests/helpers/dependency_override.py::override_dependency`, or `backend/tests/helpers/workflow_override.py::override_workflow` for a workflow double; both restore in a `finally`. See `dev/guidelines/backend/testing.md` §"Leave process-global state as you found it".
+
+## Prefect task manager setup
+
+Never call `setup_task_manager()` from a test or fixture; call `tests.helpers.task_manager.setup_task_manager_once()`. The raw setup re-registers every block, pool, deployment and trigger against the worker's Prefect server with no timeout, and under CI load that hangs until pytest-timeout kills the whole class. The helper runs it once per server URL, bounded, and fails fast for that server afterwards. The only test allowed to call the raw function is the one that tests the setup itself. Mechanism in `dev/knowledge/backend/testing.md` §"Prefect Testing Patterns".
 
 ## A regression guard must be shown to bite
 

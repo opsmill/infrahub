@@ -12,6 +12,7 @@ from infrahub.git import InfrahubRepository
 from infrahub.message_bus import messages
 from infrahub.message_bus.operations.git.repository import fetch
 from infrahub.workers.dependencies import build_client
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import build_repository_client
 
 
@@ -66,7 +67,7 @@ async def test_fan_out_pins_to_orchestrator_commit_when_upstream_advances(
         location=git_fixture_repo.get_location(),
         default_branch="main",
     )
-    with dependency_provider.scope(build_client, lambda: client):
+    with override_dependency(build_client, lambda: client, dependency_provider=dependency_provider):
         await fetch.fn(message=message)
 
     worktree = git_fixture_repo.get_git_repo_worktree(identifier=branch_name)
@@ -113,7 +114,7 @@ async def test_fan_out_raises_when_pinned_commit_unreachable(
         location=git_fixture_repo.get_location(),
         default_branch="main",
     )
-    with dependency_provider.scope(build_client, lambda: client):
+    with override_dependency(build_client, lambda: client, dependency_provider=dependency_provider):
         with pytest.raises(RepositoryError, match=r"Commit not found in the local clone"):
             await fetch.fn(message=message)
 

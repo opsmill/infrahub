@@ -22,14 +22,13 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 # No generator in the fixture declares `watch.files`, so each one's closure is its own
-# source file plus the repository config file, which the aggregator includes for every
-# definition. The four generators share the `generators/` directory and its query, and
+# source file. The four generators share the `generators/` directory and its query, and
 # none of that reaches any of their closures.
 CLOSURE_BY_GENERATOR = {
-    "cartags": {".infrahub.yml", "generators/cartags.py"},
-    "cartags_convert_response": {".infrahub.yml", "generators/cartags_convert_response.py"},
-    "cartags_title": {".infrahub.yml", "generators/cartags_title.py"},
-    "cartags_upper": {".infrahub.yml", "generators/cartags_upper.py"},
+    "cartags": {"generators/cartags.py"},
+    "cartags_convert_response": {"generators/cartags_convert_response.py"},
+    "cartags_title": {"generators/cartags_title.py"},
+    "cartags_upper": {"generators/cartags_upper.py"},
 }
 
 

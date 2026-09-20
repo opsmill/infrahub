@@ -1,6 +1,8 @@
 import logging
+import re
 import shutil
 from collections.abc import Iterator
+from contextlib import nullcontext as does_not_raise
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -20,7 +22,7 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.git.models import GitRepositoryAdd, GitRepositoryMerge
-from infrahub.git.repository import InfrahubReadOnlyRepository
+from infrahub.git.repository import FailedImport, ImportStep, InfrahubReadOnlyRepository
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.git import clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
@@ -469,3 +471,82 @@ async def test_update_operational_status_writes_on_the_branch_the_object_was_res
     await repository._update_operational_status(status=RepositoryOperationalStatus.ONLINE)
 
     assert recorder.recorded_branches == ["feature-branch"]
+
+
+@pytest.fixture
+def stub_repo() -> InfrahubRepository:
+    return InfrahubRepository(
+        id=UUID(str(UUIDT.new())),
+        name="test-repo",
+        default_branch="main",
+        internal_status=RepositoryInternalStatus.ACTIVE,
+        infrahub_branch_name="main",
+    )
+
+
+@dataclass
+class RaiseBranchesCase:
+    name: str
+    failed_imports: list[FailedImport]
+    expectation: Any
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        RaiseBranchesCase(
+            name="empty_list_does_not_raise",
+            failed_imports=[],
+            expectation=does_not_raise(),
+        ),
+        RaiseBranchesCase(
+            name="single_failure",
+            failed_imports=[
+                FailedImport(branch_name="branch01", step=ImportStep.COLLECTION, reason="schema validation failed"),
+            ],
+            expectation=pytest.raises(
+                RepositoryError,
+                match=rf"^{
+                    re.escape(
+                        'Unable to synchronize the following branches of repository test-repo:'
+                        ' branch01 (step=collection): schema validation failed'
+                    )
+                }$",
+            ),
+        ),
+        RaiseBranchesCase(
+            name="multiple_failures",
+            failed_imports=[
+                FailedImport(branch_name="branch01", step=ImportStep.COLLECTION, reason="error 1"),
+                FailedImport(branch_name="branch02", step=ImportStep.IMPORT, reason="error 2"),
+            ],
+            expectation=pytest.raises(
+                RepositoryError,
+                match=rf"^{
+                    re.escape(
+                        'Unable to synchronize the following branches of repository test-repo:'
+                        ' branch01 (step=collection): error 1; branch02 (step=import): error 2'
+                    )
+                }$",
+            ),
+        ),
+    ],
+    ids=lambda c: c.name,
+)
+def test_raise_if_branches_failed(stub_repo: InfrahubRepository, case: RaiseBranchesCase) -> None:
+    with case.expectation:
+        stub_repo.raise_if_branches_failed(case.failed_imports)
+
+
+def test_raise_if_branches_failed_logs_structured_fields(
+    stub_repo: InfrahubRepository, caplog: pytest.LogCaptureFixture
+) -> None:
+    failed = FailedImport(branch_name="branch01", step=ImportStep.COLLECTION, reason="schema validation failed")
+    with caplog.at_level(logging.WARNING, logger="infrahub.tasks"), pytest.raises(RepositoryError):
+        stub_repo.raise_if_branches_failed([failed])
+    assert len(caplog.records) == 1
+    attrs = vars(caplog.records[0])
+    assert attrs["branch"] == "branch01"
+    assert attrs["step"] == "collection"
+    assert attrs["reason"] == "schema validation failed"
+    assert attrs["repository"] == "test-repo"

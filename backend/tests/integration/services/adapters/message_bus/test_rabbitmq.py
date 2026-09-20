@@ -22,6 +22,7 @@ from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import build_message_bus
+from tests.helpers.dependency_override import override_dependency
 
 if TYPE_CHECKING:
     from aio_pika.abc import AbstractIncomingMessage
@@ -428,7 +429,7 @@ async def test_rabbitmq_rpc(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger,
     """Validates that incoming messages gets parsed by the callback method."""
     bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
     service = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
-    with dependency_provider.scope(build_message_bus, lambda: bus):
+    with override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider):
         queue = await bus.channel.get_queue(f"{bus.settings.namespace}.rpcs")
         callback = partial(on_callback, message_bus=bus)
         await queue.consume(callback, no_ack=True)

@@ -49,7 +49,7 @@ export function FloatingPanel({
       <CardHeader className="p-4">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h2 className="font-semibold text-lg text-foreground">{title}</h2>
+            <h2 className="font-semibold text-foreground text-lg">{title}</h2>
             {description && <p className="mt-1 text-foreground-muted text-sm">{description}</p>}
           </div>
           <Tooltip message={closeLabel}>

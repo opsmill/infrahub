@@ -5,7 +5,7 @@ import os
 import sys
 import tempfile
 import time
-from contextlib import ExitStack, contextmanager
+from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, AsyncGenerator, Generator, TypeVar
@@ -20,7 +20,6 @@ from infrahub_sdk.branch import BranchData
 from infrahub_sdk.uuidt import UUIDT
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
-from prefect import settings as prefect_settings
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
@@ -81,9 +80,11 @@ from tests.helpers.constants import (
     PORT_PREFECT,
     PORT_REDIS,
 )
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.git import clone_repository
+from tests.helpers.prefect_services import prefect_api_target
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_prefect_server_container
@@ -146,6 +147,31 @@ def dependency_provider() -> Provider:
     return provider
 
 
+@pytest.fixture(autouse=True)
+def _dependency_overrides_are_restored() -> Generator[None, None, None]:
+    """Fail the test that leaves a dependency override behind, and put the provider back."""
+    overrides_before = dict(provider.overrides)
+    workflow_before = config.OVERRIDE.workflow
+    yield
+    # Identity, not key presence: re-pointing an entry that a wider-scoped fixture owns leaves the
+    # key in place and would otherwise pass unnoticed.
+    changed = sorted(
+        getattr(key, "__name__", repr(key))
+        for key in provider.overrides.keys() | overrides_before.keys()
+        if provider.overrides.get(key) is not overrides_before.get(key)
+    )
+    workflow_changed = config.OVERRIDE.workflow is not workflow_before
+    if not changed and not workflow_changed:
+        return
+    provider.overrides.clear()
+    provider.overrides.update(overrides_before)
+    config.OVERRIDE.workflow = workflow_before
+    pytest.fail(
+        f"the test left dependency overrides behind (put back now): provider={changed}, "
+        f"config.OVERRIDE.workflow changed={workflow_changed}"
+    )
+
+
 @pytest.fixture(scope="module")
 async def db(
     neo4j: dict[int, int] | None, memgraph: dict[int, int] | None, reload_settings_before_each_module: None
@@ -161,13 +187,13 @@ async def db(
     async def _db(singleton: bool = True) -> InfrahubDatabase:
         return await build_database(singleton=False)
 
-    with provider.scope(build_database, _db):
+    with override_dependency(build_database, _db, dependency_provider=provider):
         driver = await get_database()
         await add_indexes(db=driver)
-
-        yield driver
-
-        await driver.close()
+        try:
+            yield driver
+        finally:
+            await driver.close()
 
 
 @pytest.fixture(scope="class")
@@ -538,14 +564,7 @@ def prefect(
     else:
         server_api_url = f"http://localhost:{PORT_PREFECT}/api"
 
-    with ExitStack() as stack:
-        stack.enter_context(
-            prefect_settings.temporary_settings(
-                updates={
-                    prefect_settings.PREFECT_API_URL: server_api_url,
-                }
-            )
-        )
+    with prefect_api_target(server_api_url):
         yield server_api_url
 
 
@@ -559,14 +578,7 @@ def prefect_class(
     else:
         server_api_url = f"http://localhost:{PORT_PREFECT}/api"
 
-    with ExitStack() as stack:
-        stack.enter_context(
-            prefect_settings.temporary_settings(
-                updates={
-                    prefect_settings.PREFECT_API_URL: server_api_url,
-                }
-            )
-        )
+    with prefect_api_target(server_api_url):
         yield server_api_url
 
 

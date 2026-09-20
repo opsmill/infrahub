@@ -27,6 +27,10 @@ from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge.builder import build_branch_merge_orchestrator
 from infrahub.core.merge.merge_locker import MergeLocker
+from infrahub.core.merge.python_target_sources import (
+    UnavailablePythonTargetResolver,
+    build_python_target_resolver,
+)
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
@@ -81,6 +85,7 @@ from infrahub.workflows.utils import add_tags
 if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
 
+    from infrahub.core.merge.recompute_coalescing import PythonTargetResolver
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -358,16 +363,30 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     for event in events:
         await event_service.send(event)
 
-    with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
-        schema_name = (
-            user_branch.name if user_branch.name in registry.get_altered_schema_branches() else registry.default_branch
-        )
-        schema_branch = registry.schema.get_schema_branch(name=schema_name)
-        coordinator = MergeRecomputeCoordinator(
-            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-            submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
-        )
-        await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
+    # The rebase session closed further up, and this pass runs queries of its own.
+    async with database.start_session() as recompute_db:
+        python_resolver: PythonTargetResolver
+        try:
+            python_resolver = await build_python_target_resolver(db=recompute_db)
+        except Exception:
+            # Handed on as a resolver that raises, which widens every declared attribute. Skipping
+            # the family instead would leave the replayed changes with nothing to refresh them.
+            log.exception("Widening the post-rebase Python recompute: its resolver could not be built")
+            python_resolver = UnavailablePythonTargetResolver()
+
+        with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
+            schema_name = (
+                user_branch.name
+                if user_branch.name in registry.get_altered_schema_branches()
+                else registry.default_branch
+            )
+            schema_branch = registry.schema.get_schema_branch(name=schema_name)
+            coordinator = MergeRecomputeCoordinator(
+                builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
+                submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
+                python_resolver=python_resolver,
+            )
+            await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
@@ -570,7 +589,9 @@ async def _build_post_merge_regeneration_dispatcher(
     generator_output = GeneratorCascadeOutput(capturer=output_capturer)
     return PostMergeRegenerationDispatcher(
         workflow=get_workflow(),
-        planner=build_merge_selective_regeneration(client=get_client(), log=log, generator_output=generator_output),
+        planner=build_merge_selective_regeneration(
+            db=db, client=get_client(), log=log, generator_output=generator_output
+        ),
         summary_cache=DiffSummaryCache(
             cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
         ),

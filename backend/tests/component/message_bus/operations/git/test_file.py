@@ -5,6 +5,7 @@ from infrahub.git import InfrahubRepository
 from infrahub.message_bus import messages
 from infrahub.workers.dependencies import build_client, build_message_bus
 from tests.conftest import TestHelper
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import build_repository_client
 
 
@@ -33,8 +34,8 @@ async def test_file_get(
     )
     bus_simulator = await helper.get_message_bus_simulator()
     with (
-        dependency_provider.scope(build_message_bus, lambda: bus_simulator),
-        dependency_provider.scope(build_client, lambda: client),
+        override_dependency(build_message_bus, lambda: bus_simulator, dependency_provider=dependency_provider),
+        override_dependency(build_client, lambda: client, dependency_provider=dependency_provider),
     ):
         reply = await bus_simulator.rpc(message=message, response_class=messages.GitFileGetResponse)
 

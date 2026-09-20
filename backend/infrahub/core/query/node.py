@@ -566,7 +566,8 @@ class NodeCreateAllQuery(NodeQuery):
         node = result.get("n")
 
         if node is None:
-            raise QueryError(query=self.get_query(), params=self.params)
+            rendered = self.render()
+            raise QueryError(query=rendered.text, params=rendered.params)
 
         return node["uuid"], node.element_id
 

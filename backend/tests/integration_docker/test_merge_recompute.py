@@ -135,11 +135,15 @@ class TestMergeRecompute(TestInfrahubDockerClient):
         assert merged
         await _wait_until_merged(client=client, branch_name=branch.name)
 
+        # Each derived family is recomputed by its own flow: wait for every field the recompute changes.
         async def _both_recomputed() -> bool:
             refreshed_node1 = await client.get(kind=PROFILE_NODE_KIND, id=node1.id)
             refreshed_node2 = await client.get(kind=PROFILE_NODE_KIND, id=node2.id)
             return (
-                refreshed_node1.summary.value == "node1 on omega" and refreshed_node2.summary.value == "node2 on omega"
+                refreshed_node1.summary.value == "node1 on omega"
+                and refreshed_node2.summary.value == "node2 on omega"
+                and refreshed_node1.display_label == "node1 via omega"
+                and refreshed_node2.display_label == "node2 via omega"
             )
 
         await _wait_until(_both_recomputed)
@@ -183,9 +187,10 @@ class TestMergeRecompute(TestInfrahubDockerClient):
 
         await client.branch.rebase(branch_name=branch.name)
 
+        # Each derived family is recomputed by its own flow: wait for every field the recompute changes.
         async def _node_recomputed() -> bool:
             refreshed = await client.get(kind=PROFILE_NODE_KIND, id=node.id, branch=branch.name)
-            return refreshed.summary.value == "rnode on romega"
+            return refreshed.summary.value == "rnode on romega" and refreshed.display_label == "rnode via romega"
 
         await _wait_until(_node_recomputed)
 

@@ -6,11 +6,13 @@ through two injected sources, so these are unit tests over in-memory data.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.merge.python_target_resolution import PythonAttributeReadSet, PythonTargetResolver
+from infrahub.computed_attribute.scoping import ChangedElementSet
+from infrahub.core.merge.python_target_resolution import IndexedPythonTargetResolver, PythonAttributeReadSet
 from infrahub.core.merge.recompute_coalescing import (
     PYTHON_COMPUTED_ATTRIBUTE,
     SELF_FILTER,
@@ -62,17 +64,28 @@ TAG = PythonAttributeReadSet(
 )
 # The transform query could not be analyzed at all.
 UNKNOWN = PythonAttributeReadSet(kind=OWNER, attribute_name="digest", read_set=TransformReadSet.imprecise())
+# The gather failed, so nothing is known about this attribute and no other pass knows it either.
+UNGATHERED = PythonAttributeReadSet(
+    kind=OWNER, attribute_name="hash", read_set=TransformReadSet.imprecise(), gathered=False
+)
+# Reads the device name, but its query root is not pinned to one object, so query-group
+# membership cannot name its readers.
+UNPINNED = PythonAttributeReadSet(
+    kind=OWNER,
+    attribute_name="roster",
+    read_set=TransformReadSet(read_kinds=frozenset({DEVICE}), read_fields={DEVICE: frozenset({"name"})}),
+    pinned=False,
+)
 
 
 def _resolver(
     *,
     read_sets: list[PythonAttributeReadSet],
     subscriber_source: PythonSubscriberSource,
-) -> PythonTargetResolver:
-    return PythonTargetResolver(
+) -> IndexedPythonTargetResolver:
+    return IndexedPythonTargetResolver(
         read_set_source=StaticPythonReadSetSource(read_sets=read_sets),
         subscriber_source=subscriber_source,
-        branch=BRANCH,
     )
 
 
@@ -90,10 +103,11 @@ async def test_created_nodes_are_their_own_targets() -> None:
     resolver = _resolver(read_sets=[SUMMARY, LABEL, TAG], subscriber_source=subscribers)
 
     targets = await resolver.resolve(
+        branch=BRANCH,
         changes=[
             MergeChange(node_id="d1", kind=DEVICE, action="created"),
             MergeChange(node_id="d2", kind=DEVICE, action="created"),
-        ]
+        ],
     )
 
     assert _identities(targets) == [(DEVICE, "label"), (DEVICE, "summary")]
@@ -107,6 +121,20 @@ async def test_created_nodes_are_their_own_targets() -> None:
     assert subscribers.calls == []
 
 
+async def test_a_deleted_node_of_the_target_kind_is_not_its_own_target() -> None:
+    """Self-targeting applies to an update, never to a deletion: the node has no value left.
+
+    Its readers still come from the lookup, so only the deleted node itself drops out.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[SUMMARY], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(branch=BRANCH, changes=[MergeChange(node_id="d1", kind=DEVICE, action="deleted")])
+
+    assert subscribers.calls == [("d1",)]
+    assert targets == []
+
+
 async def test_an_update_selects_the_readers_of_the_changed_field_in_one_lookup() -> None:
     """Two changed sites resolve their readers with a single union lookup, not one per node."""
     subscribers = RecordingSubscriberSource(
@@ -115,10 +143,11 @@ async def test_an_update_selects_the_readers_of_the_changed_field_in_one_lookup(
     resolver = _resolver(read_sets=[SUMMARY, LABEL, TAG], subscriber_source=subscribers)
 
     targets = await resolver.resolve(
+        branch=BRANCH,
         changes=[
             MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"name"})),
             MergeChange(node_id="s2", kind=SITE, action="updated", changed_fields=frozenset({"name"})),
-        ]
+        ],
     )
 
     assert subscribers.calls == [("s1", "s2")]
@@ -138,7 +167,8 @@ async def test_an_update_on_an_unread_field_selects_nothing() -> None:
     resolver = _resolver(read_sets=[SUMMARY, LABEL, TAG], subscriber_source=subscribers)
 
     targets = await resolver.resolve(
-        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"location"}))]
+        branch=BRANCH,
+        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"location"}))],
     )
 
     assert targets == []
@@ -155,10 +185,12 @@ async def test_a_derived_read_on_one_kind_keeps_the_field_filter_of_the_others()
     resolver = _resolver(read_sets=[TAG], subscriber_source=subscribers)
 
     unread = await resolver.resolve(
-        changes=[MergeChange(node_id="o1", kind=OWNER, action="updated", changed_fields=frozenset({"description"}))]
+        branch=BRANCH,
+        changes=[MergeChange(node_id="o1", kind=OWNER, action="updated", changed_fields=frozenset({"description"}))],
     )
     read = await resolver.resolve(
-        changes=[MergeChange(node_id="o1", kind=OWNER, action="updated", changed_fields=frozenset({"name"}))]
+        branch=BRANCH,
+        changes=[MergeChange(node_id="o1", kind=OWNER, action="updated", changed_fields=frozenset({"name"}))],
     )
 
     assert unread == []
@@ -172,7 +204,8 @@ async def test_a_change_to_an_imprecise_kind_selects_on_any_field() -> None:
     resolver = _resolver(read_sets=[TAG], subscriber_source=subscribers)
 
     targets = await resolver.resolve(
-        changes=[MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"description"}))]
+        branch=BRANCH,
+        changes=[MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"description"}))],
     )
 
     assert _identities(targets) == [(ROUTER, "tag")]
@@ -186,7 +219,8 @@ async def test_an_undeterminable_read_set_widens_to_the_whole_kind() -> None:
     resolver = _resolver(read_sets=[UNKNOWN], subscriber_source=subscribers)
 
     targets = await resolver.resolve(
-        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"name"}))]
+        branch=BRANCH,
+        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"name"}))],
     )
 
     assert _identities(targets) == [(OWNER, "digest")]
@@ -201,7 +235,8 @@ async def test_a_failing_reader_lookup_widens_instead_of_skipping() -> None:
     resolver = _resolver(read_sets=[SUMMARY], subscriber_source=subscribers)
 
     targets = await resolver.resolve(
-        changes=[MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"name"}))]
+        branch=BRANCH,
+        changes=[MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"name"}))],
     )
 
     assert subscribers.calls == [("s1",)]
@@ -217,7 +252,7 @@ async def test_an_unscoped_update_selects_on_the_kind_alone() -> None:
     resolver = _resolver(read_sets=[SUMMARY, LABEL, TAG], subscriber_source=subscribers)
 
     targets = await resolver.resolve(
-        changes=[MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset())]
+        branch=BRANCH, changes=[MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset())]
     )
 
     by_identity = dict(zip(_identities(targets), targets, strict=True))
@@ -234,7 +269,7 @@ async def test_deleted_nodes_select_their_readers() -> None:
     subscribers = RecordingSubscriberSource(subscribers={"s1": [("d1", DEVICE)]})
     resolver = _resolver(read_sets=[SUMMARY, LABEL], subscriber_source=subscribers)
 
-    targets = await resolver.resolve(changes=[MergeChange(node_id="s1", kind=SITE, action="deleted")])
+    targets = await resolver.resolve(branch=BRANCH, changes=[MergeChange(node_id="s1", kind=SITE, action="deleted")])
 
     assert _identities(targets) == [(DEVICE, "summary")]
     assert _ids(targets[0]) == frozenset({"d1"})
@@ -248,10 +283,11 @@ async def test_attributes_selected_by_different_changes_do_not_share_subscribers
     resolver = _resolver(read_sets=[SUMMARY, LABEL], subscriber_source=subscribers)
 
     targets = await resolver.resolve(
+        branch=BRANCH,
         changes=[
             MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"name"})),
             MergeChange(node_id="d9", kind=DEVICE, action="updated", changed_fields=frozenset({"description"})),
-        ]
+        ],
     )
 
     assert sorted(subscribers.calls) == [("d9",), ("s1",)]
@@ -270,7 +306,8 @@ async def test_an_updated_node_of_the_target_kind_is_its_own_target() -> None:
     resolver = _resolver(read_sets=[LABEL], subscriber_source=subscribers)
 
     targets = await resolver.resolve(
-        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"description"}))]
+        branch=BRANCH,
+        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"description"}))],
     )
 
     assert _identities(targets) == [(DEVICE, "label")]
@@ -283,10 +320,11 @@ async def test_a_deleted_id_is_resolved_apart_from_the_live_ids() -> None:
     resolver = _resolver(read_sets=[SUMMARY], subscriber_source=subscribers)
 
     targets = await resolver.resolve(
+        branch=BRANCH,
         changes=[
             MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"name"})),
             MergeChange(node_id="s2", kind=SITE, action="deleted"),
-        ]
+        ],
     )
 
     assert sorted(subscribers.calls) == [("s1",), ("s2",)]
@@ -300,7 +338,8 @@ async def test_a_change_with_no_subscribed_reader_adds_no_target() -> None:
     resolver = _resolver(read_sets=[SUMMARY], subscriber_source=subscribers)
 
     targets = await resolver.resolve(
-        changes=[MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"name"}))]
+        branch=BRANCH,
+        changes=[MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"name"}))],
     )
 
     assert subscribers.calls == [("s1",)]
@@ -311,19 +350,192 @@ async def test_an_unknown_change_action_is_refused() -> None:
     resolver = _resolver(read_sets=[SUMMARY], subscriber_source=RecordingSubscriberSource(subscribers={}))
 
     with pytest.raises(ValueError, match=r"^Unknown change action: 'moved'$"):
-        await resolver.resolve(changes=[MergeChange(node_id="s1", kind=SITE, action="moved")])
+        await resolver.resolve(branch=BRANCH, changes=[MergeChange(node_id="s1", kind=SITE, action="moved")])
+
+
+async def test_a_pair_the_schema_pass_refreshes_is_dropped() -> None:
+    """A schema-changing merge refreshes what its own scope selects, one whole kind at a time.
+
+    Keeping such a pair here would run the same transform twice over the same nodes.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={"d1": [("d1", DEVICE)]})
+    resolver = _resolver(read_sets=[SUMMARY, LABEL], subscriber_source=subscribers)
+    changes = [
+        MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"name", "description"}))
+    ]
+
+    without_schema_change = await resolver.resolve(branch=BRANCH, changes=changes)
+    with_schema_change = await resolver.resolve(
+        branch=BRANCH,
+        changes=changes,
+        # The merge changed the field the summary reads, so the schema pass owns that attribute.
+        schema_changed_elements=ChangedElementSet(changed_fields={DEVICE: frozenset({"name"})}),
+    )
+
+    assert _identities(without_schema_change) == [(DEVICE, "label"), (DEVICE, "summary")]
+    assert _identities(with_schema_change) == [(DEVICE, "label")]
+
+
+async def test_only_a_pair_the_schema_pass_can_see_is_covered() -> None:
+    """The schema pass builds its candidates from the transforms it could gather.
+
+    A pair it never gathered stays here, or nothing would refresh it. A pair it gathered is dropped even
+    when the read set is imprecise, since it refreshes the whole kind for that one too.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[UNKNOWN, UNGATHERED], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(
+        branch=BRANCH,
+        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"name"}))],
+        schema_changed_elements=ChangedElementSet(changed_fields={DEVICE: frozenset({"name"})}),
+    )
+
+    assert _identities(targets) == [(OWNER, "hash")]
+    assert targets[0].whole_kind is True
+
+
+async def test_every_lookup_of_a_pass_runs_on_the_branch_it_was_asked_for() -> None:
+    """Every lookup carries the branch it was asked for, and the memo is keyed on it.
+
+    A rebase recomputes on the user branch while a merge recomputes on the destination, and a
+    lookup sent to the wrong branch answers with that branch's query groups.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={"s1": [("d1", DEVICE)]})
+    resolver = _resolver(read_sets=[SUMMARY], subscriber_source=subscribers)
+    change = MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"name"}))
+
+    await resolver.resolve(branch=BRANCH, changes=[change])
+    await resolver.resolve(branch="user-branch", changes=[change])
+
+    assert subscribers.branches == [BRANCH, "user-branch"]
 
 
 async def test_the_read_set_index_is_fetched_once_per_pass() -> None:
     read_set_source = StaticPythonReadSetSource(read_sets=[SUMMARY])
-    resolver = PythonTargetResolver(
+    resolver = IndexedPythonTargetResolver(
         read_set_source=read_set_source,
         subscriber_source=RecordingSubscriberSource(subscribers={"s1": [("d1", DEVICE)]}),
-        branch=BRANCH,
     )
 
     change = MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"name"}))
-    await resolver.resolve(changes=[change])
-    await resolver.resolve(changes=[change])
+    await resolver.resolve(branch=BRANCH, changes=[change])
+    await resolver.resolve(branch=BRANCH, changes=[change])
 
     assert read_set_source.calls == [BRANCH]
+
+
+async def test_an_unpinned_query_keeps_the_read_set_the_schema_pass_scopes_on() -> None:
+    """The pinning restriction must not make the schema pass look like it covers the attribute.
+
+    The schema change here touches a kind the query never reads, so the backfill refreshes nothing
+    for it. Dropping it as covered would leave nothing to recompute it at all.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(
+        branch=BRANCH,
+        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"name"}))],
+        schema_changed_elements=ChangedElementSet(changed_fields={SITE: frozenset({"name"})}),
+    )
+
+    assert _identities(targets) == [(OWNER, "roster")]
+    assert targets[0].whole_kind is True
+
+
+async def test_a_created_node_widens_an_unpinned_query() -> None:
+    """A created node enters the result set of an unpinned query without touching its members."""
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(branch=BRANCH, changes=[MergeChange(node_id="d1", kind=DEVICE, action="created")])
+
+    assert _identities(targets) == [(OWNER, "roster")]
+    assert targets[0].whole_kind is True
+
+
+async def test_a_created_node_widens_an_undeterminable_read_set() -> None:
+    """What an unanalyzable query reads is unknown, so a creation can reach it like any change."""
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[UNKNOWN], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(branch=BRANCH, changes=[MergeChange(node_id="d1", kind=DEVICE, action="created")])
+
+    assert _identities(targets) == [(OWNER, "digest")]
+    assert targets[0].whole_kind is True
+
+
+async def test_an_unpinned_query_widens_on_a_field_it_reads_without_selecting() -> None:
+    """A filter argument never reaches the read set, so an unread field can still move members.
+
+    An unpinned query filtering on one field and selecting another takes a node into or out of its
+    result when that filter field changes, and no field filter here can see it.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(
+        branch=BRANCH,
+        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"colour"}))],
+    )
+
+    assert _identities(targets) == [(OWNER, "roster")]
+    assert targets[0].whole_kind is True
+    assert targets[0].precise is False
+    assert subscribers.calls == []
+
+
+async def test_a_created_node_of_an_unpinned_attribute_kind_is_its_own_target() -> None:
+    """An unpinned query that never reads the owner kind still leaves the new node to compute.
+
+    Nothing moves for the members already in the result, since the query does not read this kind,
+    so the created node is the exact target and no lookup is needed.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(branch=BRANCH, changes=[MergeChange(node_id="o1", kind=OWNER, action="created")])
+
+    assert _identities(targets) == [(OWNER, "roster")]
+    assert targets[0].whole_kind is False
+    assert targets[0].precise is True
+    assert targets[0].reader_lookups == frozenset(
+        {ReaderLookup(source_kind=OWNER, filter_key=SELF_FILTER, source_node_ids=frozenset({"o1"}))}
+    )
+    assert subscribers.calls == []
+
+
+@dataclass
+class UnreadKindCase:
+    name: str
+    kind: str
+    node_id: str
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        UnreadKindCase(name="a_kind_the_query_never_reads", kind=SITE, node_id="s1"),
+        UnreadKindCase(name="the_kind_the_attribute_lives_on", kind=OWNER, node_id="o1"),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_an_unpinned_query_ignores_an_update_to_a_kind_it_never_reads(case: UnreadKindCase) -> None:
+    """Widening on any read kind must not become widening on every merge.
+
+    The attribute's own kind is one of those unread kinds here, and an update to it moves nothing
+    the query reads, so it selects nothing either.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(
+        branch=BRANCH,
+        changes=[
+            MergeChange(node_id=case.node_id, kind=case.kind, action="updated", changed_fields=frozenset({"name"}))
+        ],
+    )
+
+    assert targets == []
+    assert subscribers.calls == []

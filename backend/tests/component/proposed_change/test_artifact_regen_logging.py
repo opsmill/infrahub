@@ -57,11 +57,11 @@ query GetLegacyDevice($ids: [ID!]!) {
 }
 """
 
-JINJA_DEPENDENCIES = [".infrahub.yml", "partials/header.j2", "templates/device.j2"]
-PYTHON_DEPENDENCIES = [".infrahub.yml", "transforms/foo/foo.py", "transforms/foo/helpers.py"]
+JINJA_DEPENDENCIES = ["partials/header.j2", "templates/device.j2"]
+PYTHON_DEPENDENCIES = ["transforms/foo/foo.py", "transforms/foo/helpers.py"]
 # The closure the integrator would store for a transform with an unresolved dynamic include:
 # a partial list, flagged incomplete so the gate falls back to regenerate-on-any-change.
-INCOMPLETE_DEPENDENCIES = [".infrahub.yml", "templates/dynamic.j2"]
+INCOMPLETE_DEPENDENCIES = ["templates/dynamic.j2"]
 
 ARTIFACT_SCHEMA = SchemaRoot(
     nodes=[

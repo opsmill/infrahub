@@ -252,6 +252,10 @@
   description: "Run intensive CodSpeed benchmarks, usually excluded."
   color: "73FA20"
 
+- name: "ci/run-huge-runners"
+  description: "Run the huge-runner jobs on a pull request that would otherwise skip them"
+  color: "73FA20"
+
 - name: "cd/preview"
   description: "Deploy preview branch"
   color: "d77e96"

@@ -6,6 +6,7 @@ from infrahub.message_bus import messages
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
 from infrahub.workers.dependencies import build_client, build_message_bus
 from tests.conftest import TestHelper
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import build_repository_client
 
 
@@ -39,8 +40,8 @@ async def test_branch_deleted(
         default_branch="main",
     )
     with (
-        dependency_provider.scope(build_message_bus, lambda: bus_simulator),
-        dependency_provider.scope(build_client, lambda: client),
+        override_dependency(build_message_bus, lambda: bus_simulator, dependency_provider=dependency_provider),
+        override_dependency(build_client, lambda: client, dependency_provider=dependency_provider),
     ):
         await bus_simulator.publish(message=message, routing_key=routing_key)
 
