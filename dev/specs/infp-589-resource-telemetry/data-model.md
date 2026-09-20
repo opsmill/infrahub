@@ -73,7 +73,7 @@ Internal transport shape (a small typed model in `resources.py`), **not** a payl
 | **server** → new `server` block | dedup-sum api_server hosts | dedup-sum; `None` if any host unbounded | dedup-sum | dedup-sum |
 | **workers** → `workers` block (new fields) | dedup-sum git_agent hosts | dedup-sum; `None` if any host unbounded | dedup-sum | dedup-sum |
 
-Every `processor_assigned` is a **live read that returns `None` today** (nothing enforced yet) and self-populates once a limit is configured — see D3. `processor_assigned` is never derived from `processor_available`; the derivation runs the other way only — `processor_available` is capped by the quota that `processor_assigned` reports.
+**`database.system_info.processor_assigned` is `null` in this release** — Infrahub does not configure the Neo4j `worker_limit` setting itself, so it self-populates only once per-tier enforcement (a later phase) sets it. **`server.processor_assigned` and `workers.processor_assigned` are not gated on anything** — they are live cgroup CPU-quota reads, so a deployment already running with a configured container CPU limit reports a finite value today, independent of that later enforcement work — see D3. `processor_assigned` is never derived from `processor_available`; the derivation runs the other way only — `processor_available` is capped by the quota that `processor_assigned` reports.
 
 ## Aggregation rules (server + workers) — D8/D9
 
