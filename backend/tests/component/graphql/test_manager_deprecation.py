@@ -328,3 +328,51 @@ async def test_deprecated_relationship_declared_on_a_generic(
         gqlm.generate_graphql_mutation_upsert_input(schema=node_schema),
     ):
         assert _deprecated_fields(input_type) == DEPRECATED_INHERITED_FIELDS
+
+
+DEPRECATED_LOCAL_ATTR_MESSAGE = "old_serial is deprecated, use serial instead"
+
+LOCAL_ATTRIBUTE_DEPRECATION_SCHEMA = SchemaRoot(
+    nodes=[
+        {
+            "name": "Router",
+            "namespace": "Testing",
+            "attributes": [
+                {"name": "name", "kind": "Text"},
+                {
+                    "name": "old_serial",
+                    "kind": "Text",
+                    "optional": True,
+                    "deprecation": DEPRECATED_LOCAL_ATTR_MESSAGE,
+                },
+            ],
+        }
+    ],
+)
+
+
+async def test_deprecated_attribute_declared_on_the_node_itself(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    reset_graphql_schema_between_tests: None,
+) -> None:
+    """An attribute deprecated on a node inherits from no generic, so the object type must carry the reason itself."""
+    schema_branch = register_core_models_schema
+    schema_branch.load_schema(schema=LOCAL_ATTRIBUTE_DEPRECATION_SCHEMA)
+    schema_branch.process()
+    node_schema = schema_branch.get(name="TestingRouter", duplicate=False)
+
+    assert node_schema.local_attribute_names == ["name", "old_serial"]
+
+    gqlm = GraphQLSchemaManager(schema=schema_branch)
+    gqlm.generate_object_types()
+
+    expected = {"old_serial": DEPRECATED_LOCAL_ATTR_MESSAGE}
+    assert _deprecated_fields(gqlm.get_type(name="TestingRouter")) == expected
+    for input_type in (
+        gqlm.generate_graphql_mutation_create_input(schema=node_schema),
+        gqlm.generate_graphql_mutation_update_input(schema=node_schema),
+        gqlm.generate_graphql_mutation_upsert_input(schema=node_schema),
+    ):
+        assert _deprecated_fields(input_type) == expected
