@@ -40,7 +40,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import psutil
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -74,13 +74,16 @@ class WorkerResourceReading(BaseModel):
     Transits the heartbeat cache as JSON. ``host`` is the container identifier
     used to collapse the several processes of one container into a single
     contribution; it is a dedup key only and is never emitted in the payload.
+    The four figures are bounded non-negative so a corrupted or stale cache
+    entry fails to parse back out of the cache, rather than surfacing as a
+    negative figure once it is summed into the final payload.
     """
 
     host: str
-    processor_available: int | None = None
-    processor_assigned: int | None = None
-    memory_total: int | None = None
-    memory_available: int | None = None
+    processor_available: int | None = Field(default=None, ge=0)
+    processor_assigned: int | None = Field(default=None, ge=0)
+    memory_total: int | None = Field(default=None, ge=0)
+    memory_available: int | None = Field(default=None, ge=0)
 
     @classmethod
     def failed(cls) -> WorkerResourceReading:

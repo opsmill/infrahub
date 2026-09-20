@@ -183,6 +183,52 @@ async def test_gather_aggregates_worker_and_server_resources(resource_environmen
     assert data.database.system_info.processor_assigned is None
 
 
+async def test_corrupted_reading_is_dropped_not_summed_into_a_negative_aggregate(
+    resource_environment: MemoryCache,
+) -> None:
+    """A cache entry corrupted into a negative figure is dropped, not summed into the fleet.
+
+    Before the cache-side reading validated its own figures non-negative, an entry
+    like this would parse without error, sum straight into a negative aggregate, and
+    only fail once that aggregate was used to build the final worker payload —
+    aborting the whole gather rather than costing just this one host's contribution.
+    """
+    cache = resource_environment
+
+    _seed_active(cache, "git_agent", "healthy")
+    _seed_reading(
+        cache,
+        "git_agent",
+        "healthy",
+        WorkerResourceReading(
+            host="git-host-good",
+            processor_available=4,
+            processor_assigned=None,
+            memory_total=8_000_000_000,
+            memory_available=6_000_000_000,
+        ),
+    )
+
+    _seed_active(cache, "git_agent", "corrupted")
+    # Written as raw JSON, bypassing WorkerResourceReading's own validation, the way a
+    # value actually corrupted or stale in the cache would arrive.
+    cache.storage["workers:resources:git_agent:worker:corrupted"] = (
+        '{"host": "git-host-bad", "processor_available": -4, "processor_assigned": null, '
+        '"memory_total": 8000000000, "memory_available": 6000000000}'
+    )
+
+    gatherer = await build_anonymous_telemetry_gatherer()
+    data = await gatherer.gather()
+
+    # Both workers are still counted...
+    assert data.workers.total == 2
+    assert data.workers.active == 2
+    # ...but only the healthy host's figures are summed into the resource block.
+    assert data.workers.processor_available == 4
+    assert data.workers.memory_total == 8_000_000_000
+    assert data.workers.memory_available == 6_000_000_000
+
+
 async def test_payload_additions_are_backward_compatible(resource_environment: MemoryCache) -> None:
     """The resource additions are purely additive: the version and prior fields are unchanged."""
     # The payload version is deliberately not bumped this phase.
