@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 import psutil
 import pytest
 
-from infrahub.telemetry.resources import ProcessResources
+from infrahub.telemetry.resources import ProcessResources, _usable_processors
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -86,10 +86,19 @@ CPU_QUOTA_CASES = [
 
 
 def _usable_cores(assigned: int | None) -> int:
-    """The host's logical count, capped by the quota when one is enforced."""
+    """The host's logical count, capped by the quota and by this test process's real CPU affinity.
+
+    Mirrors the production cap exactly (including the real, ambient affinity reading) so these
+    fixture-driven cases hold whether or not the machine running them enforces a cpuset restriction.
+    """
     host_count = psutil.cpu_count(logical=True)
     assert host_count is not None
-    return host_count if assigned is None else min(host_count, assigned)
+    try:
+        affinity_count: int | None = len(psutil.Process().cpu_affinity())
+    except (AttributeError, psutil.Error):
+        affinity_count = None
+    candidates = [value for value in (host_count, assigned, affinity_count) if value is not None]
+    return min(candidates)
 
 
 @pytest.mark.parametrize("case", CPU_QUOTA_CASES, ids=[case.name for case in CPU_QUOTA_CASES])
@@ -108,6 +117,70 @@ def test_processor_available_is_the_host_count_capped_by_the_quota(case: CpuQuot
     reading = ProcessResources(cgroup_root=tmp_path).read()
 
     assert reading.processor_available == _usable_cores(case.expected_assigned)
+
+
+@dataclass
+class UsableProcessorsCase:
+    name: str
+    host_count: int | None
+    quota_cores: int | None
+    affinity_count: int | None
+    expected: int | None
+
+
+USABLE_PROCESSORS_CASES = [
+    UsableProcessorsCase(
+        name="affinity_narrower_than_host_and_quota",
+        host_count=18,
+        quota_cores=None,
+        affinity_count=2,
+        expected=2,
+    ),
+    UsableProcessorsCase(
+        name="quota_narrower_than_affinity",
+        host_count=18,
+        quota_cores=4,
+        affinity_count=8,
+        expected=4,
+    ),
+    UsableProcessorsCase(
+        name="affinity_unreadable_falls_back_to_quota",
+        host_count=18,
+        quota_cores=4,
+        affinity_count=None,
+        expected=4,
+    ),
+    UsableProcessorsCase(
+        name="nothing_restricts_reports_the_host_count",
+        host_count=18,
+        quota_cores=None,
+        affinity_count=None,
+        expected=18,
+    ),
+    UsableProcessorsCase(
+        name="only_affinity_known",
+        host_count=None,
+        quota_cores=None,
+        affinity_count=3,
+        expected=3,
+    ),
+    UsableProcessorsCase(
+        name="nothing_known",
+        host_count=None,
+        quota_cores=None,
+        affinity_count=None,
+        expected=None,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", USABLE_PROCESSORS_CASES, ids=[case.name for case in USABLE_PROCESSORS_CASES])
+def test_usable_processors_caps_by_the_tightest_known_limit(case: UsableProcessorsCase) -> None:
+    result = _usable_processors(
+        host_count=case.host_count, quota_cores=case.quota_cores, affinity_count=case.affinity_count
+    )
+
+    assert result == case.expected
 
 
 def test_single_core_quota_reports_one_usable_processor(tmp_path: Path) -> None:

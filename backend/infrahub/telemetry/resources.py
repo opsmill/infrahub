@@ -1,8 +1,10 @@
 """Read this process's CPU and memory allocation and aggregate it across a fleet.
 
 Each process reports the logical CPUs it can use — the host's count capped by
-the CPU quota its container control group enforces — that quota itself (``None``
-when nothing is enforced), and its memory capacity and free memory. The cap is
+the CPU quota its container control group enforces and by the process's own
+CPU-affinity mask (narrower under a ``cpuset`` restriction, which pins specific
+CPU IDs without necessarily setting a quota) — that quota itself (``None`` when
+nothing is enforced), and its memory capacity and free memory. The quota cap is
 the rule the JVM applies when it reports the database's processors, so the
 figure means the same thing for every component. The process's own control
 group is resolved from ``/proc/self/cgroup`` and every level up to the root is
@@ -17,9 +19,10 @@ and cannot be reported.
 
 The host identifier, the resolved control-group path and the host's logical
 CPU count cannot change without a container restart and are read once and
-cached. The enforced CPU quota and the memory capacity can change while the
-process runs — a live quota update, an in-place pod resize, a systemd unit
-reload — so, like free memory, they are re-read on every call.
+cached. The enforced CPU quota, the CPU-affinity mask and the memory capacity
+can change while the process runs — a live quota update, a cpuset reassignment,
+an in-place pod resize, a systemd unit reload — so, like free memory, they are
+re-read on every call.
 
 Aggregation collapses the several processes of one container into a single
 contribution (they share a host and a control group, so their readings are
@@ -195,17 +198,29 @@ def _quota_to_cores(quota: int, period: int) -> int | None:
     return math.ceil(quota / period)
 
 
-def _usable_processors(host_count: int | None, quota_cores: int | None) -> int | None:
-    """The logical CPUs the process can use: the host's count capped by the enforced quota.
+def _usable_processors(host_count: int | None, quota_cores: int | None, affinity_count: int | None) -> int | None:
+    """The logical CPUs the process can use: the host's count capped by the quota and CPU affinity.
 
-    A quota above the host's count grants nothing extra, so the host figure stands;
-    without a quota, or with no host figure to cap, whichever is known is returned.
+    Each cap tightens the figure only when it is known and lower than the others already
+    considered; an unknown cap (``None`` — no quota enforced, or affinity unreadable) grants
+    nothing extra. ``None`` throughout means no figure is known at all.
     """
-    if host_count is None:
-        return quota_cores
-    if quota_cores is None:
-        return host_count
-    return min(host_count, quota_cores)
+    knowns = [value for value in (host_count, quota_cores, affinity_count) if value is not None]
+    return min(knowns) if knowns else None
+
+
+def _affinity_processor_count() -> int | None:
+    """CPUs in this process's scheduling-affinity mask, or ``None`` where it cannot be read.
+
+    A ``cpuset`` restriction (for example ``docker run --cpuset-cpus``) pins the process to
+    specific CPU IDs without necessarily setting a CPU-time quota, so this catches a restriction
+    the quota cap alone would miss. Unsupported on macOS and other platforms without a
+    ``Process.cpu_affinity`` implementation, which is reported the same as any other unknown cap.
+    """
+    try:
+        return len(psutil.Process().cpu_affinity())
+    except (AttributeError, psutil.Error):
+        return None
 
 
 def _own_cgroup_dirs(cgroup_root: Path, proc_cgroup: Path) -> list[Path]:
@@ -418,7 +433,9 @@ class ProcessResources:
         try:
             processor_assigned = _read_cgroup_cpu_quota(identity.cgroup_dirs)
             processor_available = _usable_processors(
-                host_count=identity.host_processor_count, quota_cores=processor_assigned
+                host_count=identity.host_processor_count,
+                quota_cores=processor_assigned,
+                affinity_count=_affinity_processor_count(),
             )
         except _CgroupLimitUnreadableError as exc:
             # The quota at one level is unknown, so the most-restrictive-level-wins
