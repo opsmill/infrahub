@@ -83,9 +83,9 @@ RENDER_CASES = [
             "memory.max=536870912",
         ],
         expected_absent=[
-            "No CPU limit is enforced",
-            "No memory limit is enforced",
-            "null (no enforced CPU limit)",
+            "no confirmed CPU limit",
+            "no confirmed memory limit",
+            "null (unbounded / unknown)",
         ],
     ),
     RenderCase(
@@ -94,12 +94,12 @@ RENDER_CASES = [
         expected_present=[
             "processor_available",
             "8",
-            "null (no enforced CPU limit)",
+            "null (unbounded / unknown)",
             "17179869184 (16.00 GiB)",
             "8589934592 (8.00 GiB)",
             "worker-b",
-            "No CPU limit is enforced on this process",
-            "No memory limit is enforced on this process",
+            "processor_available reflects no confirmed CPU limit",
+            "memory_total reflects no confirmed memory limit",
             "unreadable",
         ],
         expected_absent=[],

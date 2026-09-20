@@ -31,7 +31,7 @@ def _render(diagnostics: ResourceDiagnostics, console: Console) -> None:
     reported.add_row("processor_available", str(reading.processor_available))
     reported.add_row(
         "processor_assigned",
-        "null (no enforced CPU limit)" if reading.processor_assigned is None else str(reading.processor_assigned),
+        "null (unbounded / unknown)" if reading.processor_assigned is None else str(reading.processor_assigned),
     )
     reported.add_row("memory_total", _format_bytes(reading.memory_total))
     reported.add_row("memory_available", _format_bytes(reading.memory_available))
@@ -46,13 +46,15 @@ def _render(diagnostics: ResourceDiagnostics, console: Console) -> None:
 
     if reading.processor_assigned is None:
         console.print(
-            "[yellow]No CPU limit is enforced on this process, so processor_available is the host's "
-            "logical count rather than an allocation.[/yellow]"
+            "[yellow]processor_available reflects no confirmed CPU limit — this could mean none is "
+            "enforced, or the read failed; check the 'Resolved cgroup levels' table below for "
+            "evidence.[/yellow]"
         )
     if diagnostics.memory_limit is None:
         console.print(
-            "[yellow]No memory limit is enforced on this process, so memory_total is host capacity "
-            "rather than an allocation.[/yellow]"
+            "[yellow]memory_total reflects no confirmed memory limit — this could mean none is "
+            "enforced, or the read failed; check the 'Resolved cgroup levels' table below for "
+            "evidence.[/yellow]"
         )
 
     environment = Table(title="Environment", show_header=False, title_justify="left")
