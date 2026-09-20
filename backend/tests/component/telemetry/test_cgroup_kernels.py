@@ -10,6 +10,9 @@ resolution fails here rather than in a deployment.
 
 Requires a Docker daemon and a Linux kernel with cgroup v2. cgroup v1 layouts are
 covered by the unit fixtures; no current runner exposes a v1 hierarchy.
+
+Also requires network access: the probe image build pulls a base image and installs
+its packages, so this suite cannot run fully offline.
 """
 
 from __future__ import annotations

@@ -4,9 +4,9 @@ Each process reports the logical CPUs it can use — the host's count capped by
 the CPU quota its container control group enforces and by the process's own
 CPU-affinity mask (narrower under a ``cpuset`` restriction, which pins specific
 CPU IDs without necessarily setting a quota) — that quota itself (``None`` when
-nothing is enforced), and its memory capacity and free memory. The quota cap is
-the rule the JVM applies when it reports the database's processors, so the
-figure means the same thing for every component. The process's own control
+nothing is enforced), and its memory capacity and free memory. The quota cap
+reflects the CPU allocation actually enforced on the process, so the figure is
+directly comparable across every component. The process's own control
 group is resolved from ``/proc/self/cgroup`` and every level up to the root is
 consulted, because a limit may be enforced on an ancestor — under a private
 cgroup namespace (the modern container default) that path collapses to the
@@ -45,9 +45,9 @@ from pydantic import BaseModel
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-# Stdlib logging, not ``infrahub.log``: this module is also imported standalone
-# (bind-mounted into a bare probe image with no ``infrahub`` distribution) by the
-# real-kernel component tests, so it cannot depend on the package's own logging setup.
+# Stdlib logging, not ``infrahub.log``: this module can be imported standalone,
+# outside the full ``infrahub`` distribution, so it cannot depend on the
+# package's own logging setup.
 log = logging.getLogger(__name__)
 
 CGROUP_ROOT = Path("/sys/fs/cgroup")

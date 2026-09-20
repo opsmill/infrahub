@@ -33,7 +33,7 @@ Single backend project. Source under `backend/infrahub/`, tests under `backend/t
 
 - [x] T002 Extend the payload models in `backend/infrahub/telemetry/models.py`: add `processor_assigned: int | None = None` to `TelemetryDatabaseSystemInfoData`; add `processor_available`/`processor_assigned`/`memory_total`/`memory_available` (`int | None = None`) to `TelemetryWorkerData`; add a new `TelemetryServerData` (same four fields) and a `server: TelemetryServerData` field (default factory) on `TelemetryData` — additive only, no existing field renamed/removed/retyped
 - [x] T003 [P] Unit test the reader in `backend/tests/unit/telemetry/test_resources.py`: cgroup v2 limited/unlimited (`cpu.max`), v1 limited/unlimited (`cpu.cfs_quota_us`/`cfs_period_us`, `-1` sentinel, memory near-`INT64_MAX` sentinel), fractional quota rounds up, missing files → `None`, `processor_available` logical and capped by the quota (the host's `psutil.cpu_count(logical=True)` when unbounded). Write against fixture files; assert before implementation
-- [x] T004 Implement the reader in `backend/infrahub/telemetry/resources.py`: logical cores (`psutil.cpu_count(logical=True)`), cgroup CPU quota (v2 `cpu.max` then v1, unlimited → `None`, round up), host memory (`psutil.virtual_memory()` total + available), cgroup memory (`memory.max` → `memory_total`, `memory.max − memory.current` → `memory_available`), host id (`socket.gethostname()`); expose a per-process `ProcessResources` reader that **reads the static fields once and caches them, refreshing only `memory_available`** (research D12)
+- [x] T004 Implement the reader in `backend/infrahub/telemetry/resources.py`: logical cores (`psutil.cpu_count(logical=True)`), cgroup CPU quota (v2 `cpu.max` then v1, unlimited → `None`, round up), host memory (`psutil.virtual_memory()` total + available), cgroup memory (`memory.max` → `memory_total`, `memory.max − memory.current` → `memory_available`), host id (`socket.gethostname()`); expose a per-process `ProcessResources` reader that **caches the host identity, resolved cgroup path, and host's logical CPU count once, and re-reads the CPU quota, `processor_available`/`processor_assigned`, `memory_total`, and `memory_available` on every call** (research D12)
 - [x] T005 [P] Unit test aggregation in `backend/tests/unit/telemetry/test_aggregation.py`: dedup identical readings by host, sum across distinct hosts, undercount when a host is missing, no host reported a field → `None`, any contributing host unbounded → that field `None` (research D8/D9). The aggregate returns only the four fields — the worker count stays the existing `workers.total`/`active`, not part of the aggregate. Assert before implementation
 - [x] T006 Implement the aggregation function in `backend/infrahub/telemetry/resources.py`: `aggregate(readings) -> ` the four fields (`processor_available`/`processor_assigned`/`memory_total`/`memory_available`), applying the dedup/sum/null rules — a pure function over the per-process readings, whose result is applied to the new `server` block and to the extended `workers` fields (depends on T005)
 - [x] T007 Extend the heartbeat in `backend/infrahub/services/component.py`: at `refresh_heartbeat`, write `workers:resources:{component}:worker:{WORKER_IDENTITY}` with this process's reading (static cached, `memory_available` refreshed), TTL `KVTTL.FIFTEEN`; on exhausted retries, log a warning carrying the component type + worker identity + failing source before writing `null` (FR-005 traceability); add a **new** `read_worker_resources()` method that scans `workers:resources:*` and returns readings grouped by component + host. **Do NOT modify `list_workers` / `WorkerInfo`** — existing `workers.total`/`active` logic stays untouched (critique E1)
@@ -86,8 +86,8 @@ Single backend project. Source under `backend/infrahub/`, tests under `backend/t
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [x] T016 [P] Regression test in `backend/tests/component/telemetry/test_resources.py`: adding the `workers:resources:*` heartbeat key leaves `workers.total` and `workers.active` unchanged versus a baseline without it (critique E1)
-- [x] T017 [P] Add a Towncrier changelog fragment `changelog/+resource-telemetry.added.md` describing the new per-component `resources` block (Constitution: user-facing telemetry change)
-- [x] T018 [P] Update the telemetry FAQ in `docs/docs/faq/faq.mdx` to mention the per-component cores/RAM (`resources`) block
+- [x] T017 [P] Add a Towncrier changelog fragment `changelog/+resource-telemetry.added.md` describing the new per-component CPU/memory fields (the extended `system_info`/`workers` blocks plus the new `server` block) (Constitution: user-facing telemetry change)
+- [x] T018 [P] Update the telemetry FAQ in `docs/docs/faq/faq.mdx` to mention the per-component cores/RAM fields (`system_info`/`workers`/`server`)
 - [x] T019 Run the quickstart validation (`uv run invoke backend.test-unit`; component tests via testcontainers) and `uv run invoke format` + `uv run invoke lint`; fix any failures
 
 ---
@@ -127,7 +127,7 @@ Task: "Unit test aggregation in backend/tests/unit/telemetry/test_aggregation.py
 ### MVP First (User Story 1)
 
 1. Phase 1 (Setup) → Phase 2 (Foundational) → Phase 3 (US1).
-2. **STOP and VALIDATE**: the snapshot carries a populated `resources` block; the tier audit is possible. This is the shippable MVP.
+2. **STOP and VALIDATE**: the snapshot carries the populated `system_info`/`workers`/`server` resource fields; the tier audit is possible. This is the shippable MVP.
 
 ### Incremental Delivery
 
