@@ -35,7 +35,6 @@ import logging
 import math
 import socket
 from dataclasses import dataclass
-from operator import itemgetter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -162,6 +161,14 @@ class _CgroupLimitUnreadableError(Exception):
         self.path: Path = path
 
 
+class _CgroupUsageUnreadableError(Exception):
+    """A cgroup usage file could not be read, so free memory under its limit is unknown."""
+
+    def __init__(self, path: Path) -> None:
+        super().__init__(str(path))
+        self.path: Path = path
+
+
 def _read_cgroup_limit_file(path: Path) -> str | None:
     """Read one cgroup limit file, or ``None`` when nothing is configured at this level.
 
@@ -217,12 +224,13 @@ def _affinity_processor_count() -> int | None:
 
     A ``cpuset`` restriction (for example ``docker run --cpuset-cpus``) pins the process to
     specific CPU IDs without necessarily setting a CPU-time quota, so this catches a restriction
-    the quota cap alone would miss. Unsupported on macOS and other platforms without a
-    ``Process.cpu_affinity`` implementation, which is reported the same as any other unknown cap.
+    the quota cap alone would miss. Platforms without a ``Process.cpu_affinity`` implementation
+    raise ``NotImplementedError`` rather than omitting the method, so an unsupported platform is
+    reported the same as any other unknown cap instead of failing the whole reading.
     """
     try:
         return len(psutil.Process().cpu_affinity())
-    except (AttributeError, psutil.Error):
+    except (AttributeError, NotImplementedError, OSError, psutil.Error):
         return None
 
 
@@ -301,16 +309,14 @@ def _read_cgroup_cpu_quota(cgroup_dirs: list[Path]) -> int | None:
     return _quota_to_cores(quota=quota, period=period)
 
 
-def _read_cgroup_memory_limit(cgroup_dirs: list[Path]) -> tuple[int | None, Path | None]:
-    """Return ``(limit_bytes, current_usage_path)`` for the memory control group.
+def _read_cgroup_memory_levels(cgroup_dirs: list[Path]) -> list[tuple[int, Path]]:
+    """Return every enforced memory limit with the usage file it is charged against, leaf first.
 
-    Every level of the process's cgroup path may carry a v2 ``memory.max``
-    ("max" = unbounded); the effective limit is the smallest, and usage is read
-    from that same level — an ancestor limit is shared with siblings, so free
-    memory within it is the limit minus the whole subtree's usage. A hierarchy
-    with no readable ``memory.max`` at any level is treated as cgroup v1, whose
-    ``memory.limit_in_bytes`` reports a near-``INT64_MAX`` sentinel when
-    unbounded. ``(None, None)`` means no limit is enforced anywhere.
+    Each level of the process's cgroup path may carry a v2 ``memory.max``
+    ("max" = unbounded). A hierarchy with no readable ``memory.max`` at any level
+    is treated as cgroup v1, whose ``memory.limit_in_bytes`` reports a
+    near-``INT64_MAX`` sentinel when unbounded. An empty list means no limit is
+    enforced anywhere.
 
     Raises:
         _CgroupLimitUnreadableError: A limit file exists but cannot be read, so
@@ -318,7 +324,7 @@ def _read_cgroup_memory_limit(cgroup_dirs: list[Path]) -> tuple[int | None, Path
             less restrictive one.
 
     """
-    limits: list[tuple[int, Path]] = []
+    levels: list[tuple[int, Path]] = []
     v2_seen = False
     for directory in cgroup_dirs:
         raw = _read_cgroup_limit_file(directory / "memory.max")
@@ -328,20 +334,42 @@ def _read_cgroup_memory_limit(cgroup_dirs: list[Path]) -> tuple[int | None, Path
         if raw == "max":
             continue
         try:
-            limits.append((int(raw), directory))
+            levels.append((int(raw), directory / "memory.current"))
         except ValueError:
             continue
     if v2_seen:
-        if not limits:
-            return None, None
-        limit, directory = min(limits, key=itemgetter(0))
-        return limit, directory / "memory.current"
+        return levels
 
     root = cgroup_dirs[-1]
     v1_limit = _read_cgroup_int_limit(root / "memory" / "memory.limit_in_bytes")
     if v1_limit is None or v1_limit >= _CGROUP_MEMORY_UNLIMITED_THRESHOLD:
-        return None, None
-    return v1_limit, root / "memory" / "memory.usage_in_bytes"
+        return []
+    return [(v1_limit, root / "memory" / "memory.usage_in_bytes")]
+
+
+def _memory_headroom(levels: list[tuple[int, Path]]) -> int:
+    """Bytes free before the tightest level of the hierarchy binds.
+
+    A level's limit is charged against its whole subtree, so an ancestor that is
+    nearly full leaves less headroom than a roomier leaf suggests even when the
+    leaf carries the smaller limit; the binding constraint is the smallest
+    remainder, not the remainder under the smallest limit. A limit already
+    exceeded by its usage (a shrink not yet reclaimed or OOM-killed) contributes
+    no headroom rather than negative bytes.
+
+    Raises:
+        _CgroupUsageUnreadableError: A usage file could not be read, so the
+            headroom under that level — and therefore the effective figure — is
+            unknown.
+
+    """
+    headroom = []
+    for limit, usage_path in levels:
+        current = _read_int_file(usage_path)
+        if current is None:
+            raise _CgroupUsageUnreadableError(usage_path)
+        headroom.append(max(0, limit - current))
+    return min(headroom)
 
 
 def _host_memory_total() -> int | None:
@@ -424,16 +452,6 @@ class ProcessResources:
             self._identity = self._read_identity()
         return self._identity
 
-    def _read_memory_available(self, memory_limit: int | None, memory_current_path: Path | None) -> int | None:
-        if memory_limit is not None and memory_current_path is not None:
-            current = _read_int_file(memory_current_path)
-            if current is None:
-                return None
-            # A live limit lowered below current usage (a shrink not yet reclaimed or
-            # OOM-killed) would otherwise report negative bytes available.
-            return max(0, memory_limit - current)
-        return _host_memory_available()
-
     def _read_dynamic(self, identity: _ProcessIdentity) -> _DynamicResources:
         try:
             processor_assigned = _read_cgroup_cpu_quota(identity.cgroup_dirs)
@@ -455,29 +473,54 @@ class ProcessResources:
             processor_available = None
 
         try:
-            memory_limit, memory_current_path = _read_cgroup_memory_limit(identity.cgroup_dirs)
+            memory_levels = _read_cgroup_memory_levels(identity.cgroup_dirs)
+            memory_limit = min(limit for limit, _ in memory_levels) if memory_levels else None
             memory_total = memory_limit if memory_limit is not None else _host_memory_total()
-            memory_available = self._read_memory_available(
-                memory_limit=memory_limit, memory_current_path=memory_current_path
-            )
         except _CgroupLimitUnreadableError as exc:
             log.warning(
                 "Cgroup memory limit file %s exists but could not be read; reporting memory as unknown (host=%s)",
                 exc.path,
                 identity.host,
             )
-            memory_limit = None
-            memory_total = None
-            memory_available = None
+            return _DynamicResources(
+                processor_available=processor_available,
+                processor_assigned=processor_assigned,
+                memory_total=None,
+                memory_limit=None,
+                memory_available=None,
+            )
         except RESOURCE_READ_FAILURES as exc:
-            # No cgroup limit applies, so these figures fall back to psutil's whole-host
-            # read; a failure there is a host-level read failure, not a missing cgroup limit.
+            # No cgroup limit applies, so capacity falls back to psutil's whole-host read;
+            # a failure there is a host-level read failure, not a missing cgroup limit.
             log.warning(
-                "Host memory read failed; reporting memory as unknown (host=%s): %s",
+                "Host memory capacity read failed; reporting memory as unknown (host=%s): %s",
                 identity.host,
                 exc,
             )
-            memory_total = None
+            return _DynamicResources(
+                processor_available=processor_available,
+                processor_assigned=processor_assigned,
+                memory_total=None,
+                memory_limit=None,
+                memory_available=None,
+            )
+
+        # Free memory is read separately so its failure leaves the capacity figure standing.
+        try:
+            memory_available = _memory_headroom(memory_levels) if memory_levels else _host_memory_available()
+        except _CgroupUsageUnreadableError as exc:
+            log.warning(
+                "Cgroup usage file %s could not be read; reporting free memory as unknown (host=%s)",
+                exc.path,
+                identity.host,
+            )
+            memory_available = None
+        except RESOURCE_READ_FAILURES as exc:
+            log.warning(
+                "Host free-memory read failed; reporting free memory as unknown (host=%s): %s",
+                identity.host,
+                exc,
+            )
             memory_available = None
 
         return _DynamicResources(
