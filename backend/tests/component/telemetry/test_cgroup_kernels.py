@@ -91,6 +91,9 @@ class KernelCase:
     expected_memory_total: int | None
     """Bytes, or ``None`` when the reading should fall back to the whole host."""
 
+    expected_usable: int | None = None
+    """Cores the quota lets the process occupy, when a fractional quota makes that differ."""
+
     expected_affinity: int | None = None
     """CPUs pinned by a ``cpuset`` restriction, applied as a further cap independent of the quota."""
 
@@ -102,12 +105,14 @@ KERNEL_CASES = [
         name="private_namespace_reads_container_limits",
         docker_args=["--cpus=1.5", "--memory=512m"],
         expected_assigned=2,
+        expected_usable=1,
         expected_memory_total=512 * _MEBIBYTE,
     ),
     KernelCase(
         name="host_namespace_reads_container_limits",
         docker_args=["--cgroupns=host", "--cpus=1.5", "--memory=512m"],
         expected_assigned=2,
+        expected_usable=1,
         expected_memory_total=512 * _MEBIBYTE,
     ),
     KernelCase(
@@ -190,11 +195,12 @@ def test_reader_against_real_cgroups(case: KernelCase, probe_image: str) -> None
 
     reading = json.loads(result.stdout.strip().splitlines()[-1])
 
-    # 'available' is what the process can use, the host's count capped by the quota and by
-    # CPU affinity; the JVM reports the database the same way, so the figures are comparable
-    # across components.
+    # 'available' is what the process can use: the host's count capped by the quota (rounded
+    # down, since a fraction of a core cannot keep a whole one busy) and by CPU affinity,
+    # while 'assigned' rounds the same quota up to the cap that is enforced.
     host_count = reading["host_processor_available"]
-    expected_available = host_count if case.expected_assigned is None else min(host_count, case.expected_assigned)
+    quota_cap = case.expected_usable if case.expected_usable is not None else case.expected_assigned
+    expected_available = host_count if quota_cap is None else min(host_count, quota_cap)
     if case.expected_affinity is not None:
         assert reading["affinity_available"] == case.expected_affinity
         expected_available = min(expected_available, case.expected_affinity)

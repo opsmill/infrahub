@@ -19,7 +19,12 @@ from tempfile import TemporaryDirectory
 import psutil
 import pytest
 
-from infrahub.telemetry.resources import ProcessResources, _usable_processors
+from infrahub.telemetry.resources import (
+    ProcessResources,
+    _enforced_cores,
+    _usable_cores_under_quota,
+    _usable_processors,
+)
 
 
 def _write_cgroup_files(cgroup_root: Path, files: dict[str, str]) -> None:
@@ -34,6 +39,9 @@ class CpuQuotaCase:
     name: str
     files: dict[str, str]
     expected_assigned: int | None
+
+    expected_quota_cap: int | None = None
+    """Cores the quota lets the process occupy, when that differs from the enforced figure."""
 
 
 CPU_QUOTA_CASES = [
@@ -51,6 +59,7 @@ CPU_QUOTA_CASES = [
         name="v2_fractional_rounds_up",
         files={"cpu.max": "150000 100000"},
         expected_assigned=2,
+        expected_quota_cap=1,
     ),
     CpuQuotaCase(
         name="v1_limited",
@@ -66,6 +75,7 @@ CPU_QUOTA_CASES = [
         name="v1_fractional_rounds_up",
         files={"cpu/cpu.cfs_quota_us": "250000", "cpu/cpu.cfs_period_us": "100000"},
         expected_assigned=3,
+        expected_quota_cap=2,
     ),
     CpuQuotaCase(
         name="v2_single_core",
@@ -123,7 +133,16 @@ def test_processor_available_is_the_host_count_capped_by_the_quota(case: CpuQuot
 
     reading = ProcessResources(cgroup_root=tmp_path).read()
 
-    assert reading.processor_available == _usable_cores(case.expected_assigned)
+    assert reading.processor_available == _usable_cores(case.expected_quota_cap or case.expected_assigned)
+
+
+def test_a_fractional_quota_rounds_the_two_cpu_figures_opposite_ways() -> None:
+    # The enforced cap rounds up so an audit never understates what is allowed; the
+    # usable figure rounds down, since half a core cannot keep a whole one busy.
+    assert _enforced_cores(1.5) == 2
+    assert _usable_cores_under_quota(1.5) == 1
+    # A sub-core quota still buys some CPU, so the usable figure floors at one.
+    assert _usable_cores_under_quota(0.25) == 1
 
 
 @dataclass
