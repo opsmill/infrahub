@@ -300,8 +300,8 @@ async def test_branch_that_never_imported_inherits_from_its_origin_not_the_defau
 ) -> None:
     """The fork-point window follows `origin_branch`, which need not be the default branch.
 
-    A read keyed on the default branch instead would answer `MAIN_COMMIT` here, and would be wrong on
-    any deployment whose branches do not all fork from it.
+    A read keyed on the default branch instead would answer `LATER_MAIN_COMMIT` here, and would be
+    wrong on any deployment whose branches do not all fork from it.
     """
     origin = await create_branch(branch_name="origin-branch", db=db)
     await _set_commit(db=db, repository=repository, branch=origin, commit=ORIGIN_COMMIT)
