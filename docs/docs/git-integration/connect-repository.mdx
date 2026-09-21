@@ -233,7 +233,7 @@ When you connect a `Repository`, Infrahub lists the remote's branches and reject
 Branch 'main' does not exist on the remote repository My Git Repository; the remote's default branch is 'master'.
 ```
 
-When the remote is empty or has no default branch, the message ends with `the remote is empty or has no default branch.` instead.
+When the remote does not report a default branch Infrahub can see - it is empty, its `HEAD` is detached, or its default branch is hidden from the branch listing - the message ends with `the remote is empty or has no default branch.` instead.
 
 Set `default_branch` to a branch that exists on the remote and connect again. It does not have to be the remote's default branch: any existing branch is accepted.
 
@@ -253,7 +253,7 @@ After creation, your new repository should appear under **Integrations > Git Rep
 
 The `default_branch` of a `Repository` can be edited after the repository is connected, but Infrahub treats that edit as a plain attribute update. Be aware of the following limitations:
 
-- The new value is not validated against the remote. If the branch does not exist there, the next Git operation fails instead of the edit being rejected.
+- The new value is not validated against the remote. If the branch does not exist there, the edit is still accepted, and a later operation that needs that branch fails instead. Operations that do not need it, including a synchronization that an existing clone can serve, keep working, so the mistake can stay hidden for a while.
 - Nothing re-clones the repository or reconciles the branches that were already imported under the previous mapping.
 - The new value is served from cache for a short interval, so operations started immediately after the edit may still use the previous one.
 

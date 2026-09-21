@@ -36,7 +36,7 @@ async def connectivity(message: messages.GitRepositoryConnectivity) -> None:
                 location=message.repository_location,
             )
     except RepositoryError as exc:
-        log.exception("Repository connectivity check failed", repository=message.repository_name)
+        log.exception("Repository connectivity or branch check failed", repository=message.repository_name)
         response_data.success = False
         response_data.message = exc.message
         response_data.operational_status = {
