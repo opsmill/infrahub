@@ -1376,9 +1376,9 @@ WITH node_id, head(collect(node_kind)) AS node_kind
 class NodeListGetDisplayLabelQuery(Query):
     """Read the display label stored on a list of nodes without instantiating the nodes.
 
-    The stored ``display_label`` attribute is what ``Node.get_display_label`` returns when it is
-    populated, so this is the cheap way to label many nodes at once. A node that is not active on
-    the branch, or that has no display label stored, is absent from the result.
+    The stored ``display_label`` attribute is the label the node reported at its last save, so
+    reading it directly avoids instantiating the nodes. A node that is not active on the branch,
+    or that has no display label stored, is absent from the result.
     """
 
     name = "node_list_get_display_label"
@@ -1445,8 +1445,7 @@ class NodeListGetDisplayLabelQuery(Query):
 
         An empty stored label, including the ``NULL_VALUE`` sentinel a kind without a template
         stores, is left out on purpose: whether it should read as an empty string or as the node's
-        default representation depends on the node's schema, which ``Node.get_display_label`` knows
-        and this query does not.
+        default representation depends on the node's schema, which this query does not read.
         """
         display_label_map: dict[str, str] = {}
         for result in self.get_results():
