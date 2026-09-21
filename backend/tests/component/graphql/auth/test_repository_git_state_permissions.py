@@ -7,7 +7,7 @@ import pytest
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.core.account import ObjectPermission
-from infrahub.core.constants import InfrahubKind, PermissionAction, PermissionDecision
+from infrahub.core.constants import InfrahubKind, PermissionAction, PermissionDecision, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.services import InfrahubServices
@@ -62,8 +62,15 @@ async def repository(db: InfrahubDatabase, default_branch: Branch, register_core
 @pytest.fixture
 async def read_only_repository(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> Node:
     repo = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
+    # Active, so that a permission outcome is what these tests actually measure: a repository whose
+    # first import has not completed is refused before permissions ever come into it.
     await repo.new(
-        db=db, name="permissioned-read-only-repo", location="/tmp/permissioned-ro-repo", ref="main", commit=None
+        db=db,
+        name="permissioned-read-only-repo",
+        location="/tmp/permissioned-ro-repo",
+        ref="main",
+        commit=None,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
     )
     await repo.save(db=db)
     return repo
