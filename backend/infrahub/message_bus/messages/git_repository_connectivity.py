@@ -12,6 +12,9 @@ class GitRepositoryConnectivity(InfrahubMessage):
 
     repository_name: str = Field(..., description="The name of the repository")
     repository_location: str = Field(..., description="The location of repository")
+    default_branch: str | None = Field(
+        default=None, description="The branch that must exist on the remote; when unset, only connectivity is checked"
+    )
 
 
 class GitRepositoryConnectivityResponseData(InfrahubResponseData):

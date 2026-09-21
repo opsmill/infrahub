@@ -61,7 +61,7 @@ branch is not `main`, an empty remote, and a remote with branches but a detached
 
 ```python
 def ensure_branch_exists(
-    refs: RemoteRefs, branch_name: str, repository_name: str, location: str
+    refs: RemoteRefs, *, branch_name: str, repository_name: str, location: str
 ) -> None
 ```
 
@@ -99,7 +99,7 @@ configuration and produces no error, warning or log line.
 1. `refs = list_remote_refs(name=..., url=...)`; a `RepositoryError` here is
    mapped exactly as today (`ERROR_CONNECTION`, `ERROR_CRED`, else `ERROR`).
 2. If `message.default_branch` is set,
-   `ensure_branch_exists(refs, message.default_branch, message.repository_name, message.repository_location)`;
+   `ensure_branch_exists(refs, branch_name=message.default_branch, repository_name=message.repository_name, location=message.repository_location)`;
    `RepositoryInvalidBranchError` is mapped to `success=False`, `message=exc.message`,
    `operational_status=ERROR`. The fourth argument is the same `repository_location` passed to
    `list_remote_refs` in step 1.
