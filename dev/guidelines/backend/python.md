@@ -281,7 +281,7 @@ a comment at all is in `.agents/rules/code-doc-style.md`.
 ```python
 # ✅ Good - one line; the signature already documents the parameters
 async def create_branch(db: InfrahubDatabase, name: str, description: str | None = None) -> Branch:
-    """Create a branch, raising BranchExistsError when the name is already taken."""
+    """Create a branch, raising ValidationError when the name is already taken."""
 
 
 # ✅ Good - a section for the one parameter the name does not explain
@@ -307,7 +307,7 @@ async def create_branch(db: InfrahubDatabase, name: str, description: str | None
         The newly created Branch object.
 
     Raises:
-        BranchExistsError: If branch name already exists.
+        ValidationError: If branch name already exists.
     """
 ```
 
