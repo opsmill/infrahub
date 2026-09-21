@@ -33,8 +33,11 @@ which remote branches get imported, how many queries a sync run costs, or why a 
 per-branch view the sync flow and the Python computed-attribute trigger gather both read. It issues
 two kinds of query:
 
-- One `NodeManager.query` on the default branch reads the repository nodes. Every field on the node
-  therefore holds the default branch's value, `commit` and `internal_status` included: the
+- One `NodeManager.query` on the default branch reads the repository nodes. That is one call but
+  several queries — `node_get_list` to select the nodes, then the info and attribute reads behind
+  `get_many` — so only the *number of branches* stops driving the query count, not the node read
+  itself. Every field on the node holds the default branch's value, `commit` and `internal_status`
+  included: the
   branch-agnostic `location` and `default_branch`, which no branch can hold its own value for, and
   the branch-aware `ref`, whose per-branch value is deliberately not read. The node is handed to
   callers as `RepositoryData.repository` and is never rewritten with a per-branch value, so
@@ -46,21 +49,35 @@ two kinds of query:
   and the per-branch values live only in `RepositoryData.branches` and `RepositoryData.branch_info`.
 
 `REPOSITORY_BRANCH_READ_CHUNK_SIZE` is 100 and is defined in `backend/infrahub/git/constants.py`. It
-is not a setting, so for N non-global branches the read costs `1 + ceil(N / 100)` queries rather than
-one query per branch. When no repository exists the function returns after the node query, so the
-cost is a single query.
+is not a setting, so for N non-global branches the read costs `ceil(N / 100)` per-branch queries on
+top of the node read, rather than one query per branch. When no repository exists the function
+returns after the node read and issues no per-branch query at all.
 
-The `RepositoryBranchAttributesReader` that runs those queries is constructed once at the top of
-`get_repositories_commit_per_branch`, before the chunk loop, and reused for every chunk.
+Note that the chunk size bounds the *branch* dimension only. A chunk's result set is repositories ×
+branches-in-chunk × attributes rows, and because the underlying query sets an explicit limit it does
+not go through `database.query_size_limit` pagination — so the rows per chunk still grow with the
+number of repositories.
+
+The attribute source both callers read through is built by
+`build_repository_branch_attributes_source` in
+`backend/infrahub/core/repository_branch_status/factory.py`. Inside
+`get_repositories_commit_per_branch` it is built once, before the chunk loop, and reused for every
+chunk.
+
+Every query the read issues — the node read and each chunk — is pinned to one `Timestamp` captured
+before the first of them. Without that, a commit written between two chunks would leave the branches
+in one chunk reporting the old commit and those in the next reporting the new one for the same
+repository, which the computed-attribute gather would read as a branch diverging from the default.
 
 The global branch (`-global-`) is filtered out of the branch names before the chunk loop, so it is
 never a key of `RepositoryData.branches` or `RepositoryData.branch_info`. Callers that index those
 dictionaries by branch name must skip it themselves rather than expect an entry.
 
 `RepositoryData.branches` is typed `dict[str, str | None]`: a branch whose `commit` does not resolve
-is present with a value of `None`. A branch whose `internal_status` does not resolve is logged as a
-warning and recorded as `inactive`, the conservative choice. A failing chunk raises rather than
-being caught, so the read never returns a `RepositoryData` that silently omits branches.
+is present with a value of `None`. A branch whose `internal_status` does not resolve is recorded as
+`inactive`; the branches affected are collected and logged as one warning per repository after the
+chunk loop, rather than one per repository-and-branch pair inside it. A failing chunk raises rather
+than being caught, so the read never returns a `RepositoryData` that silently omits branches.
 
 ## Git error surfacing
 

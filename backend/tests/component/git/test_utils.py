@@ -1,4 +1,3 @@
-import math
 from collections.abc import Generator
 
 import pytest
@@ -12,7 +11,6 @@ from infrahub.core.node import Node
 from infrahub.core.query.repository import RepositoryBranchAttributesQuery
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.git.constants import REPOSITORY_BRANCH_READ_CHUNK_SIZE
 from infrahub.git.utils import get_repositories_commit_per_branch
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 
@@ -20,7 +18,10 @@ ATTRIBUTES_QUERY_NAME = RepositoryBranchAttributesQuery.name
 REPOSITORY_NODES_QUERY_NAME = "node_get_list"
 
 BRANCH_COUNT = 200
-"""Branch names the read resolves, the default branch included, so the chunk bound is exercised."""
+"""Branch names the read resolves, the default branch included: twice the chunk size of 100."""
+
+EXPECTED_ATTRIBUTES_QUERY_COUNT = 2
+"""Chunks the read splits BRANCH_COUNT branch names into."""
 
 
 @pytest.fixture(autouse=True)
@@ -250,5 +251,5 @@ async def test_get_repositories_commit_per_branch_reads_the_branches_in_chunks(
     assert set(repositories) == {"repo01", "repo02"}
     assert repositories["repo01"].branches == dict.fromkeys(branch_names, "commit01")
     assert repositories["repo02"].branches == dict.fromkeys(branch_names, "commit02")
-    assert counting_db.count_for(ATTRIBUTES_QUERY_NAME) == math.ceil(BRANCH_COUNT / REPOSITORY_BRANCH_READ_CHUNK_SIZE)
+    assert counting_db.count_for(ATTRIBUTES_QUERY_NAME) == EXPECTED_ATTRIBUTES_QUERY_COUNT
     assert counting_db.count_for(REPOSITORY_NODES_QUERY_NAME) == 1

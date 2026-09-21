@@ -1,21 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from graphene import Argument, Boolean, Field, Int, String
 
-from infrahub.core import registry
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
-from infrahub.core.repository_branch_status.reader import RepositoryBranchAttributesReader
+from infrahub.core.repository_branch_status.factory import build_repository_branch_attributes_source
 from infrahub.graphql.types.enums import InfrahubBranchStatus
 from infrahub.graphql.types.metadata import MetadataOrderInput
 from infrahub.graphql.types.repository_branch_status import InfrahubRepositoryBranchStatusType
 
 from .resolver import RepositoryBranchStatusResolver
-
-if TYPE_CHECKING:
-    from infrahub.core.repository_branch_status.interface import RepositoryBranchAttributesSource
-    from infrahub.database import InfrahubDatabase
 
 _DESCRIPTION = (
     "Status of one repository as seen from every relevant branch, one row per branch. "
@@ -25,21 +17,6 @@ _DESCRIPTION = (
     "Always reports the present: a request carrying an 'at' query parameter is rejected, because "
     "the branch list this query builds its rows from has no historical form."
 )
-
-
-def build_attribute_source(db: InfrahubDatabase) -> RepositoryBranchAttributesSource:
-    """Build the source the resolver reads the repository's per-branch attribute values from.
-
-    Args:
-        db: Database connection the source reads through.
-
-    Returns:
-        The attribute source.
-
-    """
-    return RepositoryBranchAttributesReader(
-        db=db, default_branch_name=registry.default_branch, global_branch_name=GLOBAL_BRANCH_NAME
-    )
 
 
 InfrahubRepositoryBranchStatus = Field(
@@ -69,6 +46,6 @@ InfrahubRepositoryBranchStatus = Field(
             "independent of the selected fields"
         ),
     ),
-    resolver=RepositoryBranchStatusResolver(build_source=build_attribute_source),
+    resolver=RepositoryBranchStatusResolver(build_source=build_repository_branch_attributes_source),
     description=_DESCRIPTION,
 )

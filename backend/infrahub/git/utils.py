@@ -18,7 +18,8 @@ from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.order import OrderModel
-from infrahub.core.repository_branch_status.reader import RepositoryBranchAttributesReader
+from infrahub.core.repository_branch_status.factory import build_repository_branch_attributes_source
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.log import get_logger
@@ -36,10 +37,12 @@ async def get_repositories_commit_per_branch(
 ) -> dict[str, RepositoryData]:
     """Get a list of all repositories and their commit on each branch.
 
-    The repository nodes come from one query on the default branch, so every field read off a node
+    The repository nodes come from one read on the default branch, so every field read off a node
     carries the default branch's value. `commit` and `internal_status` are additionally resolved per
-    branch, in fixed-size chunks of branch names, so the read costs one query for the nodes plus one
-    per chunk rather than one per branch. The global branch is never a key of the result.
+    branch, in fixed-size chunks of branch names, so the read costs a small fixed number of queries
+    for the nodes plus one per chunk rather than one per branch. Every query resolves at the same
+    point in time, so a write landing mid-read cannot leave one branch of a repository reporting the
+    old commit and another the new one. The global branch is never a key of the result.
 
     Args:
         db: Database connection instance.
@@ -49,13 +52,13 @@ async def get_repositories_commit_per_branch(
         One entry per repository, keyed by repository name.
 
     """
-    reader = RepositoryBranchAttributesReader(
-        db=db, default_branch_name=registry.default_branch, global_branch_name=GLOBAL_BRANCH_NAME
-    )
+    reader = build_repository_branch_attributes_source(db=db)
+    at = Timestamp()
 
     repos: list[CoreRepository | CoreReadOnlyRepository] = await NodeManager.query(
         db=db,
         branch=registry.default_branch,
+        at=at,
         fields={
             "id": None,
             "name": None,
@@ -84,11 +87,14 @@ async def get_repositories_commit_per_branch(
     repository_ids = [repository_data.repository_id for repository_data in repositories.values()]
     branch_names = [name for name in registry.branch if name != GLOBAL_BRANCH_NAME]
 
+    branches_without_internal_status: dict[str, list[str]] = defaultdict(list)
+
     for chunk in itertools.batched(branch_names, REPOSITORY_BRANCH_READ_CHUNK_SIZE):
         attributes = await reader.read(
             repository_ids=repository_ids,
             branch_names=chunk,
             attribute_names=("commit", "internal_status"),
+            at=at,
         )
         for repository_name, repository_data in repositories.items():
             for branch_name in chunk:
@@ -107,13 +113,16 @@ async def get_repositories_commit_per_branch(
                 internal_status_value = internal_status.value if internal_status is not None else None
                 if internal_status_value is None:
                     internal_status_value = RepositoryInternalStatus.INACTIVE.value
-                    log.warning(
-                        "No internal status resolved for the repository on this branch, using the fallback",
-                        repository=repository_name,
-                        branch=branch_name,
-                        fallback_internal_status=internal_status_value,
-                    )
+                    branches_without_internal_status[repository_name].append(branch_name)
                 repository_data.branch_info[branch_name] = RepositoryBranchInfo(internal_status=internal_status_value)
+
+    for repository_name, unresolved_branches in branches_without_internal_status.items():
+        log.warning(
+            "No internal status resolved for the repository on some branches, using the fallback",
+            repository=repository_name,
+            branches=unresolved_branches,
+            fallback_internal_status=RepositoryInternalStatus.INACTIVE.value,
+        )
 
     return repositories
 

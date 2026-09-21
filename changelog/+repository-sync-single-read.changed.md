@@ -1,1 +1,1 @@
-Reduced the number of database queries the repository sync runs when reading each branch's commit and internal status. The read now costs one query for the repository nodes plus one query per 100 branches, instead of one query per branch.
+Reduced the number of database queries the repository sync runs when reading each branch's commit and internal status. The read now costs a small fixed number of queries for the repository nodes plus one query per 100 branches, instead of one query per branch.
