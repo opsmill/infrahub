@@ -17,7 +17,7 @@ from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_run_logger as get_infrahub_logger
-from infrahub.services.component import InfrahubComponent
+from infrahub.services.component import COMPONENT_API_SERVER, COMPONENT_GIT_AGENT, InfrahubComponent
 from infrahub.workers.dependencies import get_component, get_database, get_http
 
 from .constants import (
@@ -209,10 +209,10 @@ class AnonymousTelemetryGatherer:
         # over distinct containers, counting a shared container once.
         resources_by_component = await safe_metric(self.component.read_worker_resources()) or {}
         workers_resources = await safe_metric(
-            aggregate_component_resources(resources_by_component.get("git_agent", {}))
+            aggregate_component_resources(resources_by_component.get(COMPONENT_GIT_AGENT, {}))
         )
         server_resources = await safe_metric(
-            aggregate_component_resources(resources_by_component.get("api_server", {}))
+            aggregate_component_resources(resources_by_component.get(COMPONENT_API_SERVER, {}))
         )
 
         accounts = await safe_metric(self.account_gatherer.gather())

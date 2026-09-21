@@ -203,15 +203,30 @@ def _read_cgroup_int_limit(path: Path) -> int | None:
         return None
 
 
-def _quota_to_cores(quota: int, period: int) -> int | None:
-    """Convert a CPU-time quota/period pair to whole cores, rounding up.
+def _quota_to_cores(quota: int, period: int) -> float | None:
+    """Convert a CPU-time quota/period pair to cores, fraction intact.
 
-    A fractional quota rounds up to the next whole core so an audit never
-    understates the enforced cap. A non-positive quota or period means unbounded.
+    The fraction is kept because the two figures derived from it round opposite
+    ways. A non-positive quota or period means unbounded.
     """
     if quota <= 0 or period <= 0:
         return None
-    return math.ceil(quota / period)
+    return quota / period
+
+
+def _enforced_cores(quota_cores: float | None) -> int | None:
+    """The enforced cap, rounded up so an audit never understates what is allowed."""
+    return None if quota_cores is None else math.ceil(quota_cores)
+
+
+def _usable_cores_under_quota(quota_cores: float | None) -> int | None:
+    """The cores a quota actually lets the process occupy, rounded down.
+
+    A fractional quota cannot keep a whole extra core busy, so rounding up here
+    would overstate available compute — the opposite of the enforced figure,
+    which rounds up. A sub-core quota still buys some CPU, so it floors at one.
+    """
+    return None if quota_cores is None else max(1, math.floor(quota_cores))
 
 
 def _usable_processors(host_count: int | None, quota_cores: int | None, affinity_count: int | None) -> int | None:
@@ -323,7 +338,7 @@ def _v1_controller_dirs(cgroup_root: Path, proc_cgroup: Path, controller: str) -
     return [mount]
 
 
-def _parse_cpu_max(line: str) -> int | None:
+def _parse_cpu_max(line: str) -> float | None:
     """Parse one cgroup v2 ``cpu.max`` line ("<quota> <period>", "max" = unbounded)."""
     parts = line.split()
     if not parts or parts[0] == "max":
@@ -336,8 +351,8 @@ def _parse_cpu_max(line: str) -> int | None:
     return _quota_to_cores(quota=quota, period=period)
 
 
-def _read_cgroup_cpu_quota(cgroup_dirs: list[Path], v1_dirs: list[Path]) -> int | None:
-    """Return the enforced CPU limit in whole cores, or ``None`` when unbounded.
+def _read_cgroup_cpu_quota(cgroup_dirs: list[Path], v1_dirs: list[Path]) -> float | None:
+    """Return the enforced CPU limit in cores, fraction intact, or ``None`` when unbounded.
 
     Every level of the process's cgroup path may carry a v2 ``cpu.max``; the
     effective limit is the most restrictive one. A hierarchy with no readable
@@ -518,10 +533,11 @@ class ProcessResources:
 
     def _read_dynamic(self, identity: _ProcessIdentity) -> _DynamicResources:
         try:
-            processor_assigned = _read_cgroup_cpu_quota(identity.cgroup_dirs, identity.v1_cpu_dirs)
+            quota_cores = _read_cgroup_cpu_quota(identity.cgroup_dirs, identity.v1_cpu_dirs)
+            processor_assigned = _enforced_cores(quota_cores)
             processor_available = _usable_processors(
                 host_count=identity.host_processor_count,
-                quota_cores=processor_assigned,
+                quota_cores=_usable_cores_under_quota(quota_cores),
                 affinity_count=_affinity_processor_count(),
             )
         except _CgroupLimitUnreadableError as exc:

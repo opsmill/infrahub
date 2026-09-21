@@ -27,6 +27,10 @@ WORKER_MATCH = re.compile(r":worker:([^:]+)")
 RESOURCE_KEY_PREFIX = "workers:resources:"
 RESOURCE_COMPONENT_MATCH = re.compile(re.escape(RESOURCE_KEY_PREFIX) + r"([^:]+):worker:")
 
+# The component names the heartbeat writes into its cache keys, and the readers group by.
+COMPONENT_API_SERVER = "api_server"
+COMPONENT_GIT_AGENT = "git_agent"
+
 # The per-process resource read can transiently fail (a psutil hiccup, a momentary
 # hostname-lookup failure); a few immediate retries cover that before the reading
 # is written as null and the failure logged for traceability.
@@ -39,9 +43,9 @@ def get_component_names(component_type: ComponentType) -> list[str]:
     """Return the component labels a worker of this type reports under in the cache."""
     names = []
     if component_type == ComponentType.API_SERVER:
-        names.append("api_server")
+        names.append(COMPONENT_API_SERVER)
     elif component_type == ComponentType.GIT_AGENT:
-        names.append("git_agent")
+        names.append(COMPONENT_GIT_AGENT)
     return names
 
 
