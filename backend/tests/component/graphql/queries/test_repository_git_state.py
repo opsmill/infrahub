@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub import config
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import (
     InfrahubKind,
     RepositoryCommitState,
@@ -16,7 +17,10 @@ from infrahub.core.constants import (
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
+from infrahub.exceptions import ValidationError
 from infrahub.git.state.models import CommitEntry, CommitLogRequest, CommitLogResult
+from infrahub.graphql.queries.repository_git_state import _drift_read
 from infrahub.services import InfrahubServices
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql_query
@@ -32,6 +36,10 @@ if TYPE_CHECKING:
 REPOSITORY_NAME = "test-commit-visibility"
 REPOSITORY_LOCATION = "/tmp/test-commit-visibility"
 REPOSITORY_DEFAULT_BRANCH = "trunk"
+READ_ONLY_REPOSITORY_NAME = "test-commit-visibility-read-only"
+READ_ONLY_REPOSITORY_LOCATION = "/tmp/test-commit-visibility-read-only"
+READ_ONLY_REF = "v1.0"
+READ_ONLY_BRANCH_REF = "v2.0"
 MAIN_COMMIT = "1111111111111111111111111111111111111111"
 BRANCH_COMMIT = "2222222222222222222222222222222222222222"
 REMOTE_HEAD = "3333333333333333333333333333333333333333"
@@ -125,6 +133,28 @@ async def repository(db: InfrahubDatabase, default_branch: Branch, create_test_a
         default_branch=REPOSITORY_DEFAULT_BRANCH,
         commit=MAIN_COMMIT,
     )
+    await repo.save(db=db)
+    return repo
+
+
+@pytest.fixture
+async def read_only_repository(db: InfrahubDatabase, default_branch: Branch, create_test_admin: Node) -> Node:
+    repo = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
+    await repo.new(
+        db=db,
+        name=READ_ONLY_REPOSITORY_NAME,
+        location=READ_ONLY_REPOSITORY_LOCATION,
+        ref=READ_ONLY_REF,
+        commit=MAIN_COMMIT,
+    )
+    await repo.save(db=db)
+    return repo
+
+
+@pytest.fixture
+async def untracked_read_only_repository(db: InfrahubDatabase, default_branch: Branch, create_test_admin: Node) -> Node:
+    repo = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
+    await repo.new(db=db, name=READ_ONLY_REPOSITORY_NAME, location=READ_ONLY_REPOSITORY_LOCATION, ref=READ_ONLY_REF)
     await repo.save(db=db)
     return repo
 
@@ -302,7 +332,17 @@ async def test_drift_answers_the_infrahub_side_fields(
             "reason": "NOT_IMPLEMENTED",
             "message": "Reading git state from a worker is not available in this version.",
         },
-        "edges": [],
+        "edges": [
+            {
+                "node": {
+                    "branch_name": default_branch.name,
+                    "git_ref": REPOSITORY_DEFAULT_BRANCH,
+                    "tracked_commit": MAIN_COMMIT,
+                    "remote_head": None,
+                    "condition": RepositoryGitCondition.UNAVAILABLE.name,
+                }
+            }
+        ],
     }
 
 
@@ -682,3 +722,331 @@ async def test_commit_log_reports_the_unavailable_placeholder(
     assert answer["edges"] == []
     assert answer["remote_head"] is None
     assert answer["pending_count"] is None
+
+
+def _drift_rows(answer: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Key the rows by branch, refusing to key away a branch the answer listed twice."""
+    branch_names = [edge["node"]["branch_name"] for edge in answer["edges"]]
+    assert sorted(branch_names) == sorted(set(branch_names)), f"duplicate branch rows: {branch_names}"
+    return {edge["node"]["branch_name"]: edge["node"] for edge in answer["edges"]}
+
+
+def _drift_row(
+    branch_name: str, git_ref: str | None, tracked_commit: str | None, condition: RepositoryGitCondition
+) -> dict[str, Any]:
+    return {
+        "branch_name": branch_name,
+        "git_ref": git_ref,
+        "tracked_commit": tracked_commit,
+        "remote_head": None,
+        "condition": condition.name,
+    }
+
+
+async def test_drift_omits_read_write_branches_that_do_not_sync_with_git(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    repository: Node,
+    unsynced_branch: Branch,
+    no_import_filters: None,
+) -> None:
+    response = await graphql_query(
+        query=DRIFT_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert _drift_rows(response.data["InfrahubRepositoryBranchDrift"]) == {
+        default_branch.name: _drift_row(
+            branch_name=default_branch.name,
+            git_ref=REPOSITORY_DEFAULT_BRANCH,
+            tracked_commit=MAIN_COMMIT,
+            condition=RepositoryGitCondition.UNAVAILABLE,
+        )
+    }
+
+
+async def test_drift_maps_each_synced_read_write_branch_to_its_own_remote_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    repository: Node,
+    synced_branch: Branch,
+    no_import_filters: None,
+) -> None:
+    response = await graphql_query(
+        query=DRIFT_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert _drift_rows(response.data["InfrahubRepositoryBranchDrift"]) == {
+        default_branch.name: _drift_row(
+            branch_name=default_branch.name,
+            git_ref=REPOSITORY_DEFAULT_BRANCH,
+            tracked_commit=MAIN_COMMIT,
+            condition=RepositoryGitCondition.UNAVAILABLE,
+        ),
+        synced_branch.name: _drift_row(
+            branch_name=synced_branch.name,
+            git_ref=synced_branch.name,
+            tracked_commit=BRANCH_COMMIT,
+            condition=RepositoryGitCondition.UNAVAILABLE,
+        ),
+    }
+
+
+async def test_drift_still_tracks_a_synced_branch_the_import_filters_exclude(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    repository: Node,
+    synced_branch: Branch,
+    import_filters_excluding_branch2: None,
+) -> None:
+    """A synchronised branch keeps its ref and its row even when the import filters exclude its name."""
+    response = await graphql_query(
+        query=DRIFT_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert _drift_rows(response.data["InfrahubRepositoryBranchDrift"])[synced_branch.name] == _drift_row(
+        branch_name=synced_branch.name,
+        git_ref=synced_branch.name,
+        tracked_commit=BRANCH_COMMIT,
+        condition=RepositoryGitCondition.UNAVAILABLE,
+    )
+
+
+async def test_drift_omits_merged_and_deleting_branches_and_the_global_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    read_only_repository: Node,
+) -> None:
+    open_branch = await create_branch(branch_name="branch-open", db=db)
+    # MERGING is the status next to the two that are excluded, so it pins where the boundary sits.
+    merging_branch = await create_branch(branch_name="branch-merging", db=db)
+    merging_branch.status = BranchStatus.MERGING
+    await merging_branch.save(db=db)
+    for branch_name, status in (("branch-merged", BranchStatus.MERGED), ("branch-deleting", BranchStatus.DELETING)):
+        branch = await create_branch(branch_name=branch_name, db=db)
+        branch.status = status
+        await branch.save(db=db)
+
+    response = await graphql_query(
+        query=DRIFT_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": read_only_repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert _drift_rows(response.data["InfrahubRepositoryBranchDrift"]) == {
+        default_branch.name: _drift_row(
+            branch_name=default_branch.name,
+            git_ref=READ_ONLY_REF,
+            tracked_commit=MAIN_COMMIT,
+            condition=RepositoryGitCondition.UNAVAILABLE,
+        ),
+        open_branch.name: _drift_row(
+            branch_name=open_branch.name,
+            git_ref=READ_ONLY_REF,
+            tracked_commit=MAIN_COMMIT,
+            condition=RepositoryGitCondition.UNAVAILABLE,
+        ),
+        merging_branch.name: _drift_row(
+            branch_name=merging_branch.name,
+            git_ref=READ_ONLY_REF,
+            tracked_commit=MAIN_COMMIT,
+            condition=RepositoryGitCondition.UNAVAILABLE,
+        ),
+    }
+
+
+async def test_drift_lists_every_branch_of_a_read_only_repository(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    read_only_repository: Node,
+) -> None:
+    branch = await create_branch(branch_name="branch2", db=db)
+    repo_on_branch = await NodeManager.get_one(db=db, id=read_only_repository.id, branch=branch, raise_on_error=True)
+    repo_on_branch.ref.value = READ_ONLY_BRANCH_REF
+    repo_on_branch.commit.value = BRANCH_COMMIT
+    await repo_on_branch.save(db=db)
+
+    response = await graphql_query(
+        query=DRIFT_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": read_only_repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert _drift_rows(response.data["InfrahubRepositoryBranchDrift"]) == {
+        default_branch.name: _drift_row(
+            branch_name=default_branch.name,
+            git_ref=READ_ONLY_REF,
+            tracked_commit=MAIN_COMMIT,
+            condition=RepositoryGitCondition.UNAVAILABLE,
+        ),
+        "branch2": _drift_row(
+            branch_name="branch2",
+            git_ref=READ_ONLY_BRANCH_REF,
+            tracked_commit=BRANCH_COMMIT,
+            condition=RepositoryGitCondition.UNAVAILABLE,
+        ),
+    }
+
+
+async def test_drift_reports_a_read_only_branch_with_a_ref_but_nothing_tracked_as_unavailable(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    untracked_read_only_repository: Node,
+) -> None:
+    """A ref the branch resolves is tracked, so an empty tracked commit is a drift answer not yet produced."""
+    branch = await create_branch(branch_name="branch2", db=db)
+
+    response = await graphql_query(
+        query=DRIFT_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": untracked_read_only_repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert _drift_rows(response.data["InfrahubRepositoryBranchDrift"]) == {
+        default_branch.name: _drift_row(
+            branch_name=default_branch.name,
+            git_ref=READ_ONLY_REF,
+            tracked_commit=None,
+            condition=RepositoryGitCondition.UNAVAILABLE,
+        ),
+        branch.name: _drift_row(
+            branch_name=branch.name,
+            git_ref=READ_ONLY_REF,
+            tracked_commit=None,
+            condition=RepositoryGitCondition.UNAVAILABLE,
+        ),
+    }
+
+
+async def test_drift_answers_as_of_the_requested_time(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    repository: Node,
+) -> None:
+    before_the_later_import = Timestamp()
+    repo = await NodeManager.get_one(db=db, id=repository.id, branch=default_branch, raise_on_error=True)
+    repo.commit.value = REMOTE_HEAD
+    await repo.save(db=db)
+
+    # Without this the test passes even if the write never landed, since the older value is also
+    # what the past answer should carry.
+    reloaded = await NodeManager.get_one(db=db, id=repository.id, branch=default_branch, raise_on_error=True)
+    assert reloaded.commit.value == REMOTE_HEAD
+
+    response = await graphql_query(
+        query=DRIFT_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session_admin,
+        at=before_the_later_import,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert _drift_rows(response.data["InfrahubRepositoryBranchDrift"]) == {
+        default_branch.name: _drift_row(
+            branch_name=default_branch.name,
+            git_ref=REPOSITORY_DEFAULT_BRANCH,
+            tracked_commit=MAIN_COMMIT,
+            condition=RepositoryGitCondition.UNAVAILABLE,
+        )
+    }
+
+
+async def test_drift_omits_a_branch_created_after_the_requested_time(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    repository: Node,
+) -> None:
+    before_the_branch_existed = Timestamp()
+    await create_branch(branch_name="branch2", db=db)
+
+    response = await graphql_query(
+        query=DRIFT_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session_admin,
+        at=before_the_branch_existed,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert _drift_rows(response.data["InfrahubRepositoryBranchDrift"]) == {
+        default_branch.name: _drift_row(
+            branch_name=default_branch.name,
+            git_ref=REPOSITORY_DEFAULT_BRANCH,
+            tracked_commit=MAIN_COMMIT,
+            condition=RepositoryGitCondition.UNAVAILABLE,
+        )
+    }
+
+
+async def test_drift_refuses_a_kind_with_no_git_state(
+    db: InfrahubDatabase, default_branch: Branch, create_test_admin: Node
+) -> None:
+    """Both concrete repository kinds are handled, so this pins what a third one would surface."""
+    with pytest.raises(ValidationError, match=r"^Reading git state is not supported for a CoreAccount$"):
+        _drift_read(repository=create_test_admin, branches=[])
