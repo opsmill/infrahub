@@ -52,7 +52,8 @@
 - **`workers.total` / `active`** keep their existing meaning: all worker processes (api_server + git_agent). The new `workers.processor_*` / `memory_*` are the **git_agent (task-worker) fleet** aggregate; api_server resources are in the `server` block. So `workers.total` and the `workers` resource fields are scoped differently by design.
   - **Do not** compute `workers.processor_available / workers.total` as a per-worker average — `total` counts api_server + git_agent, `processor_available` covers git_agent only, so the result mixes two different fleets. A per-block host/worker count, so each block is self-describing, is a candidate for the next gated `payload_format` bump (research D13); not added this phase.
 - **Aggregates** (`workers.*`, `server.*`) are summed over **distinct hosts**, so multiple processes in one container are counted once. The per-process host identifier used for that dedup is internal and never emitted.
-- **Undercount signal**: if fewer hosts contributed than there are active workers, the git_agent resource fields undercount; `workers.total`/`active` (unchanged) expose the discrepancy.
+- **Undercount signal**: if fewer hosts contributed than there are active workers, `processor_available`/`memory_total`/`memory_available` undercount; `workers.total`/`active` (unchanged) expose the discrepancy.
+- **`processor_assigned` never undercounts**: it is all-or-null across the fleet. A single contributing host reporting `null` — unbounded, or its quota read failed — makes the whole aggregate `null` rather than a partial sum, so a `null` here means "at least one host is unbounded or unknown", never "hosts are missing".
 
 ## Backward/forward compatibility
 

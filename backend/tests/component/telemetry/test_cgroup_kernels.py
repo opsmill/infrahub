@@ -8,7 +8,10 @@ practice — a private cgroup namespace, a host namespace, and a limit enforced 
 an ancestor rather than on the process's own group — so a regression in the path
 resolution fails here rather than in a deployment.
 
-Requires a Docker daemon and a Linux kernel with cgroup v2. cgroup v1 layouts are
+Requires a Docker daemon and a Linux kernel with cgroup v2, plus network access
+the first time — the probe image pulls a base image and installs into it. Every
+docker call is bounded, so a stalled daemon or registry fails the run rather
+than hanging it. cgroup v1 layouts are
 covered by the unit fixtures; no current runner exposes a v1 hierarchy.
 
 Also requires network access: the probe image build pulls a base image and installs
@@ -29,6 +32,12 @@ RESOURCES_MODULE = Path(__file__).parents[3] / "infrahub" / "telemetry" / "resou
 DOCKER = shutil.which("docker")
 
 _MEBIBYTE = 1024**2
+
+# A responsive daemon answers at once; a build may pull a base image and install into
+# it; a probe run is a few file reads. Bounded so a stall fails rather than hangs.
+_DAEMON_TIMEOUT_SECONDS = 30
+_BUILD_TIMEOUT_SECONDS = 600
+_RUN_TIMEOUT_SECONDS = 120
 
 # Import the module straight from a bind mount rather than through the ``infrahub``
 # package, whose import needs distribution metadata that a bare image lacks.
@@ -133,7 +142,13 @@ KERNEL_CASES = [
 def _docker_available() -> bool:
     if DOCKER is None:
         return False
-    return subprocess.run([DOCKER, "info"], capture_output=True, check=False).returncode == 0  # noqa: S603
+    try:
+        completed = subprocess.run(  # noqa: S603
+            [DOCKER, "info"], capture_output=True, check=False, timeout=_DAEMON_TIMEOUT_SECONDS
+        )
+    except subprocess.TimeoutExpired:
+        return False
+    return completed.returncode == 0
 
 
 pytestmark = pytest.mark.skipif(not _docker_available(), reason="requires a running Docker daemon")
@@ -149,6 +164,7 @@ def probe_image() -> str:
         input=dockerfile.encode(),
         capture_output=True,
         check=True,
+        timeout=_BUILD_TIMEOUT_SECONDS,
     )
     return tag
 
@@ -167,7 +183,9 @@ def test_reader_against_real_cgroups(case: KernelCase, probe_image: str) -> None
         "-c",
         f"{case.setup}\npython -c '{_PROBE}'",
     ]
-    result = subprocess.run(command, capture_output=True, text=True, check=False)  # noqa: S603
+    result = subprocess.run(  # noqa: S603
+        command, capture_output=True, text=True, check=False, timeout=_RUN_TIMEOUT_SECONDS
+    )
     assert result.returncode == 0, f"container failed: {result.stderr}"
 
     reading = json.loads(result.stdout.strip().splitlines()[-1])
