@@ -240,9 +240,7 @@ app.add_middleware(
 # request, so the middleware itself builds nothing and depends on no settings.
 app.add_middleware(AdmissionMiddleware)
 
-# Outside admission so a shed 429 still passes back through CORS; without those headers a
-# cross-origin browser blocks the response and the client sees an opaque network error. Rationale:
-# dev/knowledge/backend/api-backpressure.md, "The request path".
+# Kept outside admission so a shed response retains its CORS headers.
 app.add_middleware(InfrahubCORSMiddleware)
 
 app.add_exception_handler(ForwardableError, log_forwarding_exception_handler)
