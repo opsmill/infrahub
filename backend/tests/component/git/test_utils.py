@@ -4,7 +4,12 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, RepositoryInternalStatus
+from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
+    InfrahubKind,
+    RepositoryInternalStatus,
+    RepositoryOperationalStatus,
+)
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -203,28 +208,24 @@ async def test_get_repositories_commit_per_branch_without_a_commit_on_a_branch(
     }
 
 
-async def test_get_repositories_commit_per_branch_reads_the_node_on_the_default_branch(
+async def test_get_repositories_commit_per_branch_reads_the_branch_agnostic_node_fields(
     db: InfrahubDatabase, register_core_models_schema: SchemaBranch, repository_01: Node, repository_02: Node
 ) -> None:
-    """Every field other than the per-branch ones carries the value the default branch holds.
+    """The node read carries every branch-agnostic field a caller needs, `operational_status` included.
 
-    `location` and `default_branch` are branch-agnostic, so a branch cannot hold its own value for
-    them; `ref` is branch-aware, and the branch writing its own must not reach the result.
+    An unrequested field reads back its schema default rather than raising, so a field a caller uses
+    but the read does not ask for looks like a legitimate value.
     """
-    branch = await create_branch(db=db, branch_name="branch-with-its-own-ref")
-    repo02_on_branch = await NodeManager.get_one(db=db, id=repository_02.id, branch=branch)
-    repo02_on_branch.ref.value = "ref-on-branch"
-    await repo02_on_branch.save(db=db)
+    repository_01.operational_status.value = RepositoryOperationalStatus.ONLINE.value
+    await repository_01.save(db=db)
 
     repositories = await get_repositories_commit_per_branch(db=db)
 
     assert repositories["repo01"].repository.default_branch.value == "main"
     assert repositories["repo01"].repository.location.value == "location01"
-    assert repositories["repo02"].repository.ref.value == "main"
+    assert repositories["repo01"].repository.operational_status.value == RepositoryOperationalStatus.ONLINE.value
     assert repositories["repo02"].repository.location.value == "location02"
-
-    reread_on_branch = await NodeManager.get_one(db=db, id=repository_02.id, branch=branch)
-    assert reread_on_branch.ref.value == "ref-on-branch"
+    assert repositories["repo02"].repository.operational_status.value == RepositoryOperationalStatus.UNKNOWN.value
 
 
 async def test_get_repositories_commit_per_branch_reads_the_branches_in_chunks(

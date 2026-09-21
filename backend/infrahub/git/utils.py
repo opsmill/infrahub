@@ -37,12 +37,13 @@ async def get_repositories_commit_per_branch(
 ) -> dict[str, RepositoryData]:
     """Get a list of all repositories and their commit on each branch.
 
-    The repository nodes come from one read on the default branch, so every field read off a node
-    carries the default branch's value. `commit` and `internal_status` are additionally resolved per
-    branch, in fixed-size chunks of branch names, so the read costs a small fixed number of queries
-    for the nodes plus one per chunk rather than one per branch. Every query resolves at the same
-    point in time, so a write landing mid-read cannot leave one branch of a repository reporting the
-    old commit and another the new one. The global branch is never a key of the result.
+    The repository nodes come from one read on the default branch, restricted to branch-agnostic
+    fields so that no branch's own value can reach a caller through the node. `commit` and
+    `internal_status`, which are per-branch, are resolved separately in fixed-size chunks of branch
+    names, so the read costs a small fixed number of queries for the nodes plus one per chunk rather
+    than one per branch. Every query resolves at the same point in time, so a write landing mid-read
+    cannot leave one branch of a repository reporting the old commit and another the new one. The
+    global branch is never a key of the result.
 
     Args:
         db: Database connection instance.
@@ -62,11 +63,9 @@ async def get_repositories_commit_per_branch(
         fields={
             "id": None,
             "name": None,
-            "commit": None,
-            "internal_status": None,
             "location": None,
-            "ref": None,
             "default_branch": None,
+            "operational_status": None,
         },
         schema=kind,
         order=OrderModel(disable=True),
