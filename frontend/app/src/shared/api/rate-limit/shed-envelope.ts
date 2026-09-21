@@ -8,10 +8,8 @@
 export const HTTP_TOO_MANY_REQUESTS = 429;
 
 // The marker is what proves a 429 came from the shed and never reached a
-// handler. The body cannot: the REST exception handler emits the same
-// integer-code envelope for any error, so its shape alone could one day
-// describe a write that did land. Cross-origin, the header is readable because
-// the server's CORS middleware exposes it.
+// handler; the envelope shape does not, because any error carries the same
+// integer code. The server exposes the header cross-origin.
 export const SHED_MARKER_HEADER = "X-Infrahub-Admission";
 export const SHED_MARKER_VALUE = "shed";
 
@@ -23,8 +21,7 @@ export const SHED_USER_MESSAGE =
 /** Whether a GraphQL `extensions` blob is a shed rather than a catalogue error. */
 export function isShedErrorItem(extensions: unknown): boolean {
   if (extensions === null || typeof extensions !== "object") return false;
-  // Strict on the integer: a catalogue error carries a string code, and
-  // conflating the two is what routes a shed into the unknown-code fallback.
+  // Strict on the integer: a catalogue error carries a string code.
   return (extensions as { code?: unknown }).code === HTTP_TOO_MANY_REQUESTS;
 }
 
@@ -41,10 +38,9 @@ export function isShedResponse(response: Response): boolean {
 }
 
 /**
- * A copy of a shed response whose envelope items say what the person should
- * do instead of what the server did, so a REST caller that surfaces
- * `errors[0].message` shows the same text as the toast. Any other response,
- * including a 429 from something in front of the API, is returned untouched.
+ * A copy of a shed response whose envelope items say what the person should do
+ * instead of what the server did. Any other response, including a 429 from
+ * something in front of the API, is returned untouched.
  */
 export async function withShedWording(response: Response): Promise<Response> {
   if (!isShedResponse(response)) return response;
