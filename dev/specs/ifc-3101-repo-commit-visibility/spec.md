@@ -251,8 +251,12 @@ here should match the PRD.
   without the value it drifted from. What stays with the sibling is the card itself, its row
   rendering, its other graph-resolved values such as import status, and the cross-repository query
   with server-side filtering, ordering and paging. This query is the single-repository primitive that
-  epic widens rather than a second implementation of it, and that boundary needs confirming with the
-  IFC-3104 owner before its own pull request lands, not after. It has its own governance row below.
+  epic widens rather than a second implementation of it. **Outcome, 2026-09-21:** the boundary was to
+  be confirmed with the IFC-3104 owner before this pull request landed (T097). It is instead closed as
+  superseded, because that side built `RepositoryBranchAttributesQuery` in PR #10606 before this pull
+  request opened, which turns an open scope question into a concrete add/add merge of two existing
+  queries. That merge is T101, and it carries the window rules the consolidation must not lose. It has
+  its own governance row below.
 - **Classification runs on the worker, not in the API business layer.** The PRD assigns "Commit visibility comparison" to the API layer. It lives in `git/state/classification.py` and executes on the worker beside the git reads that feed it. The property the PRD was protecting, pure logic reachable and testable without a message bus, is preserved: the module has no I/O and its own unit tests.
 - **Three requirements and three success criteria have no PRD counterpart.** FR-026, FR-027 and FR-028, and SC-012, SC-013 and SC-014, were added after the dual-lens critique: they cover operating the read-only check as a background job an operator can live with, accessibility of the commit states, and the degradation behaviour the PRD left implicit. Additions rather than departures, listed here so this register accounts for every difference in both directions.
 - **FR-003's "latest" is narrowed to what the answering worker has seen.** PRD FR-003 says "the latest
