@@ -45,22 +45,9 @@ if TYPE_CHECKING:
 
 log = get_logger("infrahub.git")
 
-# stderr fragments git prints when the HTTPS remote's certificate cannot be verified. The wording
-# depends on the TLS backend libcurl is built against and changes between curl releases, so match the
-# stable part of each family rather than one full message per backend:
-#   "SSL certificate"                 OpenSSL, every version: "SSL certificate problem: <reason>" and
-#                                     "SSL certificate verification failed"; the verification path adds
-#                                     "SSL certificate verify result: <reason> (20)" up to curl 8.14 and
-#                                     "SSL certificate OpenSSL verify result: <reason> (20)" from curl 8.15.
-#                                     GnuTLS also joins this family from curl 8.15:
-#                                     "SSL certificate verification failed: <reason>. (CAfile: ...)".
-#   "certificate verification failed" GnuTLS up to curl 8.9: "server certificate verification failed. CAfile: ...".
-#   "server verification failed"      GnuTLS from curl 8.10 to 8.14, which is what the shipped image emits:
-#                                     "server verification failed: <reason>. (CAfile: ...)"; also wolfSSL.
-#   "certificate subject name"        A certificate that verifies but is issued for another host, which both
-#                                     backends word differently: OpenSSL "SSL: no alternative certificate
-#                                     subject name matches target host name '...'", GnuTLS "SSL: certificate
-#                                     subject name (...) does not match target hostname '...'".
+# stderr fragments git prints when the HTTPS remote's certificate cannot be verified. Each entry is
+# the stable part of one family of wordings, because the message depends on the TLS backend libcurl
+# is built against and is reworded between curl releases.
 GIT_TLS_VERIFICATION_ERRORS = (
     "SSL certificate",
     "certificate verification failed",
@@ -1161,11 +1148,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             "The requested URL returned error: 5xx" (git http.c) plus
             "RPC failed; HTTP 5xx" (git remote-curl.c).
           - not-a-repo / missing: "Repository not found", "does not appear to be a git".
-          - TLS: the fragments in ``GIT_TLS_VERIFICATION_ERRORS``, one per family of wordings
-            libcurl emits for a certificate it will not accept ("SSL certificate" for OpenSSL and for
-            GnuTLS from curl 8.15, "certificate verification failed" for GnuTLS up to curl 8.9,
-            "server verification failed" for GnuTLS from curl 8.10 to 8.14 and for wolfSSL, and
-            "certificate subject name" for a certificate issued for another host).
+          - TLS: one fragment per family of wordings libcurl emits for a certificate it will
+            not accept, classified as a connection error.
           - credentials: "Authentication failed for", "could not read Username".
         These are stable user-facing git/curl strings, but keyed on text — revisit them if
         git or libcurl change their wording.
