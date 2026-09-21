@@ -62,8 +62,8 @@ async def repository(db: InfrahubDatabase, default_branch: Branch, register_core
 @pytest.fixture
 async def read_only_repository(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> Node:
     repo = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
-    # Active, so that a permission outcome is what these tests actually measure: a repository whose
-    # first import has not completed is refused before permissions ever come into it.
+    # Active because the check-refs mutation refuses any other internal status, which would
+    # otherwise decide the outcome of the test that expects the permission to be granted.
     await repo.new(
         db=db,
         name="permissioned-read-only-repo",

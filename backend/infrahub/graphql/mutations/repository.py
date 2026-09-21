@@ -315,8 +315,8 @@ class ReadOnlyRepositoryCheckRefs(Mutation):
                 branch_name=branch.name, node_type=InfrahubKind.READONLYREPOSITORY, identifier=str(data.id)
             )
 
-        # A checkable repository needs all three: a URL and a ref to compare, and a completed first
-        # import, without which this worker holds no local copy to compare the remote against.
+        # A checkable repository needs a URL and a ref to compare, and an active status: any other
+        # status means no import has completed here, so there is no local copy to compare against.
         location = repo.location.value
         ref = repo.ref.value
         if not location or not ref:
