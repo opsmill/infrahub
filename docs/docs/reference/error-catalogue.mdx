@@ -4,7 +4,7 @@ title: Error Catalogue
 
 # Error Catalogue
 
-**Catalogue version**: 1 — 15 codes
+**Catalogue version**: 1 — 16 codes
 
 Every GraphQL error response carries an `extensions` block with a stable string `code`, the logical `http_status`, and a typed `data` payload. Switch on `code` rather than parsing the human-readable `message`, which is not part of the stable contract.
 
@@ -512,6 +512,43 @@ The submitted values collide with an existing object on a uniqueness constraint.
           "fields": [
             "example"
           ]
+        }
+      }
+    }
+  ]
+}
+```
+
+### WORKER_TIMEOUT
+
+No worker answered the request within the time allowed. The failure is transient; retry after the number of seconds the payload reports.
+
+- **Stability**: `evolving`
+- **HTTP status**: `504`
+
+**`data` payload**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `operation` | string | yes |
+| `timeout_seconds` | integer | yes |
+| `retry_after_seconds` | integer | yes |
+
+**Example response**
+
+```json
+{
+  "data": null,
+  "errors": [
+    {
+      "message": "No worker answered the request within the time allowed. The failure is transient; retry after the number of seconds the payload reports.",
+      "extensions": {
+        "code": "WORKER_TIMEOUT",
+        "http_status": 504,
+        "data": {
+          "operation": "example",
+          "timeout_seconds": 1,
+          "retry_after_seconds": 1
         }
       }
     }
