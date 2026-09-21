@@ -79,18 +79,26 @@ dictionaries by branch name must skip it themselves rather than expect an entry.
 ### Why a repository created on a branch is visible from the default branch
 
 The repository kinds are `BranchSupportType.AGNOSTIC`, so the node lands on the global branch
-whatever branch it was created from and the default-branch node read finds it. That alone does not
-explain the per-branch attributes: `commit` and `internal_status` are `LOCAL` on `CoreRepository`
-and the generic (`AWARE` on `CoreReadOnlyRepository`), so they genuinely do hold a value per branch.
+whatever branch it was created from and the default-branch node read finds it. The per-branch
+attributes need a second mechanic. `internal_status` is `LOCAL`, defined once on
+`CoreGenericRepository` and inherited unchanged by both kinds; `commit` is `LOCAL` on
+`CoreRepository` and `AWARE` on `CoreReadOnlyRepository`.
 
-The rest is in `Attribute.get_create_data` (`backend/infrahub/core/attribute.py`): a `LOCAL`
-attribute on an `AGNOSTIC` node has its **creation** row written to the global branch, not to the
-branch it was created from. Only a later write goes through `get_branch_based_on_support_type()` and
-lands on a specific branch. So for a repository created on `feature-branch` and staged there, the
-read resolves `internal_status` as `inactive` on the default branch (the global row, `own_value`
-false) and `staging` on `feature-branch` (its own row) — which is what makes the sync flow enter
-staging mode and find the branch via `get_staging_branch()`. The `inactive` fallback below is not
-involved in that path.
+`Attribute.get_create_data` (`backend/infrahub/core/attribute.py`) writes a `LOCAL` attribute on an
+`AGNOSTIC` node to the global branch at **creation**, not to the branch it was created from; only a
+later write goes through `get_branch_based_on_support_type()` and lands on a specific branch. An
+`AWARE` attribute is not covered by that path — its creation row goes to the creating branch.
+
+So a `CoreRepository` created on `feature-branch` and staged there resolves `internal_status` as
+`inactive` on the default branch (the global row, `own_value` false) and `staging` on
+`feature-branch` (its own row), which is what makes the sync flow enter staging mode and find the
+branch via `get_staging_branch()`. The `inactive` fallback below is not involved in that path.
+
+A `CoreReadOnlyRepository` created on a branch differs on one point: its `commit` is `AWARE`, so it
+resolves only on the branch it was created from and `RepositoryData.branches` holds `None` for the
+default branch until a commit is written there. The sync flow never sees this, reading
+`CoreRepository` only; the computed-attribute gather does, and counts the branch as diverging from
+the default, which it is.
 
 `RepositoryData.branches` is typed `dict[str, str | None]`: a branch whose `commit` does not resolve
 is present with a value of `None`. A branch whose `internal_status` does not resolve is recorded as
