@@ -36,7 +36,9 @@ WITH origin_name, fork_at, collect({
 // -----------------
 // Every Node the deleted branch could read that other branches could not necessarily read: created
 // on this branch, or deleted on the default branch after the fork. Kept as an unaggregated stream:
-// no DISTINCT, and two seeks under UNION ALL rather than one OR, which plans as a deduplicated union.
+// two seeks under UNION ALL rather than one OR, which plans as a deduplicated union. UNION ALL
+// keeps a Node matching both bounds in the stream twice, and the following WITH has no DISTINCT,
+// so that Node is evaluated twice.
 // -----------------
 CALL (origin_name, fork_at) {
     MATCH (reachable_node:Node)-[existence:IS_PART_OF]->()
