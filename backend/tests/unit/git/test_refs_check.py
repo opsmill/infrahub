@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -17,6 +16,7 @@ from infrahub.git.refs_check.factory import build_check_refs_model
 from infrahub.git.refs_check.gateway import (
     GitRepositoryRefsGateway,
     _list_remote_heads,
+    _ls_remote,
     _resolve_local_head,
     parse_ls_remote,
     select_remote_head,
@@ -183,7 +183,7 @@ def build_remote_and_clone(tmp_path: Path) -> Repo:
 
 
 def list_remote_heads(clone: Repo, *refs: str) -> dict[str, str | None]:
-    return _list_remote_heads(clone, refs, kill_after_seconds=LIST_KILL_AFTER_SECONDS)
+    return _list_remote_heads(_ls_remote(clone, kill_after_seconds=LIST_KILL_AFTER_SECONDS), refs)
 
 
 def test_an_annotated_tag_is_listed_through_the_commit_the_local_read_resolves(tmp_path: Path) -> None:
@@ -227,64 +227,43 @@ def test_every_ref_is_resolved_by_a_single_listing(tmp_path: Path) -> None:
     }
 
 
-class RecordingGit:
-    """Stands in for ``repo.git``, recording each ls-remote and answering with a fixed listing."""
+class RecordingLister:
+    """Stands in for the ls-remote call, recording each invocation and answering with a fixed listing."""
 
     def __init__(self, output: str = "") -> None:
         self.output = output
-        self.calls: list[tuple[str, ...]] = []
+        self.calls: list[list[str]] = []
 
-    @contextmanager
-    def custom_environment(self, **_kwargs: str) -> Iterator[None]:
-        yield
-
-    def ls_remote(self, *args: str, **_kwargs: object) -> str:
-        self.calls.append(args)
+    def __call__(self, patterns: list[str]) -> str:
+        self.calls.append(patterns)
         return self.output
-
-
-@dataclass
-class RecordingRepo:
-    git: RecordingGit
 
 
 def test_one_listing_covers_every_ref_rather_than_one_per_ref() -> None:
     """The saving is the connection count, which the returned mapping alone cannot show."""
-    recorder = RecordingGit("1111111111111111111111111111111111111111\trefs/heads/stable\n")
+    lister = RecordingLister("1111111111111111111111111111111111111111\trefs/heads/stable\n")
 
-    heads = _list_remote_heads(
-        RecordingRepo(git=recorder),  # type: ignore[arg-type]
-        ("stable", "release"),
-        kill_after_seconds=LIST_KILL_AFTER_SECONDS,
-    )
+    heads = _list_remote_heads(lister, ("stable", "release"))
 
     assert heads == {"stable": "1111111111111111111111111111111111111111", "release": None}
-    assert recorder.calls == [
-        (
-            "origin",
-            "--",
+    assert lister.calls == [
+        [
             "refs/heads/stable",
             "refs/tags/stable",
             "refs/tags/stable^{}",
             "refs/heads/release",
             "refs/tags/release",
             "refs/tags/release^{}",
-        )
+        ]
     ]
 
 
 def test_an_empty_request_never_reaches_git() -> None:
     """``ls-remote`` with no pattern answers with every ref the remote has, which is not nothing."""
-    recorder = RecordingGit()
+    lister = RecordingLister()
 
-    heads = _list_remote_heads(
-        RecordingRepo(git=recorder),  # type: ignore[arg-type]
-        (),
-        kill_after_seconds=LIST_KILL_AFTER_SECONDS,
-    )
-
-    assert heads == {}
-    assert recorder.calls == []
+    assert _list_remote_heads(lister, ()) == {}
+    assert lister.calls == []
 
 
 REPOSITORY_ID = "8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba"

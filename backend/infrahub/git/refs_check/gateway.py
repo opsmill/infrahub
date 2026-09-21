@@ -32,6 +32,9 @@ if TYPE_CHECKING:
 CheckRefFormat = Callable[[str], bool]
 """Decides whether git would accept a ref name. Must be synchronous: it is run in a worker thread."""
 
+RemoteLister = Callable[[list[str]], str]
+"""Runs one ``ls-remote`` for the given fully qualified patterns and returns its raw output."""
+
 
 def git_check_ref_format(ref: str) -> bool:
     try:
@@ -130,23 +133,30 @@ def _ref_patterns(ref: str) -> tuple[str, str, str]:
     return (f"refs/heads/{ref}", f"refs/tags/{ref}", f"refs/tags/{ref}^{{}}")
 
 
-def _list_remote_heads(git_repo: Repo, refs: tuple[str, ...], *, kill_after_seconds: float) -> dict[str, str | None]:
-    """Resolve every ref against the remote in one listing.
-
-    ``kill_after_seconds`` is what actually bounds this: git applies no network timeout of its own,
-    and abandoning the caller's await would leave the process running.
-    """
+def _list_remote_heads(list_remote: RemoteLister, refs: tuple[str, ...]) -> dict[str, str | None]:
+    """Resolve every ref against the remote in one listing."""
     if not refs:
         # An ls-remote with no pattern lists the entire remote, which is not what an empty request
         # is asking for.
         return {}
 
     patterns = [pattern for ref in refs for pattern in _ref_patterns(ref)]
-    with git_repo.git.custom_environment(**REMOTE_TRANSPORT_ENVIRONMENT):
-        output = git_repo.git.ls_remote("origin", "--", *patterns, kill_after_timeout=kill_after_seconds)
-
-    heads = parse_ls_remote(str(output))
+    heads = parse_ls_remote(list_remote(patterns))
     return {ref: select_remote_head(heads, ref) for ref in refs}
+
+
+def _ls_remote(git_repo: Repo, *, kill_after_seconds: float) -> RemoteLister:
+    """Bind one repository's origin to a listing call.
+
+    ``kill_after_seconds`` is what actually bounds it: git applies no network timeout of its own,
+    and abandoning the caller's await would leave the process running.
+    """
+
+    def run(patterns: list[str]) -> str:
+        with git_repo.git.custom_environment(**REMOTE_TRANSPORT_ENVIRONMENT):
+            return str(git_repo.git.ls_remote("origin", "--", *patterns, kill_after_timeout=kill_after_seconds))
+
+    return run
 
 
 class GitRepositoryRefsGateway:
@@ -176,7 +186,7 @@ class GitRepositoryRefsGateway:
     def _read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: tuple[str, ...]) -> tuple[RefHeads, ...]:
         git_repo = self._open(model).get_git_repo_main()
         local_heads = {ref: _resolve_local_head(git_repo, ref) for ref in refs}
-        remote_heads = _list_remote_heads(git_repo, refs, kill_after_seconds=self._list_kill_after_seconds)
+        remote_heads = _list_remote_heads(_ls_remote(git_repo, kill_after_seconds=self._list_kill_after_seconds), refs)
         return tuple(RefHeads(ref=ref, local_head=local_heads[ref], remote_head=remote_heads[ref]) for ref in refs)
 
     def _fetch(self, model: GitReadOnlyRepositoryCheckRefs) -> None:

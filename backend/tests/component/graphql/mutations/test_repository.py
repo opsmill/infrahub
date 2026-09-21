@@ -385,7 +385,8 @@ async def test_check_refs_refuses_a_repository_that_is_not_active_on_the_branch(
     assert result.errors[0].message == (
         f"Repository {repo.id} cannot be checked on branch {default_branch.name}: it is staging there, not active."
     )
-    assert recorder.get_submit_calls_for(workflow=GIT_READ_ONLY_REPOSITORY_CHECK_REFS) == []
+    # Every call, not just the check-refs one: a refused request must submit nothing at all.
+    assert recorder.calls == []
 
 
 async def test_check_refs_refuses_a_read_write_repository(
