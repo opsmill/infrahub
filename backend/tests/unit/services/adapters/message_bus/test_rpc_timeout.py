@@ -13,8 +13,11 @@ from tests.adapters.message_bus import (
     NeverReplyingBus,
     NeverReplyingNATSBus,
     StalledPublishBus,
+    StalledPublishNATSBus,
     TimingOutPublishBus,
+    TimingOutPublishNATSBus,
     UnreachableBrokerBus,
+    UnreachableBrokerNATSBus,
 )
 
 if TYPE_CHECKING:
@@ -74,6 +77,27 @@ async def never_replying_bus(request: pytest.FixtureRequest) -> NeverReplying:
     return NeverReplyingNATSBus(rpc_timeout=TIMEOUT_SECONDS)
 
 
+@pytest.fixture(params=["rabbitmq", "nats"])
+async def unreachable_broker_bus(request: pytest.FixtureRequest) -> NeverReplying:
+    if request.param == "rabbitmq":
+        return UnreachableBrokerBus()
+    return UnreachableBrokerNATSBus()
+
+
+@pytest.fixture(params=["rabbitmq", "nats"])
+async def stalled_publish_bus(request: pytest.FixtureRequest) -> NeverReplying:
+    if request.param == "rabbitmq":
+        return StalledPublishBus(rpc_timeout=CONFIGURED_TIMEOUT_SECONDS)
+    return StalledPublishNATSBus(rpc_timeout=CONFIGURED_TIMEOUT_SECONDS)
+
+
+@pytest.fixture(params=["rabbitmq", "nats"])
+async def timing_out_publish_bus(request: pytest.FixtureRequest) -> NeverReplying:
+    if request.param == "rabbitmq":
+        return TimingOutPublishBus(rpc_timeout=CONFIGURED_TIMEOUT_SECONDS)
+    return TimingOutPublishNATSBus(rpc_timeout=CONFIGURED_TIMEOUT_SECONDS)
+
+
 async def test_rpc_gives_up_on_a_worker_that_never_answers(
     never_replying_bus: NeverReplying, connectivity_message: messages.GitRepositoryConnectivity
 ) -> None:
@@ -126,44 +150,38 @@ async def test_rpc_honours_an_explicit_timeout_over_the_configured_one(
 
 
 async def test_a_failed_publish_leaves_no_pending_request_behind(
-    connectivity_message: messages.GitRepositoryConnectivity,
+    unreachable_broker_bus: NeverReplying, connectivity_message: messages.GitRepositoryConnectivity
 ) -> None:
-    bus = UnreachableBrokerBus()
-
     with pytest.raises(ConnectionResetError, match=r"^broker went away$"):
-        await bus.rpc(message=connectivity_message, response_class=GitRepositoryConnectivityResponse)
+        await unreachable_broker_bus.rpc(message=connectivity_message, response_class=GitRepositoryConnectivityResponse)
 
-    assert bus.futures == {}
+    assert unreachable_broker_bus.futures == {}
 
 
 async def test_a_publish_that_never_completes_is_bounded_too(
-    connectivity_message: messages.GitRepositoryConnectivity,
+    stalled_publish_bus: NeverReplying, connectivity_message: messages.GitRepositoryConnectivity
 ) -> None:
-    bus = StalledPublishBus(rpc_timeout=CONFIGURED_TIMEOUT_SECONDS)
-
     started = time.monotonic()
     with pytest.raises(
         WorkerTimeoutError, match=r"^No worker answered git\.repository\.connectivity within 0\.05 seconds$"
     ):
-        await bus.rpc(
+        await stalled_publish_bus.rpc(
             message=connectivity_message,
             response_class=GitRepositoryConnectivityResponse,
             timeout=BRIEF_TIMEOUT_SECONDS,
         )
 
     assert time.monotonic() - started < 10
-    assert bus.futures == {}
+    assert stalled_publish_bus.futures == {}
 
 
 async def test_a_broker_timeout_is_not_reported_as_an_unanswered_request(
-    connectivity_message: messages.GitRepositoryConnectivity,
+    timing_out_publish_bus: NeverReplying, connectivity_message: messages.GitRepositoryConnectivity
 ) -> None:
-    bus = TimingOutPublishBus(rpc_timeout=CONFIGURED_TIMEOUT_SECONDS)
-
     with pytest.raises(TimeoutError, match=r"^broker publish timed out$"):
-        await bus.rpc(message=connectivity_message, response_class=GitRepositoryConnectivityResponse)
+        await timing_out_publish_bus.rpc(message=connectivity_message, response_class=GitRepositoryConnectivityResponse)
 
-    assert bus.futures == {}
+    assert timing_out_publish_bus.futures == {}
 
 
 async def test_reply_for_an_abandoned_request_is_dropped_quietly(never_replying_bus: NeverReplying) -> None:

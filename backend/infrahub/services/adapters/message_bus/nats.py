@@ -311,8 +311,9 @@ class NATSMessageBus(InfrahubMessageBus):
         # The publish sits inside the bound because it awaits a broker acknowledgement, which a
         # stalled stream withholds indefinitely.
         published = False
-        bounded_call = asyncio.timeout(bound)
         try:
+            # Built inside the try so every failure after the future was registered reaches cleanup.
+            bounded_call = asyncio.timeout(bound)
             async with bounded_call:
                 await self.send(message=message)
                 published = True

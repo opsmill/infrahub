@@ -134,45 +134,6 @@ class NeverReplyingBus(RabbitMQMessageBus):
         raise ValueError("NeverReplyingBus.reply should not be called")
 
 
-class UnreachableBrokerBus(NeverReplyingBus):
-    """Fails every publish the way a broker that cannot be reached does."""
-
-    async def publish(
-        self,
-        message: InfrahubMessage,
-        routing_key: str,
-        delay: MessageTTL | None = None,
-        is_retry: bool = False,
-    ) -> None:
-        raise ConnectionResetError("broker went away")
-
-
-class TimingOutPublishBus(NeverReplyingBus):
-    """Fails every publish with a `TimeoutError` of the broker's own, not the caller's bound."""
-
-    async def publish(
-        self,
-        message: InfrahubMessage,
-        routing_key: str,
-        delay: MessageTTL | None = None,
-        is_retry: bool = False,
-    ) -> None:
-        raise TimeoutError("broker publish timed out")
-
-
-class StalledPublishBus(NeverReplyingBus):
-    """Never completes a publish, the way a broker withholding its confirmation does."""
-
-    async def publish(
-        self,
-        message: InfrahubMessage,
-        routing_key: str,
-        delay: MessageTTL | None = None,
-        is_retry: bool = False,
-    ) -> None:
-        await asyncio.Event().wait()
-
-
 class NeverReplyingNATSBus(NATSMessageBus):
     """Records every published message and never delivers a reply, so any rpc call times out.
 
@@ -195,3 +156,66 @@ class NeverReplyingNATSBus(NATSMessageBus):
 
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         raise ValueError("NeverReplyingNATSBus.reply should not be called")
+
+
+class _UnreachableBrokerPublish:
+    """Fails every publish the way a broker that cannot be reached does."""
+
+    async def publish(
+        self,
+        message: InfrahubMessage,
+        routing_key: str,
+        delay: MessageTTL | None = None,
+        is_retry: bool = False,
+    ) -> None:
+        raise ConnectionResetError("broker went away")
+
+
+class _TimingOutPublish:
+    """Fails every publish with a `TimeoutError` of the broker's own, not the caller's bound."""
+
+    async def publish(
+        self,
+        message: InfrahubMessage,
+        routing_key: str,
+        delay: MessageTTL | None = None,
+        is_retry: bool = False,
+    ) -> None:
+        raise TimeoutError("broker publish timed out")
+
+
+class _StalledPublish:
+    """Never completes a publish, the way a broker withholding its confirmation does."""
+
+    async def publish(
+        self,
+        message: InfrahubMessage,
+        routing_key: str,
+        delay: MessageTTL | None = None,
+        is_retry: bool = False,
+    ) -> None:
+        await asyncio.Event().wait()
+
+
+class UnreachableBrokerBus(_UnreachableBrokerPublish, NeverReplyingBus):
+    """Fails every publish the way a broker that cannot be reached does."""
+
+
+class UnreachableBrokerNATSBus(_UnreachableBrokerPublish, NeverReplyingNATSBus):
+    """Fails every publish the way a broker that cannot be reached does."""
+
+
+class TimingOutPublishBus(_TimingOutPublish, NeverReplyingBus):
+    """Fails every publish with a `TimeoutError` of the broker's own, not the caller's bound."""
+
+
+class TimingOutPublishNATSBus(_TimingOutPublish, NeverReplyingNATSBus):
+    """Fails every publish with a `TimeoutError` of the broker's own, not the caller's bound."""
+
+
+class StalledPublishBus(_StalledPublish, NeverReplyingBus):
+    """Never completes a publish, the way a broker withholding its confirmation does."""
+
+
+class StalledPublishNATSBus(_StalledPublish, NeverReplyingNATSBus):
+    """Never completes a publish, the way a broker withholding its confirmation does."""

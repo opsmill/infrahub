@@ -234,8 +234,9 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         # The publish sits inside the bound because it awaits a broker confirmation, which a
         # resource alarm on the broker withholds indefinitely.
         published = False
-        bounded_call = asyncio.timeout(bound)
         try:
+            # Built inside the try so every failure after the future was registered reaches cleanup.
+            bounded_call = asyncio.timeout(bound)
             async with bounded_call:
                 await self.send(message=message)
                 published = True
