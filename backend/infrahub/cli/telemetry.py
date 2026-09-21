@@ -6,7 +6,7 @@ from infrahub_sdk.async_typer import AsyncTyper
 from rich.console import Console
 from rich.table import Table
 
-from infrahub.telemetry.resources import ProcessResources, ResourceDiagnostics
+from infrahub.telemetry.resources import RESOURCE_READ_FAILURES, ProcessResources, ResourceDiagnostics
 
 app = AsyncTyper()
 
@@ -16,10 +16,19 @@ def callback() -> None:
     """Inspect what telemetry reports about this deployment."""
 
 
+_NULL = "null (unbounded / unknown)"
+
+
 def _format_bytes(value: int | None) -> str:
     if value is None:
-        return "null (unbounded / unknown)"
+        return _NULL
     return f"{value} ({value / 1024**3:.2f} GiB)"
+
+
+def _format_count(value: int | None) -> str:
+    if value is None:
+        return _NULL
+    return str(value)
 
 
 def _render(diagnostics: ResourceDiagnostics, console: Console) -> None:
@@ -28,11 +37,8 @@ def _render(diagnostics: ResourceDiagnostics, console: Console) -> None:
     reported = Table(title="Reported to telemetry", show_header=False, title_justify="left")
     reported.add_column(style="bold")
     reported.add_column()
-    reported.add_row("processor_available", str(reading.processor_available))
-    reported.add_row(
-        "processor_assigned",
-        "null (unbounded / unknown)" if reading.processor_assigned is None else str(reading.processor_assigned),
-    )
+    reported.add_row("processor_available", _format_count(reading.processor_available))
+    reported.add_row("processor_assigned", _format_count(reading.processor_assigned))
     reported.add_row("memory_total", _format_bytes(reading.memory_total))
     reported.add_row("memory_available", _format_bytes(reading.memory_available))
     console.print(reported)
@@ -40,7 +46,7 @@ def _render(diagnostics: ResourceDiagnostics, console: Console) -> None:
     host = Table(title="Whole host, for comparison", show_header=False, title_justify="left")
     host.add_column(style="bold")
     host.add_column()
-    host.add_row("logical processors", str(diagnostics.host_processor_available))
+    host.add_row("logical processors", _format_count(diagnostics.host_processor_available))
     host.add_row("memory total", _format_bytes(diagnostics.host_memory_total))
     console.print(host)
 
@@ -91,8 +97,17 @@ def probe_resources(
     or configuration, so it can explain an environment whose reported figures
     look wrong even when the deployment is otherwise unhealthy. Nothing is
     transmitted; the output goes to stdout.
+
+    Raises:
+        BadParameter: The host read itself failed, so there is no reading to explain.
+
     """
-    diagnostics = ProcessResources().diagnose()
+    try:
+        diagnostics = ProcessResources().diagnose()
+    except RESOURCE_READ_FAILURES as exc:
+        # The probe exists to explain an unhealthy environment, so a failed host read
+        # is reported as itself rather than as a traceback.
+        raise typer.BadParameter(f"Could not read this process's resources: {exc}") from exc
 
     if as_json:
         print(_to_json(diagnostics))

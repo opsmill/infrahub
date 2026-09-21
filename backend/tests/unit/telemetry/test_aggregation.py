@@ -173,3 +173,17 @@ def test_healthy_reading_is_kept_over_a_failed_read_on_the_same_host() -> None:
     result = aggregate(readings)
 
     assert result.processor_available == 4
+
+
+def test_processor_assigned_sums_when_every_host_is_bounded() -> None:
+    # The branch that lights up once core limits are enforced: with no unbounded
+    # host to null the field, the per-host limits add up like the other figures.
+    readings = [
+        _reading("w1", processor_available=4, processor_assigned=2),
+        _reading("w2", processor_available=4, processor_assigned=3),
+    ]
+
+    result = aggregate(readings)
+
+    assert result.processor_assigned == 5
+    assert result.processor_available == 8

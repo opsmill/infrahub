@@ -13,15 +13,13 @@ from __future__ import annotations
 import logging
 import socket
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import psutil
 import pytest
 
 from infrahub.telemetry.resources import ProcessResources, _usable_processors
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def _write_cgroup_files(cgroup_root: Path, files: dict[str, str]) -> None:
@@ -87,20 +85,27 @@ CPU_QUOTA_CASES = [
 ]
 
 
-def _usable_cores(assigned: int | None) -> int:
-    """The host's logical count, capped by the quota and by this test process's real CPU affinity.
+def _unrestricted_cores() -> int:
+    """What this machine reports with no cgroup limit in play, measured once.
 
-    Reads the real, ambient affinity mask rather than a fixed value, so the expected figure holds
-    whether or not the machine running the test enforces a cpuset restriction.
+    Taken from the reader itself against an empty cgroup root, so the expected figure
+    is an observation of this environment rather than a second copy of the capping
+    rule; the exact arithmetic is pinned separately against fixed inputs.
     """
-    host_count = psutil.cpu_count(logical=True)
-    assert host_count is not None
-    try:
-        affinity_count: int | None = len(psutil.Process().cpu_affinity())
-    except (AttributeError, psutil.Error):
-        affinity_count = None
-    candidates = [value for value in (host_count, assigned, affinity_count) if value is not None]
-    return min(candidates)
+    with TemporaryDirectory() as empty_root:
+        available = ProcessResources(cgroup_root=Path(empty_root)).read().processor_available
+    assert available is not None
+    return available
+
+
+HOST_CORES = _unrestricted_cores()
+
+
+def _usable_cores(assigned: int | None) -> int:
+    """The figure expected under ``assigned``: the quota when it binds, else this machine's own."""
+    if assigned is None or assigned >= HOST_CORES:
+        return HOST_CORES
+    return assigned
 
 
 @pytest.mark.parametrize("case", CPU_QUOTA_CASES, ids=[case.name for case in CPU_QUOTA_CASES])
@@ -625,8 +630,8 @@ def test_diagnostics_expose_the_limit_files_found_at_each_level(tmp_path: Path) 
 def test_leaf_cpu_max_absent_still_falls_through_to_ancestor(tmp_path: Path) -> None:
     """A leaf with no ``cpu.max`` file at all (ENOENT) is the normal per-level case.
 
-    It must keep falling through to an ancestor's limit exactly as before — only a
-    genuine read failure (not a missing file) should stop that fallback.
+    An absent file falls through to an ancestor's limit; only a genuine read failure
+    stops that fallback.
     """
     cgroup_root = tmp_path / "cgroup"
     (cgroup_root / "a" / "b").mkdir(parents=True)  # leaf exists but carries no cpu.max of its own

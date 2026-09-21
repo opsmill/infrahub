@@ -26,7 +26,7 @@ Technical approach: reuse the existing telemetry gatherer, the `safe_metric` deg
 
 **Performance Goals**: Cold daily path; cost is negligible. Reads are O(active workers) cache keys (already scanned today) plus a handful of local file reads per process at heartbeat time
 
-**Constraints**: MUST NOT block or fail the snapshot; each metric degrades independently to `null`; payload changes are additive, with the version bump gated on receiving-service confirmation rather than made this phase; **no new third-party dependency**; cgroup v2 primary with a v1 fallback, `null` where neither is present
+**Constraints**: MUST NOT block or fail the snapshot; each metric degrades independently to `null`; payload changes are additive, with the version bump gated on receiving-service confirmation rather than made this phase; **no new third-party package**, though `psutil` is promoted from a dev-only pin to a production runtime dependency (research D1, an Ask-First gate); cgroup v2 primary with a v1 fallback, `null` where neither is present
 
 **Scale/Scope**: A few components and a small number of workers per deployment (default `replicas: 2`). Trivial scale
 
@@ -71,7 +71,11 @@ backend/infrahub/telemetry/
 ├── resources.py         # NEW: read logical cores + memory (psutil) and the cgroup limit
 │                        #   (stdlib); host identifier; per-process ComponentResources
 ├── database.py          # add processor_assigned to system_info via
-│                        #   server.cypher.parallel.worker_limit (SHOW SETTINGS); existing
+│                        #   server.cypher.parallel.worker_limit (SHOW SETTINGS) — confirmed
+│                        #   with the backend owner as the intended knob (research D3); the
+│                        #   setting's own semantics were not independently re-verified
+│                        #   against Neo4j's docs, so revisit if the audit figure looks wrong;
+│                        #   existing
 │                        #   processor_available/memory_* already cover DB cores + RAM
 └── tasks.py             # gather: aggregate hosts → extended workers fields + new server block
 

@@ -56,10 +56,10 @@ Written by each process into `workers:resources:{component}:worker:{WORKER_IDENT
 | Field | Type | Source |
 |-------|------|--------|
 | `host` | `str` | `socket.gethostname()` (container id). Dedup key. |
-| `processor_available` | `int \| None` | `psutil.cpu_count(logical=True)` capped by the cgroup CPU quota (D2 correction — psutil alone is not container-aware). |
+| `processor_available` | `int \| None` | `psutil.cpu_count(logical=True)` capped by the cgroup CPU quota **and** by the process's CPU-affinity mask, i.e. `min(host, quota, affinity)` (D2 correction — psutil alone is not container-aware, and a `cpuset` restriction sets no quota). |
 | `processor_assigned` | `int \| None` | cgroup CPU quota (D3/D5); `None` if unbounded. |
 | `memory_total` | `int \| None` | cgroup `memory.max` if set, else `psutil.virtual_memory().total`. |
-| `memory_available` | `int \| None` | (`memory.max − memory.current`) if cgroup-limited, else `psutil.virtual_memory().available`. |
+| `memory_available` | `int \| None` | Smallest `max(0, memory.max − memory.current)` across every level that enforces a limit (an ancestor's limit is charged against its whole subtree, so it can bind first); else `psutil.virtual_memory().available`. Clamped at zero, since a limit lowered below current usage would otherwise go negative. |
 
 Internal transport shape (a small typed model in `resources.py`), **not** a payload model — the payload carries only the per-component aggregate, never per-process rows (FR-004). The `host` identifier is dedup-only and never emitted.
 

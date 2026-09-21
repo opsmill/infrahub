@@ -29,7 +29,7 @@ Phase 0 decisions. Each resolves an unknown surfaced while planning against the 
 
 ## D4 — Memory: reuse the DB representation (`memory_total` + `memory_available`)
 
-- **Decision**: memory is reported as `memory_total` (capacity — cgroup `memory.max` when limited, else `psutil.virtual_memory().total`) and `memory_available` (free — `memory.max − memory.current` when limited, else `psutil.virtual_memory().available`), in bytes — the exact fields and semantics the database `system_info` already uses. Usage is derived by the consumer as `memory_total − memory_available`; there is no `*_used` field.
+- **Decision**: memory is reported as `memory_total` (capacity — cgroup `memory.max` when limited, else `psutil.virtual_memory().total`) and `memory_available` (free — the smallest `max(0, memory.max − memory.current)` over every level that enforces a limit when limited, else `psutil.virtual_memory().available`), in bytes — the exact fields and semantics the database `system_info` already uses. Usage is derived by the consumer as `memory_total − memory_available`; there is no `*_used` field.
 - **Rationale**: adopting the existing `memory_*` names/semantics for the new components makes DB, server, and workers byte-for-byte comparable (the naming decision, D14), and matches how the DB JMX (`TotalMemorySize` / `FreeMemorySize`) already reports. Pete's "RAM used" is preserved as a derived value, consistent with the DB.
 - **No `memory_assigned`**: memory has no enforced-limit field — the container memory limit surfaces as `memory_total` capacity. Only `processor_assigned` carries the FR-003 no-fallback-null rule.
 

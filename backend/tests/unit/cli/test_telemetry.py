@@ -13,8 +13,9 @@ from dataclasses import dataclass
 
 import pytest
 from rich.console import Console
+from typer.testing import CliRunner
 
-from infrahub.cli.telemetry import _render, _to_json
+from infrahub.cli.telemetry import _render, _to_json, app
 from infrahub.telemetry.resources import CgroupLevel, ResourceDiagnostics, WorkerResourceReading
 from tests.helpers.cli import remove_ansi_color
 
@@ -23,6 +24,10 @@ from tests.helpers.cli import remove_ansi_color
 class RenderCase:
     name: str
     diagnostics: ResourceDiagnostics
+
+    expected_rows: list[tuple[str, str]]
+    """Label and the value rendered beside it, matched within that row only."""
+
     expected_present: list[str]
     expected_absent: list[str]
 
@@ -69,14 +74,14 @@ RENDER_CASES = [
     RenderCase(
         name="cpu_and_memory_limits_enforced",
         diagnostics=LIMITED_DIAGNOSTICS,
+        expected_rows=[
+            ("processor_available", "2"),
+            ("processor_assigned", "2"),
+            ("memory_total", "536870912 (0.50 GiB)"),
+            ("memory_available", "268435456 (0.25 GiB)"),
+            ("logical processors", "8"),
+        ],
         expected_present=[
-            "processor_available",
-            "2",
-            "processor_assigned",
-            "memory_total",
-            "536870912 (0.50 GiB)",
-            "memory_available",
-            "268435456 (0.25 GiB)",
             "worker-a",
             "/sys/fs/cgroup",
             "cpu.max=200000 100000",
@@ -91,12 +96,13 @@ RENDER_CASES = [
     RenderCase(
         name="no_limits_enforced",
         diagnostics=UNLIMITED_DIAGNOSTICS,
+        expected_rows=[
+            ("processor_available", "8"),
+            ("processor_assigned", "null (unbounded / unknown)"),
+            ("memory_total", "17179869184 (16.00 GiB)"),
+            ("memory_available", "8589934592 (8.00 GiB)"),
+        ],
         expected_present=[
-            "processor_available",
-            "8",
-            "null (unbounded / unknown)",
-            "17179869184 (16.00 GiB)",
-            "8589934592 (8.00 GiB)",
             "worker-b",
             "processor_available reflects no confirmed CPU limit",
             "memory_total reflects no confirmed memory limit",
@@ -115,6 +121,10 @@ def test_render_table_output(case: RenderCase) -> None:
     _render(diagnostics=case.diagnostics, console=console)
 
     output = remove_ansi_color(buffer.getvalue())
+    for label, value in case.expected_rows:
+        row = next((line for line in output.splitlines() if label in line), None)
+        assert row is not None, f"no row rendered for {label}"
+        assert value in row, f"{label} rendered as {row.strip()!r}, expected {value!r}"
     for expected in case.expected_present:
         assert expected in output
     for unexpected in case.expected_absent:
@@ -153,3 +163,20 @@ def test_to_json_with_no_limits_enforced_serializes_null_fields() -> None:
     assert payload["proc_cgroup"] is None
     assert payload["memory_limit"] is None
     assert payload["levels"] == [{"path": "/sys/fs/cgroup", "files": {}}]
+
+
+def test_probe_resources_command_selects_the_json_branch() -> None:
+    """The ``--json`` flag reaches the serializer; without it the tables render.
+
+    The command reads this host for real, so the assertions pin the output shape
+    each branch produces rather than any particular figure.
+    """
+    runner = CliRunner()
+
+    as_json = runner.invoke(app, ["probe-resources", "--json"])
+    assert as_json.exit_code == 0, as_json.output
+    assert set(json.loads(as_json.output)) >= {"reading", "host_processor_available", "levels"}
+
+    as_tables = runner.invoke(app, ["probe-resources"])
+    assert as_tables.exit_code == 0, as_tables.output
+    assert "Reported to telemetry" in remove_ansi_color(as_tables.output)
