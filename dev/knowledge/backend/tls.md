@@ -75,17 +75,18 @@ reaching public services.
   components so a global bundle never changes what an insecure component does.
 - **Git runs only in the task worker**, but `GitSettings` is validated in every process. With the shared
   Compose env anchor the API server also needs the file mounted, or it refuses to start.
-- **Persisted gitconfig.** `/opt/infrahub/.gitconfig` can outlive a container, so `apply_git_tls_config`
+- **Persisted gitconfig.** The file, `git.global_config_file` (`INFRAHUB_GIT_GLOBAL_CONFIG_FILE`,
+  default `/opt/infrahub/.gitconfig`), can outlive a container, so `apply_git_tls_config`
   unsets `http.sslCAInfo` / `http.sslVerify` when the settings are absent instead of leaving old values.
   Infrahub owns those two keys the same way it already owns `user.name`, `user.email`, `safe.directory`
   and `credential.*`: every task-worker startup rewrites them, so a hand edit to the file does not
   survive a restart. The old Dockerfile recipe `git config --global http.sslVerify false` wrote
   `/root/.gitconfig`, which the worker stopped reading when it started exporting `GIT_CONFIG_GLOBAL`
   (1.6.0); `git.tls_insecure` replaces that recipe.
-- **`--global` lies in an exec shell.** The worker selects `/opt/infrahub/.gitconfig` by exporting
+- **`--global` lies in an exec shell.** The worker selects the configured gitconfig by exporting
   `GIT_CONFIG_GLOBAL` in its own process; `docker compose exec task-worker git config --global ...` does
   not inherit it and reads `$HOME/.gitconfig`, which only holds what the Dockerfile baked in. Inspect
-  the file directly: `git config --file /opt/infrahub/.gitconfig --get http.sslCAInfo`.
+  the file directly: `git config --file ${INFRAHUB_GIT_GLOBAL_CONFIG_FILE:-/opt/infrahub/.gitconfig} --get http.sslCAInfo`.
 - **The TLS failure wording depends on the git build.** git's HTTPS helper reports an untrusted
   certificate with the wording of the TLS backend libcurl is linked against, and curl rewords those
   messages between releases: OpenSSL says "SSL certificate problem: ...", "SSL certificate verification
