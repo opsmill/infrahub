@@ -91,7 +91,7 @@ Supporting facts:
   namespace="merge")` (`backend/infrahub/core/merge/merge_locker.py`). Its cache value is the
   `timestamp::worker_id` token (`backend/infrahub/lock.py`).
 - The worker that runs the `branch-merge` Prefect flow refreshes a heartbeat key
-  `workers:active:{component}:worker:{WORKER_IDENTITY}` with a 15-second TTL every 10 seconds
+  `workers:active:{component}:worker:{WORKER_IDENTITY}` with a 15-second TTL every 5 seconds
   (`backend/infrahub/services/component.py`; `backend/infrahub/services/heartbeat.py`). When the
   worker dies, its heartbeat expires within ~15 s, so its `worker_id` leaves the active set well
   inside one ~1-minute scan interval.
