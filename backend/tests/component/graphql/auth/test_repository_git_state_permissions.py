@@ -240,6 +240,44 @@ async def test_drift_answers_every_branch_with_the_other_branches_decision(
     assert rows == {default_branch.name: IMPORTED_COMMIT, branch.name: BRANCH_COMMIT}
 
 
+async def test_drift_omits_the_default_branch_without_its_decision(
+    db: InfrahubDatabase,
+    default_permission_backend: None,
+    service: InfrahubServices,
+    repository: Node,
+) -> None:
+    """Holding only the other-branches decision reads those branches, never the default one's row."""
+    branch = await _synced_branch_tracking_its_own_commit(db=db, repository=repository)
+
+    session = await _account_session(
+        db=db,
+        name="other-branches-repository-viewer",
+        permissions=[
+            ObjectPermission(
+                namespace="Core",
+                name="Repository",
+                action=PermissionAction.VIEW.value,
+                decision=PermissionDecision.ALLOW_OTHER.value,
+            )
+        ],
+    )
+
+    response = await graphql_query(
+        query=DRIFT_QUERY_WITH_ROWS,
+        db=db,
+        branch=branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert response.data["InfrahubRepositoryBranchDrift"]["edges"] == [
+        {"node": {"branch_name": branch.name, "tracked_commit": BRANCH_COMMIT}}
+    ]
+
+
 async def test_missing_repository_view_permission_denies_both_queries(
     db: InfrahubDatabase,
     default_branch: Branch,

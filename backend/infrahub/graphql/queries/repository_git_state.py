@@ -225,11 +225,17 @@ def _viewable_branches(graphql_context: GraphqlContext, kind: str, branches: lis
     branch is resolved once rather than once per branch.
     """
     others = [branch for branch in branches if branch.name != registry.default_branch]
-    if not others or graphql_context.active_permissions.has_permission(
+    may_view_default = graphql_context.active_permissions.has_permission(
+        permission=_view_permission(kind=kind, branch_name=registry.default_branch)
+    )
+    may_view_others = bool(others) and graphql_context.active_permissions.has_permission(
         permission=_view_permission(kind=kind, branch_name=others[0].name)
-    ):
-        return branches
-    return [branch for branch in branches if branch.name == registry.default_branch]
+    )
+    return [
+        branch
+        for branch in branches
+        if (may_view_default if branch.name == registry.default_branch else may_view_others)
+    ]
 
 
 def _drift_branches(graphql_context: GraphqlContext, kind: str, at: Timestamp) -> list[Branch]:
