@@ -756,6 +756,12 @@ class GitSettings(BaseSettings):
         description="When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. "
         "Requires delete_branch_after_merge to be enabled.",
     )
+    read_only_refs_check_interval_mins: int = Field(
+        default=15,
+        ge=1,
+        le=1440,
+        description="Time (in minutes) between two checks of a read-only repository's remote for movement of its tracked refs.",
+    )
 
     @model_validator(mode="after")
     def validate_sync_branch_names(self) -> Self:

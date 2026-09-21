@@ -84,6 +84,7 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_GIT_GLOBAL_CONFIG_FILE` | The location of the git config file. This will be set as the system `GIT_CONFIG_GLOBAL` environment variable if the environment variable is not initially set | string | /opt/infrahub/.gitconfig |
 | `INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT` | Whether to allow explicit merge commits when infrahub merges branches | boolean | False |
 | `INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE` | When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. Requires delete_branch_after_merge to be enabled. | boolean | False |
+| `INFRAHUB_GIT_READ_ONLY_REFS_CHECK_INTERVAL_MINS` | Time (in minutes) between two checks of a read-only repository's remote for movement of its tracked refs. | integer | 15 |
 
 ## Dev
 

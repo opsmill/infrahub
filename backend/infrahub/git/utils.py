@@ -63,9 +63,11 @@ async def get_repositories_commit_per_branch(
                     branches={},
                 )
 
+            tracked_ref = getattr(repository, "ref", None)
             repositories[repo_name].branches[branch.name] = repository.commit.value
             repositories[repo_name].branch_info[branch.name] = RepositoryBranchInfo(
-                internal_status=repository.internal_status.value
+                internal_status=repository.internal_status.value,
+                ref=tracked_ref.value if tracked_ref else None,
             )
 
     return repositories

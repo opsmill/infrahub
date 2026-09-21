@@ -157,6 +157,36 @@ class GitReadOnlyRepositoryImportCommit(BaseModel):
     ref: str = Field(..., description="The ref of the repository")
 
 
+class TrackedRef(BaseModel):
+    """A git ref a read-only repository follows on one Infrahub branch.
+
+    It deliberately carries no commit: the commit a convergence pins the pool to is read when the
+    repository lock is held, and one carried from here could already have been superseded by an
+    import that ran in between.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    infrahub_branch_name: str = Field(..., description="Infrahub branch pinning this ref")
+    infrahub_branch_id: str = Field(..., description="Id of the Infrahub branch pinning this ref")
+    ref: str = Field(..., description="Branch or tag followed on the external repository")
+
+
+class GitReadOnlyRepositoryCheckRefs(BaseModel):
+    """Check a read-only repository's remote for movement of the refs it tracks."""
+
+    model_config = ConfigDict(frozen=True)
+
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the repository")
+    location: str = Field(..., min_length=1, description="The external URL of the repository")
+    refs: tuple[TrackedRef, ...] = Field(
+        ...,
+        min_length=1,
+        description="Refs to check, one entry per Infrahub branch tracking one",
+    )
+
+
 class GitDiffNamesOnly(BaseModel):
     """Request a list of modified files between two commits."""
 
@@ -249,6 +279,7 @@ class CheckRepositoryMergeConflicts(BaseModel):
 
 class RepositoryBranchInfo(BaseModel):
     internal_status: str
+    ref: str | None = Field(default=None, description="Ref tracked on that branch, set for read-only repositories only")
 
 
 class RepositoryData(BaseModel):
