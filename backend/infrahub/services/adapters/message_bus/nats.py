@@ -311,12 +311,16 @@ class NATSMessageBus(InfrahubMessageBus):
         # The publish sits inside the bound because it awaits a broker acknowledgement, which a
         # stalled stream withholds indefinitely.
         published = False
+        bounded_call = asyncio.timeout(bound)
         try:
-            async with asyncio.timeout(bound):
+            async with bounded_call:
                 await self.send(message=message)
                 published = True
                 response: Msg = await future
         except TimeoutError as exc:
+            if not bounded_call.expired():
+                # A broker error that happens to be a TimeoutError is not our bound elapsing.
+                raise
             get_logger().warning(
                 "No worker answered within the allowed time",
                 correlation_id=correlation_id,

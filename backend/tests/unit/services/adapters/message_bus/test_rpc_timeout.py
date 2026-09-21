@@ -13,6 +13,7 @@ from tests.adapters.message_bus import (
     NeverReplyingBus,
     NeverReplyingNATSBus,
     StalledPublishBus,
+    TimingOutPublishBus,
     UnreachableBrokerBus,
 )
 
@@ -151,6 +152,17 @@ async def test_a_publish_that_never_completes_is_bounded_too(
         )
 
     assert time.monotonic() - started < 10
+    assert bus.futures == {}
+
+
+async def test_a_broker_timeout_is_not_reported_as_an_unanswered_request(
+    connectivity_message: messages.GitRepositoryConnectivity,
+) -> None:
+    bus = TimingOutPublishBus(rpc_timeout=CONFIGURED_TIMEOUT_SECONDS)
+
+    with pytest.raises(TimeoutError, match=r"^broker publish timed out$"):
+        await bus.rpc(message=connectivity_message, response_class=GitRepositoryConnectivityResponse)
+
     assert bus.futures == {}
 
 

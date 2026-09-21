@@ -147,6 +147,19 @@ class UnreachableBrokerBus(NeverReplyingBus):
         raise ConnectionResetError("broker went away")
 
 
+class TimingOutPublishBus(NeverReplyingBus):
+    """Fails every publish with a `TimeoutError` of the broker's own, not the caller's bound."""
+
+    async def publish(
+        self,
+        message: InfrahubMessage,
+        routing_key: str,
+        delay: MessageTTL | None = None,
+        is_retry: bool = False,
+    ) -> None:
+        raise TimeoutError("broker publish timed out")
+
+
 class StalledPublishBus(NeverReplyingBus):
     """Never completes a publish, the way a broker withholding its confirmation does."""
 
