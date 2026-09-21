@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+from infrahub.core.attribute import String
 from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.core.constants.infrahubkind import READONLYREPOSITORY, REPOSITORY
 from infrahub.exceptions import ValidationError
@@ -20,6 +21,25 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
 log = get_logger()
+
+
+def configured_default_branch(obj: CoreGenericRepository) -> str | None:
+    """Return the repository's configured default branch, or None when its kind configures none.
+
+    A read-only repository tracks a ref, which may be a tag or a commit hash and so cannot be
+    confirmed from a branch listing.
+
+    Raises:
+        TypeError: When default_branch is not held as a string attribute.
+
+    """
+    if obj.get_kind() != REPOSITORY:
+        return None
+
+    attribute = obj.get_attribute("default_branch")
+    if not isinstance(attribute, String):
+        raise TypeError(f"expected default_branch as a string attribute, got {type(attribute).__name__}")
+    return attribute.value
 
 
 class RepositoryFinalizer:
@@ -54,6 +74,7 @@ class RepositoryFinalizer:
             message = messages.GitRepositoryConnectivity(
                 repository_name=obj.name.value,
                 repository_location=obj.location.value,
+                default_branch=configured_default_branch(obj),
             )
             response = await self.services.message_bus.rpc(
                 message=message, response_class=GitRepositoryConnectivityResponse

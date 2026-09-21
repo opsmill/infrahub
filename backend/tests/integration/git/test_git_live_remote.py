@@ -6,14 +6,20 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.exceptions import GraphQLError
 
-from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.exceptions import RepositoryCredentialsError, RepositoryError
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 from tests.helpers.test_app import TestInfrahubApp
-from tests.integration.git.conftest import bad_credentials_clone_url, create_gogs_repo
+from tests.integration.git.conftest import (
+    bad_credentials_clone_url,
+    create_gogs_repo,
+    gogs_repo_branch_commit,
+    gogs_repo_tag,
+)
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -135,6 +141,131 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         )
         await node.save()
         return {"repo_name": repo_name, "node_id": node.id, "branch_name": branch.name}
+
+    @pytest.fixture(scope="class")
+    async def master_only_dataset(
+        self,
+        initialize_registry: None,
+        git_repos_dir_module_scope: Path,
+        gogs_server: GogsServer,
+    ) -> dict:
+        repo_name = "master-only-repo"
+        repo_url = create_gogs_repo(
+            gogs_server.base_url,
+            gogs_server.token,
+            repo_name,
+            gogs_server.container,
+            create_main=False,
+        )
+        return {
+            "repo_name": repo_name,
+            "repo_url": repo_url,
+            "master_commit": gogs_repo_branch_commit(gogs_server.container, repo_name, "master"),
+        }
+
+    @pytest.fixture(scope="class")
+    async def tag_pinned_dataset(
+        self,
+        initialize_registry: None,
+        git_repos_dir_module_scope: Path,
+        gogs_server: GogsServer,
+    ) -> dict:
+        repo_name = "tag-pinned-repo"
+        tag_name = "v1.0.0"
+        repo_url = create_gogs_repo(
+            gogs_server.base_url,
+            gogs_server.token,
+            repo_name,
+            gogs_server.container,
+            create_main=False,
+        )
+        gogs_repo_tag(gogs_server.container, repo_name, tag_name)
+
+        return {"repo_name": repo_name, "repo_url": repo_url, "tag_name": tag_name}
+
+    async def test_connecting_with_a_default_branch_absent_from_the_remote_is_rejected(
+        self,
+        master_only_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ) -> None:
+        """A default branch the remote does not have is rejected, leaves nothing behind, and a corrected retry connects."""
+        repo_name = master_only_dataset["repo_name"]
+        repo_url = master_only_dataset["repo_url"]
+
+        rejected = await client.create(
+            kind=InfrahubKind.REPOSITORY,
+            data={"name": repo_name, "location": repo_url},
+        )
+        with pytest.raises(GraphQLError) as exc:
+            await rejected.save()
+
+        assert [error["message"] for error in exc.value.errors] == [
+            f"Branch 'main' does not exist on the remote repository {repo_name}; "
+            "the remote's default branch is 'master'."
+        ]
+        assert await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, filters={"name__value": repo_name}) == []
+
+        retried = await client.create(
+            kind=InfrahubKind.REPOSITORY,
+            data={"name": repo_name, "location": repo_url, "default_branch": "master"},
+        )
+        await retried.save()
+
+        repository: CoreRepository = await NodeManager.get_one(
+            db=db, id=retried.id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        assert repository.default_branch.value == "master"
+        assert repository.commit.value == master_only_dataset["master_commit"]
+        assert repository.internal_status.value == RepositoryInternalStatus.ACTIVE.value
+        assert repository.operational_status.value == RepositoryOperationalStatus.ONLINE.value
+
+    async def test_connecting_a_read_only_repository_pinned_to_a_tag_is_not_branch_checked(
+        self,
+        tag_pinned_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ) -> None:
+        """A read-only repository tracks a ref no branch listing can confirm, so it is connected unchecked."""
+        node = await client.create(
+            kind=InfrahubKind.READONLYREPOSITORY,
+            data={
+                "name": tag_pinned_dataset["repo_name"],
+                "location": tag_pinned_dataset["repo_url"],
+                "ref": tag_pinned_dataset["tag_name"],
+            },
+        )
+        await node.save()
+
+        repository: CoreReadOnlyRepository = await NodeManager.get_one(
+            db=db, id=node.id, kind=InfrahubKind.READONLYREPOSITORY, raise_on_error=True
+        )
+        assert repository.ref.value == tag_pinned_dataset["tag_name"]
+        assert repository.operational_status.value == RepositoryOperationalStatus.ONLINE.value
+
+    async def test_unreachable_remote_reports_a_connectivity_error(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ) -> None:
+        """An unreachable remote is reported as a connectivity failure, never as a missing-branch failure."""
+        repo_name = "unreachable-repo"
+
+        node = await client.create(
+            kind=InfrahubKind.REPOSITORY,
+            data={
+                "name": repo_name,
+                "location": "http://localhost:1/nonexistent.git",
+                "default_branch": "master",
+            },
+        )
+        with pytest.raises(GraphQLError) as exc:
+            await node.save()
+
+        assert [error["message"] for error in exc.value.errors] == [
+            f"Unable to clone the repository {repo_name}, please check the address and the credential"
+        ]
+        assert await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, filters={"name__value": repo_name}) == []
 
     async def test_clone_with_wrong_credentials_raises_credentials_error(
         self,

@@ -225,6 +225,22 @@ If you are using a **personal access token for authentication**, you should put 
 </TabItem>
 </Tabs>
 
+:::warning The default branch must exist on the remote
+
+When you connect a `Repository`, Infrahub lists the remote's branches and rejects the request if the `default_branch` you configured is not among them. No repository is left behind, and the mutation returns an error naming the branch Infrahub looked for and the branch the remote uses as its own default:
+
+```text
+Branch 'main' does not exist on the remote repository My Git Repository; the remote's default branch is 'master'.
+```
+
+When the remote is empty or has no default branch, the message ends with `the remote is empty or has no default branch.` instead.
+
+Set `default_branch` to a branch that exists on the remote and connect again. It does not have to be the remote's default branch: any existing branch is accepted.
+
+Read-only repositories are not checked this way. Their `ref` can be a branch, a tag, or a commit hash, and a branch listing cannot confirm the last two.
+
+:::
+
 :::success Check repository connectivity
 
 After creation, your new repository should appear under **Integrations > Git Repositories**. If the status shows `Unknown` or an error state, please refer to the [troubleshooting section](#troubleshoot-repository-connections).
@@ -232,6 +248,18 @@ After creation, your new repository should appear under **Integrations > Git Rep
 :::
 
 ## Advanced use cases
+
+### Change the default branch of a connected repository
+
+The `default_branch` of a `Repository` can be edited after the repository is connected, but Infrahub treats that edit as a plain attribute update. Be aware of the following limitations:
+
+- The new value is not validated against the remote. If the branch does not exist there, the next Git operation fails instead of the edit being rejected.
+- Nothing re-clones the repository or reconciles the branches that were already imported under the previous mapping.
+- The new value is served from cache for a short interval, so operations started immediately after the edit may still use the previous one.
+
+The **Check connectivity** action does not validate the branch either: it verifies that the remote is reachable with the configured credentials, nothing more.
+
+To change the mapping safely, confirm that the branch exists on the remote first, then apply the edit and let a synchronization cycle complete before relying on the repository.
 
 ### Update a read-only repository with remote changes
 
