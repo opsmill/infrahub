@@ -13,7 +13,7 @@ No services. Point the reader at fixture cgroup files.
 
 - **cgroup v2, CPU limited**: `cpu.max = "400000 100000"` → `processor_assigned == 4`.
 - **cgroup v2, CPU unlimited**: `cpu.max = "max 100000"` → `processor_assigned is None` (no fallback to `processor_available`).
-- **cgroup v2, memory limited**: `memory.max = "8589934592"` → `memory_total == 8589934592`; `memory.current` → `memory_available == memory_total − current`.
+- **cgroup v2, memory limited**: `memory.max = "8589934592"` → `memory_total == 8589934592`; `memory.current` → `memory_available == max(0, memory_total − current)` (clamped, since a limit lowered below current usage would otherwise go negative).
 - **cgroup v2, memory unlimited**: `memory.max = "max"` → `memory_total` falls back to `psutil.virtual_memory().total` (capacity is never `None` on a normal host).
 - **cgroup v1, CPU limited**: `cpu.cfs_quota_us = 200000`, `cpu.cfs_period_us = 100000` → `processor_assigned == 2`.
 - **cgroup v1, unlimited**: `cpu.cfs_quota_us = -1` → `processor_assigned is None`.
