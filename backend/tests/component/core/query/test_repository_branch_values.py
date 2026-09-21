@@ -5,18 +5,20 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub import config
+from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.repository import BranchScope, RepositoryBranchValue, RepositoryBranchValuesQuery
+from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 REPOSITORY_NAME = "repo-branch-values"
@@ -27,6 +29,7 @@ CREATION_COMMIT = "0000000000000000000000000000000000000000"
 MAIN_COMMIT = "1111111111111111111111111111111111111111"
 BRANCH_COMMIT = "2222222222222222222222222222222222222222"
 LATER_MAIN_COMMIT = "3333333333333333333333333333333333333333"
+ORIGIN_COMMIT = "4444444444444444444444444444444444444444"
 
 MAIN_REF = "v1.0"
 BRANCH_REF = "v2.0"
@@ -102,6 +105,29 @@ async def _resolve(
     )
     await query.execute(db=db)
     return {(row.branch_name, row.attribute_name): row for row in query.get_data()}
+
+
+async def _create_branch_from(db: InfrahubDatabase, branch_name: str, origin_branch: str) -> Branch:
+    """Create a branch forked from another branch, which `create_branch` cannot express."""
+    branch = Branch(
+        name=branch_name,
+        status=BranchStatus.OPEN,
+        hierarchy_level=3,
+        description=f"Branch {branch_name}",
+        is_default=False,
+        sync_with_git=False,
+        origin_branch=origin_branch,
+        is_isolated=True,
+    )
+
+    origin_schema = registry.schema.get_schema_branch(name=origin_branch)
+    registry.schema.set_schema_branch(name=branch.name, schema=origin_schema.duplicate(name=branch.name))
+
+    branch.update_schema_hash()
+    await branch.save(db=db)
+    registry.branch[branch.name] = branch
+
+    return branch
 
 
 async def _set_commit(db: InfrahubDatabase, repository: Node, branch: Branch, commit: str) -> None:
@@ -266,6 +292,29 @@ async def test_branch_that_resolves_nothing_reports_no_source_branch(
     )
     assert values["branch2", "ref"] == RepositoryBranchValue(
         branch_name="branch2", attribute_name="ref", value=None, source_branch=None
+    )
+
+
+async def test_branch_that_never_imported_inherits_from_its_origin_not_the_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, repository: Node
+) -> None:
+    """The fork-point window follows `origin_branch`, which need not be the default branch.
+
+    A read keyed on the default branch instead would answer `MAIN_COMMIT` here, and would be wrong on
+    any deployment whose branches do not all fork from it.
+    """
+    origin = await create_branch(branch_name="origin-branch", db=db)
+    await _set_commit(db=db, repository=repository, branch=origin, commit=ORIGIN_COMMIT)
+    await _set_commit(db=db, repository=repository, branch=default_branch, commit=LATER_MAIN_COMMIT)
+
+    child = await _create_branch_from(db=db, branch_name="child-branch", origin_branch=origin.name)
+
+    values = await _resolve(
+        db=db, repository_id=repository.id, branches=[default_branch, origin, child], attribute_names={"commit"}
+    )
+
+    assert values["child-branch", "commit"] == RepositoryBranchValue(
+        branch_name="child-branch", attribute_name="commit", value=ORIGIN_COMMIT, source_branch=origin.name
     )
 
 
