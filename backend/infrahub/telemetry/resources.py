@@ -124,6 +124,12 @@ class _ProcessIdentity:
     cgroup_dirs: list[Path]
     host_processor_count: int | None
 
+    v1_cpu_dirs: list[Path]
+    """Where a cgroup v1 hierarchy keeps this process's CPU limits, leaf first; empty under v2."""
+
+    v1_memory_dirs: list[Path]
+    """Where a cgroup v1 hierarchy keeps this process's memory limits, leaf first; empty under v2."""
+
 
 @dataclass(frozen=True)
 class _DynamicResources:
@@ -266,6 +272,57 @@ def _own_cgroup_dirs(cgroup_root: Path, proc_cgroup: Path) -> list[Path]:
     return [cgroup_root]
 
 
+def _v1_controller_mount(cgroup_root: Path, controller: str) -> Path | None:
+    """The directory a cgroup v1 hierarchy mounts one controller at.
+
+    Controllers are frequently co-mounted under a comma-joined name, so a plain
+    ``cpu`` may live at ``cpu,cpuacct``.
+    """
+    direct = cgroup_root / controller
+    if direct.is_dir():
+        return direct
+    try:
+        entries = sorted(cgroup_root.iterdir())
+    except OSError:
+        return None
+    return next((entry for entry in entries if entry.is_dir() and controller in entry.name.split(",")), None)
+
+
+def _v1_controller_dirs(cgroup_root: Path, proc_cgroup: Path, controller: str) -> list[Path]:
+    """Return this process's cgroup v1 directories for one controller, leaf first.
+
+    A v1 hierarchy mounts each controller separately and names the process's path
+    within it on that controller's own ``/proc/self/cgroup`` line, so the limit
+    files sit under ``<mount>/<path>`` and every level up to the mount may carry
+    one. A container whose own controller directories are bind-mounted reports
+    the root path, collapsing this to the mount itself — the layout the plain
+    mount-root read already assumed.
+    """
+    mount = _v1_controller_mount(cgroup_root, controller)
+    if mount is None:
+        return []
+    content = _read_text_file(proc_cgroup)
+    if content is None:
+        return [mount]
+    for line in content.splitlines():
+        fields = line.split(":", 2)
+        if len(fields) != 3 or controller not in fields[1].split(","):
+            continue
+        relative = fields[2].strip().lstrip("/")
+        if not relative or ".." in relative.split("/"):
+            return [mount]
+        leaf = mount / relative
+        if not leaf.is_dir():
+            return [mount]
+        dirs = [leaf]
+        for parent in leaf.parents:
+            dirs.append(parent)
+            if parent == mount:
+                break
+        return dirs
+    return [mount]
+
+
 def _parse_cpu_max(line: str) -> int | None:
     """Parse one cgroup v2 ``cpu.max`` line ("<quota> <period>", "max" = unbounded)."""
     parts = line.split()
@@ -279,14 +336,14 @@ def _parse_cpu_max(line: str) -> int | None:
     return _quota_to_cores(quota=quota, period=period)
 
 
-def _read_cgroup_cpu_quota(cgroup_dirs: list[Path]) -> int | None:
+def _read_cgroup_cpu_quota(cgroup_dirs: list[Path], v1_dirs: list[Path]) -> int | None:
     """Return the enforced CPU limit in whole cores, or ``None`` when unbounded.
 
     Every level of the process's cgroup path may carry a v2 ``cpu.max``; the
     effective limit is the most restrictive one. A hierarchy with no readable
     ``cpu.max`` at any level is treated as cgroup v1, whose ``cpu.cfs_quota_us``
-    / ``cpu.cfs_period_us`` pair (quota ``-1`` = unbounded) lives at the
-    controller mount root inside a container.
+    / ``cpu.cfs_period_us`` pair (quota ``-1`` = unbounded) is read at each level
+    of the process's own controller path, most restrictive winning there too.
 
     Raises:
         _CgroupLimitUnreadableError: A limit file exists but cannot be read, so
@@ -301,22 +358,26 @@ def _read_cgroup_cpu_quota(cgroup_dirs: list[Path]) -> int | None:
         cores = [value for line in v2_lines if (value := _parse_cpu_max(line)) is not None]
         return min(cores) if cores else None
 
-    root = cgroup_dirs[-1]
-    quota = _read_cgroup_int_limit(root / "cpu" / "cpu.cfs_quota_us")
-    period = _read_cgroup_int_limit(root / "cpu" / "cpu.cfs_period_us")
-    if quota is None or period is None:
-        return None
-    return _quota_to_cores(quota=quota, period=period)
+    quotas = []
+    for directory in v1_dirs:
+        quota = _read_cgroup_int_limit(directory / "cpu.cfs_quota_us")
+        period = _read_cgroup_int_limit(directory / "cpu.cfs_period_us")
+        if quota is None or period is None:
+            continue
+        if (level_cores := _quota_to_cores(quota=quota, period=period)) is not None:
+            quotas.append(level_cores)
+    return min(quotas) if quotas else None
 
 
-def _read_cgroup_memory_levels(cgroup_dirs: list[Path]) -> list[tuple[int, Path]]:
+def _read_cgroup_memory_levels(cgroup_dirs: list[Path], v1_dirs: list[Path]) -> list[tuple[int, Path]]:
     """Return every enforced memory limit with the usage file it is charged against, leaf first.
 
     Each level of the process's cgroup path may carry a v2 ``memory.max``
     ("max" = unbounded). A hierarchy with no readable ``memory.max`` at any level
     is treated as cgroup v1, whose ``memory.limit_in_bytes`` reports a
-    near-``INT64_MAX`` sentinel when unbounded. An empty list means no limit is
-    enforced anywhere.
+    near-``INT64_MAX`` sentinel when unbounded and is read at each level of the
+    process's own controller path. An empty list means no limit is enforced
+    anywhere.
 
     Raises:
         _CgroupLimitUnreadableError: A limit file exists but cannot be read, so
@@ -340,11 +401,12 @@ def _read_cgroup_memory_levels(cgroup_dirs: list[Path]) -> list[tuple[int, Path]
     if v2_seen:
         return levels
 
-    root = cgroup_dirs[-1]
-    v1_limit = _read_cgroup_int_limit(root / "memory" / "memory.limit_in_bytes")
-    if v1_limit is None or v1_limit >= _CGROUP_MEMORY_UNLIMITED_THRESHOLD:
-        return []
-    return [(v1_limit, root / "memory" / "memory.usage_in_bytes")]
+    for directory in v1_dirs:
+        v1_limit = _read_cgroup_int_limit(directory / "memory.limit_in_bytes")
+        if v1_limit is None or v1_limit >= _CGROUP_MEMORY_UNLIMITED_THRESHOLD:
+            continue
+        levels.append((v1_limit, directory / "memory.usage_in_bytes"))
+    return levels
 
 
 def _memory_headroom(levels: list[tuple[int, Path]]) -> int:
@@ -445,6 +507,8 @@ class ProcessResources:
             host=socket.gethostname(),
             cgroup_dirs=_own_cgroup_dirs(cgroup_root=self._cgroup_root, proc_cgroup=self._proc_cgroup),
             host_processor_count=psutil.cpu_count(logical=True),
+            v1_cpu_dirs=_v1_controller_dirs(self._cgroup_root, self._proc_cgroup, "cpu"),
+            v1_memory_dirs=_v1_controller_dirs(self._cgroup_root, self._proc_cgroup, "memory"),
         )
 
     def _process_identity(self) -> _ProcessIdentity:
@@ -454,7 +518,7 @@ class ProcessResources:
 
     def _read_dynamic(self, identity: _ProcessIdentity) -> _DynamicResources:
         try:
-            processor_assigned = _read_cgroup_cpu_quota(identity.cgroup_dirs)
+            processor_assigned = _read_cgroup_cpu_quota(identity.cgroup_dirs, identity.v1_cpu_dirs)
             processor_available = _usable_processors(
                 host_count=identity.host_processor_count,
                 quota_cores=processor_assigned,
@@ -473,7 +537,7 @@ class ProcessResources:
             processor_available = None
 
         try:
-            memory_levels = _read_cgroup_memory_levels(identity.cgroup_dirs)
+            memory_levels = _read_cgroup_memory_levels(identity.cgroup_dirs, identity.v1_memory_dirs)
             memory_limit = min(limit for limit, _ in memory_levels) if memory_levels else None
             memory_total = memory_limit if memory_limit is not None else _host_memory_total()
         except _CgroupLimitUnreadableError as exc:

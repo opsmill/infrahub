@@ -362,6 +362,40 @@ CGROUP_PATH_CASES = [
         expected_memory_total=8589934592,
         expected_memory_available=8589934592 - 2147483648,
     ),
+    CgroupPathCase(
+        # A host v1 hierarchy, where the limits sit under the process's own path
+        # within each co-mounted controller rather than at the mount root.
+        name="v1_non_root_path_reads_the_process_own_controllers",
+        proc_content="12:memory:/system.slice/app.service\n3:cpu,cpuacct:/system.slice/app.service\n",
+        files={
+            "cpu,cpuacct/system.slice/app.service/cpu.cfs_quota_us": "200000",
+            "cpu,cpuacct/system.slice/app.service/cpu.cfs_period_us": "100000",
+            "memory/system.slice/app.service/memory.limit_in_bytes": "8589934592",
+            "memory/system.slice/app.service/memory.usage_in_bytes": "2147483648",
+        },
+        expected_assigned=2,
+        expected_memory_total=8589934592,
+        expected_memory_available=8589934592 - 2147483648,
+    ),
+    CgroupPathCase(
+        # Every v1 level carries the controller files, an unenforced one holding the
+        # unlimited sentinel, so the limit on the ancestor slice is what binds.
+        name="v1_ancestor_limit_applies_to_an_unlimited_leaf",
+        proc_content="12:memory:/system.slice/app.service\n3:cpu,cpuacct:/system.slice/app.service\n",
+        files={
+            "cpu,cpuacct/system.slice/app.service/cpu.cfs_quota_us": "-1",
+            "cpu,cpuacct/system.slice/app.service/cpu.cfs_period_us": "100000",
+            "cpu,cpuacct/system.slice/cpu.cfs_quota_us": "400000",
+            "cpu,cpuacct/system.slice/cpu.cfs_period_us": "100000",
+            "memory/system.slice/app.service/memory.limit_in_bytes": "9223372036854771712",
+            "memory/system.slice/app.service/memory.usage_in_bytes": "536870912",
+            "memory/system.slice/memory.limit_in_bytes": "4294967296",
+            "memory/system.slice/memory.usage_in_bytes": "1073741824",
+        },
+        expected_assigned=4,
+        expected_memory_total=4294967296,
+        expected_memory_available=4294967296 - 1073741824,
+    ),
 ]
 
 
