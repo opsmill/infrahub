@@ -413,6 +413,48 @@ def test_unlimited_at_every_level_falls_back_to_host(tmp_path: Path) -> None:
     assert reading.memory_available >= 0
 
 
+def test_a_nearly_full_ancestor_binds_before_a_roomier_leaf_limit(tmp_path: Path) -> None:
+    # The leaf carries the smaller limit, but the ancestor's limit is charged against
+    # its whole subtree and is nearly exhausted, so it binds first.
+    gib = 1024**3
+    case = CgroupPathCase(
+        name="ancestor_binds",
+        proc_content="0::/pod/container\n",
+        files={
+            "pod/container/memory.max": str(4 * gib),
+            "pod/container/memory.current": str(gib // 2),
+            "pod/memory.max": str(5 * gib),
+            "pod/memory.current": str(4 * gib + gib // 2 + gib // 10),
+        },
+        expected_assigned=None,
+        expected_memory_total=4 * gib,
+        expected_memory_available=None,
+    )
+
+    reading = _process_resources_for(case, tmp_path).read()
+
+    # Capacity is still the tightest ceiling, the leaf's 4 GiB...
+    assert reading.memory_total == 4 * gib
+    # ...but only the ancestor's remainder is actually free, not the leaf's 3.5 GiB.
+    assert reading.memory_available == 5 * gib - (4 * gib + gib // 2 + gib // 10)
+
+
+def test_unreadable_usage_file_keeps_the_capacity_figure(tmp_path: Path) -> None:
+    cgroup_root = tmp_path / "cgroup"
+    cgroup_root.mkdir()
+    _write_cgroup_files(cgroup_root, {"memory.max": "8589934592"})
+    # A directory where the usage file belongs fails the read without being absent.
+    (cgroup_root / "memory.current").mkdir()
+    proc_cgroup = tmp_path / "proc_self_cgroup"
+    proc_cgroup.write_text("0::/\n")
+
+    reading = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).read()
+
+    assert reading.memory_total == 8589934592
+    assert reading.memory_available is None
+    assert reading.processor_available is not None
+
+
 def test_binding_ancestor_usage_refreshes_between_reads(tmp_path: Path) -> None:
     # Free memory must be recomputed against the level that holds the effective
     # limit — here the parent — not against the unlimited leaf.
