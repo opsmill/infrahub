@@ -646,6 +646,42 @@ def test_diagnostics_expose_the_limit_files_found_at_each_level(tmp_path: Path) 
     assert diagnostics.memory_limit == 4294967296
 
 
+def test_diagnostics_expose_the_v1_controller_levels_the_reader_consulted(tmp_path: Path) -> None:
+    """Each v1 controller is reported at its own resolved path, not at the mount root.
+
+    A process under a systemd slice sits below the mount, so evidence gathered at
+    the mount alone would be empty for the very limit the reading reflects.
+    """
+    cgroup_root = tmp_path / "cgroup"
+    cgroup_root.mkdir()
+    _write_cgroup_files(
+        cgroup_root,
+        {
+            "cpu,cpuacct/system.slice/app.service/cpu.cfs_quota_us": "200000",
+            "cpu,cpuacct/system.slice/app.service/cpu.cfs_period_us": "100000",
+            "memory/system.slice/app.service/memory.limit_in_bytes": "8589934592",
+            "memory/system.slice/app.service/memory.usage_in_bytes": "2147483648",
+        },
+    )
+    proc_cgroup = tmp_path / "proc_self_cgroup"
+    proc_cgroup.write_text("12:memory:/system.slice/app.service\n3:cpu,cpuacct:/system.slice/app.service\n")
+
+    diagnostics = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).diagnose()
+
+    assert [level.path for level in diagnostics.levels] == [
+        str(cgroup_root),
+        f"{cgroup_root / 'cpu,cpuacct' / 'system.slice' / 'app.service'} (v1 cpu)",
+        f"{cgroup_root / 'memory' / 'system.slice' / 'app.service'} (v1 memory)",
+    ]
+    assert diagnostics.levels[1].files == {"cpu.cfs_quota_us": "200000", "cpu.cfs_period_us": "100000"}
+    assert diagnostics.levels[2].files == {
+        "memory.limit_in_bytes": "8589934592",
+        "memory.usage_in_bytes": "2147483648",
+    }
+    assert diagnostics.reading.processor_assigned == 2
+    assert diagnostics.memory_limit == 8589934592
+
+
 def test_leaf_cpu_max_absent_still_falls_through_to_ancestor(tmp_path: Path) -> None:
     """A leaf with no ``cpu.max`` file at all (ENOENT) is the normal per-level case.
 
