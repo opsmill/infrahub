@@ -8,7 +8,9 @@
 
 Extend the daily telemetry payload **in place** to report logical CPU cores (available + assigned) and memory (total + available) for the **database** (on its existing `system_info`), the **worker fleet** (on the existing `workers` section), and the **API server** (a new `server` section), all using the existing `processor_*`/`memory_*` field names, so a deployment can be audited against its contracted tier from a single snapshot — including offline/air-gapped deployments.
 
-Technical approach: reuse the existing telemetry gatherer, the `safe_metric` degradation boundary, the existing database JMX query, and the existing worker-heartbeat cache channel. The database row is derived from the JMX system-info the payload already collects. The server and worker rows are self-reported by each process into its heartbeat and aggregated by the gatherer. CPU/RAM figures come from `psutil` (promoted from a dev-only to a production runtime dependency — research D1) plus stdlib `/sys/fs/cgroup` reads for the enforced allocation limit. Because multiple `api_server` processes share one container/cgroup, the aggregation deduplicates by host before summing. No new dependency, no database schema change, no branch-scoped data.
+Technical approach: reuse the existing telemetry gatherer, the `safe_metric` degradation boundary, the existing database JMX query, and the existing worker-heartbeat cache channel. The database row is derived from the JMX system-info the payload already collects. The server and worker rows are self-reported by each process into its heartbeat and aggregated by the gatherer. CPU/RAM figures come from `psutil` (promoted from a dev-only to a production runtime dependency — research D1) plus stdlib `/sys/fs/cgroup` reads for the enforced allocation limit. Because multiple `api_server` processes share one container/cgroup, the aggregation deduplicates by host before summing. No new third-party package — but `psutil` moves from a dev-only pin to a production runtime dependency, which is an Ask-First gate in its own right (Constraints, Governance). No database schema change, no branch-scoped data.
+
+**Population scoping.** The existing `workers.total`/`active` keep counting *all* worker processes (api_server + git_agent). The new `workers.processor_*`/`memory_*` fields are the **git_agent fleet alone**; api_server resources go in the new `server` block. The two are deliberately scoped differently, so neither the code nor a consumer may divide one by the other — see the contract's warning against a per-worker average.
 
 ## Technical Context
 
@@ -42,7 +44,7 @@ Technical approach: reuse the existing telemetry gatherer, the `safe_metric` deg
 | IV. Test Discipline | ✅ Pass | Unit tests for cgroup parsing + aggregation; component test for end-to-end gather incl. the FR-005 partial-report and FR-003 unlimited→`null` edges. Test files mirror source. |
 | V. Query Performance & Efficiency | ✅ Pass | Reuses the existing JMX call and the existing `workers:*` cache scan; adds one new lightweight `SHOW SETTINGS` read for `processor_assigned`. No N+1, no large result sets. |
 | VI. Security & Input Boundaries | ✅ Pass | Reads only local, trusted `/sys/fs/cgroup` files — no user input, no injection surface. Cores/RAM are not PII; transmission remains gated by the existing opt-out. |
-| VII. Simplicity & Maintainability | ✅ Pass (1 justified complexity) | Reuses `safe_metric`, the heartbeat channel, and the JMX path; zero new deps. Host-dedup aggregation is the one non-obvious element — justified in Complexity Tracking. |
+| VII. Simplicity & Maintainability | ✅ Pass (1 justified complexity) | Reuses `safe_metric`, the heartbeat channel, and the JMX path; no new third-party package, though `psutil` is promoted to a production runtime dependency (Governance gate below). Host-dedup aggregation is the one non-obvious element — justified in Complexity Tracking. |
 
 **Governance Ask-First gates**: New dependency — **none added**, but `psutil` is promoted from dev-only to a production runtime dependency (Ask-First confirmed, research D1). DB schema/migration — **none**. Auth — **none**. GraphQL/REST schema — **none** (telemetry payload is an internal contract with the receiving service, coordinated cross-team, not an Infrahub API). CI/CD — **none**.
 
@@ -52,13 +54,20 @@ Technical approach: reuse the existing telemetry gatherer, the `safe_metric` deg
 
 ```text
 specs/infp-589-resource-telemetry/
+├── spec.md              # the input to this plan
 ├── plan.md              # This file
 ├── research.md          # Phase 0 output — decisions + rationale
 ├── data-model.md        # Phase 1 output — Pydantic models + aggregation rules
 ├── quickstart.md        # Phase 1 output — validation guide
 ├── contracts/
 │   └── telemetry-resources.md   # payload contract for the receiving service
-└── tasks.md             # Phase 2 output (/speckit-tasks — NOT created here)
+├── tasks.md             # Phase 2 output (/speckit-tasks)
+├── alignment-check.md   # spec-to-plan alignment record
+├── checklists/
+│   └── requirements.md  # requirement-quality checklist
+├── critiques/
+│   └── critique-20260721-121437.md   # pre-implementation critique + erratum
+└── opsmill-implement-report.md       # implementation record
 ```
 
 ### Source Code (repository root)
@@ -80,20 +89,33 @@ backend/infrahub/telemetry/
 └── tasks.py             # gather: aggregate hosts → extended workers fields + new server block
 
 backend/infrahub/services/
-└── component.py         # heartbeat self-reports this process's resources via
-                         #   read_worker_resources(); WorkerInfo is unchanged
+└── component.py         # refresh_heartbeat self-reports this process's resources via
+                         #   _read_own_resources(); the gatherer reads them back through
+                         #   the new read_worker_resources() scan; WorkerInfo is unchanged
+
+backend/infrahub/cli/
+└── telemetry.py         # NEW: `infrahub telemetry probe-resources`, which explains a
+                         #   reading from the process's own cgroup evidence
 
 backend/tests/unit/telemetry/
 ├── test_resources.py    # NEW: cgroup v2/v1 parsing, unlimited→null, host detection
 └── test_aggregation.py  # NEW: host-dedup sum, undercount, null-vs-zero rules
 
 backend/tests/component/telemetry/
-└── test_resources.py    # NEW: end-to-end gather with synthesized worker heartbeats;
-                         #   + regression: the new resources heartbeat key must NOT change
-                         #     the existing workers.total / workers.active counts
+├── test_resources.py    # NEW: end-to-end gather with synthesized worker heartbeats;
+│                        #   + regression: the new resources heartbeat key must NOT change
+│                        #     the existing workers.total / workers.active counts
+└── test_cgroup_kernels.py  # NEW: the reader against real kernel control groups
+
+backend/tests/unit/cli/
+└── test_telemetry.py    # NEW: the probe command's rendering and JSON branches
 ```
 
-**Structure Decision**: Single backend project. All changes are confined to `backend/infrahub/telemetry/` (a new `resources.py` reader, three new Pydantic models, gather wiring) and one existing collaborator, `backend/infrahub/services/component.py` (heartbeat self-report via `read_worker_resources()`; `WorkerInfo` unchanged). No new top-level package, no cross-cutting refactor. This honors Principle VII and the backend-component-design rule (the reader is a small, injectable unit; the gatherer already follows the DI/builder pattern established in the parent telemetry work).
+Outside `backend/`, the feature also touches `pyproject.toml`/`uv.lock` (the `psutil`
+promotion), `docs/` (the FAQ entry plus the generated CLI reference and its sidebar
+entry), and three Towncrier fragments under `changelog/`.
+
+**Structure Decision**: Single backend project. The behaviour lives in `backend/infrahub/telemetry/` (a new `resources.py` reader, three new Pydantic models, gather wiring) and one existing collaborator, `backend/infrahub/services/component.py` (heartbeat self-report via `_read_own_resources()`, read back by the new `read_worker_resources()` scan; `WorkerInfo` unchanged). Alongside it the feature adds one CLI command under `backend/infrahub/cli/` to explain a reading, promotes `psutil` in `pyproject.toml`, and updates the docs and changelog. No new top-level package, no cross-cutting refactor. This honors Principle VII and the backend-component-design rule (the reader is a small, injectable unit; the gatherer already follows the DI/builder pattern established in the parent telemetry work).
 
 ## Complexity Tracking
 
