@@ -7,6 +7,7 @@ from infrahub.exceptions import (
     RepositoryConnectionError,
     RepositoryCredentialsError,
     RepositoryError,
+    RepositoryPermissionError,
 )
 from infrahub.git.base import InfrahubRepositoryBase
 
@@ -17,6 +18,7 @@ class EnrichmentCase:
     stderr: str
     expected: type[RepositoryError]
     command: list[str] = field(default_factory=lambda: ["git", "fetch"])
+    is_write_operation: bool = False
 
 
 ENRICHMENT_CASES = [
@@ -62,6 +64,54 @@ ENRICHMENT_CASES = [
         expected=RepositoryCredentialsError,
     ),
     EnrichmentCase(
+        name="permission_write_access_not_granted",
+        stderr="ERROR: Write access to repository not granted.\nfatal: The remote end hung up unexpectedly",
+        expected=RepositoryPermissionError,
+        command=["git", "push", "--dry-run", "--porcelain", "--delete"],
+        is_write_operation=True,
+    ),
+    EnrichmentCase(
+        name="permission_denied_to_user",
+        stderr="remote: Permission to opsmill/repo.git denied to baduser.\n"
+        "fatal: unable to access 'https://github.com/opsmill/repo.git/'",
+        expected=RepositoryPermissionError,
+        command=["git", "push", "--dry-run", "--porcelain", "--delete"],
+        is_write_operation=True,
+    ),
+    EnrichmentCase(
+        name="permission_http_403",
+        stderr="fatal: unable to access 'https://github.com/opsmill/repo.git/': The requested URL returned error: 403",
+        expected=RepositoryPermissionError,
+        command=["git", "push", "--dry-run", "--porcelain", "--delete"],
+        is_write_operation=True,
+    ),
+    EnrichmentCase(
+        name="permission_gitlab_not_allowed",
+        stderr="remote: You are not allowed to push code to this project.\nfatal: unable to access ...",
+        expected=RepositoryPermissionError,
+        command=["git", "push", "--dry-run", "--porcelain", "--delete"],
+        is_write_operation=True,
+    ),
+    EnrichmentCase(
+        name="permission_gitlab_not_allowed_upload",
+        stderr="remote: You are not allowed to upload code.\nfatal: unable to access ...",
+        expected=RepositoryPermissionError,
+        command=["git", "push", "--dry-run", "--porcelain", "--delete"],
+        is_write_operation=True,
+    ),
+    EnrichmentCase(
+        name="permission_gitea_denied_writing",
+        stderr="remote: Gitea: User permission denied for writing.\nfatal: unable to access ...",
+        expected=RepositoryPermissionError,
+        command=["git", "push", "--dry-run", "--porcelain", "--delete"],
+        is_write_operation=True,
+    ),
+    EnrichmentCase(
+        name="read_403_not_classified_as_permission",
+        stderr="fatal: unable to access 'https://github.com/opsmill/repo.git/': The requested URL returned error: 403",
+        expected=RepositoryError,
+    ),
+    EnrichmentCase(
         name="unclassified_error_falls_through",
         stderr="fatal: something entirely unexpected happened",
         expected=RepositoryError,
@@ -75,7 +125,10 @@ def test_raise_enriched_error_static_classification(case: EnrichmentCase) -> Non
 
     with pytest.raises(case.expected) as exc_info:
         InfrahubRepositoryBase._raise_enriched_error_static(
-            error=error, name="net-repo", location="https://gitlab.example.com/net/repo.git"
+            error=error,
+            name="net-repo",
+            location="https://gitlab.example.com/net/repo.git",
+            is_write_operation=case.is_write_operation,
         )
 
     # The generic fallthrough must not swallow a case that should have matched a more specific rule.

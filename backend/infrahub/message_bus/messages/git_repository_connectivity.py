@@ -12,6 +12,9 @@ class GitRepositoryConnectivity(InfrahubMessage):
 
     repository_name: str = Field(..., description="The name of the repository")
     repository_location: str = Field(..., description="The location of repository")
+    requires_write: bool = Field(
+        default=False, description="Whether the check must also confirm write (push) access to the remote"
+    )
 
 
 class GitRepositoryConnectivityResponseData(InfrahubResponseData):

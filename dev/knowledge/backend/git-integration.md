@@ -184,10 +184,15 @@ whose SHA embeds a timestamp and is therefore not reproducible.
 > any worker re-derive the merge from `(source_branch, source_commit, dest_branch)`. Update this
 > section when that lands.
 
-Push rejections do **not** flow through the error classifier below. GitPython reports them on
+Per-ref push rejections do **not** flow through the error classifier below. GitPython reports them on
 `push_info.summary`, not by raising `GitCommandError`, so `push()` inspects `push_info.flags` and
 raises `RepositoryError` itself. Anything that needs to distinguish a non-fast-forward rejection from
-a permissions denial has to parse that summary.
+a per-ref permissions denial has to parse that summary.
+
+A push that fails at the **transport** level (a 403 on the receive-pack advertisement, an expired
+token, a refused connection, a TLS failure) is different: GitPython finds no porcelain status line to
+parse and re-raises `GitCommandError`. `push()` catches that and routes it through the same enriched
+classifier a fetch uses, so it is converted to the typed error and recorded on `operational_status`.
 
 ## Repository state and branch support
 
@@ -234,7 +239,11 @@ reconfiguration step and should not be proposed as a remedy for a misconfigured 
 
 `InfrahubRepositoryBase._raise_enriched_error_static` maps `GitCommandError.stderr` to typed
 exceptions: `RepositoryConnectionError` (unreachable host, gateway 5xx, TLS verification failure),
-`RepositoryCredentialsError`, `RepositoryInvalidBranchError`, or a generic `RepositoryError`.
+`RepositoryCredentialsError`, `RepositoryPermissionError` (authenticated but not authorized to push -
+a 403 on the receive-pack advertisement, "Write access to repository not granted", "Permission to ...
+denied"), `RepositoryInvalidBranchError`, or a generic `RepositoryError`. `RepositoryPermissionError`
+maps to the same `ERROR_CRED` operational status as a credential failure; the distinction is carried
+in the message.
 
 It matches on **stderr text, not exit status**, because git exits 128 for virtually every fatal
 error and an HTTP failure surfaces only as text from the libcurl remote helper. The matched
@@ -243,7 +252,8 @@ upstream silently reclassifies an error to the generic fallthrough.
 
 Two gaps to know about:
 
-- **Push rejections bypass it entirely** (see above); they arrive on `push_info.summary`.
+- **Per-ref push rejections bypass it** (see above); they arrive on `push_info.summary`. Transport-level
+  push failures do reach it, because those raise `GitCommandError`.
 - **Divergence is misreported as conflict.** The workers configure no `pull.rebase` or `pull.ff`
   (`workers/infrahub_async.py::set_git_global_config`), so a branch whose remote history was rewritten
   fails `git pull` with "Need to specify how to reconcile divergent branches", which the classifier
