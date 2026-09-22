@@ -13,7 +13,7 @@ from infrahub import config
 from infrahub.config import CacheSettings
 from infrahub.display_labels.gather import gather_trigger_display_labels_jinja2
 from infrahub.hfid.gather import gather_trigger_hfid
-from infrahub.trigger.catalogue import builtin_triggers
+from infrahub.trigger.catalogue import get_triggers
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import setup_triggers
 
@@ -130,7 +130,7 @@ async def setup_task_manager() -> None:
         await setup_work_queues(client=client)
         await setup_deployments(client=client)
         await setup_triggers(
-            client=client, triggers=builtin_triggers, trigger_type=TriggerType.BUILTIN, force_update=True
+            client=client, triggers=get_triggers(), trigger_type=TriggerType.BUILTIN, force_update=True
         )
 
 

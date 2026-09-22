@@ -1,3 +1,5 @@
+from fast_depends import Depends, inject
+
 from infrahub.actions.triggers import TRIGGER_ACTION_RULE_UPDATE
 from infrahub.branch.triggers import TRIGGER_BRANCH_MERGED
 from infrahub.computed_attribute.triggers import (
@@ -29,3 +31,15 @@ builtin_triggers: list[TriggerDefinition] = [
     TRIGGER_SCHEMA_UPDATED,
     TRIGGER_WEBHOOK_CONFIGURE,
 ]
+
+
+# Use this dependency injection mechanism to easily add new triggers within infrahub-enterprise
+def build_triggers_definitions() -> list[TriggerDefinition]:
+    return builtin_triggers
+
+
+@inject
+def get_triggers(
+    triggers: list[TriggerDefinition] = Depends(build_triggers_definitions),  # noqa: B008
+) -> list[TriggerDefinition]:
+    return triggers

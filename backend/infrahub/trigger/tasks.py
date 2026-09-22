@@ -9,7 +9,7 @@ from infrahub.computed_attribute.gather import (
 from infrahub.display_labels.gather import gather_trigger_display_labels_jinja2
 from infrahub.hfid.gather import gather_trigger_hfid
 from infrahub.profiles.gather import gather_trigger_profile_refresh
-from infrahub.trigger.catalogue import builtin_triggers
+from infrahub.trigger.catalogue import get_triggers
 from infrahub.webhook.gather import gather_trigger_webhook
 from infrahub.workers.dependencies import get_database
 
@@ -36,7 +36,7 @@ async def trigger_configure_all() -> None:
             + computed_attribute_python_query_triggers
             + display_label_triggers
             + human_friendly_id_triggers
-            + builtin_triggers
+            + get_triggers()
             + profile_refresh_triggers
             + webhook_trigger
             + action_rules
