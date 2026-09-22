@@ -144,19 +144,31 @@ KERNEL_CASES = [
 ]
 
 
-def _docker_available() -> bool:
+def _docker_on_cgroup_v2() -> bool:
+    """Whether a reachable daemon runs containers on a unified cgroup hierarchy.
+
+    The daemon is asked rather than this machine, since it may sit in a VM (the
+    macOS case) or on another host, and it is the daemon's hierarchy the cases
+    write limits into. On a v1 daemon the setup script finds no unified line and
+    refuses, so the cases must skip rather than fail.
+    """
     if DOCKER is None:
         return False
     try:
         completed = subprocess.run(  # noqa: S603
-            [DOCKER, "info"], capture_output=True, check=False, timeout=_DAEMON_TIMEOUT_SECONDS
+            [DOCKER, "info", "--format", "{{.CgroupVersion}}"],
+            capture_output=True,
+            check=False,
+            timeout=_DAEMON_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:
         return False
-    return completed.returncode == 0
+    return completed.returncode == 0 and completed.stdout.decode(errors="replace").strip() == "2"
 
 
-pytestmark = pytest.mark.skipif(not _docker_available(), reason="requires a running Docker daemon")
+pytestmark = pytest.mark.skipif(
+    not _docker_on_cgroup_v2(), reason="requires a running Docker daemon on a cgroup v2 host"
+)
 
 
 @pytest.fixture(scope="module")
