@@ -17,11 +17,11 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.protocols import CoreNumberPool as CoreNumberPoolProtocol
 from infrahub.core.query.node import NodeCreateAllQuery
 from infrahub.core.query.resource_manager import (
+    NumberPoolChangeReserved,
     NumberPoolGetAllocated,
     NumberPoolGetReserved,
     NumberPoolGetUsed,
     NumberPoolSetReserved,
-    PoolChangeReserved,
     PoolRecordProvenance,
 )
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
@@ -407,41 +407,6 @@ class TestNumberPoolGetAllocated:
         assert allocated_values == [1, 2, 3], f"Expected value=2 to stay allocated, got {allocated_values}"
 
 
-class TestPoolChangeReserved:
-    async def test_PoolChangeReserved(
-        self,
-        db: InfrahubDatabase,
-        register_test_schema: SchemaBranch,
-        default_branch: Branch,
-        run_number_pool_validation: None,
-    ) -> None:
-        incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
-        request_schema = registry.schema.get_node_schema(name=REQUEST.kind, branch=default_branch)
-
-        incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
-        await create_objects(db=db, schema=request_schema, branch=default_branch.name, start=1, end=6)
-        incident = incidents[1]
-
-        pools: list[CoreNumberPool] = await NodeManager.query(
-            db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch
-        )
-        assert len(pools) == 2
-        incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
-
-        reservations_before = await get_reservations(db=db, pool=incident_pool, branch=default_branch)
-        assert len(reservations_before) == 3
-        assert reservations_before[incident.get_id()] == 2
-
-        query = await PoolChangeReserved.init(
-            db=db, existing_identifier=incident.get_id(), new_identifier="new_id", branch=default_branch
-        )
-        await query.execute(db=db)
-
-        reservations_before = await get_reservations(db=db, pool=incident_pool, branch=default_branch)
-        assert len(reservations_before) == 3
-        assert reservations_before["new_id"] == 2
-
-
 async def live_record_count(db: InfrahubDatabase, node_id: str, attribute_name: str) -> int:
     """How many reservation records the object's attribute carries right now."""
     results = await db.execute_query(
@@ -455,6 +420,119 @@ async def live_record_count(db: InfrahubDatabase, node_id: str, attribute_name: 
         params={"node_id": node_id, "attribute_name": attribute_name},
     )
     return int(results[0]["live"])
+
+
+class TestNumberPoolChangeReserved:
+    async def test_the_record_names_the_replacement_object_and_is_not_duplicated(
+        self,
+        db: InfrahubDatabase,
+        register_test_schema: SchemaBranch,
+        default_branch: Branch,
+        run_number_pool_validation: None,
+    ) -> None:
+        """Replacing an object moves the ledger onto the replacement without counting the number twice."""
+        incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+        request_schema = registry.schema.get_node_schema(name=REQUEST.kind, branch=default_branch)
+
+        incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
+        await create_objects(db=db, schema=request_schema, branch=default_branch.name, start=1, end=6)
+        replaced = incidents[1]
+
+        pools: list[CoreNumberPoolProtocol] = await NodeManager.query(
+            db=db, schema=CoreNumberPoolProtocol, branch=default_branch
+        )
+        assert len(pools) == 2
+        incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+
+        reservations_before = await get_reservations(db=db, pool=incident_pool, branch=default_branch)
+        assert len(reservations_before) == 3
+        assert reservations_before[replaced.get_id()] == 2
+
+        replacement_started_at = Timestamp()
+        await replaced.delete(db=db)
+        replacement = (await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=4, end=4))[
+            0
+        ]
+        assert replacement.get_attribute("number").value == 2, (
+            "the replacement takes the number the replaced object released"
+        )
+
+        query = await NumberPoolChangeReserved.init(
+            db=db,
+            existing_node_id=replaced.get_id(),
+            new_node_id=replacement.get_id(),
+            existing_identifier=replaced.get_id(),
+            new_identifier=replacement.get_id(),
+            not_closed_before=replacement_started_at,
+            branch=default_branch,
+        )
+        await query.execute(db=db)
+
+        reservations_after = await get_reservations(db=db, pool=incident_pool, branch=default_branch)
+        assert replaced.get_id() not in reservations_after, "the replaced object no longer holds the number"
+        assert reservations_after[replacement.get_id()] == 2
+        assert len(reservations_after) == 3
+        assert await live_record_count(db=db, node_id=replacement.get_id(), attribute_name="number") == 1, (
+            "a replacement that already holds a record from the pool must not acquire a second one"
+        )
+
+    async def test_the_anchors_and_the_identifiers_are_read_independently(
+        self,
+        db: InfrahubDatabase,
+        register_test_schema: SchemaBranch,
+        default_branch: Branch,
+        run_number_pool_validation: None,
+    ) -> None:
+        """Which attributes are touched comes from the anchors; what the record says comes from the identifiers.
+
+        Driven with identifiers that are not the anchors' uuids, which is the only way to tell the
+        two apart. Nothing arranges them that way in production, and nothing should have to.
+        """
+        incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+        source, target = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=2)
+
+        await db.execute_query(
+            query="""
+            MATCH (:Node {uuid: $source_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: "number"})
+            WITH DISTINCT a
+            MATCH ()-[record:IS_RESERVED]->(a)
+            WHERE record.to IS NULL
+            SET record.identifier = $borrowed
+            """,
+            params={"source_id": source.get_id(), "borrowed": "borrowed-label"},
+        )
+        await db.execute_query(
+            query="""
+            MATCH (:Node {uuid: $target_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: "number"})
+            WITH DISTINCT a
+            MATCH ()-[record:IS_RESERVED]->(a)
+            WHERE record.to IS NULL
+            SET record.to = $at
+            """,
+            params={"target_id": target.get_id(), "at": Timestamp().to_string()},
+        )
+
+        query = await NumberPoolChangeReserved.init(
+            db=db,
+            existing_node_id=source.get_id(),
+            new_node_id=target.get_id(),
+            existing_identifier="borrowed-label",
+            new_identifier="relabelled",
+            not_closed_before=Timestamp("2000-01-01"),
+            branch=default_branch,
+        )
+        await query.execute(db=db)
+
+        assert await live_record_count(db=db, node_id=target.get_id(), attribute_name="number") == 1, (
+            "the move must write a record on the vertex the new anchor names"
+        )
+        moved = await reservation_and_value_edges(db=db, node_id=target.get_id(), attribute_name="number")
+        assert moved["record"]["identifier"] == "relabelled", (
+            "the moved record carries the identifier it was given, not the uuid of the vertex it landed on"
+        )
+        assert await live_record_count(db=db, node_id=source.get_id(), attribute_name="number") == 0, (
+            "the record found through the source anchor is the one that was closed"
+        )
 
 
 async def reservation_and_value_edges(db: InfrahubDatabase, node_id: str, attribute_name: str) -> dict[str, Any]:
