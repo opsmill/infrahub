@@ -10,7 +10,6 @@ from infrahub.core.changelog.models import AttributeChangelog, NodeChangelog
 from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.merge.post_merge import PostMergeDispatcher
-from infrahub.core.merge.python_target_resolution import DisabledPythonTargetResolver
 from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispatcher
 from infrahub.core.registry import registry
 from infrahub.events.branch_action import BranchMergedEvent
@@ -131,7 +130,7 @@ class TestPostMergeSchemaEvent:
             source_branch=source_branch,
             destination_branch=default_branch,
             event_service=memory_event,
-            python_resolver=DisabledPythonTargetResolver(),
+            python_resolver=RecordingPythonTargetResolver(targets=[]),
         )
 
         schema_diff, schema_hash = _derived_value_schema_diff(default_branch)
@@ -167,7 +166,7 @@ class TestPostMergeSchemaEvent:
             source_branch=source_branch,
             destination_branch=default_branch,
             event_service=memory_event,
-            python_resolver=DisabledPythonTargetResolver(),
+            python_resolver=RecordingPythonTargetResolver(targets=[]),
         )
 
         await dispatcher.dispatch_events(
@@ -226,7 +225,7 @@ class TestPostMergeBranchMergedEvent:
             source_branch=source_branch,
             destination_branch=default_branch,
             event_service=memory_event,
-            python_resolver=DisabledPythonTargetResolver(),
+            python_resolver=RecordingPythonTargetResolver(targets=[]),
         )
 
         await dispatcher.dispatch_events(
