@@ -16,7 +16,7 @@ Surface for consumers that only read files at a commit. The exact method set is 
 |---|---|---|
 | `name: str` | attribute | Pydantic field on `InfrahubRepositoryBase` |
 | `id: str` | attribute | Pydantic field on `InfrahubRepositoryBase` |
-| `default_branch: str` | attribute (property) | `base.py:190` |
+| ~~`default_branch: str`~~ | ~~attribute (property)~~ | **Struck.** IFC-3105 removes it from the read-only kind (FR-004), so it cannot be on this protocol — see `contracts/protocols.md` |
 | `get_commit_value(branch_name: str, remote: bool = False) -> str` | method | `base.py:576` abstract; impls on both subclasses |
 | `get_commit_worktree(commit: str) -> Worktree` | method | `base.py:461` |
 | `get_worktree(...) -> Worktree` | method | `base.py:447` |
@@ -213,9 +213,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
 ## 5. Constructor and SDK-client lifecycle (Story 6)
 
-### Default-branch injection (FR-009)
+### Default-branch injection (FR-009) — SUPERSEDED by IFC-3105
 
-`InfrahubRepositoryBase` gains an optional constructor parameter:
+The original plan kept the optional field and its fallback chain:
 
 ```python
 class InfrahubRepositoryBase(BaseModel):
@@ -223,7 +223,36 @@ class InfrahubRepositoryBase(BaseModel):
     # no new Pydantic field; the @property fallback chain stays
 ```
 
-Tests can now construct with `default_branch_name="custom"` directly. No existing caller is required to change.
+**This is not the target shape.** IFC-3105 (`dev/specs/ifc-3105-honour-default-branch/`) deletes the
+optional field and the `default_branch` property that fell back to `registry.default_branch`, and
+makes the trunk a **required** field on `InfrahubRepository` only — the read-only kind carries no
+trunk at all:
+
+```python
+class InfrahubRepository(InfrahubRepositoryBase):
+    default_branch: str                        # required, no default
+    internal_status: RepositoryInternalStatus  # required, no default
+```
+
+The testability goal FR-009 existed for is met by that change rather than by anything in this spec: a
+required constructor field is injectable by definition and there is no global left to patch. Note the
+premise "no existing caller is required to change" also does not survive — the required fields reach
+64 construction sites across 23 test files, which IFC-3105 owns.
+
+### Branch-name mapping (FR-009a)
+
+What remains for this spec is collapsing the three mapping hooks IFC-3105 leaves on the base into one
+injected collaborator:
+
+```python
+class BranchNameMapper(Protocol):
+    def remote_branch(self, branch_name: str) -> str: ...
+    def target_branch(self, branch_name: str) -> str: ...
+    def worktree_identifier(self, branch_name: str) -> str: ...
+```
+
+A trunk-mapping implementation for the read-write kind, an identity one for the read-only kind, both
+supplied at construction. Required parameter, per `.agents/rules/backend-component-design.md`.
 
 ### SDK-client initialization (FR-010)
 

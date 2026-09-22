@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from git import Repo as GitRepo
@@ -10,8 +11,11 @@ from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.exceptions import RepositoryConfigurationError
-from infrahub.git import InfrahubRepository
+from tests.helpers.git import clone_repository
 from tests.helpers.test_client import dummy_async_request
+
+if TYPE_CHECKING:
+    from infrahub.git import InfrahubRepository
 
 
 class TestGetRepositoryConfig:
@@ -45,7 +49,7 @@ class TestGetRepositoryConfig:
             cloned_repo.index.remove([".infrahub.yml"])
             cloned_repo.index.commit("Remove .infrahub.yml config file for testing")
 
-        return await InfrahubRepository.new(
+        return await clone_repository(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(clone_path),
@@ -84,7 +88,7 @@ schemas:
         cloned_repo.index.add([".infrahub.yml"])
         cloned_repo.index.commit("Add invalid YAML config file")
 
-        return await InfrahubRepository.new(
+        return await clone_repository(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(clone_path),
@@ -121,7 +125,7 @@ schemas: "should be a list, not a string"
         cloned_repo.index.add([".infrahub.yml"])
         cloned_repo.index.commit("Add invalid format config file")
 
-        return await InfrahubRepository.new(
+        return await clone_repository(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(clone_path),
@@ -158,7 +162,7 @@ schemas: []
         cloned_repo.index.add([".infrahub.yml"])
         cloned_repo.index.commit("Add valid .infrahub.yml config file")
 
-        return await InfrahubRepository.new(
+        return await clone_repository(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(clone_path),

@@ -26,6 +26,7 @@ from infrahub.git import InfrahubRepository
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
 from tests.conftest import TestHelper
+from tests.helpers.git import clone_repository
 from tests.helpers.test_client import dummy_async_request
 
 
@@ -94,7 +95,7 @@ async def git_repo_01_w_client(git_repo_01: InfrahubRepository, client: Infrahub
 @pytest.fixture
 async def git_repo_02(git_upstream_repo_02: dict[str, str | Path], git_repos_dir: Path) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_02 as remote"""
-    return await InfrahubRepository.new(
+    return await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
@@ -107,7 +108,7 @@ async def git_repo_03(
     client: InfrahubClient, git_upstream_repo_03: dict[str, str | Path], git_repos_dir: Path
 ) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_03 as remote"""
-    return await InfrahubRepository.new(
+    return await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_03["name"],
         location=str(git_upstream_repo_03["path"]),
@@ -132,7 +133,7 @@ async def git_repo_04(
     The content of the branch branch01 has been updated after the repo has been initialized
     to generate a diff between the local and the remote branch branch01.
     """
-    repo = await InfrahubRepository.new(
+    repo = await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_03["name"],
         location=str(git_upstream_repo_03["path"]),
@@ -169,7 +170,7 @@ async def git_repo_05(
     The content of the main branch has been updated after the repo has been initialized
     to generate a diff between the local and the remote branch main.
     """
-    repo = await InfrahubRepository.new(
+    repo = await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
@@ -201,7 +202,7 @@ async def git_repo_06(
     after the repo has been initialized to generate a conflict between the local and the
     remote branch branch01.
     """
-    repo = await InfrahubRepository.new(
+    repo = await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
@@ -264,7 +265,7 @@ async def git_repo_07(
     upstream.index.commit("Add branch02 file")
     upstream.git.checkout("main")
 
-    repo = await InfrahubRepository.new(
+    repo = await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_03["name"],
         location=str(git_upstream_repo_03["path"]),
@@ -364,7 +365,7 @@ async def git_repo_jinja(
     upstream.git.checkout("main")
 
     # Clone the repo and create a local branch for branch01
-    repo = await InfrahubRepository.new(
+    repo = await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
@@ -402,7 +403,7 @@ async def git_repo_checks(
 
     upstream.index.commit("Add 2 checks files")
 
-    return await InfrahubRepository.new(
+    return await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
@@ -432,7 +433,7 @@ async def git_repo_transforms(
 
     upstream.index.commit("Add 3 Transforms files")
 
-    return await InfrahubRepository.new(
+    return await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),

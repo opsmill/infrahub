@@ -8,6 +8,7 @@ class RecordedDiffRequest:
     repository_id: str
     repository_name: str
     repository_kind: str
+    infrahub_branch_name: str
     source_commit: str
     destination_commit: str
 
@@ -29,6 +30,7 @@ class RecordingRepositoryFileDiffer:
         repository_id: str,
         repository_name: str,
         repository_kind: str,
+        infrahub_branch_name: str,
         source_commit: str,
         destination_commit: str,
     ) -> RepositoryFileDiff:
@@ -37,6 +39,7 @@ class RecordingRepositoryFileDiffer:
                 repository_id=repository_id,
                 repository_name=repository_name,
                 repository_kind=repository_kind,
+                infrahub_branch_name=infrahub_branch_name,
                 source_commit=source_commit,
                 destination_commit=destination_commit,
             )

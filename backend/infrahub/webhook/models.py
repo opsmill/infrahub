@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 from typing_extensions import Self
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.events.utils import get_all_infrahub_node_kind_events
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
@@ -397,16 +398,21 @@ class TransformWebhook(Webhook):
 
     async def compute_payload(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> Any:
         """Build and return the payload by running the configured Python transform once."""
+        # The Infrahub branch the transform runs on. Never the repository's default branch: that is a
+        # remote branch name, which need not exist as an Infrahub branch at all.
+        branch = context.branch or registry.default_branch
+
         repo: InfrahubReadOnlyRepository | InfrahubRepository
         if self.repository_kind == InfrahubKind.READONLYREPOSITORY:
             repo = await InfrahubReadOnlyRepository.init(
-                id=self.repository_id, name=self.repository_name, client=client
+                id=self.repository_id, name=self.repository_name, client=client, infrahub_branch_name=branch
             )
         else:
-            repo = await InfrahubRepository.init(id=self.repository_id, name=self.repository_name, client=client)
+            repo = await InfrahubRepository.init(
+                id=self.repository_id, name=self.repository_name, client=client, infrahub_branch_name=branch
+            )
 
-        branch = context.branch or repo.default_branch
-        commit = repo.get_commit_value(branch_name=branch)
+        commit = repo.get_commit_for_infrahub_branch(branch_name=branch)
 
         return await repo.execute_python_transform.with_options(timeout_seconds=self.transform_timeout)(
             branch_name=branch,

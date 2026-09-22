@@ -374,6 +374,7 @@ async def process_transform(
         repository_id=transform.repository_id,
         name=transform.repository_name,
         repository_kind=transform.repository_typename,
+        infrahub_branch_name=branch_name,
         commit=transform.repository_commit,
     )
 
