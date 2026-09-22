@@ -147,7 +147,7 @@ class Migration076(MigrationRequiringRebase):
         from the database is itself driven by the internal schema, so an entry rebuilt
         from the query alone would drop what a later branch load depends on.
         """
-        if lock.registry is None:
+        if not lock.is_initialized():
             initialize_lock()
         if not registry.schema_has_been_initialized():
             schema_manager = SchemaManager()

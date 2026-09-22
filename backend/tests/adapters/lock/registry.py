@@ -10,7 +10,7 @@ from .timeline import LockAction, LockTimeline
 if TYPE_CHECKING:
     import redis.asyncio as redis
 
-    from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.cache import InfrahubCache
 
 
 class RecordingLock(InfrahubLock):
@@ -19,14 +19,15 @@ class RecordingLock(InfrahubLock):
     def __init__(
         self,
         name: str,
-        connection: redis.Redis | InfrahubServices | None = None,
+        connection: redis.Redis | None = None,
+        cache: InfrahubCache | None = None,
         in_multi: bool = False,
         metrics: bool = True,
         ttl: int | None = None,
         *,
         timeline: LockTimeline,
     ) -> None:
-        super().__init__(name=name, connection=connection, in_multi=in_multi, metrics=metrics, ttl=ttl)
+        super().__init__(name=name, connection=connection, cache=cache, in_multi=in_multi, metrics=metrics, ttl=ttl)
         self._timeline = timeline
 
     async def acquire(self) -> None:
@@ -53,6 +54,7 @@ class RecordingLockRegistry(InfrahubLockRegistry):
         return RecordingLock(
             name=name,
             connection=self.connection,
+            cache=self.cache,
             in_multi=in_multi,
             metrics=metrics,
             ttl=ttl,
