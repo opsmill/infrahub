@@ -21,7 +21,7 @@ Single backend project. Source under `backend/infrahub/`, tests under `backend/t
 
 ## Phase 1: Setup
 
-**Purpose**: Create the one new module the feature adds.
+**Purpose**: Create the reader module the rest of the feature builds on. A second module, the `probe-resources` CLI, was added later in review and is recorded in Polish (T020) rather than here.
 
 - [x] T001 Create the resource-reader module scaffold at `backend/infrahub/telemetry/resources.py` (module docstring + typed stub signatures for the reader and aggregation functions; no logic yet)
 
@@ -86,8 +86,9 @@ Single backend project. Source under `backend/infrahub/`, tests under `backend/t
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [x] T016 [P] Regression test in `backend/tests/component/telemetry/test_resources.py`: adding the `workers:resources:*` heartbeat key leaves `workers.total` and `workers.active` unchanged versus a baseline without it (critique E1)
-- [x] T017 [P] Add a Towncrier changelog fragment `changelog/+resource-telemetry.added.md` describing the new per-component CPU/memory fields (the extended `system_info`/`workers` blocks plus the new `server` block) (Constitution: user-facing telemetry change)
+- [x] T017 [P] Add a Towncrier changelog fragment `changelog/+resource-telemetry.added.md` describing the new per-component CPU/memory fields (the extended `system_info`/`workers` blocks plus the new `server` block) (Constitution: user-facing telemetry change). Two further fragments were added as review turned up user-visible work beyond the original scope: `+telemetry-cgroup-path-resolution.fixed.md` (the control-group path resolution fix) and `+telemetry-probe-resources.added.md` (the CLI below)
 - [x] T018 [P] Update the telemetry FAQ in `docs/docs/faq/faq.mdx` to mention the per-component cores/RAM fields (`system_info`/`workers`/`server`)
+- [x] T020 Add the `infrahub telemetry probe-resources` command in `backend/infrahub/cli/telemetry.py`, which reports the reading alongside the control-group evidence behind it, with `backend/tests/unit/cli/test_telemetry.py` and the generated reference page `docs/docs/reference/infrahub-cli/infrahub-telemetry.mdx` (plus its `docs/sidebars.ts` entry). Added during review, not planned up front: the reader's figures are unexplainable from the payload alone, so an environment reporting a surprising number had no way to show its own evidence
 - [x] T019 Run the quickstart validation (`uv run invoke backend.test-unit`; component tests via testcontainers) and `uv run invoke format` + `uv run invoke lint`; fix any failures
 
 ---
