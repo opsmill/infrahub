@@ -696,22 +696,41 @@ def _sum_reporters(values: list[int | None]) -> int | None:
     return sum(reported)
 
 
+def _reported_field_count(reading: WorkerResourceReading) -> int:
+    """How many of the four figures this reading carries."""
+    return sum(
+        value is not None
+        for value in (
+            reading.processor_available,
+            reading.processor_assigned,
+            reading.memory_total,
+            reading.memory_available,
+        )
+    )
+
+
 def aggregate(readings: Iterable[WorkerResourceReading]) -> ResourceAggregate:
     """Collapse per-process readings into one figure per field for a component.
 
-    Readings are deduplicated by host (processes on one host report identical
-    values). A host whose read failed outright (every figure ``None``) is
-    skipped, and a host that never reported is simply absent, so both undercount
-    the sum — a gap the separately-tracked worker count exposes — rather than
-    nulling the whole fleet. The same holds for a host that reported only some
-    fields; ``processor_assigned`` is the one exception, since a ``None`` there
-    is itself a real reading rather than a gap.
+    Readings are deduplicated by host (processes on one host describe the same
+    machine). They agree unless one process hit a per-field read failure, so the
+    host is represented by whichever of its readings carries the most figures
+    rather than by whichever arrived first — otherwise a partial read could
+    displace a complete one on nothing but iteration order. A host whose read
+    failed outright (every figure ``None``) is skipped, and a host that never
+    reported is simply absent, so both undercount the sum — a gap the
+    separately-tracked worker count exposes — rather than nulling the whole
+    fleet. The same holds for a host that reported only some fields;
+    ``processor_assigned`` is the one exception, since a ``None`` there is
+    itself a real reading rather than a gap.
     """
     by_host: dict[str, WorkerResourceReading] = {}
     for reading in readings:
         if reading.is_failed:
             continue
-        by_host.setdefault(reading.host, reading)
+        held = by_host.get(reading.host)
+        if held is None or _reported_field_count(reading) > _reported_field_count(held):
+            by_host[reading.host] = reading
 
     deduped = list(by_host.values())
     return ResourceAggregate(
