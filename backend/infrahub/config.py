@@ -1470,10 +1470,16 @@ class PolicySettings(BaseSettings):
         return features
 
 
-# The risk rubric sent to the evaluation service has five ordered levels, so a risk score is an
-# index into that rubric rather than a free-running number.
+# The risk rubric sent to the evaluation service has five ordered levels, so a risk score is bounded
+# by them. It is not an index into the rubric: the score is the probability-weighted average of the
+# levels, so it is a float landing anywhere in 0.0..4.0 and it is carried through unrounded.
 TRIAGE_RISK_SCORE_MIN = 0
 TRIAGE_RISK_SCORE_MAX = 4
+
+# Pseudo-team keys the enterprise triage package carries its two deployment-wide account pools under.
+# They are not policy keys and a policy may not take one: doing so would merge that policy's members
+# into the fallback or escalation pool for the whole deployment.
+TRIAGE_RESERVED_TEAM_KEYS = ("__triage_fallback__", "__triage_seniors__")
 
 
 class ReviewerPolicy(BaseModel):
@@ -1608,6 +1614,14 @@ class TriageSettings(BaseSettings):
     @classmethod
     def validate_unique_teams(cls, v: list[ReviewerPolicy]) -> list[ReviewerPolicy]:
         all_teams = [policy.team for policy in v]
+        reserved = sorted({team for team in all_teams if team in TRIAGE_RESERVED_TEAM_KEYS})
+        if reserved:
+            raise ValueError(
+                "Reviewer policy team keys are reserved and cannot be used: "
+                + ", ".join(reserved)
+                + ". These keys carry the deployment-wide fallback and escalation pools, so a policy"
+                " taking one would have its members merged into that pool."
+            )
         unique_teams = set(all_teams)
         if len(unique_teams) == len(all_teams):
             return v
