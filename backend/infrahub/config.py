@@ -17,6 +17,7 @@ from pydantic import (
     EmailStr,
     Field,
     PrivateAttr,
+    SecretStr,
     ValidationError,
     computed_field,
     field_validator,
@@ -60,6 +61,7 @@ class EnterpriseFeatures(StrEnum):
     REVOKE_PROPOSED_CHANGE_APPROVALS = "revoke_proposed_change_approvals"
     LOG_FORWARDING = "log_forwarding"
     LDAP = "ldap"
+    PROPOSED_CHANGE_TRIAGE = "proposed_change_triage"
 
 
 class UserInfoMethod(StrEnum):
@@ -1468,6 +1470,178 @@ class PolicySettings(BaseSettings):
         return features
 
 
+# The risk rubric sent to the evaluation service has five ordered levels, so a risk score is an
+# index into that rubric rather than a free-running number.
+TRIAGE_RISK_SCORE_MIN = 0
+TRIAGE_RISK_SCORE_MAX = 4
+
+
+class ReviewerPolicy(BaseModel):
+    """Ownership of a set of node kinds by one team, and the group that reviews changes to them."""
+
+    team: str = Field(
+        description="Unique key identifying the team. Sent verbatim to the evaluation service as a choice key."
+    )
+    description: str = Field(
+        description="What the team owns, in prose. Sent verbatim as the choice criterion, so this text is the"
+        " routing logic itself and deserves the care of a prompt rather than a label."
+    )
+    kinds: list[str] = Field(
+        description="Node kinds the team owns. Not validated against the live schema, which is branch-scoped."
+    )
+    sites: list[str] = Field(
+        default_factory=list,
+        description="Sites the team covers. Only meaningful when `triage.location_relationship` is set.",
+    )
+    member_group: str = Field(description="Name of the account group holding the team's members.")
+    max_unaided_risk: int | None = Field(
+        default=None,
+        ge=TRIAGE_RISK_SCORE_MIN,
+        le=TRIAGE_RISK_SCORE_MAX,
+        description="Highest risk score this team may review without a second reviewer. Above it, escalate even"
+        " when below the deployment-wide escalation threshold.",
+    )
+
+
+class TriageSettings(BaseSettings):
+    """Automated triage of proposed changes. (Enterprise only: not available in the community version.)"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_TRIAGE_")
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable automated proposed change triage. When disabled nothing is evaluated, no external"
+        " calls are made and no notes or reviewers are written."
+        " (Enterprise only: not available in the community version.)",
+    )
+    assign_reviewers: bool = Field(
+        default=False,
+        description="Allow triage to add reviewers to a proposed change. With this disabled triage only posts its"
+        " note, which is the staged-rollout path.",
+    )
+
+    evaluation_api_key: SecretStr | None = Field(
+        default=None, description="API key for the evaluation service. Required when triage is enabled."
+    )
+    evaluation_base_url: str | None = Field(
+        default=None,
+        description="Alternative host for the evaluation service. This repoints the host only: the request path"
+        " is fixed, so a substitute must serve the same protocol at the same path.",
+    )
+    evaluation_model: str = Field(default="jev-latest", description="Model used by the evaluation service.")
+    evaluation_timeout: int = Field(default=30, gt=0, description="Timeout in seconds for an evaluation request.")
+
+    summary_api_key: SecretStr | None = Field(
+        default=None, description="API key for the summarisation service. Required when triage is enabled."
+    )
+    summary_base_url: str | None = Field(
+        default=None, description="Alternative base URL for the summarisation service."
+    )
+    summary_model: str = Field(default="claude-opus-5", description="Model used to write the change summary.")
+    summary_timeout: int = Field(default=60, gt=0, description="Timeout in seconds for a summarisation request.")
+
+    escalation_risk_threshold: int = Field(
+        default=3,
+        ge=TRIAGE_RISK_SCORE_MIN,
+        le=TRIAGE_RISK_SCORE_MAX,
+        description="Risk score at or above which a second reviewer is added.",
+    )
+    risk_confidence_threshold: float = Field(
+        default=0.6,
+        ge=0.0,
+        le=1.0,
+        description="Minimum confidence for the risk score to be acted on. Below it the risk is treated as unknown.",
+    )
+    team_confidence_threshold: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Minimum confidence for the owning team to be acted on. Below it the fallback group is assigned.",
+    )
+    needs_second_threshold: float = Field(
+        default=0.8,
+        ge=0.0,
+        le=1.0,
+        description="Probability at or above which the second-approver signal escalates. This gates a probability,"
+        " not a confidence: the yes/no answer carries no confidence statistic.",
+    )
+    touches_production_threshold: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Probability at or above which a change is treated as touching production. A probability, not"
+        " a confidence, for the same reason as `needs_second_threshold`.",
+    )
+
+    seniors_group: str | None = Field(
+        default=None,
+        description="Account group used as the escalation pool. Unset means escalation is recorded in the note but"
+        " adds nobody.",
+    )
+    fallback_group: str | None = Field(
+        default=None,
+        description="Account group assigned when the owning team is unknown. Required when `assign_reviewers` is"
+        " enabled: there is no safe guess to make instead.",
+    )
+    location_relationship: str | None = Field(
+        default=None,
+        description="Name of the schema relationship carrying site or location. Unset means site information stays"
+        " empty, which reads as unknown rather than as no sites.",
+    )
+    policies: list[ReviewerPolicy] = Field(
+        default_factory=list,
+        description="Reviewer policies, one per team. Empty means triage runs in summary-only mode.",
+    )
+
+    debounce_seconds: int = Field(
+        default=120,
+        ge=0,
+        description="Quiet period after a change before it is evaluated, so a burst of commits produces one run.",
+    )
+    max_state_bytes: int = Field(
+        default=32768,
+        gt=0,
+        description="Byte budget for the serialised change state. Larger states are truncated and flagged.",
+    )
+
+    @field_validator("policies")
+    @classmethod
+    def validate_unique_teams(cls, v: list[ReviewerPolicy]) -> list[ReviewerPolicy]:
+        all_teams = [policy.team for policy in v]
+        unique_teams = set(all_teams)
+        if len(unique_teams) == len(all_teams):
+            return v
+        duplicates = {team for team in unique_teams if all_teams.count(team) > 1}
+        sorted_dupes = ", ".join(sorted(duplicates))
+        raise ValueError(f"Reviewer policy team keys must be unique; duplicates found: {sorted_dupes}")
+
+    @model_validator(mode="after")
+    def check_complete_when_enabled(self) -> Self:
+        problems: list[str] = []
+        if self.enabled:
+            if not self.evaluation_api_key:
+                problems.append("triage.evaluation_api_key is required when triage.enabled is true")
+            if not self.summary_api_key:
+                problems.append("triage.summary_api_key is required when triage.enabled is true")
+        if self.assign_reviewers and not self.fallback_group:
+            problems.append("triage.fallback_group is required when triage.assign_reviewers is true")
+        if problems:
+            raise ValueError("Invalid triage configuration: " + "; ".join(problems))
+        if self.enabled and not self.policies:
+            log.warning(
+                "No triage reviewer policies configured, running in summary-only mode: no owning team will be"
+                " identified and no reviewers will be assigned."
+            )
+        return self
+
+    @property
+    def enterprise_features(self) -> list[EnterpriseFeatures]:
+        """Returns enterprise features enabled by triage configuration."""
+        if self.enabled:
+            return [EnterpriseFeatures.PROPOSED_CHANGE_TRIAGE]
+        return []
+
+
 LDAP_DEFAULT_DISPLAY_LABEL = "Sign in with LDAP"
 LDAP_DEFAULT_ICON = "mdi:account-key-outline"
 
@@ -1862,6 +2036,10 @@ class ConfiguredSettings:
         return self.active_settings.policy
 
     @property
+    def triage(self) -> TriageSettings:
+        return self.active_settings.triage
+
+    @property
     def security(self) -> SecuritySettings:
         return self.active_settings.security
 
@@ -1910,6 +2088,7 @@ class Settings(BaseSettings):
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
     log_forwarding: LogForwardingSettings = LogForwardingSettings()
+    triage: TriageSettings = TriageSettings()
 
     @model_validator(mode="after")
     def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
@@ -1920,7 +2099,12 @@ class Settings(BaseSettings):
     @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
-        return self.policy.enterprise_features + self.log_forwarding.enterprise_features + self.ldap.enterprise_features
+        return (
+            self.policy.enterprise_features
+            + self.log_forwarding.enterprise_features
+            + self.ldap.enterprise_features
+            + self.triage.enterprise_features
+        )
 
 
 def load(config_file_name: Path | str = "infrahub.toml", config_data: dict[str, Any] | None = None) -> Settings:

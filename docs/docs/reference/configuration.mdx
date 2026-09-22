@@ -416,6 +416,45 @@ LDAP authentication configuration.
 | `FORWARD_APPLICATION_LOGS` | Forward application log messages to this destination. | boolean | False |
 | `MIN_LOG_SEVERITY` | Minimum Python log severity to forward when application log forwarding is enabled. | string (CRITICAL, ERROR, WARNING, INFO, DEBUG) | WARNING |
 
+## Triage
+
+Automated triage of proposed changes. (Enterprise only: not available in the community version.)
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_TRIAGE_ENABLED` | Enable automated proposed change triage. When disabled nothing is evaluated, no external calls are made and no notes or reviewers are written. (Enterprise only: not available in the community version.) | boolean | False |
+| `INFRAHUB_TRIAGE_ASSIGN_REVIEWERS` | Allow triage to add reviewers to a proposed change. With this disabled triage only posts its note, which is the staged-rollout path. | boolean | False |
+| `INFRAHUB_TRIAGE_EVALUATION_API_KEY` | API key for the evaluation service. Required when triage is enabled. | None | None |
+| `INFRAHUB_TRIAGE_EVALUATION_BASE_URL` | Alternative host for the evaluation service. This repoints the host only: the request path is fixed, so a substitute must serve the same protocol at the same path. | None | None |
+| `INFRAHUB_TRIAGE_EVALUATION_MODEL` | Model used by the evaluation service. | string | jev-latest |
+| `INFRAHUB_TRIAGE_EVALUATION_TIMEOUT` | Timeout in seconds for an evaluation request. | integer | 30 |
+| `INFRAHUB_TRIAGE_SUMMARY_API_KEY` | API key for the summarisation service. Required when triage is enabled. | None | None |
+| `INFRAHUB_TRIAGE_SUMMARY_BASE_URL` | Alternative base URL for the summarisation service. | None | None |
+| `INFRAHUB_TRIAGE_SUMMARY_MODEL` | Model used to write the change summary. | string | claude-opus-5 |
+| `INFRAHUB_TRIAGE_SUMMARY_TIMEOUT` | Timeout in seconds for a summarisation request. | integer | 60 |
+| `INFRAHUB_TRIAGE_ESCALATION_RISK_THRESHOLD` | Risk score at or above which a second reviewer is added. | integer | 3 |
+| `INFRAHUB_TRIAGE_RISK_CONFIDENCE_THRESHOLD` | Minimum confidence for the risk score to be acted on. Below it the risk is treated as unknown. | number | 0.6 |
+| `INFRAHUB_TRIAGE_TEAM_CONFIDENCE_THRESHOLD` | Minimum confidence for the owning team to be acted on. Below it the fallback group is assigned. | number | 0.7 |
+| `INFRAHUB_TRIAGE_NEEDS_SECOND_THRESHOLD` | Probability at or above which the second-approver signal escalates. This gates a probability, not a confidence: the yes/no answer carries no confidence statistic. | number | 0.8 |
+| `INFRAHUB_TRIAGE_TOUCHES_PRODUCTION_THRESHOLD` | Probability at or above which a change is treated as touching production. A probability, not a confidence, for the same reason as `needs_second_threshold`. | number | 0.7 |
+| `INFRAHUB_TRIAGE_SENIORS_GROUP` | Account group used as the escalation pool. Unset means escalation is recorded in the note but adds nobody. | None | None |
+| `INFRAHUB_TRIAGE_FALLBACK_GROUP` | Account group assigned when the owning team is unknown. Required when `assign_reviewers` is enabled: there is no safe guess to make instead. | None | None |
+| `INFRAHUB_TRIAGE_LOCATION_RELATIONSHIP` | Name of the schema relationship carrying site or location. Unset means site information stays empty, which reads as unknown rather than as no sites. | None | None |
+| `INFRAHUB_TRIAGE_POLICIES` | Reviewer policies, one per team. Empty means triage runs in summary-only mode. | array[object] | Check nested parameters |
+| `INFRAHUB_TRIAGE_DEBOUNCE_SECONDS` | Quiet period after a change before it is evaluated, so a burst of commits produces one run. | integer | 120 |
+| `INFRAHUB_TRIAGE_MAX_STATE_BYTES` | Byte budget for the serialised change state. Larger states are truncated and flagged. | integer | 32768 |
+
+### INFRAHUB_TRIAGE_POLICIES
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `TEAM` | Unique key identifying the team. Sent verbatim to the evaluation service as a choice key. | string | None |
+| `DESCRIPTION` | What the team owns, in prose. Sent verbatim as the choice criterion, so this text is the routing logic itself and deserves the care of a prompt rather than a label. | string | None |
+| `KINDS` | Node kinds the team owns. Not validated against the live schema, which is branch-scoped. | array[string] | None |
+| `SITES` | Sites the team covers. Only meaningful when `triage.location_relationship` is set. | array[string] | None |
+| `MEMBER_GROUP` | Name of the account group holding the team's members. | string | None |
+| `MAX_UNAIDED_RISK` | Highest risk score this team may review without a second reviewer. Above it, escalate even when below the deployment-wide escalation threshold. | None | None |
+
 ## Logging
 
 These variables configure logging at process startup. They are read directly from the environment and are not part of a `.toml` configuration file.
