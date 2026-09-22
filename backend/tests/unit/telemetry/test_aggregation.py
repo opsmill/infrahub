@@ -187,3 +187,16 @@ def test_processor_assigned_sums_when_every_host_is_bounded() -> None:
 
     assert result.processor_assigned == 5
     assert result.processor_available == 8
+
+
+def test_the_most_complete_reading_wins_when_one_process_read_partially() -> None:
+    # Two processes on one host disagree only because one hit a per-field read
+    # failure, so the host is represented by the reading that carries more of the
+    # figures rather than by whichever the caller happened to hand over first.
+    readings = [
+        _reading("w1", processor_available=4),
+        _reading("w1", processor_available=4, memory_total=8, memory_available=6),
+    ]
+
+    assert aggregate(readings) == aggregate(list(reversed(readings)))
+    assert aggregate(readings).memory_total == 8
