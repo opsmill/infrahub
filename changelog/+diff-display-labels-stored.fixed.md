@@ -1,0 +1,1 @@
+Fixed the display label enrichment of a large diff keeping a worker busy for tens of seconds: the labels are now read from the display labels stored on the nodes instead of being recomputed through a full node object for every changed node.

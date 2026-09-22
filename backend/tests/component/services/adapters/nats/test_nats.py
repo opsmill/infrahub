@@ -1,6 +1,8 @@
 import asyncio
+from typing import Any
 from uuid import uuid4
 
+import nats as nats_client
 import pytest
 
 from infrahub import config
@@ -88,3 +90,38 @@ async def test_list_keys(nats: dict[int, int] | None) -> None:
     assert f"{base_key}:1" in keys
     assert f"{base_key}:5" in keys
     await cache.close_connection()
+
+
+async def test_new_closes_the_connection_when_initialisation_does_not_finish(
+    nats: dict[int, int] | None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A connection the caller never receives is closed rather than left open."""
+    if config.SETTINGS.cache.driver != config.CacheDriver.NATS:
+        pytest.skip("Must use NATS to run this test")
+
+    opened: list[nats_client.NATS] = []
+    connected = asyncio.Event()
+    connect = nats_client.connect
+
+    async def recording_connect(*args: Any, **kwargs: Any) -> nats_client.NATS:
+        connection = await connect(*args, **kwargs)
+        opened.append(connection)
+        connected.set()
+        return connection
+
+    async def never_finishes(**kwargs: Any) -> None:
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(nats_client, "connect", recording_connect)
+    monkeypatch.setattr(NATSCache, "_ensure_kv", staticmethod(never_finishes))
+
+    initialising = asyncio.create_task(NATSCache.new())
+    await asyncio.wait_for(connected.wait(), timeout=30)
+    initialising.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await initialising
+
+    assert len(opened) == 1
+    assert opened[0].is_closed

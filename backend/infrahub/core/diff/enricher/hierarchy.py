@@ -98,7 +98,9 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
                 if not ancestors:
                     continue
 
-                node = enriched_diff_root.get_node(node_identifier=node_identifier)
+                # Through the adder's identifier map, not ``EnrichedDiffRoot.get_node``: that scans
+                # ``nodes``, and ``add_parent`` below grows the very set being scanned.
+                node = self.parent_adder.get_node(identifier=node_identifier)
                 parent_rel = hierarchy_schema.get_relationship(name="parent")
 
                 current_node = node

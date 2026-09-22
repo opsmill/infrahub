@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import ssl
-from pathlib import Path
+
+from infrahub.tls.bundle import is_pem_text
 
 
 class TlsContextBuilder:
@@ -15,19 +16,10 @@ class TlsContextBuilder:
         if not ca_bundle:
             return ssl.create_default_context()
 
-        ca_path = Path(ca_bundle)
-
-        try:
-            possibly_file = ca_path.exists()
-        except OSError:
-            # Raised if the filename is too long which can indicate
-            # that the value is a PEM certificate in string form.
-            possibly_file = False
-
-        if possibly_file and ca_path.is_file():
-            context = ssl.create_default_context(cafile=str(ca_path))
-        else:
+        if is_pem_text(ca_bundle):
             context = ssl.create_default_context()
             context.load_verify_locations(cadata=ca_bundle)
+        else:
+            context = ssl.create_default_context(cafile=ca_bundle)
 
         return context

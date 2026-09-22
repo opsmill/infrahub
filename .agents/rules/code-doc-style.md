@@ -1,15 +1,3 @@
----
-paths:
-  - "backend/**/*.py"
-  - "python_testcontainers/**/*.py"
-  - "tasks/**/*.py"
-  - "utilities/**/*.py"
-  - "tests/**/*.py"
-  - ".agents/**/*.py"
-  - "frontend/**/*.ts"
-  - "frontend/**/*.tsx"
----
-
 # Code documentation style
 
 Applies to docstrings, comments, and any inline documentation in source files — Python and TypeScript alike.
@@ -31,6 +19,7 @@ Acceptable exceptions:
 
 - Stable public API contracts (e.g. a protocol/interface that other implementations must satisfy) — name the protocol, not its callers.
 - A workaround that depends on a specific upstream library symbol — name the library function and version constraint.
+- The exception types a function raises — they are its contract, the same thing a `Raises:` section states, not a reference to other code.
 
 ## No work-item or spec IDs
 
@@ -54,7 +43,7 @@ Where IDs *do* belong:
 ## What good documentation looks like
 
 - Comment the *why*, never the *what*: a constraint, an invariant, a workaround, a deliberate deviation from the obvious approach. Never paraphrase the line below it or restate the type signature.
-- Documents the contract of a public function (inputs, outputs, errors raised) when it crosses a module boundary.
+- A docstring on a function other modules call states the contract in one line. An `Args`, `Returns` or `Raises` entry covers only what the signature does not already say.
 - Stays silent by default. If code needs a comment to explain *what* it does, rename or extract until it doesn't. A comment that restates the code is worse than none — noise that rots the moment the code changes.
 - When a why-comment is warranted, one sentence. If the why needs a paragraph, it belongs in the function's docstring or a `dev/knowledge/` page, not inline. Reviewers repeatedly ask for multi-line inline comments to be condensed.
 - Don't narrate the approach *not* taken, and don't narrate the code's history. A paragraph on the alternative rejected, or the call deliberately avoided, belongs in the PR description; keep the line stating what the code does. A comment describes what the code does from now on, never what it used to do or why the old shape was wrong — sweep your additions for "used to", "no longer", "previously", "was rejected", "would have". A negative statement that is part of the contract stays — "this never raises", "does not commit the transaction", "not thread-safe".

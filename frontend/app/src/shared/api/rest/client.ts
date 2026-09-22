@@ -2,6 +2,8 @@ import { QueryClient } from "@tanstack/react-query";
 import createClient, { type Middleware } from "openapi-fetch";
 
 import { PRIORITY_HEADER, resolvePriority } from "@/shared/api/priority";
+import { retryingFetch } from "@/shared/api/rate-limit/retrying-fetch";
+import { withShedWording } from "@/shared/api/rate-limit/shed-envelope";
 import type { paths } from "@/shared/api/rest/types.generated";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 
@@ -18,7 +20,19 @@ export const queryClient = new QueryClient({
   },
 });
 
-export const apiClient = createClient<paths>({ baseUrl: INFRAHUB_API_SERVER_URL });
+export const apiClient = createClient<paths>({
+  baseUrl: INFRAHUB_API_SERVER_URL,
+  fetch: retryingFetch,
+});
+
+// Once the transport has given up retrying, a shed still reaches the caller as
+// a 429 envelope. Reword it here, once, so every REST consumer that surfaces
+// `errors[0].message` shows the same text as the toast.
+const shedWordingMiddleware: Middleware = {
+  async onResponse({ response }) {
+    return withShedWording(response);
+  },
+};
 
 // Store cloned requests for retry purposes
 const requestClones = new WeakMap<Request, Request>();
@@ -59,7 +73,7 @@ export const authMiddleware: Middleware = {
       const newToken = await queryClient.fetchQuery(refreshAccessTokenQueryOptions());
 
       clonedRequest.headers.set("Authorization", `Bearer ${newToken.access_token}`);
-      return fetch(clonedRequest);
+      return retryingFetch(clonedRequest);
     } catch (error) {
       console.error("Token refresh failed:", error);
       redirectToLogin();
@@ -68,4 +82,7 @@ export const authMiddleware: Middleware = {
   },
 };
 
+// Response middlewares run last-registered first, so registering the wording
+// first makes it run after the auth replay and cover that response too.
+apiClient.use(shedWordingMiddleware);
 apiClient.use(authMiddleware);

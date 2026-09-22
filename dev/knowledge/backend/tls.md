@@ -1,0 +1,114 @@
+# Outbound TLS
+
+> Part of: `dev/knowledge/backend/` | Related: [Architecture](architecture.md), [Git Sync](git-sync.md)
+
+How Infrahub decides which certificate authorities an outbound TLS connection trusts, and where each
+component applies that decision. Read this before adding a component that opens outbound connections
+or before touching a `tls_*` setting: the resolution happens once at config load, so a component that
+reads the global setting directly or skips the registration step silently falls back to the system store.
+
+## Resolution order
+
+For each component, the first rule that applies wins:
+
+1. The component's `tls_insecure` is enabled: no verification, every CA setting is ignored. Git, the
+   cache, the broker, the database and HTTP accept both settings together; the trace exporter and LDAP
+   reject the combination. Callers pass `insecure` and `ca_bundle` to the TLS registry and nothing else:
+   `force_verify` means "this call must verify whatever the settings say" — the per-request `verify=True`
+   override in `HttpxAdapter.verify_tls` — and passing it because a bundle happens to be configured would
+   invert this rule.
+2. The component's own `tls_ca_file` / `tls_ca_bundle`.
+3. The global `tls.ca_bundle` (`INFRAHUB_TLS_CA_BUNDLE`).
+4. The container's system trust store.
+
+`infrahub/config.py::Settings.apply_global_tls_ca_bundle` implements rules 2 and 3 at load time by
+copying the global path into every component field that is still `None` and whose component is not
+insecure and connects over TLS. Adapters never read `tls.ca_bundle`; they keep reading their own
+section, and the value they see is already resolved. Inspecting `config.SETTINGS.<section>` therefore
+shows the effective CA, not what the operator typed.
+
+A CA bundle *replaces* the system trust store, it never extends it: `ssl.create_default_context(cafile=...)`,
+git's `http.sslCAInfo`, boto3's `verify`, the Neo4j driver's `TrustCustomCAs` and redis-py's `ssl_ca_certs`
+all behave that way. The user docs tell operators to append the public roots when a component must keep
+reaching public services.
+
+## Where each component applies it
+
+| Component | Setting read by the code | Applied in |
+|-----------|--------------------------|------------|
+| HTTP client (webhooks, SSO, telemetry) | `http.tls_ca_bundle`, `http.tls_insecure` | `services/adapters/http/httpx.py::InfrahubHTTP.verify_tls` through `TlsContextRegistry` |
+| Prefect client | `http.tls_*` | `services/adapters/workflow/worker.py`, `workers/infrahub_async.py`, `workflows/utils.py` |
+| SDK client to the Infrahub API | `http.tls_*` | `workers/dependencies.py::build_client` for the injected client, `workers/infrahub_async.py::build_worker_client_config` for the client the worker puts on `InfrahubServices` |
+| Git credential commands | `http.tls_*` | `git_credential/client.py::build_client_config`, shared by the credential helper and askpass (git spawns each as its own process) |
+| Git | `git.tls_ca_file`, `git.tls_insecure` | `git/global_config.py::apply_git_tls_config` writes `http.sslCAInfo` / `http.sslVerify` into the global gitconfig at task-worker startup |
+| Neo4j | `database.tls_ca_file` | `database/__init__.py` (`TrustCustomCAs`) |
+| Cache (Redis, NATS) | `cache.tls_ca_file` | `services/adapters/cache/`, and `workflows/initialization.py::build_cache_connection_string` for the Redis URL handed to Prefect |
+| Broker (RabbitMQ, NATS) | `broker.tls_ca_file` | `services/adapters/message_bus/` |
+| S3 object storage | `storage.s3.tls_ca_file` (alias `AWS_CA_BUNDLE`) | `storage.py::InfrahubS3ObjectStorage` passes `verify=` to boto3; inherits the global bundle only when `use_ssl` is on |
+| OTLP trace exporter | `trace.tls_ca_bundle` | `trace.py`; inherits the global bundle only when `TraceSettings.uses_tls` |
+| Log forwarding | `tls_ca_bundle` per destination | Infrahub Enterprise; this repo only defines the settings |
+| LDAP | `ldap.tls_ca_bundle` | Infrahub Enterprise; this repo only defines the settings |
+
+## Traps
+
+- **Path or PEM text, but consumers see a path.** Every CA setting accepts a file path or the PEM text
+  itself. `infrahub/config.py::_resolve_ca_bundle_setting` runs in each section validator: a path must
+  exist and load, PEM text is validated and written by `infrahub/tls/bundle.py::materialize_pem_text` to
+  `$TMPDIR/infrahub-tls/ca-bundle-<sha256[:32]>.pem`, and the setting is replaced by that path. The
+  content-hash name means every process, the credential-helper subprocess included, converges on the
+  same file without coordination. Log-forwarding destinations follow the same rule, one validator per
+  destination.
+- **The SDK's own TLS environment variables are not consulted.** `infrahub_sdk.Config` is a `BaseSettings`
+  that reads `INFRAHUB_TLS_CA_FILE` and `INFRAHUB_TLS_INSECURE`, but every SDK client Infrahub builds calls
+  `set_ssl_context()`, and an explicit context wins over the env-derived one inside the SDK. Those two
+  variables therefore configure SDK clients written by users, never Infrahub's own; server-side the
+  equivalents are `http.tls_*` and the global bundle.
+- **Detection is by marker, not by existence.** `is_pem_text` looks for the `-----BEGIN` marker; a typo in a path
+  therefore fails as "must be the path to an existing file" instead of being parsed as PEM.
+- **gRPC trace exporter.** Passing a CA bundle to the gRPC exporter switches it from plaintext to TLS,
+  so the global bundle is only copied into `trace` when the exporter connection is already encrypted.
+- **Plaintext S3 endpoint.** boto3 ignores `verify=` when `use_ssl` is off, so `S3StorageSettings` rejects an
+  explicit `tls_ca_file` with `use_ssl=false`, and the global bundle is only copied into `storage.s3` when
+  `use_ssl` is on.
+- **`force_verify=bool(ca_bundle)`.** Some HTTP paths build the context with `force_verify` derived from
+  the bundle, which re-enables verification despite `tls_insecure`. The fill-in skips insecure
+  components so a global bundle never changes what an insecure component does.
+- **Git runs only in the task worker**, but `GitSettings` is validated in every process. With the shared
+  Compose env anchor the API server also needs the file mounted, or it refuses to start.
+- **Persisted gitconfig.** `/opt/infrahub/.gitconfig` can outlive a container, so `apply_git_tls_config`
+  unsets `http.sslCAInfo` / `http.sslVerify` when the settings are absent instead of leaving old values.
+  Infrahub owns those two keys the same way it already owns `user.name`, `user.email`, `safe.directory`
+  and `credential.*`: every task-worker startup rewrites them, so a hand edit to the file does not
+  survive a restart. The old Dockerfile recipe `git config --global http.sslVerify false` wrote
+  `/root/.gitconfig`, which the worker stopped reading when it started exporting `GIT_CONFIG_GLOBAL`
+  (1.6.0); `git.tls_insecure` replaces that recipe.
+- **`--global` lies in an exec shell.** The worker selects `/opt/infrahub/.gitconfig` by exporting
+  `GIT_CONFIG_GLOBAL` in its own process; `docker compose exec task-worker git config --global ...` does
+  not inherit it and reads `$HOME/.gitconfig`, which only holds what the Dockerfile baked in. Inspect
+  the file directly: `git config --file /opt/infrahub/.gitconfig --get http.sslCAInfo`.
+- **The TLS failure wording depends on the git build.** git's HTTPS helper reports an untrusted
+  certificate with the wording of the TLS backend libcurl is linked against, and curl rewords those
+  messages between releases: OpenSSL says "SSL certificate problem: ...", "SSL certificate verification
+  failed" and, on the verification path, "SSL certificate verify result: ... (20)" up to curl 8.14 and
+  "SSL certificate OpenSSL verify result: ... (20)" from curl 8.15; GnuTLS says "server certificate
+  verification failed. CAfile: ..." up to curl 8.9, "server verification failed: ... (CAfile: ...)" from
+  curl 8.10 to 8.14 — the shipped image, whose git links against libcurl3-gnutls — and "SSL certificate
+  verification failed: ... (CAfile: ...)" from curl 8.15. A certificate that verifies but names another
+  host is a separate family both backends spell with "certificate subject name".
+  `git/base.py::GIT_TLS_VERIFICATION_ERRORS` matches the stable fragment of each family rather than a full
+  message; a wording missing there drops the repository into the generic `error` status instead of
+  `error-connection` with the certificate hint.
+  Tests that assert on a real clone failure (`tests/unit/git/test_global_config.py`) see only the wording
+  of the test host's git, so the other wordings are covered as text in
+  `tests/unit/git/test_git_error_enrichment.py`.
+- **Component sections do not see the global.** A section-level validator cannot know whether the
+  global bundle will fill it later; only `Settings`-level validators can reason about the resolved value.
+
+## Adding an outbound component
+
+1. Give its settings section a `tls_ca_file` or `tls_ca_bundle` field plus, when the client supports it,
+   a `tls_insecure` flag, and resolve the field in the section's `model_validator` through
+   `_resolve_ca_bundle_setting` so the consumer only ever sees a path.
+2. Register the field in `Settings.apply_global_tls_ca_bundle`.
+3. Extend `tests/unit/config/test_tls_settings.py` and the component table in the private CA guide under
+   `docs/docs/deploy-manage/install-configure/production-deployment/`.

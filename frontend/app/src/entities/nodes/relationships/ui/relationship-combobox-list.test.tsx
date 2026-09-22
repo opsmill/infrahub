@@ -12,7 +12,9 @@ vi.mock("@/entities/nodes/relationships/ui/queries/get-relationships.query", () 
 vi.mock("@/entities/schema/ui/hooks/useSchema", () => ({
   useSchema: () => useSchemaMock(),
 }));
-vi.mock("@/shared/utils/common", () => ({
+// Partial: the GraphQL transport imports `waitFor` from the same module.
+vi.mock("@/shared/utils/common", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/utils/common")>()),
   classNames: (...args: unknown[]) => args.filter(Boolean).join(" "),
   debounce: (fn: (...args: unknown[]) => unknown) => fn,
 }));

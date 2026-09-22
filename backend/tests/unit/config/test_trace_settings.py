@@ -49,13 +49,17 @@ class TestTraceSettings:
         assert settings.tls_ca_bundle == LOADABLE_CA_BUNDLE
 
     def test_missing_ca_bundle_is_rejected(self) -> None:
-        with pytest.raises(ValidationError, match=r"Unable to load trace CA bundle from /does/not/exist/ca\.pem"):
+        with pytest.raises(
+            ValidationError, match=r"trace.tls_ca_bundle: must be the path to an existing file or PEM text"
+        ):
             TraceSettings(tls_ca_bundle="/does/not/exist/ca.pem")
 
     def test_malformed_ca_bundle_is_rejected(self, tmp_path: Path) -> None:
         bundle = tmp_path / "broken.pem"
         bundle.write_text("-----BEGIN CERTIFICATE-----\nnot a real certificate\n-----END CERTIFICATE-----\n")
-        with pytest.raises(ValidationError, match=rf"Unable to load trace CA bundle from {re.escape(str(bundle))}"):
+        with pytest.raises(
+            ValidationError, match=rf"trace.tls_ca_bundle: unable to load the CA bundle from {re.escape(str(bundle))}"
+        ):
             TraceSettings(tls_ca_bundle=str(bundle))
 
     def test_ca_bundle_with_plaintext_http_endpoint_is_rejected(self) -> None:

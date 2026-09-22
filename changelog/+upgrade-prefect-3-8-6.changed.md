@@ -1,1 +1,1 @@
-Upgraded Prefect to `3.8.6` (from `3.7.5`) and `prefect-redis` to `0.2.15` (from `0.2.14`).
+Upgraded Prefect to `3.8.6` (from `3.7.5`) and `prefect-redis` to `0.2.15` (from `0.2.14`). The first start after this upgrade can take longer than usual while the task manager database is updated, on deployments with a long task history. Later starts are unaffected.

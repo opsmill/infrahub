@@ -27,13 +27,20 @@ def all_substrings(*needles: str) -> Matcher: ...
 ## Builders
 
 Each builder is a small named module-level function. Builders are reused across rules
-where the resulting exception is the same — today's `if`-chain raises
-`RepositoryConnectionError(identifier=name)` from three distinct branches, and one
-named builder serves all three.
+where the resulting exception is the same, and only then: today's `if`-chain raises
+`RepositoryConnectionError` from two branches, but the TLS branch passes a message the
+other does not, so each gets its own builder. FR-014 covers message strings, so a builder
+that dropped the certificate hint would be a behavior change.
 
 ```python
 def _connection_error(ctx: ErrorContext, _exc: GitCommandError) -> Exception:
     return RepositoryConnectionError(identifier=ctx.name)
+
+def _tls_connection_error(ctx: ErrorContext, _exc: GitCommandError) -> Exception:
+    return RepositoryConnectionError(
+        identifier=ctx.name,
+        message=f"SSL verification failed for {ctx.name}, please validate the certificate chain.",
+    )
 
 def _credentials_error(ctx: ErrorContext, _exc: GitCommandError) -> Exception:
     return RepositoryCredentialsError(identifier=ctx.name)
@@ -64,8 +71,13 @@ ERROR_RULES: tuple[ErrorRule, ...] = (
         factory=_invalid_branch_error,
     ),
     ErrorRule(
-        matcher=any_substring("SSL certificate problem", "server certificate verification failed"),
-        factory=_connection_error,
+        matcher=any_substring(
+            "SSL certificate",
+            "certificate verification failed",
+            "server verification failed",
+            "certificate subject name",
+        ),
+        factory=_tls_connection_error,
     ),
     ErrorRule(
         matcher=any_substring_ci("authentication failed for"),

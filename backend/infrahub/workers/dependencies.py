@@ -45,9 +45,10 @@ def get_component_type() -> ComponentType:
 def build_client() -> InfrahubClient:
     client_config = Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True)
     tls_regsistry = get_tls_registry()
-    tls_ca_bundle = config.SETTINGS.http.tls_ca_bundle
+    # No force_verify: `http.tls_insecure` outranks the CA bundle for every component, so a bundle that
+    # stays configured next to it does not put verification back on.
     ssl_context = tls_regsistry.get(
-        insecure=config.SETTINGS.http.tls_insecure, ca_bundle=tls_ca_bundle, force_verify=bool(tls_ca_bundle)
+        insecure=config.SETTINGS.http.tls_insecure, ca_bundle=config.SETTINGS.http.tls_ca_bundle
     )
     client_config.set_ssl_context(context=ssl_context)
     client = InfrahubClient(config=client_config)

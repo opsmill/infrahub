@@ -74,12 +74,12 @@ SURVIVAL_CASES = [
 def test_event_on_the_budget_survives_the_prefect_run_context_append(
     case: SurvivalCase, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """An event emitted on the budget must still be accepted once Prefect has enlarged it.
+    """An event emitted on the budget must still carry its run context once Prefect has enlarged it.
 
-    Prefect's events worker extends the related list in place, which skips the client-side
-    validation, so the enlarged event is only ever checked by the Prefect API. Emitting on the
-    maximum rather than under it therefore produces an event the API refuses. The cases span both
-    sides of the reservation, so the floor is covered as well as the proportional part.
+    Prefect's events worker attaches only as many run-context resources as fit under the maximum
+    and drops the rest, so emitting on the maximum rather than under it costs the event the run
+    context it is filtered by. The cases span both sides of the reservation, so the floor is
+    covered as well as the proportional part.
     """
     monkeypatch.setenv(ENV_VAR, str(case.configured_max))
     with temporary_settings({PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES: case.configured_max}):

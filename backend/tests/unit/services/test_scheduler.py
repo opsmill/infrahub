@@ -1,7 +1,14 @@
 from __future__ import annotations
 
+import asyncio
+import time
+
+from infrahub.components import ComponentType
 from infrahub.services import InfrahubServices
-from infrahub.services.scheduler import Schedule
+from infrahub.services.heartbeat import WorkerHeartbeat, build_heartbeat_cache
+from infrahub.services.scheduler import InfrahubScheduler, Schedule
+from infrahub.worker import WORKER_IDENTITY
+from tests.adapters.cache import MemoryCache
 from tests.adapters.log import FakeLogger
 
 
@@ -50,3 +57,61 @@ async def test_scheduler_task_with_error(fake_log: FakeLogger) -> None:
     assert len(fake_log.error_logs) == 1
     assert fake_log.info_logs[0] == "Started recurring task"
     assert fake_log.error_logs[0] == "This function has not been implemented"
+
+
+async def test_scheduler_registers_the_branch_refresh_schedule_only_for_worker_processes() -> None:
+    for component_type in (ComponentType.API_SERVER, ComponentType.GIT_AGENT):
+        scheduler = InfrahubScheduler(component_type=component_type, heartbeat=None)
+        # The heartbeat no longer runs as an asyncio schedule on the main loop.
+        assert [schedule.name for schedule in scheduler.schedules] == ["branch_refresh"]
+
+    assert InfrahubScheduler(component_type=ComponentType.NONE, heartbeat=None).schedules == []
+
+
+async def test_services_builds_a_heartbeat_only_for_worker_processes() -> None:
+    for component_type in (ComponentType.API_SERVER, ComponentType.GIT_AGENT):
+        service = await InfrahubServices.new(component_type=component_type)
+        assert service.scheduler.heartbeat is not None
+        assert service.scheduler.heartbeat.component_type == component_type
+
+    service = await InfrahubServices.new(component_type=ComponentType.NONE)
+    assert service.scheduler.heartbeat is None
+
+
+async def test_scheduler_starts_and_stops_the_heartbeat_thread() -> None:
+    cache = MemoryCache()
+
+    async def cache_factory() -> MemoryCache:
+        return cache
+
+    heartbeat = WorkerHeartbeat(
+        component_type=ComponentType.GIT_AGENT, cache_factory=cache_factory, interval_seconds=0.05
+    )
+    scheduler = InfrahubScheduler(component_type=ComponentType.GIT_AGENT, heartbeat=heartbeat)
+    scheduler.schedules = []
+    scheduler.running = True
+
+    await scheduler.start_schedule()
+    try:
+        deadline = time.monotonic() + 2
+        while f"workers:active:git_agent:worker:{WORKER_IDENTITY}" not in cache.storage:
+            assert time.monotonic() < deadline, "heartbeat thread did not write the active key"
+            await asyncio.sleep(0.01)
+        assert heartbeat.running
+    finally:
+        await scheduler.shutdown()
+
+    assert not scheduler.running
+    assert not heartbeat.running
+
+
+async def test_scheduler_does_not_start_the_heartbeat_when_not_running() -> None:
+    heartbeat = WorkerHeartbeat(
+        component_type=ComponentType.GIT_AGENT, cache_factory=build_heartbeat_cache, interval_seconds=0.05
+    )
+    scheduler = InfrahubScheduler(component_type=ComponentType.GIT_AGENT, heartbeat=heartbeat)
+    scheduler.running = False
+
+    await scheduler.start_schedule()
+
+    assert not heartbeat.running
