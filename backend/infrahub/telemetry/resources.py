@@ -457,16 +457,12 @@ def _host_memory_available() -> int | None:
     return int(psutil.virtual_memory().available)
 
 
-# The limit and usage files worth reporting when explaining a read. The v2 names
-# are looked for at every level of the process's cgroup path; the v1 names only
-# at the controller mount root, which is where a container sees them.
+# The limit and usage files worth reporting when explaining a read, looked for at
+# every level the reader itself consulted: the process's own cgroup path under v2,
+# and each controller's own resolved path under v1.
 _V2_EVIDENCE_FILES = ("cpu.max", "memory.max", "memory.current")
-_V1_EVIDENCE_FILES = (
-    "cpu/cpu.cfs_quota_us",
-    "cpu/cpu.cfs_period_us",
-    "memory/memory.limit_in_bytes",
-    "memory/memory.usage_in_bytes",
-)
+_V1_CPU_EVIDENCE_FILES = ("cpu.cfs_quota_us", "cpu.cfs_period_us")
+_V1_MEMORY_EVIDENCE_FILES = ("memory.limit_in_bytes", "memory.usage_in_bytes")
 
 
 @dataclass(frozen=True)
@@ -477,6 +473,23 @@ class CgroupLevel:
 
     files: dict[str, str]
     """Contents of the limit files found here, keyed by file name; empty when the level carries none."""
+
+
+def _v1_evidence_levels(directories: list[Path], names: tuple[str, ...], controller: str) -> list[CgroupLevel]:
+    """The v1 files found at each level the reader consulted for one controller.
+
+    A v1 hierarchy mounts each controller separately, so the levels are reported
+    per controller rather than merged: a process can sit at a different depth
+    under ``cpu`` than under ``memory``. Levels carrying no file are left out,
+    since under v1 every level of a real hierarchy carries the controller files
+    and listing the empty ones would bury the enforced limit.
+    """
+    levels = []
+    for directory in directories:
+        files = {name: content for name in names if (content := _read_text_file(directory / name)) is not None}
+        if files:
+            levels.append(CgroupLevel(path=f"{directory} (v1 {controller})", files=files))
+    return levels
 
 
 @dataclass(frozen=True)
@@ -640,12 +653,8 @@ class ProcessResources:
             )
             for directory in cgroup_dirs
         ]
-        root = cgroup_dirs[-1]
-        v1_files = {
-            name: content for name in _V1_EVIDENCE_FILES if (content := _read_text_file(root / name)) is not None
-        }
-        if v1_files:
-            levels.append(CgroupLevel(path=f"{root} (v1 controllers)", files=v1_files))
+        levels += _v1_evidence_levels(identity.v1_cpu_dirs, _V1_CPU_EVIDENCE_FILES, "cpu")
+        levels += _v1_evidence_levels(identity.v1_memory_dirs, _V1_MEMORY_EVIDENCE_FILES, "memory")
 
         dynamic = self._read_dynamic(identity)
         return ResourceDiagnostics(
