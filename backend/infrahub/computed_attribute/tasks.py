@@ -238,6 +238,53 @@ async def _widened_skip_reason(
     return _transform_absent(attribute.transform)
 
 
+async def _widened_run_must_skip(
+    *,
+    log: Logger | LoggerAdapter[Logger],
+    client: InfrahubClient,
+    branch_name: str,
+    computed_attribute_kind: str,
+    computed_attribute_name: str,
+) -> bool:
+    """Whether a widened run must stop before it lists the kind, warning when it must.
+
+    The verdict covers the whole kind and no chunk revisits it, so a reason read off the schema
+    this worker happens to hold is confirmed against a converged one before the run stops.
+
+    Raises:
+        ValueError: if the transform is in the database but cannot be run, or if the response does
+            not have the shape the query asked for.
+
+    """
+
+    async def skip_reason() -> str | None:
+        return await _widened_skip_reason(
+            client=client,
+            schema_branch=registry.schema.get_schema_branch(name=branch_name),
+            branch_name=branch_name,
+            computed_attribute_kind=computed_attribute_kind,
+            computed_attribute_name=computed_attribute_name,
+        )
+
+    reason = await skip_reason()
+    if reason:
+        # Only the skip path waits, and it was about to save a whole-kind read anyway.
+        database = await get_database()
+        async with database.start_session() as db:
+            await wait_for_schema_to_converge(branch_name=branch_name, component=await get_component(), db=db, log=log)
+        reason = await skip_reason()
+    if not reason:
+        return False
+
+    _warn_widened_skip(
+        log=log,
+        branch_name=branch_name,
+        computed_attribute_name=computed_attribute_name,
+        reason=reason,
+    )
+    return True
+
+
 @flow(
     name="computed_attribute_process_transform",
     flow_run_name="Process computed attribute for {computed_attribute_kind}.{computed_attribute_name}",
@@ -383,9 +430,7 @@ async def trigger_update_python_computed_attributes(
     """Recompute one Python computed attribute over every node of its kind.
 
     ``widened`` marks a run the resolution could not narrow. Only that run weighs whether anything
-    can compute the attribute before listing the kind. That verdict covers the whole kind and no
-    chunk revisits it, so a skip is confirmed against a converged schema before it is taken; a
-    worker that does not name the attribute at all reports nothing and the run goes ahead.
+    can compute the attribute before listing the kind, and only it may stop without submitting.
 
     Raises:
         ValueError: if a widened run finds a transform it cannot run, or one whose response does
@@ -398,34 +443,14 @@ async def trigger_update_python_computed_attributes(
     client = get_client()
     client.request_context = context.to_request_context()
 
-    if widened:
-
-        async def skip_reason() -> str | None:
-            return await _widened_skip_reason(
-                client=client,
-                schema_branch=registry.schema.get_schema_branch(name=branch_name),
-                branch_name=branch_name,
-                computed_attribute_kind=computed_attribute_kind,
-                computed_attribute_name=computed_attribute_name,
-            )
-
-        reason = await skip_reason()
-        if reason:
-            # Only the skip path waits, and it was about to save a whole-kind read anyway.
-            database = await get_database()
-            async with database.start_session() as db:
-                await wait_for_schema_to_converge(
-                    branch_name=branch_name, component=await get_component(), db=db, log=log
-                )
-            reason = await skip_reason()
-        if reason:
-            _warn_widened_skip(
-                log=log,
-                branch_name=branch_name,
-                computed_attribute_name=computed_attribute_name,
-                reason=reason,
-            )
-            return
+    if widened and await _widened_run_must_skip(
+        log=log,
+        client=client,
+        branch_name=branch_name,
+        computed_attribute_kind=computed_attribute_kind,
+        computed_attribute_name=computed_attribute_name,
+    ):
+        return
 
     nodes = await client.all(kind=computed_attribute_kind, branch=branch_name)
     object_ids = [node.id for node in nodes]
