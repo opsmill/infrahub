@@ -28,6 +28,7 @@ bool
 boolean
 booleans
 Buildkite
+cacheable
 cAdvisor
 Ceph
 changelog
@@ -63,6 +64,7 @@ dataset
 datasets
 datastore
 datetime
+debounce
 default_branch
 default_filter
 Delinea
@@ -158,6 +160,7 @@ misconfigured
 mixin
 modeline
 modularization
+MTok
 namespace
 namespaces
 nats
@@ -222,6 +225,8 @@ refactored
 regex
 reimported
 repo
+repointing
+repoints
 requesters
 resizable
 Resizable
@@ -268,6 +273,7 @@ tooltip
 Towncrier
 traceback
 Traefik
+triaged
 TypeScript
 uniqueness_constraints
 unoptimized

@@ -1,0 +1,203 @@
+---
+title: Automated triage
+---
+
+import EnterpriseBadge from '../../src/components/EnterpriseBadge';
+
+# Automated triage of proposed changes <EnterpriseBadge />
+
+Automated triage looks at every proposed change as it opens, scores how risky it is, works out which
+team owns it, and writes a short note into the conversation. When you let it, it also adds a reviewer
+from that team, and a second reviewer when the change looks risky enough to want one.
+
+It is off by default, and off means off: nothing is evaluated, no request leaves your deployment, and
+nothing is written to any proposed change.
+
+:::info Enterprise Edition
+This feature requires the Enterprise Edition. A Community build refuses to start with
+`INFRAHUB_TRIAGE_ENABLED` set.
+:::
+
+## What it does, and what it deliberately does not
+
+Triage adds reviewers. It never removes them, never replaces a reviewer a person added, and never
+changes how many approvals a proposed change needs to merge. That number is
+`INFRAHUB_POLICY_REQUIRED_PROPOSED_CHANGE_APPROVALS` and triage does not touch it: the note says
+`reviewers requested`, never `required`, because requesting a reviewer and gating a merge are
+different things and only one of them is triage's business.
+
+Triage also fails open. If the evaluation service is unreachable, nothing is written at all — no
+reviewers chosen from an answer that does not exist, and no note saying nothing. If only the
+summarisation service fails, the note still goes up with its badge and its provenance, minus the
+prose. Either way the proposed change is left exactly as it was and the pipeline is not held up.
+
+## What it costs
+
+Triage makes two outbound calls per evaluated change: one to the evaluation service and one to the
+summarisation service. That is a real running cost and it belongs in the decision, not in a surprise
+invoice.
+
+At the reference volume of **500 events a day**, with roughly 3K input tokens of change state and
+150 output tokens per call, the default summarisation model (`claude-opus-5`, $5/$25 per MTok) works
+out at about **$9–10 a day, or ~$280 a month per deployment** — plus whatever your evaluation service
+charges.
+
+Two things move that number:
+
+- **Choose a smaller model.** `claude-sonnet-5` ($2/$10 per MTok) costs roughly $3.75 a day for what
+  is fairly mechanical summarisation. Set `INFRAHUB_TRIAGE_SUMMARY_MODEL` to change it.
+- **Keep the debounce window.** A proposed change under active development emits an event per
+  commit. `INFRAHUB_TRIAGE_DEBOUNCE_SECONDS` (default 120) collapses a burst into a single
+  evaluation. Lowering it to zero multiplies the cost by however many commits people push.
+
+Prompt caching does not help here: the stable part of the prompt is well below the minimum cacheable
+prefix, and the per-change state that dominates the input is different every time.
+
+## Turning it on
+
+The full list of settings is in the
+[configuration reference](../reference/configuration.mdx) under `INFRAHUB_TRIAGE_*`. The minimum is:
+
+```toml
+[triage]
+enabled = true
+assign_reviewers = true
+evaluation_api_key = "..."
+summary_api_key = "..."
+fallback_group = "network-triage"
+
+[[triage.policies]]
+team = "ipam"
+description = "IP prefixes, address pools, VLAN assignment"
+kinds = ["IpamIPPrefix", "IpamIPAddress", "InfraVLAN"]
+member_group = "ipam-engineers"
+
+[[triage.policies]]
+team = "edge"
+description = "WAN circuits, upstream peering, internet edge"
+kinds = ["InfraCircuit", "InfraBGPPeerGroup"]
+member_group = "edge-engineers"
+max_unaided_risk = 2
+```
+
+Infrahub refuses to start rather than degrade quietly if the configuration cannot work: enabled
+without an API key, `assign_reviewers` without a `fallback_group`, duplicate `team` keys, or a
+threshold outside its range. Each refusal names the setting at fault.
+
+### Writing a policy
+
+A policy's `description` and `kinds` together are the routing logic. They are sent to the evaluation
+service as the criterion it matches a change against — so `description` deserves the care of a
+prompt rather than a label, and `kinds` is what makes reassigning ownership take effect. Move a node
+kind out of one policy's `kinds` and into a second policy, and the next change touching it routes to
+the second team, with no restart and no code change.
+
+`member_group`, `fallback_group` and `seniors_group` all name account groups that triage **selects
+from**. None of them is ever assigned as a reviewer itself. Triage resolves the group to its members,
+drops the change's author and anyone already reviewing, and picks whoever has the fewest open
+proposed changes, breaking ties by account ID. A group that resolves to nobody eligible assigns
+nobody, and the note says so.
+
+## Roll it out in stages
+
+The order below is the one the feature was designed around, and the first step is the important one.
+
+1. **`enabled = true`, `assign_reviewers = false`.** Notes only. Nothing about who reviews what
+   changes. Read the notes against real proposed changes for a few weeks and judge whether the
+   scores are any good.
+2. **`assign_reviewers = true`, `escalation_risk_threshold = 4`.** Routing on, escalation almost
+   never.
+3. **Lower `escalation_risk_threshold` to `3`** once routing has earned it.
+
+Step 1 is not a formality. The feature is worth having only if the risk scores and team choices are
+good on your data, and step 1 is how you find that out before anyone's review load depends on it.
+Watch for three things while you are there:
+
+- **Is the risk score discriminating?** A metadata-only change should score near 0 and a cross-site
+  routing change near 3 or 4. If everything lands mid-scale, the rubric is not telling you anything.
+- **Is low confidence actually low?** An ambiguous change should come back with low confidence, not
+  a confident wrong team. If confidence is uniformly high, the thresholds below are decorative.
+- **Would a reviewer have wanted this?** Two or three obviously wrong summaries is a reason to
+  re-tune, not to press on.
+
+## Thresholds, and why they do not travel
+
+Four settings gate what triage acts on, and they gate two different kinds of number:
+
+| Setting | Default | Gates |
+| --- | --- | --- |
+| `INFRAHUB_TRIAGE_RISK_CONFIDENCE_THRESHOLD` | `0.6` | Confidence in the risk score. Below it, risk is treated as unknown |
+| `INFRAHUB_TRIAGE_TEAM_CONFIDENCE_THRESHOLD` | `0.7` | Confidence in the team choice. Below it, the fallback group is used |
+| `INFRAHUB_TRIAGE_NEEDS_SECOND_THRESHOLD` | `0.8` | A probability, not a confidence |
+| `INFRAHUB_TRIAGE_TOUCHES_PRODUCTION_THRESHOLD` | `0.7` | A probability, not a confidence |
+
+The defaults are the evaluation vendor's starting points, not values tuned on your data.
+
+:::warning Thresholds do not transfer to a substitute evaluation endpoint
+`INFRAHUB_TRIAGE_EVALUATION_BASE_URL` lets you point triage at your own evaluation service. The
+integration keeps working — but the numbers above do not carry across, and **all four must be
+re-tuned after repointing.**
+
+Confidence calibration is a property of the service producing it. Two endpoints can both answer
+"0.72" and mean entirely different things by it, and no substitute claims to match the default
+vendor's calibration. Carrying the defaults over does not fail loudly: it silently changes which
+changes get escalated and which fall back to the triage group, and you find out from the reviewer
+rota rather than from a log.
+
+Re-tune the same way you tuned them in the first place: run with `assign_reviewers = false` against
+real proposed changes until the confidence figures line up with your own judgement of which changes
+were genuinely ambiguous.
+
+One further constraint: `evaluation_base_url` repoints the **host only**. The request path is fixed,
+so a substitute has to serve the same protocol at the same path.
+:::
+
+## Reading a triage note
+
+A note is written by `[Infrahub System]` into a single thread on the proposed change, and rewritten
+in place every time the change is re-evaluated — there is never a second triage thread.
+
+```text
+🟠 Risk 3.2/4 · fabric · 2 reviewers requested
+
+The change updates two leaf switches in a single site. It alters interface
+configuration only, leaving routing policy untouched. Start with the failing
+artifact check on leaf-01.
+
+Assigned: @alice (fabric, least loaded) · @bruno (senior review, risk ≥ 3)
+
+Evaluated by jev-latest · Infrahub triage
+```
+
+The badge degrades rather than guessing. `⚪ Risk unknown` means confidence fell below its
+threshold and the score was withheld. `unrouted` in the team slot means a team was returned but not
+trusted, which is not the same as no team having been configured. `State truncated — large change`
+on the provenance line means the change was too large to describe in full and the note was written
+from a partial picture.
+
+## Auditing a decision
+
+Every completed run emits one structured log event, `triage_decision_trail`, carrying the whole
+decision: each answer, its reliability value, the threshold it was judged against, the resulting
+gate, the evaluation model, and the rule behind each reviewer. There is no stored assessment object,
+so this event is the record — grep for the event name.
+
+Metrics are exposed on the existing `/metrics` endpoint under the `infrahub_triage_` prefix: run
+counts by outcome, run duration, external call counts and durations by destination, and token usage.
+
+## Re-running triage by hand
+
+An operator can re-evaluate a single proposed change on demand, through the
+`retriage-proposed-change` workflow. It is the same run as the automatic one, with the debounce
+window ignored — so a change you triaged a minute ago will be looked at again, which is what you
+want after moving a node kind between policies.
+
+Re-running is safe to repeat: the note is rewritten in place and reviewers are added but never
+re-added, so nothing accumulates.
+
+## Turning it off
+
+Set `INFRAHUB_TRIAGE_ENABLED` to `false`. Nothing is evaluated, neither vendor SDK is even loaded,
+and no note or reviewer is written. Notes and reviewers from earlier runs stay where they are:
+triage does not clean up after itself, because a reviewer who has already read the change is a fact
+about the change and not about the feature.

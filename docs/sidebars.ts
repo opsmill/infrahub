@@ -256,6 +256,7 @@ const sidebars: SidebarsConfig = {
             'proposed-changes/lifecycle',
             'proposed-changes/review-and-stamp',
             'proposed-changes/resolve-conflict',
+            'proposed-changes/automated-triage',
           ],
         },
         { type: 'doc', id: 'checks/overview', label: 'Checks & Validation' },
