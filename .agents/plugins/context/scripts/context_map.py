@@ -2,10 +2,11 @@
 """Draw a Mermaid diagram of the internal docs a Claude Code session read or loaded, and what led to each.
 
 Usage:
-    python3 .agents/hooks/doc_reads_diagram.py <session id | session dir | reads.jsonl> [-o out.md]
-    python3 .agents/hooks/doc_reads_diagram.py --list
+    python3 .agents/plugins/context/scripts/context_map.py <session id | session dir | reads.jsonl> [-o out.md]
+    python3 .agents/plugins/context/scripts/context_map.py [<session id>] --default-session <id> --save
+    python3 .agents/plugins/context/scripts/context_map.py --list
 
-Reads the session log written by track_dev_reads.py. Solid arrows run from a Read to the rule or nested
+Reads the session log written by track_reads.py. Solid arrows run from a Read to the rule or nested
 CLAUDE.md it loaded, captioned with the matching `paths:` glob. Dotted arrows run to each doc from its
 cause. That is a loaded file whose content was in hand before the read was issued and names the doc's
 path, captioned with the section and line of the mention. Otherwise it is the prompt or subagent
@@ -16,6 +17,8 @@ assistant message run in parallel, so none of them can follow from another's res
 transcript, every read is attributed to its prompt or brief.
 """
 
+from __future__ import annotations
+
 import argparse
 import os
 import re
@@ -24,7 +27,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from track_dev_reads import find_mention, glob_to_regex, load_records, preview, read_text, rule_patterns
+from track_reads import find_mention, glob_to_regex, load_records, preview, read_text, rule_patterns
 
 ICONS = {"read": "📄", "rule": "📏", "claude-md": "📘", "import": "📘"}
 CLASS_DEFS = {
@@ -391,7 +394,10 @@ def list_logs(limit: int) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("session", nargs="?", help="session id, session directory, or reads.jsonl path")
-    parser.add_argument("-o", "--output", type=Path, help="write here instead of stdout")
+    parser.add_argument("--default-session", help="session to draw when none is given")
+    destination = parser.add_mutually_exclusive_group()
+    destination.add_argument("-o", "--output", type=Path, help="write here instead of stdout")
+    destination.add_argument("--save", action="store_true", help="also write context-map.md beside the session log")
     parser.add_argument("--format", choices=["md", "mmd"], default="md", help="Markdown with a fence, or raw Mermaid")
     parser.add_argument("--all-parents", action="store_true", help="draw every loaded file that mentions a read")
     parser.add_argument("--project", type=Path, help="repository root (default: from the session log, else cwd)")
@@ -402,10 +408,11 @@ def main() -> None:
     if args.list:
         list_logs(limit=20)
         return
-    if not args.session:
+    session = args.session or args.default_session
+    if not session:
         parser.error("a session id or .jsonl path is required (see --list)")
 
-    log = resolve_log(args.session)
+    log = resolve_log(session)
     records = load_records(log)
     project = (args.project or project_of(log) or Path.cwd()).resolve()
     transcript = args.transcript or transcript_of(log)
@@ -435,8 +442,12 @@ def main() -> None:
         )
     if args.output:
         args.output.write_text(output, encoding="utf-8")
-    else:
-        sys.stdout.write(output)
+        return
+    sys.stdout.write(output)
+    if args.save:
+        saved = log.parent / "context-map.md"
+        saved.write_text(output, encoding="utf-8")
+        print(f"Saved to {saved}")
 
 
 if __name__ == "__main__":

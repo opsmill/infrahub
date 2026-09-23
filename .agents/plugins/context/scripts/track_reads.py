@@ -1,14 +1,14 @@
 # ruff: noqa: INP001  # standalone hook script, not a package
 """Claude Code hook: record which internal docs a session reads, and what led to each one.
 
-Register it for UserPromptSubmit, PreToolUse (Skill, Agent), SubagentStart, PostToolUse (Read) and
-SessionEnd; it dispatches on the event name. Opt in with CLAUDE_TRACK_DOC_READS=1.
+The context plugin registers it in hooks/hooks.json for UserPromptSubmit, PreToolUse (Skill, Agent),
+SubagentStart, PostToolUse (Read) and SessionEnd; it dispatches on the event name.
 
 Every dev/ or .agents/ read, path-scoped rule, and nested CLAUDE.md load is recorded with:
 
 - parents: for a rule or nested CLAUDE.md, the file whose Read loaded it (certain); for a doc, the
   files already loaded this session that name its path, which is where the path could have come from,
-  not necessarily why it was read (the prompt usually is; doc_reads_diagram.py works that out)
+  not necessarily why it was read (the prompt usually is; context_map.py works that out)
 - context: the prompt and subagent it happened under; skills are logged in sequence, not as parents
 
 Output goes to a doc-reads/ directory in the session's own directory, beside subagents/ and
@@ -19,6 +19,8 @@ chat unless CLAUDE_TRACK_DOC_READS_ECHO=0. At session end a summary goes to the 
 $GITHUB_STEP_SUMMARY when set.
 """
 
+from __future__ import annotations
+
 import contextlib
 import fcntl
 import json
@@ -27,8 +29,11 @@ import re
 import sys
 import time
 import traceback
-from collections.abc import Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 DOC_PATH = re.compile(r"(^|/)(dev|\.agents)/")
 MARKDOWN_LINK_TARGET = re.compile(r"\]\(([^)#\s]+)")
@@ -385,9 +390,6 @@ def emit_summary(lines: list[str], log_path: Path) -> None:
 
 
 def main() -> None:
-    if os.environ.get("CLAUDE_TRACK_DOC_READS") != "1":
-        return
-
     directory = FALLBACK_DIR
     # Top-level boundary: a tracking failure is recorded, never surfaced as a hook error on every tool call.
     try:
