@@ -103,6 +103,10 @@ Backend guides in [guides/backend/](guides/backend/):
 - [creating-async-tasks.md](guides/backend/creating-async-tasks.md) - How to create async tasks
 - [creating-messages.md](guides/backend/creating-messages.md) - How to create message bus messages
 
+General guides in [guides/](guides/):
+
+- [reviewing-with-cubic.md](guides/reviewing-with-cubic.md) - Review your branch with cubic before pushing
+
 ## Current Commands
 
 Available agent commands in [../.agents/commands/](../.agents/commands/):

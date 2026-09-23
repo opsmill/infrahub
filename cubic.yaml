@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://cubic.dev/schema/cubic-repository-config.schema.json
+---
+
+version: 1
+
+reviews:
+  # cubic reads at most 10,000 characters per agent; keep each .cubic/*.md under 9,000.
+  # Path filters are mirrored in CUBIC_CHECKLISTS (tasks/dev.py) for local reviews.
+  custom_rules:
+    - name: Infrahub frontend conventions
+      file_paths:
+        - .cubic/frontend.md
+      include:
+        - frontend/app/**
+    - name: Infrahub backend conventions
+      file_paths:
+        - .cubic/backend.md
+      include:
+        - backend/infrahub/**
+        - python_testcontainers/**
+        - tasks/**
+      exclude:
+        - python_testcontainers/tests/**
+    - name: Infrahub backend test conventions
+      file_paths:
+        - .cubic/testing.md
+      include:
+        - backend/tests/**
+        - python_testcontainers/tests/**
