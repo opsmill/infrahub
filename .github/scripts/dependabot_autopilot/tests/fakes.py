@@ -114,6 +114,8 @@ class FakeGitHub:
     artifacts: dict[tuple[int, str], Path] = field(default_factory=dict)
     """Source directory copied on download, keyed by `(run_id, name)`."""
     fail_merge: bool = False
+    merge_attempts: list[str] = field(default_factory=list)
+    """Head SHA of every merge call, refused or not."""
     writes: list[GitHubWrite] = field(default_factory=list)
     _next_id: int = 1000
 
@@ -169,6 +171,8 @@ class FakeGitHub:
         return None
 
     def upsert_marker_comment(self, *, pr_number: int, marker: str, body: str, author_login: str) -> None:
+        if marker not in body:
+            raise ValueError("the comment body must contain the marker so the next run can find it")
         comments = self.comments.setdefault(pr_number, [])
         for index, comment in enumerate(comments):
             if comment.author_login == author_login and marker in comment.body:
@@ -208,6 +212,7 @@ class FakeGitHub:
         self.writes.append(ReviewersRequested(pr_number=pr_number, users=tuple(users), teams=tuple(teams)))
 
     def merge(self, *, pr_number: int, head_sha: str) -> None:
+        self.merge_attempts.append(head_sha)
         pull_request = self.get_pull_request(number=pr_number)
         if self.fail_merge or pull_request.head_sha != head_sha:
             raise GitHubError(f"merge of #{pr_number} at {head_sha} refused")

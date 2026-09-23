@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, override
 
@@ -589,3 +590,100 @@ def test_sweep_continues_after_an_escalation_fails() -> None:
     assert sweep(github=github, config=config(), now=NOW, run_url=RUN_URL) is False
 
     assert github.pull_requests[7].labels == ("dependencies", "autopilot/review-required")
+
+
+def approvals(*, github: FakeGitHub) -> list[ReviewSubmitted]:
+    return [write for write in writes_of(github=github, kind=ReviewSubmitted) if write.event is ReviewEvent.APPROVE]
+
+
+@pytest.mark.parametrize(
+    ("merge_enabled", "labels", "reviews"),
+    [
+        (False, ("dependencies",), []),
+        (True, ("dependencies", "autopilot/hold"), []),
+        (
+            True,
+            ("dependencies",),
+            [app_review(review_id=1, state=ReviewState.CHANGES_REQUESTED, commit_id=HEAD_SHA, login="alice")],
+        ),
+    ],
+    ids=["merge-switched-off", "hold-label", "human-change-request"],
+)
+def test_safe_verdict_held_back_is_neither_approved_nor_merged(
+    tmp_path: Path, merge_enabled: bool, labels: tuple[str, ...], reviews: list[Review]
+) -> None:
+    github = repository(tmp_path=tmp_path, document=report_document(), pr=pull_request(labels=labels))
+    github.reviews[PR_NUMBER] = reviews
+
+    assert run_evaluate(github=github, merge_enabled=merge_enabled) is Action.LABEL_ONLY
+
+    assert approvals(github=github) == []
+    assert writes_of(github=github, kind=Merged) == []
+
+
+@pytest.mark.parametrize(
+    ("verdict", "expected"),
+    [("review-required", Action.REVIEW_REQUIRED), ("needs-code-changes", Action.NEEDS_CODE_CHANGES)],
+)
+def test_escalating_verdict_dismisses_the_app_approval_of_the_head(
+    tmp_path: Path, verdict: str, expected: Action
+) -> None:
+    github = repository(tmp_path=tmp_path, document=report_document(verdict=verdict))
+    github.reviews[PR_NUMBER] = [app_review(review_id=1, state=ReviewState.APPROVED, commit_id=HEAD_SHA)]
+
+    assert run_evaluate(github=github, merge_enabled=True) is expected
+
+    assert [write.review_id for write in writes_of(github=github, kind=ReviewDismissed)] == [1]
+    assert writes_of(github=github, kind=Merged) == []
+
+
+@dataclass
+class HeadMovesAfterApprovalGitHub(FakeGitHub):
+    @override
+    def submit_review(self, *, pr_number: int, event: ReviewEvent, body: str, commit_id: str) -> None:
+        super().submit_review(pr_number=pr_number, event=event, body=body, commit_id=commit_id)
+        self.pull_requests[pr_number] = dataclasses.replace(self.pull_requests[pr_number], head_sha=NEW_HEAD_SHA)
+
+
+def test_head_moving_between_approval_and_merge_refuses_the_merge(tmp_path: Path) -> None:
+    template = repository(tmp_path=tmp_path, document=report_document())
+    github = HeadMovesAfterApprovalGitHub(
+        **{field.name: getattr(template, field.name) for field in dataclasses.fields(template)}
+    )
+
+    assert run_evaluate(github=github, merge_enabled=True) is Action.APPROVE_AND_MERGE
+
+    assert github.merge_attempts == [HEAD_SHA]
+    assert writes_of(github=github, kind=Merged) == []
+    [comment] = github.comments[PR_NUMBER]
+    assert "**Merge attempt failed**" in comment.body
+
+
+def test_merge_retried_after_a_failure_approves_and_merges_once(tmp_path: Path) -> None:
+    github = repository(tmp_path=tmp_path, document=report_document())
+    github.fail_merge = True
+    run_evaluate(github=github, merge_enabled=True)
+
+    github.fail_merge = False
+    assert run_evaluate(github=github, merge_enabled=True) is Action.APPROVE_AND_MERGE
+
+    assert len(approvals(github=github)) == 1
+    assert writes_of(github=github, kind=Merged) == [Merged(pr_number=PR_NUMBER, head_sha=HEAD_SHA)]
+
+
+@pytest.mark.parametrize("new_head_status", [RunStatus.COMPLETED, RunStatus.IN_PROGRESS], ids=["analysed", "pending"])
+def test_evaluate_on_a_new_head_dismisses_the_approval_of_the_old_head(
+    tmp_path: Path, new_head_status: RunStatus
+) -> None:
+    github = repository(tmp_path=tmp_path, document=report_document())
+    github.fail_merge = True
+    run_evaluate(github=github, merge_enabled=True)
+    [old_approval] = [review for review in github.reviews[PR_NUMBER] if review.state is ReviewState.APPROVED]
+
+    push_new_head(github=github, tmp_path=tmp_path, document=report_document(head_sha=NEW_HEAD_SHA))
+    github.workflow_runs[-2] = workflow_run(
+        run_id=52, name=ANALYSIS_WORKFLOW, head_sha=NEW_HEAD_SHA, status=new_head_status
+    )
+    run_evaluate(github=github, merge_enabled=True)
+
+    assert [write.review_id for write in writes_of(github=github, kind=ReviewDismissed)] == [old_approval.id]

@@ -89,3 +89,12 @@ def test_merge_requires_matching_head() -> None:
 
     assert github.writes == [Merged(pr_number=7, head_sha=HEAD_SHA)]
     assert github.get_pull_request(number=7).merged
+
+
+def test_fake_upsert_rejects_a_body_without_the_marker() -> None:
+    github = FakeGitHub()
+
+    with pytest.raises(ValueError, match="marker"):
+        github.upsert_marker_comment(pr_number=7, marker=MARKER, body="no marker here", author_login="app[bot]")
+
+    assert github.writes == []
