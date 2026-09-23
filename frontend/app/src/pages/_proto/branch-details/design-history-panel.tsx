@@ -294,7 +294,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
                 )}
                 <span>{k.label}</span>
                 {k.type === "range" && (
-                  <>
+                  <span className="djh-knob-range">
                     <input
                       type="range"
                       min={k.min}
@@ -304,7 +304,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
                       onChange={(e) => setValues({ ...values, [k.key]: Number(e.target.value) })}
                     />
                     <output>{String(values[k.key])}</output>
-                  </>
+                  </span>
                 )}
                 {k.type === "color" && (
                   <input
@@ -403,10 +403,10 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
                 >
                   ›
                 </button>
-                <span className="djh-note" title={current.date}>
-                  {current.note}
-                </span>
               </div>
+              <p className="djh-note" title={current.date}>
+                {current.note}
+              </p>
             </section>
 
             <section className="djh-zone">
@@ -548,32 +548,40 @@ const css = `
  * thing being judged, so it gets the whole frame, and the panel is visibly an instrument
  * laid on top of it. The dock itself is click-through; only the panels inside it aren't.
  */
+/* Anchored bottom-right at a fixed width, sections stacked. A full-width bar spanning the
+   viewport competes with the design for the eye; a corner panel is read as a tool. */
 .djh-dock {
-  position: absolute; left: 0; right: 0; z-index: 50;
+  position: absolute; right: 16px; z-index: 50;
   bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: 304px; max-width: calc(100% - 32px);
   display: flex; flex-direction: column; align-items: stretch; gap: 8px;
-  padding-inline: 16px;
   pointer-events: none;
 }
 .djh-dock > * { pointer-events: auto; }
 
 .djh-knobs {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px;
-  padding: 12px 16px; border-radius: 12px;
+  display: flex; flex-direction: column; align-items: stretch; gap: 9px;
+  max-height: 46vh; overflow-y: auto; overscroll-behavior: contain;
+  padding: 12px 14px; border-radius: 12px;
   font: 500 12px/1.4 system-ui, sans-serif; color: #e4e4e7;
   background: #232329;
   box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 10px 30px -8px rgba(0,0,0,.55);
 }
-.djh-knob { display: flex; align-items: center; gap: 8px; }
-.djh-knob > span { color: #a1a1aa; }
+.djh-knob {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px;
+}
+.djh-knob > span { color: #a1a1aa; min-width: 0; }
+.djh-knob input, .djh-knob select { justify-self: end; }
 /* A visible seam, so it is obvious which controls belong to this direction alone. */
-.djh-knob--first-own { padding-left: 16px; border-left: 1px solid #3a3a42; }
+.djh-knob--first-own { margin-top: 5px; padding-top: 11px; border-top: 1px solid #3a3a42; }
 .djh-knob-group {
+  grid-column: 1 / -1;
   font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
   color: #7c7c86;
 }
-.djh-knob output { min-width: 2.5ch; font-variant-numeric: tabular-nums; }
-.djh-knob input[type="range"] { width: 120px; accent-color: #6366f1; }
+.djh-knob-range { display: flex; align-items: center; gap: 8px; justify-self: end; }
+.djh-knob output { min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
+.djh-knob input[type="range"] { width: 118px; accent-color: #6366f1; }
 .djh-knob select {
   font: inherit; padding: 3px 6px; border-radius: 5px;
   color: #e4e4e7; background: #3f3f46; border: 1px solid rgba(255,255,255,.14);
@@ -593,8 +601,8 @@ const css = `
   --dim: #8b8b93;
   --accent: #5b5bd6;
   --hair: 1px;
-  display: flex; flex-wrap: wrap; align-items: stretch; gap: 0;
-  padding: 0 4px; border-radius: 14px;
+  display: flex; flex-direction: column; align-items: stretch; gap: 0;
+  padding: 4px 0; border-radius: 14px; overflow: hidden;
   font: 500 12px/1.4 system-ui, sans-serif; color: var(--txt);
   background: #16161a;
   box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 12px 34px -8px rgba(0,0,0,.6);
@@ -614,12 +622,11 @@ const css = `
 .djh-fab:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 2px; }
 
 .djh-zone {
-  display: flex; flex-direction: column; justify-content: center; gap: 5px;
-  min-width: 0; padding: 7px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+  min-width: 0; padding: 9px 14px;
 }
-.djh-zone + .djh-zone { border-left: var(--hair) solid var(--line); }
-.djh-zone--grow { flex: 1 1 300px; }
-/* The zone you act from sits fractionally above the rest of the bar. */
+.djh-zone + .djh-zone { border-top: var(--hair) solid var(--line); }
+/* The zone you act from sits fractionally above the rest of the panel. */
 .djh-zone--act { background: rgba(255,255,255,.035); }
 .djh-zone-label {
   display: flex; align-items: baseline; gap: 5px;
@@ -628,17 +635,19 @@ const css = `
 }
 .djh-count { color: var(--txt); font-variant-numeric: tabular-nums; }
 .djh-of { font-weight: 600; letter-spacing: .06em; }
-.djh-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.djh-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
 
 /* Segmented control: one object, so the directions read as alternatives, not as four
    unrelated buttons. Inner radius = outer (7) − padding (2). */
 .djh-seg {
-  display: flex; gap: 2px; padding: 2px; border-radius: 7px;
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  gap: 2px; padding: 2px; border-radius: 8px;
   background: rgba(255,255,255,.06);
 }
 .djh-seg-btn {
-  font: inherit; cursor: pointer; white-space: nowrap;
-  min-height: 24px; padding: 3px 10px; border-radius: 5px;
+  font: inherit; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  min-height: 24px; padding: 3px 8px; border-radius: 6px;
   color: var(--dim); background: transparent; border: none;
 }
 .djh-seg-btn:hover { color: var(--txt); }
@@ -654,7 +663,12 @@ const css = `
 .djh-btn:hover:not(:disabled), .djh-icon:hover:not(:disabled) { background: rgba(255,255,255,.14); }
 .djh-btn:active:not(:disabled), .djh-icon:active:not(:disabled) { transform: translateY(0.5px); }
 .djh-btn--on { color: #fff; background: var(--accent); }
-.djh-btn--primary { color: #fff; background: var(--accent); font-weight: 600; }
+/* The submit takes its own full-width line: it is the one primary action, and it must not
+   be mistaken for another chip in the row above it. */
+.djh-btn--primary {
+  flex: 1 0 100%; justify-content: center; margin-top: 2px;
+  color: #fff; background: var(--accent); font-weight: 600;
+}
 .djh-btn--primary:hover:not(:disabled) { background: #6b6be0; }
 .djh-btn:disabled, .djh-icon:disabled { color: #5c5c64; background: rgba(255,255,255,.04); cursor: default; }
 .djh-btn:focus-visible, .djh-icon:focus-visible, .djh-seg-btn:focus-visible, .djh-scrub:focus-visible {
@@ -682,22 +696,18 @@ const css = `
   box-shadow: 0 0 0 2px #16161a;
 }
 
-.djh-scrub { flex: 1 1 110px; min-width: 80px; accent-color: var(--accent); }
+.djh-scrub { flex: 1 1 110px; min-width: 60px; accent-color: var(--accent); }
 .djh-note {
-  flex: 1 1 auto; min-width: 0;
+  margin: 0; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: var(--dim);
+  font-size: 11px; color: var(--dim);
 }
 .djh-flash {
-  flex: 1 0 100%; margin: 0; padding: 0 14px 9px;
+  margin: 0; padding: 0 14px 8px;
   font-size: 11px; color: #7ee2a8;
 }
-@media (max-width: 860px) {
-  .djh-dock { padding-inline: 12px; }
-  .djh-zone + .djh-zone { border-left: none; border-top: var(--hair) solid var(--line); }
-  .djh-zone { flex: 1 1 100%; }
-}
 @media (max-width: 680px) {
+  .djh-dock { right: 12px; left: 12px; width: auto; max-width: none; }
   .djh-stage--split { grid-template-columns: 1fr; }
   .djh-stage--split .djh-pane + .djh-pane { border-left: none; border-top: 1px solid rgba(128,128,128,.35); }
 }
