@@ -6,14 +6,16 @@ SessionEnd; it dispatches on the event name. Opt in with CLAUDE_TRACK_DOC_READS=
 
 Every dev/ or .agents/ read, path-scoped rule, and nested CLAUDE.md load is recorded with:
 
-- parents: the file whose Read loaded it (rules, nested CLAUDE.md: certain), or the files already
-  loaded this session that mention its path (docs: inferred)
+- parents: for a rule or nested CLAUDE.md, the file whose Read loaded it (certain); for a doc, the
+  files already loaded this session that name its path, which is where the path could have come from,
+  not necessarily why it was read (the prompt usually is; doc_reads_diagram.py works that out)
 - context: the prompt and subagent it happened under; skills are logged in sequence, not as parents
 
-Output goes to CLAUDE_TRACK_DOC_READS_DIR (default ~/.claude/doc-reads), named
-<YYYYmmdd-HHMMSS>-<session_id> after the session's start: .jsonl holds the records and .log is the
-readable log. New log lines are echoed into the chat unless
-CLAUDE_TRACK_DOC_READS_ECHO=0. At session end a summary goes to the log, the terminal, and
+Output goes to a doc-reads/ directory in the session's own directory, beside subagents/ and
+tool-results/ (~/.claude/projects/<project>/<session_id>/doc-reads/), or to
+CLAUDE_TRACK_DOC_READS_DIR/<session_id>/ when that is set. reads.jsonl holds the records, reads.log is
+the readable log, and state.json tracks what the log already shows. New log lines are echoed into the
+chat unless CLAUDE_TRACK_DOC_READS_ECHO=0. At session end a summary goes to the log, the terminal, and
 $GITHUB_STEP_SUMMARY when set.
 """
 
@@ -34,6 +36,8 @@ MARKDOWN_LINK_TARGET = re.compile(r"\]\(([^)#\s]+)")
 CLAUDE_MD_IMPORT = re.compile(r"(?:^|\s)@([\w./-]+)")
 AGENT_TOOLS = {"Agent", "Task"}
 PREVIEW_CHARS = 100
+FALLBACK_DIR = Path.home() / ".claude" / "doc-reads"
+"""Only used when an event carries no transcript path, or cannot be parsed."""
 ICONS = {"read": "📄 read", "rule": "📏 rule", "claude-md": "📘 loaded", "import": "📘 loaded"}
 
 
@@ -247,19 +251,26 @@ def on_read(event: dict, project: Path, records: list[dict]) -> list[dict]:
     if read_rel is None:
         return []
     context = current_context(event, records)
-    about = {"agent": event.get("agent_id"), "tool_use_id": event.get("tool_use_id")}
-    loaded = {r["path"] for r in records if r["kind"] == "doc"}
+    agent = event.get("agent_id")
+    about = {"agent": agent, "tool_use_id": event.get("tool_use_id")}
+    # Claude Code loads a rule or nested CLAUDE.md once per context, and a subagent is its own context.
+    loaded = {r["path"] for r in records if r["kind"] == "doc" and (r["via"] == "startup" or r.get("agent") == agent)}
     new: list[dict] = []
 
     def add(entry: dict) -> None:
         loaded.add(entry["path"])
         new.append(entry)
 
-    if DOC_PATH.search(read_rel) and read_rel not in loaded:
-        candidates = [r["path"] for r in records if r["kind"] == "doc" and r["path"] != read_rel]
+    if DOC_PATH.search(read_rel):
+        # Every Read is recorded; repeat counts this context's reads of the file, including this one.
+        repeat = 1 + sum(
+            1 for r in records if r["kind"] == "doc" and r["via"] == "read" and r["path"] == read_rel
+            and r.get("agent") == agent
+        )  # fmt: skip
+        candidates = list(dict.fromkeys(r["path"] for r in records if r["kind"] == "doc" and r["path"] != read_rel))
         parents = [path for path in candidates if mentions(project, path, read_rel)]
         add(doc(read_rel, "read", "referenced" if parents else "none", parents, context,
-                lines=line_range(tool_input), **about))  # fmt: skip
+                lines=line_range(tool_input), repeat=repeat, **about))  # fmt: skip
 
     for directory in list(reversed(Path(read_rel).parents))[1:]:
         md_rel = (directory / "CLAUDE.md").as_posix()
@@ -292,7 +303,11 @@ def entry_label(entry: dict) -> str:
     line = f"{ICONS[entry['via']]} {entry['path']}"
     if entry.get("lines"):
         line += f" ({entry['lines']})"
-    if entry["parents"]:
+    if entry.get("repeat", 1) > 1:
+        line += f" (read {entry['repeat']})"
+    if entry["parents"] and entry["via"] == "read":
+        line += " · path via " + ", ".join(entry["parents"])
+    elif entry["parents"]:
         line += " ← " + ", ".join(entry["parents"])
     return line
 
@@ -315,13 +330,18 @@ def render(entries: list[dict], records: list[dict], last_context: list[str]) ->
     return lines, last_context
 
 
+def is_first(entry: dict) -> bool:
+    return entry.get("repeat", 1) == 1
+
+
 def summary(records: list[dict]) -> list[str]:
     docs = [r for r in records if r["kind"] == "doc" and r["via"] != "startup"]
     if not docs:
         return []
+    unique = len({(r.get("agent"), r["path"]) for r in docs})
     startup = ", ".join(r["path"] for r in records if r["kind"] == "doc" and r["via"] == "startup")
     lines, _ = render([r for r in records if is_logged(r)], records, [])
-    return [f"── docs read this session ({len(docs)}) ──", f"startup: {startup}", *lines]
+    return [f"── docs read this session ({unique} files, {len(docs)} loads) ──", f"startup: {startup}", *lines]
 
 
 @contextlib.contextmanager
@@ -335,12 +355,18 @@ def locked(directory: Path) -> Iterator[None]:
         os.close(descriptor)
 
 
-def session_stem(directory: Path, session_id: str) -> str:
-    """Name a session's files after its start time, reusing the name its first event chose."""
-    existing = sorted(directory.glob(f"*-{session_id}.jsonl"))
-    if existing:
-        return existing[0].name.removesuffix(".jsonl")
-    return f"{time.strftime('%Y%m%d-%H%M%S')}-{session_id}"
+def output_dir(event: dict) -> Path:
+    """Where a session's records go.
+
+    Recomputed on every event, because the session directory moves with the transcript, for example
+    when the session switches into a worktree.
+    """
+    override = os.environ.get("CLAUDE_TRACK_DOC_READS_DIR")
+    if override:
+        return Path(override) / event["session_id"]
+    if transcript := event.get("transcript_path"):
+        return Path(transcript).with_suffix("") / "doc-reads"
+    return FALLBACK_DIR / event["session_id"]
 
 
 def start_log(log_path: Path, project: Path, session_id: str) -> None:
@@ -362,12 +388,15 @@ def main() -> None:
     if os.environ.get("CLAUDE_TRACK_DOC_READS") != "1":
         return
 
-    directory = Path(os.environ.get("CLAUDE_TRACK_DOC_READS_DIR") or Path.home() / ".claude" / "doc-reads")
-    directory.mkdir(parents=True, exist_ok=True)
+    directory = FALLBACK_DIR
     # Top-level boundary: a tracking failure is recorded, never surfaced as a hook error on every tool call.
     try:
-        track(json.load(sys.stdin), directory)
+        event = json.load(sys.stdin)
+        directory = output_dir(event)
+        directory.mkdir(parents=True, exist_ok=True)
+        track(event, directory)
     except Exception:
+        directory.mkdir(parents=True, exist_ok=True)
         with (directory / "errors.log").open("a", encoding="utf-8") as errors:
             errors.write(f"{now()}\n{traceback.format_exc()}\n")
 
@@ -376,13 +405,11 @@ def track(event: dict, directory: Path) -> None:
     hook = event.get("hook_event_name")
     session_id = event["session_id"]
     project = Path(os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR", event.get("cwd", "."))))
-    # Parallel tool calls run this hook concurrently; the lock serialises choosing the file names and
-    # each read-modify-append.
+    # Parallel tool calls run this hook concurrently; the lock serialises each read-modify-append.
     with locked(directory):
-        stem = session_stem(directory, session_id)
-        records_path = directory / f"{stem}.jsonl"
-        log_path = directory / f"{stem}.log"
-        state_path = directory / f"{stem}.state.json"
+        records_path = directory / "reads.jsonl"
+        log_path = directory / "reads.log"
+        state_path = directory / "state.json"
         records = load_records(records_path)
         new = [] if records else startup_records(project)
         if not records:
@@ -404,6 +431,10 @@ def track(event: dict, directory: Path) -> None:
         state = json.loads(read_text(state_path) or "{}")
         pending = [r for r in records[state.get("logged", 0) :] if is_logged(r)]
         lines, state["last_context"] = render(pending, records, state.get("last_context", []))
+        # The chat notice only announces a file the first time, so repeated reads do not flood it.
+        echo, state["echo_context"] = render(
+            [r for r in pending if is_first(r)], records, state.get("echo_context", [])
+        )
         state["logged"] = len(records)
         state_path.write_text(json.dumps(state), encoding="utf-8")
         if lines:
@@ -415,8 +446,8 @@ def track(event: dict, directory: Path) -> None:
             emit_summary(closing, log_path)
 
     # UserPromptSubmit stdout would enter the model's context; only PostToolUse output is a user-facing notice.
-    if hook == "PostToolUse" and lines and os.environ.get("CLAUDE_TRACK_DOC_READS_ECHO", "1") != "0":
-        print(json.dumps({"systemMessage": "\n".join(lines)}))
+    if hook == "PostToolUse" and echo and os.environ.get("CLAUDE_TRACK_DOC_READS_ECHO", "1") != "0":
+        print(json.dumps({"systemMessage": "\n".join(echo)}))
 
 
 if __name__ == "__main__":
