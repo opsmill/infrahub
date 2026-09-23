@@ -375,13 +375,13 @@ class JiraRest:
         issues: list[JiraIssue] = []
         while True:
             response = self._send(method="POST", path="/rest/api/3/search/jql", payload=request)
-            try:
-                issues.extend(self._issue(value=issue) for issue in response["issues"])
-                token = response.get("nextPageToken")
-                if response.get("isLast", True) or not token:
-                    return issues
-            except (KeyError, TypeError) as exc:
-                raise JiraError(f"unexpected Jira search response: missing {exc}") from exc
+            page = response.get("issues")
+            if not isinstance(page, list):
+                raise JiraError("unexpected Jira search response: `issues` is not a list")
+            issues.extend(self._issue(value=issue) for issue in page)
+            token = response.get("nextPageToken")
+            if response.get("isLast", True) or not token:
+                return issues
             request = {**request, "nextPageToken": token}
 
     def create_issue(self, *, draft: JiraIssueDraft) -> JiraIssue:
@@ -399,10 +399,9 @@ class JiraRest:
                 }
             },
         )
-        try:
-            key = str(response["key"])
-        except KeyError as exc:
-            raise JiraError("unexpected Jira create response: missing 'key'") from exc
+        key = response.get("key")
+        if not isinstance(key, str) or not _JIRA_ISSUE_KEY.fullmatch(key):
+            raise JiraError(f"unexpected Jira create response: issue key {key!r}")
         return JiraIssue(key=key, summary=draft.summary, url=self._browse_url(key=key), priority=str(draft.priority))
 
     def add_comment(self, *, issue_key: str, body: Mapping[str, object]) -> None:
@@ -426,15 +425,20 @@ class JiraRest:
             if not comments or len(texts) >= total:
                 return texts
 
-    def _issue(self, *, value: dict[str, Any]) -> JiraIssue:
-        fields = value["fields"]
-        priority = fields.get("priority")
-        return JiraIssue(
-            key=value["key"],
-            summary=fields["summary"],
-            url=self._browse_url(key=value["key"]),
-            priority=None if priority is None else priority["name"],
-        )
+    def _issue(self, *, value: object) -> JiraIssue:
+        issue = _json_object(value=value)
+        key, fields = issue.get("key"), _json_object(value=issue.get("fields"))
+        if not isinstance(key, str) or not _JIRA_ISSUE_KEY.fullmatch(key):
+            raise JiraError(f"unexpected Jira search response: issue key {key!r}")
+        summary, priority = fields.get("summary"), fields.get("priority")
+        if not isinstance(summary, str):
+            raise JiraError(f"unexpected Jira search response: {key} has no string `fields.summary`")
+        priority_name = None
+        if priority is not None:
+            priority_name = _json_object(value=priority).get("name")
+            if not isinstance(priority_name, str):
+                raise JiraError(f"unexpected Jira search response: {key} has a priority without a string `name`")
+        return JiraIssue(key=key, summary=summary, url=self._browse_url(key=key), priority=priority_name)
 
     def _browse_url(self, *, key: str) -> str:
         return f"{self.base_url}/browse/{key}"
@@ -486,6 +490,10 @@ class SlackWebhook:
         if not HTTPStatus.OK <= response.status < HTTPStatus.MULTIPLE_CHOICES:
             detail = response.body.decode("utf-8", errors="replace")[:_MAX_ERROR_BODY_CHARS]
             raise SlackError(f"the Slack webhook returned HTTP {response.status}: {detail}")
+
+
+def _json_object(*, value: object) -> dict[str, object]:
+    return cast("dict[str, object]", value) if isinstance(value, dict) else {}
 
 
 def _require_plain_label(*, label: str) -> None:

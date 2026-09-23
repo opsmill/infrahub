@@ -779,6 +779,70 @@ def test_jira_malformed_response_raises_jira_error(body: bytes) -> None:
         jira.search_open_by_label(label=DBAP)
 
 
+def search_body(*issues: object) -> bytes:
+    return json.dumps({"issues": list(issues), "isLast": True}).encode()
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        search_body({"key": "IFC-1", "fields": ["summary"]}),
+        search_body({"key": "IFC-1", "fields": "summary"}),
+        search_body({"key": "IFC-1", "fields": {"summary": "s", "priority": "High"}}),
+        search_body({"key": "IFC-1", "fields": {"summary": "s", "priority": {"id": "2"}}}),
+        search_body({"key": "IFC-1", "fields": {"summary": None, "priority": None}}),
+        search_body({"key": 7, "fields": {"summary": "s", "priority": None}}),
+        search_body({"key": "../../myself", "fields": {"summary": "s", "priority": None}}),
+        search_body("IFC-1"),
+        json.dumps({"issues": {"key": "IFC-1"}, "isLast": True}).encode(),
+    ],
+    ids=[
+        "fields-list",
+        "fields-string",
+        "priority-string",
+        "priority-without-name",
+        "summary-null",
+        "key-number",
+        "key-unexpected",
+        "issue-string",
+        "issues-object",
+    ],
+)
+def test_jira_search_malformed_issue_raises_jira_error(body: bytes) -> None:
+    jira, _ = make_jira(HttpResponse(status=200, body=body))
+
+    with pytest.raises(JiraError, match="unexpected Jira search response"):
+        jira.search_open_by_label(label=DBAP)
+
+
+@pytest.mark.parametrize("body", [b"{}", b'{"key": null}', b'{"key": ["IFC-24"]}', b'{"key": "IFC 24"}'])
+def test_jira_create_malformed_response_raises_jira_error(body: bytes) -> None:
+    jira, _ = make_jira(HttpResponse(status=201, body=body))
+
+    with pytest.raises(JiraError, match="unexpected Jira create response"):
+        jira.create_issue(
+            draft=JiraIssueDraft(
+                project_key="IFC", issue_type="Task", summary="s", labels=(), priority="Low", description=ADF
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        b'{"comments": {"body": {}}, "total": 1}',
+        b'{"comments": ["text"], "total": 1}',
+        b'{"comments": [], "total": "many"}',
+    ],
+    ids=["comments-object", "comment-string", "total-not-a-number"],
+)
+def test_jira_comment_texts_malformed_comment_raises_jira_error(body: bytes) -> None:
+    jira, _ = make_jira(HttpResponse(status=200, body=body))
+
+    with pytest.raises(JiraError, match="unexpected Jira comment response"):
+        jira.list_comment_texts(issue_key="IFC-7")
+
+
 def test_jira_error_does_not_leak_the_token() -> None:
     jira, _ = make_jira(HttpResponse(status=401, body=b"Unauthorized"))
 
