@@ -7,6 +7,7 @@ import pytest
 from dependabot_autopilot.codeowners import owners_for
 
 REPO_CODEOWNERS = (Path(__file__).parent / "fixtures" / "CODEOWNERS").read_text(encoding="utf-8")
+LIVE_CODEOWNERS_PATH = Path(__file__).resolve().parents[3] / "CODEOWNERS"
 FALLBACK = "@opsmill/dependency-reviewers"
 
 
@@ -124,3 +125,7 @@ def test_inline_comment_after_the_owners_is_ignored() -> None:
     text = "*.js    @js-owner #This is an inline comment.\n"
 
     assert owners("src/app.js", codeowners_text=text) == ("@js-owner",)
+
+
+def test_fixture_matches_the_live_codeowners_file() -> None:
+    assert LIVE_CODEOWNERS_PATH.read_text(encoding="utf-8") == REPO_CODEOWNERS

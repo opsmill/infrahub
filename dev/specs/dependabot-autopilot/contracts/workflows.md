@@ -22,7 +22,7 @@
 | Triggers | `workflow_run` `[requested, completed]` of `dependabot-autopilot-analyze`; `workflow_run` `[completed]` of `CI`; `schedule` every 30 minutes; `workflow_dispatch` with input `pr_number` |
 | Guard | Acts only on open PRs whose author is `dependabot[bot]`, whose base is `stable`, and whose head repository is `opsmill/infrahub` |
 | Token | GitHub App installation token (`DEPENDABOT_AUTOPILOT_APP_*`); the workflow's `GITHUB_TOKEN` is `contents: read`, `actions: read` |
-| Concurrency | Group `dependabot-autopilot-<pr_number>`, `cancel-in-progress: false` |
+| Concurrency | Group `dependabot-autopilot-${{ github.event_name == 'schedule' && 'sweep' \|\| github.event.workflow_run.pull_requests[0].number \|\| inputs.pr_number \|\| github.event.workflow_run.head_sha }}`, `cancel-in-progress: false`: the scheduled sweep shares one `sweep` group; any other run is keyed by the PR number from the triggering run or the dispatch input, falling back to the head SHA when the triggering run lists no pull request |
 | Never | Checks out or executes PR code; reads PR files only through the contents API |
 | Artifact handling | Downloaded to a fresh temporary directory; only `verdict.json` read, rejected above 256 KB; nothing executed or written to the workspace |
 | Report posting | `@` mentions neutralized, HTML comments stripped, wrapped in a collapsed block labelled as agent output |

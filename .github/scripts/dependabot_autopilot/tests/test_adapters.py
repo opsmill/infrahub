@@ -107,23 +107,22 @@ def test_reviews_are_parsed() -> None:
 
     assert reviews == [
         Review(
-            id=reviews[0].id,
+            id=5256284524,
             author_login="saltas888",
             author_type=AccountType.USER,
             state=ReviewState.APPROVED,
             commit_id=HEAD_SHA,
-            submitted_at=reviews[0].submitted_at,
+            submitted_at=datetime(2026, 9, 19, 15, 48, 40, tzinfo=UTC),
         ),
         Review(
-            id=reviews[1].id,
+            id=5291402512,
             author_login="cubic-dev-ai[bot]",
             author_type=AccountType.BOT,
             state=ReviewState.COMMENTED,
             commit_id="2220c06c81ca3c19a30db6aa3ef8bfc0971bf762",
-            submitted_at=reviews[1].submitted_at,
+            submitted_at=datetime(2026, 9, 23, 13, 10, 26, tzinfo=UTC),
         ),
     ]
-    assert all(isinstance(review.submitted_at, datetime) for review in reviews)
 
 
 def test_workflow_runs_are_parsed() -> None:

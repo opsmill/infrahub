@@ -84,7 +84,8 @@ skills-lock.json                                       # + opsmill-dev-analyzing
 
 .github/scripts/dependabot_autopilot/
 ├── __init__.py
-├── __main__.py        # CLI: invalidate | evaluate | sweep | file-opportunities | digest
+├── __main__.py        # CLI: invalidate | evaluate | sweep | escalate | file-opportunities | digest
+├── flow.py            # evaluate / invalidate / sweep / escalate orchestration through the GitHub port
 ├── report.py          # parse + validate verdict.json into frozen dataclasses (stdlib validation of the schema)
 ├── decision.py        # effective verdict, strictness order, downgrade reasons, action selection
 ├── checks.py          # classify workflow runs / check runs / statuses into green|pending|red
@@ -95,7 +96,10 @@ skills-lock.json                                       # + opsmill-dev-analyzing
 ├── ports.py           # GitHubPort, JiraPort, SlackPort protocols
 ├── adapters.py        # gh CLI / urllib implementations of the ports
 └── tests/
+    ├── __init__.py
+    ├── conftest.py             # puts .github/scripts on sys.path
     ├── fakes.py
+    ├── test_fakes.py           # fakes and adapters satisfy the ports; fake behaviour
     ├── test_report.py
     ├── test_decision.py
     ├── test_checks.py
@@ -103,9 +107,10 @@ skills-lock.json                                       # + opsmill-dev-analyzing
     ├── test_codeowners.py
     ├── test_opportunities.py
     ├── test_digest.py
-    ├── test_adapters.py        # gh CLI adapter parsing against recorded API JSON
-    ├── fixtures/               # recorded reviews, check-runs, actions/runs, statuses, lockfiles
-    └── test_evaluate_flow.py   # end-to-end evaluate/invalidate against fakes
+    ├── test_adapters.py        # gh CLI and HTTP adapter parsing against recorded API JSON
+    ├── test_main.py            # CLI parsing, environment configuration, subcommand exit codes
+    ├── fixtures/               # recorded GitHub and Jira API JSON, CODEOWNERS copy
+    └── test_evaluate_flow.py   # end-to-end evaluate/invalidate/sweep against fakes
 
 dev/guides/dependabot-autopilot.md                     # operating guide: switches, labels, rollback
 ```

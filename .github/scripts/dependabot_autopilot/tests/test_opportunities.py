@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
@@ -101,9 +100,7 @@ def adf_links(document: Mapping[str, object]) -> list[str]:
 
 
 def test_dedup_label_is_the_first_twelve_hex_of_the_key_hash() -> None:
-    expected = "dbap-" + hashlib.sha256(b"fastapi:lifespan-state").hexdigest()[:12]
-
-    assert dedup_label(key="fastapi:lifespan-state") == expected
+    assert dedup_label(key="fastapi:lifespan-state") == "dbap-236d27c68297"
 
 
 def test_dedup_label_differs_per_key() -> None:

@@ -16,6 +16,7 @@ FAILING_CONCLUSIONS = [
     RunConclusion.TIMED_OUT,
     RunConclusion.ACTION_REQUIRED,
     RunConclusion.STALE,
+    RunConclusion.STARTUP_FAILURE,
 ]
 PASSING_CONCLUSIONS = [RunConclusion.SUCCESS, RunConclusion.SKIPPED, RunConclusion.NEUTRAL]
 UNFINISHED_STATUSES = [
