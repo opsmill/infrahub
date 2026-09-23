@@ -103,8 +103,9 @@ Exactly one of:
 
 | Reason | When |
 |--------|------|
-| `already has an individual reviewer` | Emitted by the caller before this skill runs, when the pull request already has an individual reviewer requested or an individual review. |
 | `no reviewer produced by the cascade` | Every level returned nothing. |
 | `author is the selected reviewer` | The pull request author equals the cascade result. |
+
+The workflow emits a third reason, `already has an individual reviewer`, before this skill runs.
 
 The fixed wording keeps runs searchable by reason.

@@ -178,6 +178,7 @@ ignore:
   - "**/*.lock"
   - "**/*-lock.json"
   - "**/*-lock.yaml"
+  - "**/*.lock.yml"
   - "**/generated/**"
   - "**/*.generated.*"
   - "**/.betterer.results"

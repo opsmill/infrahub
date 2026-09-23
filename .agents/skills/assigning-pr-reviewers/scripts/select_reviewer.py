@@ -191,6 +191,7 @@ def fetch_pr(github: str, number: int) -> JsonDict:
     return {
         "number": number,
         "author": pr["user"]["login"],
+        "base": pr["base"]["ref"],
         "created_at": pr["created_at"],
         "files": gh_list("api", f"repos/{github}/pulls/{number}/files", "--paginate", "--jq", files_jq),
         "commits": gh_list("api", f"repos/{github}/pulls/{number}/commits", "--paginate", "--jq", "[.[].sha]"),
@@ -295,9 +296,20 @@ def review_scores(inputs: Inputs, scope: list[str], since: int) -> dict[str, flo
     return scores
 
 
+def existing_files(inputs: Inputs) -> str:
+    """Files of the base branch, so a file the pull request adds is new; the checkout without a base."""
+    base = inputs.pr.get("base")
+    if base:
+        try:
+            return git(inputs.repo, "ls-tree", "-r", "--name-only", f"origin/{base}")
+        except subprocess.CalledProcessError:
+            pass
+    return git(inputs.repo, "ls-files")
+
+
 def rank_contributors(inputs: Inputs, files: list[str]) -> list[tuple[str, float]]:
     """People by recent commits plus reviews on `files`; a new file counts through its folder."""
-    known = set(git(inputs.repo, "ls-files").splitlines())
+    known = set(existing_files(inputs).splitlines())
     scope = sorted({f if f in known else str(PurePosixPath(f).parent) for f in files} - {"."})
     if not scope:
         return []

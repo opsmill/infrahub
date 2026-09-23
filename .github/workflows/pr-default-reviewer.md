@@ -32,13 +32,15 @@ steps:
 
       AUTHOR=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.user.login')
       DRAFT=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.draft')
+      HEAD_REPO=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.repo.full_name // ""')
       REQUESTED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers" \
         --jq '[.users[] | select(.type == "User")] | length')
       REVIEWED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --paginate \
         --jq '.[] | select(.user.type == "User") | .user.login' \
         | { grep -vixF "$AUTHOR" || true; } | wc -l | tr -d ' ')
 
-      if [ "$DRAFT" = "true" ] || [ "$REQUESTED" -gt 0 ] || [ "$REVIEWED" -gt 0 ]; then
+      if [ "$DRAFT" = "true" ] || [ "$HEAD_REPO" != "$REPO" ] \
+        || [ "$REQUESTED" -gt 0 ] || [ "$REVIEWED" -gt 0 ]; then
         DECISION=skip
       else
         DECISION=proceed
