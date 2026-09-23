@@ -39,6 +39,7 @@ ACT_WORKFLOW = "dependabot-autopilot-act"
 CI_WORKFLOW_PATH = ".github/workflows/ci.yml"
 VERDICT_ARTIFACT = "dependabot-autopilot-verdict"
 CODEOWNERS_PATH = ".github/CODEOWNERS"
+MAX_REVIEW_BODY_CHARS = 60_000
 LOCKFILE_NAMES = frozenset({"uv.lock", "pnpm-lock.yaml", "package-lock.json"})
 VERDICT_LABELS = {
     Verdict.SAFE_TO_MERGE: "autopilot/safe",
@@ -383,13 +384,22 @@ def _requested_for_lines(*, current: str | None) -> list[str]:
 
 
 def _blocking_review_body(*, report: VerdictReport) -> str:
-    lines = ["The dependency-bump autopilot found code that must change before this bump can merge:", ""]
-    lines.extend(
-        f"- `{_one_line(text=impact.path)}:{impact.line}` — {_one_line(text=impact.summary)}"
+    entries = [
+        f"- `{_one_line(text=impact.path)}:{impact.line}`: {_one_line(text=impact.summary)}"
         for package in report.packages
         for impact in package.impacts
-    )
-    return "\n".join(lines)
+    ]
+    body = "The dependency-bump autopilot found code that must change before this bump can merge:\n"
+    footer_room = len(f"\n…and {len(entries)} more")
+    listed = 0
+    for entry in entries:
+        if len(body) + 1 + len(entry) + footer_room > MAX_REVIEW_BODY_CHARS:
+            break
+        body += "\n" + entry
+        listed += 1
+    if listed < len(entries):
+        body += f"\n…and {len(entries) - listed} more"
+    return body
 
 
 def _comment_body(

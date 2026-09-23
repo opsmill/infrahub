@@ -269,9 +269,22 @@ def test_needs_code_changes_submits_a_blocking_review_listing_each_impact(tmp_pa
     [review] = writes_of(github=github, kind=ReviewSubmitted)
     assert review.event is ReviewEvent.REQUEST_CHANGES
     assert review.commit_id == HEAD_SHA
-    assert "- `backend/app.py:12` — `Request.state` is read-only, ask @\u200balice" in review.body
-    assert "- `backend/server.py:40` — lifespan signature changed" in review.body
+    assert "- `backend/app.py:12`: `Request.state` is read-only, ask @\u200balice" in review.body
+    assert "- `backend/server.py:40`: lifespan signature changed" in review.body
     assert "@alice" not in review.body
+
+
+def test_blocking_review_body_is_capped_with_a_count_of_omitted_impacts(tmp_path: Path) -> None:
+    impacts = [impact(summary=f"impact {index} " + "x" * 500, line=index + 1) for index in range(200)]
+    github = repository(tmp_path=tmp_path, document=report_document(verdict="needs-code-changes", impacts=impacts))
+
+    run_evaluate(github=github)
+
+    [review] = writes_of(github=github, kind=ReviewSubmitted)
+    listed = review.body.count("\n- `backend/app.py:")
+    assert len(review.body) <= 60_000
+    assert 0 < listed < 200
+    assert review.body.endswith(f"\n…and {200 - listed} more")
 
 
 @pytest.mark.parametrize(
