@@ -100,14 +100,11 @@ request is the one the skill below produces.
 
 ## Process
 
-1. Read `/tmp/gh-aw/pr-default-reviewer/decision`. It was written by a deterministic step
-   before you started. If it contains `skip`, emit one `noop` with the message
-   `already has an individual reviewer` and stop.
+1. Read `/tmp/gh-aw/pr-default-reviewer/decision`. If it contains `skip`, emit one `noop` with
+   the message `already has an individual reviewer` and stop.
 2. Read `.agents/skills/assigning-pr-reviewers/SKILL.md` from the checkout and follow it.
    The pull request author's login is in `/tmp/gh-aw/pr-default-reviewer/author`.
 3. Emit exactly one safe output, then stop:
    - `add_reviewer` with `reviewers` holding the single login the skill produced. Never set
      `team_reviewers`.
    - or `noop` with the exact reason the skill produced.
-
-Do not post a comment explaining yourself.
