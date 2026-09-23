@@ -428,7 +428,7 @@ Automated triage of proposed changes. (Enterprise only: not available in the com
 | `INFRAHUB_TRIAGE_EVALUATION_BASE_URL` | Alternative host for the evaluation service. This repoints the host only: the request path is fixed, so a substitute must serve the same protocol at the same path. | None | None |
 | `INFRAHUB_TRIAGE_EVALUATION_MODEL` | Model used by the evaluation service. | string | jev-latest |
 | `INFRAHUB_TRIAGE_EVALUATION_TIMEOUT` | Timeout in seconds for an evaluation request. | integer | 30 |
-| `INFRAHUB_TRIAGE_SUMMARY_API_KEY` | API key for the summarisation service. Required when triage is enabled. | None | None |
+| `INFRAHUB_TRIAGE_SUMMARY_API_KEY` | API key for the summarisation service. Optional: without it triage makes no summarisation call at all and its note carries the badge, the deterministic facts block and the assignment line but no prose paragraph. | None | None |
 | `INFRAHUB_TRIAGE_SUMMARY_BASE_URL` | Alternative base URL for the summarisation service. | None | None |
 | `INFRAHUB_TRIAGE_SUMMARY_MODEL` | Model used to write the change summary. | string | claude-opus-5 |
 | `INFRAHUB_TRIAGE_SUMMARY_TIMEOUT` | Timeout in seconds for a summarisation request. | integer | 60 |

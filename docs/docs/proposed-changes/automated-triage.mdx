@@ -28,30 +28,52 @@ different things and only one of them is triage's business.
 
 Triage also fails open. If the evaluation service is unreachable, nothing is written at all — no
 reviewers chosen from an answer that does not exist, and no note saying nothing. If only the
-summarisation service fails, the note still goes up with its badge and its provenance, minus the
-prose. Either way the proposed change is left exactly as it was and the pipeline is not held up.
+summarisation service fails, the note still goes up with its badge, its facts block and its
+provenance, minus the prose — which is the same note a deployment that configured no summariser at
+all gets on every run. Either way the proposed change is left exactly as it was and the pipeline is
+not held up.
 
-## What it costs
+## What it costs, and running it without a language model
 
-Triage makes two outbound calls per evaluated change: one to the evaluation service and one to the
-summarisation service. That is a real running cost and it belongs in the decision, not in a surprise
-invoice.
+Triage makes up to two outbound calls per evaluated change: one to the evaluation service, and one
+to the summarisation service **if you have configured one**. Only the first is required, and the
+second is the one that costs anything worth discussing.
+
+| Call | Required | Cost per evaluated change |
+| --- | --- | --- |
+| Evaluation | Yes | ~$0.0000226 |
+| Summarisation (`claude-opus-5`) | No | ~$0.019 — roughly **800×** the evaluation |
 
 At the reference volume of **500 events a day**, with roughly 3K input tokens of change state and
 150 output tokens per call, the default summarisation model (`claude-opus-5`, $5/$25 per MTok) works
-out at about **$9–10 a day, or ~$280 a month per deployment** — plus whatever your evaluation service
-charges.
+out at about **$9–10 a day, or ~$280 a month per deployment**. The evaluation over the same volume is
+about a penny a day.
 
-Two things move that number:
+Three things move that number, and the first is the one most deployments overlook:
 
-- **Choose a smaller model.** `claude-sonnet-5` ($2/$10 per MTok) costs roughly $3.75 a day for what
-  is fairly mechanical summarisation. Set `INFRAHUB_TRIAGE_SUMMARY_MODEL` to change it.
+- **Leave `summary_api_key` unset.** Summarisation is optional. Without a key, triage builds no
+  summarisation client, loads no Anthropic SDK and makes no call — and you still get the risk score,
+  the owning team, the reviewer routing, the escalation and the facts block in the note. What you
+  lose is one paragraph of prose. This is the whole of the cost above, removed.
+- **Choose a smaller model.** If you do want the prose, `claude-sonnet-5` ($2/$10 per MTok) costs
+  roughly $3.75 a day for what is fairly mechanical summarisation. Set
+  `INFRAHUB_TRIAGE_SUMMARY_MODEL` to change it.
 - **Keep the debounce window.** A proposed change under active development emits an event per
   commit. `INFRAHUB_TRIAGE_DEBOUNCE_SECONDS` (default 120) collapses a burst into a single
   evaluation. Lowering it to zero multiplies the cost by however many commits people push.
 
 Prompt caching does not help here: the stable part of the prompt is well below the minimum cacheable
 prefix, and the per-change state that dominates the input is different every time.
+
+:::tip The feature works with no LLM writing prose at all
+The part of the note a reviewer acts on — the risk band, the team, who was assigned and why, what
+changed, what it touches and what is failing — is produced by the evaluation service and by
+Infrahub itself, not by a language model writing English. Setting `summary_api_key` is a choice
+about whether you also want a paragraph of prose on top.
+
+Running without it is a supported configuration, not a degraded one: nothing is logged as a warning,
+runs are still counted as successful, and the note has one fewer paragraph.
+:::
 
 ## Turning it on
 
@@ -63,6 +85,7 @@ The full list of settings is in the
 enabled = true
 assign_reviewers = true
 evaluation_api_key = "..."
+# Optional. Leave it out and triage makes no summarisation call and writes no prose paragraph.
 summary_api_key = "..."
 fallback_group = "network-triage"
 
@@ -81,8 +104,11 @@ max_unaided_risk = 2
 ```
 
 Infrahub refuses to start rather than degrade quietly if the configuration cannot work: enabled
-without an API key, `assign_reviewers` without a `fallback_group`, duplicate `team` keys, or a
-threshold outside its range. Each refusal names the setting at fault.
+without `evaluation_api_key`, `assign_reviewers` without a `fallback_group`, duplicate `team` keys,
+or a threshold outside its range. Each refusal names the setting at fault.
+
+`summary_api_key` is **not** in that list. It is optional, and leaving it out is a supported way to
+run the feature rather than a misconfiguration.
 
 ### Writing a policy
 
@@ -160,6 +186,11 @@ in place every time the change is re-evaluated — there is never a second triag
 ```text
 🟠 Risk 3.2/4 · fabric · 2 reviewers requested
 
+28 nodes changed: InfraBGPSession (12 updated); InfraInterfaceL3 (4 added, 8 updated); InfraDevice (4 updated)
+8 artifacts regenerated across 4 devices: leaf-01, leaf-02, leaf-03, leaf-04.
+Scope: DC1.
+1 of 6 checks FAILED: artifact-diff: leaf-03 config. Start there.
+
 The change updates two leaf switches in a single site. It alters interface
 configuration only, leaving routing policy untouched. Start with the failing
 artifact check on leaf-01.
@@ -168,6 +199,24 @@ Assigned: @alice (fabric, least loaded) · @bruno (senior review, risk ≥ 3)
 
 Evaluated by jev-latest · Infrahub triage
 ```
+
+The four lines under the badge are the **facts block**. They are rendered from the change itself —
+the diff, the artifact comparison, the location relationship and the validator results — with no
+language model in the path, so they are on every note whether or not you configured summarisation
+and whether or not it answered. They tell you what changed, whether any device configuration moves
+as a result, where, and whether anything has already failed.
+
+The paragraph below them is the prose summary. It is the one part of the note that can be absent,
+and when it is, nothing stands in for it: the note is shorter.
+
+Read the block carefully in two places:
+
+- **`Scope:`** reports *unknown* rather than *none* when your deployment does not model location.
+  `Scope: site information is not modelled in this deployment...` is not a claim that the change
+  affects no sites — it is a statement that Infrahub cannot tell you, and you should go and look.
+- **The checks line** distinguishes four states, and `No checks have reported yet` is not `All
+  checks passed`. A green badge over a change nothing has checked is still a change nothing has
+  checked.
 
 The badge degrades rather than guessing. `⚪ Risk unknown` means confidence fell below its
 threshold and the score was withheld. `unrouted` in the team slot means a team was returned but not
@@ -198,6 +247,9 @@ re-added, so nothing accumulates.
 ## Turning it off
 
 Set `INFRAHUB_TRIAGE_ENABLED` to `false`. Nothing is evaluated, neither vendor SDK is even loaded,
-and no note or reviewer is written. Notes and reviewers from earlier runs stay where they are:
-triage does not clean up after itself, because a reviewer who has already read the change is a fact
-about the change and not about the feature.
+and no note or reviewer is written. (If what you want to switch off is only the prose, unset
+`INFRAHUB_TRIAGE_SUMMARY_API_KEY` instead and keep the rest of the feature.)
+
+Notes and reviewers from earlier runs stay where they are: triage does not clean up after itself,
+because a reviewer who has already read the change is a fact about the change and not about the
+feature.

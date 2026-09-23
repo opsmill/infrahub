@@ -1538,7 +1538,10 @@ class TriageSettings(BaseSettings):
     evaluation_timeout: int = Field(default=30, gt=0, description="Timeout in seconds for an evaluation request.")
 
     summary_api_key: SecretStr | None = Field(
-        default=None, description="API key for the summarisation service. Required when triage is enabled."
+        default=None,
+        description="API key for the summarisation service. Optional: without it triage makes no summarisation"
+        " call at all and its note carries the badge, the deterministic facts block and the assignment line"
+        " but no prose paragraph.",
     )
     summary_base_url: str | None = Field(
         default=None, description="Alternative base URL for the summarisation service."
@@ -1635,8 +1638,12 @@ class TriageSettings(BaseSettings):
         if self.enabled:
             if not self.evaluation_api_key:
                 problems.append("triage.evaluation_api_key is required when triage.enabled is true")
-            if not self.summary_api_key:
-                problems.append("triage.summary_api_key is required when triage.enabled is true")
+            # `summary_api_key` is deliberately not required. The evaluation produces the risk score,
+            # the owning team and every reviewer decision, and the note's facts block is rendered from
+            # the change state itself, so a deployment that does not want a language model writing
+            # prose about its infrastructure gets the whole of the rest of the feature. The summary
+            # call is also the expensive one by roughly three orders of magnitude, which is a reason
+            # to make it optional rather than to make the feature unavailable without it.
         if self.assign_reviewers and not self.fallback_group:
             problems.append("triage.fallback_group is required when triage.assign_reviewers is true")
         if problems:
