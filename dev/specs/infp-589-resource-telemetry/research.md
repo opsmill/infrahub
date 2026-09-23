@@ -64,9 +64,9 @@ Phase 0 decisions. Each resolves an unknown surfaced while planning against the 
 - **Decision**:
   - No host reported a given field → that aggregate field is `null` (unknown). The aggregate has no worker count of its own to tell a genuinely empty fleet from one where nothing reported, so both collapse to `null`; in practice at least one worker always runs (telemetry itself runs in one).
   - A host whose self-read failed writes a reading with every figure `null`; such a reading is **dropped** before summing, so it undercounts like a non-reporting host rather than nulling the whole field.
-  - Some hosts reported, some did not → **sum the reporters** (undercount tolerated per FR-005); the separately-tracked worker count still reflects all active workers, so the discrepancy is detectable.
+  - Some hosts reported, some did not → **sum the reporters** (undercount tolerated per FR-005); the separately-tracked worker count still reflects all active workers, but it counts api_server and task-worker processes while the aggregate sums task-worker hosts, so the two cannot be differenced to recover the gap — it surfaces only as a drop against the same deployment's earlier snapshots, until the per-block host count lands with the next `payload_format` bump (D13).
   - For a field where any *contributing* host is `null` because it is genuinely unbounded (e.g. one worker host has no cgroup CPU quota) → the aggregate for that field is `null`: a fleet containing an unbounded node has no finite total.
-- **Rationale**: keeps `null` meaning "unknown / unbounded" throughout (no separate measured-empty `0` the consumer would have to distinguish), and makes an undercount observable via the worker count rather than silently nulling the fleet.
+- **Rationale**: keeps `null` meaning "unknown / unbounded" throughout (no separate measured-empty `0` the consumer would have to distinguish), and keeps a partly-silent fleet reporting a finite, if low, figure rather than nulling the whole thing.
 
 ## D10 — Payload version bump + receiving-service coordination (superseded by D13)
 

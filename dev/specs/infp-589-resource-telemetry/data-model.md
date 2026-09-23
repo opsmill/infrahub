@@ -86,7 +86,7 @@ Given the active processes of a component type, each with a reading `{host, …}
 3. **Null-vs-undercount**:
    - no host reported field *f* → aggregate *f* = `None`;
    - a contributing host has *f* = `None` because it is genuinely unbounded (`processor_assigned` only) → aggregate *f* = `None`;
-   - some hosts reported, some did not — whether a host never reported at all, or a contributing host's read of this one field failed while its other fields succeeded → sum the reporters (**undercount**), *except* `processor_assigned`, which the previous rule already covers exhaustively: any contributing host's `None` there, whether genuine unbounded-ness or a failed read, nulls the whole aggregate rather than being summed as an undercount. `workers.total`/`active` (unchanged) still reflect all workers, so the gap is detectable.
+   - some hosts reported, some did not — whether a host never reported at all, or a contributing host's read of this one field failed while its other fields succeeded → sum the reporters (**undercount**), *except* `processor_assigned`, which the previous rule already covers exhaustively: any contributing host's `None` there, whether genuine unbounded-ness or a failed read, nulls the whole aggregate rather than being summed as an undercount. `workers.total`/`active` (unchanged) still reflect all workers, but as a process count spanning api_server and git_agent they cannot be differenced against the host-summed resource fields to recover the gap; an undercount is visible only as a drop against the same deployment's earlier snapshots (see the contract).
 
 ## Validation rules
 
