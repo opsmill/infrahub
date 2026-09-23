@@ -54,7 +54,7 @@ Mark deprecated docs clearly. Don't delete—update with pointers to replacement
 - **Git Workflow**: [guidelines/git-workflow.md](guidelines/git-workflow.md)
 - **Markdown Formatting**: [guidelines/markdown.md](guidelines/markdown.md)
 - **Writing Documentation**: [guidelines/documentation.md](guidelines/documentation.md) - How to write user-facing documentation
-- **Structural Review**: [guidelines/reviews/README.md](guidelines/reviews/README.md) - Reading a diff for the structural risks it adds
+- **Review Passes**: [guidelines/review/README.md](guidelines/review/README.md) - Reading a diff for the risks it adds, one pass per class of risk
 
 ## Current Knowledge
 
