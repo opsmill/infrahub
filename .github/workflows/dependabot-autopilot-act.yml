@@ -152,13 +152,13 @@ jobs:
 
   file-opportunities:
     # Files the report's opportunities as Jira tech-debt items. Runs apart from the act
-    # job and may fail without affecting the pull request's verdict, labels or merge.
+    # job and may fail without affecting the pull request's verdict, labels or merge; a
+    # failed filing is retried on the next analysis or CI completion for the pull request.
     needs: act
     if: >-
       !cancelled() &&
       needs.act.outputs.pr_number != '' &&
-      (github.event_name == 'workflow_dispatch' ||
-       (github.event.action == 'completed' && github.event.workflow_run.name == 'dependabot-autopilot-analyze'))
+      (github.event_name == 'workflow_dispatch' || github.event.action == 'completed')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     continue-on-error: true
@@ -177,16 +177,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
+          EVENT_WORKFLOW: ${{ github.event.workflow_run.name }}
           EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
           EVENT_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
-          run_id="${EVENT_RUN_ID:-}"
-          head_sha="${EVENT_HEAD_SHA:-}"
-          if [ -z "$run_id" ]; then
+          run_id=""
+          head_sha=""
+          if [ "${EVENT_WORKFLOW:-}" = "dependabot-autopilot-analyze" ]; then
+            run_id="$EVENT_RUN_ID"
+            head_sha="$EVENT_HEAD_SHA"
+          else
             head_sha=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq 'select(.user.login == "dependabot[bot]") | .head.sha')
             if [ -n "$head_sha" ]; then
-              run_id=$(gh api "repos/$REPO/actions/workflows/dependabot-autopilot-analyze.lock.yml/runs?head_sha=$head_sha&status=success&per_page=1" --jq '.workflow_runs[0].id // empty')
+              # `status=success` filters on the run's conclusion.
+              run_id=$(gh api "repos/$REPO/actions/workflows/dependabot-autopilot-analyze.lock.yml/runs?head_sha=$head_sha&event=pull_request&status=success&per_page=1" --jq '.workflow_runs[0].id // empty')
             fi
           fi
           if [ -z "$run_id" ]; then

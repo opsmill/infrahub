@@ -116,7 +116,7 @@ Once a week, a single message in #release-radar lists the High and Medium tech-d
 - **FR-017**: When, 60 minutes after the commit date of a Dependabot PR's head commit, no analysis has run for that commit, System MUST escalate the PR as `review required` with the reason "analysis did not run"; when an analysis run exists but has not completed by then, System MUST escalate it with the reason "analysis did not complete".
 - **FR-018**: Dependabot version updates MUST be proposed only for releases published at least 3 days earlier; security updates MUST NOT be delayed.
 - **FR-019**: System MUST treat the analysis output as untrusted: it MUST NOT execute anything from it, and MUST neutralize mentions and hidden markup in the report text before posting it on the PR.
-- **FR-020**: An unavailable tech-debt tracker or chat service MUST NOT block, delay or change a PR's verdict or merge; filing is retried on the next evaluation of the same head commit.
+- **FR-020**: An unavailable tech-debt tracker or chat service MUST NOT block, delay or change a PR's verdict or merge; filing is retried on the next analysis or CI completion, or manual evaluation, of the same pull request.
 - **FR-021**: System MUST cap the verdict at `review required` when the analysis run for the head commit completed without success, even if it produced a report, and when the PR contains a commit not authored by Dependabot.
 
 ### Key Entities

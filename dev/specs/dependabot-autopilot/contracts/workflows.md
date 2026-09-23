@@ -47,6 +47,8 @@ Exit code 0 for every handled outcome, including "pending, nothing to do"; non-z
 
 **Verdict comment**: one comment per PR, identified by the hidden marker `<!-- dependabot-autopilot -->`, edited in place. It states the analysed head SHA, the effective verdict, every downgrade reason, the CI state, and the agent's `report_markdown`.
 
+**Opportunity filing**: the `file-opportunities` job runs after the act job on every completion of the analysis or of `CI` for a Dependabot PR and on `workflow_dispatch`, never on the scheduled sweep. On an analysis completion it reads that run's verdict artifact; otherwise it reads the artifact of the latest successful `pull_request` analysis run for the PR's current head SHA, and files nothing when there is none. A failed filing is therefore retried on the next such event.
+
 **Idempotency**: running `evaluate` twice on the same head produces no additional comment, label change, review, Jira item or merge attempt. Running `file-opportunities` twice for the same PR adds no second Jira item and no second comment; the `file-opportunities` job runs in the concurrency group `dependabot-autopilot-file-<pr_number>` with `cancel-in-progress: false`.
 
 ## `dependabot-autopilot-digest` (deterministic, trusted context)

@@ -11,7 +11,7 @@ Three workflows split the work by trust level. Only the act workflow holds a wri
 | Workflow | Trigger | Does |
 |---|---|---|
 | `dependabot-autopilot-analyze` (`.md` source, compiled `.lock.yml`) | Dependabot pull request opened, synchronized or reopened on `stable` | An agent applies the `analyzing-dependency-bumps` skill and uploads the `dependabot-autopilot-verdict` artifact (`verdict.json`, kept 7 days). Read-only token, no side effect on GitHub, Jira or Slack |
-| `dependabot-autopilot-act.yml` | Completion of the analysis or of `CI` on a Dependabot head, a sweep every 30 minutes, `workflow_dispatch` with `pr_number` | Recomputes the verdict, posts one verdict comment, sets the label, requests reviews, and approves and squash-merges when every condition holds. A second job files opportunities as Jira tech-debt items |
+| `dependabot-autopilot-act.yml` | Completion of the analysis or of `CI` on a Dependabot head, a sweep every 30 minutes, `workflow_dispatch` with `pr_number` | Recomputes the verdict, posts one verdict comment, sets the label, requests reviews, and approves and squash-merges when every condition holds. A second job files opportunities as Jira tech-debt items on every analysis or `CI` completion and dispatch, not on the sweep |
 | `dependabot-autopilot-digest.yml` | Monday 09:30 UTC, `workflow_dispatch` | Posts one #release-radar message listing the High and Medium tech-debt items updated in the last 7 days; posts nothing when there are none |
 
 The act workflow approves and merges only when all of these hold for the current head commit:

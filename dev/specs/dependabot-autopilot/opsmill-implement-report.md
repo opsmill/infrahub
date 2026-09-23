@@ -447,7 +447,7 @@ Six reviewers ran over `stable...HEAD` (code, tests, errors, types, comments, si
 | Medium | code: `opportunities`, `file-opportunities` job | Repeated "seen again" comments; no per-PR concurrency group | Fixed `280abf506` |
 | Medium | comments: guide | "exactly one" verdict label was wrong while pending | Fixed `ab08005b6` |
 | Low | comments: guide, workflow comments, blocking review | Rollback order, variables, client ID wording, headings case, cross-workflow names, em-dash; uncapped blocking review body | Fixed `385180bc8`, `ab08005b6` |
-| Medium | code + errors: FR-020 | Jira filing is retried only when an analysis run completes, not on every evaluation; a Jira outage loses the filing until the next bump | Deferred |
+| Medium | code + errors: FR-020 | Jira filing is retried only when an analysis run completes, not on every evaluation; a Jira outage loses the filing until the next bump | Fixed: filing also runs on CI completions; the sweep skips it |
 | Medium | types: `decision.Decision` | Illegal combinations representable (verdict/action consistency only kept by `decide`) | Deferred |
 | Medium | types: `flow._apply` | Report travels separately from the decision | Deferred |
 | Medium | types: ports vs adapters | Adapters raise `ValueError`/`KeyError` where the Protocol promises `GitHubError`/`JiraError` | Deferred |
