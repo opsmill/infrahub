@@ -29,36 +29,25 @@ request is not a reason to pick that user or team.
 ## Cascade
 
 Evaluate the levels in order. The first level that returns a login wins; later levels are not
-evaluated.
+evaluated. If no level returns a login, the result is a noop.
 
 | Level | Name | Rule | Result |
 |-------|------|------|--------|
-| 1 | Deterministic rule | No rule defined. | Returns nothing. |
+| 1 | Hardcoded rule | No rule defined. | Returns nothing. |
 | 2 | Fallback | No rule defined. | Returns nothing. |
-| 3 | Default reviewer | Always returns the default reviewer login below. | `REPLACE-WITH-DEFAULT-REVIEWER` |
 
-### Default reviewer login
-
-```text
-REPLACE-WITH-DEFAULT-REVIEWER
-```
-
-This value is compared byte for byte with `safe-outputs.add-reviewer.allowed-reviewers` in
-`.github/workflows/pr-default-reviewer.md`. That allowlist is an exact, case-sensitive match
-enforced outside the agent, so a login that differs in any character, including case, is
-dropped. Change both places together, then recompile the workflow with
+Every login a level can return must also be listed, byte for byte, in
+`safe-outputs.add-reviewer.allowed-reviewers` of the workflow. That allowlist is an exact,
+case-sensitive match enforced outside the agent, so a login missing from it is dropped. Add the
+login there in the same change as the rule, then recompile with
 `gh aw compile pr-default-reviewer`.
 
 ## Checks on the cascade result
 
-Apply these in order to the login the cascade returned:
-
-1. The login is still `REPLACE-WITH-DEFAULT-REVIEWER`: noop `no default reviewer configured`.
+1. No level returned a login: noop `no reviewer produced by the cascade`.
 2. The login equals the pull request author (case-insensitive comparison, since GitHub logins
-   are case-insensitive): noop `author is the default reviewer`.
-3. Otherwise the result is that login, written exactly as it appears in the cascade.
-
-If no level returned a login: noop `no reviewer produced by the cascade`.
+   are case-insensitive): noop `author is the selected reviewer`.
+3. Otherwise the result is that login, written exactly as the level returned it.
 
 ## Output
 
@@ -71,13 +60,7 @@ Exactly one of:
 | Reason | When |
 |--------|------|
 | `already has an individual reviewer` | Emitted by the caller before this skill runs, when the pull request already has an individual reviewer requested or an individual review. |
-| `no default reviewer configured` | Level 3 is still the placeholder. |
-| `author is the default reviewer` | The pull request author equals the cascade result. |
 | `no reviewer produced by the cascade` | Every level returned nothing. |
+| `author is the selected reviewer` | The pull request author equals the cascade result. |
 
 The fixed wording keeps runs searchable by reason.
-
-## Adding a level
-
-A new level 1 or level 2 rule may return a login other than the default reviewer. Add every
-login it can return to `allowed-reviewers` in the same change, or the request is dropped.

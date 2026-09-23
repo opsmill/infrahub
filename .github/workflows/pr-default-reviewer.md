@@ -1,5 +1,5 @@
 ---
-description: Requests the default individual reviewer on a ready pull request that has no individual reviewer yet
+description: Requests an individual reviewer on a ready pull request that has no individual reviewer yet
 on:
   pull_request:
     types: [opened, reopened, ready_for_review]
@@ -68,9 +68,10 @@ safe-outputs:
   noop:
     report-as-issue: false
   add-reviewer:
-    # Exact, case-sensitive match: must equal the skill's default reviewer login byte for byte.
+    # Exact, case-sensitive match against the logins the skill's cascade returns. An empty list
+    # would allow every user; a login that exists nowhere denies all until a level adds one.
     allowed-reviewers:
-      - REPLACE-WITH-DEFAULT-REVIEWER
+      - no-reviewer-allowed
     # An empty list would allow every team; a slug that exists nowhere denies all.
     allowed-team-reviewers:
       - no-team-reviewers-allowed
@@ -79,7 +80,7 @@ safe-outputs:
   missing-tool:
 ---
 
-# PR default reviewer
+# PR reviewer assignment
 
 ## Your role
 
