@@ -61,13 +61,14 @@ output says which.
 
 ## How the rules reach cubic
 
-Infrahub's review rules live in `.cubic/`, one checklist per area (`frontend.md`, `backend.md`,
-`testing.md`). `cubic.yaml` attaches each checklist to PR reviews for the matching paths. cubic
-reads `cubic.yaml` only from the default branch, so the local task passes the checklists of your
-branch directly; a checklist change applies to your local reviews before it merges.
+Infrahub's review rules live in [`dev/guidelines/review/`](../guidelines/review/README.md), one
+checklist per area (`frontend.md`, `backend.md`, `testing.md`), next to the passes no tool runs.
+`.cubic/` holds a symlink to each checklist, and `cubic.yaml` attaches those paths to PR reviews.
+cubic reads `cubic.yaml` only from the default branch, so the local task passes the checklists of
+your branch directly; a checklist change applies to your local reviews before it merges.
 
 When cubic flags something that is intentional in Infrahub, add a line to the matching checklist's
-**Do NOT flag** section. When it misses something reviewers keep catching, add a rule. Keep each
+**Do NOT flag** section. Edit the file under `dev/guidelines/review/`, not the symlink. When it misses something reviewers keep catching, add a rule. Keep each
 checklist under 9,000 characters: cubic reads only the first 10,000 per checklist and drops the
 rest without warning. If you change which paths a checklist covers, update both `cubic.yaml` and
 `CUBIC_CHECKLISTS` in `tasks/dev.py`.
