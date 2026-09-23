@@ -30,10 +30,8 @@ _CORS_REQUEST_METHOD_HEADER = b"access-control-request-method"
 
 _SHED_MESSAGE = "Server is shedding load; retry later."
 
-# Marks a 429 the admission layer wrote itself. A client may replay a non-idempotent request
-# against a 429 only if the handler never ran, and the body alone cannot promise that: the REST
-# exception handler emits the same integer-code envelope for any error. The CORS middleware exposes
-# the header so a cross-origin browser can read it.
+# Marks a 429 written before any handler ran, so a client can tell it from any other 429. Exposed
+# cross-origin.
 SHED_MARKER_HEADER = "X-Infrahub-Admission"
 SHED_MARKER_VALUE = "shed"
 

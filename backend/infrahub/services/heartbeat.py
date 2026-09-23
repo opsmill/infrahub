@@ -35,8 +35,8 @@ CacheFactory = Callable[[], Awaitable[InfrahubCache]]
 async def build_heartbeat_cache() -> InfrahubCache:
     """Open the cache connection the heartbeat thread writes through.
 
-    Must be awaited on the heartbeat thread's own event loop: the asyncio cache clients bind to the
-    loop that creates them, so the main-loop connection cannot be reused from the thread.
+    Must be awaited on the event loop that will use it: the asyncio cache clients bind to the loop
+    that creates them.
     """
     return config.OVERRIDE.cache or await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver)
 
@@ -45,24 +45,18 @@ class WorkerHeartbeat:
     """Publish this worker's liveness from a dedicated thread running its own event loop.
 
     The heartbeat key expires 15 seconds after its last refresh, and it is the only thing that
-    protects a distributed lock a live worker holds: the deadlock cleanup deletes any old lock whose
-    holder has left the active-worker set. An asyncio schedule on the main loop cannot promise that
-    refresh, because a CPU-bound stretch in a flow (no ``await`` for tens of seconds) starves every
-    other task on that loop, so the worker looks dead while it is merely busy. A thread stays
-    independent of the main loop; a pure-Python stall still releases the interpreter lock every few
-    milliseconds, which is all the refresh needs.
+    protects a distributed lock a live worker holds. Beating from a thread of its own keeps the
+    refresh independent of the main event loop, so a worker that holds that loop for tens of
+    seconds without awaiting still reports as alive.
 
-    The thread opens its own cache connection (see ``build_heartbeat_cache``). A beat that fails
-    closes that connection and the next beat opens a fresh one through the factory, so a cache
-    outage delays the heartbeat instead of ending it, and a client left broken by the outage is
-    never retried forever.
+    The thread opens its own cache connection through the factory it is given. A beat that fails
+    closes that connection and the next beat opens a fresh one, so a cache outage delays the
+    heartbeat instead of ending it.
 
     Each beat is bounded by ``beat_timeout_seconds`` and the next one is scheduled from before the
     current one starts, so the key is rewritten once per interval rather than once per interval plus
-    however long the beat took. The bound matters because the cache clients do not impose one: a
-    connection that stops answering without closing (a load balancer dropping an idle connection, a
-    failover without an RST) would otherwise block the beat indefinitely, and ``stop`` cannot end a
-    thread that is inside such a call.
+    however long the beat took. The bound is what keeps a connection that stops answering without
+    closing from blocking the beat indefinitely, which ``stop`` could not interrupt.
     """
 
     def __init__(
@@ -103,7 +97,7 @@ class WorkerHeartbeat:
 
         The thread notices the request within ``STOP_POLL_SECONDS`` and closes its cache connection
         before exiting, so the wait normally ends well inside ``timeout_seconds``. This blocks the
-        calling thread; from a coroutine, run it with ``asyncio.to_thread``.
+        calling thread.
 
         If the thread is still alive when the wait ends, typically because a cache call has not
         returned yet, the reference to it is kept so that ``running`` stays truthful and ``start``

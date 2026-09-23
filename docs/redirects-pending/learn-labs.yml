@@ -1,0 +1,24 @@
+---
+feature: Infrahub Labs
+pr: TBD
+description: |
+  The five pages under `learn/labs/` were a second, smaller index of the labs
+  already described in full in the labs catalogue, and were removed in favour of
+  a single "Infrahub Labs" link in the Learn sidebar. Their published URLs now
+  return 404, so they redirect to the catalogue.
+
+  The catalogue is served outside the docs route, so these entries need an
+  external redirect at aggregation time rather than a
+  `@docusaurus/plugin-client-redirects` entry.
+
+redirects:
+  - from: /docs/learn/labs/overview
+    to: https://docs.infrahub.app/labs
+  - from: /docs/learn/labs/fundamentals-to-expert
+    to: https://docs.infrahub.app/labs
+  - from: /docs/learn/labs/infrahub-introduction
+    to: https://docs.infrahub.app/labs
+  - from: /docs/learn/labs/schema-deep-dive
+    to: https://docs.infrahub.app/labs
+  - from: /docs/learn/labs/deploy-first-configuration
+    to: https://docs.infrahub.app/labs

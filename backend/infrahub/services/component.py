@@ -39,11 +39,9 @@ async def refresh_worker_heartbeat(cache: InfrahubCache, component_type: Compone
 
     Writes the ``workers:active:*`` key whose 15-second expiry defines the active-worker set, keeps
     the primary API-server election alive, and refreshes the two-hour ``workers:worker:*`` presence
-    key. The function only touches ``cache``, so it can run on any event loop as long as ``cache``
-    was created on that loop; ``WorkerHeartbeat`` relies on this to beat from its own thread.
+    key. Only ``cache`` is touched, so this runs on any event loop that ``cache`` was created on.
 
     Args:
-        cache: Cache connection to write through.
         component_type: Type of the running process, which selects the keys to write.
 
     """

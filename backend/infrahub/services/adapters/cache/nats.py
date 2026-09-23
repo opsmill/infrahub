@@ -143,9 +143,5 @@ class NATSCache(InfrahubCache):
         return True
 
     async def close_connection(self) -> None:
-        """Close the NATS connection this cache opened.
-
-        ``close`` rather than ``drain``: the cache holds no subscriptions to flush, and a connection
-        that is already closed is a no-op for the client.
-        """
+        """Close the NATS connection this cache opened."""
         await self.connection.close()

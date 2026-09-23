@@ -36,7 +36,9 @@ WITH origin_name, fork_at, collect({
 // -----------------
 // Every Node the deleted branch could read that other branches could not necessarily read: created
 // on this branch, or deleted on the default branch after the fork. Kept as an unaggregated stream:
-// no DISTINCT, and two seeks under UNION ALL rather than one OR, which plans as a deduplicated union.
+// two seeks under UNION ALL rather than one OR, which plans as a deduplicated union. UNION ALL
+// keeps a Node matching both bounds in the stream twice, and the following WITH has no DISTINCT,
+// so that Node is evaluated twice.
 // -----------------
 CALL (origin_name, fork_at) {
     MATCH (reachable_node:Node)-[existence:IS_PART_OF]->()
@@ -65,8 +67,10 @@ WHERE EXISTS {
 }
 
 // -----------------
-// Retention is evaluated and closed per batch of Nodes, so the transaction memory a batch needs is
-// bounded by the batch size times the branch count.
+// Retention is evaluated and closed per batch of Nodes. A batch expands every candidate to its
+// branch-agnostic fields and every field to its linked peers before multiplying the rows by the
+// branch count, so the transaction memory a batch needs scales with that fan-out, not with the
+// batch size alone.
 // -----------------
 CALL (reachable_node, branch_windows) {
     MATCH (reachable_node)-[anchor:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
@@ -95,9 +99,10 @@ class RetireBranchAgnosticFieldsQuery(Query):
     Must run while the branch's IS_PART_OF edges still exist, because the candidate bound reads them.
 
     Candidate Nodes are streamed and evaluated in batches of `batch_size`, each batch committing its
-    own closures, so the transaction memory a run needs is bounded by the batch size times the branch
-    count plus one node reference per candidate. A Node that matches both candidate bounds is
-    evaluated twice; the second pass finds its edges already closed.
+    own closures. A batch expands every candidate to its branch-agnostic fields and every field to
+    its linked peers before multiplying the rows by the branch count, so its transaction memory
+    scales with that fan-out rather than with `batch_size` alone. A Node that matches both candidate
+    bounds is evaluated twice; the second pass finds its edges already closed.
 
     The writes are batched, so this query cannot run inside an explicit transaction. A failure part
     way through leaves the earlier batches closed, which a re-run completes: retention does not come

@@ -179,8 +179,8 @@ class DiffLabelsEnricher(DiffEnricherInterface):
         for dlr in display_label_requests:
             node_ids_by_branch[dlr.branch_name].add(dlr.node_id)
 
-        # The stored display label is what a node reports as its label, so read it directly: building
-        # a node object per id to ask it for its label is what dominates the enrichment of a large diff.
+        # The stored display label is what a node reports as its label, so reading it directly
+        # avoids building a node object per id.
         display_label_map: dict[str, dict[str, str]] = {}
         for branch_name, node_ids in node_ids_by_branch.items():
             display_label_map[branch_name] = await get_stored_display_labels(

@@ -34,8 +34,8 @@ class InfrahubScheduler:
     """Run this process's recurring background work.
 
     Asyncio schedules run on the main event loop. The worker liveness heartbeat is the exception:
-    it runs on the ``WorkerHeartbeat`` thread so a flow that blocks the main loop cannot make the
-    worker look dead (see ``infrahub.services.heartbeat``). Both start and stop together.
+    it runs on its own thread, so a flow that blocks the main loop cannot make the worker look
+    dead. Both start and stop together.
     """
 
     # TODO we could remove service dependency by adding kwargs to Schedule instead of passing services

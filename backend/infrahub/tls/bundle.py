@@ -8,8 +8,8 @@ from pathlib import Path
 
 PEM_MARKER = "-----BEGIN "
 
-# CA bundles supplied inline as PEM text are written here so that git, boto3, the Neo4j driver and
-# redis-py, which only accept a file, can read them. Honours TMPDIR like every other temporary file.
+# CA bundles supplied inline as PEM text are materialized here, under TMPDIR, for consumers that
+# only accept a file.
 MATERIALIZED_BUNDLE_DIRECTORY = Path(tempfile.gettempdir()) / "infrahub-tls"
 
 

@@ -12,10 +12,8 @@ const canReplay = (method: string, response: Response): boolean =>
   IDEMPOTENT_METHODS.has(method) || isShedResponse(response);
 
 /**
- * `fetch` with the 429 retry policy applied.
- *
- * The seam every transport shares, so load shedding is handled once — below the
- * auth layer, and below the query cache where `Retry-After` is still readable.
+ * `fetch` with the 429 retry policy applied: an eligible 429 is replayed before
+ * the final response is returned.
  */
 export const retryingFetch: typeof fetch = (input, init) => {
   const request = input instanceof Request ? input : null;

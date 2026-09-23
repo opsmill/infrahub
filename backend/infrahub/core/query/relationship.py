@@ -76,33 +76,15 @@ class NodePropertyData:
 @dataclass
 class RelationshipPeerData:
     branch: str
-
     source_id: UUID
-    """UUID of the Source Node."""
-
     source_db_id: str
-    """Internal DB ID of the Source Node."""
-
     source_kind: str
-    """Kind of the Source Node."""
-
     peer_id: UUID
-    """UUID of the Peer Node."""
-
     peer_db_id: str
-    """Internal DB ID of the Peer Node."""
-
     peer_kind: str
-    """Kind of the Peer Node."""
-
     properties: dict[str, FlagPropertyData | NodePropertyData]
-    """UUID of the Relationship Node."""
-
     rel_node_id: UUID
-    """UUID of the Relationship Node."""
-
     rel_node_db_id: str | None = None
-    """Internal DB ID of the Relationship Node."""
 
     rels: list[RelData] | None = None
     """Both relationships pointing at this Relationship Node."""
