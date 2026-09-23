@@ -1,0 +1,38 @@
+dev/specs/sync-pr-automation/contracts/outputs.md
+  s_f9f34a44a3a084::t_6a8e981e18d069 26,41-42,44,46-48,51-54,57-59
+utilities/sync_pr/tests/test_summary.py
+  s_f9f34a44a3a084::t_f85e482930c86b 161-163
+  s_f9f34a44a3a084::t_5ab9aea118d0b6 1-160,164-202
+dev/specs/sync-pr-automation/tasks.md
+  s_f9f34a44a3a084::t_1c56e4c071b9ec 92,98,109,121,125,128,132
+utilities/sync_pr/summary.py
+  s_f9f34a44a3a084::t_c7dba8ddbac3fd 59-68
+  s_f9f34a44a3a084::t_98895dd61d9572 1-58,69-166
+utilities/sync_pr/tests/test_transfer.py
+  s_f9f34a44a3a084::t_24d8a4f8a36494 173-175
+  s_f9f34a44a3a084::t_89cf2281ecc728 229-230
+  s_f9f34a44a3a084::t_f85e482930c86b 44,79,114,117,120,127,129,144,152,160,193,195,282,322-434,438,442
+  s_f9f34a44a3a084::t_7ae00ae44e7bcc 1-43,45-78,80-113,115-116,118-119,121-126,128,130-143,145-151,153-159,161-172,176-192,194,196-228,231-281,283-321,435-437,439-441,443
+utilities/sync_pr/transfer.py
+  s_f9f34a44a3a084::t_f85e482930c86b 81,85,87,91-94,96,128,146-152,231-238,313-315
+  s_f9f34a44a3a084::t_f81b7704567fc1 1-80,82-84,86,88-90,95,97-127,129-145,153-230,239-312,316-358
+dev/specs/sync-pr-automation/data-model.md
+  s_f9f34a44a3a084::t_6a8e981e18d069 10-11,13,35,48,50-53,83,88-90
+  s_f9f34a44a3a084::t_499e55c30d542b 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ac08fbb259bd985b6a8c96a3af120b5f74f8494",
+  "prompts": {},
+  "sessions": {
+    "s_f9f34a44a3a084": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50b9befc-1389-4d4c-99f9-321b275b2173",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
