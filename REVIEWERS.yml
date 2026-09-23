@@ -1,0 +1,200 @@
+# Reviewer map for opsmill/infrahub: who reviews which part of the code.
+# Level 1 of the reviewer cascade in .agents/skills/assigning-pr-reviewers.
+#
+# One reviewer per pull request, from the subject with the most changed lines: its author
+# rules first, then the first listed reviewer who is not the author, not away and under the
+# load cap. Second names are backups: the next strongest person on that code, by recent
+# commits and reviews. Files in no subject go to their top recent contributors and reviewers.
+# A file matching several subjects belongs to the last one in this file, as in CODEOWNERS.
+# Paths are globs from the repo root; `team:<name>` means any member of that team.
+#
+# After editing, validate the map and compare its logins with the workflow allowlist:
+#   uv run python .agents/skills/assigning-pr-reviewers/scripts/select_reviewer.py --check \
+#     --workflow .github/workflows/pr-default-reviewer.md
+# A login added or removed here must change `allowed-reviewers` too (then recompile).
+
+---
+version: 1
+
+teams:
+  # Members: people who regularly review in that scope.
+  backend: [ajtmccarty, ogenstad, gmazoyer, polmichel, fatih-acar, dgarros, saltas888]
+  frontend: [pa-lem, bilalabbad, saltas888]
+
+subjects:
+  # Broad subjects first: the more specific subjects below override them.
+  - name: Schema
+    description: Schema engine, schema definitions and schema loading.
+    paths:
+      - "backend/infrahub/core/schema/**"
+      - "backend/infrahub/schema/**"
+      - "backend/tests/**/schema/**"
+    reviewers: [team:backend]
+
+  - name: Graph database
+    description: Database layer, Cypher queries, graph traversal and graph migrations.
+    paths:
+      - "backend/infrahub/database/**"
+      - "backend/infrahub/core/query/**"
+      - "backend/infrahub/core/graph/**"
+      - "backend/infrahub/core/migrations/**"
+      - "backend/infrahub/graph_traversal/**"
+      - "backend/tests/**/database/**"
+      - "backend/tests/component/query/**"
+      - "backend/tests/**/graph/**"
+      - "backend/tests/**/graph_traversal/**"
+      - "backend/tests/**/migrations/**"
+    reviewers: [ajtmccarty, ogenstad]
+
+  - name: Frontend
+    description: The web UI (React app and frontend packages).
+    paths: ["frontend/**"]
+    reviewers: [pa-lem, bilalabbad, saltas888]
+    rules:
+      - author: pa-lem
+        reviewer: bilalabbad
+
+  # Specific subjects.
+  - name: Diff
+    description: Computing, storing and displaying branch diffs and conflicts.
+    paths:
+      - "backend/infrahub/core/diff/**"
+      - "backend/infrahub/core/query/diff.py"
+      - "backend/tests/**/diff/**"
+    reviewers: [ajtmccarty, ogenstad]
+
+  - name: Profiles
+    description: Object profiles and how their values apply to nodes.
+    paths:
+      - "backend/infrahub/profiles/**"
+      - "backend/infrahub/core/schema/definitions/core/profile.py"
+      - "backend/infrahub/core/relationship/constraints/profiles_*.py"
+      - "backend/tests/**/profiles/**"
+    reviewers: [ajtmccarty, ogenstad]
+
+  - name: IPAM
+    description: IP prefixes and addresses, namespaces, resource pools.
+    paths:
+      - "backend/infrahub/core/ipam/**"
+      - "backend/infrahub/core/query/ipam.py"
+      - "backend/infrahub/pools/**"
+      - "backend/tests/**/ipam/**"
+      - "backend/tests/**/pools/**"
+      - "backend/tests/**/resource_manager/**"
+    reviewers: [ajtmccarty, gmazoyer]
+
+  - name: Git
+    description: Git repositories, credentials, syncing and imports.
+    paths:
+      - "backend/infrahub/git/**"
+      - "backend/infrahub/git_credential/**"
+      - "backend/infrahub/repositories/**"
+      - "backend/tests/**/git/**"
+    reviewers: [ogenstad, ajtmccarty]
+
+  - name: Generators
+    description: Generator definitions and generator runs.
+    paths:
+      - "backend/infrahub/generators/**"
+      - "backend/tests/**/generator/**"
+      - "backend/tests/**/generators/**"
+    reviewers: [ogenstad, polmichel]
+
+  - name: Computed attributes
+    description: Jinja2 and Python computed attributes.
+    paths:
+      - "backend/infrahub/computed_attribute/**"
+      - "backend/tests/**/computed_attribute/**"
+      - "backend/tests/**/computed_attributes/**"
+    reviewers: [ogenstad, gmazoyer]
+
+  - name: Proposed change pipeline
+    description: Proposed changes, their checks and validators, merge pipeline.
+    paths:
+      - "backend/infrahub/proposed_change/**"
+      - "backend/infrahub/validators/**"
+      - "backend/tests/**/proposed_change/**"
+      - "backend/tests/**/validators/**"
+    reviewers: [ogenstad, ajtmccarty]
+
+  - name: Permissions
+    description: Accounts, roles, global and object permissions.
+    paths:
+      - "backend/infrahub/permissions/**"
+      - "backend/infrahub/core/account.py"
+      - "backend/tests/**/permissions/**"
+    reviewers: [gmazoyer, ajtmccarty]
+
+  - name: Templates
+    description: Object templates.
+    paths:
+      - "backend/infrahub/templates/**"
+      - "backend/tests/**/templates/**"
+    reviewers: [gmazoyer, ajtmccarty]
+
+  - name: File objects
+    description: File object storage and upload.
+    paths:
+      - "backend/infrahub/api/storage/**"
+      - "backend/infrahub/storage.py"
+      - "backend/infrahub/core/file_processor.py"
+      - "backend/infrahub/core/schema/definitions/core/file_object.py"
+      - "backend/tests/**/file_object/**"
+      - "backend/tests/**/test_file_object.py"
+    reviewers: [gmazoyer, ogenstad]
+
+  - name: Webhooks
+    description: Webhook definitions and delivery.
+    paths:
+      - "backend/infrahub/webhook/**"
+      - "backend/tests/**/webhook/**"
+    reviewers: [polmichel, ajtmccarty]
+
+  - name: Artifacts
+    description: Artifact definitions and generation.
+    paths:
+      - "backend/infrahub/artifacts/**"
+      - "backend/tests/**/test_*artifact*.py"
+    reviewers: [ogenstad, polmichel]
+
+  # Concern subject: judged from the diff, wherever the code lives.
+  - name: Security
+    description: >
+      Any change whose main point is security: authentication, SSO, LDAP, TLS, tokens,
+      access control, secrets, input validation.
+    paths:
+      - "backend/infrahub/auth/**"
+      - "backend/infrahub/auth_pkce.py"
+      - "backend/infrahub/ldap_auth/**"
+      - "backend/infrahub/tls/**"
+      - "backend/infrahub/graphql/auth/**"
+      - "backend/tests/**/auth/**"
+      - "backend/tests/**/tls/**"
+    concern: true
+    reviewers: [team:backend]
+
+# Noise: never counted when classifying a PR or ranking contributors.
+ignore:
+  - "**/*.lock"
+  - "**/*-lock.json"
+  - "**/*-lock.yaml"
+  - "**/generated/**"
+  - "**/*.generated.*"
+  - "**/.betterer.results"
+  - "schema/schema.graphql"
+  - "changelog/**"
+  - "backend/tests/fixtures/**"
+  - "python_sdk"
+
+away: [] # logins temporarily unavailable
+
+# Skip a candidate who already has this many open individual review requests in this
+# repository; if every candidate is at the cap, take the least loaded.
+load_cap: 2
+
+# Last resort of level 2: a member of the team of the first scope matching the files.
+fallback:
+  - paths: ["frontend/**"]
+    team: frontend
+  - paths: ["**"]
+    team: backend

@@ -51,6 +51,36 @@ steps:
         echo "PR #$PR_NUMBER by \`$AUTHOR\`: $REQUESTED individual reviewer(s) requested, $REVIEWED individual review(s)."
         echo "Decision: \`$DECISION\`"
       } >> "$GITHUB_STEP_SUMMARY"
+  # Levels 1 and 2 of the cascade, computed in Python so the pick does not depend on the model.
+  # REVIEWERS.yml and the script come from the base branch, so a pull request cannot reroute
+  # its own review; the checkout copies are used until both exist on the base branch.
+  - name: Reviewer cascade - levels 1 and 2
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number || fromJSON(github.event.inputs.aw_context || '{}').item_number }}
+      GATE_DIR: /tmp/gh-aw/pr-default-reviewer
+      SCRIPT: .agents/skills/assigning-pr-reviewers/scripts/select_reviewer.py
+    run: |
+      set -euo pipefail
+      if [ "$(cat "$GATE_DIR/decision")" != "proceed" ]; then
+        exit 0
+      fi
+      BASE_REF=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.base.ref')
+      if git cat-file -e "origin/$BASE_REF:REVIEWERS.yml" 2>/dev/null \
+        && git cat-file -e "origin/$BASE_REF:$SCRIPT" 2>/dev/null; then
+        git show "origin/$BASE_REF:REVIEWERS.yml" > "$GATE_DIR/REVIEWERS.yml"
+        git show "origin/$BASE_REF:$SCRIPT" > "$GATE_DIR/select_reviewer.py"
+        SOURCE="origin/$BASE_REF"
+      else
+        cp REVIEWERS.yml "$GATE_DIR/REVIEWERS.yml"
+        cp "$SCRIPT" "$GATE_DIR/select_reviewer.py"
+        SOURCE="checkout (not on $BASE_REF yet)"
+      fi
+      echo "Reviewer map and script read from $SOURCE." >> "$GITHUB_STEP_SUMMARY"
+      python3 "$GATE_DIR/select_reviewer.py" --repo . --map "$GATE_DIR/REVIEWERS.yml" \
+        --github "$REPO" --pr "$PR_NUMBER" \
+        --out "$GATE_DIR/selection.json" --summary "$GITHUB_STEP_SUMMARY"
 permissions:
   contents: read
   pull-requests: read
@@ -59,7 +89,8 @@ tools:
     toolsets: [pull_requests]
 network: defaults
 checkout:
-  fetch-depth: 1
+  # Level 2 ranks recent contributors from git history.
+  fetch-depth: 0
 safe-outputs:
   github-app:
     client-id: ${{ secrets.GH_AW_APP_ID }}
@@ -68,10 +99,18 @@ safe-outputs:
   noop:
     report-as-issue: false
   add-reviewer:
-    # Exact, case-sensitive match against the logins the skill's cascade returns. An empty list
-    # would allow every user; a login that exists nowhere denies all until a level adds one.
+    # Exact, case-sensitive match against the logins the skill's cascade returns: every login in
+    # REVIEWERS.yml, no more. `select_reviewer.py --check --workflow <this file>` keeps them in sync.
     allowed-reviewers:
-      - no-reviewer-allowed
+      - ajtmccarty
+      - bilalabbad
+      - dgarros
+      - fatih-acar
+      - gmazoyer
+      - ogenstad
+      - pa-lem
+      - polmichel
+      - saltas888
     # An empty list would allow every team; a slug that exists nowhere denies all.
     allowed-team-reviewers:
       - no-team-reviewers-allowed
@@ -103,7 +142,8 @@ request is the one the skill below produces.
 1. Read `/tmp/gh-aw/pr-default-reviewer/decision`. If it contains `skip`, emit one `noop` with
    the message `already has an individual reviewer` and stop.
 2. Read `.agents/skills/assigning-pr-reviewers/SKILL.md` from the checkout and follow it.
-   The pull request author's login is in `/tmp/gh-aw/pr-default-reviewer/author`.
+   The pull request author's login is in `/tmp/gh-aw/pr-default-reviewer/author`, and the
+   cascade result computed before you started is in `/tmp/gh-aw/pr-default-reviewer/selection.json`.
 3. Emit exactly one safe output, then stop:
    - `add_reviewer` with `reviewers` holding the single login the skill produced. Never set
      `team_reviewers`.
