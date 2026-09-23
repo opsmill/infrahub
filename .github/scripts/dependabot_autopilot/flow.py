@@ -36,6 +36,7 @@ ANALYSIS_WORKFLOW = "dependabot-autopilot-analyze"
 ANALYSIS_WORKFLOW_PATH = ".github/workflows/dependabot-autopilot-analyze.lock.yml"
 ANALYSIS_EVENT = "pull_request"
 ACT_WORKFLOW = "dependabot-autopilot-act"
+CI_WORKFLOW_PATH = ".github/workflows/ci.yml"
 VERDICT_ARTIFACT = "dependabot-autopilot-verdict"
 CODEOWNERS_PATH = ".github/CODEOWNERS"
 LOCKFILE_NAMES = frozenset({"uv.lock", "pnpm-lock.yaml", "package-lock.json"})
@@ -104,6 +105,7 @@ def evaluate(
         check_runs=github.list_check_runs(sha=pr.head_sha),
         statuses=github.list_commit_statuses(sha=pr.head_sha),
         own_workflows=(ANALYSIS_WORKFLOW, ACT_WORKFLOW),
+        required_workflow_path=CI_WORKFLOW_PATH,
     )
     reviews = tuple(github.list_reviews(pr_number=pr.number))
     decision = decide(

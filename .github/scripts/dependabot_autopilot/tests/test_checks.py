@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 from datetime import UTC, datetime
 
 import pytest
@@ -69,6 +70,7 @@ def evaluate(
         check_runs=[check_run()] if check_runs is None else check_runs,
         statuses=[commit_status()] if statuses is None else statuses,
         own_workflows=OWN_WORKFLOWS,
+        required_workflow_path=".github/workflows/ci.yml",
     )
 
 
@@ -109,6 +111,21 @@ def test_pending_commit_status_is_pending() -> None:
 
 def test_no_ci_run_at_all_is_pending() -> None:
     assert evaluate(runs=[]) is CiState.PENDING
+
+
+def test_passing_runs_without_the_ci_workflow_are_pending() -> None:
+    assert evaluate(runs=[workflow_run(name="Chromatic", run_id=2)]) is CiState.PENDING
+
+
+def test_run_named_ci_from_another_workflow_file_does_not_count_as_ci() -> None:
+    impostor = dataclasses.replace(workflow_run(), path=".github/workflows/impostor.yml")
+
+    assert evaluate(runs=[impostor]) is CiState.PENDING
+
+
+@pytest.mark.parametrize("conclusion", [RunConclusion.SKIPPED, RunConclusion.NEUTRAL])
+def test_ci_workflow_completed_without_success_is_pending(conclusion: RunConclusion) -> None:
+    assert evaluate(runs=[workflow_run(conclusion=conclusion)]) is CiState.PENDING
 
 
 def test_only_own_workflow_runs_counts_as_no_ci_run() -> None:

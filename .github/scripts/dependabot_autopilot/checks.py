@@ -31,8 +31,9 @@ def evaluate_ci(
     check_runs: Sequence[CheckRun],
     statuses: Sequence[CommitStatus],
     own_workflows: Collection[str],
+    required_workflow_path: str,
 ) -> CiState:
-    """Return red on any failure, else pending while anything runs or no CI workflow has started, else green.
+    """Return red on any failure, else pending while anything runs or no run of the required workflow succeeded.
 
     Workflow runs named in `own_workflows` and check runs created by GitHub Actions are ignored; the latter
     duplicate the workflow runs, whose names are what identify the autopilot's own jobs.
@@ -46,7 +47,13 @@ def evaluate_ci(
     ]
     if CiState.RED in states:
         return CiState.RED
-    if not ci_runs or CiState.PENDING in states:
+    required_succeeded = any(
+        run.path == required_workflow_path
+        and run.status is RunStatus.COMPLETED
+        and run.conclusion is RunConclusion.SUCCESS
+        for run in ci_runs
+    )
+    if not required_succeeded or CiState.PENDING in states:
         return CiState.PENDING
     return CiState.GREEN
 
