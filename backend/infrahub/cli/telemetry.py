@@ -1,0 +1,116 @@
+from dataclasses import asdict
+
+import typer
+import ujson
+from infrahub_sdk.async_typer import AsyncTyper
+from rich.console import Console
+from rich.table import Table
+
+from infrahub.telemetry.resources import RESOURCE_READ_FAILURES, ProcessResources, ResourceDiagnostics
+
+app = AsyncTyper()
+
+
+@app.callback()
+def callback() -> None:
+    """Inspect what telemetry reports about this deployment."""
+
+
+_NULL = "null (unbounded / unknown)"
+
+
+def _format_bytes(value: int | None) -> str:
+    if value is None:
+        return _NULL
+    return f"{value} ({value / 1024**3:.2f} GiB)"
+
+
+def _format_count(value: int | None) -> str:
+    if value is None:
+        return _NULL
+    return str(value)
+
+
+def _render(diagnostics: ResourceDiagnostics, console: Console) -> None:
+    reading = diagnostics.reading
+
+    reported = Table(title="Reported to telemetry", show_header=False, title_justify="left")
+    reported.add_column(style="bold")
+    reported.add_column()
+    reported.add_row("processor_available", _format_count(reading.processor_available))
+    reported.add_row("processor_assigned", _format_count(reading.processor_assigned))
+    reported.add_row("memory_total", _format_bytes(reading.memory_total))
+    reported.add_row("memory_available", _format_bytes(reading.memory_available))
+    console.print(reported)
+
+    host = Table(title="Whole host, for comparison", show_header=False, title_justify="left")
+    host.add_column(style="bold")
+    host.add_column()
+    host.add_row("logical processors", _format_count(diagnostics.host_processor_available))
+    host.add_row("memory total", _format_bytes(diagnostics.host_memory_total))
+    console.print(host)
+
+    if reading.processor_assigned is None:
+        console.print(
+            "[yellow]processor_available reflects no confirmed CPU limit — this could mean none is "
+            "enforced, or the read failed; check the 'Resolved cgroup levels' table below for "
+            "evidence.[/yellow]"
+        )
+    if diagnostics.memory_limit is None:
+        console.print(
+            "[yellow]memory_total reflects no confirmed memory limit — this could mean none is "
+            "enforced, or the read failed; check the 'Resolved cgroup levels' table below for "
+            "evidence.[/yellow]"
+        )
+
+    environment = Table(title="Environment", show_header=False, title_justify="left")
+    environment.add_column(style="bold")
+    environment.add_column()
+    environment.add_row("hostname (dedup key)", reading.host)
+    environment.add_row("cgroup v2 at root", str(diagnostics.cgroup_v2_root))
+    environment.add_row("cgroup v1 at root", str(diagnostics.cgroup_v1_root))
+    environment.add_row("proc cgroup", diagnostics.proc_cgroup or "unreadable")
+    console.print(environment)
+
+    levels = Table(title="Resolved cgroup levels (leaf first)", title_justify="left")
+    levels.add_column("path")
+    levels.add_column("limit files found")
+    for level in diagnostics.levels:
+        contents = ", ".join(f"{name}={content}" for name, content in level.files.items())
+        levels.add_row(level.path, contents or "[dim]none[/dim]")
+    console.print(levels)
+
+
+def _to_json(diagnostics: ResourceDiagnostics) -> str:
+    payload = asdict(diagnostics) | {"reading": diagnostics.reading.model_dump()}
+    # Paths are the point of this output, so keep the slashes unescaped for a reader.
+    return ujson.dumps(payload, indent=2, escape_forward_slashes=False)
+
+
+@app.command(name="probe-resources")
+def probe_resources(
+    as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON instead of tables."),
+) -> None:
+    """Report the CPU and memory allocation this process sees, and the evidence behind it.
+
+    Reads only the local process's own control group and needs no database, cache
+    or configuration, so it can explain an environment whose reported figures
+    look wrong even when the deployment is otherwise unhealthy. Nothing is
+    transmitted; the output goes to stdout.
+
+    Raises:
+        BadParameter: The host read itself failed, so there is no reading to explain.
+
+    """
+    try:
+        diagnostics = ProcessResources().diagnose()
+    except RESOURCE_READ_FAILURES as exc:
+        # The probe exists to explain an unhealthy environment, so a failed host read
+        # is reported as itself rather than as a traceback.
+        raise typer.BadParameter(f"Could not read this process's resources: {exc}") from exc
+
+    if as_json:
+        print(_to_json(diagnostics))
+        return
+
+    _render(diagnostics=diagnostics, console=Console())

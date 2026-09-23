@@ -27,6 +27,7 @@ from .events import app as events_app
 from .recover import app as recover_app
 from .server import app as server_app
 from .tasks import app as tasks_app
+from .telemetry import app as telemetry_app
 from .upgrade import upgrade_cmd
 
 app = AsyncTyper(name="Infrahub CLI", pretty_exceptions_enable=False)
@@ -45,6 +46,7 @@ app.add_typer(tasks_app, name="tasks", hidden=True)
 app.add_typer(dev_app, name="dev", help="Internal development commands.")
 app.command(name="upgrade")(upgrade_cmd)
 app.add_typer(recover_app, name="recover", help="Recover from failed operations.")
+app.add_typer(telemetry_app, name="telemetry", help="Inspect what telemetry reports about this deployment.")
 
 
 async def _init_shell(config_file: str) -> None:

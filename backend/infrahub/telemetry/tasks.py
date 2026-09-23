@@ -8,6 +8,7 @@ from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
+from pydantic import ValidationError
 
 from infrahub import __version__, config
 from infrahub.core import registry, utils
@@ -15,7 +16,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
-from infrahub.services.component import InfrahubComponent
+from infrahub.log import get_run_logger as get_infrahub_logger
+from infrahub.services.component import COMPONENT_API_SERVER, COMPONENT_GIT_AGENT, InfrahubComponent
 from infrahub.workers.dependencies import get_component, get_database, get_http
 
 from .constants import (
@@ -30,12 +32,17 @@ from .models import (
     TelemetryBranchData,
     TelemetryData,
     TelemetrySchemaData,
+    TelemetryServerData,
     TelemetryWorkerData,
 )
 from .repository import TelemetrySnapshotRepository
+from .resources import ResourceAggregate, WorkerResourceReading, aggregate
 from .snapshot import TelemetrySnapshot
 from .task_manager import gather_activity_24h, gather_prefect_information
 from .utils import determine_infrahub_type, safe_metric
+
+# Infrahub's logger, not Prefect's: this is used outside a task/flow run.
+log = get_infrahub_logger()
 
 
 @task(name="telemetry-schema-information", task_run_name="Gather Schema Information", cache_policy=NONE)
@@ -125,6 +132,54 @@ class DefaultActiveBranchCounter:
         return await count_active_branches(db=self.db)
 
 
+async def aggregate_component_resources(
+    readings_by_host: dict[str, WorkerResourceReading],
+) -> ResourceAggregate:
+    """Collapse one component's per-host readings into a single fleet aggregate."""
+    return aggregate(readings_by_host.values())
+
+
+def _resource_fields(resources: ResourceAggregate | None) -> dict[str, int | None]:
+    """Return the four resource figures as keyword arguments.
+
+    A ``None`` aggregate (its source failed) yields no keys, leaving every
+    resource field at its ``None`` default.
+    """
+    if resources is None:
+        return {}
+    return {
+        "processor_available": resources.processor_available,
+        "processor_assigned": resources.processor_assigned,
+        "memory_total": resources.memory_total,
+        "memory_available": resources.memory_available,
+    }
+
+
+def _build_worker_data(total: int, active: int, resources: ResourceAggregate | None) -> TelemetryWorkerData:
+    """Build the worker block, degrading its resource figures to null rather than failing the gather.
+
+    Every per-host reading behind ``resources`` is already validated non-negative
+    where it is read back out of the cache, so this should never actually trip —
+    but a block built from several independently-sourced figures should not be
+    able to take the whole snapshot down with it if a future constraint here
+    catches something that earlier validation did not.
+    """
+    try:
+        return TelemetryWorkerData(total=total, active=active, **_resource_fields(resources))
+    except ValidationError as exc:
+        log.warning("Worker resource figures failed validation; reporting them as null: %s", exc)
+        return TelemetryWorkerData(total=total, active=active)
+
+
+def _build_server_data(resources: ResourceAggregate | None) -> TelemetryServerData:
+    """Build the server block, degrading its resource figures to null rather than failing the gather."""
+    try:
+        return TelemetryServerData(**_resource_fields(resources))
+    except ValidationError as exc:
+        log.warning("Server resource figures failed validation; reporting them as null: %s", exc)
+        return TelemetryServerData()
+
+
 class AnonymousTelemetryGatherer:
     """Assemble the full telemetry payload from its injected metric sources."""
 
@@ -149,6 +204,17 @@ class AnonymousTelemetryGatherer:
         default_branch = registry.get_branch_from_registry()
         workers = await self.component.list_workers(branch=default_branch.name, schema_hash=False)
 
+        # git_agent runs one process per container and api_server several gunicorn
+        # processes in one; grouping the readings by host lets each fleet be summed
+        # over distinct containers, counting a shared container once.
+        resources_by_component = await safe_metric(self.component.read_worker_resources()) or {}
+        workers_resources = await safe_metric(
+            aggregate_component_resources(resources_by_component.get(COMPONENT_GIT_AGENT, {}))
+        )
+        server_resources = await safe_metric(
+            aggregate_component_resources(resources_by_component.get(COMPONENT_API_SERVER, {}))
+        )
+
         accounts = await safe_metric(self.account_gatherer.gather())
         activity_24h = await safe_metric(self.activity_gatherer.gather())
 
@@ -159,10 +225,12 @@ class AnonymousTelemetryGatherer:
             infrahub_type=determine_infrahub_type(),
             python_version=platform.python_version(),
             platform=platform.machine(),
-            workers=TelemetryWorkerData(
+            workers=_build_worker_data(
                 total=len(workers),
                 active=len([w for w in workers if w.active]),
+                resources=workers_resources,
             ),
+            server=_build_server_data(resources=server_resources),
             branches=TelemetryBranchData(
                 total=len(registry.branch),
                 active=await safe_metric(self.active_branch_counter.gather()),

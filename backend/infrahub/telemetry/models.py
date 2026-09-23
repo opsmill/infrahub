@@ -6,6 +6,10 @@ from .constants import InfrahubType
 class TelemetryWorkerData(BaseModel):
     total: int
     active: int
+    processor_available: int | None = Field(default=None, ge=0)
+    processor_assigned: int | None = Field(default=None, ge=0)
+    memory_total: int | None = Field(default=None, ge=0)
+    memory_available: int | None = Field(default=None, ge=0)
 
 
 class TelemetryBranchData(BaseModel):
@@ -45,9 +49,17 @@ class TelemetryDatabaseServerData(BaseModel):
 
 
 class TelemetryDatabaseSystemInfoData(BaseModel):
-    memory_total: int
-    memory_available: int
-    processor_available: int
+    memory_total: int = Field(ge=0)
+    memory_available: int = Field(ge=0)
+    processor_available: int = Field(ge=0)
+    processor_assigned: int | None = Field(default=None, ge=0)
+
+
+class TelemetryServerData(BaseModel):
+    processor_available: int | None = Field(default=None, ge=0)
+    processor_assigned: int | None = Field(default=None, ge=0)
+    memory_total: int | None = Field(default=None, ge=0)
+    memory_available: int | None = Field(default=None, ge=0)
 
 
 class TelemetryDatabaseData(BaseModel):
@@ -79,6 +91,7 @@ class TelemetryData(BaseModel):
     python_version: str
     platform: str
     workers: TelemetryWorkerData
+    server: TelemetryServerData = Field(default_factory=TelemetryServerData)
     branches: TelemetryBranchData
     accounts: TelemetryAccountData = Field(default_factory=TelemetryAccountData)
     activity_24h: TelemetryActivity24hData = Field(default_factory=TelemetryActivity24hData)
