@@ -10,6 +10,42 @@
 - `workflow_run` is "able to access secrets and write tokens, even if the previous workflow was not" ([Events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows)).
 - The agent reads upstream changelogs, which are attacker-influenced text. Keeping merge, Jira and Slack credentials out of the agent's job means a prompt injection can at worst produce a wrong verdict, which the deterministic guards (R5, R6) still bound.
 
+**gh-aw feature spike (2026-09-23)**: both features are supported, so the plan's fallback is not needed. A throwaway workflow compiled with 0 errors and 0 warnings on the pinned compiler v0.81.3 (release binary `darwin-arm64`) and on v0.81.6 (the installed `gh aw` extension). Frontmatter used:
+
+```yaml
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  bots:
+    - "dependabot[bot]"
+engine: claude
+permissions:
+  contents: read
+  pull-requests: read
+safe-outputs:
+  jobs:
+    emit-verdict:
+      description: "Emit the verdict JSON"
+      runs-on: ubuntu-latest
+      inputs:
+        verdict:
+          description: "Verdict JSON document"
+          required: true
+          type: string
+      steps:
+        - name: Write verdict
+          run: echo "done"
+```
+
+Compiled result:
+
+| Feature | What the lock file contains |
+|---|---|
+| `on.bots` | `GH_AW_ALLOWED_BOTS: "dependabot[bot]"` in the `activation` and `pre_activation` jobs |
+| `safe-outputs.jobs` | An `emit_verdict` MCP tool (the key's `-` becomes `_`) with a required string `verdict` input, and an `emit_verdict` job that `needs: [agent, detection]`, runs only when the agent emitted that output type, downloads the `agent` artifact and exposes it to the custom steps as `GH_AW_AGENT_OUTPUT` (path to `agent_output.json`) |
+
+Consequences for the analysis workflow: the custom job's steps receive the tool call inside `agent_output.json`, not as an environment variable, so a step must extract the `emit_verdict` item from that file and upload it as the `dependabot-autopilot-verdict` artifact. The job runs after gh-aw's threat-detection job. Compiling needs `--approve` the first time, because strict mode flags `ANTHROPIC_API_KEY` as a new restricted secret.
+
 **Alternatives considered**: One gh-aw workflow using safe outputs for everything. Rejected: gh-aw's `merge-pull-request` safe output "always refuses" merges to the repository default branch, and the default branch is `stable`; it would also require copying the App key into Dependabot secrets.
 
 ## R2. Merge must be a custom deterministic step
