@@ -29,7 +29,7 @@ Feed synthetic per-process readings; assert the deduped fleet aggregate (the fou
 
 - **Dedup**: 8 readings all `host="c1"`, `processor_available=4` → aggregate `processor_available == 4` (counted once).
 - **Sum across hosts**: 2 readings `host="w1"` and `host="w2"`, each `processor_available=4` → aggregate `processor_available == 8`.
-- **Undercount (FR-005)**: 3 processes, only 2 distinct hosts reported → aggregate sums the 2 (the caller's `workers.total`, tracked separately, still counts all 3, so the gap is detectable).
+- **Undercount (FR-005)**: 3 processes, only 2 distinct hosts reported → aggregate sums the 2 (`workers.total` still counts all 3, but it counts processes across a different population than the host-summed aggregate, so the shortfall is not recoverable from the payload — see the contract's undercount signal).
 - **Null rules (FR-003/D9)**: one contributing host `processor_assigned=None` (unlimited) → aggregate `processor_assigned is None`; no host reported a field → that field is `None`.
 
 ## Scenario 3 — Component: end-to-end gather (`backend/tests/component/telemetry/test_resources.py`)
