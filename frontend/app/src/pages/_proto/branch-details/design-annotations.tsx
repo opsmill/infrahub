@@ -103,22 +103,35 @@ export function Annotations({
     onNotesChange(next);
   };
 
-  const onCapture = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!armed) return;
+  /**
+   * Fired on the shield, not on the design. Two reasons it has to work this way:
+   * a click handler is too late — menus, popovers and selects open on `pointerdown` — and
+   * a pass-through overlay lets buttons fire, focus move and forms submit while you are
+   * only trying to point at them. The shield eats the event, then briefly disables its own
+   * hit-testing so `elementFromPoint` reports what is underneath rather than the shield.
+   */
+  const onCapture = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const root = e.currentTarget;
+    const shield = e.currentTarget;
+    const root = shield.parentElement;
+    if (!root) return;
+
     const box = root.getBoundingClientRect();
+    shield.style.pointerEvents = "none";
     const target = document.elementFromPoint(e.clientX, e.clientY);
+    shield.style.pointerEvents = "";
     if (!target || !root.contains(target)) return;
 
     const note: Note = {
       id: `n${Date.now().toString(36)}`,
       selector: pathFrom(root, target),
       snippet: (target.textContent ?? "").trim().slice(0, 60),
+      // `box` is the scrolling content's own rect, so these offsets already account for
+      // how far the pane is scrolled. Storing fractions keeps pins put across resizes.
       x: (e.clientX - box.left) / box.width,
-      y: (e.clientY - box.top + root.scrollTop) / box.height,
+      y: (e.clientY - box.top) / box.height,
       text: "",
       createdAt: new Date().toISOString(),
     };
@@ -128,9 +141,19 @@ export function Annotations({
   };
 
   return (
-    <div className={armed ? "dja-root dja-root--armed" : "dja-root"} onClickCapture={onCapture}>
+    <div className="dja-root">
       <style>{css}</style>
       {children}
+
+      {armed && (
+        <div
+          className="dja-shield"
+          onPointerDown={onCapture}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <p className="dja-hint">Click anything to pin a note · Esc to cancel</p>
+        </div>
+      )}
 
       {notes.map((n, i) => (
         <div key={n.id} className="dja-pin" style={{ left: `${n.x * 100}%`, top: `${n.y * 100}%` }}>
@@ -193,10 +216,24 @@ export const notesToMarkdown = (notes: Note[]) =>
 
 const css = `
 .dja-root { position: relative; min-height: 100%; }
-.dja-root--armed, .dja-root--armed * { cursor: crosshair !important; }
-.dja-root--armed::after {
-  content: ""; position: absolute; inset: 0; z-index: 20;
-  outline: 2px dashed #6366f1; outline-offset: -2px; pointer-events: none;
+/*
+ * A real element, not a pseudo-element with pointer-events: none. It has to actually
+ * swallow the pointer, or clicking a button to annotate it presses the button instead.
+ * Above the pins too, so arming never re-opens an existing note by accident.
+ */
+.dja-shield {
+  position: absolute; inset: 0; z-index: 26;
+  cursor: crosshair;
+  outline: 2px dashed #6366f1; outline-offset: -2px;
+  background: rgba(99,102,241,.04);
+  touch-action: none; user-select: none;
+}
+.dja-hint {
+  position: sticky; top: 8px; margin: 8px auto 0; width: fit-content;
+  padding: 5px 12px; border-radius: 999px;
+  font: 600 12px/1 system-ui, sans-serif;
+  color: #fff; background: #4f46e5;
+  box-shadow: 0 2px 10px rgba(0,0,0,.25);
 }
 .dja-pin { position: absolute; z-index: 25; transform: translate(-50%, -50%); }
 .dja-dot {

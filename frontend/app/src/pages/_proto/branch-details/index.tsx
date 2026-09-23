@@ -4,13 +4,16 @@
 import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
 
 import { DesignHistory, type Knob, type KnobValue, type Variant } from "./design-history-panel";
+import { CurrentPage } from "./revs/current/current";
 import { RevRoot as Rev01, type RevKnobs } from "./revs/rev-01/root";
 import { SCENARIOS, type Scenario } from "./revs/rev-02/data";
 import { RevRoot as Rev02 } from "./revs/rev-02/root";
 
 const SLUG = "branch-details-repos";
 
-const KNOBS: Knob[] = [
+// Knobs belong to the directions they affect: the Current baseline shows no repository data,
+// and the rail width only exists in Consistent.
+const DATA_KNOBS: Knob[] = [
   {
     key: "scenario",
     label: "Scenario",
@@ -20,37 +23,38 @@ const KNOBS: Knob[] = [
   },
   { key: "repos", label: "Repositories", type: "range", min: 1, max: 40, value: 4 },
   { key: "bands", label: "Error bands before collapsing", type: "range", min: 1, max: 6, value: 3 },
-  {
-    key: "rail",
-    label: "Rail width (Consistent)",
-    type: "range",
-    min: 280,
-    max: 480,
-    step: 10,
-    value: 360,
-  },
   { key: "upstream", label: "Upstream + Last import", type: "toggle", value: true },
 ];
 
+const RAIL_KNOB: Knob = {
+  key: "rail",
+  label: "Rail width",
+  type: "range",
+  min: 280,
+  max: 480,
+  step: 10,
+  value: 360,
+};
+
 const toKnobs = (k: Record<string, KnobValue>): RevKnobs => ({
-  scenario: String(k.scenario) as Scenario,
-  repos: Number(k.repos),
-  bands: Number(k.bands),
-  rail: Number(k.rail),
-  upstream: Boolean(k.upstream),
+  scenario: String(k.scenario ?? "incident") as Scenario,
+  repos: Number(k.repos ?? 4),
+  bands: Number(k.bands ?? 3),
+  rail: Number(k.rail ?? 360),
+  upstream: k.upstream === undefined ? true : Boolean(k.upstream),
 });
 
 const VARIANTS: Variant[] = [
   {
-    id: "consistent",
-    label: "Consistent",
-    bet: "One table pattern everywhere, actions in the header menu, compact merge rail on the right.",
+    id: "current",
+    label: "Current",
+    bet: "Today's page, unchanged — the baseline every direction is compared against.",
     revisions: [
       {
         rev: 1,
         date: "2026-09-23",
-        note: "Tables for repos and tasks, rail as an index of issues, Actions menu in the header.",
-        render: (k) => <Rev01 variant="consistent" knobs={toKnobs(k)} />,
+        note: "Today's branch details page, without any change from this design.",
+        render: () => <CurrentPage />,
       },
     ],
   },
@@ -58,6 +62,7 @@ const VARIANTS: Variant[] = [
     id: "legacy",
     label: "Legacy",
     bet: "Today's page shape: button row, Tasks accordion of cards, merge banner above the buttons.",
+    knobs: DATA_KNOBS,
     revisions: [
       {
         rev: 1,
@@ -68,9 +73,24 @@ const VARIANTS: Variant[] = [
     ],
   },
   {
+    id: "consistent",
+    label: "Consistent",
+    bet: "One table pattern everywhere, actions in the header menu, compact merge rail on the right.",
+    knobs: [...DATA_KNOBS, RAIL_KNOB],
+    revisions: [
+      {
+        rev: 1,
+        date: "2026-09-23",
+        note: "Tables for repos and tasks, rail as an index of issues, Actions menu in the header.",
+        render: (k) => <Rev01 variant="consistent" knobs={toKnobs(k)} />,
+      },
+    ],
+  },
+  {
     id: "object",
     label: "Object layout",
     bet: "Same layers, cards and colours as the object details page; Merge is an aside card.",
+    knobs: DATA_KNOBS,
     revisions: [
       {
         rev: 1,
@@ -88,17 +108,17 @@ const VARIANTS: Variant[] = [
   },
 ];
 
-// The panel is a fixed shell; pin it to the app's content area so the real sidebar and top bar
-// stay visible and the design renders at its real width.
+// The panel is a fixed shell. Pin it to this route's own box (below the app's top bar, right of
+// the sidebar), so the real app chrome stays visible and the design renders at its real width.
 function useContentFrame() {
   const ref = useRef<HTMLDivElement>(null);
   const [frame, setFrame] = useState<CSSProperties>();
 
   useLayoutEffect(() => {
     const measure = () => {
-      const host = ref.current?.parentElement;
-      if (!host) return;
-      const r = host.getBoundingClientRect();
+      const box = ref.current;
+      if (!box) return;
+      const r = box.getBoundingClientRect();
       setFrame({
         top: r.top,
         left: r.left,
@@ -118,7 +138,7 @@ function BranchDetailsProto() {
   const { ref, frame } = useContentFrame();
   return (
     <div ref={ref} className="h-full">
-      {frame && <DesignHistory slug={SLUG} variants={VARIANTS} knobs={KNOBS} frame={frame} />}
+      {frame && <DesignHistory slug={SLUG} variants={VARIANTS} frame={frame} />}
     </div>
   );
 }

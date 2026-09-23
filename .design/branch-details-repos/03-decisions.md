@@ -138,3 +138,13 @@ The run now follows the skill's history model.
 Readiness rail, Repositories tab) and the first refined rail were deleted during phase 3, before
 the skill had the "nothing is deleted" rule. They were never committed. Their reasoning survives
 in `02-directions.md` and in the earlier sections of this file, but the code does not.
+
+## Round 4 (skill update + user feedback, 2026-09-23)
+
+| Decision | Reason |
+|---|---|
+| New **Current** variant (`?variant=current`): today's branch details page with none of this design's changes. It uses the real `BranchAttributes` and task badges; the buttons and the task list are static replicas. | User request: a baseline to compare every direction against. The real buttons call the backend (Merge would send a merge request), so they are replicas. |
+| Prototype order is **Current, Legacy, Consistent, Object layout**. | User request. It reads as "today, then least to most change". |
+| Knobs now belong to each direction. Current has none. Legacy and Object layout have scenario, repositories, bands and upstream. Consistent adds rail width. | The skill's panel now supports per-variant knobs. A control that does nothing in a direction reads as a broken prototype. |
+| The panel is pinned to the route's own box, not its parent. | User feedback, "there is no header in the app": the parent includes the app's top bar, so the panel covered it. The panel now starts at y=54, below the top bar. |
+| Panel and annotations re-copied from the skill: an armed pin tool catches `pointerdown`, so pinning a button records a note without pressing it (verified on the Actions menu). Sent notes stay visible. | Skill update. The copied files go through the formatter only, never `biome check --write`: its class-sorting fix trims the leading spaces in the pin's class string. |

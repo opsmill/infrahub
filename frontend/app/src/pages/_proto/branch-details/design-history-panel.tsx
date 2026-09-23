@@ -51,20 +51,30 @@ export type Variant = {
   label: string;
   /** What this direction bets on, from 02-directions.md. */
   bet: string;
+  /**
+   * Knobs that only make sense for this direction. A split-pane's divider position is
+   * meaningless in a stacked layout; showing it there gives the user a control that does
+   * nothing, which reads as a broken prototype rather than an inapplicable option.
+   * A key declared here overrides a shared key of the same name.
+   */
+  knobs?: Knob[];
   revisions: Revision[];
 };
 
 type Props = {
   slug: string;
   variants: Variant[];
-  /** Values worth tuning without an agent. Exposing one is a design decision — be sparing. */
+  /** Knobs that apply to every direction. Exposing one is a design decision — be sparing. */
   knobs?: Knob[];
   /** Fixed-position box the shell fills. Defaults to the whole viewport. */
   frame?: CSSProperties;
 };
 
-export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
+export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Props) {
   const params = new URLSearchParams(window.location.search);
+
+  /** Every knob any direction could show — so switching never lands on an undefined value. */
+  const allKnobs = [...shared, ...variants.flatMap((v) => v.knobs ?? [])];
 
   const initialVariant = (variants.find((v) => v.id === params.get("variant")) ??
     variants[0]) as Variant;
@@ -81,7 +91,7 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
   });
   const [values, setValues] = useState<Record<string, KnobValue>>(() =>
     Object.fromEntries(
-      knobs.map((k) => {
+      allKnobs.map((k) => {
         const raw = params.get(`k.${k.key}`);
         if (raw === null) return [k.key, k.value];
         if (k.type === "range") return [k.key, Number(raw)];
@@ -100,11 +110,23 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
 
   const variant = (variants.find((v) => v.id === variantId) ?? variants[0]) as Variant;
   const latest = latestOf(variant);
-  const current = (variant.revisions.find((r) => r.rev === rev) ??
-    variant.revisions.at(-1)) as Revision;
+  const current =
+    variant.revisions.find((r) => r.rev === rev) ?? (variant.revisions.at(-1) as Revision);
   const other = compareWith ? (variant.revisions.find((r) => r.rev === compareWith) ?? null) : null;
   const stale = current.rev !== latest;
   const scope = `${slug}:${variant.id}:rev${current.rev}`;
+
+  /** Only what this direction actually reads. A variant key shadows a shared one. */
+  const own = variant.knobs ?? [];
+  const ownKeys = new Set(own.map((k) => k.key));
+  const inherited = shared.filter((k) => !ownKeys.has(k.key));
+  const knobs = [...inherited, ...own];
+  /**
+   * The render function receives only the active subset, never the whole map. If a
+   * revision reaches for a knob belonging to another direction it gets `undefined` and
+   * breaks loudly, instead of silently reading a value that no visible control changes.
+   */
+  const activeValues = Object.fromEntries(knobs.map((k) => [k.key, values[k.key]]));
   const written = notes.filter((n) => n.text.trim() && !n.sentAt).length;
   const alreadySent = notes.filter((n) => n.sentAt).length;
 
@@ -114,12 +136,15 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
     next.set("rev", String(current.rev));
     if (other) next.set("compare", String(other.rev));
     else next.delete("compare");
+    // Only the active knobs go in the URL; a link never carries a control the recipient
+    // won't see on the direction it opens.
+    for (const k of allKnobs) next.delete(`k.${k.key}`);
     for (const k of knobs) {
       const v = values[k.key];
       next.set(`k.${k.key}`, typeof v === "boolean" ? (v ? "1" : "0") : String(v));
     }
     window.history.replaceState(null, "", `?${next.toString()}`);
-  }, [variant.id, current.rev, other, values, knobs]);
+  }, [variant.id, current.rev, other, values, knobs, allKnobs]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -147,7 +172,14 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
   };
 
   const asMarkdown = () => {
-    const knobLines = knobs.map((k) => `- ${k.label} (\`${k.key}\`): ${values[k.key]}`).join("\n");
+    const knobLines = knobs
+      .map(
+        (k) =>
+          `- ${k.label} (\`${k.key}\`): ${values[k.key]}${
+            ownKeys.has(k.key) ? ` — ${variant.label} only` : ""
+          }`
+      )
+      .join("\n");
     return [
       `## design-jam feedback — ${slug} · ${variant.label} · rev ${current.rev}`,
       knobs.length ? `\n### Knobs\n${knobLines}` : "",
@@ -218,10 +250,10 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
           onArmedChange={setArmed}
           onNotesChange={setNotes}
         >
-          {r.render(values)}
+          {r.render(activeValues as Record<string, KnobValue>)}
         </Annotations>
       ) : (
-        r.render(values)
+        r.render(activeValues as Record<string, KnobValue>)
       )}
     </section>
   );
@@ -246,9 +278,19 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
 
       {open && knobsOpen && knobs.length > 0 && (
         <div className="djh-knobs">
-          {knobs.map((k) => (
+          {knobs.map((k, i) => (
             // biome-ignore lint/a11y/noLabelWithoutControl: every branch below renders the wrapped control
-            <label key={k.key} className="djh-knob">
+            <label
+              key={k.key}
+              className={
+                i === inherited.length && own.length > 0
+                  ? "djh-knob djh-knob--first-own"
+                  : "djh-knob"
+              }
+            >
+              {i === inherited.length && own.length > 0 && (
+                <span className="djh-knob-group">{variant.label} only</span>
+              )}
               <span>{k.label}</span>
               {k.type === "range" && (
                 <>
@@ -294,7 +336,12 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
           <button
             type="button"
             className="djh-btn"
-            onClick={() => setValues(Object.fromEntries(knobs.map((k) => [k.key, k.value])))}
+            onClick={() =>
+              setValues({
+                ...values,
+                ...Object.fromEntries(knobs.map((k) => [k.key, k.value])),
+              })
+            }
           >
             Reset values
           </button>
@@ -494,6 +541,12 @@ const css = `
 }
 .djh-knob { display: flex; align-items: center; gap: 8px; }
 .djh-knob > span { color: #a1a1aa; }
+/* A visible seam, so it is obvious which controls belong to this direction alone. */
+.djh-knob--first-own { padding-left: 16px; border-left: 1px solid #3a3a42; }
+.djh-knob-group {
+  font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: #7c7c86;
+}
 .djh-knob output { min-width: 2.5ch; font-variant-numeric: tabular-nums; }
 .djh-knob input[type="range"] { width: 120px; accent-color: #6366f1; }
 .djh-knob select {
