@@ -39,19 +39,25 @@ steps:
         --jq '.[] | select(.user.type == "User") | .user.login' \
         | { grep -vixF "$AUTHOR" || true; } | wc -l | tr -d ' ')
 
-      if [ "$DRAFT" = "true" ] || [ "$HEAD_REPO" != "$REPO" ] \
-        || [ "$REQUESTED" -gt 0 ] || [ "$REVIEWED" -gt 0 ]; then
-        DECISION=skip
+      DECISION=skip
+      if [ "$HEAD_REPO" != "$REPO" ]; then
+        REASON="pull request from another repository"
+      elif [ "$DRAFT" = "true" ]; then
+        REASON="draft pull request"
+      elif [ "$REQUESTED" -gt 0 ] || [ "$REVIEWED" -gt 0 ]; then
+        REASON="already has an individual reviewer"
       else
         DECISION=proceed
+        REASON=""
       fi
       printf '%s\n' "$DECISION" > "$GATE_DIR/decision"
+      printf '%s\n' "$REASON" > "$GATE_DIR/reason"
       printf '%s\n' "$AUTHOR" > "$GATE_DIR/author"
 
       {
         echo "### Reviewer gate"
         echo "PR #$PR_NUMBER by \`$AUTHOR\`: $REQUESTED individual reviewer(s) requested, $REVIEWED individual review(s)."
-        echo "Decision: \`$DECISION\`"
+        echo "Decision: \`$DECISION\`${REASON:+ ($REASON)}"
       } >> "$GITHUB_STEP_SUMMARY"
   # Levels 1 and 2. Map and script come from the base branch so a PR cannot reroute its own
   # review; checkout copies until both exist there.
@@ -140,8 +146,8 @@ request is the one the skill below produces.
 
 ## Process
 
-1. Read `/tmp/gh-aw/pr-default-reviewer/decision`. If it contains `skip`, emit one `noop` with
-   the message `already has an individual reviewer` and stop.
+1. Read `/tmp/gh-aw/pr-default-reviewer/decision`. If it contains `skip`, emit one `noop` whose
+   message is the single line in `/tmp/gh-aw/pr-default-reviewer/reason`, unchanged, and stop.
 2. Read `.agents/skills/assigning-pr-reviewers/SKILL.md` from the checkout and follow it.
    The pull request author's login is in `/tmp/gh-aw/pr-default-reviewer/author`, and the
    cascade result computed before you started is in `/tmp/gh-aw/pr-default-reviewer/selection.json`.
