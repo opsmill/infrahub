@@ -1,0 +1,32 @@
+[
+  {
+    "id": 5256284524,
+    "node_id": "PRR_kwDOH4TYMs8AAAABOUyJbA",
+    "body": "",
+    "state": "APPROVED",
+    "html_url": "https://github.com/opsmill/infrahub/pull/10689#pullrequestreview-5256284524",
+    "commit_id": "d40beee736f648045309f538af278dc2e34cd3ca",
+    "submitted_at": "2026-09-19T15:48:40Z",
+    "author_association": "MEMBER",
+    "user": {
+      "login": "saltas888",
+      "id": 15846100,
+      "type": "User"
+    }
+  },
+  {
+    "id": 5291402512,
+    "node_id": "PRR_kwDOH4TYMs8AAAABO2RlEA",
+    "body": "Review summary (trimmed)",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/opsmill/infrahub/pull/10709#pullrequestreview-5291402512",
+    "commit_id": "2220c06c81ca3c19a30db6aa3ef8bfc0971bf762",
+    "submitted_at": "2026-09-23T13:10:26Z",
+    "author_association": "CONTRIBUTOR",
+    "user": {
+      "login": "cubic-dev-ai[bot]",
+      "id": 191113872,
+      "type": "Bot"
+    }
+  }
+]
