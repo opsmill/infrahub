@@ -1,0 +1,38 @@
+dev/specs/dependabot-autopilot/spec.md
+  s_ce99ced981c340::t_04eb13d16e0f8c 79
+dev/specs/dependabot-autopilot/research.md
+  s_ce99ced981c340::t_1850e94a70cf55 81
+dev/specs/dependabot-autopilot/plan.md
+  s_ce99ced981c340::t_8ea2bf5df4e21e 87-88,99-100,102,110-112
+  s_ce99ced981c340::t_7a985324ea2049 113
+.github/scripts/dependabot_autopilot/tests/test_opportunities.py
+  s_ce99ced981c340::t_1d3ab20f421c71 103
+.github/scripts/dependabot_autopilot/tests/test_checks.py
+  s_ce99ced981c340::t_68c2b6e326dcb1 19
+.github/scripts/dependabot_autopilot/tests/test_codeowners.py
+  s_ce99ced981c340::t_1d3ab20f421c71 10,128-131
+dev/specs/dependabot-autopilot/data-model.md
+  s_ce99ced981c340::t_d6e9c103a7c262 39
+.github/scripts/dependabot_autopilot/tests/test_adapters.py
+  s_ce99ced981c340::t_1d3ab20f421c71 110,115,118,123
+dev/specs/dependabot-autopilot/critiques/critique-20260923.md
+  s_ce99ced981c340::t_26f2b91776f5ed 110
+dev/specs/dependabot-autopilot/contracts/workflows.md
+  s_ce99ced981c340::t_1f8d38d37b2a0f 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2da48de25c3b802f677d28cd8c014d64da5fb7f0",
+  "prompts": {},
+  "sessions": {
+    "s_ce99ced981c340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ecf758-799f-473b-a565-dc575a274ded",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
