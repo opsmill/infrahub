@@ -159,8 +159,13 @@ def _read_int_file(path: Path) -> int | None:
         return None
 
 
-class _CgroupLimitUnreadableError(Exception):
-    """A cgroup limit file exists but its read failed, as opposed to the file being absent."""
+class _CgroupLimitUnusableError(Exception):
+    """A cgroup limit file exists but yields no usable limit, as opposed to being absent.
+
+    Covers a failed read and content that cannot be parsed alike: both leave the
+    level's limit unknown, and only a genuinely absent file means no limit is
+    enforced there.
+    """
 
     def __init__(self, path: Path) -> None:
         super().__init__(str(path))
@@ -182,7 +187,7 @@ def _read_cgroup_limit_file(path: Path) -> str | None:
     cannot make an unenforced ancestor look effective.
 
     Raises:
-        _CgroupLimitUnreadableError: The file exists but the read itself failed.
+        _CgroupLimitUnusableError: The file exists but the read itself failed.
 
     """
     try:
@@ -190,17 +195,24 @@ def _read_cgroup_limit_file(path: Path) -> str | None:
     except FileNotFoundError:
         return None
     except (OSError, ValueError) as exc:
-        raise _CgroupLimitUnreadableError(path) from exc
+        raise _CgroupLimitUnusableError(path) from exc
 
 
 def _read_cgroup_int_limit(path: Path) -> int | None:
+    """Read one integer cgroup limit, or ``None`` when the file is absent.
+
+    Raises:
+        _CgroupLimitUnusableError: The file is present but holds no integer, so
+            its limit is unknown rather than unenforced.
+
+    """
     content = _read_cgroup_limit_file(path)
     if content is None:
         return None
     try:
         return int(content)
-    except ValueError:
-        return None
+    except ValueError as exc:
+        raise _CgroupLimitUnusableError(path) from exc
 
 
 def _quota_to_cores(quota: int, period: int) -> float | None:
@@ -338,16 +350,24 @@ def _v1_controller_dirs(cgroup_root: Path, proc_cgroup: Path, controller: str) -
     return [mount]
 
 
-def _parse_cpu_max(line: str) -> float | None:
-    """Parse one cgroup v2 ``cpu.max`` line ("<quota> <period>", "max" = unbounded)."""
+def _parse_cpu_max(line: str, path: Path) -> float | None:
+    """Parse one cgroup v2 ``cpu.max`` line ("<quota> <period>", "max" = unbounded).
+
+    Raises:
+        _CgroupLimitUnusableError: The line is neither "max" nor a quota pair, so
+            the level's limit is unknown rather than unenforced.
+
+    """
     parts = line.split()
-    if not parts or parts[0] == "max":
+    if not parts:
+        raise _CgroupLimitUnusableError(path)
+    if parts[0] == "max":
         return None
     try:
         quota = int(parts[0])
         period = int(parts[1]) if len(parts) > 1 else _DEFAULT_CPU_PERIOD_US
-    except ValueError:
-        return None
+    except ValueError as exc:
+        raise _CgroupLimitUnusableError(path) from exc
     return _quota_to_cores(quota=quota, period=period)
 
 
@@ -361,17 +381,23 @@ def _read_cgroup_cpu_quota(cgroup_dirs: list[Path], v1_dirs: list[Path]) -> floa
     of the process's own controller path, most restrictive winning there too.
 
     Raises:
-        _CgroupLimitUnreadableError: A limit file exists but cannot be read, so
-            the level must not be treated as absent and fallen through to a
-            less restrictive one.
+        _CgroupLimitUnusableError: A limit file exists but yields no usable
+            limit, so the level must not be treated as absent and fallen
+            through to a less restrictive one.
 
     """
-    v2_lines = [
-        line for directory in cgroup_dirs if (line := _read_cgroup_limit_file(directory / "cpu.max")) is not None
-    ]
-    if v2_lines:
-        cores = [value for line in v2_lines if (value := _parse_cpu_max(line)) is not None]
-        return min(cores) if cores else None
+    v2_cores: list[float] = []
+    v2_seen = False
+    for directory in cgroup_dirs:
+        path = directory / "cpu.max"
+        line = _read_cgroup_limit_file(path)
+        if line is None:
+            continue
+        v2_seen = True
+        if (level_cores := _parse_cpu_max(line, path)) is not None:
+            v2_cores.append(level_cores)
+    if v2_seen:
+        return min(v2_cores) if v2_cores else None
 
     quotas = []
     for directory in v1_dirs:
@@ -395,9 +421,9 @@ def _read_cgroup_memory_levels(cgroup_dirs: list[Path], v1_dirs: list[Path]) -> 
     anywhere.
 
     Raises:
-        _CgroupLimitUnreadableError: A limit file exists but cannot be read, so
-            the level must not be treated as absent and fallen through to a
-            less restrictive one.
+        _CgroupLimitUnusableError: A limit file exists but yields no usable
+            limit, so the level must not be treated as absent and fallen
+            through to a less restrictive one.
 
     """
     levels: list[tuple[int, Path]] = []
@@ -410,9 +436,10 @@ def _read_cgroup_memory_levels(cgroup_dirs: list[Path], v1_dirs: list[Path]) -> 
         if raw == "max":
             continue
         try:
-            levels.append((int(raw), directory / "memory.current"))
-        except ValueError:
-            continue
+            limit = int(raw)
+        except ValueError as exc:
+            raise _CgroupLimitUnusableError(directory / "memory.max") from exc
+        levels.append((limit, directory / "memory.current"))
     if v2_seen:
         return levels
 
@@ -553,12 +580,12 @@ class ProcessResources:
                 quota_cores=_usable_cores_under_quota(quota_cores),
                 affinity_count=_affinity_processor_count(),
             )
-        except _CgroupLimitUnreadableError as exc:
+        except _CgroupLimitUnusableError as exc:
             # The quota at one level is unknown, so the most-restrictive-level-wins
             # computation cannot be trusted; reporting host capacity here would risk
             # overstating the allocation rather than the safe direction, unknown.
             log.warning(
-                "Cgroup CPU limit file %s exists but could not be read; reporting the CPU quota as unknown (host=%s)",
+                "Cgroup CPU limit file %s exists but yields no usable limit; reporting the CPU quota as unknown (host=%s)",
                 exc.path,
                 identity.host,
             )
@@ -569,9 +596,9 @@ class ProcessResources:
             memory_levels = _read_cgroup_memory_levels(identity.cgroup_dirs, identity.v1_memory_dirs)
             memory_limit = min(limit for limit, _ in memory_levels) if memory_levels else None
             memory_total = memory_limit if memory_limit is not None else _host_memory_total()
-        except _CgroupLimitUnreadableError as exc:
+        except _CgroupLimitUnusableError as exc:
             log.warning(
-                "Cgroup memory limit file %s exists but could not be read; reporting memory as unknown (host=%s)",
+                "Cgroup memory limit file %s exists but yields no usable limit; reporting memory as unknown (host=%s)",
                 exc.path,
                 identity.host,
             )

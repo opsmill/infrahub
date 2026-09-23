@@ -755,6 +755,68 @@ def test_unreadable_memory_max_reports_unknown_instead_of_ancestor_value(
     assert len(warnings) == 1
 
 
+def test_unparseable_leaf_cpu_max_reports_unknown_instead_of_ancestor_value(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Content that yields no limit is as unknown as a file that will not read.
+
+    A level whose ``cpu.max`` holds something unrecognised has a limit that cannot
+    be determined, not a limit that is absent, so falling through to the ancestor
+    would overstate the allocation in exactly the way the unreadable case does.
+    """
+    cgroup_root = tmp_path / "cgroup"
+    cgroup_root.mkdir()
+    (cgroup_root / "a" / "b").mkdir(parents=True)
+    (cgroup_root / "a" / "b" / "cpu.max").write_text("not-a-quota")
+    (cgroup_root / "a" / "cpu.max").write_text("200000 100000")
+    proc_cgroup = tmp_path / "proc_self_cgroup"
+    proc_cgroup.write_text("0::/a/b\n")
+
+    with caplog.at_level(logging.WARNING, logger="infrahub.telemetry.resources"):
+        reading = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).read()
+
+    assert reading.processor_assigned is None
+    assert reading.processor_available is None
+    assert any("reporting the CPU quota as unknown" in record.message for record in caplog.records)
+
+
+def test_unparseable_memory_max_reports_unknown_instead_of_ancestor_value(tmp_path: Path) -> None:
+    cgroup_root = tmp_path / "cgroup"
+    cgroup_root.mkdir()
+    (cgroup_root / "a" / "b").mkdir(parents=True)
+    (cgroup_root / "a" / "b" / "memory.max").write_text("eight gigabytes")
+    (cgroup_root / "a" / "memory.max").write_text("4294967296")
+    (cgroup_root / "a" / "memory.current").write_text("1073741824")
+    proc_cgroup = tmp_path / "proc_self_cgroup"
+    proc_cgroup.write_text("0::/a/b\n")
+
+    reading = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).read()
+
+    assert reading.memory_total is None
+    assert reading.memory_available is None
+
+
+def test_unparseable_v1_quota_reports_unknown_instead_of_ancestor_value(tmp_path: Path) -> None:
+    cgroup_root = tmp_path / "cgroup"
+    cgroup_root.mkdir()
+    _write_cgroup_files(
+        cgroup_root,
+        {
+            "cpu,cpuacct/system.slice/app.service/cpu.cfs_quota_us": "",
+            "cpu,cpuacct/system.slice/app.service/cpu.cfs_period_us": "100000",
+            "cpu,cpuacct/system.slice/cpu.cfs_quota_us": "400000",
+            "cpu,cpuacct/system.slice/cpu.cfs_period_us": "100000",
+        },
+    )
+    proc_cgroup = tmp_path / "proc_self_cgroup"
+    proc_cgroup.write_text("3:cpu,cpuacct:/system.slice/app.service\n")
+
+    reading = ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup).read()
+
+    assert reading.processor_assigned is None
+    assert reading.processor_available is None
+
+
 def test_unreadable_cpu_max_does_not_affect_memory_fields(tmp_path: Path) -> None:
     """CPU and memory are collected independently: a CPU-only failure must not null memory."""
     cgroup_root = tmp_path / "cgroup"
