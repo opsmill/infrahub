@@ -16,17 +16,25 @@ from infrahub.core.node import Node
 from infrahub.core.query.repository import RepositoryBranchAttributesQuery
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.git.constants import REPOSITORY_BRANCH_READ_CHUNK_SIZE
 from infrahub.git.utils import get_repositories_commit_per_branch
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 
 ATTRIBUTES_QUERY_NAME = RepositoryBranchAttributesQuery.name
 REPOSITORY_NODES_QUERY_NAME = "node_get_list"
 
-BRANCH_COUNT = 200
-"""Branch names the read resolves, the default branch included: twice the chunk size of 100."""
+BRANCH_COUNT = REPOSITORY_BRANCH_READ_CHUNK_SIZE * 2 + 1
+"""Branch names the read resolves, the default branch included.
 
-EXPECTED_ATTRIBUTES_QUERY_COUNT = 2
-"""Chunks the read splits BRANCH_COUNT branch names into."""
+Two full chunks and a partial one, so a batching error at the final chunk boundary cannot pass.
+"""
+
+EXPECTED_ATTRIBUTES_QUERY_COUNT = 3
+"""Chunks BRANCH_COUNT branch names split into, at any chunk size: ceil((2C + 1) / C) is 3.
+
+Pinned as a literal rather than recomputed from the chunk size, so a chunking regression fails here
+instead of being tracked by an expectation derived from the implementation's own formula.
+"""
 
 
 @pytest.fixture(autouse=True)
@@ -231,7 +239,7 @@ async def test_get_repositories_commit_per_branch_reads_the_branch_agnostic_node
 async def test_get_repositories_commit_per_branch_reads_the_branches_in_chunks(
     db: InfrahubDatabase, register_core_models_schema: SchemaBranch, repository_01: Node, repository_02: Node
 ) -> None:
-    """The read costs one query for the repository nodes plus one per chunk of branch names."""
+    """The per-branch reads are batched into chunks, the last of them partial, not one per branch."""
     for index in range(BRANCH_COUNT - 1):
         branch = Branch(
             name=f"chunked-branch-{index:03d}",
