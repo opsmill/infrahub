@@ -1,6 +1,7 @@
 from typing import Any
 
 from prefect import flow
+from prefect.utilities.annotations import quote
 
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
@@ -31,7 +32,7 @@ async def transform_python(message: TransformPythonData) -> Any:
         branch_name=message.branch,
         commit=message.commit,
         location=message.transform_location,
-        data=message.data,
+        data=quote(message.data),
         convert_query_response=message.convert_query_response,
     )  # type: ignore[call-overload]
 
@@ -51,5 +52,5 @@ async def transform_render_jinja2_template(message: TransformJinjaTemplateData) 
     )
 
     return await repo.render_jinja2_template.with_options(timeout_seconds=message.timeout)(
-        commit=message.commit, location=message.template_location, data={"data": message.data}
+        commit=message.commit, location=message.template_location, data=quote({"data": message.data})
     )  # type: ignore[call-overload]

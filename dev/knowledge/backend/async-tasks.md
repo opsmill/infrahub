@@ -103,6 +103,35 @@ overlap (e.g. writes touching overlapping vertices whose idempotency guards only
 *sequential* reruns), cap the batch's max concurrent execution to 1 or run the items in a plain
 loop.
 
+### What crosses a flow or task boundary
+
+Prefect processes every value that enters a task or leaves a flow, before the task body starts or
+after the flow body returns. None of that work appears in Infrahub logs.
+
+- A flow's return value is walked recursively to find futures, one Python call per list, dict, set,
+  dataclass, or Pydantic model it contains. The task worker enables
+  `PREFECT_RESULTS_PERSIST_BY_DEFAULT`, so the value is then pickled and written to the Redis result
+  storage block unless the flow sets `persist_result=False`. On a large branch diff the walk alone
+  filled most of the gap between the flow's last log line and its completion, and every run stored a
+  copy of the whole diff that never expired.
+- Task arguments are walked twice before the task starts: once to collect upstream dependencies,
+  once to resolve futures. The default cache policy also hashes every argument to compute a cache
+  key, which is why every Infrahub task sets `cache_policy=NONE`. Wrapping a multi-megabyte GraphQL
+  response in `quote()` removed a per-call cost that grew with the response.
+- Parameters of a subflow called in-process are walked, re-validated against their annotations,
+  then JSON-encoded and stored with the flow run in the Prefect database. `quote()` does not prevent
+  this, and an object the encoder cannot handle becomes a placeholder string only after the encoder
+  has tried. A schema branch passed this way is encoded in full on every call.
+- `quote()` stops the walks. It does not stop result persistence or parameter encoding.
+
+Three symptoms point at a payload problem. A gap in the worker log between a flow's last line and
+Prefect's `Finished in state Completed()` with no database activity is the return walk and its
+persistence. A task that runs noticeably longer than its body, measured from the `Running` state, is
+paying for the argument walk. Result keys in the cache Redis database are 32-character hex strings
+whose value starts with `{"metadata":{"storage_key":`, and a large one names the flow that should
+stop persisting. The rules for each boundary are in
+[Prefect Flow and Task Payloads](../../guidelines/backend/prefect-payloads.md).
+
 ## Naming Conventions
 
 ### Workflow and Task Names
@@ -434,6 +463,7 @@ the deadlock cleanup has no equivalent.
 
 - [ADR-0003: Asynchronous Tasks](../../adr/0003-asynchronous-tasks.md) - Why we use Prefect
 - [Creating Workflows Guide](../../guides/backend/creating-async-tasks.md) - How to create a new workflow
+- [Prefect Flow and Task Payloads](../../guidelines/backend/prefect-payloads.md) - What flows may return and tasks may receive
 - [Events System](events.md) - Event-driven workflow triggers
 - [Webhooks](webhooks.md) - Primary consumer of events and async tasks
 - [Backend Architecture](architecture.md) - Overall backend structure

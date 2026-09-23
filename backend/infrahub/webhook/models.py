@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, assert_never
 from uuid import UUID, uuid4
 
 from prefect.automations import AutomationCore
+from prefect.utilities.annotations import quote
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from typing_extensions import Self
 
@@ -413,7 +414,7 @@ class TransformWebhook(Webhook):
             commit=commit,
             location=f"{self.transform_file}::{self.transform_class}",
             convert_query_response=self.convert_query_response,
-            data={"data": {"data": data, **context.model_dump()}},
+            data=quote({"data": {"data": data, **context.model_dump()}}),
             client=client,
         )  # type: ignore[call-overload]
 
