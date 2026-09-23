@@ -4,7 +4,7 @@ Edit an InfraDevice from its detail form: set/update attributes, relationships
 (status, role, ASN) and a many-relationship (tags), then assert both the view
 and the re-opened form; and a second flow that clears relationship values.
 Operates on the demo devices atl1-core1 / atl1-leaf1 on a throwaway branch,
-hence the data_sites dependency (the tags and ASNs come via its transitive
+hence the data_site_atl1 dependency (the tags and ASNs come via its transitive
 slices).
 """
 
@@ -32,7 +32,7 @@ class TestObjectUpdate:
     async def branch(
         self,
         branch_api: BranchAPI,
-        data_sites: SitesHandle,
+        data_site_atl1: SitesHandle,
     ) -> AsyncGenerator[str, None]:
         name = generate_random_branch_name("object-update")
         await branch_api.create(name)

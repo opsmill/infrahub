@@ -2,7 +2,7 @@
 
 Schema shortcut modal opened from an object's attribute / relationship-one /
 relationship-many labels. Uses the demo device atl1-edge1 (its detail page),
-so it needs data_sites.
+so it needs data_site_atl1.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class TestSchemaShortcut:
-    async def test_open_schema_modal_from_attribute_label(self, page: Page, data_sites: SitesHandle) -> None:
+    async def test_open_schema_modal_from_attribute_label(self, page: Page, data_site_atl1: SitesHandle) -> None:
         await page.goto("/objects/InfraDevice")
         await page.get_by_role("link", name="atl1-edge1").click()
 
@@ -36,7 +36,7 @@ class TestSchemaShortcut:
         await page.get_by_role("button", name="Close schema viewer").click()
         await expect(page.get_by_role("dialog")).not_to_be_visible()
 
-    async def test_open_schema_modal_from_relationship_one_label(self, page: Page, data_sites: SitesHandle) -> None:
+    async def test_open_schema_modal_from_relationship_one_label(self, page: Page, data_site_atl1: SitesHandle) -> None:
         await page.goto("/objects/InfraDevice")
         await page.get_by_role("link", name="atl1-edge1").click()
 
@@ -49,7 +49,9 @@ class TestSchemaShortcut:
         await page.keyboard.press("Escape")
         await expect(page.get_by_role("dialog")).not_to_be_visible()
 
-    async def test_open_schema_modal_from_relationship_many_label(self, page: Page, data_sites: SitesHandle) -> None:
+    async def test_open_schema_modal_from_relationship_many_label(
+        self, page: Page, data_site_atl1: SitesHandle
+    ) -> None:
         await page.goto("/objects/InfraDevice")
         await page.get_by_role("link", name="atl1-edge1").click()
 
