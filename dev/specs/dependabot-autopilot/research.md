@@ -78,7 +78,7 @@ Consequences for the analysis workflow: the custom job's steps receive the tool 
 2. Check runs from non-Actions apps (`GET /commits/{sha}/check-runs`, `app.slug != github-actions`), e.g. Chromatic.
 3. Legacy commit statuses (`GET /commits/{sha}/status`).
 
-`success`, `skipped` and `neutral` pass; `failure`, `cancelled`, `timed_out`, `action_required`, `stale` fail; anything not `completed` is pending.
+`success`, `skipped` and `neutral` pass; `failure`, `cancelled`, `timed_out`, `action_required`, `stale` fail; anything not `completed` is pending. CI is green only when, in addition, a run of the `CI` workflow (`.github/workflows/ci.yml`) on the head SHA completed with `success`; without one CI is pending, so a head commit on which CI never ran is not treated as green.
 
 **Rationale**: Check runs and commit statuses are separate APIs ([check runs](https://docs.github.com/en/rest/checks/runs), [statuses](https://docs.github.com/en/rest/commits/statuses)). Listing workflow runs lets the evaluator exclude its own in-progress run by workflow name, which the check-runs API does not expose directly.
 
@@ -102,7 +102,7 @@ Consequences for the analysis workflow: the custom job's steps receive the tool 
 
 ## R8. Jira deduplication key
 
-**Decision**: Each opportunity carries a normalized `key` (lowercase package name + `:` + the upstream API, option or feature identifier, e.g. `fastapi:lifespan-state`). The act workflow derives the label `dbap-<first 12 hex of sha256(key)>` and searches `labels = "dbap-…" AND statusCategory != Done` through `/rest/api/3/search/jql` (the old `/rest/api/3/search` returns 410). Found → comment; not found → `POST /rest/api/3/issue` with labels `tech-debt`, `dependabot-autopilot`, `dbap-…` and the rubric priority.
+**Decision**: Each opportunity carries a normalized `key` (lowercase package name + `:` + the upstream API, option or feature identifier, e.g. `fastapi:lifespan-state`). The act workflow derives the label `dbap-<first 12 hex of sha256(key)>` and searches `labels = "dbap-…" AND statusCategory != Done` through `/rest/api/3/search/jql` (the old `/rest/api/3/search` returns 410). Found → comment, unless one of the item's comments (`GET /rest/api/3/issue/{key}/comment`) already links the PR; not found → `POST /rest/api/3/issue` with labels `tech-debt`, `dependabot-autopilot`, `dbap-…` and the rubric priority.
 
 **Rationale**: Exact label match is deterministic; free-text JQL would miss or over-match. The prompt constrains `key` to an identifier taken from the changelog, which keeps it stable across bumps of the same range. Stability is measured by SC-004.
 

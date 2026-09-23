@@ -40,14 +40,14 @@
 | `evaluate --pr N [--report PATH --report-sha SHA]` | PR number, optional verdict artifact and the head commit of the analysis run that produced it (a report claiming another commit is malformed) | Computes the Decision, updates the verdict comment, labels, review and reviewer requests; approves and merges when every FR-004 condition holds and `DEPENDABOT_AUTOPILOT_MERGE=on` |
 | `sweep --run-url URL` | link to the current run | Runs `evaluate` for every open Dependabot PR on `stable`, locating the latest verdict artifact for each head; a PR whose evaluation or escalation raises is logged and the sweep continues |
 | `escalate --pr N --run-url URL` | PR number, link to the failed run | Dismisses every App approval, the head's included (a failed dismissal is logged and does not stop the escalation), applies `autopilot/review-required` and states the failure with the link in the verdict comment; used by the `if: failure()` step and by `sweep` for a PR whose evaluation raised |
-| `file-opportunities --pr N --report PATH --report-sha SHA` | PR number, verdict artifact and the head commit of the analysis run that produced it | Creates or comments Jira items; skipped when the effective verdict is `needs-code-changes`, when the report is missing or malformed or names another commit or PR, and when the Jira configuration is missing |
+| `file-opportunities --pr N --report PATH --report-sha SHA` | PR number, verdict artifact and the head commit of the analysis run that produced it | Creates or comments Jira items, adding no comment to an item one of whose comments already links the PR; skipped when the effective verdict is `needs-code-changes`, when the report is missing or malformed or names another commit or PR, and when the Jira configuration is missing |
 | `digest` | none | Posts the weekly #release-radar message |
 
 Exit code 0 for every handled outcome, including "pending, nothing to do"; non-zero only for unexpected errors, which fail the run visibly.
 
 **Verdict comment**: one comment per PR, identified by the hidden marker `<!-- dependabot-autopilot -->`, edited in place. It states the analysed head SHA, the effective verdict, every downgrade reason, the CI state, and the agent's `report_markdown`.
 
-**Idempotency**: running `evaluate` twice on the same head produces no additional comment, label change, review, Jira item or merge attempt.
+**Idempotency**: running `evaluate` twice on the same head produces no additional comment, label change, review, Jira item or merge attempt. Running `file-opportunities` twice for the same PR adds no second Jira item and no second comment; the `file-opportunities` job runs in the concurrency group `dependabot-autopilot-file-<pr_number>` with `cancel-in-progress: false`.
 
 ## `dependabot-autopilot-digest` (deterministic, trusted context)
 

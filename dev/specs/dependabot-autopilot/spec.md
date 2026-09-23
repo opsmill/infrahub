@@ -75,8 +75,10 @@ Once a week, a single message in #release-radar lists the High and Medium tech-d
 - **New package in the lockfile**: a grouped bump that pulls in a package absent from the lockfile before the PR is capped at `review required`, whatever the analysis says (FR-006).
 - **PR with no code owner**: `github-actions` bumps touch `.github/`, which has no code owner; the notification goes to the fallback recipient (FR-009).
 - **Blocked PR left open**: a PR blocked by `needs code changes` can stay open for weeks. It is tracked only on the code host, not in Jira or the digest.
-- **Same opportunity on repeated bumps**: Dependabot re-proposes the same package range several times (for example the cache action from 5.0.5 to 6.1.0 appeared on three PRs); the dedup rule adds a comment instead of a new item (FR-011).
-- **Analysis never runs**: the analysis workflow is disabled, an event is dropped, or runners are unavailable. Sixty minutes after a head commit with no analysis run for it, the PR is escalated as `review required` with the reason "analysis did not run" (FR-017).
+- **Same opportunity on repeated bumps**: Dependabot re-proposes the same package range several times (for example the cache action from 5.0.5 to 6.1.0 appeared on three PRs); the dedup rule adds a comment instead of a new item, and a repeated evaluation of the same PR adds no second comment (FR-011).
+- **Analysis never runs or never finishes**: the analysis workflow is disabled, an event is dropped, runners are unavailable, or a run stays queued or hangs. Sixty minutes after the head commit's commit date, a PR with no analysis run for that commit is escalated as `review required` with the reason "analysis did not run", and a PR whose analysis run has not completed with the reason "analysis did not complete" (FR-017).
+- **Report from a failed analysis run**: an analysis run can upload a report and still end without success. The verdict is capped at `review required` ("analysis run did not succeed"), whatever the report says (FR-021).
+- **Commits pushed by someone else**: a maintainer or another bot pushes a commit onto the Dependabot branch. The analysis covered the bump, not that commit, so the verdict is capped at `review required` (FR-021).
 - **Freshly published release**: a compromised upstream release can carry a benign changelog and pass CI. Version updates are proposed only once the release has aged (FR-018); security updates are not delayed.
 - **A human intervenes**: a human who approves, merges, closes, or requests changes on the PR takes precedence; the automation does not undo a human action.
 
@@ -89,8 +91,8 @@ Once a week, a single message in #release-radar lists the High and Medium tech-d
 - **FR-001**: System MUST run the dependency-bump analysis on every pull request authored by Dependabot when it is opened and whenever its head commit changes, with no manual trigger.
 - **FR-002**: System MUST post the analysis report on the PR, including the evidence behind every `safe` or `not used` claim (the search that proves the absence of usage, or the role mismatch).
 - **FR-003**: System MUST bind each verdict to the head commit it analysed. When the head commit changes, System MUST withdraw any approval it gave and analyse the new head commit.
-- **FR-004**: System MUST approve and merge a PR only when all of the following hold: the verdict is `safe to merge`, the analysed commit is still the PR's head commit at merge time, and every check on that commit has finished successfully. A failed check MUST escalate the PR as `review required`.
-- **FR-005**: On `needs code changes`, System MUST submit a blocking review that lists each affected usage with its file and line, and MUST notify the PR's owner. No tech-debt item is created.
+- **FR-004**: System MUST approve and merge a PR only when all of the following hold: the verdict is `safe to merge`, the analysed commit is still the PR's head commit at merge time, every check on that commit has finished successfully, and a run of the repository's CI workflow on that commit has succeeded. A failed check MUST escalate the PR as `review required`.
+- **FR-005**: On `needs code changes`, System MUST submit a blocking review that lists each affected usage with its file and line, and MUST notify the PR's owner. When the list would exceed the code host's review size limit, the review ends with the number of usages left out. No tech-debt item is created.
 - **FR-006**: System MUST set the verdict to `review required` when the analysis fails, times out, or cannot retrieve a changelog, and when the lockfile diff adds a package that was not present before the PR.
 - **FR-007**: For a PR that bumps several packages, System MUST apply the strictest per-package verdict to the whole PR (`needs code changes` over `review required` over `safe to merge`).
 - **FR-008**: On `review required`, System MUST label the PR and notify its owner, and MUST NOT approve or merge it.
@@ -99,7 +101,7 @@ Once a week, a single message in #release-radar lists the High and Medium tech-d
 
 #### Tech-debt items (P2)
 
-- **FR-011**: System MUST create at most one open tech-debt item per (package, opportunity). Before creating an item, System MUST look for an open item with the same package and opportunity and, if one exists, add a comment linking the new PR instead.
+- **FR-011**: System MUST create at most one open tech-debt item per (package, opportunity). Before creating an item, System MUST look for an open item with the same package and opportunity and, if one exists, add a comment linking the new PR instead. System MUST NOT add that comment when one of the item's comments already links the PR.
 - **FR-012**: System MUST set each new item's initial priority from this rubric: security fix or deprecation with a removal deadline → High; performance or simplification with cited code → Medium; anything else → Low.
 - **FR-013**: Each tech-debt item MUST link the PR that surfaced it and cite the code locations the opportunity applies to.
 
@@ -111,10 +113,11 @@ Once a week, a single message in #release-radar lists the High and Medium tech-d
 
 - **FR-015**: Users MUST be able to see, for every automated action (approval, merge, blocking review, escalation, item creation), which commit and verdict it was based on, from the PR itself.
 - **FR-016**: Users MUST be able to turn the automatic merge off without disabling the analysis, so that verdicts keep being posted while merges wait for a human.
-- **FR-017**: When no analysis has run for a Dependabot PR's head commit 60 minutes after that commit was pushed, System MUST escalate the PR as `review required` with the reason "analysis did not run".
+- **FR-017**: When, 60 minutes after the commit date of a Dependabot PR's head commit, no analysis has run for that commit, System MUST escalate the PR as `review required` with the reason "analysis did not run"; when an analysis run exists but has not completed by then, System MUST escalate it with the reason "analysis did not complete".
 - **FR-018**: Dependabot version updates MUST be proposed only for releases published at least 3 days earlier; security updates MUST NOT be delayed.
 - **FR-019**: System MUST treat the analysis output as untrusted: it MUST NOT execute anything from it, and MUST neutralize mentions and hidden markup in the report text before posting it on the PR.
 - **FR-020**: An unavailable tech-debt tracker or chat service MUST NOT block, delay or change a PR's verdict or merge; filing is retried on the next evaluation of the same head commit.
+- **FR-021**: System MUST cap the verdict at `review required` when the analysis run for the head commit completed without success, even if it produced a report, and when the PR contains a commit not authored by Dependabot.
 
 ### Key Entities
 

@@ -55,7 +55,7 @@ description: "Task list for the dependency-bump autopilot"
 
 ## Phase 3: User Story 1 - Verdict and automatic merge (Priority: P1) 🎯 MVP
 
-**Goal**: Every Dependabot PR gets an analysed verdict on its head commit; `safe` plus green CI merges, `needs code changes` blocks, `review required` escalates (FR-001..FR-010, FR-015..FR-019).
+**Goal**: Every Dependabot PR gets an analysed verdict on its head commit; `safe` plus green CI merges, `needs code changes` blocks, `review required` escalates (FR-001..FR-010, FR-015..FR-019, FR-021).
 
 **Independent Test**: quickstart.md Q2–Q7 (shadow mode, stale approval, pending then green, red CI, new package, human hold).
 
