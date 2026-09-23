@@ -45,7 +45,7 @@
 
 Exit code 0 for every handled outcome, including "pending, nothing to do"; non-zero only for unexpected errors, which fail the run visibly.
 
-**Verdict comment**: one comment per PR, identified by the hidden marker `<!-- dependabot-autopilot -->`, edited in place. It states the analysed head SHA, the effective verdict, every downgrade reason, the CI state, and the agent's `report_markdown`.
+**Verdict comment**: one comment per PR, identified by the hidden marker `<!-- dependabot-autopilot -->`, edited in place. It states the analysed head SHA, the effective verdict, every downgrade reason, the CI state, and the agent's `report_markdown`. For an approve-and-merge decision the comment is written before the approval and the merge, so a failure to write it stops the merge, and is then edited with the merge outcome.
 
 **Opportunity filing**: the `file-opportunities` job runs after the act job on every completion of the analysis or of `CI` for a Dependabot PR and on `workflow_dispatch`, never on the scheduled sweep. On an analysis completion it reads that run's verdict artifact; otherwise it reads the artifact of the latest successful `pull_request` analysis run for the PR's current head SHA, and files nothing when there is none. A failed filing is therefore retried on the next such event.
 

@@ -55,7 +55,7 @@ _ACTION_SUMMARIES = {
     Action.REVIEW_REQUIRED: "escalated to the owners",
     Action.WAIT_FOR_CI: "waiting for CI on the head commit",
     Action.LABEL_ONLY: "safe, not merged automatically",
-    Action.APPROVE_AND_MERGE: "approved and merged",
+    Action.APPROVE_AND_MERGE: "approve and merge",
 }
 
 
@@ -274,6 +274,11 @@ def _apply(*, target: _Target, decision: Decision, report: VerdictReport | None,
     if decision.action is Action.NEEDS_CODE_CHANGES and report is not None:
         _submit_once(target=target, event=ReviewEvent.REQUEST_CHANGES, body=_blocking_review_body(report=report))
     if decision.action is Action.APPROVE_AND_MERGE and report is not None:
+        # The verdict and report are on the pull request before it can be merged; a failed write stops the merge.
+        intent = _comment_body(pr=pr, decision=decision, report=report, requested_for=requested_for, notes=notes)
+        if intent != current:
+            github.upsert_marker_comment(pr_number=pr.number, marker=MARKER, body=intent, author_login=config.app_login)
+            current = intent
         _submit_once(
             target=target,
             event=ReviewEvent.APPROVE,
@@ -283,6 +288,8 @@ def _apply(*, target: _Target, decision: Decision, report: VerdictReport | None,
             github.merge(pr_number=pr.number, head_sha=report.head_sha)
         except GitHubError as exc:
             notes.append(f"**Merge attempt failed**, retried on the next run: {_one_line(text=str(exc))}")
+        else:
+            notes.append(f"**Merged** at `{report.head_sha}`.")
     body = _comment_body(pr=pr, decision=decision, report=report, requested_for=requested_for, notes=notes)
     if body != current:
         github.upsert_marker_comment(pr_number=pr.number, marker=MARKER, body=body, author_login=config.app_login)

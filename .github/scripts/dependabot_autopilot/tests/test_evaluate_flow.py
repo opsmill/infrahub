@@ -350,6 +350,43 @@ def test_safe_verdict_with_green_ci_approves_then_merges_the_analysed_sha(tmp_pa
     assert merged == Merged(pr_number=PR_NUMBER, head_sha=HEAD_SHA)
 
 
+def test_verdict_comment_stating_the_merge_intent_is_persisted_before_the_approval(tmp_path: Path) -> None:
+    github = repository(tmp_path=tmp_path, document=report_document())
+
+    run_evaluate(github=github, merge_enabled=True)
+
+    kinds = [
+        type(write)
+        for write in github.writes
+        if isinstance(write, CommentCreated | CommentEdited | ReviewSubmitted | Merged)
+    ]
+    assert kinds == [CommentCreated, ReviewSubmitted, Merged, CommentEdited]
+    [intent] = writes_of(github=github, kind=CommentCreated)
+    assert "| Action | approve and merge |" in intent.body
+    assert "**Merged**" not in intent.body
+    assert f"**Merged** at `{HEAD_SHA}`." in github.comments[PR_NUMBER][0].body
+
+
+@dataclass
+class CommentRefusedGitHub(FakeGitHub):
+    @override
+    def upsert_marker_comment(self, *, pr_number: int, marker: str, body: str, author_login: str) -> None:
+        raise GitHubError("comment refused")
+
+
+def test_verdict_comment_failure_prevents_the_approval_and_merge(tmp_path: Path) -> None:
+    template = repository(tmp_path=tmp_path, document=report_document())
+    github = CommentRefusedGitHub(
+        **{field.name: getattr(template, field.name) for field in dataclasses.fields(template)}
+    )
+
+    with pytest.raises(GitHubError):
+        run_evaluate(github=github, merge_enabled=True)
+
+    assert github.merge_attempts == []
+    assert approvals(github=github) == []
+
+
 def test_refused_merge_is_reported_on_the_comment(tmp_path: Path) -> None:
     github = repository(tmp_path=tmp_path, document=report_document())
     github.fail_merge = True
