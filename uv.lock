@@ -7,6 +7,9 @@ resolution-markers = [
     "python_full_version < '3.13'",
 ]
 
+[manifest]
+overrides = [{ name = "prefect", specifier = "==3.8.6" }]
+
 [[package]]
 name = "aio-pika"
 version = "9.4.3"
@@ -1614,7 +1617,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-aio-pika", specifier = "==0.65b0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.65b0" },
     { name = "prefect", specifier = "==3.8.6" },
-    { name = "prefect-redis", specifier = "==0.2.15" },
+    { name = "prefect-redis", git = "https://github.com/PrefectHQ/prefect.git?subdirectory=src%2Fintegrations%2Fprefect-redis&branch=main" },
     { name = "prometheus-client", specifier = ">=0.25,<0.26" },
     { name = "puremagic", specifier = ">=1.30,<2" },
     { name = "pyarrow", marker = "extra == 'object-transfer'", specifier = ">=14" },
@@ -1624,7 +1627,7 @@ requires-dist = [
     { name = "pytest", specifier = ">=9.0,<9.1" },
     { name = "python-multipart", specifier = "==0.0.31" },
     { name = "pyyaml", specifier = ">=6,<7" },
-    { name = "redis", extras = ["hiredis"], specifier = "==6.0.0" },
+    { name = "redis", extras = ["hiredis"], specifier = "==8.1.0" },
     { name = "rich", specifier = ">=13,<14" },
     { name = "starlette-exporter", specifier = ">=0.23,<0.24" },
     { name = "structlog", specifier = "==24.1.0" },
@@ -2992,15 +2995,11 @@ wheels = [
 
 [[package]]
 name = "prefect-redis"
-version = "0.2.15"
-source = { registry = "https://pypi.org/simple" }
+version = "0.2.16.dev36+g4647d9324"
+source = { git = "https://github.com/PrefectHQ/prefect.git?subdirectory=src%2Fintegrations%2Fprefect-redis&branch=main#4647d9324933bc83544c3cbd0ebb1e97b4a3f6b3" }
 dependencies = [
     { name = "prefect" },
     { name = "redis" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/93/f2/0b1e921a003c61056bfe152be27b4dd0aeca8d2efab1dcaf03182f1ad165/prefect_redis-0.2.15.tar.gz", hash = "sha256:edf004a695d0539a6dea7dca38093cfbe103afa4a716680b415508833114e610", size = 65031, upload-time = "2026-09-08T18:32:54.588Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c6/23/a412f4274c490b1cce42e95a8184e9052aebdf6315a549c50bb050ca7201/prefect_redis-0.2.15-py3-none-any.whl", hash = "sha256:60564ae097f6e34a84a9afc2065e39b301f0dc57dee0d1eaf46b3c481a2f9174", size = 39932, upload-time = "2026-09-08T18:32:53.306Z" },
 ]
 
 [[package]]
@@ -3763,11 +3762,11 @@ wheels = [
 
 [[package]]
 name = "redis"
-version = "6.0.0"
+version = "8.1.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/79/12/dffaaa4374b8d5f3b7ff5c40025c9db387e06264302d5a9da6043cd84e1f/redis-6.0.0.tar.gz", hash = "sha256:5446780d2425b787ed89c91ddbfa1be6d32370a636c8fdb687f11b1c26c1fa88", size = 4620969, upload-time = "2025-04-30T19:09:30.798Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a8/99/604f0b666d4c616d891cf77ebb9db6bb21601344c051aebf1b72b9ff915f/redis-8.1.0.tar.gz", hash = "sha256:6e1a19beef9225c83efd689c7e6b7da2d5215b1f42cd13b7fc3714d0a09c7b25", size = 5254356, upload-time = "2026-07-30T08:51:00.269Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/08/c8/68081c9d3531f7b2a4d663326b96a9dcbc2aef47df3c6b5c38dea90dff02/redis-6.0.0-py3-none-any.whl", hash = "sha256:a2e040aee2cdd947be1fa3a32e35a956cd839cc4c1dbbe4b2cdee5b9623fd27c", size = 268950, upload-time = "2025-04-30T19:09:28.432Z" },
+    { url = "https://files.pythonhosted.org/packages/66/9d/c5731f6e3608663d4d3656fd8d3aecee8b509c3082818f5a13eae925baea/redis-8.1.0-py3-none-any.whl", hash = "sha256:a4fe1aac3d3b3cc791d4b3d5931c5a956045dc951ee74d1c913ee3ac4d2ee9fb", size = 560618, upload-time = "2026-07-30T08:50:58.497Z" },
 ]
 
 [package.optional-dependencies]

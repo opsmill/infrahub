@@ -5,11 +5,13 @@ from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from infrahub.config import (
     SETTINGS,
     ApiSettings,
+    CacheDriver,
+    CacheSettings,
     DatabaseSettings,
     GitSettings,
     MainSettings,
@@ -376,3 +378,88 @@ def test_fixture_loaded_providers_have_expected_groups_claim(helper: TestHelper)
     assert config.security.get_oauth2_provider("provider2").groups_claim == "groups"
     assert config.security.get_oidc_provider("provider1").groups_claim == "roles"
     assert config.security.get_oidc_provider("provider2").groups_claim == "groups"
+
+
+def test_cache_url_supersedes_scalar_connection_fields() -> None:
+    """A URL alongside scalar settings is accepted; the URL wins and the override is reported.
+
+    Rejecting the combination is not an option: the shipped Compose files set every scalar cache
+    variable unconditionally, so an exclusivity error would make INFRAHUB_CACHE_URL unusable there.
+    """
+    with patch("infrahub.config.log") as mock_log:
+        settings = CacheSettings(url=SecretStr("redis://cache:6379/0"), address="other")
+
+    assert settings.url is not None
+    assert settings.url.get_secret_value() == "redis://cache:6379/0"
+    mock_log.warning.assert_called_once()
+    assert mock_log.warning.call_args.kwargs["superseded_settings"] == ["INFRAHUB_CACHE_ADDRESS"]
+
+
+def test_cache_url_loads_under_the_compose_environment() -> None:
+    """The shipped docker-compose.yml sets every scalar cache variable, most at their default.
+
+    A default-valued scalar carries no operator intent, so it must neither fail the load nor be
+    reported as superseded. Only INFRAHUB_CACHE_ADDRESS differs from its default here.
+    """
+    compose_env = {
+        "INFRAHUB_CACHE_URL": "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster",
+        "INFRAHUB_CACHE_ADDRESS": "cache",
+        "INFRAHUB_CACHE_DATABASE": "0",
+        "INFRAHUB_CACHE_DRIVER": "redis",
+        "INFRAHUB_CACHE_PASSWORD": "",
+        "INFRAHUB_CACHE_USERNAME": "",
+        "INFRAHUB_CACHE_TLS_ENABLED": "false",
+        "INFRAHUB_CACHE_TLS_INSECURE": "false",
+    }
+    with patch.dict(os.environ, compose_env), patch("infrahub.config.log") as mock_log:
+        settings = CacheSettings()
+
+    assert settings.url is not None
+    assert settings.url.get_secret_value() == compose_env["INFRAHUB_CACHE_URL"]
+    assert mock_log.warning.call_args.kwargs["superseded_settings"] == ["INFRAHUB_CACHE_ADDRESS"]
+
+
+def test_cache_url_does_not_report_defaulted_scalars() -> None:
+    """Scalars explicitly set to their own default value are not reported as superseded."""
+    with (
+        patch.dict(os.environ, {"INFRAHUB_CACHE_ADDRESS": "localhost", "INFRAHUB_CACHE_PASSWORD": ""}),
+        patch("infrahub.config.log") as mock_log,
+    ):
+        settings = CacheSettings(url=SecretStr("redis://cache:6379/0"))
+
+    assert settings.url is not None
+    mock_log.warning.assert_not_called()
+
+
+def test_cache_url_coexists_with_redis_driver() -> None:
+    settings = CacheSettings(url=SecretStr("redis://cache:6379/0"), driver=CacheDriver.Redis)
+    assert settings.driver is CacheDriver.Redis
+    assert settings.url is not None
+
+
+def test_cache_url_ignored_for_non_redis_driver() -> None:
+    # The URL is only consulted by the Redis driver, so a non-Redis driver neither enforces
+    # exclusivity with the scalar fields nor parses the URL as a Redis URL: this combines a scalar
+    # field with a URL whose scheme is not a valid Redis scheme, and neither should raise.
+    settings = CacheSettings(url=SecretStr("nats://nats:4222"), address="nats", driver=CacheDriver.NATS)
+    assert settings.driver is CacheDriver.NATS
+    assert settings.url is not None
+
+
+def test_cache_url_rejects_invalid_url() -> None:
+    with pytest.raises(ValidationError, match="requires a service name"):
+        CacheSettings(url=SecretStr("redis+sentinel://sentinel-a:26379"))
+
+
+def test_cache_url_validation_error_redacts_secret() -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        CacheSettings(url=SecretStr("redis+sentinel://user:topsecret@sentinel-a:26379"))
+    assert "topsecret" not in str(exc_info.value)
+
+
+def test_cache_url_environment_variable() -> None:
+    url = "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster"
+    with patch.dict(os.environ, {"INFRAHUB_CACHE_URL": url}):
+        settings = CacheSettings()
+    assert settings.url is not None
+    assert settings.url.get_secret_value() == url
