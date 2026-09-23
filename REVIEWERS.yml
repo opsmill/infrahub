@@ -1,10 +1,10 @@
 # Reviewer map for opsmill/infrahub: who reviews which part of the code.
-# Level 1 of the reviewer cascade in .agents/skills/assigning-pr-reviewers.
+# Reviewer cascade map for .agents/skills/assigning-pr-reviewers.
 #
 # One reviewer per pull request, from the subject with the most changed lines: its author
 # rules first, then the first listed reviewer who is not the author, not away and under the
-# load cap. Second names are backups: the next strongest person on that code, by recent
-# commits and reviews. Files in no subject go to their top recent contributors and reviewers.
+# load cap. Second names are backups. Files in no subject go to their top recent contributors
+# and reviewers.
 # A file matching several subjects belongs to the last one in this file, as in CODEOWNERS.
 # Paths are globs from the repo root; `team:<name>` means any member of that team.
 #

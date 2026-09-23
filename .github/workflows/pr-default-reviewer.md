@@ -51,9 +51,8 @@ steps:
         echo "PR #$PR_NUMBER by \`$AUTHOR\`: $REQUESTED individual reviewer(s) requested, $REVIEWED individual review(s)."
         echo "Decision: \`$DECISION\`"
       } >> "$GITHUB_STEP_SUMMARY"
-  # Levels 1 and 2 of the cascade, computed in Python so the pick does not depend on the model.
-  # REVIEWERS.yml and the script come from the base branch, so a pull request cannot reroute
-  # its own review; the checkout copies are used until both exist on the base branch.
+  # Levels 1 and 2. Map and script come from the base branch so a PR cannot reroute its own
+  # review; checkout copies until both exist there.
   - name: Reviewer cascade - levels 1 and 2
     env:
       GH_TOKEN: ${{ github.token }}
