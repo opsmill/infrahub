@@ -208,6 +208,13 @@ the bulk merge (`core/diff/query/bulk_merge.py`) touches only `branch_support = 
 attribute never appears in a branch diff or a proposed change, and can never produce a merge
 conflict. That is why nobody has ever had to resolve a conflict on `sync_status`.
 
+`sync_status` still never diffs or conflicts, but it is no longer invisible on a proposed change:
+the repository validator reads it on the source branch and fails the pipeline when it is
+`error-import`. Because LOCAL values fall back to the destination branch when the source branch
+never wrote one, a branch that never ran its own import reports the destination's status: a
+repository left in `error-import` on the default branch fails that check on every proposed change
+into it.
+
 AGNOSTIC buys conflict-freedom but **not** invisibility: agnostic nodes do reach the diff, forced
 to `DiffAction.UPDATED` because a globally-stored node has no created/deleted distinction on a branch
 (`core/diff/query_parser.py`). New per-branch operational state belongs on the repository node as a
