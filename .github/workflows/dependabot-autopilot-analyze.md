@@ -67,8 +67,14 @@ safe-outputs:
               echo "::error::expected exactly one emit_verdict call, got $count"
               exit 1
             fi
-            jq -r '.items[] | select(.type == "emit_verdict") | .verdict' "$GH_AW_AGENT_OUTPUT" \
-              > "$RUNNER_TEMP/dependabot-autopilot-verdict/verdict.json"
+            verdict_file="$RUNNER_TEMP/dependabot-autopilot-verdict/verdict.json"
+            jq -r '.items[] | select(.type == "emit_verdict") | .verdict' "$GH_AW_AGENT_OUTPUT" > "$verdict_file"
+            required='["schema_version", "pr_number", "head_sha", "verdict", "packages", "report_markdown"]'
+            if ! jq -e -s --argjson required "$required" \
+              'length == 1 and (.[0] | type == "object" and ($required - keys == []))' "$verdict_file" > /dev/null; then
+              echo "::error::the emitted verdict is not a single JSON object with the required top-level keys"
+              exit 1
+            fi
         - name: Upload the verdict
           uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
           with:
