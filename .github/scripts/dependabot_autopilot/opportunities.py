@@ -25,7 +25,8 @@ if TYPE_CHECKING:
     from dependabot_autopilot.ports import JiraPort
 
 DEDUP_PREFIX = "dbap-"
-ISSUE_LABELS = ("tech-debt", "dependabot-autopilot")
+AUTOPILOT_LABEL = "dependabot-autopilot"
+ISSUE_LABELS = ("tech-debt", AUTOPILOT_LABEL)
 MAX_SUMMARY_CHARS = 255
 MAX_DESCRIPTION_TEXT_CHARS = 4_000
 MAX_PACKAGE_TEXT_CHARS = 200

@@ -28,7 +28,7 @@ from dependabot_autopilot.ports import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
     from pathlib import Path
 
 
@@ -234,6 +234,8 @@ class FakeJira:
     base_url: str = "https://jira.example.com"
     issues: dict[str, tuple[JiraIssue, tuple[str, ...]]] = field(default_factory=dict)
     """Open issues and their labels, keyed by issue key."""
+    updated_days_ago: dict[str, int] = field(default_factory=dict)
+    """Days since each issue was last updated; an issue left out was updated today."""
     fail: bool = False
     writes: list[JiraWrite] = field(default_factory=list)
     _next_number: int = 0
@@ -245,6 +247,18 @@ class FakeJira:
     def search_open_by_label(self, *, label: str) -> list[JiraIssue]:
         self._check_available()
         return [issue for issue, labels in self.issues.values() if label in labels]
+
+    def search_digest_items(
+        self, *, label: str, priorities: Sequence[str], updated_within_days: int
+    ) -> list[JiraIssue]:
+        self._check_available()
+        return [
+            issue
+            for key, (issue, labels) in self.issues.items()
+            if label in labels
+            and issue.priority in priorities
+            and self.updated_days_ago.get(key, 0) <= updated_within_days
+        ]
 
     def create_issue(self, *, draft: JiraIssueDraft) -> JiraIssue:
         self._check_available()

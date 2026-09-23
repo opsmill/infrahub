@@ -8,18 +8,19 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from dependabot_autopilot.adapters import GhCliGitHub, JiraRest
+from dependabot_autopilot.adapters import GhCliGitHub, JiraRest, SlackWebhook
+from dependabot_autopilot.digest import post_digest
 from dependabot_autopilot.flow import Config, SuppliedReport, escalate, evaluate, invalidate, sweep
 from dependabot_autopilot.opportunities import JiraTarget, file_opportunities, load_fresh_report
+from dependabot_autopilot.ports import JiraError, SlackError
 from dependabot_autopilot.report import ReportError
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from dependabot_autopilot.ports import GitHubPort, JiraPort
+    from dependabot_autopilot.ports import GitHubPort, JiraPort, SlackPort
 
 SUBCOMMANDS = ("invalidate", "evaluate", "sweep", "escalate", "file-opportunities", "digest")
-NOT_IMPLEMENTED = ("digest",)
 DEFAULT_JIRA_ISSUE_TYPE = "Task"
 _REQUIRED_JIRA_ENV = (
     "JIRA_BASE_URL",
@@ -28,6 +29,7 @@ _REQUIRED_JIRA_ENV = (
     "DEPENDABOT_AUTOPILOT_JIRA_PROJECT",
     "GITHUB_REPOSITORY",
 )
+_REQUIRED_DIGEST_ENV = ("JIRA_BASE_URL", "JIRA_USER_EMAIL", "JIRA_API_TOKEN", "SLACK_RELEASE_RADAR_WEBHOOK_URL")
 
 
 class ConfigError(Exception):
@@ -63,8 +65,7 @@ def build_parser() -> argparse.ArgumentParser:
     file_parser.add_argument("--pr", type=int, required=True)
     file_parser.add_argument("--report", type=Path, required=True, help="directory holding the verdict artifact")
     file_parser.add_argument("--report-sha", required=True, help="head commit of the analysis run that produced it")
-    for name in NOT_IMPLEMENTED:
-        subparsers.add_parser(name)
+    subparsers.add_parser("digest")
     return parser
 
 
@@ -139,6 +140,34 @@ def file_opportunities_command(
     return 0
 
 
+def digest_command(*, environ: Mapping[str, str], jira: JiraPort | None = None, slack: SlackPort | None = None) -> int:
+    """Post the weekly digest; missing configuration is a warning, a Jira or Slack failure fails the run."""
+    missing = [name for name in _REQUIRED_DIGEST_ENV if not environ.get(name, "").strip()]
+    if missing:
+        _warn(message=f"digest skipped: missing environment variables: {', '.join(missing)}")
+        return 0
+    try:
+        if jira is None:
+            jira = JiraRest(
+                base_url=environ["JIRA_BASE_URL"].strip(),
+                email=environ["JIRA_USER_EMAIL"].strip(),
+                token=environ["JIRA_API_TOKEN"].strip(),
+            )
+        if slack is None:
+            slack = SlackWebhook(url=environ["SLACK_RELEASE_RADAR_WEBHOOK_URL"].strip())
+    except ValueError as exc:
+        _warn(message=f"digest skipped: {exc}")
+        return 0
+    try:
+        count = post_digest(jira=jira, slack=slack)
+    except (JiraError, SlackError) as exc:
+        single_line = " ".join(str(exc).splitlines())
+        print(f"::error::{single_line}")
+        return 1
+    print(f"digest: posted {count} item{'' if count == 1 else 's'}" if count else "digest: nothing to post")
+    return 0
+
+
 def _warn(*, message: str) -> None:
     single_line = " ".join(message.splitlines())
     print(f"::warning::{single_line}")
@@ -165,9 +194,8 @@ def run(*, args: argparse.Namespace, github: GitHubPort, config: Config, now: da
 
 def main(argv: list[str] | None = None, environ: Mapping[str, str] | None = None) -> int:
     args = build_parser().parse_args(args=argv)
-    if args.command in NOT_IMPLEMENTED:
-        print(f"{args.command}: not implemented")
-        return 0
+    if args.command == "digest":
+        return digest_command(environ=os.environ if environ is None else environ)
     if args.command == "file-opportunities":
         return file_opportunities_command(args=args, environ=os.environ if environ is None else environ)
     if args.command == "evaluate" and (args.report is None) != (args.report_sha is None):

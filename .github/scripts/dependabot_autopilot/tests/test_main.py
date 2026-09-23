@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from dependabot_autopilot.__main__ import (
-    NOT_IMPLEMENTED,
     ConfigError,
     build_parser,
+    digest_command,
     file_opportunities_command,
     load_config,
     load_jira_settings,
@@ -18,9 +18,9 @@ from dependabot_autopilot.__main__ import (
 )
 from dependabot_autopilot.flow import Config
 from dependabot_autopilot.opportunities import JiraTarget
-from dependabot_autopilot.ports import PullRequest, PullRequestState
+from dependabot_autopilot.ports import JiraIssue, PullRequest, PullRequestState
 from dependabot_autopilot.report import REPORT_FILENAME
-from dependabot_autopilot.tests.fakes import FakeGitHub, FakeJira, IssueCreated, LabelsSet
+from dependabot_autopilot.tests.fakes import FakeGitHub, FakeJira, FakeSlack, IssueCreated, LabelsSet
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -38,16 +38,6 @@ JIRA_ENVIRON = {
     "JIRA_API_TOKEN": JIRA_TOKEN,
     "DEPENDABOT_AUTOPILOT_JIRA_PROJECT": "IFC",
 }
-
-
-def test_file_opportunities_is_no_longer_a_stub() -> None:
-    assert NOT_IMPLEMENTED == ("digest",)
-
-
-@pytest.mark.parametrize("command", NOT_IMPLEMENTED)
-def test_stub_subcommand_exits_zero(command: str, capsys: pytest.CaptureFixture[str]) -> None:
-    assert main(argv=[command], environ={}) == 0
-    assert capsys.readouterr().out == f"{command}: not implemented\n"
 
 
 def test_unknown_subcommand_is_rejected() -> None:
@@ -245,3 +235,86 @@ def test_file_opportunities_reports_jira_failures_as_warnings(
 
     assert file_opportunities_command(args=args, environ=JIRA_ENVIRON, jira=FakeJira(fail=True)) == 0
     assert "::warning::fastapi:lifespan-state: Jira unavailable" in capsys.readouterr().out
+
+
+WEBHOOK_URL = "https://hooks.slack.com/services/T000/B000/XXXXXXXX"
+DIGEST_ENVIRON = {
+    "JIRA_BASE_URL": "https://opsmill.atlassian.net",
+    "JIRA_USER_EMAIL": "bot@opsmill.com",
+    "JIRA_API_TOKEN": JIRA_TOKEN,
+    "SLACK_RELEASE_RADAR_WEBHOOK_URL": WEBHOOK_URL,
+}
+
+
+def digest_jira(*, priority: str = "High") -> FakeJira:
+    item = JiraIssue(
+        key="IFC-9", summary="[jinja2] Sandbox fix", url="https://opsmill.atlassian.net/browse/IFC-9", priority=priority
+    )
+    return FakeJira(issues={"IFC-9": (item, ("tech-debt", "dependabot-autopilot"))})
+
+
+def test_digest_command_posts_the_weeks_items(capsys: pytest.CaptureFixture[str]) -> None:
+    slack = FakeSlack()
+
+    assert digest_command(environ=DIGEST_ENVIRON, jira=digest_jira(), slack=slack) == 0
+
+    (message,) = slack.messages
+    assert "IFC-9" in message
+    assert "posted 1 item" in capsys.readouterr().out
+
+
+def test_digest_command_posts_nothing_without_items(capsys: pytest.CaptureFixture[str]) -> None:
+    slack = FakeSlack()
+
+    assert digest_command(environ=DIGEST_ENVIRON, jira=digest_jira(priority="Low"), slack=slack) == 0
+
+    assert slack.messages == []
+    assert "nothing to post" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("name", sorted(DIGEST_ENVIRON))
+def test_digest_command_without_configuration_warns_and_exits_zero(
+    name: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    slack = FakeSlack()
+    environ = {key: value for key, value in DIGEST_ENVIRON.items() if key != name}
+
+    assert digest_command(environ=environ, jira=digest_jira(), slack=slack) == 0
+
+    assert slack.messages == []
+    out = capsys.readouterr().out
+    assert out.startswith("::warning::")
+    assert name in out
+
+
+@pytest.mark.parametrize("name", ["JIRA_BASE_URL", "SLACK_RELEASE_RADAR_WEBHOOK_URL"])
+def test_digest_command_with_a_non_https_url_warns_and_exits_zero(
+    name: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    environ = {**DIGEST_ENVIRON, name: "http://example.com/hook"}
+
+    assert main(argv=["digest"], environ=environ) == 0
+
+    out = capsys.readouterr().out
+    assert out.startswith("::warning::")
+    assert "https" in out
+    assert WEBHOOK_URL not in out
+
+
+def test_digest_subcommand_without_configuration_exits_zero(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(argv=["digest"], environ={}) == 0
+    assert "SLACK_RELEASE_RADAR_WEBHOOK_URL" in capsys.readouterr().out
+
+
+def test_digest_command_fails_when_jira_fails(capsys: pytest.CaptureFixture[str]) -> None:
+    slack = FakeSlack()
+
+    assert digest_command(environ=DIGEST_ENVIRON, jira=FakeJira(fail=True), slack=slack) == 1
+
+    assert slack.messages == []
+    assert "::error::" in capsys.readouterr().out
+
+
+def test_digest_command_fails_when_slack_fails(capsys: pytest.CaptureFixture[str]) -> None:
+    assert digest_command(environ=DIGEST_ENVIRON, jira=digest_jira(), slack=FakeSlack(fail=True)) == 1
+    assert "::error::Slack unavailable" in capsys.readouterr().out

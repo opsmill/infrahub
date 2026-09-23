@@ -7,7 +7,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
     from datetime import datetime
     from pathlib import Path
 
@@ -234,6 +234,12 @@ class JiraPort(Protocol):
 
     def search_open_by_label(self, *, label: str) -> list[JiraIssue]:
         """Return the issues carrying `label` whose status category is not Done."""
+        ...
+
+    def search_digest_items(
+        self, *, label: str, priorities: Sequence[str], updated_within_days: int
+    ) -> list[JiraIssue]:
+        """Return the issues carrying `label` and one of `priorities` updated in the last `updated_within_days` days."""
         ...
 
     def create_issue(self, *, draft: JiraIssueDraft) -> JiraIssue: ...

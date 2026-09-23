@@ -110,9 +110,9 @@ description: "Task list for the dependency-bump autopilot"
 
 **Independent Test**: quickstart.md Q9.
 
-- [ ] T032 [P] [US3] Write `PKG/tests/test_digest.py`: `render_digest(items)` lists High before Medium with links, returns `None` for an empty list; the digest command posts once when there are items and never when there are none
-- [ ] T033 [US3] Implement `PKG/digest.py`, the `SlackWebhook` adapter in `PKG/adapters.py`, and the `digest` subcommand in `PKG/__main__.py` querying `labels = dependabot-autopilot AND priority in (High, Medium) AND updated >= -7d` (makes T032 pass)
-- [ ] T034 [US3] Write `.github/workflows/dependabot-autopilot-digest.yml` (Monday 09:30 UTC schedule, `workflow_dispatch`, `JIRA_*` and `SLACK_RELEASE_RADAR_WEBHOOK_URL` secrets, read-only `GITHUB_TOKEN`) and run `actionlint` and `zizmor` on it
+- [X] T032 [P] [US3] Write `PKG/tests/test_digest.py`: `render_digest(items)` lists High before Medium with links, returns `None` for an empty list; the digest command posts once when there are items and never when there are none
+- [X] T033 [US3] Implement `PKG/digest.py`, the `SlackWebhook` adapter in `PKG/adapters.py`, and the `digest` subcommand in `PKG/__main__.py` querying `labels = dependabot-autopilot AND priority in (High, Medium) AND updated >= -7d` (makes T032 pass)
+- [X] T034 [US3] Write `.github/workflows/dependabot-autopilot-digest.yml` (Monday 09:30 UTC schedule, `workflow_dispatch`, `JIRA_*` and `SLACK_RELEASE_RADAR_WEBHOOK_URL` secrets, read-only `GITHUB_TOKEN`) and run `actionlint` and `zizmor` on it
 
 **Checkpoint**: all three stories are implemented.
 

@@ -32,6 +32,7 @@ from dependabot_autopilot.ports import (
     ReviewState,
     RunConclusion,
     RunStatus,
+    SlackError,
     WorkflowRun,
 )
 
@@ -44,10 +45,11 @@ if TYPE_CHECKING:
 PER_PAGE = 100
 _RAW_CONTENT = "Accept: application/vnd.github.raw+json"
 JIRA_PAGE_SIZE = 50
-JIRA_TIMEOUT_SECONDS = 30
+HTTP_TIMEOUT_SECONDS = 30
 _MAX_ERROR_BODY_CHARS = 500
 _JIRA_LABEL = re.compile(r"[A-Za-z0-9_.-]+")
 _JIRA_ISSUE_KEY = re.compile(r"[A-Z][A-Z0-9_]*-[0-9]+")
+_JIRA_PRIORITY = re.compile(r"[A-Za-z0-9][A-Za-z0-9 _-]*")
 
 
 class GhCommandError(GitHubError):
@@ -291,7 +293,7 @@ def urllib_transport(*, method: str, url: str, headers: Mapping[str, str], body:
         raise ValueError("only https URLs are allowed")
     request = urllib.request.Request(url=url, data=body, headers=dict(headers), method=method)  # noqa: S310
     try:
-        with urllib.request.urlopen(request, timeout=JIRA_TIMEOUT_SECONDS) as response:  # noqa: S310
+        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SECONDS) as response:  # noqa: S310
             return HttpResponse(status=response.status, body=response.read())
     except urllib.error.HTTPError as exc:
         return HttpResponse(status=exc.code, body=exc.read())
@@ -312,13 +314,25 @@ class JiraRest:
         object.__setattr__(self, "base_url", self.base_url.rstrip("/"))
 
     def search_open_by_label(self, *, label: str) -> list[JiraIssue]:
-        if not _JIRA_LABEL.fullmatch(label):
-            raise ValueError(f"refusing to search for label {label!r}: only letters, digits, '.', '_' and '-'")
-        request: dict[str, object] = {
-            "jql": f'labels = "{label}" AND statusCategory != Done ORDER BY created ASC',
-            "fields": ["summary", "priority"],
-            "maxResults": JIRA_PAGE_SIZE,
-        }
+        _require_plain_label(label=label)
+        return self._search(jql=f'labels = "{label}" AND statusCategory != Done ORDER BY created ASC')
+
+    def search_digest_items(
+        self, *, label: str, priorities: Sequence[str], updated_within_days: int
+    ) -> list[JiraIssue]:
+        _require_plain_label(label=label)
+        if not priorities or not all(_JIRA_PRIORITY.fullmatch(priority) for priority in priorities):
+            raise ValueError(f"refusing to search for priorities {priorities!r}: expected plain priority names")
+        if updated_within_days < 1:
+            raise ValueError(f"refusing to search a window of {updated_within_days} days: expected at least 1")
+        quoted = ", ".join(f'"{priority}"' for priority in priorities)
+        return self._search(
+            jql=f'labels = "{label}" AND priority in ({quoted}) AND updated >= -{updated_within_days}d '
+            "ORDER BY updated DESC"
+        )
+
+    def _search(self, *, jql: str) -> list[JiraIssue]:
+        request: dict[str, object] = {"jql": jql, "fields": ["summary", "priority"], "maxResults": JIRA_PAGE_SIZE}
         issues: list[JiraIssue] = []
         while True:
             response = self._send(method="POST", path="/rest/api/3/search/jql", payload=request)
@@ -393,6 +407,37 @@ class JiraRest:
         if not isinstance(decoded, dict):
             raise JiraError(f"{method} {path} returned a non-object body")
         return decoded
+
+
+@dataclass(frozen=True)
+class SlackWebhook:
+    """Slack port over an incoming webhook, which posts to the one channel it is bound to."""
+
+    url: str = field(repr=False)
+    transport: HttpTransport = urllib_transport
+
+    def __post_init__(self) -> None:
+        if not self.url.startswith("https://"):
+            raise ValueError("the Slack webhook URL must start with https://")
+
+    def post_message(self, *, text: str) -> None:
+        try:
+            response = self.transport(
+                method="POST",
+                url=self.url,
+                headers={"Content-Type": "application/json"},
+                body=json.dumps({"text": text}).encode(),
+            )
+        except OSError as exc:
+            raise SlackError(f"posting to the Slack webhook failed: {exc}") from exc
+        if not HTTPStatus.OK <= response.status < HTTPStatus.MULTIPLE_CHOICES:
+            detail = response.body.decode("utf-8", errors="replace")[:_MAX_ERROR_BODY_CHARS]
+            raise SlackError(f"the Slack webhook returned HTTP {response.status}: {detail}")
+
+
+def _require_plain_label(*, label: str) -> None:
+    if not _JIRA_LABEL.fullmatch(label):
+        raise ValueError(f"refusing to search for label {label!r}: only letters, digits, '.', '_' and '-'")
 
 
 def _timestamp(*, value: str) -> datetime:

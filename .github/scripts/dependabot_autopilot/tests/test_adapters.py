@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from dependabot_autopilot.adapters import GhCliGitHub, GhCommandError, HttpResponse, JiraRest
+from dependabot_autopilot.adapters import GhCliGitHub, GhCommandError, HttpResponse, JiraRest, SlackWebhook
 from dependabot_autopilot.ports import (
     AccountType,
     ChangedFile,
@@ -28,6 +28,7 @@ from dependabot_autopilot.ports import (
     ReviewState,
     RunConclusion,
     RunStatus,
+    SlackError,
     WorkflowRun,
 )
 
@@ -590,6 +591,67 @@ def test_jira_search_refuses_labels_that_are_not_plain_tokens(label: str) -> Non
     assert transport.calls == []
 
 
+def test_jira_digest_search_posts_the_label_priority_and_window_jql() -> None:
+    jira, transport = make_jira(jira_ok("jira_search_digest.handcrafted.json"))
+
+    issues = jira.search_digest_items(
+        label="dependabot-autopilot", priorities=("High", "Medium"), updated_within_days=7
+    )
+
+    assert issues == [
+        JiraIssue(
+            key="IFC-61",
+            summary="[jinja2] Sandbox escape fixed upstream",
+            url=f"{JIRA_BASE}/browse/IFC-61",
+            priority="High",
+        ),
+        JiraIssue(
+            key="IFC-42", summary="[fastapi] Use lifespan state", url=f"{JIRA_BASE}/browse/IFC-42", priority="Medium"
+        ),
+    ]
+    (call,) = transport.calls
+    assert call.method == "POST"
+    assert call.url == f"{JIRA_BASE}/rest/api/3/search/jql"
+    assert call.json() == {
+        "jql": 'labels = "dependabot-autopilot" AND priority in ("High", "Medium") AND updated >= -7d '
+        "ORDER BY updated DESC",
+        "fields": ["summary", "priority"],
+        "maxResults": 50,
+    }
+
+
+def test_jira_digest_search_follows_next_page_tokens() -> None:
+    jira, transport = make_jira(
+        jira_ok("jira_search_jql_page1.handcrafted.json"), jira_ok("jira_search_jql_page2.handcrafted.json")
+    )
+
+    issues = jira.search_digest_items(label="dependabot-autopilot", priorities=("Medium",), updated_within_days=7)
+
+    assert [issue.key for issue in issues] == ["IFC-42", "IFC-50"]
+    first_request = transport.calls[0].json()
+    assert isinstance(first_request, dict)
+    assert transport.calls[1].json() == {**first_request, "nextPageToken": "CAEaAggD"}
+
+
+@pytest.mark.parametrize(
+    ("label", "priorities", "days"),
+    [
+        ('x" OR project = SECRET OR labels = "y', ("High",), 7),
+        ("dependabot-autopilot", ('High") OR project = SECRET OR priority in ("Low',), 7),
+        ("dependabot-autopilot", ("High\\",), 7),
+        ("dependabot-autopilot", (), 7),
+        ("dependabot-autopilot", ("High",), 0),
+        ("dependabot-autopilot", ("High",), -7),
+    ],
+)
+def test_jira_digest_search_refuses_unsafe_inputs(label: str, priorities: tuple[str, ...], days: int) -> None:
+    jira, transport = make_jira()
+
+    with pytest.raises(ValueError, match="refusing"):
+        jira.search_digest_items(label=label, priorities=priorities, updated_within_days=days)
+    assert transport.calls == []
+
+
 def test_jira_create_posts_the_draft_without_an_assignee() -> None:
     jira, transport = make_jira(jira_ok("jira_create_issue.handcrafted.json", status=201))
     draft = JiraIssueDraft(
@@ -686,3 +748,51 @@ def test_jira_error_does_not_leak_the_token() -> None:
             )
         )
     assert JIRA_TOKEN not in str(exc_info.value)
+
+
+WEBHOOK_URL = "https://hooks.slack.com/services/T000/B000/XXXXXXXX"
+
+
+def make_slack(*responses: HttpResponse | OSError) -> tuple[SlackWebhook, FakeTransport]:
+    transport = FakeTransport(responses=list(responses))
+    return SlackWebhook(url=WEBHOOK_URL, transport=transport), transport
+
+
+def test_slack_webhook_posts_the_text_as_json() -> None:
+    slack, transport = make_slack(HttpResponse(status=200, body=b"ok"))
+
+    slack.post_message(text="*hello* <https://example.com|there>")
+
+    (call,) = transport.calls
+    assert call.method == "POST"
+    assert call.url == WEBHOOK_URL
+    assert call.headers["Content-Type"] == "application/json"
+    assert call.json() == {"text": "*hello* <https://example.com|there>"}
+
+
+@pytest.mark.parametrize("url", ["http://hooks.slack.com/services/T/B/X", "file:///etc/passwd", ""])
+def test_slack_webhook_must_be_https(url: str) -> None:
+    with pytest.raises(ValueError, match="https"):
+        SlackWebhook(url=url)
+
+
+def test_slack_webhook_url_is_not_in_its_repr() -> None:
+    slack, _ = make_slack()
+
+    assert WEBHOOK_URL not in repr(slack)
+
+
+def test_slack_http_error_raises_slack_error_without_the_url() -> None:
+    slack, _ = make_slack(HttpResponse(status=404, body=b"no_service"))
+
+    with pytest.raises(SlackError, match="404") as exc_info:
+        slack.post_message(text="hi")
+    assert "no_service" in str(exc_info.value)
+    assert WEBHOOK_URL not in str(exc_info.value)
+
+
+def test_slack_network_error_raises_slack_error() -> None:
+    slack, _ = make_slack(TimeoutError("timed out"))
+
+    with pytest.raises(SlackError, match="timed out"):
+        slack.post_message(text="hi")

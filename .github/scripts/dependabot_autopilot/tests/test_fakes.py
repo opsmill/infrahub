@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from dependabot_autopilot.adapters import GhCliGitHub
+from dependabot_autopilot.adapters import GhCliGitHub, JiraRest, SlackWebhook
 from dependabot_autopilot.ports import (
     GitHubError,
     GitHubPort,
@@ -46,12 +46,15 @@ def pull_request() -> PullRequest:
 
 def test_fakes_and_adapters_satisfy_the_ports() -> None:
     github_ports: list[GitHubPort] = [FakeGitHub(), GhCliGitHub(repo="opsmill/infrahub")]
-    jira: JiraPort = FakeJira()
-    slack: SlackPort = FakeSlack()
+    jira_ports: list[JiraPort] = [
+        FakeJira(),
+        JiraRest(base_url="https://opsmill.atlassian.net", email="bot@opsmill.com", token="t"),  # noqa: S106
+    ]
+    slack_ports: list[SlackPort] = [FakeSlack(), SlackWebhook(url="https://hooks.slack.com/services/T/B/X")]
 
     assert github_ports
-    assert jira
-    assert slack
+    assert jira_ports
+    assert slack_ports
 
 
 def test_marker_comment_is_created_then_edited_in_place() -> None:
