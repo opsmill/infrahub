@@ -103,3 +103,11 @@
 ## R14. Open risk: CI duration versus SC-002
 
 Of the 48 Dependabot PRs opened in the 90 days to 2026-09-23, 26 changed only `.github/` (GitHub Actions), 14 changed npm lockfiles, and 8 changed a `uv.lock`. GitHub Actions bumps skip most CI jobs through `.github/file-filters.yml` and should merge within minutes. `uv.lock` bumps trigger the full backend suite; if that suite routinely exceeds an hour, SC-002 (median under 1 hour) still holds as long as the GitHub Actions and npm bumps stay the majority. Measured during the shadow period.
+
+## R15. Release-age cooldown against compromised releases
+
+**Decision**: Add Dependabot's `cooldown` option (`default-days: 3`) to the `github-actions` entry of `.github/dependabot.yml`, so version updates are proposed only for releases at least three days old. Security updates are not subject to cooldown.
+
+**Rationale**: A compromised upstream release can carry a benign changelog (the analysis finds no usage change) and pass CI; the autopilot would merge it faster than a human does today. Most malicious releases are detected and yanked within days. The delay applies before the PR opens, so SC-002 (open-to-merge latency) is unaffected. **To verify at implementation**: the option is accepted for the `github-actions` ecosystem by the current Dependabot configuration schema; if not, the act package enforces the same minimum age on the release date the agent reports, capping younger releases at `review-required`.
+
+**Alternatives considered**: A minimum PR age before merging. Rejected: it delays security updates too and directly defeats SC-002.

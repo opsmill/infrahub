@@ -12,7 +12,7 @@
 
 Dependabot opens roughly four pull requests a week against `stable` (48 in the 90 days to 2026-09-23). Every one of them was merged; none was rejected. An engineer still has to trigger the dependency-bump analysis by hand, read the report, approve, and merge, which puts a median of 8.2 hours (p90 23 hours) between a bump being proposed and it landing. Upstream features worth adopting are noticed by chance and filed by hand, if at all.
 
-The dependency-bump analysis already exists as an agent skill. It produces one of three verdicts per PR (`safe to merge`, `needs code changes`, `review required`), grounds every "safe" claim in a search of the repository's actual usage, and lists breaking changes, deprecations and opportunities per package. This feature runs that analysis without a human and acts on its verdict.
+The dependency-bump analysis already exists as an agent skill. It produces one of three verdicts per PR (`safe to merge`, `needs code changes`, `review required`), grounds every "safe" claim in a search of the repository's actual usage, and lists breaking changes, deprecations and opportunities per package. This feature runs that analysis without a human and acts on its verdict. Merging patch and minor bumps by version number alone would remove the wait too, but it would merge minor releases that break code the repository uses and would never surface opportunities; grounding the decision in actual usage is what makes unattended merging acceptable.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -76,6 +76,8 @@ Once a week, a single message in #release-radar lists the High and Medium tech-d
 - **PR with no code owner**: `github-actions` bumps touch `.github/`, which has no code owner; the notification goes to the fallback recipient (FR-009).
 - **Blocked PR left open**: a PR blocked by `needs code changes` can stay open for weeks. It is tracked only on the code host, not in Jira or the digest.
 - **Same opportunity on repeated bumps**: Dependabot re-proposes the same package range several times (for example the cache action from 5.0.5 to 6.1.0 appeared on three PRs); the dedup rule adds a comment instead of a new item (FR-011).
+- **Analysis never runs**: the analysis workflow is disabled, an event is dropped, or runners are unavailable. Sixty minutes after a head commit with no analysis run for it, the PR is escalated as `review required` with the reason "analysis did not run" (FR-017).
+- **Freshly published release**: a compromised upstream release can carry a benign changelog and pass CI. Version updates are proposed only once the release has aged (FR-018); security updates are not delayed.
 - **A human intervenes**: a human who approves, merges, closes, or requests changes on the PR takes precedence; the automation does not undo a human action.
 
 ## Requirements *(mandatory)*
@@ -109,6 +111,10 @@ Once a week, a single message in #release-radar lists the High and Medium tech-d
 
 - **FR-015**: Users MUST be able to see, for every automated action (approval, merge, blocking review, escalation, item creation), which commit and verdict it was based on, from the PR itself.
 - **FR-016**: Users MUST be able to turn the automatic merge off without disabling the analysis, so that verdicts keep being posted while merges wait for a human.
+- **FR-017**: When no analysis has run for a Dependabot PR's head commit 60 minutes after that commit was pushed, System MUST escalate the PR as `review required` with the reason "analysis did not run".
+- **FR-018**: Dependabot version updates MUST be proposed only for releases published at least 3 days earlier; security updates MUST NOT be delayed.
+- **FR-019**: System MUST treat the analysis output as untrusted: it MUST NOT execute anything from it, and MUST neutralize mentions and hidden markup in the report text before posting it on the PR.
+- **FR-020**: An unavailable tech-debt tracker or chat service MUST NOT block, delay or change a PR's verdict or merge; filing is retried on the next evaluation of the same head commit.
 
 ### Key Entities
 
@@ -150,7 +156,7 @@ Once a week, a single message in #release-radar lists the High and Medium tech-d
 - Service images shipped with Infrahub (Neo4j, RabbitMQ, Redis, Prefect server) in the compose file or the Helm chart.
 - The automation writing code fixes for `needs code changes`.
 - Changing the branch rules on `stable` (required checks, dismissing approvals on new commits).
-- Adding version-update ecosystems to the Dependabot configuration.
+- Adding version-update ecosystems to the Dependabot configuration. The only Dependabot configuration change in scope is the release-age cooldown (FR-018).
 - Dependabot PRs targeting branches other than `stable`.
 
 ## Assumptions

@@ -78,6 +78,7 @@ skills-lock.json                                       # + analyzing-dependency-
 ├── dependabot-autopilot-act.yml                       # deterministic, App token
 ├── dependabot-autopilot-digest.yml                    # weekly Slack digest
 └── ci.yml                                             # + dependabot-autopilot-tests job (file-filtered)
+.github/dependabot.yml                                 # + cooldown for version updates (research R15)
 .github/file-filters.yml                               # + dependabot_autopilot_files filter
 .github/labels.yml                                     # + autopilot/* labels
 
@@ -102,6 +103,8 @@ skills-lock.json                                       # + analyzing-dependency-
     ├── test_codeowners.py
     ├── test_opportunities.py
     ├── test_digest.py
+    ├── test_adapters.py        # gh CLI adapter parsing against recorded API JSON
+    ├── fixtures/               # recorded reviews, check-runs, actions/runs, statuses, lockfiles
     └── test_evaluate_flow.py   # end-to-end evaluate/invalidate against fakes
 
 dev/guides/dependabot-autopilot.md                     # operating guide: switches, labels, rollback
@@ -117,12 +120,22 @@ dev/guides/dependabot-autopilot.md                     # operating guide: switch
 - **Merge**: `gh pr review --approve` then `gh pr merge --squash --match-head-commit <sha>`; failure of the merge call (head moved, conflict) is logged on the comment and left for the next event.
 - **Owner notification**: review requests to CODEOWNERS teams for changed files, else `DEPENDABOT_AUTOPILOT_FALLBACK_REVIEWER`; sent once per head SHA.
 - **Reports are not trusted for SHA**: `head_sha` in the artifact must match both the triggering run and the live PR head, otherwise the report is stale.
+- **Artifact containment (FR-019)**: the artifact is downloaded into a fresh temporary directory; only `verdict.json` is read, and it is rejected above 256 KB. Nothing from it is executed, sourced or written into the workspace. `report.py` owns this boundary.
+- **Report sanitization (FR-019)**: before posting, `report_markdown` has every `@` mention neutralized (a zero-width joiner after `@`), every HTML comment removed (so the `<!-- dependabot-autopilot -->` marker cannot be forged), and is wrapped in a collapsed `<details>` block labelled as agent output.
+- **Analysis did not run (FR-017)**: the sweep escalates a PR as `review-required` when its head commit is older than 60 minutes and no analysis run exists for that SHA.
+- **Failure visibility**: the act job's last step (`if: failure()`) applies `autopilot/review-required` and edits the verdict comment with a link to the failed run.
+- **Trigger filtering**: for `workflow_run` events the act job has a job-level `if:` on `github.event.workflow_run.actor.login == 'dependabot[bot]'`, so CI completions of other PRs start no job.
+- **Tracker isolation (FR-020)**: `file-opportunities` runs as a separate job after `evaluate`, with `continue-on-error`; it never changes labels, reviews or merge state. Idempotency through the `dbap-` label makes retries on the next event safe.
+- **Release-age cooldown (FR-018)**: `.github/dependabot.yml` gains `cooldown: default-days: 3` on the `github-actions` entry (research R15). The `uv` and `npm` PRs arrive as security updates, which cooldown does not delay.
+- **gh-aw feature spike first**: `safe-outputs.jobs` and `on.bots` are documented on gh-aw `main`; the first task compiles a minimal workflow using both on the pinned compiler. If either is missing, the fallback is a `post-steps` step that copies the agent's `emit_verdict` payload from gh-aw's agent output file into the artifact, and a job-level `if:` for the actor check.
 
 ## Rollout
 
 1. Merge with `DEPENDABOT_AUTOPILOT_MERGE=off` (shadow). Run quickstart Q1 in a sandbox before anything else.
-2. Two weeks of shadow verdicts; compare against human decisions on the same PRs.
-3. Switch `DEPENDABOT_AUTOPILOT_MERGE=on`; track SC-001..SC-004 from PR and Jira history.
+2. Two weeks of shadow verdicts; for each Dependabot PR record the autopilot verdict, the human decision, and any follow-up fix PR touching the same package within 14 days of merge. Also record how many PRs the new-package rule capped (input for revisiting SC-001).
+3. **Exit criteria for shadow mode**: quickstart Q1 passed; zero PRs where the autopilot said `safe` and a human blocked or a follow-up fix was needed; at least 6 PRs observed.
+4. Switch `DEPENDABOT_AUTOPILOT_MERGE=on`; track SC-001..SC-004 with the queries in `dev/guides/dependabot-autopilot.md`.
+5. **Rollback trigger**: any SC-003 breach (an automatically merged bump reverted or needing a fix) sets `DEPENDABOT_AUTOPILOT_MERGE=off` until the cause is understood.
 
 The workflows must be on `stable` (the default branch) for `workflow_run` and `schedule` triggers to fire, so the feature branch targets `stable`.
 

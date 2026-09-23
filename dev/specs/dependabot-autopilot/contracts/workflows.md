@@ -24,6 +24,10 @@
 | Token | GitHub App installation token (`DEPENDABOT_AUTOPILOT_APP_*`); the workflow's `GITHUB_TOKEN` is `contents: read`, `actions: read` |
 | Concurrency | Group `dependabot-autopilot-<pr_number>`, `cancel-in-progress: false` |
 | Never | Checks out or executes PR code; reads PR files only through the contents API |
+| Artifact handling | Downloaded to a fresh temporary directory; only `verdict.json` read, rejected above 256 KB; nothing executed or written to the workspace |
+| Report posting | `@` mentions neutralized, HTML comments stripped, wrapped in a collapsed block labelled as agent output |
+| On job failure | `if: failure()` step applies `autopilot/review-required` and links the failed run in the verdict comment |
+| Job filter | `workflow_run` events start the job only when `github.event.workflow_run.actor.login == 'dependabot[bot]'` |
 
 **CLI of the act package** (`python -m dependabot_autopilot`):
 
