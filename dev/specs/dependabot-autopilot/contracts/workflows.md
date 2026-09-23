@@ -11,8 +11,8 @@
 | Network | gh-aw `defaults` plus the `github`, `python` and `node` ecosystems (release notes, PyPI, npm registry) |
 | Agent input | PR number, head SHA, PR diff, the vendored `analyzing-dependency-bumps` skill |
 | Agent output | Exactly one call to the custom safe-output `emit_verdict` with a JSON string conforming to [verdict.schema.json](verdict.schema.json) |
-| Side effects | None on GitHub, Jira or Slack. The `emit_verdict` job uploads artifact `dependabot-autopilot-verdict` (file `verdict.json`, retention 7 days) |
-| Failure | Agent error, timeout (20 minutes) or missing `emit_verdict` call → no artifact; the act workflow treats it as `review-required` |
+| Side effects | None on GitHub, Jira or Slack. The `emit_verdict` job runs only when the agent job succeeded and threat detection passed (`needs.agent.result == 'success' && needs.detection.result == 'success'`), and uploads artifact `dependabot-autopilot-verdict` (file `verdict.json`, retention 7 days) |
+| Failure | Agent error, timeout (20 minutes), missing `emit_verdict` call or a detection finding → no artifact; the act workflow treats it as `review-required`. A completed run whose conclusion is not `success` is `review-required` ("analysis run did not succeed") even when a report exists; a run still unfinished 60 minutes after the head commit is `review-required` ("analysis did not complete") |
 
 ## `dependabot-autopilot-act` (deterministic, trusted context)
 
@@ -28,6 +28,9 @@
 | Report posting | `@` mentions neutralized, HTML comments stripped, wrapped in a collapsed block labelled as agent output |
 | On job failure | `if: failure()` step applies `autopilot/review-required` and links the failed run in the verdict comment |
 | Job filter | `workflow_run` events start the job only when `github.event.workflow_run.actor.login == 'dependabot[bot]'` |
+| Analysis run | The latest run for the head SHA named `dependabot-autopilot-analyze`, with path `.github/workflows/dependabot-autopilot-analyze.lock.yml` and event `pull_request`; other runs are ignored |
+| CI green | Requires a completed run of the `CI` workflow (`.github/workflows/ci.yml`) with conclusion `success` for the head SHA; without one CI is pending. Any failing workflow run, external check run or commit status is red |
+| Commit authors | A PR with any commit whose author is not `dependabot[bot]` (an author not linked to a GitHub account included) is capped at `review-required` ("pull request contains commits not authored by dependabot[bot]") |
 
 **CLI of the act package** (`python -m dependabot_autopilot`):
 
@@ -35,8 +38,8 @@
 |---|---|---|
 | `invalidate --pr N` | PR number | Dismisses App approvals whose `commit_id` differs from the head |
 | `evaluate --pr N [--report PATH --report-sha SHA]` | PR number, optional verdict artifact and the head commit of the analysis run that produced it (a report claiming another commit is malformed) | Computes the Decision, updates the verdict comment, labels, review and reviewer requests; approves and merges when every FR-004 condition holds and `DEPENDABOT_AUTOPILOT_MERGE=on` |
-| `sweep --run-url URL` | link to the current run | Runs `evaluate` for every open Dependabot PR on `stable`, locating the latest verdict artifact for each head |
-| `escalate --pr N --run-url URL` | PR number, link to the failed run | Applies `autopilot/review-required` and states the failure with the link in the verdict comment; used by the `if: failure()` step and by `sweep` for a PR whose evaluation raised |
+| `sweep --run-url URL` | link to the current run | Runs `evaluate` for every open Dependabot PR on `stable`, locating the latest verdict artifact for each head; a PR whose evaluation or escalation raises is logged and the sweep continues |
+| `escalate --pr N --run-url URL` | PR number, link to the failed run | Dismisses every App approval, the head's included (a failed dismissal is logged and does not stop the escalation), applies `autopilot/review-required` and states the failure with the link in the verdict comment; used by the `if: failure()` step and by `sweep` for a PR whose evaluation raised |
 | `file-opportunities --pr N --report PATH --report-sha SHA` | PR number, verdict artifact and the head commit of the analysis run that produced it | Creates or comments Jira items; skipped when the effective verdict is `needs-code-changes`, when the report is missing or malformed or names another commit or PR, and when the Jira configuration is missing |
 | `digest` | none | Posts the weekly #release-radar message |
 
