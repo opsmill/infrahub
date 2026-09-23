@@ -1,0 +1,36 @@
+utilities/sync_pr/tests/test_downgrade.py
+  s_f9f34a44a3a084::t_25b46ca039a8fb 176
+  s_f9f34a44a3a084::t_dc35ba679b4fe9 190-197
+  s_f9f34a44a3a084::t_5f6cd0ffd17a62 1-175,177-189,198-254
+utilities/sync_pr/transfer.py
+  s_f9f34a44a3a084::t_720e5a73439614 255-260,417-441,455-462,513
+  s_f9f34a44a3a084::t_9e06b3196cbdcc 5,7,16,26-27,46,50,370-416,442-454,463-512
+utilities/sync_pr/tests/test_attribution.py
+  s_f9f34a44a3a084::t_b91f8fdcaff891 4,393-395
+utilities/sync_pr/models.py
+  s_f9f34a44a3a084::t_fe8915a81fc6ec 73,200-201
+utilities/sync_pr/summary.py
+  s_f9f34a44a3a084::t_1f1a21f47aa3a8 61-77
+utilities/sync_pr/attribution.py
+  s_f9f34a44a3a084::t_fe8915a81fc6ec 5,60-64
+dev/specs/sync-pr-automation/contracts/outputs.md
+  s_f9f34a44a3a084::t_cfafd9c395b92f 22-40
+dev/specs/sync-pr-automation/tasks.md
+  s_f9f34a44a3a084::t_5e87cdf101bf9a 184,193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6fdc17ecdc4004b7b377f5d3e08d70f260a501db",
+  "prompts": {},
+  "sessions": {
+    "s_f9f34a44a3a084": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50b9befc-1389-4d4c-99f9-321b275b2173",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
