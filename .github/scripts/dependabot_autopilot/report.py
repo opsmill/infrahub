@@ -38,6 +38,18 @@ class Verdict(StrEnum):
     NEEDS_CODE_CHANGES = "needs-code-changes"
     REVIEW_REQUIRED = "review-required"
 
+    @property
+    def strictness(self) -> int:
+        """Rank where a higher value overrides a lower one when verdicts are combined."""
+        return _VERDICT_STRICTNESS[self]
+
+
+_VERDICT_STRICTNESS = {
+    Verdict.SAFE_TO_MERGE: 0,
+    Verdict.REVIEW_REQUIRED: 1,
+    Verdict.NEEDS_CODE_CHANGES: 2,
+}
+
 
 class Ecosystem(StrEnum):
     GITHUB_ACTIONS = "github-actions"
