@@ -9,7 +9,7 @@ on:
     - "dependabot[bot]"
 # Dependabot-triggered runs receive a read-only GITHUB_TOKEN and only Dependabot
 # secrets, so this workflow holds no write credential: every GitHub action on the
-# verdict is taken by dependabot-autopilot-act in the trusted workflow_run context.
+# verdict is taken by a separate workflow in the trusted workflow_run context.
 if: github.event.pull_request.user.login == 'dependabot[bot]'
 engine: claude
 timeout-minutes: 20

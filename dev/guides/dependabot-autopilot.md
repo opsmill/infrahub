@@ -1,10 +1,10 @@
-# Operating the Dependabot Autopilot
+# Operating the Dependabot autopilot
 
 > Part of: `dev/guides/` | Related: [Git Workflow](../guidelines/git-workflow.md)
 
 How to configure, pause, roll back and measure the automation that analyses every Dependabot pull request against `stable` and merges the safe ones.
 
-## What It Does
+## What it does
 
 Three workflows split the work by trust level. Only the act workflow holds a write credential, and no job that holds one checks out or runs pull request code.
 
@@ -16,54 +16,61 @@ Three workflows split the work by trust level. Only the act workflow holds a wri
 
 The act workflow approves and merges only when all of these hold for the current head commit:
 
-- The effective verdict is `safe-to-merge`: the strictest of the agent's overall verdict and every package verdict, downgraded to `review-required` when the report is missing, malformed or names another commit, or when the lockfile diff adds a package
-- Every CI signal on the head commit is green
+- The effective verdict is `safe-to-merge`: the strictest of the agent's overall verdict and every package verdict, downgraded to `review-required` when the report is missing, malformed or names another commit, when the analysis run completed without success, when the lockfile diff adds a package, or when a commit on the pull request is not authored by `dependabot[bot]`
+- CI is green: no check or status on the head commit is failing or still running, and a run of `.github/workflows/ci.yml` on the head commit succeeded
 - `DEPENDABOT_AUTOPILOT_MERGE` is `on`
 - No `autopilot/hold` label, and no human's latest review requests changes
 
-A push to the pull request dismisses the App's approvals of older commits. The sweep escalates a pull request as `review-required` when its head commit is older than 60 minutes and was never analysed. Reviews go to the CODEOWNERS of the changed files, or to `DEPENDABOT_AUTOPILOT_FALLBACK_REVIEWER` when no rule matches, once per head commit.
+A push to the pull request dismisses the App's approvals of older commits. Any evaluation, whether triggered by an event, the sweep or `workflow_dispatch`, escalates a pull request as `review-required` when 60 minutes after the head commit's commit date no analysis run exists for it ("analysis did not run") or its run has not completed ("analysis did not complete").
+
+Reviews are requested only when the autopilot escalates, with the verdict `needs-code-changes` or `review-required`. They go to the CODEOWNERS of the changed files, or to `DEPENDABOT_AUTOPILOT_FALLBACK_REVIEWER` when no rule matches, once per head commit.
 
 ## Labels
 
-Defined in `.github/labels.yml`. The act workflow keeps exactly one of the first three on each pull request and replaces it when the verdict changes.
+Defined in `.github/labels.yml`. The act workflow keeps at most one of the first three on each pull request, none while the analysis of the head commit is pending, and replaces it when the verdict changes.
 
 | Label | Meaning |
 |---|---|
 | `autopilot/safe` | Effective verdict `safe-to-merge` for the current head |
 | `autopilot/needs-code-changes` | Blocked by the App's change-request review; owners notified |
-| `autopilot/review-required` | Escalated to owners: doubt in the report, a new package, red CI, missing analysis, or a failed act run |
+| `autopilot/review-required` | Escalated to owners: doubt in the report, a new package, a commit not authored by Dependabot, red CI, a missing, unfinished or failed analysis, or a failed act run |
 | `autopilot/hold` | Set by a human. The autopilot keeps commenting and labelling but never approves or merges |
 
-## Configure the Repository
+## Configure the repository
 
 The App needs these repository permissions: `contents: write`, `pull-requests: write`, `actions: read`, `checks: read`, `statuses: read`.
 
 | Name | Kind | Store | Used by |
 |---|---|---|---|
 | `ANTHROPIC_API_KEY` | secret | **Dependabot secrets** | analyze |
-| `DEPENDABOT_AUTOPILOT_APP_ID` | secret | Actions secrets | act (App client ID) |
+| `DEPENDABOT_AUTOPILOT_APP_ID` | secret | Actions secrets | act: the App's **Client ID** (`Iv…`, on the App settings page), not its numeric App ID |
 | `DEPENDABOT_AUTOPILOT_APP_PRIVATE_KEY` | secret | Actions secrets | act |
 | `JIRA_BASE_URL`, `JIRA_USER_EMAIL`, `JIRA_API_TOKEN` | secret | Actions secrets | act (`file-opportunities` job), digest |
 | `SLACK_RELEASE_RADAR_WEBHOOK_URL` | secret | Actions secrets | digest |
 | `DEPENDABOT_AUTOPILOT_MERGE` | variable | repository | act: `on` enables approve and merge; any other value or unset leaves it off |
-| `DEPENDABOT_AUTOPILOT_FALLBACK_REVIEWER` | variable | repository | act: team slug requested when no CODEOWNERS rule matches |
-| `DEPENDABOT_AUTOPILOT_JIRA_PROJECT` | variable | repository | act: Jira project key for tech-debt items |
+| `DEPENDABOT_AUTOPILOT_FALLBACK_REVIEWER` | variable | repository | act: team slug requested when no CODEOWNERS rule matches; optional, no fallback request when unset |
+| `DEPENDABOT_AUTOPILOT_JIRA_PROJECT` | variable | repository | act: Jira project key for tech-debt items; opportunity filing is skipped when unset |
 | `DEPENDABOT_AUTOPILOT_JIRA_ISSUE_TYPE` | variable | repository | act: Jira issue type, `Task` when unset |
 
 Store `ANTHROPIC_API_KEY` as a Dependabot secret: workflows triggered by Dependabot read only Dependabot secrets, so an Actions secret of that name is invisible to the analysis. Copy no other secret into the Dependabot store.
 
 ```bash
 gh secret set ANTHROPIC_API_KEY --app dependabot --repo opsmill/infrahub
-gh secret set DEPENDABOT_AUTOPILOT_APP_ID --repo opsmill/infrahub
+gh secret set DEPENDABOT_AUTOPILOT_APP_ID --body <app-client-id> --repo opsmill/infrahub
 gh secret set DEPENDABOT_AUTOPILOT_APP_PRIVATE_KEY --repo opsmill/infrahub < app-private-key.pem
 gh variable set DEPENDABOT_AUTOPILOT_MERGE --body off --repo opsmill/infrahub
+gh variable set DEPENDABOT_AUTOPILOT_FALLBACK_REVIEWER --body <team-slug> --repo opsmill/infrahub
+gh variable set DEPENDABOT_AUTOPILOT_JIRA_PROJECT --body <project-key> --repo opsmill/infrahub
+gh variable set DEPENDABOT_AUTOPILOT_JIRA_ISSUE_TYPE --body Task --repo opsmill/infrahub
 ```
+
+`DEPENDABOT_AUTOPILOT_MERGE` is the only variable the autopilot needs; set the other three only to enable what they configure.
 
 Missing Jira settings skip opportunity filing with a warning; missing Jira or Slack settings skip the digest. Neither affects verdicts or merges.
 
-Verify: `gh secret list --app dependabot --repo opsmill/infrahub` lists `ANTHROPIC_API_KEY`, and `gh variable list --repo opsmill/infrahub` lists the four variables.
+Verify: `gh secret list --app dependabot --repo opsmill/infrahub` lists `ANTHROPIC_API_KEY`, and `gh variable list --repo opsmill/infrahub` lists the variables you set.
 
-## Enable, Pause and Roll Back
+## Enable, pause and roll back
 
 | Goal | Action |
 |---|---|
@@ -73,11 +80,11 @@ Verify: `gh secret list --app dependabot --repo opsmill/infrahub` lists `ANTHROP
 | Stop everything | `gh workflow disable <workflow> --repo opsmill/infrahub` for `dependabot-autopilot-analyze.lock.yml`, `dependabot-autopilot-act.yml` and `dependabot-autopilot-digest.yml` |
 | Re-evaluate one pull request | `gh workflow run dependabot-autopilot-act.yml -f pr_number=<number> --repo opsmill/infrahub` |
 | Re-analyse one pull request | Comment `@dependabot recreate`, or re-run the failed analysis run |
-| Undo a bad merge | Revert the squash commit through a normal pull request, then set the merge switch to `off` (see [Rollback trigger](#rollback-trigger)) |
+| Undo a bad merge | Set the merge switch to `off` first, then revert the squash commit through a normal pull request (see [Rollback trigger](#rollback-trigger)) |
 
-A failed act run labels the pull request `autopilot/review-required` and links the run in the verdict comment. The verdict comment is identified by `<!-- dependabot-autopilot -->` and edited in place.
+A failed act run labels the pull request `autopilot/review-required`, dismisses every approval the App gave on it, and links the run in the verdict comment. The verdict comment is identified by `<!-- dependabot-autopilot -->` and edited in place.
 
-## Shadow Mode
+## Shadow mode
 
 The autopilot starts with `DEPENDABOT_AUTOPILOT_MERGE=off`: it comments and labels, but humans merge.
 
@@ -115,9 +122,9 @@ Switch `DEPENDABOT_AUTOPILOT_MERGE` to `on` only when all of these hold:
 
 Set `DEPENDABOT_AUTOPILOT_MERGE=off` as soon as an automatically merged bump is reverted or needs a follow-up fix attributed to it, and keep it off until the cause is understood.
 
-## Measure the Outcomes
+## Measure the outcomes
 
-Set `SINCE` to the date merges were enabled and `APP` as in [Shadow Mode](#shadow-mode).
+Set `SINCE` to the date merges were enabled and `APP` as in [Shadow mode](#shadow-mode).
 
 ### Hands-off merge rate
 
