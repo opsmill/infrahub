@@ -34,8 +34,9 @@
 | Subcommand | Input | Effect |
 |---|---|---|
 | `invalidate --pr N` | PR number | Dismisses App approvals whose `commit_id` differs from the head |
-| `evaluate --pr N [--report PATH]` | PR number, optional verdict artifact | Computes the Decision, updates the verdict comment, labels, review and reviewer requests; approves and merges when every FR-004 condition holds and `DEPENDABOT_AUTOPILOT_MERGE=on` |
-| `sweep` | none | Runs `evaluate` for every open Dependabot PR on `stable`, locating the latest verdict artifact for each head |
+| `evaluate --pr N [--report PATH --report-sha SHA]` | PR number, optional verdict artifact and the head commit of the analysis run that produced it (a report claiming another commit is malformed) | Computes the Decision, updates the verdict comment, labels, review and reviewer requests; approves and merges when every FR-004 condition holds and `DEPENDABOT_AUTOPILOT_MERGE=on` |
+| `sweep --run-url URL` | link to the current run | Runs `evaluate` for every open Dependabot PR on `stable`, locating the latest verdict artifact for each head |
+| `escalate --pr N --run-url URL` | PR number, link to the failed run | Applies `autopilot/review-required` and states the failure with the link in the verdict comment; used by the `if: failure()` step and by `sweep` for a PR whose evaluation raised |
 | `file-opportunities --report PATH` | verdict artifact | Creates or comments Jira items (skipped when the effective verdict is `needs-code-changes`) |
 | `digest` | none | Posts the weekly #release-radar message |
 

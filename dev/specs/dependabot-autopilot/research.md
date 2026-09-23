@@ -58,7 +58,7 @@ Consequences for the analysis workflow: the custom job's steps receive the tool 
 
 ## R3. Approval identity
 
-**Decision**: A new GitHub App (`opsmill-dependabot-autopilot`) with `contents: write` and `pull-requests: write` on `opsmill/infrahub` only, credentials in Actions secrets `DEPENDABOT_AUTOPILOT_APP_ID` / `DEPENDABOT_AUTOPILOT_APP_PRIVATE_KEY`. It is not added to any branch-rule bypass list.
+**Decision**: A new GitHub App (`opsmill-dependabot-autopilot`) with `contents: write`, `pull-requests: write`, and `actions: read`, `checks: read`, `statuses: read` (artifact download and CI evaluation) on `opsmill/infrahub` only; the act workflow requests exactly these when minting its token, credentials in Actions secrets `DEPENDABOT_AUTOPILOT_APP_ID` / `DEPENDABOT_AUTOPILOT_APP_PRIVATE_KEY`. It is not added to any branch-rule bypass list.
 
 **Rationale**: Least privilege; `opsmill-bot` already holds bypass rights on `stable`, so an approval from it would also be able to bypass the review rule entirely. Whether a `GITHUB_TOKEN` (`github-actions[bot]`) approval counts toward a required review is not documented authoritatively ([community discussion 181487](https://github.com/orgs/community/discussions/181487) says it does not); an App installation with write access is the reported working path. **Unconfirmed**: verified in quickstart scenario Q1 before enabling merges.
 

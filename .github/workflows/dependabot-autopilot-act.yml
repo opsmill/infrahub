@@ -1,0 +1,148 @@
+---
+# yamllint disable rule:truthy rule:line-length
+# Acts on the verdicts of dependabot-autopilot-analyze: comment, labels, reviews,
+# reviewer requests, approval and merge, under the autopilot GitHub App.
+# Runs only in trusted contexts and never checks out or executes pull request code.
+name: dependabot-autopilot-act
+on:
+  workflow_run:
+    workflows: ["dependabot-autopilot-analyze", "CI"]
+    types: [requested, completed]
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Dependabot pull request to evaluate"
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  act:
+    # workflow_run fires for every CI run; only Dependabot's start a job, and a CI
+    # run being requested says nothing the autopilot acts on.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.actor.login == 'dependabot[bot]' &&
+       (github.event.action == 'completed' || github.event.workflow_run.name == 'dependabot-autopilot-analyze'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: dependabot-autopilot-${{ github.event_name == 'schedule' && 'sweep' || github.event.workflow_run.pull_requests[0].number || inputs.pr_number || github.event.workflow_run.head_sha }}
+      cancel-in-progress: false
+    env:
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      DEPENDABOT_AUTOPILOT_MERGE: ${{ vars.DEPENDABOT_AUTOPILOT_MERGE }}
+      DEPENDABOT_AUTOPILOT_FALLBACK_REVIEWER: ${{ vars.DEPENDABOT_AUTOPILOT_FALLBACK_REVIEWER }}
+    steps:
+      - name: Check out the default branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+
+      - name: Create the autopilot App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.DEPENDABOT_AUTOPILOT_APP_ID }}
+          private-key: ${{ secrets.DEPENDABOT_AUTOPILOT_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-actions: read
+          permission-checks: read
+          permission-statuses: read
+
+      - name: Resolve the pull request
+        id: pr
+        if: github.event_name != 'schedule'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          EVENT_PR: ${{ github.event.workflow_run.pull_requests[0].number }}
+          INPUT_PR: ${{ inputs.pr_number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          number="${EVENT_PR:-${INPUT_PR:-}}"
+          if [ -z "$number" ] && [ -n "${HEAD_SHA:-}" ]; then
+            number=$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls" --jq '[.[] | select(.state == "open")][0].number // empty')
+          fi
+          if [ -z "$number" ]; then
+            echo "::notice::no open pull request for this run; the scheduled sweep covers it"
+          fi
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+
+      - name: Download the verdict artifact
+        id: verdict
+        if: >-
+          steps.pr.outputs.number != '' &&
+          github.event_name == 'workflow_run' &&
+          github.event.action == 'completed' &&
+          github.event.workflow_run.name == 'dependabot-autopilot-analyze'
+        # A run without an emit_verdict call has no artifact; evaluate treats that as review-required.
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dependabot-autopilot-verdict
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/verdict-${{ github.event.workflow_run.id }}
+
+      - name: Invalidate stale approvals
+        if: >-
+          steps.pr.outputs.number != '' &&
+          github.event_name == 'workflow_run' &&
+          github.event.action == 'requested'
+        working-directory: .github/scripts
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          DEPENDABOT_AUTOPILOT_APP_LOGIN: ${{ steps.app-token.outputs.app-slug }}[bot]
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: uv run --no-project --python 3.14 --with "pyyaml>=6,<7" python -m dependabot_autopilot invalidate --pr "$PR_NUMBER"
+
+      - name: Evaluate the pull request
+        if: >-
+          steps.pr.outputs.number != '' &&
+          (github.event_name == 'workflow_dispatch' || github.event.action == 'completed')
+        working-directory: .github/scripts
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          DEPENDABOT_AUTOPILOT_APP_LOGIN: ${{ steps.app-token.outputs.app-slug }}[bot]
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          VERDICT_OUTCOME: ${{ steps.verdict.outcome }}
+          VERDICT_DIR: ${{ runner.temp }}/verdict-${{ github.event.workflow_run.id }}
+          VERDICT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          report_args=()
+          if [ "$VERDICT_OUTCOME" = "success" ]; then
+            report_args=(--report "$VERDICT_DIR" --report-sha "$VERDICT_SHA")
+          fi
+          uv run --no-project --python 3.14 --with "pyyaml>=6,<7" \
+            python -m dependabot_autopilot evaluate --pr "$PR_NUMBER" "${report_args[@]}"
+
+      - name: Sweep open Dependabot pull requests
+        if: github.event_name == 'schedule'
+        working-directory: .github/scripts
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          DEPENDABOT_AUTOPILOT_APP_LOGIN: ${{ steps.app-token.outputs.app-slug }}[bot]
+        run: uv run --no-project --python 3.14 --with "pyyaml>=6,<7" python -m dependabot_autopilot sweep --run-url "$RUN_URL"
+
+      - name: Escalate the pull request after a failure
+        if: failure() && steps.pr.outputs.number != '' && steps.app-token.outputs.token != ''
+        working-directory: .github/scripts
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          DEPENDABOT_AUTOPILOT_APP_LOGIN: ${{ steps.app-token.outputs.app-slug }}[bot]
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: uv run --no-project --python 3.14 --with "pyyaml>=6,<7" python -m dependabot_autopilot escalate --pr "$PR_NUMBER" --run-url "$RUN_URL"

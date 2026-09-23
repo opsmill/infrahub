@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- The GitHub App `opsmill-dependabot-autopilot` installed on `opsmill/infrahub` with `contents: write` and `pull-requests: write`, its ID and key stored as Actions secrets (see [data-model.md](data-model.md#configuration)).
+- The GitHub App `opsmill-dependabot-autopilot` installed on `opsmill/infrahub` with `contents: write`, `pull-requests: write`, `actions: read`, `checks: read` and `statuses: read`, its ID and key stored as Actions secrets (see [data-model.md](data-model.md#configuration)).
 - `ANTHROPIC_API_KEY` stored as a **Dependabot** secret.
 - Jira and Slack secrets and the repository variables from [data-model.md](data-model.md#configuration); `DEPENDABOT_AUTOPILOT_MERGE=off`.
 - Labels from `.github/labels.yml` synced.
