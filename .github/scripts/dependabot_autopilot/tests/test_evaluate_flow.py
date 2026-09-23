@@ -60,7 +60,7 @@ OLD_SHA = "0123456789abcdef0123456789abcdef01234567"
 PUSHED_AT = datetime(2026, 9, 23, 9, 0, tzinfo=UTC)
 NOW = PUSHED_AT + timedelta(minutes=20)
 RUN_URL = "https://github.com/opsmill/infrahub/actions/runs/1"
-UV_LOCK = '[[package]]\nname = "fastapi"\nversion = "{version}"\n'
+UV_LOCK = 'version = 1\n[[package]]\nname = "fastapi"\nversion = "{version}"\n'
 
 
 def config(*, merge_enabled: bool = False, fallback_reviewer: str = "devops") -> Config:

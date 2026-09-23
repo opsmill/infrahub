@@ -214,10 +214,26 @@ def test_unknown_lockfile_paths_are_ignored(path: str) -> None:
     ("path", "text"),
     [
         pytest.param("uv.lock", "[[package]\nname =", id="uv"),
+        pytest.param("uv.lock", 'package = "not-a-list"', id="uv-shape"),
+        pytest.param("uv.lock", "version = 1\n", id="uv-no-packages"),
+        pytest.param("uv.lock", '[[package]]\nname = "fastapi"\n', id="uv-no-version"),
+        pytest.param("uv.lock", 'version = 2\n[[package]]\nname = "fastapi"\n', id="uv-unsupported-version"),
         pytest.param("frontend/pnpm-lock.yaml", "packages: [unclosed", id="pnpm"),
         pytest.param("frontend/pnpm-lock.yaml", "packages:\n  - listed", id="pnpm-shape"),
+        pytest.param("frontend/pnpm-lock.yaml", "- listed", id="pnpm-not-a-mapping"),
+        pytest.param("frontend/pnpm-lock.yaml", "lockfileVersion: '9.0'\n", id="pnpm-no-packages"),
+        pytest.param("frontend/pnpm-lock.yaml", "packages:\n  react@19.2.0: {}\n", id="pnpm-no-version"),
+        pytest.param(
+            "frontend/pnpm-lock.yaml",
+            "lockfileVersion: '6.0'\npackages:\n  /react@19.2.0: {}\n",
+            id="pnpm-unsupported-version",
+        ),
         pytest.param("docs/package-lock.json", "{", id="npm"),
-        pytest.param("docs/package-lock.json", '{"packages": []}', id="npm-shape"),
+        pytest.param("docs/package-lock.json", '{"lockfileVersion": 3, "packages": []}', id="npm-shape"),
+        pytest.param("docs/package-lock.json", "[]", id="npm-not-an-object"),
+        pytest.param("docs/package-lock.json", '{"lockfileVersion": 3}', id="npm-no-packages"),
+        pytest.param("docs/package-lock.json", '{"packages": {}}', id="npm-no-version"),
+        pytest.param("docs/package-lock.json", '{"lockfileVersion": 1, "dependencies": {}}', id="npm-v1"),
     ],
 )
 def test_unparseable_lockfile_raises(path: str, text: str) -> None:

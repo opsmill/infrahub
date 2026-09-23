@@ -15,6 +15,11 @@ if TYPE_CHECKING:
 
 _PEP503_SEPARATORS = re.compile(r"[-_.]+")
 _NODE_MODULES = "node_modules/"
+_UV_VERSIONS = frozenset({1})
+_PNPM_MAJOR_VERSIONS = frozenset({"9"})
+"""The `name@version` package keys are read only from this lockfile format."""
+_NPM_VERSIONS = frozenset({2, 3})
+"""Lockfile versions carrying the `packages` object keyed by `node_modules` path."""
 
 
 class LockfileError(Exception):
@@ -28,7 +33,8 @@ def added_packages(*, path: str, base_text: str | None, head_text: str | None) -
     `pnpm-lock.yaml` or `package-lock.json` return nothing.
 
     Raises:
-        LockfileError: When either side of a recognised lockfile cannot be parsed.
+        LockfileError: When either side of a recognised lockfile cannot be parsed, lacks its package section or
+            is in an unsupported format version.
 
     """
     parser = _PARSERS.get(PurePosixPath(path).name)
@@ -47,7 +53,11 @@ def _package_names(*, parser: Callable[[str], frozenset[str]], path: str, text: 
 
 
 def _uv_names(text: str) -> frozenset[str]:
-    packages = tomllib.loads(text).get("package", [])
+    document = tomllib.loads(text)
+    _require_version(value=document.get("version"), supported=_UV_VERSIONS, key="version")
+    if "package" not in document:
+        raise LockfileError("no `[[package]]` entries")
+    packages = document["package"]
     if not isinstance(packages, list):
         raise LockfileError("`package` is not an array of tables")
     names = [package.get("name") if isinstance(package, dict) else None for package in packages]
@@ -58,11 +68,14 @@ def _uv_names(text: str) -> frozenset[str]:
 
 def _pnpm_names(text: str) -> frozenset[str]:
     document = yaml.safe_load(text)
-    packages = document.get("packages") if isinstance(document, dict) else None
-    if packages is None:
-        return frozenset()
+    if not isinstance(document, dict):
+        raise LockfileError("the document is not a mapping")
+    version = document.get("lockfileVersion")
+    if str(version).partition(".")[0] not in _PNPM_MAJOR_VERSIONS:
+        raise LockfileError(f"unsupported `lockfileVersion` {version!r}")
+    packages = document.get("packages")
     if not isinstance(packages, dict):
-        raise LockfileError("`packages` is not a mapping")
+        raise LockfileError("`packages` is missing or not a mapping")
     return frozenset(_pnpm_key_name(key=str(key)) for key in packages)
 
 
@@ -74,10 +87,18 @@ def _pnpm_key_name(*, key: str) -> str:
 
 def _npm_names(text: str) -> frozenset[str]:
     document = json.loads(text)
-    packages = document.get("packages", {}) if isinstance(document, dict) else None
+    if not isinstance(document, dict):
+        raise LockfileError("the document is not an object")
+    _require_version(value=document.get("lockfileVersion"), supported=_NPM_VERSIONS, key="lockfileVersion")
+    packages = document.get("packages")
     if not isinstance(packages, dict):
-        raise LockfileError("`packages` is not an object")
+        raise LockfileError("`packages` is missing or not an object")
     return frozenset(key.rpartition(_NODE_MODULES)[2] for key in packages if _NODE_MODULES in key)
+
+
+def _require_version(*, value: object, supported: frozenset[int], key: str) -> None:
+    if isinstance(value, bool) or value not in supported:
+        raise LockfileError(f"unsupported `{key}` {value!r}")
 
 
 _PARSERS: dict[str, Callable[[str], frozenset[str]]] = {
