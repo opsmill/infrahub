@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from itertools import takewhile
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -37,12 +38,31 @@ def _path_owners(*, path: str, rules: list[_Rule]) -> tuple[str, ...]:
 def _parse(*, text: str) -> list[_Rule]:
     rules = []
     for line in text.splitlines():
-        fields = line.split()
-        if not fields or fields[0].startswith("#"):
+        stripped = line.lstrip()
+        # GitHub does not honour a backslash escaping a leading `#`, so such a line never assigns owners.
+        if not stripped or stripped.startswith(("#", "\\#")):
             continue
-        pattern, *owners = fields
+        pattern, *fields = _tokenize(line=stripped)
+        owners = list(takewhile(lambda field: not field.startswith("#"), fields))
         rules.append(_Rule(pattern=_compile(pattern=pattern), owners=tuple(owners)))
     return rules
+
+
+def _tokenize(*, line: str) -> list[str]:
+    """Split on whitespace not escaped by a backslash, keeping the escapes in each token."""
+    tokens: list[str] = []
+    current = ""
+    characters = iter(line)
+    for character in characters:
+        if character == "\\":
+            current += character + next(characters, "")
+        elif character.isspace():
+            if current:
+                tokens.append(current)
+            current = ""
+        else:
+            current += character
+    return [*tokens, current] if current else tokens
 
 
 def _compile(*, pattern: str) -> re.Pattern[str]:
@@ -76,6 +96,9 @@ def _translate(*, glob: str) -> str:
         elif glob[index] == "?":
             parts.append("[^/]")
             index += 1
+        elif glob[index] == "\\":
+            parts.append(re.escape(glob[index + 1 : index + 2] or "\\"))
+            index += 2
         else:
             parts.append(re.escape(glob[index]))
             index += 1

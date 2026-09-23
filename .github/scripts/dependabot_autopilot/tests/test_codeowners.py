@@ -90,3 +90,37 @@ def test_github_pattern_semantics(pattern: str, path: str, matches: bool) -> Non
     expected = ("@owner",) if matches else (FALLBACK,)
 
     assert owners(path, codeowners_text=f"{pattern} @owner\n") == expected
+
+
+@pytest.mark.parametrize(
+    ("pattern", "path", "matches"),
+    [
+        ("docs/My\\ File.md", "docs/My File.md", True),
+        ("docs/My\\ File.md", "docs/My", False),
+        ("/release\\ notes/", "release notes/2026.md", True),
+        ("docs/\\#notes.md", "docs/#notes.md", True),
+        ("docs/\\#notes.md", "docs/\\#notes.md", False),
+        ("\\*.md", "*.md", True),
+        ("\\*.md", "README.md", False),
+    ],
+)
+def test_backslash_escapes_the_next_pattern_character(pattern: str, path: str, matches: bool) -> None:
+    expected = ("@owner",) if matches else (FALLBACK,)
+
+    assert owners(path, codeowners_text=f"{pattern} @owner\n") == expected
+
+
+def test_escaped_spaces_keep_every_owner_of_the_rule() -> None:
+    text = "/release\\ notes/ @opsmill/docs @opsmill/product\n"
+
+    assert owners("release notes/2026.md", codeowners_text=text) == ("@opsmill/docs", "@opsmill/product")
+
+
+def test_line_starting_with_an_escaped_hash_is_not_a_rule() -> None:
+    assert owners("#notes.md", codeowners_text="\\#notes.md @owner\n") == (FALLBACK,)
+
+
+def test_inline_comment_after_the_owners_is_ignored() -> None:
+    text = "*.js    @js-owner #This is an inline comment.\n"
+
+    assert owners("src/app.js", codeowners_text=text) == ("@js-owner",)
