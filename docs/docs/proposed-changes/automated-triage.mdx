@@ -75,6 +75,41 @@ Running without it is a supported configuration, not a degraded one: nothing is 
 runs are still counted as successful, and the note has one fewer paragraph.
 :::
 
+## What leaves your deployment
+
+Triage sends a short, structured description of the change — what it touches, not who touches it.
+Both services get the same description, so there is one answer to this question rather than one per
+vendor.
+
+**Sent**, to the evaluation service and, if you configured one, to the summarisation service:
+
+- the proposed change's title and description, and the two branch names;
+- the node kinds it touches, with added, updated and removed counts, and the total node count;
+- the sites involved, if you have set `location_relationship`;
+- which generated artifacts changed and which device each belongs to;
+- how many checks passed and failed, and the labels of the failing ones;
+- whether the description above had to be capped to fit the size budget, and what was capped.
+
+The evaluation service is also given your reviewer policies — each team's key and its description —
+because that text is what the routing decision is matched against. The summarisation service is
+given the evaluation's answers, and the rule and team behind each requested reviewer.
+
+**Never sent, to either service:**
+
+- **who your reviewers are.** Not the candidates triage chose between, not their usernames, not
+  their account ids, not how many changes they already have open.
+- **who wrote the change.** The author is excluded from reviewer selection inside Infrahub; the
+  account id never goes out.
+- **who approved past changes.**
+- **the proposed change's own id.**
+- credentials, secrets, or the content of any artifact.
+
+Reviewer selection is ordinary deterministic code running inside your deployment. No model is ever
+asked anything about a person — the four things a model is asked are how risky the change looks,
+which team owns it, whether it touches production, and whether it warrants a second reviewer, and
+none of those is a question about who anyone is. Removing the account data also made the request
+about 63% smaller, so the same decision cuts what you pay for the summarisation call.
+
 ## Turning it on
 
 The full list of settings is in the
