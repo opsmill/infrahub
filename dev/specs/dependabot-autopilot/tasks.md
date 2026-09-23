@@ -120,8 +120,8 @@ description: "Task list for the dependency-bump autopilot"
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T035 [P] Write `dev/guides/dependabot-autopilot.md`: what the autopilot does, labels, the merge switch and `autopilot/hold`, rollback, required secrets (including that `ANTHROPIC_API_KEY` must be a Dependabot secret) and variables, the shadow-mode exit criteria and rollback trigger from plan.md Rollout, and the exact `gh` and JQL queries measuring SC-001..SC-004; link it from `dev/README.md`
-- [ ] T036 [P] Add the three workflows to the relevant table in `dev/knowledge/` if one lists CI workflows (check `dev/knowledge/` for a CI or GitHub Actions page first; skip if none exists)
+- [X] T035 [P] Write `dev/guides/dependabot-autopilot.md`: what the autopilot does, labels, the merge switch and `autopilot/hold`, rollback, required secrets (including that `ANTHROPIC_API_KEY` must be a Dependabot secret) and variables, the shadow-mode exit criteria and rollback trigger from plan.md Rollout, and the exact `gh` and JQL queries measuring SC-001..SC-004; link it from `dev/README.md`
+- [X] T036 [P] Add the three workflows to the relevant table in `dev/knowledge/` if one lists CI workflows (check `dev/knowledge/` for a CI or GitHub Actions page first; skip if none exists) (skipped: no CI workflow page in dev/knowledge/)
 - [ ] T037 Run the `/pre-ci` checks for the changed areas (ruff whole-repo, `ty check .`, yamllint, markdown lint, `gh aw compile` drift, the new pytest job) and fix every failure
 - [ ] T038 Confirm no changelog fragment is needed: the change is internal CI automation with no user-visible effect on Infrahub (AGENTS.md changelog rule)
 - [ ] T039 After governance sign-off: create the `opsmill-dependabot-autopilot` GitHub App, install it on `opsmill/infrahub`, store secrets and variables per `data-model.md` Configuration with `DEPENDABOT_AUTOPILOT_MERGE=off`, then run quickstart.md Q1 in a sandbox repository and record the result in research.md R3

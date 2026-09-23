@@ -103,6 +103,10 @@ Backend guides in [guides/backend/](guides/backend/):
 - [creating-async-tasks.md](guides/backend/creating-async-tasks.md) - How to create async tasks
 - [creating-messages.md](guides/backend/creating-messages.md) - How to create message bus messages
 
+Repository automation guides in [guides/](guides/):
+
+- [dependabot-autopilot.md](guides/dependabot-autopilot.md) - Configure, pause, roll back and measure the Dependabot autopilot
+
 ## Current Commands
 
 Available agent commands in [../.agents/commands/](../.agents/commands/):
