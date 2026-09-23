@@ -1,0 +1,1 @@
+Fixed the web UI being replaced by a raw JSON error body when the server is shedding load: a page load is no longer shed, so opening or refreshing Infrahub under heavy load reaches the app and its own retry handles the requests the page then makes.

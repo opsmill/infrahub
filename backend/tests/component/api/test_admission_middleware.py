@@ -719,3 +719,68 @@ async def test_build_admission_controller_sets_gauge() -> None:
         factor=config.SETTINGS.api.backpressure_max_concurrency_factor,
     )
     assert metrics.MAX_CONCURRENCY._value.get() == expected
+
+
+_BROWSER_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+
+
+@pytest.mark.parametrize(
+    ("method", "headers"),
+    [
+        pytest.param("GET", {"Accept": _BROWSER_ACCEPT}, id="ordinary-navigation"),
+        pytest.param(
+            "GET",
+            [("Accept", "application/json"), ("Accept", "text/html")],
+            id="accept-split-across-fields",
+        ),
+    ],
+)
+async def test_page_navigation_bypasses_admission(method: str, headers: object) -> None:
+    """A page load passes through behind a shed-everything controller and moves no metric."""
+    app = FastAPI()
+
+    @app.get("/{rest_of_path:path}")
+    async def frontend(rest_of_path: str) -> dict[str, bool]:
+        return {"ok": True}
+
+    install_admission(app, shed_everything_controller(), enabled=True)
+
+    offered_before = _offered_total()
+    missing_before = metrics.MISSING_PRIORITY_TOTAL._value.get()
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.request(method, "/branches/some-branch", headers=headers)
+
+    assert response.status_code == 200
+    # The navigation never reached the admission layer, so no admission metric moved.
+    assert _offered_total() - offered_before == 0
+    assert metrics.MISSING_PRIORITY_TOTAL._value.get() - missing_before == 0
+
+
+@pytest.mark.parametrize(
+    ("method", "accept"),
+    [
+        pytest.param("GET", "application/json", id="data-fetch-on-a-gated-path"),
+        pytest.param("GET", "*/*", id="wildcard-accept-is-not-a-navigation"),
+        pytest.param("POST", _BROWSER_ACCEPT, id="html-accept-on-a-write"),
+        pytest.param("GET", "text/htmlx", id="longer-media-type-sharing-the-prefix"),
+        pytest.param("HEAD", _BROWSER_ACCEPT, id="head-is-not-a-page-load"),
+    ],
+)
+async def test_non_navigation_is_still_gated(method: str, accept: str) -> None:
+    """Only a GET listing text/html as a whole media range is exempt; the rest reach the gate."""
+    app = FastAPI()
+
+    @app.api_route("/api/anything", methods=["GET", "HEAD", "POST"])
+    async def anything() -> dict[str, bool]:
+        return {"ok": True}
+
+    install_admission(app, shed_everything_controller(), enabled=True)
+
+    offered_before = _offered_total()
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.request(method, "/api/anything", headers={"Accept": accept})
+
+    assert response.status_code == 429
+    assert _offered_total() - offered_before == 1
