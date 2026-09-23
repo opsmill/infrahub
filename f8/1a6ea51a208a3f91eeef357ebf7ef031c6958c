@@ -1,0 +1,60 @@
+backend/infrahub/services/adapters/cache/nats.py
+  3c80879c1ec0dace 154-159
+backend/infrahub/services/adapters/message_bus/__init__.py
+  3c80879c1ec0dace 81-86
+backend/infrahub/services/adapters/message_bus/nats.py
+  3c80879c1ec0dace 84-89
+backend/infrahub/services/adapters/message_bus/rabbitmq.py
+  3c80879c1ec0dace 121-126
+backend/infrahub/api/health.py
+  3c80879c1ec0dace 1-3,5-114,116-128,130-136
+backend/infrahub/server.py
+  3c80879c1ec0dace 148
+backend/infrahub/services/adapters/cache/redis.py
+  3c80879c1ec0dace 67-72
+changelog/8508.added.md
+  3c80879c1ec0dace 1
+backend/infrahub/database/__init__.py
+  3c80879c1ec0dace 313-321
+backend/infrahub/services/adapters/cache/__init__.py
+  3c80879c1ec0dace 58-62
+backend/tests/functional/api/test_health.py
+  3c80879c1ec0dace 1-78
+backend/tests/unit/api/test_health.py
+  3c80879c1ec0dace 1-23,25-244
+backend/tests/adapters/cache.py
+  3c80879c1ec0dace 29-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "f81a6ea51a208a3f91eeef357ebf7ef031c6958c",
+  "prompts": {
+    "3c80879c1ec0dace": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a498f20b-d0f2-4c2d-bb52-17815df33697",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 513,
+      "total_deletions": 3,
+      "accepted_lines": 503,
+      "overriden_lines": 4
+    },
+    "3edafa15285bdbf7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d0c90c5-13fb-4cdd-8ab0-b85610e945e3",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 237,
+      "total_deletions": 214,
+      "accepted_lines": 200,
+      "overriden_lines": 11
+    }
+  }
+}

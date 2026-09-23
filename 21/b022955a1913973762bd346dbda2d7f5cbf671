@@ -1,0 +1,19 @@
+AGENTS.md
+  s_85f30356119c28::t_b5b31603b5b333 5,7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "21b022955a1913973762bd346dbda2d7f5cbf671",
+  "prompts": {},
+  "sessions": {
+    "s_85f30356119c28": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b14d78a-c802-40c3-b0e1-b8facc965984",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}

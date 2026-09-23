@@ -1,0 +1,39 @@
+backend/infrahub/graphql/mutations/main.py
+  s_cc23bb5658950a::t_c83e9f3d26ef7e 265
+  s_d15d191589749e::t_3e99afe9cea44f 248-264,266-279,295-305
+changelog/10119.fixed.md
+  s_cc23bb5658950a::t_058ec2d6e1c1f9 1
+backend/tests/unit/graphql/test_mutation_retry.py
+  s_d15d191589749e::t_9fe2935155fead 15-20,54
+  s_d15d191589749e::t_0d44afc9ce6970 3-4,6-7,13,46-47,51,55
+  s_d15d191589749e::t_385afe0a995954 8-9,14,37,39-40,44-45,48-50,52
+  s_d15d191589749e::t_bfa75d3644475d 30-34
+  s_cc23bb5658950a::t_860c47fd5221a9 1-2,5
+  s_d15d191589749e::t_e5ac34ec83611c 42-43
+  s_d15d191589749e::t_13c14fdbbfbf71 21-29,35-36,38,41,53
+  s_d15d191589749e::t_fedb13c4eb4655 10-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d76cb0c51fb9e3704c4e7562a4204bd2e3334663",
+  "prompts": {},
+  "sessions": {
+    "s_cc23bb5658950a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7be26c30-7ba2-406f-b618-97627518913b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    },
+    "s_d15d191589749e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9e7e785-f72f-4872-a43b-d9b754715277",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

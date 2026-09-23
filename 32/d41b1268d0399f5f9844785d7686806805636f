@@ -1,0 +1,23 @@
+backend/tests/component/graphql/mutations/test_ipam.py
+  7c0a6b001519436d 1383,1385,1474-1483
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "32d41b1268d0399f5f9844785d7686806805636f",
+  "prompts": {
+    "7c0a6b001519436d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47624bac-c32e-4421-8d31-f06472ab2334",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 12,
+      "total_deletions": 12,
+      "accepted_lines": 12,
+      "overriden_lines": 0
+    }
+  }
+}

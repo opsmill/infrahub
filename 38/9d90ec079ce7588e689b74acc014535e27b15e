@@ -1,0 +1,23 @@
+backend/tests/component/auth/auth_groups/test_autocreate_flow.py
+  s_461c0d5ff4ecc5::t_121f9cfffcf3c1 211-248
+backend/tests/component/auth/auth_groups/test_autocreate_concurrency.py
+  s_461c0d5ff4ecc5::t_3d3154551b9ec4 1-19,21-59,61-94
+  s_461c0d5ff4ecc5::t_b123b846067790 20
+  s_461c0d5ff4ecc5::t_9f97f7bda86d6a 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "389d90ec079ce7588e689b74acc014535e27b15e",
+  "prompts": {},
+  "sessions": {
+    "s_461c0d5ff4ecc5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be5ff4fb-e339-4ab2-bed8-8e25cc1ae0a7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}

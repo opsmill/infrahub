@@ -1,0 +1,31 @@
+.github/workflows/ci.yml
+  cb37beae7e69e79d 1407
+.github/workflows/update-compose-file-and-chart.yml
+  cb37beae7e69e79d 28
+.github/workflows/ci-docker-image.yml
+  cb37beae7e69e79d 54
+.github/workflows/close-docusaurus-dependabot.yml
+  cb37beae7e69e79d 27,31
+.github/dependabot.yml
+  cb37beae7e69e79d 28,41,54,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "b03ec8d376d75d70e28768ee4d8d2b4f0575be33",
+  "prompts": {
+    "cb37beae7e69e79d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40fe615f-3e23-4bb8-8327-de79b2082217",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 8,
+      "accepted_lines": 5947,
+      "overriden_lines": 0
+    }
+  }
+}

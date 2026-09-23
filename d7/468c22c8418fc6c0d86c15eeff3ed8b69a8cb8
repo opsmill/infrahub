@@ -1,0 +1,19 @@
+.github/workflows/repository-dispatch.yml
+  s_e4801fa481c254::t_be7b740f6511c1 38-39,41-42,44,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d7468c22c8418fc6c0d86c15eeff3ed8b69a8cb8",
+  "prompts": {},
+  "sessions": {
+    "s_e4801fa481c254": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f95acc3-db59-435f-8e7a-dac36ba5814f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}

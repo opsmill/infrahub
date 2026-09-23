@@ -1,0 +1,20 @@
+backend/infrahub/graphql/queries/search.py
+  s_5a724923a3aa16::t_367d5ad0e430a6 188-199
+  s_5a724923a3aa16::t_703dcc2cf4ca70 139-140,142-144,148-152,159-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "2f24c3923048d71fae2f2d9cee0c76574d4cb726",
+  "prompts": {},
+  "sessions": {
+    "s_5a724923a3aa16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cce90b5-bda0-49b4-a74e-9400a12db808",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}

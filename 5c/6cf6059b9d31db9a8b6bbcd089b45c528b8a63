@@ -1,0 +1,25 @@
+frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.tsx
+  376fa329e2185481 7,83
+frontend/app/.betterer.results
+  376fa329e2185481 190-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "5c6cf6059b9d31db9a8b6bbcd089b45c528b8a63",
+  "prompts": {
+    "376fa329e2185481": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a172657-500c-482b-bb9b-84b163488428",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 648,
+      "total_deletions": 912,
+      "accepted_lines": 15,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,23 @@
+backend/tests/unit/core/test_attribute_float.py
+  0e3b37c8386308c4 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.3",
+  "base_commit_sha": "20818cc1ccc64afb2f43887919bef7337a4cbce4",
+  "prompts": {
+    "0e3b37c8386308c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3adeacc7-5ccc-4396-b525-f1e54a40249f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}

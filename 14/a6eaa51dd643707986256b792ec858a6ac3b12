@@ -1,0 +1,36 @@
+backend/tests/functional/api/test_health.py
+  cc7b00cb5901fb35 16,21,25,36,43,50,70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.6",
+  "base_commit_sha": "14a6eaa51dd643707986256b792ec858a6ac3b12",
+  "prompts": {
+    "3edafa15285bdbf7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d0c90c5-13fb-4cdd-8ab0-b85610e945e3",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 12,
+      "overriden_lines": 0
+    },
+    "cc7b00cb5901fb35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2054d4e-1591-4cc0-9741-89a3084d1b00",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 7,
+      "total_deletions": 7,
+      "accepted_lines": 7,
+      "overriden_lines": 0
+    }
+  }
+}
