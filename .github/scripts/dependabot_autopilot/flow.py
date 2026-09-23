@@ -141,7 +141,10 @@ def sweep(*, github: GitHubPort, config: Config, now: datetime, run_url: str) ->
         except Exception as exc:
             succeeded = False
             print(f"evaluation of #{summary.number} failed: {exc!r}", file=sys.stderr)
-            escalate(github=github, config=config, pr_number=summary.number, run_url=run_url)
+            try:
+                escalate(github=github, config=config, pr_number=summary.number, run_url=run_url)
+            except Exception as escalation_exc:
+                print(f"escalation of #{summary.number} failed: {escalation_exc!r}", file=sys.stderr)
     return succeeded
 
 
@@ -150,6 +153,7 @@ def escalate(*, github: GitHubPort, config: Config, pr_number: int, run_url: str
     pr = github.get_pull_request(number=pr_number)
     if not _is_actionable(pr=pr, config=config):
         return
+    _dismiss_approvals_best_effort(github=github, config=config, pr=pr)
     _set_verdict_label(github=github, pr=pr, verdict=Verdict.REVIEW_REQUIRED)
     current = github.find_marker_comment(pr_number=pr.number, marker=MARKER, author_login=config.app_login)
     body = "\n".join(
@@ -281,17 +285,41 @@ def _apply(*, target: _Target, decision: Decision, report: VerdictReport | None,
 
 
 def _dismiss_approvals(*, target: _Target, include_head: bool) -> None:
-    pr = target.pr
-    for review in target.reviews:
-        if review.author_login != target.config.app_login or review.state is not ReviewState.APPROVED:
-            continue
-        if review.commit_id == pr.head_sha and not include_head:
-            continue
-        target.github.dismiss_review(
-            pr_number=pr.number,
-            review_id=review.id,
-            message=f"The dependency-bump autopilot has not approved the head commit `{pr.head_sha}`.",
-        )
+    for review in _own_approvals(target=target, include_head=include_head):
+        _dismiss(github=target.github, pr=target.pr, review=review)
+
+
+def _dismiss_approvals_best_effort(*, github: GitHubPort, config: Config, pr: PullRequest) -> None:
+    """Dismiss every approval the autopilot gave, logging each failure instead of raising it."""
+    try:
+        reviews = tuple(github.list_reviews(pr_number=pr.number))
+    except GitHubError as exc:
+        print(f"listing the reviews of #{pr.number} failed: {exc}", file=sys.stderr)
+        return
+    target = _Target(github=github, config=config, pr=pr, reviews=reviews)
+    for review in _own_approvals(target=target, include_head=True):
+        try:
+            _dismiss(github=github, pr=pr, review=review)
+        except GitHubError as exc:
+            print(f"dismissing review {review.id} on #{pr.number} failed: {exc}", file=sys.stderr)
+
+
+def _own_approvals(*, target: _Target, include_head: bool) -> list[Review]:
+    return [
+        review
+        for review in target.reviews
+        if review.author_login == target.config.app_login
+        and review.state is ReviewState.APPROVED
+        and (include_head or review.commit_id != target.pr.head_sha)
+    ]
+
+
+def _dismiss(*, github: GitHubPort, pr: PullRequest, review: Review) -> None:
+    github.dismiss_review(
+        pr_number=pr.number,
+        review_id=review.id,
+        message=f"The dependency-bump autopilot has not approved the head commit `{pr.head_sha}`.",
+    )
 
 
 def _submit_once(*, target: _Target, event: ReviewEvent, body: str) -> None:

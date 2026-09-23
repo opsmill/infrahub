@@ -26,6 +26,7 @@ from dependabot_autopilot.ports import (
     ChangedFile,
     CheckRun,
     FileStatus,
+    GitHubError,
     PullRequest,
     PullRequestState,
     Review,
@@ -534,3 +535,57 @@ def test_escalate_keeps_the_requested_for_record(tmp_path: Path) -> None:
     run_evaluate(github=github)
 
     assert len(writes_of(github=github, kind=ReviewersRequested)) == 1
+
+
+def test_escalate_dismisses_every_app_approval_including_the_head(tmp_path: Path) -> None:
+    github = repository(tmp_path=tmp_path)
+    github.reviews[PR_NUMBER] = [
+        app_review(review_id=1, state=ReviewState.APPROVED, commit_id=OLD_SHA),
+        app_review(review_id=2, state=ReviewState.APPROVED, commit_id=HEAD_SHA),
+        app_review(review_id=3, state=ReviewState.APPROVED, commit_id=HEAD_SHA, login="alice"),
+    ]
+
+    escalate(github=github, config=config(), pr_number=PR_NUMBER, run_url=RUN_URL)
+
+    assert [write.review_id for write in writes_of(github=github, kind=ReviewDismissed)] == [1, 2]
+    assert "autopilot/review-required" in github.pull_requests[PR_NUMBER].labels
+
+
+class DismissalRefusedGitHub(FakeGitHub):
+    @override
+    def dismiss_review(self, *, pr_number: int, review_id: int, message: str) -> None:
+        if review_id == 1:
+            raise GitHubError(f"dismissal of review {review_id} refused")
+        super().dismiss_review(pr_number=pr_number, review_id=review_id, message=message)
+
+
+def test_escalate_still_labels_when_a_dismissal_fails() -> None:
+    github = DismissalRefusedGitHub(acting_login=APP_LOGIN)
+    github.pull_requests[PR_NUMBER] = pull_request()
+    github.reviews[PR_NUMBER] = [
+        app_review(review_id=1, state=ReviewState.APPROVED, commit_id=OLD_SHA),
+        app_review(review_id=2, state=ReviewState.APPROVED, commit_id=HEAD_SHA),
+    ]
+
+    escalate(github=github, config=config(), pr_number=PR_NUMBER, run_url=RUN_URL)
+
+    assert [write.review_id for write in writes_of(github=github, kind=ReviewDismissed)] == [2]
+    assert github.pull_requests[PR_NUMBER].labels == ("dependencies", "autopilot/review-required")
+
+
+class EscalationFailsForOnePullRequestGitHub(ChecksUnavailableGitHub):
+    @override
+    def set_labels(self, *, pr_number: int, labels: list[str]) -> None:
+        if pr_number == PR_NUMBER:
+            raise GitHubError(f"labels of #{pr_number} cannot be set")
+        super().set_labels(pr_number=pr_number, labels=labels)
+
+
+def test_sweep_continues_after_an_escalation_fails() -> None:
+    github = EscalationFailsForOnePullRequestGitHub(acting_login=APP_LOGIN)
+    github.pull_requests[PR_NUMBER] = pull_request()
+    github.pull_requests[7] = pull_request(number=7, head_sha=OLD_SHA)
+
+    assert sweep(github=github, config=config(), now=NOW, run_url=RUN_URL) is False
+
+    assert github.pull_requests[7].labels == ("dependencies", "autopilot/review-required")
