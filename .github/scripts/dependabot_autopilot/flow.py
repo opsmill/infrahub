@@ -34,6 +34,8 @@ MARKER = "<!-- dependabot-autopilot -->"
 DEPENDABOT_LOGIN = "dependabot[bot]"
 BASE_BRANCH = "stable"
 ANALYSIS_WORKFLOW = "dependabot-autopilot-analyze"
+ANALYSIS_WORKFLOW_PATH = ".github/workflows/dependabot-autopilot-analyze.lock.yml"
+ANALYSIS_EVENT = "pull_request"
 ACT_WORKFLOW = "dependabot-autopilot-act"
 VERDICT_ARTIFACT = "dependabot-autopilot-verdict"
 CODEOWNERS_PATH = ".github/CODEOWNERS"
@@ -170,7 +172,14 @@ def _is_actionable(*, pr: PullRequest, config: Config) -> bool:
 
 
 def _latest_analysis_run(*, runs: Sequence[WorkflowRun], head_sha: str) -> WorkflowRun | None:
-    candidates = [run for run in runs if run.name == ANALYSIS_WORKFLOW and run.head_sha == head_sha]
+    candidates = [
+        run
+        for run in runs
+        if run.name == ANALYSIS_WORKFLOW
+        and run.path == ANALYSIS_WORKFLOW_PATH
+        and run.event == ANALYSIS_EVENT
+        and run.head_sha == head_sha
+    ]
     return max(candidates, key=lambda run: (run.created_at, run.id), default=None)
 
 

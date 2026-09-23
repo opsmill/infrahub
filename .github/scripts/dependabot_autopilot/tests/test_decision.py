@@ -214,6 +214,17 @@ def test_missing_report_after_completed_analysis_is_review_required() -> None:
     assert any("no verdict report" in reason and "failure" in reason for reason in decision.reasons)
 
 
+@pytest.mark.parametrize(
+    "conclusion", [RunConclusion.FAILURE, RunConclusion.TIMED_OUT, RunConclusion.CANCELLED, RunConclusion.SKIPPED]
+)
+def test_report_from_an_analysis_run_that_did_not_succeed_is_review_required(conclusion: RunConclusion) -> None:
+    decision = run_decide(analysis_run=analysis_run(conclusion=conclusion))
+
+    assert decision.action is Action.REVIEW_REQUIRED
+    assert decision.effective_verdict is REVIEW
+    assert "analysis run did not succeed" in decision.reasons
+
+
 def test_malformed_report_is_review_required_with_its_error() -> None:
     decision = run_decide(report=ReportError("verdict has unknown value 'yolo'"))
 

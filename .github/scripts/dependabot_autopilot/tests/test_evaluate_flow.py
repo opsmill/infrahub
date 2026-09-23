@@ -11,6 +11,7 @@ from dependabot_autopilot.checks import CiState
 from dependabot_autopilot.decision import Action
 from dependabot_autopilot.flow import (
     ANALYSIS_WORKFLOW,
+    ANALYSIS_WORKFLOW_PATH,
     MARKER,
     VERDICT_ARTIFACT,
     Config,
@@ -80,13 +81,16 @@ def pull_request(**changes: object) -> PullRequest:
     return dataclasses.replace(base, **changes)
 
 
+WORKFLOW_PATHS = {ANALYSIS_WORKFLOW: ANALYSIS_WORKFLOW_PATH, "CI": ".github/workflows/ci.yml"}
+
+
 def workflow_run(
     *, run_id: int, name: str, head_sha: str = HEAD_SHA, status: RunStatus = RunStatus.COMPLETED
 ) -> WorkflowRun:
     return WorkflowRun(
         id=run_id,
         name=name,
-        path=f".github/workflows/{name}.yml",
+        path=WORKFLOW_PATHS.get(name, f".github/workflows/{name}.yml"),
         event="pull_request",
         head_sha=head_sha,
         status=status,
@@ -429,6 +433,24 @@ def test_completed_analysis_without_artifact_is_review_required(tmp_path: Path) 
     github = repository(tmp_path=tmp_path)
 
     assert run_evaluate(github=github, merge_enabled=True) is Action.REVIEW_REQUIRED
+
+
+@pytest.mark.parametrize(
+    ("path", "event"),
+    [(".github/workflows/impostor.yml", "pull_request"), (ANALYSIS_WORKFLOW_PATH, "workflow_dispatch")],
+    ids=["other-path", "other-event"],
+)
+def test_analysis_run_lookup_ignores_runs_of_another_workflow_or_event(tmp_path: Path, path: str, event: str) -> None:
+    github = repository(tmp_path=tmp_path, document=report_document(verdict="review-required"))
+    github.workflow_runs.append(
+        dataclasses.replace(workflow_run(run_id=99, name=ANALYSIS_WORKFLOW), path=path, event=event)
+    )
+    github.artifacts[99, VERDICT_ARTIFACT] = write_report(
+        directory=tmp_path / "artifact-99", document=report_document()
+    )
+
+    assert run_evaluate(github=github, merge_enabled=True) is Action.REVIEW_REQUIRED
+    assert writes_of(github=github, kind=Merged) == []
 
 
 def test_invalidate_dismisses_only_app_approvals_of_other_commits(tmp_path: Path) -> None:

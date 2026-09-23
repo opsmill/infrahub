@@ -8,7 +8,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from dependabot_autopilot.checks import CiState
-from dependabot_autopilot.ports import AccountType, PullRequestState, ReviewState, RunStatus
+from dependabot_autopilot.ports import AccountType, PullRequestState, ReviewState, RunConclusion, RunStatus
 from dependabot_autopilot.report import ReportError, Verdict
 
 if TYPE_CHECKING:
@@ -132,7 +132,10 @@ def _assess_report(
             f"the verdict report is for pull request #{report.pr_number}, not #{pr.number}",
         )
     if report.head_sha == pr.head_sha:
-        return _report_verdict(report=report)
+        verdict, reasons = _report_verdict(report=report)
+        if _analysis_did_not_succeed(pr=pr, analysis_run=analysis_run):
+            return strictest(verdicts=[verdict, Verdict.REVIEW_REQUIRED]), (*reasons, "analysis run did not succeed")
+        return verdict, reasons
     stale = f"the verdict report is stale: it analysed {report.head_sha[:12]}, the head is {pr.head_sha[:12]}"
     return _assess_missing_report(pr=pr, analysis_run=analysis_run, stale=(stale,), now=now)
 
@@ -149,6 +152,15 @@ def _assess_missing_report(
     if now - pr.head_committed_at >= ANALYSIS_DEADLINE:
         return Verdict.REVIEW_REQUIRED, (*stale, "analysis did not run")
     return None
+
+
+def _analysis_did_not_succeed(*, pr: PullRequest, analysis_run: WorkflowRun | None) -> bool:
+    return (
+        analysis_run is not None
+        and analysis_run.head_sha == pr.head_sha
+        and analysis_run.status is RunStatus.COMPLETED
+        and analysis_run.conclusion is not RunConclusion.SUCCESS
+    )
 
 
 def _report_verdict(*, report: VerdictReport) -> tuple[Verdict, tuple[str, ...]]:

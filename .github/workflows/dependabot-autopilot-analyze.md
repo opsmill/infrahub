@@ -49,8 +49,8 @@ safe-outputs:
         Record the verdict for this dependency-bump pull request. Call exactly once with the
         complete verdict JSON document as a string.
       runs-on: ubuntu-latest
-      # A verdict flagged by threat detection is never published.
-      if: needs.detection.result == 'success'
+      # A verdict from a failed or timed-out agent run, or flagged by threat detection, is never published.
+      if: needs.agent.result == 'success' && needs.detection.result == 'success'
       permissions:
         contents: read
       inputs:
