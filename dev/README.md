@@ -54,6 +54,7 @@ Mark deprecated docs clearly. Don't delete—update with pointers to replacement
 - **Git Workflow**: [guidelines/git-workflow.md](guidelines/git-workflow.md)
 - **Markdown Formatting**: [guidelines/markdown.md](guidelines/markdown.md)
 - **Writing Documentation**: [guidelines/documentation.md](guidelines/documentation.md) - How to write user-facing documentation
+- **Review Passes**: [guidelines/review/README.md](guidelines/review/README.md) - Reading a diff for the risks it adds, one pass per class of risk
 
 ## Current Knowledge
 
@@ -102,6 +103,10 @@ Backend guides in [guides/backend/](guides/backend/):
 - [creating-events.md](guides/backend/creating-events.md) - How to create new events
 - [creating-async-tasks.md](guides/backend/creating-async-tasks.md) - How to create async tasks
 - [creating-messages.md](guides/backend/creating-messages.md) - How to create message bus messages
+
+General guides in [guides/](guides/):
+
+- [reviewing-with-cubic.md](guides/reviewing-with-cubic.md) - Review your branch with cubic before pushing
 
 ## Current Commands
 
