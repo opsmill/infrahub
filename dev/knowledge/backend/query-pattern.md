@@ -117,6 +117,8 @@ self.add_to_query(f"MATCH (n {{ uuid: '{user_provided_id}' }})")
 
 Readability of the raw query outranks deduplication. Do not extract repeated Cypher blocks into shared Python string-building helpers or fragment formatters just to avoid duplication — a query assembled from indirected fragments is much harder to read, review, and paste into a Neo4j console. Duplicating a few similar Cypher blocks inline is the accepted trade-off.
 
+The bar for a shared fragment constant is a substantial body with several consumers: a predicate of dozens of lines composed into three or four queries earns a named constant, while a few-line `MATCH` used twice is pasted into both call sites — especially when the copies are not quite identical anyway.
+
 ### Return Labels
 
 The RETURN clause is automatically generated from `return_labels`. Call `update_return_labels()` to specify what to return.
@@ -384,28 +386,7 @@ This section documents internal implementation details. External callers should 
 
 ### Query Base Class
 
-**Location:** `backend/infrahub/core/query/__init__.py`
-
-```python
-class Query:
-    name: str = "base-query"
-    type: QueryType  # READ or WRITE
-
-    def __init__(
-        self,
-        branch: Branch | None = None,
-        at: Timestamp | str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-        order_by: list[str] | None = None,
-        branch_agnostic: bool = False,
-        user_id: str = SYSTEM_USER_ID,
-    ) -> None:
-        self.params: dict = {}
-        self.query_lines: list[str] = []
-        self.return_labels: list[str] = []
-        self.results: list[QueryResult] = []
-```
+**Location:** `backend/infrahub/core/query/__init__.py`. The constructor also takes `branch`, `at`, `limit`/`offset`, `order_by`, `branch_agnostic` and `user_id`.
 
 | Attribute | Purpose |
 |-----------|---------|

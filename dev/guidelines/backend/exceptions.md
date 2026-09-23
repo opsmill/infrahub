@@ -41,6 +41,16 @@ except Exception as exc:
     raise
 ```
 
+## Raise domain errors, never HTTP responses
+
+Status-code mapping is an application-layer concern: `backend/infrahub/server.py` registers the
+exception handlers that translate `Error` subclasses and validation failures into HTTP responses.
+Everything below a route handler — Pydantic models and their validators, core services, GraphQL
+resolvers — raises the domain exception and lets that layer pick the status. Raising an HTTP
+exception from a model couples transport to a class that non-HTTP callers (the CLI, schema
+generation) also use; a validator raises a Pydantic validation error, which FastAPI already
+surfaces as a 422 on request paths.
+
 ## Best-effort side effects degrade to a safe fallback
 
 A second broad-catch case is a best-effort side effect whose failure must not abort a primary
