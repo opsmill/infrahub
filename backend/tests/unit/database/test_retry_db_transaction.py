@@ -5,14 +5,23 @@ from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from neo4j import AsyncGraphDatabase
 from neo4j.exceptions import ClientError, TransientError
 
 from infrahub import config
-from infrahub.database import retry_db_transaction
+from infrahub.database import (
+    InfrahubDatabase,
+    InfrahubDatabaseMode,
+    retry_db_transaction,
+    run_in_transaction_with_retry,
+    run_with_retry,
+)
 from infrahub.database.metrics import TRANSACTION_RETRIES
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator, Generator
+
+    from neo4j import AsyncDriver
 
 
 @pytest.fixture
@@ -168,3 +177,189 @@ class TestRetryDbTransactionExponentialBackoff:
         decorated = retry_db_transaction(name="test_wraps")(my_original_function)
         assert decorated.__name__ == "my_original_function"  # type: ignore[attr-defined]
         assert decorated.__doc__ == "My docstring."  # type: ignore[attr-defined]
+
+
+@pytest.fixture
+def _set_zero_delay_retries() -> Generator[None, None, None]:
+    original_retry_limit = config.SETTINGS.database.retry_limit
+    original_base_delay = config.SETTINGS.database.retry_base_delay
+    original_jitter_max = config.SETTINGS.database.retry_jitter_max
+
+    config.SETTINGS.database.retry_limit = 3
+    config.SETTINGS.database.retry_base_delay = 0.0
+    config.SETTINGS.database.retry_jitter_max = 0.0
+    yield
+    config.SETTINGS.database.retry_limit = original_retry_limit
+    config.SETTINGS.database.retry_base_delay = original_base_delay
+    config.SETTINGS.database.retry_jitter_max = original_jitter_max
+
+
+@pytest.fixture
+async def neo4j_driver() -> AsyncGenerator[AsyncDriver, None]:
+    """A driver that is never asked to run a query, so it never opens a connection."""
+    driver = AsyncGraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "unused"))
+    yield driver
+    await driver.close()
+
+
+@pytest.fixture
+def transaction_mode_db(neo4j_driver: AsyncDriver) -> InfrahubDatabase:
+    """A database in transaction mode, standing in for one a caller opened and owns."""
+    return InfrahubDatabase(driver=neo4j_driver, mode=InfrahubDatabaseMode.TRANSACTION)
+
+
+@pytest.fixture
+def driver_mode_db(neo4j_driver: AsyncDriver) -> InfrahubDatabase:
+    """A database outside any transaction, as a mutation holds it before it opens one."""
+    return InfrahubDatabase(driver=neo4j_driver, mode=InfrahubDatabaseMode.DRIVER)
+
+
+class _RetriableWork:
+    """Async callable that fails with a retriable error a fixed number of times, then succeeds."""
+
+    def __init__(self, failures: int) -> None:
+        self._failures = failures
+        self.calls = 0
+
+    async def run(self) -> str:
+        self.calls += 1
+        if self.calls <= self._failures:
+            raise _make_transient_error("no available threads to serve this request")
+        return "ok"
+
+
+@pytest.mark.usefixtures("_set_zero_delay_retries")
+class TestRetryOwnership:
+    """Only the outermost retry scope replays.
+
+    Layers that each retried independently multiplied into `retry_limit` raised to their nesting
+    depth, which piles attempts onto a database already reporting that it cannot serve them.
+    """
+
+    async def test_nested_scopes_share_one_budget_of_attempts(self) -> None:
+        work = _RetriableWork(failures=99)
+        inner = retry_db_transaction(name="nested_inner")(work.run)
+        outer = retry_db_transaction(name="nested_outer")(inner)
+
+        with pytest.raises(TransientError, match=r"^no available threads to serve this request$"):
+            await outer()
+
+        assert work.calls == 3
+
+    async def test_inner_scope_hands_the_error_to_the_owner(self) -> None:
+        work = _RetriableWork(failures=1)
+        inner = retry_db_transaction(name="handoff_inner")(work.run)
+        outer = retry_db_transaction(name="handoff_outer")(inner)
+
+        assert await outer() == "ok"
+        assert work.calls == 2
+
+    async def test_one_failure_is_counted_once_under_the_owning_label(self) -> None:
+        inner_before = TRANSACTION_RETRIES.labels("counted_inner")._value.get()
+        outer_before = TRANSACTION_RETRIES.labels("counted_outer")._value.get()
+
+        work = _RetriableWork(failures=1)
+        inner = retry_db_transaction(name="counted_inner")(work.run)
+        outer = retry_db_transaction(name="counted_outer")(inner)
+
+        assert await outer() == "ok"
+
+        assert TRANSACTION_RETRIES.labels("counted_inner")._value.get() == inner_before
+        assert TRANSACTION_RETRIES.labels("counted_outer")._value.get() == outer_before + 1
+
+    async def test_a_task_awaited_inside_the_scope_shares_the_budget(self) -> None:
+        work = _RetriableWork(failures=99)
+
+        async def inner_task() -> str:
+            return await retry_db_transaction(name="awaited_inner")(work.run)()
+
+        async def spawn_and_await() -> str:
+            return await asyncio.create_task(inner_task())
+
+        with pytest.raises(TransientError, match=r"^no available threads to serve this request$"):
+            await retry_db_transaction(name="awaited_outer")(spawn_and_await)()
+
+        assert work.calls == 3
+
+    async def test_a_task_outliving_the_scope_retries_on_its_own(self) -> None:
+        """A scope must not leave the tasks it started unable to retry for the rest of their lives.
+
+        Starting a task copies the context the claim lives in, and the copy is not the one the
+        scope goes on to restore when it returns.
+        """
+        work = _RetriableWork(failures=1)
+        scope_returned = asyncio.Event()
+
+        async def retry_once_the_scope_is_gone() -> str:
+            await scope_returned.wait()
+            return await retry_db_transaction(name="outliving_task")(work.run)()
+
+        async def spawn_only() -> asyncio.Task[str]:
+            return asyncio.create_task(retry_once_the_scope_is_gone())
+
+        task = await retry_db_transaction(name="spawning_scope")(spawn_only)()
+        scope_returned.set()
+
+        assert await task == "ok"
+        assert work.calls == 2
+
+    async def test_ownership_is_released_after_the_scope_returns(self) -> None:
+        succeeding = _RetriableWork(failures=0)
+        await retry_db_transaction(name="released_first")(succeeding.run)()
+
+        later = _RetriableWork(failures=1)
+
+        assert await retry_db_transaction(name="released_second")(later.run)() == "ok"
+        assert later.calls == 2
+
+    async def test_a_caller_owned_transaction_claims_the_retry(self, transaction_mode_db: InfrahubDatabase) -> None:
+        """Entering a transaction the caller owns has to claim the retry as well as decline it.
+
+        Replaying on that transaction can only raise a transaction-state error, so the failure has
+        to reach the caller who is able to roll it back and open a new one.
+        """
+        work = _RetriableWork(failures=1)
+        nested = retry_db_transaction(name="claimed_by_transaction_owner")(work.run)
+
+        async def run_nested(_: InfrahubDatabase) -> str:
+            return await nested()
+
+        with pytest.raises(TransientError, match=r"^no available threads to serve this request$"):
+            await run_in_transaction_with_retry(db=transaction_mode_db, name="transaction_owner", func=run_nested)
+
+        assert work.calls == 1
+
+
+@pytest.mark.usefixtures("_set_zero_delay_retries")
+class TestRunWithRetry:
+    """A mutation's reads are replayed as well as its write.
+
+    An object is created from a schema, a template and a pool that are all read before the write
+    transaction opens. A database saturated enough to fail those reads fails the mutation just as
+    surely as one that fails the write, so both sides of it get the same second chance.
+    """
+
+    async def test_work_outside_a_transaction_is_replayed(self, driver_mode_db: InfrahubDatabase) -> None:
+        work = _RetriableWork(failures=1)
+
+        assert await run_with_retry(db=driver_mode_db, name="reads_before_the_write", func=work.run) == "ok"
+        assert work.calls == 2
+
+    async def test_a_caller_owned_transaction_is_not_replayed(self, transaction_mode_db: InfrahubDatabase) -> None:
+        work = _RetriableWork(failures=1)
+
+        with pytest.raises(TransientError, match=r"^no available threads to serve this request$"):
+            await run_with_retry(db=transaction_mode_db, name="caller_owns_the_transaction", func=work.run)
+
+        assert work.calls == 1
+
+    async def test_an_enclosing_owner_keeps_the_whole_budget(self, driver_mode_db: InfrahubDatabase) -> None:
+        work = _RetriableWork(failures=99)
+
+        async def inner() -> str:
+            return await run_with_retry(db=driver_mode_db, name="budget_inner", func=work.run)
+
+        with pytest.raises(TransientError, match=r"^no available threads to serve this request$"):
+            await retry_db_transaction(name="budget_outer")(inner)()
+
+        assert work.calls == 3
