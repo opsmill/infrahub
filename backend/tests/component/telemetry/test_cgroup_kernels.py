@@ -176,13 +176,21 @@ def probe_image() -> str:
     """Build a minimal image carrying only the reader's runtime dependencies."""
     tag = "infrahub-cgroup-probe:test"
     dockerfile = "FROM python:3.12-slim\nRUN pip install --no-cache-dir psutil pydantic\n"
-    subprocess.run(  # noqa: S603
-        [DOCKER, "build", "--quiet", "--tag", tag, "-"],
-        input=dockerfile.encode(),
-        capture_output=True,
-        check=True,
-        timeout=_BUILD_TIMEOUT_SECONDS,
-    )
+    try:
+        subprocess.run(  # noqa: S603
+            [DOCKER, "build", "--quiet", "--tag", tag, "-"],
+            input=dockerfile.encode(),
+            capture_output=True,
+            check=True,
+            timeout=_BUILD_TIMEOUT_SECONDS,
+        )
+    except subprocess.CalledProcessError as exc:
+        # The build pulls a base image and installs into it, so a runner without
+        # registry access cannot produce the probe. That is a missing prerequisite
+        # rather than a regression in the reader.
+        pytest.skip(f"probe image could not be built: {exc.stderr.decode(errors='replace').strip()[-300:]}")
+    except subprocess.TimeoutExpired:
+        pytest.skip("probe image build timed out")
     return tag
 
 
@@ -203,6 +211,10 @@ def test_reader_against_real_cgroups(case: KernelCase, probe_image: str) -> None
     result = subprocess.run(  # noqa: S603
         command, capture_output=True, text=True, check=False, timeout=_RUN_TIMEOUT_SECONDS
     )
+    if result.returncode != 0 and "cpuset" in result.stderr.lower():
+        # The case pins specific CPU ids, which a daemon confined to a different set
+        # refuses before the reader ever runs.
+        pytest.skip(f"the daemon does not allow this CPU set: {result.stderr.strip()[-200:]}")
     assert result.returncode == 0, f"container failed: {result.stderr}"
 
     reading = json.loads(result.stdout.strip().splitlines()[-1])
