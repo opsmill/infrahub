@@ -155,19 +155,24 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
 
   const flash = (msg: string) => {
     setSaved(msg);
-    setTimeout(() => setSaved(""), 1800);
+    setTimeout(() => setSaved(""), 2600);
   };
 
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(asMarkdown());
-      flash("Copied");
+      flash("✓ Copied — paste it to your agent");
     } catch {
-      flash("Copy blocked");
+      flash("Clipboard blocked by the browser");
     }
   };
 
-  const save = async () => {
+  /**
+   * The submit. Writes to `.design/<slug>/` through the dev plugin so the agent's next turn
+   * reads a file; falls back to the clipboard when there's no dev server behind the page,
+   * which is every teammate opening the shared link. Feedback never dead-ends.
+   */
+  const send = async () => {
     try {
       const res = await fetch("/__design-jam/save", {
         method: "POST",
@@ -180,10 +185,14 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
           notes: notesToMarkdown(notes),
         }),
       });
-      flash(res.ok ? "Saved to .design/" : "Save failed — use Copy");
+      if (res.ok) {
+        flash(`✓ Sent — agent reads .design/${slug}/feedback.md`);
+        return;
+      }
     } catch {
-      flash("No dev server — use Copy");
+      /* no dev server — fall through to the clipboard */
     }
+    await copy();
   };
 
   const pane = (r: Revision, tag: string | null, annotate: boolean) => (
@@ -266,10 +275,10 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
           ))}
           <button
             type="button"
-            className="djh-tab"
+            className="djh-btn"
             onClick={() => setValues(Object.fromEntries(knobs.map((k) => [k.key, k.value])))}
           >
-            Reset
+            Reset values
           </button>
         </div>
       )}
@@ -277,102 +286,135 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
       <div className={open ? "djh-bar" : "djh-bar djh-bar--closed"}>
         {open ? (
           <>
-            <div className="djh-group">
-              <span className="djh-key">{slug}</span>
-              {variants.map((v) => (
-                <button
-                  key={v.id}
-                  type="button"
-                  title={v.bet}
-                  className={v.id === variant.id ? "djh-tab djh-tab--on" : "djh-tab"}
-                  onClick={() => pickVariant(v.id)}
-                >
-                  {v.label}
-                </button>
-              ))}
-            </div>
+            <section className="djh-zone">
+              <span className="djh-zone-label">Prototype</span>
+              <div className="djh-seg" role="group" aria-label="Prototype direction">
+                {variants.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    title={v.bet}
+                    aria-pressed={v.id === variant.id}
+                    className={v.id === variant.id ? "djh-seg-btn djh-seg-btn--on" : "djh-seg-btn"}
+                    onClick={() => pickVariant(v.id)}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </section>
 
-            <div className="djh-group djh-group--grow">
-              <button
-                type="button"
-                className="djh-step"
-                aria-label="Previous revision"
-                disabled={current.rev <= 1}
-                onClick={() => setRev(current.rev - 1)}
-              >
-                ‹
-              </button>
-              <input
-                className="djh-scrub"
-                type="range"
-                min={1}
-                max={latest}
-                step={1}
-                value={current.rev}
-                aria-label="Revision"
-                onChange={(e) => setRev(Number(e.target.value))}
-              />
-              <button
-                type="button"
-                className="djh-step"
-                aria-label="Next revision"
-                disabled={current.rev >= latest}
-                onClick={() => setRev(current.rev + 1)}
-              >
-                ›
-              </button>
-              <span className="djh-note" title={current.date}>
-                <b>rev {current.rev}</b> {current.note}
+            <section className="djh-zone djh-zone--grow">
+              <span className="djh-zone-label">
+                Revision <b className="djh-count">{current.rev}</b>
+                <span className="djh-of">of {latest}</span>
               </span>
-            </div>
-
-            <div className="djh-group">
-              {knobs.length > 0 && (
+              <div className="djh-row">
                 <button
                   type="button"
-                  className={knobsOpen ? "djh-tab djh-tab--on" : "djh-tab"}
-                  onClick={() => setKnobsOpen(!knobsOpen)}
+                  className="djh-icon"
+                  aria-label="Previous revision"
+                  disabled={current.rev <= 1}
+                  onClick={() => setRev(current.rev - 1)}
                 >
-                  Knobs
+                  ‹
                 </button>
-              )}
-              <button
-                type="button"
-                className={armed ? "djh-tab djh-tab--rec" : "djh-tab"}
-                onClick={() => setArmed(!armed)}
-              >
-                {armed ? "Click a spot…" : `Note${written ? ` (${written})` : ""}`}
-              </button>
-              <button type="button" className="djh-tab" onClick={copy}>
-                Copy
-              </button>
-              <button type="button" className="djh-tab" onClick={save}>
-                Save
-              </button>
-              <button
-                type="button"
-                className={other ? "djh-tab djh-tab--on" : "djh-tab"}
-                onClick={() => setCompareWith(other ? null : latest)}
-              >
-                Compare
-              </button>
-              <button
-                type="button"
-                className="djh-tab"
-                disabled={!stale}
-                onClick={() => setRev(latest)}
-              >
-                Latest
-              </button>
-              <button type="button" className="djh-tab" onClick={() => setOpen(false)}>
-                Hide
-              </button>
-              {saved && <span className="djh-flash">{saved}</span>}
-            </div>
+                <input
+                  className="djh-scrub"
+                  type="range"
+                  min={1}
+                  max={latest}
+                  step={1}
+                  value={current.rev}
+                  aria-label="Revision"
+                  onChange={(e) => setRev(Number(e.target.value))}
+                />
+                <button
+                  type="button"
+                  className="djh-icon"
+                  aria-label="Next revision"
+                  disabled={current.rev >= latest}
+                  onClick={() => setRev(current.rev + 1)}
+                >
+                  ›
+                </button>
+                <span className="djh-note" title={current.date}>
+                  {current.note}
+                </span>
+              </div>
+            </section>
+
+            <section className="djh-zone">
+              <span className="djh-zone-label">View</span>
+              <div className="djh-row">
+                {knobs.length > 0 && (
+                  <button
+                    type="button"
+                    aria-pressed={knobsOpen}
+                    className={knobsOpen ? "djh-btn djh-btn--on" : "djh-btn"}
+                    onClick={() => setKnobsOpen(!knobsOpen)}
+                  >
+                    Knobs
+                  </button>
+                )}
+                <button
+                  type="button"
+                  aria-pressed={Boolean(other)}
+                  className={other ? "djh-btn djh-btn--on" : "djh-btn"}
+                  onClick={() => setCompareWith(other ? null : latest)}
+                >
+                  Compare
+                </button>
+                <button
+                  type="button"
+                  className="djh-btn"
+                  disabled={!stale}
+                  onClick={() => setRev(latest)}
+                >
+                  Latest
+                </button>
+                <button type="button" className="djh-btn" onClick={() => setOpen(false)}>
+                  Hide
+                </button>
+              </div>
+            </section>
+
+            <section className="djh-zone djh-zone--act">
+              <span className="djh-zone-label">Feedback</span>
+              <div className="djh-row">
+                <button
+                  type="button"
+                  aria-pressed={armed}
+                  className={armed ? "djh-btn djh-btn--on" : "djh-btn"}
+                  onClick={() => setArmed(!armed)}
+                >
+                  {armed ? "Click the spot…" : "Add note"}
+                  {!armed && written > 0 && <span className="djh-badge">{written}</span>}
+                </button>
+                <button type="button" className="djh-btn" onClick={copy}>
+                  Copy
+                </button>
+                <button
+                  type="button"
+                  className="djh-btn djh-btn--primary"
+                  disabled={written === 0}
+                  onClick={send}
+                >
+                  {written === 0 ? "Send" : `Send ${written} ${written === 1 ? "note" : "notes"}`}
+                </button>
+              </div>
+            </section>
+
+            {saved && (
+              <p className="djh-flash" role="status">
+                {saved}
+              </p>
+            )}
           </>
         ) : (
-          <button type="button" className="djh-tab" onClick={() => setOpen(true)}>
+          <button type="button" className="djh-btn" onClick={() => setOpen(true)}>
             {variant.label} · rev {current.rev}
+            {written > 0 && <span className="djh-badge">{written}</span>}
           </button>
         )}
       </div>
@@ -436,42 +478,103 @@ const css = `
   font: inherit; padding: 3px 6px; border-radius: 5px;
   color: #e4e4e7; background: #3f3f46; border: 1px solid rgba(255,255,255,.14);
 }
+/*
+ * Four labelled zones, separated by hairline rules rather than guesswork about gaps:
+ * what you are looking at (Prototype), when (Revision), how you look at it (View), and
+ * what you send back (Feedback). One primary action in the whole bar — Send — so the
+ * submit is never ambiguous; everything else is a quiet ghost button.
+ *
+ * On a dark surface, separation is a solid quiet line: translucent white hairlines glow
+ * instead of receding.
+ */
 .djh-bar {
+  --line: #2b2b31;
+  --txt: #e8e8ea;
+  --dim: #8b8b93;
+  --accent: #5b5bd6;
+  --hair: 1px;
   flex: none;
-  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
-  padding: 8px 12px;
-  font: 500 12px/1.4 system-ui, sans-serif; color: #f4f4f5;
-  background: #18181b; border-top: 1px solid rgba(255,255,255,.12);
+  display: flex; flex-wrap: wrap; align-items: stretch; gap: 0;
+  padding: 0 4px;
+  font: 500 12px/1.4 system-ui, sans-serif; color: var(--txt);
+  background: #16161a; border-top: var(--hair) solid var(--line);
 }
-.djh-bar--closed { justify-content: flex-end; padding: 4px 8px; }
-.djh-group { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.djh-group--grow { flex: 1 1 320px; }
-.djh-key {
-  font: 500 11px/1 ui-monospace, monospace; letter-spacing: .06em;
-  color: #a1a1aa; padding-right: 4px;
+@media (min-resolution: 192dpi) { .djh-bar { --hair: 0.5px; } }
+.djh-bar--closed { padding: 6px; justify-content: flex-end; }
+
+.djh-zone {
+  display: flex; flex-direction: column; justify-content: center; gap: 5px;
+  min-width: 0; padding: 7px 14px;
 }
-.djh-tab, .djh-step {
+.djh-zone + .djh-zone { border-left: var(--hair) solid var(--line); }
+.djh-zone--grow { flex: 1 1 300px; }
+/* The zone you act from sits fractionally above the rest of the bar. */
+.djh-zone--act { background: rgba(255,255,255,.035); }
+.djh-zone-label {
+  display: flex; align-items: baseline; gap: 5px;
+  font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--dim);
+}
+.djh-count { color: var(--txt); font-variant-numeric: tabular-nums; }
+.djh-of { font-weight: 600; letter-spacing: .06em; }
+.djh-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+
+/* Segmented control: one object, so the directions read as alternatives, not as four
+   unrelated buttons. Inner radius = outer (7) − padding (2). */
+.djh-seg {
+  display: flex; gap: 2px; padding: 2px; border-radius: 7px;
+  background: rgba(255,255,255,.06);
+}
+.djh-seg-btn {
   font: inherit; cursor: pointer; white-space: nowrap;
-  padding: 4px 10px; border-radius: 6px;
-  color: #e4e4e7; background: rgba(255,255,255,.07);
-  border: 1px solid transparent;
+  min-height: 24px; padding: 3px 10px; border-radius: 5px;
+  color: var(--dim); background: transparent; border: none;
 }
-.djh-step { padding: 2px 9px; font-size: 15px; line-height: 1.2; }
-.djh-tab:hover, .djh-step:hover:not(:disabled) { background: rgba(255,255,255,.16); }
-.djh-tab--on { background: #4f46e5; border-color: #6366f1; color: #fff; }
-.djh-tab--rec { background: #b91c1c; border-color: #ef4444; color: #fff; }
-.djh-tab:disabled, .djh-step:disabled { opacity: .35; cursor: default; }
-.djh-tab:focus-visible, .djh-step:focus-visible, .djh-scrub:focus-visible {
+.djh-seg-btn:hover { color: var(--txt); }
+.djh-seg-btn--on { color: #fff; background: rgba(255,255,255,.14); }
+
+.djh-btn, .djh-icon {
+  font: inherit; cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 26px; padding: 4px 10px; border-radius: 6px;
+  color: var(--txt); background: rgba(255,255,255,.07); border: none;
+}
+.djh-icon { padding: 2px 8px; font-size: 15px; line-height: 1.2; }
+.djh-btn:hover:not(:disabled), .djh-icon:hover:not(:disabled) { background: rgba(255,255,255,.14); }
+.djh-btn:active:not(:disabled), .djh-icon:active:not(:disabled) { transform: translateY(0.5px); }
+.djh-btn--on { color: #fff; background: var(--accent); }
+.djh-btn--primary { color: #fff; background: var(--accent); font-weight: 600; }
+.djh-btn--primary:hover:not(:disabled) { background: #6b6be0; }
+.djh-btn:disabled, .djh-icon:disabled { color: #5c5c64; background: rgba(255,255,255,.04); cursor: default; }
+.djh-btn:focus-visible, .djh-icon:focus-visible, .djh-seg-btn:focus-visible, .djh-scrub:focus-visible {
   outline: 2px solid #a5b4fc; outline-offset: 2px;
 }
-.djh-scrub { flex: 1 1 120px; min-width: 90px; accent-color: #6366f1; }
+@media (prefers-reduced-motion: no-preference) {
+  .djh-btn, .djh-icon, .djh-seg-btn { transition: background 150ms ease-out, color 150ms ease-out; }
+}
+
+.djh-badge {
+  min-width: 16px; padding: 0 4px; border-radius: 8px;
+  font-size: 10px; font-weight: 700; text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: #16161a; background: var(--txt);
+}
+.djh-btn--on .djh-badge, .djh-btn--primary .djh-badge { color: var(--accent); background: #fff; }
+
+.djh-scrub { flex: 1 1 110px; min-width: 80px; accent-color: var(--accent); }
 .djh-note {
   flex: 1 1 auto; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: #a1a1aa;
+  color: var(--dim);
 }
-.djh-note b { color: #f4f4f5; font-weight: 600; }
-.djh-flash { color: #86efac; }
+.djh-flash {
+  flex: 1 0 100%; margin: 0; padding: 0 14px 7px;
+  font-size: 11px; color: #7ee2a8;
+}
+@media (max-width: 860px) {
+  .djh-zone + .djh-zone { border-left: none; border-top: var(--hair) solid var(--line); }
+  .djh-zone { flex: 1 1 100%; }
+}
 @media (max-width: 680px) {
   .djh-stage--split { grid-template-columns: 1fr; }
   .djh-stage--split .djh-pane + .djh-pane { border-left: none; border-top: 1px solid rgba(128,128,128,.35); }
