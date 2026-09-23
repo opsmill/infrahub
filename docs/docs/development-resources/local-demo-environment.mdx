@@ -45,8 +45,8 @@ The system that you want to use to run the demo environment has to meet the [har
 
 In order to run the demo environment, the following applications must be installed on the systems:
 
-- [pyinvoke](https://www.pyinvoke.org/)
-- Docker & Docker Compose
+- [uv](https://docs.astral.sh/uv/), which installs [pyinvoke](https://www.pyinvoke.org/) with the other Python dependencies
+- Docker (version 24.x minimum) & Docker Compose
 
 :::info
 
@@ -54,12 +54,24 @@ On a Laptop, both Docker & Docker Compose can be installed by installing [Docker
 
 :::
 
+### Get the source code
+
+Clone the Infrahub repository with its submodules, then install the Python dependencies:
+
+```shell
+git clone --recursive https://github.com/opsmill/infrahub.git
+cd infrahub
+uv sync --all-groups
+```
+
+Run the `invoke` commands on this page from the repository directory with `uv run`, so that they use the environment uv created, for example `uv run invoke demo.start`.
+
 ### First utilization
 
 Initialize the database and start the application
 
 ```shell
-invoke demo.start
+uv run invoke demo.start
 ```
 
 ### Load some data

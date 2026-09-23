@@ -1,0 +1,40 @@
+---
+feature: Deployment & Management — Installation by method
+pr: TBD
+description: |
+  Reorganizes the Installation spokes by deployment method instead of by edition:
+    - docker-compose.mdx — Docker Compose install, Community and Enterprise as tabs
+    - helm.mdx — Helm install, Community and Enterprise as tabs, storage persistence,
+      Enterprise sizing presets
+  The production-only Helm content (requirements, bundled-dependency warning, production
+  values example) moves to production-deployment/overview.mdx, the git clone flow moves to
+  development-resources/local-demo-environment.mdx, and bare metal moves to the hub.
+  community.mdx and enterprise.mdx remain as short pages linking to the method pages, so
+  their URLs keep working until the redirects plugin is installed. Delete both files when
+  the redirects below are applied.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/deploy-manage/install-configure/install/community
+    to: /docs/deploy-manage/install-configure/install/overview
+  - from: /docs/deploy-manage/install-configure/install/enterprise
+    to: /docs/deploy-manage/install-configure/install/overview
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/deploy-manage/install-configure/install/docker-compose
+    title: Install Infrahub with Docker Compose
+  - path: /docs/deploy-manage/install-configure/install/helm
+    title: Install Infrahub with Helm
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (resolve via the stub pages today; update to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/deploy-manage/maintain-upgrade/upgrade/enterprise.mdx
+    line: 13
+    current: ../../install-configure/install/enterprise.mdx
+    should_be: ../../install-configure/install/overview.mdx
+  - file: docs/docs/faq/faq.mdx
+    line: 144
+    current: ../deploy-manage/install-configure/install/enterprise.mdx
+    should_be: ../deploy-manage/install-configure/install/overview.mdx#bare-metal

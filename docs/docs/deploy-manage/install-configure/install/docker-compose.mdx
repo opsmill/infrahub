@@ -1,0 +1,138 @@
+---
+title: Install Infrahub with Docker Compose
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
+
+# Install Infrahub with Docker Compose
+
+OpsMill publishes a Docker Compose file for every Infrahub release at [infrahub.opsmill.io](https://infrahub.opsmill.io). Download the file for the edition and version you want, then start it with Docker Compose to run Infrahub on a single host.
+
+Before you install, review the [hardware requirements](../hardware-requirements.mdx), including the local development and evaluation sizing.
+
+## Prerequisites
+
+- [Docker](https://docs.docker.com/engine/install/) (version 24.x minimum)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+## Choose a compose file
+
+The edition and the version are part of the compose file URL.
+
+<Tabs groupId="edition" queryString>
+<TabItem value="community" label="Community" default>
+
+| URL                                   | Compose file for                          |
+|---------------------------------------|-------------------------------------------|
+| `https://infrahub.opsmill.io`         | The latest release of Infrahub Community  |
+| `https://infrahub.opsmill.io/1.11.3`  | A specific release, in this example 1.11.3 |
+| `https://infrahub.opsmill.io/develop` | The `develop` branch                      |
+
+</TabItem>
+<TabItem value="enterprise" label="Enterprise">
+
+| URL                                             | Compose file for                           |
+|-------------------------------------------------|--------------------------------------------|
+| `https://infrahub.opsmill.io/enterprise`        | The latest release of Infrahub Enterprise  |
+| `https://infrahub.opsmill.io/enterprise/1.11.3` | A specific release, in this example 1.11.3 |
+
+Add the `size` query parameter to configure the replica count of each component and the database memory for a sizing plan:
+
+- `https://infrahub.opsmill.io/enterprise?size=small` (requires 16 GB of RAM)
+- `https://infrahub.opsmill.io/enterprise/1.11.3?size=medium` (requires 32 GB of RAM)
+- `https://infrahub.opsmill.io/enterprise/stable?size=large` (requires 64 GB of RAM)
+
+| Size        | Total required memory | API workers | Task workers | Task manager API workers | Task manager background workers | DB heap size | DB page cache size |
+|-------------|-----------------------|-------------|--------------|--------------------------|--------------------------------|--------------|--------------------|
+| small       | 16 GB                 | 4           | 2            | 1                        | 1                              | 8G           | 1G                 |
+| medium      | 32 GB                 | 4           | 4            | 2                        | 2                              | 16G          | 4G                 |
+| medium-data | 32 GB                 | 4           | 2            | 1                        | 1                              | 16G          | 4G                 |
+| large       | 64 GB                 | 4           | 8            | 4                        | 2                              | 31G          | 16G                |
+| large-data  | 64 GB                 | 4           | 2            | 1                        | 1                              | 31G          | 16G                |
+
+</TabItem>
+</Tabs>
+
+## Start Infrahub
+
+Download the compose file and start the containers under the project name `infrahub`:
+
+<Tabs groupId="edition" queryString>
+<TabItem value="community" label="Community" default>
+
+```bash
+curl https://infrahub.opsmill.io > docker-compose.yml
+docker compose -p infrahub up -d
+```
+
+</TabItem>
+<TabItem value="enterprise" label="Enterprise">
+
+```bash
+curl https://infrahub.opsmill.io/enterprise > docker-compose.yml
+docker compose -p infrahub up -d
+```
+
+</TabItem>
+</Tabs>
+
+On Linux, prefix the `docker compose` commands with `sudo`, unless you have [configured Docker to run as a non-root user](https://docs.docker.com/engine/install/linux-postinstall/).
+
+Docker downloads the images and starts the containers.
+
+:::success
+
+Check that the containers are running:
+
+```bash
+docker ps | grep infrahub
+```
+
+Then open `http://localhost:8000` in your browser to access the Infrahub web interface.
+
+:::
+
+## Enable observability <EnterpriseBadge />
+
+Add the `observability=true` query parameter to the Enterprise compose file URL to also deploy the observability stack (Grafana, Prometheus, Loki, Tempo, Alloy). You can combine it with other parameters such as `size`:
+
+```bash
+curl "https://infrahub.opsmill.io/enterprise?size=medium&observability=true" > docker-compose.yml
+```
+
+See [Observability stack](./observability-stack.mdx) for Grafana access, request tracing, and configuration.
+
+## Stop and remove Infrahub
+
+From the directory that contains `docker-compose.yml`, stop and remove the containers:
+
+```bash
+docker compose -p infrahub down -v
+```
+
+:::warning
+
+With `-v`, Docker Compose also removes the volumes, which deletes the Neo4j database, the task manager database, and the stored artifacts. To stop Infrahub and keep its data, run `docker compose -p infrahub down` without `-v`.
+
+:::
+
+## Load a schema
+
+Infrahub ships with a minimal built-in schema. After installation, load a domain schema to model your infrastructure.
+
+:::tip Use the Marketplace for pre-built schemas
+
+The [Infrahub Marketplace](https://marketplace.infrahub.app) hosts ready-to-use schemas for common domains such as DCIM, IPAM, locations, and routing.
+Fetch a schema with `infrahubctl marketplace get infrahub/dcim`, then load it with `infrahubctl schema load schemas/dcim.yml`.
+See [Infrahub Marketplace](../../../schema/marketplace/) for the complete workflow.
+
+:::
+
+## Related resources
+
+- [Install Infrahub with Helm](./helm.mdx) — Deploy Infrahub on a Kubernetes cluster instead of a single host
+- [Upgrade Infrahub](../../maintain-upgrade/upgrade/overview.mdx) — Upgrade a Docker Compose installation to a new release
+- [Database backup and restore](../../maintain-upgrade/database-backup/backup-and-restore) — Back up the Neo4j and task manager databases before an upgrade
+- [Production deployment](../production-deployment/overview) — Harden the configuration before you run Infrahub in production

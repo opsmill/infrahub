@@ -65,7 +65,7 @@ The bundle is a PEM file that must be readable by the Infrahub server and task w
 
 To skip certificate verification entirely in a test environment, set `INFRAHUB_TRACE_TLS_INSECURE=true`. This requires `INFRAHUB_TRACE_EXPORTER_PROTOCOL=http/protobuf` and an `https://` endpoint, because the gRPC client cannot skip verification; use a CA bundle for gRPC collectors. Never enable it in production.
 
-For the full Infrahub Enterprise Compose install, see the [Enterprise install guide](./enterprise).
+For the full Infrahub Enterprise Compose install, see [Install Infrahub with Docker Compose](./docker-compose?edition=enterprise).
 
 ## Kubernetes with Helm
 
