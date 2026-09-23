@@ -2,13 +2,14 @@
 
 The shape consumed here is the projection produced by the QPP renderer:
 ``start_node_uuid``, ``start_node_kind``, ``hops`` (list of
-``{relationship_identifier, uuid, kind}``), and ``depth``.
+``{relationship_identifier, uuid, kind, from_direction}``), and ``depth``.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypedDict
 
+from infrahub.core.constants import RelationshipDirection
 from infrahub.graph_traversal.results import PathData, PathHopData, PathNodeData
 
 if TYPE_CHECKING:
@@ -19,6 +20,15 @@ class _HopRow(TypedDict):
     relationship_identifier: str
     uuid: str
     kind: str
+    from_direction: str
+
+
+def _hop_from_row(row: _HopRow) -> PathHopData:
+    return PathHopData(
+        node=PathNodeData(uuid=row["uuid"], kind=row["kind"]),
+        relationship_identifier=row["relationship_identifier"],
+        from_direction=RelationshipDirection(row["from_direction"]),
+    )
 
 
 def extract_path_from_result(result: QueryResult) -> PathData | None:
@@ -34,14 +44,7 @@ def extract_path_from_result(result: QueryResult) -> PathData | None:
     depth = result.get_as_type(label="depth", return_type=int)
     if not start_node.uuid or not hop_rows:
         return None
-    hops = [
-        PathHopData(
-            node=PathNodeData(uuid=row["uuid"], kind=row["kind"]),
-            relationship_identifier=row["relationship_identifier"],
-        )
-        for row in hop_rows
-    ]
-    return PathData(start_node=start_node, hops=hops, depth=depth)
+    return PathData(start_node=start_node, hops=[_hop_from_row(row) for row in hop_rows], depth=depth)
 
 
 def extract_half_path_from_result(result: QueryResult) -> tuple[str, list[PathHopData]] | None:
@@ -55,11 +58,4 @@ def extract_half_path_from_result(result: QueryResult) -> tuple[str, list[PathHo
     if not mid_uuid:
         return None
     hop_rows = result.get_as_list_of_type(label="hops", return_type=_HopRow)
-    hops = [
-        PathHopData(
-            node=PathNodeData(uuid=row["uuid"], kind=row["kind"]),
-            relationship_identifier=row["relationship_identifier"],
-        )
-        for row in hop_rows
-    ]
-    return mid_uuid, hops
+    return mid_uuid, [_hop_from_row(row) for row in hop_rows]

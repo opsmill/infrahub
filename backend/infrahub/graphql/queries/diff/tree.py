@@ -9,7 +9,7 @@ from graphene import Enum as GrapheneEnum
 from opentelemetry import trace
 
 from infrahub.core import registry
-from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipDirection
+from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.model.path import BranchTrackingId, NameTrackingId, TrackingId
@@ -226,19 +226,12 @@ class DiffTreeResolver:
                 rel_schema = node_schema.get_relationship(name=r.name)
                 rels_parent = parent_schema.get_relationships_by_identifier(id=rel_schema.get_identifier())
 
-                if rels_parent and len(rels_parent) == 1:
+                if len(rels_parent) == 1:
                     relationship_name = rels_parent[0].name
-                elif rels_parent and len(rels_parent) > 1:
-                    for rel_parent in rels_parent:
-                        if (
-                            rel_schema.direction == RelationshipDirection.INBOUND
-                            and rel_parent.direction == RelationshipDirection.OUTBOUND
-                        ) or (
-                            rel_schema.direction == RelationshipDirection.OUTBOUND
-                            and rel_parent.direction == RelationshipDirection.INBOUND
-                        ):
-                            relationship_name = rel_parent.name
-                            break
+                elif len(rels_parent) > 1:
+                    mirrored = next((rel for rel in rels_parent if rel_schema.mirrors(rel)), None)
+                    if mirrored:
+                        relationship_name = mirrored.name
 
                 return ParentNodeInfo(node=n, relationship_name=relationship_name)
         return None
