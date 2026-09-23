@@ -21,6 +21,8 @@ export type Note = {
   y: number;
   text: string;
   createdAt: string;
+  /** Set when the note has been sent. Sent notes stay visible but stop counting. */
+  sentAt?: string;
 };
 
 const pathFrom = (root: Element, el: Element): string => {
@@ -55,16 +57,36 @@ const saveNotes = (scope: string, notes: Note[]) => {
   }
 };
 
+/**
+ * Marks every unsent note in this scope as sent. Sent notes are kept, not deleted — the
+ * agent may not have acted yet, and a note that vanishes on Send looks like data loss.
+ */
+export const markSent = (scope: string) => {
+  const stamp = new Date().toISOString();
+  const next = loadNotes(scope).map((n) => (n.sentAt ? n : { ...n, sentAt: stamp }));
+  saveNotes(scope, next);
+  return next;
+};
+
 type Props = {
   /** `<slug>:<variant>:rev<N>` — notes belong to one revision, not to the route. */
   scope: string;
+  /** Bump to force a re-read from storage after an external change (e.g. Send). */
+  refreshKey?: number;
   armed: boolean;
   onArmedChange: (armed: boolean) => void;
   onNotesChange: (notes: Note[]) => void;
   children: ReactNode;
 };
 
-export function Annotations({ scope, armed, onArmedChange, onNotesChange, children }: Props) {
+export function Annotations({
+  scope,
+  refreshKey = 0,
+  armed,
+  onArmedChange,
+  onNotesChange,
+  children,
+}: Props) {
   const [notes, setNotes] = useState<Note[]>(() => loadNotes(scope));
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -73,7 +95,7 @@ export function Annotations({ scope, armed, onArmedChange, onNotesChange, childr
     setNotes(next);
     onNotesChange(next);
     setOpenId(null);
-  }, [scope, onNotesChange]);
+  }, [scope, refreshKey, onNotesChange]);
 
   const commit = (next: Note[]) => {
     setNotes(next);
@@ -114,8 +136,10 @@ export function Annotations({ scope, armed, onArmedChange, onNotesChange, childr
         <div key={n.id} className="dja-pin" style={{ left: `${n.x * 100}%`, top: `${n.y * 100}%` }}>
           <button
             type="button"
-            className={n.text ? "dja-dot" : "dja-dot dja-dot--empty"}
-            aria-label={`Note ${i + 1}: ${n.text || "empty"}`}
+            className={["dja-dot", !n.text && "dja-dot--empty", n.sentAt && "dja-dot--sent"]
+              .filter(Boolean)
+              .join(" ")}
+            aria-label={`Note ${i + 1}${n.sentAt ? " (sent)" : ""}: ${n.text || "empty"}`}
             onClick={() => setOpenId(openId === n.id ? null : n.id)}
           >
             {i + 1}
@@ -125,6 +149,7 @@ export function Annotations({ scope, armed, onArmedChange, onNotesChange, childr
             <div className="dja-card">
               <p className="dja-target" title={n.selector}>
                 {n.snippet || n.selector || "element"}
+                {n.sentAt && <span className="dja-sent-tag">sent</span>}
               </p>
               <textarea
                 autoFocus
@@ -181,6 +206,13 @@ const css = `
   box-shadow: 0 1px 6px rgba(0,0,0,.35);
 }
 .dja-dot--empty { background: #a1a1aa; }
+/* Sent notes stay on screen, hollowed out — visibly handled, not visibly lost. */
+.dja-dot--sent { color: #4f46e5; background: #fff; border-color: #4f46e5; }
+.dja-sent-tag {
+  margin-left: 6px; padding: 1px 5px; border-radius: 3px;
+  font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: #4338ca; background: #e0e7ff;
+}
 .dja-dot:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 2px; }
 .dja-card {
   position: absolute; top: 28px; left: 0; width: 260px;

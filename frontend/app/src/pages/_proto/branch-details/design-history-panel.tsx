@@ -18,7 +18,7 @@
 
 import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 
-import { Annotations, type Note, notesToMarkdown } from "./design-annotations";
+import { Annotations, markSent, type Note, notesToMarkdown } from "./design-annotations";
 
 export type KnobValue = number | string | boolean;
 
@@ -95,6 +95,7 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
   const [knobsOpen, setKnobsOpen] = useState(false);
   const [armed, setArmed] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [sentTick, setSentTick] = useState(0);
   const [saved, setSaved] = useState("");
 
   const variant = (variants.find((v) => v.id === variantId) ?? variants[0]) as Variant;
@@ -104,7 +105,8 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
   const other = compareWith ? (variant.revisions.find((r) => r.rev === compareWith) ?? null) : null;
   const stale = current.rev !== latest;
   const scope = `${slug}:${variant.id}:rev${current.rev}`;
-  const written = notes.filter((n) => n.text.trim()).length;
+  const written = notes.filter((n) => n.text.trim() && !n.sentAt).length;
+  const alreadySent = notes.filter((n) => n.sentAt).length;
 
   useEffect(() => {
     const next = new URLSearchParams(window.location.search);
@@ -173,6 +175,7 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
    * which is every teammate opening the shared link. Feedback never dead-ends.
    */
   const send = async () => {
+    let landed = "";
     try {
       const res = await fetch("/__design-jam/save", {
         method: "POST",
@@ -185,21 +188,36 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
           notes: notesToMarkdown(notes),
         }),
       });
-      if (res.ok) {
-        flash(`✓ Sent — agent reads .design/${slug}/feedback.md`);
-        return;
-      }
+      // Never trust `res.ok` alone. With the plugin unregistered, Vite's SPA fallback
+      // answers this URL with 200 and index.html — a "sent" that wrote nothing, which is
+      // exactly the failure that looks like success.
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.designJam) landed = data.path;
     } catch {
       /* no dev server — fall through to the clipboard */
     }
-    await copy();
+
+    if (!landed) {
+      await copy();
+      return;
+    }
+
+    markSent(scope);
+    setSentTick((t) => t + 1);
+    flash(`✓ Sent — written to ${landed}`);
   };
 
   const pane = (r: Revision, tag: string | null, annotate: boolean) => (
     <section className="djh-pane">
       {tag && <header className="djh-pane-tag">{tag}</header>}
       {annotate ? (
-        <Annotations scope={scope} armed={armed} onArmedChange={setArmed} onNotesChange={setNotes}>
+        <Annotations
+          scope={scope}
+          refreshKey={sentTick}
+          armed={armed}
+          onArmedChange={setArmed}
+          onNotesChange={setNotes}
+        >
           {r.render(values)}
         </Annotations>
       ) : (
@@ -400,7 +418,11 @@ export function DesignHistory({ slug, variants, knobs = [], frame }: Props) {
                   disabled={written === 0}
                   onClick={send}
                 >
-                  {written === 0 ? "Send" : `Send ${written} ${written === 1 ? "note" : "notes"}`}
+                  {written === 0
+                    ? alreadySent > 0
+                      ? "All sent"
+                      : "Send"
+                    : `Send ${written} ${written === 1 ? "note" : "notes"}`}
                 </button>
               </div>
             </section>

@@ -100,8 +100,18 @@ export function designJam(options: { root?: string } = {}): Plugin {
           }
 
           server.config.logger.info(`[design-jam] saved ${payload.slug} (${scope})`);
-          res.statusCode = 204;
-          res.end();
+          // A JSON body with an explicit marker, not a bare 204: when this plugin is not
+          // registered, Vite's SPA fallback answers the same URL with 200 and index.html,
+          // and a client that only checks `res.ok` reports a successful save that never
+          // happened. The marker is what the panel actually verifies.
+          res.statusCode = 200;
+          res.setHeader("content-type", "application/json");
+          res.end(
+            JSON.stringify({
+              designJam: true,
+              path: `${base}/${payload.slug}/feedback.md`,
+            })
+          );
         });
       });
     },
