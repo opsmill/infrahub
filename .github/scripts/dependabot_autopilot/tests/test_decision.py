@@ -285,6 +285,14 @@ def test_added_lockfile_package_does_not_relax_needs_code_changes() -> None:
     assert decision.action is Action.NEEDS_CODE_CHANGES
 
 
+def test_unverified_check_caps_safe_at_review_required() -> None:
+    decision = run_decide(unverified=("uv.lock cannot be parsed",))
+
+    assert decision.action is Action.REVIEW_REQUIRED
+    assert decision.effective_verdict is REVIEW
+    assert decision.reasons == ("uv.lock cannot be parsed",)
+
+
 def test_ci_red_escalates_safe_to_review_required() -> None:
     decision = run_decide(ci_state=CiState.RED)
 

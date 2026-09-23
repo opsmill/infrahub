@@ -69,6 +69,8 @@ class Evidence:
     """Package names the pull request's lockfile changes introduce."""
     ci_state: CiState
     reviews: tuple[Review, ...]
+    unverified: tuple[str, ...] = ()
+    """Checks that could not be completed, each capping the verdict at review-required."""
 
 
 @dataclass(frozen=True)
@@ -92,6 +94,9 @@ def decide(*, evidence: Evidence, settings: Settings, now: datetime) -> Decision
         reasons += tuple(
             f"the lockfile adds `{name}`, a package that was not present before" for name in evidence.added_packages
         )
+    if evidence.unverified:
+        verdict = strictest(verdicts=[verdict, Verdict.REVIEW_REQUIRED])
+        reasons += evidence.unverified
     if ci_state is CiState.RED:
         verdict = strictest(verdicts=[verdict, Verdict.REVIEW_REQUIRED])
         reasons += ("CI failed on the head commit",)

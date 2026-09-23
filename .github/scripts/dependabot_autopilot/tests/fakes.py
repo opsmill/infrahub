@@ -19,6 +19,7 @@ from dependabot_autopilot.ports import (
     JiraIssueDraft,
     PullRequest,
     PullRequestState,
+    PullRequestSummary,
     Review,
     ReviewEvent,
     ReviewState,
@@ -124,6 +125,18 @@ class FakeGitHub:
             raise GitHubError(f"pull request #{number} not found")
         return pull_request
 
+    def list_open_pull_requests(self, *, base: str) -> list[PullRequestSummary]:
+        return [
+            PullRequestSummary(
+                number=pull.number,
+                author_login=pull.author_login,
+                head_sha=pull.head_sha,
+                head_repo_full_name=pull.head_repo_full_name,
+            )
+            for pull in self.pull_requests.values()
+            if pull.state is PullRequestState.OPEN and pull.base_ref == base
+        ]
+
     def list_reviews(self, *, pr_number: int) -> list[Review]:
         return list(self.reviews.get(pr_number, []))
 
@@ -141,6 +154,12 @@ class FakeGitHub:
 
     def list_changed_files(self, *, pr_number: int) -> list[ChangedFile]:
         return list(self.changed_files.get(pr_number, []))
+
+    def find_marker_comment(self, *, pr_number: int, marker: str, author_login: str) -> str | None:
+        for comment in self.comments.get(pr_number, []):
+            if comment.author_login == author_login and marker in comment.body:
+                return comment.body
+        return None
 
     def upsert_marker_comment(self, *, pr_number: int, marker: str, body: str, author_login: str) -> None:
         comments = self.comments.setdefault(pr_number, [])

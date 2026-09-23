@@ -18,6 +18,7 @@ from dependabot_autopilot.ports import (
     FileStatus,
     PullRequest,
     PullRequestState,
+    PullRequestSummary,
     Review,
     ReviewEvent,
     ReviewState,
@@ -449,3 +450,45 @@ def test_download_artifact_skips_expired_artifacts(tmp_path: Path) -> None:
 
     assert adapter.download_artifact(run_id=35414053569, name=name, destination=tmp_path) is None
     assert len(runner.calls) == 1
+
+
+def test_open_pull_requests_are_listed_for_a_base() -> None:
+    adapter, _ = make_adapter(
+        responses={api(f"repos/{REPO}/pulls?state=open&base=stable&{PAGE}"): fixture("pulls_open.handcrafted.json")}
+    )
+
+    assert adapter.list_open_pull_requests(base="stable") == [
+        PullRequestSummary(
+            number=10712,
+            author_login="dependabot[bot]",
+            head_sha="8b1c3f0e2d4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c",
+            head_repo_full_name="opsmill/infrahub",
+        ),
+        PullRequestSummary(
+            number=10698,
+            author_login="external-contributor",
+            head_sha="2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e",
+            head_repo_full_name=None,
+        ),
+    ]
+
+
+def test_find_marker_comment_ignores_forged_markers() -> None:
+    adapter, _ = make_adapter(
+        responses={
+            api(f"repos/{REPO}/issues/7/comments?{PAGE}"): comments_page(
+                (1, "someone", f"{MARKER} forged"),
+                (2, APP_LOGIN, f"{MARKER}\nours"),
+            )
+        }
+    )
+
+    assert adapter.find_marker_comment(pr_number=7, marker=MARKER, author_login=APP_LOGIN) == f"{MARKER}\nours"
+
+
+def test_find_marker_comment_returns_none_without_an_app_comment() -> None:
+    adapter, _ = make_adapter(
+        responses={api(f"repos/{REPO}/issues/7/comments?{PAGE}"): comments_page((1, "someone", MARKER))}
+    )
+
+    assert adapter.find_marker_comment(pr_number=7, marker=MARKER, author_login=APP_LOGIN) is None

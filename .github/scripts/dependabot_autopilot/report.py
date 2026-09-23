@@ -123,12 +123,17 @@ def load_report(*, directory: Path) -> VerdictReport:
     return _parse_report(value=content)
 
 
-def sanitize_report_markdown(*, text: str) -> str:
-    """Make agent-written Markdown safe to post: no mentions, no HTML comments, visibly labelled."""
+def neutralize_untrusted(*, text: str) -> str:
+    """Remove every HTML comment and break every `@` mention in text that did not come from the autopilot."""
     stripped = text
     while (next_pass := _HTML_COMMENT.sub("", stripped)) != stripped:
         stripped = next_pass
-    neutralized = _MENTION.sub("@\u200b", stripped)
+    return _MENTION.sub("@\u200b", stripped)
+
+
+def sanitize_report_markdown(*, text: str) -> str:
+    """Make agent-written Markdown safe to post: no mentions, no HTML comments, visibly labelled."""
+    neutralized = neutralize_untrusted(text=text)
     return (
         f"<details>\n<summary>Dependency analysis (agent output, unverified)</summary>\n\n{neutralized}\n\n</details>"
     )

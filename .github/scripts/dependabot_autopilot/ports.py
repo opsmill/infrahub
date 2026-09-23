@@ -105,6 +105,14 @@ class PullRequest:
 
 
 @dataclass(frozen=True)
+class PullRequestSummary:
+    number: int
+    author_login: str
+    head_sha: str
+    head_repo_full_name: str | None
+
+
+@dataclass(frozen=True)
 class Review:
     id: int
     author_login: str
@@ -173,6 +181,8 @@ class GitHubPort(Protocol):
 
     def get_pull_request(self, *, number: int) -> PullRequest: ...
 
+    def list_open_pull_requests(self, *, base: str) -> list[PullRequestSummary]: ...
+
     def list_reviews(self, *, pr_number: int) -> list[Review]: ...
 
     def list_workflow_runs(self, *, head_sha: str) -> list[WorkflowRun]: ...
@@ -186,6 +196,10 @@ class GitHubPort(Protocol):
         ...
 
     def list_changed_files(self, *, pr_number: int) -> list[ChangedFile]: ...
+
+    def find_marker_comment(self, *, pr_number: int, marker: str, author_login: str) -> str | None:
+        """Return the body of the comment by `author_login` containing `marker`, or `None` when there is none."""
+        ...
 
     def upsert_marker_comment(self, *, pr_number: int, marker: str, body: str, author_login: str) -> None:
         """Edit the comment by `author_login` containing `marker`, or create one; `body` must contain `marker`."""

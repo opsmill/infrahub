@@ -19,6 +19,7 @@ from dependabot_autopilot.ports import (
     GitHubError,
     PullRequest,
     PullRequestState,
+    PullRequestSummary,
     Review,
     ReviewEvent,
     ReviewState,
@@ -97,6 +98,17 @@ class GhCliGitHub:
             head_committed_at=_timestamp(value=commit["commit"]["committer"]["date"]),
         )
 
+    def list_open_pull_requests(self, *, base: str) -> list[PullRequestSummary]:
+        return [
+            PullRequestSummary(
+                number=pull["number"],
+                author_login=pull["user"]["login"],
+                head_sha=pull["head"]["sha"],
+                head_repo_full_name=None if pull["head"]["repo"] is None else pull["head"]["repo"]["full_name"],
+            )
+            for pull in self._paginate(path=f"repos/{self.repo}/pulls?state=open&base={quote(base, safe='')}")
+        ]
+
     def list_reviews(self, *, pr_number: int) -> list[Review]:
         return [
             Review(
@@ -164,16 +176,20 @@ class GhCliGitHub:
             for changed in self._paginate(path=f"repos/{self.repo}/pulls/{pr_number}/files")
         ]
 
+    def find_marker_comment(self, *, pr_number: int, marker: str, author_login: str) -> str | None:
+        comment = self._marker_comment(pr_number=pr_number, marker=marker, author_login=author_login)
+        return None if comment is None else comment["body"]
+
     def upsert_marker_comment(self, *, pr_number: int, marker: str, body: str, author_login: str) -> None:
         if marker not in body:
             raise ValueError("the comment body must contain the marker so the next run can find it")
-        for comment in self._paginate(path=f"repos/{self.repo}/issues/{pr_number}/comments"):
-            if comment["user"]["login"] == author_login and marker in comment["body"]:
-                self._send(
-                    method="PATCH", path=f"repos/{self.repo}/issues/comments/{comment['id']}", payload={"body": body}
-                )
-                return
-        self._send(method="POST", path=f"repos/{self.repo}/issues/{pr_number}/comments", payload={"body": body})
+        comment = self._marker_comment(pr_number=pr_number, marker=marker, author_login=author_login)
+        if comment is None:
+            self._send(method="POST", path=f"repos/{self.repo}/issues/{pr_number}/comments", payload={"body": body})
+        else:
+            self._send(
+                method="PATCH", path=f"repos/{self.repo}/issues/comments/{comment['id']}", payload={"body": body}
+            )
 
     def set_labels(self, *, pr_number: int, labels: list[str]) -> None:
         self._send(method="PUT", path=f"repos/{self.repo}/issues/{pr_number}/labels", payload={"labels": labels})
@@ -212,6 +228,12 @@ class GhCliGitHub:
             args=["run", "download", str(run_id), "--repo", self.repo, "--name", name, "--dir", str(destination)]
         )
         return destination
+
+    def _marker_comment(self, *, pr_number: int, marker: str, author_login: str) -> dict[str, Any] | None:
+        for comment in self._paginate(path=f"repos/{self.repo}/issues/{pr_number}/comments"):
+            if comment["user"]["login"] == author_login and marker in comment["body"]:
+                return comment
+        return None
 
     def _get(self, *, path: str) -> dict[str, Any]:
         return json.loads(self.runner(args=["api", path]))
