@@ -462,14 +462,14 @@ Six reviewers ran over `stable...HEAD` (code, tests, errors, types, comments, si
 - Chunking: the 14 US1 tasks were split into decision logic (T013–T016, T018–T021) and orchestration plus workflows (T017, T022–T026), so T017 ran with the code it tests.
 - T039 and T040 were not dispatched: they create a real GitHub App and secrets and need the governance sign-off named in plan.md.
 - The first review-fix agent stalled with no changes on disk; fixes were re-dispatched as two smaller passes (merge safety; Jira and docs) that commit per item.
-- Review triage: all high/critical findings fixed; the medium findings touching merge safety or explicit FRs (FR-011, FR-017) fixed as well; FR-020's broader retry, type-design refinements and simplifications deferred.
+- Review triage: all high/critical findings fixed; the medium findings touching merge safety or explicit FRs (FR-011, FR-017) fixed as well; type-design refinements and simplifications deferred. Filing retry on CI completions landed with the PR review fixes.
 - The secret `DEPENDABOT_AUTOPILOT_APP_ID` holds the App's Client ID (the pinned `actions/create-github-app-token` v3.2.0 uses `client-id`, `app-id` is deprecated). The guide says so; renaming the secret is left to you.
 - Pre-existing, not fixed: `ty check .` reports 118 `unresolved-import` errors in `backend/tests` and `tasks/backend.py` in this local environment (the `python_sdk/tests` package shadows `backend/tests`); `ty check .github/scripts` is clean. A full v0.81.3 `gh aw compile` rewrites six existing lock files built with v0.81.6.
-- The vendored skill keeps the directory name `analyzing-dependency-bumps` although its frontmatter `name` is `opsmill-dev-analyzing-dependency-bumps`.
+- The vendored skill lives in `.agents/skills/opsmill-dev-analyzing-dependency-bumps/`, matching its frontmatter `name`.
 
 ## 6. Suggested next steps
 
 1. Give (or withhold) the AGENTS.md "Ask First" sign-off for the CI/CD and auth changes.
 2. Run `/pre-ci` once more and open a PR against `stable` (workflows must reach the default branch for `workflow_run` and `schedule` to fire).
 3. After merge: T039 (create the App with the five permissions, store `ANTHROPIC_API_KEY` as a Dependabot secret, set variables with `DEPENDABOT_AUTOPILOT_MERGE=off`, run quickstart Q1 in a sandbox), then T040 and the two-week shadow period.
-4. Decide on the deferred findings, starting with the FR-020 retry scope (extend filing to CI-completion and sweep events, or amend FR-020).
+4. Decide on the deferred findings (type-design refinements, simplifications). Filing is retried on CI completions; the 30-minute sweep does not file.
