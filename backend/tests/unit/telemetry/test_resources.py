@@ -13,8 +13,7 @@ from __future__ import annotations
 import logging
 import socket
 from dataclasses import dataclass, field
-from pathlib import Path
-from tempfile import TemporaryDirectory
+from typing import TYPE_CHECKING
 
 import psutil
 import pytest
@@ -25,6 +24,9 @@ from infrahub.telemetry.resources import (
     _usable_cores_under_quota,
     _usable_processors,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _write_cgroup_files(cgroup_root: Path, files: dict[str, str]) -> None:
@@ -95,24 +97,34 @@ CPU_QUOTA_CASES = [
 ]
 
 
-def _unrestricted_cores() -> int:
-    """What this machine reports with no cgroup limit in play, measured once.
+def _unrestricted_cores() -> int | None:
+    """What this machine offers with no cgroup limit in play, observed once.
 
-    Taken from the reader itself against an empty cgroup root, so the expected figure
-    is an observation of this environment rather than a second copy of the capping
-    rule; the exact arithmetic is pinned separately against fixed inputs.
+    Read from psutil rather than from the reader: taking it from the reader would
+    let the unrestricted path stand as its own oracle, so a regression that moved
+    that figure would move every expectation with it and the capping tests would
+    still pass. Both numbers are properties of this environment, not a second copy
+    of the capping rule, whose arithmetic is pinned separately against fixed inputs.
     """
-    with TemporaryDirectory() as empty_root:
-        available = ProcessResources(cgroup_root=Path(empty_root)).read().processor_available
-    assert available is not None
-    return available
+    count = psutil.cpu_count(logical=True)
+    if count is None:
+        return None
+    try:
+        return min(count, len(psutil.Process().cpu_affinity()))
+    except (AttributeError, NotImplementedError, OSError, psutil.Error):
+        return count
 
 
 HOST_CORES = _unrestricted_cores()
 
+needs_host_cores = pytest.mark.skipif(
+    HOST_CORES is None, reason="this platform reports no logical CPU count to compare against"
+)
+
 
 def _usable_cores(assigned: int | None) -> int:
     """The figure expected under ``assigned``: the quota when it binds, else this machine's own."""
+    assert HOST_CORES is not None
     if assigned is None or assigned >= HOST_CORES:
         return HOST_CORES
     return assigned
@@ -127,6 +139,7 @@ def test_cgroup_cpu_quota(case: CpuQuotaCase, tmp_path: Path) -> None:
     assert reading.processor_assigned == case.expected_assigned
 
 
+@needs_host_cores
 @pytest.mark.parametrize("case", CPU_QUOTA_CASES, ids=[case.name for case in CPU_QUOTA_CASES])
 def test_processor_available_is_the_host_count_capped_by_the_quota(case: CpuQuotaCase, tmp_path: Path) -> None:
     _write_cgroup_files(tmp_path, case.files)
@@ -432,6 +445,7 @@ def _process_resources_for(case: CgroupPathCase, tmp_path: Path) -> ProcessResou
     return ProcessResources(cgroup_root=cgroup_root, proc_cgroup=proc_cgroup)
 
 
+@needs_host_cores
 @pytest.mark.parametrize("case", CGROUP_PATH_CASES, ids=[case.name for case in CGROUP_PATH_CASES])
 def test_cgroup_path_resolution_cpu(case: CgroupPathCase, tmp_path: Path) -> None:
     reading = _process_resources_for(case, tmp_path).read()
@@ -546,6 +560,7 @@ def test_host_identifier_is_populated(tmp_path: Path) -> None:
     assert reading.host == socket.gethostname()
 
 
+@needs_host_cores
 def test_limit_values_refresh_between_reads(tmp_path: Path) -> None:
     # A live reconfiguration (a ``docker update --cpus``, a Kubernetes in-place
     # pod resize) rewrites the cgroup limit files without restarting the process,
@@ -836,6 +851,7 @@ def test_unreadable_cpu_max_does_not_affect_memory_fields(tmp_path: Path) -> Non
     assert reading.memory_available == 8589934592 - 1073741824
 
 
+@needs_host_cores
 def test_unreadable_memory_max_does_not_affect_cpu_fields(tmp_path: Path) -> None:
     cgroup_root = tmp_path / "cgroup"
     cgroup_root.mkdir()
