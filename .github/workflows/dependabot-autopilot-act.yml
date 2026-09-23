@@ -23,12 +23,12 @@ permissions:
 
 jobs:
   act:
-    # Only Dependabot's runs start a job; a requested CI run carries nothing to act
-    # on, a requested analysis run does.
+    # Every analysis run starts a job whoever pushed the commit, since the analysis only
+    # runs for Dependabot pull requests; only Dependabot's completed CI runs do.
     if: >-
       github.event_name != 'workflow_run' ||
-      (github.event.workflow_run.actor.login == 'dependabot[bot]' &&
-       (github.event.action == 'completed' || github.event.workflow_run.name == 'dependabot-autopilot-analyze'))
+      github.event.workflow_run.name == 'dependabot-autopilot-analyze' ||
+      (github.event.workflow_run.actor.login == 'dependabot[bot]' && github.event.action == 'completed')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:

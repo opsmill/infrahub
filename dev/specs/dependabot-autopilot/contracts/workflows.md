@@ -27,7 +27,7 @@
 | Artifact handling | Downloaded to a fresh temporary directory; only `verdict.json` read, rejected above 256 KB; nothing executed or written to the workspace |
 | Report posting | `@` mentions neutralized, HTML comments stripped, wrapped in a collapsed block labelled as agent output |
 | On job failure | `if: failure()` step applies `autopilot/review-required` and links the failed run in the verdict comment |
-| Job filter | `workflow_run` events start the job only when `github.event.workflow_run.actor.login == 'dependabot[bot]'` |
+| Job filter | Every `workflow_run` event of `dependabot-autopilot-analyze` starts the job, whoever triggered it; a `CI` run starts it only when it completed and `github.event.workflow_run.actor.login == 'dependabot[bot]'` |
 | Analysis run | The latest run for the head SHA named `dependabot-autopilot-analyze`, with path `.github/workflows/dependabot-autopilot-analyze.lock.yml` and event `pull_request`; other runs are ignored |
 | CI green | Requires a completed run of the `CI` workflow (`.github/workflows/ci.yml`) with conclusion `success` for the head SHA; without one CI is pending. Any failing workflow run, external check run or commit status is red |
 | Commit authors | A PR with any commit whose author is not `dependabot[bot]` (an author not linked to a GitHub account included) is capped at `review-required` ("pull request contains commits not authored by dependabot[bot]") |

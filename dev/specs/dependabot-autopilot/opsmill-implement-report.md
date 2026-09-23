@@ -452,7 +452,7 @@ Six reviewers ran over `stable...HEAD` (code, tests, errors, types, comments, si
 | Medium | types: `flow._apply` | Report travels separately from the decision | Deferred |
 | Medium | types: ports vs adapters | Adapters raise `ValueError`/`KeyError` where the Protocol promises `GitHubError`/`JiraError` | Deferred |
 | Medium | simplify | Duplicated head-SHA freshness check and effective-verdict logic; repeated env parsing; repeated `working-directory` | Deferred |
-| Low | code: act workflow `if:` | Filtering on `workflow_run.actor` skips runs triggered by a human; the sweep catches up within 30 minutes | Deferred |
+| Low | code: act workflow `if:` | Filtering on `workflow_run.actor` skips runs triggered by a human; the sweep catches up within 30 minutes | Fixed: the filter applies to `CI` runs only |
 | Low | code: concurrency | Sweep is not serialized with per-PR runs; worst case a duplicate approval or a failed second merge | Deferred |
 | Low | errors: digest | Missing Slack/Jira configuration stays green with a warning | Deferred |
 | Low | types / simplify | Unused fields, `Priority` enum placement, `FilingOutcome` variants, small helper duplication | Deferred |
