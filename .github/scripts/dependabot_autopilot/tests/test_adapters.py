@@ -242,6 +242,14 @@ def test_changed_files_are_parsed() -> None:
     ]
 
 
+def test_commit_authors_are_parsed_with_none_for_unlinked_authors() -> None:
+    adapter, _ = make_adapter(
+        responses={api(f"repos/{REPO}/pulls/10689/commits?{PAGE}"): fixture("pull_commits.handcrafted.json")}
+    )
+
+    assert adapter.list_commit_authors(pr_number=10689) == ["dependabot[bot]", None]
+
+
 def test_list_endpoints_follow_pagination_until_a_short_page() -> None:
     review = json.loads(fixture("reviews.json"))[0]
     adapter, runner = make_adapter(

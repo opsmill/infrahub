@@ -129,6 +129,7 @@ DEFAULT_EVIDENCE = Evidence(
     added_packages=(),
     ci_state=CiState.GREEN,
     reviews=(),
+    commit_authors=("dependabot[bot]",),
 )
 
 
@@ -302,6 +303,15 @@ def test_unverified_check_caps_safe_at_review_required() -> None:
     assert decision.action is Action.REVIEW_REQUIRED
     assert decision.effective_verdict is REVIEW
     assert decision.reasons == ("uv.lock cannot be parsed",)
+
+
+@pytest.mark.parametrize("other_author", ["alice", None], ids=["other-login", "unlinked-author"])
+def test_commit_not_authored_by_dependabot_caps_safe_at_review_required(other_author: str | None) -> None:
+    decision = run_decide(commit_authors=("dependabot[bot]", other_author))
+
+    assert decision.action is Action.REVIEW_REQUIRED
+    assert decision.effective_verdict is REVIEW
+    assert decision.reasons == ("pull request contains commits not authored by dependabot[bot]",)
 
 
 def test_ci_red_escalates_safe_to_review_required() -> None:

@@ -108,6 +108,8 @@ class FakeGitHub:
     files: dict[tuple[str, str], str] = field(default_factory=dict)
     """File text keyed by `(path, ref)`."""
     changed_files: dict[int, list[ChangedFile]] = field(default_factory=dict)
+    commit_authors: dict[int, list[str | None]] = field(default_factory=dict)
+    """Commit author logins per pull request; a pull request left out has one commit by its own author."""
     comments: dict[int, list[Comment]] = field(default_factory=dict)
     artifacts: dict[tuple[int, str], Path] = field(default_factory=dict)
     """Source directory copied on download, keyed by `(run_id, name)`."""
@@ -154,6 +156,11 @@ class FakeGitHub:
 
     def list_changed_files(self, *, pr_number: int) -> list[ChangedFile]:
         return list(self.changed_files.get(pr_number, []))
+
+    def list_commit_authors(self, *, pr_number: int) -> list[str | None]:
+        if pr_number in self.commit_authors:
+            return list(self.commit_authors[pr_number])
+        return [self.get_pull_request(number=pr_number).author_login]
 
     def find_marker_comment(self, *, pr_number: int, marker: str, author_login: str) -> str | None:
         for comment in self.comments.get(pr_number, []):

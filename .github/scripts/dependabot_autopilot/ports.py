@@ -197,6 +197,10 @@ class GitHubPort(Protocol):
 
     def list_changed_files(self, *, pr_number: int) -> list[ChangedFile]: ...
 
+    def list_commit_authors(self, *, pr_number: int) -> list[str | None]:
+        """Return the login of each commit's author, `None` for an author not linked to a GitHub account."""
+        ...
+
     def find_marker_comment(self, *, pr_number: int, marker: str, author_login: str) -> str | None:
         """Return the body of the comment by `author_login` containing `marker`, or `None` when there is none."""
         ...

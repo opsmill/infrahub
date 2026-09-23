@@ -388,6 +388,17 @@ def test_new_lockfile_package_escalates_and_names_the_package(tmp_path: Path) ->
     assert writes_of(github=github, kind=Merged) == []
 
 
+def test_commit_by_another_author_escalates_with_a_reason(tmp_path: Path) -> None:
+    github = repository(tmp_path=tmp_path, document=report_document())
+    github.commit_authors[PR_NUMBER] = ["dependabot[bot]", "alice"]
+
+    assert run_evaluate(github=github, merge_enabled=True) is Action.REVIEW_REQUIRED
+
+    [comment] = github.comments[PR_NUMBER]
+    assert "pull request contains commits not authored by dependabot[bot]" in comment.body
+    assert writes_of(github=github, kind=Merged) == []
+
+
 def test_unparseable_lockfile_escalates_with_a_reason(tmp_path: Path) -> None:
     github = repository(tmp_path=tmp_path, document=report_document(), changed=("uv.lock",))
     github.files["uv.lock", "stable"] = UV_LOCK.format(version="0.131.0")

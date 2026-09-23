@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from dependabot_autopilot.report import VerdictReport
 
 ANALYSIS_DEADLINE = timedelta(minutes=60)
+DEPENDABOT_LOGIN = "dependabot[bot]"
 HOLD_LABEL = "autopilot/hold"
 
 _REVIEW_STATES_THAT_SET_A_POSITION = frozenset(
@@ -69,6 +70,8 @@ class Evidence:
     """Package names the pull request's lockfile changes introduce."""
     ci_state: CiState
     reviews: tuple[Review, ...]
+    commit_authors: tuple[str | None, ...]
+    """Login of each commit's author; `None` for an author not linked to a GitHub account."""
     unverified: tuple[str, ...] = ()
     """Checks that could not be completed, each capping the verdict at review-required."""
 
@@ -97,6 +100,9 @@ def decide(*, evidence: Evidence, settings: Settings, now: datetime) -> Decision
     if evidence.unverified:
         verdict = strictest(verdicts=[verdict, Verdict.REVIEW_REQUIRED])
         reasons += evidence.unverified
+    if any(author != DEPENDABOT_LOGIN for author in evidence.commit_authors):
+        verdict = strictest(verdicts=[verdict, Verdict.REVIEW_REQUIRED])
+        reasons += (f"pull request contains commits not authored by {DEPENDABOT_LOGIN}",)
     if ci_state is CiState.RED:
         verdict = strictest(verdicts=[verdict, Verdict.REVIEW_REQUIRED])
         reasons += ("CI failed on the head commit",)

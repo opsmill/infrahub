@@ -192,6 +192,12 @@ class GhCliGitHub:
             for changed in self._paginate(path=f"repos/{self.repo}/pulls/{pr_number}/files")
         ]
 
+    def list_commit_authors(self, *, pr_number: int) -> list[str | None]:
+        return [
+            None if commit["author"] is None else commit["author"]["login"]
+            for commit in self._paginate(path=f"repos/{self.repo}/pulls/{pr_number}/commits")
+        ]
+
     def find_marker_comment(self, *, pr_number: int, marker: str, author_login: str) -> str | None:
         comment = self._marker_comment(pr_number=pr_number, marker=marker, author_login=author_login)
         return None if comment is None else comment["body"]

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from dependabot_autopilot.checks import evaluate_ci
 from dependabot_autopilot.codeowners import owners_for
-from dependabot_autopilot.decision import Action, Decision, Evidence, Settings, decide
+from dependabot_autopilot.decision import DEPENDABOT_LOGIN, Action, Decision, Evidence, Settings, decide
 from dependabot_autopilot.lockfiles import LockfileError, added_packages
 from dependabot_autopilot.ports import FileStatus, GitHubError, PullRequestState, ReviewEvent, ReviewState, RunStatus
 from dependabot_autopilot.report import (
@@ -31,7 +31,6 @@ if TYPE_CHECKING:
     from dependabot_autopilot.ports import ChangedFile, GitHubPort, PullRequest, Review, WorkflowRun
 
 MARKER = "<!-- dependabot-autopilot -->"
-DEPENDABOT_LOGIN = "dependabot[bot]"
 BASE_BRANCH = "stable"
 ANALYSIS_WORKFLOW = "dependabot-autopilot-analyze"
 ANALYSIS_WORKFLOW_PATH = ".github/workflows/dependabot-autopilot-analyze.lock.yml"
@@ -115,6 +114,7 @@ def evaluate(
             added_packages=packages,
             ci_state=ci_state,
             reviews=reviews,
+            commit_authors=tuple(github.list_commit_authors(pr_number=pr.number)),
             unverified=unverified,
         ),
         settings=Settings(merge_enabled=config.merge_enabled, app_login=config.app_login),
