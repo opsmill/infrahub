@@ -1,0 +1,1 @@
+Fixed a branch merge being recorded against an external repository even when the remote rejected the push (for example on a protected branch); the rejection now fails the repository merge task with an error describing it, and Infrahub keeps the last commit the remote actually accepted.
