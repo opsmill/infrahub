@@ -69,8 +69,8 @@ dev/specs/dependabot-autopilot/
 ### Source Code (repository root)
 
 ```text
-.agents/skills/analyzing-dependency-bumps/SKILL.md     # vendored from opsmill/opsmill-skills
-skills-lock.json                                       # + analyzing-dependency-bumps entry
+.agents/skills/opsmill-dev-analyzing-dependency-bumps/SKILL.md  # vendored from opsmill/opsmill-skills
+skills-lock.json                                       # + opsmill-dev-analyzing-dependency-bumps entry
 
 .github/workflows/
 ├── dependabot-autopilot-analyze.md                    # gh-aw source (untrusted, read-only)
@@ -114,7 +114,7 @@ dev/guides/dependabot-autopilot.md                     # operating guide: switch
 
 ## Design notes
 
-- **Analysis workflow prompt** instructs the agent to apply `analyzing-dependency-bumps` to the PR, then call `emit_verdict` once with JSON matching the schema; it states that the report posting and every action are performed elsewhere, and that any doubt must yield `review-required`. The skill file itself is not modified.
+- **Analysis workflow prompt** instructs the agent to apply `opsmill-dev-analyzing-dependency-bumps` to the PR, then call `emit_verdict` once with JSON matching the schema; it states that the report posting and every action are performed elsewhere, and that any doubt must yield `review-required`. The skill file itself is not modified.
 - **Validation without `jsonschema`**: `report.py` validates the contract by hand while building dataclasses; any violation yields `ReportError`, which `decision.py` maps to `review-required` with the reason "malformed report".
 - **Artifact lookup**: on `workflow_run` of the analysis, the act job downloads `dependabot-autopilot-verdict` from that run; on `CI` completion or sweep it takes the most recent successful analysis run for the head SHA via the Actions API. No artifact → `review-required` once the analysis run for that SHA has completed; while it is still running, the Decision is `pending` until the FR-017 deadline.
 - **Merge**: `gh pr review --approve` then `gh pr merge --squash --match-head-commit <sha>`; failure of the merge call (head moved, conflict) is logged on the comment and left for the next event.

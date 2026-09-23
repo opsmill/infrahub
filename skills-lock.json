@@ -1,7 +1,7 @@
 {
   "version": 1,
   "skills": {
-    "analyzing-dependency-bumps": {
+    "opsmill-dev-analyzing-dependency-bumps": {
       "source": "opsmill/opsmill-skills",
       "sourceType": "github",
       "skillPath": "opsmill-dev/skills/analyzing-dependency-bumps/SKILL.md",

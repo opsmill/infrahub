@@ -66,7 +66,7 @@ Consequences for the analysis workflow: the custom job's steps receive the tool 
 
 ## R4. Analysis skill in CI
 
-**Decision**: Vendor `analyzing-dependency-bumps` into the repository root (`.agents/skills/analyzing-dependency-bumps/`) and record it in `skills-lock.json`, the same way `grilling-ideas` and `creating-prd` are vendored from `opsmill/opsmill-skills`. The workflow prompt adds a machine-readable output contract on top of the skill ([contracts/verdict.schema.json](contracts/verdict.schema.json)) instead of forking the skill.
+**Decision**: Vendor `opsmill-dev-analyzing-dependency-bumps` into the repository root (`.agents/skills/opsmill-dev-analyzing-dependency-bumps/`) and record it in `skills-lock.json`, the same way `grilling-ideas` and `creating-prd` are vendored from `opsmill/opsmill-skills`. The workflow prompt adds a machine-readable output contract on top of the skill ([contracts/verdict.schema.json](contracts/verdict.schema.json)) instead of forking the skill.
 
 **Rationale**: The skill exists today only in the `python_sdk` submodule (`python_sdk/.agents/skills/opsmill-dev-analyzing-dependency-bumps/`); CI checkouts of the root repo reach skills through `.claude/skills -> ../.agents/skills`. The skill's own output contract is a chat report, so the structured verdict is layered on in the workflow prompt.
 

@@ -103,11 +103,11 @@ verdict, set the verdict to `review-required` and say so in the report.
 
 ## Task
 
-Apply the `analyzing-dependency-bumps` skill (`.agents/skills/analyzing-dependency-bumps/SKILL.md`)
-to pull request #${{ github.event.pull_request.number }} in `${{ github.repository }}`, at head
-commit `${{ github.event.pull_request.head.sha }}`. Read the pull request and its diff through
-the GitHub tools; grep this checkout for real usage of every bumped package; read the upstream
-changelog for the whole version range of every bump.
+Apply the `opsmill-dev-analyzing-dependency-bumps` skill
+(`.agents/skills/opsmill-dev-analyzing-dependency-bumps/SKILL.md`) to pull request #${{ github.event.pull_request.number }}
+in `${{ github.repository }}`, at head commit `${{ github.event.pull_request.head.sha }}`. Read
+the pull request and its diff through the GitHub tools; grep this checkout for real usage of
+every bumped package; read the upstream changelog for the whole version range of every bump.
 
 The skill's "chat report" becomes the `report_markdown` field below; do not write files and do
 not post it anywhere.
