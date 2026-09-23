@@ -236,9 +236,14 @@ const css = `
   box-shadow: 0 2px 10px rgba(0,0,0,.25);
 }
 .dja-pin { position: absolute; z-index: 25; transform: translate(-50%, -50%); }
+/* Flex centring rather than a line-height matched to the box: with a 2px border the text
+   box and the circle no longer share a centre, and the number sits visibly low. */
 .dja-dot {
-  width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
-  font: 600 11px/22px system-ui, sans-serif; text-align: center;
+  display: flex; align-items: center; justify-content: center;
+  box-sizing: border-box;
+  width: 24px; height: 24px; border-radius: 999px; padding: 0; cursor: pointer;
+  font: 600 11px/1 system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
   color: #fff; background: #4f46e5; border: 2px solid #fff;
   box-shadow: 0 1px 6px rgba(0,0,0,.35);
 }

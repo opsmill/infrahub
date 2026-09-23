@@ -276,81 +276,81 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
         {other && pane(other, `rev ${other.rev}`, false)}
       </div>
 
-      {open && knobsOpen && knobs.length > 0 && (
-        <div className="djh-knobs">
-          {knobs.map((k, i) => (
-            // biome-ignore lint/a11y/noLabelWithoutControl: every branch below renders the wrapped control
-            <label
-              key={k.key}
-              className={
-                i === inherited.length && own.length > 0
-                  ? "djh-knob djh-knob--first-own"
-                  : "djh-knob"
+      <div className="djh-dock">
+        {open && knobsOpen && knobs.length > 0 && (
+          <div className="djh-knobs">
+            {knobs.map((k, i) => (
+              // biome-ignore lint/a11y/noLabelWithoutControl: every branch below renders the wrapped control
+              <label
+                key={k.key}
+                className={
+                  i === inherited.length && own.length > 0
+                    ? "djh-knob djh-knob--first-own"
+                    : "djh-knob"
+                }
+              >
+                {i === inherited.length && own.length > 0 && (
+                  <span className="djh-knob-group">{variant.label} only</span>
+                )}
+                <span>{k.label}</span>
+                {k.type === "range" && (
+                  <>
+                    <input
+                      type="range"
+                      min={k.min}
+                      max={k.max}
+                      step={k.step ?? 1}
+                      value={Number(values[k.key])}
+                      onChange={(e) => setValues({ ...values, [k.key]: Number(e.target.value) })}
+                    />
+                    <output>{String(values[k.key])}</output>
+                  </>
+                )}
+                {k.type === "color" && (
+                  <input
+                    type="color"
+                    value={String(values[k.key])}
+                    onChange={(e) => setValues({ ...values, [k.key]: e.target.value })}
+                  />
+                )}
+                {k.type === "toggle" && (
+                  <input
+                    type="checkbox"
+                    checked={Boolean(values[k.key])}
+                    onChange={(e) => setValues({ ...values, [k.key]: e.target.checked })}
+                  />
+                )}
+                {k.type === "select" && (
+                  <select
+                    value={String(values[k.key])}
+                    onChange={(e) => setValues({ ...values, [k.key]: e.target.value })}
+                  >
+                    {k.options.map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </label>
+            ))}
+            <button
+              type="button"
+              className="djh-btn"
+              onClick={() =>
+                setValues({
+                  ...values,
+                  ...Object.fromEntries(knobs.map((k) => [k.key, k.value])),
+                })
               }
             >
-              {i === inherited.length && own.length > 0 && (
-                <span className="djh-knob-group">{variant.label} only</span>
-              )}
-              <span>{k.label}</span>
-              {k.type === "range" && (
-                <>
-                  <input
-                    type="range"
-                    min={k.min}
-                    max={k.max}
-                    step={k.step ?? 1}
-                    value={Number(values[k.key])}
-                    onChange={(e) => setValues({ ...values, [k.key]: Number(e.target.value) })}
-                  />
-                  <output>{String(values[k.key])}</output>
-                </>
-              )}
-              {k.type === "color" && (
-                <input
-                  type="color"
-                  value={String(values[k.key])}
-                  onChange={(e) => setValues({ ...values, [k.key]: e.target.value })}
-                />
-              )}
-              {k.type === "toggle" && (
-                <input
-                  type="checkbox"
-                  checked={Boolean(values[k.key])}
-                  onChange={(e) => setValues({ ...values, [k.key]: e.target.checked })}
-                />
-              )}
-              {k.type === "select" && (
-                <select
-                  value={String(values[k.key])}
-                  onChange={(e) => setValues({ ...values, [k.key]: e.target.value })}
-                >
-                  {k.options.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </label>
-          ))}
-          <button
-            type="button"
-            className="djh-btn"
-            onClick={() =>
-              setValues({
-                ...values,
-                ...Object.fromEntries(knobs.map((k) => [k.key, k.value])),
-              })
-            }
-          >
-            Reset values
-          </button>
-        </div>
-      )}
+              Reset values
+            </button>
+          </div>
+        )}
 
-      <div className={open ? "djh-bar" : "djh-bar djh-bar--closed"}>
         {open ? (
-          <>
+          <div className="djh-bar">
             <section className="djh-zone">
               <span className="djh-zone-label">Prototype</span>
               <div className="djh-seg" role="group" aria-label="Prototype direction">
@@ -479,11 +479,22 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
                 {saved}
               </p>
             )}
-          </>
+          </div>
         ) : (
-          <button type="button" className="djh-btn" onClick={() => setOpen(true)}>
-            {variant.label} · rev {current.rev}
-            {written > 0 && <span className="djh-badge">{written}</span>}
+          <button
+            type="button"
+            className="djh-fab"
+            aria-label={`Show design panel — ${variant.label}, revision ${current.rev}`}
+            onClick={() => setOpen(true)}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
+              <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <path d="M4 8h10M18 8h2M4 16h4M12 16h8" />
+                <circle cx="16" cy="8" r="2" fill="currentColor" stroke="none" />
+                <circle cx="10" cy="16" r="2" fill="currentColor" stroke="none" />
+              </g>
+            </svg>
+            {written > 0 && <span className="djh-badge djh-badge--fab">{written}</span>}
           </button>
         )}
       </div>
@@ -532,12 +543,26 @@ const css = `
   font: 600 11px/1.4 ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase;
   color: #fff; background: #1f2937;
 }
+/*
+ * The tools float over the design rather than sitting in its layout: the design is the
+ * thing being judged, so it gets the whole frame, and the panel is visibly an instrument
+ * laid on top of it. The dock itself is click-through; only the panels inside it aren't.
+ */
+.djh-dock {
+  position: absolute; left: 0; right: 0; z-index: 50;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+  padding-inline: 16px;
+  pointer-events: none;
+}
+.djh-dock > * { pointer-events: auto; }
+
 .djh-knobs {
-  flex: none;
   display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px;
-  padding: 10px 12px;
+  padding: 12px 16px; border-radius: 12px;
   font: 500 12px/1.4 system-ui, sans-serif; color: #e4e4e7;
-  background: #27272a; border-top: 1px solid rgba(255,255,255,.1);
+  background: #232329;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 10px 30px -8px rgba(0,0,0,.55);
 }
 .djh-knob { display: flex; align-items: center; gap: 8px; }
 .djh-knob > span { color: #a1a1aa; }
@@ -568,14 +593,25 @@ const css = `
   --dim: #8b8b93;
   --accent: #5b5bd6;
   --hair: 1px;
-  flex: none;
   display: flex; flex-wrap: wrap; align-items: stretch; gap: 0;
-  padding: 0 4px;
+  padding: 0 4px; border-radius: 14px;
   font: 500 12px/1.4 system-ui, sans-serif; color: var(--txt);
-  background: #16161a; border-top: var(--hair) solid var(--line);
+  background: #16161a;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 12px 34px -8px rgba(0,0,0,.6);
 }
 @media (min-resolution: 192dpi) { .djh-bar { --hair: 0.5px; } }
-.djh-bar--closed { padding: 6px; justify-content: flex-end; }
+
+/* Collapsed: one circle, bottom-right, carrying the unsent-note count. */
+.djh-fab {
+  align-self: flex-end;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 999px;
+  cursor: pointer; color: #e8e8ea; background: #16161a; border: none;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 10px 26px -6px rgba(0,0,0,.6);
+}
+.djh-fab:hover { background: #202027; }
+.djh-fab:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 2px; }
 
 .djh-zone {
   display: flex; flex-direction: column; justify-content: center; gap: 5px;
@@ -628,13 +664,23 @@ const css = `
   .djh-btn, .djh-icon, .djh-seg-btn { transition: background 150ms ease-out, color 150ms ease-out; }
 }
 
+/* inline-flex centring, not line-height guesswork — a digit's box is not its ink, so
+   text-align alone leaves the number sitting low in the circle. */
 .djh-badge {
-  min-width: 16px; padding: 0 4px; border-radius: 8px;
-  font-size: 10px; font-weight: 700; text-align: center;
-  font-variant-numeric: tabular-nums;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-sizing: content-box;
+  min-width: 10px; height: 16px; padding: 0 3px; border-radius: 999px;
+  font-size: 10px; font-weight: 700; line-height: 1;
+  font-variant-numeric: tabular-nums; letter-spacing: 0;
   color: #16161a; background: var(--txt);
 }
 .djh-btn--on .djh-badge, .djh-btn--primary .djh-badge { color: var(--accent); background: #fff; }
+.djh-badge--fab {
+  position: absolute; top: -2px; right: -2px;
+  height: 18px; min-width: 12px;
+  color: #fff; background: var(--accent);
+  box-shadow: 0 0 0 2px #16161a;
+}
 
 .djh-scrub { flex: 1 1 110px; min-width: 80px; accent-color: var(--accent); }
 .djh-note {
@@ -643,10 +689,11 @@ const css = `
   color: var(--dim);
 }
 .djh-flash {
-  flex: 1 0 100%; margin: 0; padding: 0 14px 7px;
+  flex: 1 0 100%; margin: 0; padding: 0 14px 9px;
   font-size: 11px; color: #7ee2a8;
 }
 @media (max-width: 860px) {
+  .djh-dock { padding-inline: 12px; }
   .djh-zone + .djh-zone { border-left: none; border-top: var(--hair) solid var(--line); }
   .djh-zone { flex: 1 1 100%; }
 }
