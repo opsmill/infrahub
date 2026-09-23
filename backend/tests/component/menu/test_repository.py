@@ -1,7 +1,9 @@
 from deepdiff import DeepDiff
 
+from infrahub.cli.upgrade import upgrade_menu
 from infrahub.core.branch import Branch
 from infrahub.core.schema import SchemaRoot
+from infrahub.database import InfrahubDatabase
 from infrahub.menu.menu import default_menu
 from infrahub.menu.models import MenuDict, MenuItemDefinition
 from infrahub.menu.repository import MenuRepository
@@ -77,3 +79,22 @@ async def test_update_menu_default_menu(
 
     diff = DeepDiff(default_menu_dict.to_rest().sections["object"], menu_after.to_rest().sections["object"])
     assert diff == {}
+
+
+async def test_upgrade_menu_adds_service_portal(
+    db: InfrahubDatabase,
+    menu_repository: MenuRepository,
+    default_branch: Branch,
+    register_core_models_schema: SchemaRoot,
+) -> None:
+    menu_before_service_portal = [item for item in default_menu if item.name != "ServicePortal"]
+    await menu_repository.create_menu(menu=menu_before_service_portal)
+    assert "BuiltinServicePortal" not in (await menu_repository.get_menu()).data
+
+    await upgrade_menu(db=db)
+
+    service_portal = (await menu_repository.get_menu()).data["BuiltinServicePortal"]
+    assert service_portal.label == "Service Portal"
+    assert service_portal.path == "/service-portal"
+    assert service_portal.icon.startswith("mdi:")
+    assert not service_portal.children

@@ -1,0 +1,41 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreNumberPool
+  data:
+    - name: Customer vlan pool
+      node: IpamVLAN
+      node_attribute: vlan_id
+      start_range: 1000
+      end_range: 2000
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreIPPrefixPool
+  data:
+    - name: Customer prefixes pool
+      default_prefix_type: IpamIPPrefix
+      default_prefix_length: 29
+      default_member_type: address
+      ip_namespace: default
+      resources:
+        kind: IpamIPPrefix
+        data:
+          - prefix: 203.0.113.0/24
+            member_type: prefix
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreIPAddressPool
+  data:
+    - name: Management IP pool
+      default_address_type: IpamIPAddress
+      ip_namespace: default
+      resources:
+        kind: IpamIPPrefix
+        data:
+          - prefix: 172.16.1.0/24
+            member_type: address

@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/develop.json
+---
+schemas:
+  - schemas/dedicated_internet.yml
+
+objects:
+  - objects/01_locations.yml
+  - objects/02_devices.yml
+  - objects/03_resource_pools.yml
+  - objects/04_groups.yml
+
+queries:
+  - name: dedicated_internet_allocate
+    file_path: generators/dedicated_internet_allocate.gql
+  - name: dedicated_internet_activate
+    file_path: generators/dedicated_internet_activate.gql
+
+# Order matters: allocate writes the VLAN that activate requires.
+generator_definitions:
+  - name: dedicated_internet_allocate
+    file_path: generators/dedicated_internet_allocate.py
+    class_name: DedicatedInternetAllocate
+    targets: dedicated_internet_allocate_targets
+    query: dedicated_internet_allocate
+    parameters:
+      name: name__value
+  - name: dedicated_internet_activate
+    file_path: generators/dedicated_internet_activate.py
+    class_name: DedicatedInternetActivate
+    targets: dedicated_internet_activate_targets
+    query: dedicated_internet_activate
+    parameters:
+      name: name__value

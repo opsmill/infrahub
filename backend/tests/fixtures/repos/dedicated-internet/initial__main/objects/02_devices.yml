@@ -1,0 +1,19 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: DcimDevice
+  data:
+    - name: core-a1
+      location: site-a
+      interfaces:
+        kind: DcimInterface
+        data:
+          - name: port-1
+          - name: port-2
+    - name: core-b1
+      location: site-b
+      interfaces:
+        kind: DcimInterface
+        data:
+          - name: port-1

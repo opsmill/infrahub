@@ -97,6 +97,7 @@ from .resource_pool import (
     core_resource_pool,
     core_weighted_pool_resource,
 )
+from .service_catalog import core_service_catalog_entry, core_service_request
 from .template import core_object_component_template, core_object_template
 from .transform import core_transform, core_transform_jinja2, core_transform_python
 from .webhook import core_custom_webhook, core_standard_webhook, core_webhook
@@ -160,6 +161,8 @@ core_models_mixed: CoreModelsMixedType = {
         core_password_credential,
         core_refresh_token,
         core_proposed_change,
+        core_service_catalog_entry,
+        core_service_request,
         core_change_thread,
         core_file_thread,
         core_artifact_thread,

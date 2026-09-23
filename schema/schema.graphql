@@ -6363,6 +6363,249 @@ input CoreSchemaValidatorUpsertInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
+"""A service that requesters can order from the Service Portal"""
+type CoreServiceCatalogEntry implements CoreNode {
+  """Short explanation of the service shown on its catalog card"""
+  description: TextAttribute
+  display_label: String
+  """
+  Attribute and relationship names of the target kind shown on the order form, in form order (required)
+  """
+  fields: ListAttribute
+  """
+  Names of the generator definitions to run on the service object, in run order
+  """
+  generators: ListAttribute
+  """Human friendly identifier"""
+  hfid: [String!]
+  """Icon shown on the catalog card, as an mdi: icon name"""
+  icon: TextAttribute
+  """Unique identifier"""
+  id: String!
+  member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  """
+  review opens a proposed change from a request branch, direct writes to the default branch
+  """
+  mode: TextAttribute
+  """Name of the service shown on its catalog card (required)"""
+  name: TextAttribute
+  subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  tags(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedBuiltinTag!
+  """
+  Kind of the service object created when the service is ordered (required)
+  """
+  target_kind: TextAttribute
+  template: NestedEdgedCoreObjectTemplate!
+}
+
+"""A service that requesters can order from the Service Portal"""
+type CoreServiceCatalogEntryCreate {
+  object: CoreServiceCatalogEntry
+  ok: Boolean
+}
+
+input CoreServiceCatalogEntryCreateInput {
+  """Short explanation of the service shown on its catalog card"""
+  description: TextAttributeCreate
+  """
+  Attribute and relationship names of the target kind shown on the order form, in form order
+  """
+  fields: ListAttributeCreate
+  """
+  Names of the generator definitions to run on the service object, in run order
+  """
+  generators: ListAttributeCreate
+  """Icon shown on the catalog card, as an mdi: icon name"""
+  icon: TextAttributeCreate
+  id: String
+  member_of_groups: [RelatedNodeInput]
+  """
+  review opens a proposed change from a request branch, direct writes to the default branch
+  """
+  mode: TextAttributeCreate
+  """Name of the service shown on its catalog card"""
+  name: TextAttributeCreate
+  subscriber_of_groups: [RelatedNodeInput]
+  tags: [RelatedNodeInput]
+  """Kind of the service object created when the service is ordered"""
+  target_kind: TextAttributeCreate
+  """
+  Template applied to the service object, supplying the values not on the order form
+  """
+  template: RelatedNodeInput
+}
+
+"""A service that requesters can order from the Service Portal"""
+type CoreServiceCatalogEntryDelete {
+  ok: Boolean
+}
+
+"""A service that requesters can order from the Service Portal"""
+type CoreServiceCatalogEntryUpdate {
+  object: CoreServiceCatalogEntry
+  ok: Boolean
+}
+
+input CoreServiceCatalogEntryUpdateInput {
+  """Short explanation of the service shown on its catalog card"""
+  description: TextAttributeUpdate
+  """
+  Attribute and relationship names of the target kind shown on the order form, in form order
+  """
+  fields: ListAttributeUpdate
+  """
+  Names of the generator definitions to run on the service object, in run order
+  """
+  generators: ListAttributeUpdate
+  hfid: [String]
+  """Icon shown on the catalog card, as an mdi: icon name"""
+  icon: TextAttributeUpdate
+  id: String
+  member_of_groups: [RelatedNodeInput]
+  """
+  review opens a proposed change from a request branch, direct writes to the default branch
+  """
+  mode: TextAttributeUpdate
+  """Name of the service shown on its catalog card"""
+  name: TextAttributeUpdate
+  subscriber_of_groups: [RelatedNodeInput]
+  tags: [RelatedNodeInput]
+  """Kind of the service object created when the service is ordered"""
+  target_kind: TextAttributeUpdate
+  """
+  Template applied to the service object, supplying the values not on the order form
+  """
+  template: RelatedNodeInput
+}
+
+"""A service that requesters can order from the Service Portal"""
+type CoreServiceCatalogEntryUpsert {
+  object: CoreServiceCatalogEntry
+  ok: Boolean
+}
+
+input CoreServiceCatalogEntryUpsertInput {
+  """Short explanation of the service shown on its catalog card"""
+  description: TextAttributeUpdate
+  """
+  Attribute and relationship names of the target kind shown on the order form, in form order
+  """
+  fields: ListAttributeUpdate
+  """
+  Names of the generator definitions to run on the service object, in run order
+  """
+  generators: ListAttributeUpdate
+  hfid: [String]
+  """Icon shown on the catalog card, as an mdi: icon name"""
+  icon: TextAttributeUpdate
+  id: String
+  member_of_groups: [RelatedNodeInput]
+  """
+  review opens a proposed change from a request branch, direct writes to the default branch
+  """
+  mode: TextAttributeUpdate
+  """Name of the service shown on its catalog card"""
+  name: TextAttributeUpdate
+  subscriber_of_groups: [RelatedNodeInput]
+  tags: [RelatedNodeInput]
+  """Kind of the service object created when the service is ordered"""
+  target_kind: TextAttributeUpdate
+  """
+  Template applied to the service object, supplying the values not on the order form
+  """
+  template: RelatedNodeInput
+}
+
+"""
+An order placed through the Service Portal and the state of its fulfilment
+"""
+type CoreServiceRequest implements CoreNode {
+  """Name of the branch the request is built on"""
+  branch: TextAttribute
+  display_label: String
+  entry: NestedEdgedCoreServiceCatalogEntry!
+  """Human friendly identifier"""
+  hfid: [String!]
+  """Unique identifier"""
+  id: String!
+  """Submitted form values, in the shape of the target kind's create input"""
+  inputs: JSONAttribute
+  member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  """Human-readable progress or failure summary"""
+  message: TextAttribute
+  proposed_change: NestedEdgedCoreProposedChange!
+  requester: NestedEdgedCoreGenericAccount!
+  service: NestedEdgedCoreNode!
+  """Current stage of the request, written by the Service Portal workflow"""
+  status: TextAttribute
+  subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  """Identifier of the latest workflow run for this request"""
+  task_id: TextAttribute
+}
+
+"""
+An order placed through the Service Portal and the state of its fulfilment
+"""
+type CoreServiceRequestCreate {
+  object: CoreServiceRequest
+  ok: Boolean
+}
+
+input CoreServiceRequestCreateInput {
+  entry: RelatedNodeInput
+  id: String
+  """Submitted form values, in the shape of the target kind's create input"""
+  inputs: JSONAttributeCreate
+  member_of_groups: [RelatedNodeInput]
+  requester: RelatedNodeInput
+  subscriber_of_groups: [RelatedNodeInput]
+}
+
+"""
+An order placed through the Service Portal and the state of its fulfilment
+"""
+type CoreServiceRequestDelete {
+  ok: Boolean
+}
+
+"""
+An order placed through the Service Portal and the state of its fulfilment
+"""
+type CoreServiceRequestUpdate {
+  object: CoreServiceRequest
+  ok: Boolean
+}
+
+input CoreServiceRequestUpdateInput {
+  entry: RelatedNodeInput
+  hfid: [String]
+  id: String
+  """Submitted form values, in the shape of the target kind's create input"""
+  inputs: JSONAttributeUpdate
+  member_of_groups: [RelatedNodeInput]
+  requester: RelatedNodeInput
+  subscriber_of_groups: [RelatedNodeInput]
+}
+
+"""
+An order placed through the Service Portal and the state of its fulfilment
+"""
+type CoreServiceRequestUpsert {
+  object: CoreServiceRequest
+  ok: Boolean
+}
+
+input CoreServiceRequestUpsertInput {
+  entry: RelatedNodeInput
+  hfid: [String]
+  id: String
+  """Submitted form values, in the shape of the target kind's create input"""
+  inputs: JSONAttributeUpdate
+  member_of_groups: [RelatedNodeInput]
+  requester: RelatedNodeInput
+  subscriber_of_groups: [RelatedNodeInput]
+}
+
 """A standard check"""
 type CoreStandardCheck implements CoreCheck & CoreNode {
   """Outcome of the check"""
@@ -8175,6 +8418,20 @@ type EdgedCoreSchemaValidator {
   node_metadata: InfrahubNodeMetadata
 }
 
+"""A service that requesters can order from the Service Portal"""
+type EdgedCoreServiceCatalogEntry {
+  node: CoreServiceCatalogEntry
+  node_metadata: InfrahubNodeMetadata
+}
+
+"""
+An order placed through the Service Portal and the state of its fulfilment
+"""
+type EdgedCoreServiceRequest {
+  node: CoreServiceRequest
+  node_metadata: InfrahubNodeMetadata
+}
+
 """A standard check"""
 type EdgedCoreStandardCheck {
   node: CoreStandardCheck
@@ -9810,6 +10067,30 @@ type Mutation {
   CoreSchemaValidatorUpdate(context: ContextInput, data: CoreSchemaValidatorUpdateInput!): CoreSchemaValidatorUpdate
   """A validator related to the schema"""
   CoreSchemaValidatorUpsert(context: ContextInput, data: CoreSchemaValidatorUpsertInput!): CoreSchemaValidatorUpsert
+  """A service that requesters can order from the Service Portal"""
+  CoreServiceCatalogEntryCreate(context: ContextInput, data: CoreServiceCatalogEntryCreateInput!): CoreServiceCatalogEntryCreate
+  """A service that requesters can order from the Service Portal"""
+  CoreServiceCatalogEntryDelete(context: ContextInput, data: DeleteInput!): CoreServiceCatalogEntryDelete
+  """A service that requesters can order from the Service Portal"""
+  CoreServiceCatalogEntryUpdate(context: ContextInput, data: CoreServiceCatalogEntryUpdateInput!): CoreServiceCatalogEntryUpdate
+  """A service that requesters can order from the Service Portal"""
+  CoreServiceCatalogEntryUpsert(context: ContextInput, data: CoreServiceCatalogEntryUpsertInput!): CoreServiceCatalogEntryUpsert
+  """
+  An order placed through the Service Portal and the state of its fulfilment
+  """
+  CoreServiceRequestCreate(context: ContextInput, data: CoreServiceRequestCreateInput!): CoreServiceRequestCreate
+  """
+  An order placed through the Service Portal and the state of its fulfilment
+  """
+  CoreServiceRequestDelete(context: ContextInput, data: DeleteInput!): CoreServiceRequestDelete
+  """
+  An order placed through the Service Portal and the state of its fulfilment
+  """
+  CoreServiceRequestUpdate(context: ContextInput, data: CoreServiceRequestUpdateInput!): CoreServiceRequestUpdate
+  """
+  An order placed through the Service Portal and the state of its fulfilment
+  """
+  CoreServiceRequestUpsert(context: ContextInput, data: CoreServiceRequestUpsertInput!): CoreServiceRequestUpsert
   """A standard check"""
   CoreStandardCheckCreate(context: ContextInput, data: CoreStandardCheckCreateInput!): CoreStandardCheckCreate
   """A standard check"""
@@ -9974,6 +10255,7 @@ type Mutation {
   SchemaDropdownRemove(context: ContextInput, data: SchemaDropdownRemoveInput!): SchemaDropdownRemove
   SchemaEnumAdd(context: ContextInput, data: SchemaEnumInput!): SchemaEnumAdd
   SchemaEnumRemove(context: ContextInput, data: SchemaEnumInput!): SchemaEnumRemove
+  ServiceRequestSubmit(context: ContextInput, data: ServiceRequestSubmitInput!): ServiceRequestSubmit
 }
 
 """IPv4 or IPv6 address"""
@@ -10549,6 +10831,24 @@ type NestedEdgedCoreSchemaCheck {
 """A validator related to the schema"""
 type NestedEdgedCoreSchemaValidator {
   node: CoreSchemaValidator
+  node_metadata: InfrahubNodeMetadata
+  properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata
+}
+
+"""A service that requesters can order from the Service Portal"""
+type NestedEdgedCoreServiceCatalogEntry {
+  node: CoreServiceCatalogEntry
+  node_metadata: InfrahubNodeMetadata
+  properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata
+}
+
+"""
+An order placed through the Service Portal and the state of its fulfilment
+"""
+type NestedEdgedCoreServiceRequest {
+  node: CoreServiceRequest
   node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
   relationship_metadata: InfrahubRelationshipMetadata
@@ -11260,6 +11560,22 @@ type NestedPaginatedCoreSchemaCheck {
 type NestedPaginatedCoreSchemaValidator {
   count: Int!
   edges: [NestedEdgedCoreSchemaValidator!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""A service that requesters can order from the Service Portal"""
+type NestedPaginatedCoreServiceCatalogEntry {
+  count: Int!
+  edges: [NestedEdgedCoreServiceCatalogEntry!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""
+An order placed through the Service Portal and the state of its fulfilment
+"""
+type NestedPaginatedCoreServiceRequest {
+  count: Int!
+  edges: [NestedEdgedCoreServiceRequest!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -12087,6 +12403,22 @@ type PaginatedCoreSchemaCheck {
 type PaginatedCoreSchemaValidator {
   count: Int!
   edges: [EdgedCoreSchemaValidator!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""A service that requesters can order from the Service Portal"""
+type PaginatedCoreServiceCatalogEntry {
+  count: Int!
+  edges: [EdgedCoreServiceCatalogEntry!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""
+An order placed through the Service Portal and the state of its fulfilment
+"""
+type PaginatedCoreServiceRequest {
+  count: Int!
+  edges: [EdgedCoreServiceRequest!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -23371,6 +23703,340 @@ type Query {
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
   ): PaginatedCoreSchemaValidator!
+  CoreServiceCatalogEntry(
+    any__is_protected: Boolean
+    any__owner__id: ID
+    any__source__id: ID
+    any__value: String
+    any__values: [String]
+    description__is_protected: Boolean
+    description__isnull: Boolean
+    description__owner__id: ID
+    description__source__id: ID
+    description__value: String
+    description__values: [String]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    fields__is_protected: Boolean
+    fields__isnull: Boolean
+    fields__owner__id: ID
+    fields__source__id: ID
+    fields__value: GenericScalar
+    fields__values: [GenericScalar]
+    generators__is_protected: Boolean
+    generators__isnull: Boolean
+    generators__owner__id: ID
+    generators__source__id: ID
+    generators__value: GenericScalar
+    generators__values: [GenericScalar]
+    hfid: [String]
+    icon__is_protected: Boolean
+    icon__isnull: Boolean
+    icon__owner__id: ID
+    icon__source__id: ID
+    icon__value: String
+    icon__values: [String]
+    ids: [ID]
+    limit: Int
+    member_of_groups__description__value: String
+    member_of_groups__description__values: [String]
+    member_of_groups__display_label__isnull: Boolean
+    member_of_groups__display_label__value: String
+    member_of_groups__display_label__values: [String]
+    member_of_groups__group_type__value: String
+    member_of_groups__group_type__values: [String]
+    member_of_groups__ids: [ID]
+    member_of_groups__isnull: Boolean
+    member_of_groups__label__value: String
+    member_of_groups__label__values: [String]
+    member_of_groups__name__value: String
+    member_of_groups__name__values: [String]
+    mode__is_protected: Boolean
+    mode__isnull: Boolean
+    mode__owner__id: ID
+    mode__source__id: ID
+    mode__value: String
+    mode__values: [String]
+    name__is_protected: Boolean
+    name__isnull: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    """Filter by exact creation timestamp"""
+    node_metadata__created_at: DateTime
+    """Filter for objects created after this timestamp"""
+    node_metadata__created_at__after: DateTime
+    """Filter for objects created before this timestamp"""
+    node_metadata__created_at__before: DateTime
+    """Filter by exact creator account UUID"""
+    node_metadata__created_by__id: ID
+    """Filter by list of creator account UUIDs"""
+    node_metadata__created_by__ids: [ID]
+    """Filter by exact update timestamp"""
+    node_metadata__updated_at: DateTime
+    """Filter for objects updated after this timestamp"""
+    node_metadata__updated_at__after: DateTime
+    """Filter for objects updated before this timestamp"""
+    node_metadata__updated_at__before: DateTime
+    """Filter by exact updater account UUID"""
+    node_metadata__updated_by__id: ID
+    """Filter by list of updater account UUIDs"""
+    node_metadata__updated_by__ids: [ID]
+    offset: Int
+    order: OrderInput
+    partial_match: Boolean
+    subscriber_of_groups__description__value: String
+    subscriber_of_groups__description__values: [String]
+    subscriber_of_groups__display_label__isnull: Boolean
+    subscriber_of_groups__display_label__value: String
+    subscriber_of_groups__display_label__values: [String]
+    subscriber_of_groups__group_type__value: String
+    subscriber_of_groups__group_type__values: [String]
+    subscriber_of_groups__ids: [ID]
+    subscriber_of_groups__isnull: Boolean
+    subscriber_of_groups__label__value: String
+    subscriber_of_groups__label__values: [String]
+    subscriber_of_groups__name__value: String
+    subscriber_of_groups__name__values: [String]
+    tags__description__is_protected: Boolean
+    tags__description__owner__id: ID
+    tags__description__source__id: ID
+    tags__description__value: String
+    tags__description__values: [String]
+    tags__display_label__isnull: Boolean
+    tags__display_label__value: String
+    tags__display_label__values: [String]
+    tags__ids: [ID]
+    tags__isnull: Boolean
+    tags__name__is_protected: Boolean
+    tags__name__owner__id: ID
+    tags__name__source__id: ID
+    tags__name__value: String
+    tags__name__values: [String]
+    target_kind__is_protected: Boolean
+    target_kind__isnull: Boolean
+    target_kind__owner__id: ID
+    target_kind__source__id: ID
+    target_kind__value: String
+    target_kind__values: [String]
+    template__display_label__isnull: Boolean
+    template__display_label__value: String
+    template__display_label__values: [String]
+    template__ids: [ID]
+    template__isnull: Boolean
+    template__template_name__is_protected: Boolean
+    template__template_name__owner__id: ID
+    template__template_name__source__id: ID
+    template__template_name__value: String
+    template__template_name__values: [String]
+  ): PaginatedCoreServiceCatalogEntry!
+  CoreServiceRequest(
+    any__is_protected: Boolean
+    any__owner__id: ID
+    any__source__id: ID
+    any__value: String
+    any__values: [String]
+    branch__is_protected: Boolean
+    branch__isnull: Boolean
+    branch__owner__id: ID
+    branch__source__id: ID
+    branch__value: String
+    branch__values: [String]
+    entry__description__is_protected: Boolean
+    entry__description__owner__id: ID
+    entry__description__source__id: ID
+    entry__description__value: String
+    entry__description__values: [String]
+    entry__display_label__isnull: Boolean
+    entry__display_label__value: String
+    entry__display_label__values: [String]
+    entry__fields__is_protected: Boolean
+    entry__fields__owner__id: ID
+    entry__fields__source__id: ID
+    entry__fields__value: GenericScalar
+    entry__fields__values: [GenericScalar]
+    entry__generators__is_protected: Boolean
+    entry__generators__owner__id: ID
+    entry__generators__source__id: ID
+    entry__generators__value: GenericScalar
+    entry__generators__values: [GenericScalar]
+    entry__icon__is_protected: Boolean
+    entry__icon__owner__id: ID
+    entry__icon__source__id: ID
+    entry__icon__value: String
+    entry__icon__values: [String]
+    entry__ids: [ID]
+    entry__isnull: Boolean
+    entry__mode__is_protected: Boolean
+    entry__mode__owner__id: ID
+    entry__mode__source__id: ID
+    entry__mode__value: String
+    entry__mode__values: [String]
+    entry__name__is_protected: Boolean
+    entry__name__owner__id: ID
+    entry__name__source__id: ID
+    entry__name__value: String
+    entry__name__values: [String]
+    entry__target_kind__is_protected: Boolean
+    entry__target_kind__owner__id: ID
+    entry__target_kind__source__id: ID
+    entry__target_kind__value: String
+    entry__target_kind__values: [String]
+    ids: [ID]
+    inputs__is_protected: Boolean
+    inputs__isnull: Boolean
+    inputs__owner__id: ID
+    inputs__source__id: ID
+    inputs__value: GenericScalar
+    inputs__values: [GenericScalar]
+    limit: Int
+    member_of_groups__description__value: String
+    member_of_groups__description__values: [String]
+    member_of_groups__display_label__isnull: Boolean
+    member_of_groups__display_label__value: String
+    member_of_groups__display_label__values: [String]
+    member_of_groups__group_type__value: String
+    member_of_groups__group_type__values: [String]
+    member_of_groups__ids: [ID]
+    member_of_groups__isnull: Boolean
+    member_of_groups__label__value: String
+    member_of_groups__label__values: [String]
+    member_of_groups__name__value: String
+    member_of_groups__name__values: [String]
+    message__is_protected: Boolean
+    message__isnull: Boolean
+    message__owner__id: ID
+    message__source__id: ID
+    message__value: String
+    message__values: [String]
+    """Filter by exact creation timestamp"""
+    node_metadata__created_at: DateTime
+    """Filter for objects created after this timestamp"""
+    node_metadata__created_at__after: DateTime
+    """Filter for objects created before this timestamp"""
+    node_metadata__created_at__before: DateTime
+    """Filter by exact creator account UUID"""
+    node_metadata__created_by__id: ID
+    """Filter by list of creator account UUIDs"""
+    node_metadata__created_by__ids: [ID]
+    """Filter by exact update timestamp"""
+    node_metadata__updated_at: DateTime
+    """Filter for objects updated after this timestamp"""
+    node_metadata__updated_at__after: DateTime
+    """Filter for objects updated before this timestamp"""
+    node_metadata__updated_at__before: DateTime
+    """Filter by exact updater account UUID"""
+    node_metadata__updated_by__id: ID
+    """Filter by list of updater account UUIDs"""
+    node_metadata__updated_by__ids: [ID]
+    offset: Int
+    order: OrderInput
+    partial_match: Boolean
+    proposed_change__description__is_protected: Boolean
+    proposed_change__description__owner__id: ID
+    proposed_change__description__source__id: ID
+    proposed_change__description__value: String
+    proposed_change__description__values: [String]
+    proposed_change__destination_branch__is_protected: Boolean
+    proposed_change__destination_branch__owner__id: ID
+    proposed_change__destination_branch__source__id: ID
+    proposed_change__destination_branch__value: String
+    proposed_change__destination_branch__values: [String]
+    proposed_change__display_label__isnull: Boolean
+    proposed_change__display_label__value: String
+    proposed_change__display_label__values: [String]
+    proposed_change__ids: [ID]
+    proposed_change__is_draft__is_protected: Boolean
+    proposed_change__is_draft__owner__id: ID
+    proposed_change__is_draft__source__id: ID
+    proposed_change__is_draft__value: Boolean
+    proposed_change__is_draft__values: [Boolean]
+    proposed_change__isnull: Boolean
+    proposed_change__name__is_protected: Boolean
+    proposed_change__name__owner__id: ID
+    proposed_change__name__source__id: ID
+    proposed_change__name__value: String
+    proposed_change__name__values: [String]
+    proposed_change__source_branch__is_protected: Boolean
+    proposed_change__source_branch__owner__id: ID
+    proposed_change__source_branch__source__id: ID
+    proposed_change__source_branch__value: String
+    proposed_change__source_branch__values: [String]
+    proposed_change__state__is_protected: Boolean
+    proposed_change__state__owner__id: ID
+    proposed_change__state__source__id: ID
+    proposed_change__state__value: String
+    proposed_change__state__values: [String]
+    proposed_change__total_comments__is_protected: Boolean
+    proposed_change__total_comments__owner__id: ID
+    proposed_change__total_comments__source__id: ID
+    proposed_change__total_comments__value: BigInt
+    proposed_change__total_comments__values: [BigInt]
+    requester__account_type__is_protected: Boolean
+    requester__account_type__owner__id: ID
+    requester__account_type__source__id: ID
+    requester__account_type__value: String
+    requester__account_type__values: [String]
+    requester__description__is_protected: Boolean
+    requester__description__owner__id: ID
+    requester__description__source__id: ID
+    requester__description__value: String
+    requester__description__values: [String]
+    requester__display_label__isnull: Boolean
+    requester__display_label__value: String
+    requester__display_label__values: [String]
+    requester__ids: [ID]
+    requester__isnull: Boolean
+    requester__label__is_protected: Boolean
+    requester__label__owner__id: ID
+    requester__label__source__id: ID
+    requester__label__value: String
+    requester__label__values: [String]
+    requester__name__is_protected: Boolean
+    requester__name__owner__id: ID
+    requester__name__source__id: ID
+    requester__name__value: String
+    requester__name__values: [String]
+    requester__password__is_protected: Boolean
+    requester__password__owner__id: ID
+    requester__password__source__id: ID
+    requester__password__value: String
+    requester__password__values: [String]
+    requester__status__is_protected: Boolean
+    requester__status__owner__id: ID
+    requester__status__source__id: ID
+    requester__status__value: String
+    requester__status__values: [String]
+    service__ids: [ID]
+    service__isnull: Boolean
+    status__is_protected: Boolean
+    status__isnull: Boolean
+    status__owner__id: ID
+    status__source__id: ID
+    status__value: String
+    status__values: [String]
+    subscriber_of_groups__description__value: String
+    subscriber_of_groups__description__values: [String]
+    subscriber_of_groups__display_label__isnull: Boolean
+    subscriber_of_groups__display_label__value: String
+    subscriber_of_groups__display_label__values: [String]
+    subscriber_of_groups__group_type__value: String
+    subscriber_of_groups__group_type__values: [String]
+    subscriber_of_groups__ids: [ID]
+    subscriber_of_groups__isnull: Boolean
+    subscriber_of_groups__label__value: String
+    subscriber_of_groups__label__values: [String]
+    subscriber_of_groups__name__value: String
+    subscriber_of_groups__name__values: [String]
+    task_id__is_protected: Boolean
+    task_id__isnull: Boolean
+    task_id__owner__id: ID
+    task_id__source__id: ID
+    task_id__value: String
+    task_id__values: [String]
+  ): PaginatedCoreServiceRequest!
   CoreStandardCheck(
     any__is_protected: Boolean
     any__owner__id: ID
@@ -26439,6 +27105,8 @@ type Query {
     subscriber_of_groups__name__values: [String]
   ): PaginatedProfileIpamNamespace!
   Relationship(excluded_namespaces: [String], ids: [String!]!, limit: Int, offset: Int): Relationships!
+  """List the Service Portal services the caller can request."""
+  ServiceCatalog: ServiceCatalog!
 }
 
 """
@@ -26645,6 +27313,60 @@ input SchemaEnumInput {
 
 type SchemaEnumRemove {
   ok: Boolean
+}
+
+type ServiceCatalog {
+  """Number of services the caller can request"""
+  count: Int!
+  """Services the caller can request"""
+  entries: [ServiceCatalogEntryInfo!]!
+}
+
+type ServiceCatalogEntryInfo {
+  """Short explanation of the service"""
+  description: String
+  """
+  Attribute and relationship names of the target kind shown on the order form, in form order
+  """
+  fields: [String!]!
+  """
+  Names of the generator definitions run on the service object, in run order
+  """
+  generators: [String!]!
+  """Icon of the service, as an mdi: icon name"""
+  icon: String
+  """ID of the catalog entry"""
+  id: String!
+  """How a request is fulfilled: review or direct"""
+  mode: String!
+  """Name of the service"""
+  name: String!
+  """Names of the tags of the service"""
+  tags: [String!]!
+  """Kind of the service object created by a request"""
+  target_kind: String!
+  """ID of the object template applied to the service object"""
+  template_id: String
+}
+
+type ServiceRequestInfo {
+  """ID of the service request"""
+  id: String!
+}
+
+type ServiceRequestSubmit {
+  ok: Boolean
+  request: ServiceRequestInfo
+  task: TaskInfo
+}
+
+input ServiceRequestSubmitInput {
+  """ID of the catalog entry of the requested service"""
+  entry_id: String!
+  """
+  Form values keyed by field name, in the shape of the target kind's create input
+  """
+  inputs: GenericScalar!
 }
 
 type StandardEvent implements EventNodeInterface {

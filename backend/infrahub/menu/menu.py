@@ -99,6 +99,16 @@ default_menu = [
     ),
     MenuItemDefinition(
         namespace="Builtin",
+        name="ServicePortal",
+        label="Service Portal",
+        path="/service-portal",
+        icon="mdi:storefront-outline",
+        protected=True,
+        section=MenuSection.INTERNAL,
+        order_weight=1200,
+    ),
+    MenuItemDefinition(
+        namespace="Builtin",
         name="Branches",
         label="Branches",
         path="/branches",

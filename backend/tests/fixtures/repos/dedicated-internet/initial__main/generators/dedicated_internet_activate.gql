@@ -1,0 +1,51 @@
+query DedicatedInternetActivate($name: String!) {
+  ServiceDedicatedInternet(name__value: $name) {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+        fail_generator {
+          value
+        }
+        vlan {
+          node {
+            id
+          }
+        }
+        location {
+          node {
+            name {
+              value
+            }
+            devices {
+              edges {
+                node {
+                  name {
+                    value
+                  }
+                  interfaces {
+                    edges {
+                      node {
+                        id
+                        name {
+                          value
+                        }
+                        service {
+                          node {
+                            id
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

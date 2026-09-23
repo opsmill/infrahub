@@ -34,6 +34,7 @@ from .mutations.relationship import RelationshipAdd, RelationshipRemove
 from .mutations.repository import ProcessRepository, ReadOnlyRepositoryImportLastCommit, ValidateRepositoryConnectivity
 from .mutations.resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
 from .mutations.schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
+from .mutations.service_request import ServiceRequestSubmit
 from .mutations.task import InfrahubTaskCancel, InfrahubTaskRetry
 from .queries import (
     AccountPermissions,
@@ -59,6 +60,7 @@ from .queries import (
 from .queries.convert_object_type_mapping import FieldsMappingTypeConversion
 from .queries.diff.tree import DiffTreeQuery, DiffTreeSummaryQuery
 from .queries.event import Event
+from .queries.service_catalog import InfrahubServiceCatalog
 from .queries.task import Task, TaskBranchStatus
 
 # Root query fields that require an authenticated session even when anonymous read access is
@@ -109,6 +111,8 @@ class InfrahubBaseQuery(ObjectType):
 
     FieldsMappingTypeConversion = FieldsMappingTypeConversion
 
+    ServiceCatalog = InfrahubServiceCatalog
+
 
 class InfrahubBaseMutation(ObjectType):
     InfrahubAccountTokenCreate = InfrahubAccountTokenCreate.Field()
@@ -155,3 +159,5 @@ class InfrahubBaseMutation(ObjectType):
     InfrahubProfilesRefresh = InfrahubProfilesRefresh.Field()
 
     InfrahubSetPreferences = InfrahubSetPreferences.Field()
+
+    ServiceRequestSubmit = ServiceRequestSubmit.Field()

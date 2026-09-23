@@ -26,6 +26,8 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         "InfrahubAccountTokenCreate",
         "InfrahubAccountTokenDelete",
         "InfrahubSetPreferences",
+        # Checks the requester may create the service kind on a branch itself
+        "ServiceRequestSubmit",
     ]
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:  # noqa: ARG002

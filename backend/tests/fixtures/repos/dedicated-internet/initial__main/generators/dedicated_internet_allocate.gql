@@ -1,0 +1,12 @@
+query DedicatedInternetAllocate($name: String!) {
+  ServiceDedicatedInternet(name__value: $name) {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+      }
+    }
+  }
+}

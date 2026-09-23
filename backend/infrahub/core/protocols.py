@@ -23,6 +23,7 @@ if TYPE_CHECKING:
         IPNetwork,
         JSONAttribute,
         JSONAttributeOptional,
+        ListAttribute,
         ListAttributeOptional,
         String,
         StringOptional,
@@ -563,6 +564,30 @@ class CoreSchemaCheck(CoreCheck):
 
 class CoreSchemaValidator(CoreValidator):
     pass
+
+
+class CoreServiceCatalogEntry(CoreNode):
+    name: String
+    description: StringOptional
+    icon: StringOptional
+    target_kind: String
+    generators: ListAttributeOptional
+    mode: Enum
+    fields: ListAttribute
+    tags: RelationshipManager[BuiltinTag]
+    template: RelationshipManager[CoreObjectTemplate]
+
+
+class CoreServiceRequest(CoreNode):
+    status: Enum
+    message: StringOptional
+    inputs: JSONAttributeOptional
+    branch: StringOptional
+    task_id: StringOptional
+    entry: RelationshipManager[CoreServiceCatalogEntry]
+    requester: RelationshipManager[CoreGenericAccount]
+    service: RelationshipManager[CoreNode]
+    proposed_change: RelationshipManager[CoreProposedChange]
 
 
 class CoreStandardCheck(CoreCheck):

@@ -1,0 +1,138 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+
+nodes:
+  - name: Site
+    namespace: Location
+    human_friendly_id: [name__value]
+    display_label: name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+    relationships:
+      - name: devices
+        peer: DcimDevice
+        cardinality: many
+        identifier: site__devices
+
+  - name: Device
+    namespace: Dcim
+    human_friendly_id: [name__value]
+    display_label: name__value
+    order_by: [name__value]
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+    relationships:
+      - name: location
+        peer: LocationSite
+        cardinality: one
+        optional: false
+        identifier: site__devices
+      - name: interfaces
+        peer: DcimInterface
+        cardinality: many
+        kind: Component
+
+  - name: Interface
+    namespace: Dcim
+    human_friendly_id: [device__name__value, name__value]
+    uniqueness_constraints:
+      - [device, name__value]
+    display_label: name__value
+    order_by: [name__value]
+    attributes:
+      - name: name
+        kind: Text
+    relationships:
+      - name: device
+        peer: DcimDevice
+        cardinality: one
+        optional: false
+        kind: Parent
+      - name: service
+        peer: ServiceDedicatedInternet
+        cardinality: one
+        identifier: service__dedicated_interfaces
+
+  - name: VLAN
+    namespace: Ipam
+    human_friendly_id: [name__value]
+    display_label: name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: vlan_id
+        kind: Number
+
+  - name: IPPrefix
+    namespace: Ipam
+    inherit_from: [BuiltinIPPrefix]
+
+  - name: IPAddress
+    namespace: Ipam
+    inherit_from: [BuiltinIPAddress]
+
+  - name: DedicatedInternet
+    namespace: Service
+    label: Dedicated Internet
+    generate_template: true
+    human_friendly_id: [name__value]
+    display_label: name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: status
+        kind: Dropdown
+        default_value: draft
+        choices:
+          - name: draft
+            label: Draft
+          - name: active
+            label: Active
+      - name: bandwidth
+        kind: Dropdown
+        choices:
+          - name: "100"
+            label: Hundred Megabits
+          - name: "1000"
+            label: One Gigabit
+          - name: "10000"
+            label: Ten Gigabits
+      - name: ip_package
+        kind: Dropdown
+        choices:
+          - name: small
+            label: Small
+          - name: medium
+            label: Medium
+          - name: large
+            label: Large
+      # Fixture-only switch that makes the activate generator raise.
+      - name: fail_generator
+        kind: Boolean
+        optional: true
+        default_value: false
+    relationships:
+      - name: location
+        peer: LocationSite
+        cardinality: one
+        optional: false
+      - name: dedicated_interfaces
+        peer: DcimInterface
+        cardinality: many
+        identifier: service__dedicated_interfaces
+      - name: vlan
+        peer: IpamVLAN
+        cardinality: one
+      - name: gateway_ip_address
+        peer: IpamIPAddress
+        cardinality: one
+      - name: prefix
+        peer: IpamIPPrefix
+        cardinality: one

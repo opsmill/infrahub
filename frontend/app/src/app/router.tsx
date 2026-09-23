@@ -41,6 +41,29 @@ export const router = createBrowserRouter([
         ),
         children: [
           {
+            // The service portal has its own shell, outside AppLayout (no sidebar, no branch selector).
+            path: "/service-portal",
+            lazy: () => import("@/pages/service-portal/layout"),
+            children: [
+              {
+                index: true,
+                lazy: () => import("@/pages/service-portal/catalog"),
+              },
+              {
+                path: "entries/:entryId",
+                lazy: () => import("@/pages/service-portal/entry-order"),
+              },
+              {
+                path: "requests/:requestId",
+                lazy: () => import("@/pages/service-portal/request-details"),
+              },
+              {
+                path: "*",
+                element: <Navigate to="/service-portal" replace />,
+              },
+            ],
+          },
+          {
             path: "/",
             lazy: () => import("@/pages/app-layout"),
             children: [

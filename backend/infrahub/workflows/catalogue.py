@@ -255,6 +255,14 @@ BRANCH_CREATE = WorkflowDefinition(
     default_priority=WorkflowPriority.HIGH,
 )
 
+SERVICE_REQUEST_RUN = WorkflowDefinition(
+    name="service-request-run",
+    type=WorkflowType.CORE,
+    module="infrahub.service_portal.tasks",
+    function="run_service_request",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 BRANCH_MERGE = WorkflowDefinition(
     name="branch-merge",
     type=WorkflowType.CORE,
@@ -757,6 +765,7 @@ WORKFLOWS = [
     SCHEMA_APPLY_MIGRATION,
     SCHEMA_UPDATED,
     SCHEMA_VALIDATE_MIGRATION,
+    SERVICE_REQUEST_RUN,
     TRANSFORM_JINJA2_RENDER,
     TRANSFORM_PYTHON_RENDER,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
