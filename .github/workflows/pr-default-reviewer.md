@@ -15,7 +15,7 @@ on:
 engine: claude
 timeout-minutes: 8
 steps:
-  # The skip decision is computed here so it does not depend on the model.
+  # Computed in shell so the skip does not depend on the model.
   - name: Gate check - individual reviewer already present
     env:
       GH_TOKEN: ${{ github.token }}
