@@ -710,6 +710,39 @@ def test_jira_comment_refuses_an_unexpected_issue_key() -> None:
     assert transport.calls == []
 
 
+def test_jira_comment_texts_follow_pages_and_keep_link_urls() -> None:
+    jira, transport = make_jira(
+        jira_ok("jira_comments_page1.handcrafted.json"), jira_ok("jira_comments_page2.handcrafted.json")
+    )
+
+    texts = jira.list_comment_texts(issue_key="IFC-7")
+
+    assert len(texts) == 3
+    assert "https://github.com/opsmill/infrahub/pull/10689" in texts[0]
+    assert "fastapi 0.115.0 → 0.116.0" in texts[0]
+    assert "https://github.com/opsmill/infrahub/pull/10700" in texts[1]
+    assert "https://github.com/opsmill/infrahub/pull/10701" in texts[2]
+    assert [(call.method, call.url, call.body) for call in transport.calls] == [
+        ("GET", f"{JIRA_BASE}/rest/api/3/issue/IFC-7/comment?startAt=0&maxResults=50", None),
+        ("GET", f"{JIRA_BASE}/rest/api/3/issue/IFC-7/comment?startAt=2&maxResults=50", None),
+    ]
+
+
+def test_jira_comment_texts_reject_a_malformed_response() -> None:
+    jira, _ = make_jira(HttpResponse(status=200, body=b'{"startAt": 0, "total": 1}'))
+
+    with pytest.raises(JiraError, match="comment"):
+        jira.list_comment_texts(issue_key="IFC-7")
+
+
+def test_jira_comment_texts_refuse_an_unexpected_issue_key() -> None:
+    jira, transport = make_jira()
+
+    with pytest.raises(ValueError, match="issue key"):
+        jira.list_comment_texts(issue_key="../../myself")
+    assert transport.calls == []
+
+
 def test_jira_base_url_trailing_slash_is_ignored() -> None:
     jira, transport = make_jira(jira_ok("jira_search_jql_empty.handcrafted.json"), base_url=f"{JIRA_BASE}/")
 

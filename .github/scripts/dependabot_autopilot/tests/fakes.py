@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from dependabot_autopilot.adapters import adf_plain_text
 from dependabot_autopilot.ports import (
     AccountType,
     ChangedFile,
@@ -248,6 +249,10 @@ class FakeJira:
     """Open issues and their labels, keyed by issue key."""
     updated_days_ago: dict[str, int] = field(default_factory=dict)
     """Days since each issue was last updated; an issue left out was updated today."""
+    comments: dict[str, list[str]] = field(default_factory=dict)
+    """Plain text of each issue's comments, keyed by issue key."""
+    unreadable_comments: set[str] = field(default_factory=set)
+    """Issues whose comments cannot be read."""
     fail: bool = False
     writes: list[JiraWrite] = field(default_factory=list)
     _next_number: int = 0
@@ -286,6 +291,13 @@ class FakeJira:
         if issue_key not in self.issues:
             raise JiraError(f"issue {issue_key} not found")
         self.writes.append(IssueCommented(issue_key=issue_key, body=body))
+        self.comments.setdefault(issue_key, []).append(adf_plain_text(document=body))
+
+    def list_comment_texts(self, *, issue_key: str) -> list[str]:
+        self._check_available()
+        if issue_key not in self.issues or issue_key in self.unreadable_comments:
+            raise JiraError(f"comments of {issue_key} unavailable")
+        return list(self.comments.get(issue_key, []))
 
 
 @dataclass

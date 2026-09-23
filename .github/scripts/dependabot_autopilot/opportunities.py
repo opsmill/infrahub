@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING
@@ -118,7 +119,7 @@ def issue_payload(
 
 
 def file_opportunities(*, jira: JiraPort, report: VerdictReport, pr_url: str, target: JiraTarget) -> FilingOutcome:
-    """Create or comment one Jira item per distinct opportunity; Jira failures are returned, never raised."""
+    """Create one Jira item per distinct opportunity, or comment once per pull request on the open one; Jira failures are returned, never raised."""
     if effective_verdict(report=report) is Verdict.NEEDS_CODE_CHANGES:
         return FilingOutcome(
             skipped_reason="the effective verdict is needs-code-changes; the blocked pull request is the tracker"
@@ -135,8 +136,11 @@ def file_opportunities(*, jira: JiraPort, report: VerdictReport, pr_url: str, ta
         try:
             matches = jira.search_open_by_label(label=label)
             if matches:
-                jira.add_comment(issue_key=matches[0].key, body=_seen_again_comment(package=package, pr_url=pr_url))
-                commented.append(matches[0].key)
+                issue_key = matches[0].key
+                if _links_pull_request(texts=jira.list_comment_texts(issue_key=issue_key), pr_url=pr_url):
+                    continue
+                jira.add_comment(issue_key=issue_key, body=_seen_again_comment(package=package, pr_url=pr_url))
+                commented.append(issue_key)
             else:
                 issue = jira.create_issue(
                     draft=issue_payload(package=package, opportunity=opportunity, pr_url=pr_url, target=target)
@@ -151,6 +155,11 @@ def _opportunities(*, report: VerdictReport) -> Iterable[tuple[PackageFinding, O
     for package in report.packages:
         for opportunity in package.opportunities:
             yield package, opportunity
+
+
+def _links_pull_request(*, texts: Iterable[str], pr_url: str) -> bool:
+    pattern = re.compile(re.escape(pr_url) + r"(?!\w)")
+    return any(pattern.search(text) for text in texts)
 
 
 def _seen_again_comment(*, package: PackageFinding, pr_url: str) -> AdfNode:

@@ -11,7 +11,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from datetime import datetime
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, cast
 from urllib.parse import quote
 
 from dependabot_autopilot.ports import (
@@ -305,6 +305,39 @@ def urllib_transport(*, method: str, url: str, headers: Mapping[str, str], body:
         return HttpResponse(status=exc.code, body=exc.read())
 
 
+def adf_plain_text(*, document: Mapping[str, object]) -> str:
+    """Return the text of an Atlassian Document Format document, with the URL of every link and card."""
+    parts: list[str] = []
+    _collect_adf_text(node=document, parts=parts)
+    return " ".join(parts)
+
+
+def _collect_adf_text(*, node: object, parts: list[str]) -> None:
+    if not isinstance(node, dict):
+        return
+    fields = cast("dict[str, object]", node)
+    text = fields.get("text")
+    if isinstance(text, str):
+        parts.append(text)
+    url = _adf_attr(value=fields, name="url")
+    if url is not None:
+        parts.append(url)
+    marks = fields.get("marks")
+    for mark in marks if isinstance(marks, list) else []:
+        href = _adf_attr(value=mark, name="href")
+        if href is not None and href != text:
+            parts.append(href)
+    content = fields.get("content")
+    for child in content if isinstance(content, list) else []:
+        _collect_adf_text(node=child, parts=parts)
+
+
+def _adf_attr(*, value: object, name: str) -> str | None:
+    attrs = cast("dict[str, object]", value).get("attrs") if isinstance(value, dict) else None
+    attr = cast("dict[str, object]", attrs).get(name) if isinstance(attrs, dict) else None
+    return attr if isinstance(attr, str) else None
+
+
 @dataclass(frozen=True)
 class JiraRest:
     """Jira Cloud port over REST API v3 with basic authentication."""
@@ -377,6 +410,22 @@ class JiraRest:
             raise ValueError(f"refusing to comment on unexpected issue key {issue_key!r}")
         self._send(method="POST", path=f"/rest/api/3/issue/{issue_key}/comment", payload={"body": body})
 
+    def list_comment_texts(self, *, issue_key: str) -> list[str]:
+        if not _JIRA_ISSUE_KEY.fullmatch(issue_key):
+            raise ValueError(f"refusing to read comments of unexpected issue key {issue_key!r}")
+        texts: list[str] = []
+        while True:
+            path = f"/rest/api/3/issue/{issue_key}/comment?startAt={len(texts)}&maxResults={JIRA_PAGE_SIZE}"
+            response = self._send(method="GET", path=path)
+            try:
+                comments = response["comments"]
+                texts.extend(adf_plain_text(document=comment["body"]) for comment in comments)
+                total = int(response["total"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise JiraError(f"unexpected Jira comment response: missing {exc}") from exc
+            if not comments or len(texts) >= total:
+                return texts
+
     def _issue(self, *, value: dict[str, Any]) -> JiraIssue:
         fields = value["fields"]
         priority = fields.get("priority")
@@ -390,17 +439,15 @@ class JiraRest:
     def _browse_url(self, *, key: str) -> str:
         return f"{self.base_url}/browse/{key}"
 
-    def _send(self, *, method: str, path: str, payload: Mapping[str, object]) -> dict[str, Any]:
+    def _send(self, *, method: str, path: str, payload: Mapping[str, object] | None = None) -> dict[str, Any]:
         credentials = base64.b64encode(f"{self.email}:{self.token}".encode()).decode()
-        headers = {
-            "Authorization": f"Basic {credentials}",
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
+        headers = {"Authorization": f"Basic {credentials}", "Accept": "application/json"}
+        body = None
+        if payload is not None:
+            headers["Content-Type"] = "application/json"
+            body = json.dumps(payload).encode()
         try:
-            response = self.transport(
-                method=method, url=f"{self.base_url}{path}", headers=headers, body=json.dumps(payload).encode()
-            )
+            response = self.transport(method=method, url=f"{self.base_url}{path}", headers=headers, body=body)
         except OSError as exc:
             raise JiraError(f"{method} {path} failed: {exc}") from exc
         if not HTTPStatus.OK <= response.status < HTTPStatus.MULTIPLE_CHOICES:

@@ -161,6 +161,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     continue-on-error: true
+    concurrency:
+      group: dependabot-autopilot-file-${{ needs.act.outputs.pr_number }}
+      cancel-in-progress: false
     permissions:
       contents: read
       actions: read

@@ -252,6 +252,10 @@ class JiraPort(Protocol):
         """Add a comment whose `body` is an Atlassian Document Format document."""
         ...
 
+    def list_comment_texts(self, *, issue_key: str) -> list[str]:
+        """Return the plain text of every comment on the issue, link URLs included."""
+        ...
+
 
 class SlackPort(Protocol):
     def post_message(self, *, text: str) -> None:

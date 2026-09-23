@@ -264,6 +264,61 @@ def test_file_comments_on_the_matching_open_issue() -> None:
     assert adf_links(write.body) == [PR_URL]
 
 
+def test_file_does_not_comment_twice_for_the_same_pull_request() -> None:
+    jira = FakeJira()
+    existing = JiraIssue(key="IFC-7", summary="[fastapi] Use lifespan state", url="u", priority="Medium")
+    jira.issues["IFC-7"] = (existing, ("tech-debt", dedup_label(key=LIFESPAN.key)))
+    subject = report(packages=(package(opportunities=(LIFESPAN,)),))
+
+    file_opportunities(jira=jira, report=subject, pr_url=PR_URL, target=TARGET)
+    rerun = file_opportunities(jira=jira, report=subject, pr_url=PR_URL, target=TARGET)
+
+    assert rerun.created == rerun.commented == rerun.failures == ()
+    assert [type(write) for write in jira.writes] == [IssueCommented]
+
+
+def test_file_skips_the_comment_when_an_existing_comment_links_the_pull_request() -> None:
+    jira = FakeJira()
+    existing = JiraIssue(key="IFC-7", summary="[fastapi] Use lifespan state", url="u", priority="Medium")
+    jira.issues["IFC-7"] = (existing, (dedup_label(key=LIFESPAN.key),))
+    jira.comments["IFC-7"] = ["Unrelated note", f"Tracked from {PR_URL}/files."]
+
+    outcome = file_opportunities(
+        jira=jira, report=report(packages=(package(opportunities=(LIFESPAN,)),)), pr_url=PR_URL, target=TARGET
+    )
+
+    assert outcome.commented == ()
+    assert jira.writes == []
+
+
+def test_file_comments_when_existing_comments_link_only_other_pull_requests() -> None:
+    jira = FakeJira()
+    existing = JiraIssue(key="IFC-7", summary="[fastapi] Use lifespan state", url="u", priority="Medium")
+    jira.issues["IFC-7"] = (existing, (dedup_label(key=LIFESPAN.key),))
+    jira.comments["IFC-7"] = [f"Seen again on {PR_URL}0 (fastapi 0.1 → 0.2)."]
+
+    outcome = file_opportunities(
+        jira=jira, report=report(packages=(package(opportunities=(LIFESPAN,)),)), pr_url=PR_URL, target=TARGET
+    )
+
+    assert outcome.commented == ("IFC-7",)
+
+
+def test_file_reports_a_failure_when_the_comments_cannot_be_read() -> None:
+    jira = FakeJira()
+    existing = JiraIssue(key="IFC-7", summary="[fastapi] Use lifespan state", url="u", priority="Medium")
+    jira.issues["IFC-7"] = (existing, (dedup_label(key=LIFESPAN.key),))
+    jira.unreadable_comments.add("IFC-7")
+
+    outcome = file_opportunities(
+        jira=jira, report=report(packages=(package(opportunities=(LIFESPAN,)),)), pr_url=PR_URL, target=TARGET
+    )
+
+    assert outcome.commented == ()
+    assert len(outcome.failures) == 1
+    assert jira.writes == []
+
+
 def test_file_handles_each_opportunity_independently() -> None:
     jira = FakeJira()
     jira.issues["IFC-7"] = (
