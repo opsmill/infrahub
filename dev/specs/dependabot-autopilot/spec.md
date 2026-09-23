@@ -82,7 +82,7 @@ Once a week, a single message in #release-radar lists the High and Medium tech-d
 
 ### Functional Requirements
 
-**Verdict and merge (P1)**
+#### Verdict and merge (P1)
 
 - **FR-001**: System MUST run the dependency-bump analysis on every pull request authored by Dependabot when it is opened and whenever its head commit changes, with no manual trigger.
 - **FR-002**: System MUST post the analysis report on the PR, including the evidence behind every `safe` or `not used` claim (the search that proves the absence of usage, or the role mismatch).
@@ -95,17 +95,17 @@ Once a week, a single message in #release-radar lists the High and Medium tech-d
 - **FR-009**: The owner of a PR MUST be the code owners of the files it changes; when no code owner matches, System MUST notify a single configured fallback recipient.
 - **FR-010**: System MUST NOT act on pull requests that Dependabot did not author, and MUST NOT override a human's approval, merge, close, or request for changes on a PR.
 
-**Tech-debt items (P2)**
+#### Tech-debt items (P2)
 
 - **FR-011**: System MUST create at most one open tech-debt item per (package, opportunity). Before creating an item, System MUST look for an open item with the same package and opportunity and, if one exists, add a comment linking the new PR instead.
 - **FR-012**: System MUST set each new item's initial priority from this rubric: security fix or deprecation with a removal deadline → High; performance or simplification with cited code → Medium; anything else → Low.
 - **FR-013**: Each tech-debt item MUST link the PR that surfaced it and cite the code locations the opportunity applies to.
 
-**Digest (P3)**
+#### Digest (P3)
 
 - **FR-014**: System MUST post at most one message per week to #release-radar listing the High and Medium tech-debt items filed or updated that week, with their links, and MUST post nothing in a week with no such item.
 
-**Operations**
+#### Operations
 
 - **FR-015**: Users MUST be able to see, for every automated action (approval, merge, blocking review, escalation, item creation), which commit and verdict it was based on, from the PR itself.
 - **FR-016**: Users MUST be able to turn the automatic merge off without disabling the analysis, so that verdicts keep being posted while merges wait for a human.
