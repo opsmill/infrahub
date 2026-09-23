@@ -688,7 +688,7 @@ class ProcessResources:
             reading=self._build_reading(identity, dynamic),
             proc_cgroup=_read_text_file(self._proc_cgroup),
             cgroup_v2_root=(self._cgroup_root / "cgroup.controllers").exists(),
-            cgroup_v1_root=(self._cgroup_root / "cpu" / "cpu.cfs_quota_us").exists(),
+            cgroup_v1_root=any((directory / "cpu.cfs_quota_us").exists() for directory in identity.v1_cpu_dirs),
             memory_limit=dynamic.memory_limit,
             levels=levels,
             host_processor_available=identity.host_processor_count,

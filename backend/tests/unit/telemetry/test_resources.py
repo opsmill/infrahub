@@ -680,6 +680,9 @@ def test_diagnostics_expose_the_v1_controller_levels_the_reader_consulted(tmp_pa
     }
     assert diagnostics.reading.processor_assigned == 2
     assert diagnostics.memory_limit == 8589934592
+    # The controller is co-mounted as "cpu,cpuacct", so a check for a literal "cpu"
+    # directory would deny the v1 hierarchy the reading was taken from.
+    assert diagnostics.cgroup_v1_root is True
 
 
 def test_leaf_cpu_max_absent_still_falls_through_to_ancestor(tmp_path: Path) -> None:
