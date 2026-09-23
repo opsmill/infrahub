@@ -1803,12 +1803,6 @@ export interface components {
              */
             selective_execution_after_merge: boolean;
             /**
-             * Coalesce Python Recompute After Merge
-             * @description When enabled, the coalesced merge and rebase pass recomputes Python transform computed attributes, and their per-node tasks only run for a live write; when disabled, the pass recomputes none of them and those per-node tasks run for a merge and a rebase too. The per-node side of a change takes effect once those automations are rebuilt, which `infrahub upgrade` does.
-             * @default true
-             */
-            coalesce_python_recompute_after_merge: boolean;
-            /**
              * Merge Failure Grace Period Seconds
              * @description How long a branch may stay in MERGING with a dead merge-lock holder before it is flagged MERGE_FAILED.
              * @default 180

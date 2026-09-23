@@ -1,17 +1,7 @@
-"""End-to-end recompute of Python computed attributes on merge and rebase.
-
-Every compose file defaults the coalesced switch on, so CI only ever runs the coalesced legs. The
-switch-off branches are hand-run, to hold the value assertions against the per-node dispatch::
-
-    INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE=false \
-    INFRAHUB_TESTING_DOCKER_PULL=false \
-    INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_REPLICAS=1 \
-    uv run --no-sync pytest --no-cov backend/tests/integration_docker/test_computed_attributes.py
-"""
+"""End-to-end recompute of Python computed attributes on merge and rebase."""
 
 from __future__ import annotations
 
-import os
 import time
 from asyncio import sleep
 from copy import deepcopy
@@ -53,15 +43,6 @@ DEVICE_NAME_FLOW = "Process computed attribute for InfraDevice.name"
 # shared instance number would collide on that constraint rather than fail an assertion.
 MERGE_DEVICE_INSTANCES = (11, 12, 13, 14)
 REBASE_DEVICE_INSTANCES = (21, 22, 23, 24)
-
-# The same false spellings Pydantic accepts for the setting the stack is started with.
-FALSE_VALUES = {"0", "off", "f", "false", "n", "no"}
-
-# The stack under test carries the coalesced pass unless the compose variable turns it off, which
-# is how the same value assertions run against both dispatch modes.
-COALESCED_PYTHON_RECOMPUTE = (
-    os.environ.get("INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE", "true").strip().lower() not in FALSE_VALUES
-)
 
 
 async def wait_for_all_tasks_to_be_completed(client: InfrahubClient) -> None:
@@ -609,17 +590,13 @@ class TestComputedAttributes(TestInfrahubDockerClient):
 
         assert await wait_for_device_names(client, device_ids, expected) == expected
 
-        expected_runs = 1 if COALESCED_PYTHON_RECOMPUTE else len(MERGE_DEVICE_INSTANCES)
-        await wait_for_transform_runs(client, flow_name=DEVICE_NAME_FLOW, at_least=runs_before + expected_runs)
+        await wait_for_transform_runs(client, flow_name=DEVICE_NAME_FLOW, at_least=runs_before + 1)
         assert await wait_until_tasks_settle(client), "the queue never drained, so the count is premature"
 
         # The count pins the dispatch shape, not the scope: a whole-kind widening also arrives as
         # one chunked flow.
         runs_for_the_merge = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW) - runs_before
-        if COALESCED_PYTHON_RECOMPUTE:
-            assert runs_for_the_merge == 1
-        else:
-            assert runs_for_the_merge >= len(MERGE_DEVICE_INSTANCES)
+        assert runs_for_the_merge == 1
 
     async def test_rebase_recomputes_replayed_devices_in_one_dispatch(self, client: InfrahubClient) -> None:
         """A rebase replays the destination's created devices on the branch, in one dispatch.
@@ -645,14 +622,10 @@ class TestComputedAttributes(TestInfrahubDockerClient):
 
         assert await wait_for_device_names(client, device_ids, expected, branch=branch.name) == expected
 
-        expected_runs = 1 if COALESCED_PYTHON_RECOMPUTE else len(REBASE_DEVICE_INSTANCES)
-        await wait_for_transform_runs(client, flow_name=DEVICE_NAME_FLOW, at_least=runs_before + expected_runs)
+        await wait_for_transform_runs(client, flow_name=DEVICE_NAME_FLOW, at_least=runs_before + 1)
         assert await wait_until_tasks_settle(client), "the queue never drained, so the count is premature"
 
         # The count pins the dispatch shape, not the scope: a whole-kind widening also arrives as
         # one chunked flow.
         runs_for_the_rebase = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW) - runs_before
-        if COALESCED_PYTHON_RECOMPUTE:
-            assert runs_for_the_rebase == 1
-        else:
-            assert runs_for_the_rebase >= len(REBASE_DEVICE_INSTANCES)
+        assert runs_for_the_rebase == 1

@@ -277,19 +277,6 @@ class IndexedPythonTargetResolver:
         return cached
 
 
-class DisabledPythonTargetResolver:
-    """The resolver used while the coalescing switch is off: the per-node automations own the work."""
-
-    async def resolve(
-        self,
-        *,
-        changes: Iterable[MergeChange],  # noqa: ARG002
-        branch: str,  # noqa: ARG002
-        schema_changed_elements: ChangedElementSet | None = None,  # noqa: ARG002
-    ) -> list[AffectedTarget]:
-        return []
-
-
 def _covered_by_schema_pass(
     *, read_sets: list[PythonAttributeReadSet], branch: str, changed_elements: ChangedElementSet
 ) -> set[tuple[str, str]]:
