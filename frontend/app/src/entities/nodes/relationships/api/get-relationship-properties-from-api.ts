@@ -1,4 +1,4 @@
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
@@ -11,22 +11,24 @@ type GenerateObjectRelationshipsQueryParams = {
 
 const generateRelationshipPropertiesQuery = ({
   parentKind,
-  parentId,
   relationshipName,
-  relationshipId,
-}: GenerateObjectRelationshipsQueryParams) => {
+}: Omit<GenerateObjectRelationshipsQueryParams, "parentId" | "relationshipId">) => {
   const request = {
     query: {
       __name: `Get${parentKind}${relationshipName}RelationshipProperties`,
+      __variables: {
+        parentIds: "[ID]",
+        relationshipIds: "[ID]",
+      },
       [parentKind]: {
         __args: {
-          ids: [parentId],
+          ids: new VariableType("parentIds"),
         },
         edges: {
           node: {
             [relationshipName]: {
               __args: {
-                ids: [relationshipId],
+                ids: new VariableType("relationshipIds"),
               },
               edges: {
                 properties: {
@@ -62,12 +64,15 @@ export type GetObjectRelationshipsFromApiParams = GenerateObjectRelationshipsQue
 export const getRelationshipPropertiesFromApi = ({
   branchName,
   atDate,
+  parentId,
+  relationshipId,
   ...params
 }: GetObjectRelationshipsFromApiParams) => {
   const query = graphql(generateRelationshipPropertiesQuery(params));
 
   return graphqlClient.query({
     query,
+    variables: { parentIds: [parentId], relationshipIds: [relationshipId] },
     context: {
       branch: branchName,
       date: atDate,

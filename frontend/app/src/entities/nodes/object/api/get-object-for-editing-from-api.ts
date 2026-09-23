@@ -1,4 +1,4 @@
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
@@ -40,9 +40,12 @@ export async function getObjectForEditingFromApi({
   const queryString = jsonToGraphQLQuery({
     query: {
       __name: "GetObjectForEditForm",
+      __variables: {
+        ids: "[ID]",
+      },
       [schema.kind as string]: {
         __args: {
-          ids: [objectId],
+          ids: new VariableType("ids"),
         },
         edges: {
           node: {
@@ -77,6 +80,7 @@ export async function getObjectForEditingFromApi({
 
   return graphqlClient.query({
     query: graphql(queryString),
+    variables: { ids: [objectId] },
     context: {
       branch: branchName,
       date: atDate,

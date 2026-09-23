@@ -1,4 +1,4 @@
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
@@ -57,8 +57,11 @@ export async function getPathTraversalFromApi(params: GetPathTraversalParams) {
   const queryString = jsonToGraphQLQuery({
     query: {
       __name: "GetPathTraversal",
+      __variables: {
+        data: "PathTraversalInput!",
+      },
       InfrahubPathTraversal: {
-        __args: { data: dataArgs },
+        __args: { data: new VariableType("data") },
         paths: pathFields,
         source: nodeFields,
         destination: nodeFields,
@@ -70,6 +73,7 @@ export async function getPathTraversalFromApi(params: GetPathTraversalParams) {
 
   return graphqlClient.query<{ InfrahubPathTraversal: PathTraversalResponse }>({
     query: graphql(queryString),
+    variables: { data: dataArgs },
     context: { branch: branchName, date: atDate },
   });
 }
