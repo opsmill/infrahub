@@ -6,6 +6,9 @@ import { defineConfig } from "vite";
 import monacoEditorPlugin from "vite-plugin-monaco-editor-esm";
 import svgr from "vite-plugin-svgr";
 
+// PROTOTYPE design-jam branch-details-repos — dev-only Save endpoint; remove with src/pages/_proto
+import { designJam } from "./dev/vite-plugin-design-jam";
+
 // https://vitejs.dev/config/
 export default defineConfig({
   server: {
@@ -23,6 +26,8 @@ export default defineConfig({
     host: "0.0.0.0",
   },
   plugins: [
+    // PROTOTYPE design-jam branch-details-repos — apply: "serve", never in a build
+    designJam({ root: "../../.design" }),
     tailwindcss(),
     react(),
     babel({

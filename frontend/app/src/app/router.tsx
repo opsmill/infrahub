@@ -48,6 +48,11 @@ export const router = createBrowserRouter([
                 index: true,
                 lazy: () => import("@/pages/homepage"),
               },
+              // PROTOTYPE design-jam branch-details-repos — remove with src/pages/_proto
+              {
+                path: "/_proto/branch-details",
+                lazy: () => import("@/pages/_proto/branch-details"),
+              },
               {
                 path: "/branches",
                 children: [
