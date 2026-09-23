@@ -1,0 +1,18 @@
+[
+  {
+    "sha": "923e7dec446e8152b026d474a7815ad1a62c2c74",
+    "filename": "python_testcontainers/uv.lock",
+    "status": "modified",
+    "additions": 10,
+    "deletions": 11,
+    "changes": 21
+  },
+  {
+    "sha": "034b6332bf05250215990d08ceaa1eadcafe19d6",
+    "filename": "uv.lock",
+    "status": "modified",
+    "additions": 8,
+    "deletions": 8,
+    "changes": 16
+  }
+]

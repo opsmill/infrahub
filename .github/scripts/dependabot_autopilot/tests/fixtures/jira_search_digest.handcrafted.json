@@ -1,0 +1,35 @@
+{
+  "issues": [
+    {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+      "id": "10061",
+      "self": "https://opsmill.atlassian.net/rest/api/3/issue/10061",
+      "key": "IFC-61",
+      "fields": {
+        "summary": "[jinja2] Sandbox escape fixed upstream",
+        "priority": {
+          "self": "https://opsmill.atlassian.net/rest/api/3/priority/2",
+          "iconUrl": "https://opsmill.atlassian.net/images/icons/priorities/high.svg",
+          "name": "High",
+          "id": "2"
+        }
+      }
+    },
+    {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+      "id": "10042",
+      "self": "https://opsmill.atlassian.net/rest/api/3/issue/10042",
+      "key": "IFC-42",
+      "fields": {
+        "summary": "[fastapi] Use lifespan state",
+        "priority": {
+          "self": "https://opsmill.atlassian.net/rest/api/3/priority/3",
+          "iconUrl": "https://opsmill.atlassian.net/images/icons/priorities/medium.svg",
+          "name": "Medium",
+          "id": "3"
+        }
+      }
+    }
+  ],
+  "isLast": true
+}
