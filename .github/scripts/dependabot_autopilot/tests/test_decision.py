@@ -266,6 +266,27 @@ def test_analysis_still_running_is_pending(status: RunStatus) -> None:
     assert decision.effective_verdict is None
 
 
+@pytest.mark.parametrize("status", [RunStatus.QUEUED, RunStatus.IN_PROGRESS, RunStatus.WAITING])
+def test_analysis_still_running_after_the_deadline_is_review_required(status: RunStatus) -> None:
+    decision = run_decide(
+        analysis_run=analysis_run(status=status, conclusion=None), report=None, now=PUSHED_AT + ANALYSIS_DEADLINE
+    )
+
+    assert decision.action is Action.REVIEW_REQUIRED
+    assert decision.effective_verdict is REVIEW
+    assert decision.reasons == ("analysis did not complete",)
+
+
+def test_analysis_still_running_just_before_the_deadline_is_pending() -> None:
+    decision = run_decide(
+        analysis_run=analysis_run(status=RunStatus.IN_PROGRESS, conclusion=None),
+        report=None,
+        now=PUSHED_AT + ANALYSIS_DEADLINE - timedelta(seconds=1),
+    )
+
+    assert decision.action is Action.PENDING
+
+
 def test_no_analysis_run_before_the_deadline_is_pending() -> None:
     decision = run_decide(report=None, analysis_run=None, now=PUSHED_AT + ANALYSIS_DEADLINE - timedelta(seconds=1))
 

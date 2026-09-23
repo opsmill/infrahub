@@ -149,13 +149,14 @@ def _assess_report(
 def _assess_missing_report(
     *, pr: PullRequest, analysis_run: WorkflowRun | None, stale: tuple[str, ...], now: datetime
 ) -> tuple[Verdict, tuple[str, ...]] | None:
+    past_deadline = now - pr.head_committed_at >= ANALYSIS_DEADLINE
     if analysis_run is not None and analysis_run.head_sha == pr.head_sha:
         if analysis_run.status is not RunStatus.COMPLETED:
-            return None
+            return (Verdict.REVIEW_REQUIRED, (*stale, "analysis did not complete")) if past_deadline else None
         return Verdict.REVIEW_REQUIRED, stale or (
             f"the analysis run finished ({analysis_run.conclusion}) with no verdict report",
         )
-    if now - pr.head_committed_at >= ANALYSIS_DEADLINE:
+    if past_deadline:
         return Verdict.REVIEW_REQUIRED, (*stale, "analysis did not run")
     return None
 
