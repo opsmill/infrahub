@@ -1,6 +1,6 @@
 # Data Model: Licensing Resource-Allocation Telemetry
 
-All types are Pydantic `BaseModel` (Principle III) in `backend/infrahub/telemetry/models.py`. Every new figure is `int | None`: `None` = source failed / not applicable / unbounded; a number = measured. The design **extends existing payload sections in place** and reuses the existing `system_info` field naming (`processor_*` / `memory_*`) for every component, so DB, server, and worker resources are byte-for-byte comparable.
+All types are Pydantic `BaseModel` (Principle III) in `backend/infrahub/telemetry/models.py`. Every new figure is `int | None`: `None` = source failed / not applicable / unbounded; a number = measured. The design **extends existing payload sections in place** and reuses the existing `system_info` field naming (`processor_*` / `memory_*`) for every component, so DB, server, and worker resources carry the same field names and units. The figures are directly comparable except under a fractional CPU quota, where `processor_available` rounds down for the server and workers and up for the database (see the per-process table below).
 
 ## Field naming (uniform, matches the existing `system_info`)
 
@@ -92,4 +92,4 @@ Given the active processes of a component type, each with a reading `{host, …}
 
 - Byte and core counts are non-negative when present — enforced via Pydantic `ge=0` constraints.
 - All new fields default to `None`, so partial degradation never fails model construction.
-- The `server` block and the new `workers` / `system_info` fields are always present on every produced snapshot; `system_info` itself remains `None` when the database is unreachable or not Neo4j, in which case the whole block — including the new `processor_assigned` field — is absent rather than null-valued (FR-006, FR-007).
+- The `server` block and the new `workers` resource fields are always present on every produced snapshot. `database.system_info` is the exception: it stays `None` when the database is unreachable or is not Neo4j, in which case the whole block — including the new `processor_assigned` field — is absent rather than null-valued (FR-006, FR-007).

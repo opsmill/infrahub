@@ -10,6 +10,8 @@
 
 ## Shape (only the additions shown; everything else unchanged)
 
+`database.system_info` is `null` as a whole when the database is unreachable or is not Neo4j, so a consumer checks the block before its fields. `server` and the `workers` resource fields are always present.
+
 ```jsonc
 {
   "payload_format": "20260628",              // UNCHANGED this phase
