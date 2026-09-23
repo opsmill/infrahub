@@ -123,11 +123,12 @@ jobs:
           VERDICT_OUTCOME: ${{ steps.verdict.outcome }}
           VERDICT_DIR: ${{ runner.temp }}/verdict-${{ github.event.workflow_run.id }}
           VERDICT_SHA: ${{ github.event.workflow_run.head_sha }}
+          VERDICT_RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           set -euo pipefail
           report_args=()
           if [ "$VERDICT_OUTCOME" = "success" ]; then
-            report_args=(--report "$VERDICT_DIR" --report-sha "$VERDICT_SHA")
+            report_args=(--report "$VERDICT_DIR" --report-sha "$VERDICT_SHA" --report-run-id "$VERDICT_RUN_ID")
           fi
           uv run --no-project --python 3.14 --with "pyyaml>=6,<7" \
             python -m dependabot_autopilot evaluate --pr "$PR_NUMBER" "${report_args[@]}"

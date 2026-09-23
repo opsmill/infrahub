@@ -65,7 +65,7 @@ class Evidence:
     report: VerdictReport | ReportError | None
     """The verdict report, the error raised while loading it, or `None` when no artifact was found."""
     analysis_run: WorkflowRun | None
-    """The latest analysis workflow run for the head commit, if any."""
+    """The analysis run that produced the report, else the latest analysis run for the head commit, if any."""
     added_packages: tuple[str, ...]
     """Package names the pull request's lockfile changes introduce."""
     ci_state: CiState
@@ -138,10 +138,7 @@ def _assess_report(
             f"the verdict report is for pull request #{report.pr_number}, not #{pr.number}",
         )
     if report.head_sha == pr.head_sha:
-        verdict, reasons = _report_verdict(report=report)
-        if _analysis_did_not_succeed(pr=pr, analysis_run=analysis_run):
-            return strictest(verdicts=[verdict, Verdict.REVIEW_REQUIRED]), (*reasons, "analysis run did not succeed")
-        return verdict, reasons
+        return _assess_current_report(pr=pr, report=report, analysis_run=analysis_run, now=now)
     stale = f"the verdict report is stale: it analysed {report.head_sha[:12]}, the head is {pr.head_sha[:12]}"
     return _assess_missing_report(pr=pr, analysis_run=analysis_run, stale=(stale,), now=now)
 
@@ -161,13 +158,22 @@ def _assess_missing_report(
     return None
 
 
-def _analysis_did_not_succeed(*, pr: PullRequest, analysis_run: WorkflowRun | None) -> bool:
-    return (
-        analysis_run is not None
-        and analysis_run.head_sha == pr.head_sha
-        and analysis_run.status is RunStatus.COMPLETED
-        and analysis_run.conclusion is not RunConclusion.SUCCESS
-    )
+def _assess_current_report(
+    *, pr: PullRequest, report: VerdictReport, analysis_run: WorkflowRun | None, now: datetime
+) -> tuple[Verdict, tuple[str, ...]] | None:
+    """Accept the report's verdict only once the run that produced it has completed successfully."""
+    verdict, reasons = _report_verdict(report=report)
+    if analysis_run is None or analysis_run.head_sha != pr.head_sha:
+        downgrade = "the analysis run that produced the verdict report was not found"
+    elif analysis_run.status is not RunStatus.COMPLETED:
+        if now - pr.head_committed_at < ANALYSIS_DEADLINE:
+            return None
+        downgrade = "analysis did not complete"
+    elif analysis_run.conclusion is not RunConclusion.SUCCESS:
+        downgrade = "analysis run did not succeed"
+    else:
+        return verdict, reasons
+    return strictest(verdicts=[verdict, Verdict.REVIEW_REQUIRED]), (*reasons, downgrade)
 
 
 def _report_verdict(*, report: VerdictReport) -> tuple[Verdict, tuple[str, ...]]:

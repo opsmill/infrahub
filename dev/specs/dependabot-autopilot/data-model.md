@@ -36,7 +36,7 @@ Frozen dataclass computed from the report plus repository state.
 
 | Field | Derivation |
 |---|---|
-| `effective_verdict` | Strictest of: every `PackageFinding.verdict`, the overall `verdict`, `review-required` if the lockfile diff adds a package, `review-required` if the report is malformed or stale, `review-required` if the report is missing once the analysis run completed or 60 minutes after the head commit's commit date ("analysis did not run", "analysis did not complete"), `review-required` if the analysis run completed without success ("analysis run did not succeed"), `review-required` if any commit is not authored by `dependabot[bot]` |
+| `effective_verdict` | Strictest of: every `PackageFinding.verdict`, the overall `verdict`, `review-required` if the lockfile diff adds a package, `review-required` if the report is malformed or stale, `review-required` if the report is missing once the analysis run completed or 60 minutes after the head commit's commit date ("analysis did not run", "analysis did not complete"), `review-required` if the analysis run that produced the report completed without success ("analysis run did not succeed") or cannot be found, `review-required` if any commit is not authored by `dependabot[bot]` |
 | `reasons` | Ordered list of human-readable reasons for any downgrade from the agent's verdict |
 | `ci_state` | `green` \| `pending` \| `red` from the check evaluation (research R5) |
 | `action` | See state transitions below |

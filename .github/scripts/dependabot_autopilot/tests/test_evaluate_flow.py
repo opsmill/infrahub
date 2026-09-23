@@ -431,6 +431,7 @@ def test_supplied_report_claiming_another_head_than_its_run_is_malformed(tmp_pat
     forged = SuppliedReport(
         directory=write_report(directory=tmp_path / "forged", document=report_document(head_sha=HEAD_SHA)),
         run_head_sha=OLD_SHA,
+        run_id=41,
     )
 
     decision = evaluate(github=github, config=config(merge_enabled=True), pr_number=PR_NUMBER, now=NOW, supplied=forged)
@@ -443,7 +444,9 @@ def test_supplied_report_claiming_another_head_than_its_run_is_malformed(tmp_pat
 def test_supplied_report_is_used_for_its_head(tmp_path: Path) -> None:
     github = repository(tmp_path=tmp_path)
     supplied = SuppliedReport(
-        directory=write_report(directory=tmp_path / "supplied", document=report_document()), run_head_sha=HEAD_SHA
+        directory=write_report(directory=tmp_path / "supplied", document=report_document()),
+        run_head_sha=HEAD_SHA,
+        run_id=42,
     )
 
     decision = evaluate(
@@ -700,3 +703,43 @@ def test_evaluate_on_a_new_head_dismisses_the_approval_of_the_old_head(
     run_evaluate(github=github, merge_enabled=True)
 
     assert [write.review_id for write in writes_of(github=github, kind=ReviewDismissed)] == [old_approval.id]
+
+
+def test_supplied_report_is_judged_by_the_run_that_produced_it(tmp_path: Path) -> None:
+    github = repository(tmp_path=tmp_path)
+    github.workflow_runs = [
+        dataclasses.replace(workflow_run(run_id=42, name=ANALYSIS_WORKFLOW), conclusion=RunConclusion.FAILURE),
+        workflow_run(run_id=43, name="CI"),
+        workflow_run(run_id=44, name=ANALYSIS_WORKFLOW, status=RunStatus.IN_PROGRESS),
+    ]
+    supplied = SuppliedReport(
+        directory=write_report(directory=tmp_path / "supplied", document=report_document()),
+        run_head_sha=HEAD_SHA,
+        run_id=42,
+    )
+
+    decision = evaluate(
+        github=github, config=config(merge_enabled=True), pr_number=PR_NUMBER, now=NOW, supplied=supplied
+    )
+
+    assert decision is not None
+    assert decision.action is Action.REVIEW_REQUIRED
+    assert "analysis run did not succeed" in decision.reasons
+    assert writes_of(github=github, kind=Merged) == []
+
+
+def test_supplied_report_from_an_unlisted_run_is_review_required(tmp_path: Path) -> None:
+    github = repository(tmp_path=tmp_path)
+    supplied = SuppliedReport(
+        directory=write_report(directory=tmp_path / "supplied", document=report_document()),
+        run_head_sha=HEAD_SHA,
+        run_id=99,
+    )
+
+    decision = evaluate(
+        github=github, config=config(merge_enabled=True), pr_number=PR_NUMBER, now=NOW, supplied=supplied
+    )
+
+    assert decision is not None
+    assert decision.action is Action.REVIEW_REQUIRED
+    assert writes_of(github=github, kind=Merged) == []

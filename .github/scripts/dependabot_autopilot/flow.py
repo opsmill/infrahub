@@ -74,6 +74,7 @@ class SuppliedReport:
 
     directory: Path
     run_head_sha: str
+    run_id: int
 
 
 def is_eligible(*, pr: PullRequest, repo: str) -> bool:
@@ -97,8 +98,13 @@ def evaluate(
     if not _is_actionable(pr=pr, config=config):
         return None
     runs = github.list_workflow_runs(head_sha=pr.head_sha)
-    analysis_run = _latest_analysis_run(runs=runs, head_sha=pr.head_sha)
-    report = _resolve_report(github=github, pr=pr, analysis_run=analysis_run, supplied=supplied)
+    analysis_runs = _analysis_runs(runs=runs, head_sha=pr.head_sha)
+    if supplied is not None and supplied.run_head_sha == pr.head_sha:
+        analysis_run = next((run for run in analysis_runs if run.id == supplied.run_id), None)
+        report = _load_supplied(supplied=supplied)
+    else:
+        analysis_run = max(analysis_runs, key=lambda run: (run.created_at, run.id), default=None)
+        report = _download_report(github=github, analysis_run=analysis_run)
     changed_files = github.list_changed_files(pr_number=pr.number)
     packages, unverified = _added_packages(github=github, pr=pr, changed_files=changed_files)
     ci_state = evaluate_ci(
@@ -178,8 +184,8 @@ def _is_actionable(*, pr: PullRequest, config: Config) -> bool:
     return is_eligible(pr=pr, repo=config.repo) and pr.state is PullRequestState.OPEN and not pr.merged
 
 
-def _latest_analysis_run(*, runs: Sequence[WorkflowRun], head_sha: str) -> WorkflowRun | None:
-    candidates = [
+def _analysis_runs(*, runs: Sequence[WorkflowRun], head_sha: str) -> list[WorkflowRun]:
+    return [
         run
         for run in runs
         if run.name == ANALYSIS_WORKFLOW
@@ -187,14 +193,9 @@ def _latest_analysis_run(*, runs: Sequence[WorkflowRun], head_sha: str) -> Workf
         and run.event == ANALYSIS_EVENT
         and run.head_sha == head_sha
     ]
-    return max(candidates, key=lambda run: (run.created_at, run.id), default=None)
 
 
-def _resolve_report(
-    *, github: GitHubPort, pr: PullRequest, analysis_run: WorkflowRun | None, supplied: SuppliedReport | None
-) -> VerdictReport | ReportError | None:
-    if supplied is not None and supplied.run_head_sha == pr.head_sha:
-        return _load_supplied(supplied=supplied)
+def _download_report(*, github: GitHubPort, analysis_run: WorkflowRun | None) -> VerdictReport | ReportError | None:
     if analysis_run is None or analysis_run.status is not RunStatus.COMPLETED:
         return None
     destination = Path(tempfile.mkdtemp(prefix="dependabot-autopilot-verdict-"))

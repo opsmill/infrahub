@@ -226,6 +226,40 @@ def test_report_from_an_analysis_run_that_did_not_succeed_is_review_required(con
     assert "analysis run did not succeed" in decision.reasons
 
 
+@pytest.mark.parametrize("status", [RunStatus.QUEUED, RunStatus.IN_PROGRESS, RunStatus.WAITING])
+def test_report_from_an_analysis_run_still_running_is_pending(status: RunStatus) -> None:
+    decision = run_decide(analysis_run=analysis_run(status=status, conclusion=None))
+
+    assert decision.action is Action.PENDING
+    assert decision.effective_verdict is None
+
+
+def test_report_from_an_analysis_run_still_running_after_the_deadline_is_review_required() -> None:
+    decision = run_decide(
+        analysis_run=analysis_run(status=RunStatus.IN_PROGRESS, conclusion=None), now=PUSHED_AT + ANALYSIS_DEADLINE
+    )
+
+    assert decision.action is Action.REVIEW_REQUIRED
+    assert decision.effective_verdict is REVIEW
+    assert "analysis did not complete" in decision.reasons
+
+
+def test_report_without_its_analysis_run_is_review_required() -> None:
+    decision = run_decide(analysis_run=None)
+
+    assert decision.action is Action.REVIEW_REQUIRED
+    assert decision.effective_verdict is REVIEW
+    assert "the analysis run that produced the verdict report was not found" in decision.reasons
+
+
+def test_report_whose_analysis_run_is_for_another_head_is_review_required() -> None:
+    decision = run_decide(analysis_run=dataclasses.replace(analysis_run(), head_sha=OLD_SHA))
+
+    assert decision.action is Action.REVIEW_REQUIRED
+    assert decision.effective_verdict is REVIEW
+    assert "the analysis run that produced the verdict report was not found" in decision.reasons
+
+
 def test_malformed_report_is_review_required_with_its_error() -> None:
     decision = run_decide(report=ReportError("verdict has unknown value 'yolo'"))
 

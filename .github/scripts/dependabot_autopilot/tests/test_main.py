@@ -51,9 +51,19 @@ def test_missing_configuration_fails(capsys: pytest.CaptureFixture[str]) -> None
     assert "DEPENDABOT_AUTOPILOT_APP_LOGIN" in capsys.readouterr().err
 
 
-def test_report_requires_its_run_sha(capsys: pytest.CaptureFixture[str]) -> None:
-    assert main(argv=["evaluate", "--pr", "1", "--report", "/tmp/verdict"], environ=ENVIRON) == 2  # noqa: S108
-    assert "--report-sha" in capsys.readouterr().err
+@pytest.mark.parametrize(
+    "report_args",
+    [
+        ["--report", "/tmp/verdict"],  # noqa: S108
+        ["--report", "/tmp/verdict", "--report-sha", "abc"],  # noqa: S108
+        ["--report", "/tmp/verdict", "--report-run-id", "42"],  # noqa: S108
+        ["--report-sha", "abc", "--report-run-id", "42"],
+    ],
+    ids=["report-only", "missing-run-id", "missing-sha", "missing-report"],
+)
+def test_report_requires_its_run_sha_and_id(capsys: pytest.CaptureFixture[str], report_args: list[str]) -> None:
+    assert main(argv=["evaluate", "--pr", "1", *report_args], environ=ENVIRON) == 2
+    assert "--report-run-id" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(

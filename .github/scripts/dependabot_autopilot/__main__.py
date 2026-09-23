@@ -57,6 +57,7 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_parser.add_argument("--pr", type=int, required=True)
     evaluate_parser.add_argument("--report", type=Path, help="directory holding the downloaded verdict artifact")
     evaluate_parser.add_argument("--report-sha", help="head commit of the analysis run that produced --report")
+    evaluate_parser.add_argument("--report-run-id", type=int, help="id of the analysis run that produced --report")
     subparsers.add_parser("sweep").add_argument("--run-url", required=True)
     escalate_parser = subparsers.add_parser("escalate")
     escalate_parser.add_argument("--pr", type=int, required=True)
@@ -179,8 +180,10 @@ def run(*, args: argparse.Namespace, github: GitHubPort, config: Config, now: da
             invalidate(github=github, config=config, pr_number=args.pr)
         case "evaluate":
             supplied = None
-            if args.report is not None and args.report_sha:
-                supplied = SuppliedReport(directory=args.report, run_head_sha=args.report_sha)
+            if args.report is not None and args.report_sha and args.report_run_id is not None:
+                supplied = SuppliedReport(
+                    directory=args.report, run_head_sha=args.report_sha, run_id=args.report_run_id
+                )
             decision = evaluate(github=github, config=config, pr_number=args.pr, now=now, supplied=supplied)
             print(f"#{args.pr}: {'out of scope' if decision is None else decision.action}")
         case "sweep":
@@ -198,8 +201,11 @@ def main(argv: list[str] | None = None, environ: Mapping[str, str] | None = None
         return digest_command(environ=os.environ if environ is None else environ)
     if args.command == "file-opportunities":
         return file_opportunities_command(args=args, environ=os.environ if environ is None else environ)
-    if args.command == "evaluate" and (args.report is None) != (args.report_sha is None):
-        print("--report and --report-sha must be given together", file=sys.stderr)
+    if (
+        args.command == "evaluate"
+        and len({arg is None for arg in (args.report, args.report_sha, args.report_run_id)}) > 1
+    ):
+        print("--report, --report-sha and --report-run-id must be given together", file=sys.stderr)
         return 2
     try:
         config = load_config(environ=os.environ if environ is None else environ)
