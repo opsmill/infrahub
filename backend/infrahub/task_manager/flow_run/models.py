@@ -62,6 +62,7 @@ class FlowRunQueryCriteria(BaseModel):
 
     q: str | None = None
     ids: list[str] | None = None
+    excluded_ids: list[str] | None = None
     related_nodes: list[str] | None = None
     statuses: list[StateType] | None = None
     workflows: list[str] | None = None
