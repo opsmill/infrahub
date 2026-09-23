@@ -91,14 +91,14 @@ description: "Task list for the dependency-bump autopilot"
 
 ### Tests for User Story 2
 
-- [ ] T027 [P] [US2] Write `PKG/tests/test_opportunities.py`: `dedup_label(key)` equals `dbap-` + first 12 hex of sha256; rubric (`security`/`deprecation-deadline` → High, `performance`/`simplification` with ≥ 1 code ref → Medium, same without code refs → Low, `other` → Low); issue payload has summary `[<package>] <title>`, labels `tech-debt`, `dependabot-autopilot`, the dedup label, no assignee, PR link and code refs in the description; `file_opportunities` creates on no match, comments on match, skips every opportunity when the effective verdict is `needs-code-changes`, and reports Jira errors without raising
-- [ ] T028 [P] [US2] Extend `PKG/tests/test_adapters.py` with recorded Jira fixtures (`/rest/api/3/search/jql` response, create response) for the Jira adapter
+- [X] T027 [P] [US2] Write `PKG/tests/test_opportunities.py`: `dedup_label(key)` equals `dbap-` + first 12 hex of sha256; rubric (`security`/`deprecation-deadline` → High, `performance`/`simplification` with ≥ 1 code ref → Medium, same without code refs → Low, `other` → Low); issue payload has summary `[<package>] <title>`, labels `tech-debt`, `dependabot-autopilot`, the dedup label, no assignee, PR link and code refs in the description; `file_opportunities` creates on no match, comments on match, skips every opportunity when the effective verdict is `needs-code-changes`, and reports Jira errors without raising
+- [X] T028 [P] [US2] Extend `PKG/tests/test_adapters.py` with recorded Jira fixtures (`/rest/api/3/search/jql` response, create response) for the Jira adapter
 
 ### Implementation for User Story 2
 
-- [ ] T029 [US2] Implement `PKG/opportunities.py` (`dedup_label`, `priority_for`, `issue_payload` with an ADF description, `file_opportunities`) (makes T027 pass)
-- [ ] T030 [US2] Implement the Jira adapter `JiraRest` in `PKG/adapters.py` (basic auth, `search/jql` with `labels = "<dbap>" AND statusCategory != Done`, create, comment) (makes T028 pass)
-- [ ] T031 [US2] Implement the `file-opportunities` subcommand in `PKG/__main__.py` and add a separate `file-opportunities` job with `continue-on-error: true` after the evaluate job in `.github/workflows/dependabot-autopilot-act.yml`, using `JIRA_*` secrets and `DEPENDABOT_AUTOPILOT_JIRA_*` variables
+- [X] T029 [US2] Implement `PKG/opportunities.py` (`dedup_label`, `priority_for`, `issue_payload` with an ADF description, `file_opportunities`) (makes T027 pass)
+- [X] T030 [US2] Implement the Jira adapter `JiraRest` in `PKG/adapters.py` (basic auth, `search/jql` with `labels = "<dbap>" AND statusCategory != Done`, create, comment) (makes T028 pass)
+- [X] T031 [US2] Implement the `file-opportunities` subcommand in `PKG/__main__.py` and add a separate `file-opportunities` job with `continue-on-error: true` after the evaluate job in `.github/workflows/dependabot-autopilot-act.yml`, using `JIRA_*` secrets and `DEPENDABOT_AUTOPILOT_JIRA_*` variables
 
 **Checkpoint**: US2 works independently of the merge switch; a Jira failure leaves the PR's verdict and labels unchanged.
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -8,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from dependabot_autopilot.adapters import GhCliGitHub, GhCommandError
+from dependabot_autopilot.adapters import GhCliGitHub, GhCommandError, HttpResponse, JiraRest
 from dependabot_autopilot.ports import (
     AccountType,
     ChangedFile,
@@ -16,6 +17,9 @@ from dependabot_autopilot.ports import (
     CommitState,
     CommitStatus,
     FileStatus,
+    JiraError,
+    JiraIssue,
+    JiraIssueDraft,
     PullRequest,
     PullRequestState,
     PullRequestSummary,
@@ -28,7 +32,7 @@ from dependabot_autopilot.ports import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
 FIXTURES = Path(__file__).parent / "fixtures"
 REPO = "opsmill/infrahub"
@@ -492,3 +496,193 @@ def test_find_marker_comment_returns_none_without_an_app_comment() -> None:
     )
 
     assert adapter.find_marker_comment(pr_number=7, marker=MARKER, author_login=APP_LOGIN) is None
+
+
+JIRA_BASE = "https://opsmill.atlassian.net"
+JIRA_TOKEN = "s3cret"  # noqa: S105
+DBAP = "dbap-0123456789ab"
+ADF = {"type": "doc", "version": 1, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "hi"}]}]}
+
+
+@dataclass(frozen=True)
+class HttpCall:
+    method: str
+    url: str
+    headers: Mapping[str, str]
+    body: bytes | None
+
+    def json(self) -> object:
+        assert self.body is not None
+        return json.loads(self.body)
+
+
+@dataclass
+class FakeTransport:
+    responses: list[HttpResponse | OSError] = field(default_factory=list)
+    calls: list[HttpCall] = field(default_factory=list)
+
+    def __call__(self, *, method: str, url: str, headers: Mapping[str, str], body: bytes | None) -> HttpResponse:
+        self.calls.append(HttpCall(method=method, url=url, headers=dict(headers), body=body))
+        response = self.responses.pop(0)
+        if isinstance(response, OSError):
+            raise response
+        return response
+
+
+def jira_ok(name: str, *, status: int = 200) -> HttpResponse:
+    return HttpResponse(status=status, body=fixture(name).encode())
+
+
+def make_jira(*responses: HttpResponse | OSError, base_url: str = JIRA_BASE) -> tuple[JiraRest, FakeTransport]:
+    transport = FakeTransport(responses=list(responses))
+    return JiraRest(base_url=base_url, email="bot@opsmill.com", token=JIRA_TOKEN, transport=transport), transport
+
+
+def test_jira_search_posts_the_label_jql_with_basic_auth() -> None:
+    jira, transport = make_jira(jira_ok("jira_search_jql_empty.handcrafted.json"))
+
+    assert jira.search_open_by_label(label=DBAP) == []
+
+    (call,) = transport.calls
+    assert call.method == "POST"
+    assert call.url == f"{JIRA_BASE}/rest/api/3/search/jql"
+    assert (
+        call.headers["Authorization"] == "Basic " + base64.b64encode(f"bot@opsmill.com:{JIRA_TOKEN}".encode()).decode()
+    )
+    assert call.headers["Content-Type"] == "application/json"
+    assert call.headers["Accept"] == "application/json"
+    assert call.json() == {
+        "jql": f'labels = "{DBAP}" AND statusCategory != Done ORDER BY created ASC',
+        "fields": ["summary", "priority"],
+        "maxResults": 50,
+    }
+
+
+def test_jira_search_follows_next_page_tokens() -> None:
+    jira, transport = make_jira(
+        jira_ok("jira_search_jql_page1.handcrafted.json"), jira_ok("jira_search_jql_page2.handcrafted.json")
+    )
+
+    issues = jira.search_open_by_label(label=DBAP)
+
+    assert issues == [
+        JiraIssue(
+            key="IFC-42",
+            summary="[fastapi] Use lifespan state",
+            url=f"{JIRA_BASE}/browse/IFC-42",
+            priority="Medium",
+        ),
+        JiraIssue(
+            key="IFC-50", summary="[fastapi] Use lifespan state", url=f"{JIRA_BASE}/browse/IFC-50", priority=None
+        ),
+    ]
+    first_request = transport.calls[0].json()
+    assert isinstance(first_request, dict)
+    assert transport.calls[1].json() == {**first_request, "nextPageToken": "CAEaAggD"}
+
+
+@pytest.mark.parametrize("label", ['dbap-x" OR project = SECRET OR labels = "y', "tech debt", ""])
+def test_jira_search_refuses_labels_that_are_not_plain_tokens(label: str) -> None:
+    jira, transport = make_jira()
+
+    with pytest.raises(ValueError, match="label"):
+        jira.search_open_by_label(label=label)
+    assert transport.calls == []
+
+
+def test_jira_create_posts_the_draft_without_an_assignee() -> None:
+    jira, transport = make_jira(jira_ok("jira_create_issue.handcrafted.json", status=201))
+    draft = JiraIssueDraft(
+        project_key="IFC",
+        issue_type="Task",
+        summary="[fastapi] Use lifespan state",
+        labels=("tech-debt", "dependabot-autopilot", DBAP),
+        priority="Medium",
+        description=ADF,
+    )
+
+    issue = jira.create_issue(draft=draft)
+
+    assert issue == JiraIssue(
+        key="IFC-24", summary="[fastapi] Use lifespan state", url=f"{JIRA_BASE}/browse/IFC-24", priority="Medium"
+    )
+    (call,) = transport.calls
+    assert call.method == "POST"
+    assert call.url == f"{JIRA_BASE}/rest/api/3/issue"
+    assert call.json() == {
+        "fields": {
+            "project": {"key": "IFC"},
+            "issuetype": {"name": "Task"},
+            "summary": "[fastapi] Use lifespan state",
+            "labels": ["tech-debt", "dependabot-autopilot", DBAP],
+            "priority": {"name": "Medium"},
+            "description": ADF,
+        }
+    }
+
+
+def test_jira_comment_posts_an_adf_body() -> None:
+    jira, transport = make_jira(HttpResponse(status=201, body=b'{"id": "10000"}'))
+
+    jira.add_comment(issue_key="IFC-7", body=ADF)
+
+    (call,) = transport.calls
+    assert call.method == "POST"
+    assert call.url == f"{JIRA_BASE}/rest/api/3/issue/IFC-7/comment"
+    assert call.json() == {"body": ADF}
+
+
+def test_jira_comment_refuses_an_unexpected_issue_key() -> None:
+    jira, transport = make_jira()
+
+    with pytest.raises(ValueError, match="issue key"):
+        jira.add_comment(issue_key="../../myself", body=ADF)
+    assert transport.calls == []
+
+
+def test_jira_base_url_trailing_slash_is_ignored() -> None:
+    jira, transport = make_jira(jira_ok("jira_search_jql_empty.handcrafted.json"), base_url=f"{JIRA_BASE}/")
+
+    jira.search_open_by_label(label=DBAP)
+
+    assert transport.calls[0].url == f"{JIRA_BASE}/rest/api/3/search/jql"
+
+
+@pytest.mark.parametrize("jira_url", ["http://opsmill.atlassian.net", "file:///etc/passwd", ""])
+def test_jira_base_url_must_be_https(jira_url: str) -> None:
+    with pytest.raises(ValueError, match="https"):
+        JiraRest(base_url=jira_url, email="bot@opsmill.com", token=JIRA_TOKEN)
+
+
+def test_jira_http_error_raises_jira_error_with_the_status() -> None:
+    jira, _ = make_jira(HttpResponse(status=400, body=b'{"errorMessages": ["The value \'IFC\' does not exist"]}'))
+
+    with pytest.raises(JiraError, match="400"):
+        jira.search_open_by_label(label=DBAP)
+
+
+def test_jira_network_error_raises_jira_error() -> None:
+    jira, _ = make_jira(TimeoutError("timed out"))
+
+    with pytest.raises(JiraError, match="timed out"):
+        jira.search_open_by_label(label=DBAP)
+
+
+@pytest.mark.parametrize("body", [b"<html>maintenance</html>", b'{"unexpected": true}'])
+def test_jira_malformed_response_raises_jira_error(body: bytes) -> None:
+    jira, _ = make_jira(HttpResponse(status=200, body=body))
+
+    with pytest.raises(JiraError):
+        jira.search_open_by_label(label=DBAP)
+
+
+def test_jira_error_does_not_leak_the_token() -> None:
+    jira, _ = make_jira(HttpResponse(status=401, body=b"Unauthorized"))
+
+    with pytest.raises(JiraError) as exc_info:
+        jira.create_issue(
+            draft=JiraIssueDraft(
+                project_key="IFC", issue_type="Task", summary="s", labels=(), priority="Low", description=ADF
+            )
+        )
+    assert JIRA_TOKEN not in str(exc_info.value)

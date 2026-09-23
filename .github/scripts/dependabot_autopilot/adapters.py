@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import base64
 import json
+import re
 import subprocess  # noqa: S404
-from dataclasses import dataclass
+import urllib.error
+import urllib.request
+from dataclasses import dataclass, field
 from datetime import datetime
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, Protocol
 from urllib.parse import quote
 
@@ -17,6 +22,8 @@ from dependabot_autopilot.ports import (
     CommitStatus,
     FileStatus,
     GitHubError,
+    JiraError,
+    JiraIssue,
     PullRequest,
     PullRequestState,
     PullRequestSummary,
@@ -29,11 +36,18 @@ from dependabot_autopilot.ports import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Sequence
+    from collections.abc import Iterator, Mapping, Sequence
     from pathlib import Path
+
+    from dependabot_autopilot.ports import JiraIssueDraft
 
 PER_PAGE = 100
 _RAW_CONTENT = "Accept: application/vnd.github.raw+json"
+JIRA_PAGE_SIZE = 50
+JIRA_TIMEOUT_SECONDS = 30
+_MAX_ERROR_BODY_CHARS = 500
+_JIRA_LABEL = re.compile(r"[A-Za-z0-9_.-]+")
+_JIRA_ISSUE_KEY = re.compile(r"[A-Z][A-Z0-9_]*-[0-9]+")
 
 
 class GhCommandError(GitHubError):
@@ -251,6 +265,134 @@ class GhCliGitHub:
             if len(items) < PER_PAGE:
                 return
             page += 1
+
+
+@dataclass(frozen=True)
+class HttpResponse:
+    status: int
+    body: bytes
+
+
+class HttpTransport(Protocol):
+    def __call__(self, *, method: str, url: str, headers: Mapping[str, str], body: bytes | None) -> HttpResponse:
+        """Send one request and return the response whatever its status, raising `OSError` when none arrives."""
+        ...
+
+
+def urllib_transport(*, method: str, url: str, headers: Mapping[str, str], body: bytes | None) -> HttpResponse:
+    """Send an HTTPS request with the standard library.
+
+    Raises:
+        OSError: When the connection fails or times out.
+        ValueError: When `url` is not an https URL.
+
+    """
+    if not url.startswith("https://"):
+        raise ValueError("only https URLs are allowed")
+    request = urllib.request.Request(url=url, data=body, headers=dict(headers), method=method)  # noqa: S310
+    try:
+        with urllib.request.urlopen(request, timeout=JIRA_TIMEOUT_SECONDS) as response:  # noqa: S310
+            return HttpResponse(status=response.status, body=response.read())
+    except urllib.error.HTTPError as exc:
+        return HttpResponse(status=exc.code, body=exc.read())
+
+
+@dataclass(frozen=True)
+class JiraRest:
+    """Jira Cloud port over REST API v3 with basic authentication."""
+
+    base_url: str
+    email: str
+    token: str = field(repr=False)
+    transport: HttpTransport = urllib_transport
+
+    def __post_init__(self) -> None:
+        if not self.base_url.startswith("https://"):
+            raise ValueError("the Jira base URL must start with https://")
+        object.__setattr__(self, "base_url", self.base_url.rstrip("/"))
+
+    def search_open_by_label(self, *, label: str) -> list[JiraIssue]:
+        if not _JIRA_LABEL.fullmatch(label):
+            raise ValueError(f"refusing to search for label {label!r}: only letters, digits, '.', '_' and '-'")
+        request: dict[str, object] = {
+            "jql": f'labels = "{label}" AND statusCategory != Done ORDER BY created ASC',
+            "fields": ["summary", "priority"],
+            "maxResults": JIRA_PAGE_SIZE,
+        }
+        issues: list[JiraIssue] = []
+        while True:
+            response = self._send(method="POST", path="/rest/api/3/search/jql", payload=request)
+            try:
+                issues.extend(self._issue(value=issue) for issue in response["issues"])
+                token = response.get("nextPageToken")
+                if response.get("isLast", True) or not token:
+                    return issues
+            except (KeyError, TypeError) as exc:
+                raise JiraError(f"unexpected Jira search response: missing {exc}") from exc
+            request = {**request, "nextPageToken": token}
+
+    def create_issue(self, *, draft: JiraIssueDraft) -> JiraIssue:
+        response = self._send(
+            method="POST",
+            path="/rest/api/3/issue",
+            payload={
+                "fields": {
+                    "project": {"key": draft.project_key},
+                    "issuetype": {"name": draft.issue_type},
+                    "summary": draft.summary,
+                    "labels": list(draft.labels),
+                    "priority": {"name": str(draft.priority)},
+                    "description": draft.description,
+                }
+            },
+        )
+        try:
+            key = str(response["key"])
+        except KeyError as exc:
+            raise JiraError("unexpected Jira create response: missing 'key'") from exc
+        return JiraIssue(key=key, summary=draft.summary, url=self._browse_url(key=key), priority=str(draft.priority))
+
+    def add_comment(self, *, issue_key: str, body: Mapping[str, object]) -> None:
+        if not _JIRA_ISSUE_KEY.fullmatch(issue_key):
+            raise ValueError(f"refusing to comment on unexpected issue key {issue_key!r}")
+        self._send(method="POST", path=f"/rest/api/3/issue/{issue_key}/comment", payload={"body": body})
+
+    def _issue(self, *, value: dict[str, Any]) -> JiraIssue:
+        fields = value["fields"]
+        priority = fields.get("priority")
+        return JiraIssue(
+            key=value["key"],
+            summary=fields["summary"],
+            url=self._browse_url(key=value["key"]),
+            priority=None if priority is None else priority["name"],
+        )
+
+    def _browse_url(self, *, key: str) -> str:
+        return f"{self.base_url}/browse/{key}"
+
+    def _send(self, *, method: str, path: str, payload: Mapping[str, object]) -> dict[str, Any]:
+        credentials = base64.b64encode(f"{self.email}:{self.token}".encode()).decode()
+        headers = {
+            "Authorization": f"Basic {credentials}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+        try:
+            response = self.transport(
+                method=method, url=f"{self.base_url}{path}", headers=headers, body=json.dumps(payload).encode()
+            )
+        except OSError as exc:
+            raise JiraError(f"{method} {path} failed: {exc}") from exc
+        if not HTTPStatus.OK <= response.status < HTTPStatus.MULTIPLE_CHOICES:
+            detail = response.body.decode("utf-8", errors="replace")[:_MAX_ERROR_BODY_CHARS]
+            raise JiraError(f"{method} {path} returned HTTP {response.status}: {detail}")
+        try:
+            decoded = json.loads(response.body) if response.body else {}
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise JiraError(f"{method} {path} returned a non-JSON body") from exc
+        if not isinstance(decoded, dict):
+            raise JiraError(f"{method} {path} returned a non-object body")
+        return decoded
 
 
 def _timestamp(*, value: str) -> datetime:

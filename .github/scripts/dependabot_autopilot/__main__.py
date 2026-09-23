@@ -3,24 +3,48 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from dependabot_autopilot.adapters import GhCliGitHub
+from dependabot_autopilot.adapters import GhCliGitHub, JiraRest
 from dependabot_autopilot.flow import Config, SuppliedReport, escalate, evaluate, invalidate, sweep
+from dependabot_autopilot.opportunities import JiraTarget, file_opportunities, load_fresh_report
+from dependabot_autopilot.report import ReportError
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from dependabot_autopilot.ports import GitHubPort
+    from dependabot_autopilot.ports import GitHubPort, JiraPort
 
 SUBCOMMANDS = ("invalidate", "evaluate", "sweep", "escalate", "file-opportunities", "digest")
-NOT_IMPLEMENTED = ("file-opportunities", "digest")
+NOT_IMPLEMENTED = ("digest",)
+DEFAULT_JIRA_ISSUE_TYPE = "Task"
+_REQUIRED_JIRA_ENV = (
+    "JIRA_BASE_URL",
+    "JIRA_USER_EMAIL",
+    "JIRA_API_TOKEN",
+    "DEPENDABOT_AUTOPILOT_JIRA_PROJECT",
+    "GITHUB_REPOSITORY",
+)
 
 
 class ConfigError(Exception):
     """A required environment variable is missing."""
+
+
+@dataclass(frozen=True)
+class JiraSettings:
+    base_url: str
+    email: str
+    token: str = field(repr=False)
+    target: JiraTarget
+    server_url: str
+    repo: str
+
+    def pr_url(self, *, number: int) -> str:
+        return f"{self.server_url}/{self.repo}/pull/{number}"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -35,6 +59,10 @@ def build_parser() -> argparse.ArgumentParser:
     escalate_parser = subparsers.add_parser("escalate")
     escalate_parser.add_argument("--pr", type=int, required=True)
     escalate_parser.add_argument("--run-url", required=True)
+    file_parser = subparsers.add_parser("file-opportunities")
+    file_parser.add_argument("--pr", type=int, required=True)
+    file_parser.add_argument("--report", type=Path, required=True, help="directory holding the verdict artifact")
+    file_parser.add_argument("--report-sha", required=True, help="head commit of the analysis run that produced it")
     for name in NOT_IMPLEMENTED:
         subparsers.add_parser(name)
     return parser
@@ -56,6 +84,64 @@ def load_config(*, environ: Mapping[str, str]) -> Config:
         merge_enabled=environ.get("DEPENDABOT_AUTOPILOT_MERGE", "").strip() == "on",
         fallback_reviewer=environ.get("DEPENDABOT_AUTOPILOT_FALLBACK_REVIEWER", ""),
     )
+
+
+def load_jira_settings(*, environ: Mapping[str, str]) -> JiraSettings:
+    """Read the Jira filing configuration from the environment.
+
+    Raises:
+        ConfigError: When a Jira credential, the Jira project or `GITHUB_REPOSITORY` is missing.
+
+    """
+    missing = [name for name in _REQUIRED_JIRA_ENV if not environ.get(name, "").strip()]
+    if missing:
+        raise ConfigError(f"missing environment variables: {', '.join(missing)}")
+    return JiraSettings(
+        base_url=environ["JIRA_BASE_URL"].strip(),
+        email=environ["JIRA_USER_EMAIL"].strip(),
+        token=environ["JIRA_API_TOKEN"].strip(),
+        target=JiraTarget(
+            project_key=environ["DEPENDABOT_AUTOPILOT_JIRA_PROJECT"].strip(),
+            issue_type=environ.get("DEPENDABOT_AUTOPILOT_JIRA_ISSUE_TYPE", "").strip() or DEFAULT_JIRA_ISSUE_TYPE,
+        ),
+        server_url=environ.get("GITHUB_SERVER_URL", "").strip().rstrip("/") or "https://github.com",
+        repo=environ["GITHUB_REPOSITORY"].strip(),
+    )
+
+
+def file_opportunities_command(
+    *, args: argparse.Namespace, environ: Mapping[str, str], jira: JiraPort | None = None
+) -> int:
+    """File the report's opportunities in Jira; every tracker or report problem is logged and exits 0."""
+    try:
+        settings = load_jira_settings(environ=environ)
+        if jira is None:
+            jira = JiraRest(base_url=settings.base_url, email=settings.email, token=settings.token)
+    except (ConfigError, ValueError) as exc:
+        _warn(message=f"file-opportunities skipped: Jira is not configured ({exc})")
+        return 0
+    try:
+        report = load_fresh_report(directory=args.report, run_head_sha=args.report_sha, pr_number=args.pr)
+    except ReportError as exc:
+        _warn(message=f"file-opportunities skipped: {exc}")
+        return 0
+    outcome = file_opportunities(
+        jira=jira, report=report, pr_url=settings.pr_url(number=args.pr), target=settings.target
+    )
+    if outcome.skipped_reason is not None:
+        print(f"#{args.pr}: file-opportunities skipped: {outcome.skipped_reason}")
+    for key in outcome.created:
+        print(f"#{args.pr}: created {key}")
+    for key in outcome.commented:
+        print(f"#{args.pr}: commented on {key}")
+    for failure in outcome.failures:
+        _warn(message=failure)
+    return 0
+
+
+def _warn(*, message: str) -> None:
+    single_line = " ".join(message.splitlines())
+    print(f"::warning::{single_line}")
 
 
 def run(*, args: argparse.Namespace, github: GitHubPort, config: Config, now: datetime) -> int:
@@ -82,6 +168,8 @@ def main(argv: list[str] | None = None, environ: Mapping[str, str] | None = None
     if args.command in NOT_IMPLEMENTED:
         print(f"{args.command}: not implemented")
         return 0
+    if args.command == "file-opportunities":
+        return file_opportunities_command(args=args, environ=os.environ if environ is None else environ)
     if args.command == "evaluate" and (args.report is None) != (args.report_sha is None):
         print("--report and --report-sha must be given together", file=sys.stderr)
         return 2
