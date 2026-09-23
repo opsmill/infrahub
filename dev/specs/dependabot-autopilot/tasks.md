@@ -9,7 +9,7 @@ description: "Task list for the dependency-bump autopilot"
 
 **Prerequisites**: [plan.md](plan.md), [spec.md](spec.md), [research.md](research.md), [data-model.md](data-model.md), [contracts/](contracts/), [quickstart.md](quickstart.md)
 
-**Tests**: Included. Constitution IV requires tests alongside implementation; every decision rule gets a unit test written before its implementation.
+**Tests**: Included; every decision rule gets a unit test written before its implementation.
 
 **Organization**: Tasks are grouped by user story so each story can be implemented and validated on its own.
 
@@ -133,7 +133,7 @@ description: "Task list for the dependency-bump autopilot"
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: T001 first (its outcome shapes T023); T002–T005 in parallel.
+- **Setup (Phase 1)**: T001 first; T002–T005 in parallel.
 - **Foundational (Phase 2)**: after Phase 1; T006 → T007; T008 ‖ T010; T009 after T008; T011 after T010 and T006; T012 after T011.
 - **US1 (Phase 3)**: after Phase 2. Tests T013–T016 in parallel, T017 after T006/T007; implementations T018–T020 in parallel, T021 after T016, T022 after T017–T021; T023 after T001 and T002; T024 after T022; T025 independent; T026 after T023 and T024.
 - **US2 (Phase 4)**: after Phase 2 and T022 (it reuses the artifact resolution); independent of the merge switch.

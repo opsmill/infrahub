@@ -6,13 +6,13 @@
 
 **Status**: Draft
 
-**Input**: User description: "Dependency-bump autopilot. Source PRD: Notion hackathon card 'Automatic middleware dependencies management and opportunities identification' plus the hardened idea brief. Scope: Dependabot-opened PRs only; P1 verdict + automatic merge, P2 deduplicated Jira tech-debt items with rubric priority, P3 weekly #release-radar digest."
+**Input**: User description: "Dependency-bump autopilot. Source PRD: Notion hackathon card 'Automatic middleware dependencies management and opportunities identification'. Scope: Dependabot-opened PRs only; P1 verdict + automatic merge, P2 deduplicated Jira tech-debt items with rubric priority, P3 weekly #release-radar digest."
 
 ## Context
 
 Dependabot opens roughly four pull requests a week against `stable` (48 in the 90 days to 2026-09-23). Every one of them was merged; none was rejected. An engineer still has to trigger the dependency-bump analysis by hand, read the report, approve, and merge, which puts a median of 8.2 hours (p90 23 hours) between a bump being proposed and it landing. Upstream features worth adopting are noticed by chance and filed by hand, if at all.
 
-The dependency-bump analysis already exists as an agent skill. It produces one of three verdicts per PR (`safe to merge`, `needs code changes`, `review required`), grounds every "safe" claim in a search of the repository's actual usage, and lists breaking changes, deprecations and opportunities per package. This feature runs that analysis without a human and acts on its verdict. Merging patch and minor bumps by version number alone would remove the wait too, but it would merge minor releases that break code the repository uses and would never surface opportunities; grounding the decision in actual usage is what makes unattended merging acceptable.
+The dependency-bump analysis already exists as an agent skill. It produces one of three verdicts per PR (`safe to merge`, `needs code changes`, `review required`), grounds every "safe" claim in a search of the repository's actual usage, and lists breaking changes, deprecations and opportunities per package. This feature runs that analysis without a human and acts on its verdict. The decision rests on actual usage, not version number: minor releases can break code the repository uses, and a version-number rule surfaces no opportunities.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -20,7 +20,7 @@ The dependency-bump analysis already exists as an agent skill. It produces one o
 
 When Dependabot opens or updates a pull request, the analysis runs on its own and posts its report on the PR. A `safe to merge` verdict on a PR whose checks are all green leads to an approval and a merge with no human action. A `needs code changes` verdict blocks the PR with the reasons. A `review required` verdict leaves the PR open, labelled, with its owner notified.
 
-**Why this priority**: This removes the recurring manual step on every Dependabot PR and closes the 8-hour latency on security patches. It is the smallest slice that delivers the time saving the idea is about.
+**Why this priority**: This removes the recurring manual step on every Dependabot PR and closes the 8-hour latency on security patches. It is the smallest slice that delivers the time saving.
 
 **Independent Test**: Open three Dependabot-authored PRs in a sandbox repository or against fixtures: one bumping a package the code base does not use, one bumping a package whose removed API is used, one whose changelog cannot be retrieved. Observe a merge, a blocking review, and an escalation respectively, with no human action.
 
@@ -36,7 +36,7 @@ When Dependabot opens or updates a pull request, the analysis runs on its own an
 
 ### User Story 2 - Tech-debt items from opportunities (Priority: P2)
 
-Opportunities and deprecations the analysis finds become tech-debt items in Jira with an initial priority, so they enter the normal triage flow instead of being lost in a PR comment. The same opportunity seen on a later bump updates the existing item instead of creating a duplicate.
+Opportunities and deprecations the analysis finds become tech-debt items in Jira with an initial priority, so they enter the normal triage flow. The same opportunity seen on a later bump updates the existing item instead of creating a duplicate.
 
 **Why this priority**: It turns the analysis's opportunity findings into tracked work. It depends on the analysis running automatically (P1) but not on automatic merge, and it can ship after P1.
 
@@ -141,7 +141,7 @@ Once a week, a single message in #release-radar lists the High and Medium tech-d
 - **VI. Security & Input Boundaries, "Dependencies MUST be reviewed before addition"**, and **Security Requirements, "Dependency additions require review"**: preserved as written. A PR that adds a package to the lockfile never merges automatically (FR-006).
 - **VI, "kept updated to address known vulnerabilities"** and **Security Requirements, "Known vulnerability patches MUST be applied promptly"**: supported by the latency target (SC-002).
 - **Code Quality Gates, "All code MUST pass these gates before merge"**: enforced by the automation itself, because `stable` has no required checks (FR-004).
-- **VII. Simplicity & Maintainability**: the feature reuses the existing analysis skill and the repository's existing agentic-workflow setup rather than building a new analysis engine.
+- **VII. Simplicity & Maintainability**: the feature reuses the existing analysis skill and the repository's existing agentic-workflow setup.
 
 ## Governance Gates Crossed
 
@@ -167,6 +167,6 @@ Once a week, a single message in #release-radar lists the High and Medium tech-d
 - Dependabot keeps opening `github-actions`, `uv` and `npm` PRs against `stable` at roughly the current rate (about 4 a week) without configuration changes.
 - The analysis skill can run without a human and can emit its verdict in a machine-readable form alongside the prose report.
 - Merges into `stable` reach `develop` through the existing stable-to-develop merge process.
-- **Tech-debt location** (resolved during specification): items go to the engineering Jira project with a tech-debt label, unassigned, so they enter the existing triage queue. The project key is configuration, not code.
-- **Automation identity** (resolved during specification): a dedicated identity whose only elevated right is approving and merging Dependabot PRs, rather than the existing bot account that already has branch-rule bypass rights. Least privilege outweighs reusing an existing account.
-- **Owner to notify** (resolved during specification): the code owners of the changed files, with a single configured fallback recipient for files no code owner covers (such as `.github/`).
+- **Tech-debt location**: items go to the engineering Jira project with a tech-debt label, unassigned, so they enter the existing triage queue. The project key is configuration, not code.
+- **Automation identity**: a dedicated identity whose only elevated right is approving and merging Dependabot PRs; not the existing bot account, which holds branch-rule bypass rights.
+- **Owner to notify**: the code owners of the changed files, with a single configured fallback recipient for files no code owner covers (such as `.github/`).

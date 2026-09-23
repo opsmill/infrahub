@@ -23,8 +23,8 @@ permissions:
 
 jobs:
   act:
-    # workflow_run fires for every CI run; only Dependabot's start a job, and a CI
-    # run being requested says nothing the autopilot acts on.
+    # Only Dependabot's runs start a job; a requested CI run carries nothing to act
+    # on, a requested analysis run does.
     if: >-
       github.event_name != 'workflow_run' ||
       (github.event.workflow_run.actor.login == 'dependabot[bot]' &&

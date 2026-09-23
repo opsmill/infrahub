@@ -32,4 +32,3 @@
 ## Notes
 
 - Dependabot, Jira, Slack (#release-radar), the `stable` branch and the lockfile are named because they are the product surface the source PRD defines, not implementation choices. The workflow engine, identity mechanism and verdict format are left to the plan.
-- The three open questions from the idea brief (tech-debt location, automation identity, owner to notify) were resolved autonomously and recorded under Assumptions; revisit them at plan review.

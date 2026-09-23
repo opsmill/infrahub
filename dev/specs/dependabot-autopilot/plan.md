@@ -6,7 +6,7 @@
 
 ## Summary
 
-Run the existing dependency-bump analysis automatically on every Dependabot PR and act on its verdict. An agentic workflow analyses the PR with read-only rights and emits a structured verdict artifact. A deterministic workflow, running in the trusted `workflow_run` context under a dedicated GitHub App, recomputes the effective verdict (strictest per package, fail closed, new lockfile packages capped), checks that every CI signal on the head commit is green, posts the report, and approves and squash-merges pinned to the analysed commit. The same package files deduplicated Jira tech-debt items and posts a weekly #release-radar digest. Merges ship disabled (shadow mode) behind a repository variable. See [research.md](research.md) R1–R14.
+Run the existing dependency-bump analysis automatically on every Dependabot PR and act on its verdict. An agentic workflow analyses the PR with read-only rights and emits a structured verdict artifact. A deterministic workflow, running in the trusted `workflow_run` context under a dedicated GitHub App, recomputes the effective verdict (strictest per package, fail closed, new lockfile packages capped), checks that every CI signal on the head commit is green, posts the report, and approves and squash-merges pinned to the analysed commit. The same package files deduplicated Jira tech-debt items and posts a weekly #release-radar digest. Merges ship disabled (shadow mode) behind a repository variable. See [research.md](research.md) R1–R15.
 
 ## Technical Context
 
@@ -46,7 +46,7 @@ Run the existing dependency-bump analysis automatically on every Dependabot PR a
 
 **Governance gates (AGENTS.md "Ask First")**: CI/CD workflow changes, **crossed** (three new workflows, one CI job, label additions); Authentication/authorization changes, **crossed** (new GitHub App with write access, Jira/Slack credentials). Both need explicit sign-off before implementation. No database, GraphQL or dependency gate is crossed.
 
-**Post-design re-check**: unchanged; the design introduced no violation. Complexity Tracking stays empty.
+**Post-design re-check**: no violation.
 
 ## Project Structure
 
@@ -129,7 +129,7 @@ dev/guides/dependabot-autopilot.md                     # operating guide: switch
 - **Trigger filtering**: for `workflow_run` events the act job has a job-level `if:` on `github.event.workflow_run.actor.login == 'dependabot[bot]'`, so CI completions of other PRs start no job.
 - **Tracker isolation (FR-020)**: `file-opportunities` runs as a separate job after `evaluate`, with `continue-on-error`; it never changes labels, reviews or merge state. Idempotency through the `dbap-` label, the check for an existing comment linking the PR, and a per-PR concurrency group on the job makes retries on the next event safe.
 - **Release-age cooldown (FR-018)**: `.github/dependabot.yml` gains `cooldown: default-days: 3` on the `github-actions` entry (research R15). The `uv` and `npm` PRs arrive as security updates, which cooldown does not delay.
-- **gh-aw feature spike first**: `safe-outputs.jobs` and `on.bots` are documented on gh-aw `main`; the first task compiles a minimal workflow using both on the pinned compiler. If either is missing, the fallback is a `post-steps` step that copies the agent's `emit_verdict` payload from gh-aw's agent output file into the artifact, and a job-level `if:` for the actor check.
+- **gh-aw feature spike first**: `safe-outputs.jobs` and `on.bots` both compile on the pinned compiler (research R1). The `emit_verdict` job reads the agent's call from gh-aw's agent output file, not from an input variable.
 
 ## Rollout
 

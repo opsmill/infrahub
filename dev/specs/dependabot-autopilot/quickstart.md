@@ -31,7 +31,7 @@ Expected: all pass; `git status` shows no diff after `gh aw compile`.
 | Q7 | Human hold | Add `autopilot/hold` to a `safe` PR with green CI | No approval, no merge; removing the label lets the next sweep merge it |
 | Q8 | Jira dedup | Run `file-opportunities` twice with the same artifact | One issue with labels `tech-debt`, `dependabot-autopilot`, `dbap-…`; second run adds no issue and no comment; a third run with an artifact for another PR adds one comment linking that PR |
 | Q9 | Digest | `workflow_dispatch` the digest with one High and one Low item in the last 7 days | One #release-radar message listing only the High item |
-| Q10 | Enable merges | Set `DEPENDABOT_AUTOPILOT_MERGE=on` after two weeks of shadow verdicts agreeing with human decisions | Next `safe` PR with green CI is approved and squash-merged by the App |
+| Q10 | Enable merges | Set `DEPENDABOT_AUTOPILOT_MERGE=on` once the shadow-mode exit criteria in [plan.md](plan.md#rollout) hold | Next `safe` PR with green CI is approved and squash-merged by the App |
 
 ## Rollback
 
