@@ -74,6 +74,38 @@ describe("getScheduleSentence", () => {
     expect(sentence).toBe("Daily at 03:42 UTC");
   });
 
+  test("reads the time in the zone the schedule declares, not in UTC", () => {
+    // GIVEN a schedule that fires at 03:42 in Paris, which is 01:42 UTC that day
+    const schedule = {
+      cron: "42 3 * * *",
+      intervalSeconds: 86_400,
+      nextRunAt: "2026-09-25T01:42:00+00:00",
+      timezone: "Europe/Paris",
+    };
+
+    // WHEN
+    const sentence = getScheduleSentence(schedule);
+
+    // THEN
+    expect(sentence).toBe("Daily at 03:42 Europe/Paris");
+  });
+
+  test("falls back to UTC when the declared zone is not one the runtime knows", () => {
+    // GIVEN
+    const schedule = {
+      cron: "42 3 * * *",
+      intervalSeconds: 86_400,
+      nextRunAt: "2026-09-25T03:42:00+00:00",
+      timezone: "Mars/Olympus_Mons",
+    };
+
+    // WHEN
+    const sentence = getScheduleSentence(schedule);
+
+    // THEN the reading and the label agree, rather than a UTC time wearing another zone's name
+    expect(sentence).toBe("Daily at 03:42 UTC");
+  });
+
   test("falls back to the raw cron for a shape it does not recognise", () => {
     // GIVEN
     const schedule = {

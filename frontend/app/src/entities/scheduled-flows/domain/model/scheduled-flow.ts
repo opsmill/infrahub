@@ -30,7 +30,7 @@ export const SCHEDULED_FLOW_HEALTH_LABELS: Record<ScheduledFlowHealth, string> =
 
 export const SCHEDULED_FLOW_HEALTH_DESCRIPTIONS: Record<ScheduledFlowHealth, string> = {
   [SCHEDULED_FLOW_HEALTH_OVERDUE]:
-    "No run has completed within three of this flow's scheduled intervals.",
+    "No run has executed within three of this flow's scheduled intervals.",
   [SCHEDULED_FLOW_HEALTH_FAILED]: "The most recent run that executed failed or crashed.",
   [SCHEDULED_FLOW_HEALTH_CANCELLED]:
     "The most recent run that executed was cancelled, often by a concurrency collision.",
@@ -38,7 +38,8 @@ export const SCHEDULED_FLOW_HEALTH_DESCRIPTIONS: Record<ScheduledFlowHealth, str
     "No run history is available and it cannot be told apart from purged history.",
   [SCHEDULED_FLOW_HEALTH_NEVER_RUN]: "This flow has not run since it was registered.",
   [SCHEDULED_FLOW_HEALTH_PAUSED]: "The schedule is switched off, so no run is expected.",
-  [SCHEDULED_FLOW_HEALTH_HEALTHY]: "The most recent run that executed completed on schedule.",
+  [SCHEDULED_FLOW_HEALTH_HEALTHY]:
+    "The most recent run that executed neither failed nor was cancelled.",
 };
 
 const SECONDS_PER_MINUTE = 60;
@@ -50,6 +51,36 @@ interface ScheduleSentenceInput {
   intervalSeconds?: number | null;
   nextRunAt?: string | null;
   timezone?: string | null;
+}
+
+/**
+ * Read an instant as a wall clock in the given zone, so the time and the zone it is labelled with
+ * agree. An unrecognised zone falls back to UTC, which is what the reading is then labelled.
+ */
+function getWallClock(
+  date: Date,
+  timeZone: string
+): { hours: string; minutes: string; zone: string } {
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(date);
+    const hours = parts.find(({ type }) => type === "hour")?.value;
+    const minutes = parts.find(({ type }) => type === "minute")?.value;
+
+    if (hours && minutes) return { hours, minutes, zone: timeZone };
+  } catch {
+    // Intl throws on an unknown IANA zone.
+  }
+
+  return {
+    hours: String(date.getUTCHours()).padStart(2, "0"),
+    minutes: String(date.getUTCMinutes()).padStart(2, "0"),
+    zone: "UTC",
+  };
 }
 
 /**
@@ -73,9 +104,7 @@ export function getScheduleSentence({
   const nextRun = nextRunAt ? new Date(nextRunAt) : null;
   if (!nextRun || Number.isNaN(nextRun.getTime())) return cron;
 
-  const minutes = String(nextRun.getUTCMinutes()).padStart(2, "0");
-  const hours = String(nextRun.getUTCHours()).padStart(2, "0");
-  const zone = timezone ?? "UTC";
+  const { hours, minutes, zone } = getWallClock(nextRun, timezone ?? "UTC");
 
   if (intervalSeconds === SECONDS_PER_HOUR) return `Hourly at :${minutes}`;
   if (intervalSeconds === SECONDS_PER_DAY) return `Daily at ${hours}:${minutes} ${zone}`;
