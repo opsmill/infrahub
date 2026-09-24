@@ -148,9 +148,18 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
       return "br";
     }
   });
-  const [drag, setDrag] = useState<{ dx: number; dy: number } | null>(null);
+  /**
+   * Only "is a drag happening" lives in React state. The position does not: a state update
+   * per pointermove re-renders the whole panel — zones, knobs, the note list — for every
+   * event, and pointer events arrive faster than that render can finish, which is the
+   * low-fps feel. The transform is written straight to the DOM instead, coalesced to one
+   * write per frame with requestAnimationFrame.
+   */
+  const [dragging, setDragging] = useState(false);
   const movedRef = useRef(false);
   const dockRef = useRef<HTMLDivElement>(null);
+  const pendingRef = useRef<{ dx: number; dy: number } | null>(null);
+  const rafRef = useRef<number>(0);
   /** Where the dock visually was at release, so the settle can start from the hand. */
   const settleFrom = useRef<{ left: number; top: number } | null>(null);
   const [settleTick, setSettleTick] = useState(0);
@@ -170,6 +179,10 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
     const from = settleFrom.current;
     settleFrom.current = null;
     if (!el || !from) return;
+    // The drag's inline transform is still on the element. Clear it first — before the
+    // reduced-motion return, or a reduced-motion user is left with the dock stuck where
+    // they dropped it — so `to` is the true resting position in the new corner.
+    el.style.transform = "";
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const to = el.getBoundingClientRect();
@@ -211,24 +224,39 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
     const move = (ev: PointerEvent) => {
       const dx = ev.clientX - start.x;
       const dy = ev.clientY - start.y;
-      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) movedRef.current = true;
-      if (movedRef.current) setDrag({ dx, dy });
+      if (!movedRef.current) {
+        if (Math.abs(dx) <= 4 && Math.abs(dy) <= 4) return;
+        movedRef.current = true;
+        setDragging(true); // one render, at the threshold, not one per event
+      }
+      pendingRef.current = { dx, dy };
+      if (rafRef.current) return; // a write is already scheduled for this frame
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = 0;
+        const p = pendingRef.current;
+        const el = dockRef.current;
+        if (p && el) el.style.transform = `translate(${p.dx}px, ${p.dy}px) scale(1.02)`;
+      });
     };
     const up = (ev: PointerEvent) => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
-      if (!movedRef.current) {
-        setDrag(null);
-        return;
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
       }
-      // Measure before React moves anything: this rect includes the drag translate, so it
-      // is exactly where the hand let go.
-      const r = dockRef.current?.getBoundingClientRect();
+      if (!movedRef.current) return;
+      // Flush the last pending position so the measurement below is exactly where the
+      // hand let go — the rect includes the inline drag translate.
+      const p = pendingRef.current;
+      const el = dockRef.current;
+      if (p && el) el.style.transform = `translate(${p.dx}px, ${p.dy}px) scale(1.02)`;
+      const r = el?.getBoundingClientRect();
       if (r) settleFrom.current = { left: r.left, top: r.top };
       const right = ev.clientX > window.innerWidth / 2;
       const bottom = ev.clientY > window.innerHeight / 2;
-      setDrag(null);
+      setDragging(false);
       setCorner(`${bottom ? "b" : "t"}${right ? "r" : "l"}` as Corner);
       setSettleTick((t) => t + 1);
     };
@@ -565,16 +593,13 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
 
       {/* Fixed to the viewport, a sibling of both the shell and the split, so the controls
           survive switching between single and compare views. */}
+      {/* No `style` prop: the drag writes `transform` to this element directly, and React
+          must not own that attribute or it would overwrite the value on every render. */}
       <div
         ref={dockRef}
-        className={["djh-dock", `djh-dock--${corner}`, drag && "djh-dock--dragging"]
+        className={["djh-dock", `djh-dock--${corner}`, dragging && "djh-dock--dragging"]
           .filter(Boolean)
           .join(" ")}
-        // Lifted 2% while held: enough to read as "picked up", not enough to change what
-        // the controls look like. The settle animates it back down with the translate.
-        style={
-          drag ? { transform: `translate(${drag.dx}px, ${drag.dy}px) scale(1.02)` } : undefined
-        }
       >
         {open && knobsOpen && knobs.length > 0 && (
           <div className="djh-knobs">

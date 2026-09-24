@@ -5,7 +5,7 @@
  *
  * - `local`   — localStorage. One browser, one reviewer. Always available. This is what a
  *               dev server run uses, and the fallback everywhere else.
- * - `infrahub` — nodes of kind `DesignJamNote` on the instance the prototype is running
+ * - `infrahub` — nodes of kind `DesignjamNote` on the instance the prototype is running
  *               in. Every reviewer on a preview sees every pin; the author comes free from
  *               the session; nothing needs a credential in the build because the browser
  *               already has one. Requires the schema to be loaded once per instance — see
@@ -26,7 +26,8 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { useEffect, useState } from "react";
 
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
-import { constructPath, fetchUrl } from "@/shared/api/rest/fetch";
+import { fetchUrl } from "@/shared/api/rest/fetch";
+import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 
@@ -57,7 +58,9 @@ export type NewNote = Omit<Note, "id" | "status" | "createdAt" | "author" | "aut
 
 export type Backend = "local" | "infrahub";
 
-const KIND = "DesignJamNote";
+// Local fix: Infrahub requires the namespace to match ^[A-Z][a-z0-9]+$, so "DesignJam" is
+// rejected; the kind becomes DesignjamNote. Attribute names need 3+ chars: x/y -> pos_x/pos_y.
+const KIND = "DesignjamNote";
 const PREFIX = "design-jam:notes:";
 const QUERY_ROOT = ["design-jam", "notes"] as const;
 
@@ -102,8 +105,8 @@ const NODE_FIELDS = {
   scope: { value: true },
   selector: { value: true },
   snippet: { value: true },
-  x: { value: true },
-  y: { value: true },
+  pos_x: { value: true },
+  pos_y: { value: true },
   text: { value: true },
   status: { value: true },
   resolution: { value: true },
@@ -115,8 +118,8 @@ type Edge = {
     scope: { value: string };
     selector: { value: string };
     snippet: { value: string | null };
-    x: { value: string };
-    y: { value: string };
+    pos_x: { value: string };
+    pos_y: { value: string };
     text: { value: string | null };
     status: { value: NoteStatus };
     resolution: { value: string | null };
@@ -132,8 +135,8 @@ const fromEdge = (e: Edge): Note => ({
   scope: e.node.scope.value,
   selector: e.node.selector.value,
   snippet: e.node.snippet.value ?? "",
-  x: Number(e.node.x.value),
-  y: Number(e.node.y.value),
+  x: Number(e.node.pos_x.value),
+  y: Number(e.node.pos_y.value),
   text: e.node.text.value ?? "",
   status: e.node.status.value ?? "open",
   resolution: e.node.resolution.value ?? undefined,
@@ -176,8 +179,8 @@ const createInfrahub = async (slug: string, note: NewNote) => {
             rev: { value: Number((revPart ?? "rev0").replace("rev", "")) },
             selector: { value: note.selector },
             snippet: { value: note.snippet },
-            x: { value: String(note.x) },
-            y: { value: String(note.y) },
+            pos_x: { value: String(note.x) },
+            pos_y: { value: String(note.y) },
             text: { value: note.text },
             status: { value: "open" },
           },
@@ -217,7 +220,7 @@ const probeInfrahub = async (): Promise<boolean> => {
         jsonToGraphQLQuery({ query: { [KIND]: { __args: { limit: 1 }, count: true } } })
       ),
       // Local fix: an unknown kind is the expected answer, not an error. Without a handler the
-      // app's client shows "Cannot query field 'DesignJamNote'" as a toast on every page load.
+      // app's client shows "Cannot query field 'DesignjamNote'" as a toast on every page load.
       context: { processErrorMessage: () => undefined },
     });
     return !errors?.length;
@@ -227,7 +230,7 @@ const probeInfrahub = async (): Promise<boolean> => {
 };
 
 /**
- * Loads the DesignJamNote schema onto the current instance. Admin only, once per instance,
+ * Loads the DesignjamNote schema onto the current instance. Admin only, once per instance,
  * and only ever on a preview. The body mirrors `design-jam-notes.schema.yml`; keep them in
  * step. Infrahub applies a schema load as a migration, so this takes a few seconds.
  */
@@ -237,7 +240,7 @@ export const enableSharedNotes = async () => {
     nodes: [
       {
         name: "Note",
-        namespace: "DesignJam",
+        namespace: "Designjam",
         label: "Design note",
         include_in_menu: false,
         branch: "agnostic",
@@ -250,8 +253,8 @@ export const enableSharedNotes = async () => {
           { name: "rev", kind: "Number" },
           { name: "selector", kind: "Text" },
           { name: "snippet", kind: "Text", optional: true },
-          { name: "x", kind: "Text" },
-          { name: "y", kind: "Text" },
+          { name: "pos_x", kind: "Text" },
+          { name: "pos_y", kind: "Text" },
           { name: "text", kind: "TextArea", optional: true },
           {
             name: "status",
@@ -266,9 +269,13 @@ export const enableSharedNotes = async () => {
       },
     ],
   };
-  await fetchUrl(constructPath("/api/schema/load"), {
+  // Local fix: constructPath() builds an app route — in dev the API is on another port, so the
+  // POST hit the frontend and 404d. fetchUrl only sends auth to the API origin.
+  await fetchUrl(`${INFRAHUB_API_SERVER_URL}/api/schema/load`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    // Local fix: no extra content-type — fetchUrl already sets Content-Type, and a second,
+    // lowercase copy merges into "application/json, application/json", which the API reads
+    // as a plain string body (422 "Input should be a valid dictionary").
     body: JSON.stringify({ schemas: [schema] }),
   });
 };
