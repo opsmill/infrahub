@@ -26,8 +26,13 @@ describe("getArtifactFile", () => {
     const data = Uint8Array.from([1, 2, 3]).buffer;
     mockResponse({ data });
 
-    await expect(getArtifactFile({ storageId: "abc", contentType: "application/pdf" })).resolves.toBe("AQID");
-    expect(getArtifactFileFromApi).toHaveBeenCalledWith({ storageId: "abc", parseAs: "arrayBuffer" });
+    await expect(
+      getArtifactFile({ storageId: "abc", contentType: "application/pdf" })
+    ).resolves.toBe("AQID");
+    expect(getArtifactFileFromApi).toHaveBeenCalledWith({
+      storageId: "abc",
+      parseAs: "arrayBuffer",
+    });
   });
 
   test("surfaces the message the API returned when it refuses the artifact", async () => {
