@@ -12,8 +12,8 @@ reads the global setting directly or skips the registration step silently falls 
 For each component, the first rule that applies wins:
 
 1. The component's `tls_insecure` is enabled: no verification, every CA setting is ignored. Git, the
-   cache, the broker, the database and HTTP accept both settings together; the trace exporter and LDAP
-   reject the combination. Callers pass `insecure` and `ca_bundle` to the TLS registry and nothing else:
+   cache, the broker, the database, HTTP, S3 and log-forwarding destinations accept both settings
+   together; the trace exporter and LDAP reject the combination. Callers pass `insecure` and `ca_bundle` to the TLS registry and nothing else:
    `force_verify` means "this call must verify whatever the settings say" — the per-request `verify=True`
    override in `HttpxAdapter.verify_tls` — and passing it because a bundle happens to be configured would
    invert this rule.
@@ -44,9 +44,9 @@ reaching public services.
 | Neo4j | `database.tls_ca_file` | `database/__init__.py` (`TrustCustomCAs`) |
 | Cache (Redis, NATS) | `cache.tls_ca_file` | `services/adapters/cache/`, and `workflows/initialization.py::build_cache_connection_string` for the Redis URL handed to Prefect |
 | Broker (RabbitMQ, NATS) | `broker.tls_ca_file` | `services/adapters/message_bus/` |
-| S3 object storage | `storage.s3.tls_ca_file` (alias `AWS_CA_BUNDLE`) | `storage.py::InfrahubS3ObjectStorage` passes `verify=` to boto3; inherits the global bundle only when `use_ssl` is on |
+| S3 object storage | `storage.s3.tls_ca_file` (alias `AWS_CA_BUNDLE`), `storage.s3.tls_insecure` (dumped as `AWS_S3_TLS_INSECURE`) | `storage.py::InfrahubS3ObjectStorage` passes `verify=` to boto3, `False` when insecure; inherits the global bundle only when `use_ssl` is on |
 | OTLP trace exporter | `trace.tls_ca_bundle` | `trace.py`; inherits the global bundle only when `TraceSettings.uses_tls` |
-| Log forwarding | `tls_ca_bundle` per destination | Infrahub Enterprise; this repo only defines the settings |
+| Log forwarding | `tls_ca_bundle`, `tls_insecure` per destination | Infrahub Enterprise; this repo only defines the settings |
 | LDAP | `ldap.tls_ca_bundle` | Infrahub Enterprise; this repo only defines the settings |
 
 ## Traps
@@ -68,8 +68,11 @@ reaching public services.
 - **gRPC trace exporter.** Passing a CA bundle to the gRPC exporter switches it from plaintext to TLS,
   so the global bundle is only copied into `trace` when the exporter connection is already encrypted.
 - **Plaintext S3 endpoint.** boto3 ignores `verify=` when `use_ssl` is off, so `S3StorageSettings` rejects an
-  explicit `tls_ca_file` with `use_ssl=false`, and the global bundle is only copied into `storage.s3` when
-  `use_ssl` is on.
+  explicit `tls_ca_file` or `tls_insecure` with `use_ssl=false`, and the global bundle is only copied into
+  `storage.s3` when `use_ssl` is on.
+- **S3 settings reach the driver by alias.** `InfrahubObjectStorage` dumps `S3StorageSettings` with
+  `by_alias=True` and `InfrahubS3ObjectStorage` only keeps keys it has a class attribute for, so a new S3
+  field needs an `alias` matching an attribute there or it silently never reaches boto3.
 - **`force_verify=bool(ca_bundle)`.** Some HTTP paths build the context with `force_verify` derived from
   the bundle, which re-enables verification despite `tls_insecure`. The fill-in skips insecure
   components so a global bundle never changes what an insecure component does.
