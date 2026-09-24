@@ -126,6 +126,9 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
     variant.revisions.find((r) => r.rev === rev) ?? (variant.revisions.at(-1) as Revision);
   const other = compareWith ? (variant.revisions.find((r) => r.rev === compareWith) ?? null) : null;
   const stale = current.rev !== latest;
+  // Local fix: compare against something other than what is on screen. On the latest revision
+  // that is the previous one; with a single revision there is nothing to compare, so null.
+  const compareTarget = current.rev !== latest ? latest : current.rev > 1 ? current.rev - 1 : null;
   const scope = `${slug}:${variant.id}:rev${current.rev}`;
 
   /** Only what this direction actually reads. A variant key shadows a shared one. */
@@ -170,11 +173,11 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
       if (e.key.toLowerCase() === "h") setOpen((o) => !o);
       if (e.key.toLowerCase() === "k") setKnobsOpen((k) => !k);
       if (e.key.toLowerCase() === "a") setArmed((a) => !a);
-      if (e.key.toLowerCase() === "c") setCompareWith((c) => (c === null ? latest : null));
+      if (e.key.toLowerCase() === "c") setCompareWith((c) => (c === null ? compareTarget : null));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [latest]);
+  }, [latest, compareTarget]);
 
   const pickVariant = (id: string) => {
     const v = variants.find((x) => x.id === id);
@@ -195,6 +198,9 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
       .join("\n");
     return [
       `## design-jam feedback — ${slug} · ${variant.label} · rev ${current.rev}`,
+      // The link is what makes a pasted note actionable by someone else: it reopens the
+      // exact direction, revision and knob values the note was written against.
+      `\n${window.location.href}`,
       knobs.length ? `\n### Knobs\n${knobLines}` : "",
       `\n### Notes\n${notesToMarkdown(notes) || "_No notes._"}`,
     ].join("\n");
@@ -252,10 +258,29 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
     flash(`✓ Sent — written to ${landed}`);
   };
 
-  const pane = (r: Revision, tag: string | null, annotate: boolean) => (
+  /**
+   * `role` is null when there is nothing to compare against. In compare mode both panes
+   * are labelled, because two near-identical screens side by side are unreadable without
+   * knowing which is which — and only one of them takes notes, which the user cannot
+   * guess from looking.
+   */
+  const pane = (r: Revision, role: "primary" | "reference" | null) => (
     <section className="djh-pane">
-      {tag && <header className="djh-pane-tag">{tag}</header>}
-      {annotate ? (
+      {role && (
+        <header
+          className={role === "reference" ? "djh-pane-tag djh-pane-tag--ref" : "djh-pane-tag"}
+        >
+          <span className="djh-pane-rev">rev {r.rev}</span>
+          {r.rev === latest && <span className="djh-pane-chip">latest</span>}
+          <span className="djh-pane-note" title={r.note}>
+            {r.note}
+          </span>
+          <span className="djh-pane-role">
+            {role === "primary" ? "notes land here" : "reference only"}
+          </span>
+        </header>
+      )}
+      {role !== "reference" ? (
         <Annotations
           scope={scope}
           refreshKey={sentTick}
@@ -302,8 +327,8 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
 
       <div className="djh-root" style={frame}>
         <div className={other ? "djh-stage djh-stage--split" : "djh-stage"}>
-          {pane(current, other ? `rev ${current.rev}` : null, true)}
-          {other && pane(other, `rev ${other.rev}`, false)}
+          {pane(current, other ? "primary" : null)}
+          {other && pane(other, "reference")}
         </div>
 
         <div className="djh-dock">
@@ -436,9 +461,41 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
                     ›
                   </button>
                 </div>
-                <p className="djh-note" title={current.date}>
-                  {current.note}
-                </p>
+                {other ? (
+                  <div className="djh-row">
+                    <span className="djh-vs">compared with</span>
+                    <select
+                      className="djh-select"
+                      aria-label="Revision to compare against"
+                      value={other.rev}
+                      onChange={(e) => setCompareWith(Number(e.target.value))}
+                    >
+                      {variant.revisions.map((r) => (
+                        <option key={r.rev} value={r.rev} disabled={r.rev === current.rev}>
+                          rev {r.rev}
+                          {r.rev === latest ? " (latest)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="djh-icon"
+                      aria-label="Swap the two sides"
+                      title="Swap sides"
+                      onClick={() => {
+                        const a = current.rev;
+                        setRev(other.rev);
+                        setCompareWith(a);
+                      }}
+                    >
+                      ⇄
+                    </button>
+                  </div>
+                ) : (
+                  <p className="djh-note" title={current.date}>
+                    {current.note}
+                  </p>
+                )}
               </section>
 
               <section className="djh-zone">
@@ -458,7 +515,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
                     type="button"
                     aria-pressed={Boolean(other)}
                     className={other ? "djh-btn djh-btn--on" : "djh-btn"}
-                    onClick={() => setCompareWith(other ? null : latest)}
+                    onClick={() => setCompareWith(other ? null : compareTarget)}
                   >
                     Compare
                   </button>
@@ -607,12 +664,40 @@ const css = `
   min-width: 0; min-height: 0;
   overflow: auto; overscroll-behavior: contain;
 }
+/* Two near-identical screens side by side are unreadable without a label on each: which
+   revision, whether it is the latest, and which one takes the notes. */
 .djh-pane-tag {
   position: sticky; top: 0; z-index: 30;
-  padding: 4px 12px;
-  font: 600 11px/1.4 ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase;
-  color: #fff; background: #1f2937;
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 12px;
+  font: 600 11px/1.4 system-ui, sans-serif;
+  color: #fff; background: #3730a3;
 }
+.djh-pane-tag--ref { background: #3f3f46; }
+.djh-pane-rev { font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.djh-pane-chip {
+  padding: 1px 6px; border-radius: 999px;
+  font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: #1e1b4b; background: #c7d2fe;
+}
+.djh-pane-tag--ref .djh-pane-chip { color: #27272a; background: #d4d4d8; }
+.djh-pane-note {
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-weight: 400; opacity: .78;
+}
+.djh-pane-role {
+  flex: none;
+  font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  opacity: .7;
+}
+.djh-vs { color: var(--dim); }
+.djh-select {
+  font: inherit; cursor: pointer;
+  min-height: 26px; padding: 3px 8px; border-radius: 6px;
+  color: var(--txt); background: rgba(255,255,255,.07); border: none;
+}
+.djh-select:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 /*
  * The tools float over the design rather than sitting in its layout: the design is the
  * thing being judged, so it gets the whole frame, and the panel is visibly an instrument
