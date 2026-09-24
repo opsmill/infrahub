@@ -58,6 +58,11 @@ REBASE_DEVICE_INSTANCES = (21, 22, 23, 24)
 # the device name, which is the human-friendly id.
 OWNER_UPDATE_DEVICE_INSTANCES = (31, 32)
 
+# This test counts flow runs, so it needs the queue quiet before and after its own change. It runs
+# last, behind the merge and rebase cases, and the owner update itself takes two flows: one to
+# resolve the targets and one to recompute. Every wait it makes gets the same wider budget.
+OWNER_UPDATE_WAIT_SECONDS = PREFECT_EVENT_WAIT_SECONDS * 3
+
 # The same false spellings Pydantic accepts for the setting the stack is started with.
 FALSE_VALUES = {"0", "off", "f", "false", "n", "no"}
 
@@ -168,10 +173,15 @@ async def device_names(client: InfrahubClient, device_ids: list[str], *, branch:
 
 
 async def wait_for_device_names(
-    client: InfrahubClient, device_ids: list[str], expected: list[str], *, branch: str | None = None
+    client: InfrahubClient,
+    device_ids: list[str],
+    expected: list[str],
+    *,
+    branch: str | None = None,
+    seconds: int = PREFECT_EVENT_WAIT_SECONDS,
 ) -> list[str]:
     names: list[str] = []
-    deadline = time.monotonic() + PREFECT_EVENT_WAIT_SECONDS
+    deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
         await sleep(1)
         names = await device_names(client, device_ids, branch=branch)
@@ -675,7 +685,9 @@ class TestComputedAttributes(TestInfrahubDockerClient):
             client, site=site, instance=first_instance, expected=f"swe-sth-router-{first_instance}"
         )
 
-        assert await wait_until_tasks_settle(client), "the queue never drained, so the baseline count is not a baseline"
+        assert await wait_until_tasks_settle(client, seconds=OWNER_UPDATE_WAIT_SECONDS), (
+            "the queue never drained, so the baseline count is not a baseline"
+        )
         runs_before = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW)
 
         device = await client.get(kind=DEVICE_KIND, id=device_id)
@@ -683,9 +695,13 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         await device.save()
 
         expected = [f"swe-sth-router-{second_instance}"]
-        assert await wait_for_device_names(client, [device_id], expected) == expected
+        assert await wait_for_device_names(client, [device_id], expected, seconds=OWNER_UPDATE_WAIT_SECONDS) == expected
 
-        await wait_for_transform_runs(client, flow_name=DEVICE_NAME_FLOW, at_least=runs_before + 1)
-        assert await wait_until_tasks_settle(client), "the queue never drained, so the count is premature"
+        await wait_for_transform_runs(
+            client, flow_name=DEVICE_NAME_FLOW, at_least=runs_before + 1, seconds=OWNER_UPDATE_WAIT_SECONDS
+        )
+        assert await wait_until_tasks_settle(client, seconds=OWNER_UPDATE_WAIT_SECONDS), (
+            "the queue never drained, so the count is premature"
+        )
 
         assert await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW) - runs_before == 1
