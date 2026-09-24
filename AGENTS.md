@@ -135,12 +135,12 @@ checkout.
 
 ## Coding Standards
 
-- Backend: `dev/guidelines/backend/python.md` (load before writing backend Python — imports, data structures), `dev/guidelines/backend/typing.md` (load when a type checker flags your change or when narrowing a type), `dev/guidelines/backend/exceptions.md` (load when writing a `try`/`except`), `dev/guidelines/backend/testing.md` (load before writing or changing backend tests), `dev/guidelines/backend/component-design.md` (load before adding a backend class or reshaping responsibilities) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
+- Backend: `dev/guidelines/backend/python.md` (load before writing or reviewing backend Python — imports, data structures), `dev/guidelines/backend/typing.md` (load when a type checker flags your change, or when you narrow a type or review code that does), `dev/guidelines/backend/exceptions.md` (load when writing or reviewing a `try`/`except`), `dev/guidelines/backend/testing.md` (load before writing, changing or reviewing backend tests), `dev/guidelines/backend/component-design.md` (load before adding a backend class or reshaping responsibilities, or reviewing a change that does) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
 - Frontend: `frontend/app/AGENTS.md`
-- Docstrings and comments: `dev/guidelines/code-doc-style.md` — load before writing a docstring or comment
+- Docstrings and comments: `dev/guidelines/code-doc-style.md` — load before writing or reviewing a docstring or comment
 - Git workflow: `dev/guidelines/git-workflow.md`
 - Markdown formatting: `dev/guidelines/markdown.md`
-- Internal docs (`dev/`, the `AGENTS.md` files, `.agents/`): `dev/guidelines/documentation.md` — load *Writing Style → For Internal Docs* and the *Don't* list before writing or editing one
+- Internal docs (`dev/`, the `AGENTS.md` files, `.agents/`): `dev/guidelines/documentation.md` — load *Writing Style → For Internal Docs* and the *Don't* list before writing, editing or reviewing one
 
 ## Generated Files (Do Not Edit)
 
@@ -166,7 +166,7 @@ CI validates that all generated files are committed — the `validate-generated-
 
 ### Always Do
 
-- Before diagnosing _or_ modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
+- Before tracking down a bug, reviewing a change or modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
 - Add a towncrier changelog fragment for any user-visible change, UI styling included (use the `creating-changelog-entries` skill). `housekeeping` is not a catch-all: internal maintenance gets a fragment only when a user could still notice the change (the skill draws the boundary on user visibility) — agent-doc, CI-config, and test-only tweaks are the typical cases a user never notices, so they get none

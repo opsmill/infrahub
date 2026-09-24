@@ -30,8 +30,8 @@ uv run invoke backend.generate         # Regenerate schemas/protocols
 
 ## Coding Standards
 
-See `dev/guidelines/backend/python.md` for detailed coding standards — load it before writing
-backend Python, including:
+See `dev/guidelines/backend/python.md` for detailed coding standards — load it before writing or
+reviewing backend Python, including:
 
 - Async-first patterns
 - Imports
@@ -41,13 +41,14 @@ backend Python, including:
 - Query patterns
 
 Typing lives in `dev/guidelines/backend/typing.md` — load it when a type checker flags your change,
-when narrowing a union or an optional, or when clearing a `pyproject.toml` suppression.
+when narrowing a union or an optional or reviewing code that does, or when clearing a
+`pyproject.toml` suppression.
 
-Exception handling lives in `dev/guidelines/backend/exceptions.md` — load it when writing a
-`try`/`except` or suppressing ruff's blind-except rule (catch the narrowest types the call path
-actually raises).
+Exception handling lives in `dev/guidelines/backend/exceptions.md` — load it when writing or
+reviewing a `try`/`except` or suppressing ruff's blind-except rule (catch the narrowest types the
+call path actually raises).
 
-When planning or implementing a backend feature, also walk
+When planning, implementing or reviewing a backend feature, also walk
 `dev/guidelines/backend/checklist.md` — migrations, query efficiency (set-based, no N+1),
 permissions, error handling.
 
@@ -97,11 +98,11 @@ a test that swaps in an adapter.
 
 ### Guidelines
 
-- `dev/guidelines/backend/python.md` - Python coding standards — load before writing backend Python (imports, data structures, docstrings)
-- `dev/guidelines/backend/typing.md` - Typing — load when a checker flags your change, when narrowing a union, or when clearing a mypy/ty suppression
-- `dev/guidelines/backend/exceptions.md` - Exception handling — load when adding or changing a `try`/`except`, or when ruff flags a blind except
-- `dev/guidelines/backend/asgi-middleware.md` - ASGI middleware — load when adding or changing middleware in `server.py`
-- `dev/guidelines/backend/checklist.md` - feature checklist — walk when planning or implementing a backend feature (migrations, query efficiency, permissions)
+- `dev/guidelines/backend/python.md` - Python coding standards — load before writing or reviewing backend Python (imports, data structures, docstrings)
+- `dev/guidelines/backend/typing.md` - Typing — load when a checker flags your change, when narrowing a union or reviewing code that does, or when clearing a mypy/ty suppression
+- `dev/guidelines/backend/exceptions.md` - Exception handling — load when adding, changing or reviewing a `try`/`except`, or when ruff flags a blind except
+- `dev/guidelines/backend/asgi-middleware.md` - ASGI middleware — load when adding, changing or reviewing middleware in `server.py`
+- `dev/guidelines/backend/checklist.md` - feature checklist — walk when planning, implementing or reviewing a backend feature (migrations, query efficiency, permissions)
 - Use the `creating-changelog-entries` skill - Changelog fragment creation
 
 ### Knowledge (How the system works)
