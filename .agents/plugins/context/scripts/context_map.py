@@ -27,8 +27,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from config import glob_to_regex
-from track_reads import find_mention, load_records, preview, read_text, rule_patterns
+from config import glob_to_regex, rule_patterns
+from track_reads import find_mention, load_records, preview, read_text, skips_project_instructions
 
 ICONS = {"read": "📄", "rule": "📏", "claude-md": "📘", "import": "📘"}
 CLASS_DEFS = {
@@ -309,9 +309,10 @@ class Diagram:
         agent = next((a for a in self.agents if f"A_{mermaid_id(a.key)}" == group), None)
         prompt = next((p["text"] for p in self.prompts if f"P_{p['id']}" == group), "")
         brief = agent.brief if agent else prompt
-        if brief and (find_mention(brief, Path(), path) or f"/{path}" in brief):
+        if brief and (find_mention(brief, Path(), path) or str(self.project / path) in brief):
             return "brief names it" if agent else "prompt names it"
-        startup = [p for p in record["parents"] if p in self.startup]
+        bare = agent is not None and skips_project_instructions(self.project, agent.agent_type)
+        startup = [] if bare else [p for p in record["parents"] if p in self.startup]
         earlier = [p for p in in_context if self.turns is None or self.in_hand_before(p, record, same_prompt=False)]
         sources = earlier or startup
         if not sources:

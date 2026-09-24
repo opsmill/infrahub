@@ -33,7 +33,7 @@ import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from config import glob_to_regex, load_layout
+from config import frontmatter_lists, glob_to_regex, load_layout, rule_patterns
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -51,6 +51,8 @@ AGENTS_MD_PLUGIN = "agents-md@builtin"
 INSTRUCTION_FILES = ("claude-md-or-agents-md", "claude-md-and-agents-md", "claude-md", "managed-only")
 DEFAULT_INSTRUCTION_FILES = "claude-md-or-agents-md"
 CLAUDE_MD_FILES = ("CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md")
+# Built-in subagent types that start without the startup instruction files; nested ones and rules still load on a Read.
+SKIPS_PROJECT_INSTRUCTIONS = {"Explore", "Plan"}
 
 
 def now() -> str:
@@ -81,25 +83,6 @@ def load_records(path: Path) -> list[dict]:
     return [json.loads(line) for line in read_text(path).splitlines() if line.strip()]
 
 
-def rule_patterns(text: str) -> list[str]:
-    """Return a rule's `paths:` globs; an empty list means the rule loads at startup."""
-    if not text.startswith("---\n"):
-        return []
-    frontmatter = text[4 : text.find("\n---", 4)]
-    patterns: list[str] = []
-    in_paths = False
-    for line in frontmatter.splitlines():
-        if inline := re.match(r"paths:\s*[\"']?([^\"'\s]+)[\"']?\s*$", line):
-            patterns.append(inline.group(1))
-        elif re.match(r"paths:\s*$", line):
-            in_paths = True
-        elif in_paths and (item := re.match(r"\s*-\s*[\"']?(.*?)[\"']?\s*$", line)):
-            patterns.append(item.group(1))
-        else:
-            in_paths = False
-    return patterns
-
-
 def instruction_files() -> str:
     """Which instruction files Claude Code reads for this user: the agents-md setting, else its default."""
     settings_dir = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
@@ -124,6 +107,28 @@ def reads_agents_md(project: Path, mode: str) -> bool:
     if mode == "claude-md-and-agents-md":
         return True
     return mode == DEFAULT_INSTRUCTION_FILES and not any(has_claude_md(d) for d in (project, *project.parents))
+
+
+def skips_project_instructions(project: Path, agent_type: str | None) -> bool:
+    """Whether a subagent type starts without the startup instruction files: Explore, Plan, or omitClaudeMd."""
+    if not agent_type:
+        return False
+    if agent_type in SKIPS_PROJECT_INSTRUCTIONS:
+        return True
+    user_agents = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "agents"
+    for folder in (project / ".claude" / "agents", user_agents):
+        definition = folder / f"{agent_type}.md"
+        if definition.is_file():
+            return frontmatter_lists(read_text(definition), strict=False).get("omitClaudeMd") == ["true"]
+    return False
+
+
+def agent_type_of(agent: str | None, records: list[dict]) -> str | None:
+    link = next((r for r in records if agent and r["kind"] == "agent-link" and r["agent_id"] == agent), None)
+    if link is None:
+        return None
+    call = next((r for r in records if link["call"] and r.get("id") == link["call"]), {})
+    return link.get("agent_type") or call.get("subagent_type")
 
 
 def already_loaded(project: Path, rel: str, loaded: set[str]) -> bool:
@@ -215,6 +220,14 @@ def next_id(records: list[dict], kind: str, prefix: str) -> str:
     return f"{prefix}{sum(1 for r in records if r['kind'] == kind) + 1}"
 
 
+def prompt_text(prompt: str) -> str:
+    """The prompt as the log shows it; a background subagent's result also arrives as a prompt."""
+    if not prompt.lstrip().startswith("<task-notification>"):
+        return prompt
+    summary = re.search(r"<summary>(.*?)</summary>", prompt, re.DOTALL)
+    return "(subagent result) " + (summary.group(1).strip() if summary else "a background task finished")
+
+
 def prompt_record(event: dict, records: list[dict], text: str) -> dict:
     return {"kind": "prompt", "id": next_id(records, "prompt", "p"), "ts": now(),
             "prompt_id": event.get("prompt_id"), "text": text}  # fmt: skip
@@ -228,12 +241,30 @@ def missing_prompt(event: dict, records: list[dict]) -> list[dict]:
     return [prompt_record(event, records, "(prompt not recorded)")]
 
 
-def link_agent(records: list[dict], agent_id: str, agent_type: str | None) -> dict:
-    """Tie a subagent's id to the Agent call that started it, which the hook input does not name."""
+def subagent_tool_use_id(event: dict, agent_id: str) -> str | None:
+    """The id of the Agent call that started a subagent, from the metadata Claude Code writes beside its transcript."""
+    transcript = event.get("transcript_path")
+    if not transcript:
+        return None
+    for folder in (Path(transcript).with_suffix("") / "subagents", Path(transcript).parent):
+        meta = folder / f"agent-{agent_id}.meta.json"
+        if meta.is_file():
+            try:
+                return json.loads(read_text(meta)).get("toolUseId")
+            except json.JSONDecodeError:
+                return None
+    return None
+
+
+def link_agent(records: list[dict], agent_id: str, agent_type: str | None, tool_use_id: str | None = None) -> dict:
+    """Tie a subagent's id to the Agent call that started it: exactly when its metadata names it, else by type."""
     linked = {r["call"] for r in records if r["kind"] == "agent-link"}
     unlinked = [r for r in records if r["kind"] == "agent" and r["id"] not in linked]
+    exact = [r for r in unlinked if tool_use_id and r.get("tool_use_id") == tool_use_id]
     same_type = [r for r in unlinked if agent_type and r["subagent_type"] == agent_type]
-    if same_type:
+    if exact:
+        call, how = exact[0], "tool-use-id"
+    elif same_type:
         call, how = same_type[0], "type-match"
     elif unlinked:
         call, how = unlinked[0], "oldest-unlinked"
@@ -246,7 +277,7 @@ def link_agent(records: list[dict], agent_id: str, agent_type: str | None) -> di
 def missing_agent_link(event: dict, records: list[dict]) -> list[dict]:
     agent_id = event.get("agent_id")
     if agent_id and not any(r["kind"] == "agent-link" and r["agent_id"] == agent_id for r in records):
-        return [link_agent(records, agent_id, event.get("agent_type"))]
+        return [link_agent(records, agent_id, event.get("agent_type"), subagent_tool_use_id(event, agent_id))]
     return []
 
 
@@ -286,8 +317,13 @@ def on_read(event: dict, project: Path, records: list[dict]) -> list[dict]:
     context = current_context(event, records)
     agent = event.get("agent_id")
     about = {"agent": agent, "tool_use_id": event.get("tool_use_id")}
-    # Claude Code loads a rule or nested CLAUDE.md once per context, and a subagent is its own context.
-    loaded = {r["path"] for r in records if r["kind"] == "doc" and (r["via"] == "startup" or r.get("agent") == agent)}
+    bare = skips_project_instructions(project, agent_type_of(agent, records) or event.get("agent_type"))
+    # Claude Code loads a rule or nested instruction file once per context, and a subagent is its own context.
+    in_context = [
+        r for r in records
+        if r["kind"] == "doc" and ((r["via"] == "startup" and not bare) or (r["via"] != "startup" and r.get("agent") == agent))
+    ]  # fmt: skip
+    loaded = {r["path"] for r in in_context}
     new: list[dict] = []
 
     def add(entry: dict) -> None:
@@ -300,7 +336,7 @@ def on_read(event: dict, project: Path, records: list[dict]) -> list[dict]:
             1 for r in records if r["kind"] == "doc" and r["via"] == "read" and r["path"] == read_rel
             and r.get("agent") == agent
         )  # fmt: skip
-        candidates = list(dict.fromkeys(r["path"] for r in records if r["kind"] == "doc" and r["path"] != read_rel))
+        candidates = list(dict.fromkeys(r["path"] for r in in_context if r["path"] != read_rel))
         parents = [path for path in candidates if mentions(project, path, read_rel)]
         add(doc(read_rel, "read", "referenced" if parents else "none", parents, context,
                 lines=line_range(tool_input), repeat=repeat, **about))  # fmt: skip
@@ -377,7 +413,7 @@ def summary(records: list[dict]) -> list[str]:
     docs = [r for r in records if r["kind"] == "doc" and r["via"] != "startup"]
     if not docs:
         return []
-    unique = len({(r.get("agent"), r["path"]) for r in docs})
+    unique = len({r["path"] for r in docs})
     startup = ", ".join(r["path"] for r in records if r["kind"] == "doc" and r["via"] == "startup")
     lines, _ = render([r for r in records if is_logged(r)], records, [])
     return [f"── docs read this session ({unique} files, {len(docs)} loads) ──", f"startup: {startup}", *lines]
@@ -452,7 +488,7 @@ def track(event: dict, directory: Path) -> None:
             start_log(log_path, project, session_id)
 
         if hook == "UserPromptSubmit":
-            new.append(prompt_record(event, records + new, event.get("prompt", "")))
+            new.append(prompt_record(event, records + new, prompt_text(event.get("prompt", ""))))
         else:
             new += missing_prompt(event, records + new)
             new += missing_agent_link(event, records + new)

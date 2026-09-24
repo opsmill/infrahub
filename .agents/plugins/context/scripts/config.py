@@ -28,8 +28,7 @@ DEFAULTS: dict[str, tuple[str, ...]] = {
 }
 
 
-def glob_to_regex(pattern: str) -> re.Pattern[str]:
-    """Translate a rule's `paths:` glob, where `**` spans directories and `*` does not."""
+def glob_source(pattern: str) -> str:
     parts = []
     i = 0
     while i < len(pattern):
@@ -45,15 +44,29 @@ def glob_to_regex(pattern: str) -> re.Pattern[str]:
         elif pattern[i] == "?":
             parts.append("[^/]")
             i += 1
+        elif pattern[i] == "{" and (close := pattern.find("}", i)) != -1:
+            options = pattern[i + 1 : close].split(",")
+            parts.append("(?:" + "|".join(glob_source(option) for option in options) + ")")
+            i = close + 1
         else:
             parts.append(re.escape(pattern[i]))
             i += 1
-    return re.compile("".join(parts) + r"\Z")
+    return "".join(parts)
+
+
+def glob_to_regex(pattern: str) -> re.Pattern[str]:
+    """Translate a glob where `**` spans directories, `*` does not, and `{a,b}` lists alternatives."""
+    return re.compile(glob_source(pattern) + r"\Z")
 
 
 @cache
 def compiled(pattern: str) -> re.Pattern[str]:
     return glob_to_regex(pattern)
+
+
+def is_instruction_file(rel: str) -> bool:
+    """CLAUDE.md and AGENTS.md files are guidance in every repository, whatever the config lists."""
+    return rel.rsplit("/", 1)[-1] in {"CLAUDE.md", "AGENTS.md"}
 
 
 def matches(rel: str, patterns: tuple[str, ...]) -> bool:
@@ -64,11 +77,14 @@ def unquote(value: str) -> str:
     return value.strip().strip("\"'")
 
 
-def frontmatter_lists(text: str) -> dict[str, list[str]]:
+def frontmatter_lists(text: str, *, strict: bool = True) -> dict[str, list[str]]:
     """Top-level keys of a leading YAML frontmatter block, each as a list of strings; a scalar is one item.
 
+    Without strict, lines it cannot read are skipped, for frontmatter that holds richer YAML too.
+
     Raises:
-        ValueError: On a line that is neither `key: value`, `key: [a, b]`, `key:` nor a `- item` under a key.
+        ValueError: In strict mode, on a line that is neither `key: value`, `key: [a, b]`, `key:` nor a
+            `- item` under a key.
 
     """
     if not text.startswith("---\n"):
@@ -76,24 +92,36 @@ def frontmatter_lists(text: str) -> dict[str, list[str]]:
     end = text.find("\n---", 4)
     values: dict[str, list[str]] = {}
     key = None
-    for line in text[4 : end if end != -1 else 4].splitlines():
+    for raw in text[4 : end if end != -1 else 4].splitlines():
+        # A YAML comment starts at a # after whitespace, outside quotes.
+        line = re.sub(r"\s+#[^\"']*$", "", raw)
         if not line.strip() or line.lstrip().startswith("#"):
             continue
         if line[0].isspace():
             item = re.match(r"\s*-\s*(.+)$", line)
             if key is None or item is None:
-                raise ValueError(f"cannot read frontmatter line {line!r}")
+                if strict:
+                    raise ValueError(f"cannot read frontmatter line {raw!r}")
+                continue
             values[key].append(unquote(item.group(1)))
             continue
         name, separator, rest = line.partition(":")
         if not separator:
-            raise ValueError(f"cannot read frontmatter line {line!r}")
+            if strict:
+                raise ValueError(f"cannot read frontmatter line {raw!r}")
+            key = None
+            continue
         key, rest = name.strip(), rest.strip()
         if rest.startswith("[") and rest.endswith("]"):
             values[key] = [unquote(value) for value in rest[1:-1].split(",") if value.strip()]
         else:
             values[key] = [unquote(rest)] if rest else []
     return values
+
+
+def rule_patterns(text: str) -> list[str]:
+    """Return a rule's `paths:` globs; an empty list means the rule loads at startup."""
+    return frontmatter_lists(text, strict=False).get("paths", [])
 
 
 @dataclass(frozen=True)
@@ -114,13 +142,13 @@ class Layout:
     """The config files the values came from; empty when the defaults apply."""
 
     def is_logged(self, rel: str) -> bool:
-        return matches(rel, self.docs + self.also_logged + self.working_files)
+        return is_instruction_file(rel) or matches(rel, self.docs + self.also_logged + self.working_files)
 
     def is_working_file(self, rel: str) -> bool:
         return matches(rel, self.working_files)
 
     def is_doc(self, rel: str) -> bool:
-        return matches(rel, self.docs) and not self.is_working_file(rel)
+        return (is_instruction_file(rel) or matches(rel, self.docs)) and not self.is_working_file(rel)
 
     def describe(self) -> str:
         fields = " · ".join(f"{key.replace('_', ' ')}: {', '.join(getattr(self, key)) or 'none'}" for key in KEYS)

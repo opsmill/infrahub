@@ -15,7 +15,8 @@ from operator import attrgetter
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from config import Layout, load_layout
+from config import Layout, load_layout, rule_patterns
+from not_loaded import write_not_loaded
 from track_reads import startup_records
 
 if TYPE_CHECKING:
@@ -26,7 +27,7 @@ Row = dict[str, Any]
 HOME = Path.home()
 PROJECTS = HOME / ".claude" / "projects"
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
-TEXT_SUFFIXES = {".md", ".mdx", ".txt", ".yml", ".yaml", ".json", ".toml", ".py", ".sh", ".cfg", ".ini", ".j2", ".csv"}
+GUIDANCE_SUFFIXES = {".md", ".mdx", ".rst"}
 PRUNE = {
     "node_modules", ".git", ".venv", "venv", "__pycache__", ".mypy_cache", ".ruff_cache", ".pytest_cache", "dist",
     "build",
@@ -135,6 +136,8 @@ class Turn:
     ts: str
     prompt: str
     reply: str = ""
+    result: bool = False
+    """A background subagent's result arriving in the main agent, not something the user typed."""
 
 
 def prompt_turns(rows: list[Row]) -> list[Turn]:
@@ -148,6 +151,17 @@ def prompt_turns(rows: list[Row]) -> list[Turn]:
             ):
                 continue
             body = text_of(content).strip()
+            if (r.get("origin") or {}).get("kind") == "task-notification" or body.startswith("<task-notification>"):
+                summary = re.search(r"<summary>(.*?)</summary>", body, re.DOTALL)
+                label = summary.group(1).strip() if summary else "a background task finished"
+                turns.append(
+                    Turn(
+                        r.get("timestamp", ""),
+                        f"{label} ({len(body)} chars; not-loaded.md lists what it quoted)",
+                        result=True,
+                    )
+                )
+                continue
             if command := COMMAND.search(body):
                 body = f"{command.group(1)} {command.group(2)}".strip()
             elif not body or body.startswith(SKIP_PROMPT):
@@ -200,8 +214,8 @@ def write_summary(path: Path, session_id: str, agents: list[Agent], root: str, l
         f"Subagents: {len(agents) - 1}",
         f"Compactions of the main agent (UTC): {', '.join(compactions) or 'none'}",
         "",
-        "Built from the transcript, not written by a model: your prompts with the reply that followed, compaction "
-        "summaries, files changed and areas read.",
+        "Built from the transcript, not written by a model: your prompts with the reply that followed, background "
+        "subagent results as they arrived, compaction summaries, files changed and areas read.",
         "",
         "## Prompts and replies (main agent)",
         "",
@@ -209,7 +223,8 @@ def write_summary(path: Path, session_id: str, agents: list[Agent], root: str, l
     turns = prompt_turns(main)
     reply_chars = LONG_SESSION_REPLY_CHARS if len(turns) > LONG_SESSION_TURNS else REPLY_CHARS
     for turn in turns:
-        lines.append(f"- **{minute(turn.ts)}** you: {short(turn.prompt, PROMPT_CHARS)}")
+        who = "subagent result" if turn.result else "you"
+        lines.append(f"- **{minute(turn.ts)}** {who}: {short(turn.prompt, PROMPT_CHARS)}")
         if turn.reply:
             lines.append(f"  - agent: {short(turn.reply, reply_chars)}")
 
@@ -282,7 +297,7 @@ def load_list(docs_root: Path, layout: Layout) -> list[tuple[str, int]]:
     entries = []
     for path in walk(docs_root, skip=skip):
         rel = path.relative_to(docs_root).as_posix()
-        if rel in startup or not layout.is_doc(rel) or (path.suffix and path.suffix not in TEXT_SUFFIXES):
+        if rel in startup or not layout.is_doc(rel) or path.suffix not in GUIDANCE_SUFFIXES:
             continue
         if any(path.resolve().is_relative_to(directory) for directory in index_only):
             continue
@@ -304,12 +319,9 @@ def rule_lines(docs_root: Path, seen: set[Path]) -> list[str]:
             if path.resolve() in seen:
                 continue
             seen.add(path.resolve())
-            fm, body = frontmatter(path.read_text(encoding="utf-8", errors="replace"))
-            globs = (
-                re.findall(r"^\s*-\s*['\"]?([^'\"\n]+)", fm.split("paths:", 1)[1], re.MULTILINE)
-                if "paths:" in fm
-                else []
-            )
+            text = path.read_text(encoding="utf-8", errors="replace")
+            _, body = frontmatter(text)
+            globs = rule_patterns(text)
             heading = next((x.lstrip("# ").strip() for x in body.splitlines() if x.startswith("#")), path.stem)
             first = next((x.strip() for x in body.splitlines() if x.strip() and not x.startswith("#")), "")
             scope = ("paths: " + ", ".join(globs)) if globs else "no paths: (loaded at every session start)"
@@ -413,6 +425,8 @@ def main() -> None:
     summary, index = out_dir / "summary.md", out_dir / "index.md"
     write_summary(summary, target, session.agents, session.root, layout)
     total, count = write_index(index, session.docs_root, layout)
+    not_loaded = out_dir / "not-loaded.md"
+    misses = write_not_loaded(not_loaded, session.transcript, session.docs_root, logs / "reads.jsonl", layout)
     offset = time.strftime("%z")
     report = [
         f"Audited session: {target}"
@@ -421,6 +435,7 @@ def main() -> None:
         f"{len(session.agents) - 1} subagents)",
         f"Load log: {log_status(logs / 'reads.log')}",
         f"Clocks: the load log stamps local time (UTC{offset[:3]}:{offset[3:]} on this machine now); the summary uses UTC",
+        f"Not loaded: {not_loaded} ({misses} items that applied to what a context worked on but never reached it)",
         f"Load list and index: {index} ({count} files to read, ≈{fmt(total)} tokens)",
         f"Layout: {layout.describe()}",
         f"Docs tree: {session.docs_root}"

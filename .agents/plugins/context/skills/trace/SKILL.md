@@ -11,8 +11,6 @@ metadata:
   author: OpsMill
 ---
 
-# Context trace
-
 !`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/context_trace.py ${CLAUDE_SESSION_ID} $ARGUMENTS`
 
-Reply with the output above exactly as printed, in one `text` code block, and nothing else. When its first line starts with `Last 200 of`, add one line after the block saying the full log is at the path that line names.
+Reply with the output above exactly as printed, from its first line to its last, in one code block opened with ```text, and nothing else. When its first line starts with `Last 200 of`, add one line after the block saying the full log is at the path that line names.
