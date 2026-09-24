@@ -98,6 +98,19 @@ def _build_fetch_options(fields: dict[str, Any], log_limit: int | None, log_offs
     )
 
 
+def validate_workflow_type_argument(workflow_type: list[WorkflowType] | None) -> None:
+    """An empty list is not the same request as an unset argument.
+
+    Coercing it to "unset" would turn "the client asked for no type" into "return everything".
+
+    Raises:
+        ValidationError: when the argument is present but empty.
+
+    """
+    if workflow_type is not None and not workflow_type:
+        raise ValidationError(input_value="workflow_type must not be an empty list")
+
+
 class Tasks(ObjectType):
     edges = List(NonNull(TaskNodes), required=True)
     count = Int(required=True)
@@ -118,10 +131,7 @@ class Tasks(ObjectType):
         log_limit: int | None = None,
         log_offset: int | None = None,
     ) -> dict[str, Any]:
-        # An empty list is not the same request as an unset argument: coercing it to "unset" would
-        # turn "the client asked for no type" into "return everything".
-        if workflow_type is not None and not workflow_type:
-            raise ValidationError(input_value="workflow_type must not be an empty list")
+        validate_workflow_type_argument(workflow_type=workflow_type)
 
         related_nodes = related_node__ids or []
         ids = ids or []

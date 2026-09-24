@@ -1253,7 +1253,7 @@ async def test_internal_run_resolves_by_id_with_its_full_detail(
 ) -> None:
     QUERY = """
     query TaskQuery($ids: [String]) {
-        InfrahubTask(ids: $ids, workflow_type: [INTERNAL]) {
+        InfrahubTask(ids: $ids) {
             count
             edges {
                 node {
@@ -1287,3 +1287,65 @@ async def test_internal_run_resolves_by_id_with_its_full_detail(
     assert node["created_at"]
     assert node["updated_at"]
     assert node["logs"] == {"edges": [], "count": 0}
+
+
+async def test_a_subflow_run_carrying_only_the_namespace_tag_resolves_by_id(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    prefect_client: PrefectClient,
+    delete_flow_runs: None,
+) -> None:
+    """A namespace-tagged run with no workflow-type tag is reachable from its own detail page.
+
+    A subflow called in process never passes through a deployment, so nothing stamps a
+    workflow-type tag on it: it starts untagged and is tagged at run time with the namespace plus
+    its branch and related nodes. A webhook delivery is that shape, and it is the detail page
+    operators open most often.
+    """
+    delivery = await prefect_client.create_flow_run(
+        flow=webhook_send,
+        name="webhook-send-in-process",
+        parameters={
+            "webhook_id": "17b3b2f0-89aa-4fdd-8beb-c1e5b0e5d661",
+            "webhook_kind": "CoreStandardWebhook",
+            "webhook_name": "component-test-webhook",
+            "payload": {"event_type": "branch.created"},
+        },
+        tags=[TAG_NAMESPACE],
+        state=State(type="COMPLETED"),
+    )
+    QUERY = """
+    query TaskQuery($ids: [String]) {
+        InfrahubTask(ids: $ids) {
+            count
+            edges {
+                node {
+                    id
+                    title
+                    workflow_type
+                    __typename
+                    ... on WebhookDeliveryTask {
+                        available_actions { action available }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await run_query(db=db, branch=default_branch, query=QUERY, variables={"ids": [str(delivery.id)]})
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["InfrahubTask"]["count"] == 1
+    node = result.data["InfrahubTask"]["edges"][0]["node"]
+    assert node["id"] == str(delivery.id)
+    assert node["title"] == "webhook-send-in-process"
+    assert node["__typename"] == "WebhookDeliveryTask"
+    # No deployment stamped a type on this run, so it reports none and is still reachable.
+    assert node["workflow_type"] is None
+    assert node["available_actions"] == [
+        {"action": "RETRY", "available": True},
+        {"action": "CANCEL", "available": False},
+    ]

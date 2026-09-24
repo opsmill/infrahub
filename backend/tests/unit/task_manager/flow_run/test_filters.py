@@ -64,6 +64,32 @@ class TestBuildFlowRunFilter:
         assert flow_run_filter.id is not None
         assert flow_run_filter.id.any_ == [UUID(id_a), UUID(id_b)]
 
+    def test_an_id_lookup_constrains_no_tag(self) -> None:
+        """Neither tag shape may be required of a run addressed by its own id.
+
+        A subflow run called in process carries the namespace tag and no workflow-type tag; a
+        deployment-triggered internal run carries the type tag and no namespace tag. Requiring
+        either shape would make one of them unresolvable from its own detail page.
+        """
+        flow_run_filter = FlowRunFilterBuilder().build_flow_run_filter(
+            criteria=FlowRunQueryCriteria(ids=["00000000-0000-0000-0000-000000000001"])
+        )
+
+        assert flow_run_filter.tags is not None
+        assert flow_run_filter.tags.all_ is None
+        assert flow_run_filter.tags.any_ is None
+
+    def test_an_id_lookup_still_honours_an_explicit_type_selection(self) -> None:
+        flow_run_filter = FlowRunFilterBuilder().build_flow_run_filter(
+            criteria=FlowRunQueryCriteria(
+                ids=["00000000-0000-0000-0000-000000000001"], workflow_types=[WorkflowType.INTERNAL]
+            )
+        )
+
+        assert flow_run_filter.tags is not None
+        assert flow_run_filter.tags.all_ is None
+        assert flow_run_filter.tags.any_ == ["infrahub.app/workflow-type/internal"]
+
     def test_invalid_id_raises_validation_error(self) -> None:
         with pytest.raises(ValidationError, match=r"^'not-a-uuid' is not a valid task id$"):
             FlowRunFilterBuilder().build_flow_run_filter(criteria=FlowRunQueryCriteria(ids=["not-a-uuid"]))
@@ -138,7 +164,6 @@ class TestBuildFlowRunFilter:
 
         assert flow_run_filter.tags is not None
         assert flow_run_filter.tags.all_ == [
-            TAG_NAMESPACE,
             "custom",
             "infrahub.app/branch/main",
             "infrahub.app/node/rel-1",
