@@ -12,7 +12,14 @@
  * § Iterating inside the prototype.
  */
 
-import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { Annotations, notesToMarkdown } from "./design-annotations";
 import { useNotesStore } from "./notes-store";
@@ -143,6 +150,47 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
   });
   const [drag, setDrag] = useState<{ dx: number; dy: number } | null>(null);
   const movedRef = useRef(false);
+  const dockRef = useRef<HTMLDivElement>(null);
+  /** Where the dock visually was at release, so the settle can start from the hand. */
+  const settleFrom = useRef<{ left: number; top: number } | null>(null);
+  const [settleTick, setSettleTick] = useState(0);
+
+  /**
+   * The settle is a FLIP: React has already moved the dock to its new corner (an instant
+   * change of fixed offsets — never animated, those are layout properties), so we measure
+   * where it landed, translate it back to where the hand let go, then transition that
+   * translate to zero. Transform only, so it runs on the compositor; a strong ease-out so
+   * it leaves the hand fast and brakes into the corner; duration scaled to the distance,
+   * capped where UI motion stops feeling fast. Interruptible: grabbing mid-settle sets an
+   * inline transform with the transition off, and the browser retargets from wherever
+   * the dock currently is instead of restarting.
+   */
+  useLayoutEffect(() => {
+    const el = dockRef.current;
+    const from = settleFrom.current;
+    settleFrom.current = null;
+    if (!el || !from) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const to = el.getBoundingClientRect();
+    const dx = from.left - to.left;
+    const dy = from.top - to.top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+
+    el.style.transition = "none";
+    el.style.transform = `translate(${dx}px, ${dy}px) scale(1.02)`;
+    const ms = Math.round(Math.min(320, Math.max(180, Math.hypot(dx, dy) * 0.22)));
+    const raf = requestAnimationFrame(() => {
+      el.style.transition = `transform ${ms}ms cubic-bezier(0.32, 0.72, 0, 1)`;
+      el.style.transform = "";
+    });
+    const done = () => {
+      el.style.transition = "";
+      el.removeEventListener("transitionend", done);
+    };
+    el.addEventListener("transitionend", done);
+    return () => cancelAnimationFrame(raf);
+  }, [settleTick]);
 
   useEffect(() => {
     try {
@@ -157,6 +205,9 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
     const start = { x: e.clientX, y: e.clientY };
     movedRef.current = false;
     e.currentTarget.setPointerCapture(e.pointerId);
+    // Grabbing mid-settle: drop the settle's inline transition so the drag follows the
+    // hand 1:1 from wherever the dock is right now.
+    if (dockRef.current) dockRef.current.style.transition = "none";
     const move = (ev: PointerEvent) => {
       const dx = ev.clientX - start.x;
       const dy = ev.clientY - start.y;
@@ -167,11 +218,19 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
-      setDrag(null);
-      if (!movedRef.current) return;
+      if (!movedRef.current) {
+        setDrag(null);
+        return;
+      }
+      // Measure before React moves anything: this rect includes the drag translate, so it
+      // is exactly where the hand let go.
+      const r = dockRef.current?.getBoundingClientRect();
+      if (r) settleFrom.current = { left: r.left, top: r.top };
       const right = ev.clientX > window.innerWidth / 2;
       const bottom = ev.clientY > window.innerHeight / 2;
+      setDrag(null);
       setCorner(`${bottom ? "b" : "t"}${right ? "r" : "l"}` as Corner);
+      setSettleTick((t) => t + 1);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
@@ -507,10 +566,15 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
       {/* Fixed to the viewport, a sibling of both the shell and the split, so the controls
           survive switching between single and compare views. */}
       <div
+        ref={dockRef}
         className={["djh-dock", `djh-dock--${corner}`, drag && "djh-dock--dragging"]
           .filter(Boolean)
           .join(" ")}
-        style={drag ? { transform: `translate(${drag.dx}px, ${drag.dy}px)` } : undefined}
+        // Lifted 2% while held: enough to read as "picked up", not enough to change what
+        // the controls look like. The settle animates it back down with the translate.
+        style={
+          drag ? { transform: `translate(${drag.dx}px, ${drag.dy}px) scale(1.02)` } : undefined
+        }
       >
         {open && knobsOpen && knobs.length > 0 && (
           <div className="djh-knobs">
@@ -983,8 +1047,27 @@ const css = `
 .djh-dock--tr { right: 16px; top: calc(16px + env(safe-area-inset-top, 0px)); flex-direction: column-reverse; }
 .djh-dock--tl { left: 16px; top: calc(16px + env(safe-area-inset-top, 0px)); flex-direction: column-reverse; }
 .djh-dock--bl .djh-fab, .djh-dock--tl .djh-fab { align-self: flex-start; }
-.djh-dock--dragging { opacity: .85; }
+/* Transform-only motion, promoted up front so the first frame of a drag never jitters.
+   While held there is deliberately no transition: the dock follows the hand 1:1. The
+   settle on release is applied inline by the FLIP effect; reduced-motion users get the
+   corner change with no travel at all. */
+.djh-dock { will-change: transform; transform-origin: center; }
+.djh-dock--dragging { transition: none !important; }
 .djh-dock--dragging * { pointer-events: none !important; }
+@media (prefers-reduced-motion: no-preference) {
+  /* The lift's shadow deepens by fading a second layer in, never by animating box-shadow. */
+  .djh-dock--dragging .djh-bar,
+  .djh-dock--dragging .djh-knobs,
+  .djh-dock--dragging .djh-fab { position: relative; }
+  .djh-bar::after, .djh-knobs::after, .djh-fab::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    box-shadow: 0 24px 48px -12px rgba(0,0,0,.6);
+    opacity: 0; transition: opacity 150ms ease-out;
+  }
+  .djh-dock--dragging .djh-bar::after,
+  .djh-dock--dragging .djh-knobs::after,
+  .djh-dock--dragging .djh-fab::after { opacity: 1; }
+}
 
 .djh-grip {
   display: flex; align-items: center; justify-content: center;
