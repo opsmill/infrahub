@@ -339,7 +339,11 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
     <figure className={role === "reference" ? "djh-side djh-side--ref" : "djh-side"}>
       <figcaption className="djh-pane-tag">
         <span className="djh-pane-rev">rev {r.rev}</span>
-        {r.rev === latest && <span className="djh-pane-chip">latest</span>}
+        {r.rev === latest ? (
+          <span className="djh-pane-chip">latest</span>
+        ) : (
+          <span className="djh-pane-chip djh-pane-chip--stale">not latest</span>
+        )}
         <span className="djh-pane-note" title={r.note}>
           {r.note}
         </span>
@@ -375,7 +379,9 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
         reviewed, so it has to clear the app's own sidebar and top bar. The layer is inert
         and only the pill takes clicks, so nothing behind it becomes unreachable.
       */}
-      {stale && (
+      {/* Not in compare mode: there the side headers already name each revision, and
+          looking at an old one is the point. The stale chip moves into the header. */}
+      {stale && !other && (
         <div className="djh-alert-layer">
           <div className="djh-alert" role="status">
             <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
@@ -800,6 +806,8 @@ const css = `
   color: #1e1b4b; background: #c7d2fe;
 }
 .djh-side--ref .djh-pane-chip { color: #27272a; background: #d4d4d8; }
+/* Same amber as the single-view pill, so "not latest" means one thing everywhere. */
+.djh-pane-chip--stale, .djh-side--ref .djh-pane-chip--stale { color: #7c2d12; background: #fed7aa; }
 .djh-pane-tag { position: static; flex: none; }
 .djh-pane-note {
   flex: 1 1 auto; min-width: 0;
