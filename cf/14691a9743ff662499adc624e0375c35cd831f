@@ -1,0 +1,55 @@
+.github/file-filters.yml
+  s_43d8e382eba497::t_adc933d13e565b 55-58
+.github/scripts/dependabot_autopilot/__init__.py
+  s_43d8e382eba497::t_5ae276f76af956 1
+.github/scripts/dependabot_autopilot/checks.py
+  s_43d8e382eba497::t_7561fbfe3a4bf1 1-72
+.github/scripts/dependabot_autopilot/codeowners.py
+  s_43d8e382eba497::t_0307239f8bec26 1-105
+.github/scripts/dependabot_autopilot/decision.py
+  s_43d8e382eba497::t_5c078b2a6944ef 1-201
+.github/scripts/dependabot_autopilot/lockfiles.py
+  s_43d8e382eba497::t_feaf9d6198fb93 1-108
+.github/scripts/dependabot_autopilot/ports.py
+  s_43d8e382eba497::t_780b09c5b69f0c 1-205
+.github/scripts/dependabot_autopilot/report.py
+  s_43d8e382eba497::t_f4f0e02f97651e 1-265
+.github/scripts/dependabot_autopilot/tests/conftest.py
+  s_43d8e382eba497::t_e45f34d06c7617 1-7
+.github/scripts/dependabot_autopilot/tests/fakes.py
+  s_43d8e382eba497::t_09c214673acec5 1-222
+.github/scripts/dependabot_autopilot/tests/fixtures/CODEOWNERS
+  s_43d8e382eba497::t_548810e22a1aea 1-13
+.github/scripts/dependabot_autopilot/tests/test_checks.py
+  s_43d8e382eba497::t_5e5fb8c39ecf41 1-181
+.github/scripts/dependabot_autopilot/tests/test_codeowners.py
+  s_43d8e382eba497::t_5bcdfff06e60bd 1-131
+.github/scripts/dependabot_autopilot/tests/test_decision.py
+  s_43d8e382eba497::t_8c41a7f028a7e5 1-454
+.github/scripts/dependabot_autopilot/tests/test_lockfiles.py
+  s_43d8e382eba497::t_45a8ea6868ff7b 1-241
+.github/scripts/dependabot_autopilot/tests/test_report.py
+  s_43d8e382eba497::t_6addfdd77843f8 1-260
+.github/workflows/ci.yml
+  s_43d8e382eba497::t_f9e60fc02c12fb 61,344-369,590
+pyproject.toml
+  s_43d8e382eba497::t_f2651b58f6a304 803-807
+.github/scripts/dependabot_autopilot/tests/test_fakes.py
+  s_43d8e382eba497::t_cf969d0a1797e5 1-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf14691a9743ff662499adc624e0375c35cd831f",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
