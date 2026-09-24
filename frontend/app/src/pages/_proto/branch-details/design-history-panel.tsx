@@ -12,7 +12,7 @@
  * § Iterating inside the prototype.
  */
 
-import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 
 import {
   Annotations,
@@ -125,6 +125,64 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
   const [notes, setNotes] = useState<Note[]>([]);
   const [sentTick, setSentTick] = useState(0);
   const [saved, setSaved] = useState("");
+
+  /**
+   * The dock snaps to a corner rather than sitting anywhere: a free-floating panel ends
+   * up half off-screen or over the one thing you wanted to see, and "which corner" is a
+   * single value that survives a reload. Per-viewer, so localStorage is the right home.
+   */
+  type Corner = "br" | "bl" | "tr" | "tl";
+  const [corner, setCorner] = useState<Corner>(() => {
+    try {
+      const saved = localStorage.getItem("design-jam:corner");
+      return saved === "bl" || saved === "tr" || saved === "tl" ? saved : "br";
+    } catch {
+      return "br";
+    }
+  });
+  const [drag, setDrag] = useState<{ dx: number; dy: number } | null>(null);
+  const movedRef = useRef(false);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("design-jam:corner", corner);
+    } catch {
+      /* fine — it just won't remember the corner */
+    }
+  }, [corner]);
+
+  const onGrip = (e: React.PointerEvent<HTMLElement>) => {
+    if (e.button !== 0) return;
+    const start = { x: e.clientX, y: e.clientY };
+    movedRef.current = false;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - start.x;
+      const dy = ev.clientY - start.y;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) movedRef.current = true;
+      if (movedRef.current) setDrag({ dx, dy });
+    };
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      setDrag(null);
+      if (!movedRef.current) return;
+      const right = ev.clientX > window.innerWidth / 2;
+      const bottom = ev.clientY > window.innerHeight / 2;
+      setCorner(`${bottom ? "b" : "t"}${right ? "r" : "l"}` as Corner);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+
+  /** Keyboard path for the same thing: pressing the grip walks the corners clockwise. */
+  const cycleCorner = () => {
+    if (movedRef.current) return;
+    const order: Corner[] = ["br", "bl", "tl", "tr"];
+    setCorner(order[(order.indexOf(corner) + 1) % order.length] as Corner);
+  };
 
   const variant = (variants.find((v) => v.id === variantId) ?? variants[0]) as Variant;
   const latest = latestOf(variant);
@@ -430,7 +488,12 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
 
       {/* Fixed to the viewport, a sibling of both the shell and the split, so the controls
           survive switching between single and compare views. */}
-      <div className="djh-dock">
+      <div
+        className={["djh-dock", `djh-dock--${corner}`, drag && "djh-dock--dragging"]
+          .filter(Boolean)
+          .join(" ")}
+        style={drag ? { transform: `translate(${drag.dx}px, ${drag.dy}px)` } : undefined}
+      >
         {open && knobsOpen && knobs.length > 0 && (
           <div className="djh-knobs">
             {knobs.map((k, i) => (
@@ -505,6 +568,22 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
 
         {open ? (
           <div className="djh-bar">
+            <button
+              type="button"
+              className="djh-grip"
+              aria-label="Move panel to another corner — drag it, or press to cycle"
+              title="Drag to another corner"
+              onPointerDown={onGrip}
+              onClick={cycleCorner}
+            >
+              <svg viewBox="0 0 20 6" width="20" height="6" aria-hidden="true">
+                <g fill="currentColor">
+                  <circle cx="3" cy="3" r="1.4" />
+                  <circle cx="10" cy="3" r="1.4" />
+                  <circle cx="17" cy="3" r="1.4" />
+                </g>
+              </svg>
+            </button>
             <section className="djh-zone">
               <span className="djh-zone-label">Prototype</span>
               <div className="djh-seg" role="group" aria-label="Prototype direction">
@@ -687,8 +766,11 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
           <button
             type="button"
             className="djh-fab"
-            aria-label={`Show design panel — ${variant.label}, revision ${current.rev}`}
-            onClick={() => setOpen(true)}
+            aria-label={`Show design panel — ${variant.label}, revision ${current.rev}. Drag to move.`}
+            onPointerDown={onGrip}
+            onClick={() => {
+              if (!movedRef.current) setOpen(true);
+            }}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
               <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -834,13 +916,33 @@ const css = `
 /* Anchored bottom-right at a fixed width, sections stacked. A full-width bar spanning the
    viewport competes with the design for the eye; a corner panel is read as a tool. */
 .djh-dock {
-  position: absolute; right: 16px; z-index: var(--djh-z-dock);
-  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  position: fixed; z-index: var(--djh-z-dock);
   width: 304px; max-width: calc(100% - 32px);
   display: flex; flex-direction: column; align-items: stretch; gap: 8px;
   pointer-events: none;
 }
 .djh-dock > * { pointer-events: auto; }
+/* Four corners, one class each. Top corners flip the column so the knobs drawer opens
+   toward the middle of the screen, never off its edge. */
+.djh-dock--br { right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+.djh-dock--bl { left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+.djh-dock--tr { right: 16px; top: calc(16px + env(safe-area-inset-top, 0px)); flex-direction: column-reverse; }
+.djh-dock--tl { left: 16px; top: calc(16px + env(safe-area-inset-top, 0px)); flex-direction: column-reverse; }
+.djh-dock--bl .djh-fab, .djh-dock--tl .djh-fab { align-self: flex-start; }
+.djh-dock--dragging { opacity: .85; }
+.djh-dock--dragging * { pointer-events: none !important; }
+
+.djh-grip {
+  display: flex; align-items: center; justify-content: center;
+  height: 16px; margin: 0 8px; border: none; border-radius: 4px;
+  color: #5c5c64; background: transparent; cursor: grab;
+  touch-action: none; user-select: none;
+}
+.djh-grip:hover { color: #a1a1aa; background: rgba(255,255,255,.05); }
+.djh-grip:active, .djh-dock--dragging .djh-grip { cursor: grabbing; }
+.djh-grip:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.djh-fab { cursor: grab; touch-action: none; }
+.djh-fab:active { cursor: grabbing; }
 
 .djh-knobs {
   display: flex; flex-direction: column; align-items: stretch; gap: 9px;
