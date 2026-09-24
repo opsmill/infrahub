@@ -30,8 +30,10 @@ describe("TasksFilterForm", () => {
     // WHEN
     const typeField = component.getByRole("combobox").nth(TYPE_FIELD_INDEX);
 
-    // THEN
+    // THEN the field names no type at all — showing all three would be a different query
     await expect.element(component.getByText("Type", { exact: true })).toBeVisible();
-    await expect.element(typeField).toHaveTextContent("");
+    for (const label of ["Core", "User", "System"]) {
+      await expect.element(typeField).not.toHaveTextContent(label);
+    }
   });
 });

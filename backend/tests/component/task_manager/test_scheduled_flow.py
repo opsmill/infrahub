@@ -12,7 +12,7 @@ from infrahub.task_manager.flow_run.tags import WorkflowTagDecoder
 from infrahub.task_manager.scheduled_flow.health import OVERDUE_INTERVAL_MULTIPLIER
 from infrahub.task_manager.scheduled_flow.models import ScheduledFlowHealth, ScheduledFlowSummary
 from infrahub.task_manager.scheduled_flow.reader import ScheduledFlowReader
-from infrahub.task_manager.scheduled_flow.service import ScheduledFlowService
+from infrahub.task_manager.scheduled_flow.service import HEALTH_ORDER, ScheduledFlowService
 from infrahub.workflows.catalogue import WORKFLOWS
 
 CATALOGUE_CRONS = {workflow.name: workflow.cron for workflow in WORKFLOWS if workflow.cron}
@@ -87,14 +87,12 @@ async def test_a_never_run_daily_flow_reports_never_run_rather_than_a_success_or
         assert flow.health == ScheduledFlowHealth.NEVER_RUN
 
 
-async def test_flows_needing_attention_are_ordered_first(
+async def test_flows_are_ordered_by_attention_then_name(
     scheduled_flows: list[ScheduledFlowSummary],
 ) -> None:
-    healths = [flow.health for flow in scheduled_flows]
-    unhealthy = {ScheduledFlowHealth.OVERDUE, ScheduledFlowHealth.FAILED, ScheduledFlowHealth.CANCELLED}
-    first_healthy = next((index for index, health in enumerate(healths) if health not in unhealthy), len(healths))
+    ranked = [(HEALTH_ORDER[flow.health], flow.name) for flow in scheduled_flows]
 
-    assert all(health in unhealthy for health in healths[:first_healthy])
+    assert ranked == sorted(ranked)
 
 
 async def test_an_every_minute_flow_with_no_worker_never_reports_a_future_run_as_its_last(

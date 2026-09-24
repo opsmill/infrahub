@@ -34,9 +34,7 @@ async def _apply_type_filter(page: Page, option: str) -> None:
 
 
 class TestTasksTypeFilter:
-    async def test_selecting_system_reveals_internal_runs_and_narrows_the_count(
-        self, admin_page: Page
-    ) -> None:
+    async def test_selecting_system_reveals_internal_runs_and_narrows_the_count(self, admin_page: Page) -> None:
         await admin_page.goto("/tasks")
         await expect(admin_page.get_by_role("heading", name="Task Overview")).to_be_visible()
 
@@ -46,9 +44,7 @@ class TestTasksTypeFilter:
         # Internal runs are the ones the default list structurally excluded.
         await expect(admin_page.get_by_role("cell", name=SYSTEM_LABEL).first).to_be_visible()
 
-    async def test_the_type_filter_survives_a_reload_through_the_url(
-        self, admin_page: Page
-    ) -> None:
+    async def test_the_type_filter_survives_a_reload_through_the_url(self, admin_page: Page) -> None:
         await admin_page.goto("/tasks")
         await expect(admin_page.get_by_role("heading", name="Task Overview")).to_be_visible()
 
@@ -61,9 +57,7 @@ class TestTasksTypeFilter:
         await expect(admin_page).to_have_url(FILTER_IN_URL)
         await expect(admin_page.get_by_role("columnheader", name=TYPE_FIELD_LABEL)).to_be_visible()
 
-    async def test_the_filter_count_reflects_the_type_selection_and_can_be_cleared(
-        self, admin_page: Page
-    ) -> None:
+    async def test_the_filter_count_reflects_the_type_selection_and_can_be_cleared(self, admin_page: Page) -> None:
         await admin_page.goto("/tasks")
         await expect(admin_page.get_by_role("heading", name="Task Overview")).to_be_visible()
         await expect(admin_page.get_by_text("Filters: 0")).to_be_visible()
@@ -76,17 +70,13 @@ class TestTasksTypeFilter:
         await expect(admin_page.get_by_text("Filters: 0")).to_be_visible()
         await expect(admin_page).not_to_have_url(FILTER_IN_URL)
 
-    async def test_internal_runs_leave_the_branch_and_related_node_cells_empty(
-        self, admin_page: Page
-    ) -> None:
+    async def test_internal_runs_leave_the_branch_and_related_node_cells_empty(self, admin_page: Page) -> None:
         await admin_page.goto("/tasks")
         await expect(admin_page.get_by_role("heading", name="Task Overview")).to_be_visible()
 
         await _apply_type_filter(admin_page, SYSTEM_LABEL)
 
-        internal_row = admin_page.get_by_role("row").filter(
-            has=admin_page.get_by_role("cell", name=SYSTEM_LABEL)
-        )
+        internal_row = admin_page.get_by_role("row").filter(has=admin_page.get_by_role("cell", name=SYSTEM_LABEL))
         await expect(internal_row.first).to_be_visible()
         # Branch is the second column; an internal run carries no branch tag, so the cell renders
         # empty rather than erroring or showing a placeholder that implies a value.

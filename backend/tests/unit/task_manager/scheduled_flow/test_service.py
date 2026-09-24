@@ -1,16 +1,14 @@
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
 from prefect.client.schemas.objects import (
     ConcurrencyLimitStrategy,
-    ConcurrencyOptions,
     DeploymentSchedule,
     StateType,
 )
-from prefect.client.schemas.responses import DeploymentResponse, GlobalConcurrencyLimitResponse
-from prefect.client.schemas.schedules import CronSchedule, IntervalSchedule
+from prefect.client.schemas.responses import DeploymentResponse
+from prefect.client.schemas.schedules import IntervalSchedule
 
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.task_manager.flow_run.tags import WorkflowTagDecoder
@@ -19,11 +17,18 @@ from infrahub.task_manager.scheduled_flow.models import (
     RecentOutcomeCounts,
     ScheduledFlowHealth,
 )
+from infrahub.task_manager.scheduled_flow.reader import ScheduledFlowReader
 from infrahub.task_manager.scheduled_flow.service import ScheduledFlowService
 from infrahub.workflows.constants import WorkflowTag, WorkflowType
 
-NOW = datetime.now(tz=UTC)
-INTERNAL_TAG = WorkflowTag.WORKFLOWTYPE.render(identifier=WorkflowType.INTERNAL.value)
+from .doubles import (
+    NOW,
+    DeploymentSpec,
+    FlowRunSpec,
+    RecordingScheduledFlowClient,
+    make_deployment,
+    make_flow_run,
+)
 
 
 class NoCache(InfrahubCache):
@@ -60,7 +65,7 @@ class RecordingCache(NoCache):
 
 
 class FakeScheduledFlowReader:
-    """A reader whose run data is fixed per deployment, and that refuses to list individual runs."""
+    """A reader whose run data is fixed per deployment."""
 
     def __init__(
         self,
@@ -82,47 +87,6 @@ class FakeScheduledFlowReader:
 
     async def read_recent_outcomes(self, deployment_id: UUID, now: datetime) -> RecentOutcomeCounts:
         return self.outcomes.get(deployment_id, RecentOutcomeCounts(window_hours=24, counts={}))
-
-    async def read_flow_runs(self, *args: object, **kwargs: object) -> list[object]:
-        raise AssertionError("the outcome breakdown must be aggregated by Prefect, never read run by run")
-
-
-@dataclass
-class DeploymentSpec:
-    name: str
-    cron: str = "* * * * *"
-    tags: list[str] | None = None
-    active: bool = True
-    created_ago: timedelta = timedelta(days=10)
-    concurrency_limit: int | None = None
-    collision_strategy: ConcurrencyLimitStrategy | None = None
-    schedules: list[DeploymentSchedule] | None = None
-
-
-def make_deployment(spec: DeploymentSpec) -> DeploymentResponse:
-    deployment_id = uuid4()
-    return DeploymentResponse(
-        id=deployment_id,
-        name=spec.name,
-        flow_id=uuid4(),
-        tags=spec.tags if spec.tags is not None else [INTERNAL_TAG],
-        created=NOW - spec.created_ago,
-        global_concurrency_limit=(
-            GlobalConcurrencyLimitResponse(name=spec.name, limit=spec.concurrency_limit, active_slots=0)
-            if spec.concurrency_limit is not None
-            else None
-        ),
-        concurrency_options=(
-            ConcurrencyOptions(collision_strategy=spec.collision_strategy) if spec.collision_strategy else None
-        ),
-        schedules=spec.schedules
-        if spec.schedules is not None
-        else [
-            DeploymentSchedule(
-                id=uuid4(), deployment_id=deployment_id, schedule=CronSchedule(cron=spec.cron), active=spec.active
-            )
-        ],
-    )
 
 
 def build_service(
@@ -263,28 +227,42 @@ async def test_concurrency_settings_are_carried_so_a_cancelled_verdict_can_be_ex
     assert result.flows[0].health == ScheduledFlowHealth.CANCELLED
 
 
-async def test_the_outcome_breakdown_never_reads_individual_runs() -> None:
+async def test_the_outcome_breakdown_is_aggregated_by_prefect_rather_than_read_run_by_run() -> None:
+    """The every-minute flows produce ~1440 runs a day each; the summary must never page through them.
+
+    The real reader sits in front of a recording Prefect client here, so an aggregation that walked
+    the runs would show up as extra run reads however the reader was refactored.
+    """
     deployment = make_deployment(DeploymentSpec(name="git_repositories_sync"))
-    reader = FakeScheduledFlowReader(
+    client = RecordingScheduledFlowClient(
         deployments=[deployment],
         # The every-minute steady state during a stall: everything due in the window went unclaimed.
-        outcomes={
-            deployment.id: RecentOutcomeCounts(
-                window_hours=24, counts={StateType.SCHEDULED: 1440, StateType.COMPLETED: 0}
-            )
-        },
-        latest_runs={
-            deployment.id: LatestRunInfo(
-                id=uuid4(), state_type=StateType.COMPLETED, expected_start_time=NOW - timedelta(days=3)
-            )
-        },
+        history=[
+            {
+                "states": [
+                    {"state_type": "SCHEDULED", "count_runs": 1440},
+                    {"state_type": "COMPLETED", "count_runs": 0},
+                ]
+            }
+        ],
+        flow_runs=[
+            make_flow_run(FlowRunSpec(state_type=StateType.COMPLETED, expected_start_time=NOW - timedelta(days=3)))
+        ],
     )
 
-    result = await build_service(reader=reader).query()
+    result = await ScheduledFlowService(
+        reader=ScheduledFlowReader(client=client),
+        tag_decoder=WorkflowTagDecoder(),
+        cache=NoCache(),
+        catalogue_crons={},
+    ).query()
 
     assert result.flows[0].recent_outcomes.counts == {StateType.SCHEDULED: 1440, StateType.COMPLETED: 0}
     assert result.flows[0].recent_outcomes.total == 1440
     assert result.flows[0].health == ScheduledFlowHealth.OVERDUE
+    assert len(client.history_reads) == 1
+    # One run read, for the latest executed run; the 1440 behind the breakdown are never listed.
+    assert [limit for _, limit, _ in client.flow_run_reads] == [1]
 
 
 async def test_a_second_query_inside_the_ttl_is_served_from_the_cache() -> None:
