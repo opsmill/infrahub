@@ -14,13 +14,8 @@
 
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 
-import {
-  Annotations,
-  loadAllNotes,
-  markSent,
-  type Note,
-  notesToMarkdown,
-} from "./design-annotations";
+import { Annotations, notesToMarkdown } from "./design-annotations";
+import { useNotesStore } from "./notes-store";
 
 export type KnobValue = number | string | boolean;
 
@@ -73,6 +68,13 @@ export type Variant = {
 const NS = "dj";
 const q = (key: string) => `${NS}.${key}`;
 
+/** "updated 12s ago" — coarse on purpose; it says "not live", not "how not live". */
+const ago = (t?: number) => {
+  if (!t) return "—";
+  const s = Math.max(0, Math.round((Date.now() - t) / 1000));
+  return s < 60 ? `${s}s ago` : `${Math.round(s / 60)}m ago`;
+};
+
 type Props = {
   slug: string;
   variants: Variant[];
@@ -122,9 +124,8 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
   const [open, setOpen] = useState(true);
   const [knobsOpen, setKnobsOpen] = useState(false);
   const [armed, setArmed] = useState(false);
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [sentTick, setSentTick] = useState(0);
   const [saved, setSaved] = useState("");
+  const [allCount, setAllCount] = useState(0);
 
   /**
    * The dock snaps to a corner rather than sitting anywhere: a free-floating panel ends
@@ -194,6 +195,16 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
   // that is the previous one; with a single revision there is nothing to compare, so null.
   const compareTarget = current.rev !== latest ? latest : current.rev > 1 ? current.rev - 1 : null;
   const scope = `${slug}:${variant.id}:rev${current.rev}`;
+
+  // Local by default; switches to the Infrahub instance when the DesignJamNote kind is
+  // loaded there. Polls while visible, refetches on focus and after our own writes.
+  const store = useNotesStore(slug, scope);
+  const notes = store.notes;
+  useEffect(() => {
+    store
+      .all()
+      .then((groups) => setAllCount(Object.values(groups).reduce((n, ns) => n + ns.length, 0)));
+  }, [store.all, notes.length]);
 
   /**
    * Embed mode: this document is one side of a comparison, loaded in an iframe by the
@@ -293,8 +304,8 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
    * link that reopens it. This is the owner's gather step: paste it into `/design-jam`
    * locally and triage. Includes the live scope's unsaved state so nothing is missed.
    */
-  const allAsMarkdown = () => {
-    const groups = { ...loadAllNotes(slug), [scope]: notes.filter((n) => n.text.trim()) };
+  const allAsMarkdown = async () => {
+    const groups = { ...(await store.all()), [scope]: notes.filter((n) => n.text.trim()) };
     const sections = Object.entries(groups)
       .filter(([, ns]) => ns.length)
       .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
@@ -324,7 +335,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
       sections.join("\n\n") || "_No notes anywhere yet._",
     ].join("\n");
   };
-  const totalNotes = Object.values(loadAllNotes(slug)).reduce((n, ns) => n + ns.length, 0);
+  const totalNotes = allCount;
 
   const flash = (msg: string) => {
     setSaved(msg);
@@ -342,7 +353,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
 
   const copyAll = async () => {
     try {
-      await navigator.clipboard.writeText(allAsMarkdown());
+      await navigator.clipboard.writeText(await allAsMarkdown());
       flash("✓ Copied every note on this run — paste it into /design-jam");
     } catch {
       flash("Clipboard blocked by the browser");
@@ -382,8 +393,12 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
       return;
     }
 
-    markSent(scope);
-    setSentTick((t) => t + 1);
+    const stamp = new Date().toISOString();
+    await Promise.all(
+      notes
+        .filter((n) => n.text.trim() && !n.sentAt)
+        .map((n) => store.update(n.id, { sentAt: stamp }))
+    );
     flash(`✓ Sent — written to ${landed}`);
   };
 
@@ -475,10 +490,13 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
           <section className="djh-pane">
             <Annotations
               scope={scope}
-              refreshKey={sentTick}
+              notes={notes}
+              isMine={store.isMine}
+              onAdd={store.add}
+              onUpdate={store.update}
+              onRemove={store.remove}
               armed={armed}
               onArmedChange={setArmed}
-              onNotesChange={setNotes}
             >
               {current.render(activeValues as Record<string, KnobValue>)}
             </Annotations>
@@ -710,7 +728,43 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
             </section>
 
             <section className="djh-zone djh-zone--act">
-              <span className="djh-zone-label">Feedback</span>
+              <span className="djh-zone-label">
+                Feedback
+                {store.backend === "infrahub" ? (
+                  <span
+                    className="djh-fresh"
+                    title="Shared on this instance — polls every 15s, refreshes on focus"
+                  >
+                    · shared ·{" "}
+                    {store.isFetching ? "refreshing…" : `updated ${ago(store.updatedAt)}`}
+                    <button
+                      type="button"
+                      className="djh-fresh-btn"
+                      onClick={() => store.refresh()}
+                      aria-label="Refresh notes now"
+                    >
+                      ↻
+                    </button>
+                  </span>
+                ) : store.canEnable ? (
+                  <button
+                    type="button"
+                    className="djh-fresh-btn djh-fresh-btn--text"
+                    title="Load the DesignJamNote schema on this instance so every reviewer sees every pin (admin, once, preview only)"
+                    onClick={() =>
+                      store.enable().then(
+                        () => flash("✓ Shared notes enabled on this instance"),
+                        () =>
+                          flash("Could not load the schema — admin only, preview instances only")
+                      )
+                    }
+                  >
+                    · this browser only — enable shared
+                  </button>
+                ) : (
+                  <span className="djh-fresh">· this browser only</span>
+                )}
+              </span>
               <div className="djh-row">
                 <button
                   type="button"
@@ -1096,6 +1150,23 @@ const css = `
   margin: 0; padding: 0 14px 8px;
   font-size: 11px; color: #7ee2a8;
 }
+/* Freshness is stated, not implied: "updated 12s ago" says this is a poll, not a feed. */
+.djh-fresh {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-weight: 600; letter-spacing: .04em; text-transform: none; color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+.djh-fresh-btn {
+  font: inherit; cursor: pointer; color: var(--dim);
+  padding: 0 4px; border: none; border-radius: 4px; background: transparent;
+  font-size: 12px; line-height: 1;
+}
+.djh-fresh-btn--text {
+  font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: none;
+  color: #c7d2fe; text-decoration: underline; text-underline-offset: 2px;
+}
+.djh-fresh-btn:hover { color: var(--txt); background: rgba(255,255,255,.06); }
+.djh-fresh-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media (max-width: 680px) {
   .djh-dock { right: 12px; left: 12px; width: auto; max-width: none; }
   .djh-split { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
