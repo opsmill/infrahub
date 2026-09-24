@@ -50,6 +50,7 @@ LONG_SESSION_REPLY_CHARS = 300
 LATEST_COMPACTION_CHARS = 16000
 EARLIER_COMPACTION_CHARS = 5000
 KILO = 1000
+BYTES_PER_TOKEN = 3  # Claude Code's /context counts Markdown guidance at 2.5 to 3 bytes a token
 # How each harness loads guidance; the plugin records Claude Code sessions so far.
 HARNESSES: dict[str, tuple[str, ...]] = {
     "Claude Code": (
@@ -69,7 +70,7 @@ HARNESSES: dict[str, tuple[str, ...]] = {
 
 
 def tok(text: str | None) -> int:
-    return len(text or "") // 4
+    return len((text or "").encode()) // BYTES_PER_TOKEN
 
 
 def fmt(n: int) -> str:

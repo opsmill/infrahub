@@ -94,7 +94,7 @@ once, and skills: no `CLAUDE.md`, no rules and no `@` imports. The rules:
 | `pointer` | error | Nothing names a harness-loaded file by path: `AGENTS.md`, `CLAUDE.md`, rules, `SKILL.md` files, commands, agent definitions. Name skills and commands instead. A skill's files may name each other, and an `AGENTS.md` may name the `AGENTS.md` files below it, which is how Codex finds them |
 | `import` | error | No `@` imports outside `CLAUDE.md` |
 | `size` | error | The `AGENTS.md` files from the root down to any folder stay under Codex's 32 KiB default |
-| `rule` | error | A rule stays under about 1k tokens, since Claude Code injects its whole text into every context that reads a matching file, or every session when it has no `paths:` |
+| `rule` | error | A rule stays under about 1k tokens, counted at 3 bytes a token, since Claude Code injects its whole text into every context that reads a matching file, or every session when it has no `paths:` |
 | `orphan` | warning | Every guidance doc is reachable from a file a harness loads |
 | `conflict` | warning | A rule doesn't recommend a code term that the doc it names advises against |
 

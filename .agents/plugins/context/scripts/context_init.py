@@ -16,14 +16,13 @@ from collections import Counter
 from pathlib import Path
 
 from config import DEFAULTS, KEYS, LOCAL_FILES, PROJECT_FILES, find_config, load_layout, matches
-from doctor_inputs import fmt, load_list, startup_paths, walk
+from doctor_inputs import BYTES_PER_TOKEN, fmt, load_list, startup_paths, walk
 from track_reads import claude_md_imports, has_claude_md, instruction_files, reads_agents_md
 
 LOCATIONS = {"both": ".agents/context.md", "agents": ".agents/context.md", "claude": ".claude/context.md"}
 WORKING_NAMES = {"specs", ".specify", "plans", "rfcs"}
 VENDORED_NAMES = {"vendor", "vendored", "third_party", "external"}
 TOP_FOLDERS = 15
-BYTES_PER_TOKEN = 4
 BODY = """# Context plugin layout
 
 Where this repository keeps its agent guidance, for the `context` Claude Code plugin. Written by
