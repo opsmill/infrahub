@@ -148,3 +148,8 @@ in `02-directions.md` and in the earlier sections of this file, but the code doe
 | Knobs now belong to each direction. Current has none. Legacy and Object layout have scenario, repositories, bands and upstream. Consistent adds rail width. | The skill's panel now supports per-variant knobs. A control that does nothing in a direction reads as a broken prototype. |
 | The panel is pinned to the route's own box, not its parent. | User feedback, "there is no header in the app": the parent includes the app's top bar, so the panel covered it. The panel now starts at y=54, below the top bar. |
 | Panel and annotations re-copied from the skill: an armed pin tool catches `pointerdown`, so pinning a button records a note without pressing it (verified on the Actions menu). Sent notes stay visible. | Skill update. The copied files go through the formatter only, never `biome check --write`: its class-sorting fix trims the leading spaces in the pin's class string. |
+
+**URL change (skill update, 2026-09-24):** the panel's parameters are now namespaced:
+`?dj.variant=`, `?dj.rev=`, `?dj.compare=`, `?dj.k.<knob>=`. The old `?variant=` / `?rev=` links
+open on the default view. The "not the latest" warning is now a floating pill that clears the app's
+top bar.

@@ -10,10 +10,6 @@
  *
  * Copy into the prototype route's folder and adapt. See SKILL.md § The history panel and
  * § Iterating inside the prototype.
- *
- * Adapted for branch-details-repos: `frame` pins the fixed shell to the app's content area
- * instead of the whole window, so the real sidebar and top bar stay visible and the design
- * keeps its real width. The shell still owns that area; the design scrolls inside its pane.
  */
 
 import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
@@ -61,12 +57,26 @@ export type Variant = {
   revisions: Revision[];
 };
 
+/**
+ * Every query param this panel owns is namespaced, because the prototype route lives in
+ * the real app and shares its URL: a bare `variant` or `compare` is exactly the kind of
+ * name a page already uses, and the collision is silent in both directions — the app
+ * reads our value, or we clobber theirs. Params outside this namespace are preserved
+ * untouched on every write.
+ */
+const NS = "dj";
+const q = (key: string) => `${NS}.${key}`;
+
 type Props = {
   slug: string;
   variants: Variant[];
   /** Knobs that apply to every direction. Exposing one is a design decision — be sparing. */
   knobs?: Knob[];
-  /** Fixed-position box the shell fills. Defaults to the whole viewport. */
+  /**
+   * Fixed-position box the shell fills; defaults to the whole viewport. Pass the app's
+   * content area so the real sidebar and top bar stay on screen — a screen reviewed
+   * without its surrounding chrome is reviewed at a width it will never have.
+   */
   frame?: CSSProperties;
 };
 
@@ -76,23 +86,25 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
   /** Every knob any direction could show — so switching never lands on an undefined value. */
   const allKnobs = [...shared, ...variants.flatMap((v) => v.knobs ?? [])];
 
-  const initialVariant = (variants.find((v) => v.id === params.get("variant")) ??
+  // The casts and `.at(-1)` guards are for `noUncheckedIndexedAccess`, which this repo
+  // enables — plain `variants[0]` does not typecheck here.
+  const initialVariant = (variants.find((v) => v.id === params.get(q("variant"))) ??
     variants[0]) as Variant;
   const latestOf = (v: Variant) => v.revisions.at(-1)?.rev ?? 1;
 
   const [variantId, setVariantId] = useState(initialVariant.id);
   const [rev, setRev] = useState(() => {
-    const asked = Number(params.get("rev"));
+    const asked = Number(params.get(q("rev")));
     return Number.isFinite(asked) && asked > 0 ? asked : latestOf(initialVariant);
   });
   const [compareWith, setCompareWith] = useState<number | null>(() => {
-    const asked = Number(params.get("compare"));
+    const asked = Number(params.get(q("compare")));
     return Number.isFinite(asked) && asked > 0 ? asked : null;
   });
   const [values, setValues] = useState<Record<string, KnobValue>>(() =>
     Object.fromEntries(
       allKnobs.map((k) => {
-        const raw = params.get(`k.${k.key}`);
+        const raw = params.get(q(`k.${k.key}`));
         if (raw === null) return [k.key, k.value];
         if (k.type === "range") return [k.key, Number(raw)];
         if (k.type === "toggle") return [k.key, raw === "1"];
@@ -131,17 +143,18 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
   const alreadySent = notes.filter((n) => n.sentAt).length;
 
   useEffect(() => {
+    // Starts from the live search string, so the app's own params survive every write.
     const next = new URLSearchParams(window.location.search);
-    next.set("variant", variant.id);
-    next.set("rev", String(current.rev));
-    if (other) next.set("compare", String(other.rev));
-    else next.delete("compare");
+    next.set(q("variant"), variant.id);
+    next.set(q("rev"), String(current.rev));
+    if (other) next.set(q("compare"), String(other.rev));
+    else next.delete(q("compare"));
     // Only the active knobs go in the URL; a link never carries a control the recipient
     // won't see on the direction it opens.
-    for (const k of allKnobs) next.delete(`k.${k.key}`);
+    for (const k of allKnobs) next.delete(q(`k.${k.key}`));
     for (const k of knobs) {
       const v = values[k.key];
-      next.set(`k.${k.key}`, typeof v === "boolean" ? (v ? "1" : "0") : String(v));
+      next.set(q(`k.${k.key}`), typeof v === "boolean" ? (v ? "1" : "0") : String(v));
     }
     window.history.replaceState(null, "", `?${next.toString()}`);
   }, [variant.id, current.rev, other, values, knobs, allKnobs]);
@@ -259,246 +272,266 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
   );
 
   return (
-    <div className="djh-root" style={frame}>
+    <>
       <style>{css}</style>
 
+      {/*
+        Fixed to the viewport, not to `frame`: the warning outranks the design being
+        reviewed, so it has to clear the app's own sidebar and top bar. The layer is inert
+        and only the pill takes clicks, so nothing behind it becomes unreachable.
+      */}
       {stale && (
-        <div className="djh-stale" role="status">
-          Viewing revision {current.rev} of {latest} — this is not the current design.
-          <button type="button" onClick={() => setRev(latest)}>
-            Jump to latest
-          </button>
+        <div className="djh-alert-layer">
+          <div className="djh-alert" role="status">
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
+              <g fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">
+                <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" />
+                <path d="M3 4v4h4" strokeLinejoin="round" />
+                <path d="M12 8v4.4l2.8 1.7" />
+              </g>
+            </svg>
+            <span className="djh-alert-text">
+              Revision <b>{current.rev}</b> of <b>{latest}</b> — not the latest
+            </span>
+            <button type="button" className="djh-alert-btn" onClick={() => setRev(latest)}>
+              Go to latest
+            </button>
+          </div>
         </div>
       )}
 
-      <div className={other ? "djh-stage djh-stage--split" : "djh-stage"}>
-        {pane(current, other ? `rev ${current.rev}` : null, true)}
-        {other && pane(other, `rev ${other.rev}`, false)}
-      </div>
+      <div className="djh-root" style={frame}>
+        <div className={other ? "djh-stage djh-stage--split" : "djh-stage"}>
+          {pane(current, other ? `rev ${current.rev}` : null, true)}
+          {other && pane(other, `rev ${other.rev}`, false)}
+        </div>
 
-      <div className="djh-dock">
-        {open && knobsOpen && knobs.length > 0 && (
-          <div className="djh-knobs">
-            {knobs.map((k, i) => (
-              // biome-ignore lint/a11y/noLabelWithoutControl: every branch below renders the wrapped control
-              <label
-                key={k.key}
-                className={
-                  i === inherited.length && own.length > 0
-                    ? "djh-knob djh-knob--first-own"
-                    : "djh-knob"
+        <div className="djh-dock">
+          {open && knobsOpen && knobs.length > 0 && (
+            <div className="djh-knobs">
+              {knobs.map((k, i) => (
+                // biome-ignore lint/a11y/noLabelWithoutControl: every branch below renders the wrapped control
+                <label
+                  key={k.key}
+                  className={
+                    i === inherited.length && own.length > 0
+                      ? "djh-knob djh-knob--first-own"
+                      : "djh-knob"
+                  }
+                >
+                  {i === inherited.length && own.length > 0 && (
+                    <span className="djh-knob-group">{variant.label} only</span>
+                  )}
+                  <span>{k.label}</span>
+                  {k.type === "range" && (
+                    <span className="djh-knob-range">
+                      <input
+                        type="range"
+                        min={k.min}
+                        max={k.max}
+                        step={k.step ?? 1}
+                        value={Number(values[k.key])}
+                        onChange={(e) => setValues({ ...values, [k.key]: Number(e.target.value) })}
+                      />
+                      <output>{String(values[k.key])}</output>
+                    </span>
+                  )}
+                  {k.type === "color" && (
+                    <input
+                      type="color"
+                      value={String(values[k.key])}
+                      onChange={(e) => setValues({ ...values, [k.key]: e.target.value })}
+                    />
+                  )}
+                  {k.type === "toggle" && (
+                    <input
+                      type="checkbox"
+                      checked={Boolean(values[k.key])}
+                      onChange={(e) => setValues({ ...values, [k.key]: e.target.checked })}
+                    />
+                  )}
+                  {k.type === "select" && (
+                    <select
+                      value={String(values[k.key])}
+                      onChange={(e) => setValues({ ...values, [k.key]: e.target.value })}
+                    >
+                      {k.options.map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </label>
+              ))}
+              <button
+                type="button"
+                className="djh-btn"
+                onClick={() =>
+                  setValues({
+                    ...values,
+                    ...Object.fromEntries(knobs.map((k) => [k.key, k.value])),
+                  })
                 }
               >
-                {i === inherited.length && own.length > 0 && (
-                  <span className="djh-knob-group">{variant.label} only</span>
-                )}
-                <span>{k.label}</span>
-                {k.type === "range" && (
-                  <span className="djh-knob-range">
-                    <input
-                      type="range"
-                      min={k.min}
-                      max={k.max}
-                      step={k.step ?? 1}
-                      value={Number(values[k.key])}
-                      onChange={(e) => setValues({ ...values, [k.key]: Number(e.target.value) })}
-                    />
-                    <output>{String(values[k.key])}</output>
-                  </span>
-                )}
-                {k.type === "color" && (
-                  <input
-                    type="color"
-                    value={String(values[k.key])}
-                    onChange={(e) => setValues({ ...values, [k.key]: e.target.value })}
-                  />
-                )}
-                {k.type === "toggle" && (
-                  <input
-                    type="checkbox"
-                    checked={Boolean(values[k.key])}
-                    onChange={(e) => setValues({ ...values, [k.key]: e.target.checked })}
-                  />
-                )}
-                {k.type === "select" && (
-                  <select
-                    value={String(values[k.key])}
-                    onChange={(e) => setValues({ ...values, [k.key]: e.target.value })}
+                Reset values
+              </button>
+            </div>
+          )}
+
+          {open ? (
+            <div className="djh-bar">
+              <section className="djh-zone">
+                <span className="djh-zone-label">Prototype</span>
+                <div className="djh-seg" role="group" aria-label="Prototype direction">
+                  {variants.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      title={v.bet}
+                      aria-pressed={v.id === variant.id}
+                      className={
+                        v.id === variant.id ? "djh-seg-btn djh-seg-btn--on" : "djh-seg-btn"
+                      }
+                      onClick={() => pickVariant(v.id)}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="djh-zone djh-zone--grow">
+                <span className="djh-zone-label">
+                  Revision <b className="djh-count">{current.rev}</b>
+                  <span className="djh-of">of {latest}</span>
+                </span>
+                <div className="djh-row">
+                  <button
+                    type="button"
+                    className="djh-icon"
+                    aria-label="Previous revision"
+                    disabled={current.rev <= 1}
+                    onClick={() => setRev(current.rev - 1)}
                   >
-                    {k.options.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </label>
-            ))}
+                    ‹
+                  </button>
+                  <input
+                    className="djh-scrub"
+                    type="range"
+                    min={1}
+                    max={latest}
+                    step={1}
+                    value={current.rev}
+                    aria-label="Revision"
+                    onChange={(e) => setRev(Number(e.target.value))}
+                  />
+                  <button
+                    type="button"
+                    className="djh-icon"
+                    aria-label="Next revision"
+                    disabled={current.rev >= latest}
+                    onClick={() => setRev(current.rev + 1)}
+                  >
+                    ›
+                  </button>
+                </div>
+                <p className="djh-note" title={current.date}>
+                  {current.note}
+                </p>
+              </section>
+
+              <section className="djh-zone">
+                <span className="djh-zone-label">View</span>
+                <div className="djh-row">
+                  {knobs.length > 0 && (
+                    <button
+                      type="button"
+                      aria-pressed={knobsOpen}
+                      className={knobsOpen ? "djh-btn djh-btn--on" : "djh-btn"}
+                      onClick={() => setKnobsOpen(!knobsOpen)}
+                    >
+                      Knobs
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    aria-pressed={Boolean(other)}
+                    className={other ? "djh-btn djh-btn--on" : "djh-btn"}
+                    onClick={() => setCompareWith(other ? null : latest)}
+                  >
+                    Compare
+                  </button>
+                  <button
+                    type="button"
+                    className="djh-btn"
+                    disabled={!stale}
+                    onClick={() => setRev(latest)}
+                  >
+                    Latest
+                  </button>
+                  <button type="button" className="djh-btn" onClick={() => setOpen(false)}>
+                    Hide
+                  </button>
+                </div>
+              </section>
+
+              <section className="djh-zone djh-zone--act">
+                <span className="djh-zone-label">Feedback</span>
+                <div className="djh-row">
+                  <button
+                    type="button"
+                    aria-pressed={armed}
+                    className={armed ? "djh-btn djh-btn--on" : "djh-btn"}
+                    onClick={() => setArmed(!armed)}
+                  >
+                    {armed ? "Click the spot…" : "Add note"}
+                    {!armed && written > 0 && <span className="djh-badge">{written}</span>}
+                  </button>
+                  <button type="button" className="djh-btn" onClick={copy}>
+                    Copy
+                  </button>
+                  <button
+                    type="button"
+                    className="djh-btn djh-btn--primary"
+                    disabled={written === 0}
+                    onClick={send}
+                  >
+                    {written === 0
+                      ? alreadySent > 0
+                        ? "All sent"
+                        : "Send"
+                      : `Send ${written} ${written === 1 ? "note" : "notes"}`}
+                  </button>
+                </div>
+              </section>
+
+              {saved && (
+                <p className="djh-flash" role="status">
+                  {saved}
+                </p>
+              )}
+            </div>
+          ) : (
             <button
               type="button"
-              className="djh-btn"
-              onClick={() =>
-                setValues({
-                  ...values,
-                  ...Object.fromEntries(knobs.map((k) => [k.key, k.value])),
-                })
-              }
+              className="djh-fab"
+              aria-label={`Show design panel — ${variant.label}, revision ${current.rev}`}
+              onClick={() => setOpen(true)}
             >
-              Reset values
+              <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
+                <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M4 8h10M18 8h2M4 16h4M12 16h8" />
+                  <circle cx="16" cy="8" r="2" fill="currentColor" stroke="none" />
+                  <circle cx="10" cy="16" r="2" fill="currentColor" stroke="none" />
+                </g>
+              </svg>
+              {written > 0 && <span className="djh-badge djh-badge--fab">{written}</span>}
             </button>
-          </div>
-        )}
-
-        {open ? (
-          <div className="djh-bar">
-            <section className="djh-zone">
-              <span className="djh-zone-label">Prototype</span>
-              <div className="djh-seg" role="group" aria-label="Prototype direction">
-                {variants.map((v) => (
-                  <button
-                    key={v.id}
-                    type="button"
-                    title={v.bet}
-                    aria-pressed={v.id === variant.id}
-                    className={v.id === variant.id ? "djh-seg-btn djh-seg-btn--on" : "djh-seg-btn"}
-                    onClick={() => pickVariant(v.id)}
-                  >
-                    {v.label}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="djh-zone djh-zone--grow">
-              <span className="djh-zone-label">
-                Revision <b className="djh-count">{current.rev}</b>
-                <span className="djh-of">of {latest}</span>
-              </span>
-              <div className="djh-row">
-                <button
-                  type="button"
-                  className="djh-icon"
-                  aria-label="Previous revision"
-                  disabled={current.rev <= 1}
-                  onClick={() => setRev(current.rev - 1)}
-                >
-                  ‹
-                </button>
-                <input
-                  className="djh-scrub"
-                  type="range"
-                  min={1}
-                  max={latest}
-                  step={1}
-                  value={current.rev}
-                  aria-label="Revision"
-                  onChange={(e) => setRev(Number(e.target.value))}
-                />
-                <button
-                  type="button"
-                  className="djh-icon"
-                  aria-label="Next revision"
-                  disabled={current.rev >= latest}
-                  onClick={() => setRev(current.rev + 1)}
-                >
-                  ›
-                </button>
-              </div>
-              <p className="djh-note" title={current.date}>
-                {current.note}
-              </p>
-            </section>
-
-            <section className="djh-zone">
-              <span className="djh-zone-label">View</span>
-              <div className="djh-row">
-                {knobs.length > 0 && (
-                  <button
-                    type="button"
-                    aria-pressed={knobsOpen}
-                    className={knobsOpen ? "djh-btn djh-btn--on" : "djh-btn"}
-                    onClick={() => setKnobsOpen(!knobsOpen)}
-                  >
-                    Knobs
-                  </button>
-                )}
-                <button
-                  type="button"
-                  aria-pressed={Boolean(other)}
-                  className={other ? "djh-btn djh-btn--on" : "djh-btn"}
-                  onClick={() => setCompareWith(other ? null : latest)}
-                >
-                  Compare
-                </button>
-                <button
-                  type="button"
-                  className="djh-btn"
-                  disabled={!stale}
-                  onClick={() => setRev(latest)}
-                >
-                  Latest
-                </button>
-                <button type="button" className="djh-btn" onClick={() => setOpen(false)}>
-                  Hide
-                </button>
-              </div>
-            </section>
-
-            <section className="djh-zone djh-zone--act">
-              <span className="djh-zone-label">Feedback</span>
-              <div className="djh-row">
-                <button
-                  type="button"
-                  aria-pressed={armed}
-                  className={armed ? "djh-btn djh-btn--on" : "djh-btn"}
-                  onClick={() => setArmed(!armed)}
-                >
-                  {armed ? "Click the spot…" : "Add note"}
-                  {!armed && written > 0 && <span className="djh-badge">{written}</span>}
-                </button>
-                <button type="button" className="djh-btn" onClick={copy}>
-                  Copy
-                </button>
-                <button
-                  type="button"
-                  className="djh-btn djh-btn--primary"
-                  disabled={written === 0}
-                  onClick={send}
-                >
-                  {written === 0
-                    ? alreadySent > 0
-                      ? "All sent"
-                      : "Send"
-                    : `Send ${written} ${written === 1 ? "note" : "notes"}`}
-                </button>
-              </div>
-            </section>
-
-            {saved && (
-              <p className="djh-flash" role="status">
-                {saved}
-              </p>
-            )}
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="djh-fab"
-            aria-label={`Show design panel — ${variant.label}, revision ${current.rev}`}
-            onClick={() => setOpen(true)}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
-              <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                <path d="M4 8h10M18 8h2M4 16h4M12 16h8" />
-                <circle cx="16" cy="8" r="2" fill="currentColor" stroke="none" />
-                <circle cx="10" cy="16" r="2" fill="currentColor" stroke="none" />
-              </g>
-            </svg>
-            {written > 0 && <span className="djh-badge djh-badge--fab">{written}</span>}
-          </button>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -509,23 +542,60 @@ const css = `
  * what produces dead space under the design and a page that scrolls out from under the
  * controls — this structure makes both impossible.
  */
+/* A named scale, so nothing here ever reaches for z-index: 9999. */
+:root {
+  --djh-z-shell: 10;
+  --djh-z-dock: 50;
+  --djh-z-alert: 400;
+}
 .djh-root {
-  position: fixed; inset: 0; z-index: 10;
+  position: fixed; inset: 0; z-index: var(--djh-z-shell);
   display: flex; flex-direction: column;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   background: Canvas;
 }
-.djh-stale {
-  flex: none;
-  display: flex; align-items: center; gap: 12px;
-  padding: 8px 16px;
-  font: 500 13px/1.4 system-ui, sans-serif;
-  color: #431407; background: #fed7aa; border-bottom: 1px solid #fb923c;
+/*
+ * A pill centred at the top of the viewport rather than a full-width bar: it has to be
+ * seen without covering the app chrome it floats over, and a bar that spans the window
+ * reads as part of the product rather than as a warning about the thing being reviewed.
+ * Amber, an icon and the words all say the same thing — colour alone is invisible to some
+ * readers and easy to ignore for everyone else.
+ */
+.djh-alert-layer {
+  position: fixed; top: 0; left: 0; right: 0; z-index: var(--djh-z-alert);
+  display: flex; justify-content: center;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 0;
+  pointer-events: none;
 }
-.djh-stale button {
-  font: inherit; cursor: pointer;
-  padding: 3px 9px; border-radius: 4px;
-  border: 1px solid #9a3412; background: transparent; color: #7c2d12;
+.djh-alert {
+  display: flex; align-items: center; gap: 10px;
+  max-width: 100%; padding: 7px 8px 7px 14px; border-radius: 999px;
+  font: 500 13px/1.4 system-ui, sans-serif;
+  color: #7c2d12; background: #ffedd5;
+  box-shadow: 0 0 0 1px rgba(124,45,18,.18), 0 8px 24px -6px rgba(67,20,7,.35);
+  pointer-events: auto;
+}
+.djh-alert svg { flex: none; color: #b45309; }
+.djh-alert-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.djh-alert-text b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.djh-alert-btn {
+  flex: none; position: relative;
+  font: 600 13px/1 system-ui, sans-serif; cursor: pointer;
+  padding: 7px 12px; border-radius: 999px;
+  color: #fff; background: #9a3412; border: none;
+}
+/* 40px desktop hit area on a 30px pill, without changing how it looks. */
+.djh-alert-btn::before { content: ""; position: absolute; inset: -5px; }
+.djh-alert-btn:hover { background: #7c2d12; }
+.djh-alert-btn:active { transform: scale(0.96); }
+.djh-alert-btn:focus-visible { outline: 2px solid #431407; outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .djh-alert { animation: djh-drop 220ms ease-out both; }
+  .djh-alert-btn { transition: background-color 150ms ease-out, transform 150ms ease-out; }
+}
+@keyframes djh-drop {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
 }
 .djh-stage {
   flex: 1 1 auto; min-height: 0;
@@ -551,7 +621,7 @@ const css = `
 /* Anchored bottom-right at a fixed width, sections stacked. A full-width bar spanning the
    viewport competes with the design for the eye; a corner panel is read as a tool. */
 .djh-dock {
-  position: absolute; right: 16px; z-index: 50;
+  position: absolute; right: 16px; z-index: var(--djh-z-dock);
   bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   width: 304px; max-width: calc(100% - 32px);
   display: flex; flex-direction: column; align-items: stretch; gap: 8px;
@@ -619,7 +689,8 @@ const css = `
   box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 10px 26px -6px rgba(0,0,0,.6);
 }
 .djh-fab:hover { background: #202027; }
-.djh-fab:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 2px; }
+.djh-fab:active { transform: scale(0.96); }
+.djh-fab:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
 .djh-zone {
   display: flex; flex-direction: column; gap: 6px;
@@ -661,7 +732,7 @@ const css = `
 }
 .djh-icon { padding: 2px 8px; font-size: 15px; line-height: 1.2; }
 .djh-btn:hover:not(:disabled), .djh-icon:hover:not(:disabled) { background: rgba(255,255,255,.14); }
-.djh-btn:active:not(:disabled), .djh-icon:active:not(:disabled) { transform: translateY(0.5px); }
+.djh-btn:active:not(:disabled), .djh-icon:active:not(:disabled) { transform: scale(0.96); }
 .djh-btn--on { color: #fff; background: var(--accent); }
 /* The submit takes its own full-width line: it is the one primary action, and it must not
    be mistaken for another chip in the row above it. */
@@ -671,11 +742,15 @@ const css = `
 }
 .djh-btn--primary:hover:not(:disabled) { background: #6b6be0; }
 .djh-btn:disabled, .djh-icon:disabled { color: #5c5c64; background: rgba(255,255,255,.04); cursor: default; }
+/* Neutral focus rings, not the accent — a brand-coloured outline fights the accent it is
+   drawn next to, and here it would sit on top of the very button it marks. */
 .djh-btn:focus-visible, .djh-icon:focus-visible, .djh-seg-btn:focus-visible, .djh-scrub:focus-visible {
-  outline: 2px solid #a5b4fc; outline-offset: 2px;
+  outline: 2px solid #fff; outline-offset: 2px;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .djh-btn, .djh-icon, .djh-seg-btn { transition: background 150ms ease-out, color 150ms ease-out; }
+  .djh-btn, .djh-icon, .djh-seg-btn {
+    transition: background-color 150ms ease-out, color 150ms ease-out, transform 150ms ease-out;
+  }
 }
 
 /* inline-flex centring, not line-height guesswork — a digit's box is not its ink, so
