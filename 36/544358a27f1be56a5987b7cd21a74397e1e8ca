@@ -1,0 +1,44 @@
+utilities/sync_pr/tests/fixtures/__init__.py
+  s_f9f34a44a3a084::t_13e2de2308ee00 8,20
+utilities/sync_pr/tests/test_fixtures.py
+  s_f9f34a44a3a084::t_13e2de2308ee00 69
+utilities/sync_pr/tests/test_manage.py
+  s_f9f34a44a3a084::t_d6cd7f30d46b38 78-79
+  s_f9f34a44a3a084::t_885fbbbbec74b4 31,38
+  s_f9f34a44a3a084::t_49edf9a55bcdef 1-30,32-37,39-77,80-233
+utilities/sync_pr/tests/fixtures/record.py
+  s_f9f34a44a3a084::t_13e2de2308ee00 9,68-69,71,83,100,103,110
+utilities/sync_pr/manage.py
+  s_f9f34a44a3a084::t_f845038cee511a 111,114,121-126,134-136,140,143,146
+  s_f9f34a44a3a084::t_fa5df5b2ef1251 1-97,105-110,112-113,115-116,148-202,204-301
+  s_f9f34a44a3a084::t_cab786e65169d4 98-104,117-120,127-133,137-139,141-142,144-145,147
+  s_f9f34a44a3a084::t_3ad2d2025f2e26 203
+utilities/sync_pr/tests/fixtures/loader.py
+  s_f9f34a44a3a084::t_13e2de2308ee00 40-44
+utilities/sync_pr/tests/test_cli.py
+  s_f9f34a44a3a084::t_f8a9ceedff2647 1-3,19-61
+dev/specs/sync-pr-automation/tasks.md
+  s_f9f34a44a3a084::t_3bb683f63ad60b 139,145,150
+utilities/sync_pr/tests/fixtures/blame_10693.json
+  s_f9f34a44a3a084::t_13e2de2308ee00 1-42
+utilities/sync_pr/__main__.py
+  s_f9f34a44a3a084::t_e02efd70318c83 6-9,12-34,43-67,69-75,83-92,94-102
+  s_f9f34a44a3a084::t_3ad2d2025f2e26 5,93
+  s_f9f34a44a3a084::t_f845038cee511a 76-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36544358a27f1be56a5987b7cd21a74397e1e8ca",
+  "prompts": {},
+  "sessions": {
+    "s_f9f34a44a3a084": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50b9befc-1389-4d4c-99f9-321b275b2173",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

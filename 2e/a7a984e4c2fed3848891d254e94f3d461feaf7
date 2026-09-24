@@ -1,0 +1,60 @@
+utilities/sync_pr/tests/builders.py
+  s_f9f34a44a3a084::t_f85e482930c86b 18,30,38-51
+  s_f9f34a44a3a084::t_6fa88d081df38a 1-17,19-29,31-37,52-211
+utilities/sync_pr/attribution.py
+  s_f9f34a44a3a084::t_bb8565883d9b4d 1-194
+utilities/sync_pr/tests/test_attribution.py
+  s_f9f34a44a3a084::t_9e54d3f2216d24 1-422
+utilities/sync_pr/tests/test_routing.py
+  s_f9f34a44a3a084::t_12fe305c61a8b6 1-191
+utilities/sync_pr/jira.py
+  s_d0eeff1042adf1::t_2d357abf23d647 71-72,127,129,161-163
+utilities/sync_pr/models.py
+  s_990aa844af5496::t_c4ea85924feda6 50-51,53,69-74,86-87,98-99,114-120,156-208
+utilities/sync_pr/routing.py
+  s_d0eeff1042adf1::t_ff5c29dc9ad12e 1-96
+utilities/sync_pr/tests/conftest.py
+  s_d0eeff1042adf1::t_17e4a918530b80 48-49,200-202
+utilities/sync_pr/tests/test_jira.py
+  s_1180dca035c05d::t_ce0a65012a93cb 73-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ea7a984e4c2fed3848891d254e94f3d461feaf7",
+  "prompts": {},
+  "sessions": {
+    "s_1180dca035c05d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af17048f1b5347ba5",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_990aa844af5496": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-abbc2cd4f878b0a1d",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_d0eeff1042adf1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8d8f36094536d654",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_f9f34a44a3a084": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50b9befc-1389-4d4c-99f9-321b275b2173",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
