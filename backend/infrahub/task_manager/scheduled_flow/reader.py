@@ -23,6 +23,11 @@ log = get_logger()
 
 RECENT_OUTCOME_WINDOW_HOURS = 24
 
+# Prefect answers an unbounded deployment read with its own default page size, so the pages are
+# walked explicitly: a truncated read would drop a flow from the list and report it as registered
+# nowhere, which is indistinguishable from a deployment that genuinely went missing.
+DEPLOYMENT_PAGE_SIZE = 200
+
 # Excluded from the latest-run read: they describe a run that has not happened. Prefect's scheduler
 # pre-creates roughly an hour of future SCHEDULED runs per schedule and keeps doing so with no
 # worker alive, so including them would report a stalled flow as healthy indefinitely.
@@ -44,7 +49,12 @@ class ScheduledFlowReader:
         self.client = client
 
     async def read_deployments(self) -> list[DeploymentResponse]:
-        return await self.client.read_deployments()
+        deployments: list[DeploymentResponse] = []
+        while True:
+            page = await self.client.read_deployments(limit=DEPLOYMENT_PAGE_SIZE, offset=len(deployments))
+            deployments.extend(page)
+            if len(page) < DEPLOYMENT_PAGE_SIZE:
+                return deployments
 
     async def read_latest_executed_run(self, deployment_id: UUID, now: DateTime) -> LatestRunInfo | None:
         flow_run_filter = FlowRunFilter(

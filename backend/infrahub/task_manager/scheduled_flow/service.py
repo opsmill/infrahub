@@ -11,7 +11,7 @@ from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
 from infrahub.task_manager.flow_run.tags import WorkflowTagDecoder
 from infrahub.workers.dependencies import get_cache
-from infrahub.workflows.catalogue import WORKFLOWS
+from infrahub.workflows.catalogue import get_workflows
 
 from .health import assess_health
 from .models import ScheduledFlowHealth, ScheduledFlowQueryResult, ScheduledFlowSummary
@@ -129,5 +129,5 @@ async def build_scheduled_flow_service(client: PrefectClient) -> ScheduledFlowSe
         reader=ScheduledFlowReader(client=PrefectClientAdapter(client)),
         tag_decoder=WorkflowTagDecoder(),
         cache=cache,
-        catalogue_crons={workflow.name: workflow.cron for workflow in WORKFLOWS if workflow.cron},
+        catalogue_crons={workflow.name: workflow.cron for workflow in get_workflows() if workflow.cron},
     )
