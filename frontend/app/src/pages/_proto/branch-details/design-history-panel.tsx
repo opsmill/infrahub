@@ -133,6 +133,8 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
   const [armed, setArmed] = useState(false);
   const [saved, setSaved] = useState("");
   const [allCount, setAllCount] = useState(0);
+  /** Owner-only feedback tools, tucked behind ⋯ so a reviewer sees two buttons, not four. */
+  const [more, setMore] = useState(false);
 
   /**
    * The dock snaps to a corner rather than sitting anywhere: a free-floating panel ends
@@ -675,24 +677,57 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
 
         {open ? (
           <div className="djh-bar">
-            <button
-              type="button"
-              className="djh-grip"
-              aria-label="Move panel to another corner — drag it, or press to cycle"
-              title="Drag to another corner"
-              onPointerDown={onGrip}
-              onClick={cycleCorner}
-            >
-              <svg viewBox="0 0 20 6" width="20" height="6" aria-hidden="true">
-                <g fill="currentColor">
-                  <circle cx="3" cy="3" r="1.4" />
-                  <circle cx="10" cy="3" r="1.4" />
-                  <circle cx="17" cy="3" r="1.4" />
-                </g>
-              </svg>
-            </button>
+            {/* Header: what run this is, and the two things that act on the panel itself
+                (move, hide). Panel-level actions live here, never inside a section, so a
+                section's buttons are always about that section's subject. */}
+            <header className="djh-head">
+              <button
+                type="button"
+                className="djh-grip"
+                aria-label="Move panel to another corner — drag it, or press to cycle"
+                title="Drag to another corner"
+                onPointerDown={onGrip}
+                onClick={cycleCorner}
+              >
+                <svg viewBox="0 0 6 20" width="6" height="20" aria-hidden="true">
+                  <g fill="currentColor">
+                    <circle cx="3" cy="3" r="1.4" />
+                    <circle cx="3" cy="10" r="1.4" />
+                    <circle cx="3" cy="17" r="1.4" />
+                  </g>
+                </svg>
+              </button>
+              <span className="djh-title" title={slug}>
+                {slug}
+              </span>
+              <button
+                type="button"
+                className="djh-icon"
+                aria-label="Hide panel (H)"
+                title="Hide (H)"
+                onClick={() => setOpen(false)}
+              >
+                ×
+              </button>
+            </header>
+
             <section className="djh-zone">
-              <span className="djh-zone-label">Prototype</span>
+              <div className="djh-zone-head">
+                <span className="djh-zone-label">Prototype</span>
+                {knobs.length > 0 && (
+                  <button
+                    type="button"
+                    aria-pressed={knobsOpen}
+                    className={
+                      knobsOpen ? "djh-btn djh-btn--sm djh-btn--on" : "djh-btn djh-btn--sm"
+                    }
+                    title="Tune this prototype's exposed values (K)"
+                    onClick={() => setKnobsOpen(!knobsOpen)}
+                  >
+                    Knobs
+                  </button>
+                )}
+              </div>
               <div className="djh-seg" role="group" aria-label="Prototype direction">
                 {variants.map((v) => (
                   <button
@@ -710,10 +745,33 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
             </section>
 
             <section className="djh-zone djh-zone--grow">
-              <span className="djh-zone-label">
-                Revision <b className="djh-count">{current.rev}</b>
-                <span className="djh-of">of {latest}</span>
-              </span>
+              <div className="djh-zone-head">
+                <span className="djh-zone-label">
+                  Revision <b className="djh-count">{current.rev}</b>
+                  <span className="djh-of">of {latest}</span>
+                </span>
+                <div className="djh-row djh-row--tight">
+                  {stale && (
+                    <button
+                      type="button"
+                      className="djh-btn djh-btn--sm"
+                      title="Jump to the latest revision (L)"
+                      onClick={() => setRev(latest)}
+                    >
+                      Latest
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    aria-pressed={Boolean(other)}
+                    className={other ? "djh-btn djh-btn--sm djh-btn--on" : "djh-btn djh-btn--sm"}
+                    title="Compare two revisions as two full apps (C)"
+                    onClick={() => setCompareWith(other ? null : compareTarget)}
+                  >
+                    Compare
+                  </button>
+                </div>
+              </div>
               <div className="djh-row">
                 <button
                   type="button"
@@ -781,109 +839,80 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
               )}
             </section>
 
-            <section className="djh-zone">
-              <span className="djh-zone-label">View</span>
-              <div className="djh-row">
-                {knobs.length > 0 && (
-                  <button
-                    type="button"
-                    aria-pressed={knobsOpen}
-                    className={knobsOpen ? "djh-btn djh-btn--on" : "djh-btn"}
-                    onClick={() => setKnobsOpen(!knobsOpen)}
-                  >
-                    Knobs
-                  </button>
-                )}
+            <section className="djh-zone djh-zone--act">
+              <div className="djh-zone-head">
+                <span className="djh-zone-label">Feedback</span>
                 <button
                   type="button"
-                  aria-pressed={Boolean(other)}
-                  className={other ? "djh-btn djh-btn--on" : "djh-btn"}
-                  onClick={() => setCompareWith(other ? null : compareTarget)}
+                  aria-pressed={more}
+                  aria-label="Owner tools"
+                  title="Owner tools: copy this revision only, send to the local dev server"
+                  className={more ? "djh-btn djh-btn--sm djh-btn--on" : "djh-btn djh-btn--sm"}
+                  onClick={() => setMore(!more)}
                 >
-                  Compare
-                </button>
-                <button
-                  type="button"
-                  className="djh-btn"
-                  disabled={!stale}
-                  onClick={() => setRev(latest)}
-                >
-                  Latest
-                </button>
-                <button type="button" className="djh-btn" onClick={() => setOpen(false)}>
-                  Hide
+                  ⋯
                 </button>
               </div>
-            </section>
 
-            <section className="djh-zone djh-zone--act">
-              <span className="djh-zone-label">
-                Feedback
+              {/* Where the notes live, in plain words, on its own line — not crammed into
+                  the section label. A poll is stated as a poll. */}
+              <p className="djh-status">
                 {store.backend === "infrahub" ? (
-                  <span
-                    className="djh-fresh"
-                    title="Shared on this instance — polls every 15s, refreshes on focus"
-                  >
-                    · shared ·{" "}
-                    {store.isFetching ? "refreshing…" : `updated ${ago(store.updatedAt)}`}
+                  <>
+                    <span className="djh-status-dot djh-status-dot--on" aria-hidden="true" />
+                    Shared on this instance ·{" "}
+                    <span className="djh-count">
+                      {store.isFetching ? "refreshing…" : `updated ${ago(store.updatedAt)}`}
+                    </span>
                     <button
                       type="button"
                       className="djh-fresh-btn"
                       onClick={() => store.refresh()}
                       aria-label="Refresh notes now"
+                      title="Refresh now (polls every 15s)"
                     >
                       ↻
                     </button>
-                  </span>
-                ) : store.canEnable ? (
-                  <button
-                    type="button"
-                    className="djh-fresh-btn djh-fresh-btn--text"
-                    title="Load the DesignJamNote schema on this instance so every reviewer sees every pin (admin, once, preview only)"
-                    onClick={() =>
-                      store.enable().then(
-                        () => flash("✓ Shared notes enabled on this instance"),
-                        () =>
-                          flash("Could not load the schema — admin only, preview instances only")
-                      )
-                    }
-                  >
-                    · this browser only — enable shared
-                  </button>
+                  </>
                 ) : (
-                  <span className="djh-fresh">· this browser only</span>
+                  <>
+                    <span className="djh-status-dot" aria-hidden="true" />
+                    This browser only
+                    {store.canEnable && (
+                      <>
+                        {" · "}
+                        <button
+                          type="button"
+                          className="djh-fresh-btn djh-fresh-btn--text"
+                          title="Load the DesignJamNote schema on this instance so every reviewer sees every pin (admin, once, preview only)"
+                          onClick={() =>
+                            store.enable().then(
+                              () => flash("✓ Shared notes enabled on this instance"),
+                              () =>
+                                flash(
+                                  "Could not load the schema — admin only, preview instances only"
+                                )
+                            )
+                          }
+                        >
+                          enable shared
+                        </button>
+                      </>
+                    )}
+                  </>
                 )}
-              </span>
+              </p>
+
               <div className="djh-row">
                 <button
                   type="button"
                   aria-pressed={armed}
                   className={armed ? "djh-btn djh-btn--on" : "djh-btn"}
+                  title="Pin a note on the design (A)"
                   onClick={() => setArmed(!armed)}
                 >
                   {armed ? "Click the spot…" : "Add note"}
                   {!armed && written > 0 && <span className="djh-badge">{written}</span>}
-                </button>
-                <button
-                  type="button"
-                  className="djh-btn"
-                  title="Copy this revision's notes only"
-                  onClick={copy}
-                >
-                  Copy rev
-                </button>
-                <button
-                  type="button"
-                  className="djh-btn"
-                  title={
-                    alreadySent > 0 && written === 0
-                      ? "All notes on this revision already sent"
-                      : "Owner shortcut: write this revision's notes into .design/ via the dev server"
-                  }
-                  disabled={written === 0}
-                  onClick={send}
-                >
-                  {written === 0 && alreadySent > 0 ? "Sent" : "Send local"}
                 </button>
                 {/* The one primary action: gather everything on the run, then paste it
                     into /design-jam. That is the whole feedback loop for the owner. */}
@@ -897,6 +926,33 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
                   {totalNotes > 0 && <span className="djh-badge">{totalNotes}</span>}
                 </button>
               </div>
+
+              {more && (
+                <div className="djh-row djh-row--more">
+                  <span className="djh-more-label">Owner</span>
+                  <button
+                    type="button"
+                    className="djh-btn djh-btn--sm"
+                    title="Copy this revision's notes only"
+                    onClick={copy}
+                  >
+                    Copy rev
+                  </button>
+                  <button
+                    type="button"
+                    className="djh-btn djh-btn--sm"
+                    title={
+                      alreadySent > 0 && written === 0
+                        ? "All notes on this revision already sent"
+                        : "Write this revision's notes into .design/ via the local dev server"
+                    }
+                    disabled={written === 0}
+                    onClick={send}
+                  >
+                    {written === 0 && alreadySent > 0 ? "Sent" : "Send local"}
+                  </button>
+                </div>
+              )}
             </section>
 
             {saved && (
@@ -1094,9 +1150,36 @@ const css = `
   .djh-dock--dragging .djh-fab::after { opacity: 1; }
 }
 
+/* Header: run name plus the two panel-level actions (move, hide). Kept out of the
+   sections so every button inside a section is about that section's subject. */
+.djh-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px 6px 6px;
+  border-bottom: var(--hair) solid var(--line);
+}
+.djh-title {
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 600 11px/1 ui-monospace, monospace; letter-spacing: .04em; color: var(--dim);
+}
+/* Section head: the label on the left, that section's own actions on the right. */
+.djh-zone-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 22px; }
+.djh-row--tight { gap: 4px; }
+.djh-btn--sm { min-height: 22px; padding: 2px 8px; font-size: 11px; }
+.djh-status {
+  display: flex; align-items: center; gap: 6px; margin: -2px 0 0;
+  font-size: 11px; color: var(--dim);
+}
+.djh-status-dot { width: 6px; height: 6px; border-radius: 999px; background: #5c5c64; flex: none; }
+.djh-status-dot--on { background: #4ade80; }
+.djh-row--more { margin-top: 2px; padding-top: 8px; border-top: var(--hair) solid var(--line); }
+.djh-more-label {
+  font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--dim); margin-right: 2px;
+}
 .djh-grip {
   display: flex; align-items: center; justify-content: center;
-  height: 16px; margin: 0 8px; border: none; border-radius: 4px;
+  width: 22px; height: 22px; border: none; border-radius: 4px;
   color: #5c5c64; background: transparent; cursor: grab;
   touch-action: none; user-select: none;
 }
