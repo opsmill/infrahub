@@ -475,8 +475,8 @@ def log_status(log: Path) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("invoking_session")
     parser.add_argument("project_dir")
+    parser.add_argument("invoking_session")
     parser.add_argument("session", nargs="?", help="session to audit; defaults to the invoking one")
     args = parser.parse_args()
     target = args.session or args.invoking_session

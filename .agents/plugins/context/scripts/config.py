@@ -19,12 +19,13 @@ if TYPE_CHECKING:
 
 PROJECT_FILES = (".agents/context.md", ".claude/context.md")
 LOCAL_FILES = (".agents/context.local.md", ".claude/context.local.md")
-KEYS = ("docs", "also_logged", "working_files", "skip_dirs")
+KEYS = ("docs", "also_logged", "working_files", "skip_dirs", "lint_allow")
 DEFAULTS: dict[str, tuple[str, ...]] = {
     "docs": ("**/AGENTS.md", "**/CLAUDE.md"),
     "also_logged": (".agents/**", ".claude/**"),
     "working_files": (),
     "skip_dirs": (),
+    "lint_allow": (),
 }
 
 
@@ -141,6 +142,9 @@ class Layout:
     sources: tuple[str, ...]
     """The config files the values came from; empty when the defaults apply."""
 
+    lint_allow: tuple[str, ...] = ()
+    """Files allowed to name harness-loaded files by path, such as guidance about writing guidance."""
+
     def is_logged(self, rel: str) -> bool:
         return is_instruction_file(rel) or matches(rel, self.docs + self.also_logged + self.working_files)
 
@@ -149,6 +153,9 @@ class Layout:
 
     def is_doc(self, rel: str) -> bool:
         return (is_instruction_file(rel) or matches(rel, self.docs)) and not self.is_working_file(rel)
+
+    def allows_references(self, rel: str) -> bool:
+        return matches(rel, self.lint_allow)
 
     def describe(self) -> str:
         fields = " · ".join(f"{key.replace('_', ' ')}: {', '.join(getattr(self, key)) or 'none'}" for key in KEYS)

@@ -231,6 +231,7 @@ def main() -> None:
     writer.add_argument("--also-logged", action="append", help="default: " + ", ".join(DEFAULTS["also_logged"]))
     writer.add_argument("--working-files", action="append", default=[])
     writer.add_argument("--skip-dirs", action="append", default=[])
+    writer.add_argument("--lint-allow", action="append", default=[], help="a file allowed to name guidance files")
     writer.add_argument("--force", action="store_true", help="replace an existing config")
     args = parser.parse_args()
     project = args.project.resolve()
@@ -244,6 +245,7 @@ def main() -> None:
             "also_logged": args.also_logged or list(DEFAULTS["also_logged"]),
             "working_files": args.working_files,
             "skip_dirs": args.skip_dirs,
+            "lint_allow": args.lint_allow,
         }
         write(project, args.location, values, args.force)
 

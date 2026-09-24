@@ -8,10 +8,18 @@ audit that record.
 | `/context:init` | Scans the repository, asks where its guidance lives, and writes the config below |
 | `/context:trace [session id]` | Shows the session's load log, the last 200 lines when it is longer |
 | `/context:map [session id]` | Draws the log as a Mermaid diagram and saves it as `context-map.md` beside the log |
-| `/context:doctor [session id]` | Forks a 1M-context agent that reads the session history and every doc, works out what the session should have loaded, and reports the difference, starting with what never loaded |
+| `/context:doctor [session id]` | Audits the session and lints the repository, then merges the two reports, starting with what never loaded |
 
-With no argument, each skill uses the current session. Installing the plugin is the opt-in: its hooks start
-recording with the next session.
+With no argument, each skill uses the current session. `/context:doctor` runs two skills you don't call
+yourself:
+
+- `context:audit-session`: forked into the plugin's read-only `context:doctor` agent, a 1M-context model
+  reads the session history and every doc, works out what the session should have loaded, and reports the
+  difference.
+- `context:lint-repo`: runs the repository lint below, a script with no model, and hands its output to the
+  doctor unchanged.
+
+Installing the plugin is the opt-in: its hooks start recording with the next session.
 
 ## Configuration
 
@@ -30,6 +38,7 @@ Globs are repo-relative and match paths after symlinks resolve; `**` spans direc
 | `also_logged` | Reads are logged, but the doctor does not read these, such as commands, rules and skills | `.agents/**`, `.claude/**` |
 | `working_files` | Material a session works on, such as spec artifacts: logged, never read or judged as guidance | none |
 | `skip_dirs` | Directories never scanned, such as submodules | none |
+| `lint_allow` | Files the lint lets name harness-loaded files, such as guidance about writing guidance | none |
 
 ```markdown
 ---
@@ -68,9 +77,31 @@ Typical reasons are an `AGENTS.md` that Claude Code never loads on its own becau
 a rule that only injects on a Read while the context only wrote the file, and a rule kept in `.agents/rules`.
 A subagent's result counts as reaching its parent, so guidance it quotes back is not reported as missing.
 
-The audit runs in the plugin's `context:doctor` agent, which has Read, Glob and Grep and nothing else, so it
-never runs a command or changes a file. It judges the docs tree as it is now and says so when the session ran
-on another branch.
+The session audit runs in the plugin's `context:doctor` agent, which has Read, Glob and Grep and nothing
+else, so it never runs a command or changes a file. It judges the docs tree as it is now and says so when the
+session ran on another branch.
+
+## Repository lint
+
+`scripts/context_lint.py <repository>` checks how guidance is organised, so that every harness loads each file
+once. Claude Code reads `CLAUDE.md` files, rules and skills, and loads a nested `CLAUDE.md` when a file below
+it is read. Codex reads only the `AGENTS.md` files from the repository root down to its working directory,
+once, and skills: no `CLAUDE.md`, no rules and no `@` imports. The rules:
+
+| Rule | Level | What it asks |
+|---|---|---|
+| `shim` | error | Every `AGENTS.md` has a `CLAUDE.md` beside it holding only `@AGENTS.md` |
+| `pointer` | error | Nothing names a harness-loaded file by path: `AGENTS.md`, `CLAUDE.md`, rules, `SKILL.md` files, commands, agent definitions. Name skills and commands instead. A skill's files may name each other, and an `AGENTS.md` may name the `AGENTS.md` files below it, which is how Codex finds them |
+| `import` | error | No `@` imports outside `CLAUDE.md` |
+| `size` | error | The `AGENTS.md` files from the root down to any folder stay under Codex's 32 KiB default |
+| `orphan` | warning | Every guidance doc is reachable from a file a harness loads |
+| `rule` | warning | Every rule names the doc that holds its guidance, since only Claude Code loads rules |
+| `conflict` | warning | A rule doesn't recommend a code term that the doc it names advises against |
+
+Working files and `lint_allow` files are not checked for pointers. A line that names a file only as its
+subject, such as a file a skill edits, carries `<!-- context-lint: allow -->`, on the line itself or alone on
+the line before. `--fix` creates the missing `CLAUDE.md` shims and trims those that hold only headings besides
+the import. With `--check` the script exits 1 on any error, for a pre-commit hook or CI job.
 
 Two environment variables change where output goes, per person:
 
