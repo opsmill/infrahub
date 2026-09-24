@@ -115,8 +115,9 @@ Emit single-expression parameters through `jinja_parameter()` in `trigger/models
 The per-node trigger families — Jinja2 computed attributes, Python computed attributes (owner and
 query), display labels, human-friendly ids, and profile refresh — build one automation per branch
 whose definition differs from the default branch, plus one default-branch automation that owns
-every other branch. Divergence is the schema hash for the schema-driven families and the
-repository commit for the Python transform ones.
+every other branch. Divergence is the schema hash for the schema-driven families. The two Python
+transform families diverge on the repository commit or on the schema hash, because either one
+changes what the transform query resolves to.
 
 The default-branch automation has to exclude the branches that own their own automation.
 **Prefect ORs the patterns of a single label**, so `match["infrahub.branch.name"] = ["!b1", "!b2"]`

@@ -16,6 +16,7 @@ from infrahub.core.schema import SchemaRoot
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import COLOR, TSHIRT, load_schema
 from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.trigger import branches_covered_by
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -131,6 +132,14 @@ class TestComputedAttribute(TestInfrahubApp):
         triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
         assert len(triggers_python) == 2
         assert len(triggers_python_query) == 4
+        # The branch moved the repository commit, so it answers for itself and the default-branch
+        # automation excludes it while still covering a branch created later.
+        assert branches_covered_by(
+            triggers_by_scope={definition.branch: definition for definition in triggers_python},
+            kind="TestingTShirt",
+            field="name",
+            branch_names=["main", "branch2", "branch-created-after-setup"],
+        ) == {"main": ["main"], "branch2": ["branch2"], "branch-created-after-setup": ["main"]}
 
     async def test_description_after_color_change_jinja2(
         self,
