@@ -181,6 +181,13 @@ core_account_group = NodeSchema(
             allow_override=AllowOverrideType.NONE,
             display=SchemaAttributeDisplay.EXTRA,
         ),
+        Attr(
+            name="ai_context",
+            kind="TextArea",
+            label="AI context",
+            description="What this group is responsible for. Used by proposed change triage to route a change to the owning team.",
+            optional=True,
+        ),
     ],
     relationships=[
         Rel(

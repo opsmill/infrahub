@@ -1582,6 +1582,32 @@ class TriageSettings(BaseSettings):
         " a confidence, for the same reason as `needs_second_threshold`.",
     )
 
+    owner_matching: bool = Field(
+        default=True,
+        description="Ask the evaluation service which candidate reviewer owns the change's content, matching it"
+        " against each account's `ai_context`. Only the context text is sent, under opaque labels; no account name"
+        " or id leaves the deployment. Has no effect unless `assign_reviewers` is on and some candidate has an"
+        " `ai_context`.",
+    )
+    owner_confidence_threshold: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Minimum confidence for the content owner to be acted on. A confident owner replaces the team's"
+        " least-loaded pick; below it the team pick stands.",
+    )
+    max_context_chars: int = Field(
+        default=500,
+        gt=0,
+        description="Characters of each account's or group's `ai_context` sent to the evaluation service. Longer"
+        " text is cut, so one verbose profile cannot crowd out the change itself.",
+    )
+    max_owner_candidates: int = Field(
+        default=25,
+        gt=0,
+        description="Most candidate reviewers offered to the owner question. Beyond it the least-loaded are kept.",
+    )
+
     seniors_group: str | None = Field(
         default=None,
         description="Account group used as the escalation pool. Unset means escalation is recorded in the note but"

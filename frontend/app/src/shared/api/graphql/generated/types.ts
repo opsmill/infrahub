@@ -296,14 +296,14 @@ export type BranchCreate = {
 };
 
 export type BranchCreateInput = {
-  /** @deprecated branched_from is set by the server and cannot be provided */
+  /** @deprecated branched_from is set by the server and cannot be provided. Will be removed after version 1.12. */
   branched_from?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
   id?: InputMaybe<Scalars['String']['input']>;
-  /** @deprecated Non isolated mode is not supported anymore */
+  /** @deprecated Non-isolated mode is not supported anymore. Will be removed after version 1.12. */
   is_isolated?: InputMaybe<Scalars['Boolean']['input']>;
   name: Scalars['String']['input'];
-  /** @deprecated Branches can only be created from the default branch */
+  /** @deprecated Branches can only be created from the default branch. Will be removed after version 1.12. */
   origin_branch?: InputMaybe<Scalars['String']['input']>;
   sync_with_git?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -1457,6 +1457,8 @@ export type CoreAccount = CoreGenericAccount & CoreNode & LineageOwner & Lineage
   __typename: 'CoreAccount';
   /** Type of account (user, script, etc.) */
   account_type: Maybe<TextAttribute>;
+  /** Roles and responsibilities of this account. Used by proposed change triage to find the reviewer who owns a change. */
+  ai_context: Maybe<TextAttribute>;
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
   /** Human friendly identifier */
@@ -1549,6 +1551,8 @@ export type CoreAccountCreate = {
 export type CoreAccountCreateInput = {
   /** Type of account (user, script, etc.) */
   account_type?: InputMaybe<TextAttributeCreate>;
+  /** Roles and responsibilities of this account. Used by proposed change triage to find the reviewer who owns a change. */
+  ai_context?: InputMaybe<TextAttributeCreate>;
   description?: InputMaybe<TextAttributeCreate>;
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeCreate>;
@@ -1568,6 +1572,8 @@ export type CoreAccountDelete = {
 /** A group of users to manage common permissions */
 export type CoreAccountGroup = CoreGroup & LineageOwner & LineageSource & {
   __typename: 'CoreAccountGroup';
+  /** What this group is responsible for. Used by proposed change triage to route a change to the owning team. */
+  ai_context: Maybe<TextAttribute>;
   ancestors: NestedPaginatedCoreGroup;
   children: NestedPaginatedCoreGroup;
   descendants: NestedPaginatedCoreGroup;
@@ -1737,6 +1743,8 @@ export type CoreAccountGroupCreate = {
 };
 
 export type CoreAccountGroupCreateInput = {
+  /** What this group is responsible for. Used by proposed change triage to route a change to the owning team. */
+  ai_context?: InputMaybe<TextAttributeCreate>;
   children?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   description?: InputMaybe<TextAttributeCreate>;
   /** Type of group (default or internal) */
@@ -1764,6 +1772,8 @@ export type CoreAccountGroupUpdate = {
 };
 
 export type CoreAccountGroupUpdateInput = {
+  /** What this group is responsible for. Used by proposed change triage to route a change to the owning team. */
+  ai_context?: InputMaybe<TextAttributeUpdate>;
   children?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   description?: InputMaybe<TextAttributeUpdate>;
   /** Type of group (default or internal) */
@@ -1786,6 +1796,8 @@ export type CoreAccountGroupUpsert = {
 };
 
 export type CoreAccountGroupUpsertInput = {
+  /** What this group is responsible for. Used by proposed change triage to route a change to the owning team. */
+  ai_context?: InputMaybe<TextAttributeUpdate>;
   children?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   description?: InputMaybe<TextAttributeUpdate>;
   /** Type of group (default or internal) */
@@ -1819,6 +1831,11 @@ export type CoreAccountRole = CoreNode & {
 
 /** A role defines a set of permissions to grant to a group of accounts */
 export type CoreAccountRoleGroupsArgs = {
+  ai_context__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  ai_context__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  ai_context__source__id?: InputMaybe<Scalars['ID']['input']>;
+  ai_context__value?: InputMaybe<Scalars['String']['input']>;
+  ai_context__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -2006,6 +2023,8 @@ export type CoreAccountUpdate = {
 export type CoreAccountUpdateInput = {
   /** Type of account (user, script, etc.) */
   account_type?: InputMaybe<TextAttributeUpdate>;
+  /** Roles and responsibilities of this account. Used by proposed change triage to find the reviewer who owns a change. */
+  ai_context?: InputMaybe<TextAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -2027,6 +2046,8 @@ export type CoreAccountUpsert = {
 export type CoreAccountUpsertInput = {
   /** Type of account (user, script, etc.) */
   account_type?: InputMaybe<TextAttributeUpdate>;
+  /** Roles and responsibilities of this account. Used by proposed change triage to find the reviewer who owns a change. */
+  ai_context?: InputMaybe<TextAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -7138,6 +7159,8 @@ export type CoreGeneratorValidatorUpsertInput = {
 export type CoreGenericAccount = {
   /** Type of account (user, script, etc.) */
   account_type: Maybe<TextAttribute>;
+  /** Roles and responsibilities of this account. Used by proposed change triage to find the reviewer who owns a change. */
+  ai_context: Maybe<TextAttribute>;
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
   /** Human friendly identifier */
@@ -7230,6 +7253,8 @@ export type CoreGenericAccountUpdate = {
 export type CoreGenericAccountUpdateInput = {
   /** Type of account (user, script, etc.) */
   account_type?: InputMaybe<TextAttributeUpdate>;
+  /** Roles and responsibilities of this account. Used by proposed change triage to find the reviewer who owns a change. */
+  ai_context?: InputMaybe<TextAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -11904,6 +11929,11 @@ export type CoreProposedChangeApproved_ByArgs = {
   account_type__source__id?: InputMaybe<Scalars['ID']['input']>;
   account_type__value?: InputMaybe<Scalars['String']['input']>;
   account_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ai_context__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  ai_context__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  ai_context__source__id?: InputMaybe<Scalars['ID']['input']>;
+  ai_context__value?: InputMaybe<Scalars['String']['input']>;
+  ai_context__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -11998,6 +12028,11 @@ export type CoreProposedChangeRejected_ByArgs = {
   account_type__source__id?: InputMaybe<Scalars['ID']['input']>;
   account_type__value?: InputMaybe<Scalars['String']['input']>;
   account_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ai_context__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  ai_context__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  ai_context__source__id?: InputMaybe<Scalars['ID']['input']>;
+  ai_context__value?: InputMaybe<Scalars['String']['input']>;
+  ai_context__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12041,6 +12076,11 @@ export type CoreProposedChangeReviewersArgs = {
   account_type__source__id?: InputMaybe<Scalars['ID']['input']>;
   account_type__value?: InputMaybe<Scalars['String']['input']>;
   account_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ai_context__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  ai_context__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  ai_context__source__id?: InputMaybe<Scalars['ID']['input']>;
+  ai_context__value?: InputMaybe<Scalars['String']['input']>;
+  ai_context__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -26375,6 +26415,12 @@ export type QueryCoreAccountArgs = {
   account_type__source__id?: InputMaybe<Scalars['ID']['input']>;
   account_type__value?: InputMaybe<Scalars['String']['input']>;
   account_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ai_context__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  ai_context__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  ai_context__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  ai_context__source__id?: InputMaybe<Scalars['ID']['input']>;
+  ai_context__value?: InputMaybe<Scalars['String']['input']>;
+  ai_context__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   any__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   any__owner__id?: InputMaybe<Scalars['ID']['input']>;
   any__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -26459,6 +26505,12 @@ export type QueryCoreAccountArgs = {
 
 
 export type QueryCoreAccountGroupArgs = {
+  ai_context__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  ai_context__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  ai_context__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  ai_context__source__id?: InputMaybe<Scalars['ID']['input']>;
+  ai_context__value?: InputMaybe<Scalars['String']['input']>;
+  ai_context__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   any__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   any__owner__id?: InputMaybe<Scalars['ID']['input']>;
   any__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -26589,6 +26641,11 @@ export type QueryCoreAccountRoleArgs = {
   display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   display_label__value?: InputMaybe<Scalars['String']['input']>;
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  groups__ai_context__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  groups__ai_context__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  groups__ai_context__source__id?: InputMaybe<Scalars['ID']['input']>;
+  groups__ai_context__value?: InputMaybe<Scalars['String']['input']>;
+  groups__ai_context__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   groups__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   groups__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   groups__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -30606,6 +30663,12 @@ export type QueryCoreGenericAccountArgs = {
   account_type__source__id?: InputMaybe<Scalars['ID']['input']>;
   account_type__value?: InputMaybe<Scalars['String']['input']>;
   account_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ai_context__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  ai_context__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  ai_context__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  ai_context__source__id?: InputMaybe<Scalars['ID']['input']>;
+  ai_context__value?: InputMaybe<Scalars['String']['input']>;
+  ai_context__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   any__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   any__owner__id?: InputMaybe<Scalars['ID']['input']>;
   any__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -33785,6 +33848,11 @@ export type QueryCoreProposedChangeArgs = {
   approved_by__account_type__source__id?: InputMaybe<Scalars['ID']['input']>;
   approved_by__account_type__value?: InputMaybe<Scalars['String']['input']>;
   approved_by__account_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  approved_by__ai_context__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  approved_by__ai_context__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  approved_by__ai_context__source__id?: InputMaybe<Scalars['ID']['input']>;
+  approved_by__ai_context__value?: InputMaybe<Scalars['String']['input']>;
+  approved_by__ai_context__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   approved_by__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   approved_by__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   approved_by__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -33885,6 +33953,11 @@ export type QueryCoreProposedChangeArgs = {
   rejected_by__account_type__source__id?: InputMaybe<Scalars['ID']['input']>;
   rejected_by__account_type__value?: InputMaybe<Scalars['String']['input']>;
   rejected_by__account_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  rejected_by__ai_context__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  rejected_by__ai_context__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  rejected_by__ai_context__source__id?: InputMaybe<Scalars['ID']['input']>;
+  rejected_by__ai_context__value?: InputMaybe<Scalars['String']['input']>;
+  rejected_by__ai_context__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   rejected_by__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   rejected_by__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   rejected_by__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -33920,6 +33993,11 @@ export type QueryCoreProposedChangeArgs = {
   reviewers__account_type__source__id?: InputMaybe<Scalars['ID']['input']>;
   reviewers__account_type__value?: InputMaybe<Scalars['String']['input']>;
   reviewers__account_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  reviewers__ai_context__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  reviewers__ai_context__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  reviewers__ai_context__source__id?: InputMaybe<Scalars['ID']['input']>;
+  reviewers__ai_context__value?: InputMaybe<Scalars['String']['input']>;
+  reviewers__ai_context__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   reviewers__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   reviewers__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   reviewers__description__source__id?: InputMaybe<Scalars['ID']['input']>;

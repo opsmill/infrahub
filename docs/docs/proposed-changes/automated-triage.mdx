@@ -91,24 +91,32 @@ vendor.
 - whether the description above had to be capped to fit the size budget, and what was capped.
 
 The evaluation service is also given your reviewer policies — each team's key and its description —
-because that text is what the routing decision is matched against. The summarisation service is
-given the evaluation's answers, and the rule and team behind each requested reviewer.
+because that text is what the routing decision is matched against. When a policy's member group has
+an **AI context**, that text is sent with it. The summarisation service is given the evaluation's
+answers, and the rule and team behind each requested reviewer.
+
+When reviewer assignment is on and some candidate reviewer has an **AI context**, the evaluation
+service is also sent each such candidate's AI context text, labelled `candidate_1`, `candidate_2` and
+so on. The labels are mapped back to accounts inside Infrahub. Write AI context as roles and
+responsibilities, and keep personal data out of it: whatever you write there is sent as written, up
+to `max_context_chars`. Set `owner_matching` to `false` to stop sending it.
 
 **Never sent, to either service:**
 
-- **who your reviewers are.** Not the candidates triage chose between, not their usernames, not
-  their account ids, not how many changes they already have open.
+- **who your reviewers are.** Not their usernames, not their account ids, not how many changes they
+  already have open. Only the AI context text described above, under an opaque label.
 - **who wrote the change.** The author is excluded from reviewer selection inside Infrahub; the
   account id never goes out.
 - **who approved past changes.**
 - **the proposed change's own id.**
 - credentials, secrets, or the content of any artifact.
 
-Reviewer selection is ordinary deterministic code running inside your deployment. No model is ever
-asked anything about a person — the four things a model is asked are how risky the change looks,
-which team owns it, whether it touches production, and whether it warrants a second reviewer, and
-none of those is a question about who anyone is. Removing the account data also made the request
-about 63% smaller, so the same decision cuts what you pay for the summarisation call.
+Reviewer selection is ordinary deterministic code running inside your deployment. The model is asked
+how risky the change looks, which team owns it, whether it touches production and whether it
+warrants a second reviewer. With owner matching on, it is also asked which of the labelled
+responsibilities covers the change. None of those questions is about who anyone is. Leaving the
+account data out also made the request about 63% smaller, so the same decision cuts what you pay for
+the summarisation call.
 
 ## Turning it on
 
@@ -158,6 +166,22 @@ from**. None of them is ever assigned as a reviewer itself. Triage resolves the 
 drops the change's author and anyone already reviewing, and picks whoever has the fewest open
 proposed changes, breaking ties by account ID. A group that resolves to nobody eligible assigns
 nobody, and the note says so.
+
+### Routing to the person who owns the content
+
+Accounts and account groups have an optional **AI context** attribute. Use it to write down roles and
+responsibilities, for example "Owns security policies, firewall rules and access-control lists".
+
+- **On a group**, the AI context is added to its team's routing criterion, which helps the evaluation
+  tell apart two teams whose node kinds overlap.
+- **On an account**, it makes the account a candidate content owner. Triage asks the evaluation
+  service which candidate's responsibilities cover the change. When the answer clears
+  `owner_confidence_threshold`, that account is requested as reviewer instead of the team's
+  least-loaded member, and the note reads `@name (content owner)`. When no candidate matches, or the
+  answer isn't confident enough, routing is unchanged.
+
+The change's author is never offered as a content owner and is never requested. Escalation still
+applies: a high-risk change gets a senior reviewer as well as its content owner.
 
 ## Roll it out in stages
 

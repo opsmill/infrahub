@@ -742,6 +742,10 @@ input ConvertObjectTypeInput {
 type CoreAccount implements CoreGenericAccount & CoreNode & LineageOwner & LineageSource {
   """Type of account (user, script, etc.)"""
   account_type: TextAttribute
+  """
+  Roles and responsibilities of this account. Used by proposed change triage to find the reviewer who owns a change.
+  """
+  ai_context: TextAttribute
   description: TextAttribute
   display_label: String
   """Human friendly identifier"""
@@ -769,6 +773,10 @@ type CoreAccountCreate {
 input CoreAccountCreateInput {
   """Type of account (user, script, etc.)"""
   account_type: TextAttributeCreate
+  """
+  Roles and responsibilities of this account. Used by proposed change triage to find the reviewer who owns a change.
+  """
+  ai_context: TextAttributeCreate
   description: TextAttributeCreate
   id: String
   label: TextAttributeCreate
@@ -786,6 +794,10 @@ type CoreAccountDelete {
 
 """A group of users to manage common permissions"""
 type CoreAccountGroup implements CoreGroup & LineageOwner & LineageSource {
+  """
+  What this group is responsible for. Used by proposed change triage to route a change to the owning team.
+  """
+  ai_context: TextAttribute
   ancestors(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   children(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   descendants(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -816,6 +828,10 @@ type CoreAccountGroupCreate {
 }
 
 input CoreAccountGroupCreateInput {
+  """
+  What this group is responsible for. Used by proposed change triage to route a change to the owning team.
+  """
+  ai_context: TextAttributeCreate
   children: [RelatedNodeInput]
   description: TextAttributeCreate
   """Type of group (default or internal)"""
@@ -841,6 +857,10 @@ type CoreAccountGroupUpdate {
 }
 
 input CoreAccountGroupUpdateInput {
+  """
+  What this group is responsible for. Used by proposed change triage to route a change to the owning team.
+  """
+  ai_context: TextAttributeUpdate
   children: [RelatedNodeInput]
   description: TextAttributeUpdate
   """Type of group (default or internal)"""
@@ -862,6 +882,10 @@ type CoreAccountGroupUpsert {
 }
 
 input CoreAccountGroupUpsertInput {
+  """
+  What this group is responsible for. Used by proposed change triage to route a change to the owning team.
+  """
+  ai_context: TextAttributeUpdate
   children: [RelatedNodeInput]
   description: TextAttributeUpdate
   """Type of group (default or internal)"""
@@ -879,7 +903,7 @@ input CoreAccountGroupUpsertInput {
 """A role defines a set of permissions to grant to a group of accounts"""
 type CoreAccountRole implements CoreNode {
   display_label: String
-  groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String]): NestedPaginatedCoreAccountGroup!
+  groups(ai_context__is_protected: Boolean, ai_context__owner__id: ID, ai_context__source__id: ID, ai_context__value: String, ai_context__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String]): NestedPaginatedCoreAccountGroup!
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -952,6 +976,10 @@ type CoreAccountUpdate {
 input CoreAccountUpdateInput {
   """Type of account (user, script, etc.)"""
   account_type: TextAttributeUpdate
+  """
+  Roles and responsibilities of this account. Used by proposed change triage to find the reviewer who owns a change.
+  """
+  ai_context: TextAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
@@ -972,6 +1000,10 @@ type CoreAccountUpsert {
 input CoreAccountUpsertInput {
   """Type of account (user, script, etc.)"""
   account_type: TextAttributeUpdate
+  """
+  Roles and responsibilities of this account. Used by proposed change triage to find the reviewer who owns a change.
+  """
+  ai_context: TextAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
@@ -3505,6 +3537,10 @@ input CoreGeneratorValidatorUpsertInput {
 interface CoreGenericAccount {
   """Type of account (user, script, etc.)"""
   account_type: TextAttribute
+  """
+  Roles and responsibilities of this account. Used by proposed change triage to find the reviewer who owns a change.
+  """
+  ai_context: TextAttribute
   description: TextAttribute
   display_label: String
   """Human friendly identifier"""
@@ -3532,6 +3568,10 @@ type CoreGenericAccountUpdate {
 input CoreGenericAccountUpdateInput {
   """Type of account (user, script, etc.)"""
   account_type: TextAttributeUpdate
+  """
+  Roles and responsibilities of this account. Used by proposed change triage to find the reviewer who owns a change.
+  """
+  ai_context: TextAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
@@ -5489,7 +5529,7 @@ input CoreProfileUpdateInput {
 
 """Metadata related to a proposed change"""
 type CoreProposedChange implements CoreNode & CoreTaskTarget {
-  approved_by(account_type__is_protected: Boolean, account_type__owner__id: ID, account_type__source__id: ID, account_type__value: String, account_type__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, password__is_protected: Boolean, password__owner__id: ID, password__source__id: ID, password__value: String, password__values: [String], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String]): NestedPaginatedCoreGenericAccount!
+  approved_by(account_type__is_protected: Boolean, account_type__owner__id: ID, account_type__source__id: ID, account_type__value: String, account_type__values: [String], ai_context__is_protected: Boolean, ai_context__owner__id: ID, ai_context__source__id: ID, ai_context__value: String, ai_context__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, password__is_protected: Boolean, password__owner__id: ID, password__source__id: ID, password__value: String, password__values: [String], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String]): NestedPaginatedCoreGenericAccount!
   comments(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreChangeComment!
   """None"""
   description: TextAttribute
@@ -5505,8 +5545,8 @@ type CoreProposedChange implements CoreNode & CoreTaskTarget {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None (required)"""
   name: TextAttribute
-  rejected_by(account_type__is_protected: Boolean, account_type__owner__id: ID, account_type__source__id: ID, account_type__value: String, account_type__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, password__is_protected: Boolean, password__owner__id: ID, password__source__id: ID, password__value: String, password__values: [String], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String]): NestedPaginatedCoreGenericAccount!
-  reviewers(account_type__is_protected: Boolean, account_type__owner__id: ID, account_type__source__id: ID, account_type__value: String, account_type__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, password__is_protected: Boolean, password__owner__id: ID, password__source__id: ID, password__value: String, password__values: [String], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String]): NestedPaginatedCoreGenericAccount!
+  rejected_by(account_type__is_protected: Boolean, account_type__owner__id: ID, account_type__source__id: ID, account_type__value: String, account_type__values: [String], ai_context__is_protected: Boolean, ai_context__owner__id: ID, ai_context__source__id: ID, ai_context__value: String, ai_context__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, password__is_protected: Boolean, password__owner__id: ID, password__source__id: ID, password__value: String, password__values: [String], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String]): NestedPaginatedCoreGenericAccount!
+  reviewers(account_type__is_protected: Boolean, account_type__owner__id: ID, account_type__source__id: ID, account_type__value: String, account_type__values: [String], ai_context__is_protected: Boolean, ai_context__owner__id: ID, ai_context__source__id: ID, ai_context__value: String, ai_context__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, password__is_protected: Boolean, password__owner__id: ID, password__source__id: ID, password__value: String, password__values: [String], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String]): NestedPaginatedCoreGenericAccount!
   """Name of the branch containing the changes (required)"""
   source_branch: TextAttribute
   """Current state of the proposed change"""
@@ -13762,6 +13802,12 @@ type Query {
     account_type__source__id: ID
     account_type__value: String
     account_type__values: [String]
+    ai_context__is_protected: Boolean
+    ai_context__isnull: Boolean
+    ai_context__owner__id: ID
+    ai_context__source__id: ID
+    ai_context__value: String
+    ai_context__values: [String]
     any__is_protected: Boolean
     any__owner__id: ID
     any__source__id: ID
@@ -13854,6 +13900,12 @@ type Query {
     subscriber_of_groups__name__values: [String]
   ): PaginatedCoreAccount!
   CoreAccountGroup(
+    ai_context__is_protected: Boolean
+    ai_context__isnull: Boolean
+    ai_context__owner__id: ID
+    ai_context__source__id: ID
+    ai_context__value: String
+    ai_context__values: [String]
     any__is_protected: Boolean
     any__owner__id: ID
     any__source__id: ID
@@ -13992,6 +14044,11 @@ type Query {
     display_label__isnull: Boolean
     display_label__value: String
     display_label__values: [String]
+    groups__ai_context__is_protected: Boolean
+    groups__ai_context__owner__id: ID
+    groups__ai_context__source__id: ID
+    groups__ai_context__value: String
+    groups__ai_context__values: [String]
     groups__description__is_protected: Boolean
     groups__description__owner__id: ID
     groups__description__source__id: ID
@@ -18241,6 +18298,12 @@ type Query {
     account_type__source__id: ID
     account_type__value: String
     account_type__values: [String]
+    ai_context__is_protected: Boolean
+    ai_context__isnull: Boolean
+    ai_context__owner__id: ID
+    ai_context__source__id: ID
+    ai_context__value: String
+    ai_context__values: [String]
     any__is_protected: Boolean
     any__owner__id: ID
     any__source__id: ID
@@ -21628,6 +21691,11 @@ type Query {
     approved_by__account_type__source__id: ID
     approved_by__account_type__value: String
     approved_by__account_type__values: [String]
+    approved_by__ai_context__is_protected: Boolean
+    approved_by__ai_context__owner__id: ID
+    approved_by__ai_context__source__id: ID
+    approved_by__ai_context__value: String
+    approved_by__ai_context__values: [String]
     approved_by__description__is_protected: Boolean
     approved_by__description__owner__id: ID
     approved_by__description__source__id: ID
@@ -21738,6 +21806,11 @@ type Query {
     rejected_by__account_type__source__id: ID
     rejected_by__account_type__value: String
     rejected_by__account_type__values: [String]
+    rejected_by__ai_context__is_protected: Boolean
+    rejected_by__ai_context__owner__id: ID
+    rejected_by__ai_context__source__id: ID
+    rejected_by__ai_context__value: String
+    rejected_by__ai_context__values: [String]
     rejected_by__description__is_protected: Boolean
     rejected_by__description__owner__id: ID
     rejected_by__description__source__id: ID
@@ -21773,6 +21846,11 @@ type Query {
     reviewers__account_type__source__id: ID
     reviewers__account_type__value: String
     reviewers__account_type__values: [String]
+    reviewers__ai_context__is_protected: Boolean
+    reviewers__ai_context__owner__id: ID
+    reviewers__ai_context__source__id: ID
+    reviewers__ai_context__value: String
+    reviewers__ai_context__values: [String]
     reviewers__description__is_protected: Boolean
     reviewers__description__owner__id: ID
     reviewers__description__source__id: ID

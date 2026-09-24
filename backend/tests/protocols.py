@@ -115,6 +115,7 @@ class CoreGenericAccount(CoreNode):
     description: StringOptional
     account_type: Enum
     status: Dropdown
+    ai_context: StringOptional
     tokens: RelationshipManager[InternalAccountToken]
     external_identities: RelationshipManager[InternalExternalIdentity]
 
@@ -289,6 +290,7 @@ class CoreAccount(LineageOwner, LineageSource, CoreGenericAccount):
 
 class CoreAccountGroup(LineageOwner, LineageSource, CoreGroup):
     origin: StringOptional
+    ai_context: StringOptional
     roles: RelationshipManager[CoreAccountRole]
 
 

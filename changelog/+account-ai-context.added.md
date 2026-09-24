@@ -1,0 +1,1 @@
+Added an optional AI context attribute to accounts and account groups, for describing their roles and responsibilities. Automated proposed change triage (Enterprise) uses it to route a change to the team that owns its content and to request the account responsible for it as reviewer, never the change's author

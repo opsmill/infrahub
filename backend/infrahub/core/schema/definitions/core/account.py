@@ -167,6 +167,13 @@ core_generic_account = GenericSchema(
             ],
             default_value=AccountStatus.ACTIVE.value,
         ),
+        Attr(
+            name="ai_context",
+            kind="TextArea",
+            label="AI context",
+            description="Roles and responsibilities of this account. Used by proposed change triage to find the reviewer who owns a change.",
+            optional=True,
+        ),
     ],
     relationships=[
         Rel(name="tokens", peer=InfrahubKind.ACCOUNTTOKEN, optional=True, cardinality=Cardinality.MANY),
