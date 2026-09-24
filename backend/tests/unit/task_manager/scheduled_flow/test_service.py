@@ -289,7 +289,25 @@ async def test_the_outcome_breakdown_never_reads_individual_runs() -> None:
 
 async def test_a_second_query_inside_the_ttl_is_served_from_the_cache() -> None:
     deployment = make_deployment(DeploymentSpec(name="git_repositories_sync"))
-    reader = FakeScheduledFlowReader(deployments=[deployment])
+    reader = FakeScheduledFlowReader(
+        deployments=[deployment],
+        # Non-empty so the cached round trip has to survive the state-keyed breakdown, not just the
+        # scalar fields.
+        outcomes={
+            deployment.id: RecentOutcomeCounts(
+                window_hours=24, counts={StateType.SCHEDULED: 1440, StateType.COMPLETED: 2}
+            )
+        },
+        latest_runs={
+            deployment.id: LatestRunInfo(
+                id=uuid4(),
+                state_type=StateType.CANCELLED,
+                state_name="Cancelled",
+                expected_start_time=NOW - timedelta(seconds=20),
+                start_time=None,
+            )
+        },
+    )
     service = build_service(reader=reader, cache=RecordingCache())
 
     first = await service.query()
@@ -297,6 +315,9 @@ async def test_a_second_query_inside_the_ttl_is_served_from_the_cache() -> None:
 
     assert reader.deployment_reads == 1
     assert second == first
+    assert second.flows[0].recent_outcomes.counts == {StateType.SCHEDULED: 1440, StateType.COMPLETED: 2}
+    assert second.flows[0].recent_outcomes.total == 1442
+    assert second.flows[0].health == ScheduledFlowHealth.CANCELLED
 
 
 async def test_prefect_failures_propagate_rather_than_becoming_an_empty_list() -> None:
