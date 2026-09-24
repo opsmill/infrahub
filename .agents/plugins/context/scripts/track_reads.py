@@ -4,10 +4,10 @@
 The context plugin registers it in hooks/hooks.json for UserPromptSubmit, PreToolUse (Skill, Agent),
 SubagentStart, PostToolUse (Read) and SessionEnd; it dispatches on the event name.
 
-Every read of a path that .claude/context.md marks as logged, path-scoped rule, and nested CLAUDE.md load
-is recorded with:
+Every read of a path that the repository's context.md marks as logged, path-scoped rule, and nested
+CLAUDE.md or AGENTS.md load is recorded with:
 
-- parents: for a rule or nested CLAUDE.md, the file whose Read loaded it (certain); for a doc, the
+- parents: for a rule or nested instruction file, the file whose Read loaded it (certain); for a doc, the
   files already loaded this session that name its path, which is where the path could have come from,
   not necessarily why it was read (the prompt usually is; context_map.py works that out)
 - context: the prompt and subagent it happened under; skills are logged in sequence, not as parents
@@ -46,6 +46,11 @@ PREVIEW_CHARS = 100
 FALLBACK_DIR = Path.home() / ".claude" / "doc-reads"
 """Only used when an event carries no transcript path, or cannot be parsed."""
 ICONS = {"read": "📄 read", "rule": "📏 rule", "claude-md": "📘 loaded", "import": "📘 loaded"}
+# Claude Code's built-in agents-md plugin decides whether AGENTS.md files load alongside or instead of CLAUDE.md.
+AGENTS_MD_PLUGIN = "agents-md@builtin"
+INSTRUCTION_FILES = ("claude-md-or-agents-md", "claude-md-and-agents-md", "claude-md", "managed-only")
+DEFAULT_INSTRUCTION_FILES = "claude-md-or-agents-md"
+CLAUDE_MD_FILES = ("CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md")
 
 
 def now() -> str:
@@ -95,7 +100,40 @@ def rule_patterns(text: str) -> list[str]:
     return patterns
 
 
+def instruction_files() -> str:
+    """Which instruction files Claude Code reads for this user: the agents-md setting, else its default."""
+    settings_dir = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+    try:
+        settings = json.loads(read_text(settings_dir / "settings.json") or "{}")
+    except json.JSONDecodeError:
+        return DEFAULT_INSTRUCTION_FILES
+    if settings.get("enabledPlugins", {}).get(AGENTS_MD_PLUGIN) is False:
+        return "claude-md"
+    value = settings.get("pluginConfigs", {}).get(AGENTS_MD_PLUGIN, {}).get("options", {}).get("instructionFiles")
+    return value if value in INSTRUCTION_FILES else DEFAULT_INSTRUCTION_FILES
+
+
+def has_claude_md(directory: Path) -> bool:
+    # The user's own ~/.claude/CLAUDE.md never counts: it loads alongside AGENTS.md.
+    names = ("CLAUDE.md", "CLAUDE.local.md") if directory == Path.home() else CLAUDE_MD_FILES
+    return any((directory / name).is_file() for name in names)
+
+
+def reads_agents_md(project: Path, mode: str) -> bool:
+    """Whether Claude Code reads the project's AGENTS.md files: always, or only when no CLAUDE.md counts."""
+    if mode == "claude-md-and-agents-md":
+        return True
+    return mode == DEFAULT_INSTRUCTION_FILES and not any(has_claude_md(d) for d in (project, *project.parents))
+
+
+def already_loaded(project: Path, rel: str, loaded: set[str]) -> bool:
+    """Whether the file, or the file it symlinks to, is already loaded."""
+    target = os.path.realpath(project / rel)
+    return any(os.path.realpath(project / path) == target for path in loaded)
+
+
 def rules(project: Path) -> Iterator[tuple[str, list[str]]]:
+    # Claude Code loads rules only from .claude/rules; a .agents/rules folder counts only through a symlink.
     for rule in sorted((project / ".claude" / "rules").rglob("*.md")):
         rule_rel = to_repo_relative(project, rule)
         if rule_rel:
@@ -151,12 +189,23 @@ def doc(path: str, via: str, link: str, parents: list[str], context: list[str], 
 
 
 def startup_records(project: Path) -> list[dict]:
-    records = []
-    if (project / "CLAUDE.md").is_file():
-        records.append(doc("CLAUDE.md", "startup", "startup", [], []))
+    """The instruction files and unconditional rules Claude Code loads at session start, per the user's setting."""
+    mode = instruction_files()
+    if mode == "managed-only":
+        return []
+    records: list[dict] = []
+    loaded: set[str] = set()
+    candidates = [name for name in CLAUDE_MD_FILES if (project / name).is_file()]
+    if reads_agents_md(project, mode):
+        candidates += [name for name in ("AGENTS.md", ".claude/AGENTS.md") if (project / name).is_file()]
+    for name in candidates:
+        if already_loaded(project, name, loaded):
+            continue
+        loaded.add(name)
+        records.append(doc(name, "startup", "startup", [], []))
         records.extend(
             doc(imported, "startup", "import", [importer], [])
-            for imported, importer in claude_md_imports(project, "CLAUDE.md", {"CLAUDE.md"})
+            for imported, importer in claude_md_imports(project, name, loaded)
         )
     records.extend(doc(rule, "startup", "startup", [], []) for rule, patterns in rules(project) if not patterns)
     return records
@@ -256,12 +305,18 @@ def on_read(event: dict, project: Path, records: list[dict]) -> list[dict]:
         add(doc(read_rel, "read", "referenced" if parents else "none", parents, context,
                 lines=line_range(tool_input), repeat=repeat, **about))  # fmt: skip
 
+    mode = instruction_files()
+    agents_md = reads_agents_md(project, mode)
     for directory in list(reversed(Path(read_rel).parents))[1:]:
-        md_rel = (directory / "CLAUDE.md").as_posix()
-        if md_rel not in loaded and (project / md_rel).is_file():
-            add(doc(md_rel, "claude-md", "claude-md", [read_rel], context, **about))
-            for imported, importer in claude_md_imports(project, md_rel, set(loaded)):
-                add(doc(imported, "claude-md", "import", [importer], context, **about))
+        nested = [(directory / "CLAUDE.md").as_posix()]
+        # A subdirectory's AGENTS.md loads after its CLAUDE.md, or instead of it when the setting reads one or the other.
+        if agents_md and (mode == "claude-md-and-agents-md" or not has_claude_md(project / directory)):
+            nested.append((directory / "AGENTS.md").as_posix())
+        for md_rel in nested:
+            if (project / md_rel).is_file() and not already_loaded(project, md_rel, loaded):
+                add(doc(md_rel, "claude-md", "claude-md", [read_rel], context, **about))
+                for imported, importer in claude_md_imports(project, md_rel, set(loaded)):
+                    add(doc(imported, "claude-md", "import", [importer], context, **about))
 
     for rule_rel, patterns in rules(project):
         if rule_rel not in loaded and any(glob_to_regex(p).match(read_rel) for p in patterns):

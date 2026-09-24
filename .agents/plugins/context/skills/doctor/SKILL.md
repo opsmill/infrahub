@@ -1,7 +1,7 @@
 ---
 name: doctor
 description: >-
-  Judges whether a Claude Code session had the right guidance in context: works out what it should have loaded from what it did and the whole guidance corpus (every doc the repository's `.claude/context.md` names, and the rules and skills by index), then compares that with the session's doc-reads log, the one `/context:trace` shows. Expensive: a forked 1M-context agent reads the whole corpus. TRIGGER when: the user asks to audit a session's context, to check whether a session loaded the right docs, rules or skills, or runs `/context:doctor`. DO NOT TRIGGER when: they only want the log or its diagram → `/context:trace`, `/context:map`; auditing documentation coverage for a feature → `audit-docs`; turning review feedback into internal docs → `harvesting-review`.
+  Judges whether a Claude Code session had the right guidance in context: works out what it should have loaded from what it did and the whole guidance corpus (every doc the repository's context config names, and the rules and skills by index), then compares that with the session's doc-reads log, the one `/context:trace` shows. Expensive: a forked 1M-context agent reads the whole corpus. TRIGGER when: the user asks to audit a session's context, to check whether a session loaded the right docs, rules or skills, or runs `/context:doctor`. DO NOT TRIGGER when: they only want the log or its diagram → `/context:trace`, `/context:map`; auditing documentation coverage for a feature → `audit-docs`; turning review feedback into internal docs → `harvesting-review`.
 disable-model-invocation: true
 argument-hint: "[session id]"
 compatibility: Needs the context plugin's hooks on when the audited session started (without its log the audit stops after the ideal set), and a model with a 1M-token context window.
@@ -23,7 +23,7 @@ Judge whether a session had the right guidance in context. The method is fixed: 
 
 !`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/doctor_inputs.py ${CLAUDE_SESSION_ID} ${CLAUDE_PROJECT_DIR} $ARGUMENTS`
 
-The root `CLAUDE.md` and the files it imports are already in your context, so don't read them again. The inputs' `Layout` line is the repository's own map of where its guidance lives; the rest of this skill refers to it. The harness also gave you the skill list; `index.md` has each skill's size.
+The files `index.md` says Claude Code loads at session start are already in your context, so don't read them again. The inputs' `Layout` line is the repository's own map of where its guidance lives; the rest of this skill refers to it. The harness also gave you the skill list; `index.md` has each skill's size.
 
 ## Steps, in this order
 
@@ -40,7 +40,7 @@ The log is the `reads.log` the inputs name, the file `/context:trace` prints. It
 **What gets a line**
 
 - A Read of a path the `Layout` covers: its docs, also-logged and working-file globs. Reads of any other path are not logged, so their absence means nothing. Check the summary instead.
-- A path-scoped rule or nested `CLAUDE.md` that a Read of any file pulled in. Each is logged once per context, the first time; repeat injections never show.
+- A path-scoped rule, or a nested `CLAUDE.md` or `AGENTS.md`, that a Read of any file pulled in. Each is logged once per context, the first time; repeat injections never show.
 - A Skill tool call. A slash command the user typed shows only as the prompt's text.
 - Not logged: Bash reads (`cat`, `sed`, `grep`), skill bodies, and the user-level `CLAUDE.md` and memory. Before calling a doc missed, check the summary for a Bash read or search of it.
 
@@ -56,9 +56,9 @@ The log is the `reads.log` the inputs name, the file `/context:trace` prints. It
 - `🤖 agent <type>: "<description>"` opens a subagent under the prompt that spawned it. `🤖 agent <type> (start not recorded)` is a subagent whose start was missed, which is how a forked skill appears. A subagent is its own context: it doesn't see what the main agent loaded.
 - `📄 read <path>`, optionally followed by `(lines a-b)` or `(from line N)` for a partial read, then `(read N)` when this context has read the file before, then `· path via <files>` listing already-loaded files that name the path. `path via` is where the path could have come from, not why it was read.
 - `📏 rule <path> ← <file>`: a path-scoped rule, pulled in by the Read of `<file>`.
-- `📘 loaded <path> ← <file>`: a nested `CLAUDE.md`, pulled in by the Read of `<file>`, or a file that `CLAUDE.md` imports, where `<file>` is the importing `CLAUDE.md`.
+- `📘 loaded <path> ← <file>`: a nested `CLAUDE.md` or `AGENTS.md`, pulled in by the Read of `<file>`, or a file one of them imports, where `<file>` is the importing file.
 - `🧩 skill <name> <args>`: a Skill tool call at that point.
-- `── docs read this session (N files, M loads) ──` opens a closing block. It has no timestamps, lists `startup:` (the root `CLAUDE.md`, its imports and the rules without `paths:`, assumed in every context), and repeats the timeline. It is written again at every session end, so a resumed session carries several. Read the timeline, and take `startup:` from the last block.
+- `── docs read this session (N files, M loads) ──` opens a closing block. It has no timestamps, lists `startup:` (the root instruction files Claude Code loads under the person's instruction-files setting, their imports, and the rules without `paths:`, assumed in every context), and repeats the timeline. It is written again at every session end, so a resumed session carries several. Read the timeline, and take `startup:` from the last block.
 
 **Lines to leave out**
 

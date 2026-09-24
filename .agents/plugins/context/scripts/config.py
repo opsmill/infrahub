@@ -1,8 +1,9 @@
 # ruff: noqa: INP001  # standalone script, not a package
-"""Where a repository keeps its agent guidance, read from .claude/context.md and .claude/context.local.md.
+"""Where a repository keeps its agent guidance, read from context.md in .agents/ or .claude/.
 
-Both files hold YAML frontmatter with the keys in KEYS, each a list of repo-relative globs or directories.
-The local file is meant to stay out of git and replaces whole keys. Globs match paths after symlinks
+The file holds YAML frontmatter with the keys in KEYS, each a list of repo-relative globs or directories.
+A repository that uses both folders keeps one file and symlinks the other name to it. A context.local.md
+in either folder is meant to stay out of git and replaces whole keys. Globs match paths after symlinks
 resolve, the way the tracker records them.
 """
 
@@ -16,11 +17,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG_FILES = (".claude/context.md", ".claude/context.local.md")
+PROJECT_FILES = (".agents/context.md", ".claude/context.md")
+LOCAL_FILES = (".agents/context.local.md", ".claude/context.local.md")
 KEYS = ("docs", "also_logged", "working_files", "skip_dirs")
 DEFAULTS: dict[str, tuple[str, ...]] = {
     "docs": ("**/AGENTS.md", "**/CLAUDE.md"),
-    "also_logged": (".claude/**",),
+    "also_logged": (".agents/**", ".claude/**"),
     "working_files": (),
     "skip_dirs": (),
 }
@@ -122,22 +124,45 @@ class Layout:
 
     def describe(self) -> str:
         fields = " · ".join(f"{key.replace('_', ' ')}: {', '.join(getattr(self, key)) or 'none'}" for key in KEYS)
-        return f"{fields} (from {', '.join(self.sources) or 'the plugin defaults: no .claude/context.md'})"
+        source = (
+            ", ".join(self.sources) or "the plugin defaults: no context.md in .agents/ or .claude/, see /context:init"
+        )
+        return f"{fields} (from {source})"
+
+
+def find_config(project: Path, names: tuple[str, ...]) -> str | None:
+    """The config file among names that exists, counting a symlink and its target as one file.
+
+    Raises:
+        ValueError: When two of them exist as separate files.
+
+    """
+    found: dict[Path, str] = {}
+    for name in names:
+        if (project / name).is_file():
+            found.setdefault((project / name).resolve(), name)
+    if len(found) > 1:
+        raise ValueError(
+            f"{' and '.join(found.values())} are separate files; keep one and make the other a symlink to it, "
+            "for example: ln -s ../.agents/context.md .claude/context.md"
+        )
+    return next(iter(found.values()), None)
 
 
 def load_layout(project: Path) -> Layout:
-    """The project's layout: the defaults, then .claude/context.md, then .claude/context.local.md.
+    """The project's layout: the defaults, then its context.md, then its context.local.md.
 
     Raises:
-        ValueError: When a config file cannot be read or names a key outside KEYS.
+        ValueError: When a config file cannot be read, names a key outside KEYS, or exists twice.
 
     """
     values = dict(DEFAULTS)
     sources = []
-    for name in CONFIG_FILES:
-        path = project / name
-        if not path.is_file():
+    for names in (PROJECT_FILES, LOCAL_FILES):
+        name = find_config(project, names)
+        if name is None:
             continue
+        path = project / name
         try:
             found = frontmatter_lists(path.read_text(encoding="utf-8"))
         except ValueError as error:

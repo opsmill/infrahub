@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from config import Layout, load_layout
-from track_reads import claude_md_imports
+from track_reads import startup_records
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -265,13 +265,18 @@ def repo_path(path: Path, docs_root: Path) -> str:
         return str(path)
 
 
+def startup_paths(docs_root: Path) -> list[str]:
+    return [record["path"] for record in startup_records(docs_root)]
+
+
 def load_list(docs_root: Path, layout: Layout) -> list[tuple[str, int]]:
-    """Every doc the layout names, except what CLAUDE.md loads at startup and the rule and skill directories."""
-    startup = {"CLAUDE.md", *(imported for imported, _ in claude_md_imports(docs_root, "CLAUDE.md", {"CLAUDE.md"}))}
+    """Every doc the layout names, except what loads at session start and the rule and skill directories."""
+    startup = set(startup_paths(docs_root))
     index_only = [
-        directory.resolve()
-        for directory in (docs_root / ".claude" / "rules", docs_root / ".claude" / "skills")
-        if directory.exists()
+        (docs_root / folder / kind).resolve()
+        for folder in (".claude", ".agents")
+        for kind in ("rules", "skills")
+        if (docs_root / folder / kind).exists()
     ]
     skip = {docs_root / directory for directory in layout.skip_dirs} | {docs_root / ".claude" / "worktrees"}
     entries = []
@@ -292,8 +297,10 @@ def load_list(docs_root: Path, layout: Layout) -> list[tuple[str, int]]:
 
 def rule_lines(docs_root: Path, seen: set[Path]) -> list[str]:
     lines = []
-    for base in (".claude/rules",):
-        for path in sorted((docs_root / base).glob("*.md")):
+    for base in (".claude/rules", ".agents/rules"):
+        # Claude Code reads nothing under .agents/, so a rule there loads only through .claude/rules.
+        unseen = "" if base == ".claude/rules" else " · not in .claude/rules, so Claude Code never loads it"
+        for path in sorted((docs_root / base).rglob("*.md")):
             if path.resolve() in seen:
                 continue
             seen.add(path.resolve())
@@ -307,20 +314,22 @@ def rule_lines(docs_root: Path, seen: set[Path]) -> list[str]:
             first = next((x.strip() for x in body.splitlines() if x.strip() and not x.startswith("#")), "")
             scope = ("paths: " + ", ".join(globs)) if globs else "no paths: (loaded at every session start)"
             lines.append(
-                f"- {repo_path(path, docs_root)} (≈{fmt(tok(body))}) · {scope} · {heading}: {short(first, 160)}"
+                f"- {repo_path(path, docs_root)} (≈{fmt(tok(body))}) · {scope} · {heading}: {short(first, 160)}{unseen}"
             )
     return lines
 
 
 def skill_lines(docs_root: Path, seen: set[Path]) -> list[str]:
     lines = []
-    for base in (docs_root / ".claude" / "skills", HOME / ".claude" / "skills"):
+    for base in (docs_root / ".claude" / "skills", HOME / ".claude" / "skills", docs_root / ".agents" / "skills"):
+        unseen = " · not in .claude/skills, so Claude Code never loads it" if base.parent.name == ".agents" else ""
         for path in sorted(base.glob("*/SKILL.md")):
             if path.resolve() in seen:
                 continue
             seen.add(path.resolve())
             fm, body = frontmatter(path.read_text(encoding="utf-8", errors="replace"))
-            lines.append(f"- {frontmatter_field(fm, 'name') or path.parent.name} (≈{fmt(tok(body))}) · {path.parent}")
+            name = frontmatter_field(fm, "name") or path.parent.name
+            lines.append(f"- {name} (≈{fmt(tok(body))}) · {path.parent}{unseen}")
     return lines
 
 
@@ -335,8 +344,8 @@ def write_index(path: Path, docs_root: Path, layout: Layout) -> tuple[int, int]:
         "",
         *(f"- {rel} (≈{fmt(t)})" for rel, t in entries),
         "",
-        f"Total ≈{fmt(total)} tokens in {len(entries)} files. The root CLAUDE.md and the files it imports are not "
-        "listed: they are already in your context.",
+        f"Total ≈{fmt(total)} tokens in {len(entries)} files. Not listed, because Claude Code loads them at session "
+        f"start and they are already in your context: {', '.join(startup_paths(docs_root)) or 'none'}.",
         "",
         "## Rules (index only; the harness injects them by paths:)",
         "",
