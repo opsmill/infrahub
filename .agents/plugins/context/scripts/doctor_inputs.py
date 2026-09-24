@@ -50,6 +50,22 @@ LONG_SESSION_REPLY_CHARS = 300
 LATEST_COMPACTION_CHARS = 16000
 EARLIER_COMPACTION_CHARS = 5000
 KILO = 1000
+# How each harness loads guidance; the plugin records Claude Code sessions so far.
+HARNESSES: dict[str, tuple[str, ...]] = {
+    "Claude Code": (
+        "Session start: the root CLAUDE.md, .claude/CLAUDE.md and CLAUDE.local.md with what they import, the rules "
+        "without paths:, and AGENTS.md when the person's instruction-files setting reads it.",
+        "On a file Read: the CLAUDE.md in each folder above the file, the AGENTS.md there when that setting reads it, "
+        "and each rule whose paths: match. It injects nothing the same message reads, and no import of a file the "
+        "context already read.",
+        "Rules load only from .claude/rules and skills only from .claude/skills.",
+        "Explore and Plan subagents, and custom agents that set omitClaudeMd, start without the startup files; nested "
+        "instruction files and path-scoped rules still reach them on a Read.",
+        "Skills run through the Skill tool, which the log records; a slash command the user typed shows only as the "
+        "prompt's text.",
+        "Not logged: reads through Bash (cat, sed, grep), skill bodies, and the user-level CLAUDE.md and memory.",
+    ),
+}
 
 
 def tok(text: str | None) -> int:
@@ -466,6 +482,10 @@ def docs_tree_line(session: Session) -> str:
     )
 
 
+def harness_lines(harness: str) -> list[str]:
+    return [f"Harness: {harness}, which loads guidance like this:", *(f"- {line}" for line in HARNESSES[harness])]
+
+
 def log_status(log: Path) -> str:
     if not log.exists():
         return f"MISSING at {log}: the context plugin was not recording this session"
@@ -508,6 +528,7 @@ def main() -> None:
         f"Load list and index: {index} ({count} files to read, ≈{fmt(total)} tokens)",
         f"Layout: {layout.describe()}",
         docs_tree_line(session),
+        *harness_lines("Claude Code"),
     ]
     print("\n".join(report))
 

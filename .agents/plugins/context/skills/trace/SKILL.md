@@ -1,7 +1,7 @@
 ---
 name: trace
 description: >-
-  Shows the doc-reads log of a Claude Code session: every internal doc, path-scoped rule and nested `CLAUDE.md` it loaded, under the prompt or subagent that loaded it. TRIGGER when: the user asks what docs, rules or context a session loaded, or runs `/context:trace`. DO NOT TRIGGER when: they want a diagram of why each doc loaded → `/context:map`; they want to know whether the loads were the right ones → `/context:doctor`.
+  Shows the doc-reads log of a coding-agent session: every internal doc, rule and instruction file it loaded, under the prompt or subagent that loaded it. TRIGGER when: the user asks what docs, rules or context a session loaded, or runs `/context:trace`. DO NOT TRIGGER when: they want a diagram of why each doc loaded → `/context:map`; they want to know whether the loads were the right ones → `/context:doctor`.
 disable-model-invocation: true
 argument-hint: "[session id]"
 compatibility: Needs the context plugin's hooks on when the session started; they write the log this shows.

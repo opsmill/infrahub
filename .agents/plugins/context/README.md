@@ -1,7 +1,7 @@
 # context
 
-Records which guidance a Claude Code session loads, and what led to each load, then lets you read, draw and
-audit that record.
+Records which guidance a coding-agent session loads, and what led to each load, then lets you read, draw and
+audit that record. It records Claude Code sessions today; the repository lint applies to every harness.
 
 | Skill | What it does |
 |---|---|

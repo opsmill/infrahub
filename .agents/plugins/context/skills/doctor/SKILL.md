@@ -1,7 +1,7 @@
 ---
 name: doctor
 description: >-
-  Audits a repository's agent guidance and how a Claude Code session loaded it: a forked read-only agent audits the session, a script lints the repository, and the two reports are merged, starting with what never loaded. Expensive: the session audit reads the whole guidance corpus with a 1M-context model. TRIGGER when: the user asks to audit a session's context, to check whether a session loaded the right docs, rules or skills, or to lint or check the repository's agent guidance, or runs `/context:doctor`. DO NOT TRIGGER when: they only want the log or its diagram → `/context:trace`, `/context:map`; the repository has no context config yet → `/context:init`.
+  Audits a repository's agent guidance and how a coding-agent session loaded it: a forked read-only agent audits the session, a script lints the repository, and the two reports are merged, starting with what never loaded. Expensive: the session audit reads the whole guidance corpus with a 1M-context model. TRIGGER when: the user asks to audit a session's context, to check whether a session loaded the right docs, rules or skills, or to lint or check the repository's agent guidance, or runs `/context:doctor`. DO NOT TRIGGER when: they only want the log or its diagram → `/context:trace`, `/context:map`; the repository has no context config yet → `/context:init`.
 disable-model-invocation: true
 argument-hint: "[session id]"
 compatibility: Needs the context plugin's hooks on when the audited session started, and a model with a 1M-token context window for the session audit.
