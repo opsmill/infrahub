@@ -1,0 +1,1 @@
+Artifacts and file objects whose content was modified or corrupted in the object storage are no longer served: the API refuses them with a 409 error that the UI now displays, and corrupted artifacts are regenerated automatically.

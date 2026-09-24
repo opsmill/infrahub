@@ -461,6 +461,47 @@ class TestFileObjectDownload(TestInfrahubApp):
 
         assert response.status_code == 403
 
+    async def test_download_refuses_content_modified_in_storage(
+        self,
+        db: InfrahubDatabase,
+        test_client: InfrahubTestClient,
+        admin_headers: dict[str, str],
+        file_contract_schema: None,
+        dummy_storage: DummyObjectStorage,
+    ) -> None:
+        """A file whose stored content no longer matches its recorded checksum is refused on every endpoint."""
+        file_content = b"router bgp 65000\n neighbor 10.0.0.1 password s3cret\n"
+        storage_id = "modified-file-storage-id"
+        dummy_storage.store(identifier=storage_id, content=io.BytesIO(file_content))
+        node = await Node.init(db=db, schema="TestingFileContract")
+        await node.new(
+            db=db,
+            file_name="bgp.txt",
+            file_size=len(file_content),
+            file_type="text/plain",
+            checksum=hashlib.sha1(file_content, usedforsecurity=False).hexdigest(),
+            storage_id=storage_id,
+            description="Modified in storage",
+        )
+        await node.save(db=db)
+        intact = await test_client.get(f"/api/storage/files/{node.id}", headers=admin_headers)
+        dummy_storage.store(
+            identifier=storage_id, content=io.BytesIO(b"router bgp 65000\n neighbor 6.6.6.6 password attacker\n")
+        )
+
+        responses = [
+            await test_client.get(f"/api/storage/files/{node.id}", headers=admin_headers),
+            await test_client.get(f"/api/storage/files/by-storage-id/{storage_id}", headers=admin_headers),
+        ]
+
+        assert (intact.status_code, intact.content) == (200, file_content)
+        for response in responses:
+            assert response.status_code == 409
+            assert response.json()["errors"][0]["message"] == (
+                f"The file stored as {storage_id} does not match the checksum recorded for it: it was modified or "
+                "corrupted outside of Infrahub and is not served."
+            )
+
     async def test_legacy_storage_endpoint_rejects_file_object_access(
         self,
         db: InfrahubDatabase,

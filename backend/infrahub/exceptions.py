@@ -259,6 +259,18 @@ class NodeNotFoundError(Error):
         """
 
 
+class StorageObjectIntegrityError(Error):
+    HTTP_CODE: int = 409
+
+    def __init__(self, storage_id: str, object_label: str) -> None:
+        self.storage_id = storage_id
+        self.message = (
+            f"The {object_label} stored as {storage_id} does not match the checksum recorded for it: it was modified "
+            "or corrupted outside of Infrahub and is not served."
+        )
+        super().__init__(self.message)
+
+
 class ResourceNotFoundError(Error):
     HTTP_CODE: int = 404
 

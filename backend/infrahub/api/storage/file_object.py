@@ -13,6 +13,8 @@ from infrahub.api.dependencies import (
     get_db,
     get_permission_manager,
 )
+from infrahub.artifacts.checksum import compute_file_object_checksum
+from infrahub.artifacts.integrity import FILE_OBJECT_LABEL, verify_content
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, PermissionAction
 from infrahub.core.protocols import CoreFileObject
@@ -76,8 +78,17 @@ def build_content_disposition(filename: str, preview: bool = False) -> str:
 
 def _build_file_response(file_object: CoreFileObject, *, preview: bool = False) -> Response:
     """Build a `Response` for downloading a FileObject's content."""
+    storage_id = file_object.storage_id.value
+    content = registry.storage.retrieve_binary(identifier=storage_id)
+    verify_content(
+        storage_id=storage_id,
+        content=content,
+        expected_checksums={file_object.checksum.value},
+        compute=compute_file_object_checksum,
+        object_label=FILE_OBJECT_LABEL,
+    )
     return Response(
-        content=registry.storage.retrieve_binary(identifier=file_object.storage_id.value),
+        content=content,
         media_type=file_object.file_type.value,
         headers={
             "Content-Disposition": build_content_disposition(filename=file_object.file_name.value, preview=preview)

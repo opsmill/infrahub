@@ -13,14 +13,21 @@ from infrahub.api.dependencies import (
     get_db,
     get_permission_manager,
 )
+from infrahub.artifacts.checksum import compute_artifact_checksum
+from infrahub.artifacts.integrity import (
+    ARTIFACT_LABEL,
+    request_artifact_regeneration,
+    verify_content,
+)
 from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, PermissionAction
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.protocols import CoreArtifact, CoreArtifactDefinition
+from infrahub.core.query.artifact import RecordedArtifactChecksum
 from infrahub.database import InfrahubDatabase  # noqa: TC001
-from infrahub.exceptions import BranchStatusError, NodeNotFoundError, ValidationError
+from infrahub.exceptions import BranchStatusError, NodeNotFoundError, StorageObjectIntegrityError, ValidationError
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.log import get_logger
 from infrahub.permissions.constants import PermissionDecisionFlag
@@ -46,10 +53,11 @@ class ArtifactGenerateResponse(BaseModel):
 
 @router.get("/{artifact_id:str}")
 async def get_artifact(
+    request: Request,
     artifact_id: str,
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
-    _: AccountSession = Depends(get_current_user),
+    account_session: AccountSession = Depends(get_current_user),
 ) -> Response:
     artifact = await registry.manager.get_one(
         db=db, id=artifact_id, branch=branch_params.branch, at=branch_params.at, kind=CoreArtifact
@@ -59,10 +67,33 @@ async def get_artifact(
             branch_name=branch_params.branch.name, node_type=InfrahubKind.ARTIFACT, identifier=artifact_id
         )
 
-    return Response(
-        content=registry.storage.retrieve(identifier=str(artifact.storage_id.value)),
-        headers={"Content-Type": artifact.content_type.value.value},
-    )
+    storage_id = str(artifact.storage_id.value)
+    content = registry.storage.retrieve_binary(identifier=storage_id)
+    try:
+        verify_content(
+            storage_id=storage_id,
+            content=content,
+            expected_checksums={artifact.checksum.value},
+            compute=compute_artifact_checksum,
+            object_label=ARTIFACT_LABEL,
+        )
+    except StorageObjectIntegrityError:
+        await request_artifact_regeneration(
+            db=db,
+            service=request.app.state.service,
+            account=account_session,
+            recorded=[
+                RecordedArtifactChecksum(
+                    node_id=artifact.id,
+                    kind=InfrahubKind.ARTIFACT,
+                    branch=branch_params.branch.name,
+                    checksum=artifact.checksum.value,
+                )
+            ],
+        )
+        raise
+
+    return Response(content=content, headers={"Content-Type": artifact.content_type.value.value})
 
 
 @router.post("/generate/{artifact_definition_id:str}")

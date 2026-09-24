@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import hashlib
 import importlib
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import httpx
 import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
@@ -49,6 +49,7 @@ from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
 
 from infrahub import config, lock
+from infrahub.artifacts.checksum import compute_artifact_checksum
 from infrahub.auth.session import AnonymousSession
 from infrahub.context import InfrahubContext
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositoryObjects, RepositorySyncStatus
@@ -2137,9 +2138,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             location=transformation_location,
         )
 
-        checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
+        checksum = compute_artifact_checksum(bytes(artifact_content_str, encoding="utf-8"))
 
-        if artifact.checksum.value == checksum:
+        if artifact.checksum.value == checksum and await self._stored_artifact_is_intact(
+            storage_id=artifact.storage_id.value, checksum=checksum
+        ):
             return ArtifactGenerateResult(
                 changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
             )
@@ -2155,6 +2158,31 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         await artifact.save()
 
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
+
+    async def _stored_artifact_is_intact(self, storage_id: str | None, checksum: str) -> bool:
+        """Whether the storage still holds the exact content recorded for an unchanged artifact.
+
+        A missing or modified object is reported as not intact, so the caller rewrites it.
+
+        Raises:
+            httpx.HTTPStatusError: If the object cannot be read for another reason than being missing or modified.
+
+        """
+        if not storage_id:
+            return False
+        try:
+            content = await self.sdk.object_store.get(identifier=storage_id, tracker="artifact-verify-content")
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code not in {404, 409}:
+                raise
+            get_logger().warning(
+                "Stored artifact is missing or modified, it will be rewritten",
+                storage_id=storage_id,
+                status_code=exc.response.status_code,
+                repository=self.name,
+            )
+            return False
+        return compute_artifact_checksum(bytes(content, encoding="utf-8")) == checksum
 
     async def render_artifact(
         self,
@@ -2198,9 +2226,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             location=message.transform_location,
         )
 
-        checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
+        checksum = compute_artifact_checksum(bytes(artifact_content_str, encoding="utf-8"))
 
-        if artifact.checksum.value == checksum:
+        if artifact.checksum.value == checksum and await self._stored_artifact_is_intact(
+            storage_id=artifact.storage_id.value, checksum=checksum
+        ):
             return ArtifactGenerateResult(
                 changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
             )

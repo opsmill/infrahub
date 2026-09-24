@@ -822,6 +822,17 @@ async def mock_upload_content(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
+async def mock_stored_artifact_02_intact(httpx_mock: HTTPXMock) -> HTTPXMock:
+    httpx_mock.add_response(
+        method="GET",
+        url="http://mock/api/storage/object/13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
+        text='{\n  "KEY1": "value1",\n  "KEY2": "value2"\n}',
+        match_headers={"X-Infrahub-Tracker": "artifact-verify-content"},
+    )
+    return httpx_mock
+
+
+@pytest.fixture
 async def artifact_definition_data_01() -> dict[str, Any]:
     return {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",

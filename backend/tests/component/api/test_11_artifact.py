@@ -81,7 +81,7 @@ class TestArtifact11(TestInfrahubApp):
             status="Ready",
             object=car_person_data_generic["c1"],
             storage_id="95008984-16ca-4e58-8323-0899bb60035f",
-            checksum="60d39063c26263353de24e1b913e1e1c",
+            checksum="efebd898e52c44e3b3514775e5a7c2fa",
             content_type="application/json",
         )
         await artifact.save(db=db)

@@ -77,6 +77,14 @@ Content in object storage is immutable. Once a file is stored, it is never modif
 
 This approach avoids the complexity of in-place updates and means the storage layer does not need to understand branches, merge conflicts, or version history. All of that logic lives in the graph database, where Infrahub already has mature support for it.
 
+### Integrity verification
+
+Every stored object has a checksum recorded in the graph database when it is written: an MD5 for artifacts, a SHA-1 for file objects. Before the API returns the content of an artifact or a file object, it computes the checksum of what it read from object storage and compares it with the recorded one. Content that does not match, because it was modified or corrupted outside of Infrahub, is refused with an HTTP 409 error instead of being served, and the UI shows that error in place of the content.
+
+A refused artifact is queued for regeneration, which writes it again from its definition. Artifacts are also rewritten whenever a regeneration finds their stored object missing or modified, even if the rendered content itself did not change. File objects cannot be regenerated: a refused file object must be re-uploaded or restored from a backup.
+
+The verification protects against changes made directly in object storage. It does not replace access control on the bucket or the storage directory, and it does not encrypt the content, which remains readable to anyone with access to the storage.
+
 ### Relationship to the graph database
 
 The graph database and object storage serve complementary roles:
@@ -124,7 +132,7 @@ Unlike artifacts, which can be regenerated from their definitions, user-uploaded
 ### Backend migration
 
 :::warning Backend migration
-Switching storage backends (for example, from `local` to `s3`) does not migrate existing content. Files stored under the previous backend become inaccessible. Artifacts can be regenerated, but user-uploaded file objects must be re-uploaded.
+Switching storage backends (for example, from `local` to `s3`) does not migrate existing content. Files stored under the previous backend become inaccessible. Artifacts are written again by regenerating their definitions, but user-uploaded file objects must be re-uploaded.
 :::
 
 ## Connection to other concepts
