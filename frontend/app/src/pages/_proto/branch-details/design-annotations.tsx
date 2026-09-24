@@ -23,7 +23,16 @@ export type Note = {
   createdAt: string;
   /** Set when the note has been sent. Sent notes stay visible but stop counting. */
   sentAt?: string;
+  /**
+   * Triage outcome, set by the owner. `open` until someone decides; the decision itself
+   * (which rev fixed it, or why it was declined) is written in 03-decisions.md — this is
+   * only the marker that makes the pin show what happened to it.
+   */
+  status?: "open" | "addressed" | "declined" | "deferred";
+  resolution?: string;
 };
+
+export type NoteStatus = NonNullable<Note["status"]>;
 
 const pathFrom = (root: Element, el: Element): string => {
   const parts: string[] = [];
@@ -39,7 +48,8 @@ const pathFrom = (root: Element, el: Element): string => {
   return parts.join(" > ");
 };
 
-const storageKey = (scope: string) => `design-jam:notes:${scope}`;
+const PREFIX = "design-jam:notes:";
+const storageKey = (scope: string) => `${PREFIX}${scope}`;
 
 export const loadNotes = (scope: string): Note[] => {
   try {
@@ -47,6 +57,27 @@ export const loadNotes = (scope: string): Note[] => {
   } catch {
     return [];
   }
+};
+
+/**
+ * Every note on every direction and revision of one run, for the owner's "copy all". A
+ * scope is `<slug>:<variant>:rev<N>`; this returns them keyed by that scope so the export
+ * can group and deep-link each group.
+ */
+export const loadAllNotes = (slug: string): Record<string, Note[]> => {
+  const out: Record<string, Note[]> = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(`${PREFIX}${slug}:`)) continue;
+      const scope = key.slice(PREFIX.length);
+      const notes = loadNotes(scope).filter((n) => n.text.trim());
+      if (notes.length) out[scope] = notes;
+    }
+  } catch {
+    /* storage blocked — the current scope's notes still come through the live state */
+  }
+  return out;
 };
 
 const saveNotes = (scope: string, notes: Note[]) => {
@@ -159,7 +190,12 @@ export function Annotations({
         <div key={n.id} className="dja-pin" style={{ left: `${n.x * 100}%`, top: `${n.y * 100}%` }}>
           <button
             type="button"
-            className={["dja-dot", !n.text && "dja-dot--empty", n.sentAt && "dja-dot--sent"]
+            className={[
+              "dja-dot",
+              !n.text && "dja-dot--empty",
+              n.sentAt && "dja-dot--sent",
+              n.status && n.status !== "open" && `dja-dot--${n.status}`,
+            ]
               .filter(Boolean)
               .join(" ")}
             aria-label={`Note ${i + 1}${n.sentAt ? " (sent)" : ""}: ${n.text || "empty"}`}
@@ -183,6 +219,22 @@ export function Annotations({
                   commit(notes.map((m) => (m.id === n.id ? { ...m, text: e.target.value } : m)))
                 }
               />
+              {/* Triage, for the owner. The reason lives in 03-decisions.md; this only marks the pin. */}
+              <div className="dja-triage" role="group" aria-label="Triage">
+                {(["open", "addressed", "declined", "deferred"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    aria-pressed={(n.status ?? "open") === s}
+                    className={(n.status ?? "open") === s ? "dja-tri dja-tri--on" : "dja-tri"}
+                    onClick={() =>
+                      commit(notes.map((m) => (m.id === n.id ? { ...m, status: s } : m)))
+                    }
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
               <div className="dja-card-foot">
                 <button
                   type="button"
@@ -205,12 +257,18 @@ export function Annotations({
   );
 }
 
+const statusTag = (n: Note) => {
+  const s = n.status ?? "open";
+  if (s === "open") return "";
+  return ` _[${s}${n.resolution ? `: ${n.resolution}` : ""}]_`;
+};
+
 export const notesToMarkdown = (notes: Note[]) =>
   notes
     .filter((n) => n.text.trim())
     .map(
       (n, i) =>
-        `${i + 1}. **${n.snippet || n.selector || "element"}** — ${n.text.trim()}\n   \`${n.selector}\``
+        `${i + 1}. **${n.snippet || n.selector || "element"}** — ${n.text.trim()}${statusTag(n)}\n   \`${n.selector}\``
     )
     .join("\n");
 
@@ -250,6 +308,18 @@ const css = `
 .dja-dot--empty { background: #a1a1aa; }
 /* Sent notes stay on screen, hollowed out — visibly handled, not visibly lost. */
 .dja-dot--sent { color: #4f46e5; background: #fff; border-color: #4f46e5; }
+/* Triage outcomes read at a glance from the pin itself: done, declined, parked. */
+.dja-dot--addressed { color: #fff; background: #15803d; border-color: #fff; }
+.dja-dot--declined { color: #fff; background: #71717a; border-color: #fff; text-decoration: line-through; }
+.dja-dot--deferred { color: #1c1917; background: #fcd34d; border-color: #fff; }
+.dja-triage { display: flex; gap: 4px; flex-wrap: wrap; }
+.dja-tri {
+  font: 600 10px/1 system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase;
+  cursor: pointer; padding: 5px 7px; border-radius: 999px;
+  color: #52525b; background: #f4f4f5; border: 1px solid #e4e4e7;
+}
+.dja-tri--on { color: #fff; background: #3f3f46; border-color: #3f3f46; }
+.dja-tri:focus-visible { outline: 2px solid #18181b; outline-offset: 2px; }
 .dja-sent-tag {
   margin-left: 6px; padding: 1px 5px; border-radius: 3px;
   font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;

@@ -14,7 +14,13 @@
 
 import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 
-import { Annotations, markSent, type Note, notesToMarkdown } from "./design-annotations";
+import {
+  Annotations,
+  loadAllNotes,
+  markSent,
+  type Note,
+  notesToMarkdown,
+} from "./design-annotations";
 
 export type KnobValue = number | string | boolean;
 
@@ -131,6 +137,22 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
   const compareTarget = current.rev !== latest ? latest : current.rev > 1 ? current.rev - 1 : null;
   const scope = `${slug}:${variant.id}:rev${current.rev}`;
 
+  /**
+   * Embed mode: this document is one side of a comparison, loaded in an iframe by the
+   * parent. It renders the design and nothing else — no dock, no alert, no pin tool — so
+   * the two sides show exactly the app and only the app.
+   */
+  const embed = params.get(q("embed")) === "1";
+
+  /** The URL for one side of a comparison: same variant and knobs, a fixed rev, embed on. */
+  const sideUrl = (r: number) => {
+    const u = new URL(window.location.href);
+    u.searchParams.set(q("embed"), "1");
+    u.searchParams.set(q("rev"), String(r));
+    u.searchParams.delete(q("compare"));
+    return u.toString();
+  };
+
   /** Only what this direction actually reads. A variant key shadows a shared one. */
   const own = variant.knobs ?? [];
   const ownKeys = new Set(own.map((k) => k.key));
@@ -187,8 +209,8 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
     setCompareWith(null);
   };
 
-  const asMarkdown = () => {
-    const knobLines = knobs
+  const knobLines = () =>
+    knobs
       .map(
         (k) =>
           `- ${k.label} (\`${k.key}\`): ${values[k.key]}${
@@ -196,15 +218,55 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
           }`
       )
       .join("\n");
-    return [
+
+  /** This revision only — what Send writes for the owner's own local loop. */
+  const asMarkdown = () =>
+    [
       `## design-jam feedback — ${slug} · ${variant.label} · rev ${current.rev}`,
       // The link is what makes a pasted note actionable by someone else: it reopens the
       // exact direction, revision and knob values the note was written against.
       `\n${window.location.href}`,
-      knobs.length ? `\n### Knobs\n${knobLines}` : "",
+      knobs.length ? `\n### Knobs\n${knobLines()}` : "",
       `\n### Notes\n${notesToMarkdown(notes) || "_No notes._"}`,
     ].join("\n");
+
+  /**
+   * Every note on the whole run, grouped by direction and revision, each group with the
+   * link that reopens it. This is the owner's gather step: paste it into `/design-jam`
+   * locally and triage. Includes the live scope's unsaved state so nothing is missed.
+   */
+  const allAsMarkdown = () => {
+    const groups = { ...loadAllNotes(slug), [scope]: notes.filter((n) => n.text.trim()) };
+    const sections = Object.entries(groups)
+      .filter(([, ns]) => ns.length)
+      .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+      .map(([sc, ns]) => {
+        const [, vId, revPart] = sc.split(":");
+        const r = Number((revPart ?? "").replace("rev", ""));
+        const v = variants.find((x) => x.id === vId);
+        const u = new URL(window.location.href);
+        u.searchParams.set(q("variant"), vId ?? variant.id);
+        u.searchParams.set(q("rev"), String(r));
+        u.searchParams.delete(q("compare"));
+        u.searchParams.delete(q("embed"));
+        const open = ns.filter((n) => !n.status || n.status === "open").length;
+        return [
+          `### ${v?.label ?? vId} · rev ${r} — ${ns.length} note${ns.length === 1 ? "" : "s"}, ${open} open`,
+          u.toString(),
+          "",
+          notesToMarkdown(ns),
+        ].join("\n");
+      });
+    return [
+      `## design-jam feedback — ${slug} — all directions, all revisions`,
+      knobs.length
+        ? `\n### Current knobs (${variant.label} · rev ${current.rev})\n${knobLines()}`
+        : "",
+      "",
+      sections.join("\n\n") || "_No notes anywhere yet._",
+    ].join("\n");
   };
+  const totalNotes = Object.values(loadAllNotes(slug)).reduce((n, ns) => n + ns.length, 0);
 
   const flash = (msg: string) => {
     setSaved(msg);
@@ -214,7 +276,16 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(asMarkdown());
-      flash("✓ Copied — paste it to your agent");
+      flash("✓ Copied this revision's notes");
+    } catch {
+      flash("Clipboard blocked by the browser");
+    }
+  };
+
+  const copyAll = async () => {
+    try {
+      await navigator.clipboard.writeText(allAsMarkdown());
+      flash("✓ Copied every note on this run — paste it into /design-jam");
     } catch {
       flash("Clipboard blocked by the browser");
     }
@@ -259,42 +330,41 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
   };
 
   /**
-   * `role` is null when there is nothing to compare against. In compare mode both panes
-   * are labelled, because two near-identical screens side by side are unreadable without
-   * knowing which is which — and only one of them takes notes, which the user cannot
-   * guess from looking.
+   * One side of a comparison: a label and a full copy of the app in an iframe. Two panes
+   * inside the content area could only ever compare the content area; a change to the
+   * sidebar, header, or anything outside the route would be invisible. Two documents
+   * compare everything.
    */
-  const pane = (r: Revision, role: "primary" | "reference" | null) => (
-    <section className="djh-pane">
-      {role && (
-        <header
-          className={role === "reference" ? "djh-pane-tag djh-pane-tag--ref" : "djh-pane-tag"}
-        >
-          <span className="djh-pane-rev">rev {r.rev}</span>
-          {r.rev === latest && <span className="djh-pane-chip">latest</span>}
-          <span className="djh-pane-note" title={r.note}>
-            {r.note}
-          </span>
-          <span className="djh-pane-role">
-            {role === "primary" ? "notes land here" : "reference only"}
-          </span>
-        </header>
-      )}
-      {role !== "reference" ? (
-        <Annotations
-          scope={scope}
-          refreshKey={sentTick}
-          armed={armed}
-          onArmedChange={setArmed}
-          onNotesChange={setNotes}
-        >
-          {r.render(activeValues as Record<string, KnobValue>)}
-        </Annotations>
-      ) : (
-        r.render(activeValues as Record<string, KnobValue>)
-      )}
-    </section>
+  const side = (r: Revision, role: "primary" | "reference") => (
+    <figure className={role === "reference" ? "djh-side djh-side--ref" : "djh-side"}>
+      <figcaption className="djh-pane-tag">
+        <span className="djh-pane-rev">rev {r.rev}</span>
+        {r.rev === latest && <span className="djh-pane-chip">latest</span>}
+        <span className="djh-pane-note" title={r.note}>
+          {r.note}
+        </span>
+        <span className="djh-pane-role">{role === "primary" ? "current" : "compared"}</span>
+      </figcaption>
+      <iframe
+        className="djh-side-frame"
+        title={`${variant.label} — revision ${r.rev}`}
+        src={sideUrl(r.rev)}
+      />
+    </figure>
   );
+
+  if (embed) {
+    return (
+      <div className="djh-root" style={frame}>
+        <style>{css}</style>
+        <div className="djh-stage">
+          <section className="djh-pane">
+            {current.render(activeValues as Record<string, KnobValue>)}
+          </section>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -325,268 +395,305 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
         </div>
       )}
 
-      <div className="djh-root" style={frame}>
-        <div className={other ? "djh-stage djh-stage--split" : "djh-stage"}>
-          {pane(current, other ? "primary" : null)}
-          {other && pane(other, "reference")}
+      {/*
+      Compare mode ignores `frame` on purpose and takes the whole viewport: each side is a
+      complete app, so the split is the only chrome that should be visible.
+    */}
+      {other && (
+        <div className="djh-split">
+          {side(current, "primary")}
+          {side(other, "reference")}
         </div>
+      )}
 
-        <div className="djh-dock">
-          {open && knobsOpen && knobs.length > 0 && (
-            <div className="djh-knobs">
-              {knobs.map((k, i) => (
-                // biome-ignore lint/a11y/noLabelWithoutControl: every branch below renders the wrapped control
-                <label
-                  key={k.key}
-                  className={
-                    i === inherited.length && own.length > 0
-                      ? "djh-knob djh-knob--first-own"
-                      : "djh-knob"
-                  }
-                >
-                  {i === inherited.length && own.length > 0 && (
-                    <span className="djh-knob-group">{variant.label} only</span>
-                  )}
-                  <span>{k.label}</span>
-                  {k.type === "range" && (
-                    <span className="djh-knob-range">
-                      <input
-                        type="range"
-                        min={k.min}
-                        max={k.max}
-                        step={k.step ?? 1}
-                        value={Number(values[k.key])}
-                        onChange={(e) => setValues({ ...values, [k.key]: Number(e.target.value) })}
-                      />
-                      <output>{String(values[k.key])}</output>
-                    </span>
-                  )}
-                  {k.type === "color" && (
-                    <input
-                      type="color"
-                      value={String(values[k.key])}
-                      onChange={(e) => setValues({ ...values, [k.key]: e.target.value })}
-                    />
-                  )}
-                  {k.type === "toggle" && (
-                    <input
-                      type="checkbox"
-                      checked={Boolean(values[k.key])}
-                      onChange={(e) => setValues({ ...values, [k.key]: e.target.checked })}
-                    />
-                  )}
-                  {k.type === "select" && (
-                    <select
-                      value={String(values[k.key])}
-                      onChange={(e) => setValues({ ...values, [k.key]: e.target.value })}
-                    >
-                      {k.options.map((o) => (
-                        <option key={o} value={o}>
-                          {o}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </label>
-              ))}
-              <button
-                type="button"
-                className="djh-btn"
-                onClick={() =>
-                  setValues({
-                    ...values,
-                    ...Object.fromEntries(knobs.map((k) => [k.key, k.value])),
-                  })
+      <div className="djh-root" style={frame} hidden={Boolean(other)}>
+        <div className="djh-stage">
+          <section className="djh-pane">
+            <Annotations
+              scope={scope}
+              refreshKey={sentTick}
+              armed={armed}
+              onArmedChange={setArmed}
+              onNotesChange={setNotes}
+            >
+              {current.render(activeValues as Record<string, KnobValue>)}
+            </Annotations>
+          </section>
+        </div>
+      </div>
+
+      {/* Fixed to the viewport, a sibling of both the shell and the split, so the controls
+          survive switching between single and compare views. */}
+      <div className="djh-dock">
+        {open && knobsOpen && knobs.length > 0 && (
+          <div className="djh-knobs">
+            {knobs.map((k, i) => (
+              // biome-ignore lint/a11y/noLabelWithoutControl: every branch below renders the wrapped control
+              <label
+                key={k.key}
+                className={
+                  i === inherited.length && own.length > 0
+                    ? "djh-knob djh-knob--first-own"
+                    : "djh-knob"
                 }
               >
-                Reset values
-              </button>
-            </div>
-          )}
-
-          {open ? (
-            <div className="djh-bar">
-              <section className="djh-zone">
-                <span className="djh-zone-label">Prototype</span>
-                <div className="djh-seg" role="group" aria-label="Prototype direction">
-                  {variants.map((v) => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      title={v.bet}
-                      aria-pressed={v.id === variant.id}
-                      className={
-                        v.id === variant.id ? "djh-seg-btn djh-seg-btn--on" : "djh-seg-btn"
-                      }
-                      onClick={() => pickVariant(v.id)}
-                    >
-                      {v.label}
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              <section className="djh-zone djh-zone--grow">
-                <span className="djh-zone-label">
-                  Revision <b className="djh-count">{current.rev}</b>
-                  <span className="djh-of">of {latest}</span>
-                </span>
-                <div className="djh-row">
-                  <button
-                    type="button"
-                    className="djh-icon"
-                    aria-label="Previous revision"
-                    disabled={current.rev <= 1}
-                    onClick={() => setRev(current.rev - 1)}
-                  >
-                    ‹
-                  </button>
-                  <input
-                    className="djh-scrub"
-                    type="range"
-                    min={1}
-                    max={latest}
-                    step={1}
-                    value={current.rev}
-                    aria-label="Revision"
-                    onChange={(e) => setRev(Number(e.target.value))}
-                  />
-                  <button
-                    type="button"
-                    className="djh-icon"
-                    aria-label="Next revision"
-                    disabled={current.rev >= latest}
-                    onClick={() => setRev(current.rev + 1)}
-                  >
-                    ›
-                  </button>
-                </div>
-                {other ? (
-                  <div className="djh-row">
-                    <span className="djh-vs">compared with</span>
-                    <select
-                      className="djh-select"
-                      aria-label="Revision to compare against"
-                      value={other.rev}
-                      onChange={(e) => setCompareWith(Number(e.target.value))}
-                    >
-                      {variant.revisions.map((r) => (
-                        <option key={r.rev} value={r.rev} disabled={r.rev === current.rev}>
-                          rev {r.rev}
-                          {r.rev === latest ? " (latest)" : ""}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      className="djh-icon"
-                      aria-label="Swap the two sides"
-                      title="Swap sides"
-                      onClick={() => {
-                        const a = current.rev;
-                        setRev(other.rev);
-                        setCompareWith(a);
-                      }}
-                    >
-                      ⇄
-                    </button>
-                  </div>
-                ) : (
-                  <p className="djh-note" title={current.date}>
-                    {current.note}
-                  </p>
+                {i === inherited.length && own.length > 0 && (
+                  <span className="djh-knob-group">{variant.label} only</span>
                 )}
-              </section>
-
-              <section className="djh-zone">
-                <span className="djh-zone-label">View</span>
-                <div className="djh-row">
-                  {knobs.length > 0 && (
-                    <button
-                      type="button"
-                      aria-pressed={knobsOpen}
-                      className={knobsOpen ? "djh-btn djh-btn--on" : "djh-btn"}
-                      onClick={() => setKnobsOpen(!knobsOpen)}
-                    >
-                      Knobs
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    aria-pressed={Boolean(other)}
-                    className={other ? "djh-btn djh-btn--on" : "djh-btn"}
-                    onClick={() => setCompareWith(other ? null : compareTarget)}
+                <span>{k.label}</span>
+                {k.type === "range" && (
+                  <span className="djh-knob-range">
+                    <input
+                      type="range"
+                      min={k.min}
+                      max={k.max}
+                      step={k.step ?? 1}
+                      value={Number(values[k.key])}
+                      onChange={(e) => setValues({ ...values, [k.key]: Number(e.target.value) })}
+                    />
+                    <output>{String(values[k.key])}</output>
+                  </span>
+                )}
+                {k.type === "color" && (
+                  <input
+                    type="color"
+                    value={String(values[k.key])}
+                    onChange={(e) => setValues({ ...values, [k.key]: e.target.value })}
+                  />
+                )}
+                {k.type === "toggle" && (
+                  <input
+                    type="checkbox"
+                    checked={Boolean(values[k.key])}
+                    onChange={(e) => setValues({ ...values, [k.key]: e.target.checked })}
+                  />
+                )}
+                {k.type === "select" && (
+                  <select
+                    value={String(values[k.key])}
+                    onChange={(e) => setValues({ ...values, [k.key]: e.target.value })}
                   >
-                    Compare
-                  </button>
-                  <button
-                    type="button"
-                    className="djh-btn"
-                    disabled={!stale}
-                    onClick={() => setRev(latest)}
-                  >
-                    Latest
-                  </button>
-                  <button type="button" className="djh-btn" onClick={() => setOpen(false)}>
-                    Hide
-                  </button>
-                </div>
-              </section>
-
-              <section className="djh-zone djh-zone--act">
-                <span className="djh-zone-label">Feedback</span>
-                <div className="djh-row">
-                  <button
-                    type="button"
-                    aria-pressed={armed}
-                    className={armed ? "djh-btn djh-btn--on" : "djh-btn"}
-                    onClick={() => setArmed(!armed)}
-                  >
-                    {armed ? "Click the spot…" : "Add note"}
-                    {!armed && written > 0 && <span className="djh-badge">{written}</span>}
-                  </button>
-                  <button type="button" className="djh-btn" onClick={copy}>
-                    Copy
-                  </button>
-                  <button
-                    type="button"
-                    className="djh-btn djh-btn--primary"
-                    disabled={written === 0}
-                    onClick={send}
-                  >
-                    {written === 0
-                      ? alreadySent > 0
-                        ? "All sent"
-                        : "Send"
-                      : `Send ${written} ${written === 1 ? "note" : "notes"}`}
-                  </button>
-                </div>
-              </section>
-
-              {saved && (
-                <p className="djh-flash" role="status">
-                  {saved}
-                </p>
-              )}
-            </div>
-          ) : (
+                    {k.options.map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </label>
+            ))}
             <button
               type="button"
-              className="djh-fab"
-              aria-label={`Show design panel — ${variant.label}, revision ${current.rev}`}
-              onClick={() => setOpen(true)}
+              className="djh-btn"
+              onClick={() =>
+                setValues({
+                  ...values,
+                  ...Object.fromEntries(knobs.map((k) => [k.key, k.value])),
+                })
+              }
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
-                <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                  <path d="M4 8h10M18 8h2M4 16h4M12 16h8" />
-                  <circle cx="16" cy="8" r="2" fill="currentColor" stroke="none" />
-                  <circle cx="10" cy="16" r="2" fill="currentColor" stroke="none" />
-                </g>
-              </svg>
-              {written > 0 && <span className="djh-badge djh-badge--fab">{written}</span>}
+              Reset values
             </button>
-          )}
-        </div>
+          </div>
+        )}
+
+        {open ? (
+          <div className="djh-bar">
+            <section className="djh-zone">
+              <span className="djh-zone-label">Prototype</span>
+              <div className="djh-seg" role="group" aria-label="Prototype direction">
+                {variants.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    title={v.bet}
+                    aria-pressed={v.id === variant.id}
+                    className={v.id === variant.id ? "djh-seg-btn djh-seg-btn--on" : "djh-seg-btn"}
+                    onClick={() => pickVariant(v.id)}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="djh-zone djh-zone--grow">
+              <span className="djh-zone-label">
+                Revision <b className="djh-count">{current.rev}</b>
+                <span className="djh-of">of {latest}</span>
+              </span>
+              <div className="djh-row">
+                <button
+                  type="button"
+                  className="djh-icon"
+                  aria-label="Previous revision"
+                  disabled={current.rev <= 1}
+                  onClick={() => setRev(current.rev - 1)}
+                >
+                  ‹
+                </button>
+                <input
+                  className="djh-scrub"
+                  type="range"
+                  min={1}
+                  max={latest}
+                  step={1}
+                  value={current.rev}
+                  aria-label="Revision"
+                  onChange={(e) => setRev(Number(e.target.value))}
+                />
+                <button
+                  type="button"
+                  className="djh-icon"
+                  aria-label="Next revision"
+                  disabled={current.rev >= latest}
+                  onClick={() => setRev(current.rev + 1)}
+                >
+                  ›
+                </button>
+              </div>
+              {other ? (
+                <div className="djh-row">
+                  <span className="djh-vs">compared with</span>
+                  <select
+                    className="djh-select"
+                    aria-label="Revision to compare against"
+                    value={other.rev}
+                    onChange={(e) => setCompareWith(Number(e.target.value))}
+                  >
+                    {variant.revisions.map((r) => (
+                      <option key={r.rev} value={r.rev} disabled={r.rev === current.rev}>
+                        rev {r.rev}
+                        {r.rev === latest ? " (latest)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="djh-icon"
+                    aria-label="Swap the two sides"
+                    title="Swap sides"
+                    onClick={() => {
+                      const a = current.rev;
+                      setRev(other.rev);
+                      setCompareWith(a);
+                    }}
+                  >
+                    ⇄
+                  </button>
+                </div>
+              ) : (
+                <p className="djh-note" title={current.date}>
+                  {current.note}
+                </p>
+              )}
+            </section>
+
+            <section className="djh-zone">
+              <span className="djh-zone-label">View</span>
+              <div className="djh-row">
+                {knobs.length > 0 && (
+                  <button
+                    type="button"
+                    aria-pressed={knobsOpen}
+                    className={knobsOpen ? "djh-btn djh-btn--on" : "djh-btn"}
+                    onClick={() => setKnobsOpen(!knobsOpen)}
+                  >
+                    Knobs
+                  </button>
+                )}
+                <button
+                  type="button"
+                  aria-pressed={Boolean(other)}
+                  className={other ? "djh-btn djh-btn--on" : "djh-btn"}
+                  onClick={() => setCompareWith(other ? null : compareTarget)}
+                >
+                  Compare
+                </button>
+                <button
+                  type="button"
+                  className="djh-btn"
+                  disabled={!stale}
+                  onClick={() => setRev(latest)}
+                >
+                  Latest
+                </button>
+                <button type="button" className="djh-btn" onClick={() => setOpen(false)}>
+                  Hide
+                </button>
+              </div>
+            </section>
+
+            <section className="djh-zone djh-zone--act">
+              <span className="djh-zone-label">Feedback</span>
+              <div className="djh-row">
+                <button
+                  type="button"
+                  aria-pressed={armed}
+                  className={armed ? "djh-btn djh-btn--on" : "djh-btn"}
+                  onClick={() => setArmed(!armed)}
+                >
+                  {armed ? "Click the spot…" : "Add note"}
+                  {!armed && written > 0 && <span className="djh-badge">{written}</span>}
+                </button>
+                <button
+                  type="button"
+                  className="djh-btn"
+                  title="Copy this revision's notes only"
+                  onClick={copy}
+                >
+                  Copy rev
+                </button>
+                <button
+                  type="button"
+                  className="djh-btn"
+                  title={
+                    alreadySent > 0 && written === 0
+                      ? "All notes on this revision already sent"
+                      : "Owner shortcut: write this revision's notes into .design/ via the dev server"
+                  }
+                  disabled={written === 0}
+                  onClick={send}
+                >
+                  {written === 0 && alreadySent > 0 ? "Sent" : "Send local"}
+                </button>
+                {/* The one primary action: gather everything on the run, then paste it
+                    into /design-jam. That is the whole feedback loop for the owner. */}
+                <button
+                  type="button"
+                  className="djh-btn djh-btn--primary"
+                  disabled={totalNotes === 0 && written === 0}
+                  onClick={copyAll}
+                >
+                  Copy all notes
+                  {totalNotes > 0 && <span className="djh-badge">{totalNotes}</span>}
+                </button>
+              </div>
+            </section>
+
+            {saved && (
+              <p className="djh-flash" role="status">
+                {saved}
+              </p>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="djh-fab"
+            aria-label={`Show design panel — ${variant.label}, revision ${current.rev}`}
+            onClick={() => setOpen(true)}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
+              <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <path d="M4 8h10M18 8h2M4 16h4M12 16h8" />
+                <circle cx="16" cy="8" r="2" fill="currentColor" stroke="none" />
+                <circle cx="10" cy="16" r="2" fill="currentColor" stroke="none" />
+              </g>
+            </svg>
+            {written > 0 && <span className="djh-badge djh-badge--fab">{written}</span>}
+          </button>
+        )}
       </div>
     </>
   );
@@ -658,11 +765,23 @@ const css = `
   flex: 1 1 auto; min-height: 0;
   display: grid; grid-template-columns: 1fr;
 }
-.djh-stage--split { grid-template-columns: 1fr 1fr; }
-.djh-stage--split .djh-pane + .djh-pane { border-left: 1px solid rgba(128,128,128,.35); }
 .djh-pane {
   min-width: 0; min-height: 0;
   overflow: auto; overscroll-behavior: contain;
+}
+
+/* Compare: two complete apps, edge to edge, above the shell it replaces. */
+.djh-split {
+  position: fixed; inset: 0; z-index: var(--djh-z-shell);
+  display: grid; grid-template-columns: 1fr 1fr;
+  background: #0f0f12;
+}
+.djh-side {
+  display: flex; flex-direction: column; margin: 0; min-width: 0;
+}
+.djh-side + .djh-side { border-left: 2px solid #0f0f12; }
+.djh-side-frame {
+  flex: 1 1 auto; width: 100%; min-height: 0; border: 0; background: Canvas;
 }
 /* Two near-identical screens side by side are unreadable without a label on each: which
    revision, whether it is the latest, and which one takes the notes. */
@@ -673,14 +792,15 @@ const css = `
   font: 600 11px/1.4 system-ui, sans-serif;
   color: #fff; background: #3730a3;
 }
-.djh-pane-tag--ref { background: #3f3f46; }
+.djh-side--ref .djh-pane-tag { background: #3f3f46; }
 .djh-pane-rev { font-variant-numeric: tabular-nums; letter-spacing: .04em; }
 .djh-pane-chip {
   padding: 1px 6px; border-radius: 999px;
   font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
   color: #1e1b4b; background: #c7d2fe;
 }
-.djh-pane-tag--ref .djh-pane-chip { color: #27272a; background: #d4d4d8; }
+.djh-side--ref .djh-pane-chip { color: #27272a; background: #d4d4d8; }
+.djh-pane-tag { position: static; flex: none; }
 .djh-pane-note {
   flex: 1 1 auto; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -868,7 +988,7 @@ const css = `
 }
 @media (max-width: 680px) {
   .djh-dock { right: 12px; left: 12px; width: auto; max-width: none; }
-  .djh-stage--split { grid-template-columns: 1fr; }
-  .djh-stage--split .djh-pane + .djh-pane { border-left: none; border-top: 1px solid rgba(128,128,128,.35); }
+  .djh-split { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+  .djh-side + .djh-side { border-left: none; border-top: 2px solid #0f0f12; }
 }
 `;
