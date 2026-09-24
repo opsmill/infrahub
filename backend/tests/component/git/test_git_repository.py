@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import anyio
+import httpx
 import pytest
 from git import Repo  # type: ignore[attr-defined]
 from git.exc import GitCommandError
@@ -856,6 +857,7 @@ async def test_artifact_generate_python_existing_same(
     car_node_01: InfrahubNode,
     artifact_node_02: InfrahubNode,
     mock_gql_query_03: HTTPXMock,
+    mock_stored_artifact_02_intact: HTTPXMock,
 ) -> None:
     repo = git_repo_transforms_w_client
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -877,6 +879,99 @@ async def test_artifact_generate_python_existing_same(
         artifact_id=artifact_node_02.id,
     )
     assert result == expected_data
+
+
+@pytest.mark.parametrize(
+    ("status_code", "reason"),
+    [
+        pytest.param(404, "missing", id="stored_object_missing"),
+        pytest.param(409, "modified", id="stored_object_modified"),
+    ],
+)
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
+async def test_artifact_generate_python_existing_same_rewrites_unusable_stored_object(
+    client: InfrahubClient,
+    prefect_test_fixture: None,
+    git_repo_transforms_w_client: InfrahubRepository,
+    transformation_node_01: InfrahubNode,
+    artifact_definition_node_01: InfrahubNode,
+    gql_query_node_03: InfrahubNode,
+    car_node_01: InfrahubNode,
+    artifact_node_02: InfrahubNode,
+    mock_gql_query_03: HTTPXMock,
+    mock_upload_content: HTTPXMock,
+    mock_update_artifact: HTTPXMock,
+    httpx_mock: HTTPXMock,
+    status_code: int,
+    reason: str,
+) -> None:
+    """An unchanged artifact whose stored object is missing or modified is uploaded again instead of skipped."""
+    httpx_mock.add_response(
+        method="GET",
+        url="http://mock/api/storage/object/13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
+        status_code=status_code,
+        json={"data": None, "errors": [{"message": f"stored object {reason}", "extensions": {"code": status_code}}]},
+        match_headers={"X-Infrahub-Tracker": "artifact-verify-content"},
+    )
+    repo = git_repo_transforms_w_client
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+
+    result = await repo.artifact_generate(
+        branch_name="main",
+        commit=commit_main,
+        artifact=artifact_node_02,
+        target=car_node_01,
+        definition=artifact_definition_node_01,
+        transformation=transformation_node_01,
+        query=gql_query_node_03,
+    )
+
+    expected_data = ArtifactGenerateResult(
+        changed=True,
+        checksum="e889b9fab24aab3b23ea01d5342b514a",
+        storage_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a",
+        artifact_id=artifact_node_02.id,
+    )
+    assert result == expected_data
+    assert len(httpx_mock.get_requests(match_headers={"X-Infrahub-Tracker": "artifact-upload-content"})) == 1
+
+
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
+async def test_artifact_generate_python_existing_same_fails_when_stored_object_is_unreadable(
+    client: InfrahubClient,
+    prefect_test_fixture: None,
+    git_repo_transforms_w_client: InfrahubRepository,
+    transformation_node_01: InfrahubNode,
+    artifact_definition_node_01: InfrahubNode,
+    gql_query_node_03: InfrahubNode,
+    car_node_01: InfrahubNode,
+    artifact_node_02: InfrahubNode,
+    mock_gql_query_03: HTTPXMock,
+    httpx_mock: HTTPXMock,
+) -> None:
+    """A storage failure other than a missing or modified object fails the generation instead of rewriting."""
+    httpx_mock.add_response(
+        method="GET",
+        url="http://mock/api/storage/object/13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
+        status_code=500,
+        json={"data": None, "errors": [{"message": "storage unavailable", "extensions": {"code": 500}}]},
+        match_headers={"X-Infrahub-Tracker": "artifact-verify-content"},
+    )
+    repo = git_repo_transforms_w_client
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+
+    with pytest.raises(httpx.HTTPStatusError, match=r"500 Internal Server Error"):
+        await repo.artifact_generate(
+            branch_name="main",
+            commit=commit_main,
+            artifact=artifact_node_02,
+            target=car_node_01,
+            definition=artifact_definition_node_01,
+            transformation=transformation_node_01,
+            query=gql_query_node_03,
+        )
+
+    assert httpx_mock.get_requests(match_headers={"X-Infrahub-Tracker": "artifact-upload-content"}) == []
 
 
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
