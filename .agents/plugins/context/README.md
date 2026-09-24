@@ -98,9 +98,8 @@ once, and skills: no `CLAUDE.md`, no rules and no `@` imports. The rules:
 | `orphan` | warning | Every guidance doc is reachable from a file a harness loads |
 | `conflict` | warning | A rule doesn't recommend a code term that the doc it names advises against |
 
-Working files and `lint_allow` files are not checked for pointers. A line that names a file only as its
-subject, such as a file a skill edits, carries `<!-- context-lint: allow -->`, on the line itself or alone on
-the line before. `--fix` creates the missing `CLAUDE.md` shims and trims those that hold only headings besides
+Working files and `lint_allow` files are not checked for pointers. Listing a file under `lint_allow` is the
+only exception there is: the lint reports any inline allow marker as an error instead of honouring it. `--fix` creates the missing `CLAUDE.md` shims and trims those that hold only headings besides
 the import. With `--check` the script exits 1 on any error, for a pre-commit hook or CI job.
 
 Two environment variables change where output goes, per person:

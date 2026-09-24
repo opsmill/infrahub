@@ -41,8 +41,7 @@ IMPORT = re.compile(r"(?:^|\s)@([\w./-]+)")
 CODE_SPAN = re.compile(r"`[^`]*`")
 FENCE = re.compile(r"^\s*(```|~~~)")
 KIB = 1024
-ALLOW = "context-lint: allow"
-ALLOW_LINE = f"<!-- {ALLOW} -->"
+MARKER = re.compile(r"context-lint:\s*allow")
 SHIM = "@AGENTS.md\n"
 HEADING = re.compile(r"#{1,6}\s")
 NEGATION = re.compile(r"\b(?:no|not|never|avoid|don't|do not|without)\b", re.IGNORECASE)
@@ -174,16 +173,11 @@ def pointer_reason(repo: Repo, target: str, kind: str) -> str:
     return reasons.get(kind, f"name the {kind} instead and let the harness load it")
 
 
-def allowed_line(lines: list[str], number: int) -> bool:
-    """A line that carries the allow marker, or follows a line holding only the marker."""
-    return ALLOW in lines[number - 1] or (number > 1 and lines[number - 2].strip() == ALLOW_LINE)
-
-
 def mention_line(lines: list[str], source: str, name: str) -> int | None:
-    """The first line, not allowed, that points at name: a link to it, or its path when that has a folder."""
+    """The first line that points at name: a link to it, or its path when that has a folder."""
     base = Path(source).parent
     for number, line in enumerate(lines, start=1):
-        if Path(name).name not in line or allowed_line(lines, number):
+        if Path(name).name not in line:
             continue
         # A bare AGENTS.md or CLAUDE.md in prose names the kind of file; only a link points at the root one.
         pointed = (
@@ -221,13 +215,23 @@ def import_findings(repo: Repo) -> Iterator[Finding]:
             if FENCE.match(line):
                 fenced = not fenced
                 continue
-            skip = fenced or allowed_line(lines, number)
-            for target in [] if skip else IMPORT.findall(CODE_SPAN.sub("", line)):
+            for target in [] if fenced else IMPORT.findall(CODE_SPAN.sub("", line)):
                 if (repo.project / Path(source).parent / target).is_file():
                     yield Finding(
                         "error", "import", f"{source}:{number}",
                         f"@{target} is an import only Claude Code expands; other harnesses read the text, so link it instead",
                     )  # fmt: skip
+
+
+def marker_findings(repo: Repo) -> Iterator[Finding]:
+    for source, text in sorted(repo.files.items()):
+        for number, line in enumerate(text.splitlines(), start=1):
+            if MARKER.search(line):
+                yield Finding(
+                    "error", "marker", f"{source}:{number}",
+                    "the lint ignores inline allow markers; name the file without its path, or list this file "
+                    "under lint_allow in the config",
+                )  # fmt: skip
 
 
 def chain_sizes(repo: Repo) -> dict[str, int]:
@@ -399,7 +403,7 @@ def summary(repo: Repo, findings: list[Finding]) -> list[str]:
         else "no AGENTS.md"
     )
     allow = (
-        [f"A pointer that is only a mention: add {ALLOW_LINE} to its line, or list its file under lint_allow"]
+        ["A pointer that only mentions a file: name the file without its path, or list its file under lint_allow"]
         if any(finding.check == "pointer" for finding in findings)
         else []
     )
@@ -430,6 +434,7 @@ def main() -> None:
         *shim_findings(repo),
         *pointer_findings(repo),
         *import_findings(repo),
+        *marker_findings(repo),
         *size_findings(repo),
         *rule_size_findings(repo),
         *orphan_findings(repo),
