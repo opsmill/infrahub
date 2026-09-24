@@ -62,7 +62,10 @@ def verify_content(
         expected_checksums=sorted(str(checksum) for checksum in expected_checksums),
         actual_checksum=actual,
     )
-    raise StorageObjectIntegrityError(storage_id=storage_id, object_label=object_label)
+    checksum_missing = not any(checksum is not None for checksum in expected_checksums)
+    raise StorageObjectIntegrityError(
+        storage_id=storage_id, object_label=object_label, checksum_missing=checksum_missing
+    )
 
 
 async def lookup_recorded_checksums(db: InfrahubDatabase, storage_id: str) -> list[RecordedArtifactChecksum]:

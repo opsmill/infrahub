@@ -21,7 +21,7 @@ from infrahub.artifacts.integrity import (
 from infrahub.core import registry
 from infrahub.core.protocols import CoreFileObject
 from infrahub.database import InfrahubDatabase  # noqa: TC001
-from infrahub.exceptions import StorageObjectIntegrityError
+from infrahub.exceptions import NodeNotFoundError, StorageObjectIntegrityError
 
 if TYPE_CHECKING:
     from infrahub.auth.session import AccountSession
@@ -52,9 +52,10 @@ async def get_file(
         file_url = request.url_for("download_file_object_by_storage_id", storage_id=identifier)
         raise HTTPException(status_code=403, detail=f"Use {file_url.path} instead.")
 
-    content = registry.storage.retrieve_binary(identifier=identifier)
-    if recorded := await checksum_resolver.get_recorded_checksums(db=db, storage_id=identifier):
-        try:
+    recorded = await checksum_resolver.get_recorded_checksums(db=db, storage_id=identifier)
+    try:
+        content = registry.storage.retrieve_binary(identifier=identifier)
+        if recorded:
             verify_content(
                 storage_id=identifier,
                 content=content,
@@ -62,11 +63,12 @@ async def get_file(
                 compute=compute_artifact_checksum,
                 object_label=ARTIFACT_LABEL,
             )
-        except StorageObjectIntegrityError:
+    except (NodeNotFoundError, StorageObjectIntegrityError):
+        if recorded:
             await request_artifact_regeneration(
                 db=db, service=request.app.state.service, account=account_session, recorded=recorded
             )
-            raise
+        raise
     return Response(content=content)
 
 

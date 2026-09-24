@@ -66,8 +66,7 @@ VERIFY_CONTENT_TEST_CASES: list[VerifyContentTestCase] = [
         compute=compute_artifact_checksum,
         object_label="artifact",
         expected_error=(
-            "The artifact stored as storage-1 does not match the checksum recorded for it: it was modified or "
-            "corrupted outside of Infrahub and is not served."
+            "The content of the artifact stored as storage-1 does not match the recorded checksum and is not served."
         ),
     ),
     VerifyContentTestCase(
@@ -76,10 +75,7 @@ VERIFY_CONTENT_TEST_CASES: list[VerifyContentTestCase] = [
         expected_checksums={None},
         compute=compute_artifact_checksum,
         object_label="artifact",
-        expected_error=(
-            "The artifact stored as storage-1 does not match the checksum recorded for it: it was modified or "
-            "corrupted outside of Infrahub and is not served."
-        ),
+        expected_error="The artifact stored as storage-1 has no recorded checksum and is not served.",
     ),
     VerifyContentTestCase(
         name="modified_file_object_is_refused_with_its_own_label",
@@ -88,8 +84,7 @@ VERIFY_CONTENT_TEST_CASES: list[VerifyContentTestCase] = [
         compute=compute_file_object_checksum,
         object_label="file",
         expected_error=(
-            "The file stored as storage-1 does not match the checksum recorded for it: it was modified or "
-            "corrupted outside of Infrahub and is not served."
+            "The content of the file stored as storage-1 does not match the recorded checksum and is not served."
         ),
     ),
 ]

@@ -27,7 +27,12 @@ from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.protocols import CoreArtifact, CoreArtifactDefinition
 from infrahub.core.query.artifact import RecordedArtifactChecksum
 from infrahub.database import InfrahubDatabase  # noqa: TC001
-from infrahub.exceptions import BranchStatusError, NodeNotFoundError, StorageObjectIntegrityError, ValidationError
+from infrahub.exceptions import (
+    BranchStatusError,
+    NodeNotFoundError,
+    StorageObjectIntegrityError,
+    ValidationError,
+)
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.log import get_logger
 from infrahub.permissions.constants import PermissionDecisionFlag
@@ -68,8 +73,8 @@ async def get_artifact(
         )
 
     storage_id = str(artifact.storage_id.value)
-    content = registry.storage.retrieve_binary(identifier=storage_id)
     try:
+        content = registry.storage.retrieve_binary(identifier=storage_id)
         verify_content(
             storage_id=storage_id,
             content=content,
@@ -77,7 +82,7 @@ async def get_artifact(
             compute=compute_artifact_checksum,
             object_label=ARTIFACT_LABEL,
         )
-    except StorageObjectIntegrityError:
+    except (NodeNotFoundError, StorageObjectIntegrityError):
         await request_artifact_regeneration(
             db=db,
             service=request.app.state.service,

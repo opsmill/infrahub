@@ -34,10 +34,11 @@ TAMPERED_CONFIG = b"hostname leaf01\nusername backdoor privilege 15 secret attac
 
 
 def refused_message(storage_id: str) -> str:
-    return (
-        f"The artifact stored as {storage_id} does not match the checksum recorded for it: it was modified or "
-        "corrupted outside of Infrahub and is not served."
-    )
+    return f"The content of the artifact stored as {storage_id} does not match the recorded checksum and is not served."
+
+
+def missing_checksum_message(storage_id: str) -> str:
+    return f"The artifact stored as {storage_id} has no recorded checksum and is not served."
 
 
 def md5(content: bytes) -> str:
@@ -203,6 +204,43 @@ class TestArtifactIntegrity(TestInfrahubAppWithoutLocalWorkflow):
             )
         ]
 
+    async def test_missing_artifact_is_refused_and_regenerated_once(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        test_client: InfrahubTestClient,
+        admin_headers: dict[str, str],
+        dummy_storage: DummyObjectStorage,
+        artifact_definition: Node,
+        car_person_data_generic: dict[str, Node],
+        workflow_recorder: WorkflowRecorder,
+    ) -> None:
+        workflow_recorder.reset()
+        artifact = await self.create_artifact(
+            db=db,
+            dummy_storage=dummy_storage,
+            definition=artifact_definition,
+            target=car_person_data_generic["c1"],
+            storage_id="missing-storage-id",
+            content=CONFIG,
+        )
+        dummy_storage.delete(identifier="missing-storage-id")
+
+        responses = [
+            await test_client.get(f"/api/artifact/{artifact.id}", headers=admin_headers),
+            await test_client.get("/api/storage/object/missing-storage-id", headers=admin_headers),
+        ]
+
+        assert [response.status_code for response in responses] == [404, 404]
+        assert self.regeneration_requests(workflow_recorder=workflow_recorder) == [
+            RequestArtifactDefinitionGenerate(
+                artifact_definition_id=artifact_definition.id,
+                artifact_definition_name="startup_config",
+                branch=default_branch.name,
+                limit=[artifact.id],
+            )
+        ]
+
     async def test_unreferenced_object_is_served_unverified(
         self,
         test_client: InfrahubTestClient,
@@ -310,4 +348,9 @@ class TestArtifactIntegrity(TestInfrahubAppWithoutLocalWorkflow):
 
         assert by_artifact.status_code == 409
         assert by_storage_id.status_code == 409
-        assert by_storage_id.json()["errors"][0]["message"] == refused_message(storage_id="no-checksum-storage-id")
+        assert by_artifact.json()["errors"][0]["message"] == missing_checksum_message(
+            storage_id="no-checksum-storage-id"
+        )
+        assert by_storage_id.json()["errors"][0]["message"] == missing_checksum_message(
+            storage_id="no-checksum-storage-id"
+        )
