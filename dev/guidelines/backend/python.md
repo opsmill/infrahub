@@ -20,9 +20,19 @@ def get_node(db, node_id):
     return db.get(node_id)
 ```
 
-## Imports
+## Module layout
 
-All imports must be at the top of the file. Never import inside functions, methods, or classes:
+### constants.py holds constants only
+
+Do not put functions or classes in a file named `constants.py` — only module-level constant values (plain literals, enums, frozen containers). A value that must be computed, read from the environment, or resolved at runtime is not a constant; give it a home in a purpose-named module (e.g. `limits.py`, `settings.py`) instead.
+
+Why: readers grep and import from `constants.py` expecting inert values with no behavior and no import-time or call-time side effects. A function hiding there muddies that contract and gets overlooked when reasoning about runtime behavior.
+
+If the value genuinely never changes at runtime, prefer an actual constant over a function returning one.
+
+### Imports
+
+All imports must be at the top of the file. Never import inside functions, methods, or classes; Ruff enforces this (`PLC0415`):
 
 ```python
 # ✅ Good - imports at module level
@@ -41,6 +51,8 @@ class NodeManager:
         if not node.name:
             raise ValidationError("Node name is required")
 ```
+
+A function-local import is acceptable only to break a genuine circular import or to defer an optional or heavy dependency that must not load on every import. Mark each such import with `# noqa: PLC0415` and a short reason.
 
 All backend modules use `from __future__ import annotations`, which turns annotations into strings at runtime. This means imports used **only** in type hints have no runtime effect and can be placed under `TYPE_CHECKING` to prevent circular imports:
 
@@ -276,7 +288,7 @@ Testing note: don't test that Pydantic enforces `ge`/`le` (see [Testing Standard
 A docstring states the contract in one line. Add a Google-style `Args`, `Returns` or `Raises`
 section only for what the signature does not already say. Write one on a public function or class
 that other modules call; a private helper whose name says what it does gets none. What belongs in
-a comment at all is in `.agents/rules/code-doc-style.md`.
+a comment at all is in [Code Documentation Style](../code-doc-style.md).
 
 ```python
 # ✅ Good - one line; the signature already documents the parameters
