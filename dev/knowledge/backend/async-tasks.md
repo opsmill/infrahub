@@ -161,6 +161,25 @@ Workflows receive metadata tags for organization and filtering:
 
 Tags come from two moments, and the difference matters: tags present at run creation (the deployment's static tags plus any `tags=` passed to `submit_workflow`) survive for the run's lifetime, while tags added mid-run via `add_tags` are rebuilt from the tags known at flow start, so a later in-flow tag update drops anything another in-flow update added before it. A tag that filtering depends on (the branch tag for branch-filtered task queries, for example) must therefore be passed at submission, not added from inside the flow.
 
+### The workflow-type tag is load-bearing for the Tasks view
+
+`WorkflowDefinition.get_tags()` stamps the namespace tag on every non-internal workflow and the
+workflow-type tag on every workflow without exception. The Tasks query exploits that asymmetry: with
+no type requested it requires the namespace tag, which is exactly today's selection; with one or more
+types requested it drops the namespace requirement and matches on the type tags instead. That is the
+only way an internal run is selectable at all, since an internal deployment never carries the
+namespace tag.
+
+The two tagging moments therefore mean different things for internal workflows. Eight of them call
+`add_tags(namespace=True)` mid-run, so their runs acquire the namespace tag partway through and show
+up in the default list from that point on — but only if they get that far. A run that fails before
+reaching the call never acquires it, and is visible only through the type filter. Reconciling the two
+mechanisms (making deployment-level tagging sufficient, so nothing depends on a flow reaching a
+particular line) is deliberate follow-up work, not something the type filter resolves.
+
+Deployment tags are what the scheduled-flows view decodes to label a flow's type; a deployment
+registered outside the catalogue carries no type tag and is reported as unknown rather than erroring.
+
 ### Branch-tagged runs outlive their branch
 
 Deleting a branch does not remove the flow runs tagged with it; they persist in Prefect. Because the branch tag encodes the branch **name**, a new branch created with the same name would otherwise retrieve the deleted branch's runs in the branch-filtered task query. To prevent this, the `branch-deleted-purge-tasks-trigger` automation reacts to `BranchDeletedEvent` and runs the internal `branch-purge-tasks` flow, which deletes the settled (terminal-state) runs tagged with the branch. The purge is best-effort, and because it runs after the deletion, runs that were still in flight at delete time have usually settled and are cleaned up as well; runs still executing (the deletion flow itself, for one) keep the tag and are left in place.
