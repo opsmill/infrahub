@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 from config import load_layout, rule_patterns
 from context_init import scan_skip
-from doctor_inputs import GUIDANCE_SUFFIXES, walk
+from doctor_inputs import GUIDANCE_SUFFIXES, fmt, tok, walk
 from track_reads import MARKDOWN_LINK_TARGET, find_mention, has_claude_md, read_text
 
 if TYPE_CHECKING:
@@ -34,6 +34,9 @@ SKILL_FOLDER = re.compile(r"\.(?:agents|claude)/(?:plugins/[^/]+/)?skills/[^/]+/
 # Codex joins the AGENTS.md files from the repository root down to its working directory and drops what
 # goes past its project_doc_max_bytes default.
 CODEX_CHAIN_BYTES = 32 * 1024
+# A rule's whole text is injected into every context that reads a matching file, or into every session when it
+# has no paths:, so it stays about a screen long.
+RULE_MAX_TOKENS = 1000
 IMPORT = re.compile(r"(?:^|\s)@([\w./-]+)")
 CODE_SPAN = re.compile(r"`[^`]*`")
 FENCE = re.compile(r"^\s*(```|~~~)")
@@ -253,6 +256,18 @@ def size_findings(repo: Repo) -> Iterator[Finding]:
             )  # fmt: skip
 
 
+def rule_size_findings(repo: Repo) -> Iterator[Finding]:
+    for rule in sorted(rel for rel, kind in repo.harness.items() if kind == "rule"):
+        tokens = tok(repo.files[rule])
+        if tokens > RULE_MAX_TOKENS:
+            where = "every context that reads a matching file" if rule_patterns(repo.files[rule]) else "every session"
+            yield Finding(
+                "error", "rule", rule,
+                f"is \u2248{fmt(tokens)} tokens, and Claude Code injects all of it into {where}; keep a rule under "
+                f"\u2248{fmt(RULE_MAX_TOKENS)} tokens",
+            )  # fmt: skip
+
+
 def references(repo: Repo, targets: list[str]) -> dict[str, set[str]]:
     edges = defaultdict(set)
     for source, text in repo.files.items():
@@ -416,6 +431,7 @@ def main() -> None:
         *pointer_findings(repo),
         *import_findings(repo),
         *size_findings(repo),
+        *rule_size_findings(repo),
         *orphan_findings(repo),
         *conflict_findings(repo),
     ]
