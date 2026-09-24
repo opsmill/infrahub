@@ -1,0 +1,16 @@
+{
+  "name": "infrahub",
+  "owner": {
+    "name": "OpsMill"
+  },
+  "metadata": {
+    "description": "Claude Code plugins for working on the Infrahub repository."
+  },
+  "plugins": [
+    {
+      "name": "context",
+      "source": "./plugins/context",
+      "description": "Record which internal docs a Claude Code session loads, map them, and audit whether they were the right ones."
+    }
+  ]
+}
