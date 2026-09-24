@@ -2,7 +2,10 @@ import {
   type GetServiceRequestFromApiParams,
   getServiceRequestFromApi,
 } from "@/entities/service-portal/api/get-service-request-from-api";
-import type { ServiceRequest } from "@/entities/service-portal/domain/model/service-request";
+import {
+  isServiceRequestStatus,
+  type ServiceRequest,
+} from "@/entities/service-portal/domain/model/service-request";
 
 export type GetServiceRequestParams = GetServiceRequestFromApiParams;
 export type GetServiceRequestResult = ServiceRequest;
@@ -18,10 +21,11 @@ export const getServiceRequest = async (
   }
 
   const service = node.service.node;
+  const status = node.status?.value;
 
   return {
     id: node.id,
-    status: node.status?.value ?? null,
+    status: isServiceRequestStatus(status) ? status : null,
     message: node.message?.value ?? null,
     branch: node.branch?.value ?? null,
     entryName: node.entry.node?.name?.value ?? null,

@@ -53,7 +53,6 @@ export const getServiceRequestFromApi = async ({
   return graphqlClient.query({
     query: GET_SERVICE_REQUEST,
     variables: { requestId },
-    // The request branch may be gone once the request is closed; that is not worth a toast.
-    context: branchName ? { branch: branchName, processErrorMessage: () => {} } : undefined,
+    context: branchName ? { branch: branchName } : undefined,
   });
 };

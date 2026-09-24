@@ -17,11 +17,8 @@ const STATUS_DISPLAY: Record<
   [SERVICE_REQUEST_STATUS.REJECTED]: { label: "Rejected", variant: "dark-gray" },
 };
 
-export function ServiceRequestStatusBadge({ status }: { status: string | null }) {
-  const display = STATUS_DISPLAY[status as ServiceRequestStatus] ?? {
-    label: status ?? "Unknown",
-    variant: "gray",
-  };
+export function ServiceRequestStatusBadge({ status }: { status: ServiceRequestStatus | null }) {
+  const display = status ? STATUS_DISPLAY[status] : { label: "Unknown", variant: "gray" as const };
 
   return <Badge variant={display.variant}>{display.label}</Badge>;
 }

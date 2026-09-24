@@ -14,11 +14,11 @@ const buildEntry = (overrides: Partial<ServiceCatalogEntry>): ServiceCatalogEntr
   description: "A point-to-point link between two sites",
   icon: "mdi:lan",
   tags: [],
-  target_kind: "ServiceL2Vpn",
+  targetKind: "ServiceL2Vpn",
   mode: "review",
   fields: ["name"],
   generators: [],
-  template_id: null,
+  templateId: null,
   ...overrides,
 });
 

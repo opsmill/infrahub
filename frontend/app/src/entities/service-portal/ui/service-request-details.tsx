@@ -1,5 +1,4 @@
 import { Card, CardContent, LinkButton, Spinner } from "@infrahub/ui";
-import type { Query } from "@tanstack/react-query";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -12,7 +11,7 @@ import { isServiceRequestInProgress } from "@/entities/service-portal/domain/rul
 import { useGetServiceRequest } from "@/entities/service-portal/ui/queries/get-service-request.query";
 import { ServiceRequestStatusBadge } from "@/entities/service-portal/ui/service-request-status-badge";
 
-const pollWhileInProgress = (query: Query<ServiceRequest, Error, ServiceRequest, any>) =>
+const pollWhileInProgress = (query: { state: { data?: ServiceRequest } }) =>
   isServiceRequestInProgress(query.state.data?.status) ? 5000 : false;
 
 export function ServiceRequestDetails({ requestId }: { requestId: string }) {

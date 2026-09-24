@@ -36,6 +36,7 @@ async def dedicated_internet_repo(
     initialize_registry: None,
     client: InfrahubClient,
     git_repos_source_dir_module_scope: Path,
+    git_repos_dir_module_scope: Path,
     prefect_test_fixture: None,
 ) -> InfrahubNode:
     """Import the dedicated-internet fixture repository on main.

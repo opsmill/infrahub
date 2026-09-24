@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { ServiceRequest } from "@/entities/service-portal/domain/model/service-request";
+import type {
+  ServiceRequest,
+  ServiceRequestStatus,
+} from "@/entities/service-portal/domain/model/service-request";
 import { getServiceRequest } from "@/entities/service-portal/domain/use-cases/get-service-request";
 
 import { render } from "../../../../tests/components/render";
@@ -38,7 +41,9 @@ describe("ServiceRequestDetails", () => {
     ["in_review", "In review"],
     ["merged", "Delivered"],
     ["rejected", "Rejected"],
-  ])("renders the %s status as %s with the request message", async (status, label) => {
+  ] satisfies Array<
+    [ServiceRequestStatus, string]
+  >)("renders the %s status as %s with the request message", async (status, label) => {
     vi.mocked(getServiceRequest).mockResolvedValue(
       buildRequest({ status, message: `Message for ${status}` })
     );
@@ -88,7 +93,7 @@ describe("ServiceRequestDetails", () => {
   test.each([
     "submitted",
     "generating",
-  ])("keeps polling while the request is %s", async (status) => {
+  ] satisfies Array<ServiceRequestStatus>)("keeps polling while the request is %s", async (status) => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.mocked(getServiceRequest).mockResolvedValue(buildRequest({ status }));
 
@@ -106,7 +111,7 @@ describe("ServiceRequestDetails", () => {
     "failed",
     "merged",
     "rejected",
-  ])("stops polling once the request is %s", async (status) => {
+  ] satisfies Array<ServiceRequestStatus>)("stops polling once the request is %s", async (status) => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.mocked(getServiceRequest).mockResolvedValue(buildRequest({ status }));
 

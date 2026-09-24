@@ -10,9 +10,12 @@ export const SERVICE_REQUEST_STATUS = {
 export type ServiceRequestStatus =
   (typeof SERVICE_REQUEST_STATUS)[keyof typeof SERVICE_REQUEST_STATUS];
 
+export const isServiceRequestStatus = (value: unknown): value is ServiceRequestStatus =>
+  Object.values<unknown>(SERVICE_REQUEST_STATUS).includes(value);
+
 export interface ServiceRequest {
   id: string;
-  status: string | null;
+  status: ServiceRequestStatus | null;
   message: string | null;
   branch: string | null;
   entryName: string | null;

@@ -1,3 +1,4 @@
+import { Icon } from "@iconify-icon/react";
 import { Card, CardContent } from "@infrahub/ui";
 import { Link } from "react-router";
 
@@ -50,9 +51,9 @@ function ServiceCatalogCard({ entry }: { entry: ServiceCatalogEntry }) {
   return (
     <Link
       to={getServiceEntryUrl(entry.id)}
-      className={classNames(focusVisibleStyle, "block h-full rounded-2xl")}
+      className={classNames(focusVisibleStyle, "group block h-full rounded-2xl")}
     >
-      <Card className="h-full transition-colors hover:border-custom-blue-600/50">
+      <Card className="h-full transition-[border-color,box-shadow] group-hover:border-custom-blue-600/50 group-hover:shadow-md">
         <CardContent className="flex h-full flex-col gap-2">
           <div className="flex items-center gap-2">
             <ServiceEntryIcon icon={entry.icon} className="size-9 text-xl" />
@@ -61,13 +62,22 @@ function ServiceCatalogCard({ entry }: { entry: ServiceCatalogEntry }) {
 
           {entry.description && <p className="text-neutral-600 text-sm">{entry.description}</p>}
 
-          {entry.tags.length > 0 && (
-            <div className="mt-auto flex flex-wrap gap-1">
+          <div className="mt-auto flex items-end justify-between gap-2 pt-2">
+            <div className="flex flex-wrap gap-1">
               {entry.tags.map((tag) => (
                 <Badge key={tag}>{tag}</Badge>
               ))}
             </div>
-          )}
+
+            <span className="flex shrink-0 items-center gap-1 font-medium text-custom-blue-700 text-sm">
+              Order
+              <Icon
+                icon="mdi:arrow-right"
+                aria-hidden
+                className="motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5"
+              />
+            </span>
+          </div>
         </CardContent>
       </Card>
     </Link>

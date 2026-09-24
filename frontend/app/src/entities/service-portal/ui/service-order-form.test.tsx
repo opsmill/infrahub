@@ -138,11 +138,11 @@ const entry: ServiceCatalogEntry = {
   description: null,
   icon: null,
   tags: [],
-  target_kind: "ServiceL2Vpn",
+  targetKind: "ServiceL2Vpn",
   mode: "review",
   fields: ALLOWLIST,
   generators: [],
-  template_id: null,
+  templateId: null,
 };
 
 const getFieldLabels = (container: HTMLElement) =>
@@ -212,7 +212,7 @@ describe("ServiceOrderForm", () => {
     } as any);
 
     const component = await render(
-      <ServiceOrderForm entry={{ ...entry, template_id: "template-1" }} />
+      <ServiceOrderForm entry={{ ...entry, templateId: "template-1" }} />
     );
 
     await expect

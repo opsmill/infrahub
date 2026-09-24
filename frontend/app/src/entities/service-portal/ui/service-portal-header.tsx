@@ -20,7 +20,9 @@ export function ServicePortalHeader() {
         className={classNames(focusVisibleStyle, "flex items-center gap-2 rounded-md")}
       >
         <img src={InfrahubWithTextLogo} alt="Infrahub" className="h-8" />
-        <span className="font-medium text-neutral-700 text-sm">Service portal</span>
+        <span className="hidden font-medium text-neutral-700 text-sm sm:inline">
+          Service portal
+        </span>
       </Link>
 
       <nav aria-label="Service portal" className="flex flex-1 items-center gap-1">
@@ -29,11 +31,13 @@ export function ServicePortalHeader() {
         </LinkButton>
       </nav>
 
-      <LinkButton variant="ghost" size="sm" href="/">
-        <ArrowLeftIcon /> Back to Infrahub
+      <LinkButton variant="ghost" size="sm" href="/" aria-label="Back to Infrahub">
+        <ArrowLeftIcon /> <span className="hidden sm:inline">Back to Infrahub</span>
       </LinkButton>
 
-      <AccountMenu />
+      <div className="flex min-w-0 *:max-w-full">
+        <AccountMenu />
+      </div>
     </Card>
   );
 }

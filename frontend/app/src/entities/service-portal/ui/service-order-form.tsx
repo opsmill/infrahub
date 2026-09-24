@@ -33,7 +33,7 @@ interface ServiceOrderFormProps {
 }
 
 export function ServiceOrderForm({ entry }: ServiceOrderFormProps) {
-  const { schema } = useSchema(entry.target_kind);
+  const { schema } = useSchema(entry.targetKind);
   const templateKind = schema ? getTemplateRelationshipFromSchema(schema)?.peer : undefined;
   const { schema: templateSchema } = useSchema(templateKind);
 
@@ -43,13 +43,13 @@ export function ServiceOrderForm({ entry }: ServiceOrderFormProps) {
     );
   }
 
-  if (entry.template_id && templateSchema) {
+  if (entry.templateId && templateSchema) {
     return (
       <TemplatedOrderForm
         entry={entry}
         schema={schema}
         templateSchema={templateSchema}
-        templateId={entry.template_id}
+        templateId={entry.templateId}
       />
     );
   }

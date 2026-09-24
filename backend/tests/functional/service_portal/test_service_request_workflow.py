@@ -15,10 +15,9 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.proposed_change.constants import ProposedChangeState
-from infrahub.service_portal import tasks
 from infrahub.service_portal.constants import ServiceRequestStatus
+from infrahub.service_portal.fulfilment import ServiceRequestRunner, request_branch_name
 from infrahub.service_portal.models import ServiceRequestRun
-from infrahub.service_portal.tasks import request_branch_name
 from infrahub.workflows.catalogue import SERVICE_REQUEST_RUN
 from tests.helpers.events import query_events_by_name
 from tests.helpers.test_app import TestInfrahubApp
@@ -267,9 +266,9 @@ class TestServiceRequestWorkflow(TestInfrahubApp):
     ) -> None:
         """A generator whose targets don't hold the object runs zero times, which stops the workflow."""
 
-        async def skip_group_join(**kwargs: Any) -> None: ...
+        async def skip_group_join(self: ServiceRequestRunner, **kwargs: Any) -> None: ...
 
-        monkeypatch.setattr(tasks, "_add_to_target_group", skip_group_join)
+        monkeypatch.setattr(ServiceRequestRunner, "_add_to_target_group", skip_group_join)
         request_id = await self.submit(db=db, entry=entry, requester=requester, name="acme-stray")
 
         with pytest.raises(RuntimeError, match=f"Generator {ALLOCATE_GENERATOR} did not run for the service object"):

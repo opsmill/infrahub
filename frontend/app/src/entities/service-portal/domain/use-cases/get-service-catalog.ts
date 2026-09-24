@@ -7,9 +7,15 @@ export const getServiceCatalog = async (): Promise<GetServiceCatalogResult> => {
   const { data } = await getServiceCatalogFromApi();
 
   return data.ServiceCatalog.entries.map((entry) => ({
-    ...entry,
+    id: entry.id,
+    name: entry.name,
     description: entry.description ?? null,
     icon: entry.icon ?? null,
-    template_id: entry.template_id ?? null,
+    tags: entry.tags,
+    targetKind: entry.target_kind,
+    mode: entry.mode,
+    fields: entry.fields,
+    generators: entry.generators,
+    templateId: entry.template_id ?? null,
   }));
 };
