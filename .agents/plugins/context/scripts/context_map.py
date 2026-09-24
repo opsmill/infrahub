@@ -241,7 +241,7 @@ class Diagram:
             self.edges.append(f'{self.ids[owner, trigger]} ==>|"{caption}"| {target}')
 
     def load_caption(self, record: dict, trigger: str) -> str:
-        if record["via"] == "import":
+        if record["via"] == "import" or record.get("link") == "import":
             return "@import"
         if record["via"] == "claude-md":
             return f"CLAUDE.md in {Path(record['path']).parent.as_posix()}/"
