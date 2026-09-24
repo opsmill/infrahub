@@ -72,17 +72,18 @@ class InfrahubObjectStorage:
         self._storage.write(content, identifier)
 
     def retrieve(self, identifier: str) -> str:
-        try:
-            with self._storage.open(identifier) as f:
-                return f.read().decode()
-        except (FileNotFoundError, botocore.exceptions.ClientError) as err:
-            raise NodeNotFoundError(node_type="StorageObject", identifier=identifier) from err
+        return self.retrieve_binary(identifier=identifier).decode()
 
     def retrieve_binary(self, identifier: str) -> bytes:
         try:
             with self._storage.open(identifier) as f:
                 return f.read()
-        except (FileNotFoundError, botocore.exceptions.ClientError) as err:
+        except FileNotFoundError as err:
+            raise NodeNotFoundError(node_type="StorageObject", identifier=identifier) from err
+        except botocore.exceptions.ClientError as err:
+            # HeadObject can report a missing key as the numeric code "404".
+            if err.response.get("Error", {}).get("Code") not in {"NoSuchKey", "NotFound", "404"}:
+                raise
             raise NodeNotFoundError(node_type="StorageObject", identifier=identifier) from err
 
     def delete(self, identifier: str) -> None:

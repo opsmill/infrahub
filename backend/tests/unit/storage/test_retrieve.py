@@ -4,6 +4,8 @@ import io
 from typing import TYPE_CHECKING
 
 import pytest
+from botocore.exceptions import ClientError
+from fastapi_storages.base import BaseStorage
 
 from infrahub import config
 from infrahub.exceptions import NodeNotFoundError
@@ -11,6 +13,17 @@ from infrahub.storage import InfrahubObjectStorage
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from typing import BinaryIO
+
+
+class FailingStorage(BaseStorage):
+    """Storage driver that raises the supplied error when opening an object."""
+
+    def __init__(self, error: ClientError) -> None:
+        self.error = error
+
+    def open(self, name: str) -> BinaryIO:
+        raise self.error
 
 
 async def test_retrieve_returns_decoded_string(local_storage_dir: Path) -> None:
@@ -46,8 +59,11 @@ async def test_retrieve_nonexistent_raises_error(local_storage_dir: Path) -> Non
     """Test that retrieve() raises NodeNotFoundError for missing files."""
     storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
 
-    with pytest.raises(NodeNotFoundError):
+    with pytest.raises(NodeNotFoundError, match=r"nonexistent-file / StorageObject") as exc_info:
         storage.retrieve(identifier="nonexistent-file")
+
+    assert exc_info.value.HTTP_CODE == 404
+    assert isinstance(exc_info.value.__cause__, FileNotFoundError)
 
 
 async def test_retrieve_binary_returns_raw_bytes(local_storage_dir: Path) -> None:
@@ -84,8 +100,62 @@ async def test_retrieve_binary_nonexistent_raises_error(local_storage_dir: Path)
     """Test that retrieve_binary() raises NodeNotFoundError for missing files."""
     storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
 
-    with pytest.raises(NodeNotFoundError):
+    with pytest.raises(NodeNotFoundError, match=r"nonexistent-file / StorageObject") as exc_info:
         storage.retrieve_binary(identifier="nonexistent-file")
+
+    assert exc_info.value.HTTP_CODE == 404
+    assert isinstance(exc_info.value.__cause__, FileNotFoundError)
+
+
+@pytest.mark.parametrize("method_name", ["retrieve", "retrieve_binary"])
+@pytest.mark.parametrize(
+    ("error_code", "operation_name"),
+    [("NoSuchKey", "GetObject"), ("404", "HeadObject"), ("NotFound", "HeadObject")],
+)
+async def test_retrieve_missing_s3_object_raises_not_found(
+    local_storage_dir: Path, method_name: str, error_code: str, operation_name: str
+) -> None:
+    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
+    error = ClientError(
+        error_response={
+            "Error": {"Code": error_code, "Message": "Object not found"},
+            "ResponseMetadata": {"HTTPStatusCode": 404},
+        },
+        operation_name=operation_name,
+    )
+    storage._storage = FailingStorage(error=error)
+
+    with pytest.raises(NodeNotFoundError, match=r"missing-object / StorageObject") as exc_info:
+        getattr(storage, method_name)(identifier="missing-object")
+
+    assert exc_info.value.HTTP_CODE == 404
+    assert exc_info.value.identifier == "missing-object"
+    assert exc_info.value.node_type == "StorageObject"
+    assert exc_info.value.__cause__ is error
+
+
+@pytest.mark.parametrize("method_name", ["retrieve", "retrieve_binary"])
+@pytest.mark.parametrize(
+    ("error_code", "status_code"),
+    [("AccessDenied", 403), ("InternalError", 500), ("NoSuchBucket", 404)],
+)
+async def test_retrieve_s3_backend_errors_propagate(
+    local_storage_dir: Path, method_name: str, error_code: str, status_code: int
+) -> None:
+    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
+    error = ClientError(
+        error_response={
+            "Error": {"Code": error_code, "Message": "Storage backend failure"},
+            "ResponseMetadata": {"HTTPStatusCode": status_code},
+        },
+        operation_name="HeadObject",
+    )
+    storage._storage = FailingStorage(error=error)
+
+    with pytest.raises(ClientError, match=error_code) as exc_info:
+        getattr(storage, method_name)(identifier="stored-object")
+
+    assert exc_info.value is error
 
 
 async def test_retrieve_vs_retrieve_binary(local_storage_dir: Path) -> None:
