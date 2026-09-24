@@ -1,7 +1,7 @@
 ---
 name: doctor
 description: >-
-  Judges whether a Claude Code session had the right guidance in context: works out what it should have loaded from what it did and the whole guidance corpus (every `dev/` doc outside `dev/specs`, every `AGENTS.md`, and the rules and skills by index), then compares that with the session's doc-reads log, the one `/context:trace` shows. Expensive: a forked 1M-context agent reads the whole corpus. TRIGGER when: the user asks to audit a session's context, to check whether a session loaded the right docs, rules or skills, or runs `/context:doctor`. DO NOT TRIGGER when: they only want the log or its diagram → `/context:trace`, `/context:map`; auditing documentation coverage for a feature → `audit-docs`; turning review feedback into internal docs → `harvesting-review`.
+  Judges whether a Claude Code session had the right guidance in context: works out what it should have loaded from what it did and the whole guidance corpus (every `dev/` doc outside the speckit directories, every `AGENTS.md`, and the rules and skills by index), then compares that with the session's doc-reads log, the one `/context:trace` shows. Expensive: a forked 1M-context agent reads the whole corpus. TRIGGER when: the user asks to audit a session's context, to check whether a session loaded the right docs, rules or skills, or runs `/context:doctor`. DO NOT TRIGGER when: they only want the log or its diagram → `/context:trace`, `/context:map`; auditing documentation coverage for a feature → `audit-docs`; turning review feedback into internal docs → `harvesting-review`.
 disable-model-invocation: true
 argument-hint: "[session id]"
 compatibility: Needs the context plugin's hooks on when the audited session started (without its log the audit stops after the ideal set), and a model with a 1M-token context window.
@@ -35,19 +35,39 @@ The root `AGENTS.md` is already in your context through `CLAUDE.md`, so don't re
 
 ## Reading the load log
 
-The log is the `reads.log` the inputs name, the file `/context:trace` prints. Each line starts with the local time (`HH:MM:SS`); the inputs give the offset to the summary's UTC. Indentation shows where a load happened:
+The log is the `reads.log` the inputs name, the file `/context:trace` prints. It records less than the session loaded, so judge absence only against what it can record.
 
-- `💬 prompt pN: "…"` opens a user prompt; the lines indented under it happened while working on it.
-- `🤖 agent <type>: "<description>"` opens a subagent under the prompt that spawned it (`(start not recorded)` when its start was missed). A subagent is its own context: it doesn't see what the main agent loaded.
-- `📄 read <path> (lines a-b) (read N) · path via <files>`: a Read of that file, partial when lines are given. `(read N)` means this is the Nth Read of it in this context. `path via` (or `← <files>`) lists already-loaded files that name the path: where the path could have come from, not necessarily why it was read.
-- `📏 rule <path> ← <file>`: a path-scoped rule that the Read of `<file>` matched, logged once per context.
-- `📘 loaded <path> ← <file>`: a nested `CLAUDE.md`, or a file it imports, loaded by the Read of `<file>`, logged once per context.
-- `🧩 skill <name> <args>`: a skill invoked at that point.
-- The closing block `── docs read this session (N files, M loads) ──` repeats the loads and lists the `startup:` files.
+**What gets a line**
 
-Duplicates come in two forms, and you can see both. One is a `(read N)` line: the context already held that file, unless a compaction came in between (the summary lists the main agent's compactions), since a compaction drops the earlier copy. The other is the same content reaching one context through two files, such as a rule and the guideline it summarises, which you can only spot because you read both. Weigh size with the token figures in `index.md` and what you read, times the number of contexts that loaded it.
+- A Read of a file under `dev/` or `.agents/`. Reads of anything else, including `backend/AGENTS.md`, `docs/AGENTS.md` and other files outside those two directories, are not logged, so their absence means nothing. Check the summary instead.
+- A path-scoped rule or nested `CLAUDE.md` that a Read of any file pulled in. Each is logged once per context, the first time; repeat injections never show.
+- A Skill tool call. A slash command the user typed shows only as the prompt's text.
+- Not logged: Bash reads (`cat`, `sed`, `grep`), skill bodies, and the user-level `CLAUDE.md` and memory. Before calling a doc missed, check the summary for a Bash read or search of it.
 
-Loads through Bash (`cat`, `sed`, `grep`) don't appear in the log. Before calling a doc missed, check the summary for a Bash read or search of it.
+**Layout**
+
+- Line 1 is `# Claude session <id> in <project>, started <UTC time>`.
+- Timeline lines start with a local `HH:MM:SS`, the moment the hook wrote them. The inputs give the offset to the summary's UTC.
+- Two spaces of indentation per level. A context header is printed only when the context changes, so a run of lines belongs to the last header above it at the next level up.
+
+**Line types**
+
+- `💬 prompt pN: "<text>"` opens a user prompt. A prompt with no logged load under it never appears, so count prompts from the summary. `(prompt not recorded)` stands in for one sent before tracking started.
+- `🤖 agent <type>: "<description>"` opens a subagent under the prompt that spawned it. `🤖 agent <type> (start not recorded)` is a subagent whose start was missed, which is how a forked skill appears. A subagent is its own context: it doesn't see what the main agent loaded.
+- `📄 read <path>`, optionally followed by `(lines a-b)` or `(from line N)` for a partial read, then `(read N)` when this context has read the file before, then `· path via <files>` listing already-loaded files that name the path. `path via` is where the path could have come from, not why it was read.
+- `📏 rule <path> ← <file>`: a path-scoped rule, pulled in by the Read of `<file>`.
+- `📘 loaded <path> ← <file>`: a nested `CLAUDE.md`, pulled in by the Read of `<file>`, or a file that `CLAUDE.md` imports, where `<file>` is the importing `CLAUDE.md`.
+- `🧩 skill <name> <args>`: a Skill tool call at that point.
+- `── docs read this session (N files, M loads) ──` opens a closing block. It has no timestamps, lists `startup:` (the root `CLAUDE.md`, its imports and the rules without `paths:`, assumed in every context), and repeats the timeline. It is written again at every session end, so a resumed session carries several. Read the timeline, and take `startup:` from the last block.
+
+**Lines to leave out**
+
+- When the audited session is the one that invoked you, the log ends with this audit: a `💬 prompt pN: "/context:doctor…"` and an agent block of about a hundred reads under it. Stop before it.
+- Reads under `dev/specs/` are the session's own spec artifacts, its working files. They are not guidance, so they stay out of the ideal set and never count as irrelevant loads.
+
+**Duplicates**
+
+A `(read N)` line is a repeat of that file in the same context, unless a compaction came in between (the summary lists the main agent's compactions), since a compaction drops the earlier copy. The other duplicate is the same content reaching one context through two files, such as a rule and the guideline it summarises, which you can only spot because you read both. Rules and nested `CLAUDE.md` files are logged once per context by construction, so the log can't show them injected twice. Weigh size with the token figures in `index.md` and what you read, times the number of contexts that loaded it.
 
 The docs tree is the checkout as it is now. When a finding depends on what the session could see then (another branch, an older commit), check with `git log`, `git show <branch>:<path>` or `git merge-base`, and say which version you judged against.
 

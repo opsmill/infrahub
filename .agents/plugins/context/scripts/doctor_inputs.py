@@ -36,6 +36,8 @@ SKIP_PROMPT = (
     "[Request interrupted",
 )
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
+# Per-feature spec artifacts and the spec-kit tooling that produces them: working files, not guidance.
+SPECKIT_DIRS = ("dev/specs", "dev/spec-kit", ".specify")
 COMMAND = re.compile(r"<command-name>(/[^<]+)</command-name>.*?<command-args>(.*?)</command-args>", re.DOTALL)
 PROMPT_CHARS = 700
 REPLY_CHARS = 600
@@ -256,9 +258,10 @@ def frontmatter_field(fm: str, name: str) -> str:
 
 
 def load_list(docs_root: Path) -> list[tuple[str, int]]:
-    """Every dev/ doc outside dev/specs and dev/skills, and every AGENTS.md except the root one."""
+    """Every dev/ doc outside the speckit directories and dev/skills, and every AGENTS.md except the root one."""
     entries = []
-    for path in walk(docs_root / "dev", skip={docs_root / "dev" / "specs", docs_root / "dev" / "skills"}):
+    speckit = {docs_root / path for path in SPECKIT_DIRS}
+    for path in walk(docs_root / "dev", skip={*speckit, docs_root / "dev" / "skills"}):
         if path.suffix and path.suffix not in TEXT_SUFFIXES:
             continue
         try:
@@ -267,7 +270,7 @@ def load_list(docs_root: Path) -> list[tuple[str, int]]:
             continue
         if text.strip():
             entries.append((path.relative_to(docs_root).as_posix(), tok(text)))
-    for path in walk(docs_root, skip={docs_root / ".claude"}):
+    for path in walk(docs_root, skip={*speckit, docs_root / ".claude"}):
         rel = path.relative_to(docs_root).as_posix()
         if path.name == "AGENTS.md" and rel != "AGENTS.md":
             entries.append((rel, tok(path.read_text(encoding="utf-8", errors="replace"))))
