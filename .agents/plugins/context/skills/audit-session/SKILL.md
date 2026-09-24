@@ -100,4 +100,4 @@ Read <N> of <N> load-list files · docs tree <path> · <version caveat, if any>
 - <one line each: content gaps, process issues>
 ```
 
-Rank findings by impact. Propose edits; don't make any.
+Rank findings by impact. Propose edits; don't make any. A proposed `CLAUDE.md` holds only `@AGENTS.md`, as the repository lint requires. The lint runs beside you in `/context:doctor`, so leave its checks to it and never suggest running it.
