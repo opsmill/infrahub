@@ -15,6 +15,9 @@ from operator import attrgetter
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from config import Layout, load_layout
+from track_reads import claude_md_imports
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
@@ -26,7 +29,7 @@ UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 TEXT_SUFFIXES = {".md", ".mdx", ".txt", ".yml", ".yaml", ".json", ".toml", ".py", ".sh", ".cfg", ".ini", ".j2", ".csv"}
 PRUNE = {
     "node_modules", ".git", ".venv", "venv", "__pycache__", ".mypy_cache", ".ruff_cache", ".pytest_cache", "dist",
-    "build", "python_sdk",
+    "build",
 }  # fmt: skip
 SKIP_PROMPT = (
     "<local-command-caveat>",
@@ -36,8 +39,6 @@ SKIP_PROMPT = (
     "[Request interrupted",
 )
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
-# Per-feature spec artifacts and the spec-kit tooling that produces them: working files, not guidance.
-SPECKIT_DIRS = ("dev/specs", "dev/spec-kit", ".specify")
 COMMAND = re.compile(r"<command-name>(/[^<]+)</command-name>.*?<command-args>(.*?)</command-args>", re.DOTALL)
 PROMPT_CHARS = 700
 REPLY_CHARS = 600
@@ -94,10 +95,9 @@ def repo_relative(path: str, root: str) -> str:
     return path.replace(str(HOME), "~", 1)
 
 
-def is_guidance(rel: str) -> bool:
-    return rel.startswith((".agents/", ".claude/", "dev/", "~/")) or rel.split(" (", maxsplit=1)[0].endswith(
-        ("AGENTS.md", "CLAUDE.md")
-    )
+def is_guidance(rel: str, layout: Layout) -> bool:
+    path = rel.split(" (", maxsplit=1)[0]
+    return path.startswith((".claude/", "~/")) or path.endswith("CLAUDE.md") or layout.is_logged(path)
 
 
 def load_rows(path: Path) -> list[Row]:
@@ -164,7 +164,7 @@ class Touched:
     read: Counter[str] = field(default_factory=Counter)
 
 
-def touched_files(agents: list[Agent], root: str) -> Touched:
+def touched_files(agents: list[Agent], root: str, layout: Layout) -> Touched:
     """Files each agent edited, and the non-guidance directories it read from."""
     touched = Touched()
     for agent in agents:
@@ -178,12 +178,12 @@ def touched_files(agents: list[Agent], root: str) -> Touched:
                 rel = repo_relative(target, root)
                 if block.get("name") in EDIT_TOOLS:
                     touched.changed.setdefault(rel, []).append(f"{minute(r.get('timestamp', ''))} {agent.label}")
-                elif block.get("name") == "Read" and not is_guidance(rel):
+                elif block.get("name") == "Read" and not is_guidance(rel, layout):
                     touched.read["/".join(rel.split(" (")[0].split("/")[:3])] += 1
     return touched
 
 
-def write_summary(path: Path, session_id: str, agents: list[Agent], root: str) -> None:
+def write_summary(path: Path, session_id: str, agents: list[Agent], root: str, layout: Layout) -> None:
     main = agents[0].rows
     stamped = [r["timestamp"] for a in agents for r in a.rows if r.get("timestamp")]
     compactions = [
@@ -224,7 +224,7 @@ def write_summary(path: Path, session_id: str, agents: list[Agent], root: str) -
         limit = LATEST_COMPACTION_CHARS if i == len(summaries) - 1 else EARLIER_COMPACTION_CHARS
         lines += [f"### {minute(ts)}", "", body[:limit] + ("\n\n[…truncated]" if len(body) > limit else ""), ""]
 
-    touched = touched_files(agents, root)
+    touched = touched_files(agents, root, layout)
     lines += ["", "## Files changed (Edit/Write)", ""]
     lines += [f"- {rel}: {len(edits)} edits, first {edits[0]}" for rel, edits in touched.changed.items()] or [
         "- none recorded"
@@ -257,29 +257,42 @@ def frontmatter_field(fm: str, name: str) -> str:
     return match.group(1).strip().strip("'\"") if match else ""
 
 
-def load_list(docs_root: Path) -> list[tuple[str, int]]:
-    """Every dev/ doc outside the speckit directories and dev/skills, and every AGENTS.md except the root one."""
+def repo_path(path: Path, docs_root: Path) -> str:
+    """The path as the tracker logs it: repo-relative after symlinks resolve."""
+    try:
+        return path.resolve().relative_to(docs_root.resolve()).as_posix()
+    except ValueError:
+        return str(path)
+
+
+def load_list(docs_root: Path, layout: Layout) -> list[tuple[str, int]]:
+    """Every doc the layout names, except what CLAUDE.md loads at startup and the rule and skill directories."""
+    startup = {"CLAUDE.md", *(imported for imported, _ in claude_md_imports(docs_root, "CLAUDE.md", {"CLAUDE.md"}))}
+    index_only = [
+        directory.resolve()
+        for directory in (docs_root / ".claude" / "rules", docs_root / ".claude" / "skills")
+        if directory.exists()
+    ]
+    skip = {docs_root / directory for directory in layout.skip_dirs} | {docs_root / ".claude" / "worktrees"}
     entries = []
-    speckit = {docs_root / path for path in SPECKIT_DIRS}
-    for path in walk(docs_root / "dev", skip={*speckit, docs_root / "dev" / "skills"}):
-        if path.suffix and path.suffix not in TEXT_SUFFIXES:
+    for path in walk(docs_root, skip=skip):
+        rel = path.relative_to(docs_root).as_posix()
+        if rel in startup or not layout.is_doc(rel) or (path.suffix and path.suffix not in TEXT_SUFFIXES):
+            continue
+        if any(path.resolve().is_relative_to(directory) for directory in index_only):
             continue
         try:
             text = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
         if text.strip():
-            entries.append((path.relative_to(docs_root).as_posix(), tok(text)))
-    for path in walk(docs_root, skip={*speckit, docs_root / ".claude"}):
-        rel = path.relative_to(docs_root).as_posix()
-        if path.name == "AGENTS.md" and rel != "AGENTS.md":
-            entries.append((rel, tok(path.read_text(encoding="utf-8", errors="replace"))))
+            entries.append((rel, tok(text)))
     return entries
 
 
 def rule_lines(docs_root: Path, seen: set[Path]) -> list[str]:
     lines = []
-    for base in (".agents/rules", ".claude/rules"):
+    for base in (".claude/rules",):
         for path in sorted((docs_root / base).glob("*.md")):
             if path.resolve() in seen:
                 continue
@@ -293,13 +306,15 @@ def rule_lines(docs_root: Path, seen: set[Path]) -> list[str]:
             heading = next((x.lstrip("# ").strip() for x in body.splitlines() if x.startswith("#")), path.stem)
             first = next((x.strip() for x in body.splitlines() if x.strip() and not x.startswith("#")), "")
             scope = ("paths: " + ", ".join(globs)) if globs else "no paths: (loaded at every session start)"
-            lines.append(f"- {base}/{path.name} (≈{fmt(tok(body))}) · {scope} · {heading}: {short(first, 160)}")
+            lines.append(
+                f"- {repo_path(path, docs_root)} (≈{fmt(tok(body))}) · {scope} · {heading}: {short(first, 160)}"
+            )
     return lines
 
 
 def skill_lines(docs_root: Path, seen: set[Path]) -> list[str]:
     lines = []
-    for base in (docs_root / ".agents" / "skills", docs_root / ".claude" / "skills", HOME / ".claude" / "skills"):
+    for base in (docs_root / ".claude" / "skills", HOME / ".claude" / "skills"):
         for path in sorted(base.glob("*/SKILL.md")):
             if path.resolve() in seen:
                 continue
@@ -309,9 +324,9 @@ def skill_lines(docs_root: Path, seen: set[Path]) -> list[str]:
     return lines
 
 
-def unlisted_skill_lines(docs_root: Path) -> list[str]:
+def unlisted_skill_lines(docs_root: Path, layout: Layout) -> list[str]:
     lines = []
-    for path in sorted((docs_root / "dev" / "skills").glob("*/SKILL.md")):
+    for path in sorted(p for directory in layout.skill_dirs for p in (docs_root / directory).glob("*/SKILL.md")):
         fm, body = frontmatter(path.read_text(encoding="utf-8", errors="replace"))
         name = frontmatter_field(fm, "name") or path.parent.name
         description = short(frontmatter_field(fm, "description"), 200)
@@ -319,8 +334,8 @@ def unlisted_skill_lines(docs_root: Path) -> list[str]:
     return lines
 
 
-def write_index(path: Path, docs_root: Path) -> tuple[int, int]:
-    entries = load_list(docs_root)
+def write_index(path: Path, docs_root: Path, layout: Layout) -> tuple[int, int]:
+    entries = load_list(docs_root, layout)
     total = sum(t for _, t in entries)
     seen: set[Path] = set()
     lines = [
@@ -330,8 +345,8 @@ def write_index(path: Path, docs_root: Path) -> tuple[int, int]:
         "",
         *(f"- {rel} (≈{fmt(t)})" for rel, t in entries),
         "",
-        f"Total ≈{fmt(total)} tokens in {len(entries)} files. Root AGENTS.md is not listed: CLAUDE.md already put it in "
-        "your context.",
+        f"Total ≈{fmt(total)} tokens in {len(entries)} files. The root CLAUDE.md and the files it imports are not "
+        "listed: they are already in your context.",
         "",
         "## Rules (index only; the harness injects them by paths:)",
         "",
@@ -343,7 +358,7 @@ def write_index(path: Path, docs_root: Path) -> tuple[int, int]:
         "",
         "## Skills the harness does not list (index only)",
         "",
-        *(unlisted_skill_lines(docs_root) or ["- none"]),
+        *(unlisted_skill_lines(docs_root, layout) or ["- none"]),
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return total, len(entries)
@@ -393,12 +408,16 @@ def main() -> None:
         sys.exit(f"Not a session id: {target!r}")
 
     session = open_session(target, args.project_dir)
+    try:
+        layout = load_layout(session.docs_root)
+    except ValueError as error:
+        sys.exit(f"Bad context plugin config: {error}")
     logs = log_dir(session.transcript, target)
     out_dir = logs / "doctor"
     out_dir.mkdir(parents=True, exist_ok=True)
     summary, index = out_dir / "summary.md", out_dir / "index.md"
-    write_summary(summary, target, session.agents, session.root)
-    total, count = write_index(index, session.docs_root)
+    write_summary(summary, target, session.agents, session.root, layout)
+    total, count = write_index(index, session.docs_root, layout)
     offset = time.strftime("%z")
     report = [
         f"Audited session: {target}"
@@ -408,6 +427,7 @@ def main() -> None:
         f"Load log: {log_status(logs / 'reads.log')}",
         f"Clocks: the load log stamps local time (UTC{offset[:3]}:{offset[3:]} on this machine now); the summary uses UTC",
         f"Load list and index: {index} ({count} files to read, ≈{fmt(total)} tokens)",
+        f"Layout: {layout.describe()}",
         f"Docs tree: {session.docs_root}"
         + ("" if session.docs_from_session else " (the session directory is gone, so the invoking project is used)"),
     ]

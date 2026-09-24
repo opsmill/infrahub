@@ -1,7 +1,7 @@
 ---
 name: doctor
 description: >-
-  Judges whether a Claude Code session had the right guidance in context: works out what it should have loaded from what it did and the whole guidance corpus (every `dev/` doc outside the speckit directories, every `AGENTS.md`, and the rules and skills by index), then compares that with the session's doc-reads log, the one `/context:trace` shows. Expensive: a forked 1M-context agent reads the whole corpus. TRIGGER when: the user asks to audit a session's context, to check whether a session loaded the right docs, rules or skills, or runs `/context:doctor`. DO NOT TRIGGER when: they only want the log or its diagram → `/context:trace`, `/context:map`; auditing documentation coverage for a feature → `audit-docs`; turning review feedback into internal docs → `harvesting-review`.
+  Judges whether a Claude Code session had the right guidance in context: works out what it should have loaded from what it did and the whole guidance corpus (every doc the repository's `.claude/context.md` names, and the rules and skills by index), then compares that with the session's doc-reads log, the one `/context:trace` shows. Expensive: a forked 1M-context agent reads the whole corpus. TRIGGER when: the user asks to audit a session's context, to check whether a session loaded the right docs, rules or skills, or runs `/context:doctor`. DO NOT TRIGGER when: they only want the log or its diagram → `/context:trace`, `/context:map`; auditing documentation coverage for a feature → `audit-docs`; turning review feedback into internal docs → `harvesting-review`.
 disable-model-invocation: true
 argument-hint: "[session id]"
 compatibility: Needs the context plugin's hooks on when the audited session started (without its log the audit stops after the ideal set), and a model with a 1M-token context window.
@@ -23,7 +23,7 @@ Judge whether a session had the right guidance in context. The method is fixed: 
 
 !`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/doctor_inputs.py ${CLAUDE_SESSION_ID} ${CLAUDE_PROJECT_DIR} $ARGUMENTS`
 
-The root `AGENTS.md` is already in your context through `CLAUDE.md`, so don't read it again. The harness also gave you the skill list; `index.md` has each skill's size.
+The root `CLAUDE.md` and the files it imports are already in your context, so don't read them again. The inputs' `Layout` line is the repository's own map of where its guidance lives; the rest of this skill refers to it. The harness also gave you the skill list; `index.md` has each skill's size.
 
 ## Steps, in this order
 
@@ -39,7 +39,7 @@ The log is the `reads.log` the inputs name, the file `/context:trace` prints. It
 
 **What gets a line**
 
-- A Read of a file under `dev/` or `.agents/`. Reads of anything else, including `backend/AGENTS.md`, `docs/AGENTS.md` and other files outside those two directories, are not logged, so their absence means nothing. Check the summary instead.
+- A Read of a path the `Layout` covers: its docs, also-logged and working-file globs. Reads of any other path are not logged, so their absence means nothing. Check the summary instead.
 - A path-scoped rule or nested `CLAUDE.md` that a Read of any file pulled in. Each is logged once per context, the first time; repeat injections never show.
 - A Skill tool call. A slash command the user typed shows only as the prompt's text.
 - Not logged: Bash reads (`cat`, `sed`, `grep`), skill bodies, and the user-level `CLAUDE.md` and memory. Before calling a doc missed, check the summary for a Bash read or search of it.
@@ -63,7 +63,7 @@ The log is the `reads.log` the inputs name, the file `/context:trace` prints. It
 **Lines to leave out**
 
 - When the audited session is the one that invoked you, the log ends with this audit: a `💬 prompt pN: "/context:doctor…"` and an agent block of about a hundred reads under it. Stop before it.
-- Reads under `dev/specs/` are the session's own spec artifacts, its working files. They are not guidance, so they stay out of the ideal set and never count as irrelevant loads.
+- Reads of the `Layout`'s working files, such as spec artifacts, are the session's own material. They are not guidance, so they stay out of the ideal set and never count as irrelevant loads.
 
 **Duplicates**
 

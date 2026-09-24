@@ -4,7 +4,8 @@
 The context plugin registers it in hooks/hooks.json for UserPromptSubmit, PreToolUse (Skill, Agent),
 SubagentStart, PostToolUse (Read) and SessionEnd; it dispatches on the event name.
 
-Every dev/ or .agents/ read, path-scoped rule, and nested CLAUDE.md load is recorded with:
+Every read of a path that .claude/context.md marks as logged, path-scoped rule, and nested CLAUDE.md load
+is recorded with:
 
 - parents: for a rule or nested CLAUDE.md, the file whose Read loaded it (certain); for a doc, the
   files already loaded this session that name its path, which is where the path could have come from,
@@ -32,10 +33,11 @@ import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from config import glob_to_regex, load_layout
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-DOC_PATH = re.compile(r"(^|/)(dev|\.agents)/")
 MARKDOWN_LINK_TARGET = re.compile(r"\]\(([^)#\s]+)")
 # Code spans and emails are not imports; an @ must start a token.
 CLAUDE_MD_IMPORT = re.compile(r"(?:^|\s)@([\w./-]+)")
@@ -72,29 +74,6 @@ def read_text(path: Path) -> str:
 
 def load_records(path: Path) -> list[dict]:
     return [json.loads(line) for line in read_text(path).splitlines() if line.strip()]
-
-
-def glob_to_regex(pattern: str) -> re.Pattern[str]:
-    """Translate a rule's `paths:` glob, where `**` spans directories and `*` does not."""
-    parts = []
-    i = 0
-    while i < len(pattern):
-        if pattern.startswith("**/", i):
-            parts.append("(?:.*/)?")
-            i += 3
-        elif pattern.startswith("**", i):
-            parts.append(".*")
-            i += 2
-        elif pattern[i] == "*":
-            parts.append("[^/]*")
-            i += 1
-        elif pattern[i] == "?":
-            parts.append("[^/]")
-            i += 1
-        else:
-            parts.append(re.escape(pattern[i]))
-            i += 1
-    return re.compile("".join(parts) + r"\Z")
 
 
 def rule_patterns(text: str) -> list[str]:
@@ -266,7 +245,7 @@ def on_read(event: dict, project: Path, records: list[dict]) -> list[dict]:
         loaded.add(entry["path"])
         new.append(entry)
 
-    if DOC_PATH.search(read_rel):
+    if load_layout(project).is_logged(read_rel):
         # Every Read is recorded; repeat counts this context's reads of the file, including this one.
         repeat = 1 + sum(
             1 for r in records if r["kind"] == "doc" and r["via"] == "read" and r["path"] == read_rel

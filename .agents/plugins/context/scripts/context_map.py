@@ -27,7 +27,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from track_reads import find_mention, glob_to_regex, load_records, preview, read_text, rule_patterns
+from config import glob_to_regex
+from track_reads import find_mention, load_records, preview, read_text, rule_patterns
 
 ICONS = {"read": "📄", "rule": "📏", "claude-md": "📘", "import": "📘"}
 CLASS_DEFS = {
