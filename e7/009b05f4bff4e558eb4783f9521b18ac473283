@@ -1,0 +1,21 @@
+.github/scripts/dependabot_autopilot/opportunities.py
+  s_43d8e382eba497::t_bb45cd049395c3 1-217
+.github/scripts/dependabot_autopilot/tests/test_opportunities.py
+  s_43d8e382eba497::t_bc7e1acf5e25fc 1-454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e7009b05f4bff4e558eb4783f9521b18ac473283",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
