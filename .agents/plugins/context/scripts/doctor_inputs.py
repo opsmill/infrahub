@@ -324,16 +324,6 @@ def skill_lines(docs_root: Path, seen: set[Path]) -> list[str]:
     return lines
 
 
-def unlisted_skill_lines(docs_root: Path, layout: Layout) -> list[str]:
-    lines = []
-    for path in sorted(p for directory in layout.skill_dirs for p in (docs_root / directory).glob("*/SKILL.md")):
-        fm, body = frontmatter(path.read_text(encoding="utf-8", errors="replace"))
-        name = frontmatter_field(fm, "name") or path.parent.name
-        description = short(frontmatter_field(fm, "description"), 200)
-        lines.append(f"- {path.relative_to(docs_root).as_posix()} (≈{fmt(tok(body))}) · {name}: {description}")
-    return lines
-
-
 def write_index(path: Path, docs_root: Path, layout: Layout) -> tuple[int, int]:
     entries = load_list(docs_root, layout)
     total = sum(t for _, t in entries)
@@ -355,10 +345,6 @@ def write_index(path: Path, docs_root: Path, layout: Layout) -> tuple[int, int]:
         "## Skills (sizes only; the harness already gave you names and descriptions)",
         "",
         *(skill_lines(docs_root, seen) or ["- none found"]),
-        "",
-        "## Skills the harness does not list (index only)",
-        "",
-        *(unlisted_skill_lines(docs_root, layout) or ["- none"]),
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return total, len(entries)

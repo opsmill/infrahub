@@ -17,12 +17,11 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG_FILES = (".claude/context.md", ".claude/context.local.md")
-KEYS = ("docs", "also_logged", "working_files", "skill_dirs", "skip_dirs")
+KEYS = ("docs", "also_logged", "working_files", "skip_dirs")
 DEFAULTS: dict[str, tuple[str, ...]] = {
     "docs": ("**/AGENTS.md", "**/CLAUDE.md"),
     "also_logged": (".claude/**",),
     "working_files": (),
-    "skill_dirs": (),
     "skip_dirs": (),
 }
 
@@ -57,10 +56,6 @@ def compiled(pattern: str) -> re.Pattern[str]:
 
 def matches(rel: str, patterns: tuple[str, ...]) -> bool:
     return any(compiled(pattern).match(rel) for pattern in patterns)
-
-
-def in_dir(rel: str, directory: str) -> bool:
-    return rel == directory or rel.startswith(directory.rstrip("/") + "/")
 
 
 def unquote(value: str) -> str:
@@ -110,9 +105,6 @@ class Layout:
     working_files: tuple[str, ...]
     """Material a session works on, such as spec artifacts: logged, but never read or judged as guidance."""
 
-    skill_dirs: tuple[str, ...]
-    """Skill directories Claude Code does not load itself: indexed, not read."""
-
     skip_dirs: tuple[str, ...]
     """Directories never scanned, such as submodules."""
 
@@ -126,11 +118,7 @@ class Layout:
         return matches(rel, self.working_files)
 
     def is_doc(self, rel: str) -> bool:
-        return (
-            matches(rel, self.docs)
-            and not self.is_working_file(rel)
-            and not any(in_dir(rel, directory) for directory in self.skill_dirs)
-        )
+        return matches(rel, self.docs) and not self.is_working_file(rel)
 
     def describe(self) -> str:
         fields = " · ".join(f"{key.replace('_', ' ')}: {', '.join(getattr(self, key)) or 'none'}" for key in KEYS)

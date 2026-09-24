@@ -25,7 +25,6 @@ Globs are repo-relative and match paths after symlinks resolve; `**` spans direc
 | `docs` | Guidance. Every Read of it is logged, and `/context:doctor` reads all of it | `**/AGENTS.md`, `**/CLAUDE.md` |
 | `also_logged` | Reads are logged, but the doctor does not read these, such as commands, rules and skills | `.claude/**` |
 | `working_files` | Material a session works on, such as spec artifacts: logged, never read or judged as guidance | none |
-| `skill_dirs` | Skill directories Claude Code does not load itself; the doctor indexes them | none |
 | `skip_dirs` | Directories never scanned, such as submodules | none |
 
 ```markdown

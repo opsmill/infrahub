@@ -8,8 +8,6 @@ working_files:
   - "dev/specs/**"
   - "dev/spec-kit/**"
   - ".specify/**"
-skill_dirs:
-  - "dev/skills"
 skip_dirs:
   - "python_sdk"
 ---
