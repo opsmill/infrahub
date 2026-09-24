@@ -1,7 +1,5 @@
 # AGENTS.md - Frontend
 
-> See [root AGENTS.md](../../AGENTS.md) for project-wide commands and guidelines.
-
 ## Overview
 
 React TypeScript frontend built with Vite, using Tailwind CSS for styling.
@@ -54,6 +52,8 @@ cd frontend/app && pnpm test              # vitest (browser mode)
 - `dev/knowledge/frontend/file-components.md` - DataViewer and file handling components
 - `dev/knowledge/frontend/auth-methods.md` - Auth method registry, picker, token persistence boundaries
 - `dev/knowledge/frontend/branches.md` - Read before writing code that depends on which branch is current, or on the default branch — the default branch name is deployment-configurable
+- `dev/knowledge/frontend/date-rendering.md` - Preference-aware dates (`DateDisplay`, `useFormatDate`) — load before rendering a user-facing date or time
+- `dev/knowledge/frontend/object-file-entity.md` - The `object-file` entity as a worked example of the api/domain/ui layers — load before fetching or displaying a stored file, or when copying an entity's layer boundaries
 
 ### Guides (How to do X)
 

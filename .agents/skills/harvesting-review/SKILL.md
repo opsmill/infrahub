@@ -181,7 +181,7 @@ For each investigated lesson, grep the internal-doc layer for the rule:
 
 ```bash
 grep -rin "<keyword>" .agents/rules/ dev/guidelines/ dev/knowledge/ dev/guides/ \
-  AGENTS.md backend/AGENTS.md frontend/app/AGENTS.md
+  AGENTS.md backend/AGENTS.md frontend/app/AGENTS.md  # context-lint: allow
 ```
 
 **A grep hit is not coverage until you read it.** Before you call a rule "already covered" — whether to

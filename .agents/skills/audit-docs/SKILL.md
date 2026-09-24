@@ -32,7 +32,7 @@ Treat `$ARGUMENTS` as what to audit. It will be one of:
   - Pull Request review comments, resolved and unresolved. Usually this is GOLD information to be included in the internal docs (if the branch corresponds to a PR or if a PR is provided)
   - Any changelog fragment and spec link. If missing, flag it as a gap.
   - The source code diffs themselves.
-- A **subject** (e.g. "webhooks", "computed attributes", "IPAM") — audit documentation for that topic across the codebase, regardless of branch. Use Grep/Glob to find all related code and docs, then assess coverage against `dev/knowledge/`, `docs/docs/`, `dev/specs/`, `backend/AGENTS.md`, `frontend/app/AGENTS.md`, and the code itself.
+- A **subject** (e.g. "webhooks", "computed attributes", "IPAM") — audit documentation for that topic across the codebase, regardless of branch. Use Grep/Glob to find all related code and docs, then assess coverage against `dev/knowledge/`, `docs/docs/`, `dev/specs/`, `backend/AGENTS.md`, `frontend/app/AGENTS.md`, and the code itself. <!-- context-lint: allow -->
 - A **set of doc paths** (e.g. `docs/docs/guides/installation.mdx dev/knowledge/backend/templates.md`) — audit only those files. Read each one, identify the feature/topic it covers, then search the codebase for the corresponding implementation to confirm the doc is current and complete, and check whether the code has drifted from what the doc describes.
 
 If `$ARGUMENTS` is empty, ask what to audit — a commit range, branch name, subject, or list of doc paths (default: current branch vs `stable`).
@@ -54,7 +54,7 @@ Also check these secondary locations when relevant:
 - `dev/knowledge/backend/architecture.md` — component map, if new directories were created.
 - `dev/knowledge/backend/testing.md` — if new test patterns were introduced.
 - `dev/knowledge/backend/schema-definitions.md` — if new schema types were added.
-- `backend/AGENTS.md` or `frontend/app/AGENTS.md` — if new top-level modules were created.
+- `backend/AGENTS.md` or `frontend/app/AGENTS.md` — if new top-level modules were created. <!-- context-lint: allow -->
 
 ### 3. Generate the audit report
 

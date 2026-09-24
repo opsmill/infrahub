@@ -1,7 +1,5 @@
 # AGENTS.md - Backend
 
-> See [root AGENTS.md](../AGENTS.md) for project-wide commands and guidelines.
-
 ## Overview
 
 FastAPI backend with GraphQL API, Neo4j database, and async-first architecture.
@@ -137,6 +135,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/guides/backend/creating-async-tasks.md` - How to create an async task, with a pre-submit checklist. Load when adding a `@task`/`@flow`.
 - `dev/guides/backend/creating-messages.md` - Creating message bus messages
 - `dev/guides/backend/creating-migrations.md` - Choosing a migration base class, `GRAPH_VERSION` bookkeeping, batching, transaction retry, and error handling. Load when adding a graph or schema migration or fixing data a migration got wrong.
+- `dev/guides/backend/creating-permission-checkers.md` - Adding a checker to the GraphQL permission pipeline: category, registration, permission report, denial message, tests. Load when enforcing a permission that object permissions cannot express.
 
 ### ADRs (Why we decided)
 
