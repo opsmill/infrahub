@@ -22,6 +22,14 @@ describe("getArtifactFile", () => {
     await expect(getArtifactFile({ storageId: "abc" })).resolves.toBe("hostname leaf01\n");
   });
 
+  test("returns base64 content for a binary artifact", async () => {
+    const data = Uint8Array.from([1, 2, 3]).buffer;
+    mockResponse({ data });
+
+    await expect(getArtifactFile({ storageId: "abc", contentType: "application/pdf" })).resolves.toBe("AQID");
+    expect(getArtifactFileFromApi).toHaveBeenCalledWith({ storageId: "abc", parseAs: "arrayBuffer" });
+  });
+
   test("surfaces the message the API returned when it refuses the artifact", async () => {
     mockResponse({
       error: {
@@ -29,7 +37,7 @@ describe("getArtifactFile", () => {
         errors: [
           {
             message:
-              "The artifact stored as abc does not match the checksum recorded for it: it was modified or corrupted outside of Infrahub and is not served.",
+              "The content of the artifact stored as abc does not match the recorded checksum and is not served.",
             extensions: { code: 409 },
           },
         ],
@@ -37,7 +45,7 @@ describe("getArtifactFile", () => {
     });
 
     await expect(getArtifactFile({ storageId: "abc" })).rejects.toThrow(
-      "The artifact stored as abc does not match the checksum recorded for it: it was modified or corrupted outside of Infrahub and is not served."
+      "The content of the artifact stored as abc does not match the recorded checksum and is not served."
     );
   });
 

@@ -485,12 +485,16 @@ class TestFileObjectDownload(TestInfrahubApp):
         )
         await node.save(db=db)
         intact = await test_client.get(f"/api/storage/files/{node.id}", headers=admin_headers)
+        file_name = node.file_name.value
         dummy_storage.store(
             identifier=storage_id, content=io.BytesIO(b"router bgp 65000\n neighbor 6.6.6.6 password attacker\n")
         )
 
         responses = [
             await test_client.get(f"/api/storage/files/{node.id}", headers=admin_headers),
+            await test_client.get(
+                f"/api/storage/files/by-hfid/TestingFileContract?hfid={file_name}", headers=admin_headers
+            ),
             await test_client.get(f"/api/storage/files/by-storage-id/{storage_id}", headers=admin_headers),
         ]
 
@@ -498,8 +502,7 @@ class TestFileObjectDownload(TestInfrahubApp):
         for response in responses:
             assert response.status_code == 409
             assert response.json()["errors"][0]["message"] == (
-                f"The file stored as {storage_id} does not match the checksum recorded for it: it was modified or "
-                "corrupted outside of Infrahub and is not served."
+                f"The content of the file stored as {storage_id} does not match the recorded checksum and is not served."
             )
 
     async def test_legacy_storage_endpoint_rejects_file_object_access(
