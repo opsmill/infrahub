@@ -41,7 +41,7 @@ reviewing backend Python, including:
 - Query patterns
 
 Typing lives in `dev/guidelines/backend/typing.md` — load it when a type checker flags your change,
-when narrowing a union or an optional or reviewing code that does, or when clearing a
+when narrowing a union or an optional, when reviewing code that does, or when clearing a
 `pyproject.toml` suppression.
 
 Exception handling lives in `dev/guidelines/backend/exceptions.md` — load it when writing or
