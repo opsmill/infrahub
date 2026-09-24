@@ -8,6 +8,7 @@ from graphene.types.generic import GenericScalar
 from prefect.client.schemas.objects import StateType
 
 from infrahub.workflows.catalogue import WEBHOOK_SEND
+from infrahub.workflows.constants import WorkflowType
 
 from .task_log import TaskLogEdge
 
@@ -15,6 +16,9 @@ if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
 TaskState = Enum.from_enum(StateType)
+WorkflowTypeEnum = Enum.from_enum(
+    WorkflowType, name="WorkflowTypeEnum", description="The category a workflow belongs to"
+)
 
 
 class TaskActionType(StrEnum):
@@ -68,6 +72,9 @@ class TaskNodeInterface(Interface):
     state = TaskState(required=False)
     progress = Float(required=False)
     workflow = String(required=False)
+    workflow_type = WorkflowTypeEnum(
+        required=False, description="The run's workflow type, decoded from its workflow-type tag"
+    )
     branch = String(required=False)
     created_at = String(required=True)
     updated_at = String(required=True)

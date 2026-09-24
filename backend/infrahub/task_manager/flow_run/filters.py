@@ -27,7 +27,9 @@ class FlowRunFilterBuilder:
         return flow_filter
 
     def build_flow_run_filter(self, criteria: FlowRunQueryCriteria) -> FlowRunFilter:
-        filter_tags = [TAG_NAMESPACE]
+        # The namespace tag is only stamped on non-internal workflows, so requiring it would make every
+        # internal run unselectable. When a type is requested the type tag scopes the query instead.
+        filter_tags = [] if criteria.workflow_types else [TAG_NAMESPACE]
 
         if criteria.tags:
             filter_tags.extend(criteria.tags)
@@ -37,7 +39,16 @@ class FlowRunFilterBuilder:
         if criteria.related_nodes:
             filter_tags.append(WorkflowTag.RELATED_NODE.render(identifier=criteria.related_nodes[0]))
 
-        flow_run_filter = FlowRunFilter(tags=FlowRunFilterTags(all_=filter_tags))
+        type_tags = (
+            [
+                WorkflowTag.WORKFLOWTYPE.render(identifier=workflow_type.value)
+                for workflow_type in criteria.workflow_types
+            ]
+            if criteria.workflow_types
+            else None
+        )
+
+        flow_run_filter = FlowRunFilter(tags=FlowRunFilterTags(all_=filter_tags or None, any_=type_tags))
 
         if criteria.ids:
             flow_run_filter.id = FlowRunFilterId(any_=[self._to_uuid(id) for id in criteria.ids])

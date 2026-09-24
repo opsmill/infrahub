@@ -59,6 +59,7 @@ from .queries import (
 from .queries.convert_object_type_mapping import FieldsMappingTypeConversion
 from .queries.diff.tree import DiffTreeQuery, DiffTreeSummaryQuery
 from .queries.event import Event
+from .queries.scheduled_flow import InfrahubScheduledFlows
 from .queries.task import Task, TaskBranchStatus
 
 # Root query fields that require an authenticated session even when anonymous read access is
@@ -99,6 +100,7 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubTask = Task
     InfrahubEvent = Event
     InfrahubTaskBranchStatus = TaskBranchStatus
+    InfrahubScheduledFlows = InfrahubScheduledFlows
 
     CoreProposedChangeAvailableActions = ProposedChangeAvailableActions
 

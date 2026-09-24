@@ -5,7 +5,7 @@ import pytest
 from prefect.client.schemas.objects import FlowRun
 
 from infrahub.task_manager.flow_run.tags import WorkflowTagDecoder
-from infrahub.workflows.constants import WorkflowTag
+from infrahub.workflows.constants import WorkflowTag, WorkflowType
 
 
 def make_flow_run(tags: list[str]) -> FlowRun:
@@ -95,7 +95,60 @@ RELATED_NODE_CASES = [
 ]
 
 
+@dataclass
+class WorkflowTypeCase:
+    name: str
+    tags: list[str]
+    expected: WorkflowType | None
+
+
+WORKFLOW_TYPE_CASES = [
+    WorkflowTypeCase(
+        name="internal",
+        tags=[WorkflowTag.WORKFLOWTYPE.render(identifier="internal")],
+        expected=WorkflowType.INTERNAL,
+    ),
+    WorkflowTypeCase(
+        name="core",
+        tags=[WorkflowTag.WORKFLOWTYPE.render(identifier="core")],
+        expected=WorkflowType.CORE,
+    ),
+    WorkflowTypeCase(
+        name="type_resolved_among_other_tags",
+        tags=[
+            WorkflowTag.BRANCH.render(identifier="main"),
+            WorkflowTag.WORKFLOWTYPE.render(identifier="user"),
+            WorkflowTag.DATABASE_CHANGE.render(),
+        ],
+        expected=WorkflowType.USER,
+    ),
+    WorkflowTypeCase(
+        name="unrecognised_value_is_not_an_error",
+        tags=[WorkflowTag.WORKFLOWTYPE.render(identifier="something-else")],
+        expected=None,
+    ),
+    WorkflowTypeCase(
+        name="unrecognised_value_does_not_hide_a_valid_one",
+        tags=[
+            WorkflowTag.WORKFLOWTYPE.render(identifier="something-else"),
+            WorkflowTag.WORKFLOWTYPE.render(identifier="internal"),
+        ],
+        expected=WorkflowType.INTERNAL,
+    ),
+    WorkflowTypeCase(
+        name="no_type_tag",
+        tags=[WorkflowTag.BRANCH.render(identifier="main")],
+        expected=None,
+    ),
+    WorkflowTypeCase(name="no_tags", tags=[], expected=None),
+]
+
+
 class TestWorkflowTagDecoder:
+    @pytest.mark.parametrize("case", WORKFLOW_TYPE_CASES, ids=[c.name for c in WORKFLOW_TYPE_CASES])
+    def test_workflow_type(self, case: WorkflowTypeCase) -> None:
+        assert WorkflowTagDecoder().workflow_type(make_flow_run(tags=case.tags)) == case.expected
+
     @pytest.mark.parametrize("case", BRANCH_CASES, ids=[c.name for c in BRANCH_CASES])
     def test_branch_name(self, case: BranchCase) -> None:
         assert WorkflowTagDecoder().branch_name(make_flow_run(tags=case.tags)) == case.expected

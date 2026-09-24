@@ -17,7 +17,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.tasks.dummy import dummy_flow, dummy_flow_broken
 from infrahub.webhook.tasks.process import webhook_send
 from infrahub.workers.dependencies import clear_singletons
-from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
+from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag, WorkflowType
 from tests.helpers.graphql import graphql
 
 QUERY_TASK = """
@@ -1060,3 +1060,230 @@ async def test_task_only_count(
 
     assert result.errors is None
     assert result.data["InfrahubTask"]["count"] == 7
+
+
+@pytest.fixture
+async def workflow_type_flow_runs_data(prefect_client: PrefectClient) -> dict[str, FlowRun]:
+    """Runs covering both internal tagging shapes: namespace-tagged at run time, and type-tag only."""
+    internal_tag = WorkflowTag.WORKFLOWTYPE.render(identifier=WorkflowType.INTERNAL.value)
+    core_tag = WorkflowTag.WORKFLOWTYPE.render(identifier=WorkflowType.CORE.value)
+    user_tag = WorkflowTag.WORKFLOWTYPE.render(identifier=WorkflowType.USER.value)
+    branch1_tag = WorkflowTag.BRANCH.render(identifier="branch1")
+    items = [
+        await prefect_client.create_flow_run(
+            flow=dummy_flow,
+            name="internal-namespaced",
+            parameters={"firstname": "ada", "lastname": "lovelace"},
+            tags=[TAG_NAMESPACE, internal_tag],
+            state=State(type="COMPLETED"),
+        ),
+        await prefect_client.create_flow_run(
+            flow=dummy_flow_broken,
+            name="internal-bare",
+            parameters={"firstname": "grace", "lastname": "hopper"},
+            tags=[internal_tag],
+            state=State(type="FAILED"),
+        ),
+        await prefect_client.create_flow_run(
+            flow=dummy_flow,
+            name="internal-bare-branch1",
+            parameters={"firstname": "alan", "lastname": "turing"},
+            tags=[internal_tag, branch1_tag],
+            state=State(type="COMPLETED"),
+        ),
+        await prefect_client.create_flow_run(
+            flow=dummy_flow,
+            name="core-run",
+            parameters={},
+            tags=[TAG_NAMESPACE, core_tag],
+            state=State(type="COMPLETED"),
+        ),
+        await prefect_client.create_flow_run(
+            flow=dummy_flow_broken,
+            name="user-run",
+            parameters={},
+            tags=[TAG_NAMESPACE, user_tag],
+            state=State(type="RUNNING"),
+        ),
+    ]
+    return {item.name: item for item in items}
+
+
+QUERY_TASK_BY_WORKFLOW_TYPE = """
+query TaskQuery($workflow_type: [WorkflowTypeEnum], $state: [StateType], $branch: String) {
+    InfrahubTask(workflow_type: $workflow_type, state: $state, branch: $branch, limit: 50) {
+        count
+        edges {
+            node {
+                title
+                workflow_type
+            }
+        }
+    }
+}
+"""
+
+
+async def _query_titles(db: InfrahubDatabase, branch: Branch, variables: dict[str, Any]) -> tuple[list[str], int]:
+    result = await run_query(db=db, branch=branch, query=QUERY_TASK_BY_WORKFLOW_TYPE, variables=variables)
+    assert result.errors is None
+    assert result.data
+    titles = sorted(edge["node"]["title"] for edge in result.data["InfrahubTask"]["edges"])
+    return titles, result.data["InfrahubTask"]["count"]
+
+
+async def test_default_task_list_keeps_namespace_tagged_runs_and_omits_untagged_internal_runs(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs: None,
+    workflow_type_flow_runs_data: dict[str, FlowRun],
+) -> None:
+    titles, count = await _query_titles(db=db, branch=default_branch, variables={})
+
+    assert titles == ["core-run", "internal-namespaced", "user-run"]
+    assert count == len(titles)
+
+
+async def test_internal_type_selects_runs_that_never_carried_the_namespace_tag(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs: None,
+    workflow_type_flow_runs_data: dict[str, FlowRun],
+) -> None:
+    titles, count = await _query_titles(db=db, branch=default_branch, variables={"workflow_type": ["INTERNAL"]})
+
+    assert titles == ["internal-bare", "internal-bare-branch1", "internal-namespaced"]
+    assert count == len(titles)
+
+
+async def test_selecting_every_type_is_a_strict_superset_of_the_default_list(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs: None,
+    workflow_type_flow_runs_data: dict[str, FlowRun],
+) -> None:
+    default_titles, _ = await _query_titles(db=db, branch=default_branch, variables={})
+    all_types_titles, all_types_count = await _query_titles(
+        db=db, branch=default_branch, variables={"workflow_type": ["INTERNAL", "CORE", "USER"]}
+    )
+
+    assert all_types_titles == [
+        "core-run",
+        "internal-bare",
+        "internal-bare-branch1",
+        "internal-namespaced",
+        "user-run",
+    ]
+    assert all_types_count == len(all_types_titles)
+    assert set(default_titles) < set(all_types_titles)
+
+
+async def test_workflow_type_composes_with_state_and_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs: None,
+    workflow_type_flow_runs_data: dict[str, FlowRun],
+) -> None:
+    by_state, by_state_count = await _query_titles(
+        db=db, branch=default_branch, variables={"workflow_type": ["INTERNAL"], "state": ["FAILED"]}
+    )
+    assert by_state == ["internal-bare"]
+    assert by_state_count == 1
+
+    by_branch, by_branch_count = await _query_titles(
+        db=db, branch=default_branch, variables={"workflow_type": ["INTERNAL"], "branch": "branch1"}
+    )
+    assert by_branch == ["internal-bare-branch1"]
+    assert by_branch_count == 1
+
+
+async def test_workflow_type_is_reported_on_each_run(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs: None,
+    workflow_type_flow_runs_data: dict[str, FlowRun],
+) -> None:
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_TASK_BY_WORKFLOW_TYPE,
+        variables={"workflow_type": ["INTERNAL", "CORE", "USER"]},
+    )
+    assert result.errors is None
+    assert result.data
+
+    types_by_title = {
+        edge["node"]["title"]: edge["node"]["workflow_type"] for edge in result.data["InfrahubTask"]["edges"]
+    }
+    assert types_by_title == {
+        "core-run": "CORE",
+        "internal-bare": "INTERNAL",
+        "internal-bare-branch1": "INTERNAL",
+        "internal-namespaced": "INTERNAL",
+        "user-run": "USER",
+    }
+
+
+async def test_empty_workflow_type_list_is_rejected(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs: None,
+    workflow_type_flow_runs_data: dict[str, FlowRun],
+) -> None:
+    result = await run_query(
+        db=db, branch=default_branch, query=QUERY_TASK_BY_WORKFLOW_TYPE, variables={"workflow_type": []}
+    )
+
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == ["workflow_type must not be an empty list"]
+
+
+async def test_internal_run_resolves_by_id_with_its_full_detail(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs: None,
+    workflow_type_flow_runs_data: dict[str, FlowRun],
+) -> None:
+    QUERY = """
+    query TaskQuery($ids: [String]) {
+        InfrahubTask(ids: $ids, workflow_type: [INTERNAL]) {
+            count
+            edges {
+                node {
+                    id
+                    title
+                    state
+                    workflow_type
+                    parameters
+                    created_at
+                    updated_at
+                    logs { edges { node { message severity timestamp } } count }
+                }
+            }
+        }
+    }
+    """
+    run = workflow_type_flow_runs_data["internal-bare"]
+
+    result = await run_query(db=db, branch=default_branch, query=QUERY, variables={"ids": [str(run.id)]})
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["InfrahubTask"]["count"] == 1
+    node = result.data["InfrahubTask"]["edges"][0]["node"]
+    assert node["id"] == str(run.id)
+    assert node["title"] == "internal-bare"
+    assert node["state"] == "FAILED"
+    assert node["workflow_type"] == "INTERNAL"
+    # An internal run exposes the same fields as any other run; no new class of data is revealed.
+    assert node["parameters"] == {"firstname": "grace", "lastname": "hopper"}
+    assert node["created_at"]
+    assert node["updated_at"]
+    assert node["logs"] == {"edges": [], "count": 0}

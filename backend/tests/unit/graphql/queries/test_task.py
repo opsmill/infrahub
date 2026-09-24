@@ -9,13 +9,15 @@ from prefect.client.schemas.objects import Log as PrefectLog
 from prefect.types import DateTime
 
 from infrahub.core.constants import TaskConclusion
-from infrahub.graphql.queries.task import FlowRunConnectionSerializer, _build_fetch_options
+from infrahub.exceptions import ValidationError
+from infrahub.graphql.queries.task import FlowRunConnectionSerializer, Tasks, _build_fetch_options
 from infrahub.task_manager.flow_run.models import (
     EnrichedFlowRun,
     FlowRunFetchOptions,
     FlowRunQueryResult,
     RelatedNodeInfo,
 )
+from infrahub.workflows.constants import WorkflowType
 
 TIMESTAMP = DateTime(2024, 1, 2, 3, 4, 5, tzinfo=UTC)
 
@@ -64,6 +66,7 @@ class TestFlowRunConnectionSerializer:
         run = EnrichedFlowRun(
             flow_run=flow,
             branch="main",
+            workflow_type=WorkflowType.CORE,
             related_nodes=related,
             workflow_name="my_workflow",
             progress=0.42,
@@ -83,6 +86,7 @@ class TestFlowRunConnectionSerializer:
             "branch": "main",
             "tags": ["t1", "t2"],
             "workflow": "my_workflow",
+            "workflow_type": WorkflowType.CORE,
             "available_actions": [],
             "related_node": "node-1",
             "related_node_kind": "TestThing",
@@ -250,3 +254,9 @@ class TestBuildFetchOptions:
 
         assert options.log_limit == 50
         assert options.log_offset == 10
+
+
+class TestWorkflowTypeArgument:
+    async def test_empty_list_is_rejected_rather_than_treated_as_unset(self) -> None:
+        with pytest.raises(ValidationError, match="workflow_type must not be an empty list"):
+            await Tasks.resolve(root={}, info=None, workflow_type=[])

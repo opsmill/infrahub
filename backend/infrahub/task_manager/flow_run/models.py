@@ -6,6 +6,8 @@ from prefect.client.schemas.objects import FlowRun, StateType
 from prefect.client.schemas.objects import Log as PrefectLog
 from pydantic import BaseModel, Field
 
+from infrahub.workflows.constants import WorkflowType
+
 
 class RelatedNodeInfo(BaseModel):
     id: str
@@ -65,6 +67,7 @@ class FlowRunQueryCriteria(BaseModel):
     related_nodes: list[str] | None = None
     statuses: list[StateType] | None = None
     workflows: list[str] | None = None
+    workflow_types: list[WorkflowType] | None = None
     tags: list[str] | None = None
     branch: str | None = None
     limit: int | None = None
@@ -90,6 +93,7 @@ class EnrichedFlowRun(BaseModel):
 
     flow_run: FlowRun
     branch: str | None = None
+    workflow_type: WorkflowType | None = None
     related_nodes: list[RelatedNodeInfo] = Field(default_factory=list)
     workflow_name: str | None = None
     progress: float | None = None

@@ -6,7 +6,7 @@ from prefect.client.schemas.objects import StateType
 from infrahub.exceptions import ValidationError
 from infrahub.task_manager.flow_run.filters import FlowRunFilterBuilder
 from infrahub.task_manager.flow_run.models import FlowRunQueryCriteria
-from infrahub.workflows.constants import TAG_NAMESPACE
+from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowType
 
 
 class TestBuildFlowFilter:
@@ -28,6 +28,7 @@ class TestBuildFlowRunFilter:
 
         assert flow_run_filter.tags is not None
         assert flow_run_filter.tags.all_ == [TAG_NAMESPACE]
+        assert flow_run_filter.tags.any_ is None
         assert flow_run_filter.id is None
         assert flow_run_filter.state is None
         assert flow_run_filter.name is None
@@ -81,6 +82,46 @@ class TestBuildFlowRunFilter:
 
         assert flow_run_filter.name is not None
         assert flow_run_filter.name.like_ == "deploy"
+
+    def test_workflow_type_replaces_the_namespace_requirement(self) -> None:
+        flow_run_filter = FlowRunFilterBuilder().build_flow_run_filter(
+            criteria=FlowRunQueryCriteria(workflow_types=[WorkflowType.INTERNAL])
+        )
+
+        assert flow_run_filter.tags is not None
+        assert flow_run_filter.tags.all_ is None
+        assert flow_run_filter.tags.any_ == ["infrahub.app/workflow-type/internal"]
+
+    def test_every_workflow_type_ors_together(self) -> None:
+        flow_run_filter = FlowRunFilterBuilder().build_flow_run_filter(
+            criteria=FlowRunQueryCriteria(workflow_types=list(WorkflowType))
+        )
+
+        assert flow_run_filter.tags is not None
+        assert flow_run_filter.tags.all_ is None
+        assert flow_run_filter.tags.any_ == [
+            "infrahub.app/workflow-type/internal",
+            "infrahub.app/workflow-type/core",
+            "infrahub.app/workflow-type/user",
+        ]
+
+    def test_branch_ands_with_workflow_type(self) -> None:
+        flow_run_filter = FlowRunFilterBuilder().build_flow_run_filter(
+            criteria=FlowRunQueryCriteria(branch="main", workflow_types=[WorkflowType.INTERNAL])
+        )
+
+        assert flow_run_filter.tags is not None
+        assert flow_run_filter.tags.all_ == ["infrahub.app/branch/main"]
+        assert flow_run_filter.tags.any_ == ["infrahub.app/workflow-type/internal"]
+
+    def test_related_node_ands_with_workflow_type(self) -> None:
+        flow_run_filter = FlowRunFilterBuilder().build_flow_run_filter(
+            criteria=FlowRunQueryCriteria(related_nodes=["node-1"], workflow_types=[WorkflowType.CORE])
+        )
+
+        assert flow_run_filter.tags is not None
+        assert flow_run_filter.tags.all_ == ["infrahub.app/node/node-1"]
+        assert flow_run_filter.tags.any_ == ["infrahub.app/workflow-type/core"]
 
     def test_all_criteria_combine(self) -> None:
         node_id = "00000000-0000-0000-0000-000000000003"

@@ -13,7 +13,7 @@ from infrahub.graphql.queries.task_actions import (
     TaskActionGenerator,
     TaskActionType,
 )
-from infrahub.workflows.catalogue import WEBHOOK_SEND
+from infrahub.workflows.catalogue import CLEAN_UP_DEADLOCKS, GIT_REPOSITORIES_SYNC, WEBHOOK_SEND
 
 
 @dataclass
@@ -84,6 +84,18 @@ CASES = [
         name="unknown_workflow_has_no_actions",
         workflow_name=None,
         state_type=StateType.COMPLETED,
+        expected=[],
+    ),
+    AvailableActionsCase(
+        name="internal_workflow_has_no_actions",
+        workflow_name=CLEAN_UP_DEADLOCKS.name,
+        state_type=StateType.FAILED,
+        expected=[],
+    ),
+    AvailableActionsCase(
+        name="internal_workflow_cancelled_by_a_collision_has_no_actions",
+        workflow_name=GIT_REPOSITORIES_SYNC.name,
+        state_type=StateType.CANCELLED,
         expected=[],
     ),
 ]
