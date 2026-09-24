@@ -6,6 +6,7 @@ widens it to the internal background flows that carry no namespace tag.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -18,6 +19,9 @@ if TYPE_CHECKING:
 
 TYPE_FIELD_LABEL = "Type"
 SYSTEM_LABEL = "System"
+
+# The filters query-string parameter carries JSON, so the field name arrives percent-encoded.
+FILTER_IN_URL = re.compile(r"workflow_type__value")
 
 
 async def _apply_type_filter(page: Page, option: str) -> None:
@@ -49,11 +53,12 @@ class TestTasksTypeFilter:
         await expect(admin_page.get_by_role("heading", name="Task Overview")).to_be_visible()
 
         await _apply_type_filter(admin_page, SYSTEM_LABEL)
-        assert "workflow_type__value" in admin_page.url
+        # The query-string write is deferred, so retry rather than reading the URL once.
+        await expect(admin_page).to_have_url(FILTER_IN_URL)
 
         await admin_page.reload()
 
-        assert "workflow_type__value" in admin_page.url
+        await expect(admin_page).to_have_url(FILTER_IN_URL)
         await expect(admin_page.get_by_role("columnheader", name=TYPE_FIELD_LABEL)).to_be_visible()
 
     async def test_the_filter_count_reflects_the_type_selection_and_can_be_cleared(
@@ -69,7 +74,7 @@ class TestTasksTypeFilter:
         await admin_page.get_by_test_id("remove-filters").click()
 
         await expect(admin_page.get_by_text("Filters: 0")).to_be_visible()
-        assert "workflow_type__value" not in admin_page.url
+        await expect(admin_page).not_to_have_url(FILTER_IN_URL)
 
     async def test_internal_runs_leave_the_branch_and_related_node_cells_empty(
         self, admin_page: Page

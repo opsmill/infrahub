@@ -5,12 +5,14 @@ const GET_TASK_DETAILS = graphql(`
     $ids: [String]
     $branch: String
     $workflow: [String]
+    $workflowType: [WorkflowTypeEnum]
     $relatedNodes: [String]
   ) {
     InfrahubTask(
       ids: $ids
       branch: $branch
       workflow: $workflow
+      workflow_type: $workflowType
       related_node__ids: $relatedNodes
     ) {
       count

@@ -101,15 +101,18 @@ class TestScheduledFlowsView:
 
         await expect(admin_page.get_by_role("heading", name="Task Logs")).to_be_visible()
 
-    async def test_the_view_issues_a_constant_number_of_graphql_requests(
+    async def test_the_view_issues_one_request_however_many_flows_are_listed(
         self, admin_page: Page
     ) -> None:
         """The client must not fan out one request per flow."""
-        graphql_requests: list[str] = []
+        scheduled_flow_requests: list[str] = []
 
         def record(request: Request) -> None:
-            if "/graphql" in request.url:
-                graphql_requests.append(request.url)
+            if "/graphql" not in request.url:
+                return
+            body = request.post_data or ""
+            if "InfrahubScheduledFlows" in body:
+                scheduled_flow_requests.append(body)
 
         admin_page.on("request", record)
         await admin_page.goto("/tasks/scheduled")
@@ -119,7 +122,6 @@ class TestScheduledFlowsView:
 
         flow_count = await admin_page.get_by_role("row").count() - 1
         assert flow_count >= len(EVERY_MINUTE_FLOWS)
-        # One document per view, not one per listed flow. A generous ceiling still catches fan-out.
-        assert len(graphql_requests) < flow_count, (
-            f"{len(graphql_requests)} GraphQL requests for {flow_count} flows suggests per-flow fan-out"
+        assert len(scheduled_flow_requests) == 1, (
+            f"{len(scheduled_flow_requests)} scheduled-flow requests for {flow_count} flows"
         )

@@ -12,6 +12,9 @@ Two things are new:
   applied so failed and cancelled runs are included. Verdicts are shown as an icon and a word, never
   colour alone, and the list puts the flows needing attention first. Data is cached for up to a
   minute and refreshed on demand rather than polled.
+* Opening an individual run now works for internal runs too. The task detail page looked runs up
+  under the same namespace-tag scope as the list, so an internal run reported "Task with ID … not
+  found"; a run addressed by its own id is now resolved whatever its type.
 * A **Type** filter on the Tasks list, with internal workflows labelled "System". Over GraphQL this
   is the new `workflow_type: [WorkflowTypeEnum]` argument on `InfrahubTask`, alongside a new
   `workflow_type` field on each returned run and a new `InfrahubScheduledFlows` query. With no type
