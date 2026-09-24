@@ -112,6 +112,8 @@ When TLS is enabled and no explicit port is set, the port defaults to 6514.
 
 The `tls_ca_bundle` field accepts either a file path or an inline PEM string.
 
+To skip validation of the syslog server certificate in a test environment, set `tls_insecure = true` on the destination (`INFRAHUB_LOG_FORWARDING_DESTINATION_<NAME>_TLS_INSECURE="true"` as an environment variable). It takes precedence over `tls_ca_bundle`, so the bundle can stay configured. Never enable it in production.
+
 Environment variable equivalent:
 
 ```bash

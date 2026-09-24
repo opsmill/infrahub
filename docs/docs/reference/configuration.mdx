@@ -380,6 +380,7 @@ LDAP authentication configuration.
 | `INFRAHUB_STORAGE_QUERYSTRING_AUTH` | None | boolean | False |
 | `INFRAHUB_STORAGE_CUSTOM_DOMAIN` | None | string |  |
 | `INFRAHUB_STORAGE_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format, or the PEM text itself, used to verify the certificate of the S3 endpoint. Also accepted under the standard AWS name `AWS_CA_BUNDLE`. Falls back to `tls.ca_bundle` when unset. Cannot be combined with `use_ssl=false`. | string | None |
+| `INFRAHUB_STORAGE_TLS_INSECURE` | Skip TLS certificate validation of the S3 endpoint. Takes precedence over `tls_ca_file`, which may stay configured. Cannot be combined with `use_ssl=false`. Test and development environments only; never enable in production. | boolean | False |
 
 ## Trace
 
@@ -421,6 +422,7 @@ LDAP authentication configuration.
 | `TCP_FRAMING` | TCP framing method (newline or octet-counting). | string (newline, octet-counting) | newline |
 | `TLS_ENABLED` | Enable TLS encryption for TCP connections. | boolean | False |
 | `TLS_CA_BUNDLE` | File path to a CA bundle in PEM format, or the PEM text itself, to validate the syslog server certificate. | string | None |
+| `TLS_INSECURE` | Skip TLS certificate validation of the syslog server. Takes precedence over `tls_ca_bundle`, which may stay configured. Test and development environments only; never enable in production. | boolean | False |
 | `QUEUE_SIZE` | Maximum number of messages in the per-destination queue. | integer | 10000 |
 | `MAX_RECONNECT_INTERVAL` | Maximum reconnection backoff interval in seconds. | integer | 60 |
 | `SHUTDOWN_DRAIN_TIMEOUT` | Seconds to wait for queue drain on graceful shutdown. | integer | 10 |

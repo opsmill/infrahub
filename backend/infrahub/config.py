@@ -322,19 +322,34 @@ class S3StorageSettings(BaseSettings):
             "`tls.ca_bundle` when unset. Cannot be combined with `use_ssl=false`."
         ),
     )
+    tls_insecure: bool = Field(
+        default=False,
+        alias="AWS_S3_TLS_INSECURE",
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_TLS_INSECURE"),
+        description=(
+            "Skip TLS certificate validation of the S3 endpoint. Takes precedence over `tls_ca_file`, which may "
+            "stay configured. Cannot be combined with `use_ssl=false`. Test and development environments only; "
+            "never enable in production."
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_tls_configuration(self) -> Self:
-        """Reject a CA bundle on a plaintext endpoint, where boto3 would silently ignore it.
+        """Reject TLS settings on a plaintext endpoint, where boto3 would silently ignore them.
 
         Raises:
-            ValueError: If ``tls_ca_file`` is set while ``use_ssl`` is disabled.
+            ValueError: If ``tls_ca_file`` or ``tls_insecure`` is set while ``use_ssl`` is disabled.
 
         """
         if self.tls_ca_file is not None and not self.use_ssl:
             raise ValueError(
                 "storage.s3.tls_ca_file cannot be combined with storage.s3.use_ssl=false, because the CA bundle "
                 "would be silently ignored on a plaintext endpoint. Enable use_ssl or drop the CA setting."
+            )
+        if self.tls_insecure and not self.use_ssl:
+            raise ValueError(
+                "storage.s3.tls_insecure cannot be combined with storage.s3.use_ssl=false, because a plaintext "
+                "endpoint has no certificate to validate. Enable use_ssl or drop tls_insecure."
             )
         if self.tls_ca_file is not None:
             self.tls_ca_file = _resolve_ca_bundle_setting("storage.s3.tls_ca_file", self.tls_ca_file)
@@ -1463,6 +1478,13 @@ class LogForwardingDestination(BaseModel):
     tls_ca_bundle: str | None = Field(
         default=None,
         description="File path to a CA bundle in PEM format, or the PEM text itself, to validate the syslog server certificate.",
+    )
+    tls_insecure: bool = Field(
+        default=False,
+        description=(
+            "Skip TLS certificate validation of the syslog server. Takes precedence over `tls_ca_bundle`, which "
+            "may stay configured. Test and development environments only; never enable in production."
+        ),
     )
     queue_size: int = Field(default=10000, ge=1, description="Maximum number of messages in the per-destination queue.")
     max_reconnect_interval: int = Field(

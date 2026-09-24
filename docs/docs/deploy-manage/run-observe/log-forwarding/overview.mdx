@@ -180,6 +180,7 @@ TLS adds encryption on top of TCP. It is only valid with TCP — configuring TLS
 - Default port changes to 6514 when TLS is enabled without an explicit port
 - `tls_ca_bundle` accepts a file path to a CA certificate bundle or an inline PEM string
 - The server certificate is validated against the provided CA bundle
+- `tls_insecure` skips certificate validation and takes precedence over `tls_ca_bundle`; restrict it to test environments
 
 ## Security considerations
 

@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
     AWS_CA_BUNDLE: str | None = None
     """Path to a CA bundle used to verify the S3 endpoint certificate; None keeps boto3's default trust store."""
+    AWS_S3_TLS_INSECURE: bool = False
+    """Skip certificate validation of the S3 endpoint, ignoring ``AWS_CA_BUNDLE``."""
 
     def __init__(self, **kwargs: Any) -> None:
         for key, value in kwargs.items():
@@ -49,7 +51,7 @@ class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
             "s3",
             endpoint_url=self._url,
             use_ssl=self.AWS_S3_USE_SSL,
-            verify=self.AWS_CA_BUNDLE or None,
+            verify=False if self.AWS_S3_TLS_INSECURE else (self.AWS_CA_BUNDLE or None),
             aws_access_key_id=self.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=self.AWS_SECRET_ACCESS_KEY,
         )
