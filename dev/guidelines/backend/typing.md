@@ -2,8 +2,8 @@
 
 > Part of: `dev/guidelines/backend/` | Related: [Python Standards](python.md)
 
-Typing rules for the Python backend. Three of them are hard rules: no new suppression, no `cast()`,
-and `isinstance` over `getattr`.
+Typing rules for the Python backend. Two of them are hard rules: no new suppression and no `cast()`.
+When a branch needs narrowing, prefer `isinstance` over `getattr`, as the rest of this page details.
 
 - All function parameters and return types must be type-hinted
 - Use `str | None` for optional strings (Python 3.10+)

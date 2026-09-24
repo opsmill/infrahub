@@ -44,12 +44,14 @@ Every harness loads the root `AGENTS.md` at session start; Claude Code reads it 
 - **Claude Code** through the `CLAUDE.md` beside it, which Claude Code loads when a file below that
   folder is read. Under its default setting a root `CLAUDE.md` stops Claude Code reading any
   `AGENTS.md` on its own, so a folder without that shim never loads its `AGENTS.md`
-- **Codex** through the root `AGENTS.md` naming it. Codex reads only the `AGENTS.md` files from the
-  repository root down to its working directory: no `CLAUDE.md`, no rules, no `@` imports
+- **Codex** through the root `AGENTS.md` naming it. By default Codex loads the `AGENTS.md` files from
+  the repository root down to its working directory, where an `AGENTS.override.md` takes precedence and
+  other filenames can be configured as fallbacks. It reads no `CLAUDE.md`, no rules and no `@` imports
 
-Rules under `.agents/rules/` reach Claude Code only. Each keeps its hard rules to one line apiece and
-ends with a pointer to the guideline that holds its full text, which every harness reaches from an
-`AGENTS.md`.
+Rules under `.agents/rules/` reach Claude Code only, so each one names the guideline that holds its full
+guidance, and every such guideline is linked from an `AGENTS.md`. The consolidated rules,
+`code-doc-style`, `python-module-layout` and `backend-component-design`, keep their hard rules to one
+line apiece.
 
 ## Documentation Flow
 

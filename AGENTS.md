@@ -135,7 +135,7 @@ checkout.
 
 ## Coding Standards
 
-- Backend: `dev/guidelines/backend/python.md` (load before writing backend Python — imports, data structures), `dev/guidelines/backend/typing.md` (load when a type checker flags your change or when narrowing a type), `dev/guidelines/backend/exceptions.md` (load when writing a `try`/`except`), `dev/guidelines/backend/component-design.md` (load before adding a backend class or reshaping responsibilities) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
+- Backend: `dev/guidelines/backend/python.md` (load before writing backend Python — imports, data structures), `dev/guidelines/backend/typing.md` (load when a type checker flags your change or when narrowing a type), `dev/guidelines/backend/exceptions.md` (load when writing a `try`/`except`), `dev/guidelines/backend/testing.md` (load before writing or changing backend tests), `dev/guidelines/backend/component-design.md` (load before adding a backend class or reshaping responsibilities) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
 - Frontend: `frontend/app/AGENTS.md`
 - Docstrings and comments: `dev/guidelines/code-doc-style.md` — load before writing a docstring or comment
 - Git workflow: `dev/guidelines/git-workflow.md`
