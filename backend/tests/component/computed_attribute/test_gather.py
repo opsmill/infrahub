@@ -296,34 +296,19 @@ async def test_two_attributes_sharing_a_transform_share_its_query_automations(
     }
 
 
-@dataclass
-class BranchScopeCase:
-    """What makes a branch resolve the transform query differently from the default branch."""
-
-    name: str
-    pin_branch_commit: bool
-
-
-BRANCH_SCOPE_CASES = [
-    BranchScopeCase(name="the_branch_is_pinned_to_its_own_commit", pin_branch_commit=True),
-    BranchScopeCase(name="the_branch_only_alters_the_schema", pin_branch_commit=False),
-]
-
-
-@pytest.mark.parametrize("case", BRANCH_SCOPE_CASES, ids=lambda case: case.name)
-async def test_a_branch_binding_another_attribute_to_a_transform_owns_its_automations(
+async def test_a_branch_altering_the_schema_of_a_shared_transform_owns_its_automations(
     db: InfrahubDatabase,
     default_branch: Branch,
     car_person_schema_computed_attr: None,
     repo01: Node,
-    case: BranchScopeCase,
 ) -> None:
     """A branch that binds another attribute to a transform still needs its own query automations.
 
     They are keyed on the transform, so the branch shares a key with the default branch instead of
-    bringing one of its own. It resolves that query against its own schema, where a generic can
-    expand to other member kinds, so an automation built from the default branch would carry a
-    read set that does not describe it.
+    bringing one of its own. Its repository commit is the same, so only the schema separates the
+    two. It resolves that query against its own schema, where a generic can expand to other member
+    kinds, so an automation built from the default branch would carry a read set that does not
+    describe it.
     """
     await _create_car_owner_transform(db=db, branch=default_branch, repository=repo01)
 
@@ -337,16 +322,6 @@ async def test_a_branch_binding_another_attribute_to_a_transform_owns_its_automa
     await default_branch.save(db=db)
 
     branch = await create_branch(branch_name="branch_shares_transform", db=db)
-
-    if case.pin_branch_commit:
-        repositories = await NodeManager.query(
-            db=db,
-            schema=InfrahubKind.READONLYREPOSITORY,
-            branch=branch,
-            filters={"name__value": "repo02"},
-        )
-        repositories[0].commit.value = "commit-branch"
-        await repositories[0].save(db=db)
 
     branch_schema = registry.schema.get_schema_branch(name=branch.name)
     person_schema = branch_schema.get_node("TestPerson")

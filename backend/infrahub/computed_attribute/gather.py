@@ -144,16 +144,11 @@ async def gather_trigger_computed_attribute_jinja2(
 def _branch_scopes(branches: dict[str, PythonTransformComputedAttribute]) -> list[tuple[str, list[str]]]:
     """Which branch each automation is built for, and the branches it must not answer for.
 
-    A branch owns its automations when it is pinned to a repository commit of its own, or when its
-    schema differs from the default one. Both change what the transform query resolves to: the
-    commit changes the query text, and the schema changes what that text reads, since a generic
-    expands to the member kinds the branch declares. An automation built from the default branch
-    would carry the wrong read set for such a branch. The default-branch automation covers every
-    other branch, including the ones created after this gather, and excludes the ones that own
-    theirs.
-
-    Without the default branch in the dict, nothing declares the attribute there, so every branch
-    that does owns its automations and none of them excludes anything.
+    A branch owns its automations when its repository commit or its schema differs from the
+    default branch, because either one changes what the transform query resolves to. The
+    default-branch automation covers every other branch, the ones created after this gather
+    included, and excludes the branches that own theirs. Without the default branch in the dict,
+    every listed branch owns its automations and excludes nothing.
     """
     if registry.default_branch not in branches:
         return [(branch_name, []) for branch_name in branches]
