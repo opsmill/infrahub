@@ -6,10 +6,10 @@ disable-model-invocation: true
 argument-hint: "[session id]"
 compatibility: Needs the context plugin's hooks on when the audited session started (without its log the audit stops after the ideal set), and a model with a 1M-token context window.
 context: fork
-agent: general-purpose
+agent: context:doctor
 model: opus[1m]
 effort: high
-allowed-tools: Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/doctor_inputs.py *) Bash(git log *) Bash(git show *) Bash(git cat-file *) Bash(git merge-base *) Read Glob Grep
+allowed-tools: Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/doctor_inputs.py *) Read Glob Grep
 metadata:
   version: 0.1.0
   author: OpsMill
@@ -25,7 +25,7 @@ Claude Code does all the loading: it injects instruction files and rules, and th
 
 !`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/doctor_inputs.py ${CLAUDE_SESSION_ID} ${CLAUDE_PROJECT_DIR} $ARGUMENTS`
 
-`not-loaded.md` lists the instruction files and rules that applied to files a context read or changed but never reached that context, with the reason each time; it is computed from Claude Code's own record in the transcript, not guessed. The files `index.md` says Claude Code loads at session start are already in your context, so don't read them again. The inputs' `Layout` line is the repository's own map of where its guidance lives; the rest of this skill refers to it. The harness also gave you the skill list; `index.md` has each skill's size.
+`not-loaded.md` lists the instruction files and rules that applied to files a context read or changed but never reached that context, with the reason each time; it is computed from Claude Code's own record in the transcript, not guessed. The files `index.md` says Claude Code loads at session start are already in your context, so don't read them again. The inputs' `Layout` line is the repository's own map of where its guidance lives; the rest of this skill refers to it. `index.md` lists the skills the session was offered, with sizes; the harness gave you the descriptions of those installed here.
 
 ## Steps, in this order
 
@@ -49,7 +49,7 @@ The log is the `reads.log` the inputs name, the file `/context:trace` prints. It
 **Layout**
 
 - Line 1 is `# Claude session <id> in <project>, started <UTC time>`.
-- Timeline lines start with a local `HH:MM:SS`, the moment the hook wrote them. The inputs give the offset to the summary's UTC.
+- Timeline lines start with a local `HH:MM:SS`: an entry's is when it loaded, a context header's is when its prompt or subagent started. The summary uses the same clock.
 - Two spaces of indentation per level. A context header is printed only when the context changes, so a run of lines belongs to the last header above it at the next level up.
 
 **Line types**
@@ -72,7 +72,7 @@ The log is the `reads.log` the inputs name, the file `/context:trace` prints. It
 
 A `(read N)` line is a repeat of that file in the same context, unless a compaction came in between (the summary lists the main agent's compactions), since a compaction drops the earlier copy. The other duplicate is the same content reaching one context through two files, such as a rule and the guideline it summarises, which you can only spot because you read both. Rules and nested `CLAUDE.md` files are logged once per context by construction, so the log can't show them injected twice. Weigh size with the token figures in `index.md` and what you read, times the number of contexts that loaded it.
 
-The docs tree is the checkout as it is now. When a finding depends on what the session could see then (another branch, an older commit), check with `git log`, `git show <branch>:<path>` or `git merge-base`, and say which version you judged against.
+The docs tree is the checkout as it is now, and the inputs' `Docs tree` line gives its branch next to the session's. You can't read other versions: when the branches differ, or a finding depends on a doc that may have changed since the session, say so in the Load check line and judge against the tree as it is.
 
 ## Report
 
@@ -88,7 +88,7 @@ Return it as your final message, in this shape:
 ## Load check
 Read <N> of <N> load-list files · docs tree <path> · <version caveat, if any>
 ## Ideal set
-| Phase (UTC) | Work | Should have been in context | Why | Loaded? |
+| Phase (local time) | Work | Should have been in context | Why | Loaded? |
 ## Findings
 ### 1. <one-line claim>
 - Evidence: log lines (time and text), summary lines (time)

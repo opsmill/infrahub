@@ -68,6 +68,10 @@ Typical reasons are an `AGENTS.md` that Claude Code never loads on its own becau
 a rule that only injects on a Read while the context only wrote the file, and a rule kept in `.agents/rules`.
 A subagent's result counts as reaching its parent, so guidance it quotes back is not reported as missing.
 
+The audit runs in the plugin's `context:doctor` agent, which has Read, Glob and Grep and nothing else, so it
+never runs a command or changes a file. It judges the docs tree as it is now and says so when the session ran
+on another branch.
+
 Two environment variables change where output goes, per person:
 
 - `CLAUDE_TRACK_DOC_READS_DIR`: write each session's files to `<dir>/<session id>/`
@@ -77,10 +81,10 @@ Two environment variables change where output goes, per person:
 
 Everything for a session sits in `~/.claude/projects/<project>/<session id>/doc-reads/`:
 
-- `reads.log`: the readable log that `/context:trace` shows
+- `reads.log`: the readable log that `/context:trace` shows, stamped in local time
 - `reads.jsonl` and `state.json`: the records behind it
 - `errors.log`: only when the hook failed, including on a bad config file
 - `context-map.md`: from `/context:map`
-- `doctor/`: the session summary and doc index `/context:doctor` reads; its report comes back in chat
+- `doctor/`: the session summary, doc index and not-loaded list `/context:doctor` reads; its report comes back in chat
 
 The scripts need `python3` 3.9 or later and use only the standard library.

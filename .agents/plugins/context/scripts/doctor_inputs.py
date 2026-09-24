@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from config import Layout, load_layout, rule_patterns
 from not_loaded import write_not_loaded
-from track_reads import startup_records
+from track_reads import clock, read_text, startup_records
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 Row = dict[str, Any]
 
 HOME = Path.home()
+CONFIG_DIR = Path(os.environ.get("CLAUDE_CONFIG_DIR") or HOME / ".claude")
 PROJECTS = HOME / ".claude" / "projects"
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 GUIDANCE_SUFFIXES = {".md", ".mdx", ".rst"}
@@ -64,8 +65,8 @@ def short(text: str | None, n: int) -> str:
     return flat if len(flat) <= n else flat[: n - 1] + "…"
 
 
-def minute(ts: str) -> str:
-    return ts[5:16].replace("T", " ")
+def local_time(ts: str) -> str:
+    return clock(ts, "%m-%d %H:%M:%S")
 
 
 def text_of(content: str | list[Row] | None) -> str:
@@ -191,7 +192,7 @@ def touched_files(agents: list[Agent], root: str, layout: Layout) -> Touched:
                     continue
                 rel = repo_relative(target, root)
                 if block.get("name") in EDIT_TOOLS:
-                    touched.changed.setdefault(rel, []).append(f"{minute(r.get('timestamp', ''))} {agent.label}")
+                    touched.changed.setdefault(rel, []).append(f"{local_time(r.get('timestamp', ''))} {agent.label}")
                 elif block.get("name") == "Read" and not is_guidance(rel, layout):
                     touched.read["/".join(rel.split(" (")[0].split("/")[:3])] += 1
     return touched
@@ -201,18 +202,18 @@ def write_summary(path: Path, session_id: str, agents: list[Agent], root: str, l
     main = agents[0].rows
     stamped = [r["timestamp"] for a in agents for r in a.rows if r.get("timestamp")]
     compactions = [
-        minute(r.get("timestamp", ""))
+        local_time(r.get("timestamp", ""))
         for r in main
         if r.get("type") == "system" and r.get("subtype") == "compact_boundary"
     ]
     lines = [
         f"# Session summary · {session_id}",
         "",
-        f"Span (UTC): {minute(min(stamped)) if stamped else '?'} → {minute(max(stamped)) if stamped else '?'}",
+        f"Span (local time): {local_time(min(stamped)) if stamped else '?'} → {local_time(max(stamped)) if stamped else '?'}",
         f"Working directories: {', '.join(dict.fromkeys(r['cwd'] for r in main if r.get('cwd'))) or '?'}",
         f"Git branches: {', '.join(dict.fromkeys(r['gitBranch'] for r in main if r.get('gitBranch'))) or '?'}",
         f"Subagents: {len(agents) - 1}",
-        f"Compactions of the main agent (UTC): {', '.join(compactions) or 'none'}",
+        f"Compactions of the main agent (local time): {', '.join(compactions) or 'none'}",
         "",
         "Built from the transcript, not written by a model: your prompts with the reply that followed, background "
         "subagent results as they arrived, compaction summaries, files changed and areas read.",
@@ -224,7 +225,7 @@ def write_summary(path: Path, session_id: str, agents: list[Agent], root: str, l
     reply_chars = LONG_SESSION_REPLY_CHARS if len(turns) > LONG_SESSION_TURNS else REPLY_CHARS
     for turn in turns:
         who = "subagent result" if turn.result else "you"
-        lines.append(f"- **{minute(turn.ts)}** {who}: {short(turn.prompt, PROMPT_CHARS)}")
+        lines.append(f"- **{local_time(turn.ts)}** {who}: {short(turn.prompt, PROMPT_CHARS)}")
         if turn.reply:
             lines.append(f"  - agent: {short(turn.reply, reply_chars)}")
 
@@ -237,7 +238,7 @@ def write_summary(path: Path, session_id: str, agents: list[Agent], root: str, l
         lines += ["", "## Compaction summaries", ""]
     for i, (ts, body) in enumerate(summaries):
         limit = LATEST_COMPACTION_CHARS if i == len(summaries) - 1 else EARLIER_COMPACTION_CHARS
-        lines += [f"### {minute(ts)}", "", body[:limit] + ("\n\n[…truncated]" if len(body) > limit else ""), ""]
+        lines += [f"### {local_time(ts)}", "", body[:limit] + ("\n\n[…truncated]" if len(body) > limit else ""), ""]
 
     touched = touched_files(agents, root, layout)
     lines += ["", "## Files changed (Edit/Write)", ""]
@@ -251,7 +252,7 @@ def write_summary(path: Path, session_id: str, agents: list[Agent], root: str, l
     for agent in agents[1:]:
         first = next((r for r in agent.rows if r.get("type") == "user"), {})
         brief = short(text_of(first.get("message", {}).get("content")), PROMPT_CHARS)
-        lines.append(f"- **{minute(agent.first)}** {agent.label}: {brief}")
+        lines.append(f"- **{local_time(agent.first)}** {agent.label}: {brief}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -331,21 +332,66 @@ def rule_lines(docs_root: Path, seen: set[Path]) -> list[str]:
     return lines
 
 
-def skill_lines(docs_root: Path, seen: set[Path]) -> list[str]:
-    lines = []
-    for base in (docs_root / ".claude" / "skills", HOME / ".claude" / "skills", docs_root / ".agents" / "skills"):
-        unseen = " · not in .claude/skills, so Claude Code never loads it" if base.parent.name == ".agents" else ""
-        for path in sorted(base.glob("*/SKILL.md")):
-            if path.resolve() in seen:
-                continue
-            seen.add(path.resolve())
-            fm, body = frontmatter(path.read_text(encoding="utf-8", errors="replace"))
-            name = frontmatter_field(fm, "name") or path.parent.name
-            lines.append(f"- {name} (≈{fmt(tok(body))}) · {path.parent}{unseen}")
+def session_skills(rows: list[Row]) -> list[str]:
+    """The skills Claude Code offered the session, from its skill-listing attachments."""
+    names: dict[str, None] = {}
+    for row in rows:
+        attachment = row.get("attachment") or {}
+        if attachment.get("type") == "skill_listing":
+            names.update(dict.fromkeys(attachment.get("names") or []))
+    return list(names)
+
+
+def plugin_roots(root: str) -> dict[str, Path]:
+    """Each plugin's folder by plugin name: an install for this project first, then a user one, then a synced one."""
+    plugins = CONFIG_DIR / "plugins"
+    installed = json.loads(read_text(plugins / "installed_plugins.json") or "{}")
+    ranked = []
+    for key, installs in (installed.get("plugins") or {}).items():
+        for install in installs:
+            path = Path(install.get("installPath") or "/nonexistent")
+            if path.is_dir():
+                ranked.append((0 if install.get("projectPath") == root else 1, key.partition("@")[0], path))
+    ranked += [(2, path.name, path) for path in sorted(plugins.glob("synced/*/*")) if path.is_dir()]
+    roots: dict[str, Path] = {}
+    for _, name, path in sorted(ranked):
+        roots.setdefault(name, path)
+    return roots
+
+
+def skill_file(name: str, bases: dict[str, list[Path]]) -> Path | None:
+    """A skill's file, looked up under its plugin's folder, or under the project's and user's for a bare name."""
+    plugin, _, skill = name.rpartition(":")
+    for base in bases.get(plugin, []):
+        found = [*sorted(base.glob(f"skills/**/{skill}/SKILL.md")), base / "commands" / f"{skill}.md"]
+        if match := next((path for path in found if path.is_file()), None):
+            return match
+    return None
+
+
+def skill_line(name: str, path: Path | None, note: str = "") -> str:
+    if path is None:
+        return f"- {name} · built in, or installed where this script does not look"
+    _, body = frontmatter(path.read_text(encoding="utf-8", errors="replace"))
+    return f"- {name} (≈{fmt(tok(body))}) · {path.parent if path.name == 'SKILL.md' else path}{note}"
+
+
+def skill_lines(docs_root: Path, root: str, offered: list[str]) -> list[str]:
+    bases = {name: [path] for name, path in plugin_roots(root).items()} | {"": [docs_root / ".claude", CONFIG_DIR]}
+    lines = [skill_line(name, skill_file(name, bases)) for name in offered]
+    if not offered:
+        for base in (docs_root / ".claude" / "skills", CONFIG_DIR / "skills"):
+            lines += [skill_line(path.parent.name, path) for path in sorted(base.glob("*/SKILL.md"))]
+    visible = {path.resolve() for path in (docs_root / ".claude" / "skills").glob("*/SKILL.md")}
+    lines += [
+        skill_line(path.parent.name, path, " · not in .claude/skills, so Claude Code never loads it")
+        for path in sorted((docs_root / ".agents" / "skills").glob("*/SKILL.md"))
+        if path.resolve() not in visible
+    ]
     return lines
 
 
-def write_index(path: Path, docs_root: Path, layout: Layout) -> tuple[int, int]:
+def write_index(path: Path, docs_root: Path, layout: Layout, root: str, offered: list[str]) -> tuple[int, int]:
     entries = load_list(docs_root, layout)
     total = sum(t for _, t in entries)
     seen: set[Path] = set()
@@ -363,9 +409,11 @@ def write_index(path: Path, docs_root: Path, layout: Layout) -> tuple[int, int]:
         "",
         *rule_lines(docs_root, seen),
         "",
-        "## Skills (sizes only; the harness already gave you names and descriptions)",
+        f"## Skills the session was offered ({len(offered)}, from its transcript; sizes only)"
+        if offered
+        else "## Skills (sizes only; the transcript has no skill list)",
         "",
-        *(skill_lines(docs_root, seen) or ["- none found"]),
+        *(skill_lines(docs_root, root, offered) or ["- none found"]),
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return total, len(entries)
@@ -397,6 +445,27 @@ def open_session(session_id: str, project_dir: str) -> Session:
     )
 
 
+def checkout_branch(checkout: Path) -> str:
+    """The branch a checkout is on, from its HEAD file, without running git."""
+    git = checkout / ".git"
+    try:
+        if git.is_file():
+            git = checkout / git.read_text(encoding="utf-8").removeprefix("gitdir:").strip()
+        head = (git / "HEAD").read_text(encoding="utf-8").strip()
+    except OSError:
+        return "an unknown branch"
+    return head.removeprefix("ref: refs/heads/") if head.startswith("ref: ") else f"a detached HEAD at {head[:9]}"
+
+
+def docs_tree_line(session: Session) -> str:
+    branches = ", ".join(dict.fromkeys(r["gitBranch"] for r in session.agents[0].rows if r.get("gitBranch")))
+    moved = "" if session.docs_from_session else " (the session directory is gone, so the invoking project is used)"
+    return (
+        f"Docs tree: {session.docs_root}, on {checkout_branch(session.docs_root)} now{moved}; "
+        f"the session ran on {branches or 'an unrecorded branch'}"
+    )
+
+
 def log_status(log: Path) -> str:
     if not log.exists():
         return f"MISSING at {log}: the context plugin was not recording this session"
@@ -424,7 +493,7 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     summary, index = out_dir / "summary.md", out_dir / "index.md"
     write_summary(summary, target, session.agents, session.root, layout)
-    total, count = write_index(index, session.docs_root, layout)
+    total, count = write_index(index, session.docs_root, layout, session.root, session_skills(session.agents[0].rows))
     not_loaded = out_dir / "not-loaded.md"
     misses = write_not_loaded(not_loaded, session.transcript, session.docs_root, logs / "reads.jsonl", layout)
     offset = time.strftime("%z")
@@ -434,12 +503,11 @@ def main() -> None:
         f"Session summary: {summary} (≈{fmt(tok(summary.read_text(encoding='utf-8')))} tokens, "
         f"{len(session.agents) - 1} subagents)",
         f"Load log: {log_status(logs / 'reads.log')}",
-        f"Clocks: the load log stamps local time (UTC{offset[:3]}:{offset[3:]} on this machine now); the summary uses UTC",
+        f"Clocks: the load log and the summary both use this machine's local time (UTC{offset[:3]}:{offset[3:]} now)",
         f"Not loaded: {not_loaded} ({misses} items that applied to what a context worked on but never reached it)",
         f"Load list and index: {index} ({count} files to read, ≈{fmt(total)} tokens)",
         f"Layout: {layout.describe()}",
-        f"Docs tree: {session.docs_root}"
-        + ("" if session.docs_from_session else " (the session directory is gone, so the invoking project is used)"),
+        docs_tree_line(session),
     ]
     print("\n".join(report))
 

@@ -30,6 +30,7 @@ import re
 import sys
 import time
 import traceback
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -57,6 +58,15 @@ SKIPS_PROJECT_INSTRUCTIONS = {"Explore", "Plan"}
 
 def now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def clock(ts: str, pattern: str = "%H:%M:%S") -> str:
+    """A UTC timestamp from a record or transcript, in this machine's local time."""
+    try:
+        # Python 3.10's fromisoformat does not accept a trailing "Z".
+        return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone().strftime(pattern)  # noqa: FURB162
+    except ValueError:
+        return ""
 
 
 def preview(text: str) -> str:
@@ -361,15 +371,16 @@ def on_read(event: dict, project: Path, records: list[dict]) -> list[dict]:
     return new
 
 
-def context_label(context_id: str, records: list[dict]) -> str:
+def context_label(context_id: str, records: list[dict]) -> tuple[str, str]:
+    """A context's header line, and when its prompt or agent started."""
     if context_id.startswith("agent:"):
         agent_id = context_id.removeprefix("agent:")
         link = next((r for r in records if r["kind"] == "agent-link" and r["agent_id"] == agent_id), {})
-        return f"🤖 agent {link.get('agent_type') or agent_id} (start not recorded)"
+        return link.get("ts", ""), f"🤖 agent {link.get('agent_type') or agent_id} (start not recorded)"
     entry = next(r for r in records if r.get("id") == context_id)
     if entry["kind"] == "prompt":
-        return f'💬 prompt {context_id}: "{preview(entry["text"])}"'
-    return f'🤖 agent {entry["subagent_type"]}: "{preview(entry["description"])}"'
+        return entry.get("ts", ""), f'💬 prompt {context_id}: "{preview(entry["text"])}"'
+    return entry.get("ts", ""), f'🤖 agent {entry["subagent_type"]}: "{preview(entry["description"])}"'
 
 
 def entry_label(entry: dict) -> str:
@@ -391,16 +402,23 @@ def is_logged(entry: dict) -> bool:
     return entry["kind"] == "skill" or (entry["kind"] == "doc" and entry["via"] != "startup")
 
 
-def render(entries: list[dict], records: list[dict], last_context: list[str]) -> tuple[list[str], list[str]]:
-    """Indent each entry under its context, repeating a context header only when the context changes."""
-    lines: list[str] = []
+def render(
+    entries: list[dict], records: list[dict], last_context: list[str]
+) -> tuple[list[tuple[str, str]], list[str]]:
+    """Indent each entry under its context, repeating a context header only when the context changes.
+
+    Each line comes with the UTC time of its own event: a header with its prompt or agent's start.
+    """
+    lines: list[tuple[str, str]] = []
     for entry in entries:
         context = entry["context"]
         shared = 0
         while shared < min(len(context), len(last_context)) and context[shared] == last_context[shared]:
             shared += 1
-        lines.extend("  " * depth + context_label(context[depth], records) for depth in range(shared, len(context)))
-        lines.append("  " * len(context) + entry_label(entry))
+        for depth in range(shared, len(context)):
+            ts, label = context_label(context[depth], records)
+            lines.append((ts, "  " * depth + label))
+        lines.append((entry.get("ts", ""), "  " * len(context) + entry_label(entry)))
         last_context = context
     return lines, last_context
 
@@ -416,7 +434,11 @@ def summary(records: list[dict]) -> list[str]:
     unique = len({r["path"] for r in docs})
     startup = ", ".join(r["path"] for r in records if r["kind"] == "doc" and r["via"] == "startup")
     lines, _ = render([r for r in records if is_logged(r)], records, [])
-    return [f"── docs read this session ({unique} files, {len(docs)} loads) ──", f"startup: {startup}", *lines]
+    return [
+        f"── docs read this session ({unique} files, {len(docs)} loads) ──",
+        f"startup: {startup}",
+        *(line for _, line in lines),
+    ]
 
 
 @contextlib.contextmanager
@@ -510,16 +532,15 @@ def track(event: dict, directory: Path) -> None:
         state["logged"] = len(records)
         state_path.write_text(json.dumps(state), encoding="utf-8")
         if lines:
-            clock = time.strftime("%H:%M:%S")
             with log_path.open("a", encoding="utf-8") as log:
-                log.writelines(f"{clock} {line}\n" for line in lines)
+                log.writelines(f"{clock(ts) or time.strftime('%H:%M:%S')} {line}\n" for ts, line in lines)
 
         if hook == "SessionEnd" and (closing := summary(records)):
             emit_summary(closing, log_path)
 
     # UserPromptSubmit stdout would enter the model's context; only PostToolUse output is a user-facing notice.
     if hook == "PostToolUse" and echo and os.environ.get("CLAUDE_TRACK_DOC_READS_ECHO", "1") != "0":
-        print(json.dumps({"systemMessage": "\n".join(echo)}))
+        print(json.dumps({"systemMessage": "\n".join(line for _, line in echo)}))
 
 
 if __name__ == "__main__":

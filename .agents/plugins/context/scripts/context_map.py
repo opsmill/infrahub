@@ -24,11 +24,10 @@ import os
 import re
 import sys
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 
 from config import glob_to_regex, rule_patterns
-from track_reads import find_mention, load_records, preview, read_text, skips_project_instructions
+from track_reads import clock, find_mention, load_records, preview, read_text, skips_project_instructions
 
 ICONS = {"read": "📄", "rule": "📏", "claude-md": "📘", "import": "📘"}
 CLASS_DEFS = {
@@ -130,14 +129,6 @@ def transcript_of(log: Path) -> Path | None:
 def prompt_of(record: dict) -> str | None:
     context = record.get("context") or []
     return context[0] if context and context[0].startswith("p") else None
-
-
-def clock(ts: str) -> str:
-    try:
-        # Python 3.10's fromisoformat does not accept a trailing "Z".
-        return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone().strftime("%H:%M:%S")  # noqa: FURB162
-    except ValueError:
-        return ""
 
 
 class Diagram:
