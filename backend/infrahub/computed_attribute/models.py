@@ -104,19 +104,8 @@ class PythonTransformComputedAttribute(BaseModel):
 
     @property
     def transform_key_name(self) -> str:
-        """Identity of the transform in an automation name.
-
-        Every attribute the transform feeds shares it, so one definition can cover them all.
-        """
+        """Identity of the transform in an automation name."""
         return f"transform{NAME_SEPARATOR}{self.name}"
-
-    def get_altered_branches(self) -> list[str]:
-        if registry.default_branch in self.branch_commit:
-            default_branch_commit = self.branch_commit[registry.default_branch]
-            return [
-                branch_name for branch_name, commit in self.branch_commit.items() if commit != default_branch_commit
-            ]
-        return list(self.branch_commit.keys())
 
 
 @dataclass

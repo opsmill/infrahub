@@ -183,8 +183,6 @@ async def gather_trigger_computed_attribute_python(
     # Keyed by attribute and by transform: an attribute gets its own owner automation even when it
     # shares a transform, and a branch that repoints the attribute keeps a definition of its own.
     by_attribute: dict[tuple[str, str], dict[str, PythonTransformComputedAttribute]] = defaultdict(dict)
-    # Keyed by transform alone: a query automation carries no attribute name, so the attributes fed
-    # by one transform need one definition per read kind and not one each.
     by_transform: dict[str, dict[str, PythonTransformComputedAttribute]] = defaultdict(dict)
     for branch in list(registry.branch.values()):
         if branch.is_global:

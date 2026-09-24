@@ -302,13 +302,16 @@ async def test_a_branch_altering_the_schema_of_a_shared_transform_owns_its_autom
     car_person_schema_computed_attr: None,
     repo01: Node,
 ) -> None:
-    """A branch that binds another attribute to a transform still needs its own query automations.
+    """A branch that binds another attribute to a transform still needs its own automations.
 
-    They are keyed on the transform, so the branch shares a key with the default branch instead of
-    bringing one of its own. Its repository commit is the same, so only the schema separates the
-    two. It resolves that query against its own schema, where a generic can expand to other member
-    kinds, so an automation built from the default branch would carry a read set that does not
-    describe it.
+    The query ones are keyed on the transform, so the branch shares a key with the default branch
+    instead of bringing one of its own. Its repository commit is the same, so only the schema
+    separates the two. It resolves that query against its own schema, where a generic can expand to
+    other member kinds, so an automation built from the default branch would carry a read set that
+    does not describe it.
+
+    Both families read the same condition, so the branch owns its owner automations too. That is
+    what gives a schema change on it a candidate to backfill.
     """
     await _create_car_owner_transform(db=db, branch=default_branch, repository=repo01)
 
@@ -343,7 +346,16 @@ async def test_a_branch_altering_the_schema_of_a_shared_transform_owns_its_autom
     branch_schema.process()
     await branch.save(db=db)
 
-    _, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+    triggers_python, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+
+    # The owner family follows the same condition: the branch owns the attribute it shares with the
+    # default branch, and the attribute only it declares.
+    assert len(triggers_python) == 3
+    assert {(trigger.branch, trigger.name) for trigger in triggers_python} == {
+        ("main", "TestCar_computed_desc_python"),
+        (branch.name, "TestCar_computed_desc_python"),
+        (branch.name, "TestPerson_computed_from_car"),
+    }
 
     assert len(trigger_queries) == 4
     assert {(trigger.branch, trigger.trigger.match["infrahub.node.kind"]) for trigger in trigger_queries} == {
@@ -354,15 +366,29 @@ async def test_a_branch_altering_the_schema_of_a_shared_transform_owns_its_autom
     }
 
     # One scope answers each branch: the default-branch automation has to exclude the branch that
-    # owns one, or a single edit would start the flow twice.
-    triggers_by_scope = {
+    # owns one, or a single edit would start the flow twice. A branch created after this gather
+    # owns nothing, so the default-branch automation has to cover it.
+    expected_owners = {"main": ["main"], branch.name: [branch.name], "branch-created-after-setup": ["main"]}
+    owner_scopes = {
+        trigger.branch: trigger
+        for trigger in triggers_python
+        if trigger.computed_attribute.computed_attribute.kind == "TestCar"
+    }
+    query_scopes = {
         trigger.branch: trigger
         for trigger in trigger_queries
         if trigger.trigger.match["infrahub.node.kind"] == "TestCar"
     }
-    assert branches_covered_by(
-        triggers_by_scope=triggers_by_scope, kind="TestCar", field="name", branch_names=["main", branch.name]
-    ) == {"main": ["main"], branch.name: [branch.name]}
+    for triggers_by_scope in (owner_scopes, query_scopes):
+        assert (
+            branches_covered_by(
+                triggers_by_scope=triggers_by_scope,
+                kind="TestCar",
+                field="name",
+                branch_names=list(expected_owners),
+            )
+            == expected_owners
+        )
 
 
 async def test_gather_trigger_computed_attribute_python_only_on_branch(
