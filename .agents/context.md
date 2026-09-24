@@ -7,6 +7,7 @@ also_logged:
 working_files:
   - "dev/specs/**"
   - "dev/spec-kit/**"
+  - "dev/constitution.md"
   - ".specify/**"
 skip_dirs:
   - "python_sdk"
