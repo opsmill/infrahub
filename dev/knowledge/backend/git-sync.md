@@ -2,9 +2,10 @@
 
 > Part of: `dev/knowledge/backend/` | Related: [Architecture](architecture.md)
 
-How Infrahub maps and imports branches from external git repositories, and how git errors surface.
-Read this before reasoning about which remote branches get imported or why a git failure carries
-(or lacks) a message — the logic is split across several methods and is easy to mis-trace.
+How Infrahub maps and imports branches from external git repositories, how the sync flow reads the
+per-branch state of each repository, and how git errors surface. Read this before reasoning about
+which remote branches get imported, how many queries a sync run costs, or why a git failure carries
+(or lacks) a message - the logic is split across several methods and is easy to mis-trace.
 
 ## Branch import and mapping
 
@@ -25,6 +26,85 @@ Read this before reasoning about which remote branches get imported or why a git
 - `git.import_sync_branch_names` (settings) is a list of names or regex patterns selecting which
   other remote branches are imported during sync; branches created in Infrahub with
   `sync_with_git` are imported regardless.
+
+## Per-branch repository read
+
+`get_repositories_commit_per_branch` in `backend/infrahub/git/utils.py` builds the per-repository,
+per-branch view the sync flow and the Python computed-attribute trigger gather both read. It issues
+two kinds of query:
+
+- One `NodeManager.query` on the default branch reads the repository nodes. That is one call but
+  several queries — `node_get_list` to select the nodes, then the info and attribute reads behind
+  `get_many` — so only the *number of branches* stops driving the query count, not the node read
+  itself. The requested fields are `id`, `name`, `location`, `default_branch` and
+  `operational_status`, every one of them branch-agnostic, so the branch the query runs on cannot
+  change what a caller reads off the node it is handed as `RepositoryData.repository`.
+- One `RepositoryBranchAttributesQuery` (`backend/infrahub/core/query/repository.py`) per chunk of
+  `REPOSITORY_BRANCH_READ_CHUNK_SIZE` branch names resolves `commit` and `internal_status` for every
+  repository on every branch in that chunk. Those two are the only attributes resolved per branch,
+  and the per-branch values live only in `RepositoryData.branches` and `RepositoryData.branch_info`.
+  No caller reads them off the node.
+
+The field list is a correctness constraint, not an optimization. `NodeManager.query` builds the node
+from the requested fields only, and an attribute that was not requested reads back its **schema
+default** instead of raising — so a caller reading a field the query forgot to ask for gets a
+plausible wrong value with no error. `operational_status` was in exactly that state: read by the
+sync flow, absent from the field list, and therefore always `unknown`.
+
+`REPOSITORY_BRANCH_READ_CHUNK_SIZE` is 100 and is defined in `backend/infrahub/git/constants.py`. It
+is not a setting, so for N non-global branches the read costs `ceil(N / 100)` per-branch queries on
+top of the node read, rather than one query per branch. When no repository exists the function
+returns after the node read and issues no per-branch query at all.
+
+Note that the chunk size bounds the *branch* dimension only. A chunk's result set is repositories ×
+branches-in-chunk × attributes rows, and because the underlying query sets an explicit limit it does
+not go through `database.query_size_limit` pagination — so the rows per chunk still grow with the
+number of repositories.
+
+The attribute source both callers read through is built by
+`build_repository_branch_attributes_source` in
+`backend/infrahub/core/repository_branch_status/factory.py`. Inside
+`get_repositories_commit_per_branch` it is built once, before the chunk loop, and reused for every
+chunk.
+
+Every query the read issues — the node read and each chunk — is pinned to one `Timestamp` captured
+before the first of them. Without that, a commit written between two chunks would leave the branches
+in one chunk reporting the old commit and those in the next reporting the new one for the same
+repository, which the computed-attribute gather would read as a branch diverging from the default.
+
+The global branch (`-global-`) is filtered out of the branch names before the chunk loop, so it is
+never a key of `RepositoryData.branches` or `RepositoryData.branch_info`. Callers that index those
+dictionaries by branch name must skip it themselves rather than expect an entry.
+
+### Why a repository created on a branch is visible from the default branch
+
+The repository kinds are `BranchSupportType.AGNOSTIC`, so the node lands on the global branch
+whatever branch it was created from and the default-branch node read finds it. The per-branch
+attributes need a second mechanic. `internal_status` is `LOCAL`, defined once on
+`CoreGenericRepository` and inherited unchanged by both kinds; `commit` is `LOCAL` on
+`CoreRepository` and `AWARE` on `CoreReadOnlyRepository`.
+
+`Attribute.get_create_data` (`backend/infrahub/core/attribute.py`) writes a `LOCAL` attribute on an
+`AGNOSTIC` node to the global branch at **creation**, not to the branch it was created from; only a
+later write goes through `get_branch_based_on_support_type()` and lands on a specific branch. An
+`AWARE` attribute is not covered by that path — its creation row goes to the creating branch.
+
+So a `CoreRepository` created on `feature-branch` and staged there resolves `internal_status` as
+`inactive` on the default branch (the global row, `own_value` false) and `staging` on
+`feature-branch` (its own row), which is what makes the sync flow enter staging mode and find the
+branch via `get_staging_branch()`. The `inactive` fallback below is not involved in that path.
+
+A `CoreReadOnlyRepository` created on a branch differs on one point: its `commit` is `AWARE`, so it
+resolves only on the branch it was created from and `RepositoryData.branches` holds `None` for the
+default branch until a commit is written there. The sync flow never sees this, reading
+`CoreRepository` only; the computed-attribute gather does, and counts the branch as diverging from
+the default, which it is.
+
+`RepositoryData.branches` is typed `dict[str, str | None]`: a branch whose `commit` does not resolve
+is present with a value of `None`. A branch whose `internal_status` does not resolve is recorded as
+`inactive`; the branches affected are collected and logged as one warning per repository after the
+chunk loop, rather than one per repository-and-branch pair inside it. A failing chunk raises rather
+than being caught, so the read never returns a `RepositoryData` that silently omits branches.
 
 ## Git error surfacing
 
