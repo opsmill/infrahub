@@ -7,6 +7,8 @@ export const GET_TASK_LIST = graphql(`
     $search: String
     $branchName: String
     $state: [StateType]
+    $workflow: [String]
+    $workflowType: [WorkflowTypeEnum]
     $relatedNodeIds: [String]
   ) {
     InfrahubTask(
@@ -15,6 +17,8 @@ export const GET_TASK_LIST = graphql(`
       q: $search
       branch: $branchName
       state: $state
+      workflow: $workflow
+      workflow_type: $workflowType
       related_node__ids: $relatedNodeIds
     ) {
       count
@@ -31,6 +35,7 @@ export const GET_TASK_LIST = graphql(`
           state
           progress
           workflow
+          workflow_type
         }
       }
     }

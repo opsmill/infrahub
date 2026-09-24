@@ -5,12 +5,16 @@ const TASK_COUNT = graphql(`
     $search: String
     $branchName: String
     $state: [StateType]
+    $workflow: [String]
+    $workflowType: [WorkflowTypeEnum]
     $relatedNodeIds: [String]
   ) {
     InfrahubTask(
       q: $search
       branch: $branchName
       state: $state
+      workflow: $workflow
+      workflow_type: $workflowType
       related_node__ids: $relatedNodeIds
     ) {
       count

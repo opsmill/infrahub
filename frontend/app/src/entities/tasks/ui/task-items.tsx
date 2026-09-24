@@ -17,6 +17,7 @@ import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import { WORKFLOW_TYPE_LABELS } from "@/entities/tasks/domain/model/task";
 import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 import { useGetTaskList } from "@/entities/tasks/ui/queries/get-task-list.query";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
@@ -35,32 +36,29 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
   const branchName = filters.find((filter) => filter.name === "branch__value")?.value;
   const state = filters.find((filter) => filter.name === "state__value")?.value;
   const node = filters.find((filter) => filter.name === "node__value")?.value;
+  const workflow = filters.find((filter) => filter.name === "workflow__value")?.value;
+  const workflowType = filters.find((filter) => filter.name === "workflow_type__value")?.value;
 
   const { pathname } = location;
 
   const relatedNode = relatedNodeId || node;
 
+  const queryParams = {
+    search,
+    branchName,
+    state,
+    workflow: workflow ? [workflow] : undefined,
+    workflowType: workflowType ? [workflowType] : undefined,
+    relatedNodeIds: relatedNode ? [relatedNode] : undefined,
+  };
+
   const {
     data: count,
     isPending: isPendingCount,
     error: errorCount,
-  } = useGetTaskCount({
-    search,
-    branchName,
-    state,
-    relatedNodeIds: relatedNode ? [relatedNode] : undefined,
-  });
+  } = useGetTaskCount(queryParams);
 
-  const {
-    data,
-    error,
-    isPending: loading,
-  } = useGetTaskList({
-    search,
-    branchName,
-    state,
-    relatedNodeIds: relatedNode ? [relatedNode] : undefined,
-  });
+  const { data, error, isPending: loading } = useGetTaskList(queryParams);
 
   if (isPendingCount) {
     return <LoadingIndicator className="h-full p-4" />;
@@ -95,6 +93,10 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
       name: "workflow",
       label: "Workflow",
     },
+    (!!workflowType || data?.some((task) => !!task.workflow_type)) && {
+      name: "workflow_type",
+      label: "Type",
+    },
     {
       name: "updated_at",
       label: "Updated at",
@@ -115,15 +117,19 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
       link: getUrl(task.id),
       values: {
         title: {
+          value: task.title,
           display: task.title,
         },
         branch: {
+          value: task.branch,
           display: task.branch,
         },
         state: {
+          value: task.state,
           display: task.state ? getStateBadge[task.state] : null,
         },
         related_nodes: {
+          value: task.related_nodes,
           display: (
             <InlineDisplay
               items={task.related_nodes?.filter((n) => !!n) ?? []}
@@ -153,12 +159,19 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
           ),
         },
         progress: {
+          value: task.progress,
           display: task.progress,
         },
         workflow: {
+          value: task.workflow,
           display: task.workflow,
         },
+        workflow_type: {
+          value: task.workflow_type,
+          display: task.workflow_type ? WORKFLOW_TYPE_LABELS[task.workflow_type] : null,
+        },
         updated_at: {
+          value: task.updated_at,
           display: <DateDisplay date={task.updated_at} />,
         },
       },
