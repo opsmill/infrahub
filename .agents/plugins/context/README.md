@@ -95,7 +95,6 @@ once, and skills: no `CLAUDE.md`, no rules and no `@` imports. The rules:
 | `import` | error | No `@` imports outside `CLAUDE.md` |
 | `size` | error | The `AGENTS.md` files from the root down to any folder stay under Codex's 32 KiB default |
 | `orphan` | warning | Every guidance doc is reachable from a file a harness loads |
-| `rule` | warning | Every rule names the doc that holds its guidance, since only Claude Code loads rules |
 | `conflict` | warning | A rule doesn't recommend a code term that the doc it names advises against |
 
 Working files and `lint_allow` files are not checked for pointers. A line that names a file only as its

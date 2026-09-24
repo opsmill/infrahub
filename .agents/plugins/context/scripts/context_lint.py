@@ -301,16 +301,6 @@ def rule_docs(repo: Repo) -> dict[str, list[str]]:
     }
 
 
-def rule_findings(repo: Repo) -> Iterator[Finding]:
-    for rule, docs in rule_docs(repo).items():
-        if not docs:
-            yield Finding(
-                "warning", "rule", rule,
-                "names no guidance doc; harnesses other than Claude Code never load rules, so what it says "
-                "reaches them only if a doc that an AGENTS.md leads to says it too",
-            )  # fmt: skip
-
-
 def paragraphs(text: str) -> Iterator[list[tuple[int, str]]]:
     """Runs of prose outside code fences, split at blank lines, list items, headings, quotes and table rows."""
     run: list[tuple[int, str]] = []
@@ -393,7 +383,6 @@ def summary(repo: Repo, findings: list[Finding]) -> list[str]:
         if largest is not None
         else "no AGENTS.md"
     )
-    rules = [f"  {rule} → {', '.join(docs) or 'none'}" for rule, docs in rule_docs(repo).items()]
     allow = (
         [f"A pointer that is only a mention: add {ALLOW_LINE} to its line, or list its file under lint_allow"]
         if any(finding.check == "pointer" for finding in findings)
@@ -404,7 +393,6 @@ def summary(repo: Repo, findings: list[Finding]) -> list[str]:
         *allow,
         f"Repository: {repo.project}",
         f"Layout: {repo.layout.describe()}",
-        *(["Rules and the docs they name:", *rules] if rules else []),
     ]
 
 
@@ -429,7 +417,6 @@ def main() -> None:
         *import_findings(repo),
         *size_findings(repo),
         *orphan_findings(repo),
-        *rule_findings(repo),
         *conflict_findings(repo),
     ]
     findings.sort(key=lambda finding: finding.level != "error")
