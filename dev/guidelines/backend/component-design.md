@@ -114,7 +114,7 @@ class AggregatedChecker:
         raise NoCheckerError(request)
 ```
 
-The aggregator depends only on the interface; the concrete list is assembled by the factory at the wiring layer, so adding an implementation is one new class plus one line in the factory, with no edit to the dispatch logic. `AggregatedConstraintChecker` (`backend/infrahub/core/validators/`) is the canonical example in the codebase.
+The aggregator depends only on the interface; the concrete list is assembled by the factory at the wiring layer, so adding an implementation is one new class plus one line in the factory, with no edit to the dispatch logic. `AggregatedConstraintChecker` (`backend/infrahub/core/validators/`) is wired the same way, though it runs every checker that supports the request and collects their results rather than stopping at the first match.
 
 This is for an open, extensible set of implementations. When the set is closed and fixed (an enum, a sealed union), an exhaustive `match` with `typing.assert_never` is the right tool instead.
 
