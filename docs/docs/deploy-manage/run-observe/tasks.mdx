@@ -51,7 +51,7 @@ Each flow carries a health verdict:
 
 | Verdict | Meaning |
 | ------- | ------- |
-| Healthy | The most recent run that executed completed. |
+| Healthy | The most recent run that executed neither failed nor was cancelled — it completed, or it is still running. |
 | Failed | The most recent run that executed failed or crashed. |
 | Cancelled | The most recent run that executed was cancelled — commonly by a concurrency collision, where a new run is dropped because the previous one is still going. |
 | Overdue | No run has executed within three of the flow's own scheduled intervals. This is what a stalled or unclaimed schedule looks like. |
