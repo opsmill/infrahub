@@ -84,7 +84,7 @@ where the header is parsed.
 This is the worked example of two general rules — collaborators arrive through the constructor
 rather than a later registration call, and a `Protocol` keeps an out-of-domain dependency out of the
 logic's import chain. Both, and when to apply them elsewhere, are in
-[Backend Component Design](../../../.agents/rules/backend-component-design.md).
+[Backend Component Design](../../guidelines/backend/component-design.md).
 
 ## The request path
 

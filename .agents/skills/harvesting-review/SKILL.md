@@ -315,7 +315,7 @@ the ticket and PR numbers belong in this report and in the commit message, never
 sweeping exactly that residue out of an artifact is what `pruning-residues` (org skills plugin, not
 vendored here) does, so run it over the final diff when the plugin is loaded. A lesson that needs three paragraphs to state has not
 been narrowed enough — go back to §3d. Match any
-example code to `.agents/rules/code-doc-style.md` (no ticket/issue IDs, no naming specific callers).
+example code to `dev/guidelines/code-doc-style.md` (no ticket/issue IDs, no naming specific callers).
 **Never resolve review threads** — reply if useful, but resolution is the human reviewer's call. After
 applying, run:
 
