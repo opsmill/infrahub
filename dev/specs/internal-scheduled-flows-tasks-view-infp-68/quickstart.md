@@ -149,6 +149,15 @@ Expected: `clean-up-deadlocks`, `git_repositories_sync` and `merge-watcher`
 report `health: OVERDUE`. Restart the worker and confirm they return to
 `HEALTHY` once a run lands.
 
+**Also check `latest_run` while the worker is stopped.** Prefect's scheduler
+keeps pre-creating `SCHEDULED` runs an hour ahead whether or not a worker
+exists, so at this moment the deployment has ~60 rows with a future
+`expected_start_time`. Every `latest_run.expected_start_time` in the response
+must be **in the past**, and the reported time-since-last-run must grow as the
+stall continues. A future timestamp, or a `health: HEALTHY` here, means the
+bounds in research R4 were dropped from the reader — the failure mode this
+scenario exists to catch.
+
 ```bash
 docker compose -p "$PROJECT" start task-worker
 ```

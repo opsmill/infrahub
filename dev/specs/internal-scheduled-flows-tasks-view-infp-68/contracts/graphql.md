@@ -123,6 +123,7 @@ type ScheduledFlow {
   concurrency_limit: Int
   "e.g. CANCEL_NEW, ENQUEUE. Explains a CANCELLED verdict."
   collision_strategy: String
+  "The newest run that was due by now AND got past the queue; never a future SCHEDULED run. Null when no run has executed."
   latest_run: ScheduledFlowLatestRun
   recent_outcomes: ScheduledFlowOutcomes!
   health: ScheduledFlowHealthEnum!
@@ -131,9 +132,10 @@ type ScheduledFlow {
 
 type ScheduledFlowLatestRun {
   id: String!
+  "Never SCHEDULED or PENDING — those are excluded by the read (research R4)."
   state: StateType
   state_name: String
-  "Set even for a run that never started — the sort key."
+  "Set even for a run that never started — the sort key. Always in the past."
   expected_start_time: String
   "Null for a run cancelled by a CANCEL_NEW collision before it began."
   start_time: String
@@ -165,7 +167,14 @@ enum ScheduledFlowHealthEnum {
 `counts` is a list of pairs rather than a map because GraphQL has no map type
 and the codebase reserves `GenericScalar` for genuinely unstructured payloads
 (flow parameters, HTTP headers). A typed list keeps Constitution III's
-"no untyped dictionaries for structured data".
+"no untyped dictionaries for structured data". The backing Pydantic model holds
+a `dict[StateType, int]` (`data-model.md` §2); the serializer projects it into
+this list. Both shapes are intended — neither document is stale.
+
+`counts` may include `SCHEDULED`: runs that were due inside the window and that
+nothing executed. Clients must render whatever states come back rather than
+assuming terminal ones — during a stall, "1440 scheduled, 0 completed" is the
+signal (research R3).
 
 Timestamps are ISO-8601 `String`, matching every existing timestamp on
 `TaskNodeInterface` (`created_at`, `updated_at`, `start_time`).

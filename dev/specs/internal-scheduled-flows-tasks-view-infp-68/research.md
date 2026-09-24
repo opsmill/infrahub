@@ -88,8 +88,10 @@ carries `cron`, `timezone`, `day_or`.
 
 **Note on `created`**: `DeploymentResponse.created` is what makes the spec's
 "never run vs. history purged" edge case separable without new bookkeeping — a
-deployment created inside the retention window with no runs has genuinely never
-run. This is the only field that supports that distinction, so it must be read.
+deployment created inside the assumed retention window with no *executed* runs
+has genuinely never run. This is the only field that supports that distinction,
+so it must be read. It also guards the `OVERDUE` rule, keeping a
+just-registered flow out of "late" (R6).
 
 ---
 
@@ -128,6 +130,15 @@ on `start_time` would make exactly the failure mode this feature exists to
 surface invisible in the breakdown. Bucketing on `expected_start_time` counts
 every run Prefect expected in the window.
 
+**Unaffected by R4's trap 2.** Prefect pre-creates future `SCHEDULED` runs, but
+the window ends at `now`, so they fall outside it and cannot inflate the
+breakdown. Runs that were *due* inside the window and are still `SCHEDULED`
+(nothing picked them up) **are** counted, under the `SCHEDULED` state — and
+that is wanted: during a stall the breakdown reads "1,440 scheduled, 0
+completed", which is the second half of the story R4's `latest_run` tells. The
+UI must therefore render whatever states come back rather than assuming only
+terminal ones.
+
 **Alternatives rejected**:
 
 - *N flows × M outcomes calls to the existing `count_flow_runs`* — satisfies
@@ -139,22 +150,94 @@ every run Prefect expected in the window.
 
 ---
 
-## R4 — How is "latest run" read, given collision-cancelled runs never start?
+## R4 — How is "latest run" read, given Prefect pre-creates runs and collision-cancelled runs never start?
 
-**Decision**: One `read_flow_runs(..., limit=1, sort=FlowRunSort.EXPECTED_START_TIME_DESC)`
-per scheduled deployment, filtered by `FlowRunFilterDeploymentId(any_=[id])`.
+The question has two traps, one on each side of `now`. Both were found by
+probing the installed Prefect; the first was found only after plan review
+round 1 (critique E1).
 
-**Why `EXPECTED_START_TIME_DESC` and not `START_TIME_DESC`**: the existing
-reader uses `START_TIME_DESC` (`FlowRunReader.read_flow_runs`), which is correct
-for the Tasks list. It is wrong here. A run cancelled before it starts has
-`start_time = None`, so a `START_TIME_DESC` sort would rank the very runs this
-feature must surface below older runs that did start — the scheduled-flows view
-would report a stale "last run: Completed" while every subsequent tick was being
-silently cancelled. That is the motivating incident, reproduced by a sort key.
+### Trap 1 (behind `now`) — a cancelled run has no `start_time`
 
-`FlowRunSort.EXPECTED_START_TIME_DESC` is available in the installed Prefect
-(verified: `[m.value for m in FlowRunSort]` includes it) and is populated for
-every scheduled run regardless of whether it ever ran.
+The existing reader sorts `START_TIME_DESC` (`FlowRunReader.read_flow_runs`),
+which is correct for the Tasks list and wrong here. A run cancelled by a
+`CANCEL_NEW` collision never starts, so `start_time = None` and it sorts below
+older runs that did start. The view would report a stale "last run: Completed"
+while every subsequent tick was being silently cancelled — the motivating
+incident, reproduced by a sort key. `EXPECTED_START_TIME_DESC`
+(verified present in `FlowRunSort`) is populated for every scheduled run
+whether or not it ever ran.
+
+### Trap 2 (ahead of `now`) — Prefect pre-creates future `SCHEDULED` runs
+
+Prefect's `Scheduler` loop service creates flow runs in the `SCHEDULED` state
+ahead of time. Verified on the installed settings, with no override anywhere in
+this repo:
+
+```text
+server.services.scheduler.enabled            = True
+server.services.scheduler.min_runs           = 3
+server.services.scheduler.min_scheduled_time = 1:00:00
+```
+
+For each `* * * * *` catalogue schedule that is roughly **60 runs sitting in
+`SCHEDULED` with an `expected_start_time` in the future, at all times**. A
+plain `EXPECTED_START_TIME_DESC` / `limit=1` read therefore returns a run that
+has not happened, permanently, for every scheduled flow — and, worse, the
+scheduler keeps producing them whether or not any worker is alive, so even
+"newest run whose expected start is behind `now`" stays fresh during a total
+stall.
+
+Bounding the read at `now` alone is not enough. **The run that answers "is this
+job alive" is the newest run that actually left the queue** — anything that
+reached `RUNNING` or a terminal state.
+
+### Decision
+
+One read per scheduled deployment:
+
+```python
+FlowRunFilter(
+    deployment_id=FlowRunFilterDeploymentId(any_=[deployment_id]),
+    expected_start_time=FlowRunFilterExpectedStartTime(before_=now),
+    state=FlowRunFilterState(
+        type=FlowRunFilterStateType(not_any_=[StateType.SCHEDULED, StateType.PENDING])
+    ),
+)
+# sort=FlowRunSort.EXPECTED_START_TIME_DESC, limit=1
+```
+
+This is the feature's `latest_run`: **the newest run Prefect expected to have
+started by now that got past the queue.** Call it the *latest executed run* in
+prose; the two filter clauses are what make the phrase true.
+
+**Verified in 3.8.6**: `FlowRunFilterExpectedStartTime` exposes `before_` /
+`after_` and compiles to `expected_start_time <= before_`;
+`FlowRunFilterStateType.not_any_` compiles to `state_type NOT IN (...)`;
+`FlowRunFilter` carries both alongside `deployment_id`, combined with `and_`.
+
+**Why both clauses and not just the state exclusion**: today a future run is
+always `SCHEDULED`, so the time bound is redundant. It is kept because it is
+the clause that states the intent — a future `CRASHED` run, however it arose,
+must not become "the last run" — and because it makes the read's meaning
+legible without knowing Prefect's scheduler internals.
+
+**What this deliberately hides**: a due run still sitting in `SCHEDULED`
+because no worker picked it up. That is correct. Such a run is not an outcome;
+its absence from `latest_run` is precisely what lets the R6 overdue rule fire.
+The breakdown in R3 still counts it — see the note there — so the operator sees
+both halves: *last completed run 3 days ago* **and** *1,440 runs scheduled, 0
+completed in 24h*.
+
+**Consequences downstream**: R6's `OVERDUE`, `NEVER_RUN` and `NO_RECENT_RUNS`
+rules are stated against this bounded read, not against "no runs at all". They
+are unreachable under any unbounded reading.
+
+**Consequence for US2's drill-down**: `/tasks?workflow=<name>` applies no such
+bound, so the pre-created `SCHEDULED` runs *will* appear there. The existing
+reader sorts `START_TIME_DESC` and they have no `start_time`, so they do not
+crowd the top of the list. This is expected, not a defect — the drill-down is
+the raw run list — and the e2e task says so explicitly rather than leaving the
+author to discover it.
 
 **Cost**: 2 calls per scheduled flow (this plus R3), issued concurrently with
 `asyncio.gather`. 10 calls for today's five schedules. Scales with flow count,
@@ -216,29 +299,78 @@ shipping raw history and the cron and duplicating the rule in TypeScript. A pure
 backend function is unit-testable without Prefect (Constitution IV: unit tests
 run in seconds) and keeps one definition of "unhealthy".
 
-**Verdict precedence** (first match wins — order matters because a flow can be
-both overdue *and* have a failed last run, and overdue is the more urgent
-signal):
+**Every rule below is stated against R4's bounded `latest_run`** — the newest
+run whose expected start is behind `now` *and* which got past the queue. "No
+runs" throughout means "no such run", never "no rows for this deployment":
+there are always rows, because Prefect pre-creates them (R4, trap 2). Written
+against unbounded runs, rules 1, 4 and 5 are all unreachable.
 
-1. `OVERDUE` — schedule active, and no run expected-started within
-   3 × interval.
-2. `FAILED` — latest run in `FAILED` or `CRASHED`.
-3. `CANCELLED` — latest run in `CANCELLED` or `CANCELLING`.
-4. `NEVER_RUN` — no runs and the deployment was created inside the retention
-   window.
-5. `NO_RECENT_RUNS` — no runs and the deployment predates the retention window,
-   or the comparison is inconclusive (spec's "say 'no recent runs' rather than
-   guess").
-6. `PAUSED` — the schedule exists but is inactive; never reported as unhealthy,
-   and suppresses `OVERDUE` (a paused schedule is not late, it is off).
+**Verdict precedence** (first match wins):
+
+1. `PAUSED` — the schedule exists but is inactive
+   (`not schedule.active or deployment.paused`). Ranked first so that "nothing
+   is running because it is switched off" never masquerades as a time-based
+   fault; a paused flow is never reported as unhealthy. Nothing is lost by
+   ranking it above `FAILED` — the last-run outcome is a separate displayed
+   field (FR-015), so a paused flow whose last run failed still shows that
+   failure in its own column.
+2. `OVERDUE` — the flow is active, the interval is known, the deployment has
+   existed for at least 3 × interval, and either there is no `latest_run` or
+   its `expected_start_time` is older than `now - 3 × interval`. The
+   deployment-age guard is what keeps a freshly registered daily flow out of
+   `OVERDUE` (it has simply not come due yet) and into rule 4.
+3. `FAILED` — `latest_run` in `FAILED` or `CRASHED`.
+4. `CANCELLED` — `latest_run` in `CANCELLED` or `CANCELLING`. This is the
+   `CANCEL_NEW` collision signal: those runs *are* terminal, so they are
+   `latest_run` material and produce a recent `CANCELLED` verdict rather than
+   `OVERDUE`. `collision_strategy` is carried on the summary so the UI can
+   explain why.
+5. `NEVER_RUN` — no `latest_run`, and `deployment_created_at` is known and
+   within `ASSUMED_RUN_RETENTION_DAYS` (below). The deployment is too young for
+   purging to explain the absence.
+6. `NO_RECENT_RUNS` — no `latest_run` and the comparison is inconclusive:
+   `deployment_created_at` unknown, or it predates
+   `ASSUMED_RUN_RETENTION_DAYS`, or the cron could not be interpreted so no
+   overdue window exists. This is the spec's "say 'no recent runs' rather than
+   guess".
 7. `HEALTHY` — otherwise.
 
 `NEVER_RUN`, `NO_RECENT_RUNS` and `PAUSED` are distinct from both success and
 failure, satisfying FR-010.
 
-**Retention window** for rules 4/5: read from configuration rather than
-hard-coded, so the verdict tracks the operator's actual flush cadence. The CLI
-default is 30 days (`backend/infrahub/cli/tasks.py`, `flush flow-runs`).
+**Worked cases** (each is a required unit test — see T021):
+
+| Situation | Verdict |
+|---|---|
+| every-minute flow, worker alive, last run Completed 30s ago | `HEALTHY` |
+| every-minute flow, worker stopped 3 days ago; ~60 future `SCHEDULED` runs exist; newest executed run Completed 3 days ago | `OVERDUE` ← the motivating incident, SC-003 |
+| every-minute flow whose ticks are being `CANCEL_NEW`-cancelled | `CANCELLED` |
+| daily flow registered 2h ago, no runs yet | `NEVER_RUN` |
+| every-minute flow registered 10s ago, no runs yet | `NEVER_RUN` (age guard suppresses `OVERDUE`) |
+| flow with an uninterpretable cron and no executed runs | `NO_RECENT_RUNS` |
+| paused schedule, whatever else is true | `PAUSED` |
+
+**Retention window** for rules 5/6 — `ASSUMED_RUN_RETENTION_DAYS`, a named
+module-level constant in `scheduled_flow/health.py`, valued at 30 to match the
+`infrahub tasks flush flow-runs` CLI default.
+
+It is **not** read from configuration, and plan review round 1 (critique E2)
+was right that the earlier "read it from configuration" instruction was
+unexecutable: there is no retention setting in `backend/infrahub/config.py`
+(`grep -n retention` → no matches), and purging is not automatic at all —
+`FlowRunRetention.purge` has exactly one caller, the CLI (verified: no other
+reference under `backend/infrahub/`). There is no cadence to read because
+nothing persists one.
+
+Adding a setting was the alternative (critique E2 option (a)) and is rejected:
+it would be a new Ask-First surface with a generated-doc obligation
+(`docs/docs/reference/configuration.mdx`) bought for a single label. A wrong
+constant is cheap here by construction — it can only flip **between
+`NEVER_RUN` and `NO_RECENT_RUNS`**, two ways of saying "no history to show
+you". It can never produce a false `HEALTHY`, `FAILED` or `OVERDUE`, because
+those rules never consult it. That asymmetry is the whole justification; the
+constant carries it as a comment so a later reader does not "improve" it into a
+setting.
 
 ---
 

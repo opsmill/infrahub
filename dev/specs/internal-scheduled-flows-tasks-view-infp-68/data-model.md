@@ -63,18 +63,27 @@ in the catalogue" edge case. Rendering it as unknown is required; erroring is no
 
 ### `LatestRunInfo`
 
+**The newest run Prefect expected to have started by `now` that got past the
+queue** — R4's bounded read, not "the newest row for this deployment". Prefect
+pre-creates future `SCHEDULED` runs continuously, so the unbounded reading
+names a run that has not happened. `SCHEDULED` and `PENDING` are excluded by
+the read, so this field never carries either.
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | `UUID` | drill-down target for FR-018 |
-| `state_type` | `StateType` | |
+| `state_type` | `StateType` | never `SCHEDULED` or `PENDING`, by construction |
 | `state_name` | `str \| None` | distinguishes a collision cancellation from a crash (Assumption 8) |
-| `expected_start_time` | `datetime \| None` | the sort key (R4) |
+| `expected_start_time` | `datetime \| None` | the sort key, and the input to the overdue comparison (R4, R6) |
 | `start_time` | `datetime \| None` | `None` for a run that never started |
 | `end_time` | `datetime \| None` | |
 
 Both `expected_start_time` and `start_time` are carried deliberately. A run
 where the first is set and the second is `None` *is* the collision-cancelled
 case the view must not present as a crash.
+
+`None` for the whole field means "no executed run", which is what makes
+`OVERDUE`, `NEVER_RUN` and `NO_RECENT_RUNS` reachable at all (R6).
 
 ### `RecentOutcomeCounts`
 
@@ -85,6 +94,20 @@ Aggregate only — never a list of runs (FR-012a).
 | `window_hours` | `int` (24, per Assumption 7) |
 | `counts` | `dict[StateType, int]` |
 | `total` | `int` |
+
+**On `counts` being a dict here and a list in GraphQL**: the Pydantic model
+holds a `dict[StateType, int]` because that is the natural shape for the
+`/flow_runs/history` response and for the ordering and test code that consume
+it. The GraphQL type projects it as a typed
+`[ScheduledFlowOutcomeCount!]!` list of `{ state_type, count }` pairs, because
+a map of arbitrary keys crossing the API boundary would have to be
+`GenericScalar`, which Constitution III rejects. Both statements are true at
+once; the projection happens in the serializer (`contracts/graphql.md` §3,
+T027).
+
+`counts` may legitimately contain `SCHEDULED` — runs that were due inside the
+window and that nothing picked up. That is a signal, not noise (R3), so the UI
+renders whatever states come back rather than assuming terminal ones.
 
 ### `ScheduledFlowHealth` (enum)
 
@@ -130,6 +153,14 @@ Sort key, applied in the backend so the client cannot disagree with the badge:
 
 Ranking `overdue` first matches R6's precedence: a stalled every-minute flow is
 the motivating incident.
+
+**This is not R6's precedence order, and the difference is deliberate.** R6
+orders *which verdict a flow gets* when several apply, and puts `PAUSED` first
+so a switched-off schedule is never described as a fault. This table orders
+*where a flow appears in the list* once it has a verdict, and puts `paused`
+near the bottom for the same reason — it needs no attention. One question is
+"what is true of this flow", the other is "how urgently should the operator
+look at it".
 
 ---
 

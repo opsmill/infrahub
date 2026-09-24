@@ -231,18 +231,33 @@ down.
 | Read | Call | Cost |
 |---|---|---|
 | deployments | `read_deployments()` | 1 |
-| latest run per flow | `read_flow_runs(deployment_id=any_[id], limit=1, sort=EXPECTED_START_TIME_DESC)` | N |
+| latest *executed* run per flow | `read_flow_runs(deployment_id=any_[id], expected_start_time=before_(now), state.type=not_any_[SCHEDULED, PENDING], limit=1, sort=EXPECTED_START_TIME_DESC)` | N |
 | 24h outcome breakdown per flow | `POST /flow_runs/history` with one bucket | N |
 
-`EXPECTED_START_TIME_DESC`, not `START_TIME_DESC` — R4 explains why this is a
-correctness requirement rather than a preference: a collision-cancelled run has
-no `start_time`, so the wrong sort key reproduces the motivating incident as a
-bug. The per-flow reads are issued with `asyncio.gather`.
+Every clause on the latest-run read is load-bearing, and R4 is the argument:
+
+- `EXPECTED_START_TIME_DESC`, not `START_TIME_DESC` — a collision-cancelled run
+  has no `start_time`, so the wrong sort key ranks the runs this feature exists
+  to surface below older ones that did start.
+- `expected_start_time before_ now` **and** the `SCHEDULED`/`PENDING`
+  exclusion — Prefect pre-creates ~60 future `SCHEDULED` runs per every-minute
+  schedule and keeps doing so whether or not a worker is alive. Without both
+  clauses the "latest run" is a run that has not happened, and every health
+  rule that keys off it degrades to `HEALTHY` during exactly the stall this
+  feature was built for.
+
+The pair defines the feature's `latest_run`: *the newest run Prefect expected
+to have started by now that got past the queue*. The per-flow reads are issued
+with `asyncio.gather`.
 
 **`health.py`** — pure function over
-`(latest_run, interval_seconds, active, deployment_created_at, now,
-retention_days)`. Precedence fixed in R6; overdue = no expected start within
-3 × interval (Assumption 6); `paused` suppresses `overdue`.
+`(latest_run, interval_seconds, active, deployment_created_at, now)`.
+Precedence fixed in R6, stated against that bounded `latest_run`: `paused`
+first, then `overdue` (no executed run within 3 × interval, guarded by
+deployment age so a freshly registered flow is `never_run` rather than late),
+then the outcome verdicts, then the two no-history verdicts. The retention
+figure that separates `never_run` from `no_recent_runs` is a named constant in
+this module — see Assumption A10.
 
 **`service.py`** — assemble, order unhealthy-first (`data-model.md` §4), compute
 `catalogue_only` by diffing catalogue crons against registered deployments, and
@@ -316,9 +331,12 @@ one tier.
   absent from `all_` and `any_` carries the type tags; branch + type together ⇒
   branch in `all_`, types in `any_`.
 - `test_tags.py` — type decoding, including a run with no type tag.
-- `scheduled_flow/test_health.py` — every verdict and, explicitly, the
-  precedence pairs: overdue-and-failed ⇒ `OVERDUE`; paused-and-late ⇒ `PAUSED`;
-  no-runs-inside-retention ⇒ `NEVER_RUN` vs. outside ⇒ `NO_RECENT_RUNS`.
+- `scheduled_flow/test_health.py` — every verdict, R6's worked-cases table, and
+  explicitly the precedence pairs: overdue-and-failed ⇒ `OVERDUE`;
+  paused-and-late ⇒ `PAUSED`; no-executed-runs-inside-retention ⇒ `NEVER_RUN`
+  vs. outside ⇒ `NO_RECENT_RUNS`. The one case that must not be omitted:
+  **a deployment whose only rows are future `SCHEDULED` runs — the permanent
+  steady state of an every-minute cron — must never resolve to `HEALTHY`.**
 - `scheduled_flow/test_schedule_window.py` — the five catalogue crons, plus an
   uninterpretable cron returning `None` rather than raising.
 - `scheduled_flow/test_service.py` — ordering, `catalogue_only` diffing, and
@@ -400,9 +418,14 @@ call.
 tab.** Spec Assumption 10 explicitly left this to planning. A route is
 URL-addressable for free (FR-014) and shareable in an incident channel.
 
-**A5. `EXPECTED_START_TIME_DESC` for "latest run".** A correctness decision, not
-a preference — see R4. The existing `FlowRunReader` keeps `START_TIME_DESC`;
-only the new reader differs.
+**A5. "Latest run" means the newest run that was due *and* got past the
+queue.** Three clauses, all correctness decisions rather than preferences —
+`EXPECTED_START_TIME_DESC`, `expected_start_time before_ now`, and excluding
+`SCHEDULED`/`PENDING`. R4 derives each from a probe of the installed Prefect;
+dropping any one of them makes a health verdict unreachable. The existing
+`FlowRunReader` keeps `START_TIME_DESC` and no bound; only the new reader
+differs, and the Tasks-list drill-down (US2) deliberately keeps the unbounded
+behaviour — pre-created `SCHEDULED` runs are expected to appear there.
 
 **A6. Human-readable schedules are rendered client-side from structured facts,
 with a raw-cron fallback.** Avoids an Ask-First dependency (`cronstrue`) and
@@ -424,15 +447,35 @@ See R3.
 turn "the client asked for nothing" into "return everything" — the substitution
 FR-004 forbids.
 
-**A10. The retention window used to separate "never run" from "history purged"
-is read from configuration, not hard-coded.** The CLI default is 30 days but
-operators flush on their own cadence; a hard-coded constant would make the
-verdict wrong for anyone who changed it. Where the comparison is inconclusive
-the verdict is `NO_RECENT_RUNS`, per the spec's instruction not to guess.
+**A10. The retention window that separates "never run" from "history purged" is
+a named constant, `ASSUMED_RUN_RETENTION_DAYS = 30`, not a configuration
+setting.** Plan review round 1 (critique E2) showed the earlier "read it from
+configuration" instruction was unexecutable: there is no retention setting in
+`backend/infrahub/config.py`, and purging is not automatic — `FlowRunRetention.purge`
+has exactly one caller, the `infrahub tasks flush flow-runs` CLI command
+(whose `days_to_keep` default of 30 is the constant's value). Nothing persists
+an operator's cadence, so there is nothing to read.
 
-**A11. Health verdict precedence puts `OVERDUE` above `FAILED`.** A flow can be
-both. A stalled every-minute flow is the motivating incident; a single failed
-run on a flow that is still ticking is less urgent.
+Adding a setting was the alternative and is rejected: it is a new Ask-First
+surface with a `docs/docs/reference/configuration.mdx` regeneration obligation,
+bought for a single label. **A wrong constant is cheap by construction** — it
+can only flip between `NEVER_RUN` and `NO_RECENT_RUNS`, two ways of saying "no
+history to show you", and never produces a false `HEALTHY`, `FAILED` or
+`OVERDUE`, because those rules never consult it. That asymmetry is the
+justification and is recorded as a comment on the constant. Where the
+comparison is inconclusive the verdict is `NO_RECENT_RUNS`, per the spec's
+instruction not to guess.
+
+**A11. Health verdict precedence is `PAUSED` → `OVERDUE` → `FAILED` → …** A
+flow can be several at once. `OVERDUE` above `FAILED` because a stalled
+every-minute flow is the motivating incident, while one failed run on a flow
+that is still ticking is less urgent. `PAUSED` above both because "nothing is
+running because it is switched off" must never be dressed up as a fault — and
+nothing is lost by it, since the last-run outcome is a separate displayed field
+(FR-015), so a paused flow whose last run failed still shows that failure in
+its own column. Ranking `PAUSED` first also closes a gap in the round-1
+ordering, where a paused deployment with no executed runs fell through to
+`NEVER_RUN`/`NO_RECENT_RUNS` before ever reaching the `PAUSED` rule.
 
 **A12. No performance regression gate for SC-007.** No test tier provisions a
 24h-history instance. Manual verification plus an executable assertion on the
