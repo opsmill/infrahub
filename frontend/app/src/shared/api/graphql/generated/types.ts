@@ -25701,6 +25701,8 @@ export type Query = {
   InfrahubReachableNodes: ReachableNodesResultType;
   InfrahubResourcePoolAllocated: PoolAllocated;
   InfrahubResourcePoolUtilization: PoolUtilization;
+  /** Every registered scheduled background flow with its schedule and recent run outcomes */
+  InfrahubScheduledFlows: ScheduledFlows;
   InfrahubSearchAnywhere: NodeEdges;
   /** Retrieve the status of all infrahub workers. */
   InfrahubStatus: Status;
@@ -37738,6 +37740,7 @@ export type QueryInfrahubTaskArgs = {
   related_node__ids?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   state?: InputMaybe<Array<InputMaybe<StateType>>>;
   workflow?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  workflow_type?: InputMaybe<Array<InputMaybe<WorkflowTypeEnum>>>;
 };
 
 
@@ -38649,6 +38652,79 @@ export type ResolveDiffConflictInput = {
   selected_branch?: InputMaybe<ConflictSelection>;
 };
 
+export type ScheduledFlow = {
+  __typename: 'ScheduledFlow';
+  /** False when the schedule or the deployment itself is paused */
+  active: Scalars['Boolean']['output'];
+  /** Explains a CANCELLED verdict */
+  collision_strategy: Maybe<Scalars['String']['output']>;
+  concurrency_limit: Maybe<Scalars['Int']['output']>;
+  cron: Scalars['String']['output'];
+  deployment_created_at: Maybe<Scalars['String']['output']>;
+  deployment_id: Scalars['String']['output'];
+  health: ScheduledFlowHealthEnum;
+  /** Seconds between consecutive fire times; null when it cannot be derived */
+  interval_seconds: Maybe<Scalars['Int']['output']>;
+  /** The newest run that was due by now and got past the queue; never a future scheduled run */
+  latest_run: Maybe<ScheduledFlowLatestRun>;
+  name: Scalars['String']['output'];
+  next_run_at: Maybe<Scalars['String']['output']>;
+  recent_outcomes: ScheduledFlowOutcomes;
+  timezone: Maybe<Scalars['String']['output']>;
+  /** Null when the deployment carries no Infrahub workflow-type tag */
+  workflow_type: Maybe<WorkflowTypeEnum>;
+};
+
+/** How a scheduled flow is currently faring */
+export const ScheduledFlowHealthEnum = {
+  CANCELLED: 'CANCELLED',
+  FAILED: 'FAILED',
+  HEALTHY: 'HEALTHY',
+  NEVER_RUN: 'NEVER_RUN',
+  NO_RECENT_RUNS: 'NO_RECENT_RUNS',
+  OVERDUE: 'OVERDUE',
+  PAUSED: 'PAUSED'
+} as const;
+
+export type ScheduledFlowHealthEnum = typeof ScheduledFlowHealthEnum[keyof typeof ScheduledFlowHealthEnum];
+export type ScheduledFlowLatestRun = {
+  __typename: 'ScheduledFlowLatestRun';
+  end_time: Maybe<Scalars['String']['output']>;
+  expected_start_time: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  /** Null for a run cancelled by a collision before it began */
+  start_time: Maybe<Scalars['String']['output']>;
+  state: Maybe<StateType>;
+  state_name: Maybe<Scalars['String']['output']>;
+};
+
+export type ScheduledFlowNode = {
+  __typename: 'ScheduledFlowNode';
+  node: ScheduledFlow;
+};
+
+export type ScheduledFlowOutcomeCount = {
+  __typename: 'ScheduledFlowOutcomeCount';
+  count: Scalars['Int']['output'];
+  state: StateType;
+};
+
+export type ScheduledFlowOutcomes = {
+  __typename: 'ScheduledFlowOutcomes';
+  counts: Array<ScheduledFlowOutcomeCount>;
+  total: Scalars['Int']['output'];
+  window_hours: Scalars['Int']['output'];
+};
+
+export type ScheduledFlows = {
+  __typename: 'ScheduledFlows';
+  /** Catalogue workflows that declare a cron but have no registered deployment */
+  catalogue_only: Array<Scalars['String']['output']>;
+  count: Scalars['Int']['output'];
+  /** Ordered unhealthy-first, then by name */
+  edges: Array<ScheduledFlowNode>;
+};
+
 export type SchemaDropdownAdd = {
   __typename: 'SchemaDropdownAdd';
   object: Maybe<DropdownFields>;
@@ -38849,6 +38925,8 @@ export type TaskNode = TaskNodeInterface & {
   title: Scalars['String']['output'];
   updated_at: Scalars['String']['output'];
   workflow: Maybe<Scalars['String']['output']>;
+  /** The run's workflow type, decoded from its workflow-type tag */
+  workflow_type: Maybe<WorkflowTypeEnum>;
 };
 
 /** Fields shared by every task run; concrete types are discriminated by the run's workflow name. */
@@ -38874,6 +38952,8 @@ export type TaskNodeInterface = {
   title: Scalars['String']['output'];
   updated_at: Scalars['String']['output'];
   workflow: Maybe<Scalars['String']['output']>;
+  /** The run's workflow type, decoded from its workflow-type tag */
+  workflow_type: Maybe<WorkflowTypeEnum>;
 };
 
 export type TaskNodes = {
@@ -38975,4 +39055,15 @@ export type WebhookDeliveryTask = TaskNodeInterface & {
   title: Scalars['String']['output'];
   updated_at: Scalars['String']['output'];
   workflow: Maybe<Scalars['String']['output']>;
+  /** The run's workflow type, decoded from its workflow-type tag */
+  workflow_type: Maybe<WorkflowTypeEnum>;
 };
+
+/** The category a workflow belongs to */
+export const WorkflowTypeEnum = {
+  CORE: 'CORE',
+  INTERNAL: 'INTERNAL',
+  USER: 'USER'
+} as const;
+
+export type WorkflowTypeEnum = typeof WorkflowTypeEnum[keyof typeof WorkflowTypeEnum];

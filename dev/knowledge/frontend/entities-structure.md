@@ -261,6 +261,18 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getSchemaFromApi } from "@/entities/schema/api/get-schema-from-api"; // NEVER
 ```
 
+### Sharing an invalidation root across two slices
+
+`entities/scheduled-flows` (the `/tasks/scheduled` view, which summarises Prefect's scheduled
+deployments) is a sibling of `entities/tasks`, not part of it: the two answer different questions —
+deployments versus runs — and share only the backend's Prefect access.
+
+Its query key is nevertheless declared in `entities/tasks/ui/queries/tasks.query-keys.ts`, as
+`tasksQueryKeys.scheduledFlows()`. That is deliberate: `RefreshButton` takes a single key to
+invalidate, so rooting the scheduled-flows key under `tasksQueryKeys.all` lets one refresh control
+serve both views instead of introducing a second invalidation primitive. When two slices must
+refresh together, put the key under the shared root rather than duplicating the control.
+
 ## Mappers
 
 Mappers (generated wire shape ↔ domain type) live in **`api/`**, e.g. `api/{noun}.mappers.ts`. They import the generated types and return `domain/model` types (`domain/model` is the only part of `domain/` that `api/` may import — its types, and plain vocabulary constants; never `domain/rules` or `domain/use-cases`). Mappers are **optional** — only needed when the domain shape differs from the wire shape; when they match, a `domain/use-cases/` function may return the generated type directly. For a trivial mapping, inline it in the `api/` fetcher rather than a separate mappers file.

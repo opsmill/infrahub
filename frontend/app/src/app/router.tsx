@@ -270,6 +270,10 @@ export const router = createBrowserRouter([
                     lazy: () => import("@/pages/tasks"),
                   },
                   {
+                    path: "scheduled",
+                    lazy: () => import("@/pages/tasks/scheduled"),
+                  },
+                  {
                     path: ":taskId",
                     lazy: () => import("@/pages/tasks/task-details"),
                   },

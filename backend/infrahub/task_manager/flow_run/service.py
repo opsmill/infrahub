@@ -86,6 +86,7 @@ class PrefectTaskService:
             EnrichedFlowRun(
                 flow_run=flow,
                 branch=self.tag_decoder.branch_name(flow),
+                workflow_type=self.tag_decoder.workflow_type(flow),
                 related_nodes=related_nodes.get_related_nodes(flow_id=flow.id),
                 workflow_name=workflow_names.get(flow.flow_id),
                 progress=progress.data.get(flow.id),

@@ -6,6 +6,7 @@ from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.actions import ArtifactCreate
 from prefect.client.schemas.filters import ArtifactFilter, FlowFilter, FlowRunFilter, LogFilter
 from prefect.client.schemas.objects import Artifact, Flow, FlowRun, Log, StateType
+from prefect.client.schemas.responses import DeploymentResponse
 from prefect.client.schemas.sorting import FlowRunSort
 
 CANCEL_REQUEST_STATE_TYPES = frozenset({StateType.CANCELLING, StateType.CANCELLED})
@@ -44,6 +45,16 @@ class FlowRunCounting(Protocol):
     async def count_flow_runs(self, body: dict[str, Any]) -> int: ...
 
 
+class DeploymentReading(Protocol):
+    async def read_deployments(self, limit: int | None = None, offset: int = 0) -> list[DeploymentResponse]: ...
+
+
+class FlowRunHistoryReading(Protocol):
+    async def flow_run_history(self, body: dict[str, Any]) -> list[dict[str, Any]]:
+        """Return the `/flow_runs/history` buckets for the given request body."""
+        ...
+
+
 class FlowRunMaintenance(Protocol):
     async def delete_flow_run(self, flow_run_id: UUID) -> None: ...
 
@@ -64,6 +75,9 @@ class FlowRunCancellationReading(Protocol):
 
 
 class ReaderPrefectClient(FlowRunQuerying, FlowRunDataReading, Protocol): ...
+
+
+class ScheduledFlowPrefectClient(DeploymentReading, FlowRunQuerying, FlowRunHistoryReading, Protocol): ...
 
 
 class WriterPrefectClient(FlowRunArtifactWriting, Protocol): ...
@@ -118,6 +132,16 @@ class PrefectClientAdapter:
         response = await self.client._client.post("/flow_runs/count", json=body)
         response.raise_for_status()
         return int(response.json())
+
+    async def read_deployments(self, limit: int | None = None, offset: int = 0) -> list[DeploymentResponse]:
+        return await self.client.read_deployments(limit=limit, offset=offset)
+
+    async def flow_run_history(self, body: dict[str, Any]) -> list[dict[str, Any]]:
+        # The Python client exposes no history method, so the route is called directly — the same
+        # escape hatch count_flow_runs uses.
+        response = await self.client._client.post("/flow_runs/history", json=body)
+        response.raise_for_status()
+        return list(response.json())
 
     async def delete_flow_run(self, flow_run_id: UUID) -> None:
         await self.client.delete_flow_run(flow_run_id=flow_run_id)

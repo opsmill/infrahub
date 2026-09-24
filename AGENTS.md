@@ -103,6 +103,11 @@ uv run invoke docs.lint               # Lint documentation
 over the whole repo — so a Python violation elsewhere passes locally and fails in CI. `/pre-ci`
 includes that whole-repo check.
 
+`invoke format` has the same blind spot, and `invoke backend.format` covers only `backend/` —
+neither touches `tests/`, while CI runs `ruff format --check --diff --exclude python_sdk .` over the
+whole repo. A file under `tests/e2e/` wrapped at the wrong column passes both local commands and
+fails CI; run `uv run ruff format --exclude python_sdk .` (or `/pre-ci`) before pushing.
+
 ### Build
 
 ```bash

@@ -25715,10 +25715,14 @@ type Query {
   InfrahubReachableNodes(data: ReachableNodesInput!): ReachableNodesResultType!
   InfrahubResourcePoolAllocated(limit: Int, offset: Int, pool_id: String!, resource_id: String!): PoolAllocated!
   InfrahubResourcePoolUtilization(pool_id: String!): PoolUtilization!
+  """
+  Every registered scheduled background flow with its schedule and recent run outcomes
+  """
+  InfrahubScheduledFlows: ScheduledFlows!
   InfrahubSearchAnywhere(case_sensitive: Boolean, limit: Int, partial_match: Boolean, q: String!): NodeEdges!
   """Retrieve the status of all infrahub workers."""
   InfrahubStatus: Status!
-  InfrahubTask(branch: String, ids: [String], limit: Int, log_limit: Int, log_offset: Int, offset: Int, q: String, related_node__ids: [String], state: [StateType], workflow: [String]): Tasks!
+  InfrahubTask(branch: String, ids: [String], limit: Int, log_limit: Int, log_offset: Int, offset: Int, q: String, related_node__ids: [String], state: [StateType], workflow: [String], workflow_type: [WorkflowTypeEnum]): Tasks!
   """
   Return the list of all pending or running tasks that can modify the data, for a given branch
   """
@@ -26673,6 +26677,76 @@ input ResolveDiffConflictInput {
   selected_branch: ConflictSelection
 }
 
+type ScheduledFlow {
+  """False when the schedule or the deployment itself is paused"""
+  active: Boolean!
+  """Explains a CANCELLED verdict"""
+  collision_strategy: String
+  concurrency_limit: Int
+  cron: String!
+  deployment_created_at: String
+  deployment_id: String!
+  health: ScheduledFlowHealthEnum!
+  """Seconds between consecutive fire times; null when it cannot be derived"""
+  interval_seconds: Int
+  """
+  The newest run that was due by now and got past the queue; never a future scheduled run
+  """
+  latest_run: ScheduledFlowLatestRun
+  name: String!
+  next_run_at: String
+  recent_outcomes: ScheduledFlowOutcomes!
+  timezone: String
+  """Null when the deployment carries no Infrahub workflow-type tag"""
+  workflow_type: WorkflowTypeEnum
+}
+
+"""How a scheduled flow is currently faring"""
+enum ScheduledFlowHealthEnum {
+  CANCELLED
+  FAILED
+  HEALTHY
+  NEVER_RUN
+  NO_RECENT_RUNS
+  OVERDUE
+  PAUSED
+}
+
+type ScheduledFlowLatestRun {
+  end_time: String
+  expected_start_time: String
+  id: String!
+  """Null for a run cancelled by a collision before it began"""
+  start_time: String
+  state: StateType
+  state_name: String
+}
+
+type ScheduledFlowNode {
+  node: ScheduledFlow!
+}
+
+type ScheduledFlowOutcomeCount {
+  count: Int!
+  state: StateType!
+}
+
+type ScheduledFlowOutcomes {
+  counts: [ScheduledFlowOutcomeCount!]!
+  total: Int!
+  window_hours: Int!
+}
+
+type ScheduledFlows {
+  """
+  Catalogue workflows that declare a cron but have no registered deployment
+  """
+  catalogue_only: [String!]!
+  count: Int!
+  """Ordered unhealthy-first, then by name"""
+  edges: [ScheduledFlowNode!]!
+}
+
 type SchemaDropdownAdd {
   object: DropdownFields
   ok: Boolean
@@ -26847,6 +26921,8 @@ type TaskNode implements TaskNodeInterface {
   title: String!
   updated_at: String!
   workflow: String
+  """The run's workflow type, decoded from its workflow-type tag"""
+  workflow_type: WorkflowTypeEnum
 }
 
 """
@@ -26874,6 +26950,8 @@ interface TaskNodeInterface {
   title: String!
   updated_at: String!
   workflow: String
+  """The run's workflow type, decoded from its workflow-type tag"""
+  workflow_type: WorkflowTypeEnum
 }
 
 type TaskNodes {
@@ -26967,6 +27045,15 @@ type WebhookDeliveryTask implements TaskNodeInterface {
   title: String!
   updated_at: String!
   workflow: String
+  """The run's workflow type, decoded from its workflow-type tag"""
+  workflow_type: WorkflowTypeEnum
+}
+
+"""The category a workflow belongs to"""
+enum WorkflowTypeEnum {
+  CORE
+  INTERNAL
+  USER
 }
 
 """Expands a field to include Node defaults"""

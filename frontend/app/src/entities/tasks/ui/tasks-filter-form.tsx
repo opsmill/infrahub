@@ -9,7 +9,11 @@ import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/compone
 import { branchesState } from "@/entities/branches/stores";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import { getObjectFromFilters } from "@/entities/nodes/filters/domain/rules/getObjectFromFilters";
-import { TASK_STATES } from "@/entities/tasks/domain/model/task";
+import {
+  TASK_STATES,
+  WORKFLOW_TYPE_LABELS,
+  WORKFLOW_TYPES,
+} from "@/entities/tasks/domain/model/task";
 
 export interface FilterFormProps extends FormProps {
   ref?: React.Ref<FormRef>;
@@ -39,6 +43,11 @@ export const TasksFilterForm = ({
     label: state,
   }));
 
+  const workflowTypeOptions = WORKFLOW_TYPES.map((workflowType) => ({
+    value: workflowType,
+    label: WORKFLOW_TYPE_LABELS[workflowType],
+  }));
+
   return (
     <Form
       ref={ref}
@@ -47,12 +56,16 @@ export const TasksFilterForm = ({
       defaultValues={{
         branch: currentFilters?.branch,
         state: currentFilters?.state,
+        // Left unset on purpose: selecting all three types is a different query from selecting none.
+        workflow_type: currentFilters?.workflow_type,
       }}
       {...props}
     >
       <DropdownField name="branch" label="Branch" items={branchesOptions} />
 
       <DropdownField name="state" label="State" items={statesOptions} />
+
+      <DropdownField name="workflow_type" label="Type" items={workflowTypeOptions} />
 
       <Row className="justify-end">
         {onCancel && (

@@ -7,9 +7,10 @@ from prefect.client.orchestration import get_client
 from prefect.client.schemas.objects import StateType
 
 from infrahub.core.constants import TaskConclusion
+from infrahub.exceptions import ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.queries.task_actions import TaskActionGenerator
-from infrahub.graphql.types.task import TaskNodes, TaskState
+from infrahub.graphql.types.task import TaskNodes, TaskState, WorkflowTypeEnum
 from infrahub.task_manager.flow_run.constants import CONCLUSION_STATE_MAPPING, LOG_LEVEL_MAPPING
 from infrahub.task_manager.flow_run.models import (
     EnrichedFlowRun,
@@ -19,7 +20,7 @@ from infrahub.task_manager.flow_run.models import (
 )
 from infrahub.task_manager.flow_run.service import build_prefect_task_service
 from infrahub.utils import get_nested_dict
-from infrahub.workflows.constants import WorkflowTag
+from infrahub.workflows.constants import WorkflowTag, WorkflowType
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -62,6 +63,7 @@ class FlowRunConnectionSerializer:
             "branch": run.branch,
             "tags": flow.tags,
             "workflow": run.workflow_name,
+            "workflow_type": run.workflow_type,
             "available_actions": self._action_generator.generate(run.workflow_name, flow.state_type),
             "related_node": related_node.id if related_node else None,
             "related_node_kind": related_node.kind if related_node else None,
@@ -96,6 +98,19 @@ def _build_fetch_options(fields: dict[str, Any], log_limit: int | None, log_offs
     )
 
 
+def validate_workflow_type_argument(workflow_type: list[WorkflowType] | None) -> None:
+    """An empty list is not the same request as an unset argument.
+
+    Coercing it to "unset" would turn "the client asked for no type" into "return everything".
+
+    Raises:
+        ValidationError: when the argument is present but empty.
+
+    """
+    if workflow_type is not None and not workflow_type:
+        raise ValidationError(input_value="workflow_type must not be an empty list")
+
+
 class Tasks(ObjectType):
     edges = List(NonNull(TaskNodes), required=True)
     count = Int(required=True)
@@ -110,11 +125,14 @@ class Tasks(ObjectType):
         branch: str | None = None,
         state: list | None = None,
         workflow: list[str] | None = None,
+        workflow_type: list[WorkflowType] | None = None,
         related_node__ids: list | None = None,
         q: str | None = None,
         log_limit: int | None = None,
         log_offset: int | None = None,
     ) -> dict[str, Any]:
+        validate_workflow_type_argument(workflow_type=workflow_type)
+
         related_nodes = related_node__ids or []
         ids = ids or []
         return await Tasks.query(
@@ -126,6 +144,7 @@ class Tasks(ObjectType):
             ids=ids,
             statuses=state,
             workflows=workflow,
+            workflow_types=workflow_type,
             related_nodes=related_nodes,
             log_limit=log_limit,
             log_offset=log_offset,
@@ -151,6 +170,7 @@ class Tasks(ObjectType):
         ids: list[str] | None = None,
         statuses: list[StateType] | None = None,
         workflows: list[str] | None = None,
+        workflow_types: list[WorkflowType] | None = None,
         tags: list[str] | None = None,
         branch: str | None = None,
         limit: int | None = None,
@@ -167,6 +187,7 @@ class Tasks(ObjectType):
             related_nodes=related_nodes,
             statuses=statuses,
             workflows=workflows,
+            workflow_types=workflow_types,
             tags=tags,
             branch=branch,
             limit=limit,
@@ -188,6 +209,7 @@ Task = Field(
     branch=String(required=False),
     state=List(TaskState),
     workflow=List(String),
+    workflow_type=List(WorkflowTypeEnum),
     ids=List(String),
     q=String(required=False),
     log_limit=Int(required=False),
