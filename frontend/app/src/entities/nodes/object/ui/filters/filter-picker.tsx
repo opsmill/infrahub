@@ -17,21 +17,19 @@ import {
 } from "@/entities/nodes/object/domain/rules/filter-definition";
 import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
 import { getFilterDefinitionIcon } from "@/entities/nodes/object/ui/filters/get-filter-definition-icon";
-import { getFilterDefinitions } from "@/entities/nodes/object/ui/filters/get-filter-definitions";
 import { getFilterPickerCount } from "@/entities/nodes/object/ui/filters/get-filter-picker-count";
-import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 interface FilterPickerProps {
-  schema: ModelSchema;
+  definitions: FilterDefinition[];
   filters: Filter[];
 }
 
-export function FilterPicker({ schema, filters }: FilterPickerProps) {
+export function FilterPicker({ definitions, filters }: FilterPickerProps) {
   const [open, setOpen] = useState(false);
   const [selectedField, setSelectedField] = useState<string | null>(null);
 
-  const filterCount = getFilterPickerCount(schema, filters);
+  const filterCount = getFilterPickerCount(definitions, filters);
 
   const itemElements = useRef(new Map<string, Element>());
   const triggerRef = useRef<Element | null>(null);
@@ -41,9 +39,9 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
     setSelectedField(null);
   };
 
-  const fields: FilterDefinition[] = getFilterDefinitions(schema);
-
-  const activeFieldDefinition = fields.find((f) => getFilterDefinitionName(f) === selectedField);
+  const activeFieldDefinition = definitions.find(
+    (f) => getFilterDefinitionName(f) === selectedField
+  );
 
   const handleAction = (key: Key) => {
     const fieldName = String(key);
@@ -79,7 +77,7 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
               onAction={handleAction}
               className="max-h-72"
             >
-              {fields.map((field) => {
+              {definitions.map((field) => {
                 const name = getFilterDefinitionName(field);
                 return (
                   <FilterPickerItem
