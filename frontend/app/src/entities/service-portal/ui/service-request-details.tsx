@@ -28,7 +28,16 @@ export function ServiceRequestDetails({ requestId }: { requestId: string }) {
     { enabled: !!branch, refetchInterval: pollWhileInProgress }
   );
 
-  if (isPending) return <LoadingIndicator className="my-8" />;
+  if (isPending) {
+    return (
+      <Card>
+        <CardContent className="space-y-4">
+          <h1 className="font-semibold text-lg">Service request</h1>
+          <LoadingIndicator className="justify-start text-sm" message="Loading your request..." />
+        </CardContent>
+      </Card>
+    );
+  }
   if (error) return <ErrorScreen message={error.message} />;
 
   const service = branch ? requestOnBranch?.service : null;

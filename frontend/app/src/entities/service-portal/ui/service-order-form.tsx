@@ -98,7 +98,7 @@ function OrderForm({ entry, schema, template }: OrderFormProps) {
   const submitServiceRequest = useSubmitServiceRequest();
   const [submitErrors, setSubmitErrors] = useState<SubmitErrors | null>(null);
   const { data: numberPools, isPending } = useGetNumberPools({
-    objectKinds: [schema.kind!, ...(("inherit_from" in schema && schema.inherit_from) || [])],
+    objectKinds: [entry.targetKind, ...(("inherit_from" in schema && schema.inherit_from) || [])],
   });
 
   if (isPending) return <LoadingIndicator className="my-4" />;

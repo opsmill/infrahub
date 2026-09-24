@@ -16,7 +16,7 @@ const findField = (message: string, fieldNames: Array<string>) =>
   fieldNames.find((name) => new RegExp(`(^|\\W)${fieldKeyPattern(name)}`).test(message));
 
 // The GraphQL client joins error messages with "; ".
-// ponytail: one field per message; a message naming two fields lands on the first match only.
+// Each message is attached to one field: a message naming several fields goes to the first match.
 export const mapSubmitErrors = (message: string, fieldNames: Array<string>): SubmitErrors => {
   const fieldErrors: Record<string, string> = {};
   const formErrors: Array<string> = [];

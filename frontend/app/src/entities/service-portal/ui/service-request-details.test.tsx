@@ -55,6 +55,15 @@ describe("ServiceRequestDetails", () => {
     await expect.element(component.getByText(`Message for ${status}`)).toBeVisible();
   });
 
+  test("keeps the request card in place while the request loads", async () => {
+    vi.mocked(getServiceRequest).mockReturnValue(new Promise(() => {}));
+
+    const component = await render(<ServiceRequestDetails requestId="request-1" />);
+
+    await expect.element(component.getByRole("heading", { name: "Service request" })).toBeVisible();
+    await expect.element(component.getByText("Loading your request...")).toBeVisible();
+  });
+
   test("shows no proposed change or service link until they are set", async () => {
     vi.mocked(getServiceRequest).mockResolvedValue(buildRequest({ status: "generating" }));
 
