@@ -11,10 +11,11 @@
 ## Overview
 
 Infrahub's Tasks view is the product's only window onto background execution. It
-shows every `CORE` and `USER` workflow run, but it structurally cannot show a
-single `INTERNAL` one — and the internal set is where the most
-operationally-critical background jobs live: repository sync, deadlock
-reclamation, merge watching, telemetry, webhook reconfiguration.
+shows every `CORE` and `USER` workflow run, and it shows internal runs only by
+accident — whichever ones happen to stamp the namespace tag on themselves while
+running. Eleven of the nineteen internal workflows never do, and that set is
+where the most operationally-critical background jobs live: repository sync,
+deadlock reclamation, merge watching, telemetry, webhook reconfiguration.
 
 The motivating incident: a global lock sat in Redis for 10+ days, held by a
 worker that no longer existed. The reclamation path is the `clean-up-deadlocks`
@@ -35,7 +36,9 @@ the branch point (`origin/develop`):
 |------|----------|
 | The flow-run filter unconditionally requires the namespace tag: `filter_tags = [TAG_NAMESPACE]`, applied as `FlowRunFilterTags(all_=filter_tags)` | `backend/infrahub/task_manager/flow_run/filters.py:30` and `:40` |
 | `TAG_NAMESPACE = "infrahub.app"` | `backend/infrahub/workflows/constants.py:31` |
-| The namespace tag is stamped on non-internal workflows only; the workflow-type tag is stamped on **all** of them | `backend/infrahub/workflows/models.py:88-92` (`get_tags()`) |
+| At **deployment** registration the namespace tag is stamped on non-internal workflows only; the workflow-type tag is stamped on **all** of them | `backend/infrahub/workflows/models.py:88-92` (`get_tags()`) |
+| At **run** time a flow can add tags to itself, and does so *with the namespace tag by default* (`namespace: bool = True`) | `backend/infrahub/workflows/utils.py:22-64` (`add_tags()`), default at `:26` |
+| The one deliberate opt-out from that default | `backend/infrahub/groups/tasks.py:22` (`namespace=False`) |
 | Workflow-type tag shape: `infrahub.app/workflow-type/{internal\|core\|user}` | `WorkflowTag.WORKFLOWTYPE`, `backend/infrahub/workflows/constants.py:33-44` |
 | GraphQL `InfrahubTask` arguments — `limit`, `offset`, `related_node__ids`, `branch`, `state`, `workflow`, `ids`, `q`, `log_limit`, `log_offset`. No workflow-type argument. | `backend/infrahub/graphql/queries/task.py:183-197` |
 | Selection criteria carried into the filter builder | `FlowRunQueryCriteria`, `backend/infrahub/task_manager/flow_run/models.py` |
@@ -45,11 +48,64 @@ the branch point (`origin/develop`):
 | Tasks page shell | `frontend/app/src/pages/tasks/index.tsx` |
 | No Prefect *deployment* read capability exists today (the adapter exposes flow runs, logs, artifacts, flows, counts, state writes — not deployments or their schedules) | `backend/infrahub/task_manager/flow_run/prefect_client.py` |
 
+### Two different tags, doing two different jobs
+
+The feature request (and the first draft of this spec) treated "is internal" and
+"lacks the namespace tag" as the same statement. They are not, and the difference
+is load-bearing for this feature.
+
+- **Workflow type** is a per-**deployment** classification, fixed in the
+  catalogue and stamped as `infrahub.app/workflow-type/{type}` on every run of
+  every workflow, internal included.
+- **The namespace tag** is, in practice, a per-**run** "show this in the Tasks
+  view" switch. Deployment registration grants it to `CORE` and `USER`
+  workflows; a running flow can also grant it to itself by calling `add_tags()`,
+  which adds it unless the caller passes `namespace=False`.
+
+So the default Tasks list today is *not* "`CORE` and `USER` runs". It is "runs
+carrying the namespace tag", and eight `INTERNAL` workflows already put
+themselves in it:
+
+| Internal workflow already visible today | `add_tags()` call |
+|---|---|
+| `action-run-generator` | `backend/infrahub/actions/tasks.py:169` |
+| `action-run-generator-group-event` | `backend/infrahub/actions/tasks.py:194` |
+| `generator-definition-run` | `backend/infrahub/generators/tasks.py:153` |
+| `diff-refresh-all` | `backend/infrahub/core/diff/tasks.py:62` |
+| `proposed-changed-run-generator` | `backend/infrahub/proposed_change/tasks.py:407` |
+| `proposed-changed-repository-checks` | `backend/infrahub/proposed_change/tasks.py:624` |
+| `artifacts-generation-validation` | `backend/infrahub/proposed_change/tasks.py:753` |
+| `proposed-changed-refresh-artifacts` | `backend/infrahub/proposed_change/tasks.py:1331` |
+
+That this is intentional rather than incidental is settled by the single
+opt-out in the codebase: `graphql-query-group-update` passes `namespace=False`
+so it stays out of the list. Every other caller takes the default.
+
+Two consequences this spec has to respect:
+
+1. **Removing internal runs from the default list would be a user-visible
+   regression**, not a no-op. Any redefinition of the default filter that keys
+   on workflow type instead of on the namespace tag silently drops these eight.
+2. **Even for those eight, visibility starts late.** The tag is written from
+   inside the running flow, so a run that crashes, is cancelled by a concurrency
+   collision, or never leaves `Scheduled`/`Pending` never reaches its
+   `add_tags()` call and never appears. The failures most worth seeing are
+   precisely the ones this mechanism cannot show.
+
 ### Verified inventory of hidden flows
 
 `backend/infrahub/workflows/catalogue.py` declares **19** `INTERNAL` workflows
-(the request said 16). **Five** of them are scheduled (the request listed four —
-it missed `merge-watcher`, a third every-minute `CANCEL_NEW` flow):
+(the request said 16). Eight of them are already partly visible per the table
+above; the remaining **eleven** are invisible in every state:
+`anonymous_telemetry_send`, `branch-purge-tasks`, `clean-up-deadlocks`,
+`git-repository-diff-names-only`, `git_repositories_sync`,
+`graphql-query-group-update`, `merge-watcher`, `proposed-changed-pipeline`,
+`webhook-configure`, `webhook-invalidate-headers`, `webhook-process`.
+
+The feature's motivation survives the correction intact: **five** internal
+workflows are scheduled (the request listed four — it missed `merge-watcher`, a
+third every-minute `CANCEL_NEW` flow), and not one of the five calls a tagging
+helper, so all five are wholly invisible today.
 
 | Workflow | Cron | Concurrency | Collision strategy |
 |----------|------|-------------|--------------------|
@@ -65,7 +121,8 @@ The remaining 14 are event-driven: `action-run-generator`,
 `git-repository-diff-names-only`, `proposed-changed-pipeline`,
 `proposed-changed-refresh-artifacts`, `proposed-changed-run-generator`,
 `proposed-changed-repository-checks`, `artifacts-generation-validation`,
-`webhook-process`, `webhook-invalidate-headers`.
+`webhook-process`, `webhook-invalidate-headers`. Eight of these fourteen are the
+already-partly-visible ones listed above.
 
 Three every-minute schedules means roughly **4,320 runs/day** from schedules
 alone (the request's 2,880 figure assumed two). All three use `CANCEL_NEW`: if
@@ -86,6 +143,11 @@ answer is recorded in **Assumptions**.
 - Q: Does the scheduled-flows view auto-refresh? → A: No auto-polling; manual refresh plus a cache no staler than 60s.
 - Q: Does the scheduled-flows view cover internal schedules only, or every scheduled workflow? → A: Every workflow that carries a schedule, whatever its type.
 - Q: How is a flow's health conveyed? → A: Text or icon plus colour, never colour alone.
+
+### Session 2026-09-24 (review round 1)
+
+- Q: Eight internal workflows tag themselves into the default Tasks list at run time. Do they keep appearing there? → A: Yes, unchanged. Removing them would be an unrelated user-visible regression; see Assumption 18.
+- Q: Prefect's tag filter has no "lacks tag X" predicate. How is the default selection expressed once the type facet exists? → A: The default keeps requiring the namespace tag; the namespace requirement becomes *conditional* rather than unconditional, and is replaced by workflow-type tags only when a type is actually requested. See Assumption 19.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -161,8 +223,9 @@ its failed/cancelled runs; open one run and confirm its logs render.
 
 An operator working in the main Tasks list wants to widen it to include internal
 runs — for example to see every run, of any type, that touched a given branch
-during an incident window. They apply a Type filter and internal runs appear.
-With no Type filter applied, the list is byte-for-byte what it is today.
+during an incident window. They apply a Type filter and internal runs appear,
+including the eleven internal workflows that never show up without it. With no
+Type filter applied, the list is byte-for-byte what it is today.
 
 **Why this priority**: This is the general-purpose escape hatch behind the
 curated views in stories 1 and 2. It is valuable but secondary: the curated
@@ -176,10 +239,14 @@ internal runs appear.
 **Acceptance Scenarios**:
 
 1. **Given** a fresh Tasks view with no Type filter applied, **When** the list
-   and count load, **Then** the results contain exactly the `CORE` and `USER`
-   runs they contain today and no internal runs.
+   and count load, **Then** the results are exactly the runs they contain today
+   — every run carrying the namespace tag, which includes the runs of the eight
+   internal workflows that tag themselves — and nothing has been added or
+   removed.
 2. **Given** the Tasks filter panel, **When** the operator selects Type =
-   System, **Then** the list and the count both narrow to internal runs only.
+   System, **Then** the list and the count both narrow to internal runs only,
+   including runs of internal workflows that never carry the namespace tag and
+   runs that ended before reaching their `add_tags()` call.
 3. **Given** Type = System combined with a Branch or State filter, **When** the
    list loads, **Then** both conditions are applied together.
 4. **Given** Type = System, **When** internal rows render, **Then** columns that
@@ -193,10 +260,21 @@ internal runs appear.
 
 ### Edge Cases
 
-- **A flow run carries the namespace tag but no workflow-type tag** (e.g. a run
-  created by an older Infrahub version, or a run tagged out of band). Moving the
-  default filter onto the workflow-type tag must not make such runs disappear
-  from the default Tasks list.
+- **An internal run carries the namespace tag** because its flow called
+  `add_tags()` with the default. It is in the default Tasks list today and must
+  stay there. It must *also* be reachable by Type = System, so the same run is
+  returned by two different selections — that is correct, not a bug.
+- **Selecting all three types is not the same as selecting none.** The default
+  selection is defined by the namespace tag; an explicit type selection is
+  defined by the workflow-type tags. Selecting `core` + `user` + `internal`
+  returns a strict superset of the default (it picks up the eleven internal
+  workflows that never tag themselves). The UI must not imply the two are
+  interchangeable, e.g. by auto-selecting all types as the "default" state.
+- **An internal run ends before it reaches its `add_tags()` call** — crashed on
+  start, cancelled by a `CANCEL_NEW` collision, or stuck in `Scheduled`. It has
+  its deployment's workflow-type tag but no namespace tag, so it is invisible
+  today even for the eight otherwise-visible workflows. The Type facet must
+  reach it.
 - **A scheduled deployment exists in Prefect that is not in the catalogue**, or
   a catalogue entry has no matching deployment (partial or failed deployment
   registration). The view must render what it can and say plainly which side is
@@ -208,11 +286,14 @@ internal runs appear.
   `webhook-configure`) must render its actual configured schedule, not the
   literal template.
 - **Run history has been purged.** Flow-run retention is an operator-run CLI
-  (`infrahub tasks flush flow-runs`, default 30 days;
-  `… flush stale-runs`, default 2 days) and is not itself scheduled, so history
-  depth varies per deployment. A flow whose history has been purged must read as
-  "no recent runs", distinct from "never run" only insofar as the data allows —
-  it must not read as a failure.
+  (`infrahub tasks flush flow-runs`, default 30 days,
+  `backend/infrahub/cli/tasks.py:68`; `… flush stale-runs`, default 2 days) and
+  is not itself scheduled, so history depth varies per deployment. "Never run"
+  and "history purged" are separable without new bookkeeping: a deployment
+  created more recently than the retention window and with no runs has genuinely
+  never run, whereas one created long before it and with no runs has had its
+  history purged. Where the comparison is inconclusive the view must say "no
+  recent runs" rather than guess — and neither case may read as a failure.
 - **A cancelled-by-collision run** (`CANCEL_NEW`) is not the same failure as a
   run that raised. The view must not present a routine collision cancellation
   identically to a crash, because the every-minute flows generate the former in
@@ -232,14 +313,25 @@ internal runs appear.
 - **FR-001**: The flow-run selection layer MUST accept workflow type as a
   first-class selection criterion, admitting one or more of the three workflow
   types.
-- **FR-002**: The flow-run tag filter MUST be derived from the workflow-type tag
-  rather than from an unconditional namespace-tag requirement.
-- **FR-003**: When no workflow type is requested, the selection MUST return the
-  same set of flow runs it returns today — `CORE` and `USER` runs, and no
-  internal runs. This MUST be covered by a regression test that fails if the
-  default result set changes.
-- **FR-004**: A flow run that carries the namespace tag but no workflow-type tag
-  MUST remain visible in the default (no-type-requested) selection.
+- **FR-002**: The namespace-tag requirement MUST become conditional rather than
+  unconditional. When one or more workflow types are requested, the tag filter
+  MUST be built from the corresponding workflow-type tags and MUST NOT
+  additionally require the namespace tag. When no type is requested, the
+  namespace tag remains the membership rule (FR-003).
+- **FR-003**: When no workflow type is requested, the selection MUST return
+  exactly the set of flow runs it returns today: every run carrying the
+  namespace tag. That set already includes runs of the eight internal workflows
+  that call `add_tags()` with its default `namespace=True`, and those runs MUST
+  keep appearing. The regression test covering this MUST assert membership by
+  observed result — the same runs in, the same runs out — and MUST NOT be
+  written as "no internal runs are returned", which would encode the very
+  regression it exists to catch.
+- **FR-004**: An explicit selection of all three workflow types MUST NOT be
+  treated as equivalent to requesting no type. The two are deliberately
+  different sets: the former is defined by the workflow-type tags and is a
+  strict superset of the latter, which is defined by the namespace tag. Neither
+  the API nor the UI may substitute one for the other, and the UI's unset state
+  MUST NOT be implemented as "all types selected".
 - **FR-005**: Requesting a workflow type MUST compose with every existing
   selection criterion (branch, state, related node, workflow name, id, free-text
   search, pagination) under AND semantics; requesting multiple types MUST match
@@ -337,6 +429,28 @@ internal runs appear.
   verdicts.
 - **FR-028**: The change MUST carry a changelog fragment, as a user-visible UI
   and API change.
+- **FR-029**: This feature MUST NOT change which flows call `add_tags()`, nor
+  the `namespace` argument any of them passes. Run-time namespace tagging stays
+  exactly as it is: the eight internal workflows keep their default-list
+  membership through it, and `graphql-query-group-update` keeps its opt-out.
+  Reconciling the two tagging mechanisms into one is separate work.
+
+#### Delivery independence
+
+The two frontend surfaces are independently shippable and can be sequenced in
+either order:
+
+- **Shared prerequisite** — FR-001, FR-005, FR-008: workflow type as a selection
+  criterion, and single-run retrieval resolving internal runs. Both slices need
+  these; neither is user-visible on its own.
+- **Slice A — scheduled-flows view** (FR-009 – FR-013a, FR-014 – FR-019a) then
+  needs the new deployment read path and nothing else.
+- **Slice B — Type facet** (FR-002 – FR-004, FR-006, FR-007, FR-020 – FR-025)
+  then needs only the filter and query-argument changes.
+
+Slice A is the P1 incident path. Shipping A without B leaves the scheduled view
+and its drill-down working and the main Tasks list untouched. FR-026 – FR-029
+apply to whichever slice ships.
 
 ### Key Entities
 
@@ -371,21 +485,25 @@ internal runs appear.
 - **SC-004**: A flow whose latest run failed or was cancelled is identifiable
   without opening it, sorting, or reading a timestamp.
 - **SC-005**: With no Type filter applied, the Tasks list and its count return
-  exactly the results they returned before this change — verified by an
+  exactly the results they returned before this change — including the runs of
+  the eight internal workflows that already appear there — verified by an
   automated regression test, not by inspection.
 - **SC-006**: Opening the scheduled-flows view issues a bounded, constant number
-  of backend requests regardless of how many scheduled flows exist, and the view
-  becomes readable within 2 seconds at the 95th percentile on an instance
-  carrying a full 24 hours of every-minute run history.
-- **SC-009**: Adding a new scheduled workflow to the catalogue makes it appear in
-  the scheduled-flows view with no further UI or query work.
-- **SC-010**: Every health verdict is legible to an operator who cannot
-  distinguish the status colours.
-- **SC-007**: An operator can reach the logs of any internal flow run from the
+  of **client-to-backend** requests regardless of how many scheduled flows
+  exist. (Backend-to-Prefect work still scales with the number of scheduled
+  flows, per FR-012a; what is fixed is that the client never fans out per flow.)
+- **SC-007**: The scheduled-flows view becomes readable within 2 seconds at the
+  95th percentile on an instance carrying a full 24 hours of every-minute run
+  history.
+- **SC-008**: An operator can reach the logs of any internal flow run from the
   scheduled-flows view.
-- **SC-008**: The default Tasks list remains usable at production volume: the
+- **SC-009**: The default Tasks list remains usable at production volume: the
   ~4,320 daily runs from the every-minute schedules never enter it unless the
   operator asks for them.
+- **SC-010**: Adding a new scheduled workflow to the catalogue makes it appear
+  in the scheduled-flows view with no further UI or query work.
+- **SC-011**: Every health verdict is legible to an operator who cannot
+  distinguish the status colours.
 
 ## Out of Scope
 
@@ -401,6 +519,11 @@ internal runs appear.
 - Historical trend charts or SLO reporting over background flow health.
 - Fixing the underlying `CANCEL_NEW` stall behaviour. This feature makes the
   stall visible; remedying it is separate work.
+- Reconciling the two tagging mechanisms. Deployment-level type tagging and
+  run-time namespace tagging overlap and mean different things; collapsing them
+  into one — and deciding whether the eight self-tagging internal workflows
+  should stop tagging themselves — is a deliberate follow-up, not part of this
+  change (Assumption 18, FR-029).
 
 ## Assumptions
 
@@ -442,8 +565,12 @@ answer during this pipeline. Each records the option chosen and why.
    could reasonably land differently; if they do, the narrower remedy is to
    restrict the parameter field on internal runs, not to gate the whole view.
 
-4. **Internal runs stay hidden by default.** Stated in the acceptance criteria
-   and re-affirmed here: volume alone makes any other default unusable.
+4. **No internal run becomes newly visible by default.** The ticket phrases this
+   as "internal hidden by default"; the accurate form is that the default list's
+   membership does not change in either direction. The eleven internal workflows
+   that are invisible today stay invisible until the operator asks for them
+   (volume alone makes any other default unusable — see Assumption 13), and the
+   eight that are visible today stay visible (Assumption 18).
 
 5. **User-facing label for `INTERNAL` is "System".** The enum value stays
    `internal` on the API. "System" matches the wording in the request and reads
@@ -477,9 +604,9 @@ answer during this pipeline. Each records the option chosen and why.
     only requires that it be reachable and addressable.
 
 11. **The default-selection behaviour is defined by its result set, not by its
-    implementation.** FR-002 requires the tag filter be workflow-type-driven;
-    FR-003/FR-004 pin the observable outcome so the refactor cannot silently
-    change what the Tasks view shows.
+    implementation.** FR-003 pins the observable outcome — the same runs in, the
+    same runs out — so the refactor cannot silently change what the Tasks view
+    shows, whatever tags it ends up filtering on.
 
 12. **No change to retention.** History depth for internal runs is therefore
     whatever the operator's flush cadence leaves behind. FR-010 and the "run
@@ -513,6 +640,33 @@ answer during this pipeline. Each records the option chosen and why.
 17. **Health is never colour-only** (FR-016a). An incident-triage surface whose
     entire value is "which row is wrong" must not encode that in hue alone.
 
+18. **The eight self-tagging internal workflows keep appearing in the default
+    Tasks list** (FR-003, FR-029). The alternative — moving them behind the Type
+    facet so the default becomes cleanly `CORE` + `USER` — is defensible on
+    consistency grounds, and was rejected. Reasons: it is a user-visible
+    regression unrelated to anything this ticket asks for; the runs it would
+    hide (proposed-change checks, generator runs, artifact refresh) are the ones
+    users most plausibly look for after triggering a proposed change; and the
+    lone `namespace=False` opt-out proves the current membership is a choice
+    someone made deliberately, not an oversight. Reconciling the two tagging
+    mechanisms is listed as out of scope so it gets its own decision and its own
+    changelog fragment rather than riding along here.
+
+19. **The namespace requirement becomes conditional, not removed** (FR-002).
+    The ticket's fifth acceptance criterion asks for a filter "driven by the
+    workflow-type tag, not a hardcoded namespace requirement". Taken literally —
+    default membership rewritten as "has a `core` or `user` type tag" — it
+    collides with Assumption 18, and Prefect offers no way to split the
+    difference: `FlowRunFilterTags` (3.8.6) exposes only `operator`, `all_`,
+    `any_` and `is_null_`, with no "lacks tag X" predicate, so "has the
+    namespace tag AND is not internal" is inexpressible. What is both
+    expressible and faithful to the request's own wording ("default unchanged
+    when no type requested") is to drop the word *unconditional*: the namespace
+    tag stays the default membership rule, and a requested type replaces it
+    rather than narrowing it. That satisfies the criterion's intent — the filter
+    is type-driven whenever type is the question — while leaving the default
+    list untouched.
+
 ## Dependencies
 
 - Prefect deployment metadata (schedules, active state) must be readable from
@@ -524,3 +678,5 @@ answer during this pipeline. Each records the option chosen and why.
 - The workflow-type tag must keep being stamped on every workflow run
   (`WorkflowDefinition.get_tags()`); this feature makes that tag load-bearing for
   the Tasks view.
+- The namespace tag must keep being written by `add_tags()` at its current
+  default; the default Tasks list's membership depends on it (FR-003, FR-029).

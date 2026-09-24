@@ -42,8 +42,8 @@
 - A clarification pass ran on 2026-09-24 and self-answered five questions
   (parameter exposure, summary aggregation cost, refresh behaviour, scheduled-view
   scope, colour-independent status). They are logged under **Clarifications** and
-  integrated as FR-009a, FR-012a, FR-013a, FR-016a, FR-019a, SC-006, SC-009,
-  SC-010 and Assumptions 14–17.
+  integrated as FR-009a, FR-012a, FR-013a, FR-016a, FR-019a, SC-006, SC-010,
+  SC-011 and Assumptions 14–17.
 - Assumption 3 (no new permission gates viewing) is explicitly flagged for
   reviewer attention — it is the one decision where a reasonable reviewer could
   land differently, and the spec names the narrower alternative. The
@@ -54,3 +54,16 @@
 - Two factual corrections to the feature request are carried into the spec:
   19 internal workflows (not 16) and 5 scheduled flows (not 4 — `merge-watcher`
   was missing), which raises the volume estimate from ~2,880 to ~4,320 runs/day.
+- A third correction was added in review round 1, this one to the request's root
+  cause. Internal flows are *not* structurally excluded from the Tasks view:
+  `add_tags()` adds the namespace tag by default, and eight internal workflows
+  call it, so their runs already appear in the default list. The Overview now
+  separates deployment-level type tagging from run-time namespace tagging,
+  FR-003 defines the default by observed result rather than by workflow type,
+  and Assumption 18 records the decision to leave those eight where they are.
+- FR-004 was rewritten. Its earlier form ("a run with the namespace tag but no
+  workflow-type tag stays visible by default") was unsatisfiable alongside
+  FR-002: Prefect 3.8.6's `FlowRunFilterTags` offers no "lacks tag X" predicate.
+  It now pins the deliberate asymmetry between the default selection and an
+  explicit all-types selection. Assumption 19 records how the ticket's fifth
+  acceptance criterion is satisfied without it.
