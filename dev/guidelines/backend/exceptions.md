@@ -28,6 +28,7 @@ Guidelines:
 - **Name the exceptions.** Catch the narrowest type(s) that the called code actually raises. If several are handled the same way, group them: `except (NodeNotFoundError, BranchNotFoundError):`.
 - **Check the hierarchy before narrowing.** Infrahub's exception types are mostly direct `Error` subclasses, not a tree — `QueryTimeoutError` is a *sibling* of `DatabaseError`, so catching `DatabaseError` does not cover query timeouts. Verify in `backend/infrahub/exceptions.py` which types the call path actually raises before writing the tuple.
 - **Cancellation is not an `Exception`.** `asyncio.CancelledError` subclasses `BaseException`, so `except Exception` — and an `isinstance(result, Exception)` filter over `gather(..., return_exceptions=True)` — lets it through, and a cancelled unit is then counted as a success. Re-raise it before classifying failures so the caller stays cancelled.
+- **A `TimeoutError` is not proof your bound elapsed.** `except TimeoutError` around an `asyncio.timeout()` block also catches a `TimeoutError` the wrapped call raises itself (a broker or HTTP client timing out is one). Keep a reference to the context manager, and translate into your own timeout error only when its `.expired()` is true; re-raise otherwise, or a dependency's failure gets reported as your deadline.
 - **Keep the `try` body small.** Wrap only the statement that can raise, not a whole block, so an unexpected error elsewhere isn't caught by accident.
 - **Never silence.** A bare `except Exception: pass` hides real failures. If there is genuinely nothing to do, comment why, and at minimum `log.debug(...)`.
 - **Re-raise what you can't handle.** If you must catch broadly to add context or clean up, re-raise afterwards (`raise` to preserve the traceback, or `raise NewError(...) from exc` to chain).
@@ -105,6 +106,22 @@ except Exception as exc:  # noqa: BLE001
 
 If a suppression exposes a pre-existing bug, file it separately; see
 [Pull Requests](../git-workflow.md#pull-requests).
+
+## Error messages state what was observed, not a guessed cause
+
+A message that surfaces to users or logs describes the fact the code established, never a speculated
+reason for it. The code knows a checksum did not match; it does not know the object was tampered with,
+and the guess misleads whoever investigates (a storage-backend switch produces the same mismatch).
+Give each distinct condition its own message rather than reusing a neighbouring one — "no checksum is
+recorded" is a different fact from "the content does not match the recorded checksum", and a message
+that names the wrong failure class hides the real one from the logs.
+
+```python
+# ❌ Bad - asserts a cause the code never established
+"The artifact was modified or corrupted outside of Infrahub and is not served."
+# ✅ Good - states the established fact; the reader draws conclusions
+"The artifact's content does not match the checksum recorded for it and is not served."
+```
 
 ## `log.exception` vs `log.error`
 

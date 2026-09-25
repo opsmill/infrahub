@@ -4,6 +4,8 @@ Applies to docstrings, comments, and any inline documentation in source files â€
 
 Never leave comments that narrate what the change is doing or restate the code below them ("// fetch the user", "# loop over the results"). Reviewers repeatedly have to ask for these to be removed.
 
+A spec, plan, or task instruction asking for an explanatory comment does not override this rule: satisfy it with the one-sentence why, and put the fuller rationale in the PR description.
+
 ## No references to other code
 
 Do not name other classes, functions, methods, callers, or call sites in docstrings or comments. Examples of what to avoid:
