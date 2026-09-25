@@ -79,6 +79,7 @@ a test that swaps in an adapter.
 - Use Pydantic models for data structures
 - Use Query class pattern for database operations
 - Create changelog fragments with `towncrier create` — never hand-write the file. Use the `creating-changelog-entries` skill.
+- Declare a new `INFRAHUB_*` environment setting in the `environment:` blocks of both `docker-compose.yml` and `development/docker-compose.yml` — compose forwards only declared variables, so a missing entry silently ignores the setting in that stack
 
 ### Ask First
 

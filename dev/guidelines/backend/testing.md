@@ -215,27 +215,11 @@ def test_my_function(test_case: MyFunctionTestCase) -> None:
        """Rows visible on the branch, not rows matched before the branch filter."""
    ```
 
-4. **Define test cases as module-level constants** with uppercase names and type hints:
+4. **Define test cases as module-level constants** with uppercase names and type hints
+   (`QUERY_TEST_CASES: list[QueryTestCase] = [...]`), placed before the test function that uses them.
 
-   ```python
-   QUERY_TEST_CASES: list[QueryTestCase] = [...]
-   ```
-
-5. **Place test case lists before the test function** that uses them.
-
-6. **Use keyword arguments** when constructing test cases for clarity:
-
-   ```python
-   # Good
-   MyTestCase(
-       name="scenario_one",
-       input_value="test",
-       expected=True,
-   )
-
-   # Bad
-   MyTestCase("scenario_one", "test", True)
-   ```
+5. **Use keyword arguments** when constructing test cases —
+   `MyTestCase(name="scenario_one", input_value="test", expected=True)`, never positionally.
 
 ### Complex Test Cases
 
@@ -451,12 +435,13 @@ The exact-match principle above is not limited to error messages — it applies 
 - **Assert the exact collection, not a subset or membership.** When a function returns a set/list/dict of results (deleted ids, affected targets, computed keys), assert full equality against the expected value. `assert x in result` / `assert expected.issubset(result)` pass even when the result grows or shrinks incorrectly. If the result is deterministic, `assert result == {…}` (or exact set equality) catches both missing and extra items.
 - **Don't stop at non-emptiness when a specific result is expected.** `assert result` (or `assert len(result) > 0`) is fine for an existence-only contract, but it does not verify *which* result came back — assert the specific expected value when that is part of the behavior under test. And avoid checks that don't even establish non-emptiness: `assert result != frozenset()` is `True` for an empty `list`/`dict`, so it passes when nothing was returned.
 - **Assert a positive count where the number matters.** A test that only checks "no failures" can pass while measuring zero of the thing it claims to test — e.g. if a workflow/name string changes so nothing is counted. Assert that the expected count is `> 0` (or the exact number) so a silently-zero run fails.
-- **Make the scenario actually hold.** A "missing row" test must not create the row; a "no second object" test must prove the count is one. Verify the setup produces the state under test.
+- **Make the scenario actually hold.** A "missing row" test must not create the row; a "no second object" test must prove the count is one. Verify the setup produces the state under test. The fixture must also let each clause fail on its own: a secondary sort key is only exercised by cases that tie on the primary one, and a chunked read only covers the partial final chunk when the fixture size is not an exact multiple of the chunk constant — derive the size from that constant rather than hard-coding a round number.
 - **Make removal assertions branch-attributable.** A "data is gone" check must read on the branch that held the data, and assert the data resolved *before* the operation as well as after — a read on the wrong branch raises the same not-found either way, so the assertion passes whether or not the code ran.
 - **Denial tests must verify nothing changed.** When asserting an operation is rejected, also reload the target and assert its state is unchanged (or that no row was created/deleted). Asserting only that an error was returned does not prove the write was actually blocked.
 - **When a result is reachable via more than one code path, assert an intermediate signal too.** If "the lookup was never attempted" and "the lookup ran and found nothing" converge on the same final value (e.g. both produce an empty filter), asserting only that final value can't tell a working implementation from a regressed one that silently skipped the lookup. Also assert what was queried or which branch ran — a signal only the intended path produces.
 - **Assert persistence from storage, not from the layer the code wrote.** When the contract is that state reaches (or is restored in) the database, reload it from the DB (e.g. `Branch.get_by_name` and check `active_schema_hash`) instead of reading back the in-memory registry/cache the code under test updated — that assertion is self-confirming and cannot detect a failure to persist.
-- **Pin literal expected values — don't derive them with the code's own dependencies.** Computing the expectation with the same serializer/formatter the implementation calls (`ujson.dumps`, `yaml.dump`, the function under test itself) makes the assertion a tautology: it passes even when the library's output changes. Write the raw expected string into the test.
+- **Pin literal expected values — don't derive them with the code's own logic.** Computing the expectation with the same serializer, formatter, or formula the implementation uses (`ujson.dumps`, `yaml.dump`, the function under test itself, a mirrored `min(...)`/hash expression, a baseline constant computed the same way as the code) makes the assertion a tautology: it moves with the bug and passes either way. Write the raw expected value into the test, or obtain the baseline from a source independent of the path under test.
+- **A fixture copied from a live file needs a sync assertion.** When tests read expectations from a hand-maintained copy of a real config file, add one test asserting the copy equals the live file — otherwise the real file changes, the copy goes stale, and every test keeps passing.
 - **A "does not raise" test still needs an assertion.** When the contract is that an exception is swallowed, also assert a side effect that only the guarded path produces (state set before the raiser was called). With no assertion, a regression that returns early before the guard passes identically.
 
 ## Graph integrity assertions

@@ -24,6 +24,11 @@ When NOT to use: the project doesn't use Towncrier; pure internal refactors with
 shipped in any release is not user-observable: the feature's own `added` fragment already covers
 everything a user will ever see, and a `fixed` entry for something never released is noise.
 
+**Exception — a stacked PR series carries one fragment, on the top PR.** Intermediate PRs in a stack
+skip the fragment: per-PR fragments collide on the same issue-number stem and describe a surface the
+later PRs change again. State the deliberate skip in the intermediate PR's checklist instead of
+leaving the box silently unticked.
+
 **`housekeeping` is not a catch-all.** It covers internal work a user could still notice — a
 build, tooling, or CI change. A change with no user-facing effect at all (an internal
 type annotation, a behavior-preserving refactor, a lint or type-checker config cleanup that touches
