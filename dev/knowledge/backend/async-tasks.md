@@ -85,6 +85,12 @@ async def merge_branch(branch: str, context: InfrahubContext) -> None:
 
 Singleton getters belong at this entry point only — do not call `get_database()`/`get_workflow()` inside helper functions or component internals; pass the resolved services down as constructor arguments.
 
+### Large return values from flows
+
+The task worker enables `PREFECT_RESULTS_PERSIST_BY_DEFAULT` with the Redis result-storage block, so every flow's return value is serialized with `cloudpickle` and written to Redis on completion, without expiry. Before that, Prefect's `resolve_futures_to_states` walks the returned object graph with `visit_collection` (builtin collections, dataclasses and pydantic models), looking for futures. Both scale with the size of the return value. For an in-process subflow that returns a large object, such as the `update-diff` subflow returning a whole diff, that is minutes of CPU, a multi-GB pickle and a Redis write the caller never reads back.
+
+A subflow whose caller consumes its return value in memory sets `persist_result=False`, and returns large objects wrapped in `OpaqueFlowResult` (`infrahub.core.diff.coordinator`), a plain class Prefect does not recurse into. Wrap the flow in a thin coroutine that unwraps the value, so call sites keep their signature. Keep persistence for flows whose result a remote caller fetches from storage.
+
 ### Task Functions
 
 Discrete work units decorated with `@task` for granular tracking:

@@ -1,0 +1,1 @@
+Fixed branch rebases and diff updates failing with a database memory error, or exhausting task-worker memory, when a diff contains a node with a very large number of related objects, such as an IP namespace after a bulk import.

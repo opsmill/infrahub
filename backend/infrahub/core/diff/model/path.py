@@ -954,3 +954,11 @@ class DatabasePath:
 class EnrichedNodeCreateRequest:
     node: EnrichedDiffNode
     root_uuid: str
+    # set when a node is too large for one transaction and is saved in chunks: maps each relationship name to the
+    # elements this chunk writes, and the stale-element cleanup runs once beforehand instead of in every chunk
+    relationship_elements: dict[str, list[EnrichedDiffSingleRelationship]] | None = None
+    is_first_chunk: bool = False
+
+    @property
+    def is_chunk(self) -> bool:
+        return self.relationship_elements is not None

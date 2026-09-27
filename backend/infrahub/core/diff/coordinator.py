@@ -50,6 +50,21 @@ if TYPE_CHECKING:
 default_log = get_logger()
 
 
+class OpaqueFlowResult[T]:  # noqa: B903 - a dataclass or namedtuple would be walked by Prefect
+    """Carry a flow's return value past Prefect without Prefect walking it.
+
+    On return, Prefect's flow engine recursively visits builtin collections, dataclasses and pydantic models
+    looking for futures. For a large diff that walk takes minutes and holds GBs of bookkeeping, so flows that
+    return diffs wrap them in this plain class, which Prefect does not recurse into. Such flows must also set
+    persist_result=False: persistence would still pickle the wrapped value.
+    """
+
+    __slots__ = ("value",)
+
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+
 @dataclass
 class EnrichedDiffRequest:
     base_branch: Branch
@@ -480,11 +495,6 @@ class DiffCoordinator:
         force_branch_refresh: Literal[False] = ...,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]: ...
 
-    @flow(  # type: ignore[misc]
-        name="update-diff",
-        flow_run_name="Update diff for {base_branch.name} - {diff_branch.name}: ({from_time}-{to_time}),tracking_id={tracking_id}",
-        validate_parameters=False,
-    )
     async def _update_diffs(
         self,
         base_branch: Branch,
@@ -494,6 +504,33 @@ class DiffCoordinator:
         tracking_id: TrackingId,
         force_branch_refresh: bool = False,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]:
+        flow_result = await self._update_diffs_flow(
+            base_branch=base_branch,
+            diff_branch=diff_branch,
+            from_time=from_time,
+            to_time=to_time,
+            tracking_id=tracking_id,
+            force_branch_refresh=force_branch_refresh,
+        )  # type: ignore[call-overload]
+        return flow_result.value
+
+    # persist_result=False: the caller receives this subflow's return value in memory. The worker's
+    # persist-by-default would otherwise pickle the whole diff into the Redis result storage on every update.
+    @flow(  # type: ignore[misc]
+        name="update-diff",
+        flow_run_name="Update diff for {base_branch.name} - {diff_branch.name}: ({from_time}-{to_time}),tracking_id={tracking_id}",
+        validate_parameters=False,
+        persist_result=False,
+    )
+    async def _update_diffs_flow(
+        self,
+        base_branch: Branch,
+        diff_branch: Branch,
+        from_time: Timestamp,
+        to_time: Timestamp,
+        tracking_id: TrackingId,
+        force_branch_refresh: bool = False,
+    ) -> OpaqueFlowResult[tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]]:
         # start with empty diffs b/c we only care about their metadata for now, hydrate them with data as needed
         diff_pairs_metadata = await self.diff_repo.get_diff_pairs_metadata(
             base_branch_names=[base_branch.name],
@@ -536,7 +573,7 @@ class DiffCoordinator:
         # this is an EnrichedDiffsMetadata, so there are no nodes to enrich
         if not isinstance(aggregated_enriched_diffs, EnrichedDiffs):
             aggregated_enriched_diffs.update_metadata(from_time=from_time, to_time=to_time, tracking_id=tracking_id)
-            return aggregated_enriched_diffs, set()
+            return OpaqueFlowResult((aggregated_enriched_diffs, set()))
 
         await self.conflicts_enricher.add_conflicts_to_branch_diff(
             base_diff_root=aggregated_enriched_diffs.base_branch_diff,
@@ -546,7 +583,7 @@ class DiffCoordinator:
             enriched_diff_root=aggregated_enriched_diffs.diff_branch_diff, conflicts_only=True
         )
 
-        return aggregated_enriched_diffs, node_identifiers_to_drop
+        return OpaqueFlowResult((aggregated_enriched_diffs, node_identifiers_to_drop))
 
     @overload
     async def _aggregate_enriched_diffs(

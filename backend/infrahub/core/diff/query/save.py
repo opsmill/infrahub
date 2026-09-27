@@ -272,7 +272,10 @@ SET diff_relationship = node_relationship.node_properties
 // -------------------------
 WITH diff_relationship, node_relationship
 CALL (diff_relationship, node_relationship) {
-    WITH %(rel_peers_list_comp)s AS rel_peers
+    // a node saved in chunks carries only some elements per chunk, so its stale elements are removed once up front
+    WITH diff_relationship, node_relationship
+    WHERE NOT coalesce(node_relationship.skip_stale_element_cleanup, FALSE)
+    WITH diff_relationship, %(rel_peers_list_comp)s AS rel_peers
     OPTIONAL MATCH (diff_relationship)-[:DIFF_HAS_ELEMENT]->(element_to_delete:DiffRelationshipElement)
     WHERE NOT (element_to_delete.peer_id IN rel_peers)
     OPTIONAL MATCH (element_to_delete)-[*..6]->(next_to_delete)
@@ -284,8 +287,30 @@ CALL (diff_relationship, node_relationship) {
 // -------------------------
 WITH diff_relationship, node_relationship
 UNWIND node_relationship.relationships as node_single_relationship
-MERGE (diff_relationship)-[:DIFF_HAS_ELEMENT]
-    ->(diff_relationship_element:DiffRelationshipElement {peer_id: node_single_relationship.node_properties.peer_id})
+CALL (diff_relationship, node_single_relationship) {
+    // seek the element on (path_identifier, peer_id) and check the edge from the element side. A MERGE on the
+    // pattern walks every DIFF_HAS_ELEMENT edge of diff_relationship per row (quadratic for a many-peer
+    // relationship), and a peer_id-only seek returns every element pointing at that peer across all diffs
+    // (quadratic for a peer shared by many nodes, e.g. an IP namespace). The pair is selective in both cases.
+    // No USING INDEX hint: the planner picks diff_rel_element_path_peer on its own, and without a hint a save
+    // still runs (slower) while that index is being created on upgrade instead of failing.
+    OPTIONAL MATCH (existing_element:DiffRelationshipElement {
+        path_identifier: node_single_relationship.node_properties.path_identifier,
+        peer_id: node_single_relationship.node_properties.peer_id
+    })
+    WHERE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(existing_element)
+    CALL (diff_relationship, existing_element) {
+        WITH diff_relationship, existing_element
+        WHERE existing_element IS NULL
+        CREATE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(new_element:DiffRelationshipElement)
+        RETURN new_element AS element
+        UNION
+        WITH existing_element
+        WHERE existing_element IS NOT NULL
+        RETURN existing_element AS element
+    }
+    RETURN element AS diff_relationship_element
+}
 SET diff_relationship_element = node_single_relationship.node_properties
 // -------------------------
 // add/remove conflict for this relationship element
@@ -435,12 +460,18 @@ CALL (has_property_conflict, diff_relationship_property, node_relationship_prope
             "properties": property_props,
         }
 
-    def _build_diff_relationship_params(self, enriched_relationship: EnrichedDiffRelationship) -> dict[str, Any]:
+    def _build_diff_relationship_params(
+        self,
+        enriched_relationship: EnrichedDiffRelationship,
+        elements: Iterable[EnrichedDiffSingleRelationship] | None = None,
+    ) -> dict[str, Any]:
+        is_chunk = elements is not None
         single_relationship_props = [
             self._build_diff_single_relationship_params(enriched_single_relationship=esr)
-            for esr in enriched_relationship.relationships
+            for esr in (enriched_relationship.relationships if elements is None else elements)
         ]
         return {
+            "skip_stale_element_cleanup": is_chunk,
             "node_properties": {
                 "name": enriched_relationship.name,
                 "identifier": enriched_relationship.identifier,
@@ -455,12 +486,21 @@ CALL (has_property_conflict, diff_relationship_property, node_relationship_prope
             "relationships": single_relationship_props,
         }
 
-    def _build_diff_node_params(self, enriched_node: EnrichedDiffNode) -> dict[str, Any]:
+    def _build_diff_node_params(
+        self,
+        enriched_node: EnrichedDiffNode,
+        relationship_elements: dict[str, list[EnrichedDiffSingleRelationship]] | None = None,
+    ) -> dict[str, Any]:
         attribute_props = [
             self._build_diff_attribute_params(enriched_attribute=attribute) for attribute in enriched_node.attributes
         ]
+        # every chunk lists all relationships, so the stale relationship cleanup never removes another chunk's groups
         relationship_props = [
-            self._build_diff_relationship_params(relationship) for relationship in enriched_node.relationships
+            self._build_diff_relationship_params(
+                relationship,
+                elements=None if relationship_elements is None else relationship_elements.get(relationship.name, []),
+            )
+            for relationship in enriched_node.relationships
         ]
         conflict_params = None
         if enriched_node.conflict:
@@ -487,10 +527,57 @@ CALL (has_property_conflict, diff_relationship_property, node_relationship_prope
             node_details.append(
                 {
                     "root_uuid": node_create_request.root_uuid,
-                    "node_map": self._build_diff_node_params(enriched_node=node_create_request.node),
+                    "node_map": self._build_diff_node_params(
+                        enriched_node=node_create_request.node,
+                        relationship_elements=node_create_request.relationship_elements,
+                    ),
                 }
             )
         return {"node_details_list": node_details}
+
+
+class EnrichedRelationshipElementsCleanupQuery(Query):
+    """Delete the elements of a diff node's relationships that are no longer part of the diff.
+
+    Used before saving a node in chunks, where no single chunk knows every element of a relationship.
+    Only peer IDs are sent, so the parameter stays small even for relationships with many peers.
+    """
+
+    name = "enriched_relationship_elements_cleanup"
+    type = QueryType.WRITE
+    insert_return = False
+
+    def __init__(self, root_uuid: str, node: EnrichedDiffNode, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.root_uuid = root_uuid
+        self.node = node
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params = {
+            "root_uuid": self.root_uuid,
+            "node_uuid": self.node.uuid,
+            "node_db_id": self.node.identifier.db_id,
+            "relationships": [
+                {"name": rel.name, "peer_ids": [element.peer_id for element in rel.relationships]}
+                for rel in self.node.relationships
+            ],
+        }
+        query = """
+MATCH (diff_root:DiffRoot {uuid: $root_uuid})
+MATCH (diff_node:DiffNode {uuid: $node_uuid, db_id: $node_db_id})
+USING INDEX diff_node:DiffNode(uuid)
+WHERE (diff_root)-[:DIFF_HAS_NODE]->(diff_node)
+UNWIND $relationships AS relationship
+MATCH (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(diff_relationship:DiffRelationship {name: relationship.name})
+CALL (diff_relationship, relationship) {
+    MATCH (diff_relationship)-[:DIFF_HAS_ELEMENT]->(element_to_delete:DiffRelationshipElement)
+    WHERE NOT (element_to_delete.peer_id IN relationship.peer_ids)
+    OPTIONAL MATCH (element_to_delete)-[*..6]->(next_to_delete)
+    DETACH DELETE next_to_delete
+    DETACH DELETE element_to_delete
+}
+        """
+        self.add_to_query(query)
 
 
 class EnrichedNodesLinkQuery(Query):

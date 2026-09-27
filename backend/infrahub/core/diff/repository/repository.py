@@ -24,6 +24,7 @@ from ..model.path import (
     EnrichedDiffRoot,
     EnrichedDiffRootMetadata,
     EnrichedDiffs,
+    EnrichedDiffSingleRelationship,
     EnrichedDiffsMetadata,
     EnrichedNodeCreateRequest,
     NodeDiffFieldSummary,
@@ -46,7 +47,12 @@ from ..query.has_conflicts_query import EnrichedDiffHasConflictQuery
 from ..query.link_proposed_change import EnrichedDiffLinkProposedChangeQuery
 from ..query.merge_tracking_id import EnrichedDiffMergedTrackingIdQuery
 from ..query.roots_metadata import EnrichedDiffRootsMetadataQuery
-from ..query.save import EnrichedDiffRootsUpsertQuery, EnrichedNodeBatchCreateQuery, EnrichedNodesLinkQuery
+from ..query.save import (
+    EnrichedDiffRootsUpsertQuery,
+    EnrichedNodeBatchCreateQuery,
+    EnrichedNodesLinkQuery,
+    EnrichedRelationshipElementsCleanupQuery,
+)
 from ..query.time_range_query import EnrichedDiffTimeRangeQuery
 from ..query.update_conflict_query import EnrichedDiffConflictUpdateQuery
 from .deserializer import EnrichedDiffDeserializer
@@ -248,14 +254,47 @@ class DiffRepository:
             raise ResourceMultipleFoundError(f"Multiple diffs for {error_str}")
         return enriched_diffs[0]
 
+    def _split_node_request(
+        self, node: EnrichedDiffNode, root_uuid: str
+    ) -> Generator[EnrichedNodeCreateRequest, None, None]:
+        chunk: dict[str, list[EnrichedDiffSingleRelationship]] = {}
+        chunk_size = 0
+        num_chunks = 0
+        for relationship in node.relationships:
+            for element in relationship.relationships:
+                if chunk and chunk_size + element.num_properties > self.max_save_batch_size:
+                    yield EnrichedNodeCreateRequest(
+                        node=node, root_uuid=root_uuid, relationship_elements=chunk, is_first_chunk=num_chunks == 0
+                    )
+                    num_chunks += 1
+                    chunk = {}
+                    chunk_size = 0
+                chunk.setdefault(relationship.name, []).append(element)
+                chunk_size += element.num_properties
+        yield EnrichedNodeCreateRequest(
+            node=node, root_uuid=root_uuid, relationship_elements=chunk, is_first_chunk=num_chunks == 0
+        )
+        log.info(f"Split node {node.uuid} (num_properties={node.num_properties}) into {num_chunks + 1} chunks")
+
     def _get_node_create_request_batch(
         self, enriched_diffs: EnrichedDiffs
     ) -> Generator[list[EnrichedNodeCreateRequest], None, None]:
-        node_requests = []
+        node_requests: list[EnrichedNodeCreateRequest] = []
         for diff_root in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
             size_count = 0
             for node in diff_root.nodes:
                 node_size_count = node.num_properties
+                if node_size_count >= self.max_save_batch_size:
+                    # a single node over the budget (e.g. a namespace with every changed IP address) cannot fit in one
+                    # transaction, so it is written in chunks of relationship elements, each in its own batch
+                    if node_requests:
+                        log.info(f"Num nodes in batch: {len(node_requests)}, num properties in batch: {size_count}")
+                        yield node_requests
+                        node_requests = []
+                        size_count = 0
+                    for chunk_request in self._split_node_request(node=node, root_uuid=diff_root.uuid):
+                        yield [chunk_request]
+                    continue
                 if size_count + node_size_count < self.max_save_batch_size:
                     node_requests.append(EnrichedNodeCreateRequest(node=node, root_uuid=diff_root.uuid))
                     size_count += node_size_count
@@ -276,6 +315,12 @@ class DiffRepository:
         log.info("Diff metadata updated.")
 
     async def _save_node_batch(self, node_create_batch: list[EnrichedNodeCreateRequest]) -> None:
+        for node_request in node_create_batch:
+            if node_request.is_first_chunk:
+                cleanup_query = await EnrichedRelationshipElementsCleanupQuery.init(
+                    db=self.db, root_uuid=node_request.root_uuid, node=node_request.node
+                )
+                await cleanup_query.execute(db=self.db)
         node_query = await EnrichedNodeBatchCreateQuery.init(db=self.db, node_create_batch=node_create_batch)
         try:
             await node_query.execute(db=self.db)
@@ -363,7 +408,7 @@ class DiffRepository:
         ):
             log.info(f"Saving node batch #{batch_num}...")
             await self._save_node_batch(node_create_batch=node_create_batch)
-            count_nodes_remaining -= len(node_create_batch)
+            count_nodes_remaining -= sum(1 for r in node_create_batch if not r.is_chunk or r.is_first_chunk)
             log.info(f"Batch saved. {count_nodes_remaining=}")
         if node_identifiers_to_drop:
             await self._drop_nodes(diff_root=enriched_diffs.diff_branch_diff, node_identifiers=node_identifiers_to_drop)
