@@ -3,7 +3,9 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
+import botocore.exceptions
 import pytest
+from fastapi_storages.base import BaseStorage
 
 from infrahub import config
 from infrahub.exceptions import NodeNotFoundError
@@ -11,6 +13,48 @@ from infrahub.storage import InfrahubObjectStorage
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from typing import BinaryIO
+
+
+class FailingDriver(BaseStorage):
+    """Storage driver whose reads fail with the given error."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    def open(self, name: str) -> BinaryIO:
+        raise self.error
+
+
+def s3_error(code: str) -> botocore.exceptions.ClientError:
+    return botocore.exceptions.ClientError(
+        error_response={"Error": {"Code": code, "Message": code}}, operation_name="HeadObject"
+    )
+
+
+@pytest.mark.parametrize("code", ["NoSuchKey", "NotFound", "404"])
+async def test_retrieve_binary_reports_a_missing_s3_key_as_not_found(local_storage_dir: Path, code: str) -> None:
+    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
+    storage._storage = FailingDriver(error=s3_error(code=code))
+
+    with pytest.raises(
+        NodeNotFoundError, match=r"Unable to find the node missing-object / StorageObject in the database\."
+    ):
+        storage.retrieve_binary(identifier="missing-object")
+
+
+async def test_retrieve_binary_lets_other_s3_errors_through(local_storage_dir: Path) -> None:
+    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
+    error = s3_error(code="AccessDenied")
+    storage._storage = FailingDriver(error=error)
+
+    with pytest.raises(
+        botocore.exceptions.ClientError,
+        match=r"^An error occurred \(AccessDenied\) when calling the HeadObject operation: AccessDenied$",
+    ) as exc_info:
+        storage.retrieve_binary(identifier="stored-object")
+
+    assert exc_info.value is error
 
 
 async def test_retrieve_returns_decoded_string(local_storage_dir: Path) -> None:
