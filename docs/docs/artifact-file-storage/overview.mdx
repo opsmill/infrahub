@@ -124,7 +124,7 @@ Unlike artifacts, which can be regenerated from their definitions, user-uploaded
 ### Backend migration
 
 :::warning Backend migration
-Switching storage backends (for example, from `local` to `s3`) does not migrate existing content. Files stored under the previous backend become inaccessible. Artifacts can be regenerated, but user-uploaded file objects must be re-uploaded.
+Switching storage backends (for example, from `local` to `s3`) does not migrate existing content. Files stored under the previous backend become inaccessible. Regenerating an artifact definition stores its artifacts again in the new backend, but user-uploaded file objects must be re-uploaded.
 :::
 
 ## Connection to other concepts

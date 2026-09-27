@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import httpx
 import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
@@ -2156,6 +2157,23 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
+    async def _stored_content_matches(self, storage_id: str | None, checksum: str) -> bool:
+        """Whether the object storage still holds the content recorded with this checksum.
+
+        Raises:
+            httpx.HTTPStatusError: If the object cannot be read for another reason than being missing.
+
+        """
+        if not storage_id:
+            return False
+        try:
+            content = await self.sdk.object_store.get(identifier=storage_id, tracker="artifact-verify-content")
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code != 404:
+                raise
+            return False
+        return hashlib.md5(bytes(content, encoding="utf-8"), usedforsecurity=False).hexdigest() == checksum
+
     async def render_artifact(
         self,
         artifact: CoreArtifact,
@@ -2200,7 +2218,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
 
-        if artifact.checksum.value == checksum:
+        if artifact.checksum.value == checksum and await self._stored_content_matches(
+            storage_id=artifact.storage_id.value, checksum=checksum
+        ):
             return ArtifactGenerateResult(
                 changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
             )
