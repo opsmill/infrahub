@@ -65,22 +65,25 @@ def test_build_worker_data_degrades_resources_to_null_on_an_invalid_aggregate(
 def test_build_server_data_populates_resources_from_a_healthy_aggregate() -> None:
     resources = ResourceAggregate(processor_available=4, processor_assigned=4, memory_total=8, memory_available=6)
 
-    data = _build_server_data(resources=resources)
+    data = _build_server_data(total=4, active=4, resources=resources)
 
-    assert data == TelemetryServerData(processor_available=4, processor_assigned=4, memory_total=8, memory_available=6)
+    assert data == TelemetryServerData(
+        total=4, active=4, processor_available=4, processor_assigned=4, memory_total=8, memory_available=6
+    )
 
 
 def test_build_server_data_with_no_aggregate_yields_null_resource_fields() -> None:
-    data = _build_server_data(resources=None)
+    data = _build_server_data(total=0, active=0, resources=None)
 
-    assert data == TelemetryServerData()
+    assert data == TelemetryServerData(total=0, active=0)
 
 
 def test_build_server_data_degrades_to_null_on_an_invalid_aggregate(caplog: pytest.LogCaptureFixture) -> None:
     resources = ResourceAggregate(memory_total=-1)
 
     with caplog.at_level(logging.WARNING, logger=_LOGGER_NAME):
-        data = _build_server_data(resources=resources)
+        data = _build_server_data(total=4, active=3, resources=resources)
 
-    assert data == TelemetryServerData()
+    # The process count is unaffected; only the resource figures are dropped.
+    assert data == TelemetryServerData(total=4, active=3)
     assert any("Server resource figures failed validation" in record.getMessage() for record in caplog.records)

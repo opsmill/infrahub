@@ -30,6 +30,11 @@ RESOURCE_COMPONENT_MATCH = re.compile(re.escape(RESOURCE_KEY_PREFIX) + r"([^:]+)
 # The component names the heartbeat writes into its cache keys, and the readers group by.
 COMPONENT_API_SERVER = "api_server"
 COMPONENT_GIT_AGENT = "git_agent"
+_KNOWN_COMPONENTS = frozenset({COMPONENT_API_SERVER, COMPONENT_GIT_AGENT})
+
+# Every key that names a component carries it in the segment right before ":worker:",
+# whatever precedes it (a branch id for the schema-hash key, nothing for the others).
+WORKER_COMPONENT_MATCH = re.compile(r":([^:]+):worker:[^:]+$")
 
 # The per-process resource read can transiently fail (a psutil hiccup, a momentary
 # hostname-lookup failure); a few immediate retries cover that before the reading
@@ -232,6 +237,9 @@ class WorkerInfo:
         self.id = identity
         self.active = False
         self._schema_hash: str | None = None
+        # None only once an exited process's component-bearing keys have expired and just
+        # its generic presence key remains, for at most one schema-refresh interval.
+        self.component: str | None = None
 
     @property
     def schema_hash(self) -> str | None:
@@ -244,6 +252,8 @@ class WorkerInfo:
     def add_key(self, key: str) -> None:
         if "workers:active:" in key:
             self.active = True
+        if (match := WORKER_COMPONENT_MATCH.search(key)) and match.group(1) in _KNOWN_COMPONENTS:
+            self.component = match.group(1)
 
     def add_value(self, key: str, value: str | None = None) -> None:
         if ":schema_hash:" in key:

@@ -28,14 +28,16 @@
       }
     },
     "workers": {
-      "total": 6,                            // existing — worker PROCESSES: 4 api_server + 2 task-worker
-      "active": 6,                           // existing — same scope as total
+      "total": 2,                            // existing key, now task-worker PROCESSES only
+      "active": 2,                           // existing key, same scope as total
       "processor_available": 8,              // NEW — fleet TOTAL, not per worker: 4 + 4 over the 2 task-worker hosts
       "processor_assigned": 8,               // NEW — fleet TOTAL of enforced quotas; null if any host is unbounded
       "memory_total": 8589934592,            // NEW — fleet TOTAL: 4 GiB + 4 GiB
       "memory_available": 6442450944         // NEW — fleet TOTAL free: 3 GiB + 3 GiB
     },
-    "server": {                              // NEW block — the API server, same four fields
+    "server": {                              // NEW block — the API server
+      "total": 4,                            // NEW — API server PROCESSES: 4 gunicorn workers in one container
+      "active": 4,                           // NEW — same scope as total
       "processor_available": 4,              // one container counted once, not once per gunicorn process
       "processor_assigned": 4,
       "memory_total": 4294967296,            // 4 GiB
@@ -46,7 +48,9 @@
 }
 ```
 
-Every `workers` resource figure is a **fleet total** summed over distinct task-worker hosts, never a per-worker value. The payload carries no per-worker figure and none can be derived from it: `workers.total` counts *processes* across the API server and the task-workers (6 above), while the resource figures cover task-worker *hosts* only (2 above), so `8 / 6` is not a per-worker anything. `server` works the same way, one figure per distinct host, which is why four gunicorn processes in one container report 4 CPUs rather than 16.
+Each block describes one component only: `workers` is the task-worker fleet and `server` the API server, counts and resources alike. A consumer that wants every worker process sums `workers.total + server.total` (6 above), the figure `workers.total` alone used to carry.
+
+Every resource figure is a **fleet total** summed over distinct hosts, never a per-worker value. `server` shows why the count and the resources still differ in unit: its four gunicorn processes share one container, so it counts 4 processes but reports that container's 4 CPUs once, not 16. Task-workers run one process per container in the documented deployment shape, so there the process count and the host count coincide.
 
 ## Field semantics
 
@@ -56,14 +60,15 @@ Every `workers` resource figure is a **fleet total** summed over distinct task-w
 - **`null`** means "not measured / not applicable / unbounded" — NOT zero. Treat `null` distinctly from `0`.
   - `processor_assigned = null` ⇒ either no enforced/configured CPU limit (unlimited), or the read failed/was unavailable. The two are indistinguishable from this field alone.
 - **`database.system_info.processor_assigned` is `null` in this release** — Infrahub does not configure the Neo4j `server.cypher.parallel.worker_limit` setting itself, so the DB always reads its default (`0`/auto → `null`) until per-tier enforcement (a later phase) sets it. **`server.processor_assigned` and `workers.processor_assigned` are not gated on anything** — they are live cgroup CPU-quota reads, so a deployment already running with a configured container CPU limit reports a finite value today, before any enforcement work lands. All three fields self-populate with no payload-shape change as their respective limits become configured.
-- **`workers.total` / `active`** keep their existing meaning: all worker processes (api_server + git_agent). The new `workers.processor_*` / `memory_*` are the **git_agent (task-worker) fleet** aggregate; api_server resources are in the `server` block. So `workers.total` and the `workers` resource fields are scoped differently by design.
-  - **Do not** compute `workers.processor_available / workers.total` as a per-worker average — `total` counts api_server + git_agent, `processor_available` covers git_agent only, so the result mixes two different fleets. A per-block host/worker count, so each block is self-describing, is a candidate for the next gated `payload_format` bump (research D13); not added this phase.
+- **`workers.total` / `active`** count **task-worker (git_agent) processes only**, the same population as the `workers` resource figures. **`server.total` / `active`** count API server processes, one per gunicorn worker. Each block is self-describing; `workers.total + server.total` gives every worker process.
+  - This narrows an existing field: before this change `workers.total`/`active` counted API server and task-worker processes together. A snapshot carrying a `server` block — which no earlier release emits — uses the new scoping, so a consumer continuing an all-workers series takes `workers.total + server.total` where `server` is present and `workers.total` where it is not.
+  - Summing can fall short of the old figure in one narrow case: an exited process whose component-bearing keys have expired but whose generic presence key has not is counted in neither block. That lasts at most one schema-refresh interval (15 minutes) at the end of its two-hour tail, and never affects `active`.
 - **Aggregates** (`workers.*`, `server.*`) are summed over **distinct hosts**, so multiple processes in one container are counted once. The per-process host identifier used for that dedup is internal and never emitted.
-- **Undercount signal**: when a git_agent host fails to report, `processor_available`/`memory_total`/`memory_available` undercount by that host's share. The payload carries no git_agent host count to compare against — `workers.total`/`active` count api_server and git_agent *processes*, a different population entirely, so the two cannot be differenced to detect the gap. Detecting it from the payload alone needs the per-block host count deferred to the next `payload_format` bump; until then an undercount is visible only as an unexplained drop against the same deployment's earlier snapshots.
+- **Undercount signal**: when a task-worker host fails to report, `processor_available`/`memory_total`/`memory_available` undercount by that host's share. The aggregate does not say how many hosts contributed to it, so the gap is not directly computable from one snapshot. The block's count and resources now describe the same population, so `workers.active` still includes the silent host's process, but nothing in the payload says which hosts the sum covers; an exact reporter count remains a candidate for the next gated `payload_format` bump, and until then an undercount shows as a drop against the same deployment's earlier snapshots.
 - **`processor_assigned` never undercounts**: it is all-or-null across the fleet. A single contributing host reporting `null` — unbounded, or its quota read failed — makes the whole aggregate `null` rather than a partial sum, so a `null` here means "at least one host is unbounded or unknown", never "hosts are missing".
 
 ## Backward/forward compatibility
 
-- Additive only: no existing key renamed or removed (FR-008, SC-005). Same `payload_format`.
+- No existing key renamed, removed or retyped, and the same `payload_format` (FR-008). One existing field narrows its meaning: `workers.total`/`active` now count task-worker processes only (see Field semantics for how to continue an all-workers series). This is the one deliberate exception to additive-only, recorded in research D15.
 - Every new figure may be `null` in any snapshot; the consumer MUST accept `null` for all of them.
 - The additions are present even when the deployment opted out of remote transmission — but then only in the locally stored snapshot, never transmitted.

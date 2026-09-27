@@ -29,7 +29,7 @@ Feed synthetic per-process readings; assert the deduped fleet aggregate (the fou
 
 - **Dedup**: 8 readings all `host="c1"`, `processor_available=4` → aggregate `processor_available == 4` (counted once).
 - **Sum across hosts**: 2 readings `host="w1"` and `host="w2"`, each `processor_available=4` → aggregate `processor_available == 8`.
-- **Undercount (FR-005)**: 3 processes, only 2 distinct hosts reported → aggregate sums the 2 (`workers.total` still counts all 3, but it counts processes across a different population than the host-summed aggregate, so the shortfall is not recoverable from the payload — see the contract's undercount signal).
+- **Undercount (FR-005)**: 3 processes, only 2 distinct hosts reported → aggregate sums the 2 (`workers.total` still counts all 3, but the aggregate does not record how many hosts contributed, so the shortfall is not directly computable — see the contract's undercount signal).
 - **Null rules (FR-003/D9)**: one contributing host `processor_assigned=None` (unlimited) → aggregate `processor_assigned is None`; no host reported a field → that field is `None`.
 
 ## Scenario 3 — Component: end-to-end gather (`backend/tests/component/telemetry/test_resources.py`)
@@ -47,7 +47,7 @@ DOCKER_HOST=unix://$HOME/.docker/run/docker.sock \
 **Expected**:
 - `database.system_info`: `processor_available` > 0, `memory_total` > 0, and the new `processor_assigned is None`.
 - the new `server` block reflects the one api_server host (not multiplied by gunicorn process count).
-- `workers.total == 2` is unchanged; the new `workers.processor_*`/`memory_*` equal the git_agent host sum.
+- `workers.total == 2` counts the two git_agent processes and `server.total` the api_server ones; the new `workers.processor_*`/`memory_*` equal the git_agent host sum.
 - Force one metric source to raise → only that field is `None`; the snapshot is still produced (FR-006).
 
 ## Scenario 4 — Opt-out still stores locally (FR-006/FR-007)

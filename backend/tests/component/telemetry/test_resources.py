@@ -113,7 +113,7 @@ async def resource_environment(
 
 
 async def test_gather_aggregates_worker_and_server_resources(resource_environment: MemoryCache) -> None:
-    """git_agent hosts sum; the api_server host is counted once; DB assignment is null."""
+    """Each block counts its own processes; git_agent hosts sum; the api_server host is counted once."""
     cache = resource_environment
 
     # Two git_agent hosts, one process each.
@@ -144,9 +144,9 @@ async def test_gather_aggregates_worker_and_server_resources(resource_environmen
         ),
     )
 
-    # One api_server host fronted by two gunicorn processes: two readings sharing a
-    # host. Reusing the two worker identities holds the distinct-identity worker count
-    # at two while still exercising the per-host dedup on the server side.
+    # One api_server host fronted by three gunicorn processes: three identities whose
+    # readings share a host, so the server's resources are counted once while its
+    # process count is three.
     api_reading = WorkerResourceReading(
         host="api-host",
         processor_available=8,
@@ -154,15 +154,18 @@ async def test_gather_aggregates_worker_and_server_resources(resource_environmen
         memory_total=16_000_000_000,
         memory_available=10_000_000_000,
     )
-    _seed_reading(cache, "api_server", "w1", api_reading)
-    _seed_reading(cache, "api_server", "w2", api_reading)
+    for identity in ("api1", "api2", "api3"):
+        _seed_active(cache, "api_server", identity)
+        _seed_reading(cache, "api_server", identity, api_reading)
 
     gatherer = await build_anonymous_telemetry_gatherer()
     data = await gatherer.gather()
 
-    # The worker count keeps its existing meaning: distinct worker identities.
+    # Each block counts only its own component's processes; the two sum to every worker.
     assert data.workers.total == 2
     assert data.workers.active == 2
+    assert data.server.total == 3
+    assert data.server.active == 3
 
     # git_agent fleet: summed over the two distinct hosts.
     assert data.workers.processor_available == 6
@@ -230,7 +233,11 @@ async def test_corrupted_reading_is_dropped_not_summed_into_a_negative_aggregate
 
 
 async def test_payload_additions_are_backward_compatible(resource_environment: MemoryCache) -> None:
-    """The resource additions are purely additive: the version and prior fields are unchanged."""
+    """No prior key is renamed or removed and the version is unchanged.
+
+    ``workers.total``/``active`` keep their keys and types but count task-workers only,
+    now that the API server's processes are counted in its own block.
+    """
     # The payload version is deliberately not bumped this phase.
     assert TELEMETRY_VERSION == "20260628"
 
@@ -246,8 +253,8 @@ async def test_payload_additions_are_backward_compatible(resource_environment: M
     assert isinstance(dumped["workers"]["total"], int)
     assert isinstance(dumped["workers"]["active"], int)
 
-    # The new `server` block carries exactly the four resource fields.
-    assert set(dumped["server"]) == _RESOURCE_FIELDS
+    # The new `server` block carries its own process count and the four resource fields.
+    assert set(dumped["server"]) == _PRE_FEATURE_WORKER_FIELDS | _RESOURCE_FIELDS
 
     # system_info keeps its three fields and gains exactly processor_assigned.
     assert data.database.system_info is not None
@@ -459,9 +466,9 @@ async def test_resources_key_does_not_change_worker_counts(resource_environment:
 
     A running deployment writes both an active heartbeat and a resource reading for the
     same worker identity on every beat. The resource key must not be mistaken for a new
-    worker: the count reflects distinct identities, and reusing an identity for its
-    resource reading adds none. Baseline the count from active heartbeats alone, then add
-    the resource keys for those same identities and confirm total and active are unchanged.
+    worker: each block counts distinct identities of its own component, and reusing an
+    identity for its resource reading adds none. Baseline the counts from active heartbeats
+    alone, then add the resource keys for those same identities and confirm neither moves.
     """
     cache = resource_environment
 
@@ -473,8 +480,8 @@ async def test_resources_key_does_not_change_worker_counts(resource_environment:
 
     gatherer = await build_anonymous_telemetry_gatherer()
     baseline = await gatherer.gather()
-    assert baseline.workers.total == 3
-    assert baseline.workers.active == 3
+    assert (baseline.workers.total, baseline.workers.active) == (2, 2)
+    assert (baseline.server.total, baseline.server.active) == (1, 1)
 
     # Each of those same identities now also writes its resource reading. The identity is
     # reused, so no new worker should appear in the census.
@@ -491,9 +498,9 @@ async def test_resources_key_does_not_change_worker_counts(resource_environment:
 
     after = await gatherer.gather()
 
-    # The resource keys must not perturb the worker count versus the baseline.
-    assert after.workers.total == baseline.workers.total == 3
-    assert after.workers.active == baseline.workers.active == 3
+    # The resource keys must not perturb either block's count versus the baseline.
+    assert (after.workers.total, after.workers.active) == (baseline.workers.total, baseline.workers.active)
+    assert (after.server.total, after.server.active) == (baseline.server.total, baseline.server.active)
 
 
 async def test_self_read_failure_after_retries_logs_and_writes_null(

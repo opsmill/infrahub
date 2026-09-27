@@ -171,13 +171,13 @@ def _build_worker_data(total: int, active: int, resources: ResourceAggregate | N
         return TelemetryWorkerData(total=total, active=active)
 
 
-def _build_server_data(resources: ResourceAggregate | None) -> TelemetryServerData:
+def _build_server_data(total: int, active: int, resources: ResourceAggregate | None) -> TelemetryServerData:
     """Build the server block, degrading its resource figures to null rather than failing the gather."""
     try:
-        return TelemetryServerData(**_resource_fields(resources))
+        return TelemetryServerData(total=total, active=active, **_resource_fields(resources))
     except ValidationError as exc:
         log.warning("Server resource figures failed validation; reporting them as null: %s", exc)
-        return TelemetryServerData()
+        return TelemetryServerData(total=total, active=active)
 
 
 class AnonymousTelemetryGatherer:
@@ -203,6 +203,10 @@ class AnonymousTelemetryGatherer:
 
         default_branch = registry.get_branch_from_registry()
         workers = await self.component.list_workers(branch=default_branch.name, schema_hash=False)
+        # Each block counts only its own component's processes, the same population its
+        # resource figures describe; a consumer wanting every worker sums the two.
+        task_workers = [worker for worker in workers if worker.component == COMPONENT_GIT_AGENT]
+        api_workers = [worker for worker in workers if worker.component == COMPONENT_API_SERVER]
 
         # git_agent runs one process per container and api_server several gunicorn
         # processes in one; grouping the readings by host lets each fleet be summed
@@ -226,11 +230,15 @@ class AnonymousTelemetryGatherer:
             python_version=platform.python_version(),
             platform=platform.machine(),
             workers=_build_worker_data(
-                total=len(workers),
-                active=len([w for w in workers if w.active]),
+                total=len(task_workers),
+                active=len([worker for worker in task_workers if worker.active]),
                 resources=workers_resources,
             ),
-            server=_build_server_data(resources=server_resources),
+            server=_build_server_data(
+                total=len(api_workers),
+                active=len([worker for worker in api_workers if worker.active]),
+                resources=server_resources,
+            ),
             branches=TelemetryBranchData(
                 total=len(registry.branch),
                 active=await safe_metric(self.active_branch_counter.gather()),

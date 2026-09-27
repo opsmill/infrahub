@@ -27,11 +27,11 @@ The DB gains **only** `processor_assigned` — everything else it already has. Z
 
 ### `TelemetryWorkerData` (extend)
 
-Already carries `total`, `active` (the worker count — kept as-is). Add the task-worker (git_agent) fleet resources, all `int | None` default `None`:
+Already carries `total`, `active`, which now count **task-worker (git_agent) processes only** (research D15). Add the task-worker fleet resources, all `int | None` default `None`:
 
 `processor_available`, `processor_assigned`, `memory_total`, `memory_available` — the fleet aggregate summed over distinct git_agent hosts.
 
-**Scope note**: `total`/`active` retain their existing meaning (all worker processes, api_server + git_agent, by identity). The new resource fields are the **git_agent (task-worker) fleet** specifically; api_server resources live in the new `server` block. This asymmetry is documented in the contract — a consumer must not average `processor_available` over `total`, since the two fields describe different populations. A per-block host count, so each block is self-describing, is a candidate for the next gated `payload_format` bump (research D13); not added this phase.
+**Scope note**: every field in the block now describes the same population, the task-worker fleet. `total`/`active` previously counted API server and task-worker processes together; the API server's processes are now counted in `server.total`/`active` instead, and the two sum to the old figure (research D15, and the contract for the one short-lived exception). Each process is attributed to its component from the component name its own cache keys carry.
 
 **Tracking note**: INFP-589 (Phase 1) shipped the event-window and node-count work and explicitly deferred worker cores and RAM to INFP-631 (Phase 2). These fields and the `server` block are that Phase 2 licensing slice, split out ahead of the rest of INFP-631 so the licensing work is not blocked behind its unrelated items. The pull request is tracked under INFP-631; the spec folder and the branch keep the `infp-589` name they were created under. The product question INFP-631 records — whether a tier is defined by database resources alone or also by app-worker resources — remains open and does not gate collection, since all three components are reported either way (spec Assumptions, "Reported components").
 
@@ -39,7 +39,7 @@ Already carries `total`, `active` (the worker count — kept as-is). Add the tas
 
 ### `TelemetryServerData` (new)
 
-The api_server has no existing representation, so a new block is added (not a duplicate). Same four fields, all `int | None` default `None`: `processor_available`, `processor_assigned`, `memory_total`, `memory_available`.
+The api_server has no existing representation, so a new block is added (not a duplicate). It carries its own process count, `total`/`active` (`int`, default `0`, one per gunicorn worker), and the same four resource fields, all `int | None` default `None`: `processor_available`, `processor_assigned`, `memory_total`, `memory_available`.
 
 ### `TelemetryData` (extend)
 
@@ -86,7 +86,7 @@ Given the active processes of a component type, each with a reading `{host, …}
 3. **Null-vs-undercount**:
    - no host reported field *f* → aggregate *f* = `None`;
    - a contributing host has *f* = `None` because it is genuinely unbounded (`processor_assigned` only) → aggregate *f* = `None`;
-   - some hosts reported, some did not — whether a host never reported at all, or a contributing host's read of this one field failed while its other fields succeeded → sum the reporters (**undercount**), *except* `processor_assigned`, which the previous rule already covers exhaustively: any contributing host's `None` there, whether genuine unbounded-ness or a failed read, nulls the whole aggregate rather than being summed as an undercount. `workers.total`/`active` (unchanged) still reflect all workers, but as a process count spanning api_server and git_agent they cannot be differenced against the host-summed resource fields to recover the gap; an undercount is visible only as a drop against the same deployment's earlier snapshots (see the contract).
+   - some hosts reported, some did not — whether a host never reported at all, or a contributing host's read of this one field failed while its other fields succeeded → sum the reporters (**undercount**), *except* `processor_assigned`, which the previous rule already covers exhaustively: any contributing host's `None` there, whether genuine unbounded-ness or a failed read, nulls the whole aggregate rather than being summed as an undercount. `workers.total`/`active` still count every task-worker process, including a silent one, but the aggregate does not say how many hosts contributed to it, so the gap is not directly computable; see the contract's undercount signal for what the count does bound.
 
 ## Validation rules
 
