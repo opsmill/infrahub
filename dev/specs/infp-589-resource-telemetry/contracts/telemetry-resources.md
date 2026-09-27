@@ -13,36 +13,40 @@
 `database.system_info` is `null` as a whole when the database is unreachable or is not Neo4j, so a consumer checks the block before its fields. `server` and the `workers` resource fields are always present.
 
 ```jsonc
+// Illustrative deployment: one API server container running 4 gunicorn processes,
+// limited to 4 CPUs / 4 GiB, and two task-worker containers limited to 4 CPUs / 4 GiB each.
 {
   "payload_format": "20260628",              // UNCHANGED this phase
   "data": {
     "database": {
       // ... existing database fields ...
-      "system_info": {
+      "system_info": {                       // null as a whole when the DB is unreachable or not Neo4j
         "processor_available": 32,           // existing — CPUs the DB can use (JVM, quota-aware)
-        "processor_assigned": null,          // NEW — worker_limit; null today
+        "processor_assigned": null,          // NEW — server.cypher.parallel.worker_limit; null until a limit is set
         "memory_total": 67435982848,         // existing — bytes
         "memory_available": 47034888192      // existing — free bytes
       }
     },
     "workers": {
-      "total": 2,                            // existing — ALL workers (api_server + git_agent); do not divide processor_* by this
-      "active": 2,                           // existing — same scope as total
-      "processor_available": 8,              // NEW — usable CPUs, git_agent fleet ONLY, sum over hosts
-      "processor_assigned": null,            // NEW — cgroup quota; null if unbounded
-      "memory_total": 8589934592,            // NEW — bytes
-      "memory_available": 6442450944         // NEW — free bytes
+      "total": 6,                            // existing — worker PROCESSES: 4 api_server + 2 task-worker
+      "active": 6,                           // existing — same scope as total
+      "processor_available": 8,              // NEW — fleet TOTAL, not per worker: 4 + 4 over the 2 task-worker hosts
+      "processor_assigned": 8,               // NEW — fleet TOTAL of enforced quotas; null if any host is unbounded
+      "memory_total": 8589934592,            // NEW — fleet TOTAL: 4 GiB + 4 GiB
+      "memory_available": 6442450944         // NEW — fleet TOTAL free: 3 GiB + 3 GiB
     },
-    "server": {                              // NEW block (api_server)
-      "processor_available": 8,
-      "processor_assigned": null,
-      "memory_total": 8589934592,
-      "memory_available": 5368709120
+    "server": {                              // NEW block — the API server, same four fields
+      "processor_available": 4,              // one container counted once, not once per gunicorn process
+      "processor_assigned": 4,
+      "memory_total": 4294967296,            // 4 GiB
+      "memory_available": 2684354560         // 2.5 GiB free
     }
     // ... all other existing fields unchanged ...
   }
 }
 ```
+
+Every `workers` resource figure is a **fleet total** summed over distinct task-worker hosts, never a per-worker value. The payload carries no per-worker figure and none can be derived from it: `workers.total` counts *processes* across the API server and the task-workers (6 above), while the resource figures cover task-worker *hosts* only (2 above), so `8 / 6` is not a per-worker anything. `server` works the same way, one figure per distinct host, which is why four gunicorn processes in one container report 4 CPUs rather than 16.
 
 ## Field semantics
 
