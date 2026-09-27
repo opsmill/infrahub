@@ -1,3 +1,4 @@
+import json
 import re
 import shutil
 from collections.abc import Generator
@@ -1138,6 +1139,13 @@ async def test_render_artifact_unchanged_stores_unusable_stored_object_again(
         checksum=RENDERED_CHECKSUM,
         storage_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a",
         artifact_id=artifact_node_02.id,
+    )
+    updates = httpx_mock.get_requests(
+        method="POST", match_headers={"X-Infrahub-Tracker": "mutation-coreartifact-update"}
+    )
+    assert len(updates) == 1
+    assert re.search(
+        r'storage_id: \{\s+value: "ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a"\s+\}', json.loads(updates[0].content)["query"]
     )
     assert len(event_recorder.events) == 1
     event = event_recorder.events[0]
