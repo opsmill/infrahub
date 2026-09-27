@@ -121,6 +121,10 @@ Unlike artifacts, which can be regenerated from their definitions, user-uploaded
 
 <ReferenceLink title="How to backup object storage" url="../deploy-manage/maintain-upgrade/database-backup/backup-and-restore#step-3-backup-the-object-storage" />
 
+### Artifact integrity check
+
+Once a day, Infrahub reads the stored file of each ready artifact on the default branch and compares it with the checksum recorded in the graph database. Artifacts whose file is missing or modified are regenerated, which stores them again. To repair artifacts right away, for example after switching storage backends, regenerate their artifact definitions.
+
 ### Backend migration
 
 :::warning Backend migration

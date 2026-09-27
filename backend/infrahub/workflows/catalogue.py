@@ -60,6 +60,17 @@ ANONYMOUS_TELEMETRY_SEND = WorkflowDefinition(
     default_priority=WorkflowPriority.LOW,
 )
 
+ARTIFACT_STORAGE_CHECK = WorkflowDefinition(
+    name="artifact-storage-check",
+    type=WorkflowType.INTERNAL,
+    cron=f"{random.randint(0, 59)} 4 * * *",
+    module="infrahub.artifacts.tasks",
+    function="check_stored_artifacts",
+    concurrency_limit=1,
+    concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
+    default_priority=WorkflowPriority.LOW,
+)
+
 SCHEMA_APPLY_MIGRATION = WorkflowDefinition(
     name="schema_apply_migrations",
     type=WorkflowType.CORE,
@@ -689,6 +700,7 @@ WORKFLOWS = [
     ACTION_RUN_GENERATOR,
     ACTION_RUN_GENERATOR_GROUP_EVENT,
     ANONYMOUS_TELEMETRY_SEND,
+    ARTIFACT_STORAGE_CHECK,
     BRANCH_CANCEL_PROPOSED_CHANGES,
     BRANCH_CREATE,
     BRANCH_DELETE,

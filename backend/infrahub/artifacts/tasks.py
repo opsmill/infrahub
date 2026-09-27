@@ -1,10 +1,16 @@
 from infrahub_sdk.protocols import CoreArtifactCheck, CoreArtifactValidator
-from prefect import flow
+from prefect import flow, get_run_logger
 
 from infrahub.artifacts.models import CheckArtifactCreate
+from infrahub.artifacts.storage_check import ArtifactStorageChecker
+from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core.constants import ValidatorConclusion
+from infrahub.core.merge.write_blocker import MergeWriteBlocker
+from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
+from infrahub.exceptions import BranchStatusError
 from infrahub.git.repository import get_initialized_repo
+from infrahub.services import InfrahubServices
 from infrahub.tasks.artifact import define_artifact
 from infrahub.workers.dependencies import get_client
 from infrahub.workflows.utils import add_tags
@@ -91,3 +97,19 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
         await check.save()
 
     return conclusion
+
+
+@flow(name="artifact-storage-check", flow_run_name="Check stored artifacts")
+async def check_stored_artifacts(service: InfrahubServices) -> None:
+    async with service.database.start_session(read_only=True) as db:
+        branch = await registry.get_branch(db=db)
+        try:
+            await BranchStatusChecker(db=db, merge_write_blocker=MergeWriteBlocker(cache=service.cache)).check(
+                branch=branch
+            )
+        except BranchStatusError as exc:
+            get_run_logger().info(f"Skipping the check, the default branch does not accept writes: {exc}")
+            return
+
+        checker = ArtifactStorageChecker(db=db, storage=registry.storage, workflow=service.workflow)
+        await checker.check(branch=branch)
