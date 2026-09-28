@@ -42,9 +42,7 @@ async def _set_sync_status(client: InfrahubClient, branch: str, value: str, name
 
 class TestRepositorySyncStatus:
     @pytest.fixture(scope="class")
-    async def branch(
-        self, infrahub_client: InfrahubClient, demo_edge_repo: None
-    ) -> AsyncGenerator[str, None]:
+    async def branch(self, infrahub_client: InfrahubClient, demo_edge_repo: None) -> AsyncGenerator[str, None]:
         """A branch whose repositories all start in sync, whatever the default branch holds."""
         name = generate_random_branch_name("repo-sync-status")
         await infrahub_client.branch.create(branch_name=name, sync_with_git=False)
@@ -55,9 +53,7 @@ class TestRepositorySyncStatus:
         with contextlib.suppress(Exception):
             await infrahub_client.branch.delete(branch_name=name)
 
-    async def test_reports_in_sync_and_links_to_the_full_list(
-        self, admin_page: Page, branch: str
-    ) -> None:
+    async def test_reports_in_sync_and_links_to_the_full_list(self, admin_page: Page, branch: str) -> None:
         await admin_page.goto(f"/?branch={branch}")
 
         indicator = admin_page.get_by_test_id(INDICATOR)
@@ -86,9 +82,7 @@ class TestRepositorySyncStatus:
         await expect(admin_page).to_have_url(re.compile(re.escape(ERROR_IMPORT)))
         await expect(admin_page.get_by_role("link", name="demo-edge")).to_be_visible()
 
-    async def test_the_failure_stays_on_its_branch(
-        self, branch: str, infrahub_client: InfrahubClient
-    ) -> None:
+    async def test_the_failure_stays_on_its_branch(self, branch: str, infrahub_client: InfrahubClient) -> None:
         on_branch = await infrahub_client.get(kind="CoreRepository", name__value="demo-edge", branch=branch)
         on_default = await infrahub_client.get(kind="CoreRepository", name__value="demo-edge")
 
