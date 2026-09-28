@@ -122,7 +122,7 @@ All three run `process_transform_lifecycle`. On create or update it waits for th
 Besides the transform-lifecycle triggers, two families of data-path automations recompute the value when a node feeding the transform's query changes.
 
 - **Owner automations** are keyed on `(key_name, transform)` and match the attribute's own kind. The action names the attribute it submits, so each attribute needs a definition of its own.
-- **Query automations** are keyed on the transform, with one definition per kind its query reads. The action names no attribute and the flow behind it resolves them, so one definition covers every attribute the transform feeds. A definition per attribute would start the same flow once per attribute for one change, with no difference in what gets recomputed. The transform in the key carries no scoping: `query_transform_targets` takes no transform, so two transforms reading one kind both fire on one edit.
+- **Query automations** are keyed on the transform, with one definition per kind its query reads. The action names no attribute and the flow behind it resolves them, so one definition covers every attribute the transform feeds. A definition per attribute would start the same flow once per attribute for one change, with no difference in what gets recomputed.
 - **Ownership.** A branch owns both families or neither — see [Branch scoping of automations](events.md#branch-scoping-of-automations).
 - **Backfill.** `computed_attribute_setup_python` builds its recompute candidates from the owner automations scoped to the event's branch, so a `SchemaUpdatedEvent` backfills attributes only on a branch that owns its automations.
 
