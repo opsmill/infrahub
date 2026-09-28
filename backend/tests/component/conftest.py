@@ -84,12 +84,8 @@ from tests.helpers.constants import (
     PREFECT_TEST_SERVER_PORT_RANGE,
 )
 from tests.helpers.file_repo import FileRepo
-<<<<<<< HEAD
-from tests.helpers.prefect_diagnostics import register_prefect_test_server
-from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
-=======
 from tests.helpers.prefect_diagnostics import register_prefect_test_server, timeout_diagnostics_section
->>>>>>> origin/develop
+from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import find_available_prefect_port
 from tests.helpers.workflow_override import override_workflow

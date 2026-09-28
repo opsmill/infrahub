@@ -584,7 +584,6 @@ class TestComputedAttributes(TestInfrahubDockerClient):
 
         assert description == expected
 
-<<<<<<< HEAD
     async def test_python_computed_attribute_renders_on_more_than_one_branch(self, client: InfrahubClient) -> None:
         """A repository-backed Python transform renders on a branch as well as on the default branch.
 
@@ -618,7 +617,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         # produced, and the branch-only device never reaches it.
         main_devices = await client.all(kind="InfraDevice", branch="main", include=["name"])
         assert sorted(device.name.value for device in main_devices) == ["swe-sth-router-1"]
-=======
+
     async def test_merge_recomputes_created_devices_in_one_dispatch(self, client: InfrahubClient) -> None:
         """A merged branch that built devices refreshes them once, not once per device.
 
@@ -691,4 +690,3 @@ class TestComputedAttributes(TestInfrahubDockerClient):
             assert runs_for_the_rebase == 1
         else:
             assert runs_for_the_rebase >= len(REBASE_DEVICE_INSTANCES)
->>>>>>> origin/develop

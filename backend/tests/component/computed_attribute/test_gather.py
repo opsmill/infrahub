@@ -404,34 +404,11 @@ async def test_gather_trigger_computed_attribute_python_fires_once_per_branch(
         )
 
 
-<<<<<<< HEAD
 async def test_gather_trigger_computed_attribute_python_resolves_every_non_global_branch(
-=======
-async def test_python_triggers_match_only_live_origin(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_computed_attr: None, transform01: Node
-) -> None:
-    """A merge, a rebase or a coalesced write starts no per-node flow while the pass owns them.
-
-    Both trigger families have to carry the filter: the owner one reaches the node that changed,
-    the query one reaches its readers, and either would replay the whole change set on its own.
-    """
-    triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
-
-    # Named, so that a gather returning nothing cannot satisfy the assertions below.
-    assert [trigger.name for trigger in triggers] == ["TestCar_computed_desc_python"]
-    assert [trigger.name for trigger in trigger_queries] == ["TestCar_computed_desc_python::kind::TestCar"]
-
-    for trigger in [*triggers, *trigger_queries]:
-        assert trigger.trigger.match[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE.value
-
-
-async def test_python_triggers_keep_every_origin_when_the_pass_is_disabled(
->>>>>>> origin/develop
     db: InfrahubDatabase,
     default_branch: Branch,
     car_person_schema_computed_attr: None,
     transform01: Node,
-<<<<<<< HEAD
 ) -> None:
     """The per-branch commit map is keyed by every non-global branch and by nothing else.
 
@@ -452,7 +429,31 @@ async def test_python_triggers_keep_every_origin_when_the_pass_is_disabled(
         computed_attributes = await gather_python_transform_attributes(db=db, branch_name=branch_name)
         assert [attribute.repository_commit for attribute in computed_attributes] == ["commit02"]
         assert sorted(computed_attributes[0].branch_commit) == non_global_branch_names
-=======
+
+
+async def test_python_triggers_match_only_live_origin(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_computed_attr: None, transform01: Node
+) -> None:
+    """A merge, a rebase or a coalesced write starts no per-node flow while the pass owns them.
+
+    Both trigger families have to carry the filter: the owner one reaches the node that changed,
+    the query one reaches its readers, and either would replay the whole change set on its own.
+    """
+    triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+
+    # Named, so that a gather returning nothing cannot satisfy the assertions below.
+    assert [trigger.name for trigger in triggers] == ["TestCar_computed_desc_python"]
+    assert [trigger.name for trigger in trigger_queries] == ["TestCar_computed_desc_python::kind::TestCar"]
+
+    for trigger in [*triggers, *trigger_queries]:
+        assert trigger.trigger.match[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE.value
+
+
+async def test_python_triggers_keep_every_origin_when_the_pass_is_disabled(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_computed_attr: None,
+    transform01: Node,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Disabling the coalesced pass hands merge and rebase back to the per-node automations.
@@ -475,7 +476,6 @@ async def test_python_triggers_keep_every_origin_when_the_pass_is_disabled(
 
     assert isinstance(resolver, DisabledPythonTargetResolver)
     assert await resolver.resolve(changes=[], branch=default_branch.name, schema_changed_elements=None) == []
->>>>>>> origin/develop
 
 
 @dataclass
