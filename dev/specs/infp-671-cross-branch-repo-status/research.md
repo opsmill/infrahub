@@ -92,7 +92,8 @@ which lifted this rule.
    then takes its chunked read path (`query_with_size_limit`).
 3. Read the selected attributes for those branch names in one statement through the primitive
    (Decision 3). Apply the attribute-value filters, the default ordering (default branch first, then
-   name ascending) when no `order` was given, then `offset` and `limit`, in Python. `count` is the
+   name ascending) when `order` is absent or expresses no ordering, then `offset` and `limit`, in
+   Python. `count` is the
    length of the filtered list.
 
 **Rationale**: The PRD identified two resolver shapes and noted that once an attribute filter is in
@@ -317,7 +318,7 @@ internal_status__value and own_values_only are rejected)" note in the root field
 description while the stub is live. That description is API-facing, so it names neither the ticket nor
 the delivery increment: both are meaningless to a schema consumer, and `.agents/rules/code-doc-style.md`
 keeps spec vocabulary out of anything a reader encounters without the spec. Every developer stack built
-from `develop` shows these values during the stub window, so the window is announced to the team and
+from the integration branch `cross-branch-repo-status-infp-671` shows these values during the stub window, so the window is announced to the team and
 the stub's removal is tracked as its own Jira task under the delivery epic IFC-3104. Delivery work
 lives under IFC; INFP is JPD and carries product planning only, linked to the epic.
 
@@ -329,7 +330,8 @@ lives under IFC; INFP is JPD and carries product planning only, linked to the ep
   `tests.helpers.db_query_counter::CountingInfrahubDatabase` for the 5-branch versus 200-branch
   equality (FR-007) and `rows_for` to show rows grow while executions do not. A differential test
   compares the primitive's `(value, updated_at)` for every branch against a standard
-  `NodeManager.get_one(branch=...)` read, with one legacy `is_isolated=false` branch in the fixture.
+  `NodeManager.get_one(branch=...)` read. The fixture holds no legacy `is_isolated=false` branch:
+  the primitive does not read the flag, so the standard read would diverge on one (data-model.md).
 - Shared fixture: the 5-branch and 200-branch sets are one module-scoped fixture built directly with
   `Branch(...).save()` (the `create_branch` flow is seconds per run at 200) and imported by the
   primitive, resolver and sync test modules.

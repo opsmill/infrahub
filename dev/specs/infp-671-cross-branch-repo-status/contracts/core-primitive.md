@@ -93,8 +93,11 @@ class RepositoryBranchAttributes:
 ```
 
 `get` returns `None` for a triple that produced no row. That is the Python-side backfill; callers treat
-`None` as "no visible value" (the repository never had that attribute created on any visible branch),
-which cannot happen for the attributes in scope after repository creation.
+`None` as "no visible value" (the repository never had that attribute created on any visible branch).
+For a `LOCAL` attribute this cannot happen after repository creation, because its creation edge is on
+the global branch. For an `AWARE` one (`CoreReadOnlyRepository.commit` and `ref`) it does: on every
+branch but the one the repository was created from, and on branches forked before the creation
+(data-model.md).
 
 The lookup is built with `RepositoryBranchAttributes.from_values(values)`. Two values for the same
 triple raise `ResourceMultipleFoundError`, which the reader lets propagate: it means the graph holds
@@ -120,9 +123,15 @@ assert result.get(repository.id, "main", "commit").own_value is False   # creati
 ```python
 for chunk in batched(branch_names, REPOSITORY_BRANCH_READ_CHUNK_SIZE):
     values = await reader.read(
-        repository_ids=repository_ids, branch_names=chunk, attribute_names=("commit", "internal_status")
+        repository_ids=repository_ids,
+        branch_names=chunk,
+        attribute_names=("commit", "internal_status"),
+        at=at,
     )
 ```
+
+`at` is one `Timestamp` taken before the repository-node read and passed to it and to every chunk,
+so the whole read resolves at one point in time.
 
 Query count for N branches: `ceil(N / 100)` attribute reads, on top of one `NodeManager.query` for
 the repository nodes. That call is several statements (`node_get_list`, then the info and attribute

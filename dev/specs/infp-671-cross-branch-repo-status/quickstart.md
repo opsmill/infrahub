@@ -81,7 +81,8 @@ is not a repository fails the same way, so the field cannot reveal that the node
 it is; the repository's `name` passed as `id` resolves; `limit: 0` and `offset: -1` fail validation;
 `sync_status__value`, `internal_status__value` and `own_values_only: true` each fail validation while
 the stub is live, with the error naming every argument that would narrow, while an explicit `null` for
-the two status filters and `own_values_only: false` are accepted.
+the two status filters and `own_values_only: false` are accepted. The filter rejection held for
+increment A only; from increment B the three filters apply (B4, B6).
 
 ### A6. `ref` dispatch and no bus traffic
 
@@ -92,7 +93,8 @@ read-only kind; `TestHelper.get_message_bus_recorder().messages` is empty after 
 
 **Expected**: the API log carries one warning naming the stub module when the schema is built, not
 one per call; the root field description in `schema/schema.graphql` contains "preview" and names
-neither a ticket nor a delivery increment; values are identical across two calls.
+neither a ticket nor a delivery increment; values are identical across two calls. Increment A only:
+increment B deleted the stub, and the description no longer contains "preview".
 
 ## Increment B: graph read
 
@@ -142,8 +144,8 @@ recording source, not by patching.
 
 ### B6a. Differential check against the standard read
 
-For every branch in the shared fixture, including one legacy branch saved with `is_isolated=false`,
-compare the primitive's `commit` value and `updated_at` with `NodeManager.get_one(branch=...)`.
+For every branch in the shared fixture, compare the primitive's `commit` value and `updated_at` with
+`NodeManager.get_one(branch=...)`.
 
 **Expected**: identical for every branch. This is the test that keeps the primitive's operators in
 step with `Branch.get_query_filter_path`.

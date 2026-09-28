@@ -23,6 +23,7 @@ Delivery is contract-first in three increments (see [research.md](research.md), 
 | C, periodic sync | `get_repositories_commit_per_branch` on the primitive, chunked | | |
 
 A release must not be cut while increment A's stub is live (research.md, Decision 1, release rule).
+The rule was lifted when increment B deleted the stub.
 
 ---
 
@@ -130,7 +131,7 @@ dev/specs/infp-671-cross-branch-repo-status/
 ├── quickstart.md                             # Phase 1
 ├── contracts/
 │   ├── graphql-repository-branch-status.graphql   # SDL of the new field and types
-│   ├── graphql-repository-branch-status.md        # Argument semantics, example document, example response, stub notes
+│   ├── graphql-repository-branch-status.md        # Argument semantics, example document, example response, frontend consumption
 │   └── core-primitive.md                          # Python API of the Query class and reader
 ├── checklists/requirements.md
 └── tasks.md                                  # Phase 2 (/speckit-tasks)
@@ -295,9 +296,8 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
 4. Component tests: inheritance at fork point, default-branch import does not move an untouched
    branch, rebase does, never-imported repository yields empty `commit`, own-value filter, attribute
    filter with count, query count equal at 5 and 200 branches, attribute-name set equals selection.
-   Differential test: for every branch in the fixture, including one legacy branch with
-   `is_isolated=false`, the primitive's `(value, updated_at)` equals a standard
-   `NodeManager.get_one(branch=...)` read of the same attribute.
+   Differential test: for every branch in the fixture, the primitive's `(value, updated_at)` equals
+   a standard `NodeManager.get_one(branch=...)` read of the same attribute.
 5. Query benchmark for the primitive in `backend/tests/query_benchmark/`, so the invariant this slice
    exists to establish has a regression guard beyond the one-off `EXPLAIN`.
 6. Changelog fragment; docs section; knowledge docs (`query-pattern.md` for the cross-branch grouped

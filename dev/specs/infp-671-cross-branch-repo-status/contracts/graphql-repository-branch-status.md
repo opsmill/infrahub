@@ -2,8 +2,9 @@
 
 **Branch**: `cross-branch-repo-status-infp-671` | **Date**: 2026-09-03 | **SDL**: [graphql-repository-branch-status.graphql](graphql-repository-branch-status.graphql)
 
-This is the document to hand to the frontend team. The contract is final from increment A; only the
-truthfulness of the attribute values changes in increment B.
+This is the document to hand to the frontend team. The SDL argument set is final from increment A.
+Increment B made the attribute values true and the three value filters real, and added the rejection
+of `at` and of an explicit null `limit` or `offset`.
 
 ## Semantics
 
@@ -40,6 +41,9 @@ other branch status is included. The branch the query is executed against does n
 - `commit`, `sync_status`, `internal_status`, `ref` are the repository's attribute values **as that
   branch resolves them**. A branch that never wrote its own value shows the default branch's value at
   the branch's fork point. This is the correct value for that branch and is not an error state.
+  One exception for `CoreReadOnlyRepository`: its `commit` and `ref` are branch-aware, so a
+  repository created on a user branch reads them as null on every other branch, as does a branch
+  forked before the repository was created.
 - `ref` is non-null only for `CoreReadOnlyRepository`; the other three are present for both kinds.
 - The `TextAttribute` and `Dropdown` payloads are the existing types. `value`, `label`, `color`,
   `description`, `id` and `updated_at` are populated. `is_default`, `is_protected`, `is_from_profile`,
