@@ -56,6 +56,7 @@ export function RepositorySyncStatus() {
         {indicator === "failing" && (
           <Pulse
             tone="danger"
+            // biome-ignore lint/nursery/noTailwindArbitraryValue: pixel-nudge: centres the pulse dot on the button corner; 6.5px is off the 0.25rem grid and has no design meaning
             className="right-[6.5px] bottom-[6.5px]"
             data-testid="repository-sync-status-pulse"
           />

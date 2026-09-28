@@ -17,14 +17,18 @@ satisfying FR-012. Counts keep cost constant in the number of repositories (SC-0
 
 **Alternatives considered**:
 
-- **`InfrahubRepositoryBranchStatus` (IFC-3126)** — rejected, despite sitting at the tip of
-  this branch's base and appearing purpose-built. It is a contract stub. It takes a single
-  repository identifier and returns one row per branch, which is the opposite axis from the
-  one this feature needs. Its values are derived from a hash of the branch name. Its own
-  module documentation states it will be deleted once a real graph-reading source lands. Its
-  resolver raises a validation error if `sync_status__value` is passed, because the values
-  are placeholders. Building on it would have produced an indicator that reports convincing
-  nonsense, which is worse for this feature than reporting nothing.
+- **`InfrahubRepositoryBranchStatus`** — rejected, despite sitting on this branch's base and
+  appearing purpose-built. It takes a single repository identifier and returns one row per
+  branch: the opposite axis from the one this feature needs, which is one branch across all
+  repositories. Answering this feature's question through it would mean a request per
+  repository and counting client-side.
+
+  **Re-checked after the base advanced.** The original rejection also rested on it being a
+  contract stub — hash-derived values, a resolver that refused `sync_status__value`, and a
+  module docstring promising deletion. IFC-3127 has since landed on the base: the values are
+  read from the graph, the stub module is gone, and the filter is accepted and applied
+  server-side. Those two arguments no longer hold. The axis argument does, so the decision
+  stands on that alone.
 - **One combined GraphQL document with two aliased root fields** — rejected by explicit user
   decision in favour of two separate lookups. It would also make the one-succeeds-one-fails
   state impossible to construct, which is the case SC-007 exists to protect.

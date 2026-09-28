@@ -274,12 +274,11 @@ where repositories do exist.
 
 ### Technical constraints established by research
 
-- **`InfrahubRepositoryBranchStatus` (IFC-3126) MUST NOT be the data source.** It is a
-  contract stub: it is keyed by a single repository and returns one row per branch — the
-  opposite of the axis this feature needs; its values are fabricated from a hash of the
-  branch name; its own module documentation states it will be deleted; and its resolver
-  explicitly rejects filtering on sync status while the values are placeholders. Building on
-  it would produce an indicator that reports convincing nonsense.
+- **`InfrahubRepositoryBranchStatus` MUST NOT be the data source.** It is keyed by a single
+  repository and returns one row per branch — the opposite axis from the one this feature
+  needs. Using it would mean one request per repository and counting on the client. It was
+  additionally a placeholder when this was written; that is no longer true (see research R1),
+  but the axis makes it the wrong source regardless.
 - The indicator reads counts of the generic Git repository kind, filtered on the error sync
   status value, with the branch supplied as query context. The generic kind covers every
   concrete repository kind in one lookup, satisfying FR-012.

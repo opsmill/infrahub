@@ -108,9 +108,10 @@ See [research.md](./research.md). All unknowns resolved; no NEEDS CLARIFICATION 
 
 Summary of what research settled:
 
-1. **Data source** — `InfrahubRepositoryBranchStatus` (IFC-3126) is a contract stub keyed by
-   repository, returning rows per branch, with hash-derived values and a resolver that rejects
-   sync-status filtering. Rejected. Generic-kind counts used instead.
+1. **Data source** — `InfrahubRepositoryBranchStatus` is keyed by repository and returns rows
+   per branch, the opposite axis from this feature's question. Rejected; generic-kind counts
+   used instead. Its placeholder implementation, cited when this was written, has since been
+   replaced — see research R1.
 2. **The inert state renders a `Button` with `isDisabledAndFocusable`, not a disabled
    `LinkButton`.** A disabled `LinkButton` inherits `data-disabled:pointer-events-none`, so it
    never receives hover and its tooltip never fires — verified during implementation, see
