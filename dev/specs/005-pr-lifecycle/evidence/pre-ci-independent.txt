@@ -1,0 +1,22 @@
+Independent pre-CI checks collected at 2026-09-28T13:00:48.963794+00:00
+Environment: macOS arm64, Python 3.14.5, Node 24.19, frozen frontend install using pnpm 11.19.
+
+PASS: uv lock --check (234 packages)
+PASS: uv lock --check --directory python_testcontainers (87 packages)
+PASS: .venv/bin/invoke ci.validate-huge-runner-gate
+PASS: pnpm --dir frontend/app exec biome ci . (1459 files)
+PASS: pnpm --dir frontend/app run knip (existing generated/** configuration hint)
+PASS: pnpm --dir frontend/app exec betterer ci (188 existing issues unchanged)
+PASS: uv run invoke docs.validate (no resulting generated-file changes)
+PASS: PATH=/tmp/ifc-3240-tools:$PATH .venv/bin/invoke docs.format
+PASS: PATH=/tmp/ifc-3240-tools:/opt/homebrew/bin:$PATH .venv/bin/invoke docs.lint
+      0 errors, 30 existing warnings, 428 files; no edited external documentation files.
+
+Default testcontainers command failed before collection because psutil.cpu_freq raises
+SystemError on this Mac. No repository workaround was introduced.
+PASS with external environment workaround:
+PYTHONPATH=/tmp/ifc-3240-tools uv run --directory python_testcontainers pytest -p ifc_macos_cpu --rootdir=. -c pyproject.toml -vs tests
+10 passed, 2 skipped in 5.05s.
+The external plugin catches only SystemError/OSError/RuntimeError from psutil.cpu_freq
+and substitutes None for unavailable CPU-frequency metadata. All pytest plugins remain enabled.
+This validates tests under the disclosed environment shim, not the unmodified default command.

@@ -1,0 +1,56 @@
+Timestamp: 2026-09-28T13:02:54.306861+00:00
+Environment: Python 3.14.5 macOS-26.5.1-arm64-arm-64bit-Mach-O
+Scope: offline fake transports; no GitHub writes or live API calls.
+
+Command: .venv/bin/python -m unittest utilities.tests.test_pr_lifecycle -v
+test_head_change_uses_observation_not_commit_date (utilities.tests.test_pr_lifecycle.TestActivity.test_head_change_uses_observation_not_commit_date) ... ok
+test_human_comment_cancels_warning (utilities.tests.test_pr_lifecycle.TestActivity.test_human_comment_cancels_warning) ... ok
+test_human_reserved_label_and_forged_marker_count_as_activity (utilities.tests.test_pr_lifecycle.TestActivity.test_human_reserved_label_and_forged_marker_count_as_activity) ... ok
+test_inactivity_survives_weekly_owned_comment_and_recovery (utilities.tests.test_pr_lifecycle.TestActivity.test_inactivity_survives_weekly_owned_comment_and_recovery) ... ok
+test_other_bot_and_edited_owned_comment_reset (utilities.tests.test_pr_lifecycle.TestActivity.test_other_bot_and_edited_owned_comment_reset) ... ok
+test_reopened_clears_old_warning_and_notice (utilities.tests.test_pr_lifecycle.TestActivity.test_reopened_clears_old_warning_and_notice) ... ok
+test_unknown_raw_or_fingerprint_change_resets (utilities.tests.test_pr_lifecycle.TestActivity.test_unknown_raw_or_fingerprint_change_resets) ... ok
+test_apply_mode_is_rejected_before_transport (utilities.tests.test_pr_lifecycle.TestCliSkeleton.test_apply_mode_is_rejected_before_transport) ... ok
+test_fixture_files_are_valid_json (utilities.tests.test_pr_lifecycle.TestCliSkeleton.test_fixture_files_are_valid_json) ... ok
+test_mismatched_server_identity_is_rejected (utilities.tests.test_pr_lifecycle.TestCliSkeleton.test_mismatched_server_identity_is_rejected) ... ok
+test_naive_clock_is_rejected_before_transport (utilities.tests.test_pr_lifecycle.TestCliSkeleton.test_naive_clock_is_rejected_before_transport) ... ok
+test_observe_default_reports_incomplete_without_writes (utilities.tests.test_pr_lifecycle.TestCliSkeleton.test_observe_default_reports_incomplete_without_writes) ... ok
+test_repository_guard_precedes_transport (utilities.tests.test_pr_lifecycle.TestCliSkeleton.test_repository_guard_precedes_transport) ... ok
+test_complete_pagination_and_duplicate_failure (utilities.tests.test_pr_lifecycle.TestCollection.test_complete_pagination_and_duplicate_failure) ... ok
+test_empty_inventory_succeeds_without_mutations (utilities.tests.test_pr_lifecycle.TestCollection.test_empty_inventory_succeeds_without_mutations) ... ok
+test_missing_page_fails_instead_of_partial_success (utilities.tests.test_pr_lifecycle.TestCollection.test_missing_page_fails_instead_of_partial_success) ... ok
+test_ambiguous_post_receipt_is_not_retried_or_assumed (utilities.tests.test_pr_lifecycle.TestLedger.test_ambiguous_post_receipt_is_not_retried_or_assumed) ... ok
+test_corrupt_unsupported_missing_state_fails (utilities.tests.test_pr_lifecycle.TestLedger.test_corrupt_unsupported_missing_state_fails) ... ok
+test_dashboard_provenance_and_duplicates (utilities.tests.test_pr_lifecycle.TestLedger.test_dashboard_provenance_and_duplicates) ... ok
+test_failed_finalization_preserves_pending_intent (utilities.tests.test_pr_lifecycle.TestLedger.test_failed_finalization_preserves_pending_intent) ... ok
+test_generation_and_unversioned_human_edit_conflict (utilities.tests.test_pr_lifecycle.TestLedger.test_generation_and_unversioned_human_edit_conflict) ... ok
+test_recovery_never_trusts_forged_author_or_edited_content (utilities.tests.test_pr_lifecycle.TestLedger.test_recovery_never_trusts_forged_author_or_edited_content) ... ok
+test_roundtrip_and_guard (utilities.tests.test_pr_lifecycle.TestLedger.test_roundtrip_and_guard) ... ok
+test_unresolved_intent_survives_retention (utilities.tests.test_pr_lifecycle.TestLedger.test_unresolved_intent_survives_retention) ... ok
+test_complete_same_head_snapshot_accepts_explicit_null_review_rule (utilities.tests.test_pr_lifecycle.TestSnapshotBoundary.test_complete_same_head_snapshot_accepts_explicit_null_review_rule) ... ok
+test_missing_aggregate_error_or_head_mismatch_fails (utilities.tests.test_pr_lifecycle.TestSnapshotBoundary.test_missing_aggregate_error_or_head_mismatch_fails) ... ok
+test_review_comments_and_timeline_are_collected (utilities.tests.test_pr_lifecycle.TestSnapshotBoundary.test_review_comments_and_timeline_are_collected) ... ok
+test_unrelated_head_repository_metadata_is_not_activity (utilities.tests.test_pr_lifecycle.TestSnapshotBoundary.test_unrelated_head_repository_metadata_is_not_activity) ... ok
+
+----------------------------------------------------------------------
+Ran 28 tests in 0.004s
+
+OK
+Exit: 0
+
+Command: .venv/bin/ruff check utilities/pr_lifecycle.py utilities/tests/test_pr_lifecycle.py
+All checks passed!
+Exit: 0
+
+Command: .venv/bin/ruff format --check utilities/pr_lifecycle.py utilities/tests/test_pr_lifecycle.py
+2 files already formatted
+Exit: 0
+
+Command: .venv/bin/ty check utilities/pr_lifecycle.py utilities/tests/test_pr_lifecycle.py
+All checks passed!
+Exit: 0
+
+Repository formatter: uv run invoke format passed before checkpoint (49 main files and 2291 backend files unchanged; both Ruff checks passed).
+Pending T004: fresh warning, milestone reminders and gated upstream closure require later orchestration.
+Pending T006: failure after actual remote delivery/state persistence requires later mutation adapter integration; local intent/finalization and receipt ambiguity are covered.
+HTTP retry branches are implemented but not yet independently exercised by this fake JSON transport suite.
