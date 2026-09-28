@@ -61,6 +61,24 @@ def test_log_forwarding_destination_rejects_tls_with_udp() -> None:
         )
 
 
+def test_log_forwarding_destination_rejects_insecure_without_tls() -> None:
+    # Without tls_enabled the destination stays plaintext, so the flag would be silently ignored.
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"log_forwarding.destinations\[test\].tls_insecure requires tls_enabled, because a plaintext "
+            r"destination has no certificate to validate. Enable tls_enabled or drop tls_insecure."
+        ),
+    ):
+        LogForwardingDestination(
+            name="test",
+            type=LogForwardingDestinationType.SYSLOG,
+            host="localhost",
+            protocol=SyslogProtocol.TCP,
+            tls_insecure=True,
+        )
+
+
 def test_log_forwarding_destination_allows_tls_with_tcp() -> None:
     dest = LogForwardingDestination(
         name="test",
