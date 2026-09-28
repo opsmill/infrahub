@@ -95,6 +95,8 @@ Architecture Decision Records in [adr/](adr/):
 - [0014-generic-per-task-recovery-actions.md](adr/0014-generic-per-task-recovery-actions.md) - Generic per-task recovery actions with polymorphic task typing
 - [0015-uniform-bounded-webhook-retry.md](adr/0015-uniform-bounded-webhook-retry.md) - Uniform bounded fixed-delay auto-retry for webhook deliveries
 
+Start a new ADR from [template.md](adr/template.md).
+
 ## Current Guides
 
 Backend guides in [guides/backend/](guides/backend/):
@@ -105,15 +107,17 @@ Backend guides in [guides/backend/](guides/backend/):
 
 ## Current Commands
 
-Available agent commands in [../.agents/commands/](../.agents/commands/):
+Agent commands live in [../.agents/commands/](../.agents/commands/); run one by its name:
 
-- [_shared.md](../.agents/commands/_shared.md) - Shared instructions for all flows
-- [new-component.md](../.agents/commands/new-component.md) - React component creation flow
-- [guided-task.md](../.agents/commands/guided-task.md) - General task flow
-- [add-docs.md](../.agents/commands/add-docs.md) - Documentation flow
-- [bug-analyze.md](../.agents/commands/bug-analyze.md) - Root cause analysis (`/bug-analyze <issue>`)
-- [bug-tdd.md](../.agents/commands/bug-tdd.md) - Failing test from analysis (`/bug-tdd <issue>`)
-- [bug-fix.md](../.agents/commands/bug-fix.md) - Fix implementation (`/bug-fix <issue>`)
-- [fix-github-issue.md](../.agents/commands/fix-github-issue.md) - GitHub issue fixing
-- [fix-mypy-module.md](../.agents/commands/fix-mypy-module.md) - Mypy type fixes
-- [fix-ruff-rule.md](../.agents/commands/fix-ruff-rule.md) - Ruff linting fixes
+- `/new-component` - React component creation flow
+- `/guided-task` - General task flow
+- `/add-docs` - Documentation flow
+- `/bug-analyze <issue>` - Root cause analysis
+- `/bug-tdd <issue>` - Failing test from analysis
+- `/bug-fix <issue>` - Fix implementation
+- `/fix-github-issue` - GitHub issue fixing
+- `/fix-mypy-module` - Mypy type fixes
+- `/fix-ruff-rule` - Ruff linting fixes
+
+The flows read their shared testing options and execution checklist from `_shared.md` in the same
+folder, which is not a command.

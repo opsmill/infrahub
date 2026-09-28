@@ -69,7 +69,7 @@ Key requirements:
 - Use `flow_run_name` for human-readable run names (see naming guidelines below)
 - Accept `context: InfrahubContext` parameter (injected automatically)
 - Use `get_run_logger()` for logging — the stdlib default logger never surfaces in Prefect's UI/logs
-- Keep the flow body a thin composition root: resolve singletons (`get_database()`, `get_workflow()`, …) at the top of the flow only, build a component with those dependencies injected, and delegate to it. Business logic lives in the component, not the flow function — see `.agents/rules/backend-component-design.md`
+- Keep the flow body a thin composition root: resolve singletons (`get_database()`, `get_workflow()`, …) at the top of the flow only, build a component with those dependencies injected, and delegate to it. Business logic lives in the component, not the flow function — see `dev/guidelines/backend/component-design.md`
 
 **`flow_run_name` guidelines:**
 

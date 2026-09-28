@@ -1,7 +1,5 @@
 # AGENTS.md - Documentation
 
-> See [root AGENTS.md](../AGENTS.md) for project-wide commands and guidelines.
-
 ## Overview
 
 Infrahub documentation is organized using the [Diataxis framework](https://diataxis.fr/), separating documentation into four categories:

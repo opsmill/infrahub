@@ -29,8 +29,9 @@ Two doubles are worth writing for an injected collaborator: a `Recording*` one t
 Acceptable exceptions only:
 
 - External HTTP APIs with no test mode: use `httpx_mock` or `responses`
-- Time-dependent behavior: `freezegun`
 - Prefect's `get_run_logger`: when calling a Prefect-decorated function via `.fn` outside a flow context, patch `get_run_logger` to return a stdlib `logging.getLogger(...)` so `caplog` can capture output. See `dev/knowledge/backend/testing.md` for the full pattern.
+
+Time-dependent logic takes its clock as a `Callable[[], float]` defaulting to `time.monotonic`, and the test passes a fake it advances; never reach for `freezegun`, which is not a project dependency. Full guidance in `dev/guidelines/backend/testing.md` §"Time: inject a clock, don't freeze one".
 
 ## Parametrized tests
 
