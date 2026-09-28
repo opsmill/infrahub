@@ -16,6 +16,7 @@ from tests.component.computed_attribute._base import (
     CAR_PERSON_PYTHON_SCHEMA,
     ScopedRecomputeCase,
     ScopedRecomputeTestBase,
+    commit_schema_branch,
     create_transform01,
 )
 from tests.helpers.schema import load_schema
@@ -126,10 +127,7 @@ class TestScopedRecomputePython(ScopedRecomputeTestBase):
         person_schema = branch_schema.get_node("TestPerson")
         person_schema.attributes.append(AttributeSchema(name="nickname", kind="Text", optional=True))
         branch_schema.set(name="TestPerson", schema=person_schema)
-        registry.schema.set_schema_branch(name=branch.name, schema=branch_schema)
-        branch.update_schema_hash()
-        branch_schema.process()
-        await branch.save(db=db)
+        await commit_schema_branch(db=db, branch=branch, schema_branch=branch_schema)
 
         await computed_attribute_setup_python(
             context=self._context(admin_account, branch),

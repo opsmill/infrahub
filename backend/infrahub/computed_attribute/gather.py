@@ -38,7 +38,6 @@ async def gather_python_transform_attributes(
 ) -> list[PythonTransformComputedAttribute]:
     log = get_run_logger()
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
-    branches_with_diff_from_main = registry.get_altered_schema_branches()
     branch = registry.get_branch_from_registry(branch=branch_name)
 
     transform_attributes = schema_branch.computed_attributes.python_attributes_by_transform
@@ -87,7 +86,6 @@ async def gather_python_transform_attributes(
                 query_analyzer=query_analyzer,
                 query_name=query.name.value,
                 computed_attribute=attribute,
-                default_schema=branch_name not in branches_with_diff_from_main,
             )
             python_transform_computed_attribute.populate_branch_commit(
                 repository_data=repositories.get(repository.name.value)
@@ -140,7 +138,9 @@ async def gather_trigger_computed_attribute_jinja2(
     return triggers
 
 
-def _branch_scopes(branches: dict[str, PythonTransformComputedAttribute]) -> list[tuple[str, list[str]]]:
+def _branch_scopes(
+    branches: dict[str, PythonTransformComputedAttribute], altered_schema_branches: list[str]
+) -> list[tuple[str, list[str]]]:
     """Which branch each automation is built for, and the branches it must not answer for.
 
     A branch owns its automations when its repository commit or its whole-branch schema hash
@@ -154,7 +154,8 @@ def _branch_scopes(branches: dict[str, PythonTransformComputedAttribute]) -> lis
     owning_branches = [
         branch_name
         for branch_name, item in branches.items()
-        if branch_name != registry.default_branch and (item.repository_commit != commit_main or not item.default_schema)
+        if branch_name != registry.default_branch
+        and (item.repository_commit != commit_main or branch_name in altered_schema_branches)
     ]
 
     scopes: list[tuple[str, list[str]]] = [(branch_name, []) for branch_name in owning_branches]
@@ -173,6 +174,7 @@ async def gather_trigger_computed_attribute_python(
     triggers_python_query = []
 
     repositories = await get_repositories_commit_per_branch(db=db)
+    altered_schema_branches = registry.get_altered_schema_branches()
 
     # Keyed by attribute and by transform: an attribute gets its own owner automation even when it
     # shares a transform, and a branch that repoints the attribute keeps a definition of its own.
@@ -192,7 +194,7 @@ async def gather_trigger_computed_attribute_python(
             by_transform[computed_attribute.name][branch.name] = computed_attribute
 
     for branches in by_attribute.values():
-        for branch_scope, branches_out_of_scope in _branch_scopes(branches):
+        for branch_scope, branches_out_of_scope in _branch_scopes(branches, altered_schema_branches):
             triggers_python.append(
                 ComputedAttrPythonTriggerDefinition.from_object(
                     computed_attribute=branches[branch_scope],
@@ -202,7 +204,7 @@ async def gather_trigger_computed_attribute_python(
             )
 
     for branches in by_transform.values():
-        for branch_scope, branches_out_of_scope in _branch_scopes(branches):
+        for branch_scope, branches_out_of_scope in _branch_scopes(branches, altered_schema_branches):
             computed_attribute = branches[branch_scope]
             for kind, access in computed_attribute.query_analyzer.query_report.requested_read.items():
                 if not access.fields:

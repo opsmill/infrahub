@@ -20,6 +20,7 @@ from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedA
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
+from tests.component.computed_attribute._base import commit_schema_branch
 from tests.helpers.trigger import branches_covered_by
 
 TRANSFORM_NAME = "transform_person_cars"
@@ -200,10 +201,7 @@ async def test_gather_trigger_computed_attribute_jinja2_different_branch(
         "{{ name__value | upper }} {{ owner__name__value | upper }} has {{ nbr_seats__value | upper }} seats"
     )
     schema_branch.set(name="TestCar", schema=car_schema)
-    registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
-    branch.update_schema_hash()
-    schema_branch.process()
-    await branch.save(db=db)
+    await commit_schema_branch(db=db, branch=branch, schema_branch=schema_branch)
 
     name_main = "computed_attr_jinja2::main::TestCar_computed_desc::kind::TestCar"
     name_branch_first = "computed_attr_jinja2::branch2::TestCar_computed_desc::kind::TestCar"
@@ -274,10 +272,7 @@ async def test_two_attributes_sharing_a_transform_share_its_query_automations(
         )
     )
     schema_branch.set(name="TestCar", schema=car_schema)
-    registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
-    default_branch.update_schema_hash()
-    schema_branch.process()
-    await default_branch.save(db=db)
+    await commit_schema_branch(db=db, branch=default_branch, schema_branch=schema_branch)
 
     triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
 
@@ -315,10 +310,7 @@ async def test_a_branch_altering_the_schema_of_a_shared_transform_owns_its_autom
     car_schema = schema_branch.get_node("TestCar")
     car_schema.get_attribute(name="computed_desc_python").computed_attribute.transform = "transform_car_owner"
     schema_branch.set(name="TestCar", schema=car_schema)
-    registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
-    default_branch.update_schema_hash()
-    schema_branch.process()
-    await default_branch.save(db=db)
+    await commit_schema_branch(db=db, branch=default_branch, schema_branch=schema_branch)
 
     branch = await create_branch(branch_name="branch_shares_transform", db=db)
 
@@ -337,10 +329,7 @@ async def test_a_branch_altering_the_schema_of_a_shared_transform_owns_its_autom
         )
     )
     branch_schema.set(name="TestPerson", schema=person_schema)
-    registry.schema.set_schema_branch(name=branch.name, schema=branch_schema)
-    branch.update_schema_hash()
-    branch_schema.process()
-    await branch.save(db=db)
+    await commit_schema_branch(db=db, branch=branch, schema_branch=branch_schema)
 
     triggers_python, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
 
@@ -446,10 +435,7 @@ async def test_gather_trigger_computed_attribute_python_only_on_branch(
         )
     )
     schema_branch.set(name="TestCar", schema=car_schema)
-    registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
-    branch.update_schema_hash()
-    schema_branch.process()
-    await branch.save(db=db)
+    await commit_schema_branch(db=db, branch=branch, schema_branch=schema_branch)
 
     # This should not raise a KeyError
     triggers, _ = await gather_trigger_computed_attribute_python(db=db)
@@ -498,10 +484,7 @@ async def test_a_branch_that_repoints_a_transform_keeps_its_own_automation(
     car_schema = schema_branch.get_node("TestCar")
     car_schema.get_attribute(name="computed_desc_python").computed_attribute.transform = "transform_seats"
     schema_branch.set(name="TestCar", schema=car_schema)
-    registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
-    branch.update_schema_hash()
-    schema_branch.process()
-    await branch.save(db=db)
+    await commit_schema_branch(db=db, branch=branch, schema_branch=schema_branch)
 
     triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
 

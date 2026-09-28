@@ -89,7 +89,6 @@ class PythonTransformComputedAttribute(BaseModel):
     query_name: str
     query_analyzer: InfrahubGraphQLQueryAnalyzer
     computed_attribute: PythonDefinition
-    default_schema: bool
     branch_name: str
     branch_commit: dict[str, str] = field(default_factory=dict)
 
