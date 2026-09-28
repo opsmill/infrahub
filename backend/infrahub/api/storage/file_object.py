@@ -13,6 +13,7 @@ from infrahub.api.dependencies import (
     get_db,
     get_permission_manager,
 )
+from infrahub.api.storage.content import read_stored_object
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, PermissionAction
 from infrahub.core.protocols import CoreFileObject
@@ -74,10 +75,13 @@ def build_content_disposition(filename: str, preview: bool = False) -> str:
     return f"{disposition}; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
 
 
-def _build_file_response(file_object: CoreFileObject, *, preview: bool = False) -> Response:
+async def _build_file_response(db: InfrahubDatabase, file_object: CoreFileObject, *, preview: bool = False) -> Response:
     """Build a `Response` for downloading a FileObject's content."""
+    content = await read_stored_object(
+        db=db, identifier=file_object.storage_id.value, recorded_checksum=file_object.checksum.value
+    )
     return Response(
-        content=registry.storage.retrieve_binary(identifier=file_object.storage_id.value),
+        content=content,
         media_type=file_object.file_type.value,
         headers={
             "Content-Disposition": build_content_disposition(filename=file_object.file_name.value, preview=preview)
@@ -128,7 +132,7 @@ async def download_file_object_by_hfid(
         db=db, hfid=hfid, kind=kind, branch=branch_params.branch, at=branch_params.at, raise_on_error=True
     )
 
-    return _build_file_response(file_object=cast("CoreFileObject", node), preview=preview)
+    return await _build_file_response(db=db, file_object=cast("CoreFileObject", node), preview=preview)
 
 
 @router.get(
@@ -178,7 +182,7 @@ async def download_file_object_by_storage_id(
     )
     permission_manager.raise_for_permission(permission=permission)
 
-    return _build_file_response(file_object=node, preview=preview)
+    return await _build_file_response(db=db, file_object=node, preview=preview)
 
 
 @router.get(
@@ -214,4 +218,4 @@ async def download_file_object(
     )
     permission_manager.raise_for_permission(permission=permission)
 
-    return _build_file_response(file_object=node, preview=preview)
+    return await _build_file_response(db=db, file_object=node, preview=preview)

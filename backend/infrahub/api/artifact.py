@@ -13,6 +13,7 @@ from infrahub.api.dependencies import (
     get_db,
     get_permission_manager,
 )
+from infrahub.api.storage.content import read_stored_object
 from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
@@ -59,10 +60,10 @@ async def get_artifact(
             branch_name=branch_params.branch.name, node_type=InfrahubKind.ARTIFACT, identifier=artifact_id
         )
 
-    return Response(
-        content=registry.storage.retrieve(identifier=str(artifact.storage_id.value)),
-        headers={"Content-Type": artifact.content_type.value.value},
+    content = await read_stored_object(
+        db=db, identifier=str(artifact.storage_id.value), recorded_checksum=artifact.checksum.value
     )
+    return Response(content=content.decode(), headers={"Content-Type": artifact.content_type.value.value})
 
 
 @router.post("/generate/{artifact_definition_id:str}")

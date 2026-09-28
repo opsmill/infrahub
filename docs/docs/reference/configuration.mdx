@@ -233,7 +233,7 @@ Configuration settings for the message bus.
 |------|-------------|------|---------|
 | `INFRAHUB_SECURITY_ACCESS_TOKEN_LIFETIME` | Lifetime of access token in seconds | integer | 3600 |
 | `INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME` | Lifetime of refresh token in seconds | integer | 2592000 |
-| `INFRAHUB_SECURITY_SECRET_KEY` | The secret key used to validate authentication tokens | string | None |
+| `INFRAHUB_SECURITY_SECRET_KEY` | The secret key used to validate authentication tokens. With storage encryption enabled, the key that encrypts stored files is derived from it: changing it makes those files unreadable. | string | None |
 | `INFRAHUB_SECURITY_OAUTH2_PROVIDERS` | The selected OAuth2 providers | array[string] | [] |
 | `INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS` | None | object | Check nested parameters |
 | `INFRAHUB_SECURITY_OIDC_PROVIDERS` | The selected OIDC providers | array[string] | [] |
@@ -360,6 +360,7 @@ LDAP authentication configuration.
 | `INFRAHUB_STORAGE_LOCAL` | None | object | Check nested parameters |
 | `INFRAHUB_STORAGE_S3` | None | object | Check nested parameters |
 | `INFRAHUB_STORAGE_MAX_FILE_SIZE` | Maximum file size in MB for file uploads | integer | 50 |
+| `INFRAHUB_STORAGE_ENCRYPTION_ENABLED` | Encrypt the artifacts and files stored from now on with a key derived from INFRAHUB_SECURITY_SECRET_KEY, and refuse to serve a stored file that fails its integrity check. Files stored before are served only if they match their recorded checksum. | boolean | False |
 
 ### INFRAHUB_STORAGE_LOCAL
 

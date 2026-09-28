@@ -58,6 +58,10 @@ Never use default passwords or tokens in production. Generate strong unique valu
 
 If your infrastructure uses a private certificate authority, mount its bundle into the containers, then set `INFRAHUB_TLS_CA_BUNDLE` to the mounted path. A component can override the bundle with its own `*_TLS_CA_FILE` or `*_TLS_CA_BUNDLE` setting. See [Trust a private CA](./private-ca.mdx) for the mount and verification steps.
 
+:::info
+With [storage encryption](../../../artifact-file-storage/encryption.mdx) enabled, the key that encrypts stored artifacts and files is derived from `INFRAHUB_SECURITY_SECRET_KEY`. Keep the secret in your secrets manager, and do not change it: files encrypted with the previous value become unreadable.
+:::
+
 <ReferenceLink title="Complete configuration reference" url="/reference/configuration" />
 
 ## Step 2: Install Infrahub

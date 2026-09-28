@@ -571,3 +571,24 @@ class LDAPCollisionError(Error):
         self.account_name = account_name
         self.message = message or self.DESCRIPTION
         super().__init__(self.message)
+
+
+class StorageIntegrityError(Error):
+    """A stored object failed its integrity check and must not be served."""
+
+    HTTP_CODE: int = 409
+    DESCRIPTION: str = "The stored content failed its integrity check and was not served."
+
+    def __init__(self, identifier: str, reason: str) -> None:
+        self.identifier = identifier
+        self.reason = reason
+        self.message = f"The stored content {identifier} failed its integrity check and was not served."
+        super().__init__(self.message)
+
+
+class StorageEncryptionError(Error):
+    """Storage encryption is misconfigured."""
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(self.message)

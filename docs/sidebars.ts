@@ -330,6 +330,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'doc', id: 'artifact-file-storage/overview' }, // hub (renamed from "Object Storage")
           items: [
             { type: 'doc', id: 'artifact-file-storage/configure', label: 'Configure storage' },
+            { type: 'doc', id: 'artifact-file-storage/encryption', label: 'Encrypt stored files' },
           ],
         },
         {
