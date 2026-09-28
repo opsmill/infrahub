@@ -1,6 +1,6 @@
 # Writing Documentation
 
-> Part of: `dev/guidelines/` | Related: [Markdown Standards](markdown.md), `docs/AGENTS.md`
+> Part of: `dev/guidelines/` | Related: [Markdown Standards](markdown.md)
 
 Guidelines for writing documentation in the Infrahub project. These principles apply to all documentation, regardless of format.
 
@@ -152,5 +152,4 @@ uv run invoke docs.format        # Auto-format markdown files
 - [Markdown Standards](markdown.md) - Markdown formatting standards
 - [Writing a Guide](../guides/docs/writing-a-guide.md) - Step-by-step guide for writing guides
 - [Writing a Topic](../guides/docs/writing-a-topic.md) - Step-by-step guide for writing topics
-- `docs/AGENTS.md` - Main documentation guidelines
 - [Diataxis Framework](https://diataxis.fr/) - Documentation framework

@@ -372,7 +372,7 @@ This keeps the unit under test a pure function of `(input, clock)`, so a state m
 behavior depends on elapsed time is tested exactly — cross an interval boundary, assert the
 transition — with no wall-clock flakiness and no patching. Duration is a parameter of the logic,
 not an ambient fact; treat it like any other injected collaborator (see
-[Backend Component Design](../../../.agents/rules/backend-component-design.md)).
+[Backend Component Design](component-design.md)).
 
 Use monotonic time for durations. Wall-clock time (`datetime.now`) is for timestamps that get
 stored or displayed, and it can jump backwards.

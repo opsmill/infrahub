@@ -6,108 +6,94 @@ This document explains how documentation is organized in the Infrahub project to
 
 1. **Single Source of Truth**: All technical knowledge lives under `dev/`
 2. **AGENTS.md as Gateway**: Component-level `AGENTS.md` files provide quick reference and point to `dev/` for details
-3. **No Cross-References in Guidelines**: Individual guideline files don't link to each other; they link back to their index (README.md)
-4. **Index-Based Navigation**: Each guideline category has a README.md that serves as the index and navigation hub
+3. **The component AGENTS.md is the index**: it lists the guidelines, knowledge docs and guides of its area, each with a line saying what it covers or when to load it. No guideline category keeps a README.md index of its own
+4. **Each file loads once, in every harness**: a `CLAUDE.md` only imports the `AGENTS.md` beside it, and a file a harness loads on its own is named, never linked by path
 
 ## File Structure
 
-```
+```text
 infrahub/
-├── AGENTS.md                    # Root entry point, points to component AGENTS and dev/
+├── AGENTS.md                    # Root entry point, names the component AGENTS.md files and dev/ guidelines
+├── CLAUDE.md                    # Only @AGENTS.md, like the CLAUDE.md beside every AGENTS.md below
 ├── backend/
-│   └── AGENTS.md               # Backend overview, points to dev/guidelines/backend/
+│   └── AGENTS.md               # Backend overview, lists the dev/ docs for backend work
 ├── frontend/app/
-│   └── AGENTS.md               # Frontend overview, points to dev/guidelines/frontend/
+│   └── AGENTS.md               # Frontend overview, lists the dev/ docs for frontend work
+├── docs/
+│   └── AGENTS.md               # Conventions for the user-facing docs
+├── .agents/
+│   ├── rules/                   # Short rules only Claude Code loads, each pointing at its guideline
+│   ├── skills/
+│   └── commands/
 └── dev/
     ├── guidelines/              # How to write code
-    │   ├── backend/
-    │   │   └── python.md
-    │   └── frontend/
-    │       ├── README.md       # Index: lists all frontend guidelines
-    │       ├── typescript.md   # Points back to README.md, not to other guidelines
-    │       └── url-construction.md  # Points back to README.md, not to other guidelines
+    │   ├── backend/             # python.md, typing.md, testing.md, component-design.md, ...
+    │   └── frontend/            # typescript.md, url-construction.md, ...
     ├── knowledge/               # How the system works
     ├── guides/                  # How to do specific tasks
     ├── adr/                     # Architecture decision records
     └── specs/                   # Feature specifications
 ```
 
+## How AGENTS.md files reach a session
+
+Every harness loads the root `AGENTS.md` at session start; Claude Code reads it through the root
+`CLAUDE.md`. A component `AGENTS.md`, in `backend/`, `frontend/app/`, `docs/` or
+`development/grafana/`, reaches:
+
+- **Claude Code** through the `CLAUDE.md` beside it, which Claude Code loads when a file below that
+  folder is read. Under its default setting a root `CLAUDE.md` stops Claude Code reading any
+  `AGENTS.md` on its own, so a folder without that shim never loads its `AGENTS.md`
+- **Codex** through the root `AGENTS.md` naming it. By default Codex loads the `AGENTS.md` files from
+  the repository root down to its working directory, where an `AGENTS.override.md` takes precedence and
+  other filenames can be configured as fallbacks. It reads no `CLAUDE.md`, no rules and no `@` imports
+
+Rules under `.agents/rules/` reach Claude Code only, so each one names the guideline that holds its full
+guidance, and every such guideline is linked from an `AGENTS.md`. The consolidated rules,
+`code-doc-style`, `python-module-layout` and `backend-component-design`, keep their hard rules to one
+line apiece.
+
 ## Documentation Flow
 
 ### For Agents/Developers Reading Documentation
 
-1. **Start at component level**: `backend/AGENTS.md` or `frontend/app/AGENTS.md`
-2. **Navigate to guidelines**: Follow link to `dev/guidelines/[backend|frontend]/`
-3. **Use the index**: Start at `README.md` to see all available guidelines
-4. **Read specific guidelines**: Each guideline is self-contained and focused
+1. **Start at component level**: the `AGENTS.md` of the area you work in
+2. **Pick from its lists**: the Guidelines, Knowledge and Guides entries say what each doc covers
+3. **Read specific guidelines**: each is self-contained and focused, and links a related guideline where one builds on another
 
 ### For Agents/Developers Writing Documentation
 
 #### ✅ DO
 
 - Put all technical knowledge in `dev/` directories
-- Create a README.md index file for guideline categories
-- Link from component AGENTS.md to `dev/guidelines/[category]/README.md`
-- Link from individual guidelines back to their README.md index
+- List a new doc in its area's `AGENTS.md`, with a line saying what it covers or when to load it
+- Open a guideline with a `> Part of:` breadcrumb naming its folder, adding `| Related:` links where useful
 - Keep guidelines focused and self-contained
+- Give each `AGENTS.md` a `CLAUDE.md` beside it holding only `@AGENTS.md`
 
 #### ❌ DON'T
 
 - Put detailed coding standards in component AGENTS.md files
-- Cross-reference between individual guideline files (use the index instead)
 - Duplicate content between AGENTS.md and dev/ files
-- Create guideline files without adding them to the README.md index
+- Put anything but `@AGENTS.md` in a `CLAUDE.md`: only Claude Code reads it
+- Name an `AGENTS.md`, `CLAUDE.md`, rule, skill or command by path: name the skill or command, and let the harness load the file. An `AGENTS.md` naming the ones below it is the exception
+- Create a doc that nothing a harness loads leads to
 
 ## Example: Frontend Guidelines
 
-```markdown
-# frontend/app/AGENTS.md
-- Points to: dev/guidelines/frontend/README.md
-
-# dev/guidelines/frontend/README.md (Index)
-- Lists: typescript.md, url-construction.md
-- Points to: related knowledge, guides, other dev/ files
-
-# dev/guidelines/frontend/typescript.md
-- Header links back to: README.md
-- Does NOT link to: url-construction.md (use index instead)
-
-# dev/guidelines/frontend/url-construction.md
-- Header links back to: README.md
-- Does NOT link to: typescript.md (use index instead)
-```
-
-## Why This Pattern?
-
-### Benefits
-
-1. **Discoverability**: The README.md index provides a complete view of all guidelines in a category
-2. **Maintainability**: Changes to one guideline don't require updating cross-references in other files
-3. **Scalability**: Easy to add new guidelines - just add to the index
-4. **Clear Hierarchy**: Component AGENTS.md → Guidelines Index → Specific Guideline
-5. **Context for AI Agents**: All related guidelines are discoverable through the index, ensuring agents have complete context
-
-### Comparison to Backend Pattern
-
-The backend currently uses direct cross-references (e.g., `python.md` → `architecture.md`). While this works for a small number of files, the frontend pattern scales better:
-
-- **Backend**: Works well with 1-2 guideline files
-- **Frontend**: Scales to many guideline files without creating a cross-reference web
-
-Both patterns are acceptable, but prefer the **index-based pattern** (frontend style) for categories with 3+ guideline files.
+- The frontend `AGENTS.md` lists every frontend guideline under "Guidelines" with what it covers, and its knowledge docs and guides the same way
+- `dev/guidelines/frontend/typescript.md` opens with the bare breadcrumb `` > Part of: `dev/guidelines/frontend/` `` and links `route-architecture.md` where the route pattern continues
 
 ## Updating the Pattern
 
 When adding new guidelines:
 
 1. Create the guideline file in the appropriate `dev/guidelines/[category]/` directory
-2. Add header: `> Part of: dev/guidelines/[category]/ | Index: [Category Guidelines](./README.md)`
-3. Update the category's README.md index with the new guideline
-4. If this is the first guideline beyond the initial one, consider creating a README.md index
+2. Add the header: `` > Part of: `dev/guidelines/[category]/` ``, followed by `| Related:` and links where useful
+3. List it in the area's `AGENTS.md`, or in the root one's Coding Standards for a cross-cutting guideline, with a line saying when to load it
 
 ## Summary
 
-- **Component AGENTS.md**: Quick reference → Points to `dev/`
-- **dev/guidelines/[category]/README.md**: Index → Lists all guidelines in category
-- **dev/guidelines/[category]/[specific].md**: Focused guideline → Points back to README.md index
-- **Result**: Clear hierarchy, easy navigation, scales well, complete context for agents
+- **Component AGENTS.md**: Quick reference and the index of its area's `dev/` docs, loaded through the `CLAUDE.md` beside it or the root `AGENTS.md` naming it
+- **dev/guidelines/[category]/[specific].md**: Focused guideline, opening with a breadcrumb to its folder
+- **Rules**: Hard rules for Claude Code, one line each, pointing at the guideline that holds them

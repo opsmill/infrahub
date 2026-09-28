@@ -135,11 +135,12 @@ checkout.
 
 ## Coding Standards
 
-- Backend: `dev/guidelines/backend/python.md` (load before writing backend Python — imports, data structures), `dev/guidelines/backend/typing.md` (load when a type checker flags your change or when narrowing a type), `dev/guidelines/backend/exceptions.md` (load when writing a `try`/`except`) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
+- Backend: `dev/guidelines/backend/python.md` (load before writing or reviewing backend Python — imports, data structures), `dev/guidelines/backend/typing.md` (load when a type checker flags your change, or when you narrow a type or review code that does), `dev/guidelines/backend/exceptions.md` (load when writing or reviewing a `try`/`except`), `dev/guidelines/backend/testing.md` (load before writing, changing or reviewing backend tests), `dev/guidelines/backend/component-design.md` (load before adding a backend class or reshaping responsibilities, or reviewing a change that does) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
 - Frontend: `frontend/app/AGENTS.md`
+- Docstrings and comments: `dev/guidelines/code-doc-style.md` — load before writing or reviewing a docstring or comment
 - Git workflow: `dev/guidelines/git-workflow.md`
 - Markdown formatting: `dev/guidelines/markdown.md`
-- Internal docs (`dev/`, the `AGENTS.md` files, `.agents/`): `dev/guidelines/documentation.md` — load *Writing Style → For Internal Docs* and the *Don't* list before writing or editing one
+- Internal docs (`dev/`, the `AGENTS.md` files, `.agents/`): `dev/guidelines/documentation.md` — load *Writing Style → For Internal Docs* and the *Don't* list before writing, editing or reviewing one
 
 ## Generated Files (Do Not Edit)
 
@@ -165,13 +166,13 @@ CI validates that all generated files are committed — the `validate-generated-
 
 ### Always Do
 
-- Before diagnosing _or_ modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
+- Before tracking down a bug, reviewing a change or modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
 - Add a towncrier changelog fragment for any user-visible change, UI styling included (use the `creating-changelog-entries` skill). `housekeeping` is not a catch-all: internal maintenance gets a fragment only when a user could still notice the change (the skill draws the boundary on user visibility) — agent-doc, CI-config, and test-only tweaks are the typical cases a user never notices, so they get none
 - Use type hints for Python (backend) and TypeScript types (frontend)
 - In `tasks/*.py`, use the shared helpers for project-scoped Docker Compose operations rather than hard-coding `docker compose` or service names: build the command with `get_compose_cmd` (it selects the required `--profile`/`--ansi never` options) plus `get_env_vars`, run it through `execute_command` (which handles `sudo`), and reference named services via the shared constants (e.g. `SERVICE_WORKER_NAME`). Literal `docker compose` is acceptable only for genuinely global, project-agnostic discovery commands.
-- Before pushing, run `/pre-ci` (`.agents/commands/pre-ci.md`) — it runs the locally-executable CI checks, including generated-file and generated-doc validation (`docs.validate`); CI fails if any generated file is stale
+- Before pushing, run `/pre-ci` — it runs the locally-executable CI checks, including generated-file and generated-doc validation (`docs.validate`); CI fails if any generated file is stale
 - Before writing a changelog fragment, PR description, or ADR that names a specific identifier, metric, or config default, grep the actual diff/code for it — state what landed, not what the plan intended. When a later fix changes a figure — or reverses a decision — that a spec-kit doc set already stated, grep the whole `dev/specs/<feature>/` directory for the old value or decision and update every file that repeats it in the same commit
 
 ### Ask First
@@ -205,4 +206,5 @@ CI validates that all generated files are committed — the `validate-generated-
 - Backend: `backend/AGENTS.md`
 - Frontend: `frontend/app/AGENTS.md`
 - Documentation: `docs/AGENTS.md`
+- Grafana dashboards: `development/grafana/AGENTS.md`
 - Python SDK: `python_sdk/AGENTS.md`
