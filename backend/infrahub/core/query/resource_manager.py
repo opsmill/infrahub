@@ -510,7 +510,7 @@ class NumberPoolChangeReserved(Query):
         WHERE is_active = TRUE
         MATCH (new_node:Node { uuid: $new_node_id })-[:HAS_ATTRIBUTE]->(new_attr:Attribute)
         WHERE new_attr.name = tracked_attribute_name
-          AND new_node:$(tracked_node_kind)
+          AND tracked_node_kind IN labels(new_node)
         WITH DISTINCT pool, new_attr, old_props
         WHERE NOT EXISTS {
             MATCH (pool)-[mine:IS_RESERVED]->(new_attr)
