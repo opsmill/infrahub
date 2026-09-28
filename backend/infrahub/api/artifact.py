@@ -62,7 +62,10 @@ async def get_artifact(
         )
 
     content = await ArtifactContentReader(
-        db=db, storage=registry.storage, verify_checksum=config.SETTINGS.storage.verify_artifact_checksum
+        db=db,
+        storage=registry.storage,
+        verify_checksum=config.SETTINGS.storage.verify_artifact_checksum,
+        verify_file_objects=config.SETTINGS.storage.encryption_enabled,
     ).read_artifact(storage_id=str(artifact.storage_id.value), checksum=artifact.checksum.value)
     return Response(content=content, headers={"Content-Type": artifact.content_type.value.value})
 
