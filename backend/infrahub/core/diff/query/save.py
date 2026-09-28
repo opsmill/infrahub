@@ -320,8 +320,30 @@ CALL (diff_relationship, node_relationship) {
 // -------------------------
 WITH diff_relationship, node_relationship
 UNWIND node_relationship.relationships as node_single_relationship
-MERGE (diff_relationship)-[:DIFF_HAS_ELEMENT]
-    ->(diff_relationship_element:DiffRelationshipElement {peer_id: node_single_relationship.node_properties.peer_id})
+CALL (diff_relationship, node_single_relationship) {
+    // seek the element on (path_identifier, peer_id) and check the edge from the element side. A MERGE on the
+    // pattern walks every DIFF_HAS_ELEMENT edge of diff_relationship per row (quadratic for a many-peer
+    // relationship), and a peer_id-only seek returns every element pointing at that peer across all diffs
+    // (quadratic for a peer shared by many nodes, e.g. an IP namespace). The pair is selective in both cases.
+    // No USING INDEX hint: the planner picks diff_rel_element_path_peer on its own, and without a hint a save
+    // still runs (slower) while that index is being created on upgrade instead of failing.
+    OPTIONAL MATCH (existing_element:DiffRelationshipElement {
+        path_identifier: node_single_relationship.node_properties.path_identifier,
+        peer_id: node_single_relationship.node_properties.peer_id
+    })
+    WHERE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(existing_element)
+    CALL (diff_relationship, existing_element) {
+        WITH diff_relationship, existing_element
+        WHERE existing_element IS NULL
+        CREATE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(new_element:DiffRelationshipElement)
+        RETURN new_element AS element
+        UNION
+        WITH existing_element
+        WHERE existing_element IS NOT NULL
+        RETURN existing_element AS element
+    }
+    RETURN element AS diff_relationship_element
+}
 SET diff_relationship_element = node_single_relationship.node_properties
 // -------------------------
 // add/remove conflict for this relationship element

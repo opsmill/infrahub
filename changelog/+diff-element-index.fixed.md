@@ -1,0 +1,1 @@
+Fixed saving a diff node with a very large relationship, such as an IP namespace after a bulk IP import, running for hours or failing with `MemoryPoolOutOfMemoryError`: each relationship element is now found through a new `(path_identifier, peer_id)` index instead of a scan of every element of the relationship, so the save grows linearly with the number of elements.
