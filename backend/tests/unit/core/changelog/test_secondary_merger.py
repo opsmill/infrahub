@@ -6,7 +6,7 @@ from infrahub.core.changelog.models import (
     RelationshipCardinalityOneChangelog,
     RelationshipPeerChangelog,
 )
-from infrahub.core.changelog.relationship_getter import RelationshipChangelogGetter
+from infrahub.core.changelog.secondary_merger import SecondaryChangelogMerger
 from infrahub.core.constants import DiffAction, RelationshipKind
 
 
@@ -25,7 +25,7 @@ def test_merge_secondaries_collapses_the_same_peer_into_one_changelog() -> None:
         _secondary(node_id="peer-2", relationship_name="rel_c"),
     ]
 
-    merged = RelationshipChangelogGetter._merge_secondaries_by_node(secondaries)
+    merged = SecondaryChangelogMerger().merge(secondaries)
 
     assert len(merged) == 2
     by_id = {changelog.node_id: changelog for changelog in merged}
@@ -53,7 +53,7 @@ def test_merge_secondaries_keeps_one_entry_per_peer_and_status_for_a_shared_many
         _many_secondary(node_id="peer-1", relationship_name="members", peer_id="source", status=DiffAction.REMOVED),
     ]
 
-    merged = RelationshipChangelogGetter._merge_secondaries_by_node(secondaries)
+    merged = SecondaryChangelogMerger().merge(secondaries)
 
     assert len(merged) == 1
     members = merged[0].relationships["members"]
@@ -64,6 +64,32 @@ def test_merge_secondaries_keeps_one_entry_per_peer_and_status_for_a_shared_many
     ]
 
 
+def test_merge_keeps_the_first_peer_of_a_shared_one_relationship_name() -> None:
+    """A one-cardinality relationship holds a single peer, so the first secondary seen wins."""
+    first = _secondary(node_id="peer-1", relationship_name="parent")
+    second = _secondary(node_id="peer-1", relationship_name="parent")
+    second.relationships["parent"] = RelationshipCardinalityOneChangelog(name="parent", peer_id="other-source")
+
+    merged = SecondaryChangelogMerger().merge([first, second])
+
+    assert len(merged) == 1
+    parent = merged[0].relationships["parent"]
+    assert isinstance(parent, RelationshipCardinalityOneChangelog)
+    assert parent.peer_id == "source"
+
+
+def test_merge_preserves_the_order_the_peers_were_built_in() -> None:
+    secondaries = [
+        _secondary(node_id="peer-2", relationship_name="rel_a"),
+        _secondary(node_id="peer-1", relationship_name="rel_b"),
+        _secondary(node_id="peer-2", relationship_name="rel_c"),
+    ]
+
+    merged = SecondaryChangelogMerger().merge(secondaries)
+
+    assert [changelog.node_id for changelog in merged] == ["peer-2", "peer-1"]
+
+
 def test_merge_secondaries_keeps_one_entry_when_a_merged_relationship_repeats_a_peer() -> None:
     """The entries a single folded relationship carries are deduplicated against each other too."""
     first = _many_secondary(node_id="peer-1", relationship_name="members", peer_id="source")
@@ -72,7 +98,7 @@ def test_merge_secondaries_keeps_one_entry_when_a_merged_relationship_repeats_a_
     assert isinstance(members, RelationshipCardinalityManyChangelog)
     members.peers.append(RelationshipPeerChangelog(peer_id="other", peer_kind="TestCar", peer_status=DiffAction.ADDED))
 
-    merged = RelationshipChangelogGetter._merge_secondaries_by_node([first, second])
+    merged = SecondaryChangelogMerger().merge([first, second])
 
     assert len(merged) == 1
     merged_members = merged[0].relationships["members"]
@@ -96,7 +122,7 @@ def test_merge_secondaries_keeps_the_parent_of_a_later_secondary() -> None:
     parent_relationship.set_parent_from_relationship(rel_kind=RelationshipKind.PARENT)
     with_parent.add_relationship(relationship_changelog=parent_relationship)
 
-    merged = RelationshipChangelogGetter._merge_secondaries_by_node([without_parent, with_parent])
+    merged = SecondaryChangelogMerger().merge([without_parent, with_parent])
 
     assert len(merged) == 1
     assert set(merged[0].relationships) == {"primary_of", "site"}
