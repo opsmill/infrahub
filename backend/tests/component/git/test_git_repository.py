@@ -1103,6 +1103,14 @@ UNUSABLE_STORED_OBJECT_CASES: list[UnusableStoredObjectCase] = [
         status_code=200,
         body='{\n  "KEY1": "modified in the object storage"\n}',
     ),
+    UnusableStoredObjectCase(
+        name="stored_object_refused_by_integrity_check",
+        status_code=409,
+        body=(
+            '{"data": null, "errors": [{"message": "The stored content 13c8914b-0ac0-4c8c-83ec-a79a1f8ad483 '
+            'failed its integrity check and was not served.", "extensions": {"code": 409}}]}'
+        ),
+    ),
 ]
 
 

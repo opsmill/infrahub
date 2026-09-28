@@ -2153,8 +2153,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def _stored_content_matches(self, storage_id: str | None, checksum: str) -> bool:
         """Whether the object storage still holds the content recorded with this checksum.
 
+        A missing object (404) and one the API refuses because it failed its integrity check (409) do not.
+
         Raises:
-            httpx.HTTPStatusError: If the object cannot be read for another reason than being missing.
+            httpx.HTTPStatusError: If the object cannot be read for another reason.
 
         """
         if not storage_id:
@@ -2162,7 +2164,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         try:
             content = await self.sdk.object_store.get(identifier=storage_id, tracker="artifact-verify-content")
         except httpx.HTTPStatusError as exc:
-            if exc.response.status_code != 404:
+            if exc.response.status_code not in {404, 409}:
                 raise
             return False
         return hashlib.md5(bytes(content, encoding="utf-8"), usedforsecurity=False).hexdigest() == checksum
