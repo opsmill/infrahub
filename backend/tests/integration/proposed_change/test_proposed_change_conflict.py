@@ -13,7 +13,7 @@ from infrahub_sdk.context import ContextAccount, RequestContext
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.protocols import CoreDataCheck, CoreProposedChange
 
-from infrahub.core.constants import InfrahubKind, ValidatorConclusion
+from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, ValidatorConclusion
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_account, create_branch
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 
 
 class ErroringGraphMerger(GraphMerger):
-    async def merge(self, at: Timestamp) -> None:
+    async def merge(self, at: Timestamp, user_id: str = SYSTEM_USER_ID) -> None:
         raise ValueError("This will always fail")
 
 

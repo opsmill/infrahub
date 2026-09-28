@@ -115,7 +115,8 @@ class TestNumberPool:
         await admin_page.get_by_role("textbox", name="Name *").fill("test interface with pool")
 
         # Select number pool
-        await admin_page.get_by_test_id("number-pool-button").click()
+        await admin_page.get_by_role("tab", name="From pool").click()
+        await admin_page.get_by_test_id("select-open-pool-option-button").click()
         await expect(admin_page.get_by_role("option", name="number pool test for generic")).to_be_visible()
         await expect(admin_page.get_by_role("option", name="number pool test for node")).to_be_visible()
         await admin_page.get_by_role("option", name="number pool test for generic").click()

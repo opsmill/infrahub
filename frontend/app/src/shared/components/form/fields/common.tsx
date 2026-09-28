@@ -48,6 +48,7 @@ export const LabelFormField = ({
 }: LabelFormFieldProps) => {
   return (
     <div className={classNames("flex flex-col gap-0.5", className)}>
+      {/* Badges are capped to the default label's line box so gaining or losing a source cannot shift this row's height. */}
       <div className="flex min-h-4 flex-wrap items-center gap-1">
         <FormLabel {...props}>
           {label} {required && "*"}
@@ -82,7 +83,7 @@ const ProfileSourceBadge = ({ source }: { source: ProfileSource }) => {
       }
     >
       <Focusable>
-        <Badge variant="green" className="ml-auto" data-testid="source-profile-badge">
+        <Badge variant="green" className="ml-auto h-5 py-0" data-testid="source-profile-badge">
           <Icon icon="mdi:shape-plus-outline" className="mr-1" /> {source?.label}
         </Badge>
       </Focusable>
@@ -107,7 +108,7 @@ const PoolSourceBadge = ({ source }: { source: PoolSource }) => {
       }
     >
       <Focusable>
-        <Badge variant="purple" className="ml-auto" data-testid="source-pool-badge">
+        <Badge variant="purple" className="ml-auto h-5 py-0" data-testid="source-pool-badge">
           <Icon icon="mdi:view-grid-outline" className="mr-1" /> {source?.label}
         </Badge>
       </Focusable>
@@ -132,7 +133,7 @@ const TemplateSourceBadge = ({ source }: { source: TemplateSource }) => {
       }
     >
       <Focusable>
-        <Badge variant="blue" className="ml-auto" data-testid="source-template-badge">
+        <Badge variant="blue" className="ml-auto h-5 py-0" data-testid="source-template-badge">
           <FileBoxIcon className="mr-1 size-3" /> {source?.label}
         </Badge>
       </Focusable>

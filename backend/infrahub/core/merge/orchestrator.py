@@ -106,7 +106,7 @@ class BranchMergeOrchestrator:
             async with lock.registry.global_graph_lock():
                 self.log.info("Global graph lock acquired for merge")
                 await self._record_merge_start(merge_at=merge_at, user_id=user_id)
-                await self.graph_merger.merge(at=merge_at)
+                await self.graph_merger.merge(at=merge_at, user_id=user_id)
 
             self.log.info("Loading enriched diff for changelog collection")
             branch_diff = await self.diff_repository.get_one(

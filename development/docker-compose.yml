@@ -70,6 +70,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_DELETE_BRANCH_AFTER_MERGE: ${INFRAHUB_DELETE_BRANCH_AFTER_MERGE:-false}
   INFRAHUB_DIFF_UPDATE_AFTER_MERGE: ${INFRAHUB_DIFF_UPDATE_AFTER_MERGE:-true}
   INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE: ${INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE:-true}
+  INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE: ${INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE:-true}
   INFRAHUB_DOCS_INDEX_PATH: ${INFRAHUB_DOCS_INDEX_PATH:-/opt/infrahub/docs/build/search-index.json}
   # Defaults to true here, and only here: the team dogfoods dark on development stacks while it is
   # alpha. The root compose file deliberately has no passthrough, so a deployment cannot pick it up.

@@ -100,6 +100,8 @@ InfrahubEventService.send(event)
                    └──► emit_event() → Prefect Automations
 ```
 
+For example, `BranchDeletedEvent` drives the `branch-deleted-purge-tasks-trigger` automation, which runs the `branch-purge-tasks` flow to delete the deleted branch's settled flow runs so their completed tasks no longer surface on a same-named recreation (see [Asynchronous Tasks](async-tasks.md)).
+
 ## Trigger action parameters
 
 A trigger definition's `ExecuteWorkflow` action passes parameters to the target deployment. Each parameter value is a Jinja template that Prefect renders server-side, against the triggering event, when the automation fires.
@@ -162,7 +164,7 @@ The `EventMeta` class provides rich context:
 - **account_id**: Initiating account
 - **request_id**: Correlation ID
 - **context**: Full `InfrahubContext` for the operation
-- **origin**: For node mutation events, how the mutation was produced (`live`, `merge`, `rebase`, `recompute`), defaulting to `live`. The recompute triggers for computed attributes, display labels, and human-friendly ids match only `live`, so a merge, rebase, or recompute write does not re-trigger their per-node flows. See [merge-recompute.md](merge-recompute.md).
+- **origin**: For node mutation events, how the mutation was produced (`live`, `merge`, `rebase`, `recompute`), defaulting to `live`. The recompute triggers for Jinja2 computed attributes, display labels, and human-friendly ids match only `live`, so a merge, rebase, or recompute write does not re-trigger their per-node flows. The two Python trigger types match only `live` as well while `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE` is on. See [merge-recompute.md](merge-recompute.md).
 
 Use `EventMeta.from_parent()` to create child events that maintain hierarchy.
 

@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from infrahub.core.query_group.subscribers import SubscriberRef
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from infrahub.computed_attribute.scoping import ChangedElementSet
     from infrahub.core.merge.python_target_resolution import PythonAttributeReadSet
+    from infrahub.core.merge.python_target_sources import AnalyzedRead, DeclaredAttribute
+    from infrahub.core.merge.recompute_coalescing import AffectedTarget, MergeChange
 
 
 class StaticPythonReadSetSource:
@@ -33,6 +39,7 @@ class RecordingSubscriberSource:
         self.subscribers_by_node = subscribers
         self.empties_lookup = empties_lookup or set()
         self.calls: list[tuple[str, ...]] = []
+        self.branches: list[str] = []
 
     async def subscribers(self, *, node_ids: list[str], branch: str) -> list[SubscriberRef]:
         """Report the subscribers of the given nodes, one entry per matching group.
@@ -41,6 +48,7 @@ class RecordingSubscriberSource:
         filter returns nothing at all, so the live ids sharing that lookup lose their readers too.
         """
         self.calls.append(tuple(node_ids))
+        self.branches.append(branch)
         if self.empties_lookup & set(node_ids):
             return []
         return [
@@ -48,6 +56,37 @@ class RecordingSubscriberSource:
             for node_id in node_ids
             for subscriber_id, kind in self.subscribers_by_node.get(node_id, [])
         ]
+
+
+@dataclass(frozen=True)
+class ResolveCall:
+    branch: str
+    node_ids: tuple[str, ...]
+    schema_scope: ChangedElementSet | None
+
+
+class RecordingPythonTargetResolver:
+    """Serves a fixed target list and records the branch, node ids and schema scope of every call."""
+
+    def __init__(self, targets: list[AffectedTarget]) -> None:
+        self.targets = targets
+        self.calls: list[ResolveCall] = []
+
+    async def resolve(
+        self,
+        *,
+        changes: Iterable[MergeChange],
+        branch: str,
+        schema_changed_elements: ChangedElementSet | None,
+    ) -> list[AffectedTarget]:
+        self.calls.append(
+            ResolveCall(
+                branch=branch,
+                node_ids=tuple(change.node_id for change in changes),
+                schema_scope=schema_changed_elements,
+            )
+        )
+        return self.targets
 
 
 class FailingSubscriberSource:
@@ -59,3 +98,55 @@ class FailingSubscriberSource:
     async def subscribers(self, *, node_ids: list[str], branch: str) -> list[SubscriberRef]:
         self.calls.append(tuple(node_ids))
         raise RuntimeError("subscriber lookup rejected")
+
+
+class FailingPythonTargetResolver:
+    """Raises on every resolution, to prove the other families are submitted regardless."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    async def resolve(
+        self,
+        *,
+        changes: Iterable[MergeChange],
+        branch: str,
+        schema_changed_elements: ChangedElementSet | None,
+    ) -> list[AffectedTarget]:
+        self.calls.append(branch)
+        raise RuntimeError("read set unavailable")
+
+
+class StaticDeclaredPythonAttributes:
+    """Serves a fixed list of declared attributes."""
+
+    def __init__(self, declared: list[DeclaredAttribute]) -> None:
+        self.configured_declared = declared
+        self.calls: list[str] = []
+
+    async def declared(self, *, branch: str) -> list[DeclaredAttribute]:
+        self.calls.append(branch)
+        return self.configured_declared
+
+
+class StaticAnalyzedPythonReadSets:
+    """Serves a fixed read-set map for the attributes whose query could be analyzed."""
+
+    def __init__(self, analyzed: dict[DeclaredAttribute, AnalyzedRead]) -> None:
+        self.configured_analyzed = analyzed
+        self.calls: list[str] = []
+
+    async def analyzed(self, *, branch: str) -> dict[DeclaredAttribute, AnalyzedRead]:
+        self.calls.append(branch)
+        return self.configured_analyzed
+
+
+class FailingAnalyzedPythonReadSets:
+    """Raises on every analysis, to prove the declared attributes still get an entry."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    async def analyzed(self, *, branch: str) -> dict[DeclaredAttribute, AnalyzedRead]:
+        self.calls.append(branch)
+        raise RuntimeError("gather rejected")

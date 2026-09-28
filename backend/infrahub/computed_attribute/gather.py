@@ -7,6 +7,7 @@ from prefect import task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
+from infrahub import config
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreTransformPython as CoreTransformPythonNode
 from infrahub.core.registry import registry
@@ -150,9 +151,14 @@ async def gather_trigger_computed_attribute_python(
     triggers_python = []
     triggers_python_query = []
 
+    # Read once, so one gather cannot build some automations for one answer and some for another.
+    live_only = config.SETTINGS.main.coalesce_python_recompute_after_merge
+
     repositories = await get_repositories_commit_per_branch(db=db)
 
-    all_computed_attributes: dict[str, dict[str, PythonTransformComputedAttribute]] = defaultdict(dict)
+    # Keyed by attribute and by transform: an attribute gets its own automation even when it shares
+    # a transform, and a branch that repoints the attribute keeps a definition of its own.
+    all_computed_attributes: dict[tuple[str, str], dict[str, PythonTransformComputedAttribute]] = defaultdict(dict)
     for branch in list(registry.branch.values()):
         if branch.is_global:
             continue
@@ -161,7 +167,8 @@ async def gather_trigger_computed_attribute_python(
             db=db, branch_name=branch.name, repositories=repositories
         )
         for computed_attribute in computed_attributes:
-            all_computed_attributes[computed_attribute.name][branch.name] = computed_attribute
+            key = (computed_attribute.computed_attribute.key_name, computed_attribute.name)
+            all_computed_attributes[key][branch.name] = computed_attribute
 
     for branches in all_computed_attributes.values():
         branches_with_diff_from_main = []
@@ -182,6 +189,7 @@ async def gather_trigger_computed_attribute_python(
             trigger_python = ComputedAttrPythonTriggerDefinition.from_object(
                 computed_attribute=branches[branch_scope],
                 branch=branch_scope,
+                live_only=live_only,
                 branches_out_of_scope=branches_out_of_scope,
             )
             triggers_python.append(trigger_python)
@@ -197,6 +205,7 @@ async def gather_trigger_computed_attribute_python(
                     kind=kind,
                     computed_attribute=branches[branch_scope],
                     branch=branch_scope,
+                    live_only=live_only,
                     branches_out_of_scope=branches_out_of_scope,
                 )
                 triggers_python_query.append(trigger_python_query)

@@ -91,12 +91,8 @@ class DiffCountChanges(Query):
     def get_num_changes_by_branch(self) -> dict[str, int]:
         branch_count_map = {}
         for result in self.get_results():
-            branch_name = str(result.get("branch_name"))
-            try:
-                count = int(result.get("num_changes"))
-            except (TypeError, ValueError):
-                count = 0
-            branch_count_map[branch_name] = count
+            branch_name = result.get_as_type(label="branch_name", return_type=str)
+            branch_count_map[branch_name] = result.get_as_type(label="num_changes", return_type=int)
         for branch_name in self.branch_names:
             if branch_name not in branch_count_map:
                 branch_count_map[branch_name] = 0

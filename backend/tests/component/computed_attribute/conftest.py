@@ -24,7 +24,7 @@ async def gqlquery01(db: InfrahubDatabase, register_core_models_schema: SchemaBr
     await query.new(
         db=db,
         name="query01",
-        query="query { TestCar { edges { node { name { value } } } } }",
+        query="query TestCarQuery($id: ID!) { TestCar(ids: [$id]) { edges { node { name { value } } } } }",
         models=["TestCar", "TestPerson"],
     )
     await query.save(db=db)

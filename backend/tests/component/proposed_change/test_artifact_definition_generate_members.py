@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from infrahub_sdk import Config, InfrahubClient
 
-from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
@@ -15,14 +14,16 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.git.tasks import generate_request_artifact_definition
 from infrahub.server import app
-from infrahub.workers.dependencies import build_client, build_workflow
+from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_GENERATE
 from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema import load_schema
-from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
+from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator
 
     from fast_depends import Provider
 
@@ -30,6 +31,7 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
     from tests.helpers.test_client import InfrahubTestClient
 
 DEVICE_QUERY = """
@@ -58,7 +60,7 @@ DEVICE_SCHEMA = SchemaRoot(
 )
 
 
-class TestArtifactDefinitionGenerateMembers(TestInfrahubAppBase):
+class TestArtifactDefinitionGenerateMembers(TestInfrahubAppWithoutLocalWorkflow):
     """`generate_request_artifact_definition` honours the `members` filter without dropping new members.
 
     Selective regeneration narrows a definition to specific target-group members via `members`
@@ -71,18 +73,16 @@ class TestArtifactDefinitionGenerateMembers(TestInfrahubAppBase):
     @pytest.fixture(scope="class", autouse=True)
     async def workflow_recorder(
         self,
-        prefect: Generator[str, None, None],
+        service: InfrahubServices,
         dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
-        original = config.OVERRIDE.workflow
-        recorder = WorkflowRecorder()
-        config.OVERRIDE.workflow = recorder
-        with dependency_provider.scope(build_workflow, lambda: recorder):
+        with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
             yield recorder
-        config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
+    async def service(
+        self, workflow_local: WorkflowLocalExecution, test_client: InfrahubTestClient
+    ) -> InfrahubServices:
         return app.state.service
 
     @pytest.fixture(scope="class")
@@ -103,9 +103,11 @@ class TestArtifactDefinitionGenerateMembers(TestInfrahubAppBase):
         )
         original_client = service._client
         service._client = sdk_client
-        with dependency_provider.scope(build_client, lambda: sdk_client):
-            yield sdk_client
-        service._client = original_client
+        try:
+            with override_dependency(build_client, lambda: sdk_client, dependency_provider=dependency_provider):
+                yield sdk_client
+        finally:
+            service._client = original_client
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:

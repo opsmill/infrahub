@@ -243,6 +243,24 @@ class PythonTransformDependencyDeriver:
         )
 
 
+def scope_python_transforms(
+    *,
+    candidate_attributes: Sequence[ComputedAttributeRef],
+    read_sets: Mapping[tuple[str, str, str], TransformReadSet],
+    changed_elements: ChangedElementSet | None,
+) -> RecomputeScopingReport:
+    """Select the Python transform computed attributes one schema change recomputes.
+
+    The schema-scoped backfill and the coalesced merge pass both decide this, and the second drops
+    what the first selects. Wiring the scoper here keeps them from disagreeing about the rules; each
+    still supplies its own candidates and read sets.
+    """
+    scoper = RecomputeScoper(
+        derivers={ComputedAttributeKind.TRANSFORM_PYTHON: PythonTransformDependencyDeriver(read_sets=read_sets)}
+    )
+    return scoper.scope(candidate_attributes=candidate_attributes, changed_elements=changed_elements)
+
+
 class Jinja2DependencyDeriver:
     """Derive dependency sets for Jinja2 template-based computed attributes.
 

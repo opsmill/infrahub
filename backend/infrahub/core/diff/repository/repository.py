@@ -1,9 +1,10 @@
-from typing import TYPE_CHECKING, AsyncGenerator, Generator, Iterable
+from typing import AsyncGenerator, Generator, Iterable, Sequence
 
 from neo4j.exceptions import TransientError
 
 from infrahub import config
 from infrahub.core import registry
+from infrahub.core.constants import DiffAction
 from infrahub.core.diff.query.drop_nodes import EnrichedDiffDropNodesQuery
 from infrahub.core.diff.query.field_summary import EnrichedDiffNodeFieldSummaryQuery
 from infrahub.core.diff.query.summary_counts_enricher import (
@@ -49,9 +50,6 @@ from ..query.save import EnrichedDiffRootsUpsertQuery, EnrichedNodeBatchCreateQu
 from ..query.time_range_query import EnrichedDiffTimeRangeQuery
 from ..query.update_conflict_query import EnrichedDiffConflictUpdateQuery
 from .deserializer import EnrichedDiffDeserializer
-
-if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
 
 log = get_logger()
 
@@ -569,18 +567,18 @@ class DiffRepository:
 
     async def get_affected_node_uuids(
         self,
-        source_branch: "Branch",
-        target_branch: "Branch",
-        at: Timestamp,
+        diff_branch_name: str,
         tracking_id: TrackingId,
+        include_actions: Sequence[DiffAction] | None = None,
+        exclude_actions: Sequence[DiffAction] = (DiffAction.UNCHANGED,),
     ) -> list[str]:
-        """Get all node UUIDs from the diff graph for metadata updates."""
+        """Get node UUIDs from the diff graph, optionally filtered by diff action."""
         query = await AffectedDiffNodeUUIDsQuery.init(
             db=self.db,
-            branch=source_branch,
-            at=at,
-            target_branch=target_branch,
+            diff_branch_name=diff_branch_name,
             tracking_id=tracking_id.serialize(),
+            include_actions=[action.value for action in include_actions] if include_actions is not None else None,
+            exclude_actions=[action.value for action in exclude_actions] if exclude_actions else None,
         )
         await query.execute(db=self.db)
         return query.get_node_uuids()

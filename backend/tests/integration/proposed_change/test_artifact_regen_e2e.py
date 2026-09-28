@@ -154,7 +154,6 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
 
         assert transform_jinja.dependencies_complete.value is True
         assert set(transform_jinja.dependencies.value) == {
-            ".infrahub.yml",
             "templates/device.j2",
             "partials/header.j2",
         }
@@ -163,7 +162,6 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
         # sit in the same directory and stay out of the closure.
         assert transform_python.dependencies_complete.value is True
         assert set(transform_python.dependencies.value) == {
-            ".infrahub.yml",
             "transforms/foo/foo.py",
             "transforms/foo/helpers.py",
         }
@@ -184,6 +182,29 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
             memory_cache=memory_cache,
             workflow_recorder=workflow_recorder,
             files_changed=["README.md"],
+        )
+        assert selected == []
+
+    async def test_manifest_edit_regenerates_nothing(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+    ) -> None:
+        """Editing the repository manifest dispatches no regeneration on the file gate.
+
+        The closures here are built by the real integrator, so this pins that the manifest is
+        absent from every one of them and a manifest edit no longer selects the whole repository.
+        """
+        selected = await self._selected_definitions(
+            dataset=dataset,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            memory_cache=memory_cache,
+            workflow_recorder=workflow_recorder,
+            files_changed=[".infrahub.yml"],
         )
         assert selected == []
 
