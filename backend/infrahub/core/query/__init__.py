@@ -260,6 +260,7 @@ class QueryResult:
         return self.data[return_id]
 
     def get(self, label: str) -> Neo4jNode | Neo4jRelationship:
+        """Return a column as-is; the annotation is not enforced, so the value may also be a scalar, list or null."""
         return self._get(label=label)
 
     def get_as_str(self, label: str) -> str | None:

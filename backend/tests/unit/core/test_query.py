@@ -2,6 +2,8 @@ from typing import Any
 
 import pytest
 from neo4j import Record
+from neo4j.graph import Graph, Path
+from neo4j.graph import Node as Neo4jNode
 
 from infrahub.core.query import Query, QueryResult, QueryType
 
@@ -128,3 +130,23 @@ def test_unknown_label_is_rejected(result: QueryResult) -> None:
 
 def test_get_as_type_converts_the_column(result: QueryResult) -> None:
     assert result.get_as_type(label="nbr_peers", return_type=int) == 2
+
+
+def build_path(uuid: str) -> Path:
+    return Path(Neo4jNode(Graph(), element_id=f"4:db:{uuid}", id_=0, n_labels=["Node"], properties={"uuid": uuid}))
+
+
+def test_get_path_returns_a_path_column() -> None:
+    path = build_path(uuid=NODE_UUID)
+    result = build_result(path=path, uuid=NODE_UUID)
+
+    assert result.get_path(label="path") is path
+    with pytest.raises(ValueError, match="uuid is not a Path"):
+        result.get_path(label="uuid")
+
+
+def test_get_paths_yields_only_the_paths_of_a_list_column() -> None:
+    paths = [build_path(uuid=peer_uuid) for peer_uuid in PEER_UUIDS]
+    result = build_result(paths=[paths[0], None, paths[1]])
+
+    assert list(result.get_paths(label="paths")) == paths
