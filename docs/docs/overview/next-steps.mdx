@@ -16,7 +16,7 @@ Start with a focused scope. Pick one domain (for example: data center fabric, WA
 
 ## 2. Load real data
 
-With a schema that reflects your infrastructure, bring in real data. If you already have a source of truth (Netbox, Nautobot, IP Fabric, or others), [Infrahub Sync](https://github.com/opsmill/infrahub-sync) can pull data from these systems directly.
+With a schema that reflects your infrastructure, bring in real data. If you already have a source of truth (Netbox, Nautobot, IP Fabric, or others), [Infrahub Sync](https://github.com/opsmill/infrahub-sync) can pull data from these systems directly. If you use NetBox, you can also [convert its device types into object templates](../object-templates/import-from-netbox.mdx) with an AI coding assistant.
 
 Alternatively, describe your data in YAML object files and load them with `infrahubctl`, the same way you did in the Quick Start. This works well for initial seeding or for data that doesn't live in another system yet.
 

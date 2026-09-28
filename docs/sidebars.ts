@@ -215,6 +215,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'doc', id: 'object-templates/overview' }, // hub
           items: [
             { type: 'doc', id: 'object-templates/use', label: 'Use object templates' },
+            { type: 'doc', id: 'object-templates/import-from-netbox', label: 'Import from NetBox device types' },
             { type: 'doc', id: 'object-templates/with-profiles', label: 'Assign Profiles to a template' },
             { type: 'doc', id: 'object-templates/allocate-resources-from-pools', label: 'Allocate resources from pools' },
           ],
