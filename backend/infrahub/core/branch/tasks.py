@@ -292,6 +292,12 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             base_branch=base_branch,
             target_from=initial_from_time,
         )
+        # The changelog events below are built from this in-memory diff. Its stored copy has a one-off
+        # uuid4 name, so nothing reads it again: drop it rather than keep every rebase's diff forever.
+        with log_exception_guard(log, "Failed to delete the post-rebase changelog diff"):
+            await diff_repository.delete_diff_roots(
+                diff_root_uuids=[uuid for uuid in (default_branch_diff.uuid, default_branch_diff.partner_uuid) if uuid]
+            )
 
         # -------------------------------------------------------------
         # Trigger the reconciliation of IPAM data after the rebase
