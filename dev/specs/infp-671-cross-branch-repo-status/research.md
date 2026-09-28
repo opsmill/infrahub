@@ -377,8 +377,8 @@ lives under IFC; INFP is JPD and carries product planning only, linked to the ep
   regenerate `schema/schema.graphql` and run `uv run invoke docs.generate` so reference docs stay valid.
 - Increment C: `changelog/+repository-sync-single-read.changed.md`; update
   `dev/knowledge/backend/git-sync.md` with the new read path (one statement per chunk of branches).
-- Python SDK exposure of the query is out of scope for this slice; it is a follow-up issue under the
-  delivery epic IFC-3104.
+- Python SDK exposure of the query is out of scope for this slice. It is deferred and not yet filed;
+  when it is, it goes under the delivery epic IFC-3104.
 
 ---
 
