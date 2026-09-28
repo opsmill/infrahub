@@ -17,18 +17,24 @@ visible from every branch. Attribute branch support decides where value edges li
 | --- | --- | --- | --- |
 | Generic and both concrete kinds | `name`, `description`, `location`, `operational_status` | `AGNOSTIC` | Once (from the repository lookup) |
 | `CoreRepository` | `default_branch` | agnostic by inheritance | Once |
-| `CoreGenericRepository`, `CoreRepository` | `commit`, `sync_status`, `internal_status` | `LOCAL` | Per branch |
+| `CoreGenericRepository`, inherited by both kinds | `sync_status`, `internal_status` | `LOCAL` | Per branch |
+| `CoreRepository` | `commit` | `LOCAL` | Per branch |
 | `CoreReadOnlyRepository` | `commit`, `ref` | `AWARE` | Per branch |
 
-`LOCAL` and `AWARE` differ in merge and diff behaviour, not in how a read on a branch resolves them.
-Both are read with the same per-branch predicate.
+A read on a branch resolves `LOCAL` and `AWARE` with the same per-branch predicate. They differ in
+merge and diff behaviour, and in where the value written at creation lands (below).
 
 ### Where a per-branch value edge lives
 
-- At repository creation the attribute and its first value are written on the global branch
-  (`branch_level` 1), because the node is agnostic.
+- At repository creation a `LOCAL` attribute and its first value are written on the global branch
+  (`branch_level` 1), because the node is agnostic (`Attribute.get_create_data`). An `AWARE`
+  attribute is not: its first value lands on the branch the repository was created from.
 - A later write on branch X (an import on that branch) creates a `HAS_VALUE` edge on X. On the default
   branch that edge has `branch_level` 1; on a user branch it has `branch_level` 2.
+
+So a `CoreReadOnlyRepository` created on a user branch resolves `commit` and `ref` only on that
+branch until a value is written elsewhere; the default branch and every other branch read them as
+null.
 
 ### Per-branch visibility of an edge `r` for row branch `B` at time `at`
 
@@ -65,7 +71,7 @@ Winner among visible edges: `ORDER BY r.branch_level DESC, r.from DESC, r.status
 only `status = "active"`. This is the rule `Branch.get_query_filter_path` encodes for a single branch
 and `infrahub.database.validation::_check_duplicate_attributes` encodes for a branch list.
 
-Consequences the spec pins by test:
+Consequences the spec pins by test, for a `CoreRepository` (its `commit` is `LOCAL`):
 
 | Situation | Winning `HAS_VALUE` edge for branch B | Row shows |
 | --- | --- | --- |
@@ -75,6 +81,11 @@ Consequences the spec pins by test:
 | B rebased | `branched_from` advanced; the newer default edge is now inside the window | Newer commit |
 | Repository never imported anywhere | Global creation edge | `commit.value = null`, `sync_status = unknown` |
 | Row is the default branch | Default's own edge if any, else global | `own_value = true` only if written on the default branch |
+
+For a `CoreReadOnlyRepository` created on the default branch, the creation edges of `commit` and
+`ref` sit on the default branch rather than the global one, so the default-branch row reports them
+with `own_value = true`. User branches forked after the creation inherit them through the fork-point
+window; a branch forked before it reads them as null, since the creation edge postdates its window.
 
 ## Row set
 
