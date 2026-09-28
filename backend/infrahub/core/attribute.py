@@ -449,7 +449,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         # Validate if the value is still correct, will raise a ValidationError if not
         self.validate(value=self.value, name=self.name, schema=self.schema)
-        # Every write path funnels through here, so this is where the stored form is made canonical
         if self.value is not None:
             self.value = self._normalize_value(self.value)
 
@@ -648,6 +647,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 value_to_set = self.schema.convert_value_to_enum(data["value"])
             else:
                 value_to_set = data["value"]
+                if value_to_set is not None:
+                    self.validate(value=value_to_set, name=self.name, schema=self.schema)
+                    value_to_set = self._normalize_value(value_to_set)
             if value_to_set != self.value:
                 self.value = value_to_set
                 changed = True
