@@ -1,5 +1,6 @@
 import random
 from collections import defaultdict
+from copy import deepcopy
 from dataclasses import dataclass, replace
 from typing import Generator
 from uuid import uuid4
@@ -1134,6 +1135,59 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         assert retrieved_diff_root.exists_on_database is True
         retrieved_diff_root.exists_on_database = False
         assert retrieved_diff_root == enriched_diff
+        await verify_no_orphaned_nodes(db=db)
+
+    async def test_update_keeps_the_relationship_elements_of_each_diff_separate(
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database: None
+    ) -> None:
+        """A node changed on both branches holds identical relationship elements in the base and the branch diff."""
+        branch_node = self.build_diff_node(no_recurse=True, num_sub_fields=3)
+        base_node = deepcopy(branch_node)
+        enriched_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes={branch_node},
+            tracking_id=NameTrackingId(name="shared-elements"),
+        )
+        base_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.base_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes={base_node},
+            tracking_id=enriched_diff.tracking_id,
+            partner_uuid=enriched_diff.uuid,
+        )
+        enriched_diff.partner_uuid = base_diff.uuid
+        enriched_diffs = EnrichedDiffs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            diff_branch_diff=enriched_diff,
+            base_branch_diff=base_diff,
+        )
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=False)
+
+        for relationship in branch_node.relationships:
+            for element in relationship.relationships:
+                element.peer_label = "updated_on_branch"
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=False)
+
+        retrieved = await diff_repository.get_pairs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+        )
+        assert len(retrieved) == 1
+        retrieved[0].diff_branch_diff.exists_on_database = False
+        retrieved[0].base_branch_diff.exists_on_database = False
+        assert retrieved[0].diff_branch_diff == enriched_diff
+        assert retrieved[0].base_branch_diff == base_diff
+        num_elements_per_diff = sum(len(relationship.relationships) for relationship in branch_node.relationships)
+        records = await db.execute_query(query="MATCH (e:DiffRelationshipElement) RETURN count(e) AS num_elements")
+        assert records[0]["num_elements"] == 2 * num_elements_per_diff
         await verify_no_orphaned_nodes(db=db)
 
     async def test_update_existing_hierarchy(
