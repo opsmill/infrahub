@@ -9,8 +9,8 @@ uv run ruff format --check utilities/pr_lifecycle.py utilities/tests/test_pr_lif
 ```
 
 The suite injects time and a recording read transport. It needs no token, network connection,
-backend services, or third-party Python packages. The CLI skeleton reports incomplete collection
-and exits nonzero; it cannot yet perform a production inventory.
+backend services, or third-party Python packages. Observation collects complete human PR snapshots and excluded bot identities, and fails closed
+on missing data, insufficient quota, or exhausted request budgets.
 
 ## API fixtures
 
@@ -59,6 +59,6 @@ The harness verifies every source hash before executing any upstream method. Exp
 | infrahub-stale-state.ts | 3c5f33059183508162d0b6a67b8edae37dfa953d3fad5883c8f4c4965fc52cdb |
 
 Sources belong to `actions/stale` commit `4391f3da665fdf50b6810c1a66712fb9ba21aa93` and remain
-separately downloaded under upstream licensing. Expected result: 26 fixture assertions pass.
+separately downloaded under upstream licensing. Expected result: 34 fixture assertions pass.
 The harness covers timer resets, gate selection, and cache continuation. It does not prove hosted
 token permissions, cache transport, actual GitHub event emission, or concurrent update safety.

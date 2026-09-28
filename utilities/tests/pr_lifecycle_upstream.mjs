@@ -115,3 +115,42 @@ check('full processor keep-open label prevents closure',await processGate({label
 check('full processor human comment since gate vetoes closure',await processGate({human:true}),'open');
 check('full processor cached ID skips newly eligible gate',await processGate({cached:true}),'open');
 console.log(`${passed} assertions passed including full processor gating`);
+
+async function shiftingScan({count, cached='', budget=1000, failClose=false}) {
+  let persisted=cached;
+  const cache={restore:async()=>persisted,save:async value=>{persisted=value}};
+  const open=new Set(Array.from({length:count},(_,i)=>i+1));
+  const passes=[];
+  for(let pass=1;pass<=3 && open.size;pass++) {
+    const state=new sandbox.State(cache,{debugOnly:false});await state.restore();
+    const p=Object.create(P.prototype);let remaining=budget;
+    p.options={};p.state=state;p.closedIssues=[];
+    p._logger={info(){},warning(){},createOptionLink(){}};
+    p.operations={hasRemainingOperations:()=>remaining>0,getRemainingOperationsCount:()=>remaining};
+    p.getIssues=async page=>Array.from(open).slice((page-1)*100,page*100).map(number=>({number}));
+    p._consumeIssueOperation=()=>{remaining--};
+    p.client={rest:{issues:{update:async({issue_number})=>{
+      if(failClose) throw Error('fixture denied');
+      open.delete(issue_number);
+    }}}};
+    p.processIssue=async issue=>p._closeIssue(issue);
+    await p.processIssues();await state.persist();
+    passes.push({attempted:p.closedIssues.length,remaining:open.size});
+  }
+  return {passes,remaining:open.size};
+}
+sandbox.context={repo:{owner:'fixture',repo:'fixture'}};
+sandbox.IssueLogger.prototype.error=()=>{};
+for(const count of [116,574]) {
+  const result=await shiftingScan({count});
+  check(`mutable pagination covers ${count} candidates within three passes`, result.remaining,0);
+  check(`mutable pagination ${count} needs continuation`,result.passes.length>1,true);
+}
+check('interrupted state containing newly due IDs requires fresh sweep',
+  (await shiftingScan({count:116,cached:Array.from({length:116},(_,i)=>i+1).join('|')})).remaining,0);
+check('expired cache restarts safely from full inventory',
+  (await shiftingScan({count:116,cached:''})).remaining,0);
+const failedClose=await shiftingScan({count:1,failClose:true});
+check('upstream reports attempted close despite swallowed API failure',failedClose.passes[0].attempted,1);
+check('independent candidate read detects swallowed close failure',failedClose.remaining,1);
+console.log(`${passed} assertions passed; processor pagination, cache loss, and close failure use pinned upstream bodies.`);

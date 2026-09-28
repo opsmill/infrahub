@@ -10,12 +10,16 @@ import unittest
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, Self
+from unittest.mock import patch
 
 from utilities.pr_lifecycle import (
     DASHBOARD_MARKER,
     TRUSTED_BOT,
     Aggregate,
+    CacheRecord,
     FeedItem,
+    GitHubClient,
     IncompleteDataError,
     Intent,
     JsonValue,
@@ -23,6 +27,7 @@ from utilities.pr_lifecycle import (
     Receipt,
     Snapshot,
     collect_snapshot,
+    continuation,
     decode_ledger,
     discover_dashboard,
     encode_ledger,
@@ -32,10 +37,15 @@ from utilities.pr_lifecycle import (
     observe_activity,
     pages,
     prune_ledger,
+    read_cache,
     recover_receipt,
     stage_intent,
+    verify_candidates,
     verify_generation,
 )
+
+if TYPE_CHECKING:
+    from urllib.request import Request
 
 
 class RecordingTransport:
@@ -79,6 +89,10 @@ class TestCliSkeleton(unittest.TestCase):
                 "closure_ready": False,
                 "errors": ["Expected JSON array"],
                 "inventory": [],
+                "excluded_bots": [],
+                "inventory_count": 0,
+                "evaluated_count": 0,
+                "requests": 2,
             },
         )
 
@@ -343,6 +357,7 @@ class TestCollection(unittest.TestCase):
         transport = FixtureTransport(
             responses={
                 "/repos/opsmill/infrahub": {"full_name": "opsmill/infrahub"},
+                "/rate_limit": {"resources": {"core": {"remaining": 1000}, "graphql": {"remaining": 1000}}},
                 "/repos/opsmill/infrahub/issues?state=all&creator=github-actions%5Bbot%5D&per_page=100&page=1": [],
                 "/repos/opsmill/infrahub/pulls?state=open&per_page=100&page=1": [],
             }
@@ -401,7 +416,7 @@ class TestSnapshotBoundary(unittest.TestCase):
         self.assertEqual(
             (result.number, result.head, result.aggregate.review_decision, result.feed), (1, "abc", None, ())
         )
-        self.assertEqual(len(transport.paths), 9)
+        self.assertEqual(len(transport.paths), 8)
         self.assertEqual(transport.queries, [1])
 
     def test_missing_aggregate_error_or_head_mismatch_fails(self) -> None:
@@ -454,6 +469,227 @@ class TestSnapshotBoundary(unittest.TestCase):
         pr["head"] = {"sha": "abc", "repo": {"updated_at": NOW}}
         after = collect_snapshot(transport=transport, number=1, now=fixed_clock())
         self.assertEqual(before.fingerprint, after.fingerprint)
+
+
+class TestReliability(unittest.TestCase):
+    def test_exact_cache_key_and_ref_metadata(self) -> None:
+        path = "/repos/opsmill/infrahub/actions/caches?key=_state&ref=refs%2Fheads%2Fstable&per_page=100&page=1"
+        record: dict[str, JsonValue] = {
+            "id": 1,
+            "key": "_state",
+            "ref": "refs/heads/stable",
+            "created_at": OLD,
+            "last_accessed_at": NOW,
+            "size_in_bytes": 100,
+        }
+        transport = FixtureTransport(
+            responses={
+                path: {
+                    "actions_caches": [
+                        record,
+                        {**record, "id": 2, "key": "_state-other"},
+                        {**record, "id": 3, "ref": "refs/heads/other"},
+                    ],
+                    "total_count": 3,
+                }
+            }
+        )
+        result = read_cache(transport=transport, ref="refs/heads/stable")
+        self.assertEqual(result, CacheRecord(identity=1, created_at=OLD, last_accessed_at=NOW, size_in_bytes=100))
+        transport.responses[path] = {"actions_caches": [record, {**record, "id": 2}], "total_count": 2}
+        with self.assertRaisesRegex(IncompleteDataError, "Ambiguous"):
+            read_cache(transport=transport, ref="refs/heads/stable")
+
+    def test_independent_candidate_verification_rejects_unknown_state(self) -> None:
+        root = "/repos/opsmill/infrahub/pulls"
+        transport = FixtureTransport(
+            responses={
+                f"{root}/1": {"number": 1, "state": "closed"},
+                f"{root}/2": {"number": 2, "state": "open"},
+            }
+        )
+        self.assertEqual(verify_candidates(transport=transport, candidates=(1, 2)), (2,))
+        transport.responses[f"{root}/2"] = {"number": 2, "state": "unknown"}
+        with self.assertRaises(IncompleteDataError):
+            verify_candidates(transport=transport, candidates=(1, 2))
+
+    def test_continuation_requires_cache_replacement_or_semantic_progress(self) -> None:
+        cache = CacheRecord(identity=1, created_at=OLD, last_accessed_at=OLD, size_in_bytes=10)
+        for after in (cache, replace(cache, last_accessed_at=NOW)):
+            with self.subTest(after=after), self.assertRaisesRegex(IncompleteDataError, "unchanged"):
+                continuation(pass_number=1, before=cache, after=after, previous=(1, 2), remaining=(2,))
+        self.assertTrue(
+            continuation(
+                pass_number=1, before=cache, after=replace(cache, identity=2), previous=(1, 2), remaining=(1, 2)
+            )
+        )
+        self.assertTrue(continuation(pass_number=1, before=cache, after=None, previous=(1,), remaining=(1,)))
+        self.assertFalse(continuation(pass_number=1, before=cache, after=None, previous=(1,), remaining=()))
+        for pass_number in (2, 3):
+            with self.subTest(pass_number=pass_number), self.assertRaises(IncompleteDataError):
+                continuation(pass_number=pass_number, before=None, after=None, previous=(1,), remaining=(1,))
+
+    def test_incomplete_observation_never_authorizes_closure(self) -> None:
+        for missing in collection_transport().responses:
+            with self.subTest(missing=missing):
+                transport = observation_transport()
+                del transport.responses[missing]
+                report = observe(repository="opsmill/infrahub", transport=transport, clock=fixed_clock)
+                self.assertFalse(report.complete)
+                self.assertFalse(report.closure_ready)
+
+    def test_current_and_larger_bot_backlogs_use_inventory_only(self) -> None:
+        for count in (116, 574):
+            with self.subTest(count=count):
+                transport = observation_transport(count=count, bots=True)
+                report = observe(repository="opsmill/infrahub", transport=transport, clock=fixed_clock)
+                self.assertTrue(report.complete, report.errors)
+                self.assertFalse(report.closure_ready)
+                self.assertEqual(len(report.excluded_bots), count)
+                self.assertEqual(report.evaluated_count, count)
+                self.assertEqual(transport.queries, [])
+
+    def test_insufficient_quota_stops_before_human_detail_reads(self) -> None:
+        transport = observation_transport(count=574)
+        report = observe(repository="opsmill/infrahub", transport=transport, clock=fixed_clock)
+        self.assertFalse(report.complete)
+        self.assertIn("quota", report.errors[0])
+        self.assertEqual(transport.queries, [])
+        self.assertNotIn("/repos/opsmill/infrahub/pulls/1", transport.paths)
+
+    def test_budget_stops_before_partial_collection(self) -> None:
+        report = observe(repository="opsmill/infrahub", transport=observation_transport(), clock=fixed_clock, budget=5)
+        self.assertFalse(report.complete)
+        self.assertFalse(report.closure_ready)
+        self.assertIn("budget", report.errors[0])
+
+    def test_complete_observe_has_no_write_transport_operations(self) -> None:
+        transport = observation_transport()
+        report = observe(repository="opsmill/infrahub", transport=transport, clock=fixed_clock)
+        self.assertTrue(report.complete, report.errors)
+        self.assertFalse(report.closure_ready)
+        self.assertEqual(report.evaluated_count, 1)
+        self.assertEqual(transport.queries, [1])
+
+    def test_full_human_inventory_with_sufficient_quota(self) -> None:
+        for count in (116, 574):
+            with self.subTest(count=count):
+                transport = observation_transport(count=count)
+                transport.responses["/rate_limit"] = {
+                    "resources": {
+                        "core": {"remaining": 10000},
+                        "graphql": {"remaining": 10000},
+                    }
+                }
+                report = observe(repository="opsmill/infrahub", transport=transport, clock=fixed_clock, budget=10000)
+                self.assertTrue(report.complete, report.errors)
+                self.assertEqual(report.evaluated_count, count)
+                self.assertEqual(len(transport.queries), count)
+
+    def test_current_mixed_backlog_fits_github_token_quota(self) -> None:
+        transport = observation_transport(count=116)
+        page = transport.responses["/repos/opsmill/infrahub/pulls?state=open&per_page=100&page=1"]
+        if not isinstance(page, list):
+            self.fail("Expected inventory page")
+        for item in page[:5]:
+            if not isinstance(item, dict):
+                self.fail("Expected PR")
+            item["user"] = {"login": "dependabot[bot]", "type": "Bot"}
+        report = observe(repository="opsmill/infrahub", transport=transport, clock=fixed_clock)
+        self.assertTrue(report.complete, report.errors)
+        self.assertEqual((report.evaluated_count, len(report.excluded_bots)), (116, 5))
+        self.assertLess(len(transport.paths), 950)
+
+    def test_http_transport_only_sends_get_and_fixed_graphql_query(self) -> None:
+        requests: list[Request] = []
+
+        class Response:
+            def __init__(self) -> None:
+                self.headers = {"X-RateLimit-Remaining": "999", "X-RateLimit-Resource": "core"}
+
+            def __enter__(self) -> Self:
+                return self
+
+            def __exit__(self, *args: object) -> None:
+                pass
+
+            def read(self) -> bytes:
+                return b"{}"
+
+        def open_fixture(request: Request, **_kwargs: object) -> Response:
+            requests.append(request)
+            return Response()
+
+        client = GitHubClient(token=TRUSTED_BOT)
+        with patch("urllib.request.urlopen", side_effect=open_fixture):
+            client.get_json(path="/repos/opsmill/infrahub/pulls/1")
+            client.query(number=1)
+        self.assertEqual([request.get_method() for request in requests], ["GET", "POST"])
+        payload = requests[1].data
+        if not isinstance(payload, bytes):
+            self.fail("Expected GraphQL request payload")
+        self.assertTrue(json.loads(payload)["query"].startswith("query("))
+        with self.assertRaisesRegex(IncompleteDataError, "outside"):
+            client.get_json(path="/repos/other/repo")
+
+    def test_rate_buckets_and_actual_http_budget_are_independent(self) -> None:
+        client = GitHubClient(token=TRUSTED_BOT, budget=1)
+        client.account_headers(headers={"X-RateLimit-Remaining": "500", "X-RateLimit-Resource": "core"})
+        client.account_headers(headers={"X-RateLimit-Remaining": "1000", "X-RateLimit-Resource": "graphql"})
+        self.assertEqual(client.quotas, {"core": 500, "graphql": 1000})
+        client.requests = 1
+        with self.assertRaisesRegex(IncompleteDataError, "budget"):
+            client.get_json(path="/rate_limit")
+        client.requests = 0
+        client.quotas["core"] = 50
+        with self.assertRaisesRegex(IncompleteDataError, "quota"):
+            client.get_json(path="/rate_limit")
+
+    def test_workflow_has_only_trusted_observation(self) -> None:
+        workflow = (Path(__file__).parents[2] / ".github/workflows/manage-stale-prs.yml").read_text()
+        self.assertNotIn("workflow_dispatch:\n    inputs:", workflow)
+        self.assertNotIn("write", workflow)
+        self.assertIn("ref: stable", workflow)
+        self.assertIn("--mode observe", workflow)
+        self.assertNotIn("uses: actions/stale", workflow)
+        self.assertIn("cancel-in-progress: false", workflow)
+
+
+def observation_transport(*, count: int = 1, bots: bool = False) -> FixtureTransport:
+    transport = collection_transport()
+    root = "/repos/opsmill/infrahub"
+    transport.responses[root] = {"full_name": "opsmill/infrahub"}
+    transport.responses["/rate_limit"] = {
+        "resources": {
+            "core": {"remaining": 1000},
+            "graphql": {"remaining": 1000},
+        }
+    }
+    transport.responses[f"{root}/issues?state=all&creator=github-actions%5Bbot%5D&per_page=100&page=1"] = []
+    if not bots:
+        for number in range(2, count + 1):
+            for path, original_value in collection_transport().responses.items():
+                value = original_value
+                replacement = path.replace("/1/", f"/{number}/")
+                if path.endswith("/1"):
+                    replacement = path[:-1] + str(number)
+                    if not isinstance(value, dict):
+                        raise AssertionError("Expected PR fixture")
+                    value = {**value, "number": number, "node_id": f"PR_{number}"}
+                transport.responses[replacement] = value
+    items: list[JsonValue] = [
+        {
+            "id": number,
+            "number": number,
+            "user": {"login": "dependabot[bot]" if bots else "alice", "type": "Bot" if bots else "User"},
+        }
+        for number in range(1, count + 1)
+    ]
+    for page in range(count // 100 + 1):
+        transport.responses[f"{root}/pulls?state=open&per_page=100&page={page + 1}"] = items[
+            page * 100 : (page + 1) * 100
+        ]
+    return transport
 
 
 if __name__ == "__main__":

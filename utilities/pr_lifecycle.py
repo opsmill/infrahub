@@ -8,6 +8,7 @@ import json
 import os
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import zlib
 from dataclasses import asdict, dataclass, replace
@@ -30,6 +31,10 @@ MAX_RETRY_DELAY = 60
 MAX_BODY = 60000
 MAX_STATE = 4_000_000
 WATERMARK_FIELDS = 2
+MAX_PASSES = 3
+QUOTA_RESERVE = 50
+REST_READS_PER_PR = 8
+DEFAULT_BUDGET = 5000
 type JsonValue = bool | int | float | str | list[JsonValue] | dict[str, JsonValue] | None
 
 
@@ -89,7 +94,9 @@ def utc_now() -> datetime:
 
 
 class GitHubClient:
-    def __init__(self, *, token: str, sleep: Callable[[float], None] = time.sleep) -> None:
+    def __init__(
+        self, *, token: str, sleep: Callable[[float], None] = time.sleep, budget: int = DEFAULT_BUDGET
+    ) -> None:
         if not token:
             raise IncompleteDataError("GH_TOKEN or GITHUB_TOKEN is required")
         self.token = token
@@ -97,10 +104,12 @@ class GitHubClient:
         self.requests = 0
         self.remaining: int | None = None
         self.used: int | None = None
+        self.quotas: dict[str, int] = {}
+        self.budget = budget
 
     def get_json(self, *, path: str) -> JsonValue:
         prefix = f"/repos/{ALLOWED_REPOSITORY}"
-        if path != prefix and not path.startswith((prefix + "/", prefix + "?")):
+        if path not in ("/rate_limit", prefix) and not path.startswith((prefix + "/", prefix + "?")):
             raise IncompleteDataError("Read path outside allowed repository")
         return self._read(path=path)
 
@@ -125,14 +134,19 @@ class GitHubClient:
             method="GET" if data is None else "POST",
         )
         for attempt in range(RETRIES):
+            if self.requests >= self.budget:
+                raise IncompleteDataError("HTTP request budget exhausted")
+            resource = "graphql" if path == "/graphql" else "core"
+            if self.quotas.get(resource, QUOTA_RESERVE + 1) <= QUOTA_RESERVE:
+                raise IncompleteDataError(f"Insufficient {resource} quota reserve")
             self.requests += 1
             try:
                 with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310 - URL has a fixed HTTPS origin.
-                    self._account(headers=dict(response.headers.items()))
+                    self.account_headers(headers=dict(response.headers.items()))
                     return json.loads(response.read())
             except urllib.error.HTTPError as exc:
                 headers = dict(exc.headers.items())
-                self._account(headers=headers)
+                self.account_headers(headers=headers)
                 if exc.code not in (429, 500, 502, 503, 504) and not (
                     exc.code == HTTPStatus.FORBIDDEN and self.remaining == 0
                 ):
@@ -152,10 +166,11 @@ class GitHubClient:
                 raise IncompleteDataError("GitHub returned invalid JSON") from exc
         raise IncompleteDataError("GitHub retry budget exhausted")
 
-    def _account(self, *, headers: dict[str, str]) -> None:
+    def account_headers(self, *, headers: dict[str, str]) -> None:
         normalized = {key.lower(): value for key, value in headers.items()}
         if "x-ratelimit-remaining" in normalized:
             self.remaining = int(normalized["x-ratelimit-remaining"])
+            self.quotas[normalized.get("x-ratelimit-resource", "core")] = self.remaining
         if "x-ratelimit-used" in normalized:
             self.used = int(normalized["x-ratelimit-used"])
 
@@ -182,6 +197,30 @@ def pages(*, transport: ReadTransport, path: str, key: str | None = None) -> tup
                 raise IncompleteDataError("Paginated count mismatch")
             return tuple(results)
     raise IncompleteDataError("Pagination limit exceeded")
+
+
+def requested_reviewers(
+    *,
+    transport: ReadTransport,
+    number: int,
+) -> tuple[tuple[dict[str, JsonValue], ...], tuple[dict[str, JsonValue], ...]]:
+    users: list[dict[str, JsonValue]] = []
+    teams: list[dict[str, JsonValue]] = []
+    for page in range(1, 1001):
+        value = object_value(
+            transport.get_json(
+                path=f"/repos/{ALLOWED_REPOSITORY}/pulls/{number}/requested_reviewers?per_page=100&page={page}"
+            )
+        )
+        user_page, team_page = array(value.get("users")), array(value.get("teams"))
+        users.extend(object_value(item) for item in user_page)
+        teams.extend(object_value(item) for item in team_page)
+        if len(user_page) < PAGE_SIZE and len(team_page) < PAGE_SIZE:
+            for items, key in ((users, "login"), (teams, "slug")):
+                if len({string(item.get(key)) for item in items}) != len(items):
+                    raise IncompleteDataError("Duplicate requested reviewer during pagination")
+            return tuple(users), tuple(teams)
+    raise IncompleteDataError("Requested reviewer pagination limit exceeded")
 
 
 @dataclass(frozen=True)
@@ -289,8 +328,7 @@ def collect_snapshot(*, transport: ReadTransport, number: int, now: datetime) ->
                         submitted_at=timestamp(at).isoformat(),
                     )
                 )
-    users = pages(transport=transport, path=f"{root}/pulls/{number}/requested_reviewers", key="users")
-    teams = pages(transport=transport, path=f"{root}/pulls/{number}/requested_reviewers", key="teams")
+    users, teams = requested_reviewers(transport=transport, number=number)
     check_runs = pages(transport=transport, path=f"{root}/commits/{head}/check-runs", key="check_runs")
     statuses = pages(transport=transport, path=f"{root}/commits/{head}/statuses")
     response = object_value(transport.query(number=number))
@@ -619,6 +657,101 @@ def discover_dashboard(*, transport: ReadTransport) -> tuple[int, str] | None:
 
 
 @dataclass(frozen=True)
+class CacheRecord:
+    identity: int
+    created_at: str
+    last_accessed_at: str
+    size_in_bytes: int
+
+
+def read_cache(*, transport: ReadTransport, ref: str) -> CacheRecord | None:
+    if not ref.startswith("refs/heads/"):
+        raise IncompleteDataError("Cache ref must identify a branch")
+    query = urllib.parse.urlencode({"key": "_state", "ref": ref})
+    matches = [
+        item
+        for item in pages(
+            transport=transport, path=f"/repos/{ALLOWED_REPOSITORY}/actions/caches?{query}", key="actions_caches"
+        )
+        if item.get("key") == "_state" and item.get("ref") == ref
+    ]
+    if len(matches) > 1:
+        raise IncompleteDataError("Ambiguous exact _state cache entries")
+    if not matches:
+        return None
+    item = matches[0]
+    return CacheRecord(
+        identity=integer(item.get("id")),
+        created_at=timestamp(item.get("created_at")).isoformat(),
+        last_accessed_at=timestamp(item.get("last_accessed_at")).isoformat(),
+        size_in_bytes=integer(item.get("size_in_bytes")),
+    )
+
+
+def verify_candidates(*, transport: ReadTransport, candidates: tuple[int, ...]) -> tuple[int, ...]:
+    remaining = []
+    for number in candidates:
+        pr = object_value(transport.get_json(path=f"/repos/{ALLOWED_REPOSITORY}/pulls/{number}"))
+        if integer(pr.get("number")) != number or pr.get("state") not in ("open", "closed"):
+            raise IncompleteDataError("Incomplete candidate post-verification")
+        if pr["state"] == "open":
+            remaining.append(number)
+    return tuple(remaining)
+
+
+def continuation(
+    *,
+    pass_number: int,
+    before: CacheRecord | None,
+    after: CacheRecord | None,
+    previous: tuple[int, ...],
+    remaining: tuple[int, ...],
+) -> bool:
+    if not 1 <= pass_number <= MAX_PASSES or not set(remaining).issubset(previous):
+        raise IncompleteDataError("Invalid continuation evidence")
+    if not remaining:
+        return False
+    if pass_number == MAX_PASSES:
+        raise IncompleteDataError(f"Three-pass bound exhausted; deferred PRs: {remaining}")
+    if before is not None and after is not None and before.identity == after.identity:
+        raise IncompleteDataError("Exact _state cache unchanged with candidates remaining")
+    # A cleared old scan permits one fresh sweep of candidates skipped by cached IDs.
+    if set(remaining) == set(previous) and after is None and before is None:
+        raise IncompleteDataError(f"No candidate or continuation progress; deferred PRs: {remaining}")
+    return True
+
+
+class BudgetedReads:
+    def __init__(self, *, transport: ReadTransport, budget: int) -> None:
+        self.transport = transport
+        self.budget = budget
+        self.requests = 0
+
+    def consume(self) -> None:
+        if self.requests >= self.budget:
+            raise IncompleteDataError("Observation request budget exhausted")
+        self.requests += 1
+
+    def get_json(self, *, path: str) -> JsonValue:
+        self.consume()
+        return self.transport.get_json(path=path)
+
+    def query(self, *, number: int) -> JsonValue:
+        self.consume()
+        return self.transport.query(number=number)
+
+
+def preflight(*, transport: BudgetedReads, human_count: int) -> None:
+    resources = object_value(object_value(transport.get_json(path="/rate_limit")).get("resources"))
+    core = integer(object_value(resources.get("core")).get("remaining"))
+    graphql = integer(object_value(resources.get("graphql")).get("remaining"))
+    if core < human_count * REST_READS_PER_PR + QUOTA_RESERVE or graphql < human_count + QUOTA_RESERVE:
+        raise IncompleteDataError(f"Insufficient API quota for {human_count} human PRs and verification reserve")
+    if transport.budget - transport.requests < human_count * (REST_READS_PER_PR + 1) + QUOTA_RESERVE:
+        raise IncompleteDataError("Insufficient request budget for full observation")
+
+
+@dataclass(frozen=True)
 class ObservationReport:
     version: int
     repository: str
@@ -628,6 +761,10 @@ class ObservationReport:
     closure_ready: bool
     errors: tuple[str, ...]
     inventory: tuple[Snapshot, ...] = ()
+    excluded_bots: tuple[int, ...] = ()
+    inventory_count: int = 0
+    evaluated_count: int = 0
+    requests: int = 0
 
 
 def guard_repository(repository: str) -> None:
@@ -636,27 +773,48 @@ def guard_repository(repository: str) -> None:
 
 
 def observe(
-    *, repository: str, transport: ReadTransport | None, clock: Callable[[], datetime] = utc_now
+    *,
+    repository: str,
+    transport: ReadTransport | None,
+    clock: Callable[[], datetime] = utc_now,
+    budget: int = DEFAULT_BUDGET,
 ) -> ObservationReport:
     guard_repository(repository)
     now = clock()
     if now.tzinfo is None or now.utcoffset() is None:
         raise ValueError("Clock must return a timezone-aware timestamp")
+    if budget < 1:
+        raise ValueError("Request budget must be positive")
     if transport is None:
-        transport = GitHubClient(token=os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN", ""))
-    identity = object_value(transport.get_json(path=f"/repos/{repository}"))
+        transport = GitHubClient(token=os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN", ""), budget=budget)
+    reads = BudgetedReads(transport=transport, budget=budget)
+    identity = object_value(reads.get_json(path=f"/repos/{repository}"))
     if identity.get("full_name") != repository:
         raise ValueError("GitHub repository identity does not match the requested repository")
     snapshots: list[Snapshot] = []
+    bots: list[int] = []
     errors: list[str] = []
+    inventory_count = 0
     try:
-        dashboard = discover_dashboard(transport=transport)
+        dashboard = discover_dashboard(transport=reads)
         if dashboard:
             decode_ledger(body=dashboard[1])
-        snapshots.extend(
-            collect_snapshot(transport=transport, number=integer(pr.get("number")), now=now)
-            for pr in pages(transport=transport, path=f"/repos/{repository}/pulls?state=open")
-        )
+        inventory = pages(transport=reads, path=f"/repos/{repository}/pulls?state=open")
+        inventory_count = len(inventory)
+        humans = []
+        for pr in inventory:
+            number = integer(pr.get("number"))
+            author = object_value(pr.get("user"))
+            login = string(author.get("login"))
+            kind = string(author.get("type"))
+            if kind == "Bot" or login.endswith("[bot]"):
+                bots.append(number)
+            elif kind == "User":
+                humans.append(number)
+            else:
+                raise IncompleteDataError("Unknown PR author type")
+        preflight(transport=reads, human_count=len(humans))
+        snapshots.extend(collect_snapshot(transport=reads, number=number, now=now) for number in humans)
     except IncompleteDataError as exc:
         errors.append(str(exc))
     return ObservationReport(
@@ -668,6 +826,10 @@ def observe(
         closure_ready=False,
         errors=tuple(errors),
         inventory=tuple(snapshots),
+        excluded_bots=tuple(bots),
+        inventory_count=inventory_count,
+        evaluated_count=len(snapshots) + len(bots),
+        requests=transport.requests if isinstance(transport, GitHubClient) else reads.requests,
     )
 
 
@@ -679,13 +841,23 @@ def main(
     parser.add_argument("--repository", required=True, choices=(ALLOWED_REPOSITORY,))
     parser.add_argument("--mode", choices=(Mode.OBSERVE,), default=Mode.OBSERVE)
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--budget", type=int, default=DEFAULT_BUDGET)
     args = parser.parse_args(args=argv)
-    report = observe(repository=args.repository, transport=transport, clock=clock)
+    report = observe(repository=args.repository, transport=transport, clock=clock, budget=args.budget)
     serialized = json.dumps(asdict(report), indent=2) + "\n"
     if args.report is not None:
         args.report.write_text(serialized, encoding="utf-8")
     else:
         print(serialized, end="")
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with Path(summary).open("a", encoding="utf-8") as stream:
+            stream.write(
+                f"Observation {'complete' if report.complete else 'FAILED'}: "
+                f"{report.evaluated_count}/{report.inventory_count} PRs evaluated, "
+                f"{len(report.excluded_bots)} excluded bots, {report.requests} reads. Closure disabled.\n"
+            )
+            stream.writelines(f"- {error}\n" for error in report.errors)
     return 0 if report.complete else 1
 
 
