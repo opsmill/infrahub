@@ -7,7 +7,6 @@ one per query, with the changed node as a member and the reader as a subscriber.
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -97,32 +96,6 @@ CAR_PERSON_TWO_QUERY_SCHEMA = SchemaRoot(
         ),
     ]
 )
-
-
-@dataclass
-class WideDispatchCase:
-    """An automation the flow cannot narrow, and which therefore has to cover everything."""
-
-    name: str
-    graphql_query_id: str | None
-    transform_name: str | None
-    transform_id: str | None
-
-
-WIDE_DISPATCH_CASES = [
-    WideDispatchCase(
-        name="an_automation_stored_before_the_narrowing",
-        graphql_query_id=None,
-        transform_name=None,
-        transform_id=None,
-    ),
-    WideDispatchCase(
-        name="a_transform_the_schema_no_longer_feeds_from",
-        graphql_query_id=None,
-        transform_name="transform_retired",
-        transform_id="0000-retired",
-    ),
-]
 
 
 class TestQueryTransformTargets(ScopedRecomputeTestBase):
@@ -282,10 +255,19 @@ class TestQueryTransformTargets(ScopedRecomputeTestBase):
             ("TestPerson", "computed_peer_by_id"): [dataset["person"].id],
         }
 
-    @pytest.mark.parametrize("case", WIDE_DISPATCH_CASES, ids=lambda case: case.name)
+    # The query id stays None on both: an automation that cannot name its transform is the point
+    # here, and a real id would narrow the groups and change the expected set.
+    @pytest.mark.parametrize(
+        ("transform_name", "transform_id"),
+        [
+            pytest.param(None, None, id="an_automation_stored_before_the_narrowing"),
+            pytest.param("transform_retired", "0000-retired", id="a_transform_the_schema_no_longer_feeds_from"),
+        ],
+    )
     async def test_an_automation_that_cannot_be_narrowed_keeps_the_wide_dispatch(
         self,
-        case: WideDispatchCase,
+        transform_name: str | None,
+        transform_id: str | None,
         dataset: dict[str, Any],
         workflow_recorder: WorkflowRecorder,
         default_branch: Branch,
@@ -303,9 +285,9 @@ class TestQueryTransformTargets(ScopedRecomputeTestBase):
             node_kind="TestCar",
             object_id=car.id,
             context=self._context(admin_account, default_branch),
-            graphql_query_id=case.graphql_query_id,
-            transform_name=case.transform_name,
-            transform_id=case.transform_id,
+            graphql_query_id=None,
+            transform_name=transform_name,
+            transform_id=transform_id,
         )
 
         assert self._submissions(workflow_recorder) == {

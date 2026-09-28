@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.utils import get_nested_dict
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -59,7 +60,7 @@ def _query_id(group: dict) -> str | None:
     The relationship is mandatory in the schema, but the peer it points at can be gone by the
     time the group is read, so the id is treated as optional here.
     """
-    return ((group.get("query") or {}).get("node") or {}).get("id")
+    return get_nested_dict(nested_dict=group, keys=["query", "node"]).get("id")
 
 
 async def fetch_subscriber_refs(*, client: InfrahubClient, node_ids: list[str], branch: str) -> list[SubscriberRef]:

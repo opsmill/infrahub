@@ -87,7 +87,6 @@ async def gather_python_transform_attributes(
                 repository_name=repository.name.value,
                 repository_kind=repository.get_kind(),
                 query_analyzer=query_analyzer,
-                query_name=query.name.value,
                 query_id=query.get_id(),
                 computed_attribute=attribute,
             )

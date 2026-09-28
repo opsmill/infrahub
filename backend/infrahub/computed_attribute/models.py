@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import field
 from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.graphql import Query
@@ -87,7 +87,6 @@ class PythonTransformComputedAttribute(BaseModel):
     repository_id: str
     repository_name: str
     repository_kind: str
-    query_name: str
     query_id: str
     query_analyzer: InfrahubGraphQLQueryAnalyzer
     computed_attribute: PythonDefinition
@@ -102,12 +101,6 @@ class PythonTransformComputedAttribute(BaseModel):
         if repository_data:
             for branch, commit in repository_data.branches.items():
                 self.branch_commit[branch] = commit
-
-
-@dataclass
-class PythonTransformTarget:
-    kind: str
-    object_id: str
 
 
 class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):

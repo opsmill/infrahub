@@ -39,7 +39,6 @@ from .models import (
     ComputedAttrJinja2GraphQL,
     ComputedAttrJinja2GraphQLResponse,
     ComputedAttrJinja2TriggerDefinition,
-    PythonTransformTarget,
 )
 from .read_sets import transform_read_set_from_query_report
 from .recompute_resolution import RecomputeResolver
@@ -872,9 +871,9 @@ def _attributes_fed_by_transform(
     if transform_name is None or transform_id is None:
         return None
 
-    definitions = RecomputeResolver(
-        attributes_by_transform=schema_branch.computed_attributes.python_attributes_by_transform
-    ).resolve(transform_name=transform_name, transform_id=transform_id)
+    definitions = RecomputeResolver.from_schema_branch(schema_branch).resolve(
+        transform_name=transform_name, transform_id=transform_id
+    )
     if not definitions:
         return None
 
@@ -900,8 +899,7 @@ async def query_transform_targets(
     """Recompute the readers of a node that a transform's GraphQL query reads.
 
     The parameters identify the automation's own query and transform. They are optional, so an
-    automation stored before they existed keeps working: without them every Python computed
-    attribute of every subscriber kind is recomputed, as before.
+    automation stored before they existed keeps working.
     """
     log = get_run_logger()
     await add_tags(branches=[branch_name])
@@ -909,22 +907,18 @@ async def query_transform_targets(
     client = get_client()
     client.request_context = context.to_request_context()
     refs = await fetch_subscriber_refs(client=client, node_ids=[object_id], branch=branch_name)
-    subscribers = [
-        PythonTransformTarget(object_id=ref.id, kind=ref.kind)
-        for ref in refs
-        if _belongs_to_query(ref=ref, graphql_query_id=graphql_query_id)
-    ]
+    subscribers = [ref for ref in refs if _belongs_to_query(ref=ref, graphql_query_id=graphql_query_id)]
+    if not subscribers:
+        return
 
     attributes_by_kind = _attributes_fed_by_transform(
         schema_branch=schema_branch, transform_name=transform_name, transform_id=transform_id
     )
     if attributes_by_kind is None:
-        reason = (
-            "the automation identifies no transform"
-            if transform_name is None or transform_id is None
-            else f"the schema of {branch_name} feeds no attribute from the transform {transform_name}"
+        log.info(
+            "Recomputing every Python computed attribute of the subscriber kinds: no attribute resolved "
+            f"for transform_name={transform_name} transform_id={transform_id} on {branch_name}"
         )
-        log.info(f"Recomputing every Python computed attribute of the subscriber kinds: {reason}")
         attributes_by_kind = {
             kind: [attribute.name for attribute in attributes]
             for kind, attributes in schema_branch.computed_attributes.get_python_attributes_per_node().items()
@@ -935,7 +929,7 @@ async def query_transform_targets(
     batches: dict[tuple[str, str], set[str]] = defaultdict(set)
     for subscriber in subscribers:
         for attribute_name in attributes_by_kind.get(subscriber.kind, []):
-            batches[subscriber.kind, attribute_name].add(subscriber.object_id)
+            batches[subscriber.kind, attribute_name].add(subscriber.id)
 
     chunk_size = get_submission_chunk_size()
     for (kind, attribute_name), batch_object_ids in batches.items():
