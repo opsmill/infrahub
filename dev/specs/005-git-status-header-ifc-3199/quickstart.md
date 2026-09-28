@@ -18,8 +18,8 @@ Targeted run while iterating:
 
 ```bash
 cd frontend/app
-pnpm test -- derive-git-status
-pnpm test -- git-status
+pnpm test -- derive-repository-sync-indicator
+pnpm test -- repository-sync-status
 ```
 
 ## 2. Type and lint gates (seconds)

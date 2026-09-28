@@ -33,7 +33,7 @@ class TestRepositorySyncStatus:
         self, infrahub_client: InfrahubClient, demo_edge_repo: None
     ) -> AsyncGenerator[str, None]:
         """A branch where the demo-edge repository is marked as failed to import."""
-        name = generate_random_branch_name("git-status-header")
+        name = generate_random_branch_name("repo-sync-status")
         await infrahub_client.branch.create(branch_name=name, sync_with_git=False)
 
         repository = await infrahub_client.get(kind="CoreRepository", name__value="demo-edge", branch=name)

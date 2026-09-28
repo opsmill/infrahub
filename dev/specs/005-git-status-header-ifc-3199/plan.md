@@ -285,4 +285,5 @@ feature is named for repository sync status rather than "Git status"; the counts
 derivation moved out of the component into a query hook; the empty state is a dimmed link
 rather than a disabled button; the destination is filtered only while something is failing;
 and the informational pulse uses theme tokens. See the "Changed in review" section of
-spec.md. Known gap 2 below — the element-type switch — no longer applies.
+spec.md. The element-type switch listed under "Known gaps carried to the PR body" above no
+longer applies.

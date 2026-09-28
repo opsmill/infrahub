@@ -60,10 +60,10 @@ indefinitely.
   zero can only be read once the total has settled, so this never fires mid-flight.
 - **Nothing is claimed until both lookups have produced a value** — beyond the two rules
   above, the indicator must never present a resolved state it has not confirmed. A glyph that
-  flashes neutral before turning red reads as a glitch and trains operators to distrust it.
+  flashes in-sync before turning red reads as a glitch and trains operators to distrust it.
 - **A failed failure-lookup, with repositories present, is genuinely unknown** — the
-  application knows repositories exist but not whether any are broken. Neither `neutral` nor
-  `error` is a fact in hand, so check-failed is correct here. This is the case SC-007 exists
+  application knows repositories exist but not whether any are broken. Neither `in-sync` nor
+  `failing` is a fact in hand, so check-failed is correct here. This is the case SC-007 exists
   for.
 - **No "all failing" special case** — `failingCount > 0` covers one failure and total
   collapse identically, per the spec's edge case.
