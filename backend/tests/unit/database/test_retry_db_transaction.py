@@ -8,7 +8,7 @@ import pytest
 from neo4j import AsyncGraphDatabase
 from neo4j.exceptions import ClientError, TransientError
 
-from infrahub import config
+from infrahub import config, lock
 from infrahub.database import (
     InfrahubDatabase,
     InfrahubDatabaseMode,
@@ -20,8 +20,10 @@ from infrahub.database.metrics import TRANSACTION_RETRIES
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
+    from types import TracebackType
 
     from neo4j import AsyncDriver
+    from typing_extensions import Self
 
 
 @pytest.fixture
@@ -363,3 +365,165 @@ class TestRunWithRetry:
             await retry_db_transaction(name="budget_outer")(inner)()
 
         assert work.calls == 3
+
+
+class _RecordingLock:
+    def __init__(self, name: str, events: list[str]) -> None:
+        self.name = name
+        self.events = events
+
+    async def acquire(self) -> None:
+        self.events.append(f"acquire:{self.name}")
+
+    async def release(self) -> None:
+        self.events.append(f"release:{self.name}")
+
+
+class RecordingLockRegistry:
+    """Stands in for the lock registry, recording every lock handed out and in what order."""
+
+    def __init__(self, events: list[str]) -> None:
+        self.events = events
+        self.metrics_flags: list[bool] = []
+
+    def get(self, name: str, metrics: bool = True) -> _RecordingLock:
+        self.metrics_flags.append(metrics)
+        return _RecordingLock(name=name, events=self.events)
+
+
+class _RecordingTransaction(InfrahubDatabase):
+    """A transaction that opens and commits against the recording list rather than a connection."""
+
+    def __init__(self, driver: AsyncDriver, events: list[str]) -> None:
+        super().__init__(driver=driver, mode=InfrahubDatabaseMode.TRANSACTION)
+        self.events = events
+
+    async def __aenter__(self) -> Self:
+        self.events.append("transaction:open")
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        self.events.append("transaction:close")
+
+
+class _RecordingDatabase(InfrahubDatabase):
+    """A database outside any transaction, whose transactions record instead of connecting."""
+
+    def __init__(self, driver: AsyncDriver, events: list[str]) -> None:
+        super().__init__(driver=driver, mode=InfrahubDatabaseMode.DRIVER)
+        self.events = events
+
+    def start_transaction(self, schemas: object | None = None) -> _RecordingTransaction:
+        return _RecordingTransaction(driver=self._driver, events=self.events)
+
+
+@pytest.fixture
+def lock_events() -> list[str]:
+    return []
+
+
+@pytest.fixture
+def recording_lock_registry(lock_events: list[str]) -> Generator[RecordingLockRegistry, None, None]:
+    original = lock.registry
+    registry = RecordingLockRegistry(events=lock_events)
+    lock.registry = registry  # type: ignore[assignment]
+    yield registry
+    lock.registry = original
+
+
+@pytest.fixture
+def recording_db(neo4j_driver: AsyncDriver, lock_events: list[str]) -> _RecordingDatabase:
+    return _RecordingDatabase(driver=neo4j_driver, events=lock_events)
+
+
+@pytest.mark.usefixtures("_set_zero_delay_retries", "recording_lock_registry")
+class TestRunInTransactionWithRetryLocks:
+    """No lock is held across a backoff.
+
+    Every attempt takes its locks, opens the transaction inside them, and gives both back before the
+    next attempt sleeps. Holding a lock while waiting to retry would stall every other writer
+    contending for the same object for the whole backoff sequence.
+    """
+
+    async def test_locks_are_taken_outside_the_transaction(
+        self, recording_db: _RecordingDatabase, lock_events: list[str]
+    ) -> None:
+        async def work(_: InfrahubDatabase) -> str:
+            lock_events.append("work")
+            return "ok"
+
+        result = await run_in_transaction_with_retry(
+            db=recording_db, name="locked_create", func=work, lock_names=["outer", "inner"]
+        )
+
+        assert result == "ok"
+        assert lock_events == [
+            "acquire:outer",
+            "acquire:inner",
+            "transaction:open",
+            "work",
+            "transaction:close",
+            "release:inner",
+            "release:outer",
+        ]
+
+    async def test_every_attempt_takes_and_gives_back_its_locks(
+        self, recording_db: _RecordingDatabase, lock_events: list[str]
+    ) -> None:
+        work = _RetriableWork(failures=2)
+
+        async def attempt(_: InfrahubDatabase) -> str:
+            return await work.run()
+
+        result = await run_in_transaction_with_retry(
+            db=recording_db, name="replayed_create", func=attempt, lock_names=["object"]
+        )
+
+        assert result == "ok"
+        assert work.calls == 3
+        assert (
+            lock_events
+            == [
+                "acquire:object",
+                "transaction:open",
+                "transaction:close",
+                "release:object",
+            ]
+            * 3
+        )
+
+    async def test_no_lock_is_taken_without_lock_names(
+        self, recording_db: _RecordingDatabase, lock_events: list[str], recording_lock_registry: RecordingLockRegistry
+    ) -> None:
+        """The trigger-rule mutations name no lock, and an empty one still costs a context to enter."""
+
+        async def work(_: InfrahubDatabase) -> str:
+            lock_events.append("work")
+            return "ok"
+
+        result = await run_in_transaction_with_retry(db=recording_db, name="unlocked_create", func=work)
+
+        assert result == "ok"
+        assert recording_lock_registry.metrics_flags == []
+        assert lock_events == ["transaction:open", "work", "transaction:close"]
+
+    async def test_lock_metrics_are_off_unless_the_caller_asks(
+        self, recording_db: _RecordingDatabase, recording_lock_registry: RecordingLockRegistry
+    ) -> None:
+        """The registry keeps one lock per name with the flag it was first built with."""
+
+        async def work(_: InfrahubDatabase) -> str:
+            return "ok"
+
+        await run_in_transaction_with_retry(db=recording_db, name="default", func=work, lock_names=["quiet"])
+        assert recording_lock_registry.metrics_flags == [False, False]
+
+        await run_in_transaction_with_retry(
+            db=recording_db, name="measured", func=work, lock_names=["loud"], metrics=True
+        )
+        assert recording_lock_registry.metrics_flags == [False, False, True, True]
