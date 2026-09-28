@@ -143,24 +143,22 @@ async def gather_trigger_computed_attribute_jinja2(
 def _branch_scopes(branches: dict[str, PythonTransformComputedAttribute]) -> list[tuple[str, list[str]]]:
     """Which branch each automation is built for, and the branches it must not answer for.
 
-    A branch owns its automations when its repository commit or its schema differs from the
-    default branch, because either one changes what the transform query resolves to. The
-    default-branch automation covers every other branch, the ones created after this gather
-    included, and excludes the branches that own theirs. Without the default branch in the dict,
-    every listed branch owns its automations and excludes nothing.
+    A branch owns its automations when its repository commit or its whole-branch schema hash
+    differs from the default branch. The default-branch automation covers every other branch,
+    the ones created after this gather included.
     """
     if registry.default_branch not in branches:
         return [(branch_name, []) for branch_name in branches]
 
     commit_main = branches[registry.default_branch].repository_commit
-    branches_with_diff_from_main = [
+    owning_branches = [
         branch_name
         for branch_name, item in branches.items()
-        if item.repository_commit != commit_main or not item.default_schema
+        if branch_name != registry.default_branch and (item.repository_commit != commit_main or not item.default_schema)
     ]
 
-    scopes: list[tuple[str, list[str]]] = [(branch_name, []) for branch_name in branches_with_diff_from_main]
-    scopes.append((registry.default_branch, branches_with_diff_from_main))
+    scopes: list[tuple[str, list[str]]] = [(branch_name, []) for branch_name in owning_branches]
+    scopes.append((registry.default_branch, owning_branches))
     return scopes
 
 
@@ -190,6 +188,7 @@ async def gather_trigger_computed_attribute_python(
         for computed_attribute in computed_attributes:
             key = (computed_attribute.computed_attribute.key_name, computed_attribute.name)
             by_attribute[key][branch.name] = computed_attribute
+            # Any attribute of the transform will do: they share its query analyzer.
             by_transform[computed_attribute.name][branch.name] = computed_attribute
 
     for branches in by_attribute.values():

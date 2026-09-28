@@ -125,7 +125,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/message-bus.md` - Message bus system; read when adding or changing a message
 - `dev/knowledge/backend/telemetry.md` - Anonymous usage telemetry (categories, windowing, retention, degradation); read when adding or changing telemetry metrics or the collection window
 - `dev/knowledge/backend/webhooks.md` - Webhook delivery and failure classification; read when touching webhook delivery
-- `dev/knowledge/backend/computed-attributes.md` - Jinja2 computed attributes and their recompute paths; read when touching Jinja2 computed attributes
+- `dev/knowledge/backend/computed-attributes.md` - Jinja2 and Python-transform computed attributes, their automations and recompute paths; read when touching either
 - `dev/knowledge/backend/display-labels-and-hfid.md` - Display-label and human-friendly-id derivation; read when touching either
 - `dev/knowledge/backend/templates.md` - Object template generation and application; read when touching templates
 - `dev/knowledge/backend/code-generation.md` - Generated-file pipeline (protocols, schema, SDK); read before/after changing event, schema, CLI, or config code

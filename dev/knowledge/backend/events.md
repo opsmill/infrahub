@@ -116,8 +116,11 @@ The per-node trigger families — Jinja2 computed attributes, Python computed at
 query), display labels, human-friendly ids, and profile refresh — build one automation per branch
 whose definition differs from the default branch, plus one default-branch automation that owns
 every other branch. Divergence is the schema hash for the schema-driven families. The two Python
-transform families diverge on the repository commit or on the schema hash, because either one
-changes what the transform query resolves to.
+transform families diverge on the repository commit or on that same whole-branch schema hash, so
+any schema difference gives a branch its own automations, whether or not the transform query reads
+the part that changed. A branch that edits the `CoreGraphQLQuery` text through the API moves
+neither, so it keeps the default-branch automations and its reads are answered with the default
+branch's read set.
 
 The default-branch automation has to exclude the branches that own their own automation.
 **Prefect ORs the patterns of a single label**, so `match["infrahub.branch.name"] = ["!b1", "!b2"]`

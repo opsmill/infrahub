@@ -5,8 +5,11 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.computed_attribute.tasks import computed_attribute_setup_python
+from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
+from infrahub.core.schema import AttributeSchema
 from infrahub.events.schema_action import ChangedElementsPayload
 from infrahub.workflows.catalogue import TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
 from tests.component.computed_attribute._base import (
@@ -102,3 +105,39 @@ class TestScopedRecomputePython(ScopedRecomputeTestBase):
             changed_elements=case.changed_elements,
         )
         assert self._submitted_attribute_names(workflow_recorder) == case.expected_submitted
+
+    async def test_a_schema_altered_branch_recomputes_what_it_shares_with_main(
+        self,
+        db: InfrahubDatabase,
+        transform_dataset: None,
+        workflow_recorder: WorkflowRecorder,
+        admin_account: CoreAccount,
+    ) -> None:
+        """A schema change on a branch recomputes the attributes the branch shares with main.
+
+        The branch declares no computed attribute of its own. Its candidates are the owner
+        automations scoped to it, and it has those only because its schema hash differs from the
+        default branch. The attribute it shares reads TestCar.name, so the same change that
+        selects it on main selects it here.
+        """
+        branch = await create_branch(branch_name="branch_alters_schema", db=db)
+
+        branch_schema = registry.schema.get_schema_branch(name=branch.name)
+        person_schema = branch_schema.get_node("TestPerson")
+        person_schema.attributes.append(AttributeSchema(name="nickname", kind="Text", optional=True))
+        branch_schema.set(name="TestPerson", schema=person_schema)
+        registry.schema.set_schema_branch(name=branch.name, schema=branch_schema)
+        branch.update_schema_hash()
+        branch_schema.process()
+        await branch.save(db=db)
+
+        await computed_attribute_setup_python(
+            context=self._context(admin_account, branch),
+            branch_name=branch.name,
+            changed_elements=ChangedElementsPayload(changed_fields={"TestCar": ["name"]}),
+        )
+
+        assert self._submitted_attribute_names(workflow_recorder) == {
+            "computed_desc_python",
+            "computed_desc_python_opaque",
+        }

@@ -102,11 +102,6 @@ class PythonTransformComputedAttribute(BaseModel):
             for branch, commit in repository_data.branches.items():
                 self.branch_commit[branch] = commit
 
-    @property
-    def transform_key_name(self) -> str:
-        """Identity of the transform in an automation name."""
-        return f"transform{NAME_SEPARATOR}{self.name}"
-
 
 @dataclass
 class PythonTransformTarget:
@@ -284,8 +279,7 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
 
         The definition is keyed on the transform and not on one attribute: within one branch the
         attributes a transform feeds share its query, so they read the same kinds and the same
-        fields of them. Another branch resolves that query against its own schema and owns its
-        own definitions.
+        fields of them.
         """
         # Only matching on node updated events, before nodes are created they won't be a member of the GraphQL query
         # group regardless so it doesn't make sense to trigger the query on node creation. For the initial object
@@ -309,7 +303,7 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         event_trigger.exclude_branches(branches_out_of_scope or [])
 
         return cls(
-            name=f"{computed_attribute.transform_key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{kind}",
+            name=f"transform{NAME_SEPARATOR}{computed_attribute.name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{kind}",
             branch=branch,
             trigger=event_trigger,
             actions=[

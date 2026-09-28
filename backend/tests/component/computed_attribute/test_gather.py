@@ -253,7 +253,8 @@ async def test_two_attributes_sharing_a_transform_share_its_query_automations(
 
     The query automations are the transform's, not the attribute's: two attributes fed by a
     transform reading two kinds get two query automations and not one pair each. The flow behind
-    them resolves the attributes itself, so a second copy would only run it twice.
+    them resolves the attributes itself, so a second copy would start it twice with no
+    difference in what gets recomputed.
     """
     await _create_car_owner_transform(db=db, branch=default_branch, repository=repo01)
 
@@ -303,9 +304,7 @@ async def test_a_branch_altering_the_schema_of_a_shared_transform_owns_its_autom
 
     The query ones are keyed on the transform, so the branch shares a key with the default branch
     instead of bringing one of its own. Its repository commit is the same, so only the schema
-    separates the two. It resolves that query against its own schema, where a generic can expand to
-    other member kinds, so an automation built from the default branch would carry a read set that
-    does not describe it.
+    separates the two.
 
     Both families read the same condition, so the branch owns its owner automations too. That is
     what gives a schema change on it a candidate to backfill.
@@ -386,6 +385,35 @@ async def test_a_branch_altering_the_schema_of_a_shared_transform_owns_its_autom
             )
             == expected_owners
         )
+
+    # TestPerson separates the two families. Its query automation exists on both scopes, like
+    # TestCar. Its owner automation is the attribute only the branch declares, so no scope answers
+    # for the default branch or for a branch created later.
+    person_owner_scopes = {
+        trigger.branch: trigger
+        for trigger in triggers_python
+        if trigger.computed_attribute.computed_attribute.kind == "TestPerson"
+    }
+    person_query_scopes = {
+        trigger.branch: trigger
+        for trigger in trigger_queries
+        if trigger.trigger.match["infrahub.node.kind"] == "TestPerson"
+    }
+    assert branches_covered_by(
+        triggers_by_scope=person_owner_scopes,
+        kind="TestPerson",
+        field="name",
+        branch_names=list(expected_owners),
+    ) == {"main": [], branch.name: [branch.name], "branch-created-after-setup": []}
+    assert (
+        branches_covered_by(
+            triggers_by_scope=person_query_scopes,
+            kind="TestPerson",
+            field="name",
+            branch_names=list(expected_owners),
+        )
+        == expected_owners
+    )
 
 
 async def test_gather_trigger_computed_attribute_python_only_on_branch(
