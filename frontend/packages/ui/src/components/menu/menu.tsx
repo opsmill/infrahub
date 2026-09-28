@@ -65,7 +65,7 @@ export function Menu<T extends object>({
           cn(
             "no-scrollbar max-h-[inherit] overflow-auto p-1 outline-hidden",
             // A separator after a section already spaces it, so the margin would double the gap.
-            "*:[[role='group']:not(:last-child):not(:has(+[role='separator']))]:mb-2"
+            "*:[[role='group']:has(+:not([role='separator']))]:mb-2"
           )
         )}
         renderEmptyState={
