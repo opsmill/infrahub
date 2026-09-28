@@ -173,7 +173,7 @@ class GitRepositoryRefsGateway:
         self._fetch_kill_after_seconds = fetch_kill_after_seconds
 
     def _open(self, model: GitReadOnlyRepositoryCheckRefs) -> InfrahubReadOnlyRepository:
-        repo = InfrahubReadOnlyRepository(  # type: ignore[call-arg]
+        repo = InfrahubReadOnlyRepository(
             id=UUID(model.repository_id),
             name=model.repository_name,
             location=model.location,

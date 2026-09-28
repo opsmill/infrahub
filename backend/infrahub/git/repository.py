@@ -369,7 +369,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
     """Repository with only read-only access to the remote repo."""
 
     is_read_only: bool = True
-    ref: str | None = Field(None, description="Ref to track on the external repository")
+    ref: str | None = Field(default=None, description="Ref to track on the external repository")
 
     @classmethod
     async def new(cls, **kwargs: Any) -> InfrahubReadOnlyRepository:

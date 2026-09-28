@@ -174,7 +174,7 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
 
         Its own worktree is what keeps them reachable once a ref stops pointing at them.
         """
-        repo = InfrahubReadOnlyRepository(  # type: ignore[call-arg]
+        repo = InfrahubReadOnlyRepository(
             id=UUID(dataset["node_id"]), name=dataset["repo_name"], location=dataset["location"]
         )
         repo.validate_local_directories()
