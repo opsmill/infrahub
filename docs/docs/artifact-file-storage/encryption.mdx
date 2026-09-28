@@ -10,7 +10,7 @@ Encryption protects stored files from someone who has access to the storage, or 
 
 ## Prerequisites
 
-An `INFRAHUB_SECURITY_SECRET_KEY` of at least 32 random characters, set to the same value on every API server. Infrahub refuses to start with a generated secret or with the value from the example deployment files.
+An `INFRAHUB_SECURITY_SECRET_KEY` of at least 32 random characters, set to the same value on every API server. Infrahub refuses to start with a generated secret or with the value from the example deployment files. Changing the secret ends every user session: users have to log in again, while API tokens keep working.
 
 :::warning
 The encryption key is never stored: Infrahub derives it from `INFRAHUB_SECURITY_SECRET_KEY` when it starts. Keep that secret in your secrets manager. Without it, encrypted files cannot be recovered, even from a backup.
@@ -34,7 +34,7 @@ To repair a file object, upload the file again. To repair an artifact, delete it
 ## Limitations
 
 - Changing `INFRAHUB_SECURITY_SECRET_KEY` makes the files encrypted with the previous value unreadable: they are refused until the previous value is restored.
-- Encryption cannot be turned off again: files stored while it was on are then served as their encrypted bytes. Turn it back on to read them.
+- Encryption cannot be turned off again: with it off, artifacts stored while it was on fail to load, file objects are served as their encrypted bytes, and files modified in the storage are served again. Turn it back on to read them.
 - Files stored before encryption was enabled stay in plaintext in the storage, and so do their copies outside Infrahub, such as older backups, S3 object versions and filesystem snapshots.
 
 ## Back up and restore
