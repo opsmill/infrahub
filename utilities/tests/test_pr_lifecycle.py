@@ -24,15 +24,27 @@ from utilities.pr_lifecycle import (
     Intent,
     JsonValue,
     Ledger,
+    Lifecycle,
+    Mode,
     Receipt,
+    Review,
     Snapshot,
+    WarningCycle,
+    apply_command,
+    array,
+    closure_due,
+    closure_exemptions,
     collect_snapshot,
     continuation,
+    current_reviews,
     decode_ledger,
+    digest,
     discover_dashboard,
     encode_ledger,
     finalize_receipt,
     main,
+    notice_body,
+    object_value,
     observe,
     observe_activity,
     pages,
@@ -40,8 +52,11 @@ from utilities.pr_lifecycle import (
     read_cache,
     recover_receipt,
     stage_intent,
+    string,
+    validate_write,
     verify_candidates,
     verify_generation,
+    warning_needed,
 )
 
 if TYPE_CHECKING:
@@ -203,7 +218,10 @@ class TestActivity(unittest.TestCase):
         self.assertEqual(repeated.activity_at, OLD)
 
     def test_human_comment_cancels_warning(self) -> None:
-        entry = replace(observe_activity(snapshot=snapshot(), previous=None), warning="cycle-1")
+        entry = replace(
+            observe_activity(snapshot=snapshot(), previous=None),
+            warning=WarningCycle(cycle="cycle-1", delivered_at=OLD, deadline=NOW, initial_operation="initial"),
+        )
         item = FeedItem(identity="comment:10", actor="alice", kind="comment", at=NOW, content_hash="human")
         result = observe_activity(snapshot=snapshot(updated_at=NOW, feed=(item,)), previous=entry)
         self.assertEqual((result.activity_at, result.warning), (NOW, None))
@@ -212,7 +230,11 @@ class TestActivity(unittest.TestCase):
         owned = Receipt(
             operation="op", identity="comment:10", actor=TRUSTED_BOT, kind="comment", at=OLD, content_hash="original"
         )
-        entry = replace(observe_activity(snapshot=snapshot(), previous=None), receipts=(owned,), warning="cycle")
+        entry = replace(
+            observe_activity(snapshot=snapshot(), previous=None),
+            receipts=(owned,),
+            warning=WarningCycle(cycle="cycle", delivered_at=OLD, deadline=NOW, initial_operation="initial"),
+        )
         for actor in ("another[bot]", TRUSTED_BOT):
             with self.subTest(actor=actor):
                 item = FeedItem(identity="comment:10", actor=actor, kind="comment", at=NOW, content_hash="edited")
@@ -220,7 +242,10 @@ class TestActivity(unittest.TestCase):
                 self.assertEqual((result.activity_at, result.warning), (NOW, None))
 
     def test_human_reserved_label_and_forged_marker_count_as_activity(self) -> None:
-        entry = replace(observe_activity(snapshot=snapshot(), previous=None), warning="cycle")
+        entry = replace(
+            observe_activity(snapshot=snapshot(), previous=None),
+            warning=WarningCycle(cycle="cycle", delivered_at=OLD, deadline=NOW, initial_operation="initial"),
+        )
         for kind in ("labeled", "comment"):
             with self.subTest(kind=kind):
                 item = FeedItem(
@@ -235,14 +260,21 @@ class TestActivity(unittest.TestCase):
         self.assertEqual(result.activity_at, NOW)
 
     def test_unknown_raw_or_fingerprint_change_resets(self) -> None:
-        entry = replace(observe_activity(snapshot=snapshot(), previous=None), warning="cycle")
+        entry = replace(
+            observe_activity(snapshot=snapshot(), previous=None),
+            warning=WarningCycle(cycle="cycle", delivered_at=OLD, deadline=NOW, initial_operation="initial"),
+        )
         for updated in (snapshot(updated_at=NOW), snapshot(fingerprint="changed"), snapshot(labels=("keep-open",))):
             with self.subTest(updated=updated):
                 result = observe_activity(snapshot=updated, previous=entry)
                 self.assertEqual((result.activity_at, result.warning), (NOW, None))
 
     def test_reopened_clears_old_warning_and_notice(self) -> None:
-        entry = replace(observe_activity(snapshot=snapshot(), previous=None), warning="cycle", last_notice_at=OLD)
+        entry = replace(
+            observe_activity(snapshot=snapshot(), previous=None),
+            warning=WarningCycle(cycle="cycle", delivered_at=OLD, deadline=NOW, initial_operation="initial"),
+            last_notice_at=OLD,
+        )
         reopened = "2026-09-27T14:00:00+00:00"
         item = FeedItem(identity="event:11", actor="alice", kind="reopened", at=reopened, content_hash="reopened")
         result = observe_activity(snapshot=snapshot(updated_at=reopened, feed=(item,)), previous=entry)
@@ -648,10 +680,14 @@ class TestReliability(unittest.TestCase):
     def test_workflow_has_only_trusted_observation(self) -> None:
         workflow = (Path(__file__).parents[2] / ".github/workflows/manage-stale-prs.yml").read_text()
         self.assertNotIn("workflow_dispatch:\n    inputs:", workflow)
-        self.assertNotIn("write", workflow)
+        observe_job, mutation_job = workflow.split("  mutate:", 1)
+        self.assertNotIn("write", observe_job)
+        self.assertIn("if: ${{ false }}", mutation_job)
+        self.assertEqual(mutation_job.count("uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93"), 4)
+        self.assertIn("if: always()", mutation_job)
         self.assertIn("ref: stable", workflow)
         self.assertIn("--mode observe", workflow)
-        self.assertNotIn("uses: actions/stale", workflow)
+        self.assertNotIn("uses: actions/stale", observe_job)
         self.assertIn("cancel-in-progress: false", workflow)
 
 
@@ -694,3 +730,384 @@ def observation_transport(*, count: int = 1, bots: bool = False) -> FixtureTrans
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCleanupPolicy(unittest.TestCase):
+    def test_partial_approval_and_comment_do_not_remove_exemption(self) -> None:
+
+        approval = Review(identity=1, author="bob", state="APPROVED", submitted_at=OLD)
+        comment = replace(approval, identity=2, state="COMMENTED", submitted_at=NOW)
+        value = snapshot(reviews=(approval, comment), requested_users=("charlie",))
+        self.assertEqual(current_reviews(snapshot=value), {"bob": "APPROVED"})
+        self.assertEqual(closure_exemptions(snapshot=value), ("approval",))
+        for state, expected in (("CHANGES_REQUESTED", ()), ("DISMISSED", ())):
+            with self.subTest(state=state):
+                changed = replace(value, reviews=(approval, replace(comment, state=state)))
+                self.assertEqual(closure_exemptions(snapshot=changed), expected)
+
+    def test_bot_and_keep_open_are_independent(self) -> None:
+
+        value = snapshot(author_type="Bot", labels=("keep-open",))
+        self.assertEqual(closure_exemptions(snapshot=value), ("bot", "keep-open"))
+
+    def test_legacy_stale_does_not_authorize_closure(self) -> None:
+
+        value = snapshot(labels=("stale",))
+        entry = observe_activity(snapshot=value, previous=None)
+        self.assertTrue(warning_needed(snapshot=value, entry=entry, now=fixed_clock()))
+        self.assertFalse(closure_due(snapshot=value, entry=entry, now=fixed_clock()))
+
+    def test_receipt_deadline_must_match_server_and_immutable_interval(self) -> None:
+
+        value = snapshot()
+        entry = observe_activity(snapshot=value, previous=None)
+        cycle = WarningCycle(
+            cycle="cycle",
+            delivered_at=OLD,
+            deadline="2026-07-15T12:00:00+00:00",
+            initial_operation="initial",
+            final_operation="final",
+        )
+        entry = replace(entry, activity_at="2026-05-01T12:00:00+00:00")
+        initial_body = notice_body(entry=entry, operation="initial", kind="warning", cycle="cycle")
+        final_body = notice_body(
+            entry=entry, operation="final", kind="deadline", cycle="cycle", deadline=cycle.deadline
+        )
+        receipts = tuple(
+            Receipt(
+                operation=op,
+                identity=f"comment:{i}",
+                actor=TRUSTED_BOT,
+                kind="comment",
+                at=OLD,
+                content_hash=digest(body),
+            )
+            for i, op, body in ((1, "initial", initial_body), (1, "final", final_body))
+        )
+        entry = replace(entry, warning=cycle, receipts=receipts, activity_at="2026-05-01T12:00:00+00:00")
+        feed = (
+            FeedItem(identity="comment:1", actor=TRUSTED_BOT, kind="comment", at=OLD, content_hash=digest(final_body)),
+        )
+        self.assertTrue(closure_due(snapshot=replace(value, feed=feed), entry=entry, now=fixed_clock()))
+        self.assertFalse(closure_due(snapshot=value, entry=entry, now=fixed_clock()))
+        self.assertFalse(
+            closure_due(
+                snapshot=replace(value, feed=feed),
+                entry=replace(entry, warning=replace(cycle, deadline=OLD)),
+                now=fixed_clock(),
+            )
+        )
+        self.assertFalse(
+            closure_due(snapshot=replace(value, feed=feed, labels=("keep-open",)), entry=entry, now=fixed_clock())
+        )
+
+    def test_unfinalized_warning_cannot_close(self) -> None:
+
+        value = snapshot()
+        entry = replace(
+            observe_activity(snapshot=value, previous=None),
+            warning=WarningCycle(
+                cycle="c", delivered_at=OLD, deadline="2026-07-15T12:00:00+00:00", initial_operation="i"
+            ),
+        )
+        self.assertFalse(closure_due(snapshot=value, entry=entry, now=fixed_clock()))
+
+
+class MutationTransport(FixtureTransport):
+    def __init__(self) -> None:
+        fixture = collection_transport()
+        super().__init__(responses=fixture.responses, graphql=fixture.graphql)
+        self.writes: list[tuple[str, str, JsonValue]] = []
+        self.now = NOW
+        self.next_id = 100
+        self.fail_comment_after = False
+        self.fail_patch_before = False
+        self.approve_after_gate = False
+        self.fail_after_gate = False
+        self.fail_receipt_persistence = False
+        root = "/repos/opsmill/infrahub"
+        self.responses[root] = {"full_name": "opsmill/infrahub"}
+        self.responses["/rate_limit"] = {"resources": {"core": {"remaining": 50000}, "graphql": {"remaining": 50000}}}
+        self.responses[f"{root}/pulls?state=open&per_page=100&page=1"] = [{"number": 1, "id": 1}]
+        self.responses[f"{root}/issues?state=all&creator=github-actions%5Bbot%5D&per_page=100&page=1"] = []
+        self.responses[f"{root}/labels?per_page=100&page=1"] = []
+
+    def write_json(self, *, method: str, path: str, payload: JsonValue, mode: Mode) -> JsonValue:  # noqa: PLR0911 - Fixture dispatch mirrors separate HTTP endpoints.
+        validate_write(method=method, path=path, payload=payload, mode=mode)
+        self.writes.append((method, path, payload))
+        root = "/repos/opsmill/infrahub"
+        data = object_value(payload)
+        author: JsonValue = {"login": TRUSTED_BOT, "type": "Bot"}
+        if path == f"{root}/issues":
+            issue: JsonValue = {"number": 99, "id": 99, "body": data["body"], "user": author}
+            self.responses[f"{root}/issues/99"] = issue
+            self.responses[f"{root}/issues?state=all&creator=github-actions%5Bbot%5D&per_page=100&page=1"] = [issue]
+            return issue
+        if path == f"{root}/issues/99":
+            ledger = decode_ledger(body=string(data["body"]))
+            if self.fail_receipt_persistence and any(entry.receipts for entry in ledger.entries):
+                raise IncompleteDataError("Fixture state finalization failed")
+            object_value(self.responses[path])["body"] = data["body"]
+            return self.responses[path]
+        if path.startswith(f"{root}/labels/") and method == "DELETE":
+            self.responses[f"{root}/labels?per_page=100&page=1"] = [
+                item
+                for item in array(self.responses[f"{root}/labels?per_page=100&page=1"])
+                if object_value(item)["name"] != path.rsplit("/", 1)[1]
+            ]
+            return None
+        if path == f"{root}/labels":
+            array(self.responses[f"{root}/labels?per_page=100&page=1"]).append(data)
+            return data
+        pr = object_value(self.responses[f"{root}/pulls/1"])
+        comments = array(self.responses[f"{root}/issues/1/comments?per_page=100&page=1"])
+        if "/comments/" in path:
+            if self.fail_patch_before:
+                raise IncompleteDataError("Fixture edit failed")
+            comment = next(
+                object_value(item) for item in comments if str(object_value(item)["id"]) == path.rsplit("/", 1)[1]
+            )
+            comment.update(body=data["body"], updated_at=self.now)
+            pr["updated_at"] = self.now
+            return comment
+        if path.endswith("/comments"):
+            self.next_id += 1
+            comment = {
+                "id": self.next_id,
+                "body": data["body"],
+                "created_at": self.now,
+                "updated_at": self.now,
+                "user": author,
+            }
+            comments.append(comment)
+            pr["updated_at"] = self.now
+            if self.fail_comment_after:
+                self.fail_comment_after = False
+                raise IncompleteDataError("Fixture lost successful response")
+            return comment
+        label = string(array(data["labels"])[0]) if method == "POST" else path.rsplit("/", 1)[1]
+        labels = array(pr["labels"])
+        if method == "POST":
+            labels.append({"name": label})
+        else:
+            pr["labels"] = [item for item in labels if object_value(item)["name"] != label]
+        self.next_id += 1
+        array(self.responses[f"{root}/issues/1/timeline?per_page=100&page=1"]).append(
+            {
+                "id": self.next_id,
+                "event": "labeled" if method == "POST" else "unlabeled",
+                "label": {"name": label},
+                "created_at": self.now,
+                "actor": author,
+            }
+        )
+        pr["updated_at"] = self.now
+        if self.fail_after_gate and label.startswith("lifecycle-close-") and method == "POST":
+            del self.responses[f"{root}/pulls/1"]
+        if self.approve_after_gate and label.startswith("lifecycle-close-") and method == "POST":
+            array(self.responses[f"{root}/pulls/1/reviews?per_page=100&page=1"]).append(
+                {"id": 500, "user": {"login": "bob"}, "state": "APPROVED", "submitted_at": self.now}
+            )
+        return []
+
+
+class TestMutationLifecycle(unittest.TestCase):
+    def lifecycle(self, transport: MutationTransport) -> Lifecycle:
+        lifecycle = Lifecycle(
+            transport=transport, clock=lambda: datetime.fromisoformat(transport.now), run_id="123", attempt="1"
+        )
+        lifecycle.load()
+        return lifecycle
+
+    def test_real_shaped_comment_receipts_recover_and_rerun_without_duplicate(self) -> None:
+        transport = MutationTransport()
+        transport.fail_comment_after = True
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
+        entry = lifecycle.entry(1)
+        self.assertIsNotNone(entry)
+        if entry is None or entry.warning is None:
+            self.fail("Expected active warning")
+        self.assertEqual(entry.warning.deadline, "2026-10-12T12:00:00+00:00")
+        self.assertEqual(entry.activity_at, OLD)
+        self.lifecycle(transport).reconcile()
+        comments = array(transport.responses["/repos/opsmill/infrahub/issues/1/comments?per_page=100&page=1"])
+        self.assertEqual(len(comments), 1)
+        self.assertTrue(
+            all("state" not in object_value(payload) and "/merge" not in path for _, path, payload in transport.writes)
+        )
+
+    def test_initial_delivery_survives_deadline_edit_failure_without_arming(self) -> None:
+        transport = MutationTransport()
+        transport.fail_patch_before = True
+        lifecycle = self.lifecycle(transport)
+        with self.assertRaisesRegex(IncompleteDataError, "Fixture edit failed"):
+            lifecycle.reconcile()
+        stored = decode_ledger(
+            body=string(object_value(transport.responses["/repos/opsmill/infrahub/issues/99"])["body"])
+        )
+        entry = stored.entries[0]
+        self.assertIsNotNone(entry.warning)
+        self.assertIsNotNone(entry.pending)
+        self.assertFalse(
+            closure_due(
+                snapshot=collect_snapshot(transport=transport, number=1, now=fixed_clock()),
+                entry=entry,
+                now=datetime(2027, 1, 1, tzinfo=UTC),
+            )
+        )
+
+    def test_gate_refresh_catches_approval_and_cleanup_keeps_keep_open(self) -> None:
+        transport = MutationTransport()
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
+        transport.now = "2026-10-13T12:00:00+00:00"
+        transport.approve_after_gate = True
+        self.assertEqual(lifecycle.prepare(), ())
+        labels = object_value(transport.responses["/repos/opsmill/infrahub/pulls/1"])["labels"]
+        self.assertEqual(labels, [{"name": "lifecycle-warning"}])
+        self.assertTrue(any(path.endswith("/labels/lifecycle-close-123-1") for _, path, _ in transport.writes))
+
+    def test_apply_transport_rejects_closing_merging_and_manual_label_changes(self) -> None:
+        transport = MutationTransport()
+        cases: tuple[tuple[str, str, JsonValue], ...] = (
+            ("PATCH", "/issues/1", {"state": "closed"}),
+            ("PUT", "/pulls/1/merge", {}),
+            ("DELETE", "/issues/1/labels/keep-open", {}),
+        )
+        for method, path, payload in cases:
+            with self.subTest(path=path), self.assertRaisesRegex(IncompleteDataError, "Unsupported"):
+                transport.write_json(
+                    method=method, path="/repos/opsmill/infrahub" + path, payload=payload, mode=Mode.APPLY
+                )
+        self.assertEqual(transport.writes, [])
+
+    def test_delayed_missing_finalization_gets_fresh_full_warning(self) -> None:
+        transport = MutationTransport()
+        transport.fail_patch_before = True
+        with self.assertRaisesRegex(IncompleteDataError, "Fixture edit failed"):
+            self.lifecycle(transport).reconcile()
+        transport.fail_patch_before = False
+        transport.now = "2026-10-05T12:00:00+00:00"
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
+        entry = lifecycle.entry(1)
+        if entry is None or entry.warning is None:
+            self.fail("Expected fresh warning")
+        self.assertEqual(entry.warning.deadline, "2026-10-19T12:00:00+00:00")
+        comments = array(transport.responses["/repos/opsmill/infrahub/issues/1/comments?per_page=100&page=1"])
+        self.assertEqual(len(comments), 3)
+        self.assertIn("canceled", string(object_value(comments[1])["body"]))
+
+    def test_overlapping_comment_and_timeline_receipts_are_one_delivery(self) -> None:
+        transport = MutationTransport()
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
+        comment = object_value(
+            array(transport.responses["/repos/opsmill/infrahub/issues/1/comments?per_page=100&page=1"])[0]
+        )
+        array(transport.responses["/repos/opsmill/infrahub/issues/1/timeline?per_page=100&page=1"]).append(
+            {**comment, "event": "commented"}
+        )
+        value = collect_snapshot(transport=transport, number=1, now=fixed_clock())
+        intent = Intent(
+            operation="same", kind="comment", content_hash=digest(comment["body"]), prior_hash=value.fingerprint
+        )
+        receipt = recover_receipt(intent=intent, feed=value.feed)
+        self.assertIsNotNone(receipt)
+        if receipt is None:
+            self.fail("Expected deduplicated receipt")
+        self.assertEqual(receipt.identity, "comment:101")
+
+    def test_low_mutation_quota_stops_before_any_write(self) -> None:
+        transport = MutationTransport()
+        transport.responses["/rate_limit"] = {"resources": {"core": {"remaining": 100}, "graphql": {"remaining": 100}}}
+        with self.assertRaisesRegex(IncompleteDataError, "planned mutations"):
+            self.lifecycle(transport).reconcile()
+        self.assertEqual(transport.writes, [])
+
+    def test_human_activity_cancels_once_and_preserves_keep_open(self) -> None:
+        transport = MutationTransport()
+        self.lifecycle(transport).reconcile()
+        transport.now = "2026-10-01T12:00:00+00:00"
+        pr = object_value(transport.responses["/repos/opsmill/infrahub/pulls/1"])
+        pr["updated_at"] = transport.now
+        array(pr["labels"]).append({"name": "keep-open"})
+        self.lifecycle(transport).reconcile()
+        self.lifecycle(transport).reconcile()
+        comments = array(transport.responses["/repos/opsmill/infrahub/issues/1/comments?per_page=100&page=1"])
+        self.assertEqual(len(comments), 2)
+        self.assertEqual(pr["labels"], [{"name": "keep-open"}])
+
+    def test_incomplete_post_gate_refresh_disables_entire_closer(self) -> None:
+        transport = MutationTransport()
+        self.lifecycle(transport).reconcile()
+        transport.now = "2026-10-13T12:00:00+00:00"
+        transport.fail_after_gate = True
+        with tempfile.TemporaryDirectory() as directory:
+            report = apply_command(
+                command="prepare-close",
+                transport=transport,
+                clock=lambda: datetime.fromisoformat(transport.now),
+                run_id="123",
+                attempt="1",
+                state_path=Path(directory) / "state.json",
+                pass_number=1,
+                ref="refs/heads/stable",
+            )
+        self.assertFalse(report["closure_ready"])
+        self.assertFalse(report["complete"])
+        self.assertEqual(report["error"], "Missing fixture response")
+
+    def test_successful_gate_and_finalization_remove_only_owned_labels(self) -> None:
+        transport = MutationTransport()
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
+        transport.now = "2026-10-13T12:00:00+00:00"
+        self.assertEqual(lifecycle.prepare(), (1,))
+        root = "/repos/opsmill/infrahub"
+        transport.responses[f"{root}/issues?state=open&labels=lifecycle-close-123-1&per_page=100&page=1"] = []
+        lifecycle.finalize()
+        self.assertEqual(
+            object_value(transport.responses[f"{root}/pulls/1"])["labels"], [{"name": "lifecycle-warning"}]
+        )
+        self.assertEqual(
+            [object_value(item)["name"] for item in array(transport.responses[f"{root}/labels?per_page=100&page=1"])],
+            ["lifecycle-approved", "lifecycle-bot", "lifecycle-warning"],
+        )
+
+    def test_warning_migration_preserves_legacy_label_but_starts_new_receipt(self) -> None:
+        transport = MutationTransport()
+        pr = object_value(transport.responses["/repos/opsmill/infrahub/pulls/1"])
+        pr["labels"] = [{"name": "stale"}]
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
+        entry = lifecycle.entry(1)
+        if entry is None or entry.warning is None:
+            self.fail("Expected fresh warning")
+        self.assertEqual(entry.warning.delivered_at, NOW)
+        self.assertEqual(pr["labels"], [{"name": "stale"}, {"name": "lifecycle-warning"}])
+
+    def test_noop_reconciliation_collects_each_pr_only_once(self) -> None:
+        transport = MutationTransport()
+        self.lifecycle(transport).reconcile()
+        transport.paths.clear()
+        writes = len(transport.writes)
+        self.lifecycle(transport).reconcile()
+        self.assertEqual(transport.paths.count("/repos/opsmill/infrahub/pulls/1"), 1)
+        self.assertEqual([path for _, path, _ in transport.writes[writes:]], ["/repos/opsmill/infrahub/issues/99"])
+
+    def test_failed_receipt_persistence_recovers_before_activity_comparison(self) -> None:
+        transport = MutationTransport()
+        transport.fail_receipt_persistence = True
+        with self.assertRaisesRegex(IncompleteDataError, "state finalization failed"):
+            self.lifecycle(transport).reconcile()
+        transport.fail_receipt_persistence = False
+        transport.now = "2026-09-29T12:00:00+00:00"
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
+        entry = lifecycle.entry(1)
+        if entry is None or entry.warning is None:
+            self.fail("Expected recovered warning")
+        self.assertEqual(entry.activity_at, OLD)
+        self.assertEqual(entry.warning.deadline, "2026-10-13T12:00:00+00:00")

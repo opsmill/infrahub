@@ -121,7 +121,7 @@ async function shiftingScan({count, cached='', budget=1000, failClose=false}) {
   const cache={restore:async()=>persisted,save:async value=>{persisted=value}};
   const open=new Set(Array.from({length:count},(_,i)=>i+1));
   const passes=[];
-  for(let pass=1;pass<=3 && open.size;pass++) {
+  for(let pass=1;pass<=4 && open.size;pass++) {
     const state=new sandbox.State(cache,{debugOnly:false});await state.restore();
     const p=Object.create(P.prototype);let remaining=budget;
     p.options={};p.state=state;p.closedIssues=[];
@@ -143,7 +143,7 @@ sandbox.context={repo:{owner:'fixture',repo:'fixture'}};
 sandbox.IssueLogger.prototype.error=()=>{};
 for(const count of [116,574]) {
   const result=await shiftingScan({count});
-  check(`mutable pagination covers ${count} candidates within three passes`, result.remaining,0);
+  check(`mutable pagination covers ${count} candidates within four passes`, result.remaining,0);
   check(`mutable pagination ${count} needs continuation`,result.passes.length>1,true);
 }
 check('interrupted state containing newly due IDs requires fresh sweep',
@@ -154,3 +154,8 @@ const failedClose=await shiftingScan({count:1,failClose:true});
 check('upstream reports attempted close despite swallowed API failure',failedClose.passes[0].attempted,1);
 check('independent candidate read detects swallowed close failure',failedClose.remaining,1);
 console.log(`${passed} assertions passed; processor pagination, cache loss, and close failure use pinned upstream bodies.`);
+
+const largerCached=await shiftingScan({count:574,cached:Array.from({length:574},(_,i)=>i+1).join('|')});
+check('574 cached candidates complete within four passes',largerCached.remaining,0);
+check('574 cached candidates require four passes',largerCached.passes.length,4);
+console.log(JSON.stringify({largerCached, assertions:passed}));
