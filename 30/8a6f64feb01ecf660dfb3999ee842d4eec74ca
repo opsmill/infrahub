@@ -1,0 +1,19 @@
+development/docker-compose.yml
+  s_821332c5759ce5::t_aee1cd0c2c99f9 195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "308a6f64feb01ecf660dfb3999ee842d4eec74ca",
+  "prompts": {},
+  "sessions": {
+    "s_821332c5759ce5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "978508fd-8e9a-43e3-9b7b-f3ffdf9e8d47",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Simon AURA--SCUSSEL <simon@opsmill.com>"
+    }
+  }
+}
