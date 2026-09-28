@@ -100,15 +100,17 @@ async def _create_gadget(db: InfrahubDatabase, branch: Branch, name: str) -> Nod
     return gadget
 
 
+@pytest.fixture(scope="class")
+async def default_branch(default_branch_scope_class: Branch) -> Branch:
+    return default_branch_scope_class
+
+
+@pytest.fixture(scope="class")
+async def nodedel_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
+    registry.schema.register_schema(schema=AGNOSTIC_RETIREMENT_SCHEMA, branch=default_branch.name)
+
+
 class TestRetireNodeAgnosticFields:
-    @pytest.fixture(scope="class")
-    async def default_branch(self, default_branch_scope_class: Branch) -> Branch:
-        return default_branch_scope_class
-
-    @pytest.fixture(scope="class")
-    async def nodedel_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
-        registry.schema.register_schema(schema=AGNOSTIC_RETIREMENT_SCHEMA, branch=default_branch.name)
-
     async def test_an_anchor_that_matches_nothing_reports_a_measured_zero(
         self,
         db: InfrahubDatabase,
@@ -466,14 +468,6 @@ class TestRetireNodeAgnosticFields:
 
 
 class TestNodesDeletedOnBranch:
-    @pytest.fixture(scope="class")
-    async def default_branch(self, default_branch_scope_class: Branch) -> Branch:
-        return default_branch_scope_class
-
-    @pytest.fixture(scope="class")
-    async def nodedel_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
-        registry.schema.register_schema(schema=AGNOSTIC_RETIREMENT_SCHEMA, branch=default_branch.name)
-
     async def test_only_the_deletions_on_the_branch_within_the_window_are_returned(
         self,
         db: InfrahubDatabase,
