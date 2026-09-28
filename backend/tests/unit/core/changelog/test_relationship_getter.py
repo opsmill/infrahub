@@ -27,6 +27,7 @@ def test_merge_secondaries_collapses_the_same_peer_into_one_changelog() -> None:
 
     merged = RelationshipChangelogGetter._merge_secondaries_by_node(secondaries)
 
+    assert len(merged) == 2
     by_id = {changelog.node_id: changelog for changelog in merged}
     assert set(by_id) == {"peer-1", "peer-2"}
     assert set(by_id["peer-1"].relationships) == {"rel_a", "rel_b"}
