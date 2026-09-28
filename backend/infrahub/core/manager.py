@@ -7,6 +7,7 @@ from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core.constants import (
     SYSTEM_USER_ID,
+    InfrahubKind,
     MetadataOptions,
     RelationshipCardinality,
     RelationshipDirection,
@@ -1078,15 +1079,11 @@ class NodeManager:
         if kind:
             node_schema_validation = get_schema(db=db, branch=branch, node_schema=kind)
             kind_validation = node_schema_validation.kind
-            # A generic lists every node that inherits it in ``used_by``; that is the authoritative
-            # match because implicit bases such as ``CoreNode`` are absent from a node's ``inherit_from``.
+            # Every node is implicitly a CoreNode, a base no node lists in its inherit_from.
             kind_matches = (
                 node_schema.kind == kind_validation
                 or kind_validation in node_schema.inherit_from
-                or (
-                    isinstance(node_schema_validation, GenericSchema)
-                    and node_schema.kind in node_schema_validation.used_by
-                )
+                or kind_validation == InfrahubKind.NODE
             )
 
         # Temporary list of exception to the validation of the kind
@@ -1099,11 +1096,12 @@ class NodeManager:
                 if item[0] == kind_validation and item[1] == node.get_kind():
                     return node
 
+            # A wrong-kind id must be indistinguishable from an unknown id so the error cannot
+            # be used to read back the kind of an arbitrary node.
             raise NodeNotFoundError(
                 branch_name=branch.name,
                 node_type=kind_validation,
                 identifier=id,
-                message=f"Node with id {id} exists, but it is a {node.get_kind()}, not {kind_validation}",
             )
 
         return node

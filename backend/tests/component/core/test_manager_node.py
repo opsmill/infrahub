@@ -5,7 +5,7 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.attribute import MAX_STRING_LENGTH
 from infrahub.core.branch import Branch
-from infrahub.core.constants import MetadataOptions
+from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager, identify_node_class
 from infrahub.core.node import Node
@@ -301,9 +301,9 @@ async def test_relationship_get_node_resolves_source(
 async def test_get_one_by_id_or_default_filter_allows_core_node_generic(
     db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
 ) -> None:
-    # CoreNode is the universal base and is absent from every node's inherit_from, so the kind
-    # check must accept it via the generic's used_by. Relationships with peer=CoreNode (group
-    # members/subscribers) resolve their peer through this path.
+    # CoreNode is the universal base, absent from every node's inherit_from, so the kind check
+    # must accept it. Relationships with peer=CoreNode (group members/subscribers) resolve their
+    # peer through this path.
     person = car_person_generics_data["p1"]
 
     node = await NodeManager.get_one_by_id_or_default_filter(db=db, id=person.id, kind="CoreNode")
@@ -311,6 +311,23 @@ async def test_get_one_by_id_or_default_filter_allows_core_node_generic(
     assert isinstance(node, Node)
     assert node.id == person.id
     assert node.get_kind() == "TestPerson"
+
+
+async def test_get_one_by_id_or_default_filter_allows_core_node_for_restricted_namespace(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    # A restricted-namespace node with no inherit_from (CoreGraphQLQuery) is excluded from
+    # CoreNode.used_by, yet it is still a CoreNode and must resolve when a peer=CoreNode
+    # relationship (group members/subscribers) reads it back.
+    query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+    await query.new(db=db, name="my-query", query="query { __typename }")
+    await query.save(db=db)
+
+    node = await NodeManager.get_one_by_id_or_default_filter(db=db, id=query.id, kind=InfrahubKind.NODE)
+
+    assert isinstance(node, Node)
+    assert node.id == query.id
+    assert node.get_kind() == InfrahubKind.GRAPHQLQUERY
 
 
 async def test_get_one_missing_class_kind_reports_str_node_type(

@@ -1,4 +1,5 @@
 from graphql import ExecutionResult
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.auth.session import AccountSession
 from infrahub.core.branch import Branch
@@ -197,29 +198,40 @@ async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_jo
 async def test_id_for_other_schema_raises_error(
     db: InfrahubDatabase, person_john_main: Node, car_accord_main: Node, branch: Branch
 ) -> None:
-    query = (
-        """
-    mutation {
-        TestPersonUpsert(data: {id: "%s", name: {value: "John"}, height: { value: 182}}) {
-            ok
+    # An id that resolves to a node of another kind must produce the same error as an id that
+    # exists nowhere, so the upsert cannot be used to read back the kind of an arbitrary node.
+    async def upsert_by_id(node_id: str) -> ExecutionResult:
+        query = (
+            """
+        mutation {
+            TestPersonUpsert(data: {id: "%s", name: {value: "John"}, height: { value: 182}}) {
+                ok
+            }
         }
-    }
-    """
-        % car_accord_main.id
-    )
+        """
+            % node_id
+        )
+        return await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+
+    missing_id = str(UUIDT())
     branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=branch)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
 
-    expected_error = f"Node with id {car_accord_main.id} exists, but it is a TestCar, not TestPerson"
-    assert result.errors
-    assert any(expected_error in error.message for error in result.errors)
+    wrong_kind = await upsert_by_id(car_accord_main.id)
+    nonexistent = await upsert_by_id(missing_id)
+
+    assert wrong_kind.errors
+    assert nonexistent.errors
+    wrong_kind_messages = [error.message for error in wrong_kind.errors]
+    nonexistent_messages = [error.message for error in nonexistent.errors]
+    assert wrong_kind_messages == [msg.replace(missing_id, car_accord_main.id) for msg in nonexistent_messages]
+    assert all("TestCar" not in message for message in wrong_kind_messages)
 
 
 async def test_update_by_id_to_nonunique_value_raises_error(
