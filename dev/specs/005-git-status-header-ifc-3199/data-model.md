@@ -13,9 +13,9 @@ FR-005a forbids a third status treatment, so the set must not grow by accident.
 |---|---|---|
 | `loading` | A count is still outstanding and the total is not a confirmed zero | Spinner in the glyph's slot |
 | `check-failed` | At least one count failed; branch health is unknown | `mdi:error-outline`, muted/warning — **never** the danger colour, which is reserved for a real failure (FR-011) |
-| `inert` | No Git repositories are configured | Dimmed glyph, not activatable |
-| `error` | At least one repository on the branch has the import-error status | Glyph in danger colour + pulsing dot |
-| `neutral` | Repositories exist and none carry the import-error status | Glyph in default foreground |
+| `no-repositories` | No Git repositories are configured | Dimmed glyph, still a reachable link |
+| `failing` | At least one repository on the branch has the import-error status | Glyph in danger colour + pulsing dot |
+| `in-sync` | Repositories exist and none carry the import-error status | Glyph in default foreground |
 
 ## Inputs to the derivation
 
@@ -37,11 +37,11 @@ Precedence is the substance of this model, not an implementation detail:
 
 ```
 1. totalError                           -> check-failed
-2. totalCount === 0                     -> inert
+2. totalCount === 0                     -> no-repositories
 3. totalIsPending || failingIsPending   -> loading
 4. failingError                         -> check-failed
-5. failingCount > 0                     -> error
-6. otherwise                            -> neutral
+5. failingCount > 0                     -> failing
+6. otherwise                            -> in-sync
 ```
 
 A confirmed total of zero is checked before the pending guard on purpose: no repositories

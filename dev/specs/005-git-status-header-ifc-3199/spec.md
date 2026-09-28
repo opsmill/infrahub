@@ -88,8 +88,8 @@ error sync status, and that the failing repository is present in the result.
 ### User Story 3 - Stay out of the way when Git is not in use (Priority: P3)
 
 Not every deployment has Git repositories. Without them the indicator has nothing to report
-and nowhere useful to send the operator, so it is present but inert: visible, not activatable,
-and occupying exactly the same space it occupies in every other state.
+and nothing to flag, so it is present but quiet: visible, dimmed, still reachable, and
+occupying exactly the same space it occupies in every other state.
 
 **Why this priority**: A correctness and polish requirement rather than a new capability.
 It matters because the header must not shift when the indicator changes state — a control
@@ -97,13 +97,13 @@ that appears and disappears moves everything beside it and makes the red state f
 glitch rather than a signal.
 
 **Independent Test**: With no Git repositories configured, confirm the indicator is rendered,
-is not activatable, and that the header layout is unchanged from the same page where
-repositories do exist.
+is dimmed but still reachable, and that the header layout is unchanged from the same page
+where repositories do exist.
 
 **Acceptance Scenarios**:
 
 1. **Given** no Git repositories are configured, **When** the operator loads any page,
-   **Then** the indicator is visible but not activatable.
+   **Then** the indicator is visible and dimmed, and remains focusable and activatable.
 2. **Given** no Git repositories are configured, **When** the operator compares the header to
    a deployment that has them, **Then** the indicator occupies the same position and
    dimensions in both.
@@ -129,7 +129,7 @@ repositories do exist.
 - **Every repository on the branch is in an error state**: behaves as the ordinary error
   case; no special "all broken" treatment.
 - **The operator lacks permission to view repositories**: the status lookup fails, so the
-  indicator MUST show the check-failed state of FR-011 — not the inert state of User Story 3.
+  indicator MUST show the check-failed state of FR-011 — not the no-repositories state.
   Reporting "no Git repositories on this branch" to an operator who simply cannot see them
   would assert something the application does not know, and a branch with many failing
   repositories would read as an empty one. "Status could not be checked" is the accurate
@@ -166,19 +166,22 @@ repositories do exist.
 - **FR-005b**: The indicator MUST use a single glyph across its states. State MUST be
   conveyed by colour, the pulsing dot, the disabled treatment, and the substitutions defined
   in FR-007a and FR-011 — never by swapping the glyph for a different subject.
-- **FR-006**: The indicator MUST be present but not activatable when there are no Git
-  repositories, and MUST occupy identical space in every state so that no state change alters
-  the header layout. Note that repository nodes are branch-agnostic — only their sync status
-  is per-branch — so this condition is deployment-wide in practice: a branch cannot have no
-  repositories while another branch has some. The count is still issued with branch context,
-  which costs nothing and keeps the two lookups consistent.
+- **FR-006**: When there are no Git repositories the indicator MUST remain present, reachable
+  and focusable, distinguished only by a dimmed appearance, and MUST occupy identical space in
+  every state so that no state change alters the header layout. It MUST NOT be disabled:
+  disabling says "you may not do this" when the truth is "there is nothing here yet", and it
+  removes the control from assistive technology and the tab order. Note that repository nodes
+  are branch-agnostic — only their sync status is per-branch — so this condition is
+  deployment-wide in practice.
 - **FR-007**: The indicator MUST refresh its state on a recurring interval without operator
   action, on the same cadence as the existing task indicator.
 - **FR-007a**: While the first status lookup is outstanding, the indicator MUST show a
   loading treatment in place of the glyph, occupying the same space, and MUST NOT present
   any of the resolved states until the lookup returns.
 - **FR-008**: When activated, the indicator MUST navigate to the repository list, scoped to
-  the current branch and filtered to repositories in an error sync status.
+  the current branch. It MUST apply the error-status filter only while something is actually
+  failing; in every other state the list MUST be unfiltered, so the destination is never an
+  empty table filtered on a condition that does not hold.
 - **FR-009**: The branch qualifier MUST be omitted from the destination when the current
   branch is the deployment's default branch, and present otherwise. The default branch MUST
   be determined from application state, never by comparing against a hard-coded name.
@@ -189,7 +192,7 @@ repositories do exist.
 - **FR-010a**: Each state MUST have distinct hover and assistive-technology text, naming the
   condition rather than the control. The five states are: repositories failing on this
   branch; repositories present and healthy; no repositories configured; status still being
-  determined; and status could not be checked. The inert state's name MUST NOT mention a
+  determined; and status could not be checked. The no-repositories name MUST NOT mention a
   branch: repositories are branch-agnostic, so it would be inaccurate.
 - **FR-011**: When the status lookup fails, the indicator MUST substitute a dedicated
   check-failed symbol, with its own explanation, and MUST NOT report the branch as healthy.
@@ -238,7 +241,7 @@ repositories do exist.
 - **SC-003**: A repository failure that occurs while a page is open becomes visible within
   one refresh interval, with no operator action.
 - **SC-004**: The header's layout is identical across all indicator states — no element
-  moves when the indicator changes between inert, neutral, error, loading, and check-failed.
+  moves when the indicator changes between any of its states.
 - **SC-005**: Every indicator state is distinguishable without perceiving colour.
 - **SC-006**: The indicator's cost does not grow with the number of repositories on the
   branch.
@@ -248,8 +251,9 @@ repositories do exist.
 
 ### Decisions already taken (do not re-open)
 
-- **Empty state is inert, not hidden.** The indicator is held in place and made
-  non-activatable when the branch has no repositories. Determining this requires knowing
+- **Empty state is dimmed, not hidden.** The indicator is held in place when there are no
+  repositories. It was originally specified as non-activatable; review changed that to a
+  dimmed but reachable link — see "Changed in review". Determining this requires knowing
   both how many repositories are on the branch and how many are failing — two counts. The
   user explicitly chose two separate lookups over a single combined one.
 - **The branch is based on `cross-branch-repo-status-infp-671`** and the pull request will
@@ -298,8 +302,8 @@ repositories do exist.
   adds load for a condition that changes on the order of minutes; slower makes the signal
   feel stale.
 - Operators who can view a branch can generally view its repositories; where they cannot, the
-  lookup fails and the check-failed state of FR-011 applies. This is deliberately not the inert
-  state — see the Clarifications entry on permission-denied.
+  lookup fails and the check-failed state of FR-011 applies. This is deliberately not the
+  no-repositories state — see the Clarifications entry on permission-denied.
 
 ## Constitutional Compliance
 
@@ -318,3 +322,21 @@ repositories do exist.
   introducing a second approach to the same problem.
 - **Quality gates**: a Towncrier changelog fragment is required (user-facing change), and
   user documentation under `docs/` must be assessed.
+
+
+## Changed in review
+
+The reviewer raised five points after implementation; all were adopted.
+
+1. **Named for what it reports.** The feature is the repository *sync* status, not "Git
+   status": `RepositorySyncStatus`, `deriveRepositorySyncIndicator`, and state names
+   `no-repositories` / `failing` / `in-sync` in place of `inert` / `error` / `neutral`.
+2. **Logic left the component.** `ui/` renders; the two counts and the derivation now sit
+   behind `useRepositorySyncIndicator` in `ui/queries/`.
+3. **The empty state is no longer disabled** (FR-006). It is a dimmed but reachable link.
+4. **The destination is filtered only when something is failing** (FR-008).
+5. **The informational pulse uses the `ring` theme tokens** rather than a hardcoded blue.
+
+Points 3 and 4 together removed the element-type switch between states, and with it the
+remount, the mid-session role change, and the accessible-name collision that the switch's
+button variant had caused in an unrelated end-to-end test.

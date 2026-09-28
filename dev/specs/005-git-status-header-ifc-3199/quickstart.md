@@ -48,9 +48,9 @@ Walk the five states:
 
 | State | How to reach it |
 |---|---|
-| `neutral` | A branch with at least one healthy repository |
-| `error` | A branch with a repository whose sync status is the import-error value |
-| `inert` | A deployment with no Git repositories configured |
+| `in-sync` | A branch with at least one healthy repository |
+| `failing` | A branch with a repository whose sync status is the import-error value |
+| `no-repositories` | A deployment with no Git repositories configured |
 | `loading` | Throttle the network, or block the count request, and reload |
 | `check-failed` | Block the GraphQL endpoint in devtools and reload |
 
@@ -58,9 +58,8 @@ Check specifically, because tests do not cover these:
 
 - The header does not shift when switching between the states (SC-004). Compare against a
   branch in a different state at the same window width.
-- Hovering in the `inert` state still shows the tooltip. This is the one behaviour with no
-  precedent in the codebase — `LinkButton` + `isDisabled` is a new combination. If the
-  tooltip does not fire, use the non-interactive-trigger fallback from `research.md` R2.
+- Hovering in the `no-repositories` state still shows the tooltip, and the control is still
+  focusable by keyboard — it is dimmed, not disabled.
 - The indicator reads as distinct from the branch selector beside it, which uses the same
   `mdi:source-branch` glyph. This is a known accepted risk from the spec.
 

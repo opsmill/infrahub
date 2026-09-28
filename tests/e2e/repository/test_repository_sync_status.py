@@ -1,4 +1,4 @@
-"""The Git status indicator in the application header.
+"""The repository sync status indicator in the application header.
 
 The failing status is set directly on a throwaway branch; the attribute is branch-local, so
 the default branch stays clean.
@@ -27,7 +27,7 @@ INDICATOR_ERROR_LABEL = "Repositories failed to import on this branch"
 INDICATOR_HEALTHY_LABEL = "All Git repositories are in sync on this branch"
 
 
-class TestGitStatusHeader:
+class TestRepositorySyncStatus:
     @pytest.fixture(scope="class")
     async def branch_with_failed_import(
         self, infrahub_client: InfrahubClient, demo_edge_repo: None

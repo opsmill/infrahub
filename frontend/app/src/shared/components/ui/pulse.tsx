@@ -6,7 +6,7 @@ import { classNames } from "@/shared/utils/common";
 type PulseTone = "info" | "danger";
 
 const TONE_CLASSES: Record<PulseTone, { ping: string; dot: string }> = {
-  info: { ping: "bg-custom-blue-500", dot: "bg-custom-blue-700" },
+  info: { ping: "bg-ring-halo", dot: "bg-ring" },
   danger: { ping: "bg-danger", dot: "bg-danger" },
 };
 

@@ -275,3 +275,13 @@ Phase 1 step 4 of the plan workflow asks for the plan reference to be written in
 `CLAUDE.md` between SPECKIT markers. **Not performed.** This project's `CLAUDE.md` is
 hand-maintained and delegates to `AGENTS.md`; the generated block clobbers it. Declined
 deliberately and recorded here so the omission is visible rather than looking like a miss.
+
+
+## Superseded by review
+
+The shipped shape differs from this plan in five ways, all from reviewer feedback: the
+feature is named for repository sync status rather than "Git status"; the counts and the
+derivation moved out of the component into a query hook; the empty state is a dimmed link
+rather than a disabled button; the destination is filtered only while something is failing;
+and the informational pulse uses theme tokens. See the "Changed in review" section of
+spec.md. Known gap 2 below — the element-type switch — no longer applies.
