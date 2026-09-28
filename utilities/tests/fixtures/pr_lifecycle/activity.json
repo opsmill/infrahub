@@ -1,0 +1,43 @@
+{
+  "human_comment": {
+    "id": 201,
+    "user": {
+      "login": "author-one",
+      "type": "User"
+    },
+    "body": "Still working on this.",
+    "created_at": "2026-09-01T12:00:00Z",
+    "updated_at": "2026-09-01T12:00:00Z"
+  },
+  "edited_bot_comment": {
+    "id": 202,
+    "user": {
+      "login": "lifecycle-example[bot]",
+      "type": "Bot"
+    },
+    "body": "Edited reminder.",
+    "created_at": "2026-09-01T12:00:00Z",
+    "updated_at": "2026-09-02T12:00:00Z"
+  },
+  "human_label": {
+    "id": 203,
+    "event": "labeled",
+    "actor": {
+      "login": "author-one",
+      "type": "User"
+    },
+    "label": {
+      "name": "keep-open"
+    },
+    "created_at": "2026-09-02T12:00:00Z"
+  },
+  "reopened": {
+    "id": 204,
+    "event": "reopened",
+    "actor": {
+      "login": "author-one",
+      "type": "User"
+    },
+    "created_at": "2026-09-03T12:00:00Z"
+  }
+}

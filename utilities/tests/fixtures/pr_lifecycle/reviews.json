@@ -1,0 +1,67 @@
+{
+  "approved_then_commented": [
+    {
+      "id": 101,
+      "user": {
+        "login": "reviewer-one",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "submitted_at": "2026-09-01T12:00:00Z"
+    },
+    {
+      "id": 102,
+      "user": {
+        "login": "reviewer-one",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "submitted_at": "2026-09-02T12:00:00Z"
+    }
+  ],
+  "changes_requested_after_approval": [
+    {
+      "id": 103,
+      "user": {
+        "login": "reviewer-two",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "submitted_at": "2026-09-01T12:00:00Z"
+    },
+    {
+      "id": 104,
+      "user": {
+        "login": "reviewer-two",
+        "type": "User"
+      },
+      "state": "CHANGES_REQUESTED",
+      "submitted_at": "2026-09-02T12:00:00Z"
+    }
+  ],
+  "dismissed_approval": [
+    {
+      "id": 105,
+      "user": {
+        "login": "reviewer-three",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "submitted_at": "2026-09-01T12:00:00Z"
+    }
+  ],
+  "requested_reviewers": {
+    "users": [
+      {
+        "login": "reviewer-four",
+        "type": "User"
+      }
+    ],
+    "teams": [
+      {
+        "slug": "review-team",
+        "name": "Review team"
+      }
+    ]
+  }
+}
