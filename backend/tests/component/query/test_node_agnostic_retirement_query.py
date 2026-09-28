@@ -15,6 +15,7 @@ from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     SchemaPathType,
 )
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import (
     NodeKindUpdateMigration,
@@ -24,6 +25,7 @@ from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.node_agnostic_retirement import (
     NodeAgnosticRetirementResult,
+    NodesDeletedOnBranchQuery,
     RetireNodeAgnosticFieldsQuery,
 )
 from infrahub.core.timestamp import Timestamp
@@ -84,6 +86,11 @@ async def _create_widget(db: InfrahubDatabase, branch: Branch, name: str, serial
     await widget.new(db=db, name=name, serial=serial, **kwargs)
     await widget.save(db=db)
     return widget
+
+
+async def _delete_widget(db: InfrahubDatabase, node_id: str, branch: Branch, at: Timestamp) -> None:
+    to_delete = await NodeManager.get_one(db=db, id=node_id, branch=branch, raise_on_error=True)
+    await to_delete.delete(db=db, at=at)
 
 
 async def _create_gadget(db: InfrahubDatabase, branch: Branch, name: str) -> Node:
@@ -455,4 +462,47 @@ class TestRetireNodeAgnosticFields:
 
         assert edge_summary(await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")) == (
             edge_summary(after_first_run)
+        )
+
+
+class TestNodesDeletedOnBranch:
+    @pytest.fixture(scope="class")
+    async def default_branch(self, default_branch_scope_class: Branch) -> Branch:
+        return default_branch_scope_class
+
+    @pytest.fixture(scope="class")
+    async def nodedel_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
+        registry.schema.register_schema(schema=AGNOSTIC_RETIREMENT_SCHEMA, branch=default_branch.name)
+
+    async def test_only_the_deletions_on_the_branch_within_the_window_are_returned(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        nodedel_schema: None,
+    ) -> None:
+        """Both bounds are included; a deletion before or after the window, or on another branch, is not."""
+        names = ["before", "at-the-start", "within", "on-another-branch", "at-the-end", "after"]
+        widgets = {
+            name: await _create_widget(db=db, branch=default_branch, name=f"deleted-{name}", serial=5000 + index)
+            for index, name in enumerate(names)
+        }
+        other_branch = await create_branch(db=db, branch_name="deletes-within-the-window")
+
+        await _delete_widget(db=db, node_id=widgets["before"].id, branch=default_branch, at=Timestamp())
+        from_time = Timestamp()
+        await _delete_widget(db=db, node_id=widgets["at-the-start"].id, branch=default_branch, at=from_time)
+        within = Timestamp()
+        await _delete_widget(db=db, node_id=widgets["within"].id, branch=default_branch, at=within)
+        await _delete_widget(db=db, node_id=widgets["on-another-branch"].id, branch=other_branch, at=within)
+        to_time = Timestamp()
+        await _delete_widget(db=db, node_id=widgets["at-the-end"].id, branch=default_branch, at=to_time)
+        await _delete_widget(db=db, node_id=widgets["after"].id, branch=default_branch, at=Timestamp())
+
+        query = await NodesDeletedOnBranchQuery.init(
+            db=db, branch_name=default_branch.name, from_time=from_time, to_time=to_time
+        )
+        await query.execute(db=db)
+
+        assert sorted(query.get_node_uuids()) == sorted(
+            widgets[name].id for name in ["at-the-start", "within", "at-the-end"]
         )
