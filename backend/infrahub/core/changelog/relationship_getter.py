@@ -146,9 +146,12 @@ class RelationshipChangelogGetter:
                     # Two source relationships resolved to the same many peer-side name; keep every
                     # distinct peer change rather than dropping the later relationship's entries.
                     seen = {(peer.peer_id, peer.peer_status) for peer in current.peers}
-                    current.peers.extend(
-                        peer for peer in relationship.peers if (peer.peer_id, peer.peer_status) not in seen
-                    )
+                    for peer in relationship.peers:
+                        key = (peer.peer_id, peer.peer_status)
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        current.peers.append(peer)
         return list(merged.values())
 
     @staticmethod

@@ -62,3 +62,22 @@ def test_merge_secondaries_keeps_one_entry_per_peer_and_status_for_a_shared_many
         ("source", DiffAction.ADDED),
         ("source", DiffAction.REMOVED),
     ]
+
+
+def test_merge_secondaries_keeps_one_entry_when_a_merged_relationship_repeats_a_peer() -> None:
+    """The entries a single folded relationship carries are deduplicated against each other too."""
+    first = _many_secondary(node_id="peer-1", relationship_name="members", peer_id="source")
+    second = _many_secondary(node_id="peer-1", relationship_name="members", peer_id="other")
+    members = second.relationships["members"]
+    assert isinstance(members, RelationshipCardinalityManyChangelog)
+    members.peers.append(RelationshipPeerChangelog(peer_id="other", peer_kind="TestCar", peer_status=DiffAction.ADDED))
+
+    merged = RelationshipChangelogGetter._merge_secondaries_by_node([first, second])
+
+    assert len(merged) == 1
+    merged_members = merged[0].relationships["members"]
+    assert isinstance(merged_members, RelationshipCardinalityManyChangelog)
+    assert [(peer.peer_id, peer.peer_status) for peer in merged_members.peers] == [
+        ("source", DiffAction.ADDED),
+        ("other", DiffAction.ADDED),
+    ]
