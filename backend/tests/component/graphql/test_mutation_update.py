@@ -1764,3 +1764,36 @@ async def test_updating_relationship_when_peer_side_is_optional(
     updated_dog2 = updated_nodes[dog2.id]
     best_friend = await updated_dog2.best_friend.get(db=db)
     assert best_friend.peer_id == person1.id
+
+
+async def test_update_null_value_rejected_for_attribute_with_default(
+    db: InfrahubDatabase, person_john_main: Node, car_accord_main: Node, branch: Branch
+) -> None:
+    """Setting an attribute with a default_value to null via update must be rejected."""
+    query = """
+    mutation {
+        TestCarUpdate(data: {id: "%s", color: { value: null }}) {
+            ok
+            object {
+                color {
+                    value
+                }
+            }
+        }
+    }
+    """ % (car_accord_main.id)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert any("has a default value and cannot be set to null" in e.message for e in result.errors)
+
+    car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
+    assert car.color.value == "#444444"
