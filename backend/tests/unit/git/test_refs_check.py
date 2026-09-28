@@ -335,28 +335,19 @@ async def test_the_gateway_reads_a_local_head_from_a_valid_copy(
     )
 
 
-@dataclass
-class StubAttribute:
-    value: str | None
-
-
-@dataclass
-class StubRepository:
-    location: StubAttribute
-
-
 def build_repository_data(
     *,
     location: str | None = "https://example.com/repo.git",
     branch_info: dict[str, RepositoryBranchInfo],
     branches: dict[str, str | None],
 ) -> RepositoryData:
-    # model_construct: the repository field only has to answer `.location.value` here, and the
-    # declared union validates against SDK node classes a unit test has no way to build.
+    # model_construct: the declared repository union validates against node classes a unit test has
+    # no way to build, and nothing here reads that field.
     return RepositoryData.model_construct(
         repository_id="8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba",
         repository_name="readonly-repo",
-        repository=StubRepository(location=StubAttribute(value=location)),
+        repository=None,
+        location=location,
         branches=branches,
         branch_info=branch_info,
     )

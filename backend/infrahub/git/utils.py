@@ -60,6 +60,7 @@ async def get_repositories_commit_per_branch(
                     repository_id=repository.get_id(),
                     repository_name=repo_name,
                     repository=repository,
+                    location=repository.location.value,
                     branches={},
                 )
 

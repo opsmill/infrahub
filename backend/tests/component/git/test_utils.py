@@ -40,6 +40,7 @@ async def test_get_repositories_commit_per_branch_main(
     assert repositories["repo01"].model_dump(exclude=["repository"]) == {
         "repository_id": repository_01.id,
         "repository_name": "repo01",
+        "location": "location01",
         "branches": {"main": "commit01", "-global-": "commit01"},
         "branch_info": {
             "main": {"internal_status": "inactive", "ref": None},
@@ -50,6 +51,7 @@ async def test_get_repositories_commit_per_branch_main(
     assert repositories["repo02"].model_dump(exclude=["repository"]) == {
         "repository_id": repository_02.id,
         "repository_name": "repo02",
+        "location": "location02",
         "branches": {"main": "commit02", "-global-": None},
         "branch_info": {
             "main": {"internal_status": "inactive", "ref": "main"},
@@ -90,6 +92,7 @@ async def test_get_repositories_commit_per_branch_branches(
     assert repositories["repo01"].model_dump(exclude=["repository"]) == {
         "repository_id": repository_01.id,
         "repository_name": "repo01",
+        "location": "location01",
         "branches": {
             "-global-": "commit01",
             "branch2": "commit21",
@@ -107,6 +110,7 @@ async def test_get_repositories_commit_per_branch_branches(
     assert repositories["repo02"].model_dump(exclude=["repository"]) == {
         "repository_id": repository_02.id,
         "repository_name": "repo02",
+        "location": "location02",
         "branches": {
             "-global-": None,
             "branch2": "commit02",

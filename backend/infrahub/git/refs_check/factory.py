@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RepositoryInternalStatus
 
@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from infrahub_sdk.client import InfrahubClient
-    from infrahub_sdk.protocols import CoreReadOnlyRepository
 
     from infrahub.lock import InfrahubLockRegistry
     from infrahub.services.adapters.cache import InfrahubCache
@@ -42,7 +41,7 @@ def build_check_refs_model(
     repository is not active is left out too, since an inactive repository is not one this worker
     is expected to be holding a copy of.
     """
-    location = cast("CoreReadOnlyRepository", repository_data.repository).location.value
+    location = repository_data.location
     if not location:
         return None
 
