@@ -359,6 +359,11 @@ def collect_snapshot(*, transport: ReadTransport, number: int, now: datetime) ->
     users, teams = requested_reviewers(transport=transport, number=number)
     check_runs = pages(transport=transport, path=f"{root}/commits/{head}/check-runs", key="check_runs")
     statuses = pages(transport=transport, path=f"{root}/commits/{head}/statuses")
+    latest_statuses: dict[str, dict[str, JsonValue]] = {}
+    for status in sorted(
+        statuses, key=lambda item: (timestamp(item.get("created_at")), integer(item.get("id"))), reverse=True
+    ):
+        latest_statuses.setdefault(string(status.get("context")), status)
     response = object_value(transport.query(number=number))
     if response.get("errors"):
         raise IncompleteDataError("GraphQL returned errors")
@@ -411,7 +416,7 @@ def collect_snapshot(*, transport: ReadTransport, number: int, now: datetime) ->
         requested_teams=tuple(string(item.get("slug")) for item in teams),
         reviews=tuple(reviews),
         checks=tuple(string(item.get("conclusion") or item.get("status")) for item in check_runs)
-        + tuple(string(item.get("state")) for item in statuses),
+        + tuple(string(item.get("state")) for item in latest_statuses.values()),
         aggregate=readiness,
         feed=tuple(feeds),
         fingerprint=fingerprint,
@@ -489,7 +494,16 @@ def finalize_receipt(*, entry: Entry, receipt: Receipt) -> Entry:
         TRUSTED_BOT,
     ):
         raise IncompleteDataError("Receipt does not match pending intent")
-    return replace(entry, pending=None, receipts=(*entry.receipts, receipt))
+    updated = replace(entry, pending=None, receipts=(*entry.receipts, receipt))
+    if receipt.operation.startswith("ordinary:"):
+        updated = replace(updated, last_notice_at=receipt.at)
+    if receipt.operation.startswith("milestone-") and updated.warning:
+        kind = receipt.operation.split(":", 1)[0]
+        updated = replace(
+            updated,
+            warning=replace(updated.warning, milestones=tuple(dict.fromkeys((*updated.warning.milestones, kind)))),
+        )
+    return updated
 
 
 def recover_receipt(*, intent: Intent, feed: tuple[FeedItem, ...]) -> Receipt | None:
@@ -630,7 +644,106 @@ def warning_needed(*, snapshot: Snapshot, entry: Entry, now: datetime) -> bool:
     )
 
 
-def notice_body(*, entry: Entry, operation: str, kind: str, cycle: str = "", deadline: str = "") -> str:
+@dataclass(frozen=True)
+class Classification:
+    category: str
+    actors: tuple[str, ...]
+    action: str
+    blockers: tuple[str, ...]
+    exemptions: tuple[str, ...]
+    ready: bool
+
+
+def classify(*, snapshot: Snapshot, entry: Entry) -> Classification:
+    reviews = current_reviews(snapshot=snapshot)
+    exemptions = closure_exemptions(snapshot=snapshot)
+    aggregate = snapshot.aggregate
+    changes = "CHANGES_REQUESTED" in reviews.values()
+    checks = any(state not in {"success", "neutral", "skipped"} for state in snapshot.checks)
+    explicit = tuple(sorted(set(snapshot.labels) & BLOCKER_LABELS))
+    conflicts = aggregate.mergeable == "CONFLICTING" or aggregate.merge_state == "DIRTY"
+    requirements = (
+        aggregate.head != snapshot.head
+        or aggregate.mergeable != "MERGEABLE"
+        or aggregate.merge_state != "CLEAN"
+        or aggregate.review_decision not in {None, "APPROVED"}
+    )
+    blockers = (
+        tuple(
+            reason
+            for reason, present in (
+                ("requested changes", changes),
+                ("checks pending or failing", checks),
+                ("merge conflicts", conflicts),
+                ("merge requirements pending or unknown", requirements),
+            )
+            if present
+        )
+        + explicit
+    )
+    ready = "approval" in exemptions and not blockers and not snapshot.draft
+    reviewers = snapshot.requested_users + tuple(f"opsmill/{team}" for team in snapshot.requested_teams)
+    actors = (snapshot.author,)
+    if snapshot.draft:
+        action = "finish this draft and mark it ready for review"
+    elif changes:
+        action = "address the requested changes and request another review"
+    elif checks or explicit or conflicts:
+        action = "resolve " + ", ".join(
+            reason for reason in blockers if reason != "merge requirements pending or unknown"
+        )
+    elif ready:
+        action = "merge this approved pull request"
+    elif reviewers and (not requirements or aggregate.review_decision == "REVIEW_REQUIRED"):
+        actors, action = reviewers, "review this pull request"
+    elif "approval" in exemptions or requirements:
+        action = "resolve the outstanding or unknown merge requirements"
+    elif reviewers:
+        actors, action = reviewers, "review this pull request"
+    else:
+        action = "request review from a reviewer or team"
+    category = "waiting for review" if actors == reviewers and reviewers else "waiting for author"
+    if ready:
+        category = "ready to merge"
+    if blockers:
+        category = "blocked"
+    if snapshot.draft:
+        category = "draft"
+    if entry.warning:
+        category = "closing soon"
+    if "bot" in exemptions:
+        category, actors, action = "excluded bot", (), "excluded from lifecycle reminders"
+    return Classification(
+        category=category, actors=actors, action=action, blockers=blockers, exemptions=exemptions, ready=ready
+    )
+
+
+def next_notice(*, snapshot: Snapshot, entry: Entry, now: datetime) -> str | None:
+    if entry.neutralize:
+        return "cancel"
+    if snapshot.state != "open" or "bot" in closure_exemptions(snapshot=snapshot):
+        return None
+    if warning_needed(snapshot=snapshot, entry=entry, now=now):
+        return "warning"
+    warning = entry.warning
+    if warning:
+        if not warning.final_operation or closure_exemptions(snapshot=snapshot) or now >= timestamp(warning.deadline):
+            return None
+        midnight = timestamp(warning.delivered_at).replace(hour=0, minute=0, second=0, microsecond=0)
+        if now >= midnight + timedelta(days=13):
+            kind = "milestone-1"
+        elif now >= midnight + timedelta(days=7):
+            kind = "milestone-7"
+        else:
+            kind = None
+        return None if kind in warning.milestones else kind
+    baseline = max(timestamp(entry.activity_at), timestamp(entry.last_notice_at or entry.activity_at))
+    return "ordinary" if now >= baseline + timedelta(days=7) else None
+
+
+def notice_body(
+    *, entry: Entry, operation: str, kind: str, cycle: str = "", deadline: str = "", snapshot: Snapshot | None = None
+) -> str:
     marker = {
         "repository": ALLOWED_REPOSITORY,
         "pr": entry.number,
@@ -650,7 +763,19 @@ def notice_body(*, entry: Entry, operation: str, kind: str, cycle: str = "", dea
             "Comment or update the PR to keep it active; maintainers can apply keep-open."
         ),
         "cancel": "The previous closure warning is canceled. That deadline no longer applies.",
-    }.get(kind, f"Please review the next action for this pull request. Closure deadline: {deadline} UTC.")
+    }.get(
+        kind,
+        f"This pull request remains inactive and may be closed after {deadline} UTC. "
+        "Comment or update it to keep it active; maintainers can apply keep-open.",
+    )
+    if snapshot is not None and kind == "ordinary":
+        routing = classify(snapshot=snapshot, entry=entry)
+        text = ", ".join(f"@{actor}" for actor in routing.actors) + ": please " + routing.action + "."
+    elif snapshot is not None and kind in {"warning", "deadline", "milestone-7", "milestone-1"}:
+        actors = dict.fromkeys(
+            (snapshot.author, *snapshot.requested_users, *(f"opsmill/{team}" for team in snapshot.requested_teams))
+        )
+        text = ", ".join(f"@{actor}" for actor in actors) + ": " + text
     return (
         text + "\n\n<!-- infrahub-pr-lifecycle:v1 " + json.dumps(marker, sort_keys=True, separators=(",", ":")) + " -->"
     )
@@ -680,6 +805,7 @@ def closure_due(*, snapshot: Snapshot, entry: Entry, now: datetime) -> bool:
             kind="deadline",
             cycle=warning.cycle,
             deadline=warning.deadline,
+            snapshot=snapshot,
         )
     )
     initial = next((receipt for receipt in entry.receipts if receipt.operation == warning.initial_operation), None)
@@ -939,6 +1065,16 @@ def preflight(*, transport: BudgetedReads, human_count: int) -> None:
 
 
 @dataclass(frozen=True)
+class Proposal:
+    number: int
+    classification: Classification
+    activity_at: str
+    notice: str | None
+    deadline: str | None
+    closure_due: bool
+
+
+@dataclass(frozen=True)
 class ObservationReport:
     version: int
     repository: str
@@ -952,6 +1088,8 @@ class ObservationReport:
     inventory_count: int = 0
     evaluated_count: int = 0
     requests: int = 0
+    proposals: tuple[Proposal, ...] = ()
+    proposed_counts: tuple[tuple[str, int], ...] = ()
 
 
 def guard_repository(repository: str) -> None:
@@ -959,7 +1097,7 @@ def guard_repository(repository: str) -> None:
         raise ValueError(f"Repository must be {ALLOWED_REPOSITORY}")
 
 
-def observe(
+def observe(  # noqa: PLR0914 - Inventory, ledger and proposed actions are one read-only report boundary.
     *,
     repository: str,
     transport: ReadTransport | None,
@@ -982,10 +1120,10 @@ def observe(
     bots: list[int] = []
     errors: list[str] = []
     inventory_count = 0
+    proposals: list[Proposal] = []
     try:
         dashboard = discover_dashboard(transport=reads)
-        if dashboard:
-            decode_ledger(body=dashboard[1])
+        ledger = decode_ledger(body=dashboard[1]) if dashboard else Ledger()
         inventory = pages(transport=reads, path=f"/repos/{repository}/pulls?state=open")
         inventory_count = len(inventory)
         humans = []
@@ -1002,6 +1140,24 @@ def observe(
                 raise IncompleteDataError("Unknown PR author type")
         preflight(transport=reads, human_count=len(humans))
         snapshots.extend(collect_snapshot(transport=reads, number=number, now=now) for number in humans)
+        entries = {entry.number: entry for entry in ledger.entries}
+        for value in snapshots:
+            entry = observe_activity(
+                snapshot=value, previous=reconcile_pending(snapshot=value, previous=entries.get(value.number))
+            )
+            exemptions = closure_exemptions(snapshot=value)
+            if entry.warning and (exemptions or not entry.warning.final_operation):
+                entry = replace(entry, neutralize=entry.warning.cycle, warning=None)
+            proposals.append(
+                Proposal(
+                    number=value.number,
+                    classification=classify(snapshot=value, entry=entry),
+                    activity_at=entry.activity_at,
+                    notice=next_notice(snapshot=value, entry=entry, now=now),
+                    deadline=entry.warning.deadline if entry.warning else None,
+                    closure_due=closure_due(snapshot=value, entry=entry, now=now),
+                )
+            )
     except IncompleteDataError as exc:
         errors.append(str(exc))
     return ObservationReport(
@@ -1017,6 +1173,11 @@ def observe(
         inventory_count=inventory_count,
         evaluated_count=len(snapshots) + len(bots),
         requests=transport.requests if isinstance(transport, GitHubClient) else reads.requests,
+        proposals=tuple(proposals),
+        proposed_counts=tuple(
+            (kind, sum(proposal.notice == kind for proposal in proposals))
+            for kind in ("ordinary", "warning", "cancel", "milestone-7", "milestone-1")
+        ),
     )
 
 
@@ -1147,7 +1308,12 @@ class Lifecycle:
             or timestamp(entry.activity_at) + timedelta(days=60) > self.clock()
         ):
             raise IncompleteDataError("Activity canceled deadline finalization")
-        body = notice_body(entry=entry, operation=operation, kind=kind, cycle=cycle, deadline=deadline)
+        if (
+            kind in {"ordinary", "milestone-7", "milestone-1"}
+            and next_notice(snapshot=value, entry=entry, now=self.clock()) != kind
+        ):
+            raise IncompleteDataError("Reminder eligibility changed before delivery")
+        body = notice_body(entry=entry, operation=operation, kind=kind, cycle=cycle, deadline=deadline, snapshot=value)
         intent = Intent(operation=operation, kind="comment", content_hash=digest(body), prior_hash=entry.fingerprint)
         if previous := next((item for item in entry.receipts if item.operation == operation), None):
             return previous
@@ -1260,6 +1426,7 @@ class Lifecycle:
                     expected != set(value.labels) & OWNED_LABELS,
                     any(label.startswith("lifecycle-close-") for label in value.labels),
                     needs_warning_recovery,
+                    next_notice(snapshot=value, entry=entry, now=self.clock()) is not None,
                 )
             ):
                 changed_count += 1
@@ -1281,7 +1448,7 @@ class Lifecycle:
         for number in self.collect_reconciliation():
             self.reconcile_one(number)
 
-    def reconcile_one(self, number: int) -> None:
+    def reconcile_one(self, number: int) -> None:  # noqa: PLR0915 - Cancellation and delivery share one per-scan notice slot.
         value, entry = self.snapshots[number], self.entry(number)
         if entry is None:
             raise IncompleteDataError("Missing collected state")
@@ -1294,17 +1461,19 @@ class Lifecycle:
         if entry.warning and not entry.warning.final_operation:
             entry = replace(entry, neutralize=entry.warning.cycle, warning=None)
             self.persist(entry=entry)
+        notice_sent = False
         if entry.neutralize:
             self.comment(number=number, operation=f"cancel:{entry.neutralize}", kind="cancel", cycle=entry.neutralize)
             latest = self.entry(number)
             if latest is None:
                 raise IncompleteDataError("Missing cancellation state")
             self.persist(entry=replace(latest, neutralize=None))
+            notice_sent = True
         value = self.snapshots[number]
         entry = self.entry(number)
         if entry is None:
             raise IncompleteDataError("Missing reconciled PR state")
-        if warning_needed(snapshot=value, entry=entry, now=self.clock()):
+        if not notice_sent and warning_needed(snapshot=value, entry=entry, now=self.clock()):
             cycle = digest({"number": number, "activity": entry.activity_at, "now": self.clock().isoformat()})[:24]
             initial = self.comment(number=number, operation=f"warning:{cycle}", kind="warning", cycle=cycle)
             latest = self.entry(number)
@@ -1329,10 +1498,29 @@ class Lifecycle:
             if latest is None or latest.warning is None:
                 raise IncompleteDataError("Activity canceled warning while finalizing deadline")
             self.persist(entry=replace(latest, warning=replace(warning, final_operation=final.operation)))
+            notice_sent = True
         value = self.snapshots[number]
         entry = self.entry(number)
         if entry is None:
             raise IncompleteDataError("Missing reconciled warning state")
+        if not notice_sent and (kind := next_notice(snapshot=value, entry=entry, now=self.clock())) in {
+            "ordinary",
+            "milestone-7",
+            "milestone-1",
+        }:
+            cycle = entry.warning.cycle if entry.warning else ""
+            operation = (
+                f"{kind}:{cycle}"
+                if cycle
+                else f"ordinary:{digest({'activity': entry.activity_at, 'previous': entry.last_notice_at})[:24]}"
+            )
+            self.comment(
+                number=number,
+                operation=operation,
+                kind=kind,
+                cycle=cycle,
+                deadline=entry.warning.deadline if entry.warning else "",
+            )
         exemptions = closure_exemptions(snapshot=value)
         for label, present in (
             ("lifecycle-approved", "approval" in exemptions),

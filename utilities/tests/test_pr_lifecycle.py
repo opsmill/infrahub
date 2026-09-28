@@ -32,6 +32,7 @@ from utilities.pr_lifecycle import (
     WarningCycle,
     apply_command,
     array,
+    classify,
     closure_due,
     closure_exemptions,
     collect_snapshot,
@@ -43,6 +44,7 @@ from utilities.pr_lifecycle import (
     encode_ledger,
     finalize_receipt,
     main,
+    next_notice,
     notice_body,
     object_value,
     observe,
@@ -108,6 +110,10 @@ class TestCliSkeleton(unittest.TestCase):
                 "inventory_count": 0,
                 "evaluated_count": 0,
                 "requests": 2,
+                "proposals": [],
+                "proposed_counts": [
+                    [kind, 0] for kind in ("ordinary", "warning", "cancel", "milestone-7", "milestone-1")
+                ],
             },
         )
 
@@ -728,10 +734,6 @@ def observation_transport(*, count: int = 1, bots: bool = False) -> FixtureTrans
     return transport
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TestCleanupPolicy(unittest.TestCase):
     def test_partial_approval_and_comment_do_not_remove_exemption(self) -> None:
 
@@ -771,7 +773,7 @@ class TestCleanupPolicy(unittest.TestCase):
         entry = replace(entry, activity_at="2026-05-01T12:00:00+00:00")
         initial_body = notice_body(entry=entry, operation="initial", kind="warning", cycle="cycle")
         final_body = notice_body(
-            entry=entry, operation="final", kind="deadline", cycle="cycle", deadline=cycle.deadline
+            entry=entry, operation="final", kind="deadline", cycle="cycle", deadline=cycle.deadline, snapshot=value
         )
         receipts = tuple(
             Receipt(
@@ -991,10 +993,17 @@ class TestMutationLifecycle(unittest.TestCase):
         transport.now = "2026-10-05T12:00:00+00:00"
         lifecycle = self.lifecycle(transport)
         lifecycle.reconcile()
+        canceled = lifecycle.entry(1)
+        if canceled is None:
+            self.fail("Missing cancellation entry")
+        self.assertIsNone(canceled.warning)
+        transport.now = "2026-10-06T12:00:00+00:00"
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
         entry = lifecycle.entry(1)
         if entry is None or entry.warning is None:
             self.fail("Expected fresh warning")
-        self.assertEqual(entry.warning.deadline, "2026-10-19T12:00:00+00:00")
+        self.assertEqual(entry.warning.deadline, "2026-10-20T12:00:00+00:00")
         comments = array(transport.responses["/repos/opsmill/infrahub/issues/1/comments?per_page=100&page=1"])
         self.assertEqual(len(comments), 3)
         self.assertIn("canceled", string(object_value(comments[1])["body"]))
@@ -1111,3 +1120,234 @@ class TestMutationLifecycle(unittest.TestCase):
             self.fail("Expected recovered warning")
         self.assertEqual(entry.activity_at, OLD)
         self.assertEqual(entry.warning.deadline, "2026-10-13T12:00:00+00:00")
+
+
+class TestReminderPolicy(unittest.TestCase):
+    def test_routing_and_readiness_precedence(self) -> None:
+        approval = Review(identity=1, author="bob", state="APPROVED", submitted_at=OLD)
+        changes = replace(approval, state="CHANGES_REQUESTED")
+        clean = snapshot().aggregate
+        cases = (
+            (snapshot(draft=True, requested_users=("bob",)), "draft", ("alice",), "finish"),
+            (snapshot(), "waiting for author", ("alice",), "request review"),
+            (snapshot(reviews=(changes,), requested_users=("charlie",)), "blocked", ("alice",), "requested changes"),
+            (snapshot(requested_teams=("network",)), "waiting for review", ("opsmill/network",), "review"),
+            (
+                snapshot(
+                    reviews=(approval,),
+                    requested_users=("charlie",),
+                    aggregate=replace(clean, review_decision="REVIEW_REQUIRED", merge_state="BLOCKED"),
+                ),
+                "blocked",
+                ("charlie",),
+                "review",
+            ),
+            (
+                snapshot(reviews=(approval,), aggregate=replace(clean, merge_state="BLOCKED")),
+                "blocked",
+                ("alice",),
+                "requirements",
+            ),
+            (
+                snapshot(reviews=(approval,), aggregate=replace(clean, mergeable="UNKNOWN")),
+                "blocked",
+                ("alice",),
+                "requirements",
+            ),
+            (
+                snapshot(reviews=(approval,), aggregate=replace(clean, head="old")),
+                "blocked",
+                ("alice",),
+                "requirements",
+            ),
+            (snapshot(reviews=(approval,)), "ready to merge", ("alice",), "merge"),
+            (snapshot(reviews=(approval,), checks=("failure",)), "blocked", ("alice",), "checks"),
+            (snapshot(labels=("state/draft",)), "waiting for author", ("alice",), "request review"),
+        )
+        for value, category, actors, action in cases:
+            with self.subTest(value=value):
+                result = classify(snapshot=value, entry=observe_activity(snapshot=value, previous=None))
+                self.assertEqual(result.category, category)
+                self.assertEqual(result.actors, actors)
+                self.assertIn(action, result.action)
+
+    def test_calendar_windows_and_strongest_suppression(self) -> None:
+        value = snapshot()
+        warning = WarningCycle(
+            cycle="c",
+            delivered_at=NOW,
+            deadline="2026-10-12T12:00:00+00:00",
+            initial_operation="i",
+            final_operation="f",
+        )
+        entry = replace(observe_activity(snapshot=value, previous=None), warning=warning)
+        for at, expected in (
+            ("2026-10-04T23:59:00+00:00", None),
+            ("2026-10-05T00:00:00+00:00", "milestone-7"),
+            ("2026-10-11T00:00:00+00:00", "milestone-1"),
+            ("2026-10-12T11:59:00+00:00", "milestone-1"),
+            ("2026-10-12T12:00:00+00:00", None),
+        ):
+            with self.subTest(at=at):
+                self.assertEqual(next_notice(snapshot=value, entry=entry, now=datetime.fromisoformat(at)), expected)
+        entry = replace(entry, warning=replace(warning, milestones=("milestone-1",)))
+        self.assertIsNone(
+            next_notice(snapshot=value, entry=entry, now=datetime.fromisoformat("2026-10-11T09:00:00+00:00"))
+        )
+
+    def test_ordinary_seven_day_cadence_and_exempt_messages(self) -> None:
+        for value in (
+            snapshot(draft=True),
+            snapshot(labels=("keep-open",)),
+            snapshot(reviews=(Review(identity=1, author="bob", state="APPROVED", submitted_at=OLD),)),
+        ):
+            entry = replace(observe_activity(snapshot=value, previous=None), activity_at="2026-09-21T12:00:00+00:00")
+            self.assertIsNone(
+                next_notice(snapshot=value, entry=entry, now=datetime.fromisoformat("2026-09-28T11:59:59+00:00"))
+            )
+            self.assertEqual(next_notice(snapshot=value, entry=entry, now=fixed_clock()), "ordinary")
+            self.assertIsNone(
+                next_notice(
+                    snapshot=value, entry=replace(entry, last_notice_at="2026-09-22T12:00:00+00:00"), now=fixed_clock()
+                )
+            )
+            body = notice_body(entry=entry, snapshot=value, operation="ordinary:test", kind="ordinary")
+            self.assertIn("@alice", body)
+            self.assertNotIn("closure", body.lower())
+
+    def test_latest_status_per_context_replaces_historical_failure(self) -> None:
+        transport = collection_transport()
+        transport.responses["/repos/opsmill/infrahub/commits/abc/statuses?per_page=100&page=1"] = [
+            {"id": 2, "context": "ci", "state": "success", "created_at": NOW},
+            {"id": 1, "context": "ci", "state": "failure", "created_at": OLD},
+        ]
+        self.assertEqual(collect_snapshot(transport=transport, number=1, now=fixed_clock()).checks, ("success",))
+
+
+class TestReminderLifecycle(unittest.TestCase):
+    lifecycle = TestMutationLifecycle.lifecycle
+
+    def test_weekly_warning_milestones_and_gate(self) -> None:
+        transport = MutationTransport()
+        transport.now = "2026-07-08T12:00:00+00:00"
+        transport.fail_comment_after = True
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
+        comments = array(transport.responses["/repos/opsmill/infrahub/issues/1/comments?per_page=100&page=1"])
+        self.assertEqual(len(comments), 1)
+        self.assertIn("@alice", string(object_value(comments[0])["body"]))
+        self.lifecycle(transport).reconcile()
+        self.assertEqual(len(comments), 1)
+        transport.now = NOW
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
+        self.assertEqual(len(comments), 2)
+        for at in ("2026-10-05T09:00:00+00:00", "2026-10-11T08:00:00+00:00"):
+            transport.now = at
+            self.lifecycle(transport).reconcile()
+            self.lifecycle(transport).reconcile()
+        self.assertEqual(len(comments), 4)
+        self.assertIn("2026-10-12T12:00:00+00:00", string(object_value(comments[-1])["body"]))
+        self.assertEqual(self.lifecycle(transport).prepare(), ())
+        transport.now = "2026-10-12T12:00:00+00:00"
+        self.assertEqual(self.lifecycle(transport).prepare(), (1,))
+        self.assertEqual(len(comments), 4)
+        self.assertTrue(all("state" not in object_value(payload) for _, _, payload in transport.writes))
+
+    def test_missed_middle_window_posts_only_final(self) -> None:
+        transport = MutationTransport()
+        self.lifecycle(transport).reconcile()
+        transport.now = "2026-10-11T08:00:00+00:00"
+        self.lifecycle(transport).reconcile()
+        comments = array(transport.responses["/repos/opsmill/infrahub/issues/1/comments?per_page=100&page=1"])
+        self.assertEqual(len(comments), 2)
+        self.assertIn('"kind":"milestone-1"', string(object_value(comments[-1])["body"]))
+        transport.now = "2026-10-13T08:00:00+00:00"
+        self.lifecycle(transport).reconcile()
+        self.assertEqual(len(comments), 2)
+
+    def test_ordinary_receipt_recovers_and_rate_limits_by_delivery(self) -> None:
+        transport = MutationTransport()
+        transport.now = "2026-07-08T13:00:00+00:00"
+        transport.fail_receipt_persistence = True
+        with self.assertRaisesRegex(IncompleteDataError, "state finalization failed"):
+            self.lifecycle(transport).reconcile()
+        transport.fail_receipt_persistence = False
+        transport.now = "2026-07-15T12:00:00+00:00"
+        self.lifecycle(transport).reconcile()
+        comments = array(transport.responses["/repos/opsmill/infrahub/issues/1/comments?per_page=100&page=1"])
+        self.assertEqual(len(comments), 1)
+        transport.now = "2026-07-15T13:00:00+00:00"
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
+        self.assertEqual(len(comments), 2)
+        entry = lifecycle.entry(1)
+        if entry is None:
+            self.fail("Missing entry")
+        self.assertEqual(entry.activity_at, OLD)
+        self.assertEqual(entry.last_notice_at, transport.now)
+
+    def test_fresh_reviewers_reroute_ordinary_and_warning_names_all(self) -> None:
+        transport = MutationTransport()
+        transport.now = "2026-07-08T12:00:00+00:00"
+        lifecycle = self.lifecycle(transport)
+        lifecycle.collect_reconciliation()
+        transport.responses["/repos/opsmill/infrahub/pulls/1/requested_reviewers?per_page=100&page=1"] = {
+            "users": [{"login": "charlie"}],
+            "teams": [{"slug": "network"}],
+        }
+        lifecycle.reconcile_one(1)
+        comments = array(transport.responses["/repos/opsmill/infrahub/issues/1/comments?per_page=100&page=1"])
+        ordinary = string(object_value(comments[0])["body"])
+        self.assertIn("@charlie, @opsmill/network: please review", ordinary)
+        self.assertNotIn("@alice", ordinary)
+        transport.now = NOW
+        self.lifecycle(transport).reconcile()
+        warning = string(object_value(comments[-1])["body"])
+        self.assertIn("@alice, @charlie, @opsmill/network", warning)
+        self.assertIn("2026-10-12T12:00:00+00:00", warning)
+
+    def test_human_reset_after_milestone_neutralizes_only_once(self) -> None:
+        transport = MutationTransport()
+        self.lifecycle(transport).reconcile()
+        transport.now = "2026-10-05T08:00:00+00:00"
+        self.lifecycle(transport).reconcile()
+        transport.now = "2026-10-06T08:00:00+00:00"
+        comments = array(transport.responses["/repos/opsmill/infrahub/issues/1/comments?per_page=100&page=1"])
+        comments.append(
+            {
+                "id": 900,
+                "body": "Working on this",
+                "user": {"login": "alice"},
+                "created_at": transport.now,
+                "updated_at": transport.now,
+            }
+        )
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
+        self.lifecycle(transport).reconcile()
+        self.assertEqual(len(comments), 4)
+        self.assertIn("canceled", string(object_value(comments[-1])["body"]))
+        self.assertEqual(self.lifecycle(transport).prepare(), ())
+
+    def test_observation_uses_saved_ordinary_receipt_without_writes(self) -> None:
+        transport = MutationTransport()
+        transport.now = "2026-07-08T12:00:00+00:00"
+        self.lifecycle(transport).reconcile()
+        transport.responses["/repos/opsmill/infrahub/pulls?state=open&per_page=100&page=1"] = [
+            {"id": 1, "number": 1, "user": {"login": "alice", "type": "User"}}
+        ]
+        writes = len(transport.writes)
+        report = observe(
+            repository="opsmill/infrahub",
+            transport=transport,
+            clock=lambda: datetime.fromisoformat("2026-07-09T12:00:00+00:00"),
+        )
+        self.assertTrue(report.complete)
+        self.assertEqual(report.proposals[0].activity_at, OLD)
+        self.assertIsNone(report.proposals[0].notice)
+        self.assertEqual(len(transport.writes), writes)
+
+
+if __name__ == "__main__":
+    unittest.main()
