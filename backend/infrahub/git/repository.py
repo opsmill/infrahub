@@ -413,7 +413,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         """
         try:
             repo.git.reset("--hard", commit_before)
-        except GitCommandError:
+        except Exception:
+            # Raising here would replace the failure being recovered from with a less useful one.
             log.exception(
                 "Failed to reset the worktree of branch %s of repository %s to %s while recovering from a "
                 "failed merge; manual reconciliation may be required before the merge can be retried.",
