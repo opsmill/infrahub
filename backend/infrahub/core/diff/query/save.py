@@ -308,9 +308,8 @@ SET diff_relationship = node_relationship.node_properties
 // -------------------------
 WITH diff_relationship, node_relationship
 CALL (diff_relationship, node_relationship) {
-    WITH %(rel_peers_list_comp)s AS rel_peers
     OPTIONAL MATCH (diff_relationship)-[:DIFF_HAS_ELEMENT]->(element_to_delete:DiffRelationshipElement)
-    WHERE NOT (element_to_delete.peer_id IN rel_peers)
+    WHERE node_relationship.elements_by_peer_id[element_to_delete.peer_id] IS NULL
     OPTIONAL MATCH (element_to_delete)-[*..6]->(next_to_delete)
     DETACH DELETE next_to_delete
     DETACH DELETE element_to_delete
@@ -319,9 +318,24 @@ CALL (diff_relationship, node_relationship) {
 // add elements for this relationship group
 // -------------------------
 WITH diff_relationship, node_relationship
-UNWIND node_relationship.relationships as node_single_relationship
-MERGE (diff_relationship)-[:DIFF_HAS_ELEMENT]
-    ->(diff_relationship_element:DiffRelationshipElement {peer_id: node_single_relationship.node_properties.peer_id})
+OPTIONAL MATCH (diff_relationship)-[:DIFF_HAS_ELEMENT]->(existing_element:DiffRelationshipElement)
+// collected before any element is created, so an element created below is never read back as an existing one
+WITH diff_relationship, node_relationship.elements_by_peer_id AS elements_by_peer_id,
+    collect(existing_element) AS existing_elements
+WITH diff_relationship, elements_by_peer_id, existing_elements,
+    [element IN existing_elements | element.peer_id] AS existing_peer_ids
+CALL (diff_relationship, elements_by_peer_id, existing_elements, existing_peer_ids) {
+    // one pass over the group with a keyed lookup: a MERGE on the edge pattern walks every element of the group per row
+    UNWIND existing_elements AS existing_element
+    RETURN existing_element AS diff_relationship_element,
+        elements_by_peer_id[existing_element.peer_id] AS node_single_relationship
+    UNION ALL
+    UNWIND [peer_id IN keys(elements_by_peer_id) WHERE NOT peer_id IN existing_peer_ids] AS new_peer_id
+    WITH diff_relationship, elements_by_peer_id[new_peer_id] AS new_single_relationship
+    CREATE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(new_element:DiffRelationshipElement)
+    RETURN new_element AS diff_relationship_element, new_single_relationship AS node_single_relationship
+}
+WITH diff_relationship_element, node_single_relationship
 SET diff_relationship_element = node_single_relationship.node_properties
 // -------------------------
 // add/remove conflict for this relationship element
@@ -389,9 +403,6 @@ CALL (has_property_conflict, diff_relationship_property, node_relationship_prope
             ),
             "rel_name_list_comp": db.render_list_comprehension(
                 items="node_map.relationships", item_name="node_properties.name"
-            ),
-            "rel_peers_list_comp": db.render_list_comprehension(
-                items="node_relationship.relationships", item_name="node_properties.peer_id"
             ),
             "element_props_list_comp": db.render_list_comprehension(
                 items="node_single_relationship.properties", item_name="node_properties.property_type"
@@ -472,10 +483,10 @@ CALL (has_property_conflict, diff_relationship_property, node_relationship_prope
         }
 
     def _build_diff_relationship_params(self, enriched_relationship: EnrichedDiffRelationship) -> dict[str, Any]:
-        single_relationship_props = [
-            self._build_diff_single_relationship_params(enriched_single_relationship=esr)
+        elements_by_peer_id = {
+            esr.peer_id: self._build_diff_single_relationship_params(enriched_single_relationship=esr)
             for esr in enriched_relationship.relationships
-        ]
+        }
         return {
             "node_properties": {
                 "name": enriched_relationship.name,
@@ -488,7 +499,7 @@ CALL (has_property_conflict, diff_relationship_property, node_relationship_prope
                 "action": enriched_relationship.action,
                 "path_identifier": enriched_relationship.path_identifier,
             },
-            "relationships": single_relationship_props,
+            "elements_by_peer_id": elements_by_peer_id,
         }
 
     def _build_diff_node_params(self, enriched_node: EnrichedDiffNode) -> dict[str, Any]:

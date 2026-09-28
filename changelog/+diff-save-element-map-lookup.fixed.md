@@ -1,0 +1,1 @@
+Fixed diff updates and branch rebases slowing down sharply, or failing with a database memory error, when the diff contains a node related to thousands of objects, such as an IP namespace after a bulk IP address import.
