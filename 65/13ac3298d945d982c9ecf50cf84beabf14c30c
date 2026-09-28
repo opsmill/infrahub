@@ -1,0 +1,19 @@
+changelog/10616.fixed.md
+  s_0969bd9f84836e::t_d25208d7dc4f80 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6513ac3298d945d982c9ecf50cf84beabf14c30c",
+  "prompts": {},
+  "sessions": {
+    "s_0969bd9f84836e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e7ae019-4f15-4890-b15c-b09ce70f6220",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
