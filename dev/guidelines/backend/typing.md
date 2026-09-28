@@ -6,8 +6,7 @@ Typing rules for the Python backend. Two of them are hard rules: no new suppress
 When a branch needs narrowing, prefer `isinstance` over `getattr`, as the rest of this page details.
 
 - All function parameters and return types must be type-hinted
-- Use `str | None` for optional strings (Python 3.10+)
-- Use `list[Type]` instead of `List[Type]` (Python 3.9+)
+- Write built-in generics and PEP 604 unions (`list[str]`, `str | None`); the `typing.List`/`Optional` spellings are legacy and ruff flags them. The one exception is persisted nullable fields on `StandardNode` subclasses, which must stay `Optional[X]` until the runtime type resolution moves off it (see `StandardNode.guess_field_type`; ruff ignores UP007/UP045 in those modules)
 
 ## Type a closed value set as an enum, not `str`
 
