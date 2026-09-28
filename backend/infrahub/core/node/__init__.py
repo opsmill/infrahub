@@ -1158,11 +1158,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return node_changelog
 
     async def _set_changelog_labels(self, db: InfrahubDatabase, node_changelog: NodeChangelog) -> None:
-        """Fill the changelog with this node's display label and HFID.
-
-        Both read the materialized attribute when the node carries one and fall back to computing
-        the value, which resolves relationship peers from the database; the span tells the two apart.
-        """
+        """Fill the changelog with this node's display label and HFID."""
         with trace.get_tracer(__name__).start_as_current_span("changelog.primary_labels") as span:
             span.set_attribute("changelog.node_kind", self.get_kind())
             span.set_attribute("changelog.display_label_materialized", self._display_label is not None)
