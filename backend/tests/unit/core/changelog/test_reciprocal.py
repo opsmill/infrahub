@@ -3,12 +3,13 @@ from dataclasses import dataclass
 import pytest
 
 from infrahub.core.changelog.models import (
+    ChangelogRelatedNode,
     NodeChangelog,
     RelationshipCardinalityManyChangelog,
     RelationshipCardinalityOneChangelog,
 )
 from infrahub.core.changelog.reciprocal import ReciprocalRelationshipBuilder
-from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipDirection
+from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipDirection, RelationshipKind
 from infrahub.core.constants.schema import PARENT_CHILD_IDENTIFIER
 from infrahub.core.schema import NodeSchema, RelationshipSchema
 
@@ -150,13 +151,19 @@ def test_build_reports_the_primary_as_the_added_peer_of_a_one_cardinality_recipr
         peer_status=DiffAction.ADDED,
     )
 
-    parent = relationships["parent"]
-    assert isinstance(parent, RelationshipCardinalityOneChangelog)
-    assert parent.peer_id == PRIMARY_CHANGELOG.node_id
-    assert parent.peer_kind == PRIMARY_CHANGELOG.node_kind
-    assert parent.peer_display_label == PRIMARY_CHANGELOG.display_label
-    assert parent.peer_hfid == PRIMARY_CHANGELOG.hfid
-    assert parent.peer_status == DiffAction.ADDED
+    assert list(relationships) == ["parent"]
+    assert relationships["parent"].model_dump() == {
+        "name": "parent",
+        "cardinality": "one",
+        "peer_id": "source",
+        "peer_kind": "LocRack",
+        "peer_display_label": "rack-1",
+        "peer_hfid": ["rack-1"],
+        "peer_id_previous": None,
+        "peer_kind_previous": None,
+        "peer_status": DiffAction.ADDED,
+        "properties": {},
+    }
 
 
 def test_build_reports_the_primary_as_the_previous_peer_of_a_one_cardinality_reciprocal() -> None:
@@ -167,14 +174,19 @@ def test_build_reports_the_primary_as_the_previous_peer_of_a_one_cardinality_rec
         peer_status=DiffAction.REMOVED,
     )
 
-    parent = relationships["parent"]
-    assert isinstance(parent, RelationshipCardinalityOneChangelog)
-    assert parent.peer_id_previous == PRIMARY_CHANGELOG.node_id
-    assert parent.peer_kind_previous == PRIMARY_CHANGELOG.node_kind
-    assert parent.peer_id is None
-    assert parent.peer_display_label is None
-    assert parent.peer_hfid is None
-    assert parent.peer_status == DiffAction.REMOVED
+    assert list(relationships) == ["parent"]
+    assert relationships["parent"].model_dump() == {
+        "name": "parent",
+        "cardinality": "one",
+        "peer_id": None,
+        "peer_kind": None,
+        "peer_display_label": None,
+        "peer_hfid": None,
+        "peer_id_previous": "source",
+        "peer_kind_previous": "LocRack",
+        "peer_status": DiffAction.REMOVED,
+        "properties": {},
+    }
 
 
 @pytest.mark.parametrize("peer_status", [DiffAction.ADDED, DiffAction.REMOVED])
@@ -188,15 +200,21 @@ def test_build_carries_the_status_on_the_single_peer_of_a_many_cardinality_recip
         peer_status=peer_status,
     )
 
-    children = relationships["children"]
-    assert isinstance(children, RelationshipCardinalityManyChangelog)
-    assert len(children.peers) == 1
-    peer = children.peers[0]
-    assert peer.peer_id == PRIMARY_CHANGELOG.node_id
-    assert peer.peer_kind == PRIMARY_CHANGELOG.node_kind
-    assert peer.peer_display_label == PRIMARY_CHANGELOG.display_label
-    assert peer.peer_hfid == PRIMARY_CHANGELOG.hfid
-    assert peer.peer_status == peer_status
+    assert list(relationships) == ["children"]
+    assert relationships["children"].model_dump() == {
+        "name": "children",
+        "cardinality": "many",
+        "peers": [
+            {
+                "peer_id": "source",
+                "peer_kind": "LocRack",
+                "peer_display_label": "rack-1",
+                "peer_hfid": ["rack-1"],
+                "peer_status": peer_status,
+                "properties": {},
+            }
+        ],
+    }
 
 
 def test_build_mirrors_every_candidate_when_none_matches_the_direction() -> None:
@@ -214,8 +232,13 @@ def test_build_mirrors_every_candidate_when_none_matches_the_direction() -> None
         peer_status=DiffAction.ADDED,
     )
 
-    assert isinstance(relationships["parent"], RelationshipCardinalityOneChangelog)
-    assert isinstance(relationships["children"], RelationshipCardinalityManyChangelog)
+    assert list(relationships) == ["parent", "children"]
+    parent = relationships["parent"]
+    assert isinstance(parent, RelationshipCardinalityOneChangelog)
+    assert (parent.peer_id, parent.peer_kind, parent.peer_status) == ("source", "LocRack", DiffAction.ADDED)
+    children = relationships["children"]
+    assert isinstance(children, RelationshipCardinalityManyChangelog)
+    assert [(peer.peer_id, peer.peer_status) for peer in children.peers] == [("source", DiffAction.ADDED)]
 
 
 def test_build_returns_nothing_when_the_peer_declares_no_side_of_the_relationship() -> None:
@@ -233,3 +256,55 @@ def test_build_returns_nothing_when_the_peer_declares_no_side_of_the_relationshi
     )
 
     assert relationships == {}
+
+
+PARENT_PEER_SCHEMA = NodeSchema(
+    name="Rack",
+    namespace="Loc",
+    relationships=[
+        RelationshipSchema(
+            name="site",
+            peer="LocSite",
+            identifier="site__rack",
+            kind=RelationshipKind.PARENT,
+            cardinality=RelationshipCardinality.ONE,
+            direction=RelationshipDirection.OUTBOUND,
+        ),
+    ],
+)
+
+RACK_SIDE_RELATIONSHIP = RelationshipSchema(
+    name="racks",
+    peer="LocRack",
+    identifier="site__rack",
+    cardinality=RelationshipCardinality.MANY,
+    direction=RelationshipDirection.INBOUND,
+)
+
+
+@pytest.mark.parametrize("peer_status", [DiffAction.ADDED, DiffAction.REMOVED])
+def test_build_names_the_primary_as_the_parent_of_a_parent_reciprocal(peer_status: DiffAction) -> None:
+    """A removed parent is still the parent the peer-side changelog names."""
+    relationships = ReciprocalRelationshipBuilder().build(
+        peer_schema=PARENT_PEER_SCHEMA,
+        rel_schema=RACK_SIDE_RELATIONSHIP,
+        primary_changelog=PRIMARY_CHANGELOG,
+        peer_status=peer_status,
+    )
+
+    site = relationships["site"]
+    assert isinstance(site, RelationshipCardinalityOneChangelog)
+    assert site.parent == ChangelogRelatedNode(node_id="source", node_kind="LocRack")
+
+
+def test_build_leaves_a_generic_reciprocal_without_a_parent() -> None:
+    relationships = ReciprocalRelationshipBuilder().build(
+        peer_schema=HIERARCHY_PEER_SCHEMA,
+        rel_schema=PARENT_SIDE_RELATIONSHIP,
+        primary_changelog=PRIMARY_CHANGELOG,
+        peer_status=DiffAction.ADDED,
+    )
+
+    parent = relationships["parent"]
+    assert isinstance(parent, RelationshipCardinalityOneChangelog)
+    assert parent.parent is None

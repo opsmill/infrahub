@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from infrahub.core.changelog.enrichment import NodeLabelLoader, NodeLabels
+from infrahub.core.changelog.enrichment import PLACEHOLDER_LABELS, NodeLabelLoader, NodeLabels
 from infrahub.core.changelog.models import (
     NodeChangelog,
     RelationshipCardinalityManyChangelog,
@@ -57,6 +57,9 @@ async def test_resolve_reports_what_was_referenced_and_what_was_resolved() -> No
 
     assert peer_labels.referenced_count == 3
     assert peer_labels.resolved_count == 1
+    assert peer_labels.labels_of(peer_id="current") == NodeLabels(display_label="Current", hfid=["current"])
+    assert peer_labels.labels_of(peer_id="previous") is PLACEHOLDER_LABELS
+    assert peer_labels.labels_of(peer_id="car-1") is PLACEHOLDER_LABELS
 
 
 def test_enrich_fills_resolved_peers_and_leaves_the_others_unset() -> None:
@@ -67,14 +70,14 @@ def test_enrich_fills_resolved_peers_and_leaves_the_others_unset() -> None:
 
     peer_labels.enrich(changelog=changelog)
 
+    assert {
+        peer.peer_id: (peer.peer_display_label, peer.peer_hfid)
+        for relationship in changelog.relationships.values()
+        for peer in relationship.peer_entries()
+    } == {"current": ("Current", ["current"]), "car-1": (None, None)}
     owner = changelog.relationships["owner"]
     assert isinstance(owner, RelationshipCardinalityOneChangelog)
-    assert owner.peer_display_label == "Current"
-    assert owner.peer_hfid == ["current"]
-    cars = changelog.relationships["cars"]
-    assert isinstance(cars, RelationshipCardinalityManyChangelog)
-    assert cars.peers[0].peer_display_label is None
-    assert cars.peers[0].peer_hfid is None
+    assert (owner.peer_id, owner.peer_id_previous) == ("current", "previous")
 
 
 def test_labels_of_falls_back_to_the_placeholder_for_an_unresolved_peer() -> None:
@@ -82,8 +85,7 @@ def test_labels_of_falls_back_to_the_placeholder_for_an_unresolved_peer() -> Non
 
     labels = peer_labels.labels_of(peer_id="gone")
 
-    assert labels.display_label == "n/a"
-    assert labels.hfid is None
+    assert labels is PLACEHOLDER_LABELS
 
 
 def test_referenced_peer_ids_keeps_duplicates_and_drops_the_unset_peers() -> None:

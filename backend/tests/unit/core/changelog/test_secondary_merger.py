@@ -27,11 +27,12 @@ def test_merge_secondaries_collapses_the_same_peer_into_one_changelog() -> None:
 
     merged = SecondaryChangelogMerger().merge(secondaries)
 
-    assert len(merged) == 2
-    by_id = {changelog.node_id: changelog for changelog in merged}
-    assert set(by_id) == {"peer-1", "peer-2"}
-    assert set(by_id["peer-1"].relationships) == {"rel_a", "rel_b"}
-    assert set(by_id["peer-2"].relationships) == {"rel_c"}
+    assert [changelog.node_id for changelog in merged] == ["peer-1", "peer-2"]
+    assert list(merged[0].relationships) == ["rel_a", "rel_b"]
+    assert list(merged[1].relationships) == ["rel_c"]
+    # The first changelog seen for a peer is the one carried forward, relationships folded into it.
+    assert merged[0] is secondaries[0]
+    assert merged[0].relationships["rel_b"] is secondaries[1].relationships["rel_b"]
 
 
 def _many_secondary(
@@ -56,6 +57,7 @@ def test_merge_secondaries_keeps_one_entry_per_peer_and_status_for_a_shared_many
     merged = SecondaryChangelogMerger().merge(secondaries)
 
     assert len(merged) == 1
+    assert list(merged[0].relationships) == ["members"]
     members = merged[0].relationships["members"]
     assert isinstance(members, RelationshipCardinalityManyChangelog)
     assert [(peer.peer_id, peer.peer_status) for peer in members.peers] == [
@@ -73,9 +75,8 @@ def test_merge_keeps_the_first_peer_of_a_shared_one_relationship_name() -> None:
     merged = SecondaryChangelogMerger().merge([first, second])
 
     assert len(merged) == 1
-    parent = merged[0].relationships["parent"]
-    assert isinstance(parent, RelationshipCardinalityOneChangelog)
-    assert parent.peer_id == "source"
+    assert list(merged[0].relationships) == ["parent"]
+    assert merged[0].relationships["parent"] is first.relationships["parent"]
 
 
 def test_merge_preserves_the_order_the_peers_were_built_in() -> None:
@@ -88,6 +89,8 @@ def test_merge_preserves_the_order_the_peers_were_built_in() -> None:
     merged = SecondaryChangelogMerger().merge(secondaries)
 
     assert [changelog.node_id for changelog in merged] == ["peer-2", "peer-1"]
+    assert list(merged[0].relationships) == ["rel_a", "rel_c"]
+    assert list(merged[1].relationships) == ["rel_b"]
 
 
 def test_merge_secondaries_keeps_one_entry_when_a_merged_relationship_repeats_a_peer() -> None:
