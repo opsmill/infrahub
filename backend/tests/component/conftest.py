@@ -75,7 +75,6 @@ from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_workflow
 from tests.adapters.workflow import WorkflowRecorder
 from tests.conftest import TestHelper
 from tests.helpers.constants import (
@@ -85,10 +84,11 @@ from tests.helpers.constants import (
     PREFECT_TEST_SERVER_PORT_RANGE,
 )
 from tests.helpers.file_repo import FileRepo
-from tests.helpers.prefect_diagnostics import register_prefect_test_server
+from tests.helpers.prefect_diagnostics import register_prefect_test_server, timeout_diagnostics_section
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import find_available_prefect_port
+from tests.helpers.workflow_override import override_workflow
 from tests.test_data import dataset01 as ds01
 
 COMPONENT_TESTS_DIR = Path(__file__).parent
@@ -111,6 +111,25 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         if list(item.iter_markers("httpx_mock")):
             continue
         item.add_marker(default_marker)
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_makereport(
+    item: pytest.Item, call: pytest.CallInfo[None]
+) -> Generator[None, pytest.TestReport, pytest.TestReport]:
+    """Make a test the Prefect server wedged carry that server's stacks into the failure.
+
+    A wedged server takes its whole worker down through timeouts that describe nothing but the
+    test they killed. The report has to be added here, before the report is logged: xdist ships
+    it to the controller at that point, and anything attached later never leaves the worker.
+    """
+    report = yield
+    section = timeout_diagnostics_section(
+        nodeid=item.nodeid, when=call.when, exception=call.excinfo.value if call.excinfo else None
+    )
+    if section is not None:
+        report.sections.append(section)
+    return report  # noqa: B901 - a pytest wrapper hook yields, then returns the result it wrapped
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -2607,6 +2626,129 @@ async def register_ipam_extended_schema(default_branch: Branch, register_ipam_sc
 
 
 @pytest.fixture
+async def register_ipam_kind_override_schema(
+    default_branch: Branch, register_ipam_extended_schema: SchemaBranch
+) -> SchemaBranch:
+    """Schema exercising the from_pool target-kind override.
+
+    A second concrete kind behind each builtin IP generic.
+    """
+    SCHEMA: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "IPPrefix",
+                "namespace": "Test",
+                "default_filter": "prefix__value",
+                "order_by": ["prefix__value"],
+                "display_label": "prefix__value",
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPPREFIX, InfrahubKind.WEIGHTED_POOL_RESOURCE],
+            },
+            {
+                "name": "IPAddress",
+                "namespace": "Test",
+                "default_filter": "address__value",
+                "order_by": ["address__value"],
+                "display_label": "address__value",
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPADDRESS],
+            },
+            {
+                "name": "GenericPrefixOwner",
+                "namespace": "Test",
+                "description": "A model with a relationship to the bare BuiltinIPPrefix generic",
+                "attributes": [{"name": "name", "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": "prefix",
+                        "peer": InfrahubKind.IPPREFIX,
+                        "kind": "Attribute",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+            {
+                "name": "GenericAddressOwner",
+                "namespace": "Test",
+                "description": "A model with a relationship to the bare BuiltinIPAddress generic",
+                "attributes": [{"name": "name", "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": "address",
+                        "peer": InfrahubKind.IPADDRESS,
+                        "kind": "Attribute",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+        ],
+    }
+
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**SCHEMA), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
+
+
+@pytest.fixture
+async def kind_override_prefix_pool(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_kind_override_schema: SchemaBranch,
+    ip_dataset_prefix_v4: dict[str, Any],
+) -> CoreIPPrefixPool:
+    """A prefix pool whose default kind is IpamIPPrefix, with TestIPPrefix as a sibling."""
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
+    await pool.new(
+        db=db,
+        name="pool1",
+        default_prefix_length=24,
+        default_prefix_type="IpamIPPrefix",
+        resources=[ip_dataset_prefix_v4["net141"]],
+        ip_namespace=ip_dataset_prefix_v4["ns1"],
+    )
+    await pool.save(db=db)
+    return pool
+
+
+@pytest.fixture
+async def kind_override_address_pool(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_kind_override_schema: SchemaBranch,
+    ip_dataset_prefix_v4: dict[str, Any],
+) -> CoreIPAddressPool:
+    """An address pool whose default kind is IpamIPAddress, with TestIPAddress as a sibling."""
+    address_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+
+    pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db, branch=default_branch)
+    await pool.new(
+        db=db,
+        name="pool1",
+        default_address_type="IpamIPAddress",
+        resources=[ip_dataset_prefix_v4["net145"]],
+        ip_namespace=ip_dataset_prefix_v4["ns1"],
+    )
+    await pool.save(db=db)
+    return pool
+
+
+@pytest.fixture
+async def kind_override_pools(
+    init_nodes_registry: None,
+    kind_override_prefix_pool: CoreIPPrefixPool,
+    kind_override_address_pool: CoreIPAddressPool,
+) -> dict[str, Node]:
+    """Both kind-override pools, keyed by "prefix_pool" and "address_pool"."""
+    return {"prefix_pool": kind_override_prefix_pool, "address_pool": kind_override_address_pool}
+
+
+@pytest.fixture
 async def create_test_admin(db: InfrahubDatabase, register_core_models_schema: SchemaBranch, data_schema: None) -> Node:
     return await do_create_test_admin(db=db)
 
@@ -3018,23 +3160,15 @@ async def prefix_pool_01(
 
 @pytest.fixture
 def workflow_local(dependency_provider: Provider) -> Generator[WorkflowLocalExecution, None, None]:
-    original = config.OVERRIDE.workflow
-    workflow = WorkflowLocalExecution()
-    config.OVERRIDE.workflow = workflow
-    with dependency_provider.scope(build_workflow, lambda: workflow):
+    with override_workflow(WorkflowLocalExecution(), dependency_provider=dependency_provider) as workflow:
         yield workflow
-    config.OVERRIDE.workflow = original
 
 
 @pytest.fixture
 def workflow_recorder(dependency_provider: Provider) -> Generator[WorkflowRecorder, None, None]:
     """Record workflow submissions instead of running them."""
-    original = config.OVERRIDE.workflow
-    recorder = WorkflowRecorder()
-    config.OVERRIDE.workflow = recorder
-    with dependency_provider.scope(build_workflow, lambda: recorder):
+    with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
         yield recorder
-    config.OVERRIDE.workflow = original
 
 
 @pytest.fixture

@@ -255,7 +255,7 @@ describe("graphqlClient — token refresh integration", () => {
     });
 
     // THEN
-    const body = JSON.parse((fetchSpy.mock.calls[0]?.[1] as RequestInit).body as string);
+    const body = JSON.parse((fetchSpy.mock.calls[0]![1] as RequestInit).body as string);
     expect(body.query).toContain("__typename");
   });
 
@@ -312,7 +312,7 @@ describe("graphqlClient — token refresh integration", () => {
     expect(fetchQuerySpy).toHaveBeenCalledOnce();
     expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(assignSpy).not.toHaveBeenCalled();
-    const replay = new Headers((fetchSpy.mock.calls[1]?.[1] as RequestInit).headers);
+    const replay = new Headers((fetchSpy.mock.calls[1]![1] as RequestInit).headers);
     expect(replay.get(PRIORITY_HEADER)).toBe("high");
   });
 

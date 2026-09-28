@@ -19,6 +19,7 @@ from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynch
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.workers.dependencies import build_cache
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -83,7 +84,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         dependency_provider: Provider,
         initial_schema: SchemaRoot,
     ) -> None:
-        with dependency_provider.scope(build_cache, RedisCache):
+        with override_dependency(build_cache, RedisCache, dependency_provider=dependency_provider):
             schema_load_response = await client.schema.load(
                 schemas=[initial_schema.model_dump()], wait_until_converged=True
             )

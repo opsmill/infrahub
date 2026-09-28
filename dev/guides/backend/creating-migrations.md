@@ -32,6 +32,10 @@ Choose the right base class in `backend/infrahub/core/migrations/shared.py`:
 
 `SchemaMigration` is a separate family under `backend/infrahub/core/migrations/schema/`, registered in `MIGRATION_MAP` and selected by the schema diff rather than by `GRAPH_VERSION`. Steps 1-3 below do not apply to it, but the retry rule does.
 
+## Migrations run at the current timestamp
+
+Each caller supplies `MigrationInput.at` for its operation: the graph upgrade and branch-version runner use a fresh timestamp, while rebases derive it from the diff timestamp and schema-migration batches forward `message.at`. Keep `from <= $at` predicates and historical-`at` tests whenever the migration query is time-scoped.
+
 ## Steps
 
 ### Step 1: Create the Migration File

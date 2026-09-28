@@ -4,115 +4,84 @@ from typing import TYPE_CHECKING, assert_never
 
 from infrahub.core import registry
 from infrahub.core.query_group.subscribers import fetch_subscriber_refs
-from infrahub.core.relationship.dependent_resolver import DependentNodeResolver
-from infrahub.core.schema.schema_branch_computed.python_transform import (
-    IMPRECISE_READ_FIELDS,
-    derived_read_is_scopable,
-)
+from infrahub.core.relationship.dependent_resolver import QueryDependentNodeResolver
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.workers.dependencies import get_database
 
-from .impact_classifier import ChangedNodes, EveryTarget, QueryImpactClassifier, RelationshipReachedChanges
+from .classifier_builder import QueryClassifierBuilder
+from .derived_dependencies import SchemaDerivedFieldDependencyResolver
+from .impact_classifier import ChangedNodes, EveryTarget, RelationshipReachedChanges
 from .models import TargetSelection
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
-
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
-    from infrahub.core.relationship.dependent_resolver import DependentNodeResolverInterface
-    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.relationship.dependent_resolver import DependentNodeResolver
+    from infrahub.database import InfrahubDatabase
 
 
-def reads_unscopable_derived_field(
-    readable_fields_by_kind: Mapping[str, set[str]],
-    schema_branch: SchemaBranch,
-) -> bool:
-    """Whether the query reads a computed field whose value is composed from a related peer.
-
-    Such a read cannot be narrowed: the change that moves the value lands on a peer the read set
-    never names, so the field-level match cannot see it, and the query has to fall back to every
-    target. A read whose value has no declared path, or on a kind absent from the schema, is
-    treated the same way -- conservatively, so scopability that cannot be verified widens rather
-    than raises.
-    """
-    for kind, fields in readable_fields_by_kind.items():
-        derived_reads = fields & IMPRECISE_READ_FIELDS
-        if not derived_reads:
-            continue
-        if not schema_branch.has(name=kind):
-            return True
-        node_schema = schema_branch.get(name=kind, duplicate=False)
-        if any(
-            not derived_read_is_scopable(node_schema=node_schema, field_name=field_name) for field_name in derived_reads
-        ):
-            return True
-    return False
-
-
-async def get_field_level_impacted_subscribers(
-    query_payload: str,
-    diff_summary: list[NodeDiff],
-    query_branch: str,
-    subscriber_kind: str,
-    every_target: list[str],
-    client: InfrahubClient,
-) -> TargetSelection:
-    """Map data changes on `query_branch` to the subscribers a GraphQL query depends on.
+class FieldLevelImpactResolver:
+    """Map data changes on a branch to the subscribers a GraphQL query depends on.
 
     A change matters only when a modified field is one the query reads. The query analysis,
-    the diff-summary tag and the subscriber lookup all run on `query_branch`, so the caller
-    passes the branch the changed data lives on (a proposed change's source branch, a merge's
+    the diff-summary tag and the subscriber lookup all run on the branch passed to `resolve`, so the
+    caller passes the branch the changed data lives on (a proposed change's source branch, a merge's
     target branch).
-
-    `every_target` is the fallback when a change cannot be traced to specific subscribers;
-    taking it as an argument keeps "process everything" out of the return type, so the caller
-    always gets one authoritative list.
     """
-    db = await get_database()
-    query_schema_branch = registry.schema.get_schema_branch(name=query_branch)
-    query_branch_obj = registry.get_branch_from_registry(branch=query_branch)
 
-    graphql_params = await prepare_graphql_params(db=db, branch=query_branch)
-    query_report = InfrahubGraphQLQueryAnalyzer(
-        query=query_payload,
-        branch=query_branch_obj,
-        schema_branch=query_schema_branch,
-        schema=graphql_params.schema,
-        document=cached_parse(query_payload),
-    ).query_report
+    def __init__(self, db: InfrahubDatabase, client: InfrahubClient) -> None:
+        self.db = db
+        self.client = client
 
-    readable_fields_by_kind = {kind: access.fields for kind, access in query_report.requested_read.items()}
-    classifier = QueryImpactClassifier(
-        query_branch=query_branch,
-        only_has_unique_targets=query_report.only_has_unique_targets,
-        traversed_kinds=query_report.traversed_kinds,
-        readable_fields_by_kind=readable_fields_by_kind,
-        reached_paths_by_kind=query_report.relationship_reached_paths_by_kind,
-        depends_on_everything=reads_unscopable_derived_field(
-            readable_fields_by_kind=readable_fields_by_kind,
+    async def resolve(
+        self,
+        *,
+        query_payload: str,
+        diff_summary: list[NodeDiff],
+        query_branch: str,
+        subscriber_kind: str,
+        every_target: list[str],
+    ) -> TargetSelection:
+        """Return the subscribers a change implicates, widening to `every_target` when it cannot narrow.
+
+        `every_target` is the fallback when a change cannot be traced to specific subscribers;
+        taking it as an argument keeps "process everything" out of the return type, so the caller
+        always gets one authoritative list.
+        """
+        query_schema_branch = registry.schema.get_schema_branch(name=query_branch)
+        query_branch_obj = registry.get_branch_from_registry(branch=query_branch)
+
+        graphql_params = await prepare_graphql_params(db=self.db, branch=query_branch)
+        query_report = InfrahubGraphQLQueryAnalyzer(
+            query=query_payload,
+            branch=query_branch_obj,
             schema_branch=query_schema_branch,
-        ),
-    )
-    assessment = classifier.assess(diff_summary=diff_summary)
+            schema=graphql_params.schema,
+            document=cached_parse(query_payload),
+        ).query_report
 
-    match assessment:
-        case EveryTarget():
-            return TargetSelection(ids=every_target, widened=True)
-        case ChangedNodes(node_ids=node_ids):
-            member_ids = node_ids
-        case RelationshipReachedChanges():
-            dependent_resolver = DependentNodeResolver(db=db, branch=query_branch_obj)
-            member_ids = sorted(await ReachedMemberResolver(resolver=dependent_resolver).resolve(assessment))
-        case _ as unreachable:
-            assert_never(unreachable)
+        dependency_resolver = SchemaDerivedFieldDependencyResolver(schema_branch=query_schema_branch)
+        classifier = QueryClassifierBuilder(query_branch=query_branch, dependency_resolver=dependency_resolver).build(
+            query_report
+        )
+        assessment = classifier.assess(diff_summary=diff_summary)
 
-    subscribers = await fetch_subscriber_refs(client=client, node_ids=member_ids, branch=query_branch)
-    ids = [subscriber.id for subscriber in subscribers if subscriber.kind == subscriber_kind]
-    return TargetSelection(ids=ids, widened=False)
+        match assessment:
+            case EveryTarget():
+                return TargetSelection(ids=every_target, widened=True)
+            case ChangedNodes(node_ids=node_ids):
+                member_ids = node_ids
+            case RelationshipReachedChanges():
+                dependent_resolver = QueryDependentNodeResolver(db=self.db, branch=query_branch_obj)
+                member_ids = sorted(await ReachedMemberResolver(resolver=dependent_resolver).resolve(assessment))
+            case _ as unreachable:
+                assert_never(unreachable)
+
+        subscribers = await fetch_subscriber_refs(client=self.client, node_ids=member_ids, branch=query_branch)
+        ids = [subscriber.id for subscriber in subscribers if subscriber.kind == subscriber_kind]
+        return TargetSelection(ids=ids, widened=False)
 
 
 class ReachedMemberResolver:
@@ -123,7 +92,7 @@ class ReachedMemberResolver:
     resolved member set is a superset too.
     """
 
-    def __init__(self, *, resolver: DependentNodeResolverInterface) -> None:
+    def __init__(self, *, resolver: DependentNodeResolver) -> None:
         self.resolver = resolver
 
     async def resolve(self, changes: RelationshipReachedChanges) -> set[str]:

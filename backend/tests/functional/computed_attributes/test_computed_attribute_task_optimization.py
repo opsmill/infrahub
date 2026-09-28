@@ -15,7 +15,6 @@ from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.workers.dependencies import build_workflow
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
@@ -23,6 +22,7 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.constants import WorkflowTag
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -75,7 +75,7 @@ class TestComputedAttributeTaskOptimization(TestInfrahubApp):
         prefect_test_fixture: None,
     ) -> None:
         recorder = WorkflowRecorder()
-        with dependency_provider.scope(build_workflow, lambda: recorder):
+        with override_workflow(recorder, dependency_provider=dependency_provider):
             await trigger_update_jinja2_computed_attributes(
                 branch_name=default_branch.name,
                 computed_attribute_name="test-attribute",
@@ -107,7 +107,7 @@ class TestComputedAttributeTaskOptimization(TestInfrahubApp):
         monkeypatch.setenv("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "4")
 
         recorder = WorkflowRecorder()
-        with dependency_provider.scope(build_workflow, lambda: recorder):
+        with override_workflow(recorder, dependency_provider=dependency_provider):
             await trigger_update_python_computed_attributes(
                 branch_name=default_branch.name,
                 computed_attribute_name="test-attribute",

@@ -14,6 +14,7 @@ from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.message_bus.operations.refresh import settings as refresh_settings
 from infrahub.workers.dependencies import build_message_bus
 from tests.conftest import TestHelper
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.fixtures import get_fixtures_dir
 
 
@@ -156,7 +157,7 @@ def recorder_bus(helper: TestHelper, dependency_provider: Provider) -> Generator
     original = config.OVERRIDE.message_bus
     bus = helper.get_message_bus_recorder()
     config.OVERRIDE.message_bus = bus
-    with dependency_provider.scope(build_message_bus, lambda: bus):
+    with override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider):
         yield bus
     config.OVERRIDE.message_bus = original
 

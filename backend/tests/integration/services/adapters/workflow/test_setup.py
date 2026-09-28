@@ -1,7 +1,7 @@
 from prefect.client.orchestration import PrefectClient
 
 from infrahub.workflows.catalogue import INFRAHUB_WORKER_POOL
-from infrahub.workflows.initialization import setup_task_manager
+from infrahub.workflows.initialization import setup_task_manager  # noqa: TID251 - this module tests the setup itself
 from tests.helpers.test_worker import TestWorkerInfrahubAsync
 
 # @pytest.fixture

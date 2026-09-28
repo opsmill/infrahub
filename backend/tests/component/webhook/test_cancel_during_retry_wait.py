@@ -19,6 +19,7 @@ from infrahub.webhook.tasks import process
 from infrahub.workers.dependencies import build_cache, build_client, build_http_service
 from tests.adapters.cache import MemoryCache
 from tests.adapters.http import MemoryHTTP
+from tests.helpers.dependency_override import override_dependency
 
 if TYPE_CHECKING:
     import ssl
@@ -119,12 +120,14 @@ async def test_cancel_during_retry_wait_stops_remaining_attempts(
     send = process.webhook_send.with_options(retries=1, retry_delay_seconds=RETRY_DELAY_SECONDS)
 
     with (
-        dependency_provider.scope(build_http_service, lambda: failing_target),
-        dependency_provider.scope(build_cache, lambda: seeded_cache(webhook_id)),
+        override_dependency(build_http_service, lambda: failing_target, dependency_provider=dependency_provider),
+        override_dependency(build_cache, lambda: seeded_cache(webhook_id), dependency_provider=dependency_provider),
         # The webhook config is served from the seeded cache, so the client is never called;
         # a bare one satisfies resolution without the runtime registry the real builder needs.
-        dependency_provider.scope(
-            build_client, lambda: InfrahubClient(config=Config(address="http://unused.example.test"))
+        override_dependency(
+            build_client,
+            lambda: InfrahubClient(config=Config(address="http://unused.example.test")),
+            dependency_provider=dependency_provider,
         ),
     ):
         known_run_ids = await read_send_run_ids(prefect_client)

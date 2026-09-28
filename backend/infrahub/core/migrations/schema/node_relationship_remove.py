@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Sequence
 
-from infrahub.core.constants import RelationshipStatus
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
 from infrahub.core.query import QueryType
+from infrahub.core.query.agnostic_field_closure import CLOSE_UNRETAINED_AGNOSTIC_FIELDS
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import retry_db_transaction
@@ -48,7 +49,9 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery):
 
     An active edge created on the branch the migration runs on is closed in place (its ``to`` time is
     set); an active edge inherited from a parent/global branch is left intact and shadowed by a new
-    ``deleted`` edge on the migration branch.
+    ``deleted`` edge on the migration branch. A branch-agnostic relationship therefore keeps its global
+    edges open, and those are closed at the end of the same statement once the removal has left no
+    branch able to read both of its peers.
     """
 
     name = "migration_node_relationship_remove"
@@ -65,8 +68,9 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery):
         self.params.update(branch_params)
         self.params["kinds_to_skip"] = params.kinds_to_skip
         self.params["rel_identifiers"] = params.rel_identifiers
-        self.params["current_time"] = self.at.to_string()
+        self.params["at"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
         self.params["user_id"] = self.user_id
         self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
         self.params["rel_prop"] = {
@@ -131,23 +135,23 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery):
             WITH active_node, rel
             WHERE $set_metadata
             SET rel.previous_updated_at = CASE
-                    WHEN rel.updated_at IS NULL OR rel.updated_at <> $current_time THEN rel.updated_at
+                    WHEN rel.updated_at IS NULL OR rel.updated_at <> $at THEN rel.updated_at
                     ELSE rel.previous_updated_at
                 END,
                 rel.previous_updated_by = CASE
-                    WHEN rel.updated_at IS NULL OR rel.updated_at <> $current_time THEN rel.updated_by
+                    WHEN rel.updated_at IS NULL OR rel.updated_at <> $at THEN rel.updated_by
                     ELSE rel.previous_updated_by
                 END
-            SET rel.updated_at = $current_time, rel.updated_by = $user_id
+            SET rel.updated_at = $at, rel.updated_by = $user_id
             SET active_node.previous_updated_at = CASE
-                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
+                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $at THEN active_node.updated_at
                     ELSE active_node.previous_updated_at
                 END,
                 active_node.previous_updated_by = CASE
-                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
+                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $at THEN active_node.updated_by
                     ELSE active_node.previous_updated_by
                 END
-            SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+            SET active_node.updated_at = $at, active_node.updated_by = $user_id
         }
 
         // ----------------------------------------------------------
@@ -166,39 +170,52 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery):
         WITH rel, peer, active_edge, startNode(active_edge) AS edge_start, endNode(active_edge) AS edge_end
         WHERE active_edge.status = "active"
 
+        // ----------------------------------------------------------
         // Inherited edge (parent/global branch): shadow it with a deleted edge on the migration branch
+        // ----------------------------------------------------------
         CALL (edge_start, edge_end, active_edge) {
             WITH edge_start, edge_end, active_edge
             WHERE active_edge.branch <> $branch_name
             CREATE (edge_start)-[new_edge:$(type(active_edge))]->(edge_end)
             SET new_edge = $rel_prop, new_edge.hierarchy = active_edge.hierarchy
         }
+        // ----------------------------------------------------------
         // Edge created on this branch: close it in place
+        // ----------------------------------------------------------
         CALL (active_edge) {
             WITH active_edge
             WHERE active_edge.branch = $branch_name AND active_edge.to IS NULL
-            SET active_edge.to = $current_time, active_edge.to_user_id = $user_id
+            SET active_edge.to = $at, active_edge.to_user_id = $user_id
         }
+        // ----------------------------------------------------------
         // Update metadata on the peer node on default/global branch
+        // ----------------------------------------------------------
         CALL (peer) {
             WITH peer
             WHERE $set_metadata AND peer:Node
             SET peer.previous_updated_at = CASE
-                    WHEN peer.updated_at IS NULL OR peer.updated_at <> $current_time THEN peer.updated_at
+                    WHEN peer.updated_at IS NULL OR peer.updated_at <> $at THEN peer.updated_at
                     ELSE peer.previous_updated_at
                 END,
                 peer.previous_updated_by = CASE
-                    WHEN peer.updated_at IS NULL OR peer.updated_at <> $current_time THEN peer.updated_by
+                    WHEN peer.updated_at IS NULL OR peer.updated_at <> $at THEN peer.updated_by
                     ELSE peer.previous_updated_by
                 END
-            SET peer.updated_at = $current_time, peer.updated_by = $user_id
+            SET peer.updated_at = $at, peer.updated_by = $user_id
         }
 
+        // ----------------------------------------------------------
+        // Clean up branch-agnostic edges when they become unreachable
+        // ----------------------------------------------------------
+        WITH collect(DISTINCT rel) AS agnostic_candidates
+        %(close_unretained_agnostic_fields)s
+        UNWIND agnostic_candidates AS rel
         RETURN DISTINCT rel
         """
         query = query_template % {
             "branch_filter": branch_filter,
             "node_kinds": "|".join(params.node_kinds),
+            "close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS,
         }
         self.add_to_query(query)
 

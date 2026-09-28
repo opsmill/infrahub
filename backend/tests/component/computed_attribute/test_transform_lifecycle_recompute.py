@@ -33,7 +33,7 @@ async def _make_transform(db: InfrahubDatabase, name: str, repository: Node) -> 
     await query.new(
         db=db,
         name=f"query_{name}",
-        query="query { TestCar { edges { node { name { value } } } } }",
+        query="query TestCarQuery($id: ID!) { TestCar(ids: [$id]) { edges { node { name { value } } } } }",
         models=["TestCar", "TestPerson"],
     )
     await query.save(db=db)

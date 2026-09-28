@@ -8,7 +8,10 @@ from prefect.deployments import run_deployment
 
 from infrahub import config, lock
 from infrahub.workers.utils import inject_context_parameter
-from infrahub.workflows.initialization import setup_task_manager, setup_task_manager_identifiers
+from infrahub.workflows.initialization import (
+    setup_task_manager,  # noqa: TID251 - worker startup owns the setup
+    setup_task_manager_identifiers,
+)
 from infrahub.workflows.models import WorkflowInfo
 
 from . import InfrahubWorkflow, Return

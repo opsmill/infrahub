@@ -378,25 +378,26 @@ In integration-tier tests the clock cannot be injected — a consumer or worker 
 wall-clock time to act. Never guess that duration with a fixed `asyncio.sleep(n)` before
 asserting: on a loaded CI runner the test flakes, and on a fast machine it wastes the time. Poll
 the expected state in a small loop with a deadline, so the test waits exactly as long as the
-outcome takes and fails with a timeout when it never arrives.
+outcome takes and fails with a timeout when it never arrives. Poll for the exact state the
+assertion will check — the specific log line, the exact count — not for mere arrival: a loop that
+exits as soon as anything shows up hands an unrelated first event to the assertion and the test
+fails (or passes) spuriously.
+
+The deadline applies to every wait, not only polls: wrap a bare `await event.wait()` in
+`asyncio.wait_for(..., timeout=...)`, with margin for a loaded runner. An unbounded await turns a
+regression into a whole-suite hang that only pytest-timeout ends, minutes later, with the cause
+hidden.
 
 ## Exception Testing
 
 When testing that code raises an exception, use the `match` parameter of `pytest.raises` to validate the error message:
 
 ```python
-# Good - use match parameter for message validation
 with pytest.raises(PoolExhaustedError, match=r"no more addresses available"):
     allocate_from_pool(pool_id=exhausted_pool.id)
-
-# Bad - manual assertion on exception message
-with pytest.raises(PoolExhaustedError) as exc_info:
-    allocate_from_pool(pool_id=exhausted_pool.id)
-
-assert "no more addresses available" in exc_info.value.message
 ```
 
-The `match` parameter accepts a regular expression pattern and is more concise. Use `r"..."` raw strings to avoid escaping issues.
+`match` takes a regular expression — use a raw string.
 
 ## GraphQL Result Assertions
 
@@ -417,8 +418,6 @@ assert f"The template requested {{'id': '{TEMPLATE_ID}'}} was not found." in str
 assert result.errors
 assert str(result.errors[0].message) == f"The template requested {{'id': '{TEMPLATE_ID}'}} was not found."
 ```
-
-Use `==` rather than `in` to compare error messages. An exact match ensures the test fails when the error wording changes, keeping assertions tightly coupled to the expected behavior.
 
 ## Assert exact expectations
 
