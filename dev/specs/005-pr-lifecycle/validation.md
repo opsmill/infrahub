@@ -101,4 +101,15 @@ Per-test identifiers, exact commands, ISO timestamps, environments, and verbatim
 All 84 unit tests and 36 upstream assertions passed after dashboard integration. The complete
 persisted body for the captured inventory is 49,914 characters. A synthetic completed active-cycle
 state is 58,974 of 60,000 characters. These checks retain every PR row and all active proof receipts.
-Comprehensive review and final pre-CI results are pending.
+The final review found two issues, both fixed with regressions: a delayed reopen could hide newer
+activity, and an unsuccessful label write could report success. All 86 unit tests now pass.
+See [review and resolution](review-report.md), [final check output](evidence/final-validation.txt),
+[per-test report](opsmill-implement-report.md), and [read-only dashboard preview](evidence/dashboard-preview.md).
+
+Final Ruff, formatting, main lint, whole-repository type checks, and YAML checks passed.
+Actionlint passes with the intentional constant-false mutation guard diagnostic excluded;
+shellcheck is unavailable. YAML was run with the generated nested virtual environment temporarily
+outside the tree. The default testcontainers command hits a macOS CPU-metadata error; its tests
+pass with the disclosed external shim (10 passed, 2 skipped). This is an environment-qualified
+result, not a claim that the default command passed. Hosted testing and mutation capacity still
+block activation.

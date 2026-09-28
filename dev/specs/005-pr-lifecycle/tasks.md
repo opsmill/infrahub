@@ -66,11 +66,11 @@ reuse, state-only edits, no mention/comment spam, and preserved last-success tim
 ## Phase 7 — Cross-cutting validation and delivery
 
 - [ ] T027 Complete the full source acceptance matrix with evidence in `dev/specs/005-pr-lifecycle/validation.md`; resolve any four-pass/backlog failures before claiming daily coverage and document residual polling/approval races.
-- [ ] T028 Run focused unit/upstream tests, formatting, Ruff/type checks, YAML/action/Markdown lint, and applicable `.agents/commands/pre-ci.md` checks; record exact commands/results in `dev/specs/005-pr-lifecycle/validation.md`.
-- [ ] T029 Run the implemented read-only production inventory and summarize exclusions, would-remind/warn entries, eventual candidates, request counts, and budget justification in `dev/specs/005-pr-lifecycle/validation.md` without posting notices.
+- [X] T028 Run focused unit/upstream tests, formatting, Ruff/type checks, YAML/action/Markdown lint, and applicable `.agents/commands/pre-ci.md` checks; record exact commands/results in `dev/specs/005-pr-lifecycle/validation.md`.
+- [X] T029 Run the implemented read-only production inventory and summarize exclusions, would-remind/warn entries, eventual candidates, request counts, and budget justification in `dev/specs/005-pr-lifecycle/validation.md` without posting notices.
 - [ ] T030 Execute an independently guarded hosted test harness against a named authorized isolated repository; prove timing, labels/comments, effective token permissions, continuation/cache loss, and fresh-approval handling; record evidence in `dev/specs/005-pr-lifecycle/validation.md`.
-- [ ] T031 Explain the implemented clocks, eligibility, and safeguards in `dev/knowledge/pr-lifecycle.md`, and finalize `dev/guides/pr-lifecycle.md` with mode/label/dashboard operation, trust/adoption, body-size/cache/gate recovery, rollback, and separate post-rollout verification instructions.
-- [ ] T032 Prepare the combined reviewable PR description from verified results in `dev/specs/005-pr-lifecycle/validation.md`, separating restoration evidence from new behavior and explicitly leaving production recovery unverified; do not merge or activate cleanup.
+- [X] T031 Explain the implemented clocks, eligibility, and safeguards in `dev/knowledge/pr-lifecycle.md`, and finalize `dev/guides/pr-lifecycle.md` with mode/label/dashboard operation, trust/adoption, body-size/cache/gate recovery, rollback, and separate post-rollout verification instructions.
+- [X] T032 Prepare the combined reviewable PR description from verified results in `dev/specs/005-pr-lifecycle/validation.md`, separating restoration evidence from new behavior and explicitly leaving production recovery unverified; do not merge or activate cleanup.
 
 ## Dependencies and parallel opportunities
 
@@ -82,6 +82,7 @@ tasks edit the same utility/test files and should remain serial to avoid conflic
 Within US1–US4, fixture design and operator-document drafting can proceed independently from code;
 no `[P]` marker is assigned to tasks that depend on unfinished behavior in the shared utility.
 
+T027 remains partial: local acceptance and four-pass fixtures pass, but hosted capacity is unverified.
 T030 requires a named authorized test repository and suitable credentials; this input is not yet
 available. It blocks hosted validation and activation, not offline implementation. T032 additionally
 requires applicable pre-CI success. Post-merge scheduled production verification is explicitly

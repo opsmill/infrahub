@@ -1,0 +1,199 @@
+Final validation assembled 2026-09-28T13:48:53.803793+00:00
+Reviewed implementation: 92c232e5e62ec2c8518e3a6a8b4d66c1f775a1e3
+Environment: macOS arm64, Python 3.14.5, Node 24.19
+
+Command: .venv/bin/python -m unittest utilities.tests.test_pr_lifecycle -v
+Output collected: 2026-09-28T13:47:46.108525+00:00
+Exit status: 0
+test_delayed_reopen_observation_preserves_newer_activity (utilities.tests.test_pr_lifecycle.TestActivity.test_delayed_reopen_observation_preserves_newer_activity) ... ok
+test_head_change_uses_observation_not_commit_date (utilities.tests.test_pr_lifecycle.TestActivity.test_head_change_uses_observation_not_commit_date) ... ok
+test_human_comment_cancels_warning (utilities.tests.test_pr_lifecycle.TestActivity.test_human_comment_cancels_warning) ... ok
+test_human_reserved_label_and_forged_marker_count_as_activity (utilities.tests.test_pr_lifecycle.TestActivity.test_human_reserved_label_and_forged_marker_count_as_activity) ... ok
+test_inactivity_survives_weekly_owned_comment_and_recovery (utilities.tests.test_pr_lifecycle.TestActivity.test_inactivity_survives_weekly_owned_comment_and_recovery) ... ok
+test_other_bot_and_edited_owned_comment_reset (utilities.tests.test_pr_lifecycle.TestActivity.test_other_bot_and_edited_owned_comment_reset) ... ok
+test_reopened_clears_old_warning_and_notice (utilities.tests.test_pr_lifecycle.TestActivity.test_reopened_clears_old_warning_and_notice) ... ok
+test_unknown_raw_or_fingerprint_change_resets (utilities.tests.test_pr_lifecycle.TestActivity.test_unknown_raw_or_fingerprint_change_resets) ... ok
+test_bot_and_keep_open_are_independent (utilities.tests.test_pr_lifecycle.TestCleanupPolicy.test_bot_and_keep_open_are_independent) ... ok
+test_legacy_stale_does_not_authorize_closure (utilities.tests.test_pr_lifecycle.TestCleanupPolicy.test_legacy_stale_does_not_authorize_closure) ... ok
+test_partial_approval_and_comment_do_not_remove_exemption (utilities.tests.test_pr_lifecycle.TestCleanupPolicy.test_partial_approval_and_comment_do_not_remove_exemption) ... ok
+test_receipt_deadline_must_match_server_and_immutable_interval (utilities.tests.test_pr_lifecycle.TestCleanupPolicy.test_receipt_deadline_must_match_server_and_immutable_interval) ... ok
+test_unfinalized_warning_cannot_close (utilities.tests.test_pr_lifecycle.TestCleanupPolicy.test_unfinalized_warning_cannot_close) ... ok
+test_apply_mode_is_rejected_before_transport (utilities.tests.test_pr_lifecycle.TestCliSkeleton.test_apply_mode_is_rejected_before_transport) ... ok
+test_fixture_files_are_valid_json (utilities.tests.test_pr_lifecycle.TestCliSkeleton.test_fixture_files_are_valid_json) ... ok
+test_mismatched_server_identity_is_rejected (utilities.tests.test_pr_lifecycle.TestCliSkeleton.test_mismatched_server_identity_is_rejected) ... ok
+test_naive_clock_is_rejected_before_transport (utilities.tests.test_pr_lifecycle.TestCliSkeleton.test_naive_clock_is_rejected_before_transport) ... ok
+test_observe_default_reports_incomplete_without_writes (utilities.tests.test_pr_lifecycle.TestCliSkeleton.test_observe_default_reports_incomplete_without_writes) ... ok
+test_repository_guard_precedes_transport (utilities.tests.test_pr_lifecycle.TestCliSkeleton.test_repository_guard_precedes_transport) ... ok
+test_complete_pagination_and_duplicate_failure (utilities.tests.test_pr_lifecycle.TestCollection.test_complete_pagination_and_duplicate_failure) ... ok
+test_empty_inventory_succeeds_without_mutations (utilities.tests.test_pr_lifecycle.TestCollection.test_empty_inventory_succeeds_without_mutations) ... ok
+test_missing_page_fails_instead_of_partial_success (utilities.tests.test_pr_lifecycle.TestCollection.test_missing_page_fails_instead_of_partial_success) ... ok
+test_bot_rows_require_no_supplemental_reads (utilities.tests.test_pr_lifecycle.TestDashboard.test_bot_rows_require_no_supplemental_reads) ... ok
+test_compact_history_detects_old_edits_and_owned_deletion (utilities.tests.test_pr_lifecycle.TestDashboard.test_compact_history_detects_old_edits_and_owned_deletion) ... ok
+test_explicit_adoption_and_duplicate_rejection (utilities.tests.test_pr_lifecycle.TestDashboard.test_explicit_adoption_and_duplicate_rejection) ... ok
+test_final_refresh_reuses_issue_and_preserves_success_on_failure (utilities.tests.test_pr_lifecycle.TestDashboard.test_final_refresh_reuses_issue_and_preserves_success_on_failure) ... ok
+test_finalization_keeps_label_definition_with_open_references (utilities.tests.test_pr_lifecycle.TestDashboard.test_finalization_keeps_label_definition_with_open_references) ... ok
+test_forged_current_digest_cannot_hide_post_warning_human_activity (utilities.tests.test_pr_lifecycle.TestDashboard.test_forged_current_digest_cannot_hide_post_warning_human_activity) ... ok
+test_full_inventory_with_active_cycles_fits_after_receipt_compaction (utilities.tests.test_pr_lifecycle.TestDashboard.test_full_inventory_with_active_cycles_fits_after_receipt_compaction) ... ok
+test_label_recovery_rejects_two_identical_added_events (utilities.tests.test_pr_lifecycle.TestDashboard.test_label_recovery_rejects_two_identical_added_events) ... ok
+test_missing_warning_proof_prevents_successful_refresh (utilities.tests.test_pr_lifecycle.TestDashboard.test_missing_warning_proof_prevents_successful_refresh) ... ok
+test_oversize_and_partial_preview_fail_closed (utilities.tests.test_pr_lifecycle.TestDashboard.test_oversize_and_partial_preview_fail_closed) ... ok
+test_preview_escapes_content_and_has_honest_clocks (utilities.tests.test_pr_lifecycle.TestDashboard.test_preview_escapes_content_and_has_honest_clocks) ... ok
+test_pruning_rebases_receipts_without_resetting_activity (utilities.tests.test_pr_lifecycle.TestDashboard.test_pruning_rebases_receipts_without_resetting_activity) ... ok
+test_render_places_each_category_once_with_plain_actors (utilities.tests.test_pr_lifecycle.TestDashboard.test_render_places_each_category_once_with_plain_actors) ... ok
+test_repeated_confirmed_deliveries_keep_bounded_state_and_old_edit_detection (utilities.tests.test_pr_lifecycle.TestDashboard.test_repeated_confirmed_deliveries_keep_bounded_state_and_old_edit_detection) ... ok
+test_visible_body_survives_intermediate_persistence (utilities.tests.test_pr_lifecycle.TestDashboard.test_visible_body_survives_intermediate_persistence) ... ok
+test_ambiguous_post_receipt_is_not_retried_or_assumed (utilities.tests.test_pr_lifecycle.TestLedger.test_ambiguous_post_receipt_is_not_retried_or_assumed) ... ok
+test_corrupt_unsupported_missing_state_fails (utilities.tests.test_pr_lifecycle.TestLedger.test_corrupt_unsupported_missing_state_fails) ... ok
+test_dashboard_provenance_and_duplicates (utilities.tests.test_pr_lifecycle.TestLedger.test_dashboard_provenance_and_duplicates) ... ok
+test_failed_finalization_preserves_pending_intent (utilities.tests.test_pr_lifecycle.TestLedger.test_failed_finalization_preserves_pending_intent) ... ok
+test_generation_and_unversioned_human_edit_conflict (utilities.tests.test_pr_lifecycle.TestLedger.test_generation_and_unversioned_human_edit_conflict) ... ok
+test_recovery_never_trusts_forged_author_or_edited_content (utilities.tests.test_pr_lifecycle.TestLedger.test_recovery_never_trusts_forged_author_or_edited_content) ... ok
+test_roundtrip_and_guard (utilities.tests.test_pr_lifecycle.TestLedger.test_roundtrip_and_guard) ... ok
+test_unresolved_intent_survives_retention (utilities.tests.test_pr_lifecycle.TestLedger.test_unresolved_intent_survives_retention) ... ok
+test_apply_transport_rejects_closing_merging_and_manual_label_changes (utilities.tests.test_pr_lifecycle.TestMutationLifecycle.test_apply_transport_rejects_closing_merging_and_manual_label_changes) ... ok
+test_delayed_missing_finalization_gets_fresh_full_warning (utilities.tests.test_pr_lifecycle.TestMutationLifecycle.test_delayed_missing_finalization_gets_fresh_full_warning) ... ok
+test_failed_receipt_persistence_recovers_before_activity_comparison (utilities.tests.test_pr_lifecycle.TestMutationLifecycle.test_failed_receipt_persistence_recovers_before_activity_comparison) ... ok
+test_gate_refresh_catches_approval_and_cleanup_keeps_keep_open (utilities.tests.test_pr_lifecycle.TestMutationLifecycle.test_gate_refresh_catches_approval_and_cleanup_keeps_keep_open) ... ok
+test_human_activity_cancels_once_and_preserves_keep_open (utilities.tests.test_pr_lifecycle.TestMutationLifecycle.test_human_activity_cancels_once_and_preserves_keep_open) ... ok
+test_incomplete_post_gate_refresh_disables_entire_closer (utilities.tests.test_pr_lifecycle.TestMutationLifecycle.test_incomplete_post_gate_refresh_disables_entire_closer) ... ok
+test_initial_delivery_survives_deadline_edit_failure_without_arming (utilities.tests.test_pr_lifecycle.TestMutationLifecycle.test_initial_delivery_survives_deadline_edit_failure_without_arming) ... ok
+test_low_mutation_quota_stops_before_any_write (utilities.tests.test_pr_lifecycle.TestMutationLifecycle.test_low_mutation_quota_stops_before_any_write) ... ok
+test_noop_reconciliation_collects_each_pr_only_once (utilities.tests.test_pr_lifecycle.TestMutationLifecycle.test_noop_reconciliation_collects_each_pr_only_once) ... ok
+test_overlapping_comment_and_timeline_receipts_are_one_delivery (utilities.tests.test_pr_lifecycle.TestMutationLifecycle.test_overlapping_comment_and_timeline_receipts_are_one_delivery) ... ok
+test_real_shaped_comment_receipts_recover_and_rerun_without_duplicate (utilities.tests.test_pr_lifecycle.TestMutationLifecycle.test_real_shaped_comment_receipts_recover_and_rerun_without_duplicate) ... ok
+test_rejected_label_mutation_cannot_report_success (utilities.tests.test_pr_lifecycle.TestMutationLifecycle.test_rejected_label_mutation_cannot_report_success) ... ok
+test_successful_gate_and_finalization_remove_only_owned_labels (utilities.tests.test_pr_lifecycle.TestMutationLifecycle.test_successful_gate_and_finalization_remove_only_owned_labels) ... ok
+test_warning_migration_preserves_legacy_label_but_starts_new_receipt (utilities.tests.test_pr_lifecycle.TestMutationLifecycle.test_warning_migration_preserves_legacy_label_but_starts_new_receipt) ... ok
+test_budget_stops_before_partial_collection (utilities.tests.test_pr_lifecycle.TestReliability.test_budget_stops_before_partial_collection) ... ok
+test_complete_observe_has_no_write_transport_operations (utilities.tests.test_pr_lifecycle.TestReliability.test_complete_observe_has_no_write_transport_operations) ... ok
+test_continuation_requires_cache_replacement_or_semantic_progress (utilities.tests.test_pr_lifecycle.TestReliability.test_continuation_requires_cache_replacement_or_semantic_progress) ... ok
+test_current_and_larger_bot_backlogs_use_inventory_only (utilities.tests.test_pr_lifecycle.TestReliability.test_current_and_larger_bot_backlogs_use_inventory_only) ... ok
+test_current_mixed_backlog_fits_github_token_quota (utilities.tests.test_pr_lifecycle.TestReliability.test_current_mixed_backlog_fits_github_token_quota) ... ok
+test_exact_cache_key_and_ref_metadata (utilities.tests.test_pr_lifecycle.TestReliability.test_exact_cache_key_and_ref_metadata) ... ok
+test_full_human_inventory_with_sufficient_quota (utilities.tests.test_pr_lifecycle.TestReliability.test_full_human_inventory_with_sufficient_quota) ... ok
+test_http_transport_only_sends_get_and_fixed_graphql_query (utilities.tests.test_pr_lifecycle.TestReliability.test_http_transport_only_sends_get_and_fixed_graphql_query) ... ok
+test_incomplete_observation_never_authorizes_closure (utilities.tests.test_pr_lifecycle.TestReliability.test_incomplete_observation_never_authorizes_closure) ... ok
+test_independent_candidate_verification_rejects_unknown_state (utilities.tests.test_pr_lifecycle.TestReliability.test_independent_candidate_verification_rejects_unknown_state) ... ok
+test_insufficient_quota_stops_before_human_detail_reads (utilities.tests.test_pr_lifecycle.TestReliability.test_insufficient_quota_stops_before_human_detail_reads) ... ok
+test_rate_buckets_and_actual_http_budget_are_independent (utilities.tests.test_pr_lifecycle.TestReliability.test_rate_buckets_and_actual_http_budget_are_independent) ... ok
+test_workflow_has_only_trusted_observation (utilities.tests.test_pr_lifecycle.TestReliability.test_workflow_has_only_trusted_observation) ... ok
+test_fresh_reviewers_reroute_ordinary_and_warning_names_all (utilities.tests.test_pr_lifecycle.TestReminderLifecycle.test_fresh_reviewers_reroute_ordinary_and_warning_names_all) ... ok
+test_human_reset_after_milestone_neutralizes_only_once (utilities.tests.test_pr_lifecycle.TestReminderLifecycle.test_human_reset_after_milestone_neutralizes_only_once) ... ok
+test_missed_middle_window_posts_only_final (utilities.tests.test_pr_lifecycle.TestReminderLifecycle.test_missed_middle_window_posts_only_final) ... ok
+test_observation_uses_saved_ordinary_receipt_without_writes (utilities.tests.test_pr_lifecycle.TestReminderLifecycle.test_observation_uses_saved_ordinary_receipt_without_writes) ... ok
+test_ordinary_receipt_recovers_and_rate_limits_by_delivery (utilities.tests.test_pr_lifecycle.TestReminderLifecycle.test_ordinary_receipt_recovers_and_rate_limits_by_delivery) ... ok
+test_weekly_warning_milestones_and_gate (utilities.tests.test_pr_lifecycle.TestReminderLifecycle.test_weekly_warning_milestones_and_gate) ... ok
+test_calendar_windows_and_strongest_suppression (utilities.tests.test_pr_lifecycle.TestReminderPolicy.test_calendar_windows_and_strongest_suppression) ... ok
+test_latest_status_per_context_replaces_historical_failure (utilities.tests.test_pr_lifecycle.TestReminderPolicy.test_latest_status_per_context_replaces_historical_failure) ... ok
+test_ordinary_seven_day_cadence_and_exempt_messages (utilities.tests.test_pr_lifecycle.TestReminderPolicy.test_ordinary_seven_day_cadence_and_exempt_messages) ... ok
+test_routing_and_readiness_precedence (utilities.tests.test_pr_lifecycle.TestReminderPolicy.test_routing_and_readiness_precedence) ... ok
+test_complete_same_head_snapshot_accepts_explicit_null_review_rule (utilities.tests.test_pr_lifecycle.TestSnapshotBoundary.test_complete_same_head_snapshot_accepts_explicit_null_review_rule) ... ok
+test_missing_aggregate_error_or_head_mismatch_fails (utilities.tests.test_pr_lifecycle.TestSnapshotBoundary.test_missing_aggregate_error_or_head_mismatch_fails) ... ok
+test_review_comments_and_timeline_are_collected (utilities.tests.test_pr_lifecycle.TestSnapshotBoundary.test_review_comments_and_timeline_are_collected) ... ok
+test_unrelated_head_repository_metadata_is_not_activity (utilities.tests.test_pr_lifecycle.TestSnapshotBoundary.test_unrelated_head_repository_metadata_is_not_activity) ... ok
+
+----------------------------------------------------------------------
+Ran 86 tests in 0.246s
+
+OK
+
+Command: STALE_SOURCE_DIR=/tmp /Users/Dimitris/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node utilities/tests/pr_lifecycle_upstream.mjs
+Output collected: 2026-09-28T13:43:33.542778+00:00
+Exit status: 0
+Verifying actions/stale source at 4391f3da665fdf50b6810c1a66712fb9ba21aa93
+PASS 61-day inactive PR exceeds 60-day threshold
+PASS weekly bot comment prevents 60-day stale threshold
+PASS no updates after warning allows closure
+PASS bot reminder blocks closure even if only label events are returned
+PASS bot reminder with an additional event removes stale label
+PASS disabling stale removal still lets bot reminder postpone closure
+PASS human comment cancels warning
+PASS commit/update with non-label event cancels warning
+PASS freshly marked timestamp prevents same-run closure
+9 assertions passed against pinned upstream method bodies; API responses are fixtures, no GitHub writes.
+PASS low-budget first scan persists progress
+PASS second scan advances to previously unprocessed items
+PASS third scan reaches tail
+PASS complete scan resets saved state
+PASS lost cache with sufficient budget covers all items
+PASS failed cache replacement processes same slice first time
+PASS failed cache replacement processes same slice again
+16 total fixture assertions passed. Cache service/token permissions remain unverified locally.
+PASS fresh gate allows stock zero-day closure after bot reminder
+PASS human comment after gate prevents stock closure
+PASS arbitrary recent update does not stop zero-day closer
+PASS future updated timestamp defers closure
+20 assertions passed including gate integration
+PASS full processor closes a currently gated PR
+PASS full processor excludes legacy stale-only PR
+PASS full processor excludes prior-attempt gate
+PASS full processor keep-open label prevents closure
+PASS full processor human comment since gate vetoes closure
+PASS full processor cached ID skips newly eligible gate
+26 assertions passed including full processor gating
+PASS mutable pagination covers 116 candidates within four passes
+PASS mutable pagination 116 needs continuation
+PASS mutable pagination covers 574 candidates within four passes
+PASS mutable pagination 574 needs continuation
+PASS interrupted state containing newly due IDs requires fresh sweep
+PASS expired cache restarts safely from full inventory
+PASS upstream reports attempted close despite swallowed API failure
+PASS independent candidate read detects swallowed close failure
+34 assertions passed; processor pagination, cache loss, and close failure use pinned upstream bodies.
+PASS 574 cached candidates complete within four passes
+PASS 574 cached candidates require four passes
+{"largerCached":{"passes":[{"attempted":0,"remaining":574},{"attempted":300,"remaining":274},{"attempted":174,"remaining":100},{"attempted":100,"remaining":0}],"remaining":0},"assertions":36}
+(node:57789) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Command: uv run invoke format
+Output collected: 2026-09-28T13:47:38.028463+00:00
+Exit status: 0
+ - [MAIN] Format code with ruff
+1 file reformatted, 48 files left unchanged
+All checks passed!
+ - [MAIN] All formatters have been executed!
+ - [BACKEND] Format code with ruff
+2291 files left unchanged
+All checks passed!
+ - [BACKEND] All formatters have been executed!
+
+Command: uv run invoke main.lint
+Output collected: 2026-09-28T13:48:02.229888+00:00
+Exit status: 0
+ - [MAIN] Check code with ruff
+All checks passed!
+ - [MAIN] All linters have been executed!
+
+Command: .venv/bin/ruff check . --exclude python_sdk
+Output collected: 2026-09-28T13:47:46.219521+00:00
+Exit status: 0
+All checks passed!
+
+Command: .venv/bin/ruff format --check .
+Output collected: 2026-09-28T13:47:46.275520+00:00
+Exit status: 0
+2798 files already formatted
+
+Command: .venv/bin/ty check .
+Output collected: 2026-09-28T13:47:47.374165+00:00
+Exit status: 0
+All checks passed!
+
+Command: .venv/bin/yamllint -s .
+Output collected: 2026-09-28T13:47:59.065919+00:00
+Exit status: 0
+
+Command: /tmp/ifc-3240-tools/actionlint -shellcheck= -ignore 'constant expression "false" in condition' .github/workflows/manage-stale-prs.yml
+Output collected: 2026-09-28T13:47:45.725131+00:00
+Exit status: 0
+
+Actionlint exception: intentional hard-false mutation guard only; external shellcheck unavailable.
+YAML check: generated python_testcontainers/.venv temporarily moved outside tree and restored; unmodified repository configuration. Initial check saw only third-party venv warnings.
+Review regressions failed before fixes (four subcases), then full 86-test suite passed.
+
+Final changed Markdown command: /tmp/ifc-3240-tools/markdownlint-cli2 dev/specs/005-pr-lifecycle/**/*.md dev/knowledge/pr-lifecycle.md dev/guides/pr-lifecycle.md
+markdownlint-cli2 v0.23.3 (markdownlint v0.41.1)
+Finding: dev/specs/005-pr-lifecycle/**/*.md dev/knowledge/pr-lifecycle.md dev/guides/pr-lifecycle.md !docs/docs/reference/** !docs/docs/release-notes/** !**/AGENTS.md
+Linting: 18 files
+Summary: 0 issues in 0 files

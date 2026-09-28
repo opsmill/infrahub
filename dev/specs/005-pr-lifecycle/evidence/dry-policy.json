@@ -110,5 +110,7 @@
     7749
   ],
   "lifecycle_mutations": 0,
-  "method": "Offline replay of complete captured read-only inventory; no stored lifecycle ledger existed. Final validation will repeat against final code."
+  "method": "Final offline replay of complete captured read-only inventory; no stored lifecycle ledger existed. No additional GitHub reads or writes.",
+  "implementation_commit": "92c232e5e62ec2c8518e3a6a8b4d66c1f775a1e3",
+  "replayed_at": "2026-09-28T13:48:53.803793+00:00"
 }
