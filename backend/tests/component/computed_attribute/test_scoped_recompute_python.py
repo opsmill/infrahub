@@ -129,6 +129,10 @@ class TestScopedRecomputePython(ScopedRecomputeTestBase):
         branch_schema.set(name="TestPerson", schema=person_schema)
         await commit_schema_branch(db=db, branch=branch, schema_branch=branch_schema)
 
+        # The premise: without this the branch owns no automation and the flow below has nothing
+        # to select, which would pass for the wrong reason.
+        assert branch.name in registry.get_altered_schema_branches()
+
         await computed_attribute_setup_python(
             context=self._context(admin_account, branch),
             branch_name=branch.name,

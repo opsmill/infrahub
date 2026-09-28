@@ -120,12 +120,12 @@ async def create_transform01(db: InfrahubDatabase, branch_name: str) -> Node:
 async def commit_schema_branch(*, db: InfrahubDatabase, branch: Branch, schema_branch: SchemaBranch) -> None:
     """Register an edited schema on its branch and persist the new hash.
 
-    The order matters: a gather reads the registry and the stored hash, so a site that skips a
-    step fails later and somewhere else.
+    Processed first, the way the API path does it, because the hash is taken from the registry and
+    has to describe the schema a gather then reads.
     """
+    schema_branch.process()
     registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
     branch.update_schema_hash()
-    schema_branch.process()
     await branch.save(db=db)
 
 
