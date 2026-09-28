@@ -45,7 +45,10 @@ async def get_file(
         raise HTTPException(status_code=403, detail=f"Use {file_url.path} instead.")
 
     content = await ArtifactContentReader(
-        db=db, storage=registry.storage, verify_checksum=config.SETTINGS.storage.verify_artifact_checksum
+        db=db,
+        storage=registry.storage,
+        verify_checksum=config.SETTINGS.storage.verify_artifact_checksum,
+        verify_file_objects=config.SETTINGS.storage.encryption_enabled,
     ).read_stored_object(storage_id=identifier)
     return Response(content=content)
 

@@ -134,6 +134,8 @@ python -m utilities.db_backup neo4j backup \
 
 The [object storage](../../../artifact-file-storage/overview.mdx) layer holds all file content (file objects and artifacts) outside of the graph database. The graph database references this content through `storage_id` values, so both must be backed up together to maintain consistency.
 
+If [storage encryption](../../../artifact-file-storage/encryption.mdx) is enabled, the backups do not contain the encryption key: Infrahub derives it from `INFRAHUB_SECURITY_SECRET_KEY`. Keep that secret in your secrets manager, apart from the backups, and restore the database and object-storage backups together with the secret that was in use when they were taken.
+
 <Tabs groupId="storage-type" queryString>
 <TabItem value="s3" label="S3 Storage" default>
 

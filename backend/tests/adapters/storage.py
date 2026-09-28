@@ -1,7 +1,7 @@
 from typing import BinaryIO
 
 from infrahub.exceptions import NodeNotFoundError
-from infrahub.storage import InfrahubObjectStorage
+from infrahub.storage import InfrahubObjectStorage, StoredContent
 
 
 class DummyObjectStorage(InfrahubObjectStorage):
@@ -22,6 +22,9 @@ class DummyObjectStorage(InfrahubObjectStorage):
         if identifier not in self._files:
             raise NodeNotFoundError(node_type="StorageObject", identifier=identifier)
         return self._files[identifier]
+
+    def read(self, identifier: str) -> StoredContent:
+        return StoredContent(content=self.retrieve_binary(identifier=identifier), authenticated=False)
 
     def delete(self, identifier: str) -> None:
         self._files.pop(identifier, None)
