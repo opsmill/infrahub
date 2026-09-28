@@ -709,7 +709,7 @@ class TestReliability(unittest.TestCase):
         self.assertNotIn("workflow_dispatch:\n    inputs:", workflow)
         observe_job, mutation_job = workflow.split("  mutate:", 1)
         self.assertNotIn("write", observe_job)
-        self.assertIn("if: ${{ false }}", mutation_job)
+        self.assertIn("\n    if: false\n", mutation_job)
         self.assertEqual(mutation_job.count("uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93"), 4)
         self.assertIn("if: always()", mutation_job)
         self.assertIn("ref: stable", workflow)
