@@ -57,6 +57,8 @@ Mark deprecated docs clearly. Don't delete—update with pointers to replacement
 
 ## Current Knowledge
 
+- [PR lifecycle](knowledge/pr-lifecycle.md) - GitHub PR activity, reminders, cleanup, and coverage
+
 Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 
 - [architecture.md](knowledge/backend/architecture.md) - Backend architecture overview
@@ -98,6 +100,8 @@ Architecture Decision Records in [adr/](adr/):
 Start a new ADR from [template.md](adr/template.md).
 
 ## Current Guides
+
+- [Operate PR lifecycle observation](guides/pr-lifecycle.md) - Dry runs, coverage, and recovery
 
 Backend guides in [guides/backend/](guides/backend/):
 

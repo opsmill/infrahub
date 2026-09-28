@@ -1,33 +1,104 @@
 # Validation status
 
-## Passed locally
+## Delivery boundary
 
-- `git diff --check`: no whitespace errors in the tracked workflow diff.
-- `uv --cache-dir /tmp/ifc-3240-uv-cache tool run --from yamllint yamllint -s .github/workflows/manage-stale-prs.yml`:
-  workflow YAML lint passed; no project dependency was added.
-- Pinned-source fixture `node dev/specs/005-pr-lifecycle/evidence/stale-repro.mjs`: 26 assertions passed against
-  the pinned upstream processor and state method bodies. See [research](research.md) for scope
-  and limitations. Node uses its experimental TypeScript stripping API for this investigation.
-- Jira description and supplied handoff were compared against the specification; see
-  [alignment check](alignment-check.md).
+The delivered workflow enables observation only. Its mutation job has an unconditional false guard;
+no manual input, repository variable, or secret can enable it. Local tests use fake mutation
+transports. Live validation used read-only GitHub requests. No lifecycle comment, label, dashboard,
+cache mutation, closure, merge, or production workflow dispatch was performed.
 
-- `markdownlint-cli2 'dev/specs/005-pr-lifecycle/**/*.md' --config .markdownlint-cli2.yaml`:
-  all 13 Markdown documents passed with zero issues.
-- `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`:
-  resolved the feature and all planning artifacts successfully.
-- Independent Spec Kit critique: both must-address gaps and five recommendations incorporated;
-  [report](critiques/critique-20260928.md). Task-format validation found 32 sequential unchecked tasks.
-- Agent-context hook refreshed `CLAUDE.md` to the plan. Optional automatic commit hooks are disabled
-  in repository configuration; no local checkpoint commit was created in this planning stage.
+Hosted mutation validation and production recovery remain unverified. A named authorized isolated
+repository has not been supplied. This blocks activation, not review of the observation-only PR.
 
-## Pending
+## Real inventory dry run
 
-- Companion implementation/integration tests, workflow action lint, and applicable full
-  pre-CI checks. The focused checks above do not constitute a completed pre-CI run.
-- Full restoration observability, API budget measurement under the combined workflow, and hosted
-  cache save/restore verification. The current budget is provisional, as described in research.
-- Local commits and PR delivery. No push, merge, or production workflow dispatch has occurred.
-- Authorized production rollout and the next scheduled run before claiming production recovery.
+The capture began at `2026-09-28T13:08:21.967171+00:00`. The collector evaluated 117 open PRs:
+112 human-authored and five excluded bots. All required pages and same-head readiness queries
+completed. It made 906 logical REST reads and 112 GraphQL queries, with zero lifecycle writes.
+One in-flight read was interrupted to checkpoint the capture; the resumed scan reused saved
+responses and fetched only missing paths. The total HTTP attempt count includes that interrupted
+request. Raw responses remain local and are not committed.
 
-The current workflow diff changes only cache permissions, concurrency, and operation budget.
-It preserves the pinned action, repository guard, issue exclusions, and disabled PR closure.
+The captured inventory is a polling observation over an interval, not an atomic GitHub snapshot.
+The token exposed a 5,000 core allowance; this is not proof of hosted `GITHUB_TOKEN` capacity.
+See [sanitized inventory evidence](evidence/live-inventory.json).
+
+Offline replay of the captured responses through the policy engine proposes:
+
+| Result | Count |
+| --- | ---: |
+| Ordinary reminders | 51 |
+| Fresh 14-day warnings | 12 |
+| Closure candidates | 0 |
+| Excluded bots | 5 |
+| Draft | 56 |
+| Blocked | 36 |
+| Waiting for review | 13 |
+| Ready to merge | 5 |
+| Waiting for author | 2 |
+
+These are proposed actions, not deliveries. No lifecycle ledger existed. Each old eligible PR
+therefore needs a fresh confirmed warning; legacy labels do not authorize closure. The 63 proposed
+notices make first-run volume explicit for activation review. See
+[sanitized policy evidence](evidence/dry-policy.json).
+
+## Acceptance matrix
+
+| Requirement | Evidence and scope |
+| --- | --- |
+| Infrahub-only, issues excluded | Repository guard and transport allowlist tests; observer inventories PRs only |
+| Observation has no lifecycle writes | Read-only transport tests, read permissions, constant-false mutation job, live capture |
+| 60-day inactivity and fresh 14-day warning | Boundary and legacy-label tests, server receipt validation |
+| Fixed 14/7/1 notices | UTC date-window, daily jitter, missed-window, rerun, and strongest-notice tests |
+| Weekly reminders including exempt humans | Cadence and ordinary-message tests with approvals, drafts, and keep-open |
+| Correct author/reviewer/team action | Routing matrix, decisive-review reduction, same-head readiness tests |
+| Approval, keep-open, and bots exempt closure | Independent exemption and post-gate approval tests |
+| Human activity resets; reopening starts fresh | Feed, fingerprint, changed-head, reopen, and human-edit tests |
+| Own writes do not reset clocks | Receipt recovery, overlapping feeds, and full lifecycle progression tests |
+| No duplicate or ambiguous delivery | Pending intents, failed receipt persistence, marker/content matching, and generation conflict tests |
+| Only pinned stale closes | Restricted write transport rejects close/merge operations; pinned processor gate fixture |
+| Complete inventory and actual outcomes | Pagination, quota reserve, incomplete-read suppression, independent candidate verification |
+| Cache continuation and shifting pages | 36 pinned-source assertions; 574 fully cached candidates need four passes |
+| Dashboard and final reconciliation | Rendering, adoption, generation conflict, full-body size, retention, and last-success timestamp tests |
+| Hosted timing, permissions, and cache service | Deferred until a named authorized isolated repository is available |
+| Production recovery | Requires a later authorized rollout and scheduled-run evidence |
+
+The full lifecycle policy test reaches a current gate. The separate pinned-source fixture proves
+that the upstream processor accepts that gate contract. This local composition does not replace
+a hosted end-to-end run.
+
+## Capacity and residual risks
+
+The current mixed-backlog read estimate fits a 1,000-core allowance with reserve in local fixtures;
+the live capture consumed 906 REST reads. Extra pages, concurrent use, and retries can still exhaust
+quota, so actual response headers and request limits remain authoritative.
+
+Mutation preflight includes fresh eligibility reads and ledger persistence. The first-run proposed
+notice batch exceeds the conservative mutation estimate under a 1,000-core token. It must stop
+before writes; this PR does not claim that batch is operationally ready. Hosted capacity validation
+and any required request-cost optimization remain activation blockers.
+
+Four passes resolve the tested 574-candidate restored-cache fixture. They do not guarantee arbitrary
+backlog sizes, insufficient operation budgets, API outages, or hostile concurrent changes. Exhaustion
+reports exact deferred candidates and fails. The workflow never clears continuation between passes.
+
+An approval or activity can arrive between the final eligibility read and upstream closure. Polling
+also cannot reliably detect a same-resolution human edit-and-reversal during an owned write. These
+residual races require explicit activation review.
+
+## Local checks
+
+Per-test identifiers, exact commands, ISO timestamps, environments, and verbatim passing output:
+
+- [Setup](evidence/phase-1-validation.txt)
+- [Foundations](evidence/phase-2-validation.txt)
+- [Reliability](evidence/phase-3-validation.txt)
+- [Cleanup](evidence/phase-4-validation.txt)
+- [Reminders](evidence/phase-5-validation.txt)
+- [Dashboard and compact state](evidence/phase-6-validation.txt)
+- [Independent pre-CI checks](evidence/pre-ci-independent.txt)
+
+All 84 unit tests and 36 upstream assertions passed after dashboard integration. The complete
+persisted body for the captured inventory is 49,914 characters. A synthetic completed active-cycle
+state is 58,974 of 60,000 characters. These checks retain every PR row and all active proof receipts.
+Comprehensive review and final pre-CI results are pending.

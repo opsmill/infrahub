@@ -162,3 +162,28 @@ jitter does not skip the final reminder. Authenticate dashboard provenance and c
 receipts before closing. Define ledger/label retention and exact cache metadata semantics. These
 clarify execution without changing the 60+14 policy or adding a service. Hosted verification still
 requires a named, authorized isolated repository and suitable test credentials.
+
+## Implementation correction: cached larger backlog
+
+The pinned processor fixture with 574 candidates already in the restored processed-ID set
+requires four passes: the initial pass clears completed cached state without attempting a close;
+the next passes close 300, 174, and 100 PRs as the open-list pagination shifts. Three passes leave
+100 candidates open. The workflow bound is therefore four, with fresh checks and independent
+verification at each pass. This proves the tested fixture sizes, not arbitrary inventory sizes or
+hosted token capacity. Exhaustion still fails visibly with exact remaining candidates.
+
+## Implementation correction: real ledger size
+
+The real 117-PR capture exposed a capacity failure in per-event watermark persistence: the visible
+dashboard was 38,823 characters, while visible body plus compressed state reached 393,443. The
+60,000-character guard correctly rejected it. Store one aggregate digest of each complete external
+feed, excluding exact authenticated receipts, instead of retaining every event hash. Any aggregate
+change resets activity conservatively. Pending label operations preserve a digest of their
+pre-write matching event set so recovery can prove a single added event without full persisted
+history. Final validation must measure the complete body on the captured inventory.
+
+Final compact-state validation fits the captured inventory at 49,914 characters and a synthetic
+completed active-cycle state at 58,974 of 60,000. Confirmed ordinary receipts retire after full
+observation and digest rebasing; active warning proof receipts remain. The independent veto for
+post-warning human activity remains even if persisted digest state is forged. Persisted issue
+links are repository-relative; the local preview uses absolute GitHub links.

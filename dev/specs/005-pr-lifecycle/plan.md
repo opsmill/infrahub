@@ -78,7 +78,7 @@ modules only if implementation reveals a concrete readability problem.
 5. **Close and verify**: run pinned stale with the contract below. Re-fetch every due candidate
    independently; action outputs are attempted operations, not evidence of success. Check cache
    metadata before/after each pass and report unchanged continuation as a failure when work remains.
-6. **Continue if needed**: up to three explicit stale passes in the workflow, each preceded by the
+6. **Continue if needed**: up to four explicit stale passes in the workflow, each preceded by the
    same fresh companion check. Reuse the run/attempt gate; never clear the cache between passes.
    Natural completion resets upstream state. Observe only the exact `_state` cache key on the
 workflow execution ref; record ID, created_at, last_accessed_at, and size_in_bytes. A persisted partial
@@ -148,7 +148,8 @@ pull-requests:write, issues:write, and actions:write; no branch-administration a
 
 Use the [data model](data-model.md) and [interface contracts](contracts/companion.md). The ledger
 holds effective activity independently of raw updated_at, plus enough receipt state to attribute
-this workflow's own writes. Compare feeds and a stable fingerprint on each observation. Treat
+this workflow's own writes. Compare complete external-feed digests and a stable fingerprint on each observation. Exclude only
+exact authenticated own-write receipts before hashing; do not serialize all historic event hashes. Treat
 unknown changes as activity and cancel warnings. Changed head SHA uses observation time; reopening
 uses the server event time and clears old notice state.
 
@@ -186,7 +187,7 @@ silently truncate rows or drop state. Test the observed backlog and a larger syn
 
 The current 1000-operation action budget is provisional. Action operation accounting undercounts
 paginated API work; use actual response rate-limit headers and companion request counts. Prove the
-three-pass bound against full-backlog, cache-loss, interrupted-cache, and shifting-page fixtures.
+four-pass bound against full-backlog, cache-loss, interrupted-cache, and shifting-page fixtures.
 A failed bound is an implementation failure to resolve before rollout, not permission to defer
 unbounded work. Hosted outages still fail visibly rather than falsely asserting daily coverage.
 
@@ -221,7 +222,7 @@ Do not promise that the upstream comment veto covers failed or paginated comment
 1. Extend the existing pinned-source proof into durable offline integration fixtures.
 2. Test then implement collection, ledger recovery, classification, and activity decisions.
 3. Test and implement warning/reminder routing, rendering, and idempotent mutation receipts.
-4. Integrate the workflow gates and three passes; validate real outcomes and zero-write observation.
+4. Integrate the workflow gates and four passes; validate real outcomes and zero-write observation.
 5. Exercise every [acceptance case](source-requirements.md#8-acceptance-matrix), including injected
    failures between write/receipt/ledger steps and approvals arriving during preparation.
 6. Run [quickstart checks](quickstart.md), applicable pre-CI, isolated hosted integration, and a
@@ -232,8 +233,9 @@ Do not promise that the upstream comment veto covers failed or paginated comment
 
 Prune finalized state for confirmed closed/merged PRs after gate cleanup; never prune unresolved
 operations. A reopened PR starts from its server reopening event and trusted comment history.
-Keep only active-cycle and most-recent ordinary-notice receipts plus required attribution watermarks;
-older trusted comments remain server-side recovery evidence. Delete abandoned owned run-label
+Keep pending and active-cycle proof receipts plus compact external-feed digests. Retire confirmed
+ordinary receipts after complete observation, preserving delivery timestamps and rebasing the
+external digest; older trusted comments remain server-side recovery evidence. Delete abandoned owned run-label
 definitions after confirming no open PR references them. Stress repeated cycles and historical PRs.
 
 The issue ledger, authenticated write receipts, and bounded repeated stale invocations are the
