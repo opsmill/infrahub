@@ -499,6 +499,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         protected_branch_dataset: dict,
         db: InfrahubDatabase,
         client: InfrahubClient,
+        fast_forward_merges: None,
     ) -> None:
         """A failure recording the merge after a successful push resets the worktree behind the remote.
 

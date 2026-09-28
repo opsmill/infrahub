@@ -246,6 +246,20 @@ def delete_git_branch_after_merge_reset_config() -> Generator[None, None, None]:
 
 
 @pytest.fixture
+def fast_forward_merges() -> Generator[None, None, None]:
+    """Merge without creating an explicit merge commit, so the destination fast-forwards to the source tip.
+
+    A test that must know the resulting commit before the merge runs can only do so when the
+    destination fast-forwards: an explicit merge commit is created by the merge itself and its hash
+    cannot be derived beforehand.
+    """
+    original = config.SETTINGS.git.use_explicit_merge_commit
+    config.SETTINGS.git.use_explicit_merge_commit = False
+    yield
+    config.SETTINGS.git.use_explicit_merge_commit = original
+
+
+@pytest.fixture
 def import_every_remote_branch() -> Generator[None, None, None]:
     """Import every remote branch, whatever INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES holds in the ambient environment.
 
