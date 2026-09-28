@@ -99,6 +99,13 @@ NODE_UUID = "1827f6b3-5d4c-4c4a-9d6e-3a8b2f0c7e11"
 PEER_UUIDS = ["1827f6b4-0a2e-4b6f-8c1d-5e7f9a0b3c22", "1827f6b4-7f3d-4e8a-b2c5-6d9e0f1a4b33"]
 
 
+def build_node(uuid: str) -> Neo4jNode:
+    return Neo4jNode(Graph(), element_id=f"4:db:{uuid}", id_=0, n_labels=["Node"], properties={"uuid": uuid})
+
+
+PEERS = [build_node(uuid=peer_uuid) for peer_uuid in PEER_UUIDS]
+
+
 def build_result(**columns: Any) -> QueryResult:
     labels = list(columns)
     return QueryResult(data=Record(zip(labels, columns.values(), strict=True)), labels=labels)
@@ -106,7 +113,7 @@ def build_result(**columns: Any) -> QueryResult:
 
 @pytest.fixture
 def result() -> QueryResult:
-    return build_result(uuid=NODE_UUID, deleted_at=None, peer_uuids=PEER_UUIDS, nbr_peers="2")
+    return build_result(uuid=NODE_UUID, deleted_at=None, peers=PEERS, nbr_peers="2")
 
 
 def test_get_returns_scalar_and_null_columns_as_is(result: QueryResult) -> None:
@@ -115,7 +122,7 @@ def test_get_returns_scalar_and_null_columns_as_is(result: QueryResult) -> None:
 
 
 def test_node_collection_returns_a_list_column_as_is(result: QueryResult) -> None:
-    assert result.get_node_collection(label="peer_uuids") == PEER_UUIDS
+    assert result.get_node_collection(label="peers") == PEERS
 
 
 def test_node_collection_rejects_a_scalar_column(result: QueryResult) -> None:
@@ -133,7 +140,7 @@ def test_get_as_type_converts_the_column(result: QueryResult) -> None:
 
 
 def build_path(uuid: str) -> Path:
-    return Path(Neo4jNode(Graph(), element_id=f"4:db:{uuid}", id_=0, n_labels=["Node"], properties={"uuid": uuid}))
+    return Path(build_node(uuid=uuid))
 
 
 def test_get_path_returns_a_path_column() -> None:
