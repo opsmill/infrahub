@@ -37,6 +37,7 @@ jobs:
           python utilities/pr_lifecycle.py observe
           --repository opsmill/infrahub --mode observe --budget 5000
           --report "$RUNNER_TEMP/pr-lifecycle-report.json"
+          --dashboard-preview "$RUNNER_TEMP/pr-lifecycle-dashboard.md"
       - name: Report failed observation
         if: failure()
         run: >-
@@ -209,8 +210,15 @@ jobs:
           --ref "$GITHUB_REF" --state "$RUNNER_TEMP/pr-lifecycle-close.json"
       - name: Remove gates and reconcile outcomes
         if: always()
-        run: >-
-          python utilities/pr_lifecycle.py finalize
-          --repository opsmill/infrahub --mode apply
-          --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT"
-          --ref "$GITHUB_REF" --state "$RUNNER_TEMP/pr-lifecycle-close.json"
+        env:
+          PRIOR_STEPS_SUCCEEDED: ${{ job.status == 'success' }}
+        run: |
+          refresh_args=()
+          if [[ "$PRIOR_STEPS_SUCCEEDED" == "true" ]]; then
+            refresh_args+=(--refresh-dashboard)
+          fi
+          python utilities/pr_lifecycle.py finalize \
+            --repository opsmill/infrahub --mode apply \
+            --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT" \
+            --ref "$GITHUB_REF" --state "$RUNNER_TEMP/pr-lifecycle-close.json" \
+            "${refresh_args[@]}"

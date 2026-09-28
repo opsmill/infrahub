@@ -4,6 +4,7 @@ import argparse
 import base64
 import binascii
 import hashlib
+import html
 import json
 import os
 import re
@@ -440,6 +441,7 @@ class Intent:
     kind: str
     content_hash: str
     prior_hash: str
+    feed_baseline: str | None = None
 
 
 @dataclass(frozen=True)
@@ -463,6 +465,8 @@ class Entry:
     head: str
     labels: tuple[str, ...]
     watermarks: tuple[tuple[str, str], ...]
+    external_digest: str = ""
+    reopened_at: str | None = None
     receipts: tuple[Receipt, ...] = ()
     pending: Intent | None = None
     warning: WarningCycle | None = None
@@ -533,8 +537,17 @@ def reconcile_pending(*, snapshot: Snapshot, previous: Entry | None) -> Entry | 
         return previous
     feed = snapshot.feed
     if previous.pending.kind in {"labeled", "unlabeled"}:
-        known = {identity for identity, _ in previous.watermarks}
-        feed = tuple(item for item in feed if item.identity not in known)
+        intent = previous.pending
+        matching = tuple(item for item in feed if item.kind == intent.kind and item.content_hash == intent.content_hash)
+        feed = tuple(
+            item
+            for item in matching
+            if item.actor == TRUSTED_BOT
+            and feed_digest(tuple(other for other in matching if other.identity != item.identity))
+            == intent.feed_baseline
+        )
+        if matching and not feed:
+            raise IncompleteDataError("Label receipt cannot be distinguished from its baseline")
     receipt = recover_receipt(intent=previous.pending, feed=feed)
     if receipt is None:
         return replace(
@@ -546,51 +559,71 @@ def reconcile_pending(*, snapshot: Snapshot, previous: Entry | None) -> Entry | 
     return finalize_receipt(entry=previous, receipt=receipt)
 
 
+def feed_digest(feed: tuple[FeedItem, ...]) -> str:
+    return digest([asdict(item) for item in sorted(feed, key=lambda item: (item.identity, item.at, item.content_hash))])
+
+
+def external_feed(*, snapshot: Snapshot, receipts: tuple[Receipt, ...]) -> tuple[FeedItem, ...]:
+    owned = {
+        (item.identity, item.actor, item.kind, item.at, item.content_hash)
+        for item in receipts
+        if item.actor == TRUSTED_BOT
+    }
+    return tuple(
+        item
+        for item in snapshot.feed
+        if (item.identity, item.actor, item.kind, item.at, item.content_hash) not in owned
+    )
+
+
+def activity_digest(*, snapshot: Snapshot, receipts: tuple[Receipt, ...]) -> str:
+    latest = {receipt.identity: receipt for receipt in receipts}
+    present = {item.identity for item in snapshot.feed}
+    missing: list[JsonValue] = [identity for identity in sorted(latest) if identity not in present]
+    return digest(
+        {"external": feed_digest(external_feed(snapshot=snapshot, receipts=receipts)), "missing_owned": missing}
+    )
+
+
 def observe_activity(*, snapshot: Snapshot, previous: Entry | None) -> Entry:
-    watermarks = tuple(sorted((item.identity, item.content_hash) for item in snapshot.feed))
+    external = external_feed(snapshot=snapshot, receipts=previous.receipts if previous else ())
+    aggregate = activity_digest(snapshot=snapshot, receipts=previous.receipts if previous else ())
+    reopened = max((item.at for item in external if item.kind == "reopened"), default=None)
     if previous is None:
-        activity = max([snapshot.updated_at, *(item.at for item in snapshot.feed)])
         return Entry(
             number=snapshot.number,
             node_id=snapshot.node_id,
-            activity_at=activity,
+            activity_at=max([snapshot.updated_at, *(item.at for item in snapshot.feed)]),
             observed_at=snapshot.observed_at,
             raw_updated_at=snapshot.updated_at,
             fingerprint=snapshot.fingerprint,
             head=snapshot.head,
             labels=snapshot.labels,
-            watermarks=watermarks,
+            watermarks=(),
+            external_digest=aggregate,
+            reopened_at=reopened,
         )
     if previous.number != snapshot.number or previous.node_id != snapshot.node_id:
         raise IncompleteDataError("Ledger PR identity mismatch")
-    known = dict(previous.watermarks)
-    changed = [item for item in snapshot.feed if known.get(item.identity) != item.content_hash]
-    owned = {
-        (receipt.identity, receipt.actor, receipt.kind, receipt.at, receipt.content_hash)
-        for receipt in previous.receipts
-        if receipt.actor == TRUSTED_BOT
-    }
-    external = [
-        item for item in changed if (item.identity, item.actor, item.kind, item.at, item.content_hash) not in owned
-    ]
-    reopened = [item for item in external if item.kind == "reopened"]
-    activity = previous.activity_at
-    changed_head = previous.head != snapshot.head
-    unexplained = previous.fingerprint != snapshot.fingerprint or bool(
-        set(known) - {item.identity for item in snapshot.feed}
+    changed = aggregate != previous.external_digest
+    owned_times = {item.at for item in snapshot.feed if item not in external}
+    unexplained = (
+        previous.fingerprint != snapshot.fingerprint
+        or (previous.raw_updated_at != snapshot.updated_at and snapshot.updated_at not in owned_times)
+        or (
+            previous.labels != snapshot.labels
+            and not any(
+                item.kind in {"labeled", "unlabeled"} and timestamp(item.at) >= timestamp(previous.observed_at)
+                for item in snapshot.feed
+                if item not in external
+            )
+        )
     )
-    owned_times = {item.at for item in changed if item not in external}
-    if previous.raw_updated_at != snapshot.updated_at and snapshot.updated_at not in owned_times:
-        unexplained = True
-    if previous.labels != snapshot.labels and not any(item.kind in ("labeled", "unlabeled") for item in changed):
-        unexplained = True
-    if external:
-        activity = max(activity, *(item.at for item in external))
-    if changed_head or unexplained:
-        activity = max(activity, snapshot.observed_at)
-    if reopened:
-        activity = max(item.at for item in reopened)
-    reset = bool(external) or changed_head or unexplained
+    reset = changed or unexplained or previous.head != snapshot.head
+    reopened_now = reopened is not None and (previous.reopened_at is None or reopened > previous.reopened_at)
+    activity = max(previous.activity_at, snapshot.observed_at) if reset else previous.activity_at
+    if reopened_now:
+        activity = reopened
     return replace(
         previous,
         activity_at=activity,
@@ -599,10 +632,12 @@ def observe_activity(*, snapshot: Snapshot, previous: Entry | None) -> Entry:
         fingerprint=snapshot.fingerprint,
         head=snapshot.head,
         labels=snapshot.labels,
-        watermarks=watermarks,
+        watermarks=(),
+        external_digest=aggregate,
+        reopened_at=reopened,
         warning=None if reset else previous.warning,
         neutralize=previous.warning.cycle if reset and previous.warning else previous.neutralize,
-        last_notice_at=None if reopened else previous.last_notice_at,
+        last_notice_at=None if reopened_now else previous.last_notice_at,
     )
 
 
@@ -813,9 +848,9 @@ def closure_due(*, snapshot: Snapshot, entry: Entry, now: datetime) -> bool:
     if initial is None or final is None or initial.identity != final.identity or final.content_hash != expected:
         return False
     owned = {
-        (receipt.identity, receipt.actor, receipt.kind, receipt.at, receipt.content_hash)
-        for receipt in entry.receipts
-        if receipt.actor == TRUSTED_BOT
+        (item.identity, item.actor, item.kind, item.at, item.content_hash)
+        for item in entry.receipts
+        if item.actor == TRUSTED_BOT
     }
     if any(
         timestamp(item.at) > delivered
@@ -831,6 +866,39 @@ def closure_due(*, snapshot: Snapshot, entry: Entry, now: datetime) -> bool:
         and item.at == final.at
         and timestamp(item.created_at or item.at) == delivered
         for item in snapshot.feed
+    )
+
+
+def warning_confirmed(*, snapshot: Snapshot, entry: Entry) -> bool:
+    warning = entry.warning
+    if warning is None or not warning.final_operation:
+        return False
+    initial = next((item for item in entry.receipts if item.operation == warning.initial_operation), None)
+    final = next((item for item in entry.receipts if item.operation == warning.final_operation), None)
+    expected = digest(
+        notice_body(
+            entry=entry,
+            operation=warning.final_operation,
+            kind="deadline",
+            cycle=warning.cycle,
+            deadline=warning.deadline,
+            snapshot=snapshot,
+        )
+    )
+    return bool(
+        initial
+        and final
+        and initial.identity == final.identity
+        and final.content_hash == expected
+        and any(
+            item.identity == final.identity
+            and item.actor == TRUSTED_BOT
+            and item.kind == "comment"
+            and item.content_hash == expected
+            and item.at == final.at
+            and timestamp(item.created_at or item.at) == timestamp(warning.delivered_at)
+            for item in snapshot.feed
+        )
     )
 
 
@@ -885,6 +953,7 @@ def decode_ledger(*, body: str) -> Ledger:  # noqa: PLR0914 - Validate the entir
                 kind=string(intent.get("kind")),
                 content_hash=string(intent.get("content_hash")),
                 prior_hash=string(intent.get("prior_hash")),
+                feed_baseline=None if intent.get("feed_baseline") is None else string(intent.get("feed_baseline")),
             )
         marks = []
         for raw_mark in array(item.get("watermarks")):
@@ -916,6 +985,8 @@ def decode_ledger(*, body: str) -> Ledger:  # noqa: PLR0914 - Validate the entir
                 head=string(item.get("head")),
                 labels=tuple(string(label) for label in array(item.get("labels"))),
                 watermarks=tuple(marks),
+                external_digest=string(item.get("external_digest", "")),
+                reopened_at=None if item.get("reopened_at") is None else timestamp(item.get("reopened_at")).isoformat(),
                 receipts=tuple(receipts),
                 pending=pending,
                 warning=warning,
@@ -941,18 +1012,35 @@ def verify_generation(*, expected_body: str, current_body: str) -> None:
         raise IncompleteDataError("Ledger generation or content conflict")
 
 
-def prune_ledger(*, ledger: Ledger, confirmed_closed: frozenset[int], gates_cleaned: frozenset[int]) -> Ledger:
-    return replace(
-        ledger,
-        entries=tuple(
-            entry
-            for entry in ledger.entries
-            if entry.number not in confirmed_closed & gates_cleaned or entry.pending is not None
-        ),
-    )
+def prune_ledger(
+    *,
+    ledger: Ledger,
+    confirmed_closed: frozenset[int],
+    gates_cleaned: frozenset[int],
+    snapshots: tuple[Snapshot, ...] = (),
+) -> Ledger:
+    current = {value.number: value for value in snapshots}
+    entries = []
+    for original in ledger.entries:
+        entry = original
+        if entry.number in confirmed_closed & gates_cleaned and entry.pending is None:
+            continue
+        if entry.number in current and entry.pending is None:
+            receipts = tuple(
+                receipt
+                for receipt in entry.receipts
+                if entry.warning is not None and timestamp(receipt.at) >= timestamp(entry.warning.delivered_at)
+            )
+            entry = replace(
+                entry,
+                receipts=receipts,
+                external_digest=activity_digest(snapshot=current[entry.number], receipts=receipts),
+            )
+        entries.append(entry)
+    return replace(ledger, entries=tuple(entries))
 
 
-def discover_dashboard(*, transport: ReadTransport) -> tuple[int, str] | None:
+def discover_dashboard(*, transport: ReadTransport, adopted_issue: int | None = None) -> tuple[int, str] | None:
     matches = []
     for issue in pages(
         transport=transport, path=f"/repos/{ALLOWED_REPOSITORY}/issues?state=all&creator=github-actions%5Bbot%5D"
@@ -964,6 +1052,15 @@ def discover_dashboard(*, transport: ReadTransport) -> tuple[int, str] | None:
         if author.get("login") != TRUSTED_BOT or author.get("type") != "Bot":
             raise IncompleteDataError("Dashboard marker has untrusted author")
         matches.append((integer(issue.get("number")), body))
+    if adopted_issue is not None:
+        if adopted_issue < 1:
+            raise IncompleteDataError("Invalid adopted dashboard number")
+        issue = object_value(transport.get_json(path=f"/repos/{ALLOWED_REPOSITORY}/issues/{adopted_issue}"))
+        if "pull_request" in issue or integer(issue.get("number")) != adopted_issue:
+            raise IncompleteDataError("Adopted dashboard must be an issue")
+        body = string(issue.get("body") or "")
+        if not any(number == adopted_issue for number, _ in matches):
+            matches.append((adopted_issue, body))
     if len(matches) > 1:
         raise IncompleteDataError(f"Multiple dashboards: {[number for number, _ in matches]}")
     return matches[0] if matches else None
@@ -1075,6 +1172,13 @@ class Proposal:
 
 
 @dataclass(frozen=True)
+class ExcludedBot:
+    number: int
+    title: str
+    author: str
+
+
+@dataclass(frozen=True)
 class ObservationReport:
     version: int
     repository: str
@@ -1090,6 +1194,8 @@ class ObservationReport:
     requests: int = 0
     proposals: tuple[Proposal, ...] = ()
     proposed_counts: tuple[tuple[str, int], ...] = ()
+    bot_rows: tuple[ExcludedBot, ...] = ()
+    dashboard_preview: str | None = None
 
 
 def guard_repository(repository: str) -> None:
@@ -1097,12 +1203,13 @@ def guard_repository(repository: str) -> None:
         raise ValueError(f"Repository must be {ALLOWED_REPOSITORY}")
 
 
-def observe(  # noqa: PLR0914 - Inventory, ledger and proposed actions are one read-only report boundary.
+def observe(  # noqa: PLR0914, PLR0915 - One boundary reports inventory and capacity failures together.
     *,
     repository: str,
     transport: ReadTransport | None,
     clock: Callable[[], datetime] = utc_now,
     budget: int = DEFAULT_BUDGET,
+    adopted_issue: int | None = None,
 ) -> ObservationReport:
     guard_repository(repository)
     now = clock()
@@ -1121,9 +1228,14 @@ def observe(  # noqa: PLR0914 - Inventory, ledger and proposed actions are one r
     errors: list[str] = []
     inventory_count = 0
     proposals: list[Proposal] = []
+    bot_rows: list[ExcludedBot] = []
+    observed_entries: list[Entry] = []
+    ledger = Ledger()
     try:
-        dashboard = discover_dashboard(transport=reads)
-        ledger = decode_ledger(body=dashboard[1]) if dashboard else Ledger()
+        dashboard = discover_dashboard(transport=reads, adopted_issue=adopted_issue)
+        ledger = decode_ledger(body=dashboard[1]) if dashboard and STATE_PREFIX in dashboard[1] else Ledger()
+        if dashboard and STATE_PREFIX not in dashboard[1] and adopted_issue is None:
+            raise IncompleteDataError("Missing dashboard ledger")
         inventory = pages(transport=reads, path=f"/repos/{repository}/pulls?state=open")
         inventory_count = len(inventory)
         humans = []
@@ -1134,6 +1246,7 @@ def observe(  # noqa: PLR0914 - Inventory, ledger and proposed actions are one r
             kind = string(author.get("type"))
             if kind == "Bot" or login.endswith("[bot]"):
                 bots.append(number)
+                bot_rows.append(ExcludedBot(number=number, title=string(pr.get("title")), author=login))
             elif kind == "User":
                 humans.append(number)
             else:
@@ -1148,6 +1261,7 @@ def observe(  # noqa: PLR0914 - Inventory, ledger and proposed actions are one r
             exemptions = closure_exemptions(snapshot=value)
             if entry.warning and (exemptions or not entry.warning.final_operation):
                 entry = replace(entry, neutralize=entry.warning.cycle, warning=None)
+            observed_entries.append(entry)
             proposals.append(
                 Proposal(
                     number=value.number,
@@ -1160,7 +1274,7 @@ def observe(  # noqa: PLR0914 - Inventory, ledger and proposed actions are one r
             )
     except IncompleteDataError as exc:
         errors.append(str(exc))
-    return ObservationReport(
+    report = ObservationReport(
         version=1,
         repository=repository,
         mode=Mode.OBSERVE,
@@ -1174,11 +1288,145 @@ def observe(  # noqa: PLR0914 - Inventory, ledger and proposed actions are one r
         evaluated_count=len(snapshots) + len(bots),
         requests=transport.requests if isinstance(transport, GitHubClient) else reads.requests,
         proposals=tuple(proposals),
+        bot_rows=tuple(bot_rows),
         proposed_counts=tuple(
             (kind, sum(proposal.notice == kind for proposal in proposals))
             for kind in ("ordinary", "warning", "cancel", "milestone-7", "milestone-1")
         ),
     )
+
+    if report.complete:
+        preview = None
+        try:
+            observed_numbers = {entry.number for entry in observed_entries}
+            preview_ledger = replace(
+                ledger,
+                entries=(
+                    *(entry for entry in ledger.entries if entry.number not in observed_numbers),
+                    *observed_entries,
+                ),
+            )
+            preview = render_dashboard(report=report, ledger=preview_ledger, preview=True, include_state=False)
+            render_dashboard(report=report, ledger=preview_ledger)
+        except IncompleteDataError as exc:
+            return replace(report, complete=False, errors=(str(exc),), dashboard_preview=preview)
+        report = replace(report, dashboard_preview=preview)
+    return report
+
+
+def dashboard_text(value: str) -> str:
+    escaped = html.escape(" ".join(value.split()), quote=True)
+    return re.sub(r"([\\`*_{}\[\]()#|@~])", lambda match: f"&#{ord(match[0])};", escaped)
+
+
+def dashboard_notice(*, entry: Entry, proposal: Proposal, now: datetime) -> str:  # noqa: PLR0911 - Each delivery state has distinct text.
+    if entry.pending or entry.neutralize:
+        return "Reconciliation required; delivery unconfirmed"
+    warning = entry.warning
+    if warning:
+        if not warning.final_operation:
+            return "Warning delivery unconfirmed"
+        if now >= timestamp(warning.deadline):
+            return (
+                "Closure due; eligibility must be rechecked"
+                if proposal.closure_due
+                else "Closure requires verification"
+            )
+        midnight = timestamp(warning.delivered_at).replace(hour=0, minute=0, second=0, microsecond=0)
+        candidates = [("milestone-7", midnight + timedelta(days=7)), ("milestone-1", midnight + timedelta(days=13))]
+        if proposal.notice:
+            return f"{proposal.notice} due now"
+        future = [(kind, at) for kind, at in candidates if kind not in warning.milestones and at > now]
+        return f"{future[0][0]}: {future[0][1].isoformat()}" if future else "No further notice before deadline"
+    if proposal.notice == "warning":
+        return "Initial warning due; deadline unset"
+    ordinary = max(timestamp(entry.activity_at), timestamp(entry.last_notice_at or entry.activity_at)) + timedelta(
+        days=7
+    )
+    if ordinary <= now:
+        return "Reminder due"
+    if proposal.classification.exemptions:
+        return f"Reminder: {ordinary.isoformat()}"
+    warning_at = timestamp(entry.activity_at) + timedelta(days=60)
+    kind, at = ("Initial warning", warning_at) if warning_at <= ordinary else ("Reminder", ordinary)
+    return f"{kind}: {at.isoformat()}"
+
+
+def render_dashboard(  # noqa: PLR0914 - One row combines the required presentation fields.
+    *, report: ObservationReport, ledger: Ledger, preview: bool = False, include_state: bool = True
+) -> str:
+    if not report.complete or len(report.proposals) != len(report.inventory):
+        raise IncompleteDataError("Cannot render incomplete dashboard")
+    link_origin = "https://github.com" if preview else ""
+    entries = {entry.number: entry for entry in ledger.entries}
+    proposals = {proposal.number: proposal for proposal in report.proposals}
+    now = timestamp(report.observed_at)
+    groups = (
+        ("ready to merge", "Ready to merge"),
+        ("waiting for review", "Waiting for review"),
+        ("waiting for author", "Waiting for author / Needs reviewer"),
+        ("blocked", "Blocked"),
+        ("draft", "Drafts"),
+        ("closing soon", "Closing soon"),
+    )
+    lines = [
+        "# PR lifecycle dashboard",
+        "",
+        f"Last successful refresh: {ledger.last_successful_refresh or 'never'}",
+        "",
+        f"{'Observation preview' if preview else 'Snapshot'}: {report.observed_at} (UTC)",
+        "",
+        f"Open PRs: {report.inventory_count}; human: {len(report.inventory)}; excluded bots: {len(report.bot_rows)}.",
+        "",
+        "Days inactive means elapsed whole days since observed non-lifecycle activity, not time waiting for review.",
+        "",
+    ]
+    for category, heading in groups:
+        values = [value for value in report.inventory if proposals[value.number].classification.category == category]
+        lines.extend([f"## {heading} ({len(values)})", ""])
+        if not values:
+            lines.extend(["None.", ""])
+            continue
+        lines.extend(
+            [
+                "| PR / author | Next actor / action | Days inactive | Blockers / closure exemptions | Next notice / deadline (UTC) |",
+                "| --- | --- | --- | --- | --- |",
+            ]
+        )
+        for value in sorted(values, key=lambda item: item.number):
+            proposal = proposals[value.number]
+            entry = entries.get(value.number) or observe_activity(snapshot=value, previous=None)
+            classification = proposal.classification
+            days = max(0, (now - timestamp(proposal.activity_at)).days)
+            reasons = f"{', '.join(classification.blockers) or '—'} / {', '.join(classification.exemptions) or '—'}"
+            notice = dashboard_notice(entry=entry, proposal=proposal, now=now)
+            if proposal.deadline:
+                notice += f"; closure deadline: {proposal.deadline}"
+            action = {
+                "finish this draft and mark it ready for review": "Finish draft; ready; request review",
+                "address the requested changes and request another review": "Address feedback; request review",
+                "merge this approved pull request": "Merge",
+                "review this pull request": "Review",
+                "request review from a reviewer or team": "Request person/team review",
+                "resolve the outstanding or unknown merge requirements": "Resolve merge requirements",
+            }.get(classification.action, "Resolve listed blockers")
+            cells = [
+                f"[#{value.number}]({link_origin}/{ALLOWED_REPOSITORY}/pull/{value.number}) "
+                f"{dashboard_text(value.title)} / {dashboard_text(value.author)}",
+                dashboard_text(f"{', '.join(classification.actors)}: {action}"),
+                str(days),
+                dashboard_text(reasons),
+                dashboard_text(notice),
+            ]
+            lines.append("|" + "|".join(cells) + "|")
+        lines.append("")
+    lines.extend([f"## Bot-authored PRs ({len(report.bot_rows)})", "", "Excluded from reminders and cleanup.", ""])
+    lines.extend(
+        f"- [#{bot.number}]({link_origin}/{ALLOWED_REPOSITORY}/pull/{bot.number}) {dashboard_text(bot.title)} / {dashboard_text(bot.author)}"
+        for bot in sorted(report.bot_rows, key=lambda item: item.number)
+    )
+    visible = "\n".join(lines)
+    return encode_ledger(ledger=ledger, visible=visible) if include_state else visible
 
 
 @runtime_checkable
@@ -1225,34 +1473,62 @@ def gate_label(*, run_id: str, attempt: str) -> str:
 
 
 class Lifecycle:
-    def __init__(self, *, transport: WriteTransport, clock: Callable[[], datetime], run_id: str, attempt: str) -> None:
+    def __init__(
+        self,
+        *,
+        transport: WriteTransport,
+        clock: Callable[[], datetime],
+        run_id: str,
+        attempt: str,
+        adopted_issue: int | None = None,
+    ) -> None:
+        self.adopted_issue = adopted_issue
         self.transport = transport
         self.clock = clock
         self.gate = gate_label(run_id=run_id, attempt=attempt)
         self.dashboard: tuple[int, str] | None = None
         self.ledger = Ledger()
         self.snapshots: dict[int, Snapshot] = {}
+        self.confirmed_operations: set[str] = set()
 
     def load(self) -> None:
         identity = object_value(self.transport.get_json(path=f"/repos/{ALLOWED_REPOSITORY}"))
         if identity.get("full_name") != ALLOWED_REPOSITORY:
             raise IncompleteDataError("Repository identity mismatch")
-        self.dashboard = discover_dashboard(transport=self.transport)
-        if self.dashboard:
+        self.dashboard = discover_dashboard(transport=self.transport, adopted_issue=self.adopted_issue)
+        if self.dashboard and STATE_PREFIX in self.dashboard[1]:
             self.ledger = decode_ledger(body=self.dashboard[1])
+        elif self.dashboard and self.adopted_issue is None:
+            raise IncompleteDataError("Missing dashboard ledger")
 
-    def persist(self, *, entry: Entry | None = None) -> None:
+    def persist(self, *, entry: Entry | None = None, visible: str | None = None, ledger: Ledger | None = None) -> None:
         if entry is not None:
             self.ledger = replace(
                 self.ledger, entries=(*(item for item in self.ledger.entries if item.number != entry.number), entry)
             )
-        updated = replace(self.ledger, generation=self.ledger.generation + 1)
-        body = encode_ledger(ledger=updated, visible="PR lifecycle dashboard\n\nCleanup state is being reconciled.")
+        updated = replace(ledger or self.ledger, generation=self.ledger.generation + 1)
+        if visible is None:
+            visible = (
+                self.dashboard[1].split(DASHBOARD_MARKER, 1)[0].rstrip()
+                if self.dashboard
+                else "PR lifecycle dashboard\n\nNo successful refresh yet."
+            )
+        body = encode_ledger(ledger=updated, visible=visible)
+        if (
+            self.dashboard
+            and encode_ledger(ledger=replace(updated, generation=self.ledger.generation), visible=visible)
+            == self.dashboard[1]
+        ):
+            return
         root = f"/repos/{ALLOWED_REPOSITORY}/issues"
         if self.dashboard:
             number, expected = self.dashboard
             current = object_value(self.transport.get_json(path=f"{root}/{number}"))
-            verify_generation(expected_body=expected, current_body=string(current.get("body")))
+            current_body = string(current.get("body") or "")
+            if STATE_PREFIX in expected:
+                verify_generation(expected_body=expected, current_body=current_body)
+            elif current_body != expected:
+                raise IncompleteDataError("Adopted dashboard changed before persistence")
             self.transport.write_json(method="PATCH", path=f"{root}/{number}", payload={"body": body}, mode=Mode.APPLY)
         else:
             try:
@@ -1279,7 +1555,12 @@ class Lifecycle:
     def refresh(self, number: int) -> tuple[Snapshot, Entry]:
         value = collect_snapshot(transport=self.transport, number=number, now=self.clock())
         prior = self.entry(number)
+        prior_operations = {receipt.operation for receipt in prior.receipts} if prior else set()
         prior = reconcile_pending(snapshot=value, previous=prior)
+        if prior:
+            self.confirmed_operations.update(
+                receipt.operation for receipt in prior.receipts if receipt.operation not in prior_operations
+            )
         entry = observe_activity(snapshot=value, previous=prior)
         self.snapshots[number] = value
         self.persist(entry=entry)
@@ -1344,6 +1625,7 @@ class Lifecycle:
             if recovered is None:
                 raise
             receipt = recovered
+        self.confirmed_operations.add(receipt.operation)
         self.persist(entry=finalize_receipt(entry=entry, receipt=receipt))
         self.refresh(number)
         return receipt
@@ -1366,6 +1648,13 @@ class Lifecycle:
             kind=kind,
             content_hash=digest({"event": kind, "label": label}),
             prior_hash=entry.fingerprint,
+            feed_baseline=feed_digest(
+                tuple(
+                    item
+                    for item in value.feed
+                    if item.kind == kind and item.content_hash == digest({"event": kind, "label": label})
+                )
+            ),
         )
         entry = stage_intent(entry=entry, intent=intent)
         self.persist(entry=entry)
@@ -1532,6 +1821,13 @@ class Lifecycle:
         for label in value.labels:
             if owned_label(label) and label.startswith("lifecycle-close-"):
                 self.label(number=number, label=label, present=False)
+        self.ledger = prune_ledger(
+            ledger=self.ledger,
+            confirmed_closed=frozenset(),
+            gates_cleaned=frozenset(),
+            snapshots=tuple(self.snapshots.values()),
+        )
+        self.persist()
 
     def prepare(self) -> tuple[int, ...]:
         candidates = []
@@ -1557,7 +1853,7 @@ class Lifecycle:
                 self.label(number=number, label=self.gate, present=False)
         return tuple(verified)
 
-    def finalize(self) -> None:
+    def finalize(self) -> tuple[int, ...]:
         errors = []
         for entry in self.ledger.entries:
             try:
@@ -1578,8 +1874,43 @@ class Lifecycle:
             if not pages(transport=self.transport, path=f"{root}/issues?{query}"):
                 self.transport.write_json(method="DELETE", path=f"{root}/labels/{name}", payload={}, mode=Mode.APPLY)
         closed = frozenset(number for number, value in self.snapshots.items() if value.state == "closed")
-        self.ledger = prune_ledger(ledger=self.ledger, confirmed_closed=closed, gates_cleaned=closed)
+        self.ledger = prune_ledger(
+            ledger=self.ledger, confirmed_closed=closed, gates_cleaned=closed, snapshots=tuple(self.snapshots.values())
+        )
         self.persist()
+        return tuple(sorted(closed))
+
+    def refresh_dashboard(self) -> None:
+        report = observe(
+            repository=ALLOWED_REPOSITORY, transport=self.transport, clock=self.clock, adopted_issue=self.adopted_issue
+        )
+        if not report.complete:
+            raise IncompleteDataError("Dashboard refresh failed: " + "; ".join(report.errors))
+        entries = {entry.number: entry for entry in self.ledger.entries}
+        for value in report.inventory:
+            entry = observe_activity(
+                snapshot=value, previous=reconcile_pending(snapshot=value, previous=entries.get(value.number))
+            )
+            if any(label.startswith("lifecycle-close-") for label in value.labels):
+                raise IncompleteDataError(f"PR {value.number}: closure gate remains")
+            if (
+                entry.pending
+                or entry.neutralize
+                or (
+                    entry.warning
+                    and (closure_exemptions(snapshot=value) or not warning_confirmed(snapshot=value, entry=entry))
+                )
+            ):
+                raise IncompleteDataError(f"PR {value.number}: lifecycle reconciliation still required")
+            entries[value.number] = entry
+        updated = prune_ledger(
+            ledger=replace(self.ledger, entries=tuple(entries.values()), last_successful_refresh=report.observed_at),
+            confirmed_closed=frozenset(),
+            gates_cleaned=frozenset(),
+            snapshots=report.inventory,
+        )
+        body = render_dashboard(report=report, ledger=updated)
+        self.persist(ledger=updated, visible=body.split(DASHBOARD_MARKER, 1)[0].rstrip())
 
 
 def apply_command(
@@ -1592,8 +1923,10 @@ def apply_command(
     state_path: Path,
     pass_number: int,
     ref: str,
+    adopted_issue: int | None = None,
+    refresh_dashboard: bool = False,
 ) -> dict[str, JsonValue]:
-    lifecycle = Lifecycle(transport=transport, clock=clock, run_id=run_id, attempt=attempt)
+    lifecycle = Lifecycle(transport=transport, clock=clock, run_id=run_id, attempt=attempt, adopted_issue=adopted_issue)
     result: dict[str, JsonValue] = {
         "version": 1,
         "mode": "apply",
@@ -1648,18 +1981,23 @@ def apply_command(
                 confirmed_closed=[number for number in candidates if number not in remaining],
             )
         elif command == "finalize":
-            lifecycle.finalize()
+            result["confirmed_closed"] = list(lifecycle.finalize())
+            if refresh_dashboard:
+                lifecycle.refresh_dashboard()
+                result["dashboard_refreshed"] = True
         else:
             raise IncompleteDataError("Unsupported apply command")
+        result["last_successful_refresh"] = lifecycle.ledger.last_successful_refresh
         result["complete"] = True
     except (IncompleteDataError, OSError, json.JSONDecodeError) as exc:
         result["error"] = str(exc)
         result["closure_ready"] = False
         result["continue_scan"] = False
+    result["confirmed_new_receipts"] = len(lifecycle.confirmed_operations)
     return result
 
 
-def main(
+def main(  # noqa: PLR0915 - CLI modes share argument and output validation.
     argv: list[str] | None = None, *, transport: ReadTransport | None = None, clock: Callable[[], datetime] = utc_now
 ) -> int:
     parser = argparse.ArgumentParser(description="Observe Infrahub pull-request lifecycle state")
@@ -1672,6 +2010,9 @@ def main(
     parser.add_argument("--repository", required=True, choices=(ALLOWED_REPOSITORY,))
     parser.add_argument("--mode", choices=tuple(Mode), default=Mode.OBSERVE)
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--dashboard-preview", type=Path)
+    parser.add_argument("--adopt-dashboard", type=int)
+    parser.add_argument("--refresh-dashboard", action="store_true")
     parser.add_argument("--budget", type=int, default=DEFAULT_BUDGET)
     parser.add_argument("--run-id", default="")
     parser.add_argument("--attempt", default="")
@@ -1697,6 +2038,8 @@ def main(
             state_path=args.state,
             pass_number=args.pass_number,
             ref=args.ref,
+            adopted_issue=args.adopt_dashboard,
+            refresh_dashboard=args.refresh_dashboard,
         )
         serialized = json.dumps(result, indent=2) + "\n"
         if args.report:
@@ -1708,8 +2051,25 @@ def main(
                 for key in ("closure_ready", "continue_scan", "gate_label", "remaining_candidates"):
                     value = result[key]
                     stream.write(f"{key}={str(value).lower() if isinstance(value, bool) else value}\n")
+        if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
+            with Path(summary).open("a", encoding="utf-8") as stream:
+                stream.write(f"Lifecycle {args.command}: {'complete' if result['complete'] else 'FAILED'}.\n")
+                stream.write(
+                    f"Verified closed PRs: {result.get('confirmed_closed', [])}; confirmed new receipts: {result.get('confirmed_new_receipts', 0)}.\n"
+                )
+                stream.write(f"Dashboard refreshed: {result.get('dashboard_refreshed', False)}.\n")
+                if result.get("error"):
+                    stream.write(dashboard_text(str(result["error"])) + "\n")
         return 0 if result["complete"] else 1
-    report = observe(repository=args.repository, transport=transport, clock=clock, budget=args.budget)
+    report = observe(
+        repository=args.repository,
+        transport=transport,
+        clock=clock,
+        budget=args.budget,
+        adopted_issue=args.adopt_dashboard,
+    )
+    if args.dashboard_preview and report.dashboard_preview is not None:
+        args.dashboard_preview.write_text(report.dashboard_preview, encoding="utf-8")
     serialized = json.dumps(asdict(report), indent=2) + "\n"
     if args.report is not None:
         args.report.write_text(serialized, encoding="utf-8")

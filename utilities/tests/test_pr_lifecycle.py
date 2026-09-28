@@ -30,6 +30,7 @@ from utilities.pr_lifecycle import (
     Review,
     Snapshot,
     WarningCycle,
+    activity_digest,
     apply_command,
     array,
     classify,
@@ -42,6 +43,7 @@ from utilities.pr_lifecycle import (
     digest,
     discover_dashboard,
     encode_ledger,
+    feed_digest,
     finalize_receipt,
     main,
     next_notice,
@@ -52,7 +54,9 @@ from utilities.pr_lifecycle import (
     pages,
     prune_ledger,
     read_cache,
+    reconcile_pending,
     recover_receipt,
+    render_dashboard,
     stage_intent,
     string,
     validate_write,
@@ -111,6 +115,8 @@ class TestCliSkeleton(unittest.TestCase):
                 "evaluated_count": 0,
                 "requests": 2,
                 "proposals": [],
+                "bot_rows": [],
+                "dashboard_preview": None,
                 "proposed_counts": [
                     [kind, 0] for kind in ("ordinary", "warning", "cancel", "milestone-7", "milestone-1")
                 ],
@@ -610,7 +616,7 @@ class TestReliability(unittest.TestCase):
         self.assertEqual(transport.queries, [1])
 
     def test_full_human_inventory_with_sufficient_quota(self) -> None:
-        for count in (116, 574):
+        for count, expected_complete in ((116, True), (574, False)):
             with self.subTest(count=count):
                 transport = observation_transport(count=count)
                 transport.responses["/rate_limit"] = {
@@ -620,7 +626,9 @@ class TestReliability(unittest.TestCase):
                     }
                 }
                 report = observe(repository="opsmill/infrahub", transport=transport, clock=fixed_clock, budget=10000)
-                self.assertTrue(report.complete, report.errors)
+                self.assertEqual(report.complete, expected_complete)
+                if not expected_complete:
+                    self.assertEqual(report.errors, ("Dashboard exceeds 60000 characters",))
                 self.assertEqual(report.evaluated_count, count)
                 self.assertEqual(len(transport.queries), count)
 
@@ -723,6 +731,7 @@ def observation_transport(*, count: int = 1, bots: bool = False) -> FixtureTrans
         {
             "id": number,
             "number": number,
+            "title": "Example bot PR",
             "user": {"login": "dependabot[bot]" if bots else "alice", "type": "Bot" if bots else "User"},
         }
         for number in range(1, count + 1)
@@ -1104,7 +1113,7 @@ class TestMutationLifecycle(unittest.TestCase):
         writes = len(transport.writes)
         self.lifecycle(transport).reconcile()
         self.assertEqual(transport.paths.count("/repos/opsmill/infrahub/pulls/1"), 1)
-        self.assertEqual([path for _, path, _ in transport.writes[writes:]], ["/repos/opsmill/infrahub/issues/99"])
+        self.assertEqual(transport.writes[writes:], [])
 
     def test_failed_receipt_persistence_recovers_before_activity_comparison(self) -> None:
         transport = MutationTransport()
@@ -1351,3 +1360,328 @@ class TestReminderLifecycle(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDashboard(unittest.TestCase):
+    lifecycle = TestMutationLifecycle.lifecycle
+
+    def test_preview_escapes_content_and_has_honest_clocks(self) -> None:
+        transport = observation_transport()
+        pr = object_value(transport.responses["/repos/opsmill/infrahub/pulls/1"])
+        pr["title"] = "hello | <script> @alice\n[bad](https://example.com)"
+        report = observe(repository="opsmill/infrahub", transport=transport, clock=fixed_clock)
+        body = render_dashboard(report=report, ledger=Ledger(), preview=True)
+        self.assertIn("Observation preview", body)
+        self.assertIn("Last successful refresh: never", body)
+        self.assertIn("Days inactive", body)
+        self.assertIn("hello &#124; &lt;script&gt; &#64;alice", body)
+        self.assertNotIn("@alice", body)
+        self.assertNotIn("[bad]", body)
+        for heading in (
+            "Ready to merge",
+            "Waiting for review",
+            "Waiting for author / Needs reviewer",
+            "Blocked",
+            "Drafts",
+            "Closing soon",
+            "Bot-authored PRs",
+        ):
+            self.assertIn(heading, body)
+
+    def test_bot_rows_require_no_supplemental_reads(self) -> None:
+        transport = observation_transport(bots=True)
+        report = observe(repository="opsmill/infrahub", transport=transport, clock=fixed_clock)
+        body = render_dashboard(report=report, ledger=Ledger(), preview=True)
+        self.assertIn("dependabot", body)
+        self.assertIn("Excluded from reminders and cleanup", body)
+        self.assertFalse(any("/pulls/1" in path for path in transport.paths))
+
+    def test_visible_body_survives_intermediate_persistence(self) -> None:
+        transport = MutationTransport()
+        lifecycle = self.lifecycle(transport)
+        lifecycle.persist(visible="Previously successful dashboard")
+        lifecycle.persist(entry=observe_activity(snapshot=snapshot(), previous=None))
+        if lifecycle.dashboard is None:
+            self.fail("Expected persisted dashboard")
+        self.assertTrue(lifecycle.dashboard[1].startswith("Previously successful dashboard\n"))
+        self.assertEqual(sum(method == "POST" and path.endswith("/issues") for method, path, _ in transport.writes), 1)
+        self.assertFalse(any("/comments" in path for _, path, _ in transport.writes))
+
+    def test_oversize_and_partial_preview_fail_closed(self) -> None:
+        report = observe(repository="opsmill/infrahub", transport=observation_transport(), clock=fixed_clock)
+        huge = replace(report.inventory[0], title="x" * 60000)
+        with self.assertRaisesRegex(IncompleteDataError, "60000"):
+            render_dashboard(report=replace(report, inventory=(huge,)), ledger=Ledger(), preview=True)
+        with self.assertRaisesRegex(IncompleteDataError, "incomplete"):
+            render_dashboard(report=replace(report, complete=False), ledger=Ledger(), preview=True)
+
+    def test_explicit_adoption_and_duplicate_rejection(self) -> None:
+        path = "/repos/opsmill/infrahub/issues?state=all&creator=github-actions%5Bbot%5D&per_page=100&page=1"
+        issue: dict[str, JsonValue] = {
+            "number": 99,
+            "id": 99,
+            "title": "PR lifecycle dashboard",
+            "body": "Existing human dashboard",
+            "user": {"login": "maintainer", "type": "User"},
+        }
+        transport = FixtureTransport(responses={path: [], "/repos/opsmill/infrahub/issues/99": issue})
+        self.assertIsNone(discover_dashboard(transport=transport))
+        self.assertEqual(discover_dashboard(transport=transport, adopted_issue=99), (99, "Existing human dashboard"))
+        transport.responses[path] = [
+            {"id": 100, "number": 100, "body": DASHBOARD_MARKER, "user": {"login": TRUSTED_BOT, "type": "Bot"}}
+        ]
+        with self.assertRaisesRegex(IncompleteDataError, "Multiple dashboards"):
+            discover_dashboard(transport=transport, adopted_issue=99)
+
+    def test_final_refresh_reuses_issue_and_preserves_success_on_failure(self) -> None:
+        transport = MutationTransport()
+        root = "/repos/opsmill/infrahub"
+        transport.responses[f"{root}/pulls?state=open&per_page=100&page=1"] = [
+            {"id": 1, "number": 1, "user": {"login": "alice", "type": "User"}}
+        ]
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
+        lifecycle.finalize()
+        lifecycle.refresh_dashboard()
+        self.assertEqual(lifecycle.ledger.last_successful_refresh, NOW)
+        if lifecycle.dashboard is None:
+            self.fail("Expected persisted dashboard")
+        successful = lifecycle.dashboard[1]
+        self.assertIn("## Closing soon (1)", successful)
+        self.assertIn("closure deadline: 2026-10-12T12:00:00+00:00", successful)
+        writes = len(transport.writes)
+        lifecycle.refresh_dashboard()
+        self.assertEqual(len(transport.writes), writes)
+        transport.now = "2026-09-29T12:00:00+00:00"
+        del transport.responses[f"{root}/pulls/1/reviews?per_page=100&page=1"]
+        with self.assertRaisesRegex(IncompleteDataError, "Dashboard refresh failed"):
+            lifecycle.refresh_dashboard()
+        self.assertEqual(lifecycle.dashboard[1], successful)
+        self.assertEqual(lifecycle.ledger.last_successful_refresh, NOW)
+
+    def test_render_places_each_category_once_with_plain_actors(self) -> None:
+        report = observe(repository="opsmill/infrahub", transport=observation_transport(count=6), clock=fixed_clock)
+        categories = ("ready to merge", "waiting for review", "waiting for author", "blocked", "draft", "closing soon")
+        proposals = tuple(
+            replace(
+                item, classification=replace(item.classification, category=category, actors=("alice", "opsmill/team"))
+            )
+            for item, category in zip(report.proposals, categories, strict=True)
+        )
+        body = render_dashboard(report=replace(report, proposals=proposals), ledger=Ledger())
+        for number in range(1, 7):
+            self.assertEqual(body.count(f"[#{number}]"), 1)
+        self.assertEqual(body.count("alice, opsmill/team:"), 6)
+        self.assertNotIn("@", body)
+
+    def test_compact_history_detects_old_edits_and_owned_deletion(self) -> None:
+        history = tuple(
+            FeedItem(identity=f"comment:{number}", actor="alice", kind="comment", at=OLD, content_hash=str(number))
+            for number in range(2000)
+        )
+        value = snapshot(feed=history)
+        entry = observe_activity(snapshot=value, previous=None)
+        self.assertEqual(entry.watermarks, ())
+        self.assertLess(len(encode_ledger(ledger=Ledger(entries=(entry,)))), 1500)
+        edited = (replace(history[0], content_hash="edited"), *history[1:])
+        self.assertEqual(observe_activity(snapshot=replace(value, feed=edited), previous=entry).activity_at, NOW)
+        owned = Receipt(
+            operation="ordinary:1",
+            identity="comment:owned",
+            actor=TRUSTED_BOT,
+            kind="comment",
+            at=OLD,
+            content_hash="notice",
+        )
+        item = FeedItem(
+            identity=owned.identity, actor=owned.actor, kind=owned.kind, at=owned.at, content_hash=owned.content_hash
+        )
+        initial = observe_activity(snapshot=snapshot(), previous=None)
+        tracked = observe_activity(snapshot=snapshot(feed=(item,)), previous=replace(initial, receipts=(owned,)))
+        self.assertEqual(tracked.activity_at, OLD)
+        deleted = observe_activity(snapshot=snapshot(), previous=tracked)
+        self.assertEqual(deleted.activity_at, NOW)
+
+    def test_pruning_rebases_receipts_without_resetting_activity(self) -> None:
+        transport = MutationTransport()
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
+        for day in ("2026-10-05T12:00:00+00:00", "2026-10-11T12:00:00+00:00"):
+            transport.now = day
+            lifecycle = self.lifecycle(transport)
+            lifecycle.reconcile()
+        before = lifecycle.ledger.entries[0]
+        value = collect_snapshot(transport=transport, number=1, now=datetime.fromisoformat(transport.now))
+        retained = prune_ledger(
+            ledger=lifecycle.ledger, confirmed_closed=frozenset(), gates_cleaned=frozenset(), snapshots=(value,)
+        ).entries[0]
+        self.assertEqual(retained.warning, before.warning)
+        self.assertTrue(closure_due(snapshot=value, entry=retained, now=datetime(2026, 10, 13, tzinfo=UTC)))
+        retired = prune_ledger(
+            ledger=Ledger(entries=(replace(retained, warning=None),)),
+            confirmed_closed=frozenset(),
+            gates_cleaned=frozenset(),
+            snapshots=(value,),
+        ).entries[0]
+        self.assertEqual(retired.receipts, ())
+        self.assertEqual(observe_activity(snapshot=value, previous=retired).activity_at, retained.activity_at)
+        pending = replace(
+            retained,
+            pending=Intent(operation="pending", kind="comment", content_hash="x", prior_hash=retained.fingerprint),
+        )
+        self.assertEqual(
+            prune_ledger(
+                ledger=Ledger(entries=(pending,)),
+                confirmed_closed=frozenset({1}),
+                gates_cleaned=frozenset({1}),
+                snapshots=(value,),
+            ).entries,
+            (pending,),
+        )
+
+    def test_label_recovery_rejects_two_identical_added_events(self) -> None:
+        entry = observe_activity(snapshot=snapshot(), previous=None)
+        intent = Intent(
+            operation="label",
+            kind="labeled",
+            content_hash="label-hash",
+            prior_hash=entry.fingerprint,
+            feed_baseline=feed_digest(()),
+        )
+        events = tuple(
+            FeedItem(
+                identity=f"timeline:{number}", actor=TRUSTED_BOT, kind="labeled", at=NOW, content_hash="label-hash"
+            )
+            for number in (1, 2)
+        )
+        with self.assertRaisesRegex(IncompleteDataError, "baseline"):
+            reconcile_pending(snapshot=snapshot(feed=events), previous=replace(entry, pending=intent))
+        recovered = reconcile_pending(snapshot=snapshot(feed=events[:1]), previous=replace(entry, pending=intent))
+        if recovered is None:
+            self.fail("Expected recovered receipt")
+        self.assertEqual(recovered.receipts[0].identity, "timeline:1")
+
+    def test_forged_current_digest_cannot_hide_post_warning_human_activity(self) -> None:
+        transport = MutationTransport()
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
+        value = collect_snapshot(transport=transport, number=1, now=fixed_clock())
+        entry = lifecycle.ledger.entries[0]
+        human = FeedItem(
+            identity="comment:human",
+            actor="alice",
+            kind="comment",
+            at="2026-09-29T12:00:00+00:00",
+            content_hash="human activity",
+        )
+        changed = replace(value, feed=(*value.feed, human))
+        forged = replace(entry, external_digest=activity_digest(snapshot=changed, receipts=entry.receipts))
+        self.assertFalse(closure_due(snapshot=changed, entry=forged, now=datetime(2026, 10, 13, tzinfo=UTC)))
+
+    def test_repeated_confirmed_deliveries_keep_bounded_state_and_old_edit_detection(self) -> None:
+        entry = observe_activity(snapshot=snapshot(), previous=None)
+        feed: tuple[FeedItem, ...] = ()
+        for index in range(100):
+            receipt = Receipt(
+                operation=f"ordinary:{index}",
+                identity=f"comment:{index}",
+                actor=TRUSTED_BOT,
+                kind="comment",
+                at=NOW,
+                content_hash=digest(str(index)),
+            )
+            feed = (
+                *feed,
+                FeedItem(
+                    identity=receipt.identity,
+                    actor=receipt.actor,
+                    kind=receipt.kind,
+                    at=receipt.at,
+                    content_hash=receipt.content_hash,
+                ),
+            )
+            value = snapshot(feed=feed, updated_at=NOW)
+            entry = observe_activity(snapshot=value, previous=replace(entry, receipts=(receipt,), last_notice_at=NOW))
+            entry = prune_ledger(
+                ledger=Ledger(entries=(entry,)),
+                confirmed_closed=frozenset(),
+                gates_cleaned=frozenset(),
+                snapshots=(value,),
+            ).entries[0]
+            self.assertEqual((entry.activity_at, entry.receipts, entry.watermarks), (OLD, (), ()))
+            self.assertLess(len(encode_ledger(ledger=Ledger(entries=(entry,)))), 1500)
+        edited = snapshot(
+            feed=(replace(next(iter(feed)), content_hash="edited old comment"), *feed[1:]), updated_at=NOW
+        )
+        self.assertEqual(observe_activity(snapshot=edited, previous=entry).activity_at, NOW)
+
+    def test_finalization_keeps_label_definition_with_open_references(self) -> None:
+        transport = MutationTransport()
+        transport.responses["/repos/opsmill/infrahub/labels?per_page=100&page=1"] = [
+            {"id": 1, "name": "lifecycle-close-123-1"}
+        ]
+        transport.responses[
+            "/repos/opsmill/infrahub/issues?state=open&labels=lifecycle-close-123-1&per_page=100&page=1"
+        ] = [{"id": 2, "number": 2}]
+        self.lifecycle(transport).finalize()
+        self.assertFalse(any(method == "DELETE" for method, _, _ in transport.writes))
+
+    def test_missing_warning_proof_prevents_successful_refresh(self) -> None:
+        transport = MutationTransport()
+        transport.responses["/repos/opsmill/infrahub/pulls?state=open&per_page=100&page=1"] = [
+            {"id": 1, "number": 1, "user": {"login": "alice", "type": "User"}}
+        ]
+        lifecycle = self.lifecycle(transport)
+        lifecycle.reconcile()
+        entry = lifecycle.ledger.entries[0]
+        lifecycle.persist(entry=replace(entry, receipts=()))
+        with self.assertRaisesRegex(IncompleteDataError, "reconciliation still required"):
+            lifecycle.refresh_dashboard()
+        self.assertIsNone(lifecycle.ledger.last_successful_refresh)
+
+    def test_full_inventory_with_active_cycles_fits_after_receipt_compaction(self) -> None:
+        report = observe(repository="opsmill/infrahub", transport=observation_transport(count=112), clock=fixed_clock)
+        entries = []
+        active_count = 12
+        for index, value in enumerate(report.inventory):
+            entry = observe_activity(snapshot=value, previous=None)
+            cycle = digest(str(index))[:24]
+            warning = (
+                WarningCycle(
+                    cycle=cycle,
+                    delivered_at=NOW,
+                    deadline="2026-10-12T12:00:00+00:00",
+                    initial_operation=f"warning:{cycle}",
+                    final_operation=f"deadline:{cycle}",
+                )
+                if index < active_count
+                else None
+            )
+            kinds = (
+                ("warning", "deadline", "milestone-7", "milestone-1", "label-warning", "label-gate")
+                if warning
+                else ("ordinary",)
+            )
+            receipts = tuple(
+                Receipt(
+                    operation=f"{kind}:{cycle}",
+                    identity=f"{kind}:{index}",
+                    actor=TRUSTED_BOT,
+                    kind="comment",
+                    at=NOW,
+                    content_hash=digest(f"{kind}:{index}"),
+                )
+                for kind in kinds
+            )
+            entries.append(replace(entry, receipts=receipts, warning=warning, last_notice_at=NOW))
+        ledger = prune_ledger(
+            ledger=Ledger(entries=tuple(entries)),
+            confirmed_closed=frozenset(),
+            gates_cleaned=frozenset(),
+            snapshots=report.inventory,
+        )
+        body = render_dashboard(report=report, ledger=ledger)
+        self.assertLess(len(body), 60000)
+        self.assertEqual(body.count("](/opsmill/infrahub/pull/"), 112)
+        self.assertEqual(sum(len(entry.receipts) for entry in ledger.entries), 72)
+        self.assertEqual(sum(entry.last_notice_at == NOW for entry in ledger.entries), 112)
