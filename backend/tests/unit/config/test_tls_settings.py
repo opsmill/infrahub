@@ -125,6 +125,25 @@ class TestS3TLSSettings:
                 {"INFRAHUB_STORAGE_TLS_CA_FILE": CA_BUNDLE, "INFRAHUB_STORAGE_USE_SSL": False}
             )
 
+    def test_insecure_wins_over_a_configured_ca_file(self) -> None:
+        # Switching verification off temporarily must not require dropping the bundle.
+        settings = S3StorageSettings.model_validate(
+            {"INFRAHUB_STORAGE_TLS_CA_FILE": CA_BUNDLE, "INFRAHUB_STORAGE_TLS_INSECURE": True}
+        )
+
+        assert settings.tls_insecure is True
+        assert settings.tls_ca_file == CA_BUNDLE
+
+    def test_insecure_on_a_plaintext_endpoint_is_rejected(self) -> None:
+        with pytest.raises(
+            ValidationError,
+            match=(
+                r"storage.s3.tls_insecure cannot be combined with storage.s3.use_ssl=false, because a plaintext "
+                r"endpoint has no certificate to validate. Enable use_ssl or drop tls_insecure."
+            ),
+        ):
+            S3StorageSettings.model_validate({"INFRAHUB_STORAGE_TLS_INSECURE": True, "INFRAHUB_STORAGE_USE_SSL": False})
+
 
 class TestGlobalCaBundleResolution:
     """The global ``tls.ca_bundle`` fills every component that verifies certificates and left its own CA unset."""
@@ -189,12 +208,30 @@ class TestGlobalCaBundleResolution:
                 "git": {"tls_insecure": True},
                 "http": {"tls_insecure": True},
                 "cache": {"tls_insecure": True},
+                "storage": {"s3": {"INFRAHUB_STORAGE_TLS_INSECURE": True}},
+                "log_forwarding": {
+                    "destinations": [
+                        {
+                            "name": "lab",
+                            "host": "lab-logs.example.com",
+                            "protocol": "tcp",
+                            "tls_enabled": True,
+                            "tls_insecure": True,
+                        },
+                        {"name": "siem", "host": "logs.example.com", "protocol": "tcp", "tls_enabled": True},
+                    ]
+                },
             }
         )
 
         assert settings.git.tls_ca_file is None
         assert settings.http.tls_ca_bundle is None
         assert settings.cache.tls_ca_file is None
+        assert settings.storage.s3.tls_ca_file is None
+        assert [destination.tls_ca_bundle for destination in settings.log_forwarding.destinations] == [
+            None,
+            CA_BUNDLE,
+        ]
         assert settings.database.tls_ca_file == CA_BUNDLE
 
     def test_plaintext_s3_endpoint_is_left_alone(self) -> None:

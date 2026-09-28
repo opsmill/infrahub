@@ -195,7 +195,7 @@ To scope the bundle to git only, leave `INFRAHUB_TLS_CA_BUNDLE` unset and set `I
 
 :::warning
 
-When a CA setting and the matching `*_TLS_INSECURE` setting are both set, the insecure setting wins and the bundle is ignored, so verification can be switched off temporarily without dropping the bundle. The trace exporter and LDAP are the exception and refuse to start with both set. Infrahub also refuses to start when you set `INFRAHUB_STORAGE_TLS_CA_FILE` on a plaintext S3 endpoint (`INFRAHUB_STORAGE_USE_SSL=false`), and the global bundle skips components whose connection is plaintext.
+When a CA setting and the matching `*_TLS_INSECURE` setting are both set, the insecure setting wins and the bundle is ignored, so verification can be switched off temporarily without dropping the bundle. The trace exporter and LDAP are the exception and refuse to start with both set. Infrahub also refuses to start when you set `INFRAHUB_STORAGE_TLS_CA_FILE` or `INFRAHUB_STORAGE_TLS_INSECURE` on a plaintext S3 endpoint (`INFRAHUB_STORAGE_USE_SSL=false`), and the global bundle skips components whose connection is plaintext.
 
 :::
 
