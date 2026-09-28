@@ -1,0 +1,23 @@
+utilities/jev_triage/classify.py
+  s_aafacfc47dd310::t_6b8911045e7588 1-207
+utilities/jev_triage/config.yaml
+  s_aafacfc47dd310::t_f144c5710784d2 1-18
+utilities/jev_triage/tests/test_classify.py
+  s_aafacfc47dd310::t_db37c224328527 1-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4219eeaf64aafa2090f27462d13dddc2691a5b9c",
+  "prompts": {},
+  "sessions": {
+    "s_aafacfc47dd310": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c7a6fe13-0b0a-40f8-ba25-e5fae68a98a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
