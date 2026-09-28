@@ -622,8 +622,14 @@ def observe_activity(*, snapshot: Snapshot, previous: Entry | None) -> Entry:
     reset = changed or unexplained or previous.head != snapshot.head
     reopened_now = reopened is not None and (previous.reopened_at is None or reopened > previous.reopened_at)
     activity = max(previous.activity_at, snapshot.observed_at) if reset else previous.activity_at
-    if reopened_now:
-        activity = reopened
+    if (
+        reopened_now
+        and reopened is not None
+        and previous.head == snapshot.head
+        and snapshot.updated_at == reopened
+        and max((item.at for item in external), default=None) == reopened
+    ):
+        activity = max(previous.activity_at, reopened)
     return replace(
         previous,
         activity_at=activity,
@@ -1667,9 +1673,13 @@ class Lifecycle:
                 mode=Mode.APPLY,
             )
         except IncompleteDataError:
-            self.refresh(number)
+            current, _ = self.refresh(number)
+            if (label in current.labels) != present:
+                raise
             return
-        self.refresh(number)
+        current, _ = self.refresh(number)
+        if (label in current.labels) != present:
+            raise IncompleteDataError("Label mutation was not confirmed")
 
     def ensure_labels(self, *, names: frozenset[str] = OWNED_LABELS) -> None:
         root = f"/repos/{ALLOWED_REPOSITORY}/labels"

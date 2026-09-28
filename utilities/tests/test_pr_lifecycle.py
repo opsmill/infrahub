@@ -292,6 +292,19 @@ class TestActivity(unittest.TestCase):
         result = observe_activity(snapshot=snapshot(updated_at=reopened, feed=(item,)), previous=entry)
         self.assertEqual((result.activity_at, result.warning, result.last_notice_at), (reopened, None, None))
 
+    def test_delayed_reopen_observation_preserves_newer_activity(self) -> None:
+        previous = observe_activity(snapshot=snapshot(), previous=None)
+        reopened = FeedItem(identity="event:11", actor="alice", kind="reopened", at=OLD, content_hash="reopened")
+        comment = FeedItem(identity="comment:12", actor="alice", kind="comment", at=NOW, content_hash="still active")
+        for current in (
+            snapshot(updated_at=NOW, feed=(reopened, comment)),
+            snapshot(updated_at=OLD, head="new-head", feed=(reopened,)),
+        ):
+            with self.subTest(head=current.head, comments=len(current.feed)):
+                result = observe_activity(snapshot=current, previous=previous)
+                self.assertEqual(result.activity_at, NOW)
+                self.assertFalse(warning_needed(snapshot=current, entry=result, now=fixed_clock()))
+
 
 class TestLedger(unittest.TestCase):
     def test_failed_finalization_preserves_pending_intent(self) -> None:
@@ -1043,6 +1056,25 @@ class TestMutationLifecycle(unittest.TestCase):
         with self.assertRaisesRegex(IncompleteDataError, "planned mutations"):
             self.lifecycle(transport).reconcile()
         self.assertEqual(transport.writes, [])
+
+    def test_rejected_label_mutation_cannot_report_success(self) -> None:
+        for present in (True, False):
+            with self.subTest(present=present):
+                transport = MutationTransport()
+                pr = object_value(transport.responses["/repos/opsmill/infrahub/pulls/1"])
+                pr["labels"] = [] if present else [{"name": "lifecycle-warning"}]
+
+                def reject_label(
+                    *, method: str, path: str, payload: JsonValue, mode: Mode, target: MutationTransport = transport
+                ) -> JsonValue:
+                    if "/issues/1/labels" in path:
+                        raise IncompleteDataError("Rejected label mutation")
+                    return MutationTransport.write_json(target, method=method, path=path, payload=payload, mode=mode)
+
+                with patch.object(transport, "write_json", side_effect=reject_label):
+                    with self.assertRaisesRegex(IncompleteDataError, "Rejected label mutation"):
+                        self.lifecycle(transport).label(number=1, label="lifecycle-warning", present=present)
+                self.assertEqual(pr["labels"], [] if present else [{"name": "lifecycle-warning"}])
 
     def test_human_activity_cancels_once_and_preserves_keep_open(self) -> None:
         transport = MutationTransport()
