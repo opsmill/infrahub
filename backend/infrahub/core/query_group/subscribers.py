@@ -44,14 +44,13 @@ query GatherGraphQLQuerySubscribers($members: [ID!]) {
 class SubscriberRef:
     """A node subscribed to a query group, as the gather query reports it.
 
-    ``query_id`` identifies the GraphQL query of the group that reported it, so a caller
-    interested in one query can tell the groups apart. It is None when the group cannot be traced
-    back to a query, which a caller must read as "unknown" and not as "another query".
+    ``query_id`` identifies the GraphQL query of the group that reported it. It is None when the
+    group cannot be traced back to a query, which reads as "unknown" and not as "another query".
     """
 
     id: str
     kind: str
-    query_id: str | None = None
+    query_id: str | None
 
 
 def _query_id(group: dict) -> str | None:
@@ -63,23 +62,31 @@ def _query_id(group: dict) -> str | None:
     return get_nested_dict(nested_dict=group, keys=["query", "node"]).get("id")
 
 
-async def fetch_subscriber_refs(*, client: InfrahubClient, node_ids: list[str], branch: str) -> list[SubscriberRef]:
+async def fetch_subscriber_refs(
+    *, client: InfrahubClient, node_ids: list[str], branch: str, query_ids: set[str] | None = None
+) -> list[SubscriberRef]:
     """Every node subscribed to a query group that has any of ``node_ids`` as a member.
 
     The same subscriber is reported once per matching group, so callers that cannot accept
-    duplicates must deduplicate. Each ref carries the id of its group's GraphQL query.
+    duplicates must deduplicate.
+
+    ``query_ids`` keeps only the groups running one of those queries. A group whose query cannot be
+    read is kept either way: dropping it would drop a reader the caller asked for, and the filter
+    is there to save work, not to decide correctness. Filtering here rather than on the server for
+    the same reason, since a server-side filter would answer nothing for an unreadable query.
     """
     result = await client.execute_graphql(
         query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS,
         branch_name=branch,
         variables={"members": node_ids},
     )
-    return [
-        SubscriberRef(
-            id=subscriber["node"]["id"],
-            kind=subscriber["node"]["__typename"],
-            query_id=_query_id(group["node"]),
+    refs: list[SubscriberRef] = []
+    for group in result[InfrahubKind.GRAPHQLQUERYGROUP]["edges"]:
+        query_id = _query_id(group["node"])
+        if query_ids is not None and query_id is not None and query_id not in query_ids:
+            continue
+        refs.extend(
+            SubscriberRef(id=subscriber["node"]["id"], kind=subscriber["node"]["__typename"], query_id=query_id)
+            for subscriber in group["node"]["subscribers"]["edges"]
         )
-        for group in result[InfrahubKind.GRAPHQLQUERYGROUP]["edges"]
-        for subscriber in group["node"]["subscribers"]["edges"]
-    ]
+    return refs

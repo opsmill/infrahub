@@ -253,6 +253,31 @@ async def test_gather_trigger_computed_attribute_python(
     assert _field_filter(triggers_by_kind["TestCar"]) == ["name"]
 
 
+async def test_an_attribute_wiring_its_transform_by_id_gets_its_automations(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_computed_attr: None,
+    transform01: Node,
+) -> None:
+    """The schema allows the transform to be named by id, so the gather has to resolve one.
+
+    Resolved by name only, such an attribute got no automation of either family, and the wide
+    dispatch of a sibling was the only thing that ever refreshed it.
+    """
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    car_schema = schema_branch.get_node("TestCar")
+    car_schema.get_attribute(name="computed_desc_python").computed_attribute.transform = transform01.get_id()
+    schema_branch.set(name="TestCar", schema=car_schema)
+    await commit_schema_branch(db=db, branch=default_branch, schema_branch=schema_branch)
+
+    triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+
+    assert [trigger.name for trigger in triggers] == ["TestCar_computed_desc_python"]
+    assert [trigger.generate_name() for trigger in trigger_queries] == [
+        "computed_attr_python_query::main::transform::transform01::kind::TestCar"
+    ]
+
+
 async def test_two_attributes_sharing_a_transform_share_its_query_automations(
     db: InfrahubDatabase,
     default_branch: Branch,

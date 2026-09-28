@@ -9,13 +9,11 @@ import pytest
 
 from infrahub.computed_attribute import tasks
 from infrahub.computed_attribute.tasks import (
-    _belongs_to_query,
     _partition_transform_results,
     process_transform,
     trigger_update_python_computed_attributes,
 )
 from infrahub.core.constants import ComputedAttributeKind
-from infrahub.core.query_group.subscribers import SubscriberRef
 from infrahub.core.recompute.bulk_write import AttributeValueWrite
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema
@@ -464,19 +462,3 @@ async def test_a_batch_raises_for_a_transform_it_cannot_run(
     """A broken record must never be read as an absent one, on any path."""
     with pytest.raises(ValueError, match=UNUSABLE_TRANSFORM_ERROR):
         await _batch(coalesced=True, widened=widened)
-
-
-@pytest.mark.parametrize(
-    ("group_query_id", "automation_query_id", "expected"),
-    [
-        pytest.param("query01", "query01", True, id="the_same_query_matches"),
-        pytest.param("query02", "query01", False, id="another_query_is_dropped"),
-        pytest.param(None, "query01", True, id="a_group_with_no_query_is_kept"),
-        pytest.param("query02", None, True, id="an_automation_with_no_query_keeps_every_group"),
-    ],
-)
-def test_belongs_to_query(group_query_id: str | None, automation_query_id: str | None, expected: bool) -> None:
-    """A subscriber is dropped only when both queries are known and differ."""
-    ref = SubscriberRef(id="n1", kind="TestCar", query_id=group_query_id)
-
-    assert _belongs_to_query(ref=ref, graphql_query_id=automation_query_id) is expected

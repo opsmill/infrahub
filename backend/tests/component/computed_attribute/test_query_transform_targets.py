@@ -255,6 +255,32 @@ class TestQueryTransformTargets(ScopedRecomputeTestBase):
             ("TestPerson", "computed_peer_by_id"): [dataset["person"].id],
         }
 
+    async def test_a_query_no_group_runs_submits_nothing(
+        self,
+        dataset: dict[str, Any],
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        """Zero matching groups is the normal narrowing outcome, not a reason to widen.
+
+        The automation is installed per kind its own query reads, so a change reaching no group of
+        that query means no reader of it moved. Widening here would undo the narrowing.
+        """
+        car = dataset["cars"][0]
+
+        await query_transform_targets(
+            branch_name=default_branch.name,
+            node_kind="TestCar",
+            object_id=car.id,
+            context=self._context(admin_account, default_branch),
+            graphql_query_id=dataset["queries"]["query_other"].id,
+            transform_name="transform_other",
+            transform_id=dataset["transforms"]["transform_other"].id,
+        )
+
+        assert self._submissions(workflow_recorder) == {}
+
     # The query id stays None on both: an automation that cannot name its transform is the point
     # here, and a real id would narrow the groups and change the expected set.
     @pytest.mark.parametrize(

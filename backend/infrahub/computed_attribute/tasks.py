@@ -56,7 +56,6 @@ if TYPE_CHECKING:
 
     from infrahub_sdk import InfrahubClient
 
-    from infrahub.core.query_group.subscribers import SubscriberRef
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.schema.schema_branch_computed import TransformReadSet
     from infrahub.database import InfrahubDatabase
@@ -846,41 +845,29 @@ async def process_transform_lifecycle(
             await _reconcile_python_computed_attribute_automations(db=db)
 
 
-def _belongs_to_query(*, ref: SubscriberRef, graphql_query_id: str | None) -> bool:
-    """Whether the group that reported this subscriber runs the automation's own query.
-
-    A ref that cannot be compared is kept. Dropping it would drop a reader the automation is
-    there to recompute, and a subscriber resolved through another query is only extra work.
-    """
-    if graphql_query_id is None or ref.query_id is None:
-        return True
-    return ref.query_id == graphql_query_id
-
-
 def _attributes_fed_by_transform(
-    *, schema_branch: SchemaBranch, transform_name: str | None, transform_id: str | None
-) -> dict[str, list[str]] | None:
+    *, schema_branch: SchemaBranch, transform_name: str, transform_id: str
+) -> dict[str, list[str]]:
     """The Python computed attributes one transform feeds, per kind that owns them.
 
-    An attribute wires its transform by name or by id, so both keys answer here.
-
-    None when the transform cannot be mapped to any attribute, which the caller answers by
-    recomputing every Python attribute of the subscriber kinds: an automation the schema no
-    longer explains must still recompute rather than narrow to nothing.
+    An attribute wires its transform by name or by id, so both keys answer here. Empty when the
+    schema feeds no attribute from this transform.
     """
-    if transform_name is None or transform_id is None:
-        return None
-
     definitions = RecomputeResolver.from_schema_branch(schema_branch).resolve(
         transform_name=transform_name, transform_id=transform_id
     )
-    if not definitions:
-        return None
-
     attributes_by_kind: dict[str, list[str]] = defaultdict(list)
     for definition in definitions:
         attributes_by_kind[definition.kind].append(definition.attribute.name)
     return attributes_by_kind
+
+
+def _every_python_attribute(schema_branch: SchemaBranch) -> dict[str, list[str]]:
+    """Every Python computed attribute of the branch, per kind that owns them."""
+    return {
+        kind: [attribute.name for attribute in attributes]
+        for kind, attributes in schema_branch.computed_attributes.get_python_attributes_per_node().items()
+    }
 
 
 @flow(
@@ -906,23 +893,35 @@ async def query_transform_targets(
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
     client = get_client()
     client.request_context = context.to_request_context()
-    refs = await fetch_subscriber_refs(client=client, node_ids=[object_id], branch=branch_name)
-    subscribers = [ref for ref in refs if _belongs_to_query(ref=ref, graphql_query_id=graphql_query_id)]
+    subscribers = await fetch_subscriber_refs(
+        client=client,
+        node_ids=[object_id],
+        branch=branch_name,
+        query_ids={graphql_query_id} if graphql_query_id else None,
+    )
     if not subscribers:
+        log.info(
+            f"No subscriber to recompute on {branch_name}: no group holding {object_id} was reported "
+            f"for the query {graphql_query_id} of the transform {transform_name}"
+        )
         return
 
-    attributes_by_kind = _attributes_fed_by_transform(
-        schema_branch=schema_branch, transform_name=transform_name, transform_id=transform_id
-    )
-    if attributes_by_kind is None:
+    if transform_name is None or transform_id is None:
         log.info(
-            "Recomputing every Python computed attribute of the subscriber kinds: no attribute resolved "
-            f"for transform_name={transform_name} transform_id={transform_id} on {branch_name}"
+            "Recomputing every Python computed attribute of the subscriber kinds: this automation "
+            f"names no transform, on {branch_name}"
         )
-        attributes_by_kind = {
-            kind: [attribute.name for attribute in attributes]
-            for kind, attributes in schema_branch.computed_attributes.get_python_attributes_per_node().items()
-        }
+        attributes_by_kind = _every_python_attribute(schema_branch)
+    else:
+        attributes_by_kind = _attributes_fed_by_transform(
+            schema_branch=schema_branch, transform_name=transform_name, transform_id=transform_id
+        )
+        if not attributes_by_kind:
+            log.info(
+                "Recomputing every Python computed attribute of the subscriber kinds: the schema of "
+                f"{branch_name} feeds no attribute from the transform {transform_name} ({transform_id})"
+            )
+            attributes_by_kind = _every_python_attribute(schema_branch)
 
     # One batch per (kind, attribute), with the ids deduplicated: a subscriber is reported once
     # per group holding the changed node, and processing it twice writes the same value twice.
