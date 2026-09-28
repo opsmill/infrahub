@@ -115,16 +115,20 @@ a row. It comes off the `Branch` object already held by the row, so returning it
 | `updated_at` | `str \| None` | `r_value.from` |
 
 One row per `(repository_id, branch_name, attribute_name)` that resolved to an active value. A branch
-whose attribute has no visible edge (never created) produces no row; the reader backfills `None`.
+whose attribute has no visible edge (never created) produces no row; the lookup's `get` returns
+`None` for it.
 
 ### `RepositoryBranchAttributes` (frozen lookup, reader result)
 
 `infrahub.core.repository_branch_status.models::RepositoryBranchAttributes`
 
-- Built from a sequence of `RepositoryBranchAttributeValue`.
+- Built with `RepositoryBranchAttributes.from_values(values)` from a sequence of
+  `RepositoryBranchAttributeValue`. Two values for the same triple raise
+  `ResourceMultipleFoundError` naming it: the graph then holds two attributes of one name on that
+  branch, and the lookup does not pick one.
 - `get(repository_id, branch_name, attribute_name) -> RepositoryBranchAttributeValue | None`.
 - `for_branch(repository_id, branch_name) -> dict[str, RepositoryBranchAttributeValue]` for row assembly.
-- Immutable; holds a `Mapping` keyed by the triple.
+- Immutable; holds read-only attribute-name maps keyed by `(repository_id, branch_name)`.
 
 ### `RepositoryBranchStatusRow` (frozen dataclass, resolver internal)
 
@@ -136,7 +140,8 @@ whose attribute has no visible edge (never created) produces no row; the reader 
 | `values` | `Mapping[str, RepositoryBranchAttributeValue]` | reader (increment B) or stub (increment A) |
 
 The pure helpers in `paging.py` operate on a list of these: `apply_value_filters`, `order_rows`
-(default branch first, then `name` ascending, only when no `order` argument), `page_rows`.
+(default branch first, then `name` ascending, applied when `order` is absent or expresses no
+ordering), `page_rows`.
 
 A row becomes one GraphQL edge through `Branch.to_graphql`, the branch query's own serialisation, so
 the five branch fields arrive wrapped in `InfrahubBranch`'s value-field types and each edge carries
@@ -167,24 +172,23 @@ primitive call in the periodic sync.
 | Argument | Rule | Failure |
 | --- | --- | --- |
 | `id` | required; a repository uuid or its name, resolved with `NodeManager.get_one_by_id_or_default_filter`. That lookup does not enforce `kind` on the id path, so the resolver checks the resolved node against `CoreGenericRepository.used_by` itself; without that check any node uuid resolves and the field becomes an existence-and-kind oracle | `NodeNotFoundError` when neither matches, and when the id resolves to a node that is not a repository |
-| `limit` | `>= 1`; default 40; no maximum | `ValidationError` |
-| `offset` | `>= 0`; default 0 | `ValidationError` |
+| `limit` | `>= 1`; default 40; no maximum; an explicit `null` is rejected rather than defaulted | `ValidationError` |
+| `offset` | `>= 0`; default 0; an explicit `null` is rejected rather than defaulted | `ValidationError` |
+| `at` (request query parameter) | must be absent: the branch row set is always current | `ValidationError` |
 | `order` | at most one of `created_at`, `updated_at` (existing `standard_node_ordering_from_order_input`) | `ValidationError` |
 | `name__value` | any string; combined with `partial_match` for a contains match | none |
 | `partial_match` | boolean; default false | none |
 | `status__value` | any `BranchStatus` (the SDL name of the `InfrahubBranchStatus` symbol); `MERGED` or `DELETING` yields an empty set, not an error | none |
 | `own_values_only` | boolean; default false; keeps rows whose `commit` is the branch's own, and forces `commit` into the attribute read | none |
-| `sync_status__value`, `internal_status__value` | any string; unknown values yield an empty set | none |
+| `sync_status__value`, `internal_status__value` | any string; unknown values yield an empty set; forces the filtered attribute into the attribute read | none |
 | repository not found | same `NodeNotFoundError` path as other repository lookups | error |
 | no `ALLOW_ALL` view on either repository kind | `PermissionDeniedError` before the lookup | error |
 | missing `ALLOW_ALL` view on the resolved concrete kind | `PermissionDeniedError` before any row is returned | error |
 | context without a `PermissionManager` | treated as denial | error |
 
-The table is the end-state contract. One deviation applies while the stub serves placeholder values:
-`own_values_only`, `sync_status__value` and `internal_status__value` are rejected with a
-`ValidationError` rather than applied, because they filter on resolved attribute values that do not
-exist yet. Only actual narrowing rejects, so the defaults still pass. The rows above describe what
-they do once the graph read lands.
+The table is the contract as shipped. While increment A's stub served placeholder values,
+`own_values_only`, `sync_status__value` and `internal_status__value` were rejected with a
+`ValidationError` rather than applied; increment B deleted the stub and made all three real.
 
 ## State transitions
 

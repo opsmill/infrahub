@@ -135,7 +135,9 @@ grows with the branch count while `count_for` does not.
 Request only `commit`.
 
 **Expected**: the attribute-name set handed to `RepositoryBranchAttributesReader.read` is `{"commit"}`
-and `sync_status` is absent from the statement parameters. Observed by constructing the resolver with a
+and `sync_status` is absent from the statement parameters. Selecting only `sync_status` with
+`own_values_only: true` widens the set to `{"sync_status", "commit"}`; a set `sync_status__value` or
+`internal_status__value` likewise adds its attribute. Observed by constructing the resolver with a
 recording source, not by patching.
 
 ### B6a. Differential check against the standard read
@@ -151,6 +153,12 @@ step with `Branch.get_query_filter_path`.
 **Expected**: the example in `contracts/core-primitive.md` passes as a component test with two branch
 names and one attribute.
 
+### B7a. No historical read
+
+**Expected**: a request to `/graphql?at=<timestamp>` fails with a `ValidationError` reading "at is not
+supported on InfrahubRepositoryBranchStatus: the branch row set is always current"; the same document
+without `at` succeeds.
+
 ### B8. Documentation
 
 **Expected**: `uv run invoke docs.validate` passes after `uv run invoke docs.generate`; the new section
@@ -160,9 +168,12 @@ in `docs/docs/git-integration/branch-synchronization.mdx` shows the example docu
 
 ### C1. Bounded read
 
-Fixture: one repository, 200 branches, `CountingInfrahubDatabase`.
+Fixture: two repositories, `2 * REPOSITORY_BRANCH_READ_CHUNK_SIZE + 1` branch names (201 at the
+current size: two full chunks and a partial one, so a batching error at the last boundary cannot
+pass), `CountingInfrahubDatabase`.
 
-**Expected**: `count_for("repository-branch-attributes") <= ceil(200 / 100)`; the `-global-` key is
+**Expected**: `count_for("repository-branch-attributes") == 3` and `count_for("node_get_list") == 1`,
+the node read's other statements being fixed in number whatever the branch count; the `-global-` key is
 absent from `RepositoryData.branches`; `branch_info[registry.default_branch].internal_status` and
 `get_staging_branch()` behave as before; `RepositoryData.repository.default_branch`, `.location` and
 `.ref` carry the default branch's values; the computed-attribute gather resolves `branches[branch.name]`

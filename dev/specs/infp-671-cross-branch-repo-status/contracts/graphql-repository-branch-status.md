@@ -59,9 +59,10 @@ All filters apply server-side and `count` reflects them.
 | `internal_status__value` | Keep rows whose resolved `internal_status.value` equals the given value |
 | `own_values_only` | Keep rows where the branch holds its own `commit` value, meaning it has imported on this branch. Independent of the selected fields |
 | `order` | Existing `MetadataOrderInput` on branch node metadata (`created_at` or `updated_at`) |
-| `limit` / `offset` | Default 40 / 0; `limit` has no maximum |
+| `limit` / `offset` | Default 40 / 0; `limit` has no maximum; `limit` below 1, `offset` below 0 and an explicit `null` for either are rejected with a `ValidationError` |
 
-Default ordering when `order` is omitted: the default branch first, then branch name ascending.
+Default ordering when `order` is omitted or expresses no ordering: the default branch first, then
+branch name ascending.
 
 ### Point in time
 
@@ -131,9 +132,6 @@ query RepositoryBranchStatus($id: String!, $limit: Int, $offset: Int, $syncStatu
   }
 }
 ```
-
-While the stub is live, leave `$syncStatus` unset: passing a value makes the query fail, because the
-value filters are rejected until the graph read lands.
 
 ## Example response (read-write repository, three branches, one failed import)
 
@@ -213,7 +211,8 @@ are underscored (`IN_SYNC`, `ERROR_IMPORT`) but the stored values are not, and
 
 ## Increment A (stub) behaviour, for the frontend team
 
-While the stub is live on `develop`:
+Increment B deleted the stub, so none of this applies any more; it is kept as the record of what the
+card was first built against. While the stub was live:
 
 - Repository lookup, kind dispatch, not-found, permission denial, the row set, `status__value`,
   `name__value`, `partial_match`, `order`, `limit`, `offset` and `count` are real.

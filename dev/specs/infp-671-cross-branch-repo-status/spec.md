@@ -57,12 +57,12 @@ The periodic repository sync reads each repository's commit and internal status 
 
 **Why this priority**: It ships independently of the user-facing card and is independently measurable, but the operator-facing value in P1 is the reason the ticket exists. It also changes a once-a-minute read path, so it warrants its own reviewed change.
 
-**Independent Test**: Run a sync cycle against a repository with 200 branches while counting graph queries. The count is bounded by one repository-node read plus the branch count divided by the chunk size, rounded up, and only `commit` and `internal_status` are read.
+**Independent Test**: Run a sync cycle against a repository with 200 branches while counting graph queries. The per-branch reads number the branch count divided by the chunk size, rounded up, on top of one repository-node read whose cost does not depend on the branch count, and only `commit` and `internal_status` are read.
 
 **Acceptance Scenarios**:
 
 1. **Given** a repository with 200 branches, **When** a sync cycle runs, **Then** the repository commit and internal status for every branch are read without one query per branch, and only `commit` and `internal_status` are requested.
-2. **Given** the same fixture, **When** the sync's read path is instrumented, **Then** the number of graph queries is at most `1 + ceil(200 / chunk_size)` for the configured chunk size.
+2. **Given** the same fixture, **When** the sync's read path is instrumented, **Then** the per-branch attribute read runs exactly `ceil(200 / chunk_size)` times for the configured chunk size, and the repository nodes are listed exactly once.
 
 ---
 
@@ -81,6 +81,7 @@ The periodic repository sync reads each repository's commit and internal status 
 - **Caller lacks permission on non-default branches**: The query is denied outright. It does not return a trimmed row set that silently omits branches.
 - **Every branch filtered out**: The query returns an empty row set and a count of 0, not an error.
 - **Repository id or name does not resolve**: The query fails with the same not-found behaviour as other repository lookups.
+- **Request for a past point in time**: A request carrying an `at` parameter is rejected with a validation error. The branch list the rows come from has no historical form, so past values would be paired with the current branch set.
 
 ## Requirements *(mandatory)*
 
@@ -100,9 +101,9 @@ The periodic repository sync reads each repository's commit and internal status 
 #### Efficiency
 
 - **FR-007**: The number of database queries needed to serve a page MUST be independent of the number of branches in the row set, up to the configured database query size limit. Above that limit the unpaged branch read takes the standard chunked path and adds one execution per chunk; the attribute read stays one statement per page. *Verify*: instrument query execution; run the same document against fixtures with 5 and 200 branches and assert the two counts are equal. No specific count is prescribed.
-- **FR-008**: System MUST read only the attributes the caller selected, plus `commit` when `own_values_only` is set. *Verify*: the attribute-name set reaching the core read equals the GraphQL selection, plus `commit` when `own_values_only` is true; an unselected attribute is absent from the query parameters otherwise.
+- **FR-008**: System MUST read only the attributes the caller selected, plus each attribute a set value filter needs: `commit` when `own_values_only` is set, `sync_status` when `sync_status__value` is set, `internal_status` when `internal_status__value` is set. *Verify*: the attribute-name set reaching the core read equals the GraphQL selection plus the filtered attributes; an unselected, unfiltered attribute is absent from the query parameters.
 - **FR-009**: The core primitive MUST take an explicit branch-name list and attribute-name set and MUST be callable without GraphQL. *Verify*: unit test invokes it directly with two branch names and one attribute.
-- **FR-010**: The periodic sync's per-branch repository read (`get_repositories_commit_per_branch`) MUST use the primitive and MUST NOT issue one query per branch. Its query count MUST be bounded by `1 + ceil(N / chunk_size)` for N branches, the one being the single repository-node read that precedes the chunks. *Verify*: instrument; assert the bound holds at 200 branches with the configured chunk size.
+- **FR-010**: The periodic sync's per-branch repository read (`get_repositories_commit_per_branch`) MUST use the primitive and MUST NOT issue one query per branch. For N branches it MUST issue `ceil(N / chunk_size)` per-branch attribute reads, on top of one repository-node read that precedes the chunks. That node read goes through the node manager, so it is several statements, but their number does not depend on N. *Verify*: instrument; at 200 branches with the configured chunk size, assert the attribute-read count equals `ceil(N / chunk_size)` and the repository nodes are listed exactly once.
 - **FR-011**: `count` MUST be computed only when selected. *Verify*: instrument; assert no counting operation when the field is omitted.
 - **FR-015**: The query MUST resolve entirely from the graph. It MUST NOT issue a git operation, send a message-bus request, or depend on a task worker being available. *Verify*: instrument message-bus sends; assert zero for every document this contract supports.
 
@@ -164,7 +165,7 @@ These are constraints the PRD established by verifying the codebase. They bound 
 | Gate | Status |
 | --- | --- |
 | Database schema or migration | Ruled out. Nothing added, nothing written. |
-| GraphQL schema modification | Requires sign-off. One additive hand-written query plus its types, and a `sync_with_git` filter on the existing branch filters. |
+| GraphQL schema modification | Requires sign-off. One additive hand-written query plus its types. The `sync_with_git` filter is added to the core branch list filters only, not to the `InfrahubBranch` query. |
 | New dependencies | None. |
 | CI/CD workflow changes | None. |
 | Authentication / authorization | Requires sign-off. No new permission is defined, but the enforcement is new: the permission checker pipeline cannot see a hand-written root field, so the check moves into the resolver, and this is the first read to require a decision covering both the default branch and other branches. Both are precedents a reviewer should see. |
