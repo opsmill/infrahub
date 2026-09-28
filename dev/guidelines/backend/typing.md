@@ -6,7 +6,7 @@ Typing rules for the Python backend. Two of them are hard rules: no new suppress
 When a branch needs narrowing, prefer `isinstance` over `getattr`, as the rest of this page details.
 
 - All function parameters and return types must be type-hinted
-- Write built-in generics and PEP 604 unions (`list[str]`, `str | None`); the `typing.List`/`Optional` spellings are legacy and ruff flags them. The one exception is persisted nullable fields on `StandardNode` subclasses, which must stay `Optional[X]` until the runtime type resolution moves off it (see `StandardNode.guess_field_type`; ruff ignores UP007/UP045 in those modules)
+- Write built-in generics and PEP 604 unions (`list[str]`, `str | None`), including persisted nullable fields on `StandardNode` subclasses: `StandardNode.guess_field_type` supports both `Optional[X]` and `X | None`. Ruff's path-based legacy ignores in `pyproject.toml` leave some older spellings unflagged, including UP045 in graph modules and UP007 in query modules; they do not change the preferred syntax.
 
 ## Type a closed value set as an enum, not `str`
 

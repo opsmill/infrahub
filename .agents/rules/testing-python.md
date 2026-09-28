@@ -6,7 +6,6 @@ paths:
   - "backend/tests/integration/**/*.py"
   - "backend/tests/integration_docker/**/*.py"
   - "python_testcontainers/tests/**/*.py"
-  - ".github/scripts/**/tests/**/*.py"
 
 ---
 
