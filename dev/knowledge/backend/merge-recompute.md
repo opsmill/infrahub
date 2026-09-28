@@ -4,7 +4,7 @@
 
 A live edit recomputes derived values one node at a time (see [computed-attributes.md](computed-attributes.md)). A merge or rebase can change many nodes at once, so it uses a different path: one coalesced recompute for the whole change set, written in bulk, then chained to any value that reads what was written.
 
-This covers four derived-value families: Jinja2 computed attributes, display labels, human-friendly ids, and Python-transform computed attributes. The Python family is described in [The Python transform family](#the-python-transform-family) below and is governed by `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE`, on by default. Profile refresh is not part of the pass; it is dispatched by its own automations. Generator and artifact regeneration on merge takes its own selective path, described in [selective-merge-regeneration.md](selective-merge-regeneration.md).
+This covers four derived-value families: Jinja2 computed attributes, display labels, human-friendly ids, and Python-transform computed attributes. The Python family is described in [The Python transform family](#the-python-transform-family) below. Profile refresh is not part of the pass; it is dispatched by its own automations. Generator and artifact regeneration on merge takes its own selective path, described in [selective-merge-regeneration.md](selective-merge-regeneration.md).
 
 ## Why a separate path
 
@@ -32,9 +32,9 @@ The builder, submitter, and coordinator live in `core/merge/recompute_coalescing
 
 A Python transform declares no dependency graph. What it reads is only known from its GraphQL query, and which nodes read a given node is only known from the query groups those nodes subscribed to when they last computed. Both are database facts, so this family is derived behind an interface (`PythonTargetResolver`) instead of from the schema branch the builder holds.
 
-`INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE` is a temporary escape hatch for the dev cycle and a later PR removes it. While it is here it governs the family, on by default, and it governs **both halves at once**: the real resolver against an inert one, and whether the two Python trigger types carry the `live` origin filter. Keep the two halves on the same switch: with the filter applied and the resolver inert, nothing would recompute a replayed change.
+The family has two halves: the pass derives the affected attributes, and the two Python trigger types carry the `live` origin filter so they leave the replay alone. Both halves are required. The filter without the pass leaves a replayed change unrecomputed; the pass without the filter recomputes it twice.
 
-The two halves do not land together. The resolver reads the setting per pass, while the filter is baked into the stored Prefect automation, which only a schema change, a branch deletion, a transform edit or `trigger_configure_all` rebuilds. So every worker has to carry the new value before any reconcile runs: a mixed fleet keeps re-flipping the stored automations, and until a reconcile lands the automations still hold the previous position.
+The filter is baked into the stored Prefect automation, so a code change to it takes effect when the Python node-input automations are next reconciled, not on a worker restart. A code revert of the filter needs a reconcile too, and `infrahub upgrade` is the deterministic way to get one. See [Recompute Drivers](computed-attributes.md#recompute-drivers) for what else reconciles them.
 
 The derivation applies the same per-action rules as the other families: a created node is its own target, an update selects the readers of the changed fields and, when the updated node is of the target kind, that node itself, a deletion selects the readers too. On top of that:
 
@@ -56,9 +56,9 @@ that survives a process moves when a transform query is edited.
 
 `process_transform` recomputes the one attribute it is asked for. A kind with several Python attributes gets one submission per attribute, so processing the whole kind per submission would run each transform once per attribute.
 
-While the switch is on, the two Python trigger types match `live` only, so a merge, a rebase and a coalesced write start no per-node flow. That is also what removes the two echo loops: the coalesced Jinja2, display-label and HFID writes carry the `recompute` origin and no longer re-fire the Python automations, and a merge starts `process_transform` only through the coalesced pass, which passes `coalesced=True`, so those writes carry the `recompute` origin and none of them carry `live` back into the suppressed paths. A schema-changing merge is the exception: the schema-scoped backfill submits its whole-kind refresh without that flag, so those writes are stamped `live` and do re-enter those paths.
+The `live` match also removes the two echo loops: the coalesced Jinja2, display-label and HFID writes carry the `recompute` origin and no longer re-fire the Python automations, and a merge starts `process_transform` only through the coalesced pass, which passes `coalesced=True`, so those writes carry the `recompute` origin and none of them carry `live` back into the suppressed paths. A schema-changing merge is the exception: the schema-scoped backfill submits its whole-kind refresh without that flag, so those writes are stamped `live` and do re-enter those paths.
 
-Group membership is refreshed by the recompute itself, not separately. Every read of a transform query passes `update_group=True`, and the API submits one `update_graphql_query_group` flow per request, which upserts the query group and adds the subscriber. The coalesced flow reads once per node in its batch, so a merge touching N nodes of a Python-attribute kind upserts N groups. An upgraded stack whose Python automations have not been reconciled yet is still in that state: the pass runs and the stored automations carry no origin filter, so the merge replay adds its own per-node flows and the upserts are about 2N until the reconcile lands.
+Group membership is refreshed by the recompute itself, not separately. Every read of a transform query passes `update_group=True`, and the API submits one `update_graphql_query_group` flow per request, which upserts the query group and adds the subscriber. The coalesced flow reads once per node in its batch, so a merge touching N nodes of a Python-attribute kind upserts N groups. While the pass runs and the stored Python node-input automations do not carry the origin filter yet, the merge replay adds its own per-node flows and the upserts are about 2N. That state ends when those automations are reconciled, and it arises once, on the upgrade that introduces the filter.
 
 When the resolution of this family raises, the pass logs it and widens every declared Python attribute to its whole kind, rather than letting the failure cancel the three schema-derived submissions. It cannot drop the family instead: the per-node automations no longer answer a replayed change, so nothing else would refresh those values. The widened set is rebuilt from the schema rather than from anything the resolver worked out, whatever stage it failed at, so it can include an attribute with no transform configured and one whose transform is absent. Those runs log a warning and stop, under the rule above. The submission carries a `widened` flag for it, separate from `coalesced`, because a coalesced submission of resolved ids came from a resolution that found the transform. The flag marks every whole-kind submission this pass makes, whether it came from this rebuild or from one attribute widened by a resolution that otherwise succeeded, through an unpinned query or a failed reader lookup. The whole-kind runs started elsewhere, by a transform edit, a schema-scoped backfill or the recalculate mutation, carry no flag and skip nothing.
 
@@ -73,9 +73,9 @@ Every node mutation event carries an `origin` label (`infrahub.node.origin`), on
 | `rebase` | the rebase flow | A replay of a rebased change. |
 | `recompute` | the bulk writer on a coalesced pass | A derived-value recompute write. |
 
-The four families' cross-node triggers match only `live`, the Python ones while `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE` is on, so `merge`, `rebase`, and `recompute` events do not start their per-node flows. This is what lets the coalesced pass be the single dispatcher for those families without double-processing. Other consumers (user action rules, webhooks, profiles) keep receiving every event whatever the origin.
+The four families' per-node triggers match only `live`, so `merge`, `rebase`, and `recompute` events do not start their per-node flows. This is what lets the coalesced pass be the single dispatcher for those families without double-processing. Other consumers (user action rules, webhooks, profiles) keep receiving every event whatever the origin.
 
-**Location:** `events/constants.py` (`NodeMutationOrigin`, `NODE_ORIGIN_LABEL`); the `live`-only match is set in each family's trigger builder (`computed_attribute/models.py`, `display_labels/models.py`, `hfid/models.py`). The two Python builders apply it only while their pass is enabled.
+**Location:** `events/constants.py` (`NodeMutationOrigin`, `NODE_ORIGIN_LABEL`); the `live`-only match is set in each family's trigger builder (`computed_attribute/models.py`, `display_labels/models.py`, `hfid/models.py`).
 
 ## The bulk writer
 
@@ -114,7 +114,7 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 |------|------|
 | `core/merge/recompute_coalescing.py` | `CoalescedRecomputeBuilder`, `CoalescedRecomputeSubmitter`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter`, `PythonTargetResolver`, `max_recompute_chain_depth` |
 | `core/merge/python_target_resolution.py` | `IndexedPythonTargetResolver`: maps a change signature to the affected Python `(kind, attribute)` pairs and their node ids |
-| `core/merge/python_target_sources.py` | The read-set and subscriber sources behind that resolver, and the factory the switch selects |
+| `core/merge/python_target_sources.py` | The read-set and subscriber sources behind that resolver, and the factory that builds it |
 | `display_labels/scoping.py`, `hfid/scoping.py` | `derive_display_label_targets` / `derive_hfid_targets`: the builder's derivation step, mapping a changed `(kind, field)` set to the display-label and HFID values it affects (computed attributes use `computed_attribute/scoping.py`) |
 | `core/recompute/bulk_write.py` | `BulkRecomputeWriter`, `AttributeValueWrite`, `WrittenNode` |
 | `core/recompute/dispatch.py` | `BulkRecomputeDispatcher`, `build_bulk_recompute_dispatcher` (bulk write, then chain on a coalesced pass) |

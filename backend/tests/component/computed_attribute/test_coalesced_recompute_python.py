@@ -10,11 +10,11 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generator
+from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.computed_attribute.scoping import ChangedElementSet
@@ -171,16 +171,9 @@ async def _seed(
 
 
 class CoalescedPythonTestBase(ScopedRecomputeTestBase):
-    """Runs the coalesced pass with the switch on and reports the submissions it produced."""
+    """Runs the coalesced pass and reports the submissions it produced."""
 
     WORKFLOW = COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM
-
-    @pytest.fixture(autouse=True)
-    def coalesce_python_switch(self) -> Generator[None, None, None]:
-        original = config.SETTINGS.main.coalesce_python_recompute_after_merge
-        config.SETTINGS.main.coalesce_python_recompute_after_merge = True
-        yield
-        config.SETTINGS.main.coalesce_python_recompute_after_merge = original
 
     async def _run_pass(
         self,
