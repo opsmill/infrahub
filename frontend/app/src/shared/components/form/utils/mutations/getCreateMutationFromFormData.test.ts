@@ -17,47 +17,37 @@ import { generateRelationshipNode } from "../../../../../../tests/fake/node";
 
 describe("getCreateMutationFromFormData", () => {
   it("returns empty if there is no fields in form", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [];
     const formData: Record<string, FormFieldValue> = {};
 
-    // WHEN
     const mutationData = getCreateMutationFromFormData(fields, formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({});
   });
 
   it("returns empty if form data is empty", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [buildFormField()];
     const formData: Record<string, FormFieldValue> = {};
 
-    // WHEN
     const mutationData = getCreateMutationFromFormData(fields, formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({});
   });
 
   it("keeps items if value is null and it's from the user", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [buildFormField({ name: "field1" })];
     const formData: Record<string, FormAttributeValue> = {
       field1: { source: { type: "user" }, value: null },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormData(fields, formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: { value: null },
     });
   });
 
   it("removes items if value is from schema's default value", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "field1",
@@ -74,15 +64,12 @@ describe("getCreateMutationFromFormData", () => {
       },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormData(fields, formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({});
   });
 
   it("removes items if value is from profile", () => {
-    // GIVEN
     const profileFieldValue: AttributeValueFromProfile = {
       source: {
         type: "profile",
@@ -104,15 +91,12 @@ describe("getCreateMutationFromFormData", () => {
       field1: profileFieldValue,
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormData(fields, formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({});
   });
 
   it("keeps attribute value if it's from user input", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "field1",
@@ -135,17 +119,14 @@ describe("getCreateMutationFromFormData", () => {
       },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormData(fields, formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: { value: "value2" },
     });
   });
 
   it("keeps relationship with cardinality one's value if it's from user input", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "relationship1",
@@ -167,17 +148,14 @@ describe("getCreateMutationFromFormData", () => {
       },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormData(fields, formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({
       relationship1: { id: "relationship-id" },
     });
   });
 
   it("keeps relationship with cardinality one's value if it's from pool", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "relationship1",
@@ -200,17 +178,14 @@ describe("getCreateMutationFromFormData", () => {
       },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormData(fields, formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({
       relationship1: { from_pool: { id: "pool-id" } },
     });
   });
 
   it("includes the requested prefixlen on a direct from-pool relationship", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "primary_address",
@@ -225,17 +200,14 @@ describe("getCreateMutationFromFormData", () => {
       },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormData(fields, formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({
       primary_address: { from_pool: { id: "pool-id", prefixlen: 32 } },
     });
   });
 
   it("omits prefixlen on a direct from-pool relationship when not set", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "primary_address",
@@ -250,18 +222,108 @@ describe("getCreateMutationFromFormData", () => {
       },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormData(fields, formData);
 
-    // THEN
+    expect(mutationData).to.deep.equal({
+      primary_address: { from_pool: { id: "pool-id" } },
+    });
+  });
+
+  it("includes the chosen allocated kind as address_type on a direct from-pool relationship", () => {
+    const fields: Array<DynamicFieldProps> = [
+      buildFormField({
+        name: "primary_address",
+        type: "relationship",
+        pool: { kind: "CoreIPAddressPool", defaultAllocatedObjectKind: "BuiltinIPAddress" },
+      }),
+    ];
+    const formData: Record<string, FormRelationshipValue> = {
+      primary_address: {
+        source: { type: "pool", label: "Loopbacks pool", id: "pool-id", kind: "CoreIPAddressPool" },
+        value: { from_pool: { id: "pool-id", allocatedKind: "IpamIPAddress" } },
+      },
+    };
+
+    const mutationData = getCreateMutationFromFormData(fields, formData);
+
+    expect(mutationData).to.deep.equal({
+      primary_address: { from_pool: { id: "pool-id", address_type: "IpamIPAddress" } },
+    });
+  });
+
+  it("includes the chosen allocated kind as prefix_type for an IP prefix pool", () => {
+    const fields: Array<DynamicFieldProps> = [
+      buildFormField({
+        name: "prefix",
+        type: "relationship",
+        pool: { kind: "CoreIPPrefixPool", defaultAllocatedObjectKind: "BuiltinIPPrefix" },
+      }),
+    ];
+    const formData: Record<string, FormRelationshipValue> = {
+      prefix: {
+        source: { type: "pool", label: "Supernet pool", id: "pool-id", kind: "CoreIPPrefixPool" },
+        value: { from_pool: { id: "pool-id", allocatedKind: "IpamIPPrefix", prefixLength: 26 } },
+      },
+    };
+
+    const mutationData = getCreateMutationFromFormData(fields, formData);
+
+    expect(mutationData).to.deep.equal({
+      prefix: { from_pool: { id: "pool-id", size: 26, prefix_type: "IpamIPPrefix" } },
+    });
+  });
+
+  it("omits the allocated kind on a direct from-pool relationship when none was chosen", () => {
+    const fields: Array<DynamicFieldProps> = [
+      buildFormField({
+        name: "primary_address",
+        type: "relationship",
+        pool: { kind: "CoreIPAddressPool", defaultAllocatedObjectKind: "BuiltinIPAddress" },
+      }),
+    ];
+    const formData: Record<string, FormRelationshipValue> = {
+      primary_address: {
+        source: { type: "pool", label: "Loopbacks pool", id: "pool-id", kind: "CoreIPAddressPool" },
+        value: { from_pool: { id: "pool-id" } },
+      },
+    };
+
+    const mutationData = getCreateMutationFromFormData(fields, formData);
+
     expect(mutationData).to.deep.equal({
       primary_address: { from_pool: { id: "pool-id" } },
     });
   });
 
   describe("Resource pool from-pool relationship", () => {
-    it("includes prefixlen on the from-pool relationship when fromPoolRelationshipName is set", () => {
-      // GIVEN
+    it("sends only the pool id on the _from_resource_pool field, since its peer is the pool kind (dropping the allocated kind)", () => {
+      // `<rel>_from_resource_pool` is a plain RelatedNodeInput: sending `address_type` there is rejected before any resolver runs.
+      const fields: Array<DynamicFieldProps> = [
+        buildFormField({
+          name: "ip_address",
+          type: "relationship",
+          pool: {
+            kind: "CoreIPAddressPool",
+            defaultAllocatedObjectKind: "BuiltinIPAddress",
+            fromPoolRelationshipName: "ip_address_from_resource_pool",
+          },
+        }),
+      ];
+      const formData: Record<string, FormRelationshipValue> = {
+        ip_address: {
+          source: { type: "pool", label: "test pool", id: "pool-id", kind: "CoreIPAddressPool" },
+          value: { from_pool: { id: "pool-id", allocatedKind: "IpamIPAddress" } },
+        },
+      };
+
+      const mutationData = getCreateMutationFromFormData(fields, formData);
+
+      expect(mutationData).to.deep.equal({
+        ip_address_from_resource_pool: { id: "pool-id" },
+      });
+    });
+
+    it("sends only the pool id on the _from_resource_pool field, since its peer is the pool kind (dropping the prefix length)", () => {
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "ip_address",
@@ -280,17 +342,14 @@ describe("getCreateMutationFromFormData", () => {
         },
       };
 
-      // WHEN
       const mutationData = getCreateMutationFromFormData(fields, formData);
 
-      // THEN
       expect(mutationData).to.deep.equal({
-        ip_address_from_resource_pool: { id: "pool-id", prefixlen: 24 },
+        ip_address_from_resource_pool: { id: "pool-id" },
       });
     });
 
     it("splits pool value to from-pool relationship when fromPoolRelationshipName is set", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "ip_address",
@@ -314,17 +373,14 @@ describe("getCreateMutationFromFormData", () => {
         },
       };
 
-      // WHEN
       const mutationData = getCreateMutationFromFormData(fields, formData);
 
-      // THEN
       expect(mutationData).to.deep.equal({
         ip_address_from_resource_pool: { id: "pool-id" },
       });
     });
 
     it("splits number attribute pool value to from-pool relationship", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "weight",
@@ -348,17 +404,14 @@ describe("getCreateMutationFromFormData", () => {
         } as any,
       };
 
-      // WHEN
       const mutationData = getCreateMutationFromFormData(fields, formData);
 
-      // THEN
       expect(mutationData).to.deep.equal({
         weight_from_resource_pool: { id: "pool-id" },
       });
     });
 
     it("only sends direct value when user selects a direct value", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "ip_address",
@@ -381,17 +434,14 @@ describe("getCreateMutationFromFormData", () => {
         },
       };
 
-      // WHEN
       const mutationData = getCreateMutationFromFormData(fields, formData);
 
-      // THEN
       expect(mutationData).to.deep.equal({
         ip_address: { id: "ip-id" },
       });
     });
 
     it("excludes pool value when it comes from template", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "ip_address",
@@ -420,17 +470,14 @@ describe("getCreateMutationFromFormData", () => {
         },
       };
 
-      // WHEN
       const mutationData = getCreateMutationFromFormData(fields, formData, "template-id");
 
-      // THEN
       expect(mutationData).to.deep.equal({
         object_template: { id: "template-id" },
       });
     });
 
     it("includes pool value when user selects pool manually", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "ip_address",
@@ -454,10 +501,8 @@ describe("getCreateMutationFromFormData", () => {
         },
       };
 
-      // WHEN
       const mutationData = getCreateMutationFromFormData(fields, formData, "template-id");
 
-      // THEN
       expect(mutationData).to.deep.equal({
         object_template: { id: "template-id" },
         ip_address_from_resource_pool: { id: "user-pool-id" },
@@ -465,7 +510,6 @@ describe("getCreateMutationFromFormData", () => {
     });
 
     it("only sends null on direct field when value is null", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "ip_address",
@@ -484,10 +528,8 @@ describe("getCreateMutationFromFormData", () => {
         },
       };
 
-      // WHEN
       const mutationData = getCreateMutationFromFormData(fields, formData);
 
-      // THEN
       expect(mutationData).to.deep.equal({
         ip_address: { value: null },
       });
@@ -495,7 +537,6 @@ describe("getCreateMutationFromFormData", () => {
   });
 
   it("keeps relationship with cardinality many's value if it's from user input", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({
         name: "relationship1",
@@ -519,49 +560,40 @@ describe("getCreateMutationFromFormData", () => {
       },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormData(fields, formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({
       relationship1: [{ id: "relationship-id" }],
     });
   });
 
   it("set value as null if value is an empty string", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [buildFormField({ name: "field1" })];
     const formData: Record<string, FormAttributeValue> = {
       field1: { source: { type: "user" }, value: "" },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormData(fields, formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: { value: null },
     });
   });
 
   it("keeps items if value is 0", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [buildFormField({ name: "field1" })];
     const formData: Record<string, FormAttributeValue> = {
       field1: { source: { type: "user" }, value: 0 },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormData(fields, formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: { value: 0 },
     });
   });
 
   it("does not include field whose source is template", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [
       buildFormField({ name: "field1" }),
       buildFormField({ name: "field2" }),
@@ -579,10 +611,8 @@ describe("getCreateMutationFromFormData", () => {
       field2: { source: { type: "user" }, value: 0 },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormData(fields, formData, "template-id");
 
-    // THEN
     expect(mutationData).to.deep.equal({
       object_template: { id: "template-id" },
       field2: { value: 0 },
@@ -590,16 +620,13 @@ describe("getCreateMutationFromFormData", () => {
   });
 
   it("includes object_template in mutation data even with no template fields", () => {
-    // GIVEN
     const fields: Array<DynamicFieldProps> = [buildFormField({ name: "field1" })];
     const formData: Record<string, FormAttributeValue> = {
       field1: { source: { type: "user" }, value: "value1" },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormData(fields, formData, "template-id");
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: { value: "value1" },
       object_template: { id: "template-id" },
@@ -608,7 +635,6 @@ describe("getCreateMutationFromFormData", () => {
 
   describe("Attribute of kind list", () => {
     it("set correctly attribute of kind list when value is from schema", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "listField",
@@ -620,15 +646,12 @@ describe("getCreateMutationFromFormData", () => {
         listField: { source: { type: "schema" }, value: ["item1"] },
       };
 
-      // WHEN
       const mutationData = getCreateMutationFromFormData(fields, formData);
 
-      // THEN
       expect(mutationData).to.deep.equal({});
     });
 
     it("set correctly attribute of kind list when value is from user", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "listField",
@@ -640,17 +663,14 @@ describe("getCreateMutationFromFormData", () => {
         listField: { source: { type: "user" }, value: ["item2", "item3"] },
       };
 
-      // WHEN
       const mutationData = getCreateMutationFromFormData(fields, formData);
 
-      // THEN
       expect(mutationData).to.deep.equal({
         listField: { value: ["item2", "item3"] },
       });
     });
 
     it("set correctly attribute field if value is from user and is an empty array", () => {
-      // GIVEN
       const fields: Array<DynamicFieldProps> = [
         buildFormField({
           name: "listField",
@@ -662,10 +682,8 @@ describe("getCreateMutationFromFormData", () => {
         listField: { source: { type: "user" }, value: [] },
       };
 
-      // WHEN
       const mutationData = getCreateMutationFromFormData(fields, formData);
 
-      // THEN
       expect(mutationData).to.deep.equal({
         listField: { value: [] },
       });
@@ -675,48 +693,38 @@ describe("getCreateMutationFromFormData", () => {
 
 describe("getCreateMutationFromFormDataOnly", () => {
   it("returns empty object if form data is empty", () => {
-    // GIVEN
     const formData: Record<string, FormFieldValue> = {};
 
-    // WHEN
     const mutationData = getCreateMutationFromFormDataOnly(formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({});
   });
 
   it("handles user input values correctly", () => {
-    // GIVEN
     const formData: Record<string, FormAttributeValue> = {
       field1: { source: { type: "user" }, value: "value1" },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormDataOnly(formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: { value: "value1" },
     });
   });
 
   it("handles empty string values as null", () => {
-    // GIVEN
     const formData: Record<string, FormAttributeValue> = {
       field1: { source: { type: "user" }, value: "" },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormDataOnly(formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: { value: null },
     });
   });
 
   it("handles relationship values correctly", () => {
-    // GIVEN
     const formData: Record<string, FormRelationshipValue> = {
       relationship1: {
         source: { type: "user" },
@@ -727,17 +735,14 @@ describe("getCreateMutationFromFormDataOnly", () => {
       },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormDataOnly(formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({
       relationship1: [{ id: "rel-id-1" }, { id: "rel-id-2" }],
     });
   });
 
   it("handles pool values correctly", () => {
-    // GIVEN
     const formData: Record<string, FormFieldValue> = {
       field1: {
         source: {
@@ -750,17 +755,14 @@ describe("getCreateMutationFromFormDataOnly", () => {
       },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormDataOnly(formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: { from_pool: { id: "pool-id" } },
     });
   });
 
   it("excludes pool values from template", () => {
-    // GIVEN
     const formData: Record<string, FormFieldValue> = {
       field1: {
         source: {
@@ -774,17 +776,14 @@ describe("getCreateMutationFromFormDataOnly", () => {
       },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormDataOnly(formData, undefined, "template-id");
 
-    // THEN
     expect(mutationData).to.deep.equal({
       object_template: { id: "template-id" },
     });
   });
 
   it("skips values that match current object values", () => {
-    // GIVEN
     const formData: Record<string, FormAttributeValue> = {
       field1: { source: { type: "user" }, value: "unchanged" },
       field2: { source: { type: "user" }, value: "changed" },
@@ -794,17 +793,14 @@ describe("getCreateMutationFromFormDataOnly", () => {
       field2: { value: "old-value" },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormDataOnly(formData, currentObject);
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field2: { value: "changed" },
     });
   });
 
   it("handles relationship value correctly", () => {
-    // GIVEN
     const formData: Record<string, FormFieldValue> = {
       field1: {
         source: {
@@ -814,10 +810,8 @@ describe("getCreateMutationFromFormDataOnly", () => {
       },
     };
 
-    // WHEN
     const mutationData = getCreateMutationFromFormDataOnly(formData);
 
-    // THEN
     expect(mutationData).to.deep.equal({
       field1: { id: "peer-id" },
     });
