@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from opentelemetry import trace
 
 from infrahub.core.changelog.enrichment import PLACEHOLDER_LABELS, NodeLabelLoader, NodeLabels
-from infrahub.core.constants import DiffAction, RelationshipCardinality
+from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipKind
 from infrahub.log import get_logger
 
 from .models import (
@@ -303,8 +303,13 @@ class RelationshipChangelogGetter:
         )
         for peer_relation in peer_relationships(peer_schema=peer_schema, rel_schema=rel_schema):
             if peer_relation.cardinality == RelationshipCardinality.ONE:
-                node_changelog.relationships[peer_relation.name] = self._reciprocal_one_relationship(
-                    name=peer_relation.name, primary_changelog=primary_changelog, peer_status=peer_status
+                node_changelog.add_relationship(
+                    relationship_changelog=self._reciprocal_one_relationship(
+                        name=peer_relation.name,
+                        primary_changelog=primary_changelog,
+                        peer_status=peer_status,
+                        rel_kind=peer_relation.kind,
+                    )
                 )
             elif peer_relation.cardinality == RelationshipCardinality.MANY:
                 node_changelog.relationships[peer_relation.name] = RelationshipCardinalityManyChangelog(
@@ -324,20 +329,27 @@ class RelationshipChangelogGetter:
 
     @staticmethod
     def _reciprocal_one_relationship(
-        name: str, primary_changelog: NodeChangelog, peer_status: DiffAction
+        name: str, primary_changelog: NodeChangelog, peer_status: DiffAction, rel_kind: RelationshipKind
     ) -> RelationshipCardinalityOneChangelog:
-        """Build the one-cardinality reciprocal, placing the primary as the current or removed peer."""
+        """Build the one-cardinality reciprocal, placing the primary as the current or removed peer.
+
+        The peer holds the mutated node through this relationship, so when the relationship is a
+        parent one the mutated node is the peer's parent and is recorded as such.
+        """
         if peer_status == DiffAction.REMOVED:
             # The primary is the removed (previous) peer, so no current-peer label.
-            return RelationshipCardinalityOneChangelog(
+            changelog = RelationshipCardinalityOneChangelog(
                 name=name,
                 peer_id_previous=primary_changelog.node_id,
                 peer_kind_previous=primary_changelog.node_kind,
             )
-        return RelationshipCardinalityOneChangelog(
-            name=name,
-            peer_id=primary_changelog.node_id,
-            peer_kind=primary_changelog.node_kind,
-            peer_display_label=primary_changelog.display_label,
-            peer_hfid=primary_changelog.hfid,
-        )
+        else:
+            changelog = RelationshipCardinalityOneChangelog(
+                name=name,
+                peer_id=primary_changelog.node_id,
+                peer_kind=primary_changelog.node_kind,
+                peer_display_label=primary_changelog.display_label,
+                peer_hfid=primary_changelog.hfid,
+            )
+        changelog.set_parent_from_relationship(rel_kind=rel_kind)
+        return changelog
