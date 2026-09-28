@@ -39,8 +39,8 @@ def build_check_refs_model(
     The global branch is excluded: it carries branch-agnostic data and names no branch a worker
     could check out. A branch whose id is unknown is left out rather than guessed, because without
     it the convergence broadcast cannot name the branch it is about. A branch on which the
-    repository is not active is left out too: its first import has not completed, so this worker
-    has no local copy to compare a remote head against.
+    repository is not active is left out too, since an inactive repository is not one this worker
+    is expected to be holding a copy of.
     """
     location = cast("CoreReadOnlyRepository", repository_data.repository).location.value
     if not location:
