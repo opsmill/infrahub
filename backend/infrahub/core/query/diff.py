@@ -283,9 +283,13 @@ class DiffNodePathsQuery(DiffCalculationQuery):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         params_dict = self.get_params()
         self.params.update(params_dict)
-        new_uuids = self.new_node_field_specifiers.get_uuids_list() if self.new_node_field_specifiers else None
+        new_uuids = (
+            self.new_node_field_specifiers.get_uuids_list() if self.new_node_field_specifiers is not None else None
+        )
         current_uuids = (
-            self.current_node_field_specifiers.get_uuids_list() if self.current_node_field_specifiers else None
+            self.current_node_field_specifiers.get_uuids_list()
+            if self.current_node_field_specifiers is not None
+            else None
         )
         self.params.update({"new_node_ids_list": new_uuids, "current_node_ids_list": current_uuids})
         if self.node_uuids is not None:
@@ -441,9 +445,13 @@ class DiffFieldPathsQuery(DiffCalculationQuery):
         params_dict = self.get_params()
         self.params.update(params_dict)
 
-        new_uuids = self.new_node_field_specifiers.get_uuids_list() if self.new_node_field_specifiers else None
+        new_uuids = (
+            self.new_node_field_specifiers.get_uuids_list() if self.new_node_field_specifiers is not None else None
+        )
         current_uuids = (
-            self.current_node_field_specifiers.get_uuids_list() if self.current_node_field_specifiers else None
+            self.current_node_field_specifiers.get_uuids_list()
+            if self.current_node_field_specifiers is not None
+            else None
         )
         self.params.update(
             {
@@ -657,9 +665,13 @@ class DiffPropertyPathsQuery(DiffCalculationQuery):
         params_dict = self.get_params()
         self.params.update(params_dict)
 
-        new_uuids = self.new_node_field_specifiers.get_uuids_list() if self.new_node_field_specifiers else None
+        new_uuids = (
+            self.new_node_field_specifiers.get_uuids_list() if self.new_node_field_specifiers is not None else None
+        )
         current_uuids = (
-            self.current_node_field_specifiers.get_uuids_list() if self.current_node_field_specifiers else None
+            self.current_node_field_specifiers.get_uuids_list()
+            if self.current_node_field_specifiers is not None
+            else None
         )
         self.params.update(
             {
