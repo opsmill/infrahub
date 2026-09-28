@@ -1,3 +1,5 @@
+import re
+
 import pytest
 
 from infrahub.core import registry
@@ -121,18 +123,24 @@ async def test_attribute_uniqueness_matches_canonical_ip_on_update(
     registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
     registry.schema.process_schema_branch(name=default_branch.name)
 
+    first_address = "192.0.2.20/32"
+    first_address_short_format = "192.0.2.20"
+    second_address = "192.0.2.21/32"
+
     first = await Node.init(db=db, schema=node_schema.kind, branch=default_branch)
-    await first.new(db=db, name="first", address="192.0.2.20/32")
+
+    await first.new(db=db, name="first", address=first_address)
     await first.save(db=db)
     second = await Node.init(db=db, schema=node_schema.kind, branch=default_branch)
-    await second.new(db=db, name="second", address="192.0.2.21/32")
+    await second.new(db=db, name="second", address=second_address)
     await second.save(db=db)
 
     reloaded = await NodeManager.get_one(id=second.id, db=db, branch=default_branch)
-    await reloaded.from_graphql(db=db, data={"address": {"value": "192.0.2.20"}})
+    await reloaded.from_graphql(db=db, data={"address": {"value": first_address_short_format}})
 
     constraint = NodeAttributeUniquenessConstraint(db=db, branch=default_branch)
     with pytest.raises(
-        UniquenessViolationError, match=r"An object already exist with this value: address: 192.0.2.20/32"
+        UniquenessViolationError,
+        match=rf"An object already exist with this value: address: {re.escape(first_address)}",
     ):
         await constraint.check(reloaded)
