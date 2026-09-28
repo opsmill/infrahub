@@ -16,25 +16,22 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, InfrahubKind, SchemaPathType
-from infrahub.core.migrations.schema.attribute_name_update import (
-    AttributeNameUpdateMigration,
-    AttributeNameUpdateMigrationQuery01,
-)
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, SchemaPathType
+from infrahub.core.migrations.schema.attribute_name_update import AttributeNameUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
-from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import SchemaPath
+from tests.component.core.resource_manager.conftest import SERIAL_ATTRIBUTE_NAME, SERIAL_POOL_START
 from tests.helpers.agnostic_edges import EdgeState, open_active_edges
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, WIDGET_KIND
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
-SERIAL_POOL_START = 9001
-SERIAL_POOL_END = 9010
-PREVIOUS_ATTRIBUTE_NAME = "serial"
+PREVIOUS_ATTRIBUTE_NAME = SERIAL_ATTRIBUTE_NAME
 NEW_ATTRIBUTE_NAME = "serial_number"
 
 
@@ -95,14 +92,9 @@ async def rename_the_attribute(db: InfrahubDatabase, branch: Branch, schema: Sch
             path_type=SchemaPathType.ATTRIBUTE, schema_kind=WIDGET_KIND, field_name=NEW_ATTRIBUTE_NAME
         ),
     )
-    query = await AttributeNameUpdateMigrationQuery01.init(db=db, branch=branch, migration=migration)
-    await query.execute(db=db)
-    assert query.get_nbr_migrations_executed() == 1
-
-
-@pytest.fixture
-async def agnostic_schema(db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:
-    return registry.schema.register_schema(schema=AGNOSTIC_RETIREMENT_SCHEMA, branch=default_branch.name)
+    result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
+    assert not result.errors
+    assert result.nbr_migrations_executed == 1
 
 
 @pytest.fixture
@@ -112,27 +104,6 @@ async def aware_schema(db: InfrahubDatabase, default_branch: Branch) -> SchemaBr
     widget = next(node for node in aware.nodes if node.kind == WIDGET_KIND)
     widget.get_attribute(name=PREVIOUS_ATTRIBUTE_NAME).branch = BranchSupportType.AWARE
     return registry.schema.register_schema(schema=aware, branch=default_branch.name)
-
-
-@pytest.fixture
-async def serial_pool(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
-) -> CoreNumberPool:
-    """Bound to the kind and attribute by name, so it fits whichever branch support the test registers."""
-    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
-    pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
-    await pool.new(
-        db=db,
-        name="agnostic-serial-pool",
-        node=WIDGET_KIND,
-        node_attribute=PREVIOUS_ATTRIBUTE_NAME,
-        start_range=SERIAL_POOL_START,
-        end_range=SERIAL_POOL_END,
-    )
-    await pool.save(db=db)
-    return pool
 
 
 async def test_renaming_a_pool_tracked_attribute_keeps_its_record_global_and_its_number_reported(
