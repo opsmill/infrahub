@@ -355,7 +355,7 @@ async def test_check_refs_refuses_a_repository_that_is_not_active_on_the_branch(
     create_test_admin: Node,
     default_permission_backend: None,
 ) -> None:
-    """A staging repository has no completed import, so this worker holds no copy to compare."""
+    """The mutation applies the same eligibility rule the scheduled cycle applies."""
     recorder = WorkflowRecorder()
     service = await InfrahubServices.new(database=db, message_bus=BusRecorder(), workflow=recorder)
     account_session = AccountSession(

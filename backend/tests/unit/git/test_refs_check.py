@@ -427,7 +427,7 @@ def test_a_branch_whose_id_is_unknown_is_left_out() -> None:
 
 
 def test_a_branch_where_the_repository_is_not_active_is_left_out() -> None:
-    """A staging branch has no completed import, so this worker has no local copy to compare."""
+    """An inactive repository is not one this worker is expected to be holding a copy of."""
     repository_data = build_repository_data(
         branch_info={
             "main": RepositoryBranchInfo(internal_status="active", ref="stable"),
