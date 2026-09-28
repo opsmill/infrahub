@@ -320,8 +320,26 @@ CALL (diff_relationship, node_relationship) {
 // -------------------------
 WITH diff_relationship, node_relationship
 UNWIND node_relationship.relationships as node_single_relationship
-MERGE (diff_relationship)-[:DIFF_HAS_ELEMENT]
-    ->(diff_relationship_element:DiffRelationshipElement {peer_id: node_single_relationship.node_properties.peer_id})
+CALL (diff_relationship, node_single_relationship) {
+    // seek on (path_identifier, peer_id): a MERGE on the edge pattern walks every element of the group per row,
+    // and a peer_id seek alone returns every element of that peer across all diffs
+    OPTIONAL MATCH (existing_element:DiffRelationshipElement {
+        path_identifier: node_single_relationship.node_properties.path_identifier,
+        peer_id: node_single_relationship.node_properties.peer_id
+    })
+    WHERE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(existing_element)
+    CALL (diff_relationship, existing_element) {
+        WITH diff_relationship, existing_element
+        WHERE existing_element IS NULL
+        CREATE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(new_element:DiffRelationshipElement)
+        RETURN new_element AS element
+        UNION
+        WITH existing_element
+        WHERE existing_element IS NOT NULL
+        RETURN existing_element AS element
+    }
+    RETURN element AS diff_relationship_element
+}
 SET diff_relationship_element = node_single_relationship.node_properties
 // -------------------------
 // add/remove conflict for this relationship element
