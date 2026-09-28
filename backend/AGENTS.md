@@ -69,6 +69,10 @@ See `dev/knowledge/backend/testing.md` for the test infrastructure; read it befo
 class-scoped fixture, anything that touches Prefect (task manager setup, the two test servers), or
 a test that swaps in an adapter.
 
+Testing standards live in `dev/guidelines/backend/testing.md` — load it before adding, moving, or
+deleting a test: which tier the logic needs, what not to test, and how to find the coverage that
+already exists.
+
 ## Boundaries
 
 ### Always Do
@@ -78,6 +82,7 @@ a test that swaps in an adapter.
 - Use Pydantic models for data structures
 - Use Query class pattern for database operations
 - Create changelog fragments with `towncrier create` — never hand-write the file. Use the `creating-changelog-entries` skill.
+- Declare a new `INFRAHUB_*` environment setting in the `environment:` blocks of both `docker-compose.yml` and `development/docker-compose.yml` — compose forwards only declared variables, so a missing entry silently ignores the setting in that stack
 
 ### Ask First
 
@@ -101,6 +106,7 @@ a test that swaps in an adapter.
 - `dev/guidelines/backend/python.md` - Python coding standards — load before writing or reviewing backend Python (imports, data structures, docstrings)
 - `dev/guidelines/backend/typing.md` - Typing — load when a checker flags your change, when narrowing a union or reviewing code that does, or when clearing a mypy/ty suppression
 - `dev/guidelines/backend/exceptions.md` - Exception handling — load when adding, changing or reviewing a `try`/`except`, or when ruff flags a blind except
+- `dev/guidelines/backend/testing.md` - Testing standards — load before adding, moving, or deleting a test (tier choice, what not to test, finding the coverage that already exists)
 - `dev/guidelines/backend/asgi-middleware.md` - ASGI middleware — load when adding, changing or reviewing middleware in `server.py`
 - `dev/guidelines/backend/prefect-payloads.md` - Prefect payloads — load when adding, changing or reviewing a `@flow` or `@task`, or passing data across one (return values, task arguments, subflow parameters)
 - `dev/guidelines/backend/checklist.md` - feature checklist — walk when planning, implementing or reviewing a backend feature (migrations, query efficiency, permissions)

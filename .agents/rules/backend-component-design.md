@@ -8,7 +8,7 @@ paths:
 
 Applies when creating a new backend component or making significant changes to an existing one. Does not apply to small bug fixes, single-function tweaks, or changes confined to existing code paths. When in doubt for anything that introduces a new class or reshapes responsibilities, follow this rule.
 
-- Collaborators arrive through `__init__` as required parameters: no optional collaborator with an internal default, no late `set_*`/`register_*` call or attribute assignment, and a required `list[...]` when there can be zero or more.
+- Collaborators arrive through `__init__` as required parameters: no optional collaborator with an internal default or defaulted factory that reads settings, no late `set_*`/`register_*` call or attribute assignment, and a required `list[...]` when there can be zero or more.
 - Build the whole component graph near the entry point, in one pass, before the work starts; a Prefect `@flow` resolves singleton getters at its top, builds the component and delegates to it.
 - Resolve settings and out-of-domain clients in the factory, never inside the component, which takes plain values; invalid wiring raises while the graph is built.
 - Expose a single entry method that takes only the entities being operated on: long-lived collaborators such as `db` go in the constructor, transient work items in the method.
