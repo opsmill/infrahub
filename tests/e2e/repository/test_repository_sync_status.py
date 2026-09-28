@@ -1,7 +1,8 @@
 """The repository sync status indicator in the application header.
 
-The failing status is set directly on a throwaway branch; the attribute is branch-local, so
-the default branch stays clean.
+Both states are exercised on one throwaway branch whose repository statuses this test sets
+itself, so the result does not depend on what other specs in the shard left on the default
+branch. `sync_status` is branch-local, which is asserted here too.
 """
 
 from __future__ import annotations
@@ -23,33 +24,58 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.shard_branches_repo
 
 ERROR_IMPORT = "error-import"
+IN_SYNC = "in-sync"
+REPOSITORY_KINDS = ("CoreRepository", "CoreReadOnlyRepository")
 INDICATOR = "repository-sync-status"
 INDICATOR_ERROR_LABEL = "Repositories failed to import on this branch"
 INDICATOR_HEALTHY_LABEL = "All Git repositories are in sync on this branch"
 
 
+async def _set_sync_status(client: InfrahubClient, branch: str, value: str, name: str | None = None) -> None:
+    for kind in REPOSITORY_KINDS:
+        for repository in await client.all(kind=kind, branch=branch):
+            if name is not None and repository.name.value != name:
+                continue
+            repository.sync_status.value = value
+            await repository.save()
+
+
 class TestRepositorySyncStatus:
     @pytest.fixture(scope="class")
-    async def branch_with_failed_import(
+    async def branch(
         self, infrahub_client: InfrahubClient, demo_edge_repo: None
     ) -> AsyncGenerator[str, None]:
-        """A branch where the demo-edge repository is marked as failed to import."""
+        """A branch whose repositories all start in sync, whatever the default branch holds."""
         name = generate_random_branch_name("repo-sync-status")
         await infrahub_client.branch.create(branch_name=name, sync_with_git=False)
-
-        repository = await infrahub_client.get(kind="CoreRepository", name__value="demo-edge", branch=name)
-        repository.sync_status.value = ERROR_IMPORT
-        await repository.save()
+        await _set_sync_status(infrahub_client, branch=name, value=IN_SYNC)
 
         yield name
 
         with contextlib.suppress(Exception):
             await infrahub_client.branch.delete(branch_name=name)
 
-    async def test_indicator_reports_the_failure_and_links_to_it(
-        self, admin_page: Page, branch_with_failed_import: str
+    async def test_reports_in_sync_and_links_to_the_full_list(
+        self, admin_page: Page, branch: str
     ) -> None:
-        await admin_page.goto(f"/?branch={branch_with_failed_import}")
+        await admin_page.goto(f"/?branch={branch}")
+
+        indicator = admin_page.get_by_test_id(INDICATOR)
+        await expect(indicator).to_be_visible()
+        await expect(indicator).to_have_attribute("aria-label", INDICATOR_HEALTHY_LABEL)
+
+        await indicator.click()
+
+        # Unfiltered: narrowing to an error that is not there would land on an empty table.
+        await expect(admin_page).not_to_have_url(re.compile(re.escape(ERROR_IMPORT)))
+        await expect(admin_page.get_by_role("link", name="demo-edge")).to_be_visible()
+
+    async def test_reports_the_failure_and_links_to_it(
+        self, admin_page: Page, branch: str, infrahub_client: InfrahubClient
+    ) -> None:
+        await _set_sync_status(infrahub_client, branch=branch, value=ERROR_IMPORT, name="demo-edge")
+
+        await admin_page.goto(f"/?branch={branch}")
 
         indicator = admin_page.get_by_test_id(INDICATOR)
         await expect(indicator).to_be_visible()
@@ -60,13 +86,11 @@ class TestRepositorySyncStatus:
         await expect(admin_page).to_have_url(re.compile(re.escape(ERROR_IMPORT)))
         await expect(admin_page.get_by_role("link", name="demo-edge")).to_be_visible()
 
-    async def test_indicator_is_not_in_the_error_state_on_the_default_branch(
-        self, admin_page: Page, branch_with_failed_import: str
+    async def test_the_failure_stays_on_its_branch(
+        self, branch: str, infrahub_client: InfrahubClient
     ) -> None:
-        await admin_page.goto("/")
+        on_branch = await infrahub_client.get(kind="CoreRepository", name__value="demo-edge", branch=branch)
+        on_default = await infrahub_client.get(kind="CoreRepository", name__value="demo-edge")
 
-        # Asserted through the indicator itself rather than by searching for a label: absence
-        # alone would pass if nothing rendered at all, and the name is not a stable locator.
-        indicator = admin_page.get_by_test_id(INDICATOR)
-        await expect(indicator).to_be_visible()
-        await expect(indicator).to_have_attribute("aria-label", INDICATOR_HEALTHY_LABEL)
+        assert on_branch.sync_status.value == ERROR_IMPORT
+        assert on_default.sync_status.value != ERROR_IMPORT
