@@ -62,7 +62,7 @@ The periodic repository sync reads each repository's commit and internal status 
 **Acceptance Scenarios**:
 
 1. **Given** a repository with 200 branches, **When** a sync cycle runs, **Then** the repository commit and internal status for every branch are read without one query per branch, and only `commit` and `internal_status` are requested.
-2. **Given** the same fixture, **When** the sync's read path is instrumented, **Then** the per-branch attribute read runs exactly `ceil(200 / chunk_size)` times for the configured chunk size, and the repository nodes are listed exactly once.
+2. **Given** the same fixture, **When** the sync's read path is instrumented, **Then** for N branches the per-branch attribute read runs `ceil(N / chunk_size)` times for the configured chunk size, and the repository nodes are listed once.
 
 ---
 
@@ -103,7 +103,7 @@ The periodic repository sync reads each repository's commit and internal status 
 - **FR-007**: The number of database queries needed to serve a page MUST be independent of the number of branches in the row set, up to the configured database query size limit. Above that limit the unpaged branch read takes the standard chunked path and adds one execution per chunk; the attribute read stays one statement per page. *Verify*: instrument query execution; run the same document against fixtures with 5 and 200 branches and assert the two counts are equal. No specific count is prescribed.
 - **FR-008**: System MUST read only the attributes the caller selected, plus each attribute a set value filter needs: `commit` when `own_values_only` is set, `sync_status` when `sync_status__value` is set, `internal_status` when `internal_status__value` is set. *Verify*: the attribute-name set reaching the core read equals the GraphQL selection plus the filtered attributes; an unselected, unfiltered attribute is absent from the query parameters.
 - **FR-009**: The core primitive MUST take an explicit branch-name list and attribute-name set and MUST be callable without GraphQL. *Verify*: unit test invokes it directly with two branch names and one attribute.
-- **FR-010**: The periodic sync's per-branch repository read (`get_repositories_commit_per_branch`) MUST use the primitive and MUST NOT issue one query per branch. For N branches it MUST issue `ceil(N / chunk_size)` per-branch attribute reads, on top of one repository-node read that precedes the chunks. That node read goes through the node manager, so it is several statements, but their number does not depend on N. *Verify*: instrument; at 200 branches with the configured chunk size, assert the attribute-read count equals `ceil(N / chunk_size)` and the repository nodes are listed exactly once.
+- **FR-010**: The periodic sync's per-branch repository read (`get_repositories_commit_per_branch`) MUST use the primitive and MUST NOT issue one query per branch. For N branches it MUST issue `ceil(N / chunk_size)` per-branch attribute reads, on top of one repository-node read that precedes the chunks. That node read goes through the node manager, so it is several statements, but their number does not depend on N. *Verify*: instrument; with more than one full chunk of branch names and a partial one, assert the attribute-read count equals `ceil(N / chunk_size)` and the repository nodes are listed once.
 - **FR-011**: `count` MUST be computed only when selected. *Verify*: instrument; assert no counting operation when the field is omitted.
 - **FR-015**: The query MUST resolve entirely from the graph. It MUST NOT issue a git operation, send a message-bus request, or depend on a task worker being available. *Verify*: instrument message-bus sends; assert zero for every document this contract supports.
 
@@ -165,7 +165,7 @@ These are constraints the PRD established by verifying the codebase. They bound 
 | Gate | Status |
 | --- | --- |
 | Database schema or migration | Ruled out. Nothing added, nothing written. |
-| GraphQL schema modification | Requires sign-off. One additive hand-written query plus its types. The `sync_with_git` filter is added to the core branch list filters only, not to the `InfrahubBranch` query. |
+| GraphQL schema modification | Requires sign-off. One additive hand-written query plus its types; `InfrahubBranch` is unchanged. |
 | New dependencies | None. |
 | CI/CD workflow changes | None. |
 | Authentication / authorization | Requires sign-off. No new permission is defined, but the enforcement is new: the permission checker pipeline cannot see a hand-written root field, so the check moves into the resolver, and this is the first read to require a decision covering both the default branch and other branches. Both are precedents a reviewer should see. |

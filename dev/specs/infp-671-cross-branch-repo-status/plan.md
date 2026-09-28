@@ -211,15 +211,15 @@ card is built by the frontend team from the contract; only regenerated types tou
 
 Both new packages keep an empty `__init__.py`. The composition root is `field.py`, not the package
 init: it wires the resolver to the source factory and constructs the `Field`, and `schema.py` imports
-the field from it directly the way it already imports
-`.queries.diff.tree` and `.queries.event`. Putting that wiring in `__init__.py` would both breach
-`dev/knowledge/backend/package-init-files.md` and create a cycle, since the init would import
-`resolver.py` for the resolver while `resolver.py` needs the source factory back from the init.
+the field from it directly the way it already imports `.queries.diff.tree` and `.queries.event`.
+Putting that wiring in `__init__.py` would both breach `dev/knowledge/backend/package-init-files.md`
+and create a cycle, since the init would import `resolver.py` for the resolver while `resolver.py`
+needs the source factory back from the init.
 
 The source factory itself, `build_repository_branch_attributes_source`, lives in
 `core/repository_branch_status/factory.py`, which resolves `registry.default_branch` and
-`GLOBAL_BRANCH_NAME` for the reader. It moved there from `field.py` in increment C, when the periodic sync became
-its second caller, so the sync does not import from the GraphQL layer.
+`GLOBAL_BRANCH_NAME` for the reader. The GraphQL field and the periodic sync both call it, so the sync
+does not import from the GraphQL layer.
 
 The resolver is a callable class taking the source factory as a required constructor parameter rather
 than a module-level function reaching for it. That is what `.agents/rules/backend-component-design.md`

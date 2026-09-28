@@ -186,9 +186,7 @@ primitive call in the periodic sync.
 | missing `ALLOW_ALL` view on the resolved concrete kind | `PermissionDeniedError` before any row is returned | error |
 | context without a `PermissionManager` | treated as denial | error |
 
-The table is the contract as shipped. While increment A's stub served placeholder values,
-`own_values_only`, `sync_status__value` and `internal_status__value` were rejected with a
-`ValidationError` rather than applied; increment B deleted the stub and made all three real.
+The table is the contract as shipped.
 
 ## State transitions
 

@@ -99,9 +99,9 @@ which lifted this rule.
 play the attribute read must cover all in-scope branches or the page boundaries and count are wrong.
 Using that shape unconditionally gives one code path to test, three reads regardless of branch count
 (FR-007; the repository lookup goes through `NodeManager` and is more than one statement, but none of
-the three grows with the branch count), and a `count` that never issues a counting statement (FR-011 holds trivially).
-At the spec's target scale (several hundred branches, three attributes) the extra rows on an
-unfiltered page are a few hundred small records.
+the three grows with the branch count), and a `count` that never issues a counting statement (FR-011
+holds trivially). At the spec's target scale (several hundred branches, three attributes) the extra
+rows on an unfiltered page are a few hundred small records.
 
 **Alternatives considered**:
 
@@ -140,11 +140,10 @@ values. See the "Point in time" section of `contracts/graphql-repository-branch-
   backfill the PRD found in `infrahub.core.query.diff::DiffCountChanges.get_num_changes_by_branch`).
   It is built with `from_values`, which raises `ResourceMultipleFoundError` on a duplicate triple.
 
-The Cypher matches the repository nodes and their requested attributes once, then joins each requested
-branch to its `Branch` node for `branched_from`, then elects the
-visible `HAS_ATTRIBUTE` and `HAS_VALUE` edges per `(repository, attribute, branch)` with the
-per-branch predicate below and the standard `ORDER BY branch_level DESC, from DESC, status ASC LIMIT 1`
-election, exactly as `infrahub.database.validation::_check_duplicate_attributes` does:
+The Cypher matches the repository nodes and their requested attributes once, then joins each
+requested branch to its `Branch` node for `branched_from`, then elects the visible `HAS_ATTRIBUTE`
+and `HAS_VALUE` edges per `(repository, attribute, branch)` with the per-branch predicate below and
+the standard `ORDER BY branch_level DESC, from DESC, status ASC LIMIT 1` election, exactly as `infrahub.database.validation::_check_duplicate_attributes` does:
 
 ```cypher
 WITH ..., CASE WHEN br.branched_from < $at THEN br.branched_from ELSE $at END AS default_window
@@ -254,9 +253,9 @@ branch. The existing test asserting the key is updated.
 
 **Rationale**: FR-010. The per-branch read becomes `ceil(N / 100)` statements for N branches, for all
 repositories together, on top of the one `NodeManager.query` for the nodes, whose statement count
-does not depend on N. A plain constant rather than a `GitSettings` field because no operator has a reason to tune
-it, and a setting would need the generated Compose env block, the docs and the dev Compose anchor
-updated (`dev/guidelines/backend/checklist.md`).
+does not depend on N. A plain constant rather than a `GitSettings` field because no operator has a
+reason to tune it, and a setting would need the generated Compose env block, the docs and the dev
+Compose anchor updated (`dev/guidelines/backend/checklist.md`).
 
 **Alternatives considered**: keep one `NodeManager.query` per branch and only add the GraphQL query.
 Rejected by FR-010 and SC-004.
@@ -377,8 +376,8 @@ lives under IFC; INFP is JPD and carries product planning only, linked to the ep
   regenerate `schema/schema.graphql` and run `uv run invoke docs.generate` so reference docs stay valid.
 - Increment C: `changelog/+repository-sync-single-read.changed.md`; update
   `dev/knowledge/backend/git-sync.md` with the new read path (one statement per chunk of branches).
-- Python SDK exposure of the query is out of scope for this slice. It is deferred and not yet filed;
-  when it is, it goes under the delivery epic IFC-3104.
+- Python SDK exposure of the query is out of scope for this slice; any follow-up belongs under the
+  delivery epic IFC-3104.
 
 ---
 
@@ -387,10 +386,9 @@ lives under IFC; INFP is JPD and carries product planning only, linked to the ep
 **Decision**: Both new packages keep an empty `__init__.py`. In
 `graphql/queries/repository_branch_status/`, a `field.py` module holds the resolver instance and the
 graphene `Field`, and `graphql/schema.py` imports the field from it directly. The source factory it
-wires in, `build_repository_branch_attributes_source`, started in `field.py` and moved to
-`core/repository_branch_status/factory.py` in increment C, when the periodic sync became its second
-caller.
-The field is not re-exported through `graphql/queries/__init__.py`. `resolver.py` exposes
+wires in, `build_repository_branch_attributes_source`, lives in
+`core/repository_branch_status/factory.py`, where the periodic sync calls it too. The field is not
+re-exported through `graphql/queries/__init__.py`. `resolver.py` exposes
 `RepositoryBranchStatusResolver`, a callable class whose constructor takes the source factory as a
 required parameter.
 
