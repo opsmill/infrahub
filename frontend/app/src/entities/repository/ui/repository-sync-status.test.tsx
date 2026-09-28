@@ -25,7 +25,7 @@ const errorResponse = () =>
 
 const FAILING_LABEL = "Repositories failed to import on this branch";
 const IN_SYNC_LABEL = "All Git repositories are in sync on this branch";
-const NO_REPOSITORIES_LABEL = "No Git repositories configured";
+const NO_REPOSITORIES_LABEL = "No Git repositories";
 
 describe("RepositorySyncStatus", () => {
   const useCurrentBranchMock = vi.mocked(useCurrentBranch);
@@ -128,7 +128,30 @@ describe("RepositorySyncStatus", () => {
     const indicator = component.getByRole("link", { name: NO_REPOSITORIES_LABEL });
     await expect.element(indicator).toBeVisible();
     await expect.element(indicator).not.toHaveAttribute("data-disabled");
+    await expect.element(indicator).not.toHaveAttribute("aria-disabled");
+    await expect.element(indicator).toHaveAttribute("href");
     expect((await indicator.element()).className).toContain("opacity-60");
+  });
+
+  test.each([
+    ["failing", { total: 3, failing: 1 } as const],
+    ["in-sync", { total: 3, failing: 0 } as const],
+    ["no-repositories", { total: 0, failing: 0 } as const],
+  ])("stays an enabled link with somewhere to go in the %s state", async (_label, counts) => {
+    // GIVEN
+    onBranch({ name: "branch1" });
+    mockCounts(counts);
+
+    // WHEN
+    const component = await render(<RepositorySyncStatus />);
+
+    // THEN
+    const indicator = component.getByTestId("repository-sync-status");
+    await expect.element(indicator).toBeVisible();
+    await expect.element(indicator).not.toHaveAttribute("data-disabled");
+    expect((await indicator.element()).getAttribute("href")).toContain(
+      `/objects/${GENERIC_REPOSITORY_KIND}`
+    );
   });
 
   test("still explains itself on hover when no repositories are configured", async () => {

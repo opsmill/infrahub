@@ -11,7 +11,7 @@ import { getRepositoriesUrl } from "@/entities/repository/ui/routing/repository-
 const TOOLTIP: Record<RepositorySyncIndicator, string> = {
   loading: "Checking Git repository sync status",
   "check-failed": "Git repository sync status could not be checked",
-  "no-repositories": "No Git repositories configured",
+  "no-repositories": "No Git repositories",
   failing: "Repositories failed to import on this branch",
   "in-sync": "All Git repositories are in sync on this branch",
 };

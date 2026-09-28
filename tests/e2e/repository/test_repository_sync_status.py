@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.shard_branches_repo
 
 ERROR_IMPORT = "error-import"
+INDICATOR = "repository-sync-status"
 INDICATOR_ERROR_LABEL = "Repositories failed to import on this branch"
 INDICATOR_HEALTHY_LABEL = "All Git repositories are in sync on this branch"
 
@@ -50,8 +51,9 @@ class TestRepositorySyncStatus:
     ) -> None:
         await admin_page.goto(f"/?branch={branch_with_failed_import}")
 
-        indicator = admin_page.get_by_role("link", name=INDICATOR_ERROR_LABEL)
+        indicator = admin_page.get_by_test_id(INDICATOR)
         await expect(indicator).to_be_visible()
+        await expect(indicator).to_have_attribute("aria-label", INDICATOR_ERROR_LABEL)
 
         await indicator.click()
 
@@ -63,6 +65,8 @@ class TestRepositorySyncStatus:
     ) -> None:
         await admin_page.goto("/")
 
-        # Asserted positively first: absence alone would pass if nothing rendered at all.
-        await expect(admin_page.get_by_role("link", name=INDICATOR_HEALTHY_LABEL)).to_be_visible()
-        await expect(admin_page.get_by_role("link", name=INDICATOR_ERROR_LABEL)).not_to_be_visible()
+        # Asserted through the indicator itself rather than by searching for a label: absence
+        # alone would pass if nothing rendered at all, and the name is not a stable locator.
+        indicator = admin_page.get_by_test_id(INDICATOR)
+        await expect(indicator).to_be_visible()
+        await expect(indicator).to_have_attribute("aria-label", INDICATOR_HEALTHY_LABEL)
