@@ -76,8 +76,10 @@ Returns whether a record was written.
 5. Writes all four attributes in one mutation, on the Infrahub branch named.
 6. Overwrites the previous record. It never accumulates and never clears.
 7. Emits `RepositoryHistoryRewrittenEvent` exactly once, and only when `is_default_branch` is true.
-8. Runs under the repository lock, taken by its caller. The read-then-increment of step 4 is not
-   safe without it.
+8. Runs inside the **same** repository-lock acquisition that applies the branch import, never
+   between two acquisitions. The read-then-increment of step 4 is not safe otherwise: the
+   collection phase and each branch import take the lock separately, and a recorder call placed
+   between them would let two workers read the same count and write the same value.
 
 ### Rules
 
@@ -160,6 +162,11 @@ It sends one coalesced `RefreshGitFetch` covering every reconciled branch, befor
   fetches once.
 - When the cycle advanced no branch, no message is sent.
 - When every branch failed, no message is sent, and the failure is raised as it is today.
+- **The single-branch fields stay populated.** `infrahub_branch_name` and `infrahub_branch_id` are
+  required on the message, so a coalesced message fills them, and `commit`, from its first pair. A
+  worker still running the previous code then converges one branch instead of failing to construct
+  the message. That is a degradation during a rolling deployment, not a failure, and the remaining
+  branches converge on first contact through the pull-path rule of FR-005.
 
 ---
 
@@ -174,7 +181,9 @@ Changed. `backend/infrahub/message_bus/operations/git/repository.py::fetch`.
 3. When `branches` is present, it resets each pair in turn, inside that one lock hold.
 4. When `branches` is absent, it behaves exactly as it does today.
 5. It still passes `update_commit_value=False`. A broadcast never writes to the graph.
-6. One pair failing does not stop the rest. Each failure is logged with the branch it belongs to.
+6. One pair failing does not stop the rest. Each failure is logged with the branch it belongs to,
+   and that branch converges on first contact through the pull-path rule of FR-005. The broadcast
+   is a pre-warm, so a pair it could not converge costs promptness and not correctness.
 
 ---
 
@@ -208,7 +217,10 @@ New. Written by `backend/infrahub/graphql/mutations/repository.py::RepositoryUpd
 | `CoreReadOnlyRepository.ref` changes | The branch the mutation ran on |
 | `CoreRepository.default_branch` changes | Infrahub's default branch |
 
-1. The marker is written after the update succeeds, never before.
+1. The marker is written after the update succeeds, and **before** any workflow is submitted. The
+   read-only path submits a pull and an import from inside the same mutation. If the marker landed
+   after the submission, the import could reach the recorder first and record a spurious rewrite on
+   a deliberate re-target.
 2. It expires after one hour.
 3. The recorder consumes it: it reads, deletes, and skips the record.
 4. A lost marker produces one spurious record. The reconciliation is identical either way. This is

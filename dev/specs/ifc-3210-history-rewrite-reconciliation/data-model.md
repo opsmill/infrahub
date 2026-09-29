@@ -129,9 +129,11 @@ In `backend/infrahub/message_bus/messages/refresh_git_fetch.py`. One new optiona
 
 `BranchCommitPair` carries `infrahub_branch_name`, `infrahub_branch_id` and `commit`.
 
-The existing `infrahub_branch_name`, `infrahub_branch_id` and `commit` fields stay. Five emission
-sites use them and are untouched by this epic. The handler prefers `branches` when present and
-falls back to the single-branch fields otherwise.
+The existing `infrahub_branch_name`, `infrahub_branch_id` and `commit` fields stay, and a coalesced
+message still populates them from its first pair. The first two are required, so a message that
+left them empty could not be constructed by a worker running the previous code. Five emission sites
+use them and are untouched by this epic. The handler prefers `branches` when present and falls back
+to the single-branch fields otherwise.
 
 Under one lock acquisition and one fetch, the handler resets each pair in turn. This is why the
 list is coalesced rather than sent as N messages: the repository lock is contended by merges and
@@ -182,7 +184,7 @@ the recorder. See `research.md` R4 for why this shape was chosen.
 | Key | Repository id plus Infrahub branch name, under a namespace of its own. |
 | Value | The new tracking target, for diagnostics only. |
 | Time to live | One hour. |
-| Written when | `CoreReadOnlyRepository.ref` changes, or `CoreRepository.default_branch` changes. |
+| Written when | `CoreReadOnlyRepository.ref` changes, or `CoreRepository.default_branch` changes. The write lands after the update succeeds and before any workflow is submitted. |
 | Read when | The classifier returned `REWRITE`. |
 | Effect | Turns `REWRITE` into `RETARGET`, so nothing is recorded. |
 | Consumed | Yes. The recorder deletes it after reading, so it cannot suppress twice. |

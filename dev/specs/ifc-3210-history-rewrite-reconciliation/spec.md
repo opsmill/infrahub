@@ -187,8 +187,15 @@ either case.
 - **Infrahub's own unpushed merge commit.** The writeback ordering fix removes this state, so no
   guard against it is needed. Before that fix, an unconditional reset would silently discard a
   merge commit held by one worker only. That is why the fix is a prerequisite.
+- **A rewrite of a branch that is not the trunk notifies nobody.** It writes a record and emits no
+  signal. This is deliberate. By the time the record is written the branch is reset, the workers
+  have converged and the re-import has run, so nothing is outstanding and there is no action to
+  take.
 - **Repeated rewrites of the same branch.** The record keeps the last event only. The count shows
-  that the record is not the whole story. A full history is deliberately not kept.
+  that the record is not the whole story. A full history is deliberately not kept. A branch
+  rewritten four times therefore answers "what was discarded the last time", not "which of the four
+  rewrites discarded commit X". The better way to answer that question is to ask whether commit X
+  still resolves.
 - **A rewritten trunk leaves feature branches semantically stale.** Those branches also diverge
   from the new trunk on the remote. The existing conflict check reports this correctly, and only
   when each branch next moves. There is no local storage impact on the other branches, because one
@@ -262,6 +269,17 @@ here. See "Out of Scope".
   a merge conflict unless the system observed one. The divergent-branches case MUST get its own
   message naming a divergent history.
 
+#### Failure handling and observability
+
+- **FR-018**: A reconciliation that fails on the repository's configured default branch MUST be
+  raised and MUST be recorded against the repository. The system MUST NOT retry it automatically
+  within the same cycle. A failed trunk reconciliation can force a re-initialisation that discards
+  every local branch worktree and commit worktree on that worker, because the trunk worktree is the
+  primary clone. That blast radius is recoverable but not contained, so the failure must be loud.
+- **FR-019**: Each reconciliation MUST log the repository, the branch, the commit that was
+  discarded and the commit that replaced it. Until the visibility work of INFP-671 ships, this log
+  line is the only way an operator learns that a reconciliation happened.
+
 ### Key Entities *(include if feature involves data)*
 
 - **`CoreGenericRepository`**: gains four branch-local attributes. They record the previous commit,
@@ -298,9 +316,11 @@ No new node kind is introduced.
 - **SC-005**: A rewritten branch never prevents another branch of the same repository from
   converging.
 - **SC-006**: To determine why content at an earlier commit can no longer be re-derived, the
-  repository view alone is enough. No access to worker logs and no access to the orchestrator is
-  needed. The baseline today needs both, at roughly two hours of Solution Architecture time per
-  incident.
+  repository's own stored state is enough. It is readable through the repository API on the branch
+  in question. No access to worker logs and no access to the orchestrator is needed. The baseline
+  today needs both, at roughly two hours of Solution Architecture time per incident. This work
+  delivers the stored state. The human-facing surface that presents it belongs to INFP-671, which
+  is out of scope here.
 - **SC-007**: Re-pointing a repository at a different branch, tag or commit on purpose produces no
   rewrite report.
 
