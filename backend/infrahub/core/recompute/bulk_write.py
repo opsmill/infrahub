@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, cast
 
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.manager import NodeManager
+from infrahub.core.recompute.merge_gate import MergeGateVerdict
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventMeta
 from infrahub.events.node_action import NodeUpdatedEvent
@@ -15,6 +16,7 @@ from infrahub.utilities.chunks import chunked
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.recompute.merge_gate import MergeSourceWriteGate
     from infrahub.database import InfrahubDatabase
     from infrahub.events.models import EventContext
     from infrahub.services.adapters.event import InfrahubEventService
@@ -58,17 +60,20 @@ class BulkRecomputeWriter:
 
     Writes are grouped by node so a node reached by several families is saved once, applied in
     bounded transactions to keep the lock footprint contained, then followed by one live update
-    event per node so values that read them still recompute.
+    event per node so values that read them still recompute. Writes aimed at the source branch of an
+    in-progress merge wait for the merge to end, and are dropped once the branch has merged.
     """
 
     def __init__(
         self,
         db: InfrahubDatabase,
         event_service: InfrahubEventService,
+        merge_gate: MergeSourceWriteGate,
         transaction_chunk_size: int = 100,
     ) -> None:
         self.db = db
         self.event_service = event_service
+        self.merge_gate = merge_gate
         self.transaction_chunk_size = transaction_chunk_size
 
     async def write(
@@ -101,6 +106,13 @@ class BulkRecomputeWriter:
                 # derived values (display label, hfid, computed siblings) that read a written value,
                 # and it can only do that when they are loaded.
                 nodes = await NodeManager.get_many(db=session, ids=chunk, branch=branch)
+                # Checked after the read, right before the saves, to keep the gap a merge's diff snapshot
+                # could fall into between the check and the write as short as possible.
+                verdict = await self.merge_gate.admit(branch=branch)
+                if verdict is MergeGateVerdict.CLOSED:
+                    break
+                if verdict is MergeGateVerdict.REOPENED:
+                    nodes = await NodeManager.get_many(db=session, ids=chunk, branch=branch)
                 saved: list[tuple[Node, list[str]]] = []
                 async with session.start_transaction() as dbt:
                     for node_id in chunk:
