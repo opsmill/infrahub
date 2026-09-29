@@ -27,6 +27,8 @@ EXCLUDED_PATHS: tuple[str, ...] = (
 
 _PRIORITY_HEADER = b"x-priority"
 _CORS_REQUEST_METHOD_HEADER = b"access-control-request-method"
+_ACCEPT_HEADER = b"accept"
+_HTML_MEDIA_TYPE = "text/html"
 
 _SHED_MESSAGE = "Server is shedding load; retry later."
 
@@ -41,9 +43,9 @@ SHED_MARKER_VALUE = "shed"
 class AdmissionMiddleware:
     """Pure-ASGI gate, outermost but for CORS, that sheds load by priority before any handler work.
 
-    Non-``http`` scopes, the excluded liveness/scrape/static paths, and every request
-    while the layer is disabled pass straight through. Otherwise the ``X-Priority`` header
-    is classified and handed to the admission controller: an admitted request runs the
+    Non-``http`` scopes, the excluded liveness/scrape/static paths, page navigations, and every
+    request while the layer is disabled pass straight through. Otherwise the ``X-Priority``
+    header is classified and handed to the admission controller: an admitted request runs the
     downstream app inside its slot and always releases the slot afterwards, while a shed
     request is answered with a ``429`` error envelope, a ``Retry-After`` hint and the
     ``X-Infrahub-Admission: shed`` marker, and never reaches the app.
@@ -87,6 +89,12 @@ class AdmissionMiddleware:
             await self.app(scope, receive, send)
             return
 
+        # A shed page load renders the error envelope in place of the app and leaves the user
+        # nothing to act on, while the handler it gates does no database work worth protecting.
+        if _is_document_navigation(scope):
+            await self.app(scope, receive, send)
+            return
+
         # Excluded paths (liveness/scrape/probe) and preflights bypass above without touching
         # app.state, so probes stay served even if the startup lifespan never published the gate's
         # state. Everything past this point is a gated request, so the state is read now: the
@@ -122,6 +130,22 @@ def _is_cors_preflight(scope: Scope) -> bool:
     if scope.get("method") != "OPTIONS":
         return False
     return any(name == _CORS_REQUEST_METHOD_HEADER for name, _ in scope["headers"])
+
+
+def _is_document_navigation(scope: Scope) -> bool:
+    """Return whether the request is a page load: a ``GET`` accepting ``text/html``.
+
+    ``Accept`` may be repeated and each field carries comma-separated media ranges, so every
+    field is scanned and each range is compared whole, past its parameters.
+    """
+    if scope.get("method") != "GET":
+        return False
+    return any(
+        media_range.split(";", 1)[0].strip() == _HTML_MEDIA_TYPE
+        for name, value in scope["headers"]
+        if name == _ACCEPT_HEADER
+        for media_range in value.decode("latin-1").lower().split(",")
+    )
 
 
 def _read_priority_header(scope: Scope) -> str | None:

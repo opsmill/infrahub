@@ -1,6 +1,6 @@
 # Backend Testing
 
-> Part of: `dev/knowledge/backend/` | Related: [backend/AGENTS.md](../../../backend/AGENTS.md)
+> Part of: `dev/knowledge/backend/`
 
 Overview of the backend testing infrastructure, test types, and patterns.
 
@@ -500,4 +500,3 @@ uv run pytest backend/tests/unit/path/to/test.py -v
 
 - [Backend Architecture](architecture.md) - Overall backend structure
 - [Python Coding Standards](../../guidelines/backend/python.md) - Code style requirements
-- [Backend AGENTS.md](../../../backend/AGENTS.md) - Commands reference

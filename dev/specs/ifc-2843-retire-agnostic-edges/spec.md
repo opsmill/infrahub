@@ -270,10 +270,13 @@ each is independently developable, testable, and demonstrable.
   being merged, using the diff already computed for the merge. *Verify: delete on a branch,
   merge it, assert closure.*
 - **FR-007**: Branch rebase MUST evaluate the predicate for the nodes deleted on the
-  default branch within the window the rebase closes, using the base-branch diff already
-  computed before the rebase is applied and the same timestamp the rebase uses. *Verify:
+  default branch within the window the rebase closes, using a query over the default
+  branch's existence edges bounded by the branch's previous fork point and the rebase
+  timestamp rather than a stored diff, and the same timestamp the rebase uses. *Verify:
   node deleted on the default branch while a branch is open, rebase that branch, assert
-  closure.*
+  closure, for a branch with and without changes of its own.* (Revised 2026-09-28: the
+  base-branch diff originally named here is scoped to the fields the branch changed, so it
+  does not list the default-branch deletions.)
 - **FR-008**: Branch deletion MUST evaluate the predicate for the nodes that were
   reachable on the discarded branch, using a query bounded by that branch's fork point
   rather than a stored diff, alongside the existing cleanup for branch-only nodes.
@@ -414,9 +417,10 @@ sets remove any need for a marker or worklist.
   cannot be retained by another.
 - Every branch is isolated in practice, since the branch-create path drops any
   caller-supplied isolation value.
-- The base-branch diff computed during rebase is complete for the default-branch deletions
-  in the window being closed, and is available before the rebase is applied and under the
-  same lock.
+- The default branch's existence edges record every default-branch deletion in the window
+  being closed, and can be read before the rebase is applied and under the same lock. The
+  base-branch diff computed during rebase does not: it is scoped to the fields the branch
+  changed (revised 2026-09-28).
 - Both schema-removal migrations deliberately leave an inherited global edge open and
   shadow it with a branch-scoped tombstone. Retirement complements that pattern rather than
   replacing it.
