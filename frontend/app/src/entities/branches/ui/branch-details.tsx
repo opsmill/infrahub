@@ -1,5 +1,4 @@
 import { Col, Row } from "@/shared/components/container";
-import Accordion from "@/shared/components/display/accordion";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -11,16 +10,15 @@ import { BranchProposeChangeButton } from "@/entities/branches/ui/branch-propose
 import { BranchRebaseButton } from "@/entities/branches/ui/branch-rebase-button";
 import { BranchValidateButton } from "@/entities/branches/ui/branch-validate-button";
 import { useGetBranchDetails } from "@/entities/branches/ui/queries/get-branch-details.query";
-import {
-  BRANCH_MERGE_WORKFLOW,
-  BRANCH_REBASE_WORKFLOW,
-  BRANCH_VALIDATE_WORKFLOW,
-} from "@/entities/tasks/domain/model/task";
-import { TaskDisplay } from "@/entities/tasks/ui/task-display";
 
 interface BranchDetailsProps {
   branchName: string;
+  reposPage: number;
+  onReposPageChange: (page: number) => void;
+  tasksPage: number;
+  onTasksPageChange: (page: number) => void;
 }
+
 export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
   const { isPending, error, data: branch } = useGetBranchDetails({ branchName });
 
@@ -41,25 +39,13 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
       <BranchAttributes branch={branch} />
 
       {!branch.is_default && (
-        <Col>
-          <Row className="flex-wrap">
-            <BranchMergeButton branch={branch} />
-            <BranchProposeChangeButton branch={branch} />
-            <BranchRebaseButton branch={branch} />
-            <BranchValidateButton branch={branch} />
-            <BranchDeleteButton branch={branch} />
-          </Row>
-
-          <Accordion
-            title={<div className="py-2 font-normal text-xs">Tasks</div>}
-            data-testid="tasks-accordion"
-          >
-            <TaskDisplay
-              branch={branch.name}
-              workflow={[BRANCH_VALIDATE_WORKFLOW, BRANCH_MERGE_WORKFLOW, BRANCH_REBASE_WORKFLOW]}
-            />
-          </Accordion>
-        </Col>
+        <Row className="flex-wrap">
+          <BranchMergeButton branch={branch} />
+          <BranchProposeChangeButton branch={branch} />
+          <BranchRebaseButton branch={branch} />
+          <BranchValidateButton branch={branch} />
+          <BranchDeleteButton branch={branch} />
+        </Row>
       )}
     </Col>
   );
