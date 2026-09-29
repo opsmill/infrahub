@@ -119,7 +119,8 @@ The `tab` argument on each helper is a string-literal union (e.g. `BranchDetails
 | Accordion | `Accordion` | `shared/components/ui/accordion.tsx` |
 | Badge | `Badge` | `shared/components/ui/badge.tsx` |
 | Alert | `Alert` | `shared/components/ui/alert.tsx` |
-| Pagination | `Pagination` | `shared/components/ui/pagination.tsx` |
+| Pagination (one list per page) | `Pagination` — bound to the page-global `pagination` query-string parameter (`usePagination`), so only one list per page can use it | `shared/components/ui/pagination.tsx` |
+| Paginated table footer, one per table | `TablePagination` — page state owned by the caller (`page`, `onPageChange`), so several tables on one page each keep their own page. Pair with `shared/utils/table-pagination.ts` (`TABLE_PAGE_SIZE`, `clampPage`, `getTotalPages`) | `shared/components/table/table-pagination.tsx` |
 | Keyboard shortcut display | `Kbd` | `shared/components/ui/kbd.tsx` |
 | Card surface | `Card`, `CardHeader`, `CardContent` | `@infrahub/ui` (see `design-system.md`) |
 | Modal/dialog | `Modal`, `ModalOverlay` | `@infrahub/ui` |
