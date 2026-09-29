@@ -22,6 +22,7 @@ from infrahub.core.migrations.schema.attribute_name_update import AttributeNameU
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
+from infrahub.core.query.resource_manager import PoolRecordProvenance
 from tests.component.core.resource_manager.conftest import SERIAL_ATTRIBUTE_NAME, SERIAL_POOL_START
 from tests.helpers.agnostic_edges import EdgeState, open_active_edges
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, WIDGET_KIND
@@ -255,3 +256,73 @@ async def test_renaming_a_pooled_attribute_on_a_branch_leaves_the_default_branch
     assert await serial_pool.get_free(db=db, branch=default_branch) != SERIAL_POOL_START, (
         "a rename on a branch must not offer the default branch's number again"
     )
+
+
+async def open_record_properties(db: InfrahubDatabase, pool_id: str, node_id: str, attribute_name: str) -> dict:
+    """Every property of the open record the pool holds on this object's named attribute."""
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
+        WITH DISTINCT a
+        MATCH (:Node {uuid: $pool_id})-[record:IS_RESERVED]->(a)
+        WHERE record.status = "active" AND record.to IS NULL
+        RETURN properties(record) AS record
+        """,
+        params={"pool_id": pool_id, "node_id": node_id, "attribute_name": attribute_name},
+    )
+    assert len(results) == 1
+    return dict(results[0]["record"])
+
+
+@dataclass
+class RecordPropertiesCase:
+    name: str
+    on_default_branch: bool
+
+
+RECORD_PROPERTIES_CASES = [
+    RecordPropertiesCase(name="default-branch", on_default_branch=True),
+    RecordPropertiesCase(name="user-branch", on_default_branch=False),
+]
+
+
+@pytest.mark.parametrize("case", RECORD_PROPERTIES_CASES, ids=lambda case: case.name)
+async def test_renaming_a_pooled_attribute_carries_every_property_of_its_record(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    aware_schema: SchemaBranch,
+    serial_pool: CoreNumberPool,
+    case: RecordPropertiesCase,
+) -> None:
+    """The record says which object holds the number and how it got there; a rename must not lose either."""
+    holder = await Node.init(db=db, schema=WIDGET_KIND, branch=default_branch)
+    await holder.new(db=db, name="holds-a-pooled-serial", serial={"from_pool": {"id": serial_pool.id}})
+    await holder.save(db=db)
+    await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
+        WITH DISTINCT a
+        MATCH ()-[record:IS_RESERVED]->(a)
+        WHERE record.status = "active" AND record.to IS NULL
+        SET record.provenance = $provenance
+        """,
+        params={
+            "node_id": holder.id,
+            "attribute_name": PREVIOUS_ATTRIBUTE_NAME,
+            "provenance": PoolRecordProvenance.PROVIDED.value,
+        },
+    )
+
+    branch = default_branch if case.on_default_branch else await create_branch(db=db, branch_name="rename-record")
+    await rename_the_attribute(db=db, branch=branch, schema=registry.schema.get_schema_branch(name=branch.name))
+
+    renamed = await open_record_properties(
+        db=db, pool_id=serial_pool.id, node_id=holder.id, attribute_name=NEW_ATTRIBUTE_NAME
+    )
+    assert renamed["identifier"] == holder.id, "the record must still name the object that holds the number"
+    assert renamed["provenance"] == PoolRecordProvenance.PROVIDED.value, (
+        "the record must still say the number was provided rather than assume the pool chose it"
+    )
+    assert renamed["branch"] == GLOBAL_BRANCH_NAME
+    assert renamed["status"] == "active"
+    assert "to" not in renamed
