@@ -259,7 +259,7 @@ class DiffRepository:
         self, enriched_diffs: EnrichedDiffs
     ) -> Generator[list[EnrichedNodeCreateRequest], None, None]:
         node_requests = []
-        for diff_root in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
+        for diff_root in enriched_diffs.roots:
             size_count = 0
             for node in diff_root.nodes:
                 node_size_count = node.num_properties
@@ -296,7 +296,7 @@ class DiffRepository:
         the fields of the nodes never touch the root and can run concurrently.
         """
         chunk_size = config.SETTINGS.database.query_size_limit
-        for diff_root in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
+        for diff_root in enriched_diffs.roots:
             for nodes_chunk in batched(diff_root.nodes, chunk_size):
                 log.info(f"Creating diff nodes, num_nodes={len(nodes_chunk)}")
                 await self._run_diff_nodes_create_query(diff_root_uuid=diff_root.uuid, diff_nodes=list(nodes_chunk))
@@ -365,7 +365,7 @@ class DiffRepository:
         await link_query.execute(db=self.db)
 
     async def _update_hierarchy_links(self, enriched_diffs: EnrichedDiffs) -> None:
-        for diff_root in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
+        for diff_root in enriched_diffs.roots:
             nodes_to_update = []
             for node in diff_root.nodes:
                 if any(r.nodes for r in node.relationships):
@@ -416,7 +416,7 @@ class DiffRepository:
             await self._save_root_metadata(enriched_diffs=enriched_diffs)
             return
 
-        num_nodes = len(enriched_diffs.base_branch_diff.nodes) + len(enriched_diffs.diff_branch_diff.nodes)
+        num_nodes = sum(len(diff_root.nodes) for diff_root in enriched_diffs.roots)
         log.info(f"Saving diff ({num_nodes=})...")
         await self._create_diff_nodes(enriched_diffs=enriched_diffs)
         await self._save_node_batches(enriched_diffs=enriched_diffs)

@@ -660,24 +660,38 @@ class EnrichedDiffs(EnrichedDiffsMetadata):
 
     @classmethod
     def from_calculated_diffs(cls, calculated_diffs: CalculatedDiffs, tracking_id: TrackingId) -> EnrichedDiffs:
-        base_branch_diff = EnrichedDiffRoot.from_calculated_diff(
-            calculated_diff=calculated_diffs.base_branch_diff,
-            base_branch_name=calculated_diffs.base_branch_name,
-            partner_uuid=calculated_diffs.diff_branch_diff.uuid,
-            tracking_id=tracking_id,
-        )
+        """Build the enriched pair from a calculated pair.
+
+        A branch diffed against itself is calculated as one root that stands for both sides, so it becomes one
+        enriched root that stands for both sides as well.
+        """
         diff_branch_diff = EnrichedDiffRoot.from_calculated_diff(
             calculated_diff=calculated_diffs.diff_branch_diff,
             base_branch_name=calculated_diffs.base_branch_name,
             partner_uuid=calculated_diffs.base_branch_diff.uuid,
             tracking_id=tracking_id,
         )
+        base_branch_diff = diff_branch_diff
+        if calculated_diffs.base_branch_diff is not calculated_diffs.diff_branch_diff:
+            base_branch_diff = EnrichedDiffRoot.from_calculated_diff(
+                calculated_diff=calculated_diffs.base_branch_diff,
+                base_branch_name=calculated_diffs.base_branch_name,
+                partner_uuid=calculated_diffs.diff_branch_diff.uuid,
+                tracking_id=tracking_id,
+            )
         return EnrichedDiffs(
             base_branch_name=calculated_diffs.base_branch_name,
             diff_branch_name=calculated_diffs.diff_branch_name,
             base_branch_diff=base_branch_diff,
             diff_branch_diff=diff_branch_diff,
         )
+
+    @property
+    def roots(self) -> tuple[EnrichedDiffRoot, ...]:
+        """The distinct roots of the pair, one when both sides are the same root."""
+        if self.base_branch_diff is self.diff_branch_diff:
+            return (self.diff_branch_diff,)
+        return (self.base_branch_diff, self.diff_branch_diff)
 
     @property
     def is_empty(self) -> bool:
