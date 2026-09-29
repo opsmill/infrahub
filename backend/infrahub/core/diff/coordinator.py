@@ -339,6 +339,34 @@ class DiffCoordinator:
                 self.logger.info(f"Arbitrary diff update complete for {base_branch.name} - {diff_branch.name}")
             return enriched_diffs.diff_branch_diff
 
+    async def calculate_arbitrary_timeframe_diff(
+        self,
+        base_branch: Branch,
+        diff_branch: Branch,
+        from_time: Timestamp,
+        to_time: Timestamp,
+    ) -> EnrichedDiffRoot:
+        """Calculate and enrich the diff of a time range without storing it.
+
+        No diff lock is taken: a diff that is never stored cannot race another update of the same pair.
+        """
+        self.logger.info(f"Calculating unstored diff for {base_branch.name} - {diff_branch.name}")
+        enriched_diffs = await self._calculate_enriched_diff(
+            diff_request=EnrichedDiffRequest(
+                base_branch=base_branch,
+                diff_branch=diff_branch,
+                from_time=from_time,
+                to_time=to_time,
+                tracking_id=NameTrackingId(name=str(uuid4())),
+            ),
+            is_incremental_diff=False,
+        )
+        await self.conflicts_enricher.add_conflicts_to_branch_diff(
+            base_diff_root=enriched_diffs.base_branch_diff, branch_diff_root=enriched_diffs.diff_branch_diff
+        )
+        await self.labels_enricher.enrich(enriched_diff_root=enriched_diffs.diff_branch_diff, conflicts_only=True)
+        return enriched_diffs.diff_branch_diff
+
     async def recalculate(
         self,
         base_branch: Branch,

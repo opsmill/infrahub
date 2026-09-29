@@ -15,7 +15,10 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.events.branch_action import BranchRebasedEvent
+from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.workers.dependencies import build_cache, build_database, build_event_service
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
@@ -127,6 +130,10 @@ async def test_rebase_submits_one_coalesced_recompute_per_target(
         mutate_target="default",
         mutate_kind="peer",
     )
+    # The default branch's changes are replayed only onto a branch with changes of its own.
+    branch_peer = await Node.init(db=db, schema=PROFILE_PEER_KIND, branch=seeded.branch)
+    await branch_peer.new(db=db, name=f"{seeded.branch_name}-branch-peer")
+    await branch_peer.save(db=db)
 
     workflow_recorder = WorkflowRecorder()
     event_recorder = MemoryInfrahubEvent()
@@ -155,6 +162,51 @@ async def test_rebase_submits_one_coalesced_recompute_per_target(
     # A rebase recomputes on the user branch, not the destination.
     assert computed[0]["parameters"]["branch_name"] == seeded.branch_name
     assert display[0]["parameters"]["branch_name"] == seeded.branch_name
+
+    replayed_node_ids = {event.node_id for event in event_recorder.events if isinstance(event, NodeUpdatedEvent)}
+    assert replayed_node_ids == set(seeded.changed_node_ids)
+
+
+async def test_rebase_of_a_branch_without_changes_replays_nothing(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    dependency_provider: Provider,
+) -> None:
+    lock.initialize_lock(local_only=True)
+    await load_profile_schema(db=db)
+
+    seeded = await seed_branch(
+        db=db,
+        default_branch=default_branch,
+        branch_name="unchanged_rebase",
+        changed_nodes=6,
+        mutate_target="default",
+        mutate_kind="peer",
+    )
+
+    workflow_recorder = WorkflowRecorder()
+    event_recorder = MemoryInfrahubEvent()
+    cache = MemoryCache()
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+
+    with (
+        override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
+        override_dependency(build_event_service, lambda: event_recorder, dependency_provider=dependency_provider),
+        override_workflow(workflow_recorder, dependency_provider=dependency_provider),
+        override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+    ):
+        await rebase_branch(branch=seeded.branch_name, context=context, send_events=True)
+
+    rebased_branch = await Branch.get_by_name(db=db, name=seeded.branch_name)
+    assert Timestamp(rebased_branch.get_branched_from()) > Timestamp(seeded.branch.get_branched_from())
+    assert [type(event) for event in event_recorder.events] == [BranchRebasedEvent]
+    assert workflow_recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_JINJA2) == []
+    assert workflow_recorder.get_submit_calls_for(DISPLAY_LABELS_PROCESS_JINJA2) == []
+    assert workflow_recorder.get_submit_calls_for(HFID_PROCESS) == []
 
 
 async def test_merge_delete_peer_coalesces_reader_recompute_by_own_id(

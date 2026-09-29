@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import uuid4
 
 from prefect import flow, get_run_logger
 from prefect.client.schemas.objects import State  # noqa: TC002
@@ -19,7 +18,7 @@ from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracke
 from infrahub.core.constants import SYSTEM_USER_ID, MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
-from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, EnrichedDiffRootMetadata
+from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.diff.summary_cache import DiffSummaryCache
@@ -195,6 +194,15 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         # rebase to the end time of the diff in case conflicting changes happen on
         # either branch while rebasing and migrating
         rebase_at = enriched_diff_metadata.to_time
+        # The default branch's changes only feed the events sent below, and a branch with nothing in its diff
+        # already reads what the default branch holds once it is rebased.
+        replay_default_branch_changes = send_events and bool(
+            await diff_repository.get_affected_node_uuids(
+                diff_branch_name=user_branch.name,
+                tracking_id=BranchTrackingId(name=user_branch.name),
+                exclude_actions=(),
+            )
+        )
         node_diff_field_summaries = await diff_repository.get_node_field_summaries(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
@@ -285,13 +293,11 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 )
                 log.info("Migrations completed")
 
-        default_branch_diff = await _get_diff_root(
-            diff_coordinator=diff_coordinator,
-            enriched_diff_metadata=enriched_diff_metadata,
-            diff_repository=diff_repository,
-            base_branch=base_branch,
-            target_from=initial_from_time,
-        )
+        default_branch_diff: EnrichedDiffRoot | None = None
+        if replay_default_branch_changes:
+            default_branch_diff = await diff_coordinator.calculate_arbitrary_timeframe_diff(
+                base_branch=base_branch, diff_branch=base_branch, from_time=initial_from_time, to_time=rebase_at
+            )
 
         # -------------------------------------------------------------
         # Trigger the reconciliation of IPAM data after the rebase
@@ -327,29 +333,33 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     )
     events: list[InfrahubEvent] = [rebase_event]
     changes: list[MergeChange] = []
-    changelog_collector = DiffChangelogCollector(
-        diff=default_branch_diff, branch=user_branch, db=db, migration_tracker=MigrationTracker(migrations=migrations)
-    )
-    for action, node_changelog in changelog_collector.collect_changelogs():
-        mutation_action = MutationAction.from_diff_action(diff_action=action)
-        meta = EventMeta.from_parent(parent=rebase_event, branch=user_branch)
-        meta.origin = NodeMutationOrigin.REBASE
-        mutate_event = get_node_event(mutation_action)(
-            kind=node_changelog.node_kind,
-            node_id=node_changelog.node_id,
-            changelog=node_changelog,
-            fields=node_changelog.updated_fields,
-            meta=meta,
+    if default_branch_diff is not None:
+        changelog_collector = DiffChangelogCollector(
+            diff=default_branch_diff,
+            branch=user_branch,
+            db=db,
+            migration_tracker=MigrationTracker(migrations=migrations),
         )
-        events.append(mutate_event)
-        changes.append(
-            MergeChange(
-                node_id=node_changelog.node_id,
+        for action, node_changelog in changelog_collector.collect_changelogs():
+            mutation_action = MutationAction.from_diff_action(diff_action=action)
+            meta = EventMeta.from_parent(parent=rebase_event, branch=user_branch)
+            meta.origin = NodeMutationOrigin.REBASE
+            mutate_event = get_node_event(mutation_action)(
                 kind=node_changelog.node_kind,
-                action=mutation_action.value,
-                changed_fields=frozenset(node_changelog.updated_fields),
+                node_id=node_changelog.node_id,
+                changelog=node_changelog,
+                fields=node_changelog.updated_fields,
+                meta=meta,
             )
-        )
+            events.append(mutate_event)
+            changes.append(
+                MergeChange(
+                    node_id=node_changelog.node_id,
+                    kind=node_changelog.node_kind,
+                    action=mutation_action.value,
+                    changed_fields=frozenset(node_changelog.updated_fields),
+                )
+            )
 
     event_service = await get_event_service()
     for event in events:
@@ -524,29 +534,6 @@ async def _retire_agnostic_fields_of_base_deletions(
             "Branch-agnostic retirement re-evaluated for base-branch deletions: "
             f"candidates={len(batch_uuids)} edges_closed={retired.edges_closed} at={at.to_string()}"
         )
-
-
-async def _get_diff_root(
-    diff_coordinator: DiffCoordinator,
-    enriched_diff_metadata: EnrichedDiffRootMetadata,
-    diff_repository: DiffRepository,
-    base_branch: Branch,
-    target_from: Timestamp,
-) -> EnrichedDiffRoot:
-    default_branch_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
-        base_branch=base_branch,
-        diff_branch=base_branch,
-        from_time=target_from,
-        to_time=enriched_diff_metadata.to_time,
-        name=str(uuid4()),
-    )
-    # make sure we have the actual diff with data and not just the metadata
-    if not isinstance(default_branch_diff, EnrichedDiffRoot):
-        default_branch_diff = await diff_repository.get_one(
-            diff_branch_name=base_branch.name, diff_id=default_branch_diff.uuid
-        )
-
-    return default_branch_diff
 
 
 async def _build_post_merge_regeneration_dispatcher(
