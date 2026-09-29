@@ -54,6 +54,7 @@ The writer:
 - Applies the writes in bounded transaction chunks to keep the lock footprint contained.
 - Skips a no-op save. A recompute can render the value already stored, so that node emits no event and does not chain.
 - Emits one `NodeUpdatedEvent` per node, carrying every field the save changed (including same-node cascades), so cross-node readers of those fields still recompute.
+- Holds a write aimed at the source branch of an in-progress merge until the merge ends, then drops it if the branch merged (`MergeSourceWriteGate`). The merge carries every edge still active on its source branch but takes its changelog, and so this recompute, from an earlier diff snapshot: a value written in between would reach the destination already fresh, so the pass there skips it as a no-op and never chains to its readers. Writes to the destination are not held, since one delayed past the merge could overwrite this recompute with a value rendered from the pre-merge inputs.
 
 Writes commit per chunk and emit before the next chunk runs, so the write is not atomic across chunks. A mid-run failure can leave earlier chunks written. Recovery relies on the flow re-running and re-detecting no-ops.
 
@@ -79,6 +80,7 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 | `core/merge/recompute_coalescing.py` | `CoalescedRecomputeBuilder`, `CoalescedRecomputeSubmitter`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter`, `max_recompute_chain_depth` |
 | `core/recompute/bulk_write.py` | `BulkRecomputeWriter`, `AttributeValueWrite`, `WrittenNode` |
 | `core/recompute/dispatch.py` | `BulkRecomputeDispatcher`, `build_bulk_recompute_dispatcher` (bulk write, then chain on a coalesced pass) |
+| `core/recompute/merge_gate.py` | `MergeSourceWriteGate` (holds writes off the source branch of an in-progress merge) |
 | `core/merge/post_merge.py` | Merge: stamp `merge` origin, build and submit on the destination branch |
 | `core/branch/tasks.py` | Rebase: stamp `rebase` origin, build and submit on the user branch |
 | `events/constants.py` | `NodeMutationOrigin`, `NODE_ORIGIN_LABEL` |
