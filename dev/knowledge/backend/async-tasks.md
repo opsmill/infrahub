@@ -378,6 +378,42 @@ Because a dead in-process retry wait is never re-submitted by a worker, crashing
 
 Note when reasoning about which events fire: on resume, Prefect renames the state, so the event is `prefect.flow-run.Retrying`, not `...Running`. The client-side return value of a state proposal keeps the locally-proposed name, so it is not a reliable guide to the emitted event.
 
+### The worker liveness heartbeat runs on its own thread
+
+Separate from Prefect's flow-run heartbeat, every API server and task worker publishes its own
+liveness key, `workers:active:{component}:worker:{worker_id}`, with a 15-second expiry, refreshed
+every 5 seconds (`refresh_worker_heartbeat` in `services/component.py`). The workers holding a live
+key form the active-worker set (`InfrahubComponent.list_active_worker_ids`), and four things read
+it: the deadlock cleanup (`locks/tasks.py`) deletes any lock older than
+`clean_up_deadlocks_interval_mins` whose holder has left the set; the merge failure identifier flags
+a `MERGING` branch whose lock holder left the set, after its grace period; the stale lock cleaner in
+merge recovery; and `wait_for_schema_to_converge`, which waits only for active workers to report the
+new schema hash.
+
+The refresh runs on a dedicated thread with its own event loop and its own cache connection
+(`WorkerHeartbeat` in `services/heartbeat.py`, started and stopped by `InfrahubScheduler`), not as an
+asyncio schedule on the main loop. Flows run on the worker's main loop, and a CPU-bound stretch with
+no `await` starves every other task on that loop, the heartbeat included. This is not theoretical: a
+rebase of a 38k-node branch spent 93 seconds in pure-Python conflict merging, the key expired, the
+deadlock cleanup running on another worker deleted the diff-update locks the rebase still held, and
+the rebase failed on lock release with `LockNotOwnedError` after all of its work was done. A thread
+keeps beating through such a stall because a pure-Python loop releases the interpreter lock every few
+milliseconds; only a C extension holding it for longer than the key's expiry could starve the thread.
+The key therefore means "this process is alive", not "this process's event loop is idle", which is
+what every consumer above wants to know.
+
+The thread needs its own cache connection because the asyncio Redis and NATS clients bind to the
+loop that created them. A failed beat closes that connection and the next beat reconnects through
+the factory after a short backoff, so a cache outage delays the heartbeat rather than ending it.
+Each beat carries its own deadline and the next one is scheduled from before the current one starts,
+so three beats fit in every expiry and one slow, failed or unanswered beat cannot push the next
+write past it. The deadline is the thread's own: the cache clients impose none, so a connection that
+stops answering without closing (an idle connection dropped by a load balancer, a failover without
+an RST) would otherwise block a beat indefinitely, and `stop` cannot end a thread sitting inside
+such a call. A blip between one worker and the cache while the cleanup's worker can still reach it
+remains the one way a live holder can lose a lock; the merge watcher's grace period absorbs that,
+the deadlock cleanup has no equivalent.
+
 ## Key Locations
 
 | Component | Location |
@@ -391,6 +427,8 @@ Note when reasoning about which events fire: on resume, Prefect renames the stat
 | Git tasks | `backend/infrahub/git/tasks.py` |
 | Schema tasks | `backend/infrahub/core/migrations/schema/tasks.py` |
 | System automations | `backend/infrahub/trigger/system.py` |
+| Worker liveness heartbeat | `backend/infrahub/services/heartbeat.py`, `backend/infrahub/services/component.py` |
+| Deadlock cleanup | `backend/infrahub/locks/tasks.py` |
 
 ## See Also
 

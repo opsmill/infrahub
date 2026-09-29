@@ -35,7 +35,7 @@ Everything lives in `backend/infrahub/api/admission/`:
 
 | File | Responsibility |
 |---|---|
-| `middleware.py` | `AdmissionMiddleware`, the outermost pure-ASGI gate |
+| `middleware.py` | `AdmissionMiddleware`, the pure-ASGI gate, outermost but for CORS |
 | `controller.py` | `AdmissionController`, the admit/shed decision |
 | `factory.py` | `build_admission_controller`, the settings-reading wiring of the object graph |
 | `slot_pool.py` | `PrioritySlotPool`, bounded concurrency with per-class FIFO waiter queues |
@@ -88,9 +88,20 @@ logic's import chain. Both, and when to apply them elsewhere, are in
 
 ## The request path
 
-`AdmissionMiddleware` is registered **outermost** (added last in `server.py`, so Starlette runs
-it first). Load is shed before any downstream work — auth, routing, DB — runs. A shed request is
-answered with a `429` error envelope carrying `Retry-After` and never reaches the app.
+`AdmissionMiddleware` is registered **second to last** in `server.py`, so Starlette runs it first
+after CORS. Load is shed before any downstream work — auth, routing, DB — runs. A shed request is
+answered with a `429` error envelope, a `Retry-After` hint and an `X-Infrahub-Admission: shed`
+header, and never reaches the app. The header is the shed marker: a client may replay a
+non-idempotent request against a `429` only if the handler never ran, and the body cannot promise
+that because the REST exception handler emits the same integer-code envelope for any error. Only
+the admission layer sets the marker (`SHED_MARKER_HEADER` in `middleware.py`).
+
+Only `InfrahubCORSMiddleware` sits outside the gate, and it has to: a shed response that skips
+CORS has no `Access-Control-Allow-Origin`, so a cross-origin browser blocks it outright and the
+client sees an opaque network error rather than a `429` it can act on. Neither `Retry-After` nor
+the marker is a CORS-safelisted response header, so `InfrahubCORSMiddleware` exposes both. They are
+part of the API's shed contract rather than of a deployment, so there is no setting for them. CORS
+costs header handling and no I/O, so a shed request still pays nothing that matters.
 
 Pass-through cases that bypass admission entirely:
 
@@ -235,17 +246,19 @@ choices below are rationale rather than constraint: each is swappable behind `Ad
 without disturbing the rest of the layer, and this section exists so a future change knows what
 was already ruled out.
 
-**Pure-ASGI middleware, registered outermost.** Shedding must happen before any downstream work —
-CORS, telemetry, routing, and the auth dependency all cost something, and a shed request should
-cost none of it. Auth in Infrahub is a FastAPI dependency resolved per route, well after
-middleware, which is *why* the gate can only classify on the header: nothing else is known yet.
+**Pure-ASGI middleware, registered outermost but for CORS.** Shedding must happen before any
+downstream work — telemetry, routing, and the auth dependency all cost something, and a shed
+request should cost none of it. CORS is the one exception, because a shed response that never
+passes back through it is unreadable to a cross-origin browser. Auth in Infrahub is a FastAPI
+dependency resolved per route, well after middleware, which is *why* the gate can only classify on
+the header: nothing else is known yet.
 The alternatives were a `@app.middleware("http")` decorator, rejected because it wraps
 `BaseHTTPMiddleware`, which buffers the whole response and interferes with streaming and
 background tasks — a poor fit for a hot admission path; and a FastAPI dependency, rejected because
 it runs after routing and needs per-route wiring instead of one uniform admission point.
 
 **The `429` is built in the middleware, not raised.** Registered exception handlers cannot attach
-`Retry-After`, and the outermost middleware sits outside the exception-handler scope anyway. The
+`Retry-After`, and the gate sits outside the exception-handler scope anyway. The
 middleware constructs the response directly, matching the existing error envelope so the wire
 contract stays consistent.
 
@@ -266,11 +279,11 @@ class — are clearer and directly testable, with the cancellation path modelled
 
 ## Known limitations
 
-- **CORS preflight** — because the middleware is outermost, a cross-origin `OPTIONS` preflight
-  would be classified and could be shed under load, breaking every cross-origin request precisely
-  when the backend is busy. Preflights therefore bypass the gate and reach the downstream CORS
-  middleware. Only genuine preflights (`OPTIONS` with `access-control-request-method`) are
-  exempt.
+- **CORS preflight** — a cross-origin `OPTIONS` preflight has no `X-Priority`, so were it
+  classified it could be shed under load, breaking every cross-origin request precisely when the
+  backend is busy. CORS now answers preflights before the gate sees them, but the exemption is
+  kept so the guarantee does not rest on middleware ordering. Only genuine preflights (`OPTIONS`
+  with `access-control-request-method`) are exempt.
 - **Metrics accounting on client disconnect** — `offered_total` is incremented before a request
   acquires a slot, but a client that disconnects while queued produces neither an admission nor a
   rejection. So `offered_total == admitted_total + rejected_total` holds only absent cancellations;
