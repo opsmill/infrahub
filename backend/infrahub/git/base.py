@@ -1141,8 +1141,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """
         with tempfile.TemporaryDirectory() as probe_dir:
             cmd = git.cmd.Git(working_dir=probe_dir)
-            cmd.init()
             try:
+                cmd.init()
                 cmd.push("--dry-run", "--porcelain", "--delete", url, f"refs/heads/{WRITE_ACCESS_PROBE_REF}")
             except GitCommandError as exc:
                 cls._raise_enriched_error_static(name=name, location=url, error=exc, is_write_operation=True)
