@@ -18,8 +18,8 @@ from infrahub.core.changelog.hfid_resolver import ChangelogHfidResolver
 from infrahub.core.changelog.models import (
     RelationshipCardinalityManyChangelog,
     RelationshipCardinalityOneChangelog,
-    RelationshipChangelogGetter,
 )
+from infrahub.core.changelog.relationship_getter import RelationshipChangelogGetter
 from infrahub.core.constants import RelationshipDeleteBehavior, SchemaPathType
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.merger.merger import DiffMerger
