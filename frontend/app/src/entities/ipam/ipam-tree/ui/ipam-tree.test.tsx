@@ -83,34 +83,31 @@ describe("IpamTree", () => {
   test.each([
     { position: "last", repeatedIndex: PAGE_SIZE - 1 },
     { position: "middle", repeatedIndex: PAGE_SIZE / 2 },
-  ])(
-    "keeps rendering every prefix once when the next page repeats the $position prefix already shown",
-    async ({ repeatedIndex }) => {
-      // GIVEN
-      const firstPage = Array.from({ length: PAGE_SIZE }, (_, index) =>
-        generateIpamTreeNode(index)
-      );
-      mockTreePagesByParent({ [TOP_LEVEL]: { pages: [firstPage], hasNextPage: true } });
-      const component = await render(ipamTreeInNamespace);
-      await expect.element(component.getByText("10.79.0.0/16")).toBeInTheDocument();
+  ])("keeps rendering every prefix once when the next page repeats the $position prefix already shown", async ({
+    repeatedIndex,
+  }) => {
+    // GIVEN
+    const firstPage = Array.from({ length: PAGE_SIZE }, (_, index) => generateIpamTreeNode(index));
+    mockTreePagesByParent({ [TOP_LEVEL]: { pages: [firstPage], hasNextPage: true } });
+    const component = await render(ipamTreeInNamespace);
+    await expect.element(component.getByText("10.79.0.0/16")).toBeInTheDocument();
 
-      // WHEN
-      mockTreePagesByParent({
-        [TOP_LEVEL]: {
-          pages: [firstPage, [generateIpamTreeNode(repeatedIndex)]],
-          hasNextPage: false,
-        },
-      });
-      await component.rerender(ipamTreeInNamespace);
+    // WHEN
+    mockTreePagesByParent({
+      [TOP_LEVEL]: {
+        pages: [firstPage, [generateIpamTreeNode(repeatedIndex)]],
+        hasNextPage: false,
+      },
+    });
+    await component.rerender(ipamTreeInNamespace);
 
-      // THEN
-      await expect
-        .element(component.getByRole("treegrid", { name: "IPAM tree" }))
-        .toBeInTheDocument();
-      expect(component.getByRole("row").elements()).toHaveLength(PAGE_SIZE);
-      expect(component.getByText(`10.${repeatedIndex}.0.0/16`).elements()).toHaveLength(1);
-    }
-  );
+    // THEN
+    await expect
+      .element(component.getByRole("treegrid", { name: "IPAM tree" }))
+      .toBeInTheDocument();
+    expect(component.getByRole("row").elements()).toHaveLength(PAGE_SIZE);
+    expect(component.getByText(`10.${repeatedIndex}.0.0/16`).elements()).toHaveLength(1);
+  });
 
   test("keeps rendering every child prefix once when the next page of children repeats the last child already shown", async () => {
     // GIVEN
