@@ -6,6 +6,7 @@ import { FilterPicker } from "@/entities/nodes/object/ui/filters/filter-picker";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { SortPicker } from "@/entities/nodes/sort/ui/sort-picker";
 import {
+  BRANCH_ROW_FILTER_CONDITIONS,
   BRANCH_ROW_FILTER_DEFINITIONS,
   BRANCH_ROW_FILTER_DEFINITIONS_BY_NAME,
   BRANCH_ROW_SORT_SCHEMA,
@@ -22,7 +23,11 @@ export function RepositoryBranchesToolbar() {
 
         <SortPicker schema={BRANCH_ROW_SORT_SCHEMA} />
 
-        <FilterPicker definitions={BRANCH_ROW_FILTER_DEFINITIONS} filters={filters} />
+        <FilterPicker
+          filterDefinitions={BRANCH_ROW_FILTER_DEFINITIONS}
+          filterConditions={BRANCH_ROW_FILTER_CONDITIONS}
+          filters={filters}
+        />
       </Row>
 
       <ActiveFilterTags

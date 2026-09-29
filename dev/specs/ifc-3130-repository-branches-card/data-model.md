@@ -87,14 +87,15 @@ Every one of these is guarded **in the mapper**, never at the call site:
 | Guard | Why |
 |---|---|
 | `is_default?.value ?? false` | `NonRequiredBooleanValueField` — the field itself may be null, not just its value |
-| `sync_status` → `null` when the `Dropdown` or its `value` is absent | `sync_status` is a **nullable** `Dropdown`, but `DropdownCell` **requires non-null**. The cell renders nothing for `null` rather than crashing |
+| `sync_status` → `null` when the `Dropdown` or its `value` is absent | `sync_status` is a **nullable** `Dropdown`, but the chip cell **requires non-null**. The column renders nothing for `null` rather than crashing |
 | `commit?.value ?? null` | `TextAttribute` is nullable and so is its `value` |
 | `ref?.value ?? null` | always null on `CoreRepository`; the column is not rendered at all for that kind |
 
 ### Ordering
 
-**The server's**: default branch first, then branch name ascending. This feature **does not impose
-an order and does not expose an order control** — the `order` argument is left at its default.
+**The server's until the user picks one**: default branch first, then branch name ascending. The card
+exposes an order control (FR-012a) and sends the `order` argument once a field is chosen, but only
+over `node_metadata.created_at` and `node_metadata.updated_at` — the two the input can express.
 
 ---
 

@@ -26,7 +26,6 @@ import {
 } from "../../../../../tests/fake/repository";
 import { generateAttributeSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
 import { expectServerDrivenChange } from "../../../../../tests/helpers/expect-server-driven-change";
-import { expectVariablesAbsent } from "../../../../../tests/helpers/expect-variables-absent";
 
 vi.mock("@/entities/repository/api/get-repository-branch-status-from-api");
 
@@ -666,6 +665,28 @@ describe("RepositoryBranchesCard", () => {
     ).toHaveLength(0);
   });
 
+  it("offers no filter condition the contract is unable to narrow on", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(
+      toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
+    );
+
+    // WHEN
+    const component = await renderCard();
+    await openFilterField(component, "Branch");
+    await component.getByRole("button", { name: "select a condition" }).click();
+
+    // THEN an emptiness condition would leave the request unfiltered while the tag claimed otherwise
+    await expect
+      .element(component.getByRole("option", { name: "contains", exact: true }))
+      .toBeVisible();
+    for (const condition of ["is empty", "is not empty"]) {
+      expect(
+        component.getByRole("option", { name: condition, exact: true }).elements()
+      ).toHaveLength(0);
+    }
+  });
+
   it("returns to the first page when a filter changes", async () => {
     // GIVEN a card already showing the second page
     const firstPage = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
@@ -769,7 +790,11 @@ describe("RepositoryBranchesCard", () => {
       payload: toApiResult(matched),
       rowVisibleAfter: "release-2-0",
     });
-    expectVariablesAbsent({ apiMock, names: DEFERRED_FILTER_ARGUMENTS });
+    for (const [variables] of apiMock.mock.calls) {
+      for (const name of DEFERRED_FILTER_ARGUMENTS) {
+        expect(Object.keys(variables)).not.toContain(name);
+      }
+    }
   });
 
   it("offers only the two timestamps the contract is able to order by", async () => {

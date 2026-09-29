@@ -16,20 +16,23 @@ import {
   getFilterDefinitionName,
 } from "@/entities/nodes/object/domain/rules/filter-definition";
 import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
+import type { FilterConditionSelectProps } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { getFilterDefinitionIcon } from "@/entities/nodes/object/ui/filters/get-filter-definition-icon";
 import { getFilterPickerCount } from "@/entities/nodes/object/ui/filters/get-filter-picker-count";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 interface FilterPickerProps {
-  definitions: FilterDefinition[];
+  filterDefinitions: FilterDefinition[];
+  /** Narrows every field's condition menu to the ones the caller's backend contract can honour. */
+  filterConditions?: FilterConditionSelectProps["filterConditions"];
   filters: Filter[];
 }
 
-export function FilterPicker({ definitions, filters }: FilterPickerProps) {
+export function FilterPicker({ filterDefinitions, filterConditions, filters }: FilterPickerProps) {
   const [open, setOpen] = useState(false);
   const [selectedField, setSelectedField] = useState<string | null>(null);
 
-  const filterCount = getFilterPickerCount(definitions, filters);
+  const filterCount = getFilterPickerCount(filterDefinitions, filters);
 
   const itemElements = useRef(new Map<string, Element>());
   const triggerRef = useRef<Element | null>(null);
@@ -39,7 +42,7 @@ export function FilterPicker({ definitions, filters }: FilterPickerProps) {
     setSelectedField(null);
   };
 
-  const activeFieldDefinition = definitions.find(
+  const activeFieldDefinition = filterDefinitions.find(
     (f) => getFilterDefinitionName(f) === selectedField
   );
 
@@ -77,7 +80,7 @@ export function FilterPicker({ definitions, filters }: FilterPickerProps) {
               onAction={handleAction}
               className="max-h-72"
             >
-              {definitions.map((field) => {
+              {filterDefinitions.map((field) => {
                 const name = getFilterDefinitionName(field);
                 return (
                   <FilterPickerItem
@@ -106,7 +109,11 @@ export function FilterPicker({ definitions, filters }: FilterPickerProps) {
           }}
           placement="end top"
         >
-          <FieldFilterForm definition={activeFieldDefinition} onSuccess={closePicker} />
+          <FieldFilterForm
+            definition={activeFieldDefinition}
+            filterConditions={filterConditions}
+            onSuccess={closePicker}
+          />
         </Popover>
       )}
     </>

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { PAGE_SIZE } from "@/shared/utils/table-pagination";
 
@@ -27,6 +27,10 @@ const Probe = ({ urlKey }: { urlKey: string }) => {
 };
 
 describe("useTablePagination", () => {
+  beforeEach(() => {
+    window.history.replaceState(null, "", window.location.pathname);
+  });
+
   it("starts on the first page at the fixed size", async () => {
     // GIVEN
     const urlKey = "branches";

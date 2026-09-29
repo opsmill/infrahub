@@ -199,7 +199,7 @@ happen, and whose violation would mean the gate is wrong rather than the card is
 
 - **The backend contract is final and available.** `InfrahubRepositoryBranchStatus` is frozen from increment A; only the truthfulness of four attribute values changes afterwards. During the preview window those values are fabricated from the branch name, stable across reloads, and cover every dropdown value — sufficient to build and screenshot against.
 - **The row set and every filter, order and count are the server's.** This feature performs none of them locally.
-- **Default ordering is the server's** — default branch first, then branch name ascending. This feature does not impose an order and does not expose an order control.
+- **Default ordering is the server's** — default branch first, then branch name ascending — and stands until the user picks an order. The card exposes an order control (FR-012a), but only over the fields the contract's order input reaches, and it never reorders rows it already holds.
 - **The read-only variant is paginated on the same terms as the read-write variant**, because that kind returns every branch and can therefore exceed one page even though the design shows only four rows.
 - **The ref-kind indicator from the design is dropped.** The design shows a `tag` / `branch` pill beside the tracked ref; no field in the contract carries that distinction and deriving it from the ref string would be guesswork.
 - **The design's explanatory footer on the read-only card is kept as designed.** The designer flagged it as a question for the team, not a blocker.

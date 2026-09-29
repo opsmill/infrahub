@@ -40,7 +40,7 @@ export function ObjectsManagerToolbar() {
           <ColumnsPicker schema={selectedSchema} surface={columnSurface} />
         )}
 
-        <FilterPicker definitions={getFilterDefinitions(selectedSchema)} filters={filters} />
+        <FilterPicker filterDefinitions={getFilterDefinitions(selectedSchema)} filters={filters} />
 
         <ObjectCreateFormTrigger
           schema={selectedSchema}
