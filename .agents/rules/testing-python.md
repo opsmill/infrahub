@@ -70,7 +70,11 @@ Skip tests that only exercise library behavior: plain `Enum` value/round-trip ch
 
 ## Pick the cheapest test tier
 
-If the logic needs only in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test without DB fixtures — don't default to a component test because a neighbor uses one. Use the database or containers only when behavior genuinely depends on them. When the changed logic seems to need the full integration fixture, first check whether it can be extracted as a pure function over directly-constructible data and unit-tested there.
+If the logic needs only in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test without DB fixtures — don't default to a component test because a neighbor uses one. Use the database or containers only when behavior genuinely depends on them. When the changed logic seems to need the full integration fixture, first check whether it can be extracted as a pure function over directly-constructible data and unit-tested there. The converse holds for a `Query` subclass: the rows it reads back are database behavior, so it is covered at the component layer against the real database — directly or through its caller — never by a unit test that hand-builds `QueryResult` rows.
+
+## Check existing coverage before adding a test
+
+Trace the code's callers to the test that asserts their output; a grep for the class or method name is not a coverage check, because the component suite drives most core classes through the resolver or manager that calls them. If that test already asserts the behavior, do not add a second test for it; if it leaves a case unasserted, add the case there. See `dev/guidelines/backend/testing.md` §"What not to test".
 
 ## Wiring tests parse source, never instrument it
 

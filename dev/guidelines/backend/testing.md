@@ -14,7 +14,7 @@ Tests are organized by type:
 - **Integration tests** (`tests/integration/`): Require Neo4j via testcontainers
 - **Integration Docker tests** (`tests/integration_docker/`): Integration tests that run in a full environment with containers
 
-**Pick the cheapest tier the logic actually needs.** If the unit under test operates purely on in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test in `tests/unit/` without database fixtures — do not default to a component test just because nearby tests use one. Reach for the database (component) or a container (integration/integration_docker) only when the behavior genuinely depends on it.
+**Pick the cheapest tier the logic actually needs.** If the unit under test operates purely on in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test in `tests/unit/` without database fixtures — do not default to a component test just because nearby tests use one. Reach for the database (component) or a container (integration/integration_docker) only when the behavior genuinely depends on it. A `Query` subclass is the standing example: its Cypher and the rows it reads back are database behavior, so it is covered at the component layer against the real database — directly or through the resolver or manager that calls it — never by a unit test that hand-builds `QueryResult` rows.
 
 Note that at some point the current integration tests will be merged with the functional tests and the `tests/integration_docker` tests will move to `tests/integration`.
 
@@ -58,6 +58,31 @@ Skip tests that test the framework rather than our integration:
 A useful rule of thumb: if the test would still pass after we delete our implementation and reinstall the library, the test belongs to the library, not us.
 
 **The exception is a bound that encodes a domain invariant.** `Field(ge=1)` on a multiplier that must never shrink the value it scales is not arbitrary tuning — it is a rule about how the feature behaves, and deleting it changes behavior with nothing failing. Assert those, but write the test against the invariant rather than the mechanism: name it for the rule, not for the constraint (`test_<what must hold>`, not `test_field_rejects_zero`), cover the boundary value that must stay legal, and add a test that the **shipped defaults** satisfy the invariant. Cross-field `model_validator` logic is ours outright and always warrants a test.
+
+**Skip a test that duplicates coverage the suite already has.** Before writing one, find the existing coverage by tracing the code's callers to the test that asserts their output. A grep for the class or method name is not a coverage check: the component suite drives most core classes through the resolver or manager that calls them, so the name never appears in the test that covers it. The diff-count query is the worked case below: `DiffCountChanges` is reached through the diff-tree resolver and, via a wrapper, the diff coordinator, and nothing in the test tree names it — yet `backend/tests/component/graphql/diff/test_diff_tree_query.py` drives the resolver path and asserts the two untracked-change counts it produces against the real database; a unit test that hand-builds `QueryResult` rows for the same method re-asserts a mapping while missing the one thing that can break — what the driver actually returns. When the higher layer leaves a case unasserted, add the case to that test rather than opening a unit file beside it.
+
+```python
+# ❌ Bad - fabricates driver output, so it passes whatever the real query returns
+def test_each_row_is_mapped_to_its_branch() -> None:
+    query = DiffCountChanges(branch_names=["main", "feature"], diff_from=Timestamp(), diff_to=Timestamp())
+    query.results = [QueryResult(data=["main", 3], labels=["branch_name", "num_changes"])]
+
+    assert query.get_num_changes_by_branch() == {"main": 3, "feature": 0}
+
+# ✅ Good - the component test that already drives the query through the resolver asserts the
+#           field it populates, against the real database
+async def test_diff_tree_one_attr_change(db: InfrahubDatabase, default_branch: Branch, diff_branch: Branch) -> None:
+    ...
+    result = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_QUERY,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name},
+    )
+
+    assert result.data["DiffTree"]["num_untracked_diff_changes"] == 2
+```
 
 ## Async tests
 
@@ -341,6 +366,31 @@ async def test_clears_expired_entries() -> None:
 - Prefect's `get_run_logger` when calling a `.fn` outside a flow context — patch it to return a stdlib `logging.getLogger(...)` so `caplog` can capture output. See [Backend Testing — Logging](../../knowledge/backend/testing.md#logging-use-caplog-instead-of-mocking-get_run_logger) for the pattern.
 
 Even in these cases, prefer adapter patterns when the dependency is used widely.
+
+### Give a typed accessor the driver values it declares
+
+A hand-built `QueryResult` belongs in exactly one test: the unit test of `QueryResult` itself, where
+the accessors are the unit under test and no Cypher runs (a `Query` subclass stays covered against
+the real database — see [Test Organization](#test-organization)). Build the row from a real
+`neo4j.Record` and fill each column with the driver type the accessor under test declares,
+constructed directly: `neo4j.graph.Node` values for `get_node_collection()`, a `neo4j.graph.Path`
+for `get_path()`.
+
+A cheaper stand-in passes for the wrong reason. The collection accessors check the container's
+shape (`isinstance(entry, list)`), not its elements, so a list of uuid strings satisfies an accessor
+that promises `list[Neo4jNode]`. The test then pins the gap as the contract: it stays green until
+someone adds the element check, and breaks that fix instead of the caller that was wrong.
+
+```python
+# ❌ Bad - strings satisfy the shape check, so the assertion pins the accessor's gap, not its contract
+result = QueryResult(data=Record(zip(["peers"], [PEER_UUIDS])), labels=["peers"])
+assert result.get_node_collection(label="peers") == PEER_UUIDS
+
+# ✅ Good - real driver values of the declared type
+peers = [Node(Graph(), element_id=f"4:db:{uuid}", id_=0, n_labels=["Node"], properties={"uuid": uuid}) for uuid in PEER_UUIDS]
+result = QueryResult(data=Record(zip(["peers"], [peers])), labels=["peers"])
+assert result.get_node_collection(label="peers") == peers
+```
 
 ### Time: inject a clock, don't freeze one
 
