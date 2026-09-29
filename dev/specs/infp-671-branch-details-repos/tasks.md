@@ -103,8 +103,8 @@
 
 **Independent Test**: spec US3 — on a branch with a failing import, all five buttons below the card in order; Merge enabled and merges.
 
-- [ ] T036 [US3] Component test `frontend/app/src/entities/branches/ui/branch-details.test.tsx` (mock `useGetBranchDetails`, the repositories and tasks hooks): on a non-default branch the order is Details card → `branch-repositories-card` → buttons Merge, Propose change, Rebase, Validate, Delete → `branch-tasks-card` (placeholder until US4); `BranchMergeButton` receives exactly `{ branch }` whatever the repositories/tasks state (FR-031; spy on the module with `vi.mock`); default branch → Details card only, no buttons, no cards. Depends on T024.
-- [ ] T037 [US3] Update `tests/e2e/branches/test_branch_details.py` so the action-button assertions still pass with the new layout (buttons found by role and name, as today), and add an assertion that the Git repositories card (`branch-repositories-card`) renders above the Merge button on a non-default branch and is absent on the default branch. Depends on T024.
+- [X] T036 [US3] Component test `frontend/app/src/entities/branches/ui/branch-details.test.tsx` (mock `useGetBranchDetails`, the repositories and tasks hooks): on a non-default branch the order is Details card → `branch-repositories-card` → buttons Merge, Propose change, Rebase, Validate, Delete → `branch-tasks-card` (placeholder until US4); `BranchMergeButton` receives exactly `{ branch }` whatever the repositories/tasks state (FR-031; spy on the module with `vi.mock`); default branch → Details card only, no buttons, no cards. Depends on T024.
+- [X] T037 [US3] Update `tests/e2e/branches/test_branch_details.py` so the action-button assertions still pass with the new layout (buttons found by role and name, as today), and add an assertion that the Git repositories card (`branch-repositories-card`) renders above the Merge button on a non-default branch and is absent on the default branch. Depends on T024.
 
 ---
 
