@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, RelationshipStatus
+from infrahub.core.constants import BranchSupportType, RelationshipStatus
 from infrahub.core.query import Query
 
 if TYPE_CHECKING:
@@ -50,7 +50,6 @@ class AttributeRenameQuery(Query):
 
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
-        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
 
         self.params["user_id"] = self.user_id
 
@@ -128,9 +127,13 @@ class AttributeRenameQuery(Query):
             // IS_RESERVED edges keep every property of the record, including its -global- branch
             WITH new_edge, r
             WHERE type(r) = "IS_RESERVED"
+            // start with the properties of the original edge to be sure none are lost
             SET new_edge = properties(r)
+            // set the new properties for the fresh edge
             SET new_edge += $rel_props_create
+            // make sure the branch and branch level stay the same as the original
             SET new_edge.branch = r.branch, new_edge.branch_level = r.branch_level
+            // make sure that the new edge is open
             REMOVE new_edge.to, new_edge.to_user_id
         }
         CALL (peer_node, r, new_attr) {
@@ -140,9 +143,13 @@ class AttributeRenameQuery(Query):
             // IS_RESERVED edges keep every property of the record, including its -global- branch
             WITH new_edge, r
             WHERE type(r) = "IS_RESERVED"
+            // start with the properties of the original edge to be sure none are lost
             SET new_edge = properties(r)
+            // set the new properties for the fresh edge
             SET new_edge += $rel_props_create
+            // make sure the branch and branch level stay the same as the original
             SET new_edge.branch = r.branch, new_edge.branch_level = r.branch_level
+            // make sure that the new edge is open
             REMOVE new_edge.to, new_edge.to_user_id
         }
         """ % {"branch_filter": branch_filter, "add_uuid": add_uuid}

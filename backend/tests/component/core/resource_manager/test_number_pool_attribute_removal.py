@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, SchemaPathType
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_attribute_remove import NodeAttributeRemoveMigration
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
@@ -112,8 +113,13 @@ async def test_removing_a_pooled_attribute_on_a_branch_leaves_the_default_branch
     assert [edge.branch for edge in open_active_edges(after)] == [GLOBAL_BRANCH_NAME], (
         "the record stays open for the default branch, which still holds the attribute"
     )
-    on_default = await registry.manager.get_one(db=db, id=holder.id, branch=default_branch, raise_on_error=True)
+    on_default = await NodeManager.get_one(db=db, id=holder.id, branch=default_branch, raise_on_error=True)
     assert on_default.get_attribute(name=SERIAL_ATTRIBUTE_NAME).value == SERIAL_POOL_START
+    # the branch schema in the registry still has the attribute, so it loads and the NULL value
+    # proves it was closed
+    on_branch = await NodeManager.get_one(db=db, id=holder.id, branch=branch, raise_on_error=True)
+    assert on_branch.get_attribute(name=SERIAL_ATTRIBUTE_NAME).value is None
+
     assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START], (
         "the default branch's number must stay reported as used"
     )

@@ -508,6 +508,9 @@ class NumberPoolChangeReserved(Query):
             MATCH (pool)-[mine:IS_RESERVED]->(new_attr)
             WHERE mine.status = "active" AND mine.to IS NULL
         }
+        // ----------
+        // Only one active IS_RESERVED edge for any attribute exists at a time
+        // ----------
         OPTIONAL MATCH ()-[live:IS_RESERVED]->(new_attr)
         WHERE live.status = "active" AND live.to IS NULL
         SET live.to = $at
@@ -807,7 +810,7 @@ class NumberPoolSetReserved(Query):
               AND coalesce(mine.provenance, $allocated_provenance) = $provenance
         }
         // ----------
-        // Close any active reservations
+        // Only one active IS_RESERVED edge for any attribute exists at a time
         // ----------
         OPTIONAL MATCH ()-[live:IS_RESERVED]->(attr)
         WHERE live.status = "active" AND live.to IS NULL

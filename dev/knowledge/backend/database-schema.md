@@ -187,11 +187,16 @@ number, not deleting the record — deleting the object, changing the number, or
 that held it each free it with no cleanup write.
 
 A change that moves an object onto a new vertex — a schema rename of the attribute, or an object
-conversion — never closes a record, on any branch, the default branch included. Every branch that has
-not taken the change, including one created before a change on the default branch, still holds its
-value through the old vertex. The change writes a new global record on the new vertex, leaves the old
-one open, and never writes an `IS_RESERVED` edge on a user branch. Each record counts while it
-resolves to a live value, so the old one stops counting once no branch holds a value through it.
+conversion — never closes the record on the old vertex, on any branch, the default branch included.
+Every branch that has not taken the change, including one created before a change on the default
+branch, still holds its value through the old vertex. The change writes a new global record on the new
+vertex, leaves the old one open, and never writes an `IS_RESERVED` edge on a user branch. Each record
+counts while it resolves to a live value, so the old one stops counting once no branch holds a value
+through it.
+
+An attribute vertex carries at most one open record. When an object conversion finds the new vertex
+already held by another pool's open record, it closes that record before writing its own. Records are
+global, so the attribute moves to the converting pool on every branch at once.
 
 ## Determining Edge Activity
 
