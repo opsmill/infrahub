@@ -33,7 +33,7 @@ Marketing and SEO lanes skipped: internal screen.
 | Loading: the Tasks card showed an empty table with a "0" count. | **Fixed:** skeleton rows, and no count until loaded. |
 | No repository permission (`denied`): the Tasks card was empty. | **Fixed:** branch tasks (validate, rebase) still show. Only repository-linked tasks are hidden, because the permission is on repositories. |
 | No tasks at all rendered a bare table header. | **Fixed:** an empty state explains what appears there. |
-| Dark mode. | **Accepted:** this branch has no theme support (the theme provider lands on develop). The implementation must use the theme tokens; tracked in the handoff as a requirement. |
+| Dark mode. | **Accepted:** the design branch has no theme support, so the prototype can't be checked in dark mode. The implementation base (`cross-branch-repo-status-infp-671`) has the theme: the implementation uses its tokens and is checked in both themes. |
 | `console.log`, lorem, div-buttons. | None found. |
 
 ## 4d — By hand

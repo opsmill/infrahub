@@ -120,8 +120,9 @@ The full log is in `03-decisions.md`. These are the ones reviewers will want to 
   branch"). Its children are tagged with the definition, and reach the repository through
   `GeneratorDefinition.repository`.
 - **`CopyToClipboardButton` has no accessible name** (found in review, shared component).
-- **Dark mode:** this branch has no theme support. The implementation must use the theme
-  tokens from develop.
+- **Dark mode:** the design branch has no theme support, so the prototype was never reviewed in
+  dark mode. The implementation base (`cross-branch-repo-status-infp-671`) does have the theme
+  (`frontend/packages/ui/src/theme`, `styles/theme.css`): use its tokens and check both themes.
 
 ## 7. How it got here
 
@@ -169,8 +170,9 @@ router block goes to production.
    band's text.
 3. **Tasks table:** `InfrahubTask(branch, limit, offset)`, with `count` for pagination and
    `related_nodes` for the Related column. Resolve repository names from query 1.
-4. **Refresh:** invalidates 1–3. The header indicator from IFC-3199 already polls repository
-   counts every 10s; reuse its query keys where they overlap.
+4. **Refresh:** invalidates 1–3. (The IFC-3199 header indicator, which polls repository counts,
+   is on its own branch, `ple-git-status-header-ifc-3199`, not on the implementation base, so
+   there are no shared query keys to reuse yet. Align them when both land.)
 
 ### Checks before pushing
 
