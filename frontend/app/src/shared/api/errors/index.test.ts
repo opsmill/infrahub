@@ -272,6 +272,7 @@ describe("ErrorCode exhaustiveness", () => {
         case ERROR_CODES.MERGE_IN_PROGRESS:
         case ERROR_CODES.MERGE_RECOVERY_REQUIRED:
         case ERROR_CODES.SCHEMA_NOT_FOUND:
+        case ERROR_CODES.WORKER_TIMEOUT:
         case ERROR_CODES.UNDEFINED_ERROR:
           return code;
         default: {

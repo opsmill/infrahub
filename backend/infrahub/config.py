@@ -482,6 +482,9 @@ class BrokerSettings(BaseSettings):
         default=2, description="The maximum number of concurrent messages fetched by each worker", ge=1
     )
     virtualhost: str = Field(default="/", description="The virtual host to connect to")
+    rpc_timeout: int = Field(
+        default=30, ge=1, description="The maximum number of seconds to wait for a worker to answer an RPC request"
+    )
     driver: BrokerDriver = BrokerDriver.RabbitMQ
 
     @property

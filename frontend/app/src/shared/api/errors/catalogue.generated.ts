@@ -71,6 +71,12 @@ export interface UniquenessViolationData {
   fields: string[];
 }
 
+export interface WorkerTimeoutData {
+  operation: string;
+  timeout_seconds: number;
+  retry_after_seconds: number;
+}
+
 export const ERROR_CODES = {
   ATTRIBUTE_CONSTRAINT_VIOLATION: "ATTRIBUTE_CONSTRAINT_VIOLATION",
   ATTRIBUTE_INVALID_TYPE: "ATTRIBUTE_INVALID_TYPE",
@@ -87,6 +93,7 @@ export const ERROR_CODES = {
   TOKEN_EXPIRED: "TOKEN_EXPIRED",
   UNDEFINED_ERROR: "UNDEFINED_ERROR",
   UNIQUENESS_VIOLATION: "UNIQUENESS_VIOLATION",
+  WORKER_TIMEOUT: "WORKER_TIMEOUT",
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
@@ -110,6 +117,7 @@ export const ERROR_HTTP_STATUS: Record<ErrorCode, number> = {
   TOKEN_EXPIRED: 401,
   UNDEFINED_ERROR: 500,
   UNIQUENESS_VIOLATION: 422,
+  WORKER_TIMEOUT: 504,
 };
 
 // Discriminated union over every catalogue code. Narrowing on `code`
@@ -130,4 +138,5 @@ export type CatalogueError =
   | { code: typeof ERROR_CODES.TOKEN_EXPIRED; http_status: number; data: TokenExpiredData }
   | { code: typeof ERROR_CODES.UNDEFINED_ERROR; http_status: number; data: UndefinedErrorData }
   | { code: typeof ERROR_CODES.UNIQUENESS_VIOLATION; http_status: number; data: UniquenessViolationData }
+  | { code: typeof ERROR_CODES.WORKER_TIMEOUT; http_status: number; data: WorkerTimeoutData }
   ;

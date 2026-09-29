@@ -48,7 +48,8 @@ classifies each row, with no pending count. Exactly one message regardless of br
 async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass], timeout: float | None = None) -> ResponseClass
 ```
 
-`timeout=None` means `config.SETTINGS.broker.rpc_timeout`. Expiry raises
+`timeout=None` means the adapter's own injected `BrokerSettings.rpc_timeout`, never a module-global
+`config.SETTINGS` read, so a bus constructed with explicit settings honours them. Expiry raises
 `infrahub.exceptions::WorkerTimeoutError(operation=<routing key>, timeout_seconds=...)`, catalogued
 as `WORKER_TIMEOUT`. Implemented in `rabbitmq.py`, `nats.py` (both wrap the reply future) and
 `local.py` (`BusSimulator.rpc` accepts and ignores it). Three existing callers inherit the default

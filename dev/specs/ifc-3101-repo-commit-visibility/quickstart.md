@@ -148,7 +148,7 @@ uv run pytest backend/tests/unit/git/state/test_classification.py backend/tests/
 Tests:
 
 ```bash
-uv run pytest backend/tests/component/message_bus/operations/git/test_commit_log.py backend/tests/component/message_bus/operations/git/test_branch_heads.py backend/tests/component/services/adapters/message_bus/test_rpc_timeout.py backend/tests/unit/errors
+uv run pytest backend/tests/component/message_bus/operations/git/test_commit_log.py backend/tests/component/message_bus/operations/git/test_branch_heads.py backend/tests/unit/services/adapters/message_bus/test_rpc_timeout.py backend/tests/unit/errors
 ```
 
 ## Phase C: read-only refs check
