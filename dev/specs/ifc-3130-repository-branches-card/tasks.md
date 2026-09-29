@@ -256,11 +256,11 @@ page, and that moving to page 2 returns different rows.
       absent for a set that fits one page. The short last page is the case the reservation exists for
       — a test on a full first page would pass without it.
 - [x] T035 [US1] Component-test FR-004 and FR-025 together: locate the chip by accessible name with
-      `within(row).getByText(...)` — `DropdownCell` is a bare `<span>` with no role, so `getByRole`
+      `within(row).getByText(...)` — `SyncStatusCell` is a bare `<span>` with no role, so `getByRole`
       will not find it — then assert **`element.style.backgroundColor`** (not
       `getComputedStyle(...)`, which normalises hex to `rgb(…)` and breaks equality against the
-      fixture). Assert `backgroundColor` **only**; never the derived text colour, which `DropdownCell`
-      computes with `lch(from …)`.
+      fixture). Assert `backgroundColor` **only**; never the derived text colour, which
+      `SyncStatusCell` computes with `lch(from …)`.
 - [x] T036 [US1] Component-test FR-005: vary the schema-supplied label and assert the rendered header
       follows it.
 - [x] T037 [US1] Component-test FR-006 given a payload carrying `updated_at` values: assert no
@@ -433,7 +433,10 @@ risk those keys carry is not reachable on this route.
       `frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts` and map the
       applied sort onto `order: { node_metadata: { created_at | updated_at: ASC|DESC } }`. Hand
       `SortPicker` a schema declaring **no** sortable field of its own, so the offered fields are
-      exactly the two node-metadata timestamps `InfrahubNodeMetadataOrder` exposes. **This does not
+      exactly the two node-metadata timestamps `InfrahubNodeMetadataOrder` exposes. `SortPicker` can
+      stack several keys and the resolver rejects an order naming both timestamps, so map only the
+      **first** key naming one and drop any later one; unit-test that a stack of both sends one.
+      **This does not
       breach FR-006**: the order is applied server-side and the selection set still never asks for
       `node_metadata`, so no timestamp is ever displayed. Component-test the order argument paired
       with a rendered-row change, that no rendered column is offered as an order field, and that an

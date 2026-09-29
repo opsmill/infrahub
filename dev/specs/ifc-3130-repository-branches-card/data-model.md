@@ -97,6 +97,10 @@ Every one of these is guarded **in the mapper**, never at the call site:
 exposes an order control (FR-012a) and sends the `order` argument once a field is chosen, but only
 over `node_metadata.created_at` and `node_metadata.updated_at` — the two the input can express.
 
+**One of the two, never both**: the resolver raises a `ValidationError` for an order naming both
+timestamps. The order control is shared and can hold several sort keys, so the argument mapper sends
+the first key naming a timestamp and drops any later one.
+
 ---
 
 ## 2. Branch-support declaration

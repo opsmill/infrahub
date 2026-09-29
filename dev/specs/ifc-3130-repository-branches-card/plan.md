@@ -162,8 +162,9 @@ are authoritative and override `research.md` wherever it disagrees:
 1. **`renderAt` is not exported** from `frontend/app/tests/components/render.tsx`. It is a private
    helper in `src/shared/components/ui/link-tab.test.tsx` and it **overrides the whole wrapper**,
    dropping `NuqsAdapter`, jotai, `QueryClient` and `BranchContext`. `research.md` §7 is wrong.
-   URL-driven tests MUST instead drive `window.history` under the default `BrowserRouter` and reset
-   it in `afterEach` — the only shape that keeps the nuqs adapter wired.
+   URL-driven tests MUST instead drive `window.history` under the default `BrowserRouter` — the only
+   shape that keeps the nuqs adapter wired — and reset it with `window.history.replaceState` in each
+   file's own `beforeEach`.
 2. **`DataTable` renders its own count footer** whenever `count !== undefined` (rendering "N counts"),
    which would collide with FR-010a's window statement. **Do not pass `count`.**
 3. **Generated gql.tada files live at** `frontend/app/src/shared/api/graphql/generated/`, and the
@@ -460,6 +461,11 @@ of the same facts, and the reversal is deliberate:
 - Because the filter and order controls write keys this card does not own, the first page is
   **derived** from the query the page was chosen for rather than reset on arrival — resetting it in
   an effect spends one request on the stale page window before the reset lands (FR-014).
+- The shared order control stacks sort keys, and the branch resolver rejects an order naming both
+  timestamps, so `to-repository-branch-arguments.ts` sends the **first** key naming a timestamp and
+  drops any later one. Constraining the control itself would mean a new prop threaded through
+  `SortPicker`, `SortEditor` and `AddSortButton`, and would still not cover a sort key arriving on
+  the shared URL key from elsewhere.
 
 ### Reuse traps — do not walk into these
 
@@ -643,13 +649,15 @@ requirement can only be *verified* once there is a card to put it in.
 1. **Tautological request assertions.** Mitigated by D2, but only if the pairing rule is followed in
    *every* test. This is the failure that would make the whole suite decorative.
 2. **URL bleed between tests.** `render.tsx` uses `BrowserRouter`, so nuqs writes to real
-   `window.location`. Without an `afterEach` history reset, paging tests become order-dependent — the
-   classic "passes alone, fails in a full run". Reset **`window.location.search`**, not just
-   `history.state`, and do it in a **shared setup file** so a new test file cannot silently opt out.
+   `window.location`. Without a history reset, paging tests become order-dependent — the classic
+   "passes alone, fails in a full run". Reset **`window.location.search`**, not just `history.state`,
+   with `window.history.replaceState` in the `beforeEach` of every test file that writes the query
+   string. No shared setup file is registered: a file that never touches the query string needs no
+   reset, and a file that does declares it where its own reader can see it.
 
    `render.tsx` mounts `NuqsAdapter` **outside** `BrowserRouter`, which reads like a latent crash. It
    is not: `createAdapterProvider` only puts the hook into context; `useNavigate` / `useSearchParams`
-   execute in the consuming component, inside the Router. The `afterEach` reset is the right fix.
+   execute in the consuming component, inside the Router. The `beforeEach` reset is the right fix.
 3. **`DataTable` geometry inside a `Card`.** `min-w-max` plus a sticky first cell inside a rounded
    card will overflow unless an explicit `gridTemplateColumns` is passed and the body scrolls
    horizontally *within* the card.

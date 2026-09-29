@@ -33,9 +33,11 @@ export function AttributeFilterForm({
   const isDatetime = attributeSchema.kind === ATTRIBUTE_KIND.DATETIME;
   const filterType = isDatetime ? "datetime" : "attribute";
   const availableConditions = getAvailableFilterConditions(filterType, filterConditions);
+  const currentCondition = getCurrentFilterCondition(currentFilter);
   const preferredCondition =
-    getCurrentFilterCondition(currentFilter) ??
-    (isDatetime ? FILTER_CONDITION.IS_EMPTY : FILTER_CONDITION.CONTAINS);
+    currentCondition ?? (isDatetime ? FILTER_CONDITION.IS_EMPTY : FILTER_CONDITION.CONTAINS);
+  const isCurrentFilterShown =
+    !currentFilter || availableConditions.some((option) => option.key === currentCondition);
   const [condition, setCondition] = useState<FilterCondition>(
     availableConditions.some((option) => option.key === preferredCondition)
       ? preferredCondition
@@ -47,6 +49,10 @@ export function AttributeFilterForm({
       const { attribute } = formData;
 
       if (!attribute && attribute !== 0 && attribute !== false) {
+        // An empty input clears the filter it was showing, but a filter whose condition this form
+        // cannot offer was never on screen to be cleared.
+        if (!isCurrentFilterShown) return;
+
         return setFilters(filters.filter((f) => !f.name.startsWith(attributeSchema.name)));
       }
 
@@ -103,9 +109,7 @@ export function AttributeFilterForm({
         <FormField
           name="attribute"
           defaultValue={
-            currentFilter && getCurrentFilterCondition(currentFilter) === condition
-              ? currentFilter.value
-              : undefined
+            currentFilter && currentCondition === condition ? currentFilter.value : undefined
           }
           render={({ field }) => {
             return <DynamicFilterInput {...field} fieldSchema={attributeSchema} />;
