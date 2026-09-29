@@ -27,6 +27,7 @@ interface TablePaginationProps {
 ```ts
 interface BranchRepositoriesCardProps {
   branchName: string;
+  isDefaultBranch: boolean; // for branch-scoped links (FR-053)
   syncWithGit: boolean;
   page: number;
   onPageChange: (page: number) => void;
@@ -43,6 +44,7 @@ interface BranchRepositoriesCardProps {
 ```ts
 interface BranchTasksCardProps {
   branchName: string;
+  isDefaultBranch: boolean;
   page: number;
   onPageChange: (page: number) => void;
   repositoryNames: ReadonlyMap<string, string>; // id → name, for the Related column; empty when unknown/denied
