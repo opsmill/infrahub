@@ -3,6 +3,7 @@ from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.diff.model.field_specifiers_map import NodeFieldSpecifierMap
+from infrahub.core.diff.model.path import DiffNode
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -1176,3 +1177,64 @@ async def test_diff_unchanged_included_when_not_first_diff(
     assert property_diff.new_value == '["Little Alfred"]'
     assert property_diff.action is DiffAction.UPDATED
     assert branch_before_change < property_diff.changed_at < branch_after_change
+
+
+def _peer_actions_by_relationship(node_diff: DiffNode) -> dict[str, dict[str, DiffAction]]:
+    return {
+        relationship.name: {element.peer_id: element.action for element in relationship.relationships}
+        for relationship in node_diff.relationships
+    }
+
+
+async def test_base_peer_change_before_window_captured_for_relationship_new_to_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+    person_alfred_main: Node,
+) -> None:
+    """A base-branch peer change made before the window counts once the branch first changes that relationship."""
+    branch = await create_branch(db=db, branch_name="branch")
+    alfred_branch = await NodeManager.get_one(db=db, branch=branch, id=person_alfred_main.id)
+    alfred_branch.name.value = "Little Alfred"
+    await alfred_branch.save(db=db)
+    car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    await car_main.owner.update(db=db, data={"id": person_jane_main.id})
+    base_before_change = Timestamp()
+    await car_main.save(db=db)
+    base_after_change = Timestamp()
+    from_time = Timestamp()
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await car_branch.owner.update(db=db, data={"id": person_alfred_main.id})
+    await car_branch.save(db=db)
+
+    previous_node_specifiers = NodeFieldSpecifierMap()
+    for field_name in ("name", "human_friendly_id"):
+        previous_node_specifiers.add_entry(
+            node_uuid=person_alfred_main.id, kind=person_alfred_main.get_kind(), field_name=field_name
+        )
+    calculated_diffs = await DiffCalculator(db=db).calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        previous_node_specifiers=previous_node_specifiers,
+        include_unchanged=False,
+    )
+
+    base_nodes_by_id = {node.uuid: node for node in calculated_diffs.base_branch_diff.nodes}
+    assert set(base_nodes_by_id) == {car_accord_main.id, person_john_main.id}
+    assert _peer_actions_by_relationship(base_nodes_by_id[car_accord_main.id]) == {
+        "owner": {person_john_main.id: DiffAction.REMOVED, person_jane_main.id: DiffAction.ADDED}
+    }
+    assert _peer_actions_by_relationship(base_nodes_by_id[person_john_main.id]) == {
+        "cars": {car_accord_main.id: DiffAction.REMOVED}
+    }
+    removed_owner = next(
+        element
+        for relationship in base_nodes_by_id[car_accord_main.id].relationships
+        for element in relationship.relationships
+        if element.peer_id == person_john_main.id
+    )
+    assert base_before_change < removed_owner.changed_at < base_after_change
