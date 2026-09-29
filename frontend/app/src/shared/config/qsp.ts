@@ -14,4 +14,6 @@ export const QSP = {
   IPAM_NAMESPACE: "namespace",
   STATUS: "status",
   HIGHLIGHT: "highlight",
+  REPOSITORIES_PAGE: "repos_page",
+  TASKS_PAGE: "tasks_page",
 } as const;
