@@ -61,6 +61,7 @@ from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
     RepositoryConfigurationError,
+    RepositoryError,
     RepositoryInvalidFileSystemError,
     TransformError,
 )
@@ -251,6 +252,17 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             return False
         return True
 
+    def _local_copy_needs_cloning(self) -> bool:
+        """Return whether the local copy has to be cloned, because it is absent or present but unusable."""
+        try:
+            self.validate_local_directories()
+        except RepositoryInvalidFileSystemError:
+            return True
+        except RepositoryError as exc:
+            get_logger().warning("Replacing an unusable local copy", repository=self.name, reason=exc.message)
+            return True
+        return False
+
     @classmethod
     async def init(cls, commit: str | None = None, **kwargs: Any) -> Self:
         self = cls(**kwargs)
@@ -259,14 +271,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             await self.ensure_location_is_defined()
             # Cloning deletes and rebuilds the shared on-disk copy, so it has to be serialized.
             async with lock.registry.get(name=self.name, namespace="repository"):
-                if not self._has_valid_local_directories():
+                # The copy was absent a moment ago, so a broken one now was left by a failed concurrent clone.
+                if self._local_copy_needs_cloning():
+                    # A Repo opened on the copy being replaced would keep reading its deleted object store.
+                    if self.cache_repo is not None:
+                        self.cache_repo.close()
+                        self.cache_repo = None
                     await self.create_locally(
                         checkout_ref=await self.resolve_checkout_ref(),
                         infrahub_branch_name=self.infrahub_branch_name,
                         update_commit_value=False,
                     )
                     self.reinitialized = True
-                    log.info(f"Initialized the local directory for {self.name} because it was missing.")
+                    log.info(f"Initialized the local directory for {self.name}.")
 
         # An existing clone keeps whatever origin URL it was first cloned with, so re-point it when the
         # configured location has since changed, so subsequent fetches target the current remote.
