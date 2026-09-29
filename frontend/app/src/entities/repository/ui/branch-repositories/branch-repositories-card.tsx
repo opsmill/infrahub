@@ -6,8 +6,8 @@ import { Link } from "@/shared/components/ui/link";
 import { getBranchQspOverride } from "@/entities/branches/ui/routing/branch-urls";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { BranchRepositoriesResult } from "@/entities/repository/domain/model/branch-repository";
-import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import { isRepositorySyncing } from "@/entities/repository/domain/rules/is-repository-syncing";
+import { getRepositoryListKind } from "@/entities/repository/domain/use-cases/get-branch-repositories";
 import {
   BranchRepositoriesDenied,
   BranchRepositoriesFailed,
@@ -103,7 +103,7 @@ function BranchRepositoriesBody({
         <p className="border-t px-4 py-2 text-foreground-muted text-xs">
           Showing the first {repositories.length} of {count} repositories.{" "}
           <Link
-            to={getObjectDetailsUrl(GENERIC_REPOSITORY_KIND, undefined, [
+            to={getObjectDetailsUrl(getRepositoryListKind(syncWithGit), undefined, [
               getBranchQspOverride(branchName, isDefaultBranch),
             ])}
           >

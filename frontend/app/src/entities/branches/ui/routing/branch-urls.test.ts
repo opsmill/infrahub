@@ -1,8 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { withBranch } from "./branch-urls";
+import { constructPath } from "@/shared/api/rest/fetch";
 
-describe("withBranch", () => {
+import { getBranchQspOverride } from "./branch-urls";
+
+const withBranch = (path: string, branchName: string, isDefault: boolean) =>
+  constructPath(path, [getBranchQspOverride(branchName, isDefault)]);
+
+describe("getBranchQspOverride", () => {
   let initialUrl: string;
 
   beforeEach(() => {

@@ -70,11 +70,8 @@ describe("getBranchTasks", () => {
     });
   });
 
-  it("throws when the response carries errors", async () => {
-    mockGetTaskListFromApi.mockResolvedValueOnce({
-      data: null,
-      errors: [{ message: "Task manager unavailable" }],
-    } as unknown as Response);
+  it("lets an api error through", async () => {
+    mockGetTaskListFromApi.mockRejectedValueOnce(new Error("Task manager unavailable"));
 
     await expect(getBranchTasks({ branchName: "feature", offset: 0, limit: 10 })).rejects.toThrow(
       "Task manager unavailable"

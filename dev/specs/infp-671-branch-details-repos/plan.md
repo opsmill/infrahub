@@ -141,7 +141,7 @@ Each `ImportErrorBand` calls `useGetRepositoryImportError({ branchName, reposito
 
 ### Links (critique X1)
 
-The page shows `/branches/:branchName`'s data while the branch selector may be on another branch, and `constructPath` forwards the selector's `branch` QSP. Every link to branch-scoped data therefore overrides it with the page's branch (`constructPath(path, [{ name: QSP.BRANCH, value: branchName }])`; no parameter on the default branch). A small helper in `entities/branches/ui/routing/branch-urls.ts` (`withBranch(path, branchName)`) serves the repository name, "Open repository", "Open in Tasks" and the failed-tasks link. Task detail links are branch-independent.
+The page shows `/branches/:branchName`'s data while the branch selector may be on another branch, and `constructPath` forwards the selector's `branch` QSP. Every link to branch-scoped data therefore overrides it with the page's branch (`constructPath(path, [{ name: QSP.BRANCH, value: branchName }])`; no parameter on the default branch). A small helper in `entities/branches/ui/routing/branch-urls.ts` (`getBranchQspOverride(branchName, isDefault)`, passed to `constructPath`/`getObjectDetailsUrl` with any other overrides) serves the repository name, "Open repository", "Open in Tasks" and the failed-tasks link. Task detail links are branch-independent.
 
 ### Merge (critique E1)
 

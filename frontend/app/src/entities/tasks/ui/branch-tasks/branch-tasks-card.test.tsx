@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -53,6 +54,46 @@ const renderCard = (props: Partial<Parameters<typeof BranchTasksCard>[0]> = {}) 
       {...props}
     />
   );
+
+function StatefulCard({
+  initialPage,
+  onPageChange,
+}: {
+  initialPage: number;
+  onPageChange: (page: number) => void;
+}) {
+  const [page, setPage] = useState(initialPage);
+  return (
+    <BranchTasksCard
+      branchName="feature"
+      isDefaultBranch={false}
+      page={page}
+      onPageChange={(next) => {
+        onPageChange(next);
+        setPage(next);
+      }}
+      repositoryNames={new Map()}
+    />
+  );
+}
+
+const mockPagedTasks = (count: number) => {
+  vi.mocked(useGetBranchTasks).mockImplementation(({ page }) => {
+    const first = (page - 1) * 10;
+    const tasks =
+      first >= 0 && first < count
+        ? Array.from({ length: Math.min(10, count - first) }, (_, index) =>
+            generateTask(first + index)
+          )
+        : [];
+    return { data: { tasks, count }, isPending: false } as unknown as ReturnType<
+      typeof useGetBranchTasks
+    >;
+  });
+  vi.mocked(useGetBranchFailedTaskCount).mockReturnValue({
+    data: 0,
+  } as unknown as ReturnType<typeof useGetBranchFailedTaskCount>);
+};
 
 const bodyRows = (container: HTMLElement) => [...container.querySelectorAll("tbody tr")];
 
@@ -247,7 +288,7 @@ describe("BranchTasksCard", () => {
     expect(onPageChange).toHaveBeenCalledWith(2);
   });
 
-  test("queries the requested page, so only page 1 polls", async () => {
+  test("passes the requested page and the branch to its queries", async () => {
     // GIVEN
     mockQueries({ data: generatePage(11, [generateTask(10)]) });
 
@@ -257,6 +298,58 @@ describe("BranchTasksCard", () => {
     // THEN
     expect(vi.mocked(useGetBranchTasks)).toHaveBeenCalledWith({ branchName: "feature", page: 2 });
     expect(vi.mocked(useGetBranchFailedTaskCount)).toHaveBeenCalledWith({ branchName: "feature" });
+  });
+
+  test("moves a page past the end to the last page and shows its rows", async () => {
+    // GIVEN
+    const onPageChange = vi.fn();
+    mockPagedTasks(12);
+
+    // WHEN
+    const component = await render(<StatefulCard initialPage={99} onPageChange={onPageChange} />);
+
+    // THEN
+    await expect.element(component.getByText("Task 11", { exact: true })).toBeVisible();
+    expect(onPageChange).toHaveBeenCalledWith(2);
+    expect(vi.mocked(useGetBranchTasks)).toHaveBeenLastCalledWith({
+      branchName: "feature",
+      page: 2,
+    });
+    expect(bodyRows(component.container)).toHaveLength(2);
+    await expect
+      .element(component.getByRole("button", { name: "Page 2" }))
+      .toHaveAttribute("aria-current", "page");
+  });
+
+  test("moves a page below 1 to page 1", async () => {
+    // GIVEN
+    const onPageChange = vi.fn();
+    mockPagedTasks(12);
+
+    // WHEN
+    const component = await render(<StatefulCard initialPage={0} onPageChange={onPageChange} />);
+
+    // THEN
+    await expect.element(component.getByText("Task 0", { exact: true })).toBeVisible();
+    expect(onPageChange).toHaveBeenCalledWith(1);
+    expect(vi.mocked(useGetBranchTasks)).toHaveBeenLastCalledWith({
+      branchName: "feature",
+      page: 1,
+    });
+    expect(bodyRows(component.container)).toHaveLength(10);
+  });
+
+  test("leaves a page in range as it is", async () => {
+    // GIVEN
+    const onPageChange = vi.fn();
+    mockPagedTasks(12);
+
+    // WHEN
+    const component = await render(<StatefulCard initialPage={2} onPageChange={onPageChange} />);
+
+    // THEN
+    await expect.element(component.getByText("Task 11", { exact: true })).toBeVisible();
+    expect(onPageChange).not.toHaveBeenCalled();
   });
 
   test("opens the Tasks page on the page's branch, not the selector's", async () => {

@@ -143,6 +143,38 @@ describe("BranchRepositoriesCard", () => {
     expect(onPageChange).toHaveBeenCalledWith(2);
   });
 
+  test("shows the last page and writes it back for a page past the end", async () => {
+    // GIVEN
+    const onPageChange = vi.fn();
+    mockQuery({ data: buildBranchRepositoriesScenario("eleven") });
+
+    // WHEN
+    const component = await renderCard({ page: 99, onPageChange });
+
+    // THEN
+    expect(bodyRows(component.container)).toHaveLength(1);
+    await expect
+      .element(component.getByRole("button", { name: "Page 2" }))
+      .toHaveAttribute("aria-current", "page");
+    expect(onPageChange).toHaveBeenCalledWith(2);
+  });
+
+  test("shows page 1 and writes it back for a page below 1", async () => {
+    // GIVEN
+    const onPageChange = vi.fn();
+    mockQuery({ data: buildBranchRepositoriesScenario("eleven") });
+
+    // WHEN
+    const component = await renderCard({ page: 0, onPageChange });
+
+    // THEN
+    expect(bodyRows(component.container)).toHaveLength(10);
+    await expect
+      .element(component.getByRole("button", { name: "Page 1" }))
+      .toHaveAttribute("aria-current", "page");
+    expect(onPageChange).toHaveBeenCalledWith(1);
+  });
+
   test("shows all 10 rows and no pager for exactly 10 repositories", async () => {
     // GIVEN
     mockQuery({ data: buildBranchRepositoriesScenario("exactly-10") });
@@ -293,6 +325,24 @@ describe("BranchRepositoriesCard", () => {
     await expect
       .element(component.getByRole("link", { name: "View all repositories" }))
       .toHaveAttribute("href", "/objects/CoreGenericRepository?branch=feature");
+  });
+
+  test("links the truncation notice to the read-only list when Sync with Git is off", async () => {
+    // GIVEN
+    mockQuery({
+      data: generateBranchRepositoriesResult(
+        [generateBranchRepository({ kind: "CoreReadOnlyRepository" })],
+        600
+      ),
+    });
+
+    // WHEN
+    const component = await renderCard({ syncWithGit: false });
+
+    // THEN
+    await expect
+      .element(component.getByRole("link", { name: "View all repositories" }))
+      .toHaveAttribute("href", "/objects/CoreReadOnlyRepository?branch=feature");
   });
 
   test("uses no hard-coded hex colour in class names", async () => {

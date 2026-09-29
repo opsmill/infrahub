@@ -4,6 +4,8 @@ import { ExternalLinkIcon } from "lucide-react";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Badge } from "@/shared/components/ui/badge";
 import { QSP } from "@/shared/config/qsp";
+import { usePageInRange } from "@/shared/hooks/usePageInRange";
+import { getTotalPages, TABLE_PAGE_SIZE } from "@/shared/utils/table-pagination";
 
 import { getBranchQspOverride } from "@/entities/branches/ui/routing/branch-urls";
 import type { BranchTasksPage } from "@/entities/tasks/domain/model/branch-task";
@@ -50,6 +52,7 @@ export function BranchTasksCard({
 }: BranchTasksCardProps) {
   const { data, isPending } = useGetBranchTasks({ branchName, page });
   const { data: failedCount } = useGetBranchFailedTaskCount({ branchName });
+  usePageInRange(page, data ? getTotalPages(data.count, TABLE_PAGE_SIZE) : null, onPageChange);
 
   return (
     <Card className="overflow-hidden" data-testid="branch-tasks-card">

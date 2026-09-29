@@ -3,18 +3,12 @@ import type { BranchTasksPage } from "@/entities/tasks/domain/model/branch-task"
 
 export type GetBranchTasksParams = { branchName: string; offset: number; limit: number };
 
-export type GetBranchTasksResult = BranchTasksPage;
-
 export const getBranchTasks = async ({
   branchName,
   offset,
   limit,
-}: GetBranchTasksParams): Promise<GetBranchTasksResult> => {
-  const { data, errors } = await getTaskListFromApi({ branchName, offset, limit });
-
-  if (errors) {
-    throw new Error(errors.map((e) => e.message).join("; "));
-  }
+}: GetBranchTasksParams): Promise<BranchTasksPage> => {
+  const { data } = await getTaskListFromApi({ branchName, offset, limit });
 
   const tasks = data.InfrahubTask.edges.flatMap(({ node }) =>
     node

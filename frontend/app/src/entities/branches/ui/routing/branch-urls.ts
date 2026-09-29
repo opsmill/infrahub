@@ -20,7 +20,3 @@ export function getBranchQspOverride(branchName: string, isDefault: boolean): ov
   if (isDefault) return { name: QSP.BRANCH, exclude: true };
   return { name: QSP.BRANCH, value: branchName };
 }
-
-export function withBranch(path: string, branchName: string, isDefault: boolean): string {
-  return constructPath(path, [getBranchQspOverride(branchName, isDefault)]);
-}

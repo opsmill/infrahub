@@ -2,6 +2,7 @@ import { FolderGitIcon, GitCommitIcon } from "lucide-react";
 import type React from "react";
 
 import { TablePagination } from "@/shared/components/table/table-pagination";
+import { usePageInRange } from "@/shared/hooks/usePageInRange";
 import { classNames } from "@/shared/utils/common";
 import {
   clampPage,
@@ -34,6 +35,7 @@ export function BranchRepositoriesTable({
   const currentPage = clampPage(page, totalPages);
   const rows = ranked.slice((currentPage - 1) * TABLE_PAGE_SIZE, currentPage * TABLE_PAGE_SIZE);
   const hasPager = totalPages > 1;
+  usePageInRange(page, totalPages, onPageChange);
 
   return (
     <>

@@ -5,7 +5,8 @@ export const TABLE_ROW_HEIGHT_PX = 40;
 
 type PageItem = number | "ellipsis";
 
-const toPageNumber = (page: number) => (Number.isFinite(page) ? Math.max(1, Math.trunc(page)) : 1);
+export const toPageNumber = (page: number) =>
+  Number.isFinite(page) ? Math.max(1, Math.trunc(page)) : 1;
 
 export const getTotalPages = (totalCount: number, pageSize: number) =>
   Math.max(1, Math.ceil(Math.max(totalCount, 0) / pageSize));
