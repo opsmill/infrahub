@@ -5,7 +5,7 @@ import { useGetBranchDetails } from "@/entities/branches/ui/queries/get-branch-d
 import type { BranchRepositoriesResult } from "@/entities/repository/domain/model/branch-repository";
 import { useGetBranchRepositories } from "@/entities/repository/ui/queries/get-branch-repositories.query";
 import { useGetRepositoryImportError } from "@/entities/repository/ui/queries/get-repository-import-error.query";
-import type { BranchTasksPage } from "@/entities/tasks/domain/model/branch-task";
+import type { TaskListPage } from "@/entities/tasks/domain/model/task-list-item";
 import {
   useGetBranchFailedTaskCount,
   useGetBranchTasks,
@@ -39,7 +39,7 @@ vi.mock("@/entities/branches/ui/branch-delete-button", () => ({
 const ACTION_BUTTONS = ["Merge", "Propose change", "Rebase", "Validate", "Delete"];
 
 type RepositoriesState = { data?: BranchRepositoriesResult; isPending?: boolean };
-type TasksState = { data?: BranchTasksPage; isPending?: boolean };
+type TasksState = { data?: TaskListPage; isPending?: boolean };
 
 const LOADED_TASKS: TasksState = { data: { tasks: [], count: 0 } };
 
@@ -154,6 +154,7 @@ describe("BranchDetails", () => {
             {
               id: "task-1",
               title: "Import repository",
+              branch: "ple-branch",
               state: "COMPLETED",
               workflow: "git-repository-import-object",
               relatedNodes: [{ id: "repo-2", kind: "CoreRepository" }],

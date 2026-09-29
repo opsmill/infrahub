@@ -23,6 +23,11 @@ describe("getWorkflowLabel", () => {
     ["merge-branch-mutation", "Merge"],
     ["branch-merge", "Merge"],
     ["git-repository-merge", "Merge"],
+    ["create-branch", "Create branch"],
+    ["git-repository-trigger-user-checks", "Checks"],
+    ["schema_validate_migrations", "Schema"],
+    ["proposed-changed-run-generator", "Proposed change"],
+    ["computed_attribute_process_transform", "Computed attribute"],
   ])("maps %s to %s", (workflow, label) => {
     expect(getWorkflowLabel(workflow)).toBe(label);
   });
@@ -31,7 +36,7 @@ describe("getWorkflowLabel", () => {
     expect(getWorkflowLabel(null)).toBe("—");
   });
 
-  it("returns the id of an unknown workflow", () => {
-    expect(getWorkflowLabel("some-new-workflow")).toBe("some-new-workflow");
+  it("humanizes the id of an unknown workflow", () => {
+    expect(getWorkflowLabel("some-new_workflow")).toBe("Some new workflow");
   });
 });

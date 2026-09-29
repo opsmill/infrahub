@@ -8,18 +8,20 @@ import { usePageInRange } from "@/shared/hooks/usePageInRange";
 import { getTotalPages, TABLE_PAGE_SIZE } from "@/shared/utils/table-pagination";
 
 import { getBranchQspOverride } from "@/entities/branches/ui/routing/branch-urls";
-import type { BranchTasksPage } from "@/entities/tasks/domain/model/branch-task";
 import { TASK_STATE_FAILED } from "@/entities/tasks/domain/model/task";
+import type { TaskListPage } from "@/entities/tasks/domain/model/task-list-item";
 import {
   BranchTasksFailed,
   BranchTasksLoading,
   BranchTasksNone,
 } from "@/entities/tasks/ui/branch-tasks/branch-tasks-states";
-import { BranchTasksTable } from "@/entities/tasks/ui/branch-tasks/branch-tasks-table";
 import {
   useGetBranchFailedTaskCount,
   useGetBranchTasks,
 } from "@/entities/tasks/ui/queries/get-branch-tasks.query";
+import { type TaskColumn, TasksTable } from "@/entities/tasks/ui/tasks-table/tasks-table";
+
+const BRANCH_TASK_COLUMNS: TaskColumn[] = ["title", "state", "workflow", "related", "updated"];
 
 interface BranchTasksCardProps {
   branchName: string;
@@ -100,7 +102,7 @@ export function BranchTasksCard({
 
 interface BranchTasksBodyProps
   extends Pick<BranchTasksCardProps, "page" | "onPageChange" | "repositoryNames"> {
-  data: BranchTasksPage | undefined;
+  data: TaskListPage | undefined;
   isPending: boolean;
 }
 
@@ -116,12 +118,14 @@ function BranchTasksBody({
   if (data.count === 0) return <BranchTasksNone />;
 
   return (
-    <BranchTasksTable
+    <TasksTable
       tasks={data.tasks}
       totalCount={data.count}
       page={page}
       onPageChange={onPageChange}
-      repositoryNames={repositoryNames}
+      columns={BRANCH_TASK_COLUMNS}
+      relatedNames={repositoryNames}
+      emptyRelatedLabel="This branch"
     />
   );
 }

@@ -46,6 +46,7 @@ describe("getBranchTasks", () => {
           {
             id: "task-1",
             title: "Import repository",
+            branch: "feature",
             state: "FAILED",
             workflow: "git-repository-import-object",
             relatedNodes: [{ id: "repo-1", kind: "CoreRepository" }],

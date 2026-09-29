@@ -52,7 +52,7 @@ interface BranchTasksCardProps {
 ```
 
 - `repositoryNames` is built by `BranchDetails` (which reads `useGetBranchRepositories` with the same params as the card; TanStack dedupes the request), so `tasks/ui` never imports `repository`.
-- Children: `branch-tasks-table.tsx`, `branch-tasks-states.tsx`.
+- Children: the shared `TasksTable` (`entities/tasks/ui/tasks-table/tasks-table.tsx`, columns `title, state, workflow, related, updated`, empty Related label "This branch") and `branch-tasks-states.tsx`. `TasksTable` is meant to replace `TaskItems` on /tasks, the object Tasks tab and the proposed change Tasks tab: see `follow-up-tasks-table.md`.
 - Header: title "Tasks", count badge (after load), "<N> failed" (N > 0), `LinkButton` "Open in Tasks" → `constructPath("/tasks")`.
 - Title cell: `Link to={constructPath(\`/tasks/${id}\`)}` filling the cell.
 - Test id: `branch-tasks-card` (replaces `tasks-accordion` in e2e).

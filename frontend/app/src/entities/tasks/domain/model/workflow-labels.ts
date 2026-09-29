@@ -24,10 +24,36 @@ const WORKFLOW_LABELS: Record<string, string> = {
   [BRANCH_MERGE_WORKFLOW]: "Merge",
   "branch-merge": "Merge",
   "git-repository-merge": "Merge",
+  "create-branch": "Create branch",
+  "branch-delete": "Delete branch",
+  "git-repository-trigger-user-checks": "Checks",
+  "git-repository-user-checks-definition-trigger": "Checks",
+  "git-repository-trigger-internal-checks": "Checks",
+  "git-repository-check-merge-conflict": "Checks",
+  schema_validate_migrations: "Schema",
+  "trigger-update-display-labels": "Display labels",
+  "trigger-update-hfid": "HFID",
+};
+
+const PREFIX_LABELS: [prefix: string, label: string][] = [
+  ["proposed-changed-", "Proposed change"],
+  ["computed-attribute", "Computed attribute"],
+  ["computed_attribute", "Computed attribute"],
+  ["trigger_update_python_computed_attributes", "Computed attribute"],
+  ["webhook", "Webhook"],
+];
+
+const humanize = (workflow: string) => {
+  const words = workflow.replace(/[-_]+/g, " ").trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
 };
 
 export function getWorkflowLabel(workflow: string | null): string {
   if (!workflow) return "—";
 
-  return WORKFLOW_LABELS[workflow] ?? workflow;
+  return (
+    WORKFLOW_LABELS[workflow] ??
+    PREFIX_LABELS.find(([prefix]) => workflow.startsWith(prefix))?.[1] ??
+    humanize(workflow)
+  );
 }

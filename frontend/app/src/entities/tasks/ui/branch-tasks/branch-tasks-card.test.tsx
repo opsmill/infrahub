@@ -2,7 +2,7 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import type { BranchTask, BranchTasksPage } from "@/entities/tasks/domain/model/branch-task";
+import type { TaskListItem, TaskListPage } from "@/entities/tasks/domain/model/task-list-item";
 import {
   useGetBranchFailedTaskCount,
   useGetBranchTasks,
@@ -16,9 +16,10 @@ vi.mock("@/entities/schema/ui/hooks/useSchema");
 
 const KIND_LABELS: Record<string, string> = { CoreArtifactDefinition: "Artifact Definition" };
 
-const generateTask = (index: number, overrides: Partial<BranchTask> = {}): BranchTask => ({
+const generateTask = (index: number, overrides: Partial<TaskListItem> = {}): TaskListItem => ({
   id: `task-${index}`,
   title: `Task ${index}`,
+  branch: "ple-branch",
   state: "COMPLETED",
   workflow: "branch-validate",
   relatedNodes: [],
@@ -26,12 +27,12 @@ const generateTask = (index: number, overrides: Partial<BranchTask> = {}): Branc
   ...overrides,
 });
 
-const generatePage = (count: number, tasks?: BranchTask[]): BranchTasksPage => ({
+const generatePage = (count: number, tasks?: TaskListItem[]): TaskListPage => ({
   tasks: tasks ?? Array.from({ length: Math.min(count, 10) }, (_, index) => generateTask(index)),
   count,
 });
 
-type QueryState = { data?: BranchTasksPage; isPending?: boolean; failedCount?: number };
+type QueryState = { data?: TaskListPage; isPending?: boolean; failedCount?: number };
 
 const mockQueries = ({ data, isPending = false, failedCount = 0 }: QueryState) => {
   vi.mocked(useGetBranchTasks).mockReturnValue({
@@ -181,7 +182,7 @@ describe("BranchTasksCard", () => {
     expect(cellText(component.container, 2, 3)).toBe("Artifact Definition");
   });
 
-  test("shows a short workflow label when known, the identifier otherwise", async () => {
+  test("shows a short workflow label when known, a readable identifier otherwise", async () => {
     // GIVEN
     mockQueries({
       data: generatePage(2, [
@@ -195,7 +196,7 @@ describe("BranchTasksCard", () => {
 
     // THEN
     expect(cellText(component.container, 0, 2)).toBe("Generator");
-    expect(cellText(component.container, 1, 2)).toBe("custom-workflow");
+    expect(cellText(component.container, 1, 2)).toBe("Custom workflow");
   });
 
   test("tints failed rows and shows the state badge, UNKNOWN when missing", async () => {
@@ -269,9 +270,7 @@ describe("BranchTasksCard", () => {
 
     // THEN
     expect(bodyRows(component.container)).toHaveLength(1);
-    await expect
-      .element(component.getByTestId("branch-tasks-table"))
-      .toHaveStyle({ minHeight: "440px" });
+    await expect.element(component.getByTestId("tasks-table")).toHaveStyle({ minHeight: "440px" });
     await expect.element(component.getByRole("navigation", { name: "Pagination" })).toBeVisible();
   });
 

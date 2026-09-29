@@ -26,8 +26,14 @@ describe("getTaskRelatedLabel", () => {
     expect(getTaskRelatedLabel(task, repositoriesById)).toBe("schema-library");
   });
 
-  it("returns 'This branch' when the task has no related nodes", () => {
-    expect(getTaskRelatedLabel({ relatedNodes: [] }, repositoriesById)).toBe("This branch");
+  it("returns an em dash when the task has no related nodes", () => {
+    expect(getTaskRelatedLabel({ relatedNodes: [] }, repositoriesById)).toBe("—");
+  });
+
+  it("returns the caller's empty label when the task has no related nodes", () => {
+    expect(
+      getTaskRelatedLabel({ relatedNodes: [] }, repositoriesById, undefined, "This branch")
+    ).toBe("This branch");
   });
 
   it("returns the kind label of the first node when no repository is known", () => {
