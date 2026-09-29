@@ -3,14 +3,21 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+import pytest
+
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.enrichment import (
     HFID_FIELDS,
     LABEL_FIELDS,
     DbNodeLabelReader,
+    LabelsFromStorage,
     NodeLabelLoader,
     NodeLabels,
 )
+from infrahub.core.constants.schema import DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME
+from infrahub.core.query.node import NodeStoredLabels
+from infrahub.core.schema import AttributeSchema, NodeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 
@@ -141,8 +148,205 @@ class RecordingNodeLoader:
         return {node_id: source[node_id] for node_id in ids if node_id in source}
 
 
-def _reader(loader: RecordingNodeLoader, page_size: int = 100) -> DbNodeLabelReader:
-    return DbNodeLabelReader(db=UnusableDatabase(), branch=Branch(name="main"), node_loader=loader, page_size=page_size)
+@dataclass
+class RecordingStoredLabelLoader:
+    """Test double for the stored-label loader: serves preset stored labels and records each call."""
+
+    stored: dict[str, NodeStoredLabels] = field(default_factory=dict)
+    calls: list[tuple[list[str], list[str]]] = field(default_factory=list)
+
+    async def __call__(
+        self, *, db: InfrahubDatabase, ids: list[str], branch: Branch, label_names: list[str]
+    ) -> dict[str, NodeStoredLabels]:
+        self.calls.append((ids, label_names))
+        return {node_id: self.stored[node_id] for node_id in ids if node_id in self.stored}
+
+
+WITH_HFID = "TestWithHfid"
+WITHOUT_HFID = "TestWithoutHfid"
+SCHEMA_NODE = "SchemaThing"
+
+
+def _schema_branch() -> SchemaBranch:
+    schema_branch = SchemaBranch(cache={}, name="main")
+    for namespace, name, hfid in (
+        ("Test", "WithHfid", ["name__value"]),
+        ("Test", "WithoutHfid", None),
+        ("Schema", "Thing", ["name__value"]),
+    ):
+        schema = NodeSchema(
+            name=name,
+            namespace=namespace,
+            display_label="name__value",
+            human_friendly_id=hfid,
+            attributes=[AttributeSchema(name="name", kind="Text")],
+        )
+        schema_branch.set(name=schema.kind, schema=schema)
+    return schema_branch
+
+
+def _from_storage(kind: str, display_label: str | None, hfid: list[str] | None) -> LabelsFromStorage:
+    return LabelsFromStorage(
+        stored=NodeStoredLabels(kind=kind, display_label=display_label, hfid=hfid),
+        schema=_schema_branch().get(name=kind, duplicate=False),
+    )
+
+
+@dataclass
+class FromStorageCase:
+    name: str
+    kind: str
+    display_label: str | None
+    hfid: list[str] | None
+    knows_hfid: bool
+    knows_labels: bool
+    expected_hfid: list[str] | None = None
+
+
+FROM_STORAGE_CASES = [
+    FromStorageCase(
+        name="both_labels_stored",
+        kind=WITH_HFID,
+        display_label="A",
+        hfid=["a"],
+        knows_hfid=True,
+        knows_labels=True,
+        expected_hfid=["a"],
+    ),
+    FromStorageCase(
+        name="hfid_defined_without_stored_hfid",
+        kind=WITH_HFID,
+        display_label="A",
+        hfid=None,
+        knows_hfid=False,
+        knows_labels=False,
+    ),
+    FromStorageCase(
+        name="display_label_not_stored",
+        kind=WITH_HFID,
+        display_label=None,
+        hfid=["a"],
+        knows_hfid=True,
+        knows_labels=False,
+        expected_hfid=["a"],
+    ),
+    FromStorageCase(
+        name="kind_without_hfid",
+        kind=WITHOUT_HFID,
+        display_label="B",
+        hfid=None,
+        knows_hfid=True,
+        knows_labels=True,
+        expected_hfid=None,
+    ),
+    FromStorageCase(
+        name="kind_without_hfid_ignores_a_leftover_stored_hfid",
+        kind=WITHOUT_HFID,
+        display_label="B",
+        hfid=["leftover"],
+        knows_hfid=True,
+        knows_labels=True,
+        expected_hfid=None,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", FROM_STORAGE_CASES, ids=lambda case: case.name)
+def test_labels_from_storage_tell_which_labels_storage_gives(case: FromStorageCase) -> None:
+    from_storage = _from_storage(kind=case.kind, display_label=case.display_label, hfid=case.hfid)
+
+    assert from_storage.knows_hfid() is case.knows_hfid
+    assert from_storage.knows_labels() is case.knows_labels
+    if case.knows_hfid:
+        assert from_storage.hfid == case.expected_hfid
+
+
+def test_labels_from_storage_refuse_an_hfid_storage_does_not_give() -> None:
+    from_storage = _from_storage(kind=WITH_HFID, display_label="A", hfid=None)
+
+    with pytest.raises(ValueError, match=r"^the stored labels of this TestWithHfid do not give its HFID$"):
+        _ = from_storage.hfid
+
+
+def test_labels_from_storage_refuse_a_display_label_storage_does_not_give() -> None:
+    from_storage = _from_storage(kind=WITH_HFID, display_label=None, hfid=["a"])
+
+    with pytest.raises(ValueError, match=r"^the stored labels of this TestWithHfid do not give its display label$"):
+        _ = from_storage.display_label
+
+
+def _reader(
+    loader: RecordingNodeLoader, stored_loader: RecordingStoredLabelLoader | None = None, page_size: int = 100
+) -> DbNodeLabelReader:
+    return DbNodeLabelReader(
+        db=UnusableDatabase(),
+        branch=Branch(name="main"),
+        schema_branch=_schema_branch(),
+        stored_label_loader=stored_loader or RecordingStoredLabelLoader(),
+        node_loader=loader,
+        page_size=page_size,
+    )
+
+
+async def test_reader_takes_the_labels_storage_settles_without_loading_the_nodes() -> None:
+    stored_loader = RecordingStoredLabelLoader(
+        stored={
+            "with_hfid": NodeStoredLabels(kind=WITH_HFID, display_label="A", hfid=["a"]),
+            "without_hfid": NodeStoredLabels(kind=WITHOUT_HFID, display_label="B", hfid=None),
+        }
+    )
+    loader = RecordingNodeLoader(restricted={}, whole={})
+
+    labels = await _reader(loader, stored_loader).load_labels(["with_hfid", "without_hfid"])
+
+    assert labels == {
+        "with_hfid": NodeLabels(display_label="A", hfid=["a"]),
+        "without_hfid": NodeLabels(display_label="B", hfid=None),
+    }
+    assert stored_loader.calls == [(["with_hfid", "without_hfid"], [DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME])]
+    assert loader.calls == []
+
+
+async def test_reader_loads_the_nodes_storage_does_not_settle() -> None:
+    stored_loader = RecordingStoredLabelLoader(
+        stored={
+            "settled": NodeStoredLabels(kind=WITH_HFID, display_label="A", hfid=["a"]),
+            "no_label": NodeStoredLabels(kind=WITH_HFID, display_label=None, hfid=["b"]),
+            "no_hfid": NodeStoredLabels(kind=WITH_HFID, display_label="C", hfid=None),
+            "schema_node": NodeStoredLabels(kind=SCHEMA_NODE, display_label="D", hfid=["d"]),
+            "dropped_kind": NodeStoredLabels(kind="TestDropped", display_label="E", hfid=["e"]),
+        }
+    )
+    loaded = {node_id: FakeNode(f"Loaded {node_id}", [node_id]) for node_id in stored_loader.stored}
+    loader = RecordingNodeLoader(restricted=loaded, whole={})
+
+    labels = await _reader(loader, stored_loader).load_labels(list(stored_loader.stored))
+
+    assert labels == {
+        "settled": NodeLabels(display_label="A", hfid=["a"]),
+        **{
+            node_id: NodeLabels(display_label=f"Loaded {node_id}", hfid=[node_id])
+            for node_id in ("no_label", "no_hfid", "schema_node", "dropped_kind")
+        },
+    }
+    assert loader.calls == [(["no_label", "no_hfid", "schema_node", "dropped_kind"], LABEL_FIELDS)]
+
+
+async def test_reader_takes_the_hfids_storage_settles_whatever_the_display_label() -> None:
+    stored_loader = RecordingStoredLabelLoader(
+        stored={
+            "no_label": NodeStoredLabels(kind=WITH_HFID, display_label=None, hfid=["a"]),
+            "without_hfid": NodeStoredLabels(kind=WITHOUT_HFID, display_label=None, hfid=None),
+            "no_hfid": NodeStoredLabels(kind=WITH_HFID, display_label=None, hfid=None),
+        }
+    )
+    loader = RecordingNodeLoader(restricted={"no_hfid": FakeNode("", ["computed"])}, whole={})
+
+    hfids = await _reader(loader, stored_loader).load_hfids(["no_label", "without_hfid", "no_hfid"])
+
+    assert hfids == {"no_label": ["a"], "without_hfid": None, "no_hfid": ["computed"]}
+    assert stored_loader.calls == [(["no_label", "without_hfid", "no_hfid"], [HFID_ATTRIBUTE_NAME])]
+    assert loader.calls == [(["no_hfid"], HFID_FIELDS)]
 
 
 async def test_reader_loads_labels_with_only_the_label_fields() -> None:

@@ -21,8 +21,14 @@ if TYPE_CHECKING:
 
 
 def build_node_label_loader(db: InfrahubDatabase, branch: Branch) -> NodeLabelLoader:
-    """Build a label loader that reads node labels from the same database and branch."""
-    return node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
+    """Build a label loader that reads the stored labels first and loads nodes only for the rest."""
+    return node_label_loader(
+        db=db,
+        branch=branch,
+        schema_branch=db.schema.get_schema_branch(name=branch.name),
+        stored_label_loader=NodeManager.get_stored_labels,
+        node_loader=NodeManager.get_many,
+    )
 
 
 def build_diff_changelog_collector(

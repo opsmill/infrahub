@@ -34,13 +34,20 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
-from infrahub.core.query.node import NodeListGetAttributeQuery, NodeListGetRelationshipsQuery
+from infrahub.core.query.node import (
+    NodeListGetAttributeQuery,
+    NodeListGetInfoQuery,
+    NodeListGetRelationshipsQuery,
+    NodeListGetStoredLabelsQuery,
+)
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from tests.constants import TestKind
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
+from tests.helpers.schema import CAR_SCHEMA
 
 # A relationship only ZzzItem declares, so pointing it at a ZzzOwner leaves that owner unchanged.
 _ONE_DIRECTIONAL_SCHEMA: dict[str, Any] = {
@@ -175,12 +182,12 @@ async def test_mutation_enriches_the_mutated_nodes_own_relationships(
     assert owner_rel.peer_hfid == await person.get_hfid(db=db)
 
 
-async def test_label_load_reads_only_the_two_label_attributes_and_no_relationship(
+async def test_label_load_reads_the_stored_labels_without_loading_the_nodes(
     db: InfrahubDatabase,
     default_branch: Branch,
     animal_person_schema: SchemaBranch,
 ) -> None:
-    """A label read returns the real labels while reading two attribute rows per node and no edge."""
+    """A label read returns the real labels from one stored-labels query, loading no node."""
     person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
     counting_db = CountingInfrahubDatabase.from_db(db=db)
 
@@ -190,23 +197,53 @@ async def test_label_load_reads_only_the_two_label_attributes_and_no_relationshi
         person.id: NodeLabels(display_label=await person.get_display_label(db=db), hfid=await person.get_hfid(db=db)),
         dog.id: NodeLabels(display_label=await dog.get_display_label(db=db), hfid=await dog.get_hfid(db=db)),
     }
-    assert counting_db.rows_for(NodeListGetAttributeQuery.name) == 2 * len(labels)
+    assert counting_db.count_for(NodeListGetStoredLabelsQuery.name) == 1
+    assert counting_db.count_for(NodeListGetInfoQuery.name) == 0
+    assert counting_db.count_for(NodeListGetAttributeQuery.name) == 0
     assert counting_db.count_for(NodeListGetRelationshipsQuery.name) == 0
 
 
-async def test_hfid_load_reads_only_the_hfid_attribute_and_no_relationship(
+async def test_hfid_load_reads_the_stored_hfids_without_loading_the_nodes(
     db: InfrahubDatabase,
     default_branch: Branch,
     animal_person_schema: SchemaBranch,
 ) -> None:
-    """An HFID-only read returns the real HFIDs while reading one attribute row per node and no edge."""
+    """An HFID-only read returns the real HFIDs from one stored-labels query, loading no node."""
     person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
     counting_db = CountingInfrahubDatabase.from_db(db=db)
 
     hfids = await build_node_label_loader(db=counting_db, branch=default_branch).load_hfids([person.id, dog.id])
 
     assert hfids == {person.id: await person.get_hfid(db=db), dog.id: await dog.get_hfid(db=db)}
-    assert counting_db.rows_for(NodeListGetAttributeQuery.name) == len(hfids)
+    assert counting_db.count_for(NodeListGetStoredLabelsQuery.name) == 1
+    assert counting_db.count_for(NodeListGetInfoQuery.name) == 0
+    assert counting_db.count_for(NodeListGetAttributeQuery.name) == 0
+    assert counting_db.count_for(NodeListGetRelationshipsQuery.name) == 0
+
+
+async def test_label_load_of_a_kind_without_display_label_reads_only_the_two_label_attributes(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    """A kind without a display label has nothing stored to read, so its node is loaded.
+
+    Only the two label attributes are read, and no edge.
+    """
+    registry.schema.register_schema(schema=CAR_SCHEMA, branch=default_branch.name)
+    manufacturer = await Node.init(db=db, schema=TestKind.MANUFACTURER, branch=default_branch)
+    await manufacturer.new(db=db, name="Omnicorp")
+    await manufacturer.save(db=db)
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+    labels = await build_node_label_loader(db=counting_db, branch=default_branch).load_labels([manufacturer.id])
+
+    assert labels == {
+        manufacturer.id: NodeLabels(display_label=f"{TestKind.MANUFACTURER}(ID: {manufacturer.id})", hfid=None)
+    }
+    assert counting_db.count_for(NodeListGetStoredLabelsQuery.name) == 1
+    assert counting_db.rows_for(NodeListGetAttributeQuery.name) == 2
     assert counting_db.count_for(NodeListGetRelationshipsQuery.name) == 0
 
 

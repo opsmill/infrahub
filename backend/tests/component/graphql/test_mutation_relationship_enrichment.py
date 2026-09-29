@@ -9,6 +9,7 @@ from infrahub.core.query.node import (
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
     NodeListGetRelationshipsQuery,
+    NodeListGetStoredLabelsQuery,
 )
 from infrahub.graphql.mutations.relationship import _enrich_source_changelog
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
@@ -20,10 +21,11 @@ if TYPE_CHECKING:
 
 
 def _read_counts(counting_db: CountingInfrahubDatabase) -> dict[str, int]:
-    """Count the label reads by kind: node info, attributes and relationships."""
+    """Count the label reads by kind: stored labels, node info, attributes and relationships."""
     return {
         query.name: counting_db.count_for(query.name)
         for query in (
+            NodeListGetStoredLabelsQuery,
             NodeListGetInfoQuery,
             NodeListGetAttributeQuery,
             NodeListGetRelationshipsQuery,
@@ -72,8 +74,9 @@ async def test_enrich_source_changelog_rereads_labels_when_the_relationship_feed
     assert changelog.hfid == current_hfid
     assert changelog.display_label == current_label
     assert _read_counts(counting_db) == {
-        NodeListGetInfoQuery.name: 1,
-        NodeListGetAttributeQuery.name: 1,
+        NodeListGetStoredLabelsQuery.name: 1,
+        NodeListGetInfoQuery.name: 0,
+        NodeListGetAttributeQuery.name: 0,
         NodeListGetRelationshipsQuery.name: 0,
     }
 
@@ -93,6 +96,7 @@ async def test_enrich_source_changelog_uses_the_loaded_node_when_the_relationshi
     assert changelog.hfid == await dog.get_hfid(db=db)
     assert changelog.display_label == "kept"
     assert _read_counts(counting_db) == {
+        NodeListGetStoredLabelsQuery.name: 0,
         NodeListGetInfoQuery.name: 0,
         NodeListGetAttributeQuery.name: 0,
         NodeListGetRelationshipsQuery.name: 0,
@@ -118,6 +122,7 @@ async def test_enrich_source_changelog_leaves_changelog_when_node_cannot_be_read
     assert changelog.hfid == ["kept"]
     assert changelog.display_label == "kept"
     assert _read_counts(counting_db) == {
+        NodeListGetStoredLabelsQuery.name: 1,
         NodeListGetInfoQuery.name: 1,
         NodeListGetAttributeQuery.name: 1,
         NodeListGetRelationshipsQuery.name: 0,
@@ -139,8 +144,9 @@ async def test_enrich_source_changelog_rereads_labels_on_a_profiles_mutation(
     assert changelog.hfid == await dog.get_hfid(db=db)
     assert changelog.display_label == await dog.get_display_label(db=db)
     assert _read_counts(counting_db) == {
-        NodeListGetInfoQuery.name: 1,
-        NodeListGetAttributeQuery.name: 1,
+        NodeListGetStoredLabelsQuery.name: 1,
+        NodeListGetInfoQuery.name: 0,
+        NodeListGetAttributeQuery.name: 0,
         NodeListGetRelationshipsQuery.name: 0,
     }
 
@@ -163,7 +169,8 @@ async def test_enrich_source_changelog_reads_through_the_loader_when_the_hfid_is
     assert changelog.hfid == await dog.get_hfid(db=db)
     assert changelog.display_label == await dog.get_display_label(db=db)
     assert _read_counts(counting_db) == {
-        NodeListGetInfoQuery.name: 1,
-        NodeListGetAttributeQuery.name: 1,
+        NodeListGetStoredLabelsQuery.name: 1,
+        NodeListGetInfoQuery.name: 0,
+        NodeListGetAttributeQuery.name: 0,
         NodeListGetRelationshipsQuery.name: 0,
     }
