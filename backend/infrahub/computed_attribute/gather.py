@@ -25,6 +25,8 @@ from .models import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from infrahub.git.models import RepositoryData
 
 
@@ -138,28 +140,47 @@ async def gather_trigger_computed_attribute_jinja2(
     return triggers
 
 
+def _divergent_branches(
+    indexes: Iterable[dict[str, PythonTransformComputedAttribute]], altered_schema_branches: list[str]
+) -> set[str]:
+    """The branches that answer for themselves across every Python automation of this gather.
+
+    A branch diverges when its schema differs from the default branch, or when a repository
+    holding one of its transforms sits on another commit. Read once for the whole gather, because
+    a branch can repoint an attribute at another transform: it then shares no index entry with the
+    default branch, which would otherwise never learn it has to step aside for it.
+    """
+    divergent = set(altered_schema_branches)
+    for branches in indexes:
+        default = branches.get(registry.default_branch)
+        if default is None:
+            continue
+        divergent.update(
+            branch_name
+            for branch_name, item in branches.items()
+            if branch_name != registry.default_branch and item.repository_commit != default.repository_commit
+        )
+    return divergent
+
+
 def _branch_scopes(
-    branches: dict[str, PythonTransformComputedAttribute], altered_schema_branches: list[str]
+    branches: dict[str, PythonTransformComputedAttribute], divergent_branches: set[str]
 ) -> list[tuple[str, list[str]]]:
     """Which branch each automation is built for, and the branches it must not answer for.
 
-    A branch owns its automations when its repository commit or its whole-branch schema hash
-    differs from the default branch. The default-branch automation covers every other branch,
-    the ones created after this gather included.
+    A divergent branch owns the automations of what it declares, and the default-branch one steps
+    aside for every divergent branch, not only for the ones sharing this entry. Ownership and
+    exclusion read the same set, so stepping aside never leaves a branch uncovered. The
+    default-branch automation covers every other branch, the ones created after this gather
+    included.
     """
     if registry.default_branch not in branches:
         return [(branch_name, []) for branch_name in branches]
 
-    commit_main = branches[registry.default_branch].repository_commit
-    owning_branches = [
-        branch_name
-        for branch_name, item in branches.items()
-        if branch_name != registry.default_branch
-        and (item.repository_commit != commit_main or branch_name in altered_schema_branches)
-    ]
+    owning_branches = [branch_name for branch_name in branches if branch_name in divergent_branches]
 
     scopes: list[tuple[str, list[str]]] = [(branch_name, []) for branch_name in owning_branches]
-    scopes.append((registry.default_branch, owning_branches))
+    scopes.append((registry.default_branch, sorted(divergent_branches)))
     return scopes
 
 
@@ -193,8 +214,10 @@ async def gather_trigger_computed_attribute_python(
             # Any attribute of the transform will do: they share its query analyzer.
             by_transform[computed_attribute.name][branch.name] = computed_attribute
 
+    divergent_branches = _divergent_branches(by_attribute.values(), altered_schema_branches)
+
     for branches in by_attribute.values():
-        for branch_scope, branches_out_of_scope in _branch_scopes(branches, altered_schema_branches):
+        for branch_scope, branches_out_of_scope in _branch_scopes(branches, divergent_branches):
             triggers_python.append(
                 ComputedAttrPythonTriggerDefinition.from_object(
                     computed_attribute=branches[branch_scope],
@@ -204,7 +227,7 @@ async def gather_trigger_computed_attribute_python(
             )
 
     for branches in by_transform.values():
-        for branch_scope, branches_out_of_scope in _branch_scopes(branches, altered_schema_branches):
+        for branch_scope, branches_out_of_scope in _branch_scopes(branches, divergent_branches):
             computed_attribute = branches[branch_scope]
             for kind, access in computed_attribute.query_analyzer.query_report.requested_read.items():
                 if not access.fields:
