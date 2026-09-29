@@ -15,7 +15,7 @@ from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.delete_coordinator import BranchDeleteOrchestrator
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
-from infrahub.core.constants import SYSTEM_USER_ID, MutationAction
+from infrahub.core.constants import PROFILES_RELATIONSHIP_NAME, SYSTEM_USER_ID, DiffAction, MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot
@@ -70,6 +70,7 @@ from infrahub.workflows.catalogue import (
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
     IPAM_RECONCILIATION,
+    PROFILE_REFRESH_MULTIPLE,
 )
 from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.utils import add_tags
@@ -194,15 +195,12 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         # rebase to the end time of the diff in case conflicting changes happen on
         # either branch while rebasing and migrating
         rebase_at = enriched_diff_metadata.to_time
-        # The default branch's changes only feed the events sent below, and a branch with nothing in its diff
-        # already reads what the default branch holds once it is rebased.
-        replay_default_branch_changes = send_events and bool(
-            await diff_repository.get_affected_node_uuids(
-                diff_branch_name=user_branch.name,
-                tracking_id=BranchTrackingId(name=user_branch.name),
-                exclude_actions=(),
+        # Only the events sent below read the branch's changes, and a diff update after the rebase replaces this diff.
+        branch_diff: EnrichedDiffRoot | None = None
+        if send_events:
+            branch_diff = await diff_repository.get_one(
+                diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
             )
-        )
         node_diff_field_summaries = await diff_repository.get_node_field_summaries(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
@@ -293,11 +291,21 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 )
                 log.info("Migrations completed")
 
+        # The default branch derived its changes with its own schema, so its changes to a kind whose schema the
+        # branch changed are replayed too, to be derived again with the branch's.
         default_branch_diff: EnrichedDiffRoot | None = None
-        if replay_default_branch_changes:
-            default_branch_diff = await diff_coordinator.calculate_arbitrary_timeframe_diff(
-                base_branch=base_branch, diff_branch=base_branch, from_time=initial_from_time, to_time=rebase_at
-            )
+        if send_events and user_branch.name in registry.get_altered_schema_branches():
+            branch_schema_kinds = registry.schema.get_schema_branch(
+                name=user_branch.name
+            ).get_object_kinds_different_from(registry.schema.get_schema_branch(name=registry.default_branch))
+            if branch_schema_kinds:
+                default_branch_diff = await diff_coordinator.calculate_arbitrary_timeframe_diff(
+                    base_branch=base_branch,
+                    diff_branch=base_branch,
+                    from_time=initial_from_time,
+                    to_time=rebase_at,
+                    node_kinds=branch_schema_kinds,
+                )
 
         # -------------------------------------------------------------
         # Trigger the reconciliation of IPAM data after the rebase
@@ -333,33 +341,48 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     )
     events: list[InfrahubEvent] = [rebase_event]
     changes: list[MergeChange] = []
-    if default_branch_diff is not None:
-        changelog_collector = DiffChangelogCollector(
+    branch_changelogs = (
+        DiffChangelogCollector(diff=branch_diff, branch=user_branch, db=db).collect_changelogs()
+        if branch_diff is not None
+        else []
+    )
+    # the default branch's changes use the attribute names the migrations renamed on the branch
+    default_branch_changelogs = (
+        DiffChangelogCollector(
             diff=default_branch_diff,
             branch=user_branch,
             db=db,
             migration_tracker=MigrationTracker(migrations=migrations),
+        ).collect_changelogs()
+        if default_branch_diff is not None
+        else []
+    )
+    for action, node_changelog in [*branch_changelogs, *default_branch_changelogs]:
+        mutation_action = MutationAction.from_diff_action(diff_action=action)
+        meta = EventMeta.from_parent(parent=rebase_event, branch=user_branch)
+        meta.origin = NodeMutationOrigin.REBASE
+        mutate_event = get_node_event(mutation_action)(
+            kind=node_changelog.node_kind,
+            node_id=node_changelog.node_id,
+            changelog=node_changelog,
+            fields=node_changelog.updated_fields,
+            meta=meta,
         )
-        for action, node_changelog in changelog_collector.collect_changelogs():
-            mutation_action = MutationAction.from_diff_action(diff_action=action)
-            meta = EventMeta.from_parent(parent=rebase_event, branch=user_branch)
-            meta.origin = NodeMutationOrigin.REBASE
-            mutate_event = get_node_event(mutation_action)(
-                kind=node_changelog.node_kind,
+        events.append(mutate_event)
+        changes.append(
+            MergeChange(
                 node_id=node_changelog.node_id,
-                changelog=node_changelog,
-                fields=node_changelog.updated_fields,
-                meta=meta,
+                kind=node_changelog.node_kind,
+                action=mutation_action.value,
+                changed_fields=frozenset(node_changelog.updated_fields),
             )
-            events.append(mutate_event)
-            changes.append(
-                MergeChange(
-                    node_id=node_changelog.node_id,
-                    kind=node_changelog.node_kind,
-                    action=mutation_action.value,
-                    changed_fields=frozenset(node_changelog.updated_fields),
-                )
-            )
+        )
+    # A profile assigned on the branch applied the profile's values of the old base.
+    profile_refresh_node_ids = [
+        node_changelog.node_id
+        for action, node_changelog in branch_changelogs
+        if action is not DiffAction.REMOVED and PROFILES_RELATIONSHIP_NAME in node_changelog.relationships
+    ]
 
     event_service = await get_event_service()
     for event in events:
@@ -371,10 +394,18 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         )
         schema_branch = registry.schema.get_schema_branch(name=schema_name)
         coordinator = MergeRecomputeCoordinator(
-            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
+            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch, refresh_updated_nodes=True),
             submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
         )
         await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
+
+    if profile_refresh_node_ids:
+        with log_exception_guard(log, "Failed to submit the post-rebase profile refresh"):
+            await workflow.submit_workflow(
+                workflow=PROFILE_REFRESH_MULTIPLE,
+                context=low_context,
+                parameters={"branch_name": user_branch.name, "node_ids": profile_refresh_node_ids},
+            )
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")

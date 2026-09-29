@@ -89,6 +89,27 @@ def test_same_node_update_has_no_async_targets() -> None:
     assert result.targets == frozenset()
 
 
+def test_replayed_update_recomputes_own_values_reading_the_changed_field() -> None:
+    """A change replayed onto a moved base recomputes the node's own derived values that read the changed field."""
+    builder = CoalescedRecomputeBuilder(schema_branch=_profile_schema_branch(), refresh_updated_nodes=True)
+    changes = [
+        MergeChange(node_id="node-0", kind=PROFILE_NODE_KIND, action="updated", changed_fields=frozenset({"name"}))
+    ]
+
+    result = builder.build(changes=changes, branch="branch")
+
+    by_identity = _by_identity(result)
+    assert set(by_identity) == {
+        (COMPUTED_ATTRIBUTE, PROFILE_NODE_KIND, "summary"),
+        (DISPLAY_LABEL, PROFILE_NODE_KIND, None),
+        (HFID, PROFILE_NODE_KIND, None),
+    }
+    for target in by_identity.values():
+        assert target.reads_across_relationship is False
+        assert _lookups(target) == {(PROFILE_NODE_KIND, "ids", frozenset({"node-0"}))}
+    assert result.fallback_used is False
+
+
 def test_creation_fans_out_to_all_families() -> None:
     """A created node recomputes its own computed attribute, display label, and human-friendly id."""
     builder = CoalescedRecomputeBuilder(schema_branch=_profile_schema_branch())

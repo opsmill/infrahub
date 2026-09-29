@@ -1,0 +1,1 @@
+Changed the node events sent when a branch is rebased: they now replay the branch's own changes onto the new base, as a merge does, and the default branch's changes only for the object types whose schema the branch changed, instead of every change made on the default branch since the branch was created.
