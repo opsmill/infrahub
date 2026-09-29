@@ -6,13 +6,15 @@ import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
 import { DesignHistory, type Knob, type KnobValue, type Variant } from "./design-history-panel";
 import { CurrentPage } from "./revs/current/current";
 import { RevRoot as Rev01, type RevKnobs } from "./revs/rev-01/root";
-import { SCENARIOS, type Scenario } from "./revs/rev-02/data";
 import { RevRoot as Rev02 } from "./revs/rev-02/root";
+import { SCENARIOS, type Scenario } from "./revs/rev-03/data";
+import { RevRoot as Rev03 } from "./revs/rev-03/root";
 
 const SLUG = "branch-details-repos";
 
 // Knobs belong to the directions they affect: the Current baseline shows no repository data,
-// and the rail width only exists in Consistent.
+// and the rail width only exists in Consistent. Revisions before rev-03 still show Upstream and
+// Last import; those fields don't exist in the backend, so the toggle for them was removed.
 const DATA_KNOBS: Knob[] = [
   {
     key: "scenario",
@@ -23,7 +25,6 @@ const DATA_KNOBS: Knob[] = [
   },
   { key: "repos", label: "Repositories", type: "range", min: 1, max: 40, value: 4 },
   { key: "bands", label: "Error bands before collapsing", type: "range", min: 1, max: 6, value: 3 },
-  { key: "upstream", label: "Upstream + Last import", type: "toggle", value: true },
 ];
 
 const RAIL_KNOB: Knob = {
@@ -37,7 +38,7 @@ const RAIL_KNOB: Knob = {
 };
 
 const toKnobs = (k: Record<string, KnobValue>): RevKnobs => ({
-  scenario: String(k.scenario ?? "incident") as Scenario,
+  scenario: String(k.scenario ?? "incident") as Scenario & RevKnobs["scenario"],
   repos: Number(k.repos ?? 4),
   bands: Number(k.bands ?? 3),
   rail: Number(k.rail ?? 360),
@@ -70,6 +71,12 @@ const VARIANTS: Variant[] = [
         note: "Repositories card + merge banner added to today's layout; tasks stay as cards.",
         render: (k) => <Rev01 variant="legacy" knobs={toKnobs(k)} />,
       },
+      {
+        rev: 2,
+        date: "2026-09-29",
+        note: "Merge moved into the readiness card; only retrievable data (no Upstream, no Last import, raw error lines).",
+        render: (k) => <Rev03 variant="legacy" knobs={toKnobs(k)} />,
+      },
     ],
   },
   {
@@ -83,6 +90,12 @@ const VARIANTS: Variant[] = [
         date: "2026-09-23",
         note: "Tables for repos and tasks, rail as an index of issues, Actions menu in the header.",
         render: (k) => <Rev01 variant="consistent" knobs={toKnobs(k)} />,
+      },
+      {
+        rev: 2,
+        date: "2026-09-29",
+        note: "Only retrievable data: no Upstream or Last import, raw error lines, unreachable-remote warning.",
+        render: (k) => <Rev03 variant="consistent" knobs={toKnobs(k)} />,
       },
     ],
   },
@@ -103,6 +116,12 @@ const VARIANTS: Variant[] = [
         date: "2026-09-23",
         note: "Details back to today's compact attribute grid, inside an object-style card.",
         render: (k) => <Rev02 variant="object" knobs={toKnobs(k)} />,
+      },
+      {
+        rev: 3,
+        date: "2026-09-29",
+        note: "Only retrievable data: no Upstream or Last import, raw error lines, unreachable-remote warning.",
+        render: (k) => <Rev03 variant="object" knobs={toKnobs(k)} />,
       },
     ],
   },

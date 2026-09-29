@@ -153,3 +153,22 @@ in `02-directions.md` and in the earlier sections of this file, but the code doe
 `?dj.variant=`, `?dj.rev=`, `?dj.compare=`, `?dj.k.<knob>=`. The old `?variant=` / `?rev=` links
 open on the default view. The "not the latest" warning is now a floating pill that clears the app's
 top bar.
+
+## Round 5 (data availability + round-1 note, 2026-09-29)
+
+Checked against `ple-git-status-header-ifc-3199` (develop base) and its `schema/schema.graphql`.
+New revisions: Legacy rev 2, Consistent rev 2, Object layout rev 3, all from `revs/rev-03/`.
+
+| Decision | Reason |
+|---|---|
+| **Addressed:** Legacy moves Merge into the readiness card, next to the acknowledgement. The card is always shown, including when the branch is clear. The button row keeps Propose change, Rebase, Validate and Delete. | Round-1 note on Legacy rev 1: "include the merge button in the card above". |
+| Upstream column, "N behind" chip and Last import column removed. The Upstream toggle is gone; older revisions still show them. | No backend field. Upstream waits on IFC-3146, IFC-3147 and IFC-3154. Last import has no ticket, and IFC-3104 rules out `updated_at`. |
+| Import error band shows the raw last error-level line of the import task's log, in monospace, under "<repo> — import failed". | `TaskError` (message, remediation) is only filled in for webhook tasks. There is no curated title or explanation for repo imports. Better text is IFC-3034. |
+| New warning for `operational_status` (error-cred, error-connection, error): a triangle icon on the row, an amber band with "Open repository", and a warn-with-acknowledgement verdict. New scenario "Remote unreachable (warn)". | The field exists on `CoreGenericRepository` and wasn't shown. Infrahub can't fetch commits, so the shown commit may be stale. That warns and doesn't block, as brief #3 does for unknown state. |
+| Artifacts issue links to the artifact list filtered by status Error, instead of a task log. | Artifact tasks are tagged with each target, not a definition. There's no single task to link to. The counts come from `CoreArtifact.status`. |
+| Footnote "N generator runs aren't linked to a repository" removed. | Every `CoreGeneratorDefinition` has a required `repository`, and generator tasks are tagged with the definition id, so this case can't happen. |
+
+Kept, because it can be fetched: repo name, kind, `commit`, `sync_status`. Repo tasks through
+`InfrahubTask(related_node__ids: [repoId])`. Generator failed/total from `CoreGeneratorInstance.status`
+per definition. Running tasks through `InfrahubTaskBranchStatus`. The merge gate itself is derived
+in the frontend; no backend field exists (INFP-670).

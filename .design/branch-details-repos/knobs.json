@@ -1,0 +1,11 @@
+{
+  "variant": "legacy",
+  "rev": 1,
+  "knobs": {
+    "scenario": "incident",
+    "repos": 4,
+    "bands": 3,
+    "upstream": true,
+    "rail": 360
+  }
+}
