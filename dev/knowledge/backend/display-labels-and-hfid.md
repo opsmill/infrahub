@@ -126,18 +126,18 @@ Loading a node object to call `get_display_label()` costs one attribute and one 
 
 ### Async Backfill After Schema Changes
 
-When a schema is updated to add or change a `display_label`, the async Prefect workflow chain updates existing nodes:
+When a schema is updated to add or change a `display_label` or a `human_friendly_id`, the async Prefect workflow chain updates existing nodes:
 
 ```
 SchemaUpdatedEvent
-  -> display_labels_setup_jinja2 (gathers triggers, detects new/changed templates)
-  -> trigger_update_display_labels (iterates all nodes of the kind)
-  -> process_display_label (queries nodes via GraphQL, renders the template, bulk-writes changed values)
+  -> display_labels_setup_jinja2 / hfid_setup (gathers triggers, detects new/changed definitions)
+  -> trigger_update_display_labels / trigger_update_hfid (pages through all node ids of the kind, one page per submission chunk)
+  -> process_display_label / process_hfid (one flow per page: queries the page via GraphQL, renders the values, bulk-writes changed ones)
 ```
 
-The trigger definitions and gathering logic live in `backend/infrahub/display_labels/`.
+Each page runs as a coalesced pass (`object_ids`, origin `recompute`), the same shape a rebase uses to replay a kind whose schema it changed. One flow per node would cost a Prefect submission and a flow run for every node, even when every value is already current, as after a merge that carried the recomputed values. The trigger definitions and gathering logic live in `backend/infrahub/display_labels/` and `backend/infrahub/hfid/`.
 
-A branch merge or rebase refreshes display labels and human-friendly ids through the coalesced recompute rather than this per-node chain. See [merge-recompute.md](merge-recompute.md).
+A branch merge or rebase refreshes display labels and human-friendly ids through the coalesced recompute of the changed nodes rather than this whole-kind chain. See [merge-recompute.md](merge-recompute.md).
 
 ### Manual Override
 
