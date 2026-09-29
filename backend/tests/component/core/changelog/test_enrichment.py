@@ -12,9 +12,9 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.changelog.builder import build_relationship_changelog_getter
+from infrahub.core.changelog.builder import build_node_label_loader, build_relationship_changelog_getter
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
-from infrahub.core.changelog.enrichment import NodeLabelLoader, NodeLabels, node_label_loader
+from infrahub.core.changelog.enrichment import NodeLabelLoader, NodeLabels
 from infrahub.core.changelog.hfid_resolver import ChangelogHfidResolver
 from infrahub.core.changelog.models import (
     RelationshipCardinalityManyChangelog,
@@ -184,9 +184,7 @@ async def test_label_load_reads_only_the_two_label_attributes_and_no_relationshi
     person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
     counting_db = CountingInfrahubDatabase.from_db(db=db)
 
-    labels = await node_label_loader(
-        db=counting_db, branch=default_branch, node_loader=NodeManager.get_many
-    ).load_labels([person.id, dog.id])
+    labels = await build_node_label_loader(db=counting_db, branch=default_branch).load_labels([person.id, dog.id])
 
     assert labels == {
         person.id: NodeLabels(display_label=await person.get_display_label(db=db), hfid=await person.get_hfid(db=db)),
@@ -205,9 +203,7 @@ async def test_hfid_load_reads_only_the_hfid_attribute_and_no_relationship(
     person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
     counting_db = CountingInfrahubDatabase.from_db(db=db)
 
-    hfids = await node_label_loader(db=counting_db, branch=default_branch, node_loader=NodeManager.get_many).load_hfids(
-        [person.id, dog.id]
-    )
+    hfids = await build_node_label_loader(db=counting_db, branch=default_branch).load_hfids([person.id, dog.id])
 
     assert hfids == {person.id: await person.get_hfid(db=db), dog.id: await dog.get_hfid(db=db)}
     assert counting_db.rows_for(NodeListGetAttributeQuery.name) == len(hfids)
@@ -302,9 +298,7 @@ async def test_merge_enriches_node_hfid_and_peer_label(
         diff=diff,
         db=db,
         branch=branch,
-        hfid_resolver=ChangelogHfidResolver(
-            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
-        ),
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
     ).collect_changelogs()
 
     car_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == car.id)
@@ -379,9 +373,7 @@ async def test_merge_changelog_reports_deleted_node_hfid(
         diff=diff,
         db=db,
         branch=branch,
-        hfid_resolver=ChangelogHfidResolver(
-            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
-        ),
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
     ).collect_changelogs()
 
     # The car is gone when the batch load runs, but its HFID is recovered from the diff.
@@ -416,9 +408,7 @@ async def test_merge_fills_peer_hfid_for_a_peer_that_did_not_change(
         diff=diff,
         db=db,
         branch=branch,
-        hfid_resolver=ChangelogHfidResolver(
-            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
-        ),
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
     ).collect_changelogs()
 
     # The owner has no reciprocal relationship, so it is not a changed node, yet its HFID is still
@@ -460,9 +450,7 @@ async def test_merge_tolerates_dropped_kind_referencing_an_unchanged_peer(
         diff=diff,
         db=db,
         branch=branch,
-        hfid_resolver=ChangelogHfidResolver(
-            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
-        ),
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
     ).collect_changelogs()
 
     item_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == item.id)
@@ -489,9 +477,7 @@ async def test_merge_tolerates_kind_deleted_in_migration(
         diff=diff,
         db=db,
         branch=branch,
-        hfid_resolver=ChangelogHfidResolver(
-            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
-        ),
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
     ).collect_changelogs()
 
     by_id = {changelog.node_id: changelog for _, changelog in changelogs}
@@ -533,9 +519,7 @@ async def test_collector_applies_a_rename_migration_to_the_changelog(
         diff=diff,
         branch=branch,
         db=db,
-        hfid_resolver=ChangelogHfidResolver(
-            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
-        ),
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
         migration_tracker=MigrationTracker(migrations=[rename]),
     ).collect_changelogs()
 

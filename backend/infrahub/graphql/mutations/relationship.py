@@ -7,8 +7,7 @@ from graphene import Boolean, InputField, InputObjectType, List, Mutation, Strin
 from infrahub_sdk.utils import compare_lists
 
 from infrahub.core.account import GlobalPermission, ObjectPermission
-from infrahub.core.changelog.builder import build_relationship_changelog_getter
-from infrahub.core.changelog.enrichment import node_label_loader
+from infrahub.core.changelog.builder import build_node_label_loader, build_relationship_changelog_getter
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
     PROFILES_RELATIONSHIP_NAME,
@@ -178,7 +177,7 @@ async def _enrich_source_changelog(
     if not labels_may_change and not source.hfid_needs_read():
         node_changelog.hfid = await source.get_hfid(db=db)
         return
-    loader = node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
+    loader = build_node_label_loader(db=db, branch=branch)
     labels = await loader.load_labels([source.get_id()])
     if source_labels := labels.get(source.get_id()):
         node_changelog.hfid = source_labels.hfid
