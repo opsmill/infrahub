@@ -577,7 +577,7 @@ class TestCreateRecordsItsReservation:
 
         assert counting_db.count_for(NodeCreateAllQuery.name) == 1
         assert counting_db.count_for(NumberPoolSetReserved.name) == 0, (
-            "the query that writes the value writes the record, so no separate reservation write is issued"
+            "separate reservation query should not be executed"
         )
 
         first_number = first.get_attribute(name="number").value

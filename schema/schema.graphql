@@ -8690,6 +8690,7 @@ input IPAddressPoolGetResourceInput {
 }
 
 input IPAddressPoolInput {
+  address_type: String
   data: GenericScalar
   id: String!
   identifier: String

@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
-from infrahub import config
 from infrahub.computed_attribute.gather import gather_python_transform_attributes
 from infrahub.computed_attribute.read_sets import transform_read_set_from_query_report
 from infrahub.core.query_group.subscribers import fetch_subscriber_refs
@@ -15,7 +14,7 @@ from infrahub.log import get_logger, get_run_logger
 from infrahub.workers.dependencies import get_client, get_component
 from infrahub.workflows.utils import wait_for_schema_to_converge
 
-from .python_target_resolution import DisabledPythonTargetResolver, IndexedPythonTargetResolver, PythonAttributeReadSet
+from .python_target_resolution import IndexedPythonTargetResolver, PythonAttributeReadSet
 
 log = get_logger()
 
@@ -214,15 +213,7 @@ class UnavailablePythonTargetResolver:
 
 
 async def build_python_target_resolver(*, db: InfrahubDatabase) -> PythonTargetResolver:
-    """Build the resolver for one recompute pass, inert while the switch is off.
-
-    The switch is read first, so a deployment that leaves the family to the per-node automations
-    resolves neither the client nor the component.
-    """
-    if not config.SETTINGS.main.coalesce_python_recompute_after_merge:
-        log.debug("Deriving no Python computed attribute for this pass: the coalesced pass is disabled")
-        return DisabledPythonTargetResolver()
-
+    """Build the resolver for one recompute pass."""
     return IndexedPythonTargetResolver(
         read_set_source=ComposedPythonReadSetSource(
             declared_attributes=SchemaDeclaredPythonAttributes(db=db, component=await get_component()),

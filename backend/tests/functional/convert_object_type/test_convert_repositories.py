@@ -237,7 +237,7 @@ class TestConvertRepository(TestInfrahubApp):
         read_only_repo = await NodeManager.get_one(db=db, id=new_repo_id, raise_on_error=True)
 
         # Now make sure repository has been correctly initialized
-        repo_intern = InfrahubReadOnlyRepository(  # type: ignore[call-arg]
+        repo_intern = InfrahubReadOnlyRepository(
             id=UUID(read_only_repo.id),
             name=read_only_repo.name.value,
             location=read_only_repo.location.value,
@@ -546,7 +546,7 @@ class TestConvertRepository(TestInfrahubApp):
         self, branch: Branch, repository: CoreGenericRepository, service: InfrahubServices
     ):
         # Now make sure repository has been correctly initialized
-        repo_intern = InfrahubRepository(  # type: ignore[call-arg]
+        repo_intern = InfrahubRepository(
             id=UUID(repository.id),
             name=repository.name.value,
             location=repository.location.value,

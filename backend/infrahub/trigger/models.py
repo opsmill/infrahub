@@ -222,7 +222,7 @@ class ChangeFlowRunStateAction(BaseModel):
             A Prefect ChangeFlowRunState action.
 
         """
-        return ChangeFlowRunState(  # type: ignore[call-arg]
+        return ChangeFlowRunState(
             state=self.state,
             message=self.message,
         )
