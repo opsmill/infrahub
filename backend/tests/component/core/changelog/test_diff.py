@@ -1,12 +1,13 @@
 from typing import Literal
 from unittest.mock import AsyncMock
+from uuid import uuid4
 
 import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.diff import DiffChangelogCollector
 from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog, RelationshipCardinalityOneChangelog
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -19,6 +20,12 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from tests.helpers.diff_factories import (
+    EnrichedNodeFactory,
+    EnrichedRelationshipElementFactory,
+    EnrichedRelationshipGroupFactory,
+    EnrichedRootFactory,
+)
 
 
 async def test_events_from_diff(
@@ -299,3 +306,29 @@ class TestConflict:
                 assert action == DiffAction.UPDATED
                 assert node_changelog.attributes["name"].properties["source"].value == person_jane_main.id
                 assert node_changelog.attributes["name"].properties["source"].value_previous is None
+
+
+async def test_changelog_of_a_relationship_missing_from_the_schema(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: None
+) -> None:
+    """A relationship a schema migration removed keeps its changelog, with an unknown peer kind."""
+    peer_id = str(uuid4())
+    relationship = EnrichedRelationshipGroupFactory.build(
+        name="removed_relationship",
+        cardinality=RelationshipCardinality.MANY,
+        action=DiffAction.UPDATED,
+        relationships={EnrichedRelationshipElementFactory.build(peer_id=peer_id, action=DiffAction.ADDED)},
+        nodes=set(),
+    )
+    node = EnrichedNodeFactory.build(
+        kind="TestPerson", action=DiffAction.UPDATED, attributes=set(), relationships={relationship}
+    )
+
+    changelogs = DiffChangelogCollector(
+        diff=EnrichedRootFactory.build(nodes={node}), db=db, branch=default_branch
+    ).collect_changelogs()
+
+    assert [(action, changelog.node_id) for action, changelog in changelogs] == [(DiffAction.UPDATED, node.uuid)]
+    relationship_changelog = changelogs[0][1].relationships["removed_relationship"]
+    assert isinstance(relationship_changelog, RelationshipCardinalityManyChangelog)
+    assert [(peer.peer_id, peer.peer_kind) for peer in relationship_changelog.peers] == [(peer_id, "n/a")]
