@@ -6,7 +6,19 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from infrahub.config import GitSettings, S3StorageSettings, Settings, TLSSettings, load
+from infrahub.config import (
+    BrokerSettings,
+    CacheSettings,
+    DatabaseSettings,
+    GitSettings,
+    HTTPSettings,
+    LDAPSettings,
+    S3StorageSettings,
+    Settings,
+    TLSSettings,
+    TraceSettings,
+    load,
+)
 
 TEST_DATA_DIR = Path(__file__).parent.parent / "test_data"
 CA_BUNDLE = str(TEST_DATA_DIR / "ca-bundle.pem")
@@ -76,6 +88,57 @@ class TestTLSSettings:
         monkeypatch.setattr(ssl, "create_default_context", fake)
         with pytest.raises(ValidationError, match=r"tls.ca_bundle: unable to load the CA bundle"):
             TLSSettings.model_validate({"ca_bundle": CA_BUNDLE})
+
+
+class TestBlankCaSettings:
+    """A blank CA setting reads as unset, the way a blanked environment variable is meant."""
+
+    @pytest.mark.parametrize("blank", ["", "   ", "\n"], ids=["empty", "spaces", "newline"])
+    @pytest.mark.parametrize(
+        ("settings_class", "field_name"),
+        [
+            (TLSSettings, "ca_bundle"),
+            (GitSettings, "tls_ca_file"),
+            (DatabaseSettings, "tls_ca_file"),
+            (BrokerSettings, "tls_ca_file"),
+            (CacheSettings, "tls_ca_file"),
+            (HTTPSettings, "tls_ca_bundle"),
+            (TraceSettings, "tls_ca_bundle"),
+            (LDAPSettings, "tls_ca_bundle"),
+        ],
+    )
+    def test_blank_component_setting_is_unset(self, settings_class: type, field_name: str, blank: str) -> None:
+        settings = settings_class.model_validate({field_name: blank})
+
+        assert getattr(settings, field_name) is None
+
+    def test_blank_s3_setting_is_unset_under_either_name(self) -> None:
+        assert S3StorageSettings.model_validate({"INFRAHUB_STORAGE_TLS_CA_FILE": ""}).tls_ca_file is None
+        assert S3StorageSettings.model_validate({"AWS_CA_BUNDLE": ""}).tls_ca_file is None
+
+    def test_blank_s3_setting_is_allowed_on_a_plaintext_endpoint(self) -> None:
+        settings = S3StorageSettings.model_validate({"AWS_CA_BUNDLE": "", "INFRAHUB_STORAGE_USE_SSL": False})
+
+        assert settings.tls_ca_file is None
+
+    def test_blank_log_forwarding_destination_setting_is_unset(self) -> None:
+        settings = Settings.model_validate(
+            {"log_forwarding": {"destinations": [{"name": "syslog", "host": "logs.example.com", "tls_ca_bundle": ""}]}}
+        )
+
+        assert settings.log_forwarding.destinations[0].tls_ca_bundle is None
+
+    def test_blank_component_setting_still_takes_the_global_bundle(self) -> None:
+        settings = Settings.model_validate({"tls": {"ca_bundle": CA_BUNDLE}, "git": {"tls_ca_file": ""}})
+
+        assert settings.git.tls_ca_file == CA_BUNDLE
+
+    def test_blank_global_bundle_leaves_components_on_the_system_store(self) -> None:
+        settings = Settings.model_validate({"tls": {"ca_bundle": " "}})
+
+        assert settings.tls.ca_bundle is None
+        assert settings.git.tls_ca_file is None
+        assert settings.database.tls_ca_file is None
 
 
 class TestGitTLSSettings:
