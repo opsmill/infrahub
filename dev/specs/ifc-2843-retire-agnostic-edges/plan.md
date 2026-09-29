@@ -517,15 +517,10 @@ catch a specific silent failure:
 - **How the base-branch diff is obtained at rebase**: a second `DiffRepository` read under the
   existing tracking id. Widening `DiffCoordinator.update_branch_diff`'s return type to expose both
   diffs is the larger change and that method has other callers, so the read wins. No longer open —
-<<<<<<< HEAD
-  the rebase task is fully specified.
-- **`m078` batching**: adopt the existing `MAX_AGNOSTIC_PEER_BATCH_SIZE = 500` cap. Each row can
-=======
   the rebase task is fully specified. **Superseded 2026-09-28**: the base-branch diff is scoped to
   the fields the branch changed and does not list the default-branch deletions, so rebase queries
   them from the default branch's existence edges instead (research.md R4).
-- **`m076` batching**: adopt the existing `MAX_AGNOSTIC_PEER_BATCH_SIZE = 500` cap. Each row can
->>>>>>> origin/stable
+- **`m078` batching**: adopt the existing `MAX_AGNOSTIC_PEER_BATCH_SIZE = 500` cap. Each row can
   drag an unbounded number of peer vertices into the transaction, which is precisely why that cap
   exists in `data_deleter.py`. The migration must be safe to re-run.
 - **`m078` irreversibility**: it hard-deletes vertices, and for those vertices there is nothing to
