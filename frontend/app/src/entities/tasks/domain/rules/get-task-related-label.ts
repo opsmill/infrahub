@@ -2,7 +2,7 @@ import type { BranchTask } from "@/entities/tasks/domain/model/branch-task";
 
 export function getTaskRelatedLabel(
   task: Pick<BranchTask, "relatedNodes">,
-  repositoriesById: Map<string, string>,
+  repositoriesById: ReadonlyMap<string, string>,
   getKindLabel: (kind: string) => string = (kind) => kind
 ): string {
   const [firstNode] = task.relatedNodes;
