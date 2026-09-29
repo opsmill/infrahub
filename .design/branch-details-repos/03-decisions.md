@@ -184,3 +184,9 @@ New revision: Object layout rev 4 (`revs/rev-04/`). Legacy and Consistent are un
 | 3. "we can see the white background behind, we should not" | **Addressed.** The panel shell painted `Canvas` (white) behind the page; the harness now passes `background: transparent` in `frame`, so the app's stone-100 shows through as on real pages. The banner uses the real `BranchWorkingNotice` classes (cyan tint, branch icon). | The white came from the design-jam shell, not the design. Fixed in `index.tsx` rather than the copied panel, so it survives skill reloads. It applies to every variant. |
 
 **Object layout rev 5 (2026-09-29):** the owner asked that task links use a task id so they open the task details view. The task rows stay mocked, but `revs/rev-05/real-task-ids.ts` fetches up to 200 real tasks (the task manager's page cap) and gives each mocked row, error band and generator run the id of a real task. It picks one with the same kind of workflow (import, generator, artifact, validate, rebase), preferring the same state, and never gives two rows the same task when enough tasks exist. The instance has few generator and import tasks, so some rows open a different kind of task. Verified: every link carries a real UUID, and `/tasks/df365058…` opens "Adding repository demo-edge in branch main".
+
+**Correction (2026-09-29, Phase 5):** round 5 said an unplaced generator run "can't happen". That
+is wrong for the parent flow: `generator-definition-run` ("Run all generators",
+`generators/tasks.py:153`) is tagged with the branch only. Its child runs are tagged with the
+definition and can be placed. The prototype still has no footnote: the parent flow appears in the
+Tasks table as a branch task ("This branch"), which needs no explanation.
