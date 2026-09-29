@@ -10,6 +10,7 @@ import { RevRoot as Rev02 } from "./revs/rev-02/root";
 import { SCENARIOS, type Scenario } from "./revs/rev-03/data";
 import { RevRoot as Rev03 } from "./revs/rev-03/root";
 import { RevRoot as Rev04 } from "./revs/rev-04/root";
+import { RevRoot as Rev05 } from "./revs/rev-05/root";
 
 const SLUG = "branch-details-repos";
 
@@ -129,6 +130,12 @@ const VARIANTS: Variant[] = [
         date: "2026-09-29",
         note: "No Merge card: today's inline buttons below the repositories; task rows link to their task page; real branch notice, body card scrolls.",
         render: (k) => <Rev04 variant="object" knobs={toKnobs(k)} />,
+      },
+      {
+        rev: 5,
+        date: "2026-09-29",
+        note: "Task links open a real task: each mocked row uses the id of a real task with the same workflow kind.",
+        render: (k) => <Rev05 variant="object" knobs={toKnobs(k)} />,
       },
     ],
   },
