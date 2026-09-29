@@ -508,6 +508,50 @@ class TestDiffCoordinator:
         attr_diffs = {(a.name, a.action) for a in updated_person_diff.attributes}
         assert attr_diffs == {("height", DiffAction.UPDATED)}
 
+    async def test_unstored_diff_on_default_branch_only(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        person_john_main: Node,
+        person_alfred_main: Node,
+    ) -> None:
+        branch = await create_branch(db=db, branch_name="branch1")
+
+        updated_person = await NodeManager.get_one(db=db, id=person_john_main.id)
+        updated_person.height.value = 200
+        await updated_person.save(db=db)
+
+        new_person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+        await new_person.new(db=db, name="Jeff", height=170)
+        await new_person.save(db=db)
+
+        deleted_person = await NodeManager.get_one(db=db, id=person_alfred_main.id)
+        await deleted_person.delete(db=db)
+
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=default_branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
+        stored_roots_before = await diff_repository.get_roots_metadata(diff_branch_names=[default_branch.name])
+
+        main_diff = await diff_coordinator.calculate_arbitrary_timeframe_diff(
+            base_branch=default_branch,
+            diff_branch=default_branch,
+            from_time=Timestamp(branch.get_branched_from()),
+            to_time=Timestamp(),
+        )
+
+        nodes_by_id = {n.uuid: n for n in main_diff.nodes}
+        assert {uuid: n.action for uuid, n in nodes_by_id.items()} == {
+            updated_person.id: DiffAction.UPDATED,
+            new_person.id: DiffAction.ADDED,
+            deleted_person.id: DiffAction.REMOVED,
+        }
+        updated_person_attributes = {(a.name, a.action) for a in nodes_by_id[updated_person.id].attributes}
+        assert updated_person_attributes == {("height", DiffAction.UPDATED)}
+        assert nodes_by_id[new_person.id].label == "Jeff"
+        stored_roots_after = await diff_repository.get_roots_metadata(diff_branch_names=[default_branch.name])
+        assert {root.uuid for root in stored_roots_after} == {root.uuid for root in stored_roots_before}
+
     async def test_schema_deleted_on_source_and_target_branches(
         self,
         db: InfrahubDatabase,
