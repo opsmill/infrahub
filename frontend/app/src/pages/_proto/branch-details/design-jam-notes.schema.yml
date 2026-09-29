@@ -14,7 +14,7 @@
 version: "1.0"
 nodes:
   - name: Note
-    namespace: Designjam  # Infrahub: ^[A-Z][a-z0-9]+$ — "DesignJam" is rejected
+    namespace: Designjam
     label: "Design note"
     description: "A pinned review note on a design-jam prototype revision"
     include_in_menu: false
@@ -41,7 +41,7 @@ nodes:
         kind: Text
         optional: true
         description: "First words of the element's text — what actually finds it again"
-      - name: pos_x  # 3+ characters required
+      - name: pos_x
         kind: Text
         description: "Fraction of the pane width, as text — Number is integer-only"
       - name: pos_y

@@ -133,7 +133,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
   const [armed, setArmed] = useState(false);
   const [saved, setSaved] = useState("");
   const [allCount, setAllCount] = useState(0);
-  /** Owner-only feedback tools, tucked behind ⋯ so a reviewer sees two buttons, not four. */
+  /** Owner-only feedback tools, tucked behind ⋯ so a reviewer sees two buttons, not three. */
   const [more, setMore] = useState(false);
 
   /**
@@ -280,8 +280,6 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
     variant.revisions.find((r) => r.rev === rev) ?? (variant.revisions.at(-1) as Revision);
   const other = compareWith ? (variant.revisions.find((r) => r.rev === compareWith) ?? null) : null;
   const stale = current.rev !== latest;
-  // Local fix: compare against something other than what is on screen. On the latest revision
-  // that is the previous one; with a single revision there is nothing to compare, so null.
   const compareTarget = current.rev !== latest ? latest : current.rev > 1 ? current.rev - 1 : null;
   const scope = `${slug}:${variant.id}:rev${current.rev}`;
 
@@ -323,7 +321,6 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
    */
   const activeValues = Object.fromEntries(knobs.map((k) => [k.key, values[k.key]]));
   const written = notes.filter((n) => n.text.trim() && !n.sentAt).length;
-  const alreadySent = notes.filter((n) => n.sentAt).length;
 
   useEffect(() => {
     // Starts from the live search string, so the app's own params survive every write.
@@ -377,7 +374,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
       )
       .join("\n");
 
-  /** This revision only — what Send writes for the owner's own local loop. */
+  /** This revision only — what Copy rev puts on the clipboard. */
   const asMarkdown = () =>
     [
       `## design-jam feedback — ${slug} · ${variant.label} · rev ${current.rev}`,
@@ -447,48 +444,6 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
     } catch {
       flash("Clipboard blocked by the browser");
     }
-  };
-
-  /**
-   * The submit. Writes to `.design/<slug>/` through the dev plugin so the agent's next turn
-   * reads a file; falls back to the clipboard when there's no dev server behind the page,
-   * which is every teammate opening the shared link. Feedback never dead-ends.
-   */
-  const send = async () => {
-    let landed = "";
-    try {
-      const res = await fetch("/__design-jam/save", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          slug,
-          variant: variant.id,
-          rev: current.rev,
-          knobs: values,
-          notes: notesToMarkdown(notes),
-        }),
-      });
-      // Never trust `res.ok` alone. With the plugin unregistered, Vite's SPA fallback
-      // answers this URL with 200 and index.html — a "sent" that wrote nothing, which is
-      // exactly the failure that looks like success.
-      const data = await res.json().catch(() => null);
-      if (res.ok && data?.designJam) landed = data.path;
-    } catch {
-      /* no dev server — fall through to the clipboard */
-    }
-
-    if (!landed) {
-      await copy();
-      return;
-    }
-
-    const stamp = new Date().toISOString();
-    await Promise.all(
-      notes
-        .filter((n) => n.text.trim() && !n.sentAt)
-        .map((n) => store.update(n.id, { sentAt: stamp }))
-    );
-    flash(`✓ Sent — written to ${landed}`);
   };
 
   /**
@@ -606,7 +561,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
         {open && knobsOpen && knobs.length > 0 && (
           <div className="djh-knobs">
             {knobs.map((k, i) => (
-              // biome-ignore lint/a11y/noLabelWithoutControl: every branch below renders the wrapped control
+              // biome-ignore lint/a11y/noLabelWithoutControl: the control is rendered inside the label
               <label
                 key={k.key}
                 className={
@@ -846,7 +801,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
                   type="button"
                   aria-pressed={more}
                   aria-label="Owner tools"
-                  title="Owner tools: copy this revision only, send to the local dev server"
+                  title="Owner tools: copy this revision only"
                   className={more ? "djh-btn djh-btn--sm djh-btn--on" : "djh-btn djh-btn--sm"}
                   onClick={() => setMore(!more)}
                 >
@@ -937,19 +892,6 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame }: Pro
                     onClick={copy}
                   >
                     Copy rev
-                  </button>
-                  <button
-                    type="button"
-                    className="djh-btn djh-btn--sm"
-                    title={
-                      alreadySent > 0 && written === 0
-                        ? "All notes on this revision already sent"
-                        : "Write this revision's notes into .design/ via the local dev server"
-                    }
-                    disabled={written === 0}
-                    onClick={send}
-                  >
-                    {written === 0 && alreadySent > 0 ? "Sent" : "Send local"}
                   </button>
                 </div>
               )}
@@ -1219,8 +1161,8 @@ const css = `
 /*
  * Four labelled zones, separated by hairline rules rather than guesswork about gaps:
  * what you are looking at (Prototype), when (Revision), how you look at it (View), and
- * what you send back (Feedback). One primary action in the whole bar — Send — so the
- * submit is never ambiguous; everything else is a quiet ghost button.
+ * what you send back (Feedback). One primary action in the whole bar — Copy all notes —
+ * so the submit is never ambiguous; everything else is a quiet ghost button.
  *
  * On a dark surface, separation is a solid quiet line: translucent white hairlines glow
  * instead of receding.

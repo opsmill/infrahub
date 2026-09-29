@@ -5,7 +5,7 @@
  *
  * - `local`   — localStorage. One browser, one reviewer. Always available. This is what a
  *               dev server run uses, and the fallback everywhere else.
- * - `infrahub` — nodes of kind `DesignjamNote` on the instance the prototype is running
+ * - `infrahub` — nodes of kind `DesignJamNote` on the instance the prototype is running
  *               in. Every reviewer on a preview sees every pin; the author comes free from
  *               the session; nothing needs a credential in the build because the browser
  *               already has one. Requires the schema to be loaded once per instance — see
@@ -58,8 +58,6 @@ export type NewNote = Omit<Note, "id" | "status" | "createdAt" | "author" | "aut
 
 export type Backend = "local" | "infrahub";
 
-// Local fix: Infrahub requires the namespace to match ^[A-Z][a-z0-9]+$, so "DesignJam" is
-// rejected; the kind becomes DesignjamNote. Attribute names need 3+ chars: x/y -> pos_x/pos_y.
 const KIND = "DesignjamNote";
 const PREFIX = "design-jam:notes:";
 const QUERY_ROOT = ["design-jam", "notes"] as const;
@@ -219,8 +217,6 @@ const probeInfrahub = async (): Promise<boolean> => {
       query: graphql(
         jsonToGraphQLQuery({ query: { [KIND]: { __args: { limit: 1 }, count: true } } })
       ),
-      // Local fix: an unknown kind is the expected answer, not an error. Without a handler the
-      // app's client shows "Cannot query field 'DesignjamNote'" as a toast on every page load.
       context: { processErrorMessage: () => undefined },
     });
     return !errors?.length;
@@ -230,7 +226,7 @@ const probeInfrahub = async (): Promise<boolean> => {
 };
 
 /**
- * Loads the DesignjamNote schema onto the current instance. Admin only, once per instance,
+ * Loads the DesignJamNote schema onto the current instance. Admin only, once per instance,
  * and only ever on a preview. The body mirrors `design-jam-notes.schema.yml`; keep them in
  * step. Infrahub applies a schema load as a migration, so this takes a few seconds.
  */
@@ -269,13 +265,8 @@ export const enableSharedNotes = async () => {
       },
     ],
   };
-  // Local fix: constructPath() builds an app route — in dev the API is on another port, so the
-  // POST hit the frontend and 404d. fetchUrl only sends auth to the API origin.
   await fetchUrl(`${INFRAHUB_API_SERVER_URL}/api/schema/load`, {
     method: "POST",
-    // Local fix: no extra content-type — fetchUrl already sets Content-Type, and a second,
-    // lowercase copy merges into "application/json, application/json", which the API reads
-    // as a plain string body (422 "Input should be a valid dictionary").
     body: JSON.stringify({ schemas: [schema] }),
   });
 };
