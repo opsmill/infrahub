@@ -9,12 +9,8 @@ from infrahub.core.node import Node
 from infrahub.core.node.constraints.attribute_uniqueness import NodeAttributeUniquenessConstraint
 from infrahub.core.node.constraints.grouped_uniqueness import NodeGroupedUniquenessConstraint
 from infrahub.core.node.constraints.uniqueness_violation_message import UniquenessViolationMessageBuilder
-<<<<<<< HEAD
-from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.schema_branch import SchemaBranch
-=======
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
->>>>>>> origin/stable
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import UniquenessViolationError
 from tests.helpers.schema import LOCATION_SCHEMA, load_schema
