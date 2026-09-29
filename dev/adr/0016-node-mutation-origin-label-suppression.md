@@ -33,7 +33,7 @@ records. The bulk writer stamps `recompute` on its own writes so a chained recom
 re-enter the per-node path either.
 
 Families that are not coalesced in this pass keep receiving every event whatever the origin:
-Python-transform computed attributes, profile refresh, user action rules, and webhooks.
+profile refresh, user action rules, and webhooks.
 
 ## Consequences
 
