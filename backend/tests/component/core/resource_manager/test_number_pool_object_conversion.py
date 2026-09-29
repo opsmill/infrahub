@@ -10,6 +10,7 @@ from infrahub_sdk.convert_object_type import ConversionFieldInput
 from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.convert_object_type.object_conversion import convert_object_type
+from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.query.resource_manager import PoolRecordProvenance
@@ -156,6 +157,11 @@ async def test_converting_an_object_carries_its_record_onto_the_replacement_inta
         "a number an object still holds must never be offered again"
     )
 
+    kept = await live_record(db=db, node_id=holder.get_id())
+    assert kept["identifier"] == holder.get_id(), (
+        "the record on the replaced object stays open for branches that predate the conversion"
+    )
+
     moved = await live_record(db=db, node_id=converted.get_id())
     assert moved["provenance"] == PoolRecordProvenance.PROVIDED.value, (
         "the move must carry the provenance across rather than assume the pool chose the number"
@@ -196,4 +202,32 @@ async def test_a_pool_does_not_follow_its_record_onto_a_kind_it_does_not_track(
     assert records[0]["live"] == 0, "the pool must not account for an attribute of a kind it does not track"
     assert await convert_pool.get_used(db=db, branch=default_branch) == [], (
         "and the number it held is released rather than left charged to an object outside the pool"
+    )
+
+
+async def test_converting_an_object_on_a_branch_leaves_its_record_open(
+    db: InfrahubDatabase, default_branch: Branch, convert_pool: CoreNumberPool
+) -> None:
+    """The object is only replaced on the branch; on the default branch it still holds its number."""
+    holder = await holder_holding_a_pooled_number(db=db, branch=default_branch, pool=convert_pool)
+    allocated = holder.get_attribute(TRACKED_ATTRIBUTE_NAME).value
+    assert await convert_pool.get_used(db=db, branch=default_branch) == [allocated]
+
+    branch = await create_branch(db=db, branch_name="convert-on-a-branch")
+    on_branch = await registry.manager.get_one(db=db, id=holder.get_id(), branch=branch, raise_on_error=True)
+    converted = await convert_to(db=db, branch=branch, node=on_branch, target_kind=TARGET_KIND)
+
+    kept = await live_record(db=db, node_id=holder.get_id())
+    assert kept["identifier"] == holder.get_id(), (
+        "the default branch's object still holds the number, so its record must stay open"
+    )
+    moved = await live_record(db=db, node_id=converted.get_id())
+    assert moved["identifier"] == converted.get_id()
+    assert moved["branch"] == GLOBAL_BRANCH_NAME
+
+    assert set(await convert_pool.get_used(db=db, branch=default_branch)) == {allocated}, (
+        "the number stays used, held by the default branch's object and the branch's replacement"
+    )
+    assert await convert_pool.get_free(db=db, branch=default_branch) != allocated, (
+        "a conversion on a branch must not offer the default branch's number again"
     )

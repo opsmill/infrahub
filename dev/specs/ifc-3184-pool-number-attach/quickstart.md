@@ -203,6 +203,8 @@ value edge without tombstoning the default branch's).
 1. Convert an object holding a pooled number to another type.
 2. **Expected**: the pool keeps reporting the number, **attributed to the new object**, and never
    offers it.
+3. Convert an object holding a pooled number **on a branch**.
+4. **Expected**: the default branch's object keeps its record, and the pool never offers the number.
 
 Assert the value the pool **reports**, not that an edge exists. The existing test asserts through a
 query with no liveness join, so it proves the edge is there while the pool has already freed the
@@ -268,6 +270,9 @@ count and no axis to vary. Steps 1 and 3 stand if the cost per record is in doub
 1. **Rename** a pool-tracked attribute in the schema. The record must stay `-global-` and the pool
    must still report the number.
 2. **Remove** a pool-tracked attribute from the schema. The record must be closed.
+3. **Rename** a pool-tracked attribute **on a branch**, once branch-aware and once branch-agnostic.
+   The default branch keeps its value, the pool still reports the number, and no `IS_RESERVED` edge
+   is written on the branch.
 
 The rename case is a confirmed bug today and fails until fixed. It matters more than it looks: the
 record is the sole storage of the pool's claim, so relocating it onto a branch makes it invisible to a

@@ -530,8 +530,12 @@ class TestNumberPoolChangeReserved:
         assert moved["record"]["identifier"] == "relabelled", (
             "the moved record carries the identifier it was given, not the uuid of the vertex it landed on"
         )
-        assert await live_record_count(db=db, node_id=source.get_id(), attribute_name="number") == 0, (
-            "the record found through the source anchor is the one that was closed"
+        assert await live_record_count(db=db, node_id=source.get_id(), attribute_name="number") == 1, (
+            "the record found through the source anchor stays open for branches that predate the move"
+        )
+        kept = await reservation_and_value_edges(db=db, node_id=source.get_id(), attribute_name="number")
+        assert kept["record"]["identifier"] == "borrowed-label", (
+            "the record left behind keeps its own identifier rather than the one the move was given"
         )
 
 

@@ -1,22 +1,23 @@
 """Renaming a pool-tracked attribute must not disturb the reservation behind it.
 
-A schema rename rebuilds the attribute vertex and copies every edge across, so the copy has to
-preserve the branch each edge was written on rather than re-brand them all onto the renaming branch.
-The reservation record is written on the global branch whatever the attribute's branch support, so
-a branch-aware attribute has exactly one global edge among branch ones — the case that decides
-whether the copy reads each edge's own branch or assumes a single one for all of them.
+A schema rename rebuilds the attribute vertex and copies every edge across onto the renaming branch.
+The reservation record is written on the global branch whatever the attribute's branch support, so its
+copy has to stay global, and the record on the old attribute has to stay open for every branch that
+still uses the old attribute.
 """
 
 from __future__ import annotations
 
 import uuid
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, SchemaPathType
+from infrahub.core.initialization import create_branch
 from infrahub.core.migrations.schema.attribute_name_update import AttributeNameUpdateMigration
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
@@ -28,6 +29,7 @@ from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA,
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+    from infrahub.core.schema import SchemaRoot
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
@@ -75,6 +77,25 @@ def _edge_summary(edges: list[EdgeState]) -> set[tuple[str, str | None, str]]:
     return {(edge.edge_type, edge.direction, edge.branch) for edge in open_active_edges(edges)}
 
 
+async def reservation_records(db: InfrahubDatabase, pool_id: str) -> set[tuple[str, str, str, bool]]:
+    """Every record the pool holds, as the attribute name it points at, its branch, status and openness."""
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $pool_id})-[e:IS_RESERVED]->(a:Attribute)
+        RETURN a.name AS name, e.branch AS branch, e.status AS status, e.to IS NULL AS is_open
+        """,
+        params={"pool_id": pool_id},
+    )
+    return {(result["name"], result["branch"], result["status"], result["is_open"]) for result in results}
+
+
+BOTH_RECORDS_OPEN = {
+    (PREVIOUS_ATTRIBUTE_NAME, GLOBAL_BRANCH_NAME, "active", True),
+    (NEW_ATTRIBUTE_NAME, GLOBAL_BRANCH_NAME, "active", True),
+}
+"""A global record on each attribute vertex, both open, and none written on a user branch."""
+
+
 async def rename_the_attribute(db: InfrahubDatabase, branch: Branch, schema: SchemaBranch) -> None:
     """Run the rename migration the way a schema update would."""
     previous_widget_schema = schema.get(name=WIDGET_KIND)
@@ -97,13 +118,20 @@ async def rename_the_attribute(db: InfrahubDatabase, branch: Branch, schema: Sch
     assert result.nbr_migrations_executed == 1
 
 
+def widget_schema(serial_branch_support: BranchSupportType) -> SchemaRoot:
+    """The widget schema with its pooled attribute given the requested branch support."""
+    schema = deepcopy(AGNOSTIC_RETIREMENT_SCHEMA)
+    widget = next(node for node in schema.nodes if node.kind == WIDGET_KIND)
+    widget.get_attribute(name=PREVIOUS_ATTRIBUTE_NAME).branch = serial_branch_support
+    return schema
+
+
 @pytest.fixture
 async def aware_schema(db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:
     """The same schema with the pooled attribute branch-aware, so only its record stays global."""
-    aware = deepcopy(AGNOSTIC_RETIREMENT_SCHEMA)
-    widget = next(node for node in aware.nodes if node.kind == WIDGET_KIND)
-    widget.get_attribute(name=PREVIOUS_ATTRIBUTE_NAME).branch = BranchSupportType.AWARE
-    return registry.schema.register_schema(schema=aware, branch=default_branch.name)
+    return registry.schema.register_schema(
+        schema=widget_schema(serial_branch_support=BranchSupportType.AWARE), branch=default_branch.name
+    )
 
 
 async def test_renaming_a_pool_tracked_attribute_keeps_its_record_global_and_its_number_reported(
@@ -127,8 +155,12 @@ async def test_renaming_a_pool_tracked_attribute_keeps_its_record_global_and_its
     await rename_the_attribute(db=db, branch=default_branch, schema=agnostic_schema)
 
     after = await attribute_edges_on_any_branch(db=db, node_id=holder.id, attribute_name=NEW_ATTRIBUTE_NAME)
-    assert _edge_summary(after) == EXPECTED_AGNOSTIC_EDGES, (
-        "the renamed attribute must carry every edge across on the branch it was written on"
+    assert ("IS_RESERVED", "inbound", GLOBAL_BRANCH_NAME) in _edge_summary(after), (
+        "the renamed attribute must carry the reservation record across on the global branch"
+    )
+
+    assert await reservation_records(db=db, pool_id=serial_pool.id) == BOTH_RECORDS_OPEN, (
+        "the record stays open on the old attribute for branches that predate the rename"
     )
 
     serial_pool.get_attribute("node_attribute").value = NEW_ATTRIBUTE_NAME
@@ -165,9 +197,61 @@ async def test_renaming_a_branch_aware_pooled_attribute_keeps_only_its_record_gl
         "the rename must read each edge's own branch rather than assume one for all of them"
     )
 
+    assert await reservation_records(db=db, pool_id=serial_pool.id) == BOTH_RECORDS_OPEN, (
+        "the record stays open on the old attribute for branches that predate the rename"
+    )
+
     serial_pool.get_attribute("node_attribute").value = NEW_ATTRIBUTE_NAME
     await serial_pool.save(db=db)
 
     assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START], (
         "the pool must still account for the number the renamed attribute holds"
+    )
+
+
+@dataclass
+class BranchRenameCase:
+    name: str
+    serial_branch_support: BranchSupportType
+
+
+BRANCH_RENAME_CASES = [
+    BranchRenameCase(name="branch-aware", serial_branch_support=BranchSupportType.AWARE),
+    # The attribute's own edges are global too, so closing them would erase its value on every branch.
+    BranchRenameCase(name="branch-agnostic", serial_branch_support=BranchSupportType.AGNOSTIC),
+]
+
+
+@pytest.mark.parametrize("case", BRANCH_RENAME_CASES, ids=lambda case: case.name)
+async def test_renaming_a_pooled_attribute_on_a_branch_leaves_the_default_branch_untouched(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    serial_pool: CoreNumberPool,
+    case: BranchRenameCase,
+) -> None:
+    registry.schema.register_schema(
+        schema=widget_schema(serial_branch_support=case.serial_branch_support), branch=default_branch.name
+    )
+    holder = await Node.init(db=db, schema=WIDGET_KIND, branch=default_branch)
+    await holder.new(db=db, name="holds-a-pooled-serial", serial={"from_pool": {"id": serial_pool.id}})
+    await holder.save(db=db)
+    assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START]
+
+    branch = await create_branch(db=db, branch_name=f"rename-{case.name}")
+    await rename_the_attribute(db=db, branch=branch, schema=registry.schema.get_schema_branch(name=branch.name))
+
+    assert await reservation_records(db=db, pool_id=serial_pool.id) == BOTH_RECORDS_OPEN, (
+        "the record stays open on the attribute every other branch still uses, a global copy follows "
+        "the rename, and no reservation edge is written on the renaming branch"
+    )
+
+    on_default = await registry.manager.get_one(db=db, id=holder.id, branch=default_branch, raise_on_error=True)
+    assert on_default.get_attribute(name=PREVIOUS_ATTRIBUTE_NAME).value == SERIAL_POOL_START, (
+        "a rename on a branch must not touch the value the default branch holds"
+    )
+    assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START], (
+        "the default branch's number must stay reported as used"
+    )
+    assert await serial_pool.get_free(db=db, branch=default_branch) != SERIAL_POOL_START, (
+        "a rename on a branch must not offer the default branch's number again"
     )

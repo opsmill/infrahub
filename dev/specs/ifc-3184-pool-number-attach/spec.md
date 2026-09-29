@@ -100,6 +100,9 @@ its counts.
    reported source is the user's and nothing the pool reports changes.
 7. **Given** a pool-tracked attribute, **When** the attribute is renamed in the schema, **Then** the
    ledger record is still branch-agnostic and the pool still reports the number.
+8. **Given** a pool-tracked attribute, **When** the attribute is renamed or its object converted on a
+   branch, **Then** the default branch keeps its value and the pool keeps reporting its number: a
+   change on a branch never alters what another branch holds.
 
 ---
 
@@ -214,6 +217,7 @@ record deletion, is what frees a number. `provenance` is irrelevant to every row
 | Object deleted on a branch while another branch still holds it | The number must stay taken until no live branch holds it (FR-036a). | **Confirmed broken.** Reproduced: freed on every branch and reallocated into a collision |
 | One object holds different values on different branches | Each value counts as taken while some branch holds it. | **Verified working** — must stay working |
 | Object converted to another type | The record must follow to the new object's attribute. | **Confirmed broken post-move** — foundational work item 2 |
+| Attribute renamed or object converted, on any branch | A new `-global-` record on the new attribute; the old one stays open for every branch that has not taken the change, including branches created before a change on the default branch. The old record becomes an orphan once no branch can reach it. | Tested on the default branch and on a user branch; retiring the orphan is separate work |
 | Object re-pooled from A to B | A's record ends, B's begins; A reports nothing for it and A's bucket stays empty. | New — test, including that A's bucket does not acquire B's number |
 | Detach on a branch, then delete that branch | No branch displays a pool source, because none was ever written. | Resolved by FR-030b — test it holds |
 | A tracked value falls outside the effective space | Retained, invisible to allocation, reported in the bucket. Re-entering the space moves it to in use. | New state, two paths — test both |
@@ -403,6 +407,16 @@ review; the first three are one change set.
    without preserving the branch-agnostic marker, so renaming an attribute would silently relocate
    the ledger edge onto a branch. Port the conditional that node duplication already has. Silent if
    missed.
+
+   **Amended 2026-09-28 — a move never closes a record.** For items 2 and 3, the move writes a new
+   `-global-` record on the new attribute and leaves the old one open, on the default branch as well
+   as a user branch. Closing it would free the number for every branch that still reads the old
+   attribute: a rename or conversion on a user branch freed the default branch's number. On a user
+   branch the rename writes no `IS_RESERVED` edge on that branch. Item 3 is scoped to the record: a
+   branch-agnostic attribute's own edges keep the rename's pre-existing handling. Reads resolve
+   forward, so the old record counts nothing once no branch holds a value through it; retiring it is
+   separate work.
+
 4. **Fix FR-036a.** Written *after* (1), against the post-move edge chain — doing it first means
    writing it twice.
 

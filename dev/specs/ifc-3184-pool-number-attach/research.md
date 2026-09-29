@@ -274,6 +274,11 @@ the abandoned one: the liveness join fails and the pool frees a number the conve
 holds. On a non-unique attribute it hands that number to someone else; on a unique one the next save
 fails.
 
+**Amended 2026-09-28 — a move never closes a record.** The re-targeted query writes the new record
+and does not close the old one. A conversion on a user branch replaces the object only there, and
+one on the default branch leaves it in place for branches created earlier, so closing the old record
+would free the number for every branch that still holds the replaced object.
+
 **The existing test will not catch it.** `test_convert_number_pool` (in
 `backend/tests/functional/convert_object_type/test_convert_object_type.py`) asserts through
 `NumberPoolGetReserved`, which has no liveness join — it proves the edge exists, not that it points
@@ -437,6 +442,14 @@ unconditionally from the migration branch (`"branch": self.branch.name`). There 
 **Why it matters more after D5**: the record is the sole storage of the pool's claim, so relocating
 the ledger edge onto a branch makes it invisible to a derivation that matches only `-global-` edges
 — the attribute then reports **no source at all** while the ledger still holds the number reserved.
+
+**Amended 2026-09-28 — a move never closes a record.** The port is scoped to the reservation record,
+and the close is not ported. The record is copied onto the new attribute as `-global-`, and the
+record on the old attribute is neither closed nor shadowed, on any branch: branches that have not
+taken the rename, including ones created before a rename on the default branch, still read the old
+attribute. Every other edge keeps the rename's pre-existing handling, so a branch-agnostic
+attribute's own `-global-` edges are still copied onto the renaming branch. That demotion predates
+this slice and is out of its scope.
 
 **Attribute removal needs no fix**: `core/migrations/query/attribute_remove.py::AttributeRemoveQuery`
 already ends with `%(close_unretained_agnostic_fields)s`, so a removed attribute's global edges —

@@ -411,7 +411,8 @@ class NumberPoolChangeReserved(Query):
 
     The IS_RESERVED edges are moved from the `:Attribute` vertices of the old object to the
     `:Attribute` vertices of the replacement object. Handles multiple pools for different Attributes.
-    The record on the old attribute is closed if the conversion's delete has not closed it already.
+    The record on the old attribute is left open, because any branch created before the conversion still
+    holds the replaced object.
     """
 
     name = "number_pool_change_reserved"
@@ -470,18 +471,9 @@ class NumberPoolChangeReserved(Query):
           AND old_rel.status = "active"
           AND (old_rel.to IS NULL OR old_rel.to >= $not_closed_before)
         // --------------
-        // Read the edge before closing it, so it can be carried to the new edge
+        // The old edge stays open: branches that predate the conversion still hold the replaced object
         // --------------
-        WITH pool, old_rel, properties(old_rel) AS old_props
-        // --------------
-        // Close the edge on the replaced object, unless deleting that object already closed it.
-        // --------------
-        CALL (old_rel) {
-            WITH old_rel
-            WHERE old_rel.to IS NULL
-            SET old_rel.to = $at
-        }
-        WITH DISTINCT pool, old_props
+        WITH DISTINCT pool, properties(old_rel) AS old_props
         // --------------
         // Each pool names the attribute it tracks, so read it rather than assuming one attribute.
         // --------------
