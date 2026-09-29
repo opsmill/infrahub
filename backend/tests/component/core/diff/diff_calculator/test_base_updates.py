@@ -1238,3 +1238,42 @@ async def test_base_peer_change_before_window_captured_for_relationship_new_to_b
         if element.peer_id == person_john_main.id
     )
     assert base_before_change < removed_owner.changed_at < base_after_change
+
+
+async def test_base_peer_added_and_removed_before_window_ignored_for_relationship_new_to_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+    person_albert_main: Node,
+    person_alfred_main: Node,
+) -> None:
+    """A peer the base branch added and removed again between the fork and the window leaves no trace."""
+    branch = await create_branch(db=db, branch_name="branch")
+    for new_owner in (person_jane_main, person_albert_main):
+        car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+        await car_main.owner.update(db=db, data={"id": new_owner.id})
+        await car_main.save(db=db)
+    from_time = Timestamp()
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await car_branch.owner.update(db=db, data={"id": person_alfred_main.id})
+    await car_branch.save(db=db)
+
+    calculated_diffs = await DiffCalculator(db=db).calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        previous_node_specifiers=NodeFieldSpecifierMap(),
+        include_unchanged=False,
+    )
+
+    base_nodes_by_id = {node.uuid: node for node in calculated_diffs.base_branch_diff.nodes}
+    assert set(base_nodes_by_id) == {car_accord_main.id, person_john_main.id}
+    assert _peer_actions_by_relationship(base_nodes_by_id[car_accord_main.id]) == {
+        "owner": {person_john_main.id: DiffAction.REMOVED, person_albert_main.id: DiffAction.ADDED}
+    }
+    assert _peer_actions_by_relationship(base_nodes_by_id[person_john_main.id]) == {
+        "cars": {car_accord_main.id: DiffAction.REMOVED}
+    }
