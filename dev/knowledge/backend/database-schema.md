@@ -130,6 +130,7 @@ All edges have:
 | `IS_PROTECTED` | `(:Attribute)-[:IS_PROTECTED]->(:Boolean)` | Protection flag for Attribute or Relationship (default: `false`) |
 | `HAS_SOURCE` | `(:Attribute)-[:HAS_SOURCE]->(:Node)` | Links Attribute or Relationship to its source Node (optional, for provenance) |
 | `HAS_OWNER` | `(:Attribute)-[:HAS_OWNER]->(:Node)` | Links Attribute or Relationship to its owner Node (optional) |
+| `IS_RESERVED` | `(:Node)-[:IS_RESERVED]->(:Attribute)` | Links a resource pool to what it accounts for (see [Resource Pool Reservations](#resource-pool-reservations)) |
 
 ### Attribute/Relationship Metadata Edges
 
@@ -157,6 +158,45 @@ Same patterns apply to `Relationship` vertices:
 | `IS_PROTECTED` | `Boolean` | `false` | Prevents modification when `true` |
 | `HAS_SOURCE` | `Node` | none | Tracks data provenance (where data came from) |
 | `HAS_OWNER` | `Node` | none | Tracks ownership (who is responsible for data) |
+
+### Resource Pool Reservations
+
+A resource pool records what it accounts for with an `IS_RESERVED` edge. There are three target
+shapes, one per pool kind:
+
+| Pool kind | Pattern | What the record claims |
+|-----------|---------|------------------------|
+| `CoreNumberPool` | `(pool)-[:IS_RESERVED]->(:Attribute)` | The pool accounts for whatever number that attribute holds |
+| `CoreIPAddressPool` | `(pool)-[:IS_RESERVED]->(:BuiltinIPAddress)` | The pool allocated that address object |
+| `CoreIPPrefixPool` | `(pool)-[:IS_RESERVED]->(:BuiltinIPPrefix)` | The pool allocated that prefix object |
+
+Write every record on the global branch (`-global-`), whichever branch the allocation was made on: an
+allocation consumes the resource for the whole graph, so no other branch can be handed the same one.
+On top of the common edge properties a record carries:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `identifier` | string | UUID of the object the allocation was made for |
+| `provenance` | string? | `"allocated"` when the pool chose the number, `"provided"` when the user supplied it. Number pools only; an absent value reads as `"allocated"` |
+
+A number pool's record stores no value. Every read resolves it forward instead — from the attribute
+to the values its object holds — so a record whose object holds no value in range reports nothing.
+The read carries no branch filter, which is what makes a number taken while *any* branch holds it:
+every live value counts, whichever branch wrote it. That forward resolution is also what frees a
+number, not deleting the record — deleting the object, changing the number, or deleting the branch
+that held it each free it with no cleanup write.
+
+A change that moves an object onto a new vertex — a schema rename of the attribute, or an object
+conversion — never closes the record on the old vertex, on any branch, the default branch included.
+Every branch that has not taken the change, including one created before a change on the default
+branch, still holds its value through the old vertex. The change writes a new global record on the new
+vertex, leaves the old one open, and never writes an `IS_RESERVED` edge on a user branch. Each record
+counts while it resolves to a live value, so the old one stops counting once no branch holds a value
+through it.
+
+An attribute vertex carries at most one open record. When an object conversion finds the new vertex
+already held by another pool's open record, it closes that record before writing its own. Records are
+global, so the attribute moves to the converting pool on every branch at once.
 
 ## Determining Edge Activity
 

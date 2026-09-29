@@ -10,6 +10,7 @@ from infrahub.core.query import Query, QueryInitKwargs, QueryResult, QueryType
 
 if TYPE_CHECKING:
     from infrahub.core.protocols import CoreNumberPool
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -347,13 +348,14 @@ class NumberPoolGetReserved(Query):
         ]
 
 
-class PoolChangeReserved(Query):
-    """Change the identifier on all pools.
+class IPPoolChangeReserved(Query):
+    """Point an IP pool's records at a new identifier.
 
-    This is useful when a node is being converted to a different type and its ID has changed.
+    Used when a node is converted to a different type and its id changes. An IP pool reserves the
+    allocated `:Node` itself, so the record keeps its target and only the identifier moves.
     """
 
-    name = "pool_change_reserved"
+    name = "ip_pool_change_reserved"
     type = QueryType.WRITE
 
     def __init__(
@@ -388,16 +390,141 @@ class PoolChangeReserved(Query):
         }
 
         query = """
-        MATCH (pool:Node)-[r:IS_RESERVED]->(resource)
+        MATCH (pool:%(ipaddress_pool)s|%(prefix_pool)s)-[r:IS_RESERVED]->(resource:Node)
         WHERE
             r.identifier = $existing_identifier
             AND
             %(branch_filter)s
         SET r.to = $at
         CREATE (pool)-[new_rel:IS_RESERVED $rel_prop]->(resource)
-        """ % {"branch_filter": branch_filter}
+        """ % {
+            "branch_filter": branch_filter,
+            "ipaddress_pool": InfrahubKind.IPADDRESSPOOL,
+            "prefix_pool": InfrahubKind.IPPREFIXPOOL,
+        }
         self.add_to_query(query)
         self.return_labels = ["pool.uuid AS pool_id", "r", "new_rel"]
+
+
+class NumberPoolChangeReserved(Query):
+    """Move a number pool's reservations from a converted object onto the object that replaced it.
+
+    The IS_RESERVED edges are moved from the `:Attribute` vertices of the old object to the
+    `:Attribute` vertices of the replacement object. Handles multiple pools for different Attributes.
+    The record on the old attribute is left open, because any branch created before the conversion still
+    holds the replaced object.
+    """
+
+    name = "number_pool_change_reserved"
+    type = QueryType.WRITE
+
+    def __init__(
+        self,
+        existing_node_id: str,
+        new_node_id: str,
+        existing_identifier: str,
+        new_identifier: str,
+        not_closed_before: Timestamp,
+        **kwargs: Unpack[QueryInitKwargs],
+    ) -> None:
+        self.existing_node_id = existing_node_id
+        self.new_node_id = new_node_id
+        self.existing_identifier = existing_identifier
+        self.new_identifier = new_identifier
+        self.not_closed_before = not_closed_before
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["existing_node_id"] = self.existing_node_id
+        self.params["new_node_id"] = self.new_node_id
+        self.params["new_identifier"] = self.new_identifier
+        self.params["existing_identifier"] = self.existing_identifier
+        self.params["not_closed_before"] = self.not_closed_before.to_string()
+        self.params["at"] = self.at.to_string()
+
+        # What a pool tracks is itself branch-aware data: a pool can be repointed at another kind or
+        # attribute, so both subqueries read it as of this branch and time.
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), variable_name="hv")
+        self.params.update(branch_params)
+
+        global_branch = registry.get_global_branch()
+        self.params["rel_prop"] = {
+            "branch": global_branch.name,
+            "branch_level": global_branch.hierarchy_level,
+            "status": RelationshipStatus.ACTIVE.value,
+            "from": self.at.to_string(),
+            "identifier": self.new_identifier,
+        }
+
+        query = """
+        // --------------
+        // Anchored on the replaced object
+        // --------------
+        MATCH (:Node { uuid: $existing_node_id })-[:HAS_ATTRIBUTE]->(old_attr:Attribute)
+        WITH DISTINCT old_attr
+        MATCH (pool:%(number_pool)s)-[old_rel:IS_RESERVED]->(old_attr)
+        // --------------
+        // assumes the IS_RESERVED edge is on the global branch
+        // --------------
+        WHERE old_rel.identifier = $existing_identifier
+          AND old_rel.status = "active"
+          AND (old_rel.to IS NULL OR old_rel.to >= $not_closed_before)
+        // --------------
+        // The old edge stays open: branches that predate the conversion still hold the replaced object
+        // --------------
+        WITH DISTINCT pool, properties(old_rel) AS old_props
+        // --------------
+        // Each pool names the attribute it tracks, so read it rather than assuming one attribute.
+        // --------------
+        CALL (pool) {
+            MATCH (pool)-[:HAS_ATTRIBUTE]->(:Attribute { name: "node_attribute" })-[hv:HAS_VALUE]->(av)
+            WHERE %(branch_filter)s
+            WITH av, hv
+            ORDER BY hv.branch_level DESC, hv.from DESC
+            LIMIT 1
+            RETURN av.value AS tracked_attribute_name, hv.status = "active" AS is_active
+        }
+        WITH pool, old_props, tracked_attribute_name
+        WHERE is_active = TRUE
+        // --------------
+        // And the kind it tracks, so a pool cannot follow the record onto a kind it knows nothing about.
+        // --------------
+        CALL (pool) {
+            MATCH (pool)-[:HAS_ATTRIBUTE]->(:Attribute { name: "node" })-[hv:HAS_VALUE]->(av)
+            WHERE %(branch_filter)s
+            WITH av, hv
+            ORDER BY hv.branch_level DESC, hv.from DESC
+            LIMIT 1
+            RETURN av.value AS tracked_node_kind, hv.status = "active" AS is_active
+        }
+        WITH pool, old_props, tracked_attribute_name, tracked_node_kind
+        WHERE is_active = TRUE
+        MATCH (new_node:Node { uuid: $new_node_id })-[:HAS_ATTRIBUTE]->(new_attr:Attribute)
+        WHERE new_attr.name = tracked_attribute_name
+          AND tracked_node_kind IN labels(new_node)
+        WITH DISTINCT pool, new_attr, old_props
+        WHERE NOT EXISTS {
+            MATCH (pool)-[mine:IS_RESERVED]->(new_attr)
+            WHERE mine.status = "active" AND mine.to IS NULL
+        }
+        // ----------
+        // Only one active IS_RESERVED edge for any attribute exists at a time
+        // ----------
+        OPTIONAL MATCH ()-[live:IS_RESERVED]->(new_attr)
+        WHERE live.status = "active" AND live.to IS NULL
+        SET live.to = $at
+        WITH DISTINCT pool, new_attr, old_props
+        CREATE (pool)-[new_rel:IS_RESERVED]->(new_attr)
+        SET new_rel = old_props
+        SET new_rel += $rel_prop
+        // --------------
+        // unset the properties for closed edges
+        // --------------
+        REMOVE new_rel.to, new_rel.to_user_id
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL, "branch_filter": branch_filter}
+        self.add_to_query(query)
+        self.return_labels = ["pool.uuid AS pool_id", "new_attr.uuid AS attribute_id", "new_rel"]
 
 
 def reserved_values_query() -> str:
@@ -683,7 +810,7 @@ class NumberPoolSetReserved(Query):
               AND coalesce(mine.provenance, $allocated_provenance) = $provenance
         }
         // ----------
-        // Close any active reservations
+        // Only one active IS_RESERVED edge for any attribute exists at a time
         // ----------
         OPTIONAL MATCH ()-[live:IS_RESERVED]->(attr)
         WHERE live.status = "active" AND live.to IS NULL

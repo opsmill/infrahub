@@ -123,12 +123,34 @@ class AttributeRenameQuery(Query):
         CALL (peer_node, r, new_attr) {
             WITH peer_node, r, new_attr
             WHERE startNode(r) = peer_node
-            CREATE (new_attr)<-[:$(type(r)) $rel_props_create ]-(peer_node)
+            CREATE (new_attr)<-[new_edge:$(type(r)) $rel_props_create ]-(peer_node)
+            // IS_RESERVED edges keep every property of the record, including its -global- branch
+            WITH new_edge, r
+            WHERE type(r) = "IS_RESERVED"
+            // start with the properties of the original edge to be sure none are lost
+            SET new_edge = properties(r)
+            // set the new properties for the fresh edge
+            SET new_edge += $rel_props_create
+            // make sure the branch and branch level stay the same as the original
+            SET new_edge.branch = r.branch, new_edge.branch_level = r.branch_level
+            // make sure that the new edge is open
+            REMOVE new_edge.to, new_edge.to_user_id
         }
         CALL (peer_node, r, new_attr) {
             WITH peer_node, r, new_attr
             WHERE endNode(r) = peer_node
-            CREATE (new_attr)-[:$(type(r)) $rel_props_create ]->(peer_node)
+            CREATE (new_attr)-[new_edge:$(type(r)) $rel_props_create ]->(peer_node)
+            // IS_RESERVED edges keep every property of the record, including its -global- branch
+            WITH new_edge, r
+            WHERE type(r) = "IS_RESERVED"
+            // start with the properties of the original edge to be sure none are lost
+            SET new_edge = properties(r)
+            // set the new properties for the fresh edge
+            SET new_edge += $rel_props_create
+            // make sure the branch and branch level stay the same as the original
+            SET new_edge.branch = r.branch, new_edge.branch_level = r.branch_level
+            // make sure that the new edge is open
+            REMOVE new_edge.to, new_edge.to_user_id
         }
         """ % {"branch_filter": branch_filter, "add_uuid": add_uuid}
         self.add_to_query(query)
@@ -137,16 +159,21 @@ class AttributeRenameQuery(Query):
             query = """
             // --------------
             // An edge owned by another branch cannot be modified from here, so the old attribute is
-            // ended by shadowing it with a deleted edge; the ones this branch owns are closed below
+            // ended by shadowing it with a deleted edge; the ones this branch owns are closed below.
+            // IS_RESERVED edges remain global.
             // --------------
             CALL (peer_node, r, active_attr) {
                 WITH peer_node, r, active_attr
-                WHERE r.branch <> $branch_name AND startNode(r) = peer_node
+                WHERE r.branch <> $branch_name
+                  AND NOT type(r) = "IS_RESERVED"
+                  AND startNode(r) = peer_node
                 CREATE (active_attr)<-[:$(type(r)) $rel_props_delete ]-(peer_node)
             }
             CALL (peer_node, r, active_attr) {
                 WITH peer_node, r, active_attr
-                WHERE r.branch <> $branch_name AND endNode(r) = peer_node
+                WHERE r.branch <> $branch_name
+                  AND NOT type(r) = "IS_RESERVED"
+                  AND endNode(r) = peer_node
                 CREATE (active_attr)-[:$(type(r)) $rel_props_delete ]->(peer_node)
             }
             CALL (r) {

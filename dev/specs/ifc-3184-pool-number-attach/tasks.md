@@ -48,7 +48,7 @@ where nothing else has moved the numbers.
       `backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py`. Keep all
       four cases; strip the issue references per `dev/guidelines/backend/testing.md` (*"do not
       describe which bug a test prevents"* — name the behaviour instead). **Must fail** before T018.
-- [ ] T004 [US1] Rewrite
+- [X] T004 [US1] Rewrite
       `backend/tests/functional/convert_object_type/test_convert_object_type.py::TestConvertObjectTypeResourcePool::test_convert_number_pool`
       to assert the value the pool **reports** (through a query with a liveness join), not that an
       edge exists. Note it exercises a schema-defined `NumberPool` attribute, which FR-030 excludes
@@ -67,7 +67,7 @@ where nothing else has moved the numbers.
       exercises the case re-allocation cannot mask — a user-`from_pool` number carried across by
       field mapping — and was verified to fail without the fix
       (`AssertionError: the pool must still account for the number… assert [] == [1]`).
-- [ ] T005 [P] [US1] Component test: renaming a pool-tracked attribute leaves the record `-global-`
+- [X] T005 [P] [US1] Component test: renaming a pool-tracked attribute leaves the record `-global-`
       and the pool still reporting the number. **Must fail** before T015.
 
 ### 1c. Re-anchor the edge
@@ -130,16 +130,30 @@ where nothing else has moved the numbers.
 
 ### 1d. The two confirmed defects and the rename bug
 
-- [ ] T015 [US1] Port the `-global-` `CASE` from
+- [X] T015 [US1] Port the `-global-` `CASE` from
       `core/migrations/query/node_duplicate.py::NodeDuplicateQuery._render_sub_query_per_rel_type`
       into `core/migrations/query/attribute_rename.py::AttributeRenameQuery` — both the
       `SET …branch = CASE WHEN …` on the new edge and the `WHERE rel.branch IN ["-global-", $branch]`
       close. Makes T005 pass.
-- [ ] T016 [US1] Re-target `::PoolChangeReserved` to the **new node's `Attribute`**, matched by the
+
+      **Amended 2026-09-28 — a move never closes a record.** Only the reservation record is handled:
+      it is copied onto the new attribute as `-global-`, and the record on the old attribute is
+      neither closed nor shadowed, on any branch, so a rename on a user branch writes no
+      `IS_RESERVED` edge on that branch. Every other edge keeps the rename's pre-existing handling,
+      including the demotion of a branch-agnostic attribute's own `-global-` edges onto the renaming
+      branch, which is out of scope here. Covered by two default-branch and two branch-rename tests,
+      one per branch support. Retiring the orphan left behind is separate work.
+
+- [X] T016 [US1] Re-target `::PoolChangeReserved` to the **new node's `Attribute`**, matched by the
       pool's `node_attribute`. **It is shared by all three pool shapes** (`(pool:Node)` with both ends
       unlabelled), so branch on shape or split it — the IP shapes keep re-pointing at the same
       `:Node` and only relabel the identifier. Makes T004 pass.
-- [ ] T017 [P] [US1] Component test: attribute **removal** closes the record via
+
+      **Amended 2026-09-28 — a move never closes a record.** The number-pool move writes the new
+      `-global-` record and leaves the old one open, on every branch. Covered by a branch-conversion
+      test. Retiring the orphan left behind is separate work.
+
+- [X] T017 [P] [US1] Component test: attribute **removal** closes the record via
       `AttributeRemoveQuery`'s existing `close_unretained_agnostic_fields` call. No code change
       expected — confirm the inheritance.
 
@@ -149,28 +163,47 @@ where nothing else has moved the numbers.
       carries that edge on its own branch, so the sweep never reaches it and the record survives.
       Keep this task scoped to the agnostic case it already covers; the aware case is T017a.
 
-- [ ] T017a [US1] **Retire the reservation record when the object is deleted, whatever the
-      attribute's branch support.** Deleting an object today leaves its `-global-` `IS_RESERVED`
-      edge active and open when the tracked attribute is branch-aware: measured on a `TestingTicket`
-      whose `ticket_id` inherits `AWARE`, where `HAS_ATTRIBUTE` and `HAS_VALUE` are both closed by
-      the delete and the reservation edge is untouched. One orphan accumulates per deleted object,
-      for the lifetime of the pool.
+- [ ] T017a [US1] **Retire reservation records that no branch can reach, whatever the attribute's
+      branch support.** A record is written on `-global-` and nothing closes it once its attribute is
+      unreachable, so an orphan accumulates for the lifetime of the pool. Three changes leave one
+      behind:
 
-      The number is still released, because the reads resolve forward and the delete closes
-      `HAS_VALUE` — so this is not a reporting defect today. It matters because the record's
-      remaining job is attribution: an orphan says a pool accounts for a number on an object that no
-      longer exists, and nothing sweeps it. Test coverage currently hides this —
-      `component/core/agnostic_retirement/test_on_node_delete.py::…::test_a_value_freed_by_retirement_is_allocatable_again_from_its_pool`
-      uses an agnostic schema, so it passes while the aware case leaks.
+      - **Object delete, branch-aware attribute.** Measured on a `TestingTicket` whose `ticket_id`
+        inherits `AWARE`: the delete closes `HAS_ATTRIBUTE` and `HAS_VALUE` and leaves the reservation
+        edge active and open. `core/query/node_agnostic_retirement.py` gates its sweep on
+        `anchor.branch = $global_branch_name`, where `anchor` is the `HAS_ATTRIBUTE` edge, so it never
+        reaches a branch-aware attribute.
+        `component/core/agnostic_retirement/test_on_node_delete.py::…::test_a_value_freed_by_retirement_is_allocatable_again_from_its_pool`
+        uses an agnostic schema, so it passes while the aware case leaks.
+      - **Attribute rename.** The rename copies the record onto the new attribute vertex and leaves
+        the one on the old vertex open, on every branch, because a branch that has not taken the
+        rename — including one created before a rename on the default branch — still holds its value
+        through the old vertex. Once no such branch remains, the old record is an orphan.
+      - **Object conversion.** Same shape: the move writes a record on the replacement and leaves the
+        one on the replaced object open for branches that still hold that object.
 
-      Decide first whether the sweep can be reached at all: the `anchor.branch` condition identifies
-      agnostic *fields*, while the reservation edge is `-global-` regardless of the attribute's
-      branch support, so this likely needs its own arm rather than a relaxed condition. If it is a
-      code change rather than inherited behaviour, records already leaked need a migration behaviour
-      to clear them — `m079`'s orphan sweep only covers the legacy shape.
+      None of these is a reporting defect: reads resolve each record forward to the values its
+      attribute holds, so an orphan counts nothing and no number is handed out twice. It matters for
+      two reasons. The record's remaining job is attribution, and an orphan says a pool accounts for
+      a number on an object no branch can see. And every read walks all of a pool's records, so read
+      cost grows with the orphans.
 
-      Cover both branch supports in the test, so the agnostic case cannot stand in for the aware one
-      again.
+      The hard part is the reachability test, not the close. A record is retirable only when no
+      branch can reach its attribute vertex: not the default branch, not any non-deleting branch,
+      and not a branch created before the change, which still sees the vertex as of its branch point.
+      Closing a record any earlier frees a number a branch still holds. The retention predicate the
+      agnostic sweep uses for fields answers the same question and is the model to follow, but the
+      reservation edge is `-global-` regardless of the attribute's branch support, so this likely
+      needs its own arm rather than a relaxed `anchor.branch` condition. Decide where the sweep runs:
+      a hook on each of the three changes, or one sweep over all records, run where a vertex can
+      become unreachable (object delete, branch delete, merge).
+
+      Records already leaked need a migration behaviour to clear them — `m079`'s orphan sweep only
+      covers the legacy shape.
+
+      Test every source above, with both branch supports and with a branch created before the change,
+      so neither the agnostic case nor a default-branch-only run can stand in for the rest.
+
 - [X] T018 [US1] Implement cross-branch liveness as a **union** (FR-036a) in the queries from T007,
       reusing the *shape* of `UNRETAINED_AGNOSTIC_FIELD_PREDICATE`: per-branch window
       `(branch @ $at) ∪ (origin @ min(branched_from,$at)) ∪ (-global- @ $at)`, per-branch resolution
@@ -286,7 +319,7 @@ where nothing else has moved the numbers.
 
 ### 1h. Docs
 
-- [ ] T038 [P] [US1] Document `IS_RESERVED` in `dev/knowledge/backend/database-schema.md` — its three
+- [X] T038 [P] [US1] Document `IS_RESERVED` in `dev/knowledge/backend/database-schema.md` — its three
       target shapes, its `-global-` scope, its properties including `provenance`, and the forward
       liveness resolution. The edge-type table omits it entirely today. Follow
       `dev/guidelines/documentation.md` (*Writing Style → For Internal Docs* and the *Don't* list).
