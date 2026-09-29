@@ -186,6 +186,19 @@ class SchemaBranch:
     def all_names(self) -> list[str]:
         return self.node_names + self.generic_names + self.profile_names + self.template_names
 
+    def get_object_kinds_different_from(self, other: SchemaBranch) -> list[str]:
+        """Return the node, profile and template kinds whose schema is missing from or different in ``other``."""
+        return sorted(
+            kind
+            for own_hashes, other_hashes in (
+                (self.nodes, other.nodes),
+                (self.profiles, other.profiles),
+                (self.templates, other.templates),
+            )
+            for kind, schema_hash in own_hashes.items()
+            if other_hashes.get(kind) != schema_hash
+        )
+
     def get_hash(self) -> str:
         """Calculate the hash for this objects based on the content of nodes and generics.
 
