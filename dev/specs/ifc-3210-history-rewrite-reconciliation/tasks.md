@@ -407,10 +407,16 @@ read-write repository's configured default branch. Neither writes a record.
       Use the `creating-changelog-entries` skill. The filename follows the repository convention: a
       descriptive slug, not the ticket number, because IFC-3210 is a Jira epic and not a GitHub
       issue.
-- [ ] T067 Run `/pre-ci`. It covers the whole-repository `ruff check . --exclude python_sdk` and
+- [ ] T067 Add the end-to-end scenario under `tests/e2e/`: a developer rebases a branch Infrahub
+      tracks and force-pushes it. The branch keeps synchronising, its imported objects match the
+      rewritten history, and the repository reports healthy throughout. The constitution requires
+      an E2E test for a user-facing feature, and the PRD names this scenario. Run it with `--pdb`
+      while developing it; a failure then freezes the session with the stack and every fixture
+      alive.
+- [ ] T068 Run `/pre-ci`. It covers the whole-repository `ruff check . --exclude python_sdk` and
       `ruff format --check` that `invoke lint` misses, plus `docs.validate` for the generated
       documentation. CI fails on any of them.
-- [ ] T068 Print `/review-pr <n>` and wait for the verdict before the PR leaves draft. A session
+- [ ] T069 Print `/review-pr <n>` and wait for the verdict before the PR leaves draft. A session
       that wrote the code cannot review it.
 
 ---
@@ -508,5 +514,5 @@ both come out clean.
 | 7 US4 trunk signal | 7 |
 | 8 US5 read-only | 4 |
 | 9 US6 re-target | 7 |
-| 10 Documentation | 9 |
-| **Total** | **68** |
+| 10 Documentation and polish | 10 |
+| **Total** | **69** |
