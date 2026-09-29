@@ -1,12 +1,14 @@
 import re
+from unittest.mock import MagicMock
 
 import pytest
 
-from infrahub.core.attribute import IPAddress, IPAddressOptional
+from infrahub.core.attribute import IPAddress, IPAddressOptional, IPHost
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.timestamp import Timestamp
+from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 
 
@@ -127,3 +129,37 @@ def test_validate_ipaddress_returns_without_value(branch: Branch) -> None:
 )
 def test_ipaddress_normalizes_value(input_value: str, normalized_value: str) -> None:
     assert IPAddress._normalize_value(input_value) == normalized_value
+
+
+def build_iphost_attribute(branch: Branch, data: str) -> IPHost:
+    schema = AttributeSchema(name="address", kind="IPHost")
+    at = Timestamp()
+    node_schema = NodeSchema(name="Host", namespace="Test", attributes=[schema])
+    node = Node(schema=node_schema, branch=branch, at=at)
+    return IPHost(name=schema.name, schema=schema, branch=branch, at=at, node=node, data=data)
+
+
+async def test_from_graphql_stores_canonical_iphost_value(branch: Branch) -> None:
+    attr = build_iphost_attribute(branch=branch, data="192.0.2.10/32")
+
+    changed = await attr.from_graphql(data={"value": "192.0.2.20"}, db=MagicMock(spec=InfrahubDatabase))
+
+    assert changed is True
+    assert attr.value == "192.0.2.20/32"
+
+
+async def test_from_graphql_reports_no_change_for_equivalent_iphost_value(branch: Branch) -> None:
+    attr = build_iphost_attribute(branch=branch, data="192.0.2.10/32")
+
+    changed = await attr.from_graphql(data={"value": "192.0.2.10"}, db=MagicMock(spec=InfrahubDatabase))
+
+    assert changed is False
+    assert attr.value == "192.0.2.10/32"
+
+
+async def test_from_graphql_rejects_invalid_iphost_value(branch: Branch) -> None:
+    attr = build_iphost_attribute(branch=branch, data="192.0.2.10/32")
+
+    with pytest.raises(ValidationError, match=r"^not-an-ip is not a valid IPHost at address$"):
+        await attr.from_graphql(data={"value": "not-an-ip"}, db=MagicMock(spec=InfrahubDatabase))
+    assert attr.value == "192.0.2.10/32"

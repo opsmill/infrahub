@@ -88,6 +88,19 @@ def test_without_ca_bundle_boto3_keeps_its_default_trust_store(captured_resource
     assert captured_resource_kwargs["verify"] is None
 
 
+def test_insecure_disables_certificate_validation_despite_a_ca_bundle(
+    captured_resource_kwargs: dict[str, Any],
+) -> None:
+    _build_storage(
+        AWS_ACCESS_KEY_ID="some_id",
+        AWS_SECRET_ACCESS_KEY="secret_key",
+        AWS_CA_BUNDLE="/etc/infrahub/ca.pem",
+        AWS_S3_TLS_INSECURE=True,
+    )
+
+    assert captured_resource_kwargs["verify"] is False
+
+
 def test_endpoint_with_protocol_is_rejected(captured_resource_kwargs: dict[str, Any]) -> None:
     with pytest.raises(ValueError, match="should not contain the protocol"):
         InfrahubS3ObjectStorage(
@@ -116,4 +129,25 @@ def test_storage_settings_ca_file_reaches_the_driver(captured_resource_kwargs: d
     InfrahubObjectStorage(settings=settings)
 
     assert captured_resource_kwargs["verify"] == CA_BUNDLE
+    assert captured_resource_kwargs["endpoint_url"] == "https://s3.internal.example.com"
+
+
+def test_storage_settings_insecure_reaches_the_driver(captured_resource_kwargs: dict[str, Any]) -> None:
+    settings = StorageSettings(
+        driver=StorageDriver.InfrahubS3ObjectStorage,
+        s3=S3StorageSettings.model_validate(
+            {
+                "AWS_S3_BUCKET_NAME": "mocked",
+                "AWS_S3_ENDPOINT_URL": "s3.internal.example.com",
+                "AWS_ACCESS_KEY_ID": "some_id",
+                "AWS_SECRET_ACCESS_KEY": "secret_key",
+                "INFRAHUB_STORAGE_TLS_CA_FILE": CA_BUNDLE,
+                "INFRAHUB_STORAGE_TLS_INSECURE": True,
+            }
+        ),
+    )
+
+    InfrahubObjectStorage(settings=settings)
+
+    assert captured_resource_kwargs["verify"] is False
     assert captured_resource_kwargs["endpoint_url"] == "https://s3.internal.example.com"
