@@ -13,6 +13,7 @@ from infrahub_sdk.utils import generate_uuid
 from pydantic import (
     AliasChoices,
     BaseModel,
+    BeforeValidator,
     EmailStr,
     Field,
     PrivateAttr,
@@ -70,6 +71,16 @@ def _resolve_ca_bundle_setting(setting_name: str, value: str) -> str:
         return resolve_ca_bundle(value)
     except ValueError as exc:
         raise ValueError(f"{setting_name}: {exc}") from exc
+
+
+def _blank_ca_bundle_setting_as_unset(value: Any) -> Any:
+    """Read an empty or whitespace-only CA setting as unset, since a blanked environment variable is one."""
+    if isinstance(value, str) and not value.strip():
+        return None
+    return value
+
+
+CaBundleSetting = Annotated[str | None, BeforeValidator(_blank_ca_bundle_setting_as_unset)]
 
 
 class EnterpriseFeatures(StrEnum):
@@ -312,7 +323,7 @@ class S3StorageSettings(BaseSettings):
         alias="AWS_S3_CUSTOM_DOMAIN",
         validation_alias=AliasChoices("INFRAHUB_STORAGE_CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN"),
     )
-    tls_ca_file: str | None = Field(
+    tls_ca_file: CaBundleSetting = Field(
         default=None,
         alias="AWS_CA_BUNDLE",
         validation_alias=AliasChoices("INFRAHUB_STORAGE_TLS_CA_FILE", "AWS_CA_BUNDLE"),
@@ -382,7 +393,7 @@ class DatabaseSettings(BaseSettings):
     policy: str | None = Field(default=None, description="Routing policy for database connections")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
-    tls_ca_file: str | None = Field(
+    tls_ca_file: CaBundleSetting = Field(
         default=None,
         description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
     )
@@ -539,7 +550,7 @@ class BrokerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
-    tls_ca_file: str | None = Field(
+    tls_ca_file: CaBundleSetting = Field(
         default=None,
         description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
     )
@@ -598,7 +609,7 @@ class CacheSettings(BaseSettings):
     password: str = ""
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
-    tls_ca_file: str | None = Field(
+    tls_ca_file: CaBundleSetting = Field(
         default=None,
         description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
     )
@@ -867,7 +878,7 @@ class GitSettings(BaseSettings):
             "Test and development environments only; never enable in production."
         ),
     )
-    tls_ca_file: str | None = Field(
+    tls_ca_file: CaBundleSetting = Field(
         default=None,
         description=(
             "File path to a CA cert or bundle in PEM format, or the PEM text itself, used to verify the certificate "
@@ -898,7 +909,7 @@ class TLSSettings(BaseSettings):
     """Global TLS defaults shared by every component that opens outbound TLS connections."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_TLS_")
-    ca_bundle: str | None = Field(
+    ca_bundle: CaBundleSetting = Field(
         default=None,
         description=(
             "File path to a CA cert or bundle in PEM format, or the PEM text itself, trusted by every component "
@@ -933,7 +944,7 @@ class HTTPSettings(BaseSettings):
             "precedence over `tls_ca_bundle`, which may stay configured."
         ),
     )
-    tls_ca_bundle: str | None = Field(
+    tls_ca_bundle: CaBundleSetting = Field(
         default=None,
         description="Custom CA bundle in PEM format. The value should either be the CA bundle as a string, alternatively as a file path.",
     )
@@ -1377,7 +1388,7 @@ class TraceSettings(BaseSettings):
             "http/protobuf the endpoint URL scheme decides. Implied off when `tls_ca_bundle` is set."
         ),
     )
-    tls_ca_bundle: str | None = Field(
+    tls_ca_bundle: CaBundleSetting = Field(
         default=None,
         description=(
             "Path to a PEM-encoded certificate authority bundle, or the PEM text itself, used to verify the OTLP "
@@ -1484,7 +1495,7 @@ class LogForwardingDestination(BaseModel):
         default=TcpFraming.NEWLINE, description="TCP framing method (newline or octet-counting)."
     )
     tls_enabled: bool = Field(default=False, description="Enable TLS encryption for TCP connections.")
-    tls_ca_bundle: str | None = Field(
+    tls_ca_bundle: CaBundleSetting = Field(
         default=None,
         description="File path to a CA bundle in PEM format, or the PEM text itself, to validate the syslog server certificate.",
     )
@@ -1837,7 +1848,7 @@ class LDAPSettings(BaseSettings):
         default=False,
         description="Upgrade a plain `ldap://` connection to TLS using STARTTLS instead of connecting via `ldaps://`.",
     )
-    tls_ca_bundle: str | None = Field(
+    tls_ca_bundle: CaBundleSetting = Field(
         default=None,
         description=(
             "PEM-encoded certificate authority bundle used to verify the LDAP "
