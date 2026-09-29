@@ -1,3 +1,5 @@
+import re
+from dataclasses import dataclass
 from uuid import uuid4
 
 import pytest
@@ -11,6 +13,9 @@ from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
+from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.model.path import ConflictSelection
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -18,10 +23,11 @@ from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, Sch
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import MigrationError, ValidationError
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_database
+from infrahub.workers.dependencies import build_cache, build_database
 from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION
+from tests.adapters.cache import MemoryCache
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema import load_schema
@@ -114,33 +120,161 @@ async def test_merge_relationship_many(
     assert len(await org1_branch.tags.get(db=db)) == 3
 
 
-async def test_branch_rebase_diff_conflict(
+async def _change_car_on_both_branches(
+    db: InfrahubDatabase, branch: Branch, car_id: str, field_name: str, main_owner: Node, branch_owner: Node
+) -> None:
+    car_main = await NodeManager.get_one(db=db, id=car_id)
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_id)
+    if field_name == "name":
+        car_main.name.value = "camry-main"
+        car_branch.name.value = "camry-branch"
+    else:
+        await car_main.owner.update(db=db, data=main_owner)
+        await car_branch.owner.update(db=db, data=branch_owner)
+    await car_main.save(db=db)
+    await car_branch.save(db=db)
+
+
+async def _select_every_conflict(
+    db: InfrahubDatabase, default_branch: Branch, branch: Branch, selection: ConflictSelection | None
+) -> list[str]:
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+    branch_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    conflicts = [
+        (conflict_path, conflict)
+        async for conflict_path, conflict in diff_repository.get_all_conflicts_for_diff(
+            diff_branch_name=branch.name, diff_id=branch_diff.uuid
+        )
+    ]
+    if selection:
+        for _, conflict in conflicts:
+            await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=selection)
+    return sorted(conflict_path for conflict_path, _ in conflicts)
+
+
+async def _rebase(db: InfrahubDatabase, default_branch: Branch, branch: Branch, dependency_provider: Provider) -> None:
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+    with (
+        override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
+        override_dependency(build_cache, lambda: MemoryCache(), dependency_provider=dependency_provider),  # noqa: PLW0108
+    ):
+        await rebase_branch(branch=branch.name, context=context)
+
+
+@dataclass
+class UnrebasableConflictCase:
+    name: str
+    field_name: str
+    selection: ConflictSelection | None
+    conflict_path_suffixes: list[str]
+
+
+NAME_CONFLICT_PATH_SUFFIXES = ["display_label/value", "human_friendly_id/value", "name/value"]
+UNREBASABLE_CONFLICT_CASES = [
+    UnrebasableConflictCase(
+        name="unresolved_attribute",
+        field_name="name",
+        selection=None,
+        conflict_path_suffixes=NAME_CONFLICT_PATH_SUFFIXES,
+    ),
+    UnrebasableConflictCase(
+        name="attribute_resolved_for_the_default_branch",
+        field_name="name",
+        selection=ConflictSelection.BASE_BRANCH,
+        conflict_path_suffixes=NAME_CONFLICT_PATH_SUFFIXES,
+    ),
+    # the rebased branch would see the default branch's peer next to its own
+    UnrebasableConflictCase(
+        name="cardinality_one_peer_resolved_for_the_branch",
+        field_name="owner",
+        selection=ConflictSelection.DIFF_BRANCH,
+        conflict_path_suffixes=["owner/peer"],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", UNREBASABLE_CONFLICT_CASES, ids=lambda case: case.name)
+async def test_branch_rebase_rejects_a_conflict_it_cannot_apply(
+    case: UnrebasableConflictCase,
     db: InfrahubDatabase,
     default_branch: Branch,
-    workflow_local: WorkflowLocalExecution,
     dependency_provider: Provider,
+    workflow_recorder: WorkflowRecorder,
     register_simplified_proposed_change_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
     car_camry_main: Node,
+    person_john_main: Node,
+    person_albert_main: Node,
 ) -> None:
-    # NOTE: Ideally, this should be somewhere else for all tests to benefit from it
-    with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
-        branch2 = await create_branch(db=db, branch_name="branch2")
-        car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
-        car_main.name.value += "-main"
-        await car_main.save(db=db)
-        car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id)
-        car_branch.name.value += "-branch"
-        await car_branch.save(db=db)
+    branch2 = await create_branch(db=db, branch_name="branch2")
+    await _change_car_on_both_branches(
+        db=db,
+        branch=branch2,
+        car_id=car_camry_main.id,
+        field_name=case.field_name,
+        main_owner=person_albert_main,
+        branch_owner=person_john_main,
+    )
+    conflict_paths = await _select_every_conflict(
+        db=db, default_branch=default_branch, branch=branch2, selection=case.selection
+    )
+    assert conflict_paths == [f"data/{car_camry_main.id}/{suffix}" for suffix in case.conflict_path_suffixes]
 
-        with pytest.raises(ValidationError, match="contains conflicts with the default branch that must be addressed"):
-            await rebase_branch(
-                branch=branch2.name,
-                context=InfrahubContext.init(
-                    branch=default_branch,
-                    account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
-                ),
-            )
+    expected_message = (
+        "Branch branch2 contains conflicts with the default branch that must be addressed:"
+        f" {', '.join(conflict_paths)}. A rebase keeps the branch's side of a conflict, so it accepts a conflict"
+        " on an attribute or relationship property once it is resolved in favor of the branch. Please update the"
+        " data to address any other conflict before rebasing."
+    )
+    with pytest.raises(ValidationError, match=f"^{re.escape(expected_message)}$"):
+        await _rebase(db=db, default_branch=default_branch, branch=branch2, dependency_provider=dependency_provider)
+
+    rejected_branch = await Branch.get_by_name(db=db, name=branch2.name)
+    assert rejected_branch.branched_from == branch2.branched_from
+
+
+async def test_branch_rebase_applies_a_conflict_resolved_for_the_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dependency_provider: Provider,
+    workflow_recorder: WorkflowRecorder,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+    car_camry_main: Node,
+    person_john_main: Node,
+    person_albert_main: Node,
+) -> None:
+    branch2 = await create_branch(db=db, branch_name="branch2")
+    await _change_car_on_both_branches(
+        db=db,
+        branch=branch2,
+        car_id=car_camry_main.id,
+        field_name="name",
+        main_owner=person_albert_main,
+        branch_owner=person_john_main,
+    )
+    conflict_paths = await _select_every_conflict(
+        db=db, default_branch=default_branch, branch=branch2, selection=ConflictSelection.DIFF_BRANCH
+    )
+    assert conflict_paths == [f"data/{car_camry_main.id}/{suffix}" for suffix in NAME_CONFLICT_PATH_SUFFIXES]
+    # a branch an upgrade could not rebase keeps this status, which only a rebase clears
+    branch2.status = BranchStatus.NEED_UPGRADE_REBASE
+    await branch2.save(db=db)
+
+    await _rebase(db=db, default_branch=default_branch, branch=branch2, dependency_provider=dependency_provider)
+
+    rebased_branch = await Branch.get_by_name(db=db, name=branch2.name)
+    assert rebased_branch.status is BranchStatus.OPEN
+    assert rebased_branch.branched_from != branch2.branched_from
+    car_branch = await NodeManager.get_one(db=db, branch=branch2.name, id=car_camry_main.id)
+    assert car_branch.name.value == "camry-branch"
+    car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
+    assert car_main.name.value == "camry-main"
 
 
 async def test_rebase_preserves_metadata(

@@ -20,6 +20,7 @@ from infrahub.log import get_logger
 
 from ..model.field_specifiers_map import NodeFieldSpecifierMap
 from ..model.path import (
+    ConflictLevel,
     ConflictSelection,
     EnrichedDiffConflict,
     EnrichedDiffNode,
@@ -608,12 +609,27 @@ class DiffRepository:
         tracking_id: TrackingId | None = None,
         diff_id: str | None = None,
     ) -> AsyncGenerator[tuple[str, EnrichedDiffConflict], None]:
+        async for conflict_path, _, conflict in self.get_all_conflicts_with_level_for_diff(
+            diff_branch_name=diff_branch_name, tracking_id=tracking_id, diff_id=diff_id
+        ):
+            yield (conflict_path, conflict)
+
+    async def get_all_conflicts_with_level_for_diff(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
+    ) -> AsyncGenerator[tuple[str, ConflictLevel, EnrichedDiffConflict], None]:
         query = await EnrichedDiffAllConflictsQuery.init(
             db=self.db, diff_branch_name=diff_branch_name, tracking_id=tracking_id, diff_id=diff_id
         )
         await query.execute(db=self.db)
-        for conflict_path, conflict_node in query.get_conflict_paths_and_nodes():
-            yield (conflict_path, self.deserializer.deserialize_conflict(diff_conflict_node=conflict_node))
+        for conflict_path, conflict_level, conflict_node in query.get_conflict_paths_levels_and_nodes():
+            yield (
+                conflict_path,
+                conflict_level,
+                self.deserializer.deserialize_conflict(diff_conflict_node=conflict_node),
+            )
 
     async def get_conflicted_node_uuids(
         self,
