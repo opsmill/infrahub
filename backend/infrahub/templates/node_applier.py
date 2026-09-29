@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import (
@@ -42,6 +43,28 @@ def get_relationship_names_to_read(schema: MainSchemaTypes) -> set[str]:
     return {rel.name for rel in schema.relationships if rel.kind in TEMPLATE_APPLICATION_RELATIONSHIP_KINDS}
 
 
+@dataclass(frozen=True)
+class TemplatePoolFields:
+    """The fields an object template hands over to a resource pool."""
+
+    pending: set[str] = field(default_factory=set)
+    """Names of the fields whose allocation was deferred."""
+
+    allocated: dict[str, str] = field(default_factory=dict)
+    """Attribute name mapped to the id of the pool its value was drawn from."""
+
+
+@dataclass(frozen=True)
+class AppliedTemplate:
+    """Everything applying an object template produced."""
+
+    fields: dict[str, Any]
+    """The template's fields merged over the caller's, the caller's winning."""
+
+    pools: TemplatePoolFields
+    """What the template asked of resource pools while producing those fields."""
+
+
 class NodeTemplateApplier:
     """Applies a template to produce field data for a new node."""
 
@@ -49,7 +72,8 @@ class NodeTemplateApplier:
         self.db = db
         self.branch = branch
         self.pool_allocator = pool_allocator
-        self.pool_pending_fields: set[str] = set()
+        self._pool_pending_fields: set[str] = set()
+        self._allocated_attribute_pools: dict[str, str] = {}
 
     async def apply(
         self,
@@ -57,14 +81,23 @@ class NodeTemplateApplier:
         target_schema: MainSchemaTypes,
         target_id: str,
         user_fields: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Apply template and return merged fields. User fields take precedence."""
+    ) -> AppliedTemplate:
+        """Apply the template and return what it produced. The caller's fields take precedence.
+
+        What the pools were asked for is reset here, so applying a template reports its own
+        allocations rather than those of anything applied before it.
+        """
+        self._pool_pending_fields = set()
+        self._allocated_attribute_pools = {}
         fields = dict(user_fields)
         await self._apply_attributes(template=template, fields=fields)
         await self._apply_relationships(
             template=template, target_schema=target_schema, target_id=target_id, fields=fields
         )
-        return fields
+        return AppliedTemplate(
+            fields=fields,
+            pools=TemplatePoolFields(pending=self._pool_pending_fields, allocated=self._allocated_attribute_pools),
+        )
 
     async def _apply_attributes(self, template: CoreObjectTemplate, fields: dict[str, Any]) -> None:
         for attr_name in template.get_schema().attribute_names:
@@ -163,9 +196,12 @@ class NodeTemplateApplier:
             )
             if allocated_value is not None:
                 pool_node = await pool_relationship.get_peer(db=self.db, raise_on_error=True)
-                fields[original_name] = {"value": allocated_value, "source": pool_node.id}
+                # The pool is not stored as the attribute's source: it is derived from the
+                # reservation record.
+                fields[original_name] = {"value": allocated_value}
+                self._allocated_attribute_pools[original_name] = pool_node.id
             elif await pool_relationship.get_peer(db=self.db):
-                self.pool_pending_fields.add(original_name)
+                self._pool_pending_fields.add(original_name)
             return
         # IP pool: allocate a node for the relationship
         allocated = await self.pool_allocator.allocate_for_relationship(
@@ -175,4 +211,4 @@ class NodeTemplateApplier:
             pool_node = await pool_relationship.get_peer(db=self.db, raise_on_error=True)
             fields[original_name] = {"peer": allocated, "_relation__source": pool_node.id}
         elif await pool_relationship.get_peer(db=self.db):
-            self.pool_pending_fields.add(original_name)
+            self._pool_pending_fields.add(original_name)

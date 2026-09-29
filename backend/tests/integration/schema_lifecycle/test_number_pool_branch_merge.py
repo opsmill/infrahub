@@ -565,7 +565,9 @@ class TestInheritedNumberPoolReusesExistingPool(TestInfrahubApp):
         assert 1000 <= incident.ticket_number.value <= 9999, (
             f"ticket_number value {incident.ticket_number.value} is outside pool range 1000-9999"
         )
-        assert incident.ticket_number.source_id == run_synchronizer_for_generic
+        ticket_number_source = await incident.get_attribute("ticket_number").get_source(db=db)
+        assert ticket_number_source is not None
+        assert ticket_number_source.id == run_synchronizer_for_generic
 
 
 class TestAddNumberPoolToExistingGenericWithInheritingNode(TestInfrahubApp):
@@ -755,4 +757,6 @@ class TestAddNumberPoolToExistingGenericWithInheritingNode(TestInfrahubApp):
         assert 100000 <= device.asset_tag.value <= 999999, (
             f"asset_tag value {device.asset_tag.value} is outside pool range 100000-999999"
         )
-        assert device.asset_tag.source_id == expected_pool_id
+        asset_tag_source = await device.get_attribute("asset_tag").get_source(db=db)
+        assert asset_tag_source is not None
+        assert asset_tag_source.id == expected_pool_id
