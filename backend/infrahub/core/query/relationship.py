@@ -7,11 +7,7 @@ from typing import TYPE_CHECKING, Any, Generator
 
 from infrahub_sdk.uuidt import UUIDT
 
-from infrahub.core.changelog.models import (
-    ChangelogRelationshipMapper,
-    RelationshipCardinalityManyChangelog,
-    RelationshipCardinalityOneChangelog,
-)
+from infrahub.core.changelog.relationship_mapper import ChangelogRelationshipMapper
 from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipDirection, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT, OrderModel
@@ -34,6 +30,10 @@ if TYPE_CHECKING:
 
     from infrahub.constants.enums import OrderDirection
     from infrahub.core.branch import Branch
+    from infrahub.core.changelog.models import (
+        RelationshipCardinalityManyChangelog,
+        RelationshipCardinalityOneChangelog,
+    )
     from infrahub.core.node import Node
     from infrahub.core.relationship import Relationship
     from infrahub.core.schema import MainSchemaTypes, NodeSchema, RelationshipSchema

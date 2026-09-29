@@ -7,7 +7,7 @@ from infrahub.core.manager import NodeManager
 from .diff import DiffChangelogCollector
 from .enrichment import node_label_loader
 from .hfid_resolver import ChangelogHfidResolver
-from .models import RelationshipChangelogGetter
+from .relationship_getter import RelationshipChangelogGetter
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch

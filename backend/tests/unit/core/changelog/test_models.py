@@ -3,7 +3,8 @@ from typing import Any
 
 import pytest
 
-from infrahub.core.changelog.models import AttributeChangelog, peer_relationships
+from infrahub.core.changelog.models import AttributeChangelog
+from infrahub.core.changelog.relationship_getter import peer_relationships
 from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipDirection
 from infrahub.core.constants.schema import PARENT_CHILD_IDENTIFIER
 from infrahub.core.schema import NodeSchema, RelationshipSchema

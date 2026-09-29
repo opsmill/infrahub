@@ -9,9 +9,9 @@ from infrahub.core.changelog.models import (
     PropertyChangelog,
     RelationshipCardinalityManyChangelog,
     RelationshipCardinalityOneChangelog,
-    RelationshipChangelogGetter,
     RelationshipPeerChangelog,
 )
+from infrahub.core.changelog.relationship_getter import RelationshipChangelogGetter
 from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
