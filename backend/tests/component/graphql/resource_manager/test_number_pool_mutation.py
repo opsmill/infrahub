@@ -128,7 +128,7 @@ query NumberPool(
 """
 
 
-async def test_test_number_pool_creation_errors(
+async def test_number_pool_creation_errors(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
@@ -236,77 +236,26 @@ UNKNOWN_RANGE_ID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
 
 @dataclass
-class MissingBoundsCase:
+class BoundsCase:
     name: str
     bounds: str
 
 
 MISSING_BOUNDS_CASES = [
-    MissingBoundsCase(name="neither_bound", bounds=""),
-    MissingBoundsCase(name="start_only", bounds="start_range: {value: 1}"),
-    MissingBoundsCase(name="end_only", bounds="end_range: {value: 9}"),
-    MissingBoundsCase(name="start_null", bounds="start_range: {value: null}, end_range: {value: 9}"),
-    MissingBoundsCase(name="end_null", bounds="start_range: {value: 1}, end_range: {value: null}"),
-    MissingBoundsCase(name="both_null", bounds="start_range: {value: null}, end_range: {value: null}"),
-    MissingBoundsCase(name="empty_inputs", bounds="start_range: {}, end_range: {}"),
-    MissingBoundsCase(name="ranges_without_bounds", bounds='ranges: [{id: "%s"}]' % UNKNOWN_RANGE_ID),
+    BoundsCase(name="neither_bound", bounds=""),
+    BoundsCase(name="start_only", bounds="start_range: {value: 1}"),
+    BoundsCase(name="end_only", bounds="end_range: {value: 9}"),
+    BoundsCase(name="start_null", bounds="start_range: {value: null}, end_range: {value: 9}"),
+    BoundsCase(name="end_null", bounds="start_range: {value: 1}, end_range: {value: null}"),
+    BoundsCase(name="both_null", bounds="start_range: {value: null}, end_range: {value: null}"),
+    BoundsCase(name="empty_inputs", bounds="start_range: {}, end_range: {}"),
+    BoundsCase(name="ranges_without_bounds", bounds='ranges: [{id: "%s"}]' % UNKNOWN_RANGE_ID),
 ]
 
-
-@pytest.mark.parametrize("case", MISSING_BOUNDS_CASES, ids=lambda case: case.name)
-async def test_number_pool_create_requires_both_bounds(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, case: MissingBoundsCase
-) -> None:
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-
-    result = await graphql(
-        schema=gql_params.schema,
-        source=CREATE_NUMBER_POOL_WITH_BOUNDS % case.bounds,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={"name": "bounds-pool"},
-    )
-
-    assert [error.message for error in result.errors or []] == [BOUNDS_REQUIRED]
-    assert await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch) == 0
-
-
-async def test_number_pool_create_accepts_equal_bounds(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> None:
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-
-    result = await graphql(
-        schema=gql_params.schema,
-        source=CREATE_NUMBER_POOL_WITH_BOUNDS % "start_range: {value: 5}, end_range: {value: 5}",
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={"name": "equal-bounds-pool"},
-    )
-
-    assert not result.errors
-    assert result.data
-    created = result.data["CoreNumberPoolCreate"]["object"]
-    assert (created["start_range"]["value"], created["end_range"]["value"]) == (5, 5)
-
-
-QUERY_POOLS_WITH_RANGES = """
-query PoolsWithRanges {
-  CoreNumberPool {
-    count
-    edges {
-      node {
-        id
-        ranges { edges { node { id start { value } end { value } } } }
-      }
-    }
-  }
-}
-"""
+CLEARED_BOUND_CASES = [
+    BoundsCase(name="start_null", bounds="start_range: {value: null}"),
+    BoundsCase(name="end_null", bounds="end_range: {value: null}"),
+]
 
 
 RENAME_NUMBER_POOL = """
@@ -319,35 +268,6 @@ mutation RenameNumberPool($id: String!, $name: String!) {
 """
 
 
-async def test_number_pool_update_untouched_bounds_are_not_validated(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> None:
-    """An update that leaves the bounds alone succeeds whatever the pool holds in them."""
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    default_branch.update_schema_hash()
-
-    pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
-    await pool.new(db=db, name="bound-less", node="TestingTicket", node_attribute="ticket_id")
-    await pool.save(db=db)
-
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=RENAME_NUMBER_POOL,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={"id": pool.get_id(), "name": "bound-less-renamed"},
-    )
-
-    assert not result.errors
-    assert result.data
-    assert result.data["CoreNumberPoolUpdate"]["object"]["name"]["value"] == "bound-less-renamed"
-
-    reloaded = await NodeManager.get_one(id=pool.get_id(), db=db, branch=default_branch)
-    assert reloaded is not None
-    assert (reloaded.start_range.value, reloaded.end_range.value) == (None, None)
-
-
 UPDATE_NUMBER_POOL_BOUND = """
 mutation UpdateNumberPool($id: String!) {
   CoreNumberPoolUpdate(data: {id: $id, %s}) {
@@ -357,44 +277,119 @@ mutation UpdateNumberPool($id: String!) {
 """
 
 
-@pytest.mark.parametrize(
-    "bound", ["start_range: {value: null}", "end_range: {value: null}"], ids=["start_null", "end_null"]
-)
-async def test_number_pool_update_rejects_clearing_a_bound(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, bound: str
-) -> None:
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+class TestNumberPoolBounds:
+    """Bounds validation on pool creation and update.
 
-    created = await graphql(
-        schema=gql_params.schema,
-        source=CREATE_NUMBER_POOL_WITH_BOUNDS % "start_range: {value: 10}, end_range: {value: 20}",
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={"name": "clearing-pool"},
-    )
-    assert not created.errors
-    assert created.data
-    pool_id = created.data["CoreNumberPoolCreate"]["object"]["id"]
+    The schema is loaded once for the class; every test creates pools under names of its own.
+    """
 
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=UPDATE_NUMBER_POOL_BOUND % bound,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={"id": pool_id},
-    )
+    @pytest.fixture(scope="class")
+    async def ticket_schema(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> None:
+        await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+        default_branch_scope_class.update_schema_hash()
 
-    assert [error.message for error in result.errors or []] == [BOUNDS_NOT_CLEARABLE]
+    @pytest.mark.parametrize("case", MISSING_BOUNDS_CASES, ids=lambda case: case.name)
+    async def test_create_requires_both_bounds(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None, case: BoundsCase
+    ) -> None:
+        pools_before = await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class)
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
 
-    pool = await NodeManager.get_one(id=pool_id, db=db, branch=default_branch)
-    assert pool is not None
-    assert (pool.start_range.value, pool.end_range.value) == (10, 20)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_NUMBER_POOL_WITH_BOUNDS % case.bounds,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"name": f"bounds-pool-{case.name}"},
+        )
+
+        assert [error.message for error in result.errors or []] == [BOUNDS_REQUIRED]
+        assert (
+            await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class)
+            == pools_before
+        )
+
+    async def test_create_accepts_equal_bounds(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+    ) -> None:
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+
+        result = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_NUMBER_POOL_WITH_BOUNDS % "start_range: {value: 5}, end_range: {value: 5}",
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"name": "equal-bounds-pool"},
+        )
+
+        assert not result.errors
+        assert result.data
+        created = result.data["CoreNumberPoolCreate"]["object"]
+        assert (created["start_range"]["value"], created["end_range"]["value"]) == (5, 5)
+
+    async def test_update_untouched_bounds_are_not_validated(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+    ) -> None:
+        """An update that leaves the bounds alone succeeds whatever the pool holds in them."""
+        pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+        await pool.new(db=db, name="bound-less", node="TestingTicket", node_attribute="ticket_id")
+        await pool.save(db=db)
+
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=RENAME_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": pool.get_id(), "name": "bound-less-renamed"},
+        )
+
+        assert not result.errors
+        assert result.data
+        assert result.data["CoreNumberPoolUpdate"]["object"]["name"]["value"] == "bound-less-renamed"
+
+        reloaded = await NodeManager.get_one(id=pool.get_id(), db=db, branch=default_branch_scope_class)
+        assert reloaded is not None
+        assert (reloaded.start_range.value, reloaded.end_range.value) == (None, None)
+
+    @pytest.mark.parametrize("case", CLEARED_BOUND_CASES, ids=lambda case: case.name)
+    async def test_update_rejects_clearing_a_bound(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None, case: BoundsCase
+    ) -> None:
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+
+        created = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_NUMBER_POOL_WITH_BOUNDS % "start_range: {value: 10}, end_range: {value: 20}",
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"name": f"clearing-pool-{case.name}"},
+        )
+        assert not created.errors
+        assert created.data
+        pool_id = created.data["CoreNumberPoolCreate"]["object"]["id"]
+
+        result = await graphql(
+            schema=gql_params.schema,
+            source=UPDATE_NUMBER_POOL_BOUND % case.bounds,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": pool_id},
+        )
+
+        assert [error.message for error in result.errors or []] == [BOUNDS_NOT_CLEARABLE]
+
+        pool = await NodeManager.get_one(id=pool_id, db=db, branch=default_branch_scope_class)
+        assert pool is not None
+        assert (pool.start_range.value, pool.end_range.value) == (10, 20)
 
 
-async def test_test_number_pool_update(
+async def test_number_pool_update(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
@@ -619,6 +614,7 @@ class TestNumberPoolUpsertImmutableFields:
             },
         )
         assert not create_ok.errors
+        pool_id = create_ok.data["CoreNumberPoolCreate"]["object"]["id"]
 
         upsert_same = await graphql(
             schema=gql_params.schema,
@@ -635,6 +631,8 @@ class TestNumberPoolUpsertImmutableFields:
         )
         assert not upsert_same.errors
         assert upsert_same.data
+        assert upsert_same.data["CoreNumberPoolUpsert"]["object"]["id"] == pool_id
+        assert await NodeManager.count(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch_scope_class) == 1
 
     async def test_upsert_mutable_fields(
         self,

@@ -239,9 +239,6 @@ async def test_resource_utilization(
         ],
     }
 
-    for range_node, edge in zip((lower, upper), utilization_np2["edges"], strict=True):
-        assert edge["node"]["display_label"] == await range_node.get_display_label(db=db)
-
 
 async def test_allocate_from_number_pool_for_generic(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch

@@ -269,7 +269,7 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
                 info=info, data=data, branch=branch, database=dbt, node=node
             )
 
-            if number_pool.pool_type.value.value == NumberPoolType.SCHEMA.value and (  # type: ignore[attr-defined]
+            if number_pool.get_attribute("pool_type").get_value() == NumberPoolType.SCHEMA.value and (
                 "start_range" in data.keys() or "end_range" in data.keys()
             ):
                 raise ValidationError(
@@ -277,8 +277,8 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
                 )
 
             if "start_range" in data.keys() or "end_range" in data.keys():
-                start_value = number_pool.start_range.value  # type: ignore[attr-defined]
-                end_value = number_pool.end_range.value  # type: ignore[attr-defined]
+                start_value = number_pool.get_attribute("start_range").value
+                end_value = number_pool.get_attribute("end_range").value
                 if start_value is None or end_value is None:
                     raise ValidationError(input_value=BOUNDS_NOT_CLEARABLE)
 
