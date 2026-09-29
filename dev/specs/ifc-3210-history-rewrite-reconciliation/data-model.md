@@ -1,0 +1,201 @@
+# Data Model: Git history-rewrite reconciliation
+
+**Feature**: `dev/specs/ifc-3210-history-rewrite-reconciliation`
+**Date**: 2026-09-29
+
+> **Governance**: everything in the "Schema changes" section is an "Ask First" change under
+> `AGENTS.md`. It is a database schema change, and the attributes surface on three GraphQL node
+> kinds. The design below is complete, but it needs a maintainer's sign-off before implementation.
+
+---
+
+## Schema changes
+
+### Four attributes on `CoreGenericRepository`
+
+Declared in `backend/infrahub/core/schema/definitions/core/repository.py`, on the generic only.
+`CoreRepository` and `CoreReadOnlyRepository` inherit them and must not override them.
+
+| Name | Kind | Optional | Default | Branch support | Meaning |
+|---|---|---|---|---|---|
+| `last_rewrite_previous_commit` | `Text` | yes | none | `LOCAL` | The commit Infrahub had imported on this branch before the reconciliation. |
+| `last_rewrite_commit` | `Text` | yes | none | `LOCAL` | The commit Infrahub reconciled onto. |
+| `last_rewrite_at` | `DateTime` | yes | none | `LOCAL` | When the reconciliation completed. |
+| `rewrite_count` | `Number` | yes | none | `LOCAL` | How many times this branch has been reconciled, cumulative. |
+
+Order weights place them after `sync_status` and before the relationships, so the repository form
+groups the synchronisation state together.
+
+#### Why each choice
+
+- **`LOCAL`**: a LOCAL attribute never reaches a branch diff and can never produce a merge conflict.
+  The diff query selects `branch_support IN [aware, agnostic]`, and the bulk merge touches only
+  `aware`. This satisfies FR-012 by declaration. It also makes the value per branch, which FR-010
+  requires.
+- **Optional with no default**: no existing repository needs a value, so no data migration and no
+  `GRAPH_VERSION` bump are needed.
+- **Four scalars, not one structured value**: a structured value would be a large attribute kind, it
+  would not be server-side queryable, and it would not sort or validate. The branch-list and
+  cross-branch status work of INFP-671 both need to query these server-side.
+- **`Number` for the count, not `Text`**: it sorts and validates. Note the GraphQL convention in
+  this codebase: number attributes use `BigInt` in queries and mutations, not `Int`.
+
+#### Invariants
+
+1. The four values are written together, in one mutation, or not at all.
+2. `last_rewrite_previous_commit` and `last_rewrite_commit` are never equal. A reconciliation that
+   would write equal values is a bug in the classifier, and the recorder rejects it.
+3. `rewrite_count` only increases. It is read, incremented by one, and written back inside the
+   repository lock.
+4. The system never clears any of the four (FR-011). Nothing in the product resets them.
+5. A `RETARGET` classification writes none of them (FR-002, SC-007).
+6. A worker that reset itself from its own pull path writes none of them (FR-007).
+
+#### What they do not do
+
+- They are not folded into `sync_status` (FR-013). `sync_status` keeps its current meaning and stays
+  free to be redefined by INFP-671.
+- They do not change `operational_status`, which describes whether the remote is reachable.
+- They introduce no new node kind and no new relationship.
+
+### The read-only asymmetry
+
+`CoreReadOnlyRepository` overrides `commit` and `ref` to `AWARE`. The four new attributes are not
+overridden, so they stay `LOCAL` on that kind as well. A read-only repository therefore carries a
+diff-invisible rewrite record beside a diff-visible `commit`.
+
+This is deliberate. FR-012 is unconditional, and correcting the `commit` and `ref` overrides is
+listed out of scope in `spec.md`. A branch-safety test asserts the absence of the four attributes
+from a diff on both repository kinds, so the asymmetry cannot regress silently.
+
+---
+
+## New in-process types
+
+These are backend types, not schema. They carry no persistence.
+
+### `RefClassification`
+
+A `StrEnum` in `backend/infrahub/git/divergence/models.py`.
+
+| Member | Meaning |
+|---|---|
+| `UNCHANGED` | The remote head equals the imported commit. |
+| `FAST_FORWARD` | The imported commit is an ancestor of the remote head. |
+| `REWRITE` | The imported commit is not an ancestor, and the tracking target did not change. |
+| `RETARGET` | The imported commit is not an ancestor, and the tracking target changed. |
+
+It is an enum and not a boolean because Principle III requires that `REWRITE` and `RETARGET` cannot
+collapse into each other at a call site.
+
+### `RefDivergence`
+
+A frozen dataclass. What one classification decided, for one branch.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `branch_name` | `str` | The remote branch, or the tracked ref for a read-only repository. |
+| `infrahub_branch_name` | `str` | The Infrahub branch the remote branch maps onto. |
+| `imported_commit` | `str \| None` | What Infrahub had. `None` when the branch was never imported. |
+| `remote_head` | `str` | What the remote publishes now. |
+| `classification` | `RefClassification` | The decision. |
+
+Validation: `REWRITE` and `RETARGET` both require `imported_commit` to be set. A branch with no
+imported commit can only be `UNCHANGED` or `FAST_FORWARD`.
+
+### `ReconciledBranch`
+
+A frozen dataclass. One branch a synchronisation cycle advanced, and the commit it advanced to.
+This is what the widened broadcast carries and what the recorder consumes.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `infrahub_branch_name` | `str` | The Infrahub branch. |
+| `infrahub_branch_id` | `str` | The branch UUID, not the database element id. A worker missing the worktree creates it under whatever it is given. |
+| `commit` | `str` | The commit the cycle pinned. |
+| `divergence` | `RefDivergence \| None` | Set when the branch was reconciled from a rewrite, `None` for an ordinary fast-forward. |
+
+---
+
+## Message change
+
+### `RefreshGitFetch`
+
+In `backend/infrahub/message_bus/messages/refresh_git_fetch.py`. One new optional field.
+
+| Field | Type | Status | Meaning |
+|---|---|---|---|
+| `branches` | `tuple[BranchCommitPair, ...] \| None` | new, optional | Every branch this message converges, with the commit each is pinned to. |
+
+`BranchCommitPair` carries `infrahub_branch_name`, `infrahub_branch_id` and `commit`.
+
+The existing `infrahub_branch_name`, `infrahub_branch_id` and `commit` fields stay. Five emission
+sites use them and are untouched by this epic. The handler prefers `branches` when present and
+falls back to the single-branch fields otherwise.
+
+Under one lock acquisition and one fetch, the handler resets each pair in turn. This is why the
+list is coalesced rather than sent as N messages: the repository lock is contended by merges and
+by other synchronisations.
+
+---
+
+## New event
+
+### `RepositoryHistoryRewrittenEvent`
+
+In `backend/infrahub/events/repository_action.py`, beside `CommitUpdatedEvent`.
+
+- `event_name`: `infrahub.repository.history_rewritten`
+- New `EventType` member in `backend/infrahub/core/constants/__init__.py`, which puts it in the
+  `event_type` enum of `CoreStandardWebhook` and `CoreCustomWebhook`.
+
+| Payload field | Type | Meaning |
+|---|---|---|
+| `repository_id` | `str` | The repository. |
+| `repository_name` | `str` | Its name. |
+| `previous_commit` | `str` | The commit Infrahub had. |
+| `commit` | `str` | The commit it reconciled onto. |
+| `rewrite_count` | `int` | The new cumulative count for this branch. |
+
+Resource labels follow `CommitUpdatedEvent`: `prefect.resource.id` is
+`infrahub.repository.<repository_id>`, plus the repository name, the repository id and the branch
+name.
+
+**Emission rule** (FR-014): exactly one per rewrite of the repository's configured default branch.
+No emission for any other branch. Emitted by the recorder, after a successful record.
+
+**Exactly once across cycles** (SC-002): after the reset and the re-import, the recorded commit
+equals the remote head, so the next cycle classifies `UNCHANGED`. The single emission follows from
+the classification, not from a guard.
+
+---
+
+## Cache key
+
+### The re-target suppression marker
+
+Written by `graphql/mutations/repository.py::RepositoryUpdate.mutate_update`, read and deleted by
+the recorder. See `research.md` R4 for why this shape was chosen.
+
+| Property | Value |
+|---|---|
+| Key | Repository id plus Infrahub branch name, under a namespace of its own. |
+| Value | The new tracking target, for diagnostics only. |
+| Time to live | One hour. |
+| Written when | `CoreReadOnlyRepository.ref` changes, or `CoreRepository.default_branch` changes. |
+| Read when | The classifier returned `REWRITE`. |
+| Effect | Turns `REWRITE` into `RETARGET`, so nothing is recorded. |
+| Consumed | Yes. The recorder deletes it after reading, so it cannot suppress twice. |
+
+---
+
+## What is not changed
+
+| Thing | Why |
+|---|---|
+| `operational_status` | It describes whether the remote is reachable. That is a different phase. |
+| `sync_status` | FR-013 keeps it out of the record. INFP-671 may redefine it. |
+| `internal_status` | Unrelated to reconciliation. |
+| `commit` on any kind | The reconciled commit is recorded the way every other commit is. |
+| `NodeMutationOrigin` | No new member. See `research.md` R6. |
+| The SDK (`python_sdk`) | The recorder writes through the SDK node API, so no submodule change and no second PR. |

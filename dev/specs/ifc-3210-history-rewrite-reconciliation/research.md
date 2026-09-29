@@ -1,0 +1,423 @@
+# Research: Git history-rewrite reconciliation
+
+**Feature**: `dev/specs/ifc-3210-history-rewrite-reconciliation`
+**Branch**: `history-rewrite-reconciliation-ifc-3210`
+**Base**: `origin/pog-fix-merge-push-ordering-IFC-1449` (PR #10465, the prerequisite)
+**Date**: 2026-09-29
+
+All claims below were checked against the code on the base branch, not on `develop`. PR #10465
+changes `git/repository.py`, so the merge path differs from `develop`.
+
+---
+
+## R0. Current behaviour, confirmed on the base branch
+
+| Claim | Where | Confirmed |
+|---|---|---|
+| The periodic sync is a cron flow, once a minute | `git/tasks.py::sync_remote_repositories`, `workflows/catalogue.py::GIT_REPOSITORIES_SYNC` | Yes |
+| The sync calls the syncer, which calls the collector | `git/sync.py::RepositorySyncer.sync` → `git/repository.py::InfrahubRepository.collect_pending_imports` | Yes |
+| The remote comparison uses equality only | `git/base.py::InfrahubRepositoryBase.compare_local_remote` compares `remote_branches[b].commit != local_branches[b].commit` | Yes |
+| The pull sets no rebase and no fast-forward strategy | `git/base.py::InfrahubRepositoryBase.pull` calls `repo.remotes.origin.pull(<remote branch>)`; `workers/infrahub_async.py::set_git_global_config` sets neither `pull.rebase` nor `pull.ff` | Yes |
+| A diverged remote is reported as a conflict | `git/base.py::InfrahubRepositoryBase._raise_enriched_error_static` maps Git's divergent-branches text to "there are conflicts that must be resolved" | Yes |
+| One test asserts that text | `backend/tests/component/git/test_git_repository.py::test_pull_branch_conflict` | Yes |
+| A second test asserts it | `backend/tests/integration/git/test_repository.py` | **No.** On the base branch that file parametrises `"Need to specify how to reconcile"` against `RepositoryOperationalStatus.ERROR` in `test_repository_operational_status`. It asserts the status, not the text. It still has to change, because the status it asserts is the flapping one. |
+| The sync broadcast covers the trunk only | `git/tasks.py::sync_repository_from_origin` sends one `RefreshGitFetch` for `staging_branch or registry.default_branch` | Yes |
+| A failed branch suppresses that broadcast | `git/repository.py::InfrahubRepository.raise_if_branches_failed` raises inside `RepositorySyncer.sync`; `sync_repository_from_origin` catches `RepositoryError` **after** the sync call and **before** the send, so the send never runs | Yes |
+| The broadcast handler fetches, then resets or pulls | `message_bus/operations/git/repository.py::fetch` | Yes |
+| The hard-reset primitive exists | `git/base.py::InfrahubRepositoryBase.reset_to_commit`; it does not contact the remote | Yes |
+| No helper does "fetch, then reset to origin/" | Searched `git/`; none | Yes |
+| The periodic sync skips read-only repositories | `sync_remote_repositories` passes `kind=InfrahubKind.REPOSITORY` to `git/utils.py::get_repositories_commit_per_branch` | Yes |
+| Read-only resolves `origin/{ref}` directly | `git/repository.py::InfrahubReadOnlyRepository.get_commit_value` and `.update_latest_commit` | Yes |
+| `operational_status` is branch-agnostic and flaps | Schema `core/schema/definitions/core/repository.py` marks it `AGNOSTIC`; `git/base.py::InfrahubRepositoryBase.fetch` sets it back to `ONLINE` at the start of every cycle | Yes |
+
+### Branch support on the repository kinds
+
+Read from `core/schema/definitions/core/repository.py`.
+
+| Kind | Attribute | Branch support |
+|---|---|---|
+| `CoreGenericRepository` | `commit` | LOCAL |
+| `CoreGenericRepository` | `sync_status` | LOCAL |
+| `CoreGenericRepository` | `internal_status` | LOCAL |
+| `CoreGenericRepository` | `operational_status` | AGNOSTIC |
+| `CoreGenericRepository` | `name`, `description`, `location` | AGNOSTIC |
+| `CoreRepository` | `commit` | LOCAL (overrides the generic with the same value) |
+| `CoreRepository` | `default_branch` | not overridden, so AGNOSTIC from the node |
+| `CoreReadOnlyRepository` | `commit` | **AWARE** |
+| `CoreReadOnlyRepository` | `ref` | **AWARE** |
+
+`dev/knowledge/backend/git-integration.md` states that `commit` is LOCAL on all repository types.
+That is wrong for `CoreReadOnlyRepository`. A documentation task covers the correction.
+
+---
+
+## R1. The ancestry test
+
+**Decision**: use `git merge-base --is-ancestor <imported_commit> <remote_head>`, reached through
+GitPython's `Repo.is_ancestor(ancestor_rev, rev)`.
+
+**Rationale**: it is one plumbing call per changed ref, it is exactly the question FR-001 asks, and
+it needs no extra network round trip because the fetch already brought the objects in. The full
+classification is:
+
+| Imported commit vs remote head | Classification |
+|---|---|
+| Equal | `UNCHANGED` |
+| Imported is an ancestor of remote head | `FAST_FORWARD` |
+| Imported is not an ancestor, tracking target unchanged | `REWRITE` |
+| Imported is not an ancestor, tracking target changed | `RETARGET` |
+| Imported commit is not present locally | `REWRITE` (safe classification, see below) |
+
+**The missing-object case.** If the imported commit is no longer in the local object database, the
+ancestry test cannot run. `Repo.is_ancestor` raises rather than answering. The branch is then
+classified `REWRITE`, because the only other reading is that the local clone lost an object, and a
+reset to the remote repairs both readings. The record names the imported commit as the previous
+commit, which is still the true answer to "what did Infrahub hold".
+
+**Alternatives rejected**:
+
+- `git rev-list --count <a>..<b>` and read the counts. It answers the same question with more
+  output to parse and no better failure mode.
+- Ask the remote with `ls-remote` and compare. It answers equality only, which is the defect being
+  removed.
+
+---
+
+## R2. Where the read-write detection runs
+
+**Decision**: inside `git/repository.py::InfrahubRepository.collect_pending_imports`, over the
+`updated_branches` list returned by `compare_local_remote`, after `fetch()` and before `pull()`.
+
+**Rationale**: `compare_local_remote` already gives the set of branches whose remote head differs.
+That set is exactly the input FR-001 needs, and the fetch that precedes it has already brought the
+remote objects in, so the ancestry test needs no network. Classifying inside the collector keeps
+the per-branch failure isolation that is already there: a branch that fails classification joins
+`failed_imports` and the rest of the cycle continues.
+
+**Alternatives rejected**:
+
+- Classify inside `compare_local_remote` and change its return type. It is called from more than
+  the sync path, and widening its contract pulls the classification into callers that do not need
+  it.
+- Classify inside `pull()`. The pull is also the self-healing path of R3, and that path must not
+  record or report (FR-007). Keeping the sync-side classification separate from the pull-side reset
+  is what keeps FR-007 enforceable.
+
+---
+
+## R3. Where the self-healing reset runs
+
+**Decision**: inside `git/base.py::InfrahubRepositoryBase.pull`, before the `origin.pull` call. When
+the branch worktree head is not an ancestor of the remote head, hard-reset onto the remote head
+instead of pulling.
+
+**Rationale**: FR-005 requires convergence to hold for a worker that received no broadcast. Every
+path that advances a branch worktree goes through `pull` — the sync collector, and the
+`RefreshGitFetch` handler when no commit is pinned. Putting the rule there makes the property true
+by construction rather than by broadcast coverage.
+
+**What the pull-side reset must not do** (FR-007): it must not write the commit to the graph, must
+not write the rewrite record, and must not emit the signal. `pull` already takes
+`update_commit_value`, and the broadcast handler already passes `update_commit_value=False`. The
+record and the signal are written by the recorder in the sync path, never here.
+
+**Why #10465 is a prerequisite.** Today `InfrahubRepository.merge` writes the commit to the graph
+before it pushes, so a rejected push leaves a merge commit that exists on one worker's disk and
+nowhere else. An unconditional reset in `pull` would discard it silently. #10465 moves the push
+ahead of the graph write and resets the destination worktree when either step fails, so the state
+cannot arise. Implementation of the pull-path reset must wait for #10465 to land.
+
+---
+
+## R4. Telling a rewrite from a re-target
+
+This is the hardest decision in the feature. FR-002 and SC-007 both depend on it.
+
+**The problem**: a lineage break looks identical whether the remote history was rewritten or the
+repository was re-pointed at a different target. The detector sees only two commits. The tracking
+target that produced the imported commit is not stored anywhere.
+
+**Decision**: the mutation that changes a tracking target writes a short-lived suppression marker in
+the shared cache. The recorder reads it, skips the record, and deletes it. One mechanism covers
+both repository kinds.
+
+- Key: repository id plus Infrahub branch name.
+- Writer, read-only: `graphql/mutations/repository.py::RepositoryUpdate.mutate_update` already
+  computes `new_ref != current_ref` for `CoreReadOnlyRepository`. It sets the marker on that
+  comparison.
+- Writer, read-write: the same mutation compares the previous and the new `default_branch` on
+  `CoreRepository`. It sets the marker for Infrahub's default branch, which is the branch that
+  mapping feeds.
+- Reader: `HistoryRewriteRecorder`. A present marker turns `REWRITE` into `RETARGET`.
+- Time to live: one hour. The read-only import the same mutation submits runs within seconds. The
+  read-write cycle runs within a minute. An hour is generous on both and short enough that a stale
+  marker cannot suppress an unrelated rewrite days later.
+
+**Rationale**: the comparison is already computed in the mutation for read-only, so one of the two
+writers costs nothing. The cache is already how this codebase coordinates repository state across
+workers. The marker is consumed, so it cannot suppress twice.
+
+**Known failure mode, accepted and documented**: if the cache is flushed between the mutation and
+the reconciliation, a deliberate re-target writes one spurious rewrite record. The reconciliation
+itself is identical either way, so the consequence is one wrong row, not wrong behaviour. The
+count on that branch is then one too high.
+
+**Alternatives rejected**:
+
+- **A fifth attribute storing the tracking target that produced the imported commit.** It is exact
+  and needs no cache. Rejected because the PRD fixes the shape at four scalars, and because the
+  target is already readable from the repository node, so a fifth attribute stores a value the
+  graph already holds.
+- **A temporal read of the graph**: ask for the tracking target as it was at the imported commit's
+  `updated_at`. Exact for read-write, where `default_branch` and `commit` are written by different
+  actors at different times. Wrong for read-only, where the same mutation writes `ref` and `commit`
+  at the same timestamp, so the temporal read returns the new ref and never the old one. Rejected
+  because it would need two different mechanisms for the two kinds.
+- **Infer from reachability**: decide it is a re-target when the imported commit is still reachable
+  from some other ref on the remote. Rejected as wrong in a common case: a rebase of a branch whose
+  old commits were already merged elsewhere leaves them reachable, and the rewrite would go
+  unrecorded.
+
+---
+
+## R5. Widening the broadcast and moving it before the raise
+
+**Decision**: collect one branch-and-commit pair per branch the cycle advanced, send one coalesced
+`RefreshGitFetch` per repository carrying all of them, and send it before
+`raise_if_branches_failed`.
+
+**Two changes are needed, and they are separable.**
+
+1. **Ordering.** `RepositorySyncer.sync` raises through `sync_git_repo_with_origin_and_tag_on_failure`,
+   and `sync_repository_from_origin` catches that raise before it reaches the send. The syncer must
+   return the reconciled branches to its caller, and the caller must broadcast before it re-raises.
+2. **Coverage.** `sync_repository_from_origin` sends one message for
+   `staging_branch or registry.default_branch` only. It must send for every branch the cycle
+   advanced.
+
+**Coalescing.** The handler takes the repository lock and fetches once per message. That lock is
+contended by merges and by other syncs. One message per cycle carrying N pairs is one lock hold
+instead of N. This is the same shape PR #10669 uses for the read-only refs check, and it needs a
+new field on `RefreshGitFetch`.
+
+**Message shape**: add an optional list of branch-and-commit pairs. Keep the existing single-branch
+fields, because five other emission sites use them and rewriting all six is outside this epic.
+The handler prefers the list when it is present.
+
+**Alternatives rejected**:
+
+- One message per reconciled branch. Correct but it multiplies lock holds on the most contended
+  lock in the git subsystem.
+- Replace the single-branch fields outright. It touches five call sites that have nothing to do
+  with this epic and makes the change harder to review and to revert.
+
+---
+
+## R6. How the record is written
+
+**Decision**: a new `HistoryRewriteRecorder` in `backend/infrahub/git/` writes the four attributes
+through the SDK node API, on the Infrahub branch the reconciliation targeted. It is the sole write
+path for those attributes.
+
+**Why not extend the existing commit write.** `git/base.py::InfrahubRepositoryBase.update_commit_value`
+calls `InfrahubClient.repository_update_commit`, which runs a canned mutation from the SDK. Adding
+four variables to it is a change in the `python_sdk` submodule, which needs its own PR merged
+upstream before the pointer can move here. A separate write from the backend keeps this epic inside
+one repository.
+
+**Event consequence, per ADR 0016.** The write is an ordinary GraphQL mutation, so it emits a
+`NodeUpdatedEvent` with origin `live`. Cross-node computed attributes, display labels and
+human-friendly ids that read the repository node will therefore recompute on a rewrite. Webhooks
+and user action rules will fire.
+
+**Decision on the origin label**: do not add a new `NodeMutationOrigin` value for this bookkeeping.
+A rewrite is rare, the extra event is one per reconciled branch, and a new enum value would need
+every coalesced family's trigger builder to be revisited. This is the YAGNI reading of Principle
+VII. Note it in the plan so a future high-frequency writer of the same attributes revisits it.
+
+**Idempotence for the trunk (SC-002).** The recorder writes only when the classification is
+`REWRITE`. After the reset and the re-import, the recorded commit equals the remote head, so the
+next cycle classifies `UNCHANGED` and writes nothing. Exactly one record per event follows from
+the classification, not from a guard.
+
+---
+
+## R7. The four attributes
+
+**Decision**: four scalar attributes on `CoreGenericRepository`, all optional, all with no default,
+all `BranchSupportType.LOCAL`.
+
+**Why LOCAL and not AWARE.** LOCAL gives a per-branch value that never reaches a branch diff and
+can never produce a merge conflict. The diff query selects only
+`branch_support IN [aware, agnostic]`, and the bulk merge touches only `aware`. This is why nobody
+has ever resolved a conflict on `sync_status`. It satisfies FR-012 directly.
+
+**Why not AGNOSTIC.** AGNOSTIC is conflict-free but not diff-invisible: agnostic nodes still reach
+the diff, forced to `UPDATED`. It would also make the record one value for the whole repository,
+which contradicts FR-010's per-branch requirement.
+
+**Why optional with no default.** Nothing needs backfilling, so no data migration is needed.
+
+**The read-only anomaly.** `CoreReadOnlyRepository` overrides `commit` and `ref` to AWARE. The four
+new attributes are declared on the generic and are **not** overridden on `CoreReadOnlyRepository`,
+so they stay LOCAL there too. A read-only repository therefore gets a diff-invisible, never-merged
+record while its `commit` beside it is diff-visible and merged. That asymmetry is deliberate: FR-012
+is unconditional, and correcting the `commit` and `ref` overrides is explicitly out of scope.
+A branch-safety test asserts the four attributes are absent from a diff on both kinds.
+
+**Governance.** This is an "Ask First" change under `AGENTS.md` (database schema change, and the
+attributes surface on three GraphQL node kinds). The design is complete; implementation needs a
+maintainer's sign-off.
+
+---
+
+## R8. The trunk-rewrite signal and its consumer
+
+**Decision**: a new `InfrahubEvent` subclass in `backend/infrahub/events/repository_action.py`, with
+a new member in `core/constants/__init__.py::EventType`. The consumer is the webhook subsystem.
+
+**Why that is a consumer and not a dead event.** `EventType.available_types()` feeds the `event_type`
+enum on `CoreStandardWebhook` and `CoreCustomWebhook`
+(`core/schema/definitions/core/webhook.py`). A new member therefore appears in the webhook event
+selector with no further code. `webhook/models.py` builds an `EventTrigger` from that value, so a
+webhook pointed at the new event receives one delivery per emission. That is wireable by an
+operator and assertable in a test, which is what FR-014's "at least one consumer wired to receive
+it" has to mean for the requirement to be testable.
+
+**To confirm with Patrick.** The PRD leaves this open. Two alternatives he may prefer:
+
+- A built-in notification or task-log surface, which would need new machinery this epic does not
+  have.
+- Defer the signal to the visibility work of INFP-671, which owns how repository state is shown.
+
+**Precedent, and why it is not repeated.** `CommitUpdatedEvent` already exists and
+`EventType.REPOSITORY_UPDATE_COMMIT` is already in the webhook enum, yet no `EventTrigger` in the
+codebase lists it. The difference here is the acceptance test: the test wires a webhook to the new
+event and asserts exactly one delivery per rewrite, so the wiring is held by a test rather than
+assumed.
+
+**Emission point**: the recorder, immediately after a successful record, and only when the
+reconciled branch is the repository's configured default branch. The recorder is already the single
+place that knows a rewrite happened and which branch it was, so no second classification is needed.
+
+---
+
+## R9. The error message
+
+**Decision**: give the divergent-branches case its own typed exception and its own message. Keep the
+conflict message for the case where a conflict was observed.
+
+**Current behaviour**: `_raise_enriched_error_static` matches Git's
+"Need to specify how to reconcile divergent branches" and returns "there are conflicts that must be
+resolved". After this feature, the sync path never reaches that pull on a diverged branch, so the
+message becomes unreachable from the sync. It stays reachable from any other `pull` caller, so it
+must still be corrected rather than deleted. FR-017 states the contract.
+
+**Test consequences**:
+
+- `backend/tests/component/git/test_git_repository.py::test_pull_branch_conflict` asserts the wrong
+  text. It becomes a test of the new behaviour: a branch whose remote history diverged is reset to
+  the remote head by `pull`, with no exception at all.
+- `backend/tests/integration/git/test_repository.py::test_repository_operational_status`
+  parametrises `"Need to specify how to reconcile"` against `ERROR`. That parameter has to change
+  with the message.
+
+**The status flap**: on a diverged branch, `operational_status` goes to `ERROR` on every cycle and
+`fetch()` sets it back to `ONLINE` on the next one, so it flaps once a minute. Removing the failure
+removes the flap. Nothing else about `operational_status` changes: it describes whether the remote
+is reachable, which is a different phase.
+
+---
+
+## R10. Read-only detection, and the overlap with PR #10669
+
+**PR #10669 (IFC-3152, "detect upstream movement on read-only repository refs")** is open, not a
+draft, and targets `pog-repo-commit-visibility-ifc-3101`. It is a different stack from this epic's
+base branch. What it ships:
+
+- `backend/infrahub/git/refs_check/`: a scheduled flow that lists a read-only repository's remote
+  refs, compares each against the local view, and converges the pool when one moved.
+- A gateway that reads local and remote heads, a scheduler that spaces checks, a claim that stops
+  two runs overlapping, and typed result models.
+- A config setting `git.read_only_refs_check_interval_mins`.
+- `RepositoryBranchInfo.ref` and `RepositoryData.location`, so the per-branch tracked ref is
+  available to the flow.
+
+**What it does not do**: it compares heads by equality, not by ancestry. It writes no tracked
+commit, performs no import, and records nothing. Its convergence deliberately pins every worker to
+the commit Infrahub already tracks.
+
+**Decision**: build on it, do not rebuild it. This epic adds the ancestry classification and the
+record to the read-only path. It does not add a second remote-listing mechanism.
+
+**Consequence for sequencing**: the read-only slice (User Story 5) is cheapest once #10669 has
+merged into `develop` and this branch has been rebased onto it, because `RefMovement` already
+carries `previous_head` and `new_head` — the two inputs the ancestry test needs. If #10669 has not
+merged when the read-only slice starts, the classification attaches to
+`git/repository.py::InfrahubReadOnlyRepository.update_latest_commit` instead, which resolves the
+same two commits. The record and the precondition are identical either way. The tasks name both
+attachment points.
+
+**Other Patrick PRs checked**:
+
+| PR | Ticket | Overlap with this epic |
+|---|---|---|
+| #10667 | IFC-3147, one status row per branch | None. It reads per-branch repository values for a GraphQL query. It does not touch the sync or pull paths. It is a natural reader of the four new attributes later, which is INFP-671's job, not this epic's. |
+| #10530 | IFC-3101, commit visibility spec | None directly. It introduces `git/state/` and a bounded worker RPC. The four attributes are readable through its query surface once INFP-671 exposes them. |
+| #10542 | IFC-3105, honour the default branch | **Adjacent and important.** It makes the repository trunk a resolved value rather than a silent fallback, changes `git/base.py` heavily, adds `git/remote_refs.py`, and rewrites `get_initialized_repo`. It removes the "warm path falls back to Infrahub's default branch" defect this epic's trunk handling would otherwise inherit. It is not a prerequisite, but a rebase conflict in `git/base.py` is likely. Flagged in the plan's risk list. |
+| #10513 | INFP-671, cross-branch repository status | None. It is the display surface this epic's record will eventually feed. Explicitly out of scope here. |
+
+---
+
+## R11. The test harness
+
+**Decision**: extend the Gogs-backed live-remote harness introduced by #10465. Add one force-push
+helper beside the existing `_push_commit_to_remote`.
+
+**What exists on the base branch** (`backend/tests/integration/git/conftest.py`,
+`test_git_live_remote.py`):
+
+- A Gogs container fixture with an API token and repository creation.
+- `_push_commit_to_remote`: makes a commit inside the remote container and pushes it.
+- `_install_remote_branch_rejection_hook` / `_remove_remote_branch_rejection_hook`: a server-side
+  `pre-receive` hook that rejects updates, used to simulate branch protection.
+- Config-reset fixtures for merge and branch-name settings.
+
+**What is missing**: a force-push helper. A rewrite is a force-push, and the Gogs bare repository
+accepts one only when the branch is not protected. The helper commits a divergent history in the
+container and pushes it with `--force`.
+
+**Every test in this plan uses testcontainers.** Unit tests for the classifier and the recorder run
+without a database. Component and integration tests run against testcontainers-provisioned
+services. No test uses an external or locally-running Neo4j.
+
+---
+
+## R12. Documentation corrections
+
+Three statements in `dev/knowledge/backend/` are wrong or incomplete today, independently of this
+feature. Tasks cover all three.
+
+1. `git-integration.md`, "Repository state and branch support": the table says `commit`,
+   `sync_status` and `internal_status` are LOCAL. On `CoreReadOnlyRepository`, `commit` and `ref`
+   are AWARE, so they do reach diffs and merges.
+2. `git-integration.md`, "How the workers converge": it does not say that the periodic sync's
+   broadcast covers only the trunk or the staging branch, nor that a failed branch suppresses it.
+   That is the property FR-006 changes, so it must be stated before and after.
+3. `merge-failure-recovery.md`, "Key Files": it attributes the merge-start logic to
+   `core/branch/tasks.py::_do_merge_branch`. That logic now lives in `core/merge/orchestrator.py`.
+
+The same file's four "Volatile section" notes in `git-integration.md` describe this feature as
+planned. They have to be rewritten to describe what shipped.
+
+---
+
+## R13. Open questions carried forward
+
+1. **The FR-014 consumer.** Decided as the webhook subsystem. Patrick must confirm. See R8.
+2. **Schema and GraphQL sign-off.** The four attributes and the new event are "Ask First" changes.
+   Design complete, implementation gated on a maintainer.
+3. **Rebase order against #10542.** If #10542 merges first, `git/base.py` needs a rebase pass. If
+   this epic merges first, #10542 inherits the conflict. Patrick owns both, so he picks the order.
+4. **Whether the read-only slice waits for #10669.** Cheaper after it merges, possible before. See
+   R10.
