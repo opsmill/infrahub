@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote_plus
 
 import pytest
 import redis
@@ -13,7 +13,7 @@ from infrahub.workflows.initialization import build_cache_connection_string
 
 # CA settings are validated at load, so the cases need a bundle that exists.
 CA_BUNDLE = str(Path(__file__).parent.parent / "test_data" / "ca-bundle.pem")
-CA_BUNDLE_QUOTED = quote(CA_BUNDLE, safe="")
+CA_BUNDLE_QUOTED = quote_plus(CA_BUNDLE, safe="")
 
 
 @dataclass

@@ -66,9 +66,12 @@ export async function withShedWording(response: Response): Promise<Response> {
       ? { ...item, message: SHED_USER_MESSAGE }
       : item
   );
+  // The copy carries a different body, so the original's length would be wrong.
+  const headers = new Headers(response.headers);
+  headers.delete("Content-Length");
   return new Response(JSON.stringify({ ...body, errors: reworded }), {
     status: response.status,
     statusText: response.statusText,
-    headers: response.headers,
+    headers,
   });
 }
