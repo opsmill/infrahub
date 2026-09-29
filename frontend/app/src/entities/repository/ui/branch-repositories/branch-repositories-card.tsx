@@ -1,8 +1,13 @@
 import { Card, CardHeader } from "@infrahub/ui";
 
 import { Badge } from "@/shared/components/ui/badge";
+import { Link } from "@/shared/components/ui/link";
 
+import { getBranchQspOverride } from "@/entities/branches/ui/routing/branch-urls";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { BranchRepositoriesResult } from "@/entities/repository/domain/model/branch-repository";
+import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
+import { isRepositorySyncing } from "@/entities/repository/domain/rules/is-repository-syncing";
 import {
   BranchRepositoriesDenied,
   BranchRepositoriesFailed,
@@ -11,6 +16,7 @@ import {
   BranchRepositoriesNotSynced,
 } from "@/entities/repository/ui/branch-repositories/branch-repositories-states";
 import { BranchRepositoriesTable } from "@/entities/repository/ui/branch-repositories/branch-repositories-table";
+import { RepositoryErrorBands } from "@/entities/repository/ui/branch-repositories/repository-error-bands";
 import { useGetBranchRepositories } from "@/entities/repository/ui/queries/get-branch-repositories.query";
 
 interface BranchRepositoriesCardProps {
@@ -76,15 +82,35 @@ function BranchRepositoriesBody({
     return syncWithGit ? <BranchRepositoriesNone /> : <BranchRepositoriesNotSynced />;
   }
 
+  const { repositories, count, isTruncated } = data;
+
   return (
-    <BranchRepositoriesTable
-      repositories={data.repositories}
-      count={data.count}
-      isTruncated={data.isTruncated}
-      branchName={branchName}
-      isDefaultBranch={isDefaultBranch}
-      page={page}
-      onPageChange={onPageChange}
-    />
+    <>
+      <BranchRepositoriesTable
+        repositories={repositories}
+        branchName={branchName}
+        isDefaultBranch={isDefaultBranch}
+        page={page}
+        onPageChange={onPageChange}
+      />
+      <RepositoryErrorBands
+        repositories={repositories}
+        branchName={branchName}
+        isDefaultBranch={isDefaultBranch}
+        isSyncing={repositories.some(isRepositorySyncing)}
+      />
+      {isTruncated && (
+        <p className="border-t px-4 py-2 text-foreground-muted text-xs">
+          Showing the first {repositories.length} of {count} repositories.{" "}
+          <Link
+            to={getObjectDetailsUrl(GENERIC_REPOSITORY_KIND, undefined, [
+              getBranchQspOverride(branchName, isDefaultBranch),
+            ])}
+          >
+            View all repositories
+          </Link>
+        </p>
+      )}
+    </>
   );
 }

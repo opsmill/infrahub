@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { BranchRepositoriesResult } from "@/entities/repository/domain/model/branch-repository";
 import { useGetBranchRepositories } from "@/entities/repository/ui/queries/get-branch-repositories.query";
+import { useGetRepositoryImportError } from "@/entities/repository/ui/queries/get-repository-import-error.query";
 
 import { render } from "../../../../../tests/components/render";
 import {
@@ -15,6 +16,7 @@ import {
 import { BranchRepositoriesCard } from "./branch-repositories-card";
 
 vi.mock("@/entities/repository/ui/queries/get-branch-repositories.query");
+vi.mock("@/entities/repository/ui/queries/get-repository-import-error.query");
 
 type QueryState = { data?: BranchRepositoriesResult; isPending?: boolean; isError?: boolean };
 
@@ -48,6 +50,9 @@ describe("BranchRepositoriesCard", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useGetRepositoryImportError).mockReturnValue({
+      data: undefined,
+    } as unknown as ReturnType<typeof useGetRepositoryImportError>);
     initialUrl = window.location.href;
     window.history.replaceState(null, "", "/branches/feature?branch=main");
   });
