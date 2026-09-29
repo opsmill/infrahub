@@ -544,6 +544,7 @@ class DiffRepository:
         to_time: Timestamp | None = None,
         tracking_id: TrackingId | None = None,
         proposed_change_id: str | None = None,
+        diff_ids: list[str] | None = None,
         exclude_merged: bool = True,
     ) -> list[EnrichedDiffRootMetadata]:
         query = await EnrichedDiffRootsMetadataQuery.init(
@@ -554,6 +555,7 @@ class DiffRepository:
             to_time=to_time,
             tracking_id=tracking_id,
             proposed_change_id=proposed_change_id,
+            diff_ids=diff_ids,
             exclude_merged=exclude_merged,
         )
         await query.execute(db=self.db)
@@ -563,6 +565,12 @@ class DiffRepository:
                 self.deserializer.build_diff_root_metadata(root_node=neo4j_node, proposed_change_id=pc_id)
             )
         return diff_roots
+
+    async def get_one_metadata(self, diff_branch_name: str, diff_id: str) -> EnrichedDiffRootMetadata:
+        diff_roots = await self.get_roots_metadata(diff_branch_names=[diff_branch_name], diff_ids=[diff_id])
+        if not diff_roots:
+            raise ResourceNotFoundError(f"Cannot find diff for branch {diff_branch_name} with ID {diff_id}")
+        return diff_roots[0]
 
     async def diff_has_conflicts(
         self,

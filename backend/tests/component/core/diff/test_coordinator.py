@@ -26,6 +26,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.proposed_change.constants import ProposedChangeState
+from tests.adapters.diff_repository import RecordingDiffRepository
 
 
 class TestDiffCoordinator:
@@ -331,6 +332,49 @@ class TestDiffCoordinator:
             diff_branch_name=branch.name, tracking_id=BranchTrackingId(name=branch.name)
         )
         assert tracking_diff.uuid == full_diff.uuid
+
+    async def test_recalculate_loads_only_the_branch_side_diff(
+        self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
+    ) -> None:
+        branch = await create_branch(db=db, branch_name="branch")
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+        proposed_change_id = str(uuid4())
+        await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": proposed_change_id})
+
+        john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
+        john_main.height.value += 2
+        await john_main.save(db=db)
+        person_john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+        person_john_branch.height.value += 1
+        await person_john_branch.save(db=db)
+
+        branch_diff = await diff_coordinator.update_branch_diff(
+            base_branch=default_branch, diff_branch=branch, proposed_change_id=proposed_change_id
+        )
+        base_diff = await diff_repository.get_one(
+            diff_branch_name=default_branch.name, diff_id=branch_diff.partner_uuid
+        )
+        assert {n.uuid for n in base_diff.nodes} == {person_john_main.id}
+        recording_repository = RecordingDiffRepository(repository=diff_coordinator.diff_repo)
+        diff_coordinator.diff_repo = recording_repository
+
+        recalculated_diff = await diff_coordinator.recalculate(
+            base_branch=default_branch, diff_branch=branch, diff_id=branch_diff.uuid
+        )
+
+        # the default branch side of a diff can hold far more nodes than the branch side, so it is never hydrated
+        assert recording_repository.loaded_diffs == [(branch.name, branch_diff.uuid)]
+        assert recalculated_diff is not None
+        recalculated_base_diff = await diff_repository.get_one(
+            diff_branch_name=default_branch.name, diff_id=recalculated_diff.partner_uuid
+        )
+        assert recalculated_base_diff.uuid != base_diff.uuid
+        assert recalculated_base_diff.proposed_change_id == proposed_change_id
+        assert {n.uuid for n in recalculated_base_diff.nodes} == {person_john_main.id}
+        stored_base_roots = await diff_repository.get_roots_metadata(diff_branch_names=[default_branch.name])
+        assert {root.uuid for root in stored_base_roots} == {recalculated_base_diff.uuid}
 
     async def test_no_changes_skips_expensive_operations(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
