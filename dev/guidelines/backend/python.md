@@ -167,24 +167,31 @@ class NodeDiffBuilder:
     changed_attributes: list[str]  # Will be appended to during processing
 ```
 
-**Document attributes with inline docstrings** below each attribute, not in the class docstring:
+**Document an attribute with an inline docstring below it**, not in the class docstring, and only
+when the name does not already say what the field holds:
 
 ```python
-# ✅ Good - Attribute docstrings below each field
+# ✅ Good - a docstring only where the name leaves a question
 @dataclass(frozen=True)
 class RelationshipPeerData:
     branch: str
+    source_id: UUID
+    peer_kind: str
+    rel_node_db_id: str | None = None
 
+    rels: list[RelData] | None = None
+    """Both relationships pointing at this Relationship Node."""
+
+# ❌ Bad - the docstring restates the field name
+@dataclass(frozen=True)
+class RelationshipPeerData:
     source_id: UUID
     """UUID of the Source Node."""
 
     peer_kind: str
     """Kind of the Peer Node."""
 
-    rel_node_db_id: str | None = None
-    """Internal DB ID of the Relationship Node."""
-
-# ❌ Bad - Attributes documented in class docstring
+# ❌ Bad - attributes documented in the class docstring
 @dataclass(frozen=True)
 class RelationshipPeerData:
     """Data about a relationship peer.
@@ -276,16 +283,31 @@ Name the validator after the invariant it enforces. Name the offending fields in
 
 Testing note: don't test that Pydantic enforces `ge`/`le` (see [Testing Standards](./testing.md#what-not-to-test)), but *do* test the model validator and the shipped defaults — the invariant and the defaults are ours.
 
-## Docstrings (Google-style)
+## Docstrings
 
-All public functions and classes must have Google-style docstrings:
+A docstring states the contract in one line. Add a Google-style `Args`, `Returns` or `Raises`
+section only for what the signature does not already say. Write one on a public function or class
+that other modules call; a private helper whose name says what it does gets none. What belongs in
+a comment at all is in `.agents/rules/code-doc-style.md`.
 
 ```python
-async def create_branch(
-    db: InfrahubDatabase,
-    name: str,
-    description: str | None = None,
-) -> Branch:
+# ✅ Good - one line; the signature already documents the parameters
+async def create_branch(db: InfrahubDatabase, name: str, description: str | None = None) -> Branch:
+    """Create a branch, raising BranchExistsError when the name is already taken."""
+
+
+# ✅ Good - a section for the one parameter the name does not explain
+def load_nodes(db: InfrahubDatabase, ids: list[str], *, strict: bool = False) -> list[Node]:
+    """Load the nodes behind the given ids.
+
+    Args:
+        strict: Raise on an unknown id instead of dropping it from the result.
+
+    """
+
+
+# ❌ Bad - every section restates the signature
+async def create_branch(db: InfrahubDatabase, name: str, description: str | None = None) -> Branch:
     """Create a new branch in the database.
 
     Args:

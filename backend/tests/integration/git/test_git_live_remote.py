@@ -5,15 +5,25 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import git
 import pytest
+from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.exceptions import RepositoryCredentialsError, RepositoryError
+from infrahub.exceptions import RepositoryCredentialsError, RepositoryError, RepositoryPermissionError
+from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 from tests.helpers.test_app import TestInfrahubApp
-from tests.integration.git.conftest import bad_credentials_clone_url, create_gogs_repo
+from tests.integration.git.conftest import (
+    bad_credentials_clone_url,
+    create_gogs_repo,
+    create_remote_ref,
+    gogs_clone_url,
+    grant_read_access,
+    readonly_clone_url,
+)
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -363,3 +373,127 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         synced = await infrahub_repo.sync_from_remote(commit=current_commit)
 
         assert synced is False
+
+    @pytest.fixture(scope="class")
+    async def write_probe_dataset(
+        self,
+        initialize_registry: None,
+        git_repos_dir_module_scope: Path,
+        gogs_server: GogsServer,
+    ) -> dict:
+        repo_name = "write-probe-repo"
+        # Private repo + a read-only collaborator: the collaborator can clone but not push,
+        # which is the shape of a read-write repository whose credentials lack write access.
+        create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container, private=True)
+        grant_read_access(gogs_server.base_url, gogs_server.token, repo_name)
+        return {
+            "repo_name": repo_name,
+            "writable_url": gogs_clone_url(gogs_server.base_url, repo_name),
+            "readonly_url": readonly_clone_url(gogs_server.base_url, repo_name),
+        }
+
+    async def test_write_probe_discriminates_read_from_write_access(self, write_probe_dataset: dict) -> None:
+        """The write probe rejects a read-only credential while the read-only check accepts it.
+
+        Asserting both directions on the same URL is what proves the probe, not the URL, makes the
+        difference: read access alone passes require_write=False but not require_write=True.
+        """
+        repo_name = write_probe_dataset["repo_name"]
+        readonly_url = write_probe_dataset["readonly_url"]
+
+        # Read access alone satisfies the read-gated check.
+        InfrahubRepository.check_connectivity(name=repo_name, url=readonly_url, require_write=False)
+
+        # The same credential is rejected once write access is required.
+        with pytest.raises(
+            RepositoryPermissionError,
+            match=(
+                rf"^Write access to repository {repo_name} was denied\. The credentials can read but not push; "
+                r"grant the token write access to the repository\.$"
+            ),
+        ):
+            InfrahubRepository.check_connectivity(name=repo_name, url=readonly_url, require_write=True)
+
+        # A credential that can write passes the write probe on the same repository.
+        InfrahubRepository.check_connectivity(
+            name=repo_name, url=write_probe_dataset["writable_url"], require_write=True
+        )
+
+    async def test_write_probe_never_mutates_remote(self, write_probe_dataset: dict, gogs_server: GogsServer) -> None:
+        """The write probe leaves the remote's refs untouched, even when the probe ref already exists.
+
+        This is the assertion that stops a later refactor from dropping --dry-run: a non-dry-run
+        delete of the probe ref would remove it here.
+        """
+        repo_name = write_probe_dataset["repo_name"]
+        writable_url = write_probe_dataset["writable_url"]
+
+        create_remote_ref(gogs_server.container, repo_name, WRITE_ACCESS_PROBE_REF)
+        cmd = git.cmd.Git()
+        refs_before = cmd.ls_remote(writable_url)
+        assert f"refs/heads/{WRITE_ACCESS_PROBE_REF}" in refs_before
+
+        InfrahubRepository.check_connectivity(name=repo_name, url=writable_url, require_write=True)
+
+        refs_after = cmd.ls_remote(writable_url)
+        assert refs_after == refs_before
+
+    async def test_create_read_write_repository_without_push_access_is_rejected(
+        self,
+        initialize_registry: None,
+        git_repos_dir_module_scope: Path,
+        gogs_server: GogsServer,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ) -> None:
+        """Creating a read-write repository whose credentials cannot push fails and leaves no node behind."""
+        repo_name = "reject-write-repo"
+        create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container, private=True)
+        grant_read_access(gogs_server.base_url, gogs_server.token, repo_name)
+        readonly_url = readonly_clone_url(gogs_server.base_url, repo_name)
+
+        node = await client.create(kind=InfrahubKind.REPOSITORY, data={"name": repo_name, "location": readonly_url})
+        with pytest.raises(
+            GraphQLError,
+            match=(
+                rf"Write access to repository {repo_name} was denied\. The credentials can read but not push; "
+                r"grant the token write access to the repository\."
+            ),
+        ):
+            await node.save()
+
+        leftover = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, filters={"name__value": repo_name})
+        assert leftover == []
+
+    async def test_create_read_only_repository_with_read_only_credentials_succeeds(
+        self,
+        initialize_registry: None,
+        git_repos_dir_module_scope: Path,
+        gogs_server: GogsServer,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ) -> None:
+        """A read-only repository created with read-only credentials succeeds; it is never write-probed."""
+        repo_name = "readonly-creds-repo"
+        create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container, private=True)
+        grant_read_access(gogs_server.base_url, gogs_server.token, repo_name)
+        readonly_url = readonly_clone_url(gogs_server.base_url, repo_name)
+
+        branch = await client.branch.create(branch_name="ro_readonly_creds", sync_with_git=False)
+        node = await client.create(
+            kind=InfrahubKind.READONLYREPOSITORY,
+            branch=branch.name,
+            name=repo_name,
+            location=readonly_url,
+            ref="main",
+        )
+        await node.save()
+
+        created: CoreReadOnlyRepository = await NodeManager.get_one(
+            db=db,
+            id=node.id,
+            kind=InfrahubKind.READONLYREPOSITORY,
+            branch=branch.name,
+            raise_on_error=True,
+        )
+        assert created.name.value == repo_name

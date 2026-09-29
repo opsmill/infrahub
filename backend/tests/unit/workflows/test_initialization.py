@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
+from urllib.parse import quote
 
 import pytest
 import redis
@@ -8,6 +10,10 @@ from redis.connection import Connection, SSLConnection
 
 from infrahub.config import CacheSettings
 from infrahub.workflows.initialization import build_cache_connection_string
+
+# CA settings are validated at load, so the cases need a bundle that exists.
+CA_BUNDLE = str(Path(__file__).parent.parent / "test_data" / "ca-bundle.pem")
+CA_BUNDLE_QUOTED = quote(CA_BUNDLE, safe="")
 
 
 @dataclass
@@ -99,9 +105,9 @@ class ConnectionStringCase:
                 cache_kwargs={
                     "address": "redis.internal",
                     "tls_enabled": True,
-                    "tls_ca_file": "/etc/ssl/ca.pem",
+                    "tls_ca_file": CA_BUNDLE,
                 },
-                expected_url="rediss://redis.internal:6379/0?ssl_ca_certs=%2Fetc%2Fssl%2Fca.pem",
+                expected_url=f"rediss://redis.internal:6379/0?ssl_ca_certs={CA_BUNDLE_QUOTED}",
             ),
             id="tls_ca_file",
         ),
@@ -112,11 +118,11 @@ class ConnectionStringCase:
                     "address": "redis.internal",
                     "tls_enabled": True,
                     "tls_insecure": True,
-                    "tls_ca_file": "/etc/ssl/ca.pem",
+                    "tls_ca_file": CA_BUNDLE,
                 },
                 expected_url=(
                     "rediss://redis.internal:6379/0"
-                    "?ssl_cert_reqs=none&ssl_check_hostname=False&ssl_ca_certs=%2Fetc%2Fssl%2Fca.pem"
+                    f"?ssl_cert_reqs=none&ssl_check_hostname=False&ssl_ca_certs={CA_BUNDLE_QUOTED}"
                 ),
             ),
             id="tls_insecure_and_ca_file",
@@ -128,7 +134,7 @@ class ConnectionStringCase:
                     "address": "redis.internal",
                     "tls_enabled": False,
                     "tls_insecure": True,
-                    "tls_ca_file": "/etc/ssl/ca.pem",
+                    "tls_ca_file": CA_BUNDLE,
                 },
                 expected_url="redis://redis.internal:6379/0",
             ),
@@ -197,14 +203,14 @@ class RoundTripCase:
                 cache_kwargs={
                     "address": "redis.internal",
                     "tls_enabled": True,
-                    "tls_ca_file": "/etc/ssl/ca.pem",
+                    "tls_ca_file": CA_BUNDLE,
                 },
                 expected_connection_class=SSLConnection,
                 expected_kwargs={
                     "host": "redis.internal",
                     "port": 6379,
                     "db": 0,
-                    "ssl_ca_certs": "/etc/ssl/ca.pem",
+                    "ssl_ca_certs": CA_BUNDLE,
                 },
             ),
             id="tls_ca_file_propagates",

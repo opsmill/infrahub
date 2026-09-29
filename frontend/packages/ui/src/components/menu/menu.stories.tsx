@@ -85,6 +85,19 @@ const disabledItems = () => [
   </MenuItem>,
 ];
 
+// Selection needs ids, so these items carry an `id` rather than relying on the React key.
+const selectableItems = () => [
+  <MenuItem key="compact" id="compact">
+    Compact
+  </MenuItem>,
+  <MenuItem key="comfortable" id="comfortable">
+    Comfortable
+  </MenuItem>,
+  <MenuItem key="spacious" id="spacious">
+    Spacious
+  </MenuItem>,
+];
+
 export const AllVariants: Story = {
   render: () => (
     <div className="grid grid-cols-[8rem_max-content_max-content] items-start gap-x-6 gap-y-6">
@@ -128,6 +141,28 @@ export const AllVariants: Story = {
       <MenuSurface>
         <Menu aria-label="Picker menu with a disabled item" variant="picker">
           {disabledItems()}
+        </Menu>
+      </MenuSurface>
+
+      <ColumnLabel>Selection</ColumnLabel>
+      <MenuSurface>
+        <Menu
+          aria-label="Action menu with selection"
+          variant="action"
+          selectionMode="multiple"
+          defaultSelectedKeys={["comfortable"]}
+        >
+          {selectableItems()}
+        </Menu>
+      </MenuSurface>
+      <MenuSurface>
+        <Menu
+          aria-label="Picker menu with selection"
+          variant="picker"
+          selectionMode="multiple"
+          defaultSelectedKeys={["comfortable"]}
+        >
+          {selectableItems()}
         </Menu>
       </MenuSurface>
     </div>

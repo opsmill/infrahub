@@ -1,0 +1,1 @@
+Fixed the diff calculation of a large branch re-reading every change on the branch for each page of results: attribute, relationship and property changes are now calculated one chunk of changed nodes at a time.
