@@ -63,6 +63,7 @@ describe("RepositoryErrorBands", () => {
 
   afterEach(() => {
     window.history.replaceState(null, "", initialUrl);
+    document.documentElement.classList.remove("dark");
   });
 
   test("shows the last error line verbatim with a link to the task log", async () => {
@@ -192,6 +193,35 @@ describe("RepositoryErrorBands", () => {
     await expect.element(component.getByText("repo-a — import failed")).toBeVisible();
     await expect.element(component.getByText("Loading the import log…")).toBeVisible();
     expect(component.container.querySelector("a")).toBeNull();
+  });
+
+  test("switches both band colours with the dark theme", async () => {
+    // GIVEN
+    mockImportErrors({
+      "repo-a": { status: "found", taskId: "task-1", message: "ValueError: invalid schema" },
+    });
+    const component = await renderBands([
+      importErrorRepository("repo-a"),
+      unreachableRepository("repo-b"),
+    ]);
+    await expect.element(component.getByText("repo-a — import failed")).toBeVisible();
+    const colours = () =>
+      bands(component.container).map((band) => {
+        const heading = band.querySelector(".font-semibold") ?? band;
+        return [getComputedStyle(band).backgroundColor, getComputedStyle(heading).color];
+      });
+    const light = colours();
+
+    // WHEN
+    document.documentElement.classList.add("dark");
+
+    // THEN
+    const dark = colours().flat();
+    const lightValues = light.flat();
+    expect(dark).toHaveLength(4);
+    dark.forEach((value, index) => {
+      expect(value).not.toBe(lightValues[index]);
+    });
   });
 
   test("renders nothing when every repository is healthy", async () => {
