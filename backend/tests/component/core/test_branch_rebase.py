@@ -11,6 +11,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
+from infrahub.core.diff.model.path import NameTrackingId
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -18,6 +20,7 @@ from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, Sch
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import MigrationError, ValidationError
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_database
@@ -475,4 +478,48 @@ async def test_failed_rebase_keeps_the_branch_data(
 
     rolled_back_branch = await Branch.get_by_name(db=db, name=branch.name)
     widgets = await NodeManager.query(db=db, schema=widget_kind, branch=rolled_back_branch)
+    assert sorted(str(node.get_attribute("name").value) for node in widgets) == ["widget-on-branch", "widget-on-main"]
+
+
+async def test_rebase_deletes_its_changelog_diff(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dependency_provider: Provider,
+    workflow_recorder: WorkflowRecorder,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """The main-to-main diff built for the rebase's node events is not left in the database."""
+    widget_kind = "TestingWidget"
+    widget = NodeSchema(
+        name="Widget",
+        namespace="Testing",
+        default_filter="name__value",
+        attributes=[AttributeSchema(name="name", kind="Text")],
+    )
+    await load_schema(db=db, schema=SchemaRoot(nodes=[widget]), update_db=True)
+
+    branch = await create_branch(db=db, branch_name="changelog-diff-branch")
+    branch_widget = await Node.init(db=db, schema=widget_kind, branch=branch)
+    await branch_widget.new(db=db, name="widget-on-branch")
+    await branch_widget.save(db=db)
+    # a change on the destination after the fork, so the rebase has node events to send
+    main_widget = await Node.init(db=db, schema=widget_kind)
+    await main_widget.new(db=db, name="widget-on-main")
+    await main_widget.save(db=db)
+
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+    with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
+        await rebase_branch(branch=branch.name, context=context)
+
+    diff_repository = await get_component_registry().get_component(DiffRepository, db=db, branch=default_branch)
+    main_roots = await diff_repository.get_roots_metadata(
+        base_branch_names=[default_branch.name], diff_branch_names=[default_branch.name], exclude_merged=False
+    )
+    assert [root for root in main_roots if isinstance(root.tracking_id, NameTrackingId)] == []
+
+    rebased_branch = await Branch.get_by_name(db=db, name=branch.name)
+    widgets = await NodeManager.query(db=db, schema=widget_kind, branch=rebased_branch)
     assert sorted(str(node.get_attribute("name").value) for node in widgets) == ["widget-on-branch", "widget-on-main"]
