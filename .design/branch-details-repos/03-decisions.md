@@ -172,3 +172,13 @@ Kept, because it can be fetched: repo name, kind, `commit`, `sync_status`. Repo 
 `InfrahubTask(related_node__ids: [repoId])`. Generator failed/total from `CoreGeneratorInstance.status`
 per definition. Running tasks through `InfrahubTaskBranchStatus`. The merge gate itself is derived
 in the frontend; no backend field exists (INFP-670).
+
+## Round 6 (Object layout rev 3 notes, 2026-09-29)
+
+New revision: Object layout rev 4 (`revs/rev-04/`). Legacy and Consistent are unchanged.
+
+| Note | Decision | Reason |
+|---|---|---|
+| 1. "Remove this card, merge are not blocked, reuse the initial legacy layout having inline buttons … below repositories table" | **Addressed.** The Merge aside is gone and Details, repositories and tasks take the full width. Today's inline buttons (Merge, Propose change, Rebase, Validate, Delete) sit below the repositories table. Merge is a plain button with no gate. The header's Actions menu was removed because it duplicated the buttons. | The owner's call: merges aren't blocked. **This revises brief #3 for this direction.** Import errors and failed generators still show in the repository bands and the Tasks table, but they no longer gate the button. |
+| 2. "tasks are not collapsible anymore, just a link to directly the details page of the task" | **Addressed.** The expand column and inline logs are removed, and the title links to `/tasks/<id>`. The band's "View task log →" goes to the same page. | The task details page already shows the logs, so a second log view isn't needed. The mocked ids don't exist on the backend, so the links land on an empty task page. |
+| 3. "we can see the white background behind, we should not" | **Addressed.** The panel shell painted `Canvas` (white) behind the page; the harness now passes `background: transparent` in `frame`, so the app's stone-100 shows through as on real pages. The banner uses the real `BranchWorkingNotice` classes (cyan tint, branch icon). | The white came from the design-jam shell, not the design. Fixed in `index.tsx` rather than the copied panel, so it survives skill reloads. It applies to every variant. |

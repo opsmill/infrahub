@@ -9,6 +9,7 @@ import { RevRoot as Rev01, type RevKnobs } from "./revs/rev-01/root";
 import { RevRoot as Rev02 } from "./revs/rev-02/root";
 import { SCENARIOS, type Scenario } from "./revs/rev-03/data";
 import { RevRoot as Rev03 } from "./revs/rev-03/root";
+import { RevRoot as Rev04 } from "./revs/rev-04/root";
 
 const SLUG = "branch-details-repos";
 
@@ -102,7 +103,7 @@ const VARIANTS: Variant[] = [
   {
     id: "object",
     label: "Object layout",
-    bet: "Same layers, cards and colours as the object details page; Merge is an aside card.",
+    bet: "Same layers, cards and colours as the object details page; today's inline branch buttons.",
     knobs: DATA_KNOBS,
     revisions: [
       {
@@ -122,6 +123,12 @@ const VARIANTS: Variant[] = [
         date: "2026-09-29",
         note: "Only retrievable data: no Upstream or Last import, raw error lines, unreachable-remote warning.",
         render: (k) => <Rev03 variant="object" knobs={toKnobs(k)} />,
+      },
+      {
+        rev: 4,
+        date: "2026-09-29",
+        note: "No Merge card: today's inline buttons below the repositories; task rows link to their task page; real branch notice, body card scrolls.",
+        render: (k) => <Rev04 variant="object" knobs={toKnobs(k)} />,
       },
     ],
   },
@@ -143,6 +150,8 @@ function useContentFrame() {
         left: r.left,
         right: window.innerWidth - r.right,
         bottom: Math.max(0, window.innerHeight - r.bottom),
+        // The shell paints Canvas (white) by default; let the app's own background show through.
+        background: "transparent",
       });
     };
     measure();
