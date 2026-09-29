@@ -1250,14 +1250,18 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 message=f"Unable to pull the branch {branch_name} for repository {name}, there are conflicts that must be resolved.",
             ) from error
 
-        if is_write_operation and (
-            "Write access to repository not granted" in error.stderr
-            or "The requested URL returned error: 403" in error.stderr
-            or ("Permission to" in error.stderr and "denied" in error.stderr)
-            or "not allowed to push" in error.stderr
-            or "not allowed to upload code" in error.stderr
-            or "permission denied for writing" in error.stderr.lower()
-        ):
+        stderr = error.stderr.lower()
+        write_denials = (
+            "write access to repository not granted",
+            "the requested url returned error: 403",
+            "not allowed to push",
+            "not allowed to upload code",
+            "permission denied for writing",
+        )
+        permission_denied = any(text in stderr for text in write_denials) or (
+            "permission to" in stderr and "denied" in stderr
+        )
+        if is_write_operation and permission_denied:
             raise RepositoryPermissionError(identifier=name) from error
 
         raise RepositoryError(identifier=name, message=error.stderr) from error
