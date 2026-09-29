@@ -22,11 +22,6 @@ def get_node(db, node_id):
 
 ## Module layout
 
-<<<<<<< HEAD
-All imports must be at the top of the file. Never import inside functions, methods, or classes (ruff
-`PLC0415`). The only function-local imports we keep defer an optional or heavy dependency that must
-not load on every import, each marked `# noqa: PLC0415` with the reason:
-=======
 ### constants.py holds constants only
 
 Do not put functions or classes in a file named `constants.py` — only module-level constant values (plain literals, enums, frozen containers). A value that must be computed, read from the environment, or resolved at runtime is not a constant; give it a home in a purpose-named module (e.g. `limits.py`, `settings.py`) instead.
@@ -37,8 +32,9 @@ If the value genuinely never changes at runtime, prefer an actual constant over 
 
 ### Imports
 
-All imports must be at the top of the file. Never import inside functions, methods, or classes; Ruff enforces this (`PLC0415`):
->>>>>>> origin/stable
+All imports must be at the top of the file. Never import inside functions, methods, or classes (ruff
+`PLC0415`). The only function-local imports we keep defer an optional or heavy dependency that must
+not load on every import, each marked `# noqa: PLC0415` with the reason:
 
 ```python
 # ✅ Good - imports at module level
@@ -52,26 +48,9 @@ class NodeManager:
             raise ValidationError("Node name is required")
 ```
 
-<<<<<<< HEAD
 All backend modules use `from __future__ import annotations`, so an import used **only** in
 parameter types, return types, or variable annotations has no runtime effect. Put it under
 `TYPE_CHECKING`, especially when it causes or risks a circular import chain:
-=======
-A function-local import is acceptable only to break a genuine circular import or to defer an optional or heavy dependency that must not load on every import. Mark each such import with `# noqa: PLC0415` and a short reason.
-
-All backend modules use `from __future__ import annotations`, which turns annotations into strings at runtime. This means imports used **only** in type hints have no runtime effect and can be placed under `TYPE_CHECKING` to prevent circular imports:
-
-```python
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from infrahub.database import InfrahubDatabase
-```
-
-If an import is only referenced in parameter types, return types, or variable annotations, move it under `TYPE_CHECKING` — especially when it causes or risks a circular import chain:
->>>>>>> origin/stable
 
 ```python
 # ❌ Bad - top-level import only used in annotations; causes circular import
