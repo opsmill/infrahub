@@ -80,6 +80,7 @@ from infrahub.workers.dependencies import get_event_service
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
+    import builtins
     import types
 
     from infrahub_sdk.checks import InfrahubCheck
@@ -1497,7 +1498,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             log.info(f"TransformPython {transform_name!r} not found locally, deleting")
             await transform_definition_in_graph[transform_name].delete()
 
-    async def _load_yamlfile_from_disk(self, paths: list[Path], file_type: type[YamlFileVar]) -> list[YamlFileVar]:
+    async def _load_yamlfile_from_disk(
+        self, paths: list[Path], file_type: builtins.type[YamlFileVar]
+    ) -> list[YamlFileVar]:
         data_files = file_type.load_from_disk(paths=paths)
 
         for data_file in data_files:
@@ -1526,7 +1529,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         self,
         paths: list[Path],
         branch: str,
-        file_type: type[InfrahubFile],
+        file_type: builtins.type[InfrahubFile],
         defer: bool | None = None,
     ) -> None:
         """Load one or multiple objects files into Infrahub.

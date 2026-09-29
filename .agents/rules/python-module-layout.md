@@ -20,4 +20,4 @@ If the value genuinely never changes at runtime, prefer an actual constant over 
 
 Keep imports at the top of the module. Do not import inside functions, methods, or classes. Ruff enforces this (`PLC0415`).
 
-A function-local import is acceptable only to break a genuine circular import or to defer an optional or heavy dependency that must not load on every import. Mark each such import with `# noqa: PLC0415` and a short reason.
+A function-local import is acceptable only to defer an optional or heavy dependency that must not load on every import; mark it `# noqa: PLC0415` with the reason. It does not fix an import cycle: a cycle means the module depends on a layer above it, so depend on the narrower interface it actually uses, split a union parameter into one typed slot per case, or move the helper next to its caller (`dev/guidelines/backend/python.md`, Imports).

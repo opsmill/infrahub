@@ -22,17 +22,13 @@ def get_node(db, node_id):
 
 ## Imports
 
-All imports must be at the top of the file. Never import inside functions, methods, or classes:
+All imports must be at the top of the file. Never import inside functions, methods, or classes (ruff
+`PLC0415`). The only function-local imports we keep defer an optional or heavy dependency that must
+not load on every import, each marked `# noqa: PLC0415` with the reason:
 
 ```python
 # ✅ Good - imports at module level
-from infrahub.core.query import Query
 from infrahub.exceptions import ValidationError
-
-class NodeManager:
-    def validate(self, node: Node) -> None:
-        if not node.name:
-            raise ValidationError("Node name is required")
 
 # ❌ Bad - import inside function
 class NodeManager:
@@ -42,18 +38,9 @@ class NodeManager:
             raise ValidationError("Node name is required")
 ```
 
-All backend modules use `from __future__ import annotations`, which turns annotations into strings at runtime. This means imports used **only** in type hints have no runtime effect and can be placed under `TYPE_CHECKING` to prevent circular imports:
-
-```python
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from infrahub.database import InfrahubDatabase
-```
-
-If an import is only referenced in parameter types, return types, or variable annotations, move it under `TYPE_CHECKING` — especially when it causes or risks a circular import chain:
+All backend modules use `from __future__ import annotations`, so an import used **only** in
+parameter types, return types, or variable annotations has no runtime effect. Put it under
+`TYPE_CHECKING`, especially when it causes or risks a circular import chain:
 
 ```python
 # ❌ Bad - top-level import only used in annotations; causes circular import
@@ -72,18 +59,43 @@ def collect_filters(self, schema_branch: SchemaBranch) -> dict[str, set[str]]:
     ...
 ```
 
-**Exception — `tasks/*.py`:** keep `infrahub.*` and other heavy/optional imports function-local
-here. `tasks/__init__.py` eagerly imports every task submodule into the Invoke `Collection`, so a
-top-level backend import in any `tasks/*.py` file would load the full backend package on every
-`invoke` command, even unrelated ones (`invoke --list`, `invoke docs.*`, ...). This is a
-deliberate, documented exception: `pyproject.toml`'s `"tasks/**.py"` per-file-ignore disables the
-"import not at top level" lint rule for exactly this reason. Keep lightweight, always-needed
-imports (stdlib, `invoke`, sibling `.shared`/`.utils` modules) at the top; defer the rest into the
-function that needs them.
+### An import cycle is a layering defect, not a reason for a function-local import
 
-The exception covers a thin task wrapper, not logic that happens to live in `tasks/`. A task body
-needing a dozen deferred imports is telling you the logic belongs in a module of its own, which the
-task then imports once — put it there and the deferred imports mostly disappear with it.
+A cycle means the module reaches into a layer above it, and hiding the import inside a function only
+hides that. Map the cycle first: a hub package such as `infrahub.services` reaches low-level modules
+by several routes, so cutting one edge rarely frees it. Then fix the dependency itself:
+
+- Depend on the narrower interface the code actually uses: a lock that only calls `service.cache`
+  takes the cache adapter, not the services container that owns it.
+- When the import only served a runtime `isinstance`, give each accepted type its own parameter so
+  the branches narrow on `None` and the type stays a `TYPE_CHECKING` import.
+- Move a helper next to its only caller when that module already sits at the right layer.
+
+```python
+# ❌ Bad - the check needs a type from the layer above, so the import hides in the function
+def _require_service(connection: redis.Redis | InfrahubServices | None) -> InfrahubServices:
+    from infrahub.services import InfrahubServices  # noqa: PLC0415  # avoid circular import
+    if not isinstance(connection, InfrahubServices):
+        raise TypeError(...)
+    return connection
+
+# ✅ Good - one typed slot per driver; each branch narrows on None, importing nothing above this layer
+def __init__(self, name: str, connection: redis.Redis | None = None, cache: InfrahubCache | None = None) -> None:
+    if connection is not None:
+        self.connection: redis.Redis = connection
+    elif cache is not None:
+        self.cache: InfrahubCache = cache
+    else:
+        raise TypeError(f"Lock {name!r} requires a connection or a cache adapter")
+```
+
+**Exception — `tasks/*.py`:** keep `infrahub.*` and other heavy imports function-local there.
+`tasks/__init__.py` eagerly imports every task submodule into the Invoke `Collection`, so a top-level
+backend import in any task file would load the full backend on every `invoke` command, and
+`pyproject.toml`'s `"tasks/**.py"` per-file-ignore disables the rule for exactly this reason. Keep
+stdlib, `invoke` and sibling `.shared`/`.utils` imports at the top and defer the rest. The exception
+covers a thin task wrapper: a task body needing a dozen deferred imports belongs in a module of its
+own, which the task imports once.
 
 Import a singleton from the module that defines it, not from a package `__init__.py` that re-exports
 it under the same name as its submodule. `from infrahub.core import registry` names two things — the
@@ -155,24 +167,31 @@ class NodeDiffBuilder:
     changed_attributes: list[str]  # Will be appended to during processing
 ```
 
-**Document attributes with inline docstrings** below each attribute, not in the class docstring:
+**Document an attribute with an inline docstring below it**, not in the class docstring, and only
+when the name does not already say what the field holds:
 
 ```python
-# ✅ Good - Attribute docstrings below each field
+# ✅ Good - a docstring only where the name leaves a question
 @dataclass(frozen=True)
 class RelationshipPeerData:
     branch: str
+    source_id: UUID
+    peer_kind: str
+    rel_node_db_id: str | None = None
 
+    rels: list[RelData] | None = None
+    """Both relationships pointing at this Relationship Node."""
+
+# ❌ Bad - the docstring restates the field name
+@dataclass(frozen=True)
+class RelationshipPeerData:
     source_id: UUID
     """UUID of the Source Node."""
 
     peer_kind: str
     """Kind of the Peer Node."""
 
-    rel_node_db_id: str | None = None
-    """Internal DB ID of the Relationship Node."""
-
-# ❌ Bad - Attributes documented in class docstring
+# ❌ Bad - attributes documented in the class docstring
 @dataclass(frozen=True)
 class RelationshipPeerData:
     """Data about a relationship peer.
@@ -264,16 +283,31 @@ Name the validator after the invariant it enforces. Name the offending fields in
 
 Testing note: don't test that Pydantic enforces `ge`/`le` (see [Testing Standards](./testing.md#what-not-to-test)), but *do* test the model validator and the shipped defaults — the invariant and the defaults are ours.
 
-## Docstrings (Google-style)
+## Docstrings
 
-All public functions and classes must have Google-style docstrings:
+A docstring states the contract in one line. Add a Google-style `Args`, `Returns` or `Raises`
+section only for what the signature does not already say. Write one on a public function or class
+that other modules call; a private helper whose name says what it does gets none. What belongs in
+a comment at all is in `.agents/rules/code-doc-style.md`.
 
 ```python
-async def create_branch(
-    db: InfrahubDatabase,
-    name: str,
-    description: str | None = None,
-) -> Branch:
+# ✅ Good - one line; the signature already documents the parameters
+async def create_branch(db: InfrahubDatabase, name: str, description: str | None = None) -> Branch:
+    """Create a branch, raising BranchExistsError when the name is already taken."""
+
+
+# ✅ Good - a section for the one parameter the name does not explain
+def load_nodes(db: InfrahubDatabase, ids: list[str], *, strict: bool = False) -> list[Node]:
+    """Load the nodes behind the given ids.
+
+    Args:
+        strict: Raise on an unknown id instead of dropping it from the result.
+
+    """
+
+
+# ❌ Bad - every section restates the signature
+async def create_branch(db: InfrahubDatabase, name: str, description: str | None = None) -> Branch:
     """Create a new branch in the database.
 
     Args:

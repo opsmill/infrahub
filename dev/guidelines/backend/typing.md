@@ -107,12 +107,15 @@ Elimination is also what made the `cast()` look necessary: mypy does not subtrac
 such as `redis.Redis` from a union on the negative branch, so the leftover never narrows. A `cast()`
 that "only records" what a check above established is still a `cast()` — make the check return the value.
 
-Two signs that you are reaching for the escape hatch instead of the fix:
+Three signs that you are reaching for the escape hatch instead of the fix:
 
 - **The real check trips the checker in files you did not touch.** An import added for a runtime
   `isinstance` can change the order in which mypy resolves an import cycle; errors that appear
-  elsewhere are a second defect to root-cause — usually an ambiguous import, see
-  [Imports](python.md#imports) — not a reason to fall back.
+  elsewhere are a second defect to root-cause, usually an ambiguous import, not a reason to fall back.
+- **The real check needs an import that closes a cycle.** The type lives in a layer above the
+  module, and neither a function-local import nor `cast()` fixes that: give each accepted type its
+  own parameter so the branch narrows on `None`, or depend on the narrower interface — see
+  [Imports](python.md#imports).
 - **The suppression needs a paragraph.** A `# type: ignore[code]` carries its reason on the same
   line; when justifying one takes a docstring, remove it instead of documenting it.
 

@@ -50,10 +50,15 @@ class NATSCache(InfrahubCache):
             password=config.SETTINGS.cache.password,
             tls=tls_context,
         )
-        jetstream = connection.jetstream()
-
-        bucket = f"kv_{config.SETTINGS.cache.database}"
-        kv = await cls._ensure_kv(jetstream=jetstream, bucket=bucket)
+        try:
+            jetstream = connection.jetstream()
+            bucket = f"kv_{config.SETTINGS.cache.database}"
+            kv = await cls._ensure_kv(jetstream=jetstream, bucket=bucket)
+        # BaseException, so that a caller cancelling this coroutine on a deadline does not orphan the
+        # connection it never received.
+        except BaseException:
+            await connection.close()
+            raise
 
         return cls(connection=connection, jetstream=jetstream, kv=kv, bucket=bucket)
 
@@ -137,4 +142,10 @@ class NATSCache(InfrahubCache):
             await self.jetstream.publish(f"$KV.{self.bucket}.{key}", value.encode(), msg_ttl=msg_ttl)
         return True
 
-    async def close_connection(self) -> None: ...
+    async def close_connection(self) -> None:
+        """Close the NATS connection this cache opened.
+
+        ``close`` rather than ``drain``: the cache holds no subscriptions to flush, and a connection
+        that is already closed is a no-op for the client.
+        """
+        await self.connection.close()
