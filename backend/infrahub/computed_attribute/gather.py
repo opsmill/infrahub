@@ -44,25 +44,41 @@ async def gather_python_transform_attributes(
 
     transform_attributes = schema_branch.computed_attributes.python_attributes_by_transform
 
-    transform_names = list(transform_attributes.keys())
+    transform_keys = list(transform_attributes.keys())
 
-    if not transform_names:
+    if not transform_keys:
         return []
 
+    fields = {"id": None, "name": None, "repository": None, "query": None}
     transforms = await NodeManager.query(
         db=db,
         schema=CoreTransformPythonNode,
         branch=branch_name,
-        fields={"id": None, "name": None, "repository": None, "query": None},
-        filters={"name__values": transform_names},
+        fields=fields,
+        filters={"name__values": transform_keys},
         prefetch_relationships=True,
     )
 
-    found_transforms_names = [transform.name.value for transform in transforms]
-    for transform_name in transform_names:
-        if transform_name not in found_transforms_names:
+    # An attribute wires its transform by name or by id, so a key no name answered is tried as one.
+    resolved_keys = {transform.name.value for transform in transforms}
+    unresolved_keys = [key for key in transform_keys if key not in resolved_keys]
+    if unresolved_keys:
+        transforms_by_id = await NodeManager.query(
+            db=db,
+            schema=CoreTransformPythonNode,
+            branch=branch_name,
+            fields=fields,
+            filters={"ids": unresolved_keys},
+            prefetch_relationships=True,
+        )
+        known_ids = {transform.get_id() for transform in transforms}
+        transforms.extend(transform for transform in transforms_by_id if transform.get_id() not in known_ids)
+        resolved_keys.update(transform.get_id() for transform in transforms_by_id)
+
+    for transform_key in transform_keys:
+        if transform_key not in resolved_keys:
             log.warning(
-                msg=f"The transform {transform_name} is assigned to a computed attribute but the transform could not be found in the database."
+                msg=f"The transform {transform_key} is assigned to a computed attribute but the transform could not be found in the database."
             )
     repositories = repositories or await get_repositories_commit_per_branch(db=db)
     graphql_params = await prepare_graphql_params(db=db, branch=branch)
@@ -78,15 +94,19 @@ async def gather_python_transform_attributes(
             schema=graphql_params.schema,
             document=cached_parse(query.query.value),
         )
-        for attribute in transform_attributes[transform.name.value]:
+        attributes = list(transform_attributes.get(transform.name.value, []))
+        if transform.get_id() != transform.name.value:
+            attributes.extend(transform_attributes.get(transform.get_id(), []))
+        for attribute in attributes:
             python_transform_computed_attribute = PythonTransformComputedAttribute(
                 name=transform.name.value,
+                transform_id=transform.get_id(),
                 branch_name=branch_name,
                 repository_id=repository.get_id(),
                 repository_name=repository.name.value,
                 repository_kind=repository.get_kind(),
                 query_analyzer=query_analyzer,
-                query_name=query.name.value,
+                query_id=query.get_id(),
                 computed_attribute=attribute,
             )
             python_transform_computed_attribute.populate_branch_commit(
