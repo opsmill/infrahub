@@ -30,7 +30,7 @@ query GetBranchRepositories($limit: Int!) {
 - Context: `{ branch: branchName }`. Variables: `{ limit: REPOSITORY_FETCH_LIMIT }` (500).
 - `CoreGenericRepository` declares `commit`, `name`, `sync_status` and `operational_status` itself (checked in `schema/schema.graphql`), so no inline fragments are needed.
 - Errors: `PERMISSION_DENIED` → `{ status: "denied" }`; anything else throws.
-- Query key: `repositoryQueryKeys.branch({ branchName, kind })`. `refetchInterval: 10_000`.
+- Query key: `repositoryQueryKeys.branch({ branchName, kind })`. `refetchInterval`: 10s while any returned repository has `sync_status.value === "syncing"`, else off (Refresh and window refocus).
 
 ## Q2 — Latest import task of one repository, with logs
 
@@ -65,7 +65,7 @@ query GetRepositoryImportTask(
 
 - Variables: `{ branch, repositoryId, workflows: IMPORT_WORKFLOWS, logLimit: IMPORT_LOG_LIMIT }`.
 - Issued only for rendered bands (≤ 3 until "Show all").
-- Query key: `repositoryQueryKeys.importError({ branchName, repositoryId })`. `refetchInterval: 10_000`.
+- Query key: `repositoryQueryKeys.importError({ branchName, repositoryId })`. `refetchInterval`: same rule as Q1 (the band receives the flag).
 - Known gap: see research R2 (import-object and periodic sync tagging). A miss yields `not-found`, never an error state.
 
 ## Q3 — Tasks page on a branch
@@ -74,7 +74,7 @@ Reuses `frontend/app/src/entities/tasks/api/get-task-list-from-api.ts::GET_TASK_
 
 - Variables: `{ branchName, offset: (page - 1) × 10, limit: 10 }`.
 - New use case `getBranchTasks` returns `{ tasks, count }` from `InfrahubTask.count` and `edges`.
-- Query key: `tasksQueryKeys.branchList({ branchName, offset, limit })`. `refetchInterval: 10_000`, `placeholderData: keepPreviousData` (the table doesn't flash to loading between pages).
+- Query key: `tasksQueryKeys.branchList({ branchName, offset, limit })`. `refetchInterval: page === 1 ? 10_000 : false` (later pages don't shift under the reader), `placeholderData: keepPreviousData` (the table doesn't flash to loading between pages).
 
 ## Q4 — Failed tasks on a branch
 

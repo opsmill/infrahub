@@ -187,23 +187,24 @@ The branch page header matches the object details page: the branch name, a copy 
 #### Branch actions
 
 - **FR-030**: The five existing action buttons (Merge, Propose change, Rebase, Validate, Delete) MUST show below the Git repositories card, in that order, with today's behaviour, labels and permission rules.
-- **FR-031**: Merge MUST NOT be disabled, restyled, relabelled, wrapped in a confirmation, or accompanied by a warning because of repository states, import errors, operational status, or task states.
+- **FR-031**: Merge MUST keep today's enablement rules unchanged (it stays disabled when the user isn't signed in, on the default or a merged branch, while a merge request is pending, and while a merge of this branch is already running). This feature MUST NOT add any condition: Merge is not disabled, restyled, relabelled, wrapped in a confirmation, or accompanied by a warning because of repository Git states, import errors, operational status, or the results of other tasks.
 
 #### Tasks card
 
 - **FR-040**: The Tasks card MUST list every task the task manager associates with this branch, newest first, 10 per page, paginated and counted by the server.
 - **FR-041**: Each row MUST show: Title, linking to that task's details page (`/tasks/<id>`, keeping the branch context), with the whole title cell as the target; State, using the app's existing task state badges; Workflow, as a short label for known workflows (Import, Generator, Artifacts, Validate, Rebase, Merge, Sync) or the raw workflow identifier otherwise; Related, as in US4 scenario 3; Updated, as a date in the app's date format.
-- **FR-042**: The card header MUST show the total number of tasks once loaded, the number of failed tasks on the branch when it is above zero, and an "Open in Tasks" link to the Tasks page.
+- **FR-042**: The card header MUST show the total number of tasks once loaded, the number of failed tasks on the branch when it is above zero (with a tooltip saying it counts every failed run on the branch, including runs retried since, and linking to the Tasks page filtered to failed tasks on this branch), and an "Open in Tasks" link to the Tasks page for this branch.
 - **FR-043**: Pagination MUST follow FR-014 and FR-015, with its own page parameter, independent of the repositories table.
 - **FR-044**: The card MUST have a loading state (placeholder rows, no count), an empty state that explains which tasks will appear, and a failed-to-load state that says the task results didn't load. None of them affect the rest of the page.
 - **FR-045**: Rows MUST NOT expand; the logs live on the task details page.
-- **FR-046**: Running tasks MUST update on the page without a manual refresh, at least as often as today's task list does (every few seconds while tasks are running, or on a fixed interval).
+- **FR-046**: The first page of the Tasks table and the failed count MUST update on their own, every 10 seconds, while the page is visible. Other pages MUST NOT change under the user; they refresh on Refresh or on a page change. Repositories and error lines MUST update on their own every 10 seconds while any listed repository is syncing, and otherwise on Refresh or when the window regains focus.
 
 #### Presentation
 
 - **FR-050**: All colours on the new and changed parts of the page MUST come from the design system's theme tokens (or, for the Git state, from the schema's colour), so the page renders correctly in light and dark themes. No hard-coded hex colours from the prototype.
 - **FR-051**: The page targets desktop widths. Tables MAY scroll horizontally in narrow containers; no mobile layout is required.
 - **FR-052**: Every interactive element (links, pager buttons, Show all, Refresh, copy) MUST be reachable by keyboard in visual order and have an accessible name.
+- **FR-053**: Every link that opens branch-scoped data (the repository name, "Open repository", "Open in Tasks", the failed-tasks link) MUST open it on the page's branch, whatever branch the branch selector is on. Task details links (`/tasks/<id>`) are not branch-scoped.
 
 ### Key Entities
 
@@ -220,7 +221,7 @@ The branch page header matches the object details page: the branch name, a copy 
 - **SC-002**: A failing repository is on the first page of the repositories table for any number of repositories up to the fetch limit.
 - **SC-003**: Paging through either table never moves the elements below it (0px shift between pages).
 - **SC-004**: Every task that ran on the branch is reachable from the page in one click from its row.
-- **SC-005**: Merge behaves identically to today in every repository and task state (no added clicks, no disabled state).
+- **SC-005**: Merge behaves identically to today in every repository and task state: no added clicks, and no disabled state beyond today's rules (FR-031).
 - **SC-006**: The new parts of the page have no hard-coded colours and pass a visual check in both themes.
 
 ## Assumptions
@@ -237,6 +238,7 @@ The branch page header matches the object details page: the branch name, a copy 
 
 - `INFP-670` owner sign-off on shipping Merge ungated (Clarifications, open question 1).
 - Better import error text is IFC-3034; this feature shows the raw log line until then.
+- Post-launch check (handoff open question 5): put the page in front of whoever merged in the incident and record whether they would have seen the failure before merging. With no warning on Merge, this replaces the brief's success measure.
 - A backend `last_import_task` field on the repository, and tagging every import flow with both the branch and the repository, would make the band's lookup exact. Both are follow-ups, not blockers (`research.md`).
 
 ## Out of Scope

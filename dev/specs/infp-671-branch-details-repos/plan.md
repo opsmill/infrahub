@@ -139,6 +139,18 @@ Each `ImportErrorBand` calls `useGetRepositoryImportError({ branchName, reposito
 
 `BranchDetailsHeader` in `pages/branches/details.tsx` replaces today's `<header>`; `BranchWorkingNotice` stays above it. The default branch keeps `BranchDefaultBadge` and no tabs.
 
+### Links (critique X1)
+
+The page shows `/branches/:branchName`'s data while the branch selector may be on another branch, and `constructPath` forwards the selector's `branch` QSP. Every link to branch-scoped data therefore overrides it with the page's branch (`constructPath(path, [{ name: QSP.BRANCH, value: branchName }])`; no parameter on the default branch). A small helper in `entities/branches/ui/routing/branch-urls.ts` (`withBranch(path, branchName)`) serves the repository name, "Open repository", "Open in Tasks" and the failed-tasks link. Task detail links are branch-independent.
+
+### Merge (critique E1)
+
+`BranchMergeButton` is rendered unchanged, with the same `branch` prop. Its existing rules (signed-in, not default, not merged, no pending request, no ongoing merge task) stay; nothing from the repositories or tasks cards is passed to it. A component test asserts that the rendered action row is the same five components with the same props as before.
+
+### Freshness (critique P4, E6)
+
+Tasks page 1 and the failed count poll every 10s; later pages don't. Repositories and bands poll every 10s only while a repository is syncing; otherwise Refresh and window refocus. See research R4.
+
 ### Copy
 
 All strings from `design/03-decisions.md` and rev-06 are kept verbatim where they describe real data ("— import failed", "View task log →", "Infrahub can't fetch new commits, so the commit shown may be out of date.", "Open repository", "Show all"/"Collapse", "Open in Tasks", "This branch"). The prototype's "Ask an administrator for read access to repositories on all branches" becomes "Ask an administrator for permission to view repositories." (the page queries one branch).
@@ -150,6 +162,7 @@ All strings from `design/03-decisions.md` and rev-06 are kept verbatim where the
 | Import task not findable for some flows (research R2) | Band never depends on the task; `not-found` fallback; verification task; backend follow-up ticket. |
 | IFC-3130 lands `table-pagination.tsx` at the same path | Same props; resolve in favour of IFC-3130 on merge. |
 | IFC-3200 builds its own card in parallel | Card lives in `entities/repository/ui/branch-repositories/` with a branch-agnostic props contract; flag in the PR for IFC-3200. |
+| Links opening the selector's branch instead of the page's | Link rule (Design notes "Links"); component tests assert `branch=<page branch>` on each outgoing link. |
 | E2E can't deterministically produce an import error | Seed through the path the R2 verification proves; otherwise assert on the fallback band and note it. |
 | Merge ungated is unsigned by INFP-670 | Spec clarification; PR description asks for sign-off before merge. |
 

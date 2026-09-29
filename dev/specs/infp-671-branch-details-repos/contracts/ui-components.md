@@ -2,6 +2,10 @@
 
 Props contracts for the components this feature adds or changes, so IFC-3200 and IFC-3130 can adopt them. All are controlled where state is shareable (page in the URL) and own only ephemeral UI state.
 
+## Link rule (all components below)
+
+Every link to branch-scoped data carries the **page's** branch, not the branch selector's: `constructPath(path, [{ name: QSP.BRANCH, value: branchName }])`, with no `branch` parameter for the default branch (spec FR-053). Applies to the repository name, "Open repository", "Open in Tasks" and the failed-tasks link. `/tasks/<id>` links use plain `constructPath`.
+
 ## `TablePagination` — `shared/components/table/table-pagination.tsx` (new, shared)
 
 ```ts

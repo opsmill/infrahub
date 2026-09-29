@@ -73,7 +73,7 @@ The band's text is the **last** log whose `severity` is `error` or `critical` (t
 
 ## R4 — Freshness
 
-**Decision**: The tasks page query and the failed count refetch every 10s (`refetchInterval`), and the repositories and import-band queries every 10s too. TanStack Query pauses intervals in background tabs by default. Today's `TaskDisplay` polls every 5s; 10s matches the cadence IFC-3199 chose for repository state, and a tasks table with a manual Refresh doesn't need more.
+**Decision** (revised by critique P4/E6): the tasks query refetches every 10s **on page 1 only** (`refetchInterval: page === 1 ? 10_000 : false`), and the failed count every 10s. The repositories and import-band queries refetch every 10s **only while a listed repository's `sync_status` is `syncing`** (`refetchInterval: (query) => anySyncing(query.state.data) ? 10_000 : false`; the band queries take the flag from the repositories result), and otherwise on Refresh and window refocus (TanStack's default). Intervals pause in background tabs by default. Today's `TaskDisplay` polls every 5s; 10s matches the cadence IFC-3199 chose for repository state.
 
 ## R5 — Table pagination
 
@@ -132,6 +132,8 @@ It's presentation copy, not a filter, so it doesn't break "backend is authoritat
 ## R11 — No-permission detection
 
 **Decision**: The repositories use case inspects the GraphQL `errors` array: an error whose `extensions` parse (`shared/api/errors::parseCatalogueError`) to `ERROR_CODES.PERMISSION_DENIED` returns `{ status: "denied" }` instead of throwing; any other error throws (FR-020). The client already doesn't toast 403s (`shared/api/graphql/error-handling.ts`). `useGetObjectPermissions` isn't used: it reads the **current** branch from the branch selector, not the page's branch.
+
+**Verified (critique E4)**: a denied list query errors rather than returning an empty list. `backend/infrahub/graphql/auth/query_permission_checker/object_permission_checker.py::ObjectPermissionChecker` calls `raise_for_permissions` with action `view` for every kind the query touches, so a user without view permission on `CoreGenericRepository` gets `PERMISSION_DENIED` for the whole request, never a silent empty list.
 
 ## R12 — Header, tabs, body
 
