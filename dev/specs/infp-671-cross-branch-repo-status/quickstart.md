@@ -81,7 +81,8 @@ is not a repository fails the same way, so the field cannot reveal that the node
 it is; the repository's `name` passed as `id` resolves; `limit: 0` and `offset: -1` fail validation;
 `sync_status__value`, `internal_status__value` and `own_values_only: true` each fail validation while
 the stub is live, with the error naming every argument that would narrow, while an explicit `null` for
-the two status filters and `own_values_only: false` are accepted.
+the two status filters and `own_values_only: false` are accepted. The filter rejection held for
+increment A only; from increment B the three filters apply (B4, B6).
 
 ### A6. `ref` dispatch and no bus traffic
 
@@ -92,7 +93,8 @@ read-only kind; `TestHelper.get_message_bus_recorder().messages` is empty after 
 
 **Expected**: the API log carries one warning naming the stub module when the schema is built, not
 one per call; the root field description in `schema/schema.graphql` contains "preview" and names
-neither a ticket nor a delivery increment; values are identical across two calls.
+neither a ticket nor a delivery increment; values are identical across two calls. Increment A only:
+increment B deleted the stub, and the description no longer contains "preview".
 
 ## Increment B: graph read
 
@@ -135,13 +137,15 @@ grows with the branch count while `count_for` does not.
 Request only `commit`.
 
 **Expected**: the attribute-name set handed to `RepositoryBranchAttributesReader.read` is `{"commit"}`
-and `sync_status` is absent from the statement parameters. Observed by constructing the resolver with a
+and `sync_status` is absent from the statement parameters. Selecting only `sync_status` with
+`own_values_only: true` widens the set to `{"sync_status", "commit"}`; a set `sync_status__value` or
+`internal_status__value` likewise adds its attribute. Observed by constructing the resolver with a
 recording source, not by patching.
 
 ### B6a. Differential check against the standard read
 
-For every branch in the shared fixture, including one legacy branch saved with `is_isolated=false`,
-compare the primitive's `commit` value and `updated_at` with `NodeManager.get_one(branch=...)`.
+For every branch in the shared fixture, compare the primitive's `commit` value and `updated_at` with
+`NodeManager.get_one(branch=...)`.
 
 **Expected**: identical for every branch. This is the test that keeps the primitive's operators in
 step with `Branch.get_query_filter_path`.
@@ -150,6 +154,12 @@ step with `Branch.get_query_filter_path`.
 
 **Expected**: the example in `contracts/core-primitive.md` passes as a component test with two branch
 names and one attribute.
+
+### B7a. No historical read
+
+**Expected**: a request to `/graphql?at=<timestamp>` fails with a `ValidationError` reading "at is not
+supported on InfrahubRepositoryBranchStatus: the branch row set is always current"; the same document
+without `at` succeeds.
 
 ### B8. Documentation
 
@@ -160,9 +170,12 @@ in `docs/docs/git-integration/branch-synchronization.mdx` shows the example docu
 
 ### C1. Bounded read
 
-Fixture: one repository, 200 branches, `CountingInfrahubDatabase`.
+Fixture: two repositories, `2 * REPOSITORY_BRANCH_READ_CHUNK_SIZE + 1` branch names (201 at the
+current size: two full chunks and a partial one, so a batching error at the last boundary cannot
+pass), `CountingInfrahubDatabase`.
 
-**Expected**: `count_for("repository-branch-attributes") <= ceil(200 / 100)`; the `-global-` key is
+**Expected**: `count_for("repository-branch-attributes") == 3` and `count_for("node_get_list") == 1`,
+the node read's other statements being fixed in number whatever the branch count; the `-global-` key is
 absent from `RepositoryData.branches`; `branch_info[registry.default_branch].internal_status` and
 `get_staging_branch()` behave as before; `RepositoryData.repository.default_branch`, `.location` and
 `.ref` carry the default branch's values; the computed-attribute gather resolves `branches[branch.name]`

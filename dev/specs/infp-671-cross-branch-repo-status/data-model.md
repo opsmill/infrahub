@@ -17,18 +17,24 @@ visible from every branch. Attribute branch support decides where value edges li
 | --- | --- | --- | --- |
 | Generic and both concrete kinds | `name`, `description`, `location`, `operational_status` | `AGNOSTIC` | Once (from the repository lookup) |
 | `CoreRepository` | `default_branch` | agnostic by inheritance | Once |
-| `CoreGenericRepository`, `CoreRepository` | `commit`, `sync_status`, `internal_status` | `LOCAL` | Per branch |
+| `CoreGenericRepository`, inherited by both kinds | `sync_status`, `internal_status` | `LOCAL` | Per branch |
+| `CoreRepository` | `commit` | `LOCAL` | Per branch |
 | `CoreReadOnlyRepository` | `commit`, `ref` | `AWARE` | Per branch |
 
-`LOCAL` and `AWARE` differ in merge and diff behaviour, not in how a read on a branch resolves them.
-Both are read with the same per-branch predicate.
+A read on a branch resolves `LOCAL` and `AWARE` with the same per-branch predicate. They differ in
+merge and diff behaviour, and in where the value written at creation lands (below).
 
 ### Where a per-branch value edge lives
 
-- At repository creation the attribute and its first value are written on the global branch
-  (`branch_level` 1), because the node is agnostic.
+- At repository creation a `LOCAL` attribute and its first value are written on the global branch
+  (`branch_level` 1), because the node is agnostic (`Attribute.get_create_data`). An `AWARE`
+  attribute is not: its first value lands on the branch the repository was created from.
 - A later write on branch X (an import on that branch) creates a `HAS_VALUE` edge on X. On the default
   branch that edge has `branch_level` 1; on a user branch it has `branch_level` 2.
+
+So a `CoreReadOnlyRepository` created on a user branch resolves `commit` and `ref` only on that
+branch until a value is written elsewhere; the default branch and every other branch read them as
+null.
 
 ### Per-branch visibility of an edge `r` for row branch `B` at time `at`
 
@@ -65,7 +71,7 @@ Winner among visible edges: `ORDER BY r.branch_level DESC, r.from DESC, r.status
 only `status = "active"`. This is the rule `Branch.get_query_filter_path` encodes for a single branch
 and `infrahub.database.validation::_check_duplicate_attributes` encodes for a branch list.
 
-Consequences the spec pins by test:
+Consequences the spec pins by test, for a `CoreRepository` (its `commit` is `LOCAL`):
 
 | Situation | Winning `HAS_VALUE` edge for branch B | Row shows |
 | --- | --- | --- |
@@ -75,6 +81,11 @@ Consequences the spec pins by test:
 | B rebased | `branched_from` advanced; the newer default edge is now inside the window | Newer commit |
 | Repository never imported anywhere | Global creation edge | `commit.value = null`, `sync_status = unknown` |
 | Row is the default branch | Default's own edge if any, else global | `own_value = true` only if written on the default branch |
+
+For a `CoreReadOnlyRepository` created on the default branch, the creation edges of `commit` and
+`ref` sit on the default branch rather than the global one, so the default-branch row reports them
+with `own_value = true`. User branches forked after the creation inherit them through the fork-point
+window; a branch forked before it reads them as null, since the creation edge postdates its window.
 
 ## Row set
 
@@ -115,16 +126,20 @@ a row. It comes off the `Branch` object already held by the row, so returning it
 | `updated_at` | `str \| None` | `r_value.from` |
 
 One row per `(repository_id, branch_name, attribute_name)` that resolved to an active value. A branch
-whose attribute has no visible edge (never created) produces no row; the reader backfills `None`.
+whose attribute has no visible edge (never created) produces no row; the lookup's `get` returns
+`None` for it.
 
 ### `RepositoryBranchAttributes` (frozen lookup, reader result)
 
 `infrahub.core.repository_branch_status.models::RepositoryBranchAttributes`
 
-- Built from a sequence of `RepositoryBranchAttributeValue`.
+- Built with `RepositoryBranchAttributes.from_values(values)` from a sequence of
+  `RepositoryBranchAttributeValue`. Two values for the same triple raise
+  `ResourceMultipleFoundError` naming it: the graph then holds two attributes of one name on that
+  branch, and the lookup does not pick one.
 - `get(repository_id, branch_name, attribute_name) -> RepositoryBranchAttributeValue | None`.
 - `for_branch(repository_id, branch_name) -> dict[str, RepositoryBranchAttributeValue]` for row assembly.
-- Immutable; holds a `Mapping` keyed by the triple.
+- Immutable; holds read-only attribute-name maps keyed by `(repository_id, branch_name)`.
 
 ### `RepositoryBranchStatusRow` (frozen dataclass, resolver internal)
 
@@ -136,7 +151,8 @@ whose attribute has no visible edge (never created) produces no row; the reader 
 | `values` | `Mapping[str, RepositoryBranchAttributeValue]` | reader (increment B) or stub (increment A) |
 
 The pure helpers in `paging.py` operate on a list of these: `apply_value_filters`, `order_rows`
-(default branch first, then `name` ascending, only when no `order` argument), `page_rows`.
+(default branch first, then `name` ascending, applied when `order` is absent or expresses no
+ordering), `page_rows`.
 
 A row becomes one GraphQL edge through `Branch.to_graphql`, the branch query's own serialisation, so
 the five branch fields arrive wrapped in `InfrahubBranch`'s value-field types and each edge carries
@@ -167,24 +183,21 @@ primitive call in the periodic sync.
 | Argument | Rule | Failure |
 | --- | --- | --- |
 | `id` | required; a repository uuid or its name, resolved with `NodeManager.get_one_by_id_or_default_filter`. That lookup does not enforce `kind` on the id path, so the resolver checks the resolved node against `CoreGenericRepository.used_by` itself; without that check any node uuid resolves and the field becomes an existence-and-kind oracle | `NodeNotFoundError` when neither matches, and when the id resolves to a node that is not a repository |
-| `limit` | `>= 1`; default 40; no maximum | `ValidationError` |
-| `offset` | `>= 0`; default 0 | `ValidationError` |
+| `limit` | `>= 1`; default 40; no maximum; an explicit `null` is rejected rather than defaulted | `ValidationError` |
+| `offset` | `>= 0`; default 0; an explicit `null` is rejected rather than defaulted | `ValidationError` |
+| `at` (request query parameter) | must be absent: the branch row set is always current | `ValidationError` |
 | `order` | at most one of `created_at`, `updated_at` (existing `standard_node_ordering_from_order_input`) | `ValidationError` |
 | `name__value` | any string; combined with `partial_match` for a contains match | none |
 | `partial_match` | boolean; default false | none |
 | `status__value` | any `BranchStatus` (the SDL name of the `InfrahubBranchStatus` symbol); `MERGED` or `DELETING` yields an empty set, not an error | none |
 | `own_values_only` | boolean; default false; keeps rows whose `commit` is the branch's own, and forces `commit` into the attribute read | none |
-| `sync_status__value`, `internal_status__value` | any string; unknown values yield an empty set | none |
+| `sync_status__value`, `internal_status__value` | any string; unknown values yield an empty set; forces the filtered attribute into the attribute read | none |
 | repository not found | same `NodeNotFoundError` path as other repository lookups | error |
 | no `ALLOW_ALL` view on either repository kind | `PermissionDeniedError` before the lookup | error |
 | missing `ALLOW_ALL` view on the resolved concrete kind | `PermissionDeniedError` before any row is returned | error |
 | context without a `PermissionManager` | treated as denial | error |
 
-The table is the end-state contract. One deviation applies while the stub serves placeholder values:
-`own_values_only`, `sync_status__value` and `internal_status__value` are rejected with a
-`ValidationError` rather than applied, because they filter on resolved attribute values that do not
-exist yet. Only actual narrowing rejects, so the defaults still pass. The rows above describe what
-they do once the graph read lands.
+The table is the contract as shipped.
 
 ## State transitions
 

@@ -67,8 +67,9 @@ frontend renders through existing cells and does not need to be true.
 
 **Release rule**: a release must not be cut while the stub is live. If one becomes unavoidable, remove
 the `InfrahubRepositoryBranchStatus` attribute from `infrahub.graphql.schema::InfrahubBaseQuery` on
-the release branch; that single line hides the field. The stub resolver logs a warning on every call so
-its presence is visible in logs.
+the release branch; that single line hides the field. The stub module logs one warning when it is
+imported into the schema so its presence is visible in logs (Decision 8). Increment B deleted the stub,
+which lifted this rule.
 
 ---
 
@@ -91,15 +92,17 @@ its presence is visible in logs.
    then takes its chunked read path (`query_with_size_limit`).
 3. Read the selected attributes for those branch names in one statement through the primitive
    (Decision 3). Apply the attribute-value filters, the default ordering (default branch first, then
-   name ascending) when no `order` was given, then `offset` and `limit`, in Python. `count` is the
+   name ascending) when `order` is absent or expresses no ordering, then `offset` and `limit`, in
+   Python. `count` is the
    length of the filtered list.
 
 **Rationale**: The PRD identified two resolver shapes and noted that once an attribute filter is in
 play the attribute read must cover all in-scope branches or the page boundaries and count are wrong.
-Using that shape unconditionally gives one code path to test, a query count of three regardless of
-branch count (FR-007), and a `count` that never issues a counting statement (FR-011 holds trivially).
-At the spec's target scale (several hundred branches, three attributes) the extra rows on an
-unfiltered page are a few hundred small records.
+Using that shape unconditionally gives one code path to test, three reads regardless of branch count
+(FR-007; the repository lookup goes through `NodeManager` and is more than one statement, but none of
+the three grows with the branch count), and a `count` that never issues a counting statement (FR-011
+holds trivially). At the spec's target scale (several hundred branches, three attributes) the extra
+rows on an unfiltered page are a few hundred small records.
 
 **Alternatives considered**:
 
@@ -113,6 +116,10 @@ unfiltered page are a few hundred small records.
 **Consequence**: FR-007's "independent of branch count" holds up to `database.query_size_limit`
 branches, above which the chunked branch read adds one execution per chunk. Document, do not engineer
 around.
+
+**Settled in increment B**: because `Branch.get_list` has no `at`, a request carrying an `at` query
+parameter is rejected with a `ValidationError` rather than pairing the current branch set with past
+values. See the "Point in time" section of `contracts/graphql-repository-branch-status.md`.
 
 ---
 
@@ -129,17 +136,18 @@ around.
 - `backend/infrahub/core/repository_branch_status/reader.py::RepositoryBranchAttributesReader`, a
   component with `db` injected in the constructor and one entry method
   `read(repository_ids, branch_names, attribute_names, at) -> RepositoryBranchAttributes`.
-  `RepositoryBranchAttributes` is a frozen lookup keyed by `(repository_id, branch_name,
+  `RepositoryBranchAttributes` is a frozen lookup addressed by `(repository_id, branch_name,
   attribute_name)` whose `get` returns `None` for a branch that produced no row (the Python-side
   backfill the PRD found in `infrahub.core.query.diff::DiffCountChanges.get_num_changes_by_branch`).
+  It is built with `from_values`, which raises `ResourceMultipleFoundError` on a duplicate triple.
 
-The Cypher joins each requested branch to its `Branch` node for `branched_from`, then elects the
-visible `HAS_ATTRIBUTE` and `HAS_VALUE` edges per `(repository, attribute, branch)` with the
-per-branch predicate below and the standard `ORDER BY branch_level DESC, from DESC, status ASC LIMIT 1`
-election, exactly as `infrahub.database.validation::_check_duplicate_attributes` does:
+The Cypher matches the repository nodes and their requested attributes once, then joins each
+requested branch to its `Branch` node for `branched_from`, then elects the visible `HAS_ATTRIBUTE`
+and `HAS_VALUE` edges per `(repository, attribute, branch)` with the per-branch predicate below and
+the standard `ORDER BY branch_level DESC, from DESC, status ASC LIMIT 1` election, exactly as `infrahub.database.validation::_check_duplicate_attributes` does:
 
 ```cypher
-WITH ..., CASE WHEN br.is_isolated THEN br.branched_from ELSE $at END AS default_window
+WITH ..., CASE WHEN br.branched_from < $at THEN br.branched_from ELSE $at END AS default_window
 ...
 (r.branch IN [branch_name, $global_branch]
    AND r.from <= $at AND (r.to IS NULL OR r.to > $at))
@@ -154,8 +162,8 @@ same method uses a strict `from <`, and that is not the path this primitive mirr
 strict operator off that shortcut would drop an edge written at exactly the query time or exactly at a
 branch's `branched_from`. A differential test (Decision 9) pins the
 primitive to a standard per-branch read so the two cannot drift. `is_isolated` is deprecated and forced
-to true on creation, but the model still carries it and the standard filter still honours a `false`
-value from an older database; the `CASE` keeps the primitive consistent with that read.
+to true on creation, and the primitive does not consult it: nothing creates a `false` branch, so the
+`CASE` substitutes the fork point whenever it precedes `$at` (data-model.md).
 
 `own_value` is `r_value.branch = branch_name` on the winning `HAS_VALUE` edge; `updated_at` is that
 edge's `from`. Timestamps are ISO strings and compare lexicographically, as the validation module
@@ -244,10 +252,11 @@ The `-global-` key disappears from `RepositoryData.branches`: `sync_remote_repos
 default branch and the staging branch, `gather_trigger_computed_attribute_python` skips the global
 branch. The existing test asserting the key is updated.
 
-**Rationale**: FR-010. Query count becomes `1 + ceil(N / 100)` for N branches, for all repositories
-together. A plain constant rather than a `GitSettings` field because no operator has a reason to tune
-it, and a setting would need the generated Compose env block, the docs and the dev Compose anchor
-updated (`dev/guidelines/backend/checklist.md`).
+**Rationale**: FR-010. The per-branch read becomes `ceil(N / 100)` statements for N branches, for all
+repositories together, on top of the one `NodeManager.query` for the nodes, whose statement count
+does not depend on N. A plain constant rather than a `GitSettings` field because no operator has a
+reason to tune it, and a setting would need the generated Compose env block, the docs and the dev
+Compose anchor updated (`dev/guidelines/backend/checklist.md`).
 
 **Alternatives considered**: keep one `NodeManager.query` per branch and only add the GraphQL query.
 Rejected by FR-010 and SC-004.
@@ -258,8 +267,10 @@ Rejected by FR-010 and SC-004.
 
 **Decision**: Root field `InfrahubRepositoryBranchStatus` returning `InfrahubRepositoryBranchStatusType
 { count: Int!, edges: [InfrahubRepositoryBranchStatusEdge!]! }`, edge `{ node:
-InfrahubRepositoryBranchStatus! }`, node with flat branch scalars (`name`, `status` as the existing
-`InfrahubBranchStatus` enum, which the SDL names `BranchStatus`, `is_default`, `sync_with_git`, `branched_from`) and attribute payloads typed with the
+InfrahubRepositoryBranchStatus!, node_metadata: InfrahubNodeMetadata! }`, node with the branch fields
+wrapped in `InfrahubBranch`'s value-field types (`name: RequiredStringValueField!`,
+`status: StatusField!`, `is_default` and `sync_with_git: NonRequiredBooleanValueField`,
+`branched_from: NonRequiredStringValueField`) and attribute payloads typed with the
 existing `TextAttribute` (`commit`, `ref`) and `Dropdown` (`sync_status`, `internal_status`) types.
 Arguments: `id: String!` (repository uuid or name), `limit: Int = 40`, `offset: Int = 0`,
 `name__value: String`, `partial_match: Boolean = false`, `status__value: BranchStatus`,
@@ -307,7 +318,7 @@ internal_status__value and own_values_only are rejected)" note in the root field
 description while the stub is live. That description is API-facing, so it names neither the ticket nor
 the delivery increment: both are meaningless to a schema consumer, and `.agents/rules/code-doc-style.md`
 keeps spec vocabulary out of anything a reader encounters without the spec. Every developer stack built
-from `develop` shows these values during the stub window, so the window is announced to the team and
+from the integration branch `cross-branch-repo-status-infp-671` shows these values during the stub window, so the window is announced to the team and
 the stub's removal is tracked as its own Jira task under the delivery epic IFC-3104. Delivery work
 lives under IFC; INFP is JPD and carries product planning only, linked to the epic.
 
@@ -319,7 +330,8 @@ lives under IFC; INFP is JPD and carries product planning only, linked to the ep
   `tests.helpers.db_query_counter::CountingInfrahubDatabase` for the 5-branch versus 200-branch
   equality (FR-007) and `rows_for` to show rows grow while executions do not. A differential test
   compares the primitive's `(value, updated_at)` for every branch against a standard
-  `NodeManager.get_one(branch=...)` read, with one legacy `is_isolated=false` branch in the fixture.
+  `NodeManager.get_one(branch=...)` read. The fixture holds no legacy `is_isolated=false` branch:
+  the primitive does not read the flag, so the standard read would diverge on one (data-model.md).
 - Shared fixture: the 5-branch and 200-branch sets are one module-scoped fixture built directly with
   `Branch(...).save()` (the `create_branch` flow is seconds per run at 200) and imported by the
   primitive, resolver and sync test modules.
@@ -366,16 +378,19 @@ lives under IFC; INFP is JPD and carries product planning only, linked to the ep
   regenerate `schema/schema.graphql` and run `uv run invoke docs.generate` so reference docs stay valid.
 - Increment C: `changelog/+repository-sync-single-read.changed.md`; update
   `dev/knowledge/backend/git-sync.md` with the new read path (one statement per chunk of branches).
-- Python SDK exposure of the query is out of scope for this slice and noted for INFP-671 follow-up.
+- Python SDK exposure of the query is out of scope for this slice; any follow-up belongs under the
+  delivery epic IFC-3104.
 
 ---
 
 ## Decision 11: The composition root is `field.py`, not the package `__init__.py`
 
 **Decision**: Both new packages keep an empty `__init__.py`. In
-`graphql/queries/repository_branch_status/`, a `field.py` module holds `build_attribute_source`, the
-resolver instance and the graphene `Field`, and `graphql/schema.py` imports the field from it directly.
-The field is not re-exported through `graphql/queries/__init__.py`. `resolver.py` exposes
+`graphql/queries/repository_branch_status/`, a `field.py` module holds the resolver instance and the
+graphene `Field`, and `graphql/schema.py` imports the field from it directly. The source factory it
+wires in, `build_repository_branch_attributes_source`, lives in
+`core/repository_branch_status/factory.py`, where the periodic sync calls it too. The field is not
+re-exported through `graphql/queries/__init__.py`. `resolver.py` exposes
 `RepositoryBranchStatusResolver`, a callable class whose constructor takes the source factory as a
 required parameter.
 

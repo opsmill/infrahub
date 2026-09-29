@@ -58,7 +58,7 @@ attribute_name, attribute_id, value, own_value, updated_at)`.
 `infrahub.core.repository_branch_status.reader::RepositoryBranchAttributesReader`
 
 ```python
-class RepositoryBranchAttributesReader:
+class RepositoryBranchAttributesReader(RepositoryBranchAttributesSource):
     def __init__(self, db: InfrahubDatabase, default_branch_name: str, global_branch_name: str) -> None: ...
 
     async def read(
@@ -70,8 +70,10 @@ class RepositoryBranchAttributesReader:
     ) -> RepositoryBranchAttributes: ...
 ```
 
-- Built at the entry point (resolver, sync flow) with `registry.default_branch` and
-  `GLOBAL_BRANCH_NAME`; the component itself never touches `registry`.
+- Built by `infrahub.core.repository_branch_status.factory::build_repository_branch_attributes_source(db)`
+  with `registry.default_branch` and `GLOBAL_BRANCH_NAME`. Both callers use that factory: the
+  GraphQL field hands it to the resolver as its source factory, and the sync calls it once at the
+  top of the function. The component itself never touches `registry`.
 - An empty `repository_ids`, `branch_names` or `attribute_names` returns an empty lookup without
   executing: each makes the statement unable to match a row.
 - Runs exactly one `RepositoryBranchAttributesQuery` per call. Chunking is the caller's decision.
@@ -91,8 +93,15 @@ class RepositoryBranchAttributes:
 ```
 
 `get` returns `None` for a triple that produced no row. That is the Python-side backfill; callers treat
-`None` as "no visible value" (the repository never had that attribute created on any visible branch),
-which cannot happen for the attributes in scope after repository creation.
+`None` as "no visible value" (the repository never had that attribute created on any visible branch).
+For a `LOCAL` attribute this cannot happen after repository creation, because its creation edge is on
+the global branch. For an `AWARE` one (`CoreReadOnlyRepository.commit` and `ref`) it does: on every
+branch but the one the repository was created from, and on branches forked before the creation
+(data-model.md).
+
+The lookup is built with `RepositoryBranchAttributes.from_values(values)`. Two values for the same
+triple raise `ResourceMultipleFoundError`, which the reader lets propagate: it means the graph holds
+two attributes of one name on that branch, and picking one would hide the fault.
 
 ## Direct-call example (FR-009 verification)
 
@@ -114,9 +123,19 @@ assert result.get(repository.id, "main", "commit").own_value is False   # creati
 ```python
 for chunk in batched(branch_names, REPOSITORY_BRANCH_READ_CHUNK_SIZE):
     values = await reader.read(
-        repository_ids=repository_ids, branch_names=chunk, attribute_names=("commit", "internal_status")
+        repository_ids=repository_ids,
+        branch_names=chunk,
+        attribute_names=("commit", "internal_status"),
+        at=at,
     )
 ```
 
-Query count for N branches: `1` (repository nodes) `+ ceil(N / 100)`. Asserted with
-`tests.helpers.db_query_counter::CountingInfrahubDatabase.count_for(RepositoryBranchAttributesQuery.name)`.
+`at` is one `Timestamp` taken before the repository-node read and passed to it and to every chunk,
+so the whole read resolves at one point in time.
+
+Query count for N branches: `ceil(N / 100)` attribute reads, on top of one `NodeManager.query` for
+the repository nodes. That call is several statements (`node_get_list`, then the info and attribute
+reads behind `get_many`), fixed in number whatever N is. With no repository the function returns
+after the node read and issues no attribute read. Asserted with
+`tests.helpers.db_query_counter::CountingInfrahubDatabase.count_for(RepositoryBranchAttributesQuery.name)`
+and `count_for("node_get_list") == 1`.

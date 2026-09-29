@@ -23,6 +23,7 @@ Delivery is contract-first in three increments (see [research.md](research.md), 
 | C, periodic sync | `get_repositories_commit_per_branch` on the primitive, chunked | | |
 
 A release must not be cut while increment A's stub is live (research.md, Decision 1, release rule).
+The rule was lifted when increment B deleted the stub.
 
 ---
 
@@ -40,7 +41,7 @@ A release must not be cut while increment A's stub is live (research.md, Decisio
 
 **Project Type**: Web application backend slice; frontend consumes the generated types
 
-**Performance Goals**: Database queries per page independent of branch count up to `database.query_size_limit` (three reads: repository lookup, branch list, attribute primitive; the repository lookup goes through `NodeManager`, so it is more than one statement and no absolute figure is promised); periodic sync bounded by `1 + ceil(N / 100)` queries for N branches across all repositories
+**Performance Goals**: Database queries per page independent of branch count up to `database.query_size_limit` (three reads: repository lookup, branch list, attribute primitive; the repository lookup goes through `NodeManager`, so it is more than one statement and no absolute figure is promised); periodic sync issues `ceil(N / 100)` attribute reads for N branches across all repositories, on top of one `NodeManager.query` for the repository nodes whose statement count does not depend on N
 
 **Constraints**: Read-only; zero message-bus sends and no task worker on the path; permission check covering default and non-default branches regardless of execution branch; `limit` default 40 with no hard maximum
 
@@ -91,8 +92,9 @@ subtask, recorded in Complexity Tracking.
 
 ### V. Query Performance & Efficiency: PASS
 
-One parameterised statement over `UNWIND $branch_names`, returning only `uuid`, `name`, `value`,
-`branch` and `from` properties. No per-branch loop remains in the sync. `EXPLAIN` is run on the
+One parameterised statement: the repository nodes and their attributes are matched once, then
+`UNWIND $branch_names` fans them out per branch; it returns only `uuid`, `name`, `value`, `branch`
+and `from` properties. No per-branch loop remains in the sync. `EXPLAIN` is run on the
 primitive during increment B and the plan is pasted in the PR.
 
 ### VI. Security & Input Boundaries: PASS
@@ -129,7 +131,7 @@ dev/specs/infp-671-cross-branch-repo-status/
 ├── quickstart.md                             # Phase 1
 ├── contracts/
 │   ├── graphql-repository-branch-status.graphql   # SDL of the new field and types
-│   ├── graphql-repository-branch-status.md        # Argument semantics, example document, example response, stub notes
+│   ├── graphql-repository-branch-status.md        # Argument semantics, example document, example response, frontend consumption
 │   └── core-primitive.md                          # Python API of the Query class and reader
 ├── checklists/requirements.md
 └── tasks.md                                  # Phase 2 (/speckit-tasks)
@@ -148,6 +150,7 @@ backend/infrahub/
 │   │   └── repository.py                     # [A] RepositoryBranchAttributeValue (new module); [B] RepositoryBranchAttributesQuery
 │   └── repository_branch_status/
 │       ├── __init__.py                       # [A]
+│       ├── factory.py                        # [C] build_repository_branch_attributes_source, shared by field.py and the sync
 │       ├── interface.py                      # [A] RepositoryBranchAttributesSource protocol
 │       ├── models.py                         # [A] RepositoryBranchAttributes (frozen lookup, backfill)
 │       └── reader.py                         # [B] RepositoryBranchAttributesReader
@@ -156,7 +159,7 @@ backend/infrahub/
 │   ├── queries/
 │   │   └── repository_branch_status/         # branch.py is NOT touched: no argument, no ordering change
 │   │       ├── __init__.py                   # [A] empty, per dev/knowledge/backend/package-init-files.md
-│   │       ├── field.py                      # [A] composition root: build_attribute_source, resolver instance, Field
+│   │       ├── field.py                      # [A] composition root: resolver instance wired to the source factory, Field
 │   │       ├── resolver.py                   # [A] RepositoryBranchStatusResolver: validation, lookup, rows, page assembly
 │   │       ├── paging.py                     # [A] pure filter / order / page helpers
 │   │       ├── payload.py                    # [A] attribute payload mapping, dropdown label and colour
@@ -180,7 +183,7 @@ backend/tests/
 │   ├── computed_attribute/
 │   │   └── test_gather.py                    # [C] branches[branch.name] resolves for every non-global branch
 │   └── git/
-│       └── test_utils.py                     # [C] drop -global- key, assert 1 + ceil(N/100) bound
+│       └── test_utils.py                     # [C] drop -global- key, assert ceil(N/100) attribute reads and one node list
 ├── integration_docker/
 │   └── test_computed_attributes.py           # [C] trigger gather over the refactored sync read
 └── query_benchmark/
@@ -192,7 +195,6 @@ frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts    # [A] regenera
 frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts  # [A] regenerated (pnpm codegen:graphql)
 
 changelog/
-├── +branch-list-sync-with-git-filter.added.md  # [A]
 ├── +repository-branch-status-query.added.md    # [B]
 └── +repository-sync-single-read.changed.md     # [C]
 
@@ -209,11 +211,16 @@ dev/knowledge/backend/git-sync.md             # [C] sync read path
 card is built by the frontend team from the contract; only regenerated types touch `frontend/`.
 
 Both new packages keep an empty `__init__.py`. The composition root is `field.py`, not the package
-init: it is the only module that reads `registry`, builds the attribute source and constructs the
-`Field`, and `schema.py` imports the field from it directly the way it already imports
-`.queries.diff.tree` and `.queries.event`. Putting that wiring in `__init__.py` would both breach
-`dev/knowledge/backend/package-init-files.md` and create a cycle, since the init would import
-`resolver.py` for the resolver while `resolver.py` needs the source factory back from the init.
+init: it wires the resolver to the source factory and constructs the `Field`, and `schema.py` imports
+the field from it directly the way it already imports `.queries.diff.tree` and `.queries.event`.
+Putting that wiring in `__init__.py` would both breach `dev/knowledge/backend/package-init-files.md`
+and create a cycle, since the init would import `resolver.py` for the resolver while `resolver.py`
+needs the source factory back from the init.
+
+The source factory itself, `build_repository_branch_attributes_source`, lives in
+`core/repository_branch_status/factory.py`, which resolves `registry.default_branch` and
+`GLOBAL_BRANCH_NAME` for the reader. The GraphQL field and the periodic sync both call it, so the sync
+does not import from the GraphQL layer.
 
 The resolver is a callable class taking the source factory as a required constructor parameter rather
 than a module-level function reaching for it. That is what `.agents/rules/backend-component-design.md`
@@ -279,9 +286,9 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
 
 1. `RepositoryBranchAttributesQuery` with the per-branch visibility predicate, its operators copied
    verbatim from `Branch.get_query_filter_path`, the node match and its `WITH DISTINCT n, a` above
-   the `UNWIND` so the uuid seek runs once rather than once per branch, and `br.is_isolated` honoured
-   (`CASE WHEN br.is_isolated AND br.branched_from < $at THEN br.branched_from ELSE $at END` as the
-   default-branch window); `EXPLAIN` reviewed.
+   the `UNWIND` so the uuid seek runs once rather than once per branch, and
+   `CASE WHEN br.branched_from < $at THEN br.branched_from ELSE $at END` as the default-branch
+   window. The deprecated `is_isolated` flag is not consulted (data-model.md); `EXPLAIN` reviewed.
 2. `RepositoryBranchAttributes` lookup and `RepositoryBranchAttributesReader`.
 3. Resolver swaps the stub for the reader; attribute names come from the GraphQL selection
    (`extract_graphql_fields`), `ref` only for the read-only kind; `sync_status__value`,
@@ -289,9 +296,8 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
 4. Component tests: inheritance at fork point, default-branch import does not move an untouched
    branch, rebase does, never-imported repository yields empty `commit`, own-value filter, attribute
    filter with count, query count equal at 5 and 200 branches, attribute-name set equals selection.
-   Differential test: for every branch in the fixture, including one legacy branch with
-   `is_isolated=false`, the primitive's `(value, updated_at)` equals a standard
-   `NodeManager.get_one(branch=...)` read of the same attribute.
+   Differential test: for every branch in the fixture, the primitive's `(value, updated_at)` equals
+   a standard `NodeManager.get_one(branch=...)` read of the same attribute.
 5. Query benchmark for the primitive in `backend/tests/query_benchmark/`, so the invariant this slice
    exists to establish has a regression guard beyond the one-off `EXPLAIN`.
 6. Changelog fragment; docs section; knowledge docs (`query-pattern.md` for the cross-branch grouped
@@ -302,7 +308,8 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
 
 1. `REPOSITORY_BRANCH_READ_CHUNK_SIZE` constant; `get_repositories_commit_per_branch` on the reader,
    chunked, global branch excluded; `RepositoryData` unchanged in shape.
-2. Update `test_utils.py`; add the `1 + ceil(N / 100)` assertion with `CountingInfrahubDatabase`;
+2. Update `test_utils.py`; assert with `CountingInfrahubDatabase` that the attribute read runs
+   `ceil(N / 100)` times and the repository nodes are listed once;
    assert `RepositoryData.repository` carries default-branch values for `default_branch`, `location`
    and `ref`; add a computed-attribute gather test that resolves `branches[branch.name]` for every
    non-global branch, plus the distributed-stack test Principle IV requires for a change on the

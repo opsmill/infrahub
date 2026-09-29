@@ -8,7 +8,7 @@
 
 **Jira**: [INFP-671](https://opsmill.atlassian.net/browse/INFP-671) (Git repository sync visibility), second backend slice
 
-**Source PRD**: [PRD: Cross-branch repository status query](https://opsmill.atlassian.net/wiki/spaces/Product/pages/865894402/PRD+Cross-branch+repository+status+query) (Confluence, Product space)
+**Source PRD**: [PRD: Cross-branch repository status query](https://opsmill.atlassian.net/wiki/spaces/Product/pages/865894402/PRD+Cross-branch+repository+status+query) (originally Confluence, now in Notion; left as written, deviations recorded in `checklists/requirements.md`)
 
 **Sibling PRD**: [PRD: Git repository commit visibility](https://opsmill.atlassian.net/wiki/spaces/Product/pages/858816518). Its P3 covers the same Branches card from the git side (remote head per branch, read from a task worker). This spec is the graph half only. Neither is complete without the other, and shipping this spec does not close that P3.
 
@@ -42,7 +42,7 @@ A developer or infrastructure manager opens a connected repository. The Branches
 
 1. **Given** a read-write repository (CoreRepository) with 12 branches that sync with git, one of which has import status `error-import` on its own branch, **When** the user opens the repository page, **Then** the card lists the branches with each one's import status and commit as resolved from that branch, the failing branch shows its error status using the colour and label defined for that status in the schema, and the rows and their graph-resolved values arrive from a single request.
 2. **Given** a branch created in Infrahub after the repository existed and never imported on that branch, **When** the user views the card, **Then** that row shows the commit the default branch held at the branch's fork point, not an empty value and not an error.
-3. **Given** a read-only repository (CoreReadOnlyRepository), **When** the user opens the repository page, **Then** every branch is listed with its tracked `ref` and `commit`, and branches that have not pinned their own ref show the value inherited from the default branch.
+3. **Given** a read-only repository (CoreReadOnlyRepository), **When** the user opens the repository page, **Then** every branch is listed with its tracked `ref` and `commit`, and branches that have not pinned their own ref show the value inherited from the default branch. (This holds for a repository created on the default branch, and for branches forked after it was created; a branch forked earlier reads them as null. `commit` and `ref` are branch-aware, so their first value lands on the branch the repository was created from; one created on a user branch reads them as null on every other branch until a value is written there.)
 4. **Given** a read-write repository and a branch that does not sync with git, **When** the user views the card, **Then** that branch is absent from the row set and from the count.
 5. **Given** a repository with 200 branches of which 3 have failed to import, **When** the user filters by import status, **Then** exactly those 3 rows are returned and the count is 3, without paging through healthy rows.
 6. **Given** the card's git-derived remote-head column (owned by the sibling PRD) is unavailable because no task worker can answer, **When** the user opens the repository page, **Then** the rows and every value this feature owns still render.
@@ -57,12 +57,12 @@ The periodic repository sync reads each repository's commit and internal status 
 
 **Why this priority**: It ships independently of the user-facing card and is independently measurable, but the operator-facing value in P1 is the reason the ticket exists. It also changes a once-a-minute read path, so it warrants its own reviewed change.
 
-**Independent Test**: Run a sync cycle against a repository with 200 branches while counting graph queries. The count is bounded by one repository-node read plus the branch count divided by the chunk size, rounded up, and only `commit` and `internal_status` are read.
+**Independent Test**: Run a sync cycle against two repositories and more than two chunks of branches (201 at the current chunk size: two full chunks and a partial one) while counting graph queries. The per-branch reads number the branch count divided by the chunk size, rounded up, on top of one repository-node read whose cost does not depend on the branch count, and only `commit` and `internal_status` are read.
 
 **Acceptance Scenarios**:
 
-1. **Given** a repository with 200 branches, **When** a sync cycle runs, **Then** the repository commit and internal status for every branch are read without one query per branch, and only `commit` and `internal_status` are requested.
-2. **Given** the same fixture, **When** the sync's read path is instrumented, **Then** the number of graph queries is at most `1 + ceil(200 / chunk_size)` for the configured chunk size.
+1. **Given** two repositories and 201 branches (two full chunks and a partial one at the current chunk size), **When** a sync cycle runs, **Then** the repository commit and internal status for every branch are read without one query per branch, and only `commit` and `internal_status` are requested.
+2. **Given** the same fixture, **When** the sync's read path is instrumented, **Then** for N branches the per-branch attribute read runs `ceil(N / chunk_size)` times for the configured chunk size, and the repository nodes are listed once.
 
 ---
 
@@ -71,7 +71,7 @@ The periodic repository sync reads each repository's commit and internal status 
 - **Branch with no attribute value of its own**: The row resolves to the default branch's value at the branch's fork point (`branched_from`). This is the true value for that branch, since branch data inherits the same way and file access is commit-addressed. It is not an error state and is not flagged in the payload.
 - **Rebase moves the displayed commit**: A rebase advances `branched_from`, so an untouched branch's inherited commit follows the default branch forward with no git activity on that branch. This is correct and is stated so it is not filed as a bug.
 - **Branch created over an existing remote branch**: Branch creation points the local git branch at the remote tip while the graph still reports the fork-point commit until the first import. This is a known write-path inaccuracy that this query surfaces rather than repairs (INFP-670 territory).
-- **Repository never imported anywhere**: Inheritance falls back to the value at repository creation on the global branch. `commit` is unset there, so the row is genuinely empty.
+- **Repository never imported anywhere**: Inheritance falls back to the value at repository creation: on the global branch for a read-write repository's branch-local `commit`, on the creating branch for a read-only repository's branch-aware `commit` and `ref`. `commit` is unset there, so `commit` is genuinely empty (a read-only repository's `ref` still carries its schema default).
 - **Branch with no remote counterpart** (created before the repository was added): Appears with inherited values. There is nothing on the git side to compare against, and this feature makes no comparison.
 - **Attribute `updated_at` on an inherited row**: Belongs to the default branch's write, not to an import on that branch. It MUST NOT be presented as a "last import" time.
 - **Read-only repository at scale**: `commit` and `ref` are branch-aware, so most rows show the same inherited pair. Accepted as correct. The "own value only" filter (FR-014) is what makes diverged branches findable from the graph, independently of whether the sibling PRD's remote check has run.
@@ -81,6 +81,7 @@ The periodic repository sync reads each repository's commit and internal status 
 - **Caller lacks permission on non-default branches**: The query is denied outright. It does not return a trimmed row set that silently omits branches.
 - **Every branch filtered out**: The query returns an empty row set and a count of 0, not an error.
 - **Repository id or name does not resolve**: The query fails with the same not-found behaviour as other repository lookups.
+- **Request for a past point in time**: A request carrying an `at` parameter is rejected with a validation error. The branch list the rows come from has no historical form, so past values would be paired with the current branch set.
 
 ## Requirements *(mandatory)*
 
@@ -100,9 +101,9 @@ The periodic repository sync reads each repository's commit and internal status 
 #### Efficiency
 
 - **FR-007**: The number of database queries needed to serve a page MUST be independent of the number of branches in the row set, up to the configured database query size limit. Above that limit the unpaged branch read takes the standard chunked path and adds one execution per chunk; the attribute read stays one statement per page. *Verify*: instrument query execution; run the same document against fixtures with 5 and 200 branches and assert the two counts are equal. No specific count is prescribed.
-- **FR-008**: System MUST read only the attributes the caller selected, plus `commit` when `own_values_only` is set. *Verify*: the attribute-name set reaching the core read equals the GraphQL selection, plus `commit` when `own_values_only` is true; an unselected attribute is absent from the query parameters otherwise.
+- **FR-008**: System MUST read only the attributes the caller selected, plus each attribute a set value filter needs: `commit` when `own_values_only` is set, `sync_status` when `sync_status__value` is set, `internal_status` when `internal_status__value` is set. *Verify*: the attribute-name set reaching the core read equals the GraphQL selection plus the filtered attributes; an unselected, unfiltered attribute is absent from the query parameters.
 - **FR-009**: The core primitive MUST take an explicit branch-name list and attribute-name set and MUST be callable without GraphQL. *Verify*: unit test invokes it directly with two branch names and one attribute.
-- **FR-010**: The periodic sync's per-branch repository read (`get_repositories_commit_per_branch`) MUST use the primitive and MUST NOT issue one query per branch. Its query count MUST be bounded by `1 + ceil(N / chunk_size)` for N branches, the one being the single repository-node read that precedes the chunks. *Verify*: instrument; assert the bound holds at 200 branches with the configured chunk size.
+- **FR-010**: The periodic sync's per-branch repository read (`get_repositories_commit_per_branch`) MUST use the primitive and MUST NOT issue one query per branch. For N branches it MUST issue `ceil(N / chunk_size)` per-branch attribute reads, on top of one repository-node read that precedes the chunks. That node read goes through the node manager, so it is several statements, but their number does not depend on N. *Verify*: instrument; with more than one full chunk of branch names and a partial one, assert the attribute-read count equals `ceil(N / chunk_size)` and the repository nodes are listed once.
 - **FR-011**: `count` MUST be computed only when selected. *Verify*: instrument; assert no counting operation when the field is omitted.
 - **FR-015**: The query MUST resolve entirely from the graph. It MUST NOT issue a git operation, send a message-bus request, or depend on a task worker being available. *Verify*: instrument message-bus sends; assert zero for every document this contract supports.
 
@@ -115,7 +116,8 @@ The periodic repository sync reads each repository's commit and internal status 
 No new entities, no schema change, no migration.
 
 - **CoreGenericRepository / CoreRepository / CoreReadOnlyRepository**: Branch-agnostic at node level, so the repository is visible from every branch. `name`, `description`, `location` and `operational_status` are branch-agnostic and read once.
-- **`commit`, `sync_status`, `internal_status`**: Branch-local attributes on CoreRepository, read per branch.
+- **`sync_status`, `internal_status`**: Branch-local attributes defined on CoreGenericRepository, so present on both kinds, read per branch.
+- **`commit`**: Branch-local on CoreRepository, read per branch.
 - **`commit`, `ref`**: Branch-aware attributes on CoreReadOnlyRepository, read per branch.
 - **Branch**: A standard (non-schema) node. Joined to repository attribute edges only by name. Supplies the row identity, the branch-level row fields (`name`, `status`, `is_default`, `branched_from`) and the row-set criterion `sync_with_git`.
 - **Not an entity here: the remote head.** It is not in the graph, so it cannot be a row value of this query. It reaches the same card through the sibling PRD's worker read.
@@ -164,7 +166,7 @@ These are constraints the PRD established by verifying the codebase. They bound 
 | Gate | Status |
 | --- | --- |
 | Database schema or migration | Ruled out. Nothing added, nothing written. |
-| GraphQL schema modification | Requires sign-off. One additive hand-written query plus its types, and a `sync_with_git` filter on the existing branch filters. |
+| GraphQL schema modification | Requires sign-off. One additive hand-written query plus its types; `InfrahubBranch` is unchanged. |
 | New dependencies | None. |
 | CI/CD workflow changes | None. |
 | Authentication / authorization | Requires sign-off. No new permission is defined, but the enforcement is new: the permission checker pipeline cannot see a hand-written root field, so the check moves into the resolver, and this is the first read to require a decision covering both the default branch and other branches. Both are precedents a reviewer should see. |
