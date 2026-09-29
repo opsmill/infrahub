@@ -370,8 +370,16 @@ If you encounter issues with your repository connections, you can use the follow
    - Select **Reimport current commit** to force reimport without changing the reference
    - For read-only repositories, select **Import latest commit** to fetch and import the latest commit from the remote for the tracked ref
 
+4. **A `Repository` reporting a Credential Error may have valid credentials that lack write access.** A read-write `Repository` needs to push to the remote, and the connectivity check verifies this. If the token can read the repository but cannot push, the check fails with a credential error even though the credentials themselves are valid. Grant the token **write** access to the repository (see the token guidance below); reissuing the token does not help if the new one also lacks write access.
+
 :::success Validation
 A healthy repository connection should show `Online` for operational status and `In sync` for sync status once all operations complete.
+:::
+
+:::note Limitation
+
+`Online` confirms that Infrahub has repository-level write access. It does not guarantee every push will succeed: the check does not evaluate branch protection, push rules, or pre-receive hooks, which are enforced only when a real push is attempted. The write check is also effective only on Git servers that enforce write authorization when advertising the receive-pack service (such as GitHub and GitLab). Some self-hosted servers defer that check to the moment a push is received; against those a read-only credential can pass the connectivity check and the failure will surface at the first branch creation or merge instead.
+
 :::
 
 ### GitHub access token
