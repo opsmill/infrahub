@@ -28,6 +28,11 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.tasks import rebase_branch
+from infrahub.core.diff.diff_locker import DiffLocker
+from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
+from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
+from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.diff.unfrozen_deleter import UnfrozenDiffDeleter
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
 from infrahub.core.graph.index import node_indexes, rel_indexes
@@ -63,6 +68,7 @@ from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import ValidationError
+from infrahub.lock import initialize_lock
 
 from .constants import APPLIED_BADGE, ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
 from .db_commands.check_inheritance import check_inheritance
@@ -546,6 +552,88 @@ async def reset_cmd(
     finally:
         if dbdriver is not None:
             await dbdriver.close()
+
+
+@app.command(name="delete-diffs")
+async def delete_diffs_cmd(
+    ctx: typer.Context,
+    branch: str | None = typer.Option(
+        None,
+        "--branch",
+        "-b",
+        help="Only delete the diffs of this branch, which does not need to exist anymore.",
+    ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Delete the stored diffs that are not frozen, for every branch or for a single one.
+
+    Frozen diffs are kept: they record what a closed or merged proposed change, or a merged or
+    deleted branch, changed. A deleted diff is calculated again from the start of its branch the next
+    time it is requested, and the conflict resolutions recorded in it are lost. The diffs of a branch
+    are deleted once any diff update of that branch in progress has finished.
+
+    Raises:
+        Exit: When --branch names the default branch or the confirmation prompt is declined
+            (raises typer.Exit to terminate the CLI command).
+
+    """
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    console = Console()
+
+    config.load_and_exit(config_file_name=config_file)
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+
+    try:
+        root = await get_root_node(db=dbdriver)
+        if branch == root.default_branch:
+            console.print(
+                f"[red]Diffs are stored per branch against the default branch '{branch}'; "
+                "omit --branch to delete the diffs of every branch.[/red]"
+            )
+            raise typer.Exit(code=1)
+
+        initialize_lock()
+        deleter = UnfrozenDiffDeleter(
+            diff_repository=DiffRepository(
+                db=dbdriver, deserializer=EnrichedDiffDeserializer(parent_adder=DiffParentNodeAdder())
+            ),
+            diff_locker=DiffLocker(),
+        )
+        plan = await deleter.plan(branch_name=branch)
+
+        if plan.kept_root_uuids:
+            console.print(
+                f"[yellow]Keeping {len(plan.kept_root_uuids)} unfrozen diff root(s) paired with a frozen one: "
+                f"{', '.join(plan.kept_root_uuids)}[/yellow]"
+            )
+        if not plan.batches:
+            console.print("No unfrozen diff to delete.")
+            return
+
+        table = Table(title="Unfrozen diffs")
+        table.add_column("Branch")
+        table.add_column("Base branch")
+        table.add_column("Diffs", justify="right")
+        for batch in plan.batches:
+            table.add_row(batch.diff_branch_name, batch.base_branch_name, str(len(batch.diffs)))
+        console.print(table)
+
+        if not yes and not typer.confirm(f"Delete these {plan.num_diffs} unfrozen diff(s)?"):
+            console.print("Aborted; no diff was deleted.")
+            raise typer.Exit(code=1)
+
+        for batch in plan.batches:
+            console.print(f"Deleting {len(batch.diffs)} diff(s) of branch '{batch.diff_branch_name}'")
+            await deleter.delete(batch=batch)
+        console.print(f"[green]Deleted {plan.num_diffs} unfrozen diff(s).[/green]")
+    finally:
+        await dbdriver.close()
 
 
 @app.command(name="check-duplicate-schema-fields")
