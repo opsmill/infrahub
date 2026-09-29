@@ -1,3 +1,26 @@
+backend/tests/unit/core/changelog/test_secondary_merger.py
+  s_bc9261dc1ecdb3::t_c04063f3013772 9,28,56,67-92,101
+backend/infrahub/core/changelog/reciprocal.py
+  s_bc9261dc1ecdb3::t_c04063f3013772 1-62,64-119
+  s_bc9261dc1ecdb3::t_831d895016deac 63
+backend/infrahub/core/changelog/builder.py
+  s_bc9261dc1ecdb3::t_c04063f3013772 10-11,13,38-39,41-45
+backend/tests/component/core/changelog/test_models.py
+  s_bc9261dc1ecdb3::t_c04063f3013772 5,178,319,427,510,584,640,758,859
+backend/tests/component/core/changelog/test_enrichment.py
+  s_bc9261dc1ecdb3::t_c04063f3013772 15,23-24,26,165-167,183-185,209-213,235-237
+backend/infrahub/core/changelog/relationship_getter.py
+  s_bc9261dc1ecdb3::t_c04063f3013772 7,22-24,36-43,46-48,61-62,65-67,72,87,97,100,108,113,122,126,132,135,147,153-164,166,176,180,184-185,187-194
+backend/infrahub/core/changelog/secondary_merger.py
+  s_bc9261dc1ecdb3::t_c04063f3013772 1-48
+backend/tests/unit/core/changelog/test_models.py
+  s_bc9261dc1ecdb3::t_c04063f3013772 7
+backend/tests/unit/core/changelog/test_peer_labels.py
+  s_bc9261dc1ecdb3::t_c04063f3013772 1-100
+backend/tests/unit/core/changelog/test_reciprocal.py
+  s_bc9261dc1ecdb3::t_c04063f3013772 1-235
+backend/infrahub/core/changelog/peer_labels.py
+  s_bc9261dc1ecdb3::t_c04063f3013772 1-67
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -5,6 +28,14 @@
   "base_commit_sha": "a6381853661247d782b8f7d02d45fcdfdf76b0cb",
   "prompts": {},
   "sessions": {
+    "s_bc9261dc1ecdb3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0818cbd0-fdd5-4fe1-a906-3a515e96a4cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
     "s_d6bb76affb8018": {
       "agent_id": {
         "tool": "claude",
