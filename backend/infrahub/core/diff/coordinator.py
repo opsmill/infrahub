@@ -397,7 +397,10 @@ class DiffCoordinator:
                         f"Diff {diff_id} for branch {diff_branch.name} no longer exists, skipping recalculation"
                     )
                     return None
-                current_base_diff = await self.diff_repo.get_one(
+                if not current_branch_diff.partner_uuid:
+                    raise ResourceNotFoundError(f"Diff {diff_id} for branch {diff_branch.name} has no partner diff")
+                # only the partner's uuid and proposed change are read, and its nodes can far outnumber the branch's
+                current_base_diff = await self.diff_repo.get_one_metadata(
                     diff_branch_name=base_branch.name, diff_id=current_branch_diff.partner_uuid
                 )
                 if current_branch_diff.tracking_id and isinstance(current_branch_diff.tracking_id, BranchTrackingId):
