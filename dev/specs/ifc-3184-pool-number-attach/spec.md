@@ -557,12 +557,19 @@ Carried from the PRD; the plan phase turns these into design, it does not reopen
   duplicate-uuid node case and each of the migration's four behaviours — in particular the
   multi-pool collapse and the legacy source-edge deletion (a pool-written edge removed, an unrelated
   user source left alone), with their reported counts.
-- **Benchmark**: FR-036a replaces a single cross-branch resolution with a per-branch one inside the
+- **Benchmark**: ~~FR-036a replaces a single cross-branch resolution with a per-branch one inside the
   allocation path's pool-wide lock, so allocation cost gains a dependency on live branch count that
   it does not have today. Benchmark allocation against `develop` before and after the fix, vary
   branch count, and review the curve. No numeric gate is set — see SC-017 — but a superlinear curve,
   or a large constant from nesting per-branch resolution inside a query that already fans out over
-  records, is a release decision rather than something to wave through.
+  records, is a release decision rather than something to wave through.~~
+
+  **Amended 2026-09-18: the branch-count axis has nothing to vary.** FR-036a shipped as an *absent*
+  branch filter rather than a per-branch resolution, so allocation gained no dependency on live
+  branch count. Cost scales with the records a pool holds, as it did before the slice, and
+  re-anchoring reduces that work rather than adding to it — the traversal no longer fans out over a
+  globally shared value vertex. Benchmark allocation against `develop` if the record-count curve is
+  in doubt; do not parameterise on branch count.
 - **E2E scenario**: an operator creates a pool over a populated range, sees it report nothing,
   attaches the existing objects, sees utilization jump to match reality, then allocates and receives
   the first genuinely free number. Playwright coverage travels with the deferred frontend.
@@ -606,9 +613,12 @@ Carried from the PRD; the plan phase turns these into design, it does not reopen
   removes the in-memory taken-set built per allocation under the pool lock; re-anchoring removes the
   liveness traversal's fan-out over a globally shared value vertex and the uuid join with it; and
   FR-031's deletion removes the pool-lock contention on plain number edits that earlier drafts would
-  have introduced. Costs to watch: the range filter now applies after a branch-resolved hop, and
+  have introduced. ~~Costs to watch: the range filter now applies after a branch-resolved hop, and
   FR-036a's per-branch resolution multiplies edge resolution by branch count inside the allocation
-  lock — this is the slice's one real performance risk, and the benchmark obligation covers it.
+  lock — this is the slice's one real performance risk, and the benchmark obligation covers it.~~
+  **Amended 2026-09-18:** neither cost exists in what shipped. There is no branch-resolved hop and no
+  per-branch resolution — the read carries no branch filter — so the range filter applies directly to
+  the values the records reach, and nothing multiplies by branch count.
   FR-030b's derivation is not comparable: one further optional match inside a subquery already bound
   to the attribute, gated by the existing metadata flag. The reporting split must not reintroduce an
   N+1 over records.

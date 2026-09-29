@@ -162,9 +162,10 @@ class TestNodeTemplateApplierAttributes:
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=device_template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
+        fields = applied.fields
 
         _validate_template_fields(
             fields=fields,
@@ -184,9 +185,10 @@ class TestNodeTemplateApplierAttributes:
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields = {"name": "my-device", "manufacturer": "User Corp", "weight": 100, "airflow": "Front to rear"}
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=device_template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
+        fields = applied.fields
 
         _validate_template_fields(
             fields=fields,
@@ -207,9 +209,10 @@ class TestNodeTemplateApplierAttributes:
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
+        fields = applied.fields
 
         _validate_template_fields(
             fields=fields,
@@ -237,9 +240,10 @@ class TestNodeTemplateApplierRelationships:
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
+        fields = applied.fields
 
         _validate_template_fields(
             fields=fields,
@@ -265,9 +269,10 @@ class TestNodeTemplateApplierRelationships:
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
+        fields = applied.fields
 
         _validate_template_fields(
             fields=fields,
@@ -298,9 +303,10 @@ class TestNodeTemplateApplierRelationships:
             "primary_tag": {"id": second_tag_node.id},
         }
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
+        fields = applied.fields
 
         _validate_template_fields(
             fields=fields,
@@ -321,9 +327,10 @@ class TestNodeTemplateApplierRelationships:
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
+        fields = applied.fields
 
         _validate_template_fields(fields=fields, user_fields=user_fields, excluded_fields=["primary_tag", "tags"])
 
@@ -395,9 +402,10 @@ class TestNodeTemplateApplierPoolRelationships:
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
+        fields = applied.fields
 
         _validate_template_fields(
             fields=fields,
@@ -437,9 +445,10 @@ class TestNodeTemplateApplierPoolRelationships:
             "primary_ip": {"id": explicit_ip.id},
         }
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
+        fields = applied.fields
 
         _validate_template_fields(fields=fields, user_fields=user_fields)
 
@@ -456,9 +465,10 @@ class TestNodeTemplateApplierPoolRelationships:
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
+        fields = applied.fields
 
         _validate_template_fields(fields=fields, user_fields=user_fields, excluded_fields=["primary_ip"])
 
@@ -522,15 +532,18 @@ class TestNodeTemplateApplierNumberPoolAttributes:
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields: dict[str, Any] = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=device_template_with_pool,
             target_schema=target_schema,
             target_id="new-device-id",
             user_fields=user_fields,
         )
+        fields = applied.fields
 
         _validate_template_fields(fields=fields, user_fields=user_fields)
-        assert fields["rack_unit"] == {"value": 1, "source": number_pool.id}
+        # No `source`: the pool is derived from the reservation record rather than stored.
+        assert fields["rack_unit"] == {"value": 1}
+        assert applied.pools.allocated == {"rack_unit": number_pool.id}
 
     async def test_applier_skips_pool_attribute_with_noop_allocator(
         self,
@@ -545,12 +558,13 @@ class TestNodeTemplateApplierNumberPoolAttributes:
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields: dict[str, Any] = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=device_template_with_pool,
             target_schema=target_schema,
             target_id="new-device-id",
             user_fields=user_fields,
         )
+        fields = applied.fields
 
         _validate_template_fields(fields=fields, user_fields=user_fields)
         assert "rack_unit" not in fields
@@ -568,12 +582,13 @@ class TestNodeTemplateApplierNumberPoolAttributes:
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields: dict[str, Any] = {"name": "my-device", "weight": 100, "airflow": "Front to rear", "rack_unit": 99}
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=device_template_with_pool,
             target_schema=target_schema,
             target_id="new-device-id",
             user_fields=user_fields,
         )
+        fields = applied.fields
 
         _validate_template_fields(fields=fields, user_fields=user_fields)
 
@@ -617,9 +632,10 @@ class TestNodeTemplateApplierGroupForInstances:
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
+        fields = applied.fields
 
         _validate_template_fields(
             fields=fields,
@@ -649,9 +665,10 @@ class TestNodeTemplateApplierGroupForInstances:
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
+        fields = applied.fields
 
         _validate_template_fields(
             fields=fields,
@@ -679,9 +696,10 @@ class TestNodeTemplateApplierGroupForInstances:
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
+        fields = applied.fields
 
         _validate_template_fields(
             fields=fields, user_fields=user_fields, excluded_fields=["member_of_groups", "subscriber_of_groups"]
@@ -714,9 +732,10 @@ class TestNodeTemplateApplierGroupForInstances:
             "member_of_groups": [{"id": second_standard_group.id}],
         }
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
+        fields = applied.fields
 
         _validate_template_fields(fields=fields, user_fields=user_fields)
 
@@ -732,9 +751,10 @@ class TestNodeTemplateApplierGroupForInstances:
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
 
-        fields = await applier.apply(
+        applied = await applier.apply(
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
+        fields = applied.fields
 
         _validate_template_fields(
             fields=fields, user_fields=user_fields, excluded_fields=["member_of_groups", "subscriber_of_groups"]

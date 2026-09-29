@@ -257,6 +257,10 @@ already fans out over records, is a **release decision** — not something to wa
 resolution happens inside the pool-wide allocation lock, which is what makes this the slice's one
 real performance risk.
 
+**Amended 2026-09-18 — step 2 is withdrawn.** FR-036a shipped as an absent branch filter, not a
+per-branch resolution, so there is nothing inside the allocation lock that scales with live branch
+count and no axis to vary. Steps 1 and 3 stand if the cost per record is in doubt.
+
 ---
 
 ## Scenario 13 — Sweeps keep the record global

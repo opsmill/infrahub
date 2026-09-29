@@ -298,6 +298,14 @@ never a pool the branches contribute to jointly."* Its mechanics transfer direct
 - `count(DISTINCT … node.uuid)` is the duplicate-UUID guard;
 - `max(…)` across branches is the disjunction.
 
+**Amended 2026-09-18 — this decision was not carried out, and the contract it borrows is met without
+it.** The shipped read has no branch filter, which is what makes it a disjunction: a value counts
+while any branch holds it because nothing narrows the match to one branch. None of the four
+mechanics above appear in the query. The retention predicate needs them because it resolves whether
+a *field* is retained, reading backwards from the linked vertex; this read resolves which *values*
+an attribute holds, reading forward from a `-global-` record through `HAS_VALUE`, and the forward
+direction leaves nothing per-branch to resolve. The `DELETING` exclusion is kept.
+
 **It is a new predicate, not a call to the existing one.** The existing one resolves whether a
 *field* is retained (node existence + `HAS_ATTRIBUTE`); FR-036a needs whether a *value* is held
 (node existence + `HAS_ATTRIBUTE` + `HAS_VALUE`, returning the resolved value per branch). Only the

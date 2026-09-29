@@ -284,6 +284,14 @@ disjunction.
 The error stays one-sided by construction: taking the union can only ever *add* numbers to the taken
 set.
 
+**Amended 2026-09-18 — none of the mechanics above shipped, and none are needed.** The read carries
+no branch filter at all. That omission is what produces the union: every live `HAS_VALUE` counts
+whatever branch wrote it, so there is no per-branch window to build, no per-branch resolution to
+order, and no cross-branch aggregate to take. The record is `-global-` and so has no branch of its
+own to resolve, and liveness is read forward through the value edge rather than back through the
+object. The `DELETING` exclusion is the only branch predicate that remains. One-sidedness survives
+unchanged — omitting a filter can only add numbers to the taken set.
+
 ### 5. Source derivation (FR-030b)
 
 `NodeListGetAttributeQuery._add_source_to_query` gains an `OPTIONAL MATCH` for the inbound `-global-`
