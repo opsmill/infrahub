@@ -16,7 +16,11 @@ export function getBranchDetailsUrl(
   return constructPath(path, overrideParams);
 }
 
+export function getBranchQspOverride(branchName: string, isDefault: boolean): overrideQueryParams {
+  if (isDefault) return { name: QSP.BRANCH, exclude: true };
+  return { name: QSP.BRANCH, value: branchName };
+}
+
 export function withBranch(path: string, branchName: string, isDefault: boolean): string {
-  if (isDefault) return constructPath(path, [{ name: QSP.BRANCH, exclude: true }]);
-  return constructPath(path, [{ name: QSP.BRANCH, value: branchName }]);
+  return constructPath(path, [getBranchQspOverride(branchName, isDefault)]);
 }

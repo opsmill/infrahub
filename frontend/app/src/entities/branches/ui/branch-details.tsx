@@ -10,6 +10,7 @@ import { BranchProposeChangeButton } from "@/entities/branches/ui/branch-propose
 import { BranchRebaseButton } from "@/entities/branches/ui/branch-rebase-button";
 import { BranchValidateButton } from "@/entities/branches/ui/branch-validate-button";
 import { useGetBranchDetails } from "@/entities/branches/ui/queries/get-branch-details.query";
+import { BranchRepositoriesCard } from "@/entities/repository/ui/branch-repositories/branch-repositories-card";
 
 interface BranchDetailsProps {
   branchName: string;
@@ -19,7 +20,7 @@ interface BranchDetailsProps {
   onTasksPageChange: (page: number) => void;
 }
 
-export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
+export const BranchDetails = ({ branchName, reposPage, onReposPageChange }: BranchDetailsProps) => {
   const { isPending, error, data: branch } = useGetBranchDetails({ branchName });
 
   if (isPending) {
@@ -37,6 +38,16 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
   return (
     <Col>
       <BranchAttributes branch={branch} />
+
+      {!branch.is_default && (
+        <BranchRepositoriesCard
+          branchName={branch.name}
+          isDefaultBranch={!!branch.is_default}
+          syncWithGit={!!branch.sync_with_git}
+          page={reposPage}
+          onPageChange={onReposPageChange}
+        />
+      )}
 
       {!branch.is_default && (
         <Row className="flex-wrap">
