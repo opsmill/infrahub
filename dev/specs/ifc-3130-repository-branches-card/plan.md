@@ -133,7 +133,7 @@ Result: **PASS**, with four justified complexity entries.*
 | **IV. Test Discipline** | Yes — **with one recorded deviation** | Unit tests for the pure pagination arithmetic and the partition rule (one case per `BranchSupportType` value); component tests (Vitest browser mode) for every FR carrying a component-test verification; E2E at `tests/e2e/repository/` with the `shard_branches_repo` marker against `demo_edge_repo` (FR-026). The backend slice deferred the epic's E2E requirement to this card, so it lands here. Test files mirror source structure. **Two requirements are honestly recorded as verified by review rather than by test** — see [below](#verified-by-review-not-by-test). **The deviation**: the constitution says E2E "MUST be included for all user-facing features"; FR-027 knowingly ships `CoreReadOnlyRepository` without it. Defensible, but Governance requires a deviation be recorded in Complexity Tracking — it now is. |
 | **V. Query Performance & Efficiency** | Yes | One request per page (SC-003). Server-side count, filters and ordering; no client-side narrowing (FR-015). `node_metadata` is **not selected at all** — the cheapest possible guarantee for FR-006. Row transfer bounded by page size. |
 | **VI. Security & Input Boundaries** | Partial (N/A by shape) | No user input reaches a query language here — the filter values are bound as typed GraphQL variables. Authorization is the server's: the resolver raises `PermissionDeniedError` (a `ForwardableError`, HTTP 403) and the card renders `UnauthorizedScreen` for it (FR-023), distinct from the empty state, so a denial is never mistaken for "no branches" (SC-007). No error message exposes internal detail. |
-| **VII. Simplicity & Maintainability** | Yes, with one justified entry | Reuses the existing `ObjectDetailsCard`, `DataTable` and `DropdownCell` rather than adding parallel ones. D1 was decided **against** the more elegant refactor precisely to avoid touching a file every object-detail page depends on. One new shared primitive (`CommitHash`) and one new pagination trio — both justified in [Complexity Tracking](#complexity-tracking). |
+| **VII. Simplicity & Maintainability** | Yes, with one justified entry | Reuses the existing `ObjectDetailsCard` and `DataTable` rather than adding parallel ones. D1 was decided **against** the more elegant refactor precisely to avoid touching a file every object-detail page depends on. One new shared primitive (`CommitHash`) and one new pagination trio — both justified in [Complexity Tracking](#complexity-tracking). |
 
 **Documentation requirement** (Governance → Documentation Requirements): frontend architecture
 changes must update `dev/knowledge/frontend/`. FR-028 requires a note on the new pagination
@@ -324,28 +324,34 @@ frontend/app/src/
     │       │   ├── repository-branches-empty.tsx
     │       │   ├── messages.ts                                 # the pinned state copy
     │       │   ├── columns.tsx
-    │       │   ├── cells/
+    │       │   ├── cells/                                      # branch-name and sync-status chips
     │       │   ├── repository-branches-toolbar.tsx             # work unit 5b — search, order, filter
     │       │   ├── branch-row-fields.ts                        # the two filterable fields + the sort schema
     │       │   └── to-repository-branch-arguments.ts           # filters and order → query arguments
     │       ├── repository-details-card.tsx                     # Card + CardHeader + ObjectDataDisplay
     │       └── repository-object-details.tsx                   # the two-card split
     │
+    ├── branches/ui/branch-list-item/branch-status-badge.tsx  # edited — MERGING, MERGE_FAILED
     └── nodes/object/ui/
+        ├── objects-manager-toolbar.tsx                 # edited — derives the filter definitions
         ├── object-details/object-details.tsx           # edited — the isOfKind gate only
+        ├── filters/
+        │   ├── filter-picker.tsx                       # edited — filterDefinitions, filterConditions
+        │   ├── get-filter-picker-count.ts              # edited — counts against a definition list
+        │   ├── field-filter-form.tsx                   # edited — threads filterConditions
+        │   ├── attribute-filter-form.tsx               # edited — opens on a surviving condition
+        │   ├── filter-form-layout.tsx                  # edited — pass-through
+        │   └── filter-condition-select.tsx             # edited — narrows the offered conditions
         └── object-table/
             ├── object-table-skeleton.tsx               # edited — rowCount, showSelection
             └── cells/
-                ├── dropdown-cell.tsx                   # edited — widened prop type
+                ├── table-column-header.tsx             # edited — optional role
                 └── table-column-header-simple.tsx      # edited — optional role
 
-frontend/app/
-├── vitest.config.ts                                    # edited — setupFiles
-└── tests/
-    ├── setup.ts                                        # the shared afterEach URL reset
-    ├── fake/repository.ts                              # row factories
-    ├── fake/dropdown.ts
-    └── helpers/expect-server-driven-change.ts          # D2's pairing rule — every argument required
+frontend/app/tests/
+├── fake/repository.ts                                  # row factories
+├── fake/dropdown.ts
+└── helpers/expect-server-driven-change.ts              # D2's pairing rule — every argument required
 
 tests/e2e/repository/
 └── test_repository_branches_card.py                    # OUTSTANDING — marker: shard_branches_repo
@@ -354,7 +360,8 @@ dev/knowledge/frontend/
 ├── table-pagination.md                                 # OUTSTANDING (FR-028)
 └── shared-components.md                                # OUTSTANDING — CommitHash + drift fixes
 
-changelog/                                              # OUTSTANDING — Towncrier fragment
+changelog/
+└── +ifc-3130-repository-branches-card.added.md         # Towncrier fragment for the card itself
 ```
 
 **Structure Decision**: Feature-Sliced, following the repository's existing `entities/<slice>/{api,domain,ui}`
@@ -367,28 +374,31 @@ boundary — that is where every gql.tada document in this codebase lives. `ui/q
 react-query `queryOptions` layer and holds none; putting the document there would force an
 `api/ → ui/` import, which `dev/knowledge/frontend/entities-structure.md` prohibits.
 
-**Eight shared files are edited, all eight on the branch:**
+**Seventeen pre-existing frontend files are edited, all of them on the branch** — the sixteen source
+files below plus `filters/get-filter-picker-count.test.ts`, which follows its subject's signature:
 
 | File | Edit | Risk |
 |---|---|---|
 | `object-details.tsx` | the `isOfKind` gate | **Behavioural.** The feature's single entry point, and its entire rollback path |
 | `shared/components/table/data-table.tsx` | an opt-in `semanticTable` flag putting `role="table"` on the grid container and `role="row"` on each row wrapper, plus optional `skeletonRowCount` / `skeletonShowSelection` pass-throughs to `ObjectTableSkeleton` | **Additive.** `semanticTable` defaults to `false`, so no existing table gains or loses semantics; only this card opts in. Required by FR-025: the row wrapper lives here, so `within(row)` scoping cannot be reached from the card's own files. Both roles are set together — an orphan `row` is invalid ARIA. Carries one `useFocusableInteractive` suppression, because Biome treats `row` as interactive though that only holds inside a grid/treegrid |
-| `object-table/cells/dropdown-cell.tsx` | the `dropdown` prop widened from the full generated `Dropdown` to `Pick<Dropdown, "value" \| "label" \| "color">` | **Type-only.** Strictly more permissive, no runtime change; the component already reads only those three fields |
 | `object-table/cells/table-column-header-simple.tsx` | optional `role`, forwarded to the header element | **Additive.** Undefined by default, so an existing header renders exactly as it did. The card passes `columnheader`, which is what completes `semanticTable`'s header row — a `row` of plain `<div>`s is invalid ARIA |
+| `object-table/cells/table-column-header.tsx` | the same optional `role`, threaded to every header variant; on the menu variant it lands on a `display: contents` wrapper | **Additive.** Undefined by default. The wrapper is needed because the trigger has to keep its own `button` role, so `columnheader` cannot sit on it |
+| `filters/filter-picker.tsx` | takes `filterDefinitions` outright instead of deriving them from a `ModelSchema`, plus an optional `filterConditions` narrowing every field's condition menu | **Behavioural for one caller.** The object toolbar now derives the definitions itself and passes them, so its behaviour is unchanged; the card supplies a hand-built list the contract can honour |
+| `filters/get-filter-picker-count.ts` (and its test) | counts against a definition list rather than a `ModelSchema` | **Refactor.** Same count for the same schema; the call site does the derivation |
+| `filters/field-filter-form.tsx`, `filters/attribute-filter-form.tsx`, `filters/filter-form-layout.tsx`, `filters/filter-condition-select.tsx` | an optional `filterConditions` threaded from the picker to the condition `Select`, plus `getAvailableFilterConditions` so a form opens on a condition that survives the narrowing | **Additive.** Undefined leaves every menu exactly as it was. Without it the card could offer *is empty* / *is not empty*, which the query has no argument for — the tag would claim an active filter while the request went out unfiltered |
+| `objects-manager-toolbar.tsx` | derives the filter definitions from the selected schema and passes them to the picker | **Mechanical.** The other half of the picker's prop change |
+| `branches/ui/branch-list-item/branch-status-badge.tsx` | `MERGING` and `MERGE_FAILED` cases added | **Bug fix, not this feature's.** The badge returned `null` for both, on six call sites besides this card |
 | `object-table/object-table-skeleton.tsx` | optional `rowCount` (default 20) and `showSelection` (default `true`), plus the row and cell roles a table that opted into `semanticTable` needs while it is still loading | **Additive.** Every default reproduces the previous behaviour, so no existing caller changes. The card passes its page size and turns the selection checkbox off, through `DataTable` — without them the skeleton ships a phantom checkbox and a layout jump at this card's page size, which FR-023's loading clause forbids |
 | `shared/components/errors/unauthorized-screen.tsx` | optional `defaultOpen`, forwarded to the `Accordion` it already renders | **Additive.** Undefined leaves the accordion at its own default, so existing callers are unchanged. The card opens it, because a collapsed explanation inside a card reads as an empty card |
 | `shared/api/graphql/error-handling.ts` | new `hasThrownCatalogueCode`, unwrapping the bare `Error` the transport rethrows before reading its catalogue code | **New export, plus a bundling change.** `CombinedError` moves from a type-only import to a value import — `instanceof` needs the class — so `@urql/core` now reaches the runtime bundle of anything importing this module, where before it was erased at compile time. Harmless while every importer already talks to GraphQL; worth re-checking if this module is ever pulled into one that does not |
 | `shared/components/table/style.tsx` | new `CELL_HEIGHT_PX` constant | **Additive.** Nothing reads it unless it imports it. It is the numeric twin of the `h-10` in `cellsStyle` and the pairing is held by hand, so a change to either must carry the other or FR-011b's reservation silently stops matching a row |
 
-The seven additive edits cannot break an existing caller: every new prop is optional and every
-default reproduces today's behaviour. Reverting the gate alone still removes the feature.
+Every additive edit is a new optional prop whose default reproduces today's behaviour, so none can
+break an existing caller. Only `object-details.tsx` and the filter picker's prop change are
+behavioural, and reverting the gate alone still removes the feature.
 
-**Two test-harness files change too**, and one of them has the branch's widest reach:
-
-| File | Edit | Risk |
-|---|---|---|
-| `frontend/app/tests/setup.ts` | **new** — a global `afterEach` clearing `window.location.search` | **Broadest on the branch.** It runs for *every* test file, not just this feature's. Without it nuqs state survives into the next file and the paging tests pass alone but fail in a full run; with it, any test that deliberately leaves a query string behind loses it between cases |
-| `frontend/app/vitest.config.ts` | registers that file as `setupFiles` | **Additive.** There was no `setupFiles` entry before |
+**No test-harness file changes.** Each test file that writes the query string resets it in its own
+`beforeEach`, so nuqs state cannot survive into the next file and no global setup is registered.
 
 **The card stays inside the detail route's outlet**, never replacing the page shell — IFC-3150 adds
 its Commits tab as a sibling route on the same page.
@@ -466,7 +476,10 @@ of the same facts, and the reversal is deliberate:
    rather than letting it derive one from a schema.
 4. **A column header whose filter the contract cannot apply must be `isDisabled`.** `sync_status`,
    `commit` and `ref` have no filter argument and no place in the order input, so their headers carry
-   no menu — offering one would promise narrowing that is silently dropped.
+   no menu — offering one would promise narrowing that is silently dropped. For the same reason the
+   picker is given `filterConditions={[FILTER_CONDITION.CONTAINS]}`: *is empty* / *is not empty* has
+   no argument on this contract, so offering it would raise an active-filter tag over an unfiltered
+   request.
 5. **Test-provider requirements**: `DataTable` and `BranchesDataTable` call `useAuth()`;
    `useCurrentBranch` needs the jotai provider; any `nuqs` state needs `NuqsAdapter`. All are in
    `tests/components/render.tsx` — which is precisely why copying `link-tab.test.tsx`'s private
@@ -480,7 +493,7 @@ actually built are:
 | Design column | Built? | Why |
 |---|---|---|
 | `Branch` | ✅ | Row identity; name links to the branch detail page (FR-003a) |
-| `Import status` | ✅ | Rendered by `DropdownCell`, label and colour from the schema (FR-004, FR-005) — **not** renamed from `sync_status` |
+| `Import status` | ✅ | Rendered as a chip, label and colour from the schema (FR-004, FR-005) — **not** renamed from `sync_status` |
 | `Commit` | ✅ | `CommitHash`, non-copyable in table cells |
 | `Ref` (read-only kind only) | ✅ | The ref that branch tracks (FR-002) |
 | `Upstream` | ❌ | FR-006 — epic IFC-3101, separate data path |
@@ -545,7 +558,7 @@ which defeats FR-025. Two changes make the requirement reachable, and both are i
 **FR-004 and FR-025 conflict on their face**, and the resolution is written into both tests:
 colour may never be used to *locate* an element, but asserting a chip's `backgroundColor` **after**
 locating it by accessible name is a data-flow assertion, not a colour dependency. Assert
-`backgroundColor` **only** — never the derived text colour, which `DropdownCell` computes with
+`backgroundColor` **only** — never the derived text colour, which the chip computes with
 `lch(from …)` and which serialises inconsistently.
 
 Two mechanics the resolution needs to actually work:
@@ -554,7 +567,7 @@ Two mechanics the resolution needs to actually work:
   `element.style.backgroundColor` normalises hex to `rgb(…)` exactly as `getComputedStyle` does —
   asserting against the raw fixture hex fails with `expected 'rgb(76, 29, 149)' to be '#4c1d95'`.
   Push the fixture value through a throwaway element and compare the two normalised strings.
-- **`DropdownCell` is a bare `<span>` with no role**, so "locate by accessible name" is in practice
+- **The chip is a bare `<span>` with no role**, so "locate by accessible name" is in practice
   `within(row).getByText(...)`. The chip tests use that shape. Left unstated, the first implementer
   reaches for `getByRole`, finds nothing, and falls back to `getByTestId` — defeating FR-025.
 
@@ -642,7 +655,7 @@ requirement can only be *verified* once there is a card to put it in.
    horizontally *within* the card.
 4. **Nullable contract fields.** Most of the node's fields may be absent entirely, not merely
    `{value: null}` — `is_default` is a `NonRequiredBooleanValueField`, and `sync_status` is a
-   nullable `Dropdown` while `DropdownCell` requires non-null. Guard in the mapper; likely to appear
+   nullable `Dropdown` while the chip cell requires non-null. Guard in the mapper; likely to appear
    during the preview window. The full nullability table is in [data-model.md](data-model.md) §1.
 5. **Filter/page coupling (FR-014).** With independent URL keys, resetting the page on a filter change
    is a manual call, easy to forget on one of the two filters. Put the reset inside a single
@@ -689,7 +702,7 @@ Each argued and then cut by the refactor-friendly framing:
 | **A second pagination mechanism** alongside the legacy `Pagination` / `usePagination` | The legacy component is hard-wired to a single global `QSP.PAGINATION` key, so two paginated tables on one route move together — which this card would immediately break (FR-011). It also assumes the table is the page-level scroll area, which is false inside a card (FR-011a). | Generalising the legacy component in place would put this feature's regression risk on **three unrelated pages that have no tests at all**. The duplication is temporary and signposted: FR-028's knowledge note names the new component as the intended successor, and migrating the three call sites is tracked as follow-on work. |
 | **A new shared primitive `CommitHash`** | Nothing in the app renders a monospace, truncating, short-form hash; the only `font-mono` usage is unrelated and there is no short-hash helper. | Inlining the mono/truncate/short-form logic would put the hash-shortening rule at the call site, which is the thing that drifts once a second caller appears. It composes `CopyToClipboardButton` rather than reimplementing copying. **Stated honestly**: Principle VII's "two existing callers" bar is **not** met — the card's table cells are the only call site, and the `copyable` branch exists for the full-hash presentation the design places in the details card, which renders through `ObjectDataDisplay` and does not reach this primitive. Accepted as a small, self-contained primitive whose alternative is the rule inlined in a cell renderer. |
 | **Two `ObjectDataDisplay` instances** mounting two metadata `Sheet`s, inside a new local `RepositoryDetailsCard` (D1) | The alternative edits a file every object-detail page depends on. `ObjectDetailsCard` itself cannot be reused — it hardcodes its title and test id. | See D1 — the refactor framing's own risk register ranked that edit as its highest-blast-radius item. A duplicated closed dialog in the tree is not a behaviour change, and the local wrapper is ~15 lines of `Card` + `CardHeader` around the genuinely reusable `ObjectDataDisplay`. |
-| **A card-scoped `ErrorBoundary`** around the branches card | FR-024 as written holds only for **query** failures: the use case's throw lands in react-query's `isError` and renders in place. A **render-time** failure — a mapper crash on an unexpected preview-window shape, or `DropdownCell` handed a null — propagates to `error-boundary-router` and blanks the whole route. The app has no card-scoped boundary, and the nullable-field risk is the one expected to bite during the preview window. | Relying on the mapper's guards alone makes FR-024 true only for the failure kind that was anticipated. ~15 lines makes it true for all of them. |
+| **A card-scoped `ErrorBoundary`** around the branches card | FR-024 as written holds only for **query** failures: the use case's throw lands in react-query's `isError` and renders in place. A **render-time** failure — a mapper crash on an unexpected preview-window shape, or the chip cell handed a null — propagates to `error-boundary-router` and blanks the whole route. The app has no card-scoped boundary, and the nullable-field risk is the one expected to bite during the preview window. | Relying on the mapper's guards alone makes FR-024 true only for the failure kind that was anticipated. ~15 lines makes it true for all of them. |
 | **No E2E for `CoreReadOnlyRepository`** (FR-027) | The e2e data set contains no `CoreReadOnlyRepository`; the fixture is shared with IFC-3153 and is not budgeted here. The kind differs from the read-write one only by title, row set and one column — all presentation over the same query, with the row-set rule enforced server-side. | Adding the fixture here duplicates work IFC-3153 owns. Component tests cover the three differences. Recorded rather than silent, and flagged to IFC-3153 so the fixture owner inherits the gap. |
 
 ## Phase 0 — Research

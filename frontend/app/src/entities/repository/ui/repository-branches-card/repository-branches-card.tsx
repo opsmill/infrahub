@@ -181,24 +181,23 @@ export function RepositoryBranchesCard({ repositoryId, schema }: RepositoryBranc
   const { page, setPage } = useQueryScopedPage(querySignature, pagination);
   const pageSize = pagination.pageSize;
 
-  // The server's own total is the only thing that can say which page is the last real one, so a url
-  // asking for a page past the end is answered once and then re-asked at the last page's offset.
-  const requested = useGetRepositoryBranchStatus({
+  const { data, error, isPending } = useGetRepositoryBranchStatus({
     id: repositoryId,
     limit: pageSize,
     offset: getOffset(page, pageSize),
     ...queryArguments,
   });
-  const currentPage = requested.data
-    ? clampPage(page, getTotalPages(requested.data.count, pageSize))
-    : page;
 
-  const { data, error, isPending } = useGetRepositoryBranchStatus({
-    id: repositoryId,
-    limit: pageSize,
-    offset: getOffset(currentPage, pageSize),
-    ...queryArguments,
-  });
+  // The server's own total is the only thing that can say which page is the last real one, so a url
+  // asking for a page past the end is answered once and then written back to the last real page,
+  // which re-keys the one request rather than leaving the out-of-range one observed beside it.
+  const currentPage = data ? clampPage(page, getTotalPages(data.count, pageSize)) : page;
+
+  useEffect(() => {
+    if (currentPage === page) return;
+
+    setPage(currentPage);
+  }, [currentPage, page]);
 
   return (
     <Card aria-labelledby={titleId} role="region">

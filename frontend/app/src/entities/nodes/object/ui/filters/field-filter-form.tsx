@@ -4,18 +4,26 @@ import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filt
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import { DateMetadataFilterForm } from "@/entities/nodes/object/ui/filters/date-metadata-filter-form";
 import { DecisionFilterForm } from "@/entities/nodes/object/ui/filters/decision-filter-form";
+import type { FilterConditionSelectProps } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
 import { UserMetadataFilterForm } from "@/entities/nodes/object/ui/filters/user-metadata-filter-form";
 
 interface FieldFilterFormProps {
   definition: FilterDefinition;
+  filterConditions?: FilterConditionSelectProps["filterConditions"];
   onSuccess: () => void;
 }
 
-export function FieldFilterForm({ definition, onSuccess }: FieldFilterFormProps) {
+export function FieldFilterForm({ definition, filterConditions, onSuccess }: FieldFilterFormProps) {
   switch (definition.type) {
     case "attribute":
-      return <AttributeFilterForm attributeSchema={definition.schema} onSuccess={onSuccess} />;
+      return (
+        <AttributeFilterForm
+          attributeSchema={definition.schema}
+          filterConditions={filterConditions}
+          onSuccess={onSuccess}
+        />
+      );
     case "permission-decision":
       return (
         <DecisionFilterForm

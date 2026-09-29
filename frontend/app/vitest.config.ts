@@ -83,7 +83,6 @@ export default mergeConfig(
       ],
     },
     test: {
-      setupFiles: ["./tests/setup.ts"],
       browser: {
         enabled: true,
         headless: true,

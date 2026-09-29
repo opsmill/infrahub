@@ -5,10 +5,10 @@ import { COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
 import { TableCell } from "@/shared/components/table/table-cell";
 
 import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
-import { DropdownCell } from "@/entities/nodes/object/ui/object-table/cells/dropdown-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import type { RepositoryBranchStatusRow } from "@/entities/repository/domain/model/repository-branch-status";
 import { BranchNameCell } from "@/entities/repository/ui/repository-branches-card/cells/branch-name-cell";
+import { SyncStatusCell } from "@/entities/repository/ui/repository-branches-card/cells/sync-status-cell";
 import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
 
 const columnHelper = createColumnHelper<RepositoryBranchStatusRow>();
@@ -32,7 +32,7 @@ function getSyncStatusColumn(
     header: () => <TableColumnHeader columnSchema={columnSchema} isDisabled role="columnheader" />,
     cell: ({ row }) => (
       <TableCell role="cell">
-        {row.original.syncStatus && <DropdownCell dropdown={row.original.syncStatus} />}
+        {row.original.syncStatus && <SyncStatusCell syncStatus={row.original.syncStatus} />}
       </TableCell>
     ),
   });

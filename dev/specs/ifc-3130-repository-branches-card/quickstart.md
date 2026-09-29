@@ -154,7 +154,7 @@ Vitest runs in **browser mode**. Coverage to expect:
 | Level | What |
 |---|---|
 | Unit | `table-pagination.ts` arithmetic; `use-table-pagination.ts` key scoping (two probes, different keys, one unmoved after the other pages); `partition-fields-by-branch-support.ts` — **one case per `BranchSupportType` value (`aware`, `agnostic`, `local`) plus the node-level fallback**; the use case's error mapping over a raw `extensions` payload |
-| Component | Every FR carrying a component-test verification — both card kinds, the four states, the paging requests, the two details cards, the document order, and **each relationship label appearing exactly once on the page**. The filter requests land with work unit 5b, still outstanding |
+| Component | Every FR carrying a component-test verification — both card kinds, the four states, the paging requests, the two details cards, the document order, and **each relationship label appearing exactly once on the page**. The filter and order requests landed with work unit 5b |
 
 **Two rules that make or break this suite:**
 

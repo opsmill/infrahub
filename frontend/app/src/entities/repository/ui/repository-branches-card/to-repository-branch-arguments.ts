@@ -1,3 +1,5 @@
+import type { InfrahubNodeMetadataOrder } from "@/shared/api/graphql/generated/types";
+
 import { type Filter, SEARCH_ANY_FILTER } from "@/entities/nodes/filters/domain/model/filter";
 import { isFieldFiltered } from "@/entities/nodes/filters/domain/rules/is-field-filtered";
 import { getFilterDefinitionName } from "@/entities/nodes/object/domain/rules/filter-definition";
@@ -48,19 +50,18 @@ function toStatusArguments(filters: Filter[]): RepositoryBranchArguments {
 }
 
 function toOrderArgument(sorts: Sort[]): RepositoryBranchArguments {
+  const nodeMetadata: InfrahubNodeMetadataOrder = {};
+
   for (const sort of sorts) {
     const direction = sort.direction === SORT_DIRECTION.DESC ? "DESC" : "ASC";
 
-    if (sort.field === CREATED_AT_SORT_FIELD) {
-      return { order: { node_metadata: { created_at: direction } } };
-    }
-
-    if (sort.field === UPDATED_AT_SORT_FIELD) {
-      return { order: { node_metadata: { updated_at: direction } } };
-    }
+    if (sort.field === CREATED_AT_SORT_FIELD) nodeMetadata.created_at = direction;
+    if (sort.field === UPDATED_AT_SORT_FIELD) nodeMetadata.updated_at = direction;
   }
 
-  return {};
+  if (Object.keys(nodeMetadata).length === 0) return {};
+
+  return { order: { node_metadata: nodeMetadata } };
 }
 
 /** Every filter the toolbar can produce that the contract is able to apply, plus the order. */

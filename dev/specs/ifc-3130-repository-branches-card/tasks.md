@@ -3,7 +3,7 @@
 **Feature**: IFC-3130 | **Branch**: `ple-branches-card-ifc-3130` | **Base**: `cross-branch-repo-status-infp-671`
 
 **Input**: [plan.md](plan.md) (work units, dependency graph, reuse inventory), [spec.md](spec.md)
-(33 FRs, 3 user stories), [data-model.md](data-model.md),
+(34 FRs, 3 user stories), [data-model.md](data-model.md),
 [contracts/repository-branch-status-ui.md](contracts/repository-branch-status-ui.md),
 [critiques/critique-2026-09-16.md](critiques/critique-2026-09-16.md).
 
@@ -38,18 +38,18 @@ the individual tasks that depend on them, but they hold everywhere.
    the compiler-independent fix.)
 5. **No `useCallback` / `useMemo` / `React.memo`** — the React Compiler is enabled.
 6. **Locate elements by accessible name, never by colour, class or `data-testid`** (FR-025).
-7. **Refer to FRs individually.** There are **33** statements: FR-001…FR-028 plus FR-003a, FR-010a,
-   FR-011a, FR-011b and FR-018a. A range silently omits the suffixed ones.
+7. **Refer to FRs individually.** There are **34** statements: FR-001…FR-028 plus FR-003a, FR-010a,
+   FR-011a, FR-011b, FR-012a and FR-018a. A range silently omits the suffixed ones.
 
 ---
 
 ## Phase 1: Setup
 
-- [x] T001 Add a shared Vitest `afterEach` that resets `window.location.search` (not just
-      `history.state`) in `frontend/app/tests/setup.ts`, so nuqs-driven URL state cannot leak between
-      test files. `tests/components/render.tsx` mounts a real `BrowserRouter`, so without this the
-      paging tests pass alone and fail in a full run. It goes in the **shared** setup file, not
-      per-file, so a new test file cannot silently opt out.
+- [x] T001 Reset `window.location.search` (not just `history.state`) in the `beforeEach` of every
+      test file that writes it, so nuqs-driven URL state cannot leak between test files.
+      `tests/components/render.tsx` mounts a real `BrowserRouter`, so without the reset the paging
+      tests pass alone and fail in a full run. Each file states its own starting condition; there is
+      no global setup file and no `setupFiles` entry.
 
 ---
 
@@ -144,7 +144,7 @@ page, and that moving to page 2 returns different rows.
       mapper, never at the call site** — the wire field may be absent entirely, not merely
       `{value: null}`, so each guard covers both: a boolean falls back to `false`, a text value to
       `null`, and a `Dropdown` to `null` whenever the dropdown or its `value` is missing
-      (`DropdownCell` requires non-null). **Synthesise `id` from `name.value`** — do not relax
+      (the chip cell requires non-null). **Synthesise `id` from `name.value`** — do not relax
       `DataTable<T extends NodeCore>` or its `getRowId`.
 - [x] T018 [US1] Implement the api boundary
       `frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts`. **This
@@ -183,12 +183,11 @@ page, and that moving to page 2 returns different rows.
       author name and its visible `default` text is the name. Covers FR-003, FR-003a.
 - [x] T025 [US1] Define the columns in
       `frontend/app/src/entities/repository/ui/repository-branches-card/columns.tsx` — Branch,
-      `sync_status` (via the existing `DropdownCell`), Commit, plus **Ref on the read-only kind only**.
-      `DropdownCell` currently types its prop as the **full** generated `Dropdown` but reads only
-      `color`, `label` and `value`; the query selects a four-field subset. Widen its prop to
-      `Pick<Dropdown, "value" | "label" | "color">`. This is a **type-only** widening of a shared file —
-      strictly more permissive, no runtime change, and it makes the signature honest about what the
-      component uses.
+      `sync_status`, Commit, plus **Ref on the read-only kind only**.
+      The object table's `DropdownCell` takes the **full** generated `Dropdown`; the query selects a
+      four-field subset that cannot satisfy it without fabricating the fields it never asked for. Give
+      the card its own `cells/sync-status-cell.tsx` over the row's own dropdown type instead, and leave
+      `DropdownCell` to the object table it is named for.
       **Every header text comes from the schema** (FR-005): do not hardcode the canvas's `Import
       status` or `Git state`. Declare `gridTemplateColumns` **at module scope** — `DataTable`'s default
       reserves a trailing 2.5rem actions column this card must not have. **No row-action menu column**
@@ -330,8 +329,7 @@ branch and assert only the second card's values change.
       `frontend/app/src/entities/nodes/object/ui/object-details/object-details.tsx` using
       `isOfKind(GENERIC_REPOSITORY_KIND, schema)`, which already resolves **both** concrete repository
       kinds through `inherit_from` — **no kind list is needed**. This is the feature's only
-      *behavioural* shared-file edit, and reverting it is the entire rollback path (T025's
-      `DropdownCell` widening is type-only and harmless on its own). Covers FR-020.
+      *behavioural* shared-file edit, and reverting it is the entire rollback path. Covers FR-020.
 - [x] T047 [US2] Place the three cards in the main column in document order: repository-wide details,
       then branch-scoped details, then the branches card (FR-018a).
 - [x] T048 [US2] Component-test FR-018: both card titles as complete strings, the caption's branch
@@ -398,10 +396,8 @@ total** narrow — proving the narrowing happened before the page boundary, not 
       cannot express them (T015), so this pins a structural fact rather than guarding a runtime one.
       **`expectServerDrivenChange` cannot carry this assertion** — it matches variables with
       `toMatchObject`, which is partial and passes when an extra argument is present.
-      Add `expectVariablesAbsent({apiMock, names})` to
-      `frontend/app/tests/helpers/expect-variables-absent.ts`, walking every recorded call and
-      asserting none carries any of `names`, and call it from the test. The helper owns the one
-      `mock.calls` read, keeping it out of the card's test files where the pairing rule applies.
+      Walk every recorded call in the test itself and assert none carries any of the three names.
+      One assertion in one test does not earn a helper.
 
 ### Work unit 5b rework — the object table's own filter and order controls
 
@@ -473,14 +469,21 @@ risk those keys carry is not reachable on this route.
       **No contract change is needed.** `sync_status__value` is already an argument on
       `InfrahubRepositoryBranchStatus`; it is only rejected. When IFC-3127 lands, the work is:
       declare the variable in
-      `frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts`, add it to
-      `useRepositoryBranchFilters` under its own card-scoped URL key, mount a control in the card
-      header beside the two existing ones, and send the schema's own **hyphenated** wire values
-      (`in-sync`, `error-import`) — not the title-cased labels and not the backend's underscored
-      enum members.
+      `frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts`; add a third
+      entry to `BRANCH_ROW_FILTER_DEFINITIONS` in
+      `frontend/app/src/entities/repository/ui/repository-branches-card/branch-row-fields.ts`, built
+      from the repository schema's own `sync_status` attribute so the picker offers its dropdown
+      values; map that filter onto the new variable in `to-repository-branch-arguments.ts`; and drop
+      `sync_status__value` from the deferred-arguments list the card's component test pins. The
+      picker, the active-filter tags and the count all follow from the definition list, and the
+      by-name map is derived from it, so nothing else has to be added in two places. The values sent
+      are the schema's own **hyphenated** wire values (`in-sync`, `error-import`) — not the
+      title-cased labels and not the backend's underscored enum members. Re-enable the column header
+      menu on the sync-status column at the same time, which is disabled today only because the
+      contract can neither narrow nor order on it.
 
       **Retire FR-016 and T064 in the same change.** FR-016 requires `sync_status__value` to be
-      absent from every request, and T064's `expectVariablesAbsent` asserts it; both exist only for
+      absent from every request, and T064's absence assertion pins it; both exist only for
       the preview window and would otherwise fail the moment this filter works. `internal_status__value`
       and `own_values_only` stay deferred — nothing in this card needs them.
 

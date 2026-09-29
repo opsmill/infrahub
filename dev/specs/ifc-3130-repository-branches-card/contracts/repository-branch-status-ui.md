@@ -24,6 +24,7 @@ and needs no local schema overlay.
 | `name__value` | `String` | Branch-name fragment |
 | `partial_match` | `Boolean` | **Always `true`** when `name__value` is sent — the filter is a partial match by requirement (FR-012) |
 | `status__value` | `BranchStatus` | Wire enum name is `BranchStatus`, *not* `InfrahubBranchStatus` |
+| `order` | `MetadataOrderInput` | Reaches `node_metadata.created_at` and `node_metadata.updated_at` only — the two fields the order control offers (FR-012a). Sent only once the user picks an order |
 
 ### Variables the document deliberately does NOT declare
 
@@ -78,8 +79,12 @@ InfrahubRepositoryBranchStatus(...) {
 possible structural guarantee for FR-006: the card cannot render a "Last import" timestamp, or any
 substitute drawn from `updated_at`, from data it never requested.
 
-The row set's own rules — which branches appear per kind (§5), and the server's default ordering —
-are enforced by the resolver, so this document neither selects nor sends anything to express them.
+Ordering by a timestamp does not reopen FR-006: `$order` reaches `node_metadata` on the way in, the
+selection set still never asks for it on the way out, so no timestamp is ever displayed.
+
+The row set's own rules — which branches appear per kind (§5), and the server's default ordering
+before the user picks one — are enforced by the resolver, so this document neither selects nor sends
+anything to express them.
 
 **`sync_status` selects `label` and `color` from the schema** (FR-004, FR-005). The card holds no
 label map and no colour map. A value the test invents must render with that invented label and
@@ -215,7 +220,9 @@ Named here so a later reader does not go looking for them:
   their own failure states. **The rows here must render whether or not they ever appear.**
 - **A row-action menu** — FR-003a. The design shows a 40px `mdi:dots-vertical` column but does not
   specify its contents, so it is not invented.
-- **Any order control.** Ordering is the server's default (default branch first, then name ascending)
-  and this feature neither imposes nor exposes an order.
+- **An order over anything but branch node metadata.** The `$order` variable reaches
+  `node_metadata.created_at` and `node_metadata.updated_at` and nothing else, so the order control
+  offers those two fields alone (FR-012a). Branch name, sync status, commit and ref are not orderable.
+  Until the user picks one, the order is the server's default: default branch first, then name ascending.
 - **The `tag` / `branch` ref-kind pill** from the design canvas. No field in the contract carries that
   distinction, and deriving it from the ref string would be guesswork.

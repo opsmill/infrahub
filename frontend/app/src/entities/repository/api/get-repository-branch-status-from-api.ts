@@ -1,10 +1,6 @@
 import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 import type { BranchContextParams } from "@/shared/api/types";
 
-// The backend rejects `sync_status__value`, `internal_status__value` and `own_values_only` with a
-// ValidationError for as long as the resolver serves placeholder values.
-// `order` reaches the branch node metadata, which the selection set deliberately never asks for: the
-// card orders by a timestamp without ever being able to show one.
 const REPOSITORY_BRANCH_STATUS = graphql(`
   query REPOSITORY_BRANCH_STATUS(
     $id: String!

@@ -11,42 +11,31 @@ import {
 
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 
-export const ALL_BRANCH_STATUSES: readonly BranchStatus[] = Object.values(BranchStatus);
-
-export interface BranchStatusEnumProps<TStatus extends BranchStatus> {
+export interface BranchStatusEnumProps {
   ref?: React.Ref<HTMLButtonElement>;
-  value: TStatus | null;
-  onChange: (value: TStatus | null) => void;
+  value: BranchStatus | null;
+  onChange: (value: BranchStatus | null) => void;
   defaultOpen?: boolean;
-  options: readonly TStatus[];
-  placeholder?: string;
-  "aria-label"?: string;
 }
 
-export const BranchStatusEnum = <TStatus extends BranchStatus>({
+export const BranchStatusEnum = ({
   ref,
   value,
   onChange,
   defaultOpen = false,
-  options,
-  placeholder,
-  "aria-label": ariaLabel,
-}: BranchStatusEnumProps<TStatus>) => {
+}: BranchStatusEnumProps) => {
   const [open, setOpen] = React.useState(defaultOpen);
+  const items = Object.values(BranchStatus);
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
-      <ComboboxTrigger aria-label={ariaLabel} ref={ref} className="min-w-45">
-        {value ? (
-          <BranchStatusBadge status={value} showOpen />
-        ) : (
-          <span className="text-subtle-muted">{placeholder}</span>
-        )}
+      <ComboboxTrigger ref={ref} className="min-w-45">
+        {value ? <BranchStatusBadge status={value} showOpen /> : null}
       </ComboboxTrigger>
 
       <ComboboxContent fitTriggerWidth={false}>
         <ComboboxList>
-          {options.map((status) => (
+          {items.map((status) => (
             <ComboboxItem
               key={status}
               value={status}

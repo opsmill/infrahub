@@ -10,6 +10,8 @@ import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-f
 import {
   FILTER_CONDITION,
   type FilterCondition,
+  type FilterConditionSelectProps,
+  getAvailableFilterConditions,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { FilterFormLayout } from "@/entities/nodes/object/ui/filters/filter-form-layout";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
@@ -17,16 +19,27 @@ import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 
 export type AttributeFilterFormProps = {
   attributeSchema: AttributeSchema;
+  filterConditions?: FilterConditionSelectProps["filterConditions"];
   onSuccess?: () => void;
 };
 
-export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFilterFormProps) {
+export function AttributeFilterForm({
+  attributeSchema,
+  filterConditions,
+  onSuccess,
+}: AttributeFilterFormProps) {
   const [filters, setFilters] = useFilters();
   const currentFilter = filters.find((filter) => filter.name.startsWith(attributeSchema.name));
   const isDatetime = attributeSchema.kind === ATTRIBUTE_KIND.DATETIME;
-  const defaultCondition = isDatetime ? FILTER_CONDITION.IS_EMPTY : FILTER_CONDITION.CONTAINS;
+  const filterType = isDatetime ? "datetime" : "attribute";
+  const availableConditions = getAvailableFilterConditions(filterType, filterConditions);
+  const preferredCondition =
+    getCurrentFilterCondition(currentFilter) ??
+    (isDatetime ? FILTER_CONDITION.IS_EMPTY : FILTER_CONDITION.CONTAINS);
   const [condition, setCondition] = useState<FilterCondition>(
-    getCurrentFilterCondition(currentFilter) ?? defaultCondition
+    availableConditions.some((option) => option.key === preferredCondition)
+      ? preferredCondition
+      : (availableConditions[0]?.key ?? preferredCondition)
   );
 
   const handleSubmit = (formData: Record<string, FormAttributeValue["value"]>) => {
@@ -75,7 +88,8 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
 
   return (
     <FilterFormLayout
-      filterType={isDatetime ? "datetime" : "attribute"}
+      filterType={filterType}
+      filterConditions={filterConditions}
       label={attributeSchema.label}
       condition={condition}
       onConditionChange={setCondition}
