@@ -5,6 +5,11 @@ import { useGetBranchDetails } from "@/entities/branches/ui/queries/get-branch-d
 import type { BranchRepositoriesResult } from "@/entities/repository/domain/model/branch-repository";
 import { useGetBranchRepositories } from "@/entities/repository/ui/queries/get-branch-repositories.query";
 import { useGetRepositoryImportError } from "@/entities/repository/ui/queries/get-repository-import-error.query";
+import type { BranchTasksPage } from "@/entities/tasks/domain/model/branch-task";
+import {
+  useGetBranchFailedTaskCount,
+  useGetBranchTasks,
+} from "@/entities/tasks/ui/queries/get-branch-tasks.query";
 
 import { render } from "../../../../tests/components/render";
 import { generateBranch } from "../../../../tests/fake/branch";
@@ -14,6 +19,7 @@ import { BranchDetails } from "./branch-details";
 vi.mock("@/entities/branches/ui/queries/get-branch-details.query");
 vi.mock("@/entities/repository/ui/queries/get-branch-repositories.query");
 vi.mock("@/entities/repository/ui/queries/get-repository-import-error.query");
+vi.mock("@/entities/tasks/ui/queries/get-branch-tasks.query");
 vi.mock("@/entities/branches/ui/branch-merge-button", () => ({
   BranchMergeButton: vi.fn(() => <button type="button">Merge</button>),
 }));
@@ -33,13 +39,18 @@ vi.mock("@/entities/branches/ui/branch-delete-button", () => ({
 const ACTION_BUTTONS = ["Merge", "Propose change", "Rebase", "Validate", "Delete"];
 
 type RepositoriesState = { data?: BranchRepositoriesResult; isPending?: boolean };
+type TasksState = { data?: BranchTasksPage; isPending?: boolean };
+
+const LOADED_TASKS: TasksState = { data: { tasks: [], count: 0 } };
 
 const setup = ({
   isDefault,
   repositories = { data: buildBranchRepositoriesScenario("all-clear") },
+  tasks = LOADED_TASKS,
 }: {
   isDefault: boolean;
   repositories?: RepositoriesState;
+  tasks?: TasksState;
 }) => {
   vi.clearAllMocks();
   const branch = generateBranch({ name: "feature", is_default: isDefault });
@@ -56,6 +67,13 @@ const setup = ({
   vi.mocked(useGetRepositoryImportError).mockReturnValue({
     data: undefined,
   } as unknown as ReturnType<typeof useGetRepositoryImportError>);
+  vi.mocked(useGetBranchTasks).mockReturnValue({
+    isPending: false,
+    ...tasks,
+  } as unknown as ReturnType<typeof useGetBranchTasks>);
+  vi.mocked(useGetBranchFailedTaskCount).mockReturnValue({
+    data: 0,
+  } as unknown as ReturnType<typeof useGetBranchFailedTaskCount>);
   return branch;
 };
 
@@ -82,7 +100,7 @@ const expectInDocumentOrder = ([first, ...rest]: Element[]) => {
 };
 
 describe("BranchDetails", () => {
-  test("on a non-default branch, renders Details, then Git repositories, then the action buttons", async () => {
+  test("on a non-default branch, renders Details, then Git repositories, then the action buttons, then Tasks", async () => {
     // GIVEN
     setup({ isDefault: false });
 
@@ -99,18 +117,19 @@ describe("BranchDetails", () => {
       ...ACTION_BUTTONS.map((name) =>
         component.getByRole("button", { name, exact: true }).element()
       ),
+      component.getByTestId("branch-tasks-card").element(),
     ]);
   });
 
-  test.each<[string, RepositoriesState]>([
-    ["loaded", { data: buildBranchRepositoriesScenario("all-clear") }],
-    ["loading", { data: undefined, isPending: true }],
-    ["failed", { data: undefined }],
+  test.each<[string, RepositoriesState, TasksState]>([
+    ["loaded", { data: buildBranchRepositoriesScenario("all-clear") }, LOADED_TASKS],
+    ["loading", { data: undefined, isPending: true }, { data: undefined, isPending: true }],
+    ["failed", { data: undefined }, { data: undefined }],
   ])(
-    "passes exactly { branch } to the merge button when repositories are %s",
-    async (_, repositories) => {
+    "passes exactly { branch } to the merge button when repositories and tasks are %s",
+    async (_, repositories, tasks) => {
       // GIVEN
-      const branch = setup({ isDefault: false, repositories });
+      const branch = setup({ isDefault: false, repositories, tasks });
 
       // WHEN
       const component = await renderDetails();
@@ -124,6 +143,39 @@ describe("BranchDetails", () => {
     }
   );
 
+  test("names related repositories in the Tasks card from the repositories query", async () => {
+    // GIVEN
+    setup({
+      isDefault: false,
+      tasks: {
+        data: {
+          count: 1,
+          tasks: [
+            {
+              id: "task-1",
+              title: "Import repository",
+              state: "COMPLETED",
+              workflow: "git-repository-import-object",
+              relatedNodes: [{ id: "repo-2", kind: "CoreRepository" }],
+              updatedAt: "2026-09-01T10:00:00Z",
+            },
+          ],
+        },
+      },
+    });
+
+    // WHEN
+    const component = await renderDetails();
+
+    // THEN
+    const tasksCard = component.getByTestId("branch-tasks-card");
+    await expect.element(tasksCard.getByText("infrastructure-templates")).toBeVisible();
+    expect(vi.mocked(useGetBranchRepositories)).toHaveBeenCalledWith({
+      branchName: "feature",
+      syncWithGit: expect.any(Boolean),
+    });
+  });
+
   test("on the default branch, renders only the Details card", async () => {
     // GIVEN
     setup({ isDefault: true });
@@ -134,11 +186,13 @@ describe("BranchDetails", () => {
     // THEN
     await expect.element(component.getByText("Details", { exact: true })).toBeVisible();
     await expect.element(component.getByTestId("branch-repositories-card")).not.toBeInTheDocument();
+    await expect.element(component.getByTestId("branch-tasks-card")).not.toBeInTheDocument();
     for (const name of ACTION_BUTTONS) {
       await expect
         .element(component.getByRole("button", { name, exact: true }))
         .not.toBeInTheDocument();
     }
     expect(vi.mocked(useGetBranchRepositories)).not.toHaveBeenCalled();
+    expect(vi.mocked(useGetBranchTasks)).not.toHaveBeenCalled();
   });
 });

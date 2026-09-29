@@ -139,8 +139,10 @@ class TestTutorial1ObjectAndBranch:
         await save_screenshot_for_docs(admin_page, "tutorial_1_branch_details")
         await merge_button.click()
         await expect(admin_page.locator("#alert-success")).to_contain_text("Branch merge requested!")
-        await admin_page.get_by_test_id("tasks-accordion").click()
-        await expect(admin_page.get_by_text("COMPLETEDMerge branch graphQL")).to_be_visible()
+        merge_row = (
+            admin_page.get_by_test_id("branch-tasks-card").get_by_role("row").filter(has_text="Merge branch graphQL")
+        )
+        await expect(merge_row.first).to_contain_text("COMPLETED", timeout=30_000)
 
         # validate merged changes in main
         await admin_page.get_by_test_id("branch-selector-trigger").click()
