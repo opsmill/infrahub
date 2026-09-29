@@ -2213,6 +2213,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
 
+        # Same content, but the stored file may be missing or modified: keep it only if it still matches.
         if artifact.checksum.value == checksum and await self._stored_content_matches(
             storage_id=artifact.storage_id.value, checksum=checksum
         ):
