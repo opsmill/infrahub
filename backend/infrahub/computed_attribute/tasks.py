@@ -7,6 +7,7 @@ from infrahub_sdk.exceptions import URLNotFoundError
 from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
+from prefect.utilities.annotations import quote
 
 from infrahub import lock
 from infrahub.core.constants import ComputedAttributeKind, MutationAction
@@ -138,7 +139,7 @@ async def _transform_value_for_node(
         branch_name=branch_name,
         commit=commit,
         location=f"{file_path}::{class_name}",
-        data=data,
+        data=quote(data),
         convert_query_response=convert_query_response,
     )  # type: ignore[call-overload]
 

@@ -16,7 +16,7 @@ from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.delete_coordinator import BranchDeleteOrchestrator
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
-from infrahub.core.constants import SYSTEM_USER_ID, DiffAction, MutationAction
+from infrahub.core.constants import SYSTEM_USER_ID, MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, EnrichedDiffRootMetadata
@@ -47,7 +47,7 @@ from infrahub.core.merge.selective_regen.orchestrator import build_merge_selecti
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.runner import MigrationRunner
-from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
+from infrahub.core.query.node_agnostic_retirement import NodesDeletedOnBranchQuery, RetireNodeAgnosticFieldsQuery
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
@@ -238,11 +238,11 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
         migrations = []
         async with lock.registry.global_graph_lock():
-            base_deleted_node_uuids = await diff_repository.get_affected_node_uuids(
-                diff_branch_name=base_branch.name,
-                tracking_id=BranchTrackingId(name=user_branch.name),
-                include_actions=[DiffAction.REMOVED],
+            base_deletions_query = await NodesDeletedOnBranchQuery.init(
+                db=db, branch_name=base_branch.name, from_time=initial_from_time, to_time=rebase_at
             )
+            await base_deletions_query.execute(db=db)
+            base_deleted_node_uuids = base_deletions_query.get_node_uuids()
             # Both baselines are resolved under the lock and before the rebase: the common ancestor
             # resolves against branched_from, which the rebase advances, and the rollback snapshot
             # must not predate a schema update that landed while the pre-lock validation ran.
@@ -526,7 +526,7 @@ async def _retire_agnostic_fields_of_base_deletions(
 
     Args:
         db: The transaction the rebase itself runs in.
-        node_uuids: The nodes the base-branch diff records as removed within the rebased window.
+        node_uuids: The nodes deleted on the base branch within the rebased window.
         at: The rebase timestamp; closed edges are stamped with it.
         user_id: The account the rebase runs as, recorded on the edges the re-evaluation closes.
         log: The flow's run logger.

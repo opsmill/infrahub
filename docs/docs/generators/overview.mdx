@@ -2,8 +2,6 @@
 title: Generators
 ---
 
-import VideoPlayer from '../../src/components/VideoPlayer';
-
 A `Generator` is a generic plugin that queries data and creates new nodes and relationships based on the result.
 
 :::success Examples
@@ -290,30 +288,6 @@ The Generator runs only for the objects that are members of the Generator defini
 Create both rules on the default branch, and set `branch_scope` to `other_branches` so the chain fires on the branches where you review the result in a proposed change. A rule created on another branch does not fire (see [where trigger rules are stored and evaluated](../events/event-rules#where-trigger-rules-are-stored-and-evaluated)).
 
 Set `execute_in_proposed_change: false` on the Generator, so that it does not also run inside the proposed-change pipeline. The flag applies only to that pipeline: it does not prevent an event from running the Generator.
-
-## Video guides
-
-The video series below dives into the concept of Generators and services, exploring their significance, structure, and how they can streamline processes for teams. Whether you're a developer or just curious about automation in IT, the series provides a comprehensive understanding of Generators and their applications.
-
-The first video will highlight what Generators are and how they can be used to deliver services.
-
-<center>
-  <VideoPlayer url='https://www.youtube.com/watch?v=TSqY0caGb0A' light />
-    <br />
-</center>
-
-In the second video we will look at how to plan a Generator from coming up with a use case and then finally what the workflow may look like in pseudocode.
-
-<center>
-  <VideoPlayer url='https://www.youtube.com/watch?v=7oM2W8Kn2-U' light />
-  <br />
-</center>
-
-In the third video we will look at how a Generator can be created and run in Infrahub. Looking at the `.infrahub.yml` file the GraphQL query the Generator will run against and finally the logic that will be run against Infrahub to create objects and bring the service to life.
-
-<center>
-  <VideoPlayer url='https://www.youtube.com/watch?v=HSUVWm3Se28' light />
-</center>
 
 ## Known limitations
 

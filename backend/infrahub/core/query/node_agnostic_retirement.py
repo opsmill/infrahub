@@ -75,3 +75,49 @@ class RetireNodeAgnosticFieldsQuery(Query):
         if result:
             return NodeAgnosticRetirementResult(edges_closed=result.get_as_type("edges_closed", int))
         return NodeAgnosticRetirementResult(edges_closed=0)
+
+
+_NODES_DELETED_ON_BRANCH = """
+MATCH (node:Node)-[deletion:IS_PART_OF]->(:Root)
+WHERE deletion.branch = $branch_name
+  AND deletion.status = "deleted"
+  AND deletion.from >= $from_time
+  AND deletion.from <= $to_time
+// -----------------
+// One row holding every uuid, so the existence edges are scanned once rather than once per page.
+// -----------------
+RETURN collect(DISTINCT node.uuid) AS node_uuids
+"""
+
+
+class NodesDeletedOnBranchQuery(Query):
+    """Return the uuids of the nodes deleted on a branch between two timestamps, both included.
+
+    A kind or inheritance change deletes the superseded vertex of a node that stays live under the same
+    uuid, so a returned uuid is a node whose retention needs re-evaluating, not proof that it is gone.
+    """
+
+    name: str = "nodes_deleted_on_branch"
+    type: QueryType = QueryType.READ
+
+    insert_return: bool = False
+
+    def __init__(self, branch_name: str, from_time: Timestamp, to_time: Timestamp, **kwargs: Any) -> None:
+        self.branch_name = branch_name
+        self.from_time = from_time
+        self.to_time = to_time
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["branch_name"] = self.branch_name
+        self.params["from_time"] = self.from_time.to_string()
+        self.params["to_time"] = self.to_time.to_string()
+
+        self.add_to_query(_NODES_DELETED_ON_BRANCH)
+        self.return_labels = ["node_uuids"]
+
+    def get_node_uuids(self) -> list[str]:
+        result = self.get_result()
+        if result is None:
+            return []
+        return result.get_as_list_of_type("node_uuids", str)

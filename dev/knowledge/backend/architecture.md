@@ -1,6 +1,6 @@
 # Backend Architecture
 
-> Part of: `dev/knowledge/backend/` | Related: [AGENTS.md](../../../backend/AGENTS.md)
+> Part of: `dev/knowledge/backend/`
 
 High-level overview of the Infrahub backend architecture.
 
@@ -69,4 +69,3 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 ### Guidelines
 
 - [Python Coding Standards](../../guidelines/backend/python.md) - How to write backend code
-- [Backend AGENTS.md](../../../backend/AGENTS.md) - Quick reference and commands

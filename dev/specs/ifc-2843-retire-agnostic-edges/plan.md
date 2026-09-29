@@ -277,7 +277,7 @@ enforcement point constructs the one it needs.
 |---|---|---|---|---|---|
 | 1 | Node deletion | `core/node/__init__.py` — after `NodeDeleteQuery` | the deleted node | `delete_at` | FR-005 |
 | 2 | Branch merge | `core/diff/merger/merger.py` — after bulk merges | deleted nodes from the merge diff | merge `at` | FR-006 |
-| 3 | Branch rebase | `core/branch/tasks.py` — inside `global_graph_lock`, before `user_branch.rebase` | deleted nodes from the **base-branch** diff | `rebase_at` | FR-007 |
+| 3 | Branch rebase | `core/branch/tasks.py` — inside `global_graph_lock`, before `user_branch.rebase` | nodes deleted on the **default branch** between the old fork point and `rebase_at` (existence-edge query) | `rebase_at` | FR-007 |
 | 4 | Branch deletion | `core/branch/data_deleter.py` — beside `_delete_agnostic_peers`, before `_delete_edges` | fork-point-bounded query | delete time | FR-008 |
 | 5 | Attribute removal | `migrations/schema/node_attribute_remove.py` | the removed field | migration time | FR-010 |
 | 6 | Relationship removal | `migrations/schema/node_relationship_remove.py` | the removed field | migration time | FR-010 |
@@ -517,7 +517,9 @@ catch a specific silent failure:
 - **How the base-branch diff is obtained at rebase**: a second `DiffRepository` read under the
   existing tracking id. Widening `DiffCoordinator.update_branch_diff`'s return type to expose both
   diffs is the larger change and that method has other callers, so the read wins. No longer open —
-  the rebase task is fully specified.
+  the rebase task is fully specified. **Superseded 2026-09-28**: the base-branch diff is scoped to
+  the fields the branch changed and does not list the default-branch deletions, so rebase queries
+  them from the default branch's existence edges instead (research.md R4).
 - **`m078` batching**: adopt the existing `MAX_AGNOSTIC_PEER_BATCH_SIZE = 500` cap. Each row can
   drag an unbounded number of peer vertices into the transaction, which is precisely why that cap
   exists in `data_deleter.py`. The migration must be safe to re-run.

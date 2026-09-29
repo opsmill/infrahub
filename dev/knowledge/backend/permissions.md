@@ -52,6 +52,11 @@ The decision values are branch-relative:
 - `ALLOW_OTHER` — Permission applies on non-default branches only
 - `ALLOW_ALL` — Permission applies on all branches (`ALLOW_DEFAULT | ALLOW_OTHER`)
 
+Because the answer is branch-relative, one `has_permission` call keyed on a single branch cannot
+stand in for a list of branches: a caller holding only `ALLOW_OTHER` passes a check keyed on a
+non-default branch yet must not see the default branch. Code filtering branches by visibility checks
+the default-branch scope and the non-default scope separately.
+
 ## Data Model
 
 ```
