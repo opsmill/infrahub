@@ -1,0 +1,19 @@
+backend/infrahub/tls/bundle.py
+  s_27255c77800f21::t_00e6148022ed0f 11-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7559977e01af3d03c9fe2f5158b421c7148f1468",
+  "prompts": {},
+  "sessions": {
+    "s_27255c77800f21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc719768-dfb4-4c2a-85fb-2d1bc2095d01",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
