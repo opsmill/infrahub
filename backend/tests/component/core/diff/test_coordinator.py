@@ -435,6 +435,7 @@ class TestDiffCoordinator:
             to_time=no_changes_diff_metadata.to_time,
             include_unchanged=True,
             previous_node_specifiers=expected_previous_node_specifiers,
+            node_kinds=None,
         )
         wrapped_diff_coordinator.diff_repo.get_one.assert_not_awaited()
         wrapped_diff_coordinator.diff_repo.save.assert_awaited_once()
@@ -514,6 +515,7 @@ class TestDiffCoordinator:
         default_branch: Branch,
         person_john_main: Node,
         person_alfred_main: Node,
+        car_accord_main: Node,
     ) -> None:
         branch = await create_branch(db=db, branch_name="branch1")
 
@@ -528,16 +530,26 @@ class TestDiffCoordinator:
         deleted_person = await NodeManager.get_one(db=db, id=person_alfred_main.id)
         await deleted_person.delete(db=db)
 
+        updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
+        await updated_car.owner.update(db=db, data=new_person)
+        await updated_car.save(db=db)
+
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=default_branch)
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
         stored_roots_before = await diff_repository.get_roots_metadata(diff_branch_names=[default_branch.name])
+        from_time = Timestamp(branch.get_branched_from())
+        to_time = Timestamp()
 
         main_diff = await diff_coordinator.calculate_arbitrary_timeframe_diff(
+            base_branch=default_branch, diff_branch=default_branch, from_time=from_time, to_time=to_time
+        )
+        car_diff = await diff_coordinator.calculate_arbitrary_timeframe_diff(
             base_branch=default_branch,
             diff_branch=default_branch,
-            from_time=Timestamp(branch.get_branched_from()),
-            to_time=Timestamp(),
+            from_time=from_time,
+            to_time=to_time,
+            node_kinds=["TestCar"],
         )
 
         nodes_by_id = {n.uuid: n for n in main_diff.nodes}
@@ -545,10 +557,16 @@ class TestDiffCoordinator:
             updated_person.id: DiffAction.UPDATED,
             new_person.id: DiffAction.ADDED,
             deleted_person.id: DiffAction.REMOVED,
+            updated_car.id: DiffAction.UPDATED,
         }
         updated_person_attributes = {(a.name, a.action) for a in nodes_by_id[updated_person.id].attributes}
         assert updated_person_attributes == {("height", DiffAction.UPDATED)}
         assert nodes_by_id[new_person.id].label == "Jeff"
+        # the car's new owner is its parent, added unchanged to place the car in the tree
+        assert {(n.uuid, n.action) for n in car_diff.nodes} == {
+            (updated_car.id, DiffAction.UPDATED),
+            (new_person.id, DiffAction.UNCHANGED),
+        }
         stored_roots_after = await diff_repository.get_roots_metadata(diff_branch_names=[default_branch.name])
         assert {root.uuid for root in stored_roots_after} == {root.uuid for root in stored_roots_before}
 

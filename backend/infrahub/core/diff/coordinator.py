@@ -345,10 +345,15 @@ class DiffCoordinator:
         diff_branch: Branch,
         from_time: Timestamp,
         to_time: Timestamp,
+        node_kinds: list[str] | None = None,
     ) -> EnrichedDiffRoot:
         """Calculate and enrich the diff of a time range without storing it.
 
         No diff lock is taken: a diff that is never stored cannot race another update of the same pair.
+
+        Args:
+            node_kinds: Calculate the changes of the diff branch for nodes of these kinds only.
+
         """
         self.logger.info(f"Calculating unstored diff for {base_branch.name} - {diff_branch.name}")
         enriched_diffs = await self._calculate_enriched_diff(
@@ -360,6 +365,7 @@ class DiffCoordinator:
                 tracking_id=NameTrackingId(name=str(uuid4())),
             ),
             is_incremental_diff=False,
+            node_kinds=node_kinds,
         )
         await self.conflicts_enricher.add_conflicts_to_branch_diff(
             base_diff_root=enriched_diffs.base_branch_diff, branch_diff_root=enriched_diffs.diff_branch_diff
@@ -802,7 +808,7 @@ class DiffCoordinator:
         return await self.data_check_synchronizer.synchronize(enriched_diff=enriched_diff)
 
     async def _calculate_enriched_diff(
-        self, diff_request: EnrichedDiffRequest, is_incremental_diff: bool
+        self, diff_request: EnrichedDiffRequest, is_incremental_diff: bool, node_kinds: list[str] | None = None
     ) -> EnrichedDiffs:
         self.logger.info(f"Calculating diff for {diff_request!r}, include_unchanged={is_incremental_diff}")
         calculated_diff_pair = await self.diff_calculator.calculate_diff(
@@ -812,6 +818,7 @@ class DiffCoordinator:
             to_time=diff_request.to_time,
             include_unchanged=is_incremental_diff,
             previous_node_specifiers=diff_request.node_field_specifiers,
+            node_kinds=node_kinds,
         )
         self.logger.info("Calculation complete. Enriching diff...")
         enriched_diff_pair = await self.diff_enricher.enrich(
