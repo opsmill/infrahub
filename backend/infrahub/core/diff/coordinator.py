@@ -490,7 +490,7 @@ class DiffCoordinator:
         tracking_id: TrackingId,
         force_branch_refresh: bool = False,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]:
-        quoted = await self._update_diffs_flow(  # type: ignore[call-overload]
+        quoted = await self._update_diffs_flow(  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
             base_branch=base_branch,
             diff_branch=diff_branch,
             from_time=from_time,
