@@ -26,7 +26,10 @@ merge / rebase
 
 The builder, submitter, and coordinator live in `core/merge/recompute_coalescing.py`. The build step is pure, so it is unit and component testable without a database or a worker. A merge recomputes on the destination branch; a rebase recomputes on the user branch.
 
-A rebase replays the default branch's changes only onto a branch with changes of its own. A branch with nothing in its diff reads what the default branch holds once rebased, so it gets the `BranchRebasedEvent` and no node events or recompute.
+A rebase replays the branch's own changes onto the new base, the way a merge replays them onto the destination: one `rebase` node event per node in the branch's diff, and a coalesced recompute built from those changes. A value on the branch that never depended on the branch's changes already reads what the default branch computed, so the default branch's changes are replayed only for the kinds whose schema the branch changed: the default branch derived those with its own schema, and the replay derives them again with the branch's. A branch with nothing in its diff gets the `BranchRebasedEvent` alone. Replaying onto a base that moved adds two steps:
+
+- The builder runs with `refresh_updated_nodes`, so an updated node also recomputes its own derived values that read a changed field; the values it refreshed inline on the save read the old base.
+- The rebase submits a profile refresh for every node whose profiles changed on the branch, since the profile values it applied were the old base's.
 
 ## Node mutation origin
 
@@ -36,7 +39,7 @@ Every node mutation event carries an `origin` label (`infrahub.node.origin`), on
 |--------|--------|---------|
 | `live` | default | A direct edit through the API. |
 | `merge` | the merge post-process | A replay of a merged change. |
-| `rebase` | the rebase flow | A replay of a rebased change. |
+| `rebase` | the rebase flow | A replay of one of the branch's own changes onto the new base. |
 | `recompute` | the bulk writer on a coalesced pass | A derived-value recompute write. |
 
 The three families' cross-node triggers match only `live`, so `merge`, `rebase`, and `recompute` events do not start their per-node flows. This is what lets the coalesced pass be the single dispatcher for those families without double-processing. Other consumers (user action rules, webhooks, Python-transform computed attributes, profiles) keep receiving every event whatever the origin.

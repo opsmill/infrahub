@@ -10,6 +10,7 @@ from infrahub.core.schema import (
     internal_schema,
 )
 from infrahub.core.schema.schema_branch import SchemaBranch
+from tests.helpers.merge_recompute.dataset import PROFILE_NODE_KIND, build_profile_schema
 
 
 def test_single_relationship_uniqueness_constraint(car_person_schema_root: SchemaRoot) -> None:
@@ -317,3 +318,20 @@ class TestHierarchySchemaProcessingSetsCorrectPeerAndHierarchical:
         assert parent_rel.peer == "TestingLocation"
         assert parent_rel.hierarchical == "TestingLocation"
         assert parent_rel.peer == parent_rel.hierarchical
+
+
+def _processed_profile_schema_branch(cross_relationship_hfid: bool) -> SchemaBranch:
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=build_profile_schema(cross_relationship_hfid=cross_relationship_hfid))
+    schema_branch.process()
+    return schema_branch
+
+
+def test_object_kinds_different_from_another_schema_branch() -> None:
+    reference = _processed_profile_schema_branch(cross_relationship_hfid=False)
+    changed = _processed_profile_schema_branch(cross_relationship_hfid=True)
+
+    assert changed.get_object_kinds_different_from(reference) == [f"Profile{PROFILE_NODE_KIND}", PROFILE_NODE_KIND]
+    assert (
+        reference.get_object_kinds_different_from(_processed_profile_schema_branch(cross_relationship_hfid=False)) == []
+    )
