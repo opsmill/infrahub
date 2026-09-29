@@ -18,7 +18,7 @@ from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracke
 from infrahub.core.constants import PROFILES_RELATIONSHIP_NAME, SYSTEM_USER_ID, DiffAction, MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
-from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot
+from infrahub.core.diff.model.path import BranchTrackingId, ConflictLevel, ConflictSelection, EnrichedDiffRoot
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.diff.summary_cache import DiffSummaryCache
@@ -84,6 +84,9 @@ if TYPE_CHECKING:
 
 RETIREMENT_BATCH_SIZE = 500
 """How many deleted-node uuids one retirement query evaluates at a time."""
+
+REBASABLE_CONFLICT_LEVELS = frozenset({ConflictLevel.ATTRIBUTE_PROPERTY, ConflictLevel.RELATIONSHIP_PROPERTY})
+"""Conflict levels on which a rebase can apply a resolution in favor of the branch."""
 
 
 @flow(name="branch-migrate", flow_run_name="Apply migrations to branch {branch}")
@@ -183,13 +186,22 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=base_branch, diff_branch=user_branch
         )
-        async for _ in diff_repository.get_all_conflicts_for_diff(
-            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
-        ):
-            # if there are any conflicts, raise the error
+        # A rebase keeps the branch's side of every conflict, which leaves a cardinality-one relationship with both
+        # peers and cannot apply a resolution in favor of the default branch.
+        unrebasable_conflict_paths = [
+            conflict_path
+            async for conflict_path, conflict_level, conflict in diff_repository.get_all_conflicts_with_level_for_diff(
+                diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
+            )
+            if conflict_level not in REBASABLE_CONFLICT_LEVELS
+            or conflict.selected_branch is not ConflictSelection.DIFF_BRANCH
+        ]
+        if unrebasable_conflict_paths:
             raise ValidationError(
-                f"Branch {user_branch.name} contains conflicts with the default branch that must be addressed."
-                " Please review the diff for details and manually update the conflicts before rebasing."
+                f"Branch {user_branch.name} contains conflicts with the default branch that must be addressed:"
+                f" {', '.join(sorted(unrebasable_conflict_paths))}. A rebase keeps the branch's side of a conflict,"
+                " so it accepts a conflict on an attribute or relationship property once it is resolved in favor of"
+                " the branch. Please update the data to address any other conflict before rebasing."
             )
 
         # rebase to the end time of the diff in case conflicting changes happen on

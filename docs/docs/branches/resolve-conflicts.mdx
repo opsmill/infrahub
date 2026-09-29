@@ -19,7 +19,13 @@ The system automatically detects several types of conflicts:
 
 The [Proposed Change](../proposed-changes/overview.mdx) feature in Infrahub provides comprehensive tools for managing these conflicts with intuitive side-by-side diffs that clearly highlight differences between branches. For step-by-step resolution mechanics during review, see [Resolve a proposed-change conflict](../proposed-changes/resolve-conflict.mdx).
 
-Conflicts can also surface during a [rebase](./rebase.mdx), in which case they require manual resolution before the rebase completes.
+Conflicts can also surface during a [rebase](./rebase.mdx). A rebase keeps the branch's side of a conflict, so it accepts a conflict on an attribute, or on a property of a relationship, once you resolve it in favor of the branch. The rebase stops on any other conflict until you update the data so that both branches agree:
+
+- A conflict that is unresolved, or resolved in favor of the main branch.
+- A conflict on the object a cardinality-one relationship points to, such as the datacenter a device is assigned to.
+- A conflict between the deletion of an object in one branch and a change to it in the other.
+
+This also applies to a branch in the `NEED_UPGRADE_REBASE` status after an upgrade, which only a rebase returns to `OPEN`.
 
 ## Related
 

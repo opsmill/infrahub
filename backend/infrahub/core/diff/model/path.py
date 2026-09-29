@@ -174,6 +174,15 @@ class ConflictSelection(Enum):
     DIFF_BRANCH = "diff"
 
 
+class ConflictLevel(Enum):
+    """The element of a diff a conflict is attached to."""
+
+    NODE = "node"
+    ATTRIBUTE_PROPERTY = "attribute_property"
+    RELATIONSHIP_ELEMENT = "relationship_element"
+    RELATIONSHIP_PROPERTY = "relationship_property"
+
+
 @dataclass
 class EnrichedDiffConflict:
     uuid: str
