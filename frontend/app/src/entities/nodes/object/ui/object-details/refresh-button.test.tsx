@@ -1,4 +1,4 @@
-import { useIsFetching } from "@tanstack/react-query";
+import { type Query, useIsFetching } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -69,5 +69,53 @@ describe("RefreshButton", () => {
 
     // THEN
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: customKey });
+  });
+
+  it("invalidates every query key when several are given, ignoring queryKey", async () => {
+    // GIVEN
+    const firstKey = ["branches", "details", "feature"] as const;
+    const secondKey = ["repositories"] as const;
+    vi.mocked(useIsFetching).mockReturnValue(0);
+
+    const invalidateQueriesSpy = vi
+      .spyOn(queryClient, "invalidateQueries")
+      .mockResolvedValue(undefined);
+
+    const component = await render(
+      <RefreshButton queryKey={["ignored"]} queryKeys={[firstKey, secondKey]} />
+    );
+
+    // WHEN
+    await component.getByRole("button").click();
+
+    // THEN
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(2);
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: firstKey });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: secondKey });
+  });
+
+  it("watches queries under any of the given key prefixes", async () => {
+    // GIVEN
+    vi.mocked(useIsFetching).mockReturnValue(0);
+
+    await render(<RefreshButton queryKeys={[["repositories"], ["tasks"]]} />);
+
+    // THEN
+    const predicate = vi.mocked(useIsFetching).mock.lastCall?.[0]?.predicate;
+    expect(predicate).toBeDefined();
+    const isWatched = (queryKey: readonly unknown[]) => predicate?.({ queryKey } as Query);
+    expect(isWatched(["repositories", "branch", "feature", "CoreRepository"])).toBe(true);
+    expect(isWatched(["tasks", "branch-list", "feature"])).toBe(true);
+    expect(isWatched(["objects", "CoreRepository"])).toBe(false);
+  });
+
+  it("is busy while any of the given keys is fetching", async () => {
+    // GIVEN
+    vi.mocked(useIsFetching).mockReturnValue(1);
+
+    const component = await render(<RefreshButton queryKeys={[["repositories"], ["tasks"]]} />);
+
+    // THEN
+    await expect.element(component.getByRole("button")).toBeDisabled();
   });
 });

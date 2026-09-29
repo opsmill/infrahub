@@ -1,5 +1,5 @@
 import { Button, type ButtonProps, Tooltip } from "@infrahub/ui";
-import { useIsFetching } from "@tanstack/react-query";
+import { matchQuery, useIsFetching } from "@tanstack/react-query";
 import { CheckIcon, RefreshCwIcon } from "lucide-react";
 import React from "react";
 
@@ -11,6 +11,7 @@ import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query
 
 export interface RefreshButtonProps extends ButtonProps {
   queryKey?: readonly unknown[];
+  queryKeys?: ReadonlyArray<readonly unknown[]>;
 }
 
 function getLastUpdateTime() {
@@ -19,11 +20,14 @@ function getLastUpdateTime() {
   return Math.max(...queries.map((q) => q.state.dataUpdatedAt));
 }
 
-export function RefreshButton({ queryKey, ...props }: RefreshButtonProps) {
-  const watchedQueryKey = queryKey ?? objectQueryKeys.all;
+export function RefreshButton({ queryKey, queryKeys, ...props }: RefreshButtonProps) {
+  const watchedQueryKeys = queryKeys ?? [queryKey ?? objectQueryKeys.all];
   const [isRefreshSuccess, setIsRefreshSuccess] = React.useState(false);
   const [dataUpdatedAt, setDataUpdatedAt] = React.useState(getLastUpdateTime());
-  const isFetching = useIsFetching({ queryKey: watchedQueryKey });
+  const isFetching = useIsFetching({
+    predicate: (query) =>
+      watchedQueryKeys.some((watchedQueryKey) => matchQuery({ queryKey: watchedQueryKey }, query)),
+  });
   const isRefetching = isFetching > 0;
   const { formatDate } = useFormatDate();
 
@@ -34,7 +38,11 @@ export function RefreshButton({ queryKey, ...props }: RefreshButtonProps) {
   }, [isFetching]);
 
   const handleRefresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: watchedQueryKey });
+    await Promise.all(
+      watchedQueryKeys.map((watchedQueryKey) =>
+        queryClient.invalidateQueries({ queryKey: watchedQueryKey })
+      )
+    );
     setIsRefreshSuccess(true);
     setTimeout(() => setIsRefreshSuccess(false), 2000);
   };
