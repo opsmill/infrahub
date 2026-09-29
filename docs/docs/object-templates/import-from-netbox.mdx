@@ -63,7 +63,7 @@ For a custom schema, your assistant checks the schema files, shows you the one-l
   Export the device types we use from https://netbox.example.com, including module types, and convert them into Infrahub object templates.
   ```
 
-  Your assistant runs the exporter from the skill's `scripts/` directory:
+  Your assistant runs the exporter from the skill's directory:
 
   ```bash
   python scripts/netbox_export_device_types.py \
@@ -95,7 +95,7 @@ For a custom schema, your assistant checks the schema files, shows you the one-l
   Convert the Juniper device types from the NetBox devicetype-library into Infrahub object templates.
   ```
 
-  Your assistant clones only the definitions. A full clone is about 1.6 GB, almost all of it rack elevation images the converter does not read; the definitions alone are about 29 MB:
+  Your assistant clones only the definitions. A full clone is about 1.6 GB, almost all of it rack elevation images the converter does not read; the device type definitions alone are about 29 MB:
 
   ```bash
   git clone --depth 1 --filter=blob:none --sparse \
@@ -110,13 +110,30 @@ For a custom schema, your assistant checks the schema files, shows you the one-l
 
 Your assistant picks the mapping file that matches your schema. `schema-library.yml` converts device types with their interfaces. `schema-library-modules.yml` also converts module bays and module types, and needs the schema-library `main` schema from step 1. For a custom schema, your assistant copies the annotated `_template.yml` and fills it in from your schema files.
 
-```bash
-python scripts/netbox_to_infrahub_templates.py \
-  ./netbox-export/device-types ./netbox-export/module-types \
-  --mapping scripts/mappings/schema-library-modules.yml \
-  --output-dir ./generated \
-  --report ./generated/coverage-report.md
-```
+<Tabs groupId="netbox-source" queryString>
+  <TabItem value="netbox" label="From your NetBox" default>
+
+  ```bash
+  python scripts/netbox_to_infrahub_templates.py \
+    ./netbox-export/device-types ./netbox-export/module-types \
+    --mapping scripts/mappings/schema-library-modules.yml \
+    --output-dir ./generated \
+    --report ./generated/coverage-report.md
+  ```
+
+  </TabItem>
+  <TabItem value="library" label="From the published library">
+
+  ```bash
+  python scripts/netbox_to_infrahub_templates.py \
+    devicetype-library/device-types/Juniper/ \
+    --mapping scripts/mappings/schema-library.yml \
+    --output-dir ./generated \
+    --report ./generated/coverage-report.md
+  ```
+
+  </TabItem>
+</Tabs>
 
 The converter writes one file per kind, numbered in dependency order. Files with no content are not written:
 
@@ -159,11 +176,13 @@ The coverage report lists, per device type, what the mapping file had nowhere to
 - Dropped from `interfaces`: `poe_mode`, `poe_type`, `type`
 ```
 
-- **Skipped** means a whole component list has no matching node and `Component` relationship in your schema.
-- **Dropped** means a field has no matching attribute.
+- **Skipped** means the mapping file maps a whole component list nowhere.
+- **Dropped** means the mapping file maps a field nowhere.
 - **Shadowed** means two NetBox fields compete for one attribute, and the fallback declared in the mapping file kept one of them.
 
-Against the default schema, no device type in the published library converts without loss. Your assistant names the largest losses, explains why the schema could not hold them, and offers the schema and mapping change for each. Decide which gaps matter before you load; closing one later means extending the schema and running the conversion again.
+A skipped list or dropped field has one of two causes: the mapping file has no entry for it, or your schema has no node or attribute to hold it. A console port, for example, often needs only a mapping entry, because many schemas already model it as an interface.
+
+Against the default schema, no device type in the published library converts without loss. Your assistant names the largest losses, explains why each one could not be placed, and offers the mapping or schema change that closes it. Decide which gaps matter before you load; closing one later means extending the schema and running the conversion again.
 
 ### 5. Load onto a branch
 
@@ -191,8 +210,11 @@ spec:
   data:
     - name: leaf-01
       object_template: cisco-c9300-48p
-      serial: FCW2140L0GH
+      location: par1
+      serial_number: FCW2140L0GH
 ```
+
+`location` is mandatory on `DcimDevice` in the `infrahub/dcim` schema, and must reference a location that already exists in your instance.
 
 The device is created with the 48 interfaces from its template. When the templates look right, open a Proposed Change to merge the branch. See [Proposed Changes](../proposed-changes/overview) for the review workflow.
 
@@ -200,9 +222,9 @@ The device is created with the 48 interfaces from its template. When the templat
 
 - **Weights are whole numbers.** Infrahub has no decimal attribute kind, so the default mapping file rounds weight to whole kilograms, and hardware under 500 g becomes `0`. Each one is named in the coverage report. Map weight to an attribute in grams instead if light hardware matters to you.
 - **Modular chassis need the module mapping file.** Their ports live in module bays, so with `schema-library.yml` they convert to templates with no interfaces. `schema-library-modules.yml` converts the bays themselves.
-- **Module ports are created after installation.** NetBox names module ports with a `{module}` token that depends on the bay the module is installed in. The skill includes a [Generator](../generators/overview.mdx) that resolves the token and creates the device interfaces once a module is installed.
+- **Module ports are not converted by default.** NetBox names module ports with a `{module}` token that depends on the bay the module is installed in, and `schema-library-modules.yml` reports them as skipped. The skill includes a [Generator](../generators/overview.mdx) that resolves the token and creates the device interfaces, but it needs a schema and mapping file that give modules port templates. See the [skill reference](https://docs.infrahub.app/skills/skills-reference/converting-netbox-device-types) for details.
 - **Changing a template does not change existing devices.** Changes to a template do not apply to devices already created from it, so loading a later conversion affects only the devices you create afterwards.
-- **Loading is not transactional across files.** If a file fails partway through, the branch keeps the earlier files. [Delete the branch](../branches/delete.mdx) and load again onto a new one.
+- **Loading is not transactional across files.** If a file fails partway through, the branch keeps the earlier files and whatever part of the failing file loaded. [Delete the branch](../branches/delete.mdx) and load again onto a new one.
 
 ## Related
 
