@@ -1,4 +1,5 @@
 import { constructPath, type overrideQueryParams } from "@/shared/api/rest/fetch";
+import { QSP } from "@/shared/config/qsp";
 
 export type BranchDetailsTab = "data" | "files" | "artifacts" | "schema";
 
@@ -13,4 +14,9 @@ export function getBranchDetailsUrl(
   const encodedBranchName = encodeURIComponent(branchName);
   const path = tab ? `/branches/${encodedBranchName}/${tab}` : `/branches/${encodedBranchName}`;
   return constructPath(path, overrideParams);
+}
+
+export function withBranch(path: string, branchName: string, isDefault: boolean): string {
+  if (isDefault) return constructPath(path, [{ name: QSP.BRANCH, exclude: true }]);
+  return constructPath(path, [{ name: QSP.BRANCH, value: branchName }]);
 }
