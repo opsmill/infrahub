@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import pytest
+from structlog.testing import capture_logs
 
 from infrahub.core.changelog.models import (
     ChangelogRelatedNode,
@@ -52,6 +53,9 @@ ONE_SIDED_PEER_SCHEMA = NodeSchema(
 )
 
 
+NO_MIRROR_WARNING = "No peer relationship mirrors the direction, reporting every candidate"
+
+
 @dataclass
 class PeerRelationshipCase:
     name: str
@@ -86,33 +90,6 @@ PEER_RELATIONSHIP_CASES: list[PeerRelationshipCase] = [
         expected_names=["parent"],
     ),
     PeerRelationshipCase(
-        # Schema validation only checks the peers the pair declares, so it never sees a third kind.
-        name="a_third_kind_reusing_the_identifier_gets_every_candidate",
-        peer=HIERARCHY_PEER_SCHEMA,
-        local=RelationshipSchema(
-            name="site",
-            peer="LocSite",
-            identifier=PARENT_CHILD_IDENTIFIER,
-            cardinality=RelationshipCardinality.ONE,
-            direction=RelationshipDirection.BIDIR,
-        ),
-        expected_names=["parent", "children"],
-    ),
-    PeerRelationshipCase(
-        # Nothing mirrors an outbound side on a peer that only declares one. Report it anyway,
-        # so a change that did happen is never dropped.
-        name="a_lone_candidate_is_reported_even_when_it_does_not_mirror",
-        peer=ONE_SIDED_PEER_SCHEMA,
-        local=RelationshipSchema(
-            name="parent",
-            peer="LocRoom",
-            identifier=PARENT_CHILD_IDENTIFIER,
-            cardinality=RelationshipCardinality.ONE,
-            direction=RelationshipDirection.OUTBOUND,
-        ),
-        expected_names=["parent"],
-    ),
-    PeerRelationshipCase(
         # A tag declares no relationship at all, so nothing on its side can change.
         name="a_one_way_relationship_has_no_peer_side",
         peer=NodeSchema(name="Tag", namespace="Loc", relationships=[]),
@@ -130,12 +107,81 @@ PEER_RELATIONSHIP_CASES: list[PeerRelationshipCase] = [
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PEER_RELATIONSHIP_CASES])
 def test_peer_relationships(test_case: PeerRelationshipCase) -> None:
-    """A hierarchy resolves by direction, nothing mirrored reports every candidate, one-way reports nothing."""
-    resolved = ReciprocalRelationshipBuilder().peer_relationships(
-        peer_schema=test_case.peer, rel_schema=test_case.local
-    )
+    """A hierarchy resolves by direction and a one-way relationship has no peer side, silently."""
+    with capture_logs() as records:
+        resolved = ReciprocalRelationshipBuilder().peer_relationships(
+            peer_schema=test_case.peer, rel_schema=test_case.local
+        )
 
     assert [relationship.name for relationship in resolved] == test_case.expected_names
+    assert [record["event"] for record in records] == []
+
+
+@dataclass
+class UnmirroredPeerRelationshipCase:
+    name: str
+    peer: NodeSchema
+    local: RelationshipSchema
+    expected_names: list[str]
+    expected_peer_kind: str
+    expected_direction: str
+
+
+UNMIRRORED_PEER_RELATIONSHIP_CASES: list[UnmirroredPeerRelationshipCase] = [
+    UnmirroredPeerRelationshipCase(
+        # Schema validation only checks the peers the pair declares, so it never sees a third kind.
+        name="a_third_kind_reusing_the_identifier_gets_every_candidate",
+        peer=HIERARCHY_PEER_SCHEMA,
+        local=RelationshipSchema(
+            name="site",
+            peer="LocSite",
+            identifier=PARENT_CHILD_IDENTIFIER,
+            cardinality=RelationshipCardinality.ONE,
+            direction=RelationshipDirection.BIDIR,
+        ),
+        expected_names=["parent", "children"],
+        expected_peer_kind="LocSite",
+        expected_direction="bidirectional",
+    ),
+    UnmirroredPeerRelationshipCase(
+        # Nothing mirrors an outbound side on a peer that only declares one. Report it anyway,
+        # so a change that did happen is never dropped.
+        name="a_lone_candidate_is_reported_even_when_it_does_not_mirror",
+        peer=ONE_SIDED_PEER_SCHEMA,
+        local=RelationshipSchema(
+            name="parent",
+            peer="LocRoom",
+            identifier=PARENT_CHILD_IDENTIFIER,
+            cardinality=RelationshipCardinality.ONE,
+            direction=RelationshipDirection.OUTBOUND,
+        ),
+        expected_names=["parent"],
+        expected_peer_kind="LocRoom",
+        expected_direction="outbound",
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in UNMIRRORED_PEER_RELATIONSHIP_CASES])
+def test_peer_relationships_without_a_mirror_report_every_candidate_and_warn(
+    test_case: UnmirroredPeerRelationshipCase,
+) -> None:
+    with capture_logs() as records:
+        resolved = ReciprocalRelationshipBuilder().peer_relationships(
+            peer_schema=test_case.peer, rel_schema=test_case.local
+        )
+
+    assert [relationship.name for relationship in resolved] == test_case.expected_names
+    assert records == [
+        {
+            "event": NO_MIRROR_WARNING,
+            "log_level": "warning",
+            "peer_kind": test_case.expected_peer_kind,
+            "identifier": PARENT_CHILD_IDENTIFIER,
+            "direction": test_case.expected_direction,
+            "candidates": test_case.expected_names,
+        }
+    ]
 
 
 PRIMARY_CHANGELOG = NodeChangelog(node_id="source", node_kind="LocRack", display_label="rack-1", hfid=["rack-1"])
