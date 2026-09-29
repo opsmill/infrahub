@@ -55,24 +55,30 @@ class ReciprocalRelationshipBuilder:
     ) -> list[RelationshipSchema]:
         """Return the peer's side of ``rel_schema``.
 
-        A hierarchy declares ``parent`` and ``children`` under one identifier, so only the mirrored
-        direction tells them apart. When no candidate mirrors the direction the whole set is returned
-        and logged: the answer is a guess, but dropping it would hide a change that did happen.
+        The outcome depends on how many of the peer's relationships share the identifier:
+
+        - none: the relationship is one-way (a tag never lists what points at it), so the peer has
+          no side to report and gets no secondary changelog;
+        - some mirror the direction: they are the peer's side. A hierarchy declares ``parent`` and
+          ``children`` under one identifier, so only the mirrored direction tells them apart;
+        - some, none mirroring the direction: every candidate is reported and a warning is logged.
+          The answer is a guess, but dropping it would hide a change that did happen.
         """
         candidates = peer_schema.get_relationships_by_identifier(id=rel_schema.get_identifier())
+        if not candidates:
+            return []
+
         mirrored = [candidate for candidate in candidates if candidate.mirrors(rel_schema)]
         if mirrored:
             return mirrored
 
-        if candidates:
-            log.warning(
-                "No peer relationship mirrors the direction, reporting every candidate",
-                peer_kind=peer_schema.kind,
-                identifier=rel_schema.get_identifier(),
-                direction=rel_schema.direction.value,
-                candidates=[candidate.name for candidate in candidates],
-            )
-
+        log.warning(
+            "No peer relationship mirrors the direction, reporting every candidate",
+            peer_kind=peer_schema.kind,
+            identifier=rel_schema.get_identifier(),
+            direction=rel_schema.direction.value,
+            candidates=[candidate.name for candidate in candidates],
+        )
         return candidates
 
     def _cardinality_one(

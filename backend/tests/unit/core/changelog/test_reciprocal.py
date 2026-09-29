@@ -112,12 +112,25 @@ PEER_RELATIONSHIP_CASES: list[PeerRelationshipCase] = [
         ),
         expected_names=["parent"],
     ),
+    PeerRelationshipCase(
+        # A tag declares no relationship at all, so nothing on its side can change.
+        name="a_one_way_relationship_has_no_peer_side",
+        peer=NodeSchema(name="Tag", namespace="Loc", relationships=[]),
+        local=RelationshipSchema(
+            name="tags",
+            peer="LocTag",
+            identifier="site__tag",
+            cardinality=RelationshipCardinality.MANY,
+            direction=RelationshipDirection.BIDIR,
+        ),
+        expected_names=[],
+    ),
 ]
 
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PEER_RELATIONSHIP_CASES])
 def test_peer_relationships(test_case: PeerRelationshipCase) -> None:
-    """A hierarchy resolves by direction. When nothing mirrors it, every candidate is reported."""
+    """A hierarchy resolves by direction, nothing mirrored reports every candidate, one-way reports nothing."""
     resolved = ReciprocalRelationshipBuilder().peer_relationships(
         peer_schema=test_case.peer, rel_schema=test_case.local
     )
