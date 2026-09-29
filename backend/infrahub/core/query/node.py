@@ -260,7 +260,7 @@ class NodeCreateAllQuery(NodeQuery):
         self.params["node_branch_prop"] = {
             "branch": self.branch.name,
             "branch_level": self.branch.hierarchy_level,
-            "status": "active",
+            "status": RelationshipStatus.ACTIVE.value,
             "from": at.to_string(),
             "from_user_id": self.user_id,
         }

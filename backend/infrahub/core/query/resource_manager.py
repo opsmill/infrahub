@@ -99,7 +99,7 @@ class IPAddressPoolGetIdentifiers(Query):
         self.params["addresses"] = self.addresses
 
         query = """
-        MATCH (pool:%(ipaddress_pool)s { uuid: $pool_id })-[reservation:IS_RESERVED]->(allocated:BuiltinIPAddress)
+        MATCH (pool:Node:%(ipaddress_pool)s { uuid: $pool_id })-[reservation:IS_RESERVED]->(allocated:BuiltinIPAddress)
         WHERE allocated.uuid in $addresses
         """ % {"ipaddress_pool": InfrahubKind.IPADDRESSPOOL}
         self.add_to_query(query)
@@ -135,7 +135,7 @@ class IPAddressPoolGetReserved(Query):
         self.params["identifier"] = self.identifier
 
         query = """
-        MATCH (pool:%(ipaddress_pool)s { uuid: $pool_id })-[rel:IS_RESERVED]->(address:BuiltinIPAddress)
+        MATCH (pool:Node:%(ipaddress_pool)s { uuid: $pool_id })-[rel:IS_RESERVED]->(address:BuiltinIPAddress)
         WHERE rel.identifier = $identifier
         """ % {"ipaddress_pool": InfrahubKind.IPADDRESSPOOL}
         self.add_to_query(query)
@@ -174,7 +174,7 @@ class IPAddressPoolSetReserved(Query):
         }
 
         query = """
-        MATCH (pool:%(ipaddress_pool)s { uuid: $pool_id })
+        MATCH (pool:Node:%(ipaddress_pool)s { uuid: $pool_id })
         MATCH (address:Node { uuid: $address_id })
         CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(address)
         """ % {"ipaddress_pool": InfrahubKind.IPADDRESSPOOL}
