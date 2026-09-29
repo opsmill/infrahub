@@ -1,0 +1,23 @@
+backend/infrahub/graphql/queries/resource_manager.py
+  s_33417b8a8baa91::t_a20de7c668e853 13,314-340,344,346-353,359-368,370,375-380
+backend/tests/component/core/resource_manager/test_number_pool.py
+  s_33417b8a8baa91::t_a20de7c668e853 6,154,162-165,174-176,178-185,197-200,212,219-224,227-238,299,363
+backend/tests/component/graphql/queries/test_resource_pool.py
+  s_33417b8a8baa91::t_a20de7c668e853 821-831,889,892-895,976-982
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf747afef9accddf67ed5f939776b645f4c8306f",
+  "prompts": {},
+  "sessions": {
+    "s_33417b8a8baa91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c44ff9c-821c-4bbe-a666-79a4c734ebf2",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
