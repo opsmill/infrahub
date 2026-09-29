@@ -49,17 +49,18 @@ function toStatusArguments(filters: Filter[]): RepositoryBranchArguments {
   return isFilterableBranchStatus(status) ? { status__value: status } : {};
 }
 
+// The contract rejects an order naming both timestamps, so only the first sort key reaches the
+// request — it is the one that decides the order on screen, the rest only break its ties.
 function toOrderArgument(sorts: Sort[]): RepositoryBranchArguments {
-  const nodeMetadata: InfrahubNodeMetadataOrder = {};
+  const primary = sorts.find(
+    (sort) => sort.field === CREATED_AT_SORT_FIELD || sort.field === UPDATED_AT_SORT_FIELD
+  );
 
-  for (const sort of sorts) {
-    const direction = sort.direction === SORT_DIRECTION.DESC ? "DESC" : "ASC";
+  if (!primary) return {};
 
-    if (sort.field === CREATED_AT_SORT_FIELD) nodeMetadata.created_at = direction;
-    if (sort.field === UPDATED_AT_SORT_FIELD) nodeMetadata.updated_at = direction;
-  }
-
-  if (Object.keys(nodeMetadata).length === 0) return {};
+  const direction = primary.direction === SORT_DIRECTION.DESC ? "DESC" : "ASC";
+  const nodeMetadata: InfrahubNodeMetadataOrder =
+    primary.field === CREATED_AT_SORT_FIELD ? { created_at: direction } : { updated_at: direction };
 
   return { order: { node_metadata: nodeMetadata } };
 }

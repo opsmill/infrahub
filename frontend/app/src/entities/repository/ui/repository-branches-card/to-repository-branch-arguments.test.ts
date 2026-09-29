@@ -15,18 +15,28 @@ import {
 const [CREATED_AT, UPDATED_AT] = NODE_METADATA_SORT_FIELDS;
 
 describe("toRepositoryBranchArguments", () => {
-  it("carries both timestamps into one order argument", () => {
-    // GIVEN
+  it("orders by the first timestamp alone when both are sorted on", () => {
+    // GIVEN the server refuses an order naming both timestamps
     const sorts: Sort[] = [
-      { field: CREATED_AT, direction: SORT_DIRECTION.DESC },
       { field: UPDATED_AT, direction: SORT_DIRECTION.ASC },
+      { field: CREATED_AT, direction: SORT_DIRECTION.DESC },
     ];
 
     // WHEN
     const result = toRepositoryBranchArguments([], sorts);
 
     // THEN
-    expect(result.order).toEqual({ node_metadata: { created_at: "DESC", updated_at: "ASC" } });
+    expect(result.order).toEqual({ node_metadata: { updated_at: "ASC" } });
+  });
+
+  it("orders by the one timestamp that is sorted on", () => {
+    // WHEN
+    const result = toRepositoryBranchArguments([], [
+      { field: CREATED_AT, direction: SORT_DIRECTION.DESC },
+    ] satisfies Sort[]);
+
+    // THEN
+    expect(result.order).toEqual({ node_metadata: { created_at: "DESC" } });
   });
 
   it("sends no order argument when nothing is sorted", () => {

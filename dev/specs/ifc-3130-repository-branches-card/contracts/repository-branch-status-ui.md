@@ -24,7 +24,15 @@ and needs no local schema overlay.
 | `name__value` | `String` | Branch-name fragment |
 | `partial_match` | `Boolean` | **Always `true`** when `name__value` is sent — the filter is a partial match by requirement (FR-012) |
 | `status__value` | `BranchStatus` | Wire enum name is `BranchStatus`, *not* `InfrahubBranchStatus` |
-| `order` | `MetadataOrderInput` | Reaches `node_metadata.created_at` and `node_metadata.updated_at` only — the two fields the order control offers (FR-012a). Sent only once the user picks an order |
+| `order` | `MetadataOrderInput` | Reaches `node_metadata.created_at` and `node_metadata.updated_at` only — the two fields the order control offers (FR-012a). **Exactly one of the two may be named**: the resolver raises a `ValidationError` for an order carrying both. Sent only once the user picks an order |
+
+**One timestamp per request.** `backend/infrahub/graphql/queries/branch.py` rejects an order naming
+`created_at` and `updated_at` together, so `node_metadata` must carry a single key. The order
+control is the product-wide `SortPicker`, which lets a user stack several sort keys on the shared
+sort URL key, so the mapper resolves the stack to one: the **first** sort key naming a timestamp
+wins and any later one is dropped. The first key is the one that decides the order the user sees —
+the rest only break its ties — so honouring it is the smallest departure from what was asked for,
+and it is stable under the reordering the sort editor allows.
 
 ### Variables the document deliberately does NOT declare
 
@@ -224,5 +232,7 @@ Named here so a later reader does not go looking for them:
   `node_metadata.created_at` and `node_metadata.updated_at` and nothing else, so the order control
   offers those two fields alone (FR-012a). Branch name, sync status, commit and ref are not orderable.
   Until the user picks one, the order is the server's default: default branch first, then name ascending.
+- **A tie-breaking second order key.** The resolver takes one timestamp per request, so a sort stack
+  naming both is resolved to its first timestamp key (§1) rather than sent as a compound order.
 - **The `tag` / `branch` ref-kind pill** from the design canvas. No field in the contract carries that
   distinction, and deriving it from the ref string would be guesswork.
