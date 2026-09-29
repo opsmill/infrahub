@@ -58,7 +58,8 @@ export const getBranchRepositories: GetBranchRepositories = async ({ branchName,
   });
 
   if (
-    errors?.some(
+    errors?.length &&
+    errors.every(
       ({ extensions }) => parseCatalogueError(extensions).code === ERROR_CODES.PERMISSION_DENIED
     )
   ) {

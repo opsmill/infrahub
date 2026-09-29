@@ -83,12 +83,20 @@ describe("getRepositoryImportError", () => {
     });
   });
 
-  it("returns not-found without a task id when the api fails", async () => {
-    vi.mocked(getRepositoryImportTaskFromApi).mockRejectedValue(new Error("Network error"));
+  it("returns not-found without a task id when the api fails, and logs the error", async () => {
+    const error = new Error("Network error");
+    vi.mocked(getRepositoryImportTaskFromApi).mockRejectedValue(error);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
     await expect(getRepositoryImportError(params)).resolves.toEqual({
       status: "not-found",
       taskId: null,
     });
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining("repository repo-1 on branch feature"),
+      error
+    );
+
+    consoleError.mockRestore();
   });
 });

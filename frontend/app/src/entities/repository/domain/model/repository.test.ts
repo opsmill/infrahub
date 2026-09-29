@@ -31,7 +31,7 @@ describe("repository constants", () => {
 
   it("uses the fetch limits and band count from the design", () => {
     expect(REPOSITORY_FETCH_LIMIT).toBe(500);
-    expect(IMPORT_LOG_LIMIT).toBe(500);
+    expect(IMPORT_LOG_LIMIT).toBe(10_000);
     expect(MAX_VISIBLE_BANDS).toBe(3);
   });
 });

@@ -21,3 +21,11 @@ Backend asks found while building this frontend-only feature. None of them block
 **Problem**: the frontend finds an import failure indirectly. It looks up the latest import flow run by tags, then takes the last `error`/`critical` log line, which is Prefect's `Finished in state Failed('Flow run encountered an exception: …')` wrapper. A periodic-sync failure message also lists every failing branch, not only the one being viewed.
 
 **Ask**: expose the latest import task and its error message per branch on `CoreGenericRepository`, e.g. a `last_import_task` field (the handoff's system gap). The UI could then link to it and show it without log parsing.
+
+## Newest logs first for `InfrahubTask`
+
+**Where**: `backend/infrahub/task_manager/flow_run/reader.py::read_logs`, `backend/infrahub/graphql/queries/task.py` (`log_limit` / `log_offset`).
+
+**Problem**: logs come back oldest first, with no sort option, and `logs.count` is the number returned rather than the total. To read the last error line of an import, the frontend has to ask for up to `NB_LOGS_LIMIT` (10,000) lines, and a longer log still loses its tail.
+
+**Ask**: a log order argument (e.g. `log_order: DESC`) or a "last N logs" option on `InfrahubTask`, so the band can ask for the last few lines.

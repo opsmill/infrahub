@@ -149,6 +149,20 @@ describe("getBranchRepositories", () => {
     ).rejects.toThrow("Something broke");
   });
 
+  it("throws with every message when a denial comes with another error", async () => {
+    mockErrors([
+      {
+        message: "You do not have one of the following permissions",
+        extensions: { code: "PERMISSION_DENIED", http_status: 403, data: {} },
+      },
+      { message: "Something broke", extensions: { code: "UNDEFINED_ERROR" } },
+    ]);
+
+    await expect(
+      getBranchRepositories({ branchName: "feature", syncWithGit: true })
+    ).rejects.toThrow("You do not have one of the following permissions; Something broke");
+  });
+
   it("is truncated when the count exceeds the returned repositories", async () => {
     mockNodes([node()], 501);
 

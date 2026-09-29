@@ -19,6 +19,7 @@ export const IMPORT_WORKFLOWS = [
   "git-repository-pull-read-only",
   "sync-git-repo-with-origin",
 ] as const;
-export const IMPORT_LOG_LIMIT = 500;
+// Logs come back oldest first, so anything below the backend cap (NB_LOGS_LIMIT) can cut off the final error line.
+export const IMPORT_LOG_LIMIT = 10_000;
 
 export const MAX_VISIBLE_BANDS = 3;

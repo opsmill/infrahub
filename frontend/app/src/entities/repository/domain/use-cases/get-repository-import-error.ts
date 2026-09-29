@@ -39,7 +39,11 @@ export const getRepositoryImportError: GetRepositoryImportError = async ({
     return message === null
       ? { status: "not-found", taskId: task.id }
       : { status: "found", taskId: task.id, message };
-  } catch {
+  } catch (error) {
+    console.error(
+      `An error occurred while fetching the import error of repository ${repositoryId} on branch ${branchName}:`,
+      error
+    );
     return { status: "not-found", taskId: null };
   }
 };

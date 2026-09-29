@@ -23,7 +23,7 @@ One repository as seen from one branch.
 - `REPOSITORY_SYNC_STATUS_IMPORT_ERROR = "error-import"`
 - `REPOSITORY_OPERATIONAL_ERRORS = ["error-cred", "error-connection", "error"] as const`
 - `REPOSITORY_FETCH_LIMIT = 500`
-- `IMPORT_WORKFLOWS` (research R2), `IMPORT_LOG_LIMIT = 500`
+- `IMPORT_WORKFLOWS` (research R2), `IMPORT_LOG_LIMIT = 10_000` (backend cap)
 - `MAX_VISIBLE_BANDS = 3`
 
 ### Rules (`entities/repository/domain/rules/`)
@@ -77,7 +77,7 @@ type BranchTasksPage = { tasks: BranchTask[]; count: number };
 ```
 
 - Use case `getBranchTasks({ branchName, offset, limit })` over `GET_TASK_LIST` (research R3).
-- Failed count: existing `getTaskCount({ branchName, state: [FAILED, CRASHED] })`.
+- Failed count: existing `getTaskCount({ branchName, state: [FAILED] })`. FAILED only: the Tasks page filters on a single state, so the count matches what the link opens.
 
 ### Rules (`entities/tasks/domain/`)
 

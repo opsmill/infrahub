@@ -36,7 +36,7 @@ Code references name the module and symbol. Line numbers are left out on purpose
 
 **Decision**: For each failing repository **whose band is rendered** (the first 3; the rest once "Show all" is used), one request:
 `InfrahubTask(branch: <page branch>, related_node__ids: [<repo id>], workflow: IMPORT_WORKFLOWS, limit: 1, log_limit: IMPORT_LOG_LIMIT)` selecting `count`, `id`, `state`, `updated_at`, `logs { edges { node { message severity timestamp } } }`.
-The band's text is the **last** log whose `severity` is `error` or `critical` (the task manager maps levels 40/50 to those, `task_manager/flow_run/constants.py::LOG_LEVEL_MAPPING`). `IMPORT_LOG_LIMIT = 500`.
+The band's text is the **last** log whose `severity` is `error` or `critical` (the task manager maps levels 40/50 to those, `task_manager/flow_run/constants.py::LOG_LEVEL_MAPPING`). `IMPORT_LOG_LIMIT = 10_000`, the backend cap (`task_manager/flow_run/reader.py::NB_LOGS_LIMIT`).
 
 `IMPORT_WORKFLOWS` (flow names in `backend/infrahub/git/tasks.py`):
 `git-repository-add-read-write`, `git-repository-add-read-only`, `git-repository-import-object`, `git-read-only-repository-import-last-commit`, `git-repository-pull-read-only`, `sync-git-repo-with-origin`.
@@ -44,7 +44,7 @@ The band's text is the **last** log whose `severity` is `error` or `critical` (t
 **Rationale**:
 - The task manager returns flow runs newest first (`task_manager/flow_run/reader.py::…read_flow_runs`, `FlowRunSort.START_TIME_DESC`), so `limit: 1` is the latest.
 - `log_limit` applies to the **whole request**, across every returned flow run, in ascending time order (`…read_logs`). With `limit: 1` the budget is that one task's; asking for several repositories in one request would let one noisy task starve the others. Hence one request per rendered band, lazily: at most 3 on first render.
-- Logs come back oldest first; the error line that ends an import is near the end. 500 lines covers every import log seen in the prototype's real tasks. A longer log degrades to FR-022 ("details couldn't be found"), never to a wrong line.
+- Logs come back oldest first, with no ordering or "last N" option, and the `logs.count` field is the number returned, not the total, so there's no way to read only the tail. The error line that ends an import is near the end, so the limit is the backend cap: a lower one (the first draft used 500) would cut that line off a long log and show an earlier error, or none. The backend reads logs in batches of 200 and stops at the last one, so a short log still costs one call. A log past 10,000 lines can still lose its tail; see follow-ups.md.
 
 **Riskiest assumption (brief: "that the frontend can reliably tie a task to a repository")** — verified in code, and it is only partly true:
 
@@ -67,7 +67,7 @@ The band's text is the **last** log whose `severity` is `error` or `critical` (t
 
 ## R3 — Tasks table
 
-**Decision**: Reuse `entities/tasks/api/get-task-list-from-api.ts::GET_TASK_LIST` (it already has `offset`, `limit`, `branchName`, `count`, `related_nodes`, `title`, `state`, `workflow`, `updated_at`) through a new use case `getBranchTasks({ branchName, offset, limit })` that returns `{ tasks, count }`. `getTaskList` drops `count` and `useGetTaskList` binds to the page-global `usePagination` QSP, so neither fits two independent tables. The failed count reuses `get-task-count` with `state: [FAILED, CRASHED]` and `branchName`.
+**Decision**: Reuse `entities/tasks/api/get-task-list-from-api.ts::GET_TASK_LIST` (it already has `offset`, `limit`, `branchName`, `count`, `related_nodes`, `title`, `state`, `workflow`, `updated_at`) through a new use case `getBranchTasks({ branchName, offset, limit })` that returns `{ tasks, count }`. `getTaskList` drops `count` and `useGetTaskList` binds to the page-global `usePagination` QSP, so neither fits two independent tables. The failed count reuses `get-task-count` with `state: [FAILED]` and `branchName`: the Tasks page filter takes a single state, so counting CRASHED too would show a number its link can't open.
 
 **Rationale**: Server pagination (`limit`/`offset`, `count`) as the handoff lift sheet asks. Page size 10 is under the task manager's 200 cap. Ordering is the task manager's (start time, newest first).
 
