@@ -18,8 +18,8 @@
 
 **Purpose**: Verify the riskiest assumption and add the URL keys everything else reads.
 
-- [ ] T001 Verify the import-task lookup (research R2) against a running stack: on a test branch, put a repository in Import Error through each path (initial add `git-repository-add-read-write`, "Import current commit" `git-repository-import-object`, periodic `sync-git-repo-with-origin`, read-only `git-repository-pull-read-only`/`git-read-only-repository-import-last-commit`) and run `InfrahubTask(branch, related_node__ids: [repo], workflow: IMPORT_WORKFLOWS, limit: 1, log_limit: 500)` in the GraphiQL sandbox. Record, per path, whether the task is found and whether its last `error`/`critical` log line is the real cause, in a new "R2 verification results" section at the end of `dev/specs/infp-671-branch-details-repos/research.md`. Non-blocking for the UI (the band has a fallback); it decides which path T058's e2e seeds.
-- [ ] T002 Add `REPOSITORIES_PAGE: "repos_page"` and `TASKS_PAGE: "tasks_page"` to `QSP` in `frontend/app/src/shared/config/qsp.ts`.
+- [X] T001 Verify the import-task lookup (research R2) against a running stack: on a test branch, put a repository in Import Error through each path (initial add `git-repository-add-read-write`, "Import current commit" `git-repository-import-object`, periodic `sync-git-repo-with-origin`, read-only `git-repository-pull-read-only`/`git-read-only-repository-import-last-commit`) and run `InfrahubTask(branch, related_node__ids: [repo], workflow: IMPORT_WORKFLOWS, limit: 1, log_limit: 500)` in the GraphiQL sandbox. Record, per path, whether the task is found and whether its last `error`/`critical` log line is the real cause, in a new "R2 verification results" section at the end of `dev/specs/infp-671-branch-details-repos/research.md`. Non-blocking for the UI (the band has a fallback); it decides which path T058's e2e seeds.  _(Done by code reading, not live reproduction — the only stack is read-only. See research.md "R2 verification results".)_
+- [X] T002 Add `REPOSITORIES_PAGE: "repos_page"` and `TASKS_PAGE: "tasks_page"` to `QSP` in `frontend/app/src/shared/config/qsp.ts`.
 
 ---
 
