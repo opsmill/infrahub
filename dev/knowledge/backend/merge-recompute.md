@@ -26,6 +26,8 @@ merge / rebase
 
 The builder, submitter, and coordinator live in `core/merge/recompute_coalescing.py`. The build step is pure, so it is unit and component testable without a database or a worker. A merge recomputes on the destination branch; a rebase recomputes on the user branch.
 
+A rebase replays the default branch's changes only onto a branch with changes of its own. A branch with nothing in its diff reads what the default branch holds once rebased, so it gets the `BranchRebasedEvent` and no node events or recompute.
+
 ## Node mutation origin
 
 Every node mutation event carries an `origin` label (`infrahub.node.origin`), one of:
