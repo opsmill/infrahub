@@ -1,0 +1,14 @@
+backend/infrahub/core/query/branch_agnostic_retirement.py
+  h_bd00275aefc321 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d04212ee747c05b455ed2ada2ef57545a46e0a05",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

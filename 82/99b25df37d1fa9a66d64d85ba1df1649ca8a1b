@@ -1,0 +1,19 @@
+backend/infrahub/core/query/branch_agnostic_retirement.py
+  s_deb1a88485ad83::t_60fdc75ab4d5ea 39-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8299b25df37d1fa9a66d64d85ba1df1649ca8a1b",
+  "prompts": {},
+  "sessions": {
+    "s_deb1a88485ad83": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6e40e20-e3ee-47e4-947c-536631360821",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
