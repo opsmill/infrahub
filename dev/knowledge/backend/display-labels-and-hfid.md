@@ -122,7 +122,7 @@ if self._existing:
 
 ### Bulk Reads of Stored Labels
 
-Loading a node object to call `get_display_label()` costs one attribute and one relationship-manager instance per schema field, plus a Jinja2 compile of the template when the stored value was not loaded — around a millisecond of CPU per node. Code that only needs the labels of many nodes reads the stored attribute directly instead: `NodeListGetDisplayLabelQuery` (`core/query/node.py`) returns `{node_id: display_label}` for the nodes active on a branch that carry a non-empty stored label (a kind without a template stores the `NULL_VALUE` sentinel string, which the query treats as empty), and `get_stored_display_labels()` (`core/diff/payload_builder.py`) batches it by `query_size_limit`. The diff labels enricher (`core/diff/enricher/labels.py`) resolves every label this way and falls back to `get_display_labels_per_kind()` (node objects, on-the-fly compute) only for the ids the query did not return: schema nodes, kinds without a template, nodes created before labels were stored. A large diff went from ~42 s to ~3 s of enrichment with this split.
+Loading node objects to read their labels costs about a millisecond of CPU per node, so code that needs the labels of many nodes reads the stored attributes instead, through `NodeManager.get_stored_labels()` (`core/manager.py`). It runs `NodeListGetStoredLabelsQuery` (`core/query/node.py`) in batches of `query_size_limit` ids and reads only the requested label attributes (`display_label`, `human_friendly_id` or both). Each node active on the branch comes back as a `NodeStoredLabels` with its kind and its stored values; an empty value, including the `NULL_VALUE` sentinel an unset label stores, reads as `None`, because whether it means empty or must be computed depends on the schema. A caller takes a non-`None` value as the node's label and loads the node for the rest.
 
 ### Async Backfill After Schema Changes
 
@@ -192,8 +192,8 @@ parent { node { ... on LocationSite { name { value } } } }
 | `core/attribute.py` | `IndexedListAttribute` (HFID storage with indexing and size fallback) |
 | `core/node/node_property_attribute.py` | `DisplayLabel`, `HumanFriendlyIdentifier` classes |
 | `core/node/__init__.py` | `resolve_relationships()`, `_collect_extra_filters()`, `add_display_label()`, `_update()` |
-| `core/query/node.py` | `NodeGetByHFIDQuery` (branch-aware HFID lookup), `NodeListGetDisplayLabelQuery` (bulk read of stored display labels) |
-| `core/manager.py` | `NodeManager.get_one_by_hfid()` (uses `NodeGetByHFIDQuery`) |
+| `core/query/node.py` | `NodeGetByHFIDQuery` (branch-aware HFID lookup), `NodeListGetStoredLabelsQuery` (bulk read of stored labels) |
+| `core/manager.py` | `NodeManager.get_one_by_hfid()` (uses `NodeGetByHFIDQuery`), `NodeManager.get_stored_labels()` (batched stored-label read) |
 | `core/schema/schema_branch_display.py` | `DisplayLabels` registry, `TemplateLabel` |
 | `core/schema/schema_branch_hfid.py` | `HFIDs` registry, `HFIDDefinition` |
 | `core/schema/schema_branch.py` | `validate_display_label()`, `process_human_friendly_id()` |

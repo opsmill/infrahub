@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
 from infrahub_sdk.utils import is_valid_uuid
 
+from infrahub import config
 from infrahub.core.constants import (
     SYSTEM_USER_ID,
     MetadataOptions,
@@ -25,6 +26,8 @@ from infrahub.core.query.node import (
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
     NodeListGetRelationshipsQuery,
+    NodeListGetStoredLabelsQuery,
+    NodeStoredLabels,
     NodeToProcess,
 )
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
@@ -41,6 +44,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFoundError
+from infrahub.utilities.chunks import chunked
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -1200,6 +1204,25 @@ class NodeManager:
         )
 
         return nodes
+
+    @classmethod
+    async def get_stored_labels(
+        cls, db: InfrahubDatabase, ids: list[str], branch: Branch | str | None, label_names: list[str]
+    ) -> dict[str, NodeStoredLabels]:
+        """Return the labels stored on these nodes, keyed by node id, without instantiating them.
+
+        Only the requested label attributes are read, in batches of ``query_size_limit`` ids. A node
+        that is not active on the branch is absent from the result.
+        """
+        branch = await registry.get_branch(branch=branch, db=db)
+        stored_labels: dict[str, NodeStoredLabels] = {}
+        for ids_batch in chunked(ids, config.SETTINGS.database.query_size_limit):
+            query = await NodeListGetStoredLabelsQuery.init(
+                db=db, branch=branch, ids=ids_batch, label_names=label_names
+            )
+            await query.execute(db=db)
+            stored_labels.update(query.get_stored_labels())
+        return stored_labels
 
     @classmethod
     async def prefetch_relationships(
