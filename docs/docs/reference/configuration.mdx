@@ -137,6 +137,7 @@ The HTTP settings control how Infrahub interacts with external HTTP servers. Thi
 | `INFRAHUB_DB_RETRY_JITTER_MAX` | Maximum jitter in seconds added to retry delay to avoid thundering herd. | number | 0.1 |
 | `INFRAHUB_DB_MAX_CONCURRENT_QUERIES` | Maximum number of concurrent queries that can run (0 means unlimited). | integer | 0 |
 | `INFRAHUB_DB_MAX_CONCURRENT_QUERIES_DELAY` | Delay to add when max_concurrent_queries is reached. | number | 0.01 |
+| `INFRAHUB_DB_DIFF_SAVE_CONCURRENCY` | Number of batches of diff nodes written at the same time when a diff is saved. Each batch is its own transaction on its own connection, so a higher value uses more database cores and connections from the pool. | integer | 4 |
 | `INFRAHUB_DB_PATH_TRAVERSAL_QUERY_TIMEOUT` | Server-side transaction timeout in seconds for each point-to-point path-traversal query. Point-to-point traversal runs many small queries one depth at a time, so a single query that exceeds this budget marks a doomed search: it is aborted and the shallower paths found so far are returned with a truncation depth, rather than the whole request failing. | number | 30 |
 | `INFRAHUB_DB_REACHABLE_NODES_QUERY_TIMEOUT` | Server-side transaction timeout in seconds for reachable-nodes queries; the query is aborted once it is exceeded. | number | 75 |
 | `INFRAHUB_DB_MAX_CONNECTION_POOL_SIZE` | Maximum number of connections the driver keeps in its pool per remote address. | integer | 100 |
@@ -380,6 +381,7 @@ LDAP authentication configuration.
 | `INFRAHUB_STORAGE_QUERYSTRING_AUTH` | None | boolean | False |
 | `INFRAHUB_STORAGE_CUSTOM_DOMAIN` | None | string |  |
 | `INFRAHUB_STORAGE_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format, or the PEM text itself, used to verify the certificate of the S3 endpoint. Also accepted under the standard AWS name `AWS_CA_BUNDLE`. Falls back to `tls.ca_bundle` when unset. Cannot be combined with `use_ssl=false`. | string | None |
+| `INFRAHUB_STORAGE_TLS_INSECURE` | Skip TLS certificate validation of the S3 endpoint. Takes precedence over `tls_ca_file`, which may stay configured. Cannot be combined with `use_ssl=false`. Test and development environments only; never enable in production. | boolean | False |
 
 ## Trace
 
@@ -422,6 +424,7 @@ LDAP authentication configuration.
 | `TCP_FRAMING` | TCP framing method (newline or octet-counting). | string (newline, octet-counting) | newline |
 | `TLS_ENABLED` | Enable TLS encryption for TCP connections. | boolean | False |
 | `TLS_CA_BUNDLE` | File path to a CA bundle in PEM format, or the PEM text itself, to validate the syslog server certificate. | string | None |
+| `TLS_INSECURE` | Skip TLS certificate validation of the syslog server. Requires `tls_enabled`. Takes precedence over `tls_ca_bundle`, which may stay configured. Test and development environments only; never enable in production. | boolean | False |
 | `QUEUE_SIZE` | Maximum number of messages in the per-destination queue. | integer | 10000 |
 | `MAX_RECONNECT_INTERVAL` | Maximum reconnection backoff interval in seconds. | integer | 60 |
 | `SHUTDOWN_DRAIN_TIMEOUT` | Seconds to wait for queue drain on graceful shutdown. | integer | 10 |

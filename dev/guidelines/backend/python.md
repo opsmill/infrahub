@@ -20,11 +20,25 @@ def get_node(db, node_id):
     return db.get(node_id)
 ```
 
-## Imports
+## Module layout
 
+<<<<<<< HEAD
 All imports must be at the top of the file. Never import inside functions, methods, or classes (ruff
 `PLC0415`). The only function-local imports we keep defer an optional or heavy dependency that must
 not load on every import, each marked `# noqa: PLC0415` with the reason:
+=======
+### constants.py holds constants only
+
+Do not put functions or classes in a file named `constants.py` — only module-level constant values (plain literals, enums, frozen containers). A value that must be computed, read from the environment, or resolved at runtime is not a constant; give it a home in a purpose-named module (e.g. `limits.py`, `settings.py`) instead.
+
+Why: readers grep and import from `constants.py` expecting inert values with no behavior and no import-time or call-time side effects. A function hiding there muddies that contract and gets overlooked when reasoning about runtime behavior.
+
+If the value genuinely never changes at runtime, prefer an actual constant over a function returning one.
+
+### Imports
+
+All imports must be at the top of the file. Never import inside functions, methods, or classes; Ruff enforces this (`PLC0415`):
+>>>>>>> origin/stable
 
 ```python
 # ✅ Good - imports at module level
@@ -38,9 +52,26 @@ class NodeManager:
             raise ValidationError("Node name is required")
 ```
 
+<<<<<<< HEAD
 All backend modules use `from __future__ import annotations`, so an import used **only** in
 parameter types, return types, or variable annotations has no runtime effect. Put it under
 `TYPE_CHECKING`, especially when it causes or risks a circular import chain:
+=======
+A function-local import is acceptable only to break a genuine circular import or to defer an optional or heavy dependency that must not load on every import. Mark each such import with `# noqa: PLC0415` and a short reason.
+
+All backend modules use `from __future__ import annotations`, which turns annotations into strings at runtime. This means imports used **only** in type hints have no runtime effect and can be placed under `TYPE_CHECKING` to prevent circular imports:
+
+```python
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from infrahub.database import InfrahubDatabase
+```
+
+If an import is only referenced in parameter types, return types, or variable annotations, move it under `TYPE_CHECKING` — especially when it causes or risks a circular import chain:
+>>>>>>> origin/stable
 
 ```python
 # ❌ Bad - top-level import only used in annotations; causes circular import
@@ -167,6 +198,13 @@ class NodeDiffBuilder:
     changed_attributes: list[str]  # Will be appended to during processing
 ```
 
+**Don't store what you can derive.** A field whose value restates another field, or is cheaply
+computed from one (a boolean mirroring `other is not None`, a summary line cut from a message),
+goes out of sync the moment one is written without the other — expose it as a `property` instead.
+When only some combinations of field values are producible, reject the impossible ones in
+`__post_init__` (or a model validator) so an inconsistent instance fails at construction rather
+than surfacing as a downstream bug.
+
 **Document an attribute with an inline docstring below it**, not in the class docstring, and only
 when the name does not already say what the field holds:
 
@@ -288,7 +326,7 @@ Testing note: don't test that Pydantic enforces `ge`/`le` (see [Testing Standard
 A docstring states the contract in one line. Add a Google-style `Args`, `Returns` or `Raises`
 section only for what the signature does not already say. Write one on a public function or class
 that other modules call; a private helper whose name says what it does gets none. What belongs in
-a comment at all is in `.agents/rules/code-doc-style.md`.
+a comment at all is in [Code Documentation Style](../code-doc-style.md).
 
 ```python
 # ✅ Good - one line; the signature already documents the parameters
@@ -332,18 +370,16 @@ async def create_branch(db: InfrahubDatabase, name: str, description: str | None
 
 ## Query Pattern
 
-Use the Query class pattern for database operations:
+Database reads and writes go through the `Query` class pattern — the lifecycle, Cypher
+conventions and result dataclasses are in [Query Pattern](../../knowledge/backend/query-pattern.md).
 
-```python
-from infrahub.core.query import Query
+## Methods stay on the instance
 
-class MyQuery(Query):
-    name: str = "my_query"
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
-        self.params["node_id"] = kwargs["node_id"]
-        self.add_to_query("MATCH (n:Node {uuid: $node_id}) RETURN n")
-```
+A private helper that happens to read no instance state is still an instance method. Do not demote
+it to a `@staticmethod`, a `@classmethod`, or a module-level function to satisfy a
+"method could be a function" hint — the repo suppresses ruff's `PLR6301` deliberately. The demotion
+rewrites call sites and tests for zero behavior change, and the next edit that needs `self`
+reverses it.
 
 ## Type Hints
 
@@ -403,13 +439,8 @@ Exceptions where positional arguments are acceptable:
 
 ## Testing
 
-- Unit tests: no external dependencies only file access
-- Component tests: Similar to unit tests with regards to small testing scope but can require database access
-- Integration tests: require Neo4j via testcontainers
-- Test files mirror source: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
-- Async tests auto-configured via pytest-asyncio
-
-For additional information around testing patterns refer to [./testing.md](./testing.md)
+Test tiers, file layout, fixtures and assertion standards are in
+[Python Testing Standards](testing.md).
 
 ## See Also
 

@@ -447,13 +447,18 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         # Validate if the value is still correct, will raise a ValidationError if not
         self.validate(value=self.value, name=self.name, schema=self.schema)
+        if self.value is not None:
+            self.value = self._normalize_value(self.value)
 
         # Check if the current value is still the default one
         if self.is_default:
+            default_value = self.schema.default_value
+            if default_value is not None:
+                default_value = self._normalize_value(default_value)
             if isinstance(self.value, Enum):
-                has_default_value = self.schema.default_value == self.value.value
+                has_default_value = default_value == self.value.value
             else:
-                has_default_value = self.schema.default_value == self.value
+                has_default_value = default_value == self.value
             if (self.schema.default_value is not None and not has_default_value) or (
                 self.schema.default_value is None and self.value is not None
             ):
@@ -640,6 +645,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 value_to_set = self.schema.convert_value_to_enum(data["value"])
             else:
                 value_to_set = data["value"]
+                if value_to_set is not None:
+                    self.validate(value=value_to_set, name=self.name, schema=self.schema)
+                    value_to_set = self._normalize_value(value_to_set)
             if value_to_set != self.value:
                 self.value = value_to_set
                 changed = True

@@ -85,6 +85,8 @@ migration). All three share the predicate and the closure clause.
 - **Merge and rebase already compute the diffs** that name exactly the affected nodes.
   `DiffMerger.merge_graph` calls `diff_repository.get_affected_node_uuids(...)`
   (`repository.py:570`) before running the bulk merges. That is the merge candidate set.
+  (Holds for merge only — see R4's 2026-09-28 note: the base-branch diff rebase would read does
+  not name the default-branch deletions.)
 - **Branch deletion has no diff.** Its candidate set is every node the discarded branch could
   reach, which is a fork-point-bounded query rather than an enumeration.
 - **The migration is the same query with the bound removed.**
@@ -119,6 +121,17 @@ this feature may need.
 **Alternatives considered**: Recomputing the base-branch deletions with a fresh query at rebase
 time — rejected, it duplicates work already done and risks a different window than the rebase
 actually closes.
+
+**Superseded 2026-09-28**: the finding above does not hold. The base-branch run of the diff
+calculation is scoped to the fields the branch changed, so the stored base-branch diff lists a
+default-branch deletion only when the branch changed that node too. It listed every deletion for a
+branch with no diffed changes, and only because an empty field-specifier map was read as no scope
+at all, which the same change fixes. Rebase now takes the rejected alternative: it queries the
+nodes whose default-branch existence edge turned `deleted` between the branch's previous fork point
+and `rebase_at`, both included, as branch deletion (R5) does from its fork point. The window is
+exactly the one the rebase closes. A kind or inheritance change on the default branch also deletes
+the superseded node vertex, so the query returns that uuid too, and the predicate keeps its fields
+because the node lives on.
 
 ## R5 — Branch-deletion selectivity (resolves the PRD's first open question)
 
@@ -482,7 +495,7 @@ is the normal close path — so a guard has to count judging branches separately
 |---|---|
 | Branch-deletion candidate selectivity | Design fixed (R5); acceptance number measured during implementation against the FR-018 gate |
 | Acceptable timing regression | ≤10% median per operation (pinned in spec FR-018 / SC-008) |
-| Base-branch diff availability at rebase | Confirmed available (R4) |
+| Base-branch diff availability at rebase | Confirmed available (R4); superseded 2026-09-28, rebase queries the deletions instead |
 | Migration template and non-fatal reporting | Confirmed via `m075` (R7) |
 | Schema-removal leak mechanism | Confirmed by the shipped docstring (R8) |
 

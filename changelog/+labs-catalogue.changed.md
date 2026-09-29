@@ -1,1 +1,0 @@
-Replaced the per-lab documentation pages under Learn with a single "Infrahub Labs" link to the labs catalogue at [docs.infrahub.app/labs](https://docs.infrahub.app/labs), which describes every lab in full and also covers labs hosted for partners and the community.
