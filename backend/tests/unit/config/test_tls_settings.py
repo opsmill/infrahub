@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ssl
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from pydantic import ValidationError
@@ -19,6 +20,9 @@ from infrahub.config import (
     TraceSettings,
     load,
 )
+
+if TYPE_CHECKING:
+    from pydantic_settings import BaseSettings
 
 TEST_DATA_DIR = Path(__file__).parent.parent / "test_data"
 CA_BUNDLE = str(TEST_DATA_DIR / "ca-bundle.pem")
@@ -107,7 +111,9 @@ class TestBlankCaSettings:
             (LDAPSettings, "tls_ca_bundle"),
         ],
     )
-    def test_blank_component_setting_is_unset(self, settings_class: type, field_name: str, blank: str) -> None:
+    def test_blank_component_setting_is_unset(
+        self, settings_class: type[BaseSettings], field_name: str, blank: str
+    ) -> None:
         settings = settings_class.model_validate({field_name: blank})
 
         assert getattr(settings, field_name) is None
