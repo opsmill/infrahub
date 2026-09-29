@@ -436,20 +436,25 @@ async def trigger_update_jinja2_computed_attributes(
 
     node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
     workflow = get_workflow()
-    async for node_batch in node_query.fetch_all_paginated(client=client, branch_name=branch_name):
-        for node_id in node_batch:
-            await workflow.submit_workflow(
-                workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
-                context=context,
-                parameters={
-                    "branch_name": branch_name,
-                    "computed_attribute_name": computed_attribute_name,
-                    "computed_attribute_kind": computed_attribute_kind,
-                    "node_kind": computed_attribute_kind,
-                    "object_id": node_id,
-                    "context": context,
-                },
-            )
+    async for node_ids in node_query.fetch_all_paginated(
+        client=client, branch_name=branch_name, page_size=get_submission_chunk_size()
+    ):
+        if not node_ids:
+            continue
+        await workflow.submit_workflow(
+            workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+            context=context,
+            parameters={
+                "branch_name": branch_name,
+                "computed_attribute_name": computed_attribute_name,
+                "computed_attribute_kind": computed_attribute_kind,
+                "node_kind": computed_attribute_kind,
+                "object_ids": node_ids,
+                "context": context,
+            },
+            # Must be a creation tag: in-flow tag updates drop tags added mid-run.
+            tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],
+        )
 
 
 @flow(name="computed-attribute-setup-jinja2", flow_run_name="Setup computed attributes in task-manager")
