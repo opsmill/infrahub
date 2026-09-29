@@ -89,7 +89,6 @@ class PythonTransformComputedAttribute(BaseModel):
     query_name: str
     query_analyzer: InfrahubGraphQLQueryAnalyzer
     computed_attribute: PythonDefinition
-    default_schema: bool
     branch_name: str
     branch_commit: dict[str, str] = field(default_factory=dict)
 
@@ -101,14 +100,6 @@ class PythonTransformComputedAttribute(BaseModel):
         if repository_data:
             for branch, commit in repository_data.branches.items():
                 self.branch_commit[branch] = commit
-
-    def get_altered_branches(self) -> list[str]:
-        if registry.default_branch in self.branch_commit:
-            default_branch_commit = self.branch_commit[registry.default_branch]
-            return [
-                branch_name for branch_name, commit in self.branch_commit.items() if commit != default_branch_commit
-            ]
-        return list(self.branch_commit.keys())
 
 
 @dataclass
@@ -283,6 +274,12 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         computed_attribute: PythonTransformComputedAttribute,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
+        """Build the definition that answers a change to ``kind`` for this transform.
+
+        The definition is keyed on the transform and not on one attribute: within one branch the
+        attributes a transform feeds share its query, so they read the same kinds and the same
+        fields of them.
+        """
         # Only matching on node updated events, before nodes are created they won't be a member of the GraphQL query
         # group regardless so it doesn't make sense to trigger the query on node creation. For the initial object
         # where the computed attribute belongs that to will need to be created first which will trigger its own initial
@@ -305,7 +302,7 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         event_trigger.exclude_branches(branches_out_of_scope or [])
 
         return cls(
-            name=f"{computed_attribute.computed_attribute.key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{kind}",
+            name=f"transform{NAME_SEPARATOR}{computed_attribute.name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{kind}",
             branch=branch,
             trigger=event_trigger,
             actions=[

@@ -119,7 +119,14 @@ All three run `process_transform_lifecycle`. On create or update it waits for th
 
 ### Node-Input Automations
 
-Besides the transform-lifecycle triggers, each `(kind, attribute)` has data-path automations in two families that recompute the value when a node feeding the transform's query changes: one on the attribute's own kind, and one per kind the query reads. The coalesced pass owns merge and rebase, so both trigger types match `origin=live` only. `_reconcile_python_computed_attribute_automations` rebuilds these from the schema. One gather builds both trigger lists and they are applied under a single trigger-registry lock, so a concurrent reconcile cannot delete an automation another run just created, and a transform delete prunes its automation rather than leaving it stale.
+Besides the transform-lifecycle triggers, two families of data-path automations recompute the value when a node feeding the transform's query changes.
+
+- **Owner automations** are keyed on `(key_name, transform)` and match the attribute's own kind. The action names the attribute it submits, so each attribute needs a definition of its own.
+- **Query automations** are keyed on the transform, with one definition per kind its query reads. The action names no attribute and the flow behind it resolves them, so one definition covers every attribute the transform feeds. A definition per attribute would start the same flow once per attribute for one change, with no difference in what gets recomputed. The transform in the key carries no scoping: `query_transform_targets` takes no transform, so two transforms reading one kind both fire on one edit.
+- **Ownership.** A branch owns both families or neither — see [Branch scoping of automations](events.md#branch-scoping-of-automations).
+- **Backfill.** `computed_attribute_setup_python` builds its recompute candidates from the owner automations scoped to the event's branch, so a `SchemaUpdatedEvent` backfills attributes only on a branch that owns its automations.
+
+The coalesced pass owns merge and rebase, so both trigger types match `origin=live` only. `_reconcile_python_computed_attribute_automations` rebuilds these from the schema. One gather builds both trigger lists and they are applied under a single trigger-registry lock, so a concurrent reconcile cannot delete an automation another run just created, and a transform delete prunes its automation rather than leaving it stale.
 
 ### Batch Execution
 
@@ -162,3 +169,4 @@ Besides the transform-lifecycle triggers, each `(kind, attribute)` has data-path
 - [Mutations](mutations.md) — where `_recompute_local_jinja2()` fits in the update flow
 - [Display Labels & HFID](display-labels-and-hfid.md) — parallel `_collect_extra_filters()` pattern
 - [Merge/Rebase Recompute](merge-recompute.md) — the coalesced recompute path for merges and rebases
+- [Events](events.md) — trigger action parameters and the branch scoping these automations follow

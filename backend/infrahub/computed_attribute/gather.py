@@ -25,6 +25,8 @@ from .models import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from infrahub.git.models import RepositoryData
 
 
@@ -38,7 +40,6 @@ async def gather_python_transform_attributes(
 ) -> list[PythonTransformComputedAttribute]:
     log = get_run_logger()
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
-    branches_with_diff_from_main = registry.get_altered_schema_branches()
     branch = registry.get_branch_from_registry(branch=branch_name)
 
     transform_attributes = schema_branch.computed_attributes.python_attributes_by_transform
@@ -87,7 +88,6 @@ async def gather_python_transform_attributes(
                 query_analyzer=query_analyzer,
                 query_name=query.name.value,
                 computed_attribute=attribute,
-                default_schema=branch_name not in branches_with_diff_from_main,
             )
             python_transform_computed_attribute.populate_branch_commit(
                 repository_data=repositories.get(repository.name.value)
@@ -140,6 +140,50 @@ async def gather_trigger_computed_attribute_jinja2(
     return triggers
 
 
+def _divergent_branches(
+    indexes: Iterable[dict[str, PythonTransformComputedAttribute]], altered_schema_branches: list[str]
+) -> set[str]:
+    """The branches that answer for themselves across every Python automation of this gather.
+
+    A branch diverges when its schema differs from the default branch, or when a repository
+    holding one of its transforms sits on another commit. Read once for the whole gather, because
+    a branch can repoint an attribute at another transform: it then shares no index entry with the
+    default branch, which would otherwise never learn it has to step aside for it.
+    """
+    divergent = set(altered_schema_branches)
+    for branches in indexes:
+        default = branches.get(registry.default_branch)
+        if default is None:
+            continue
+        divergent.update(
+            branch_name
+            for branch_name, item in branches.items()
+            if branch_name != registry.default_branch and item.repository_commit != default.repository_commit
+        )
+    return divergent
+
+
+def _branch_scopes(
+    branches: dict[str, PythonTransformComputedAttribute], divergent_branches: set[str]
+) -> list[tuple[str, list[str]]]:
+    """Which branch each automation is built for, and the branches it must not answer for.
+
+    A divergent branch owns the automations of what it declares, and the default-branch one steps
+    aside for every divergent branch, not only for the ones sharing this entry. Ownership and
+    exclusion read the same set, so stepping aside never leaves a branch uncovered. The
+    default-branch automation covers every other branch, the ones created after this gather
+    included.
+    """
+    if registry.default_branch not in branches:
+        return [(branch_name, []) for branch_name in branches]
+
+    owning_branches = [branch_name for branch_name in branches if branch_name in divergent_branches]
+
+    scopes: list[tuple[str, list[str]]] = [(branch_name, []) for branch_name in owning_branches]
+    scopes.append((registry.default_branch, sorted(divergent_branches)))
+    return scopes
+
+
 @task(
     name="gather-trigger-computed-attribute-python",
     cache_policy=NONE,
@@ -151,10 +195,12 @@ async def gather_trigger_computed_attribute_python(
     triggers_python_query = []
 
     repositories = await get_repositories_commit_per_branch(db=db)
+    altered_schema_branches = registry.get_altered_schema_branches()
 
-    # Keyed by attribute and by transform: an attribute gets its own automation even when it shares
-    # a transform, and a branch that repoints the attribute keeps a definition of its own.
-    all_computed_attributes: dict[tuple[str, str], dict[str, PythonTransformComputedAttribute]] = defaultdict(dict)
+    # Keyed by attribute and by transform: an attribute gets its own owner automation even when it
+    # shares a transform, and a branch that repoints the attribute keeps a definition of its own.
+    by_attribute: dict[tuple[str, str], dict[str, PythonTransformComputedAttribute]] = defaultdict(dict)
+    by_transform: dict[str, dict[str, PythonTransformComputedAttribute]] = defaultdict(dict)
     for branch in list(registry.branch.values()):
         if branch.is_global:
             continue
@@ -164,44 +210,39 @@ async def gather_trigger_computed_attribute_python(
         )
         for computed_attribute in computed_attributes:
             key = (computed_attribute.computed_attribute.key_name, computed_attribute.name)
-            all_computed_attributes[key][branch.name] = computed_attribute
+            by_attribute[key][branch.name] = computed_attribute
+            # Any attribute of the transform will do: they share its query analyzer.
+            by_transform[computed_attribute.name][branch.name] = computed_attribute
 
-    for branches in all_computed_attributes.values():
-        branches_with_diff_from_main = []
-        if registry.default_branch in branches.keys():
-            commit_main = branches[registry.default_branch].repository_commit
-            branches_with_diff_from_main = [
-                branch_name for branch_name, item in branches.items() if item.repository_commit != commit_main
-            ]
-        else:
-            branches_with_diff_from_main = list(branches.keys())
+    divergent_branches = _divergent_branches(by_attribute.values(), altered_schema_branches)
 
-        branches_to_process: list[tuple[str, list[str]]] = [(branch, []) for branch in branches_with_diff_from_main]
-
-        if registry.default_branch in branches.keys():
-            branches_to_process.append((registry.default_branch, branches_with_diff_from_main))
-
-        for branch_scope, branches_out_of_scope in branches_to_process:
-            trigger_python = ComputedAttrPythonTriggerDefinition.from_object(
-                computed_attribute=branches[branch_scope],
-                branch=branch_scope,
-                branches_out_of_scope=branches_out_of_scope,
+    for branches in by_attribute.values():
+        for branch_scope, branches_out_of_scope in _branch_scopes(branches, divergent_branches):
+            triggers_python.append(
+                ComputedAttrPythonTriggerDefinition.from_object(
+                    computed_attribute=branches[branch_scope],
+                    branch=branch_scope,
+                    branches_out_of_scope=branches_out_of_scope,
+                )
             )
-            triggers_python.append(trigger_python)
 
-            for kind, access in branches[branch_scope].query_analyzer.query_report.requested_read.items():
+    for branches in by_transform.values():
+        for branch_scope, branches_out_of_scope in _branch_scopes(branches, divergent_branches):
+            computed_attribute = branches[branch_scope]
+            for kind, access in computed_attribute.query_analyzer.query_report.requested_read.items():
                 if not access.fields:
                     # A kind reached through a generic relationship is reported for every member,
                     # even the ones the query reads no field from. Such a trigger would get no
                     # field filter and fire on every update to that kind.
                     continue
 
-                trigger_python_query = ComputedAttrPythonQueryTriggerDefinition.from_object(
-                    kind=kind,
-                    computed_attribute=branches[branch_scope],
-                    branch=branch_scope,
-                    branches_out_of_scope=branches_out_of_scope,
+                triggers_python_query.append(
+                    ComputedAttrPythonQueryTriggerDefinition.from_object(
+                        kind=kind,
+                        computed_attribute=computed_attribute,
+                        branch=branch_scope,
+                        branches_out_of_scope=branches_out_of_scope,
+                    )
                 )
-                triggers_python_query.append(trigger_python_query)
 
     return triggers_python, triggers_python_query

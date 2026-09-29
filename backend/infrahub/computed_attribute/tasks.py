@@ -738,15 +738,22 @@ async def computed_attribute_setup_python(
             # database session is available, so that the scoping decision itself stays pure. A
             # derived read is checked against the schema of the trigger's own branch, whose derived
             # definitions are what decide the read can be held against a single kind.
+            # Attributes that share a transform on one branch share its analyzer, so the read set
+            # is derived once per transform. Deriving it again parses the Jinja2 of every derived
+            # field the query reads.
             read_sets: dict[tuple[str, str, str], TransformReadSet] = {}
+            read_sets_by_transform: dict[tuple[str, str], TransformReadSet] = {}
             for trigger in triggers_python:
                 definition = trigger.computed_attribute.computed_attribute
-                read_sets[trigger.branch, definition.kind, definition.attribute.name] = (
-                    transform_read_set_from_query_report(
+                transform_key = (trigger.branch, trigger.computed_attribute.name)
+                if transform_key not in read_sets_by_transform:
+                    read_sets_by_transform[transform_key] = transform_read_set_from_query_report(
                         report=trigger.computed_attribute.query_analyzer.query_report,
                         schema_branch=registry.schema.get_schema_branch(name=trigger.branch),
                     )
-                )
+                read_sets[trigger.branch, definition.kind, definition.attribute.name] = read_sets_by_transform[
+                    transform_key
+                ]
 
             # Since we can have multiple trigger per NodeKind
             # we need to extract the list of unique node that should be processed
