@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import contextlib
 import shutil
-import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
 from uuid import UUID  # noqa: TC003
 
-import git
 from git import BadName, Blob, Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
 from git.refs.remote import RemoteReference
@@ -1068,17 +1066,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             raise RepositoryFileNotFoundError(repository_name=self.name, commit=commit, location=file_path)
 
         return path
-
-    @classmethod
-    def check_connectivity(cls, name: str, url: str) -> None:
-        # Use a neutral working directory so git doesn't discover a .git pointer
-        # from the process CWD (e.g. worktree builds where /source/.git is a
-        # pointer file referencing a host path absent from a container).
-        cmd = git.cmd.Git(working_dir=tempfile.gettempdir())
-        try:
-            cmd.ls_remote("--tags", url)
-        except GitCommandError as exc:
-            cls._raise_enriched_error_static(name=name, location=url, error=exc)
 
     async def _raise_enriched_error(self, error: GitCommandError, branch_name: str | None = None) -> NoReturn:
         try:

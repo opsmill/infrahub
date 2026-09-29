@@ -78,7 +78,12 @@ def bad_credentials_clone_url(base_url: str, repo_name: str) -> str:
 
 
 def create_gogs_repo(
-    base_url: str, token: str, repo_name: str, container: DockerContainer, private: bool = False
+    base_url: str,
+    token: str,
+    repo_name: str,
+    container: DockerContainer,
+    private: bool = False,
+    create_main: bool = True,
 ) -> str:
     """Create a Gogs repository and return its clone URL.
 
@@ -88,6 +93,9 @@ def create_gogs_repo(
 
     Pass private=True to create a private repository (required when testing auth failures,
     since public repos allow anonymous clone access and never present credentials to the server).
+
+    Pass create_main=False to leave 'master' as the only branch, giving a remote that a
+    repository left at Infrahub's default of 'main' cannot use.
     """
     resp = httpx.post(
         f"{base_url}/api/v1/user/repos",
@@ -111,10 +119,11 @@ def create_gogs_repo(
         f"printf -- '---\\n' > .infrahub.yml && "
         f"git add .infrahub.yml && "
         f"git commit -m 'Add .infrahub.yml' && "
-        f"git push origin master && "
-        f"git checkout -b main && "
-        f"git push origin main"
+        f"git push origin master"
     )
+    if create_main:
+        script += " && git checkout -b main && git push origin main"
+
     result = container.get_wrapped_container().exec_run(
         ["bash", "-c", script],
         user="git",
@@ -124,6 +133,26 @@ def create_gogs_repo(
     )
 
     return gogs_clone_url(base_url, repo_name)
+
+
+def _gogs_git(container: DockerContainer, repo_name: str, *args: str, failure: str) -> str:
+    """Run git against the server's bare repository, which needs neither a clone nor an identity."""
+    result = container.get_wrapped_container().exec_run(
+        ["git", f"--git-dir=/data/git/repositories/{GOGS_ADMIN}/{repo_name}.git", *args],
+        user="git",
+    )
+    assert result.exit_code == 0, f"{failure} (exit {result.exit_code}): {result.output.decode()}"
+    return result.output.decode().strip()
+
+
+def gogs_repo_branch_commit(container: DockerContainer, repo_name: str, branch: str) -> str:
+    """Return the commit a branch points at in the remote."""
+    return _gogs_git(container, repo_name, "rev-parse", branch, failure=f"Unable to read {branch} of {repo_name}")
+
+
+def gogs_repo_tag(container: DockerContainer, repo_name: str, tag_name: str, commit_ish: str = "master") -> None:
+    """Create a lightweight tag in the remote."""
+    _gogs_git(container, repo_name, "tag", tag_name, commit_ish, failure=f"Tagging {repo_name} failed")
 
 
 @pytest.fixture(scope="session")

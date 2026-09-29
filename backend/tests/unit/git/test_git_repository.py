@@ -259,21 +259,6 @@ async def test_pull_infrahub_default_branch_pulls_repository_default_branch(
     assert commit_after == new_commit
 
 
-def test_check_connectivity_ignores_cwd_git_pointer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Git operations must not be affected by a broken .git worktree pointer in the process current working directory."""
-    source_dir = tmp_path / "source-repo"
-    source_dir.mkdir()
-    Repo.init(source_dir, initial_branch="main")
-
-    # Simulate a worktree environment: current working directory has a .git file pointing to a path that doesn't exist
-    cwd = tmp_path / "broken-worktree"
-    cwd.mkdir()
-    (cwd / ".git").write_text("gitdir: /nonexistent/.git/worktrees/fake\n")
-    monkeypatch.chdir(cwd)
-
-    InfrahubRepository.check_connectivity(name="test", url=f"file://{source_dir}")
-
-
 class RecordingGraphqlClient(InfrahubClient):
     """An SDK client that records the branch of every GraphQL call instead of sending it."""
 
