@@ -318,19 +318,10 @@ export function FileContentDiff({
           </div>
         </div>
 
-<<<<<<< HEAD
         <div className="ml-2 bg-content-muted">
-          <Diff
-            key={`${sha(diff)}${previousFile ? sha(previousFile) : ""}${newFile ? sha(newFile) : ""}`}
-            hunks={fileContent.hunks}
-            viewType="split"
-            diffType={fileContent.type}
-=======
-        <div className="ml-2 bg-gray-50">
           <ContentDiff
             previousContent={previousFile ?? ""}
             newContent={newFile ?? ""}
->>>>>>> origin/stable
             renderGutter={renderGutter}
             getWidgets={getWidgets}
           />
