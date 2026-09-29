@@ -45,7 +45,7 @@ export const BranchDetails = ({
   }
 
   return (
-    <Col>
+    <Col className="p-2">
       <BranchAttributes branch={branch} />
 
       {!branch.is_default && (

@@ -36,6 +36,8 @@ class TestBranchDetailsDefaultBranch:
         await expect(admin_page.get_by_role("heading", name="main")).to_be_visible()
         await expect(admin_page.get_by_text("default", exact=True)).to_be_visible()
         await expect(admin_page.get_by_role("button", name="View node metadata")).to_be_visible()
+        await expect(admin_page.get_by_role("button", name="Copy branch name")).to_be_visible()
+        await expect(admin_page.get_by_role("button", name="Refresh data")).to_be_visible()
 
         # Already working on main, so there is nothing to switch to
         await expect(admin_page.get_by_test_id("branch-working-notice")).to_be_visible()
@@ -73,6 +75,8 @@ class TestBranchDetailsNonDefaultBranch:
         await expect(admin_page.get_by_role("heading", name=NON_DEFAULT_BRANCH)).to_be_visible()
         await expect(admin_page.get_by_text("default", exact=True)).not_to_be_visible()
         await expect(admin_page.get_by_role("button", name="View node metadata")).to_be_visible()
+        await expect(admin_page.get_by_role("button", name="Copy branch name")).to_be_visible()
+        await expect(admin_page.get_by_role("button", name="Refresh data")).to_be_visible()
 
         # Branch attributes
         await expect(admin_page.get_by_text("Name")).to_be_visible()
