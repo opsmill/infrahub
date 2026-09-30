@@ -350,11 +350,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         After the rebase we need to resync the data
 
-        On any failure the destination worktree is reset to its pre-merge commit. Before the push
-        has succeeded this leaves local git, the graph and the remote consistent at the pre-merge
-        state, so a later merge attempt can re-derive the merge. If recording the merge fails after
-        a successful push, the reset leaves the local clone trailing the remote instead, a state
-        the periodic synchronization repairs by pulling the pushed merge commit and recording it.
+        On any failure the destination worktree is reset to its pre-merge commit. Whether the remote
+        received the merge is not always knowable, since a push can be accepted just before the
+        connection drops, so the reset leaves the destination either at the pre-merge state, where a
+        later merge attempt re-derives the merge, or trailing the remote, which the periodic
+        synchronization repairs by pulling the pushed merge commit and recording it.
 
         Raises:
             RepositoryError: When no worktree exists for the destination branch, when the
