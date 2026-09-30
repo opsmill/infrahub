@@ -91,7 +91,7 @@ commit, which is a task of its own.
 
 ### The read-only asymmetry
 
-`CoreReadOnlyRepository` overrides `commit` and `ref` to `AWARE`. The four new attributes are not
+`CoreReadOnlyRepository` sets `commit` to `AWARE` and adds an `AWARE` `ref` of its own. The four new attributes are not
 overridden, so they stay `LOCAL` on that kind as well. A read-only repository therefore carries a
 diff-invisible rewrite record beside a diff-visible `commit`.
 
@@ -214,9 +214,10 @@ name.
 **Emission rule** (FR-014): at most one per rewrite of the repository's configured default branch, and never more than one.
 No emission for any other branch. Emitted by the recorder, after a successful record.
 
-**Exactly once across cycles** (SC-002): after the reset and the re-import, the recorded commit
-equals the remote head, so the next cycle classifies `UNCHANGED`. The single emission follows from
-the classification, not from a guard.
+**At most once across cycles** (SC-002): after the reset and the re-import, the recorded commit
+equals the remote head, so the next cycle classifies `UNCHANGED`. Never emitting twice follows from
+the classification, not from a guard. Emitting zero times is possible: an emit that fails after the
+record lands is never retried.
 
 ---
 

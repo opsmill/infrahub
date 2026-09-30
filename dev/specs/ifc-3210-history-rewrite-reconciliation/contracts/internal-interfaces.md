@@ -117,7 +117,7 @@ the graph. The per-branch graph commits are loaded once per cycle by
 not an existing affordance. Re-reading it lower down instead would add a query per repository per
 cycle and would race the writes the same cycle makes.
 
-**"Exactly one record" assumes cycles do not overlap.** Two cycles running at once would both read
+**"No more than one record" assumes cycles do not overlap.** Two cycles running at once would both read
 the same stale graph commit and both record. `GIT_REPOSITORIES_SYNC` prevents that today with
 `concurrency_limit=1` and `CANCEL_NEW`. If that ever changes, the count needs a compare-and-set
 rather than a read-then-write.
@@ -189,9 +189,9 @@ point of FR-001c. A single table keyed on the classification would leave that wo
 discarded history for ever, flagged by `compare_local_remote` on every cycle and repaired by
 nothing.
 
-  A `RETARGET` that reset nothing would leave the branch stuck on a history the remote no longer
-  has, which is the defect this feature removes. The PRD says a deliberate re-target is
-  "reconciled, not reported" — reconciled is the reset, not reported is the missing record.
+A `RETARGET` that reset nothing would leave the branch stuck on a history the remote no longer has,
+which is the defect this feature removes. The PRD calls a deliberate re-target "reconciled, not
+reported": reconciled is the reset, not reported is the missing record.
 
 ### Ancestry gateway
 
@@ -425,7 +425,7 @@ Changed. `backend/infrahub/message_bus/operations/git/repository.py::fetch`.
 3. When `branches` is present, it resets each pair in turn, inside that one lock hold.
 4. When `branches` is absent, it behaves exactly as it does today.
 5. It still passes `update_commit_value=False`. A broadcast never writes to the graph.
-6. **It resets with `reset_to_commit` and runs no ancestry check**, so it does not honour
+7. **It resets with `reset_to_commit` and runs no ancestry check**, so it does not honour
    `LOCAL_AHEAD`: a pinned SHA moves the worktree whether or not it holds commits the remote does
    not. That is deliberate, because the broadcast carries a SHA the sending worker already resolved
    and the receiving worker is meant to converge on exactly it. It is also why widening the
@@ -534,27 +534,23 @@ it changes `ref` or `commit`, is carried in band on the workflow model instead. 
 different branch, tag **or commit**", and both of those reach the flow as an explicit
 `target_changed` flag rather than through the cache.
 
-1. The marker is written after the update succeeds, and **before** any workflow is submitted. The
-   read-only path submits a pull and an import from inside the same mutation. If the marker landed
-   after the submission, the import could reach the classification first and record a spurious
-   rewrite on a deliberate re-target.
+1. The marker is written after the update succeeds, and before the mutation returns. Nothing else
+   in that mutation reads it, so the ordering only has to put the write before the first
+   synchronisation cycle that could classify the branch.
 2. It expires after one hour.
-3. **The marker covers read-write repositories only.** A read-only re-target is carried in band
-   instead: the mutation already computes the comparison, so it travels on the workflow model as an
-   explicit flag. No cache, no expiry and no timing question on that path. See section 7.
-4. **Exactly one component touches the marker: the detector's caller in the sync path**,
+3. **Exactly one component touches the marker: the detector's caller in the sync path**,
    `collect_pending_imports`. It reads the marker, passes the result to `classify` as
    `target_changed`, and **deletes it only after the commit write for that branch has succeeded**.
    The detector never touches the cache, and neither does the recorder.
-5. Deleting at classification time is wrong. The reset, the commit write and the import all come
+4. Deleting at classification time is wrong. The reset, the commit write and the import all come
    after it, and any of them can fail. The marker would already be gone, so the next cycle sees a
    re-target it has no record of, classifies `REWRITE`, writes a record and **fires the trunk
    webhook**. Deleting after the commit write means a failed cycle simply retries with the marker
    still in place.
-6. A lost marker costs more than a wrong row. It produces a false rewrite record **and** a false
+5. A lost marker costs more than a wrong row. It produces a false rewrite record **and** a false
    trunk webhook to whatever a customer has subscribed. `research.md` R4 carries this as an
    accepted loss path.
-7. The cache has no atomic get-and-delete, so reading and deleting are two operations with a window
+6. The cache has no atomic get-and-delete, so reading and deleting are two operations with a window
    between them. Nothing guards that window except `GIT_REPOSITORIES_SYNC` running with
    `concurrency_limit=1` and `CANCEL_NEW`, which keeps two cycles from overlapping. If that ever
    changes, this needs a compare-and-delete.

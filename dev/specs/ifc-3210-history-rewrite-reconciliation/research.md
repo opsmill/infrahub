@@ -52,8 +52,8 @@ Read from `core/schema/definitions/core/repository.py`.
 | `CoreReadOnlyRepository` | `commit` | **AWARE** |
 | `CoreReadOnlyRepository` | `ref` | **AWARE** |
 
-`dev/knowledge/backend/git-integration.md` states that `commit` is LOCAL on all repository types.
-That is wrong for `CoreReadOnlyRepository`. A documentation task covers the correction.
+`dev/knowledge/backend/git-integration.md` stated that `commit` is LOCAL on all repository types.
+That is wrong for `CoreReadOnlyRepository`, and this change corrects the table there.
 
 ---
 
@@ -211,14 +211,14 @@ repository was re-pointed at a different target. The detector sees only two comm
 target that produced the imported commit is not stored anywhere.
 
 **Decision**: the mutation that changes a tracking target writes a short-lived suppression marker in
-the shared cache. The component that calls the detector reads and deletes it in one step, and
-passes the result as `target_changed`. Read-only repositories do not use it at all: their re-point
+the shared cache. The component that calls the detector reads it, passes the result as
+`target_changed`, and deletes it after the commit write for that branch succeeds. Read-only repositories do not use it at all: their re-point
 travels in band on the workflow model.
 
 - Key: repository id plus Infrahub branch name.
-- Writer, read-only: `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`
-  already computes `new_ref != current_ref` for `CoreReadOnlyRepository`. It sets the marker on
-  that comparison.
+- Read-only repositories write no marker. Their re-point travels in band on the workflow model,
+  set from the comparison
+  `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update` already makes.
 - Writer, read-write: **this comparison does not exist yet.** The same method returns to
   `super().mutate_update` immediately for any kind other than read-only, so nothing there compares
   the old and new `default_branch` on `CoreRepository`. The comparison has to be added before that
@@ -255,9 +255,8 @@ and never consume it. The marker would then survive its full hour and suppress t
 of that branch. Reading at classification time keeps `RETARGET` reachable in the detector's own
 tests, and deleting after the commit write keeps a failed cycle retryable.
 
-**Rationale**: the comparison is already computed in the mutation for read-only, so one of the two
-writers is nearly free. The cache is already how this codebase coordinates repository state across
-workers. The marker is deleted once the commit write lands, so it cannot suppress twice.
+**Rationale**: the cache is how this codebase already coordinates repository state across workers,
+and the read-write edit has no in-band channel to travel on. The marker is deleted once the commit write lands, so it cannot suppress twice.
 
 **Known failure mode, accepted and documented**: if the cache is flushed between the mutation and
 the reconciliation, a deliberate re-target is recorded as a rewrite. That costs more than a wrong
@@ -276,15 +275,20 @@ Nothing guards the window between them except `GIT_REPOSITORIES_SYNC` running wi
 
 **Alternatives rejected**:
 
-- **A fifth attribute storing the tracking target that produced the imported commit.** It is exact
-  and needs no cache. Rejected because the PRD fixes the shape at four scalars, and because the
-  target is already readable from the repository node, so a fifth attribute stores a value the
-  graph already holds.
+- **A fifth attribute storing the tracking target that produced the imported commit.** It is exact,
+  it needs no cache, and it is the strongest of the options. Rejected only because the PRD fixes
+  the shape at four scalars and argues that decision explicitly. If that constraint is relaxed,
+  this replaces the marker.
 - **A temporal read of the graph**: ask for the tracking target as it was at the imported commit's
   `updated_at`. Exact for read-write, where `default_branch` and `commit` are written by different
   actors at different times. Wrong for read-only, where the same mutation writes `ref` and `commit`
-  at the same timestamp, so the temporal read returns the new ref and never the old one. Rejected
-  because it would need two different mechanisms for the two kinds.
+  at the same timestamp, so the temporal read returns the new ref and never the old one.
+  **It is a live alternative to the cache marker**, not a rejected one, because the read-only path
+  no longer shares a mechanism with read-write: it carries its re-point in band. Replacing the
+  marker with a temporal read on the read-write side would remove the cache entirely, along with
+  its expiry, its sweep and its lost-marker path. It is left out of this design only because the
+  marker is already specified and tested; it is the first thing to reach for if the marker proves
+  awkward.
 - **Infer from reachability**: decide it is a re-target when the imported commit is still reachable
   from some other ref on the remote. Rejected as wrong in a common case: a rebase of a branch whose
   old commits were already merged elsewhere leaves them reachable, and the rewrite would go
@@ -359,8 +363,9 @@ high-frequency writer of the same attributes revisits it.
 
 **Idempotence for the trunk (SC-002).** The recorder writes only when the classification is
 `REWRITE`. After the reset and the re-import, the recorded commit equals the remote head, so the
-next cycle classifies `UNCHANGED` and writes nothing. Exactly one record per event follows from
-the classification, not from a guard.
+next cycle classifies `UNCHANGED` and writes nothing. No more than one record per event follows
+from the classification, not from a guard. Fewer is possible: a failed record write is never
+retried, because the commit is already in the graph.
 
 ---
 
@@ -380,7 +385,8 @@ which contradicts FR-010's per-branch requirement.
 
 **Why optional with no default.** Nothing needs backfilling, so no data migration is needed.
 
-**The read-only anomaly.** `CoreReadOnlyRepository` overrides `commit` and `ref` to AWARE. The four
+**The read-only anomaly.** `CoreReadOnlyRepository` sets `commit` to AWARE and adds an AWARE `ref`
+of its own. The four
 new attributes are declared on the generic and are **not** overridden on `CoreReadOnlyRepository`,
 so they stay LOCAL there too. A read-only repository therefore gets a diff-invisible, never-merged
 record while its `commit` beside it is diff-visible and merged. That asymmetry is deliberate: FR-012
@@ -460,8 +466,8 @@ is reachable, which is a different phase.
 
 ## R10. Read-only detection, and the overlap with PR #10669
 
-**PR #10669 (IFC-3152, "detect upstream movement on read-only repository refs")** is open, not a
-draft, and targets `pog-repo-commit-visibility-ifc-3101`. It is a different stack from this epic's
+**PR #10669 (IFC-3152, "detect upstream movement on read-only repository refs")** is merged into
+`pog-repo-commit-visibility-ifc-3101`, which has not itself landed on `develop`. It is a different stack from this epic's
 branch, which comes off `develop`. What it ships:
 
 - `backend/infrahub/git/refs_check/`: a scheduled flow that lists a read-only repository's remote

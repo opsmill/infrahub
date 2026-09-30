@@ -112,7 +112,7 @@ uv run pytest backend/tests/integration/git/test_git_live_remote.py::<node_id> -
 | One rewritten branch beside a healthy one | US3, SC-005 | The healthy branch still converges. The broadcast for it was sent before the failed branch raised. |
 | A read-only repository | US5 | A force-pushed tracked **branch**, not a moved tag: the read-only fetch omits `--force`, so a moved tag fails the fetch with "would clobber existing tag" instead of showing a lineage break. The record is written. No reset is performed. |
 | A deliberate ref change | US6, SC-007 | Nothing is recorded. |
-| A webhook on the trunk event | FR-014 | Exactly one delivery per rewrite. |
+| A webhook on the trunk event | FR-014 | One delivery per rewrite, never two. |
 
 ---
 
@@ -181,5 +181,6 @@ Tick each one against `spec.md`.
 - [ ] SC-006: the repository's stored state, read through the repository API, explains why content
       at an earlier commit cannot be re-derived. The human-facing view belongs to INFP-671.
 - [ ] SC-007: a deliberate re-point produces no rewrite report.
-- [ ] The three stale statements in `dev/knowledge/backend/` are corrected.
+- [ ] The stale statements in `dev/knowledge/backend/` are corrected. The branch-support row is
+      already fixed in this change; the rest have tasks.
 - [ ] A changelog fragment exists. This is a user-visible change.

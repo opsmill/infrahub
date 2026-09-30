@@ -615,8 +615,9 @@ read-write repository's configured default branch. Neither writes a record.
       already applied to a branch is not rewound.
 - [ ] T091 [P] Document the accepted failure mode of the suppression marker in
       `dev/knowledge/backend/git-sync.md`: a cache flush between the re-target mutation and the
-      reconciliation writes one spurious record and leaves the count one too high. The
-      reconciliation itself is identical either way.
+      reconciliation records the re-point as a rewrite, leaves the count one too high, and **fires
+      the trunk webhook**, so a subscriber sees a security-remediation notice for an ordinary
+      configuration change. The reconciliation itself is identical either way.
 - [ ] T092 Add a towncrier changelog fragment under `changelog/`. This is a user-visible change.
       Use the `creating-changelog-entries` skill. Filename: the convention is a bare GitHub issue
       number when the release note should link that issue, and a `+slug` otherwise. The epic lists
