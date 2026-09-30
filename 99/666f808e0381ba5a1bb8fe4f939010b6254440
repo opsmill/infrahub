@@ -1,0 +1,16 @@
+pyproject.toml
+  h_846b829e71a038 31
+uv.lock
+  h_846b829e71a038 1561,2769,2830,2832
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99666f808e0381ba5a1bb8fe4f939010b6254440",
+  "prompts": {},
+  "humans": {
+    "h_846b829e71a038": {
+      "author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}
