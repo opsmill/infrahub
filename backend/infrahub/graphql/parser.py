@@ -188,23 +188,26 @@ class GraphQLExtractor:
         if not selection_set:
             return None
 
+        fields = await self._collect_fields(selection_set=selection_set, path=path)
+        return self.apply_directives(selection_set=selection_set, fields=fields, path=path)
+
+    async def _collect_fields(self, selection_set: SelectionSetNode, path: str) -> dict[str, dict | None]:
+        """Collect the fields of a selection set, reading inline fragments as selections at the same path.
+
+        Directives are applied by the enclosing field, not per fragment, so their injected selections land in
+        the field's own selection set.
+        """
         fields: dict[str, dict | None] = {}
         for node in selection_set.selections:
-            sub_selection_set = getattr(node, "selection_set", None)
             if isinstance(node, FieldNode):
                 node_path = f"{path}{node.name.value}/"
                 self.process_directives(node=node, path=node_path)
 
-                value = await self.extract_fields(sub_selection_set, path=node_path)
+                value = await self.extract_fields(node.selection_set, path=node_path)
                 deep_merge_dict(dicta=fields, dictb={node.name.value: value})
 
             elif isinstance(node, InlineFragmentNode):
-                for sub_node in node.selection_set.selections:
-                    if isinstance(sub_node, FieldNode):
-                        sub_node_path = f"{path}{sub_node.name.value}/"
-                        sub_sub_selection_set = getattr(sub_node, "selection_set", None)
-                        value = await self.extract_fields(sub_sub_selection_set, path=sub_node_path)
-                        deep_merge_dict(dicta=fields, dictb={sub_node.name.value: value})
+                deep_merge_dict(dicta=fields, dictb=await self._collect_fields(node.selection_set, path=path))
 
             elif isinstance(node, FragmentSpreadNode):
                 if node.name.value in self.info.fragments:
@@ -212,7 +215,7 @@ class GraphQLExtractor:
                     if fragment_fields:
                         deep_merge_dict(dicta=fields, dictb=fragment_fields)
 
-        return self.apply_directives(selection_set=selection_set, fields=fields, path=path)
+        return fields
 
 
 def is_child_path(path: str, child: str) -> bool:
