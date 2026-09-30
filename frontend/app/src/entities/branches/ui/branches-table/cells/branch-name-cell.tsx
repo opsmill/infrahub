@@ -15,9 +15,17 @@ interface BranchNameCellProps {
   branch: BranchListItem;
   isSelected?: boolean;
   onClickCheckbox?: (e: PressEvent) => void;
+  repositoryName?: string;
+  excludeFromTabOrder?: boolean;
 }
 
-export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNameCellProps) {
+export function BranchNameCell({
+  branch,
+  isSelected,
+  onClickCheckbox,
+  repositoryName,
+  excludeFromTabOrder,
+}: BranchNameCellProps) {
   const { isAuthenticated } = useAuth();
 
   return (
@@ -29,6 +37,10 @@ export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNa
         <Checkbox
           isSelected={isSelected}
           onPress={onClickCheckbox}
+          aria-label={
+            repositoryName ? `Select ${branch.name} (${repositoryName})` : `Select ${branch.name}`
+          }
+          excludeFromTabOrder={excludeFromTabOrder}
           data-testid="branch-checkbox-cell"
           className="mt-2"
         />

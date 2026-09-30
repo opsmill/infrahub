@@ -1,6 +1,9 @@
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
-import type { BranchTableRow } from "@/entities/branches/domain/model/branch-table-row";
+import {
+  type BranchTableRow,
+  isBranchAnchorRow,
+} from "@/entities/branches/domain/model/branch-table-row";
 import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
 import { BranchActionsCell } from "@/entities/branches/ui/branches-table/cells/branch-actions-cell";
 import { BranchCommitCell } from "@/entities/branches/ui/branches-table/cells/branch-commit-cell";
@@ -30,13 +33,19 @@ export function getBranchIdentifierColumn(): ColumnDef<BranchTableRow, string> {
         onChange={table.toggleAllRowsSelected}
       />
     ),
-    cell: ({ row, table }) => (
-      <BranchNameCell
-        branch={row.original.branch}
-        isSelected={row.getIsSelected()}
-        onClickCheckbox={getToggleSelectedRowHandler({ row, table })}
-      />
-    ),
+    cell: ({ row, table }) => {
+      const anchor = table.getRow(row.original.branch.id);
+      const isAnchor = isBranchAnchorRow(row.original);
+      return (
+        <BranchNameCell
+          branch={row.original.branch}
+          isSelected={anchor.getIsSelected()}
+          onClickCheckbox={getToggleSelectedRowHandler({ row: anchor, table })}
+          repositoryName={isAnchor ? undefined : row.original.repository?.name}
+          excludeFromTabOrder={!isAnchor}
+        />
+      );
+    },
   });
 }
 
