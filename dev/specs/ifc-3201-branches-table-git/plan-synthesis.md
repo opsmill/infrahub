@@ -23,13 +23,15 @@ Paths are relative to `frontend/app/`. I checked every claim below against the w
 - **Cost:** one extra parameter, for a pure fan-out test that respects layering. A `ui/` helper would work but breaks "pure helpers → `domain/rules`".
 
 ### c. Grid template: keep it positional
+
+> **Superseded by plan.md (Summary, Layout) and research R4 after the 2026-09-30 critique (X1):** the three new columns get fixed tracks, so SC-004 holds.
 - With 11 columns, the three new ones land inside `repeat(n-4, fit-content(COLUMN_MAX_WIDTH))`, so no existing track moves. The spec accepts either option.
 - Move to a per-column tracks map when Upstream and Last import (IFC-3146/3147) arrive; doing it now is YAGNI (VII). Test: `style.gridTemplateColumns` contains `repeat(7,`.
 
 ### Also decided
 - **Hook:** `entities/branches/ui/hooks/use-branch-table-rows.ts`, `useBranchTableRows(branches): BranchTableRow[]`.
   - It uses `useQueries` over `getBranchRepositoriesQueryOptions({ branchName, syncWithGit: Boolean(b.sync_with_git) })`. The key is shared with branch details, and so is the 10 s poll (FR-014).
-  - Each result maps to a fetch value: `isPending` → pending, `isError` → error, otherwise `data`. The hook then calls the rule.
+  - Each result maps to a fetch value: `isPending` → pending, `isError` → error, otherwise `data`. The hook then calls the rule. (Superseded by data-model.md: `data` first, then `isError`, then pending; critique E2.)
   - It lives in branches because it produces branches-table rows. branches `ui` → repository `ui` is allowed.
   - Rejected: `repository/ui/queries/get-branches-repositories.query.ts`.
 - **Extract `RepositoryNameLink`:** yes, as `entities/repository/ui/branch-repositories/repository-name-link.tsx` with props `{ repository, branchName, isDefaultBranch }` (icon, `Link` via `getObjectDetailsUrl` + `getBranchQspOverride`, "Read-only" chip).
@@ -108,7 +110,7 @@ Paths are relative to `frontend/app/`. I checked every claim below against the w
 
 **T8.** Gates: `pnpm exec biome ci .`, `pnpm knip`, `pnpm exec betterer ci`, `pnpm test`.
 
-**T9 (checkpoint decision).** E2E in `tests/e2e/branches/test_branches.py`, following the `test_repository_sync_status.py` pattern (#10649 fixture).
+**T9 (superseded by plan.md, Constitution Check IV).** ~~E2E in `tests/e2e/branches/test_branches.py`, following the `test_repository_sync_status.py` pattern (#10649 fixture).~~ E2E is a new `tests/e2e/branches/test_branches_git_columns.py` over #10779's `broken_repository` fixture, promoted to `tests/e2e/branches/conftest.py`.
 
 ## 4. Risks for the checkpoint
 
@@ -125,6 +127,6 @@ Paths are relative to `frontend/app/`. I checked every claim below against the w
 
 - **II Branch-safe:** every request carries the row's branch (`getBranchRepositoriesQueryOptions({ branchName })`, keyed by `branchName`). Nothing reads the current branch. Links use `getBranchQspOverride(branchName, is_default)`, never the default branch's name.
 - **III Type safety:** `BranchTableRow` is a discriminated union that cells narrow on `state`. No `any`, no `!`, no new `as`.
-- **IV Test discipline:** a pure rule test (T1) and component tests for every SC-006 state (T7), mirroring source paths and reusing the #10779 fakes. Only query hooks and use-cases are mocked, as the frontend usually does. E2E is T9.
+- **IV Test discipline:** a pure rule test (T1) and component tests for every SC-006 state (T7), mirroring source paths and reusing the #10779 fakes. Only query hooks and use-cases are mocked, as the frontend usually does. E2E: see plan.md IV (T9 is superseded).
 - **V Performance:** no backend change. The ~40 requests per page are accepted, and branch details shares the cache.
 - **VII Simplicity:** anchor-row selection, the positional grid, one extraction with two callers, no new dependency, no manual memoization.
