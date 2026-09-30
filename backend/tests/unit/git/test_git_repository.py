@@ -22,9 +22,9 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.git.models import GitRepositoryAdd, GitRepositoryMerge
-from infrahub.git.repository import FailedImport, ImportStep, InfrahubReadOnlyRepository
+from infrahub.git.repository import BranchSkipReason, FailedImport, ImportStep, InfrahubReadOnlyRepository
 from tests.helpers.file_repo import MultipleStagesFileRepo
-from tests.helpers.git import clone_repository, open_repository
+from tests.helpers.git import LocalRemote, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
 
 PREFECT_LOGGER_NAME = "infrahub.git.repository"
@@ -127,7 +127,7 @@ async def test_validate_remote_branch_allows_conflicting_branch(
     merge time instead.
     """
     repository = await _build_repository_with_conflict(tmp_path, monkeypatch)
-    assert repository.validate_remote_branch(branch_name="change1") is True
+    assert repository.validate_remote_branch(branch_name="change1") is None
 
 
 async def test_has_conflicting_changes_no_false_positive(
@@ -535,3 +535,184 @@ def test_raise_if_branches_failed_logs_structured_fields(
     assert attrs["step"] == "collection"
     assert attrs["reason"] == "schema validation failed"
     assert attrs["repository"] == "test-repo"
+
+
+TRUNK = "develop"
+
+
+class BranchListingClient(InfrahubClient):
+    """An SDK client that answers every GraphQL call with an empty list of Infrahub branches."""
+
+    def __init__(self) -> None:
+        super().__init__(config=Config(requester=dummy_async_request))
+
+    async def execute_graphql(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        return {"Branch": []}
+
+
+async def clone_trunk_repository(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, remote: LocalRemote
+) -> InfrahubRepository:
+    repos_dir = tmp_path / "repositories"
+    repos_dir.mkdir()
+    monkeypatch.setattr(registry, "_default_branch", "main")
+    monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
+    monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", [])
+    return await clone_repository(
+        id=UUIDT.new(),
+        name="trunk-repo",
+        location=str(remote.directory),
+        default_branch=TRUNK,
+        client=BranchListingClient(),
+        update_commit_value=False,
+    )
+
+
+@dataclass
+class SkipReasonCase:
+    name: str
+    branch_name: str
+    expected: BranchSkipReason | None
+
+
+SKIP_REASON_CASES = [
+    SkipReasonCase(
+        name="name_of_the_infrahub_default_branch",
+        branch_name="main",
+        expected=BranchSkipReason.DEFAULT_BRANCH_COLLISION,
+    ),
+    SkipReasonCase(name="name_infrahub_cannot_store", branch_name="ab", expected=BranchSkipReason.INVALID_BRANCH_NAME),
+    SkipReasonCase(name="ordinary_branch", branch_name="feature-1", expected=None),
+]
+
+
+@pytest.mark.parametrize("case", SKIP_REASON_CASES, ids=[case.name for case in SKIP_REASON_CASES])
+async def test_validate_remote_branch_reports_why_a_branch_is_skipped(
+    case: SkipReasonCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, patch_prefect_logger: None
+) -> None:
+    remote = LocalRemote.create(directory=tmp_path / "source-repo", trunk=TRUNK, branches=["main", "ab", "feature-1"])
+    repository = await clone_trunk_repository(tmp_path, monkeypatch, remote)
+
+    assert repository.validate_remote_branch(branch_name=case.branch_name) is case.expected
+
+
+async def test_collect_pending_imports_records_a_new_colliding_branch_as_skipped(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, patch_prefect_logger: None
+) -> None:
+    """A colliding branch with no local counterpart is new on every run, and is skipped as such."""
+    remote = LocalRemote.create(directory=tmp_path / "source-repo", trunk=TRUNK, branches=["main", "ab"])
+    repository = await clone_trunk_repository(tmp_path, monkeypatch, remote)
+
+    collected = await repository.collect_pending_imports()
+
+    assert collected.skipped_branches == ["main"]
+    assert collected.imports == []
+    assert collected.failed_imports == []
+
+
+async def test_collect_pending_imports_records_an_updated_colliding_branch_as_skipped(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, patch_prefect_logger: None
+) -> None:
+    """A colliding branch that exists locally is reported as updated when it moves, and is skipped too."""
+    remote = LocalRemote.create(directory=tmp_path / "source-repo", trunk=TRUNK, branches=["main"])
+    repository = await clone_trunk_repository(tmp_path, monkeypatch, remote)
+    repository.get_git_repo_main().create_head("main", "origin/main")
+    remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+
+    new_branches, updated_branches = await repository.compare_local_remote()
+    assert (new_branches, updated_branches) == ([], [])
+
+    collected = await repository.collect_pending_imports()
+
+    assert collected.skipped_branches == ["main"]
+    assert collected.imports == []
+
+
+async def test_collect_pending_imports_records_the_colliding_remote_head_as_skipped(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, patch_prefect_logger: None
+) -> None:
+    """A clone holds the remote's HEAD as a local branch, so an unchanged colliding HEAD is neither new nor updated."""
+    remote = LocalRemote.create(directory=tmp_path / "source-repo", trunk=TRUNK, branches=["main"], head="main")
+    repository = await clone_trunk_repository(tmp_path, monkeypatch, remote)
+
+    new_branches, updated_branches = await repository.compare_local_remote()
+    assert (new_branches, updated_branches) == ([], [])
+
+    collected = await repository.collect_pending_imports()
+
+    assert collected.skipped_branches == ["main"]
+    assert collected.advanced_skipped_branches == []
+    assert collected.imports == []
+    assert collected.failed_imports == []
+
+
+@dataclass
+class AdvanceCase:
+    name: str
+    colliding_branch_on_first_fetch: bool
+    push_to_colliding_branch: bool
+    expected_advanced: list[str]
+
+
+ADVANCE_CASES = [
+    AdvanceCase(
+        name="unchanged_colliding_branch",
+        colliding_branch_on_first_fetch=True,
+        push_to_colliding_branch=False,
+        expected_advanced=[],
+    ),
+    AdvanceCase(
+        name="colliding_branch_received_a_commit",
+        colliding_branch_on_first_fetch=True,
+        push_to_colliding_branch=True,
+        expected_advanced=["main"],
+    ),
+    AdvanceCase(
+        name="colliding_branch_pushed_after_the_clone",
+        colliding_branch_on_first_fetch=False,
+        push_to_colliding_branch=False,
+        expected_advanced=["main"],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", ADVANCE_CASES, ids=[case.name for case in ADVANCE_CASES])
+async def test_collect_pending_imports_detects_a_skipped_branch_that_advanced(
+    case: AdvanceCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, patch_prefect_logger: None
+) -> None:
+    """A skipped branch counts as advanced when its head moved, or when it appeared, since the last fetch.
+
+    A clone already holds every branch the remote had, so an unchanged branch is never counted.
+    """
+    remote = LocalRemote.create(
+        directory=tmp_path / "source-repo",
+        trunk=TRUNK,
+        branches=["main"] if case.colliding_branch_on_first_fetch else [],
+    )
+    repository = await clone_trunk_repository(tmp_path, monkeypatch, remote)
+
+    if not case.colliding_branch_on_first_fetch:
+        remote.create_branch("main")
+    if case.push_to_colliding_branch:
+        remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+
+    collected = await repository.collect_pending_imports()
+
+    assert collected.skipped_branches == ["main"]
+    assert collected.advanced_skipped_branches == case.expected_advanced
+
+
+async def test_collect_pending_imports_reports_an_advance_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, patch_prefect_logger: None
+) -> None:
+    """A later run on the same clone with nothing further pushed does not count the branch as advanced again."""
+    remote = LocalRemote.create(directory=tmp_path / "source-repo", trunk=TRUNK, branches=["main"])
+    repository = await clone_trunk_repository(tmp_path, monkeypatch, remote)
+    remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+
+    first = await repository.collect_pending_imports()
+    second = await repository.collect_pending_imports()
+
+    assert first.advanced_skipped_branches == ["main"]
+    assert second.skipped_branches == ["main"]
+    assert second.advanced_skipped_branches == []

@@ -29,55 +29,16 @@ branch-mapping helpers are never used on it.
 
 ## Resolving the trunk on the repository object
 
-`InfrahubRepositoryBase` holds an optional `default_branch_name` field exposed through a property:
+Every construction of a read-write repository object reads the trunk from the repository node, on
+the Infrahub branch the operation runs on, whether or not the worker already has a clone. There is
+no fallback to Infrahub's default branch. The lifecycle (the resolver, the required fields, which
+branch the node is read on) is in
+[Git Sync](git-sync.md#the-repository-object-and-where-its-default-branch-comes-from).
 
-```python
-# git/base.py::InfrahubRepositoryBase.default_branch
-@property
-def default_branch(self) -> str:
-    return self.default_branch_name or registry.default_branch
-```
-
-The fallback is silent. When `default_branch_name` is unset, the object treats **Infrahub's** default
-branch as the remote's trunk, with no log line, no error, and no status change.
-
-Only `resolve_checkout_ref` loads the value from the graph
-(`git/repository.py::InfrahubRepository.resolve_checkout_ref` for read-write,
-`InfrahubReadOnlyRepository.resolve_checkout_ref` for read-only), and
-`InfrahubRepositoryIntegrator.init` calls it **only** inside the failure branch:
-
-```python
-# git/integrator.py::InfrahubRepositoryIntegrator.init (abridged)
-try:
-    self.validate_local_directories()
-except RepositoryInvalidFileSystemError:
-    await self.create_locally(checkout_ref=await self.resolve_checkout_ref(), ...)
-```
-
-The practical consequence, and the shape of most reported non-`main` bugs:
-
-- **Worker has no local clone (cold path):** validation raises, `resolve_checkout_ref()` runs, the
-  trunk is resolved correctly.
-- **Worker already has a local clone (warm path):** validation passes, `resolve_checkout_ref()` never
-  runs, and the object falls back to Infrahub's default branch.
-
-So a repository behaves correctly on a worker's first touch and incorrectly on every subsequent one.
-
-### Which construction paths resolve it today
-
-| Path | Passes the trunk? |
-|---|---|
-| Periodic sync (`git/tasks.py::sync_repository_from_origin`) | Yes, explicitly from the node |
-| Merge (`core/merge/repository_merge_dispatcher.py` → `git/tasks.py::merge_git_repository`) | Yes, explicitly via `GitRepositoryMerge.default_branch` |
-| `get_initialized_repo` (`git/repository.py::get_initialized_repo`) | **No.** Constructs with id, name, commit, client only |
-
-`get_initialized_repo` is the factory used by roughly sixteen call sites, including artifacts,
-transforms, generators, computed attributes, proposed-change diffs and checks, and the message-bus
-git operations. It is TTLCached for 30s keyed on repository id, name, kind and commit.
-
-> **Volatile section.** The fallback and the unresolved factory are a known defect. The planned fix
-> makes the trunk a required field resolved once inside `get_initialized_repo`, removing the
-> `or registry.default_branch` fallback entirely. Update this section when that lands.
+`get_initialized_repo` is the factory most flows construct through: artifacts, transforms,
+generators, computed attributes, proposed-change diffs and checks, and the message-bus git
+operations. It is TTLCached for 30s keyed on repository id, name, kind, commit and the Infrahub
+branch.
 
 ## Storage is per worker, not shared
 
@@ -94,8 +55,8 @@ Layout under `directory_root` (`get_repositories_directory() / str(repository.id
 - `temp`: worktrees for commits pending validation.
 
 The `main` directory name is literal and unrelated to any branch name.
-`InfrahubRepositoryBase._resolve_worktree_identifier` maps a non-Infrahub-default trunk onto that
-same `main` identifier.
+`InfrahubRepository._resolve_worktree_identifier` maps a non-Infrahub-default trunk onto that same
+`main` identifier.
 
 ## How the workers converge
 
@@ -216,11 +177,10 @@ LOCAL attribute, not on a related node.
 ## Staging repositories
 
 A repository being validated inside a proposed change carries `internal_status` of `staging`
-(`InfrahubRepositoryBase.internal_status`, default `active`). The staging branch is resolved per sync
+(`InfrahubRepository.internal_status`, a required field read from the node). The staging branch is resolved per sync
 from `RepositoryData.get_staging_branch` (`git/models.py`), which scans `branch_info` for the entry
 whose `internal_status` is `staging`. `InfrahubRepository._collect_staging_imports` pairs that branch
-with the repository's trunk, so staging inherits whatever the object resolved: it is correct exactly
-when the trunk is correct, and wrong in the same cases.
+with the repository's trunk.
 
 ## Deleting a repository is destructive
 
@@ -266,12 +226,11 @@ rewritten history are indistinguishable and both are reported as "New commit det
   default branch changes to the new trunk's history, and a previously imported branch of that name is
   left orphaned. `get_initialized_repo` is also cached for 30s, so an edit is served stale for up to
   that long; this is consistent with the lack of reconciliation rather than a separate bug.
-- **A skipped branch is re-reported every cycle.** When `validate_remote_branch` rejects a branch it
-  is never created locally, so `compare_local_remote()` classifies it as new again on the next cycle.
-  A remote branch named like Infrahub's default, on a repository whose trunk is something else, logs
-  "Ignoring import of mismatched default branch" once a minute for the life of the repository
-  (logged by `InfrahubRepositoryBase.validate_remote_branch` each time the import path evaluates the
-  branch).
+- **A skipped branch is re-evaluated every cycle.** A remote branch named like Infrahub's default, on
+  a repository whose trunk is something else, is never created locally by the sync, so every sync
+  skips it again and the process log repeats once a minute. The operator-facing warning is gated separately, and a
+  push to that branch can go unreported when more than one worker runs; both are covered in
+  [Git Sync](git-sync.md#branch-import-and-mapping).
 - **A branch left ahead of its remote is re-reported every cycle too.** After a failed push the local
   branch sits ahead of `origin/`, so `compare_local_remote` flags it as updated, `pull()` returns
   `True` with no change, and "An update was detected but the commit remained the same after `pull()`"

@@ -68,8 +68,18 @@ from .models import (
     UserCheckDefinitionData,
 )
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
-from .sync import RepositoryAdder, RepositoryFileImporter, RepositorySyncer
+from .sync import RepositoryAdder, RepositoryBranchesFailedError, RepositoryFileImporter, RepositorySyncer, SyncReport
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
+
+
+def log_skipped_branches(repo: InfrahubRepository, report: SyncReport) -> None:
+    """Record every skipped remote branch of the run as a warning in the current flow run's log."""
+    log = get_run_logger()
+    for branch_name in report.skipped_branches:
+        log.warning(
+            f"Skipped remote branch '{branch_name}' of repository {repo.name}: its name collides with the "
+            f"Infrahub default branch, which is mapped to this repository's default branch '{repo.default_branch}'."
+        )
 
 
 def format_check_log_entry(entry: dict[str, Any]) -> str:
@@ -100,7 +110,12 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
     if model.internal_status != RepositoryInternalStatus.ACTIVE.value:
         return
 
-    await RepositorySyncer(lock_registry=lock.registry, importer=importer).sync(repo)
+    try:
+        report = await RepositorySyncer(lock_registry=lock.registry, importer=importer).sync(repo)
+    except RepositoryBranchesFailedError as exc:
+        log_skipped_branches(repo=repo, report=exc.report)
+        raise
+    log_skipped_branches(repo=repo, report=report)
 
     try:
         pinned_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
@@ -220,10 +235,22 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
     infrahub_branch: str,
     staging_branch: str | None = None,
 ) -> None:
+    """Synchronize one repository, linking the run to it when there is something to see there.
+
+    A run is linked when it imports a branch, when it reports a skipped branch, or when it fails while
+    the repository is online. A successful run where nothing moved on the remote is not linked.
+
+    Raises:
+        RepositoryBranchesFailedError: When at least one branch failed to synchronize.
+        RepositoryError: When the repository cannot be read or synchronized.
+        CommitNotFoundError: When a commit the sync needs cannot be found.
+
+    """
     syncer = RepositorySyncer(lock_registry=lock.registry, importer=RepositoryFileImporter())
+    online = operational_status == RepositoryOperationalStatus.ONLINE.value
     try:
-        # Constructed inside the handler: it now reads the repository node, so a failing read has to
-        # be tagged with the repository like any other sync failure.
+        # Constructed inside the handler: it reads the repository node, so a failing read has to be
+        # tagged with the repository like any other sync failure.
         repo = await InfrahubRepository.init(
             id=repository_id,
             name=repository_name,
@@ -231,11 +258,33 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
             client=client,
             infrahub_branch_name=infrahub_branch,
         )
-        await syncer.sync(repo, staging_branch=staging_branch)
     except (RepositoryError, CommitNotFoundError):
-        if operational_status == RepositoryOperationalStatus.ONLINE.value:
+        if online:
             await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
         raise
+
+    try:
+        report = await syncer.sync(repo, staging_branch=staging_branch)
+    except RepositoryBranchesFailedError as exc:
+        await report_sync_run(repo=repo, report=exc.report, infrahub_branch=infrahub_branch, link_run=online)
+        raise
+    except (RepositoryError, CommitNotFoundError):
+        if online:
+            await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
+        raise
+    await report_sync_run(repo=repo, report=report, infrahub_branch=infrahub_branch, link_run=False)
+
+
+async def report_sync_run(repo: InfrahubRepository, report: SyncReport, infrahub_branch: str, link_run: bool) -> None:
+    """Log the run's skipped branches when it moved something, and link the run when there is a reason to.
+
+    Every tag update is rebuilt from the tags the run started with, so the call carries the branches
+    the imports tagged the run with as well, or it would drop them.
+    """
+    if report.reports_skipped_branches:
+        log_skipped_branches(repo=repo, report=report)
+    if report.reports_skipped_branches or link_run:
+        await add_tags(branches=[infrahub_branch, *report.attempted_import_branches], nodes=[str(repo.id)])
 
 
 def resolve_initial_import_branch(repo: InfrahubRepository, init_failed: bool) -> str | None:

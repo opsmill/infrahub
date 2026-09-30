@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError
+from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError, RepositoryError
 
 from .repository import FailedImport, ImportStep, InfrahubRepository, PendingObjectImport
 
@@ -14,6 +15,44 @@ if TYPE_CHECKING:
 
     from .integrator import ObjectImportPlan
     from .models import GitRepositoryAdd
+
+
+@dataclass(frozen=True)
+class SyncReport:
+    """What a synchronization run did, for the caller to report on.
+
+    ``skipped_branches`` are the remote branches left out because their name collides with Infrahub's
+    default branch. ``imported_branches`` are the Infrahub branches whose import was applied, and
+    ``failed_import_branches`` those whose import was attempted and failed. ``advanced_skipped_branches``
+    are the skipped branches whose remote head moved during the run.
+    """
+
+    skipped_branches: tuple[str, ...]
+    imported_branches: tuple[str, ...]
+    failed_import_branches: tuple[str, ...]
+    advanced_skipped_branches: tuple[str, ...]
+
+    @property
+    def attempted_import_branches(self) -> tuple[str, ...]:
+        """The Infrahub branches the run tried to import, whether or not the import succeeded."""
+        return self.imported_branches + self.failed_import_branches
+
+    @property
+    def reports_skipped_branches(self) -> bool:
+        """Whether a synchronization cycle reports its skipped branches.
+
+        It does when it skipped one and either imported a branch or saw a skipped branch receive a
+        commit, so a cycle where nothing moved on the remote stays silent.
+        """
+        return bool(self.skipped_branches) and bool(self.imported_branches or self.advanced_skipped_branches)
+
+
+class RepositoryBranchesFailedError(RepositoryError):
+    """Raised when at least one branch failed to synchronize, carrying the report of the whole run."""
+
+    def __init__(self, identifier: str, report: SyncReport, message: str | None = None) -> None:
+        super().__init__(identifier=identifier, message=message)
+        self.report = report
 
 
 class RepositoryImporter(ABC):
@@ -103,11 +142,24 @@ class RepositorySyncer:
         self._lock_registry = lock_registry
         self._importer = importer
 
-    async def sync(self, repo: InfrahubRepository, staging_branch: str | None = None) -> None:
+    async def sync(self, repo: InfrahubRepository, staging_branch: str | None = None) -> SyncReport:
+        """Synchronize the repository and report what the run did.
+
+        Raises:
+            RepositoryConnectionError: When the remote repository is unreachable.
+            RepositoryCredentialsError: When the credentials for the remote repository are invalid.
+            RepositoryError: When fetching the remote fails for another reason.
+            CommitNotFoundError: When a commit the sync needs cannot be found.
+            RepositoryBranchesFailedError: When at least one branch failed to synchronize; the error
+                carries the same report a successful run returns.
+
+        """
         async with self._lock_registry.get(name=repo.name, namespace="repository"):
             collected = await repo.collect_pending_imports(staging_branch=staging_branch)
 
         failed_imports = list(collected.failed_imports)
+        imported_branches: list[str] = []
+        failed_import_branches: list[str] = []
         for pending_import in collected.imports:
             try:
                 plan = await self._importer.build_branch_import(repo, pending_import)
@@ -123,5 +175,19 @@ class RepositorySyncer:
                         branch_name=pending_import.infrahub_branch_name, step=ImportStep.IMPORT, reason=str(exc)
                     )
                 )
+                failed_import_branches.append(pending_import.infrahub_branch_name)
+                continue
+            imported_branches.append(pending_import.infrahub_branch_name)
 
-        repo.raise_if_branches_failed(failed_imports)
+        report = SyncReport(
+            skipped_branches=tuple(collected.skipped_branches),
+            imported_branches=tuple(imported_branches),
+            failed_import_branches=tuple(failed_import_branches),
+            advanced_skipped_branches=tuple(collected.advanced_skipped_branches),
+        )
+        try:
+            repo.raise_if_branches_failed(failed_imports)
+        except RepositoryError as exc:
+            # Same identifier and message, so the original adds nothing to the chain.
+            raise RepositoryBranchesFailedError(identifier=exc.identifier, report=report, message=exc.message) from None
+        return report

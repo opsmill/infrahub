@@ -144,7 +144,7 @@ raises `RepositoryInvalidBranchError` when `branch_name not in refs.branches`.
 | `imports` | `list[PendingObjectImport]` | unchanged |
 | `failed_imports` | `list[FailedImport]` | unchanged |
 | `skipped_branches` | `list[str]` | **new**, default empty. Remote branches not imported because their name collides with the Infrahub default branch while the trunk differs. |
-| `advanced_skipped_branches` | `list[str]` | **new**, default empty. The subset of `skipped_branches` whose remote head moved during this run's fetch. Derived by listing the remote heads immediately before `fetch` and comparing after it. A branch with no head in the pre-fetch listing is omitted, so a cold clone reports nothing on this basis. |
+| `advanced_skipped_branches` | `list[str]` | **new**, default empty. The subset of `skipped_branches` whose remote head moved during this run's fetch. Derived by reading the skipped branch's remote-tracking ref immediately before `fetch` and comparing after it. A branch with no pre-fetch ref counts as moved, since it was pushed after the clone's last fetch; a fresh worker clones before the read, so it reports nothing on this basis. |
 
 ### `backend/infrahub/git/repository.py::BranchSkipReason` (new)
 

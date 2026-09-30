@@ -62,16 +62,28 @@ class FailedImport:
     reason: str
 
 
+class BranchSkipReason(StrEnum):
+    """Why a remote branch is not imported into Infrahub."""
+
+    DEFAULT_BRANCH_COLLISION = "default_branch_collision"
+    INVALID_BRANCH_NAME = "invalid_branch_name"
+
+
 @dataclass
 class CollectedImports:
     """Outcome of the git/branch-setup phase of a sync.
 
     ``imports`` are the branches ready to have their objects imported. ``failed_imports`` are the
     branches whose git or branch setup failed, each carrying the phase that failed and the reason.
+    ``skipped_branches`` are the remote branches left out because their name collides with Infrahub's
+    default branch, and ``advanced_skipped_branches`` the subset of them whose remote head moved
+    during this run's fetch.
     """
 
     imports: list[PendingObjectImport] = field(default_factory=list)
     failed_imports: list[FailedImport] = field(default_factory=list)
+    skipped_branches: list[str] = field(default_factory=list)
+    advanced_skipped_branches: list[str] = field(default_factory=list)
 
 
 class InfrahubRepository(InfrahubRepositoryIntegrator):
@@ -183,19 +195,25 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             return "main"
         return branch_name
 
-    def validate_remote_branch(self, branch_name: str) -> bool:
+    def _collides_with_infrahub_default_branch(self, branch_name: str) -> bool:
+        """Whether the branch is named like Infrahub's default branch while that name maps to another branch."""
+        return branch_name == registry.default_branch and branch_name != self.default_branch
+
+    def validate_remote_branch(self, branch_name: str) -> BranchSkipReason | None:
         """Process a remote branch to validate that we can use it safely.
+
+        Returns None when the branch can be imported, otherwise the reason it must be skipped.
 
         - Make sure that the branch name won't conflict with infrahub's default branch
         - Make sure that a representation of the branch can be created in the database
         - Warn (but do not block) when the branch would conflict with the default branch on merge
         """
-        if branch_name == registry.default_branch and branch_name != self.default_branch:
+        if self._collides_with_infrahub_default_branch(branch_name=branch_name):
             # If the default branch of Infrahub and the git repository differs we map the repository
             # default branch to that of Infrahub. In that scenario we can't import a branch from the
             # repository if it matches the default branch of Infrahub
             log.warning("Ignoring import of mismatched default branch %s of repository %s", branch_name, self.name)
-            return False
+            return BranchSkipReason.DEFAULT_BRANCH_COLLISION
 
         try:
             # Check if the branch can be created in the database
@@ -206,7 +224,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 branch_name,
                 ", ".join(error["msg"] for error in e.errors()),
             )
-            return False
+            return BranchSkipReason.INVALID_BRANCH_NAME
 
         # Surface a warning when the branch conflicts with the default branch so users
         # know a future merge will be rejected, but still allow the import to proceed.
@@ -219,7 +237,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 self.name,
                 exc,
             )
-            return True
+            return None
 
         if has_conflicts:
             log.warning(
@@ -227,7 +245,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 "the merge will be rejected until the conflict is resolved upstream"
             )
 
-        return True
+        return None
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
         branches = {}
@@ -302,12 +320,24 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         """
         log.info("Starting the synchronization of %s.", self.name)
 
+        # The remote-tracking ref still holds the previous fetch's head, which is what tells a skipped
+        # branch that received a commit apart from one that is merely skipped again.
+        colliding_branch = self._get_colliding_branch_name()
+        head_before_fetch = self._get_remote_tracking_commit(colliding_branch) if colliding_branch else None
+
         await self.fetch()
 
+        # Decided from the remote alone: a clone whose remote HEAD is the colliding branch holds it as a
+        # local branch too, so the local/remote comparison below does not list it until it moves.
+        skipped_branches, advanced_skipped_branches = self._find_skipped_branches(
+            colliding_branch=colliding_branch, head_before_fetch=head_before_fetch
+        )
         new_branches, updated_branches = await self.compare_local_remote()
 
         if not new_branches and not updated_branches:
-            return CollectedImports()
+            return CollectedImports(
+                skipped_branches=skipped_branches, advanced_skipped_branches=advanced_skipped_branches
+            )
 
         log.debug("New Branches %s, Updated Branches %s for %s", new_branches, updated_branches, self.name)
 
@@ -321,8 +351,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             new_branches, updated_branches = await self._exclude_read_only_branches(new_branches, updated_branches)
 
             for branch_name in new_branches:
-                is_valid = self.validate_remote_branch(branch_name=branch_name)
-                if not is_valid:
+                if self.validate_remote_branch(branch_name=branch_name) is not None:
                     continue
 
                 infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
@@ -354,8 +383,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 imports.append(PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit))
 
             for branch_name in updated_branches:
-                is_valid = self.validate_remote_branch(branch_name=branch_name)
-                if not is_valid:
+                if self.validate_remote_branch(branch_name=branch_name) is not None:
                     continue
 
                 infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
@@ -383,10 +411,47 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         self.name,
                     )
 
-        imports.extend(
-            await self._collect_staging_imports(staging_branch=staging_branch, updated_branches=updated_branches)
+        return CollectedImports(
+            imports=imports
+            + await self._collect_staging_imports(staging_branch=staging_branch, updated_branches=updated_branches),
+            failed_imports=failed_imports,
+            skipped_branches=skipped_branches,
+            advanced_skipped_branches=advanced_skipped_branches,
         )
-        return CollectedImports(imports=imports, failed_imports=failed_imports)
+
+    def _get_colliding_branch_name(self) -> str | None:
+        """Return the name a remote branch cannot be imported under, or None when no name collides.
+
+        Only an active repository imports branches, so only an active repository has one to skip.
+        """
+        if not self.has_origin or self.internal_status != RepositoryInternalStatus.ACTIVE:
+            return None
+        if not self._collides_with_infrahub_default_branch(branch_name=registry.default_branch):
+            return None
+        return registry.default_branch
+
+    def _get_remote_tracking_commit(self, branch_name: str) -> str | None:
+        """Return the commit of the branch's remote-tracking ref, or None when the clone has no such ref."""
+        remote_refs = self.get_git_repo_main().remotes.origin.refs
+        if branch_name not in remote_refs:
+            return None
+        return str(remote_refs[branch_name].commit)
+
+    def _find_skipped_branches(
+        self, colliding_branch: str | None, head_before_fetch: str | None
+    ) -> tuple[list[str], list[str]]:
+        """Return the skipped branches the remote holds, and the subset whose head moved during the fetch.
+
+        A branch with no head before the fetch counts as moved: the clone is taken before that read, so a
+        head missing from it means the branch was pushed to the remote since this clone last fetched.
+        """
+        if colliding_branch is None:
+            return [], []
+        head_after_fetch = self._get_remote_tracking_commit(colliding_branch)
+        if head_after_fetch is None:
+            return [], []
+        advanced = [colliding_branch] if head_after_fetch != head_before_fetch else []
+        return [colliding_branch], advanced
 
     async def _exclude_read_only_branches(
         self, new_branches: list[str], updated_branches: list[str]

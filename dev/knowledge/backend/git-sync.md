@@ -35,10 +35,6 @@ Three abstract hooks on `InfrahubRepositoryBase` keep the base class from needin
 its own: `_get_mapped_remote_branch`, `_get_mapped_target_branch` and `_resolve_worktree_identifier`.
 The read-write kind implements the mapping described below; the read-only kind returns its input.
 
-> **Merge-order note.** `dev/knowledge/backend/git-integration.md` exists on `develop` and documents
-> the previous shape — an optional default-branch field with a silent fallback, and a table of which
-> construction paths resolve it. Both are gone. Reconcile the two pages when these branches meet.
-
 ## Branch import and mapping
 
 - A repository's own `default_branch` is mapped onto Infrahub's default branch by
@@ -47,10 +43,32 @@ The read-write kind implements the mapping described below; the read-only kind r
   is named.
 - Because of that mapping, when the repository's default branch differs from Infrahub's, a remote
   branch literally named like Infrahub's default branch cannot be imported — it would collide with
-  the mapped default. The skip happens in `validate_remote_branch` (which logs
-  "Ignoring import of mismatched default branch" and returns `False`), *not* in
-  `_get_mapped_target_branch`. Both of those live on `InfrahubRepository` rather than the shared
-  base, because only a read-write repository has a default branch to collide with.
+  the mapped default. The skip is decided in `InfrahubRepository.validate_remote_branch`, *not* in
+  `_get_mapped_target_branch`. It returns `None` for a branch to import, or a `BranchSkipReason`:
+  `DEFAULT_BRANCH_COLLISION` for this case, `INVALID_BRANCH_NAME` for a name Infrahub cannot store
+  as a branch. Callers act on the reason and never re-test the collision themselves.
+- The sync never creates the colliding branch locally, so it usually shows up as new on every sync
+  and is skipped again, logging "Ignoring import of mismatched default branch" to the process log
+  each time. A clone whose remote HEAD is the colliding branch does hold it as a local branch, and
+  the local/remote comparison does not list it until it moves. So `collect_pending_imports` decides
+  the skip from the remote alone: whenever the remote has the colliding branch, it is recorded in
+  `CollectedImports.skipped_branches`, whether or not the comparison listed it.
+- It is also recorded in `advanced_skipped_branches` when its remote head moved during this run's
+  fetch. Its remote-tracking ref is read before the fetch and compared after it. A branch absent from
+  that earlier read counts as moved, because it was pushed after this clone's last fetch. A worker
+  with no clone makes one before the read, so its first sync does not see the branch as new.
+- `RepositorySyncer.sync` returns a `SyncReport` of the skipped, imported and advanced branches. When
+  a branch fails, it raises `RepositoryBranchesFailedError` carrying the same report, so a caller can
+  still report the skipped branches before re-raising.
+- The operator-facing record of the skip is a warning in the flow run's log, emitted through
+  Prefect's run logger. The add flow writes it whenever its first sync skips a branch. The
+  per-repository sync flow writes it only when the run imported a branch or saw a skipped branch
+  advance (`SyncReport.reports_skipped_branches`).
+- That sync flow's run is linked to the repository node when it imports a branch (the import tags the
+  run itself), when it writes the warning, or when it fails while the repository is online. A
+  successful run where nothing moved adds nothing to the repository's task history. Every tag update
+  is rebuilt from the tags the run started with, so a later `add_tags` call must repeat the branches
+  the imports tagged, or it drops them.
 - The reverse mapping — from an Infrahub branch name to the remote git branch — is
   `_get_mapped_remote_branch`. Any git operation that names a remote ref (`pull`, `push`) must
   route the branch name through it: when the repository's default branch differs from Infrahub's,
@@ -59,6 +77,19 @@ The read-write kind implements the mapping described below; the read-only kind r
 - `git.import_sync_branch_names` (settings) is a list of names or regex patterns selecting which
   other remote branches are imported during sync; branches created in Infrahub with
   `sync_with_git` are imported regardless.
+
+### A push to the skipped branch can go unreported
+
+The advance check compares against the remote-tracking refs, and those move on every fetch, not only
+the sync's own. After each sync the initiating worker broadcasts `RefreshGitFetch`, and every other
+worker fetches on receipt (see [Git Integration](git-integration.md#how-the-workers-converge)). So a
+push to the skipped branch is absorbed by whichever fetch runs first: when that is a broadcast fetch
+on a worker whose next sync then finds nothing moved, the push is never reported. A single worker
+ignores its own broadcasts, so there only the rarer fetches outside the sync can absorb a push: the
+one a repository makes when its location changed, or when a pinned commit is missing from the clone.
+More than one worker can also each report the same
+push, at most once per worker. Reporting it reliably needs a baseline that only the sync writes, such
+as a worker-local ref updated after each comparison.
 
 ## Git error surfacing
 

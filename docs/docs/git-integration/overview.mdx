@@ -54,6 +54,8 @@ When you merge a Proposed Change and the source branch is set to sync with Git, 
 
 A read-write repository has a `default_branch` attribute (defaulting to `main`) that names the Git branch mapped to Infrahub's default branch. Merges into Infrahub's default branch are pushed back to that Git branch on the remote, and that Git branch is imported as Infrahub's default branch, so a repository can use a non-`main` Git default branch. When `default_branch` is not `main`, a Git branch literally named `main` is not imported.
 
+Infrahub records each skipped branch as a warning in the repository's **Tasks** tab, naming the branch and the repository's `default_branch`. The warning appears in the task that connects the repository. After that, it appears in a synchronization task only when that synchronization imports a branch, or sees a new commit on the skipped branch. Successful synchronizations where nothing changed on the remote add no task. With several task workers, a push to the skipped branch is not always reported, because each worker detects the new commit against its own copy of the repository and another worker's refresh can update that copy first. The same push can also be reported by more than one worker.
+
 ### Read-only Repository: controlled unidirectional flow
 
 The **Read-only Repository** type offers a simpler, unidirectional integration designed for scenarios where you need to consume resources from Git without modifying the external repository.

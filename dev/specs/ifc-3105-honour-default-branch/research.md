@@ -139,8 +139,8 @@ test must construct with the trunk instead; the plan keeps it and adds a mutatio
   `git/repository.py:159`, so the capture point is the statement before it.
 - Tags added mid-run with `workflows/utils.py::add_tags` are rebuilt from the tags known at flow
   start, so two in-flow tag updates clobber each other (documented in
-  `dev/knowledge/backend/async-tasks.md`). A flow that may link the node for more than one reason
-  must issue a single `add_tags` call.
+  `dev/knowledge/backend/async-tasks.md`). Any later call must therefore repeat every tag an earlier
+  one added. In the sync flow the import itself already calls `add_tags` once per pending import.
 - The frontend Tasks tab on a node (`frontend/app/src/pages/objects/object-details/tasks.tsx`) is
   fed purely by the `related_node__ids` filter, which resolves to the node tag; task logs are read
   from the Prefect log API and rendered with severity badges. No frontend change is needed.
@@ -462,8 +462,19 @@ worker affinity, so each worker answers "moved since *my* last fetch" independen
 be reported once per worker that later synchronises the repository. Deduplicating that is shared
 state, which is the gate this feature avoids. It is bounded by the worker count rather than by the
 cycle rate, which is the volume objection the per-cycle design failed. A worker with no prior clone
-has no previous head and does not report on this trigger; the connect-time carrier covers the
-first announcement unconditionally.
+clones before the heads are read, so its first sync sees nothing move; the connect-time carrier
+covers the first announcement unconditionally.
+
+**Correction, 2026-09-29 (implementation review).** "My last fetch" is not only the sync's own. After
+every sync the initiating worker broadcasts `RefreshGitFetch`, and every other worker fetches on
+receipt, which moves the same remote-tracking refs this comparison reads. So with more than one
+worker a push to the skipped branch is usually absorbed by a broadcast fetch before the next sync on
+that worker compares, and it can go unreported altogether; duplication is the rarer outcome. A single
+worker ignores its own broadcasts, so there only its rarer fetches outside the sync (on a changed
+location, or on a pinned commit missing from the clone) can absorb a push. The owner accepted this as a documented
+limitation for this feature. The reliable fix is a baseline that only the sync writes, for example a
+worker-local ref updated after each comparison: still no graph state, but it reverses "no state
+written anywhere" and is left as a follow-up.
 
 **Decision**:
 
@@ -478,11 +489,21 @@ first announcement unconditionally.
   `validate_remote_branch` at two sites (`git/repository.py:178` for new branches, `:211` for updated
   ones); both record.
 - `collect_pending_imports` also captures the remote heads by calling `get_branches_from_remote`
-  immediately **before** `self.fetch()` (`git/repository.py:159`) and records, in a second new
-  `CollectedImports` field, every skipped branch whose head is present in that capture and differs
-  afterwards. A branch missing from the capture is not recorded: on a cold clone every branch would
-  otherwise look new, and the connect-time carrier already reports unconditionally. The capture is a
-  local ref read; no additional network call is made.
+  immediately **before** `self.fetch()` and records, in a second new `CollectedImports` field, every
+  skipped branch whose head differs afterwards, a branch missing from the capture included: it was
+  pushed after this clone last fetched. (Corrected 2026-09-29: the first version left missing branches
+  out as a "cold-clone rule". A worker with no clone makes one inside `init`, before the capture, so
+  that rule never prevented a false positive; it only silenced a colliding branch pushed after
+  connect.) The capture is a local ref read; no additional network call is made.
+- **Correction, 2026-09-30 (code review).** "Never created locally" does not hold when the remote's
+  HEAD is the colliding branch: the clone checks HEAD out as a local branch, so `compare_local_remote`
+  lists it in neither loop until it moves, and a loop-derived `skipped_branches` stayed empty at
+  connect. `skipped_branches` is therefore decided from the remote alone: the collision predicate is
+  one method, `_collides_with_infrahub_default_branch`, shared by `validate_remote_branch` and
+  `collect_pending_imports`, and the colliding branch is recorded whenever the remote holds it after
+  the fetch (on an `ACTIVE` repository). One method keeps the predicate in one place, which is what
+  the no-re-derivation rule above protects. The capture reads only that branch's remote-tracking ref,
+  not every remote head.
 - `RepositorySyncer.sync` returns a frozen `SyncReport` carrying both the skipped branch names and
   the branches it imported, **and attaches it to the error raised by `raise_if_branches_failed`**.
   Without that, a run whose imports partly failed would return no report and emit no warning; at
@@ -496,11 +517,12 @@ first announcement unconditionally.
   to the repository node only when the report lists a skipped branch **and** the run either imported
   at least one branch or saw a skipped branch's head move. A run that did neither records nothing and
   is not linked for this reason.
-- The node link stays a single `add_tags` call per run, issued once both conditions (skipped-and-
-  imported, or failed while online) are known.
+- The carrier issues one `add_tags` call per run, once both conditions (skipped-and-something-moved,
+  or failed while online) are known. It is not the only call: the import tags the run itself, once
+  per pending import, so the carrier's call repeats the imported branches rather than dropping them.
 
 **Resulting volume** for a repository with a standing collision: one entry when it is connected, then
-at most one per push that changed an imported branch, at most one per worker per push that changed
+at most one per push that changed an imported branch, zero to one per worker per push that changed
 the skipped branch, and zero on cycles where nothing moved on the remote.
 
 **Rationale**: FR-008 wants the warning in the task log of a task linked to the repository with no
@@ -510,12 +532,12 @@ the two in-run signals together separate a real change from the permanent re-det
 unimportable branch. The import count carries the case where Infrahub did work; the pre-fetch head
 comparison carries the case where the operator did work on the branch Infrahub ignores. Neither
 covers the other, which is why both are kept. Returning the names from the collection step, rather than logging inside the base
-class, keeps the base class free of flow concerns. A single `add_tags` call respects the tag-rebuild
-behaviour of mid-run tag updates.
+class, keeps the base class free of flow concerns. The carrier's `add_tags` call repeats the branches
+the imports tagged, which respects the tag-rebuild behaviour of mid-run tag updates.
 
-**Consequence accepted**: per-worker duplication on the second trigger, as set out under "The
-discriminators". One push to the skipped branch can produce one entry per worker that later
-synchronises the repository, and that cannot be deduplicated without shared state.
+**Consequence accepted**: with more than one worker the second trigger is unreliable, as set out in
+the correction under "The discriminators". A push to the skipped branch can go unreported, or be
+reported by more than one worker, and neither is fixable without a baseline only the sync writes.
 
 **Reversed from the first version of this decision**: that version excluded the second trigger, on the
 grounds that a commit pushed solely to the colliding branch changed nothing for Infrahub and that
@@ -565,7 +587,7 @@ outcome-level test each headline requirement ultimately rests on; every other ro
 | A cycle where nothing moved on any branch records no warning and no node link (US4 scenario 3, FR-008) | component | same file | Both discriminators are empty, `SyncReport.imported_branches` and `advanced_skipped_branches`; asserted directly and through the run log |
 | A cycle that imported something records the warning (US4 scenario 4) | component | same file | Push to an imported branch between two cycles |
 | A cycle that saw the skipped branch advance records the warning, having imported nothing (US4 scenario 5, FR-008) | component | same file | Push to the colliding branch only between two cycles. The pair with the row above is what pins the two triggers as independent, so neither can be dropped without a red test |
-| The pre-fetch capture drives the advance detection (D6) | unit | `backend/tests/unit/git/test_git_repository.py` | A `file://` remote and a warm clone: an unchanged skipped branch records nothing, a moved one records it, and a clone with no prior ref for it records nothing. Pins the cold-clone rule, which is otherwise invisible until an operator sees a spurious warning from a fresh worker |
+| The pre-fetch capture drives the advance detection (D6) | unit | `backend/tests/unit/git/test_git_repository.py` | A `file://` remote and a warm clone: an unchanged skipped branch records nothing, a moved one records it, and one pushed after the clone records it too. The component tier adds that a fresh worker's first sync records nothing, because it clones before reading the heads |
 | Warning absent once the collision lifts (US4 scenario 6) | component | same file | Delete the colliding branch, and separately change the trunk |
 | A first sync that fails on another branch still records the skipped-branch warning at connect (FR-008) | component | same file | The report must survive `raise_if_branches_failed`; this is the case that would silently lose the connect-time guarantee |
 | Node link on the child run only when a branch was skipped and something was imported (FR-008) | functional | `backend/tests/functional/git/` | Needs the Prefect harness client to read the run's tags |
