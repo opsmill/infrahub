@@ -24,7 +24,13 @@ from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.resource_manager import PoolRecordProvenance
 from tests.component.core.resource_manager.conftest import SERIAL_ATTRIBUTE_NAME, SERIAL_POOL_START
-from tests.helpers.agnostic_edges import EdgeState, open_active_edges
+from tests.helpers.agnostic_edges import (
+    EdgeState,
+    attribute_edges,
+    open_active_edges,
+    open_is_reserved_edge_on,
+    set_open_is_reserved_edge_provenance,
+)
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, WIDGET_KIND
 
 if TYPE_CHECKING:
@@ -36,22 +42,6 @@ if TYPE_CHECKING:
 
 PREVIOUS_ATTRIBUTE_NAME = SERIAL_ATTRIBUTE_NAME
 NEW_ATTRIBUTE_NAME = "serial_number"
-
-
-async def attribute_edges_on_any_branch(db: InfrahubDatabase, node_id: str, attribute_name: str) -> list[EdgeState]:
-    """Every edge touching the named attribute vertex of this node, whichever branch it sits on."""
-    results = await db.execute_query(
-        query="""
-        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
-        WITH DISTINCT a
-        MATCH (a)-[e]-()
-        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
-               e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id,
-               CASE WHEN startNode(e) = a THEN "outbound" ELSE "inbound" END AS direction
-        """,
-        params={"node_id": node_id, "attribute_name": attribute_name},
-    )
-    return [EdgeState(**dict(result)) for result in results]
 
 
 EXPECTED_AGNOSTIC_EDGES: set[tuple[str, str | None, str]] = {
@@ -148,14 +138,14 @@ async def test_renaming_a_pool_tracked_attribute_keeps_its_is_reserved_edge_glob
     assert holder.get_attribute(name=PREVIOUS_ATTRIBUTE_NAME).value == SERIAL_POOL_START
     assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START]
 
-    before = await attribute_edges_on_any_branch(db=db, node_id=holder.id, attribute_name=PREVIOUS_ATTRIBUTE_NAME)
+    before = await attribute_edges(db=db, node_id=holder.id, attribute_name=PREVIOUS_ATTRIBUTE_NAME)
     assert _edge_summary(before) == EXPECTED_AGNOSTIC_EDGES, (
         "a branch-agnostic attribute holds its value on the global branch before the rename"
     )
 
     await rename_the_attribute(db=db, branch=default_branch, schema=agnostic_schema)
 
-    after = await attribute_edges_on_any_branch(db=db, node_id=holder.id, attribute_name=NEW_ATTRIBUTE_NAME)
+    after = await attribute_edges(db=db, node_id=holder.id, attribute_name=NEW_ATTRIBUTE_NAME)
     assert ("IS_RESERVED", "inbound", GLOBAL_BRANCH_NAME) in _edge_summary(after), (
         "the renamed attribute must carry the IS_RESERVED edge across on the global branch"
     )
@@ -187,14 +177,14 @@ async def test_renaming_a_branch_aware_pooled_attribute_keeps_only_its_is_reserv
     assert holder.get_attribute(name=PREVIOUS_ATTRIBUTE_NAME).value == SERIAL_POOL_START
     assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START]
 
-    before = await attribute_edges_on_any_branch(db=db, node_id=holder.id, attribute_name=PREVIOUS_ATTRIBUTE_NAME)
+    before = await attribute_edges(db=db, node_id=holder.id, attribute_name=PREVIOUS_ATTRIBUTE_NAME)
     assert _edge_summary(before) == expected_aware_edges(default_branch.name), (
         "a branch-aware attribute holds its value on its own branch, and only the IS_RESERVED edge is global"
     )
 
     await rename_the_attribute(db=db, branch=default_branch, schema=aware_schema)
 
-    after = await attribute_edges_on_any_branch(db=db, node_id=holder.id, attribute_name=NEW_ATTRIBUTE_NAME)
+    after = await attribute_edges(db=db, node_id=holder.id, attribute_name=NEW_ATTRIBUTE_NAME)
     assert _edge_summary(after) == expected_aware_edges(default_branch.name), (
         "the rename must read each edge's own branch rather than assume one for all of them"
     )
@@ -260,24 +250,6 @@ async def test_renaming_a_pooled_attribute_on_a_branch_leaves_the_default_branch
     )
 
 
-async def open_is_reserved_edge_properties(
-    db: InfrahubDatabase, pool_id: str, node_id: str, attribute_name: str
-) -> dict:
-    """Every property of the open IS_RESERVED edge the pool holds on this object's named attribute."""
-    results = await db.execute_query(
-        query="""
-        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
-        WITH DISTINCT a
-        MATCH (:Node {uuid: $pool_id})-[is_reserved:IS_RESERVED]->(a)
-        WHERE is_reserved.status = "active" AND is_reserved.to IS NULL
-        RETURN properties(is_reserved) AS is_reserved
-        """,
-        params={"pool_id": pool_id, "node_id": node_id, "attribute_name": attribute_name},
-    )
-    assert len(results) == 1
-    return dict(results[0]["is_reserved"])
-
-
 @dataclass
 class IsReservedPropertiesCase:
     name: str
@@ -302,25 +274,17 @@ async def test_renaming_a_pooled_attribute_carries_every_property_of_its_is_rese
     holder = await Node.init(db=db, schema=WIDGET_KIND, branch=default_branch)
     await holder.new(db=db, name="holds-a-pooled-serial", serial={"from_pool": {"id": serial_pool.id}})
     await holder.save(db=db)
-    await db.execute_query(
-        query="""
-        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
-        WITH DISTINCT a
-        MATCH ()-[is_reserved:IS_RESERVED]->(a)
-        WHERE is_reserved.status = "active" AND is_reserved.to IS NULL
-        SET is_reserved.provenance = $provenance
-        """,
-        params={
-            "node_id": holder.id,
-            "attribute_name": PREVIOUS_ATTRIBUTE_NAME,
-            "provenance": PoolRecordProvenance.PROVIDED.value,
-        },
+    await set_open_is_reserved_edge_provenance(
+        db=db,
+        node_id=holder.id,
+        attribute_name=PREVIOUS_ATTRIBUTE_NAME,
+        provenance=PoolRecordProvenance.PROVIDED.value,
     )
 
     branch = default_branch if case.on_default_branch else await create_branch(db=db, branch_name="rename-is-reserved")
     await rename_the_attribute(db=db, branch=branch, schema=registry.schema.get_schema_branch(name=branch.name))
 
-    renamed = await open_is_reserved_edge_properties(
+    renamed = await open_is_reserved_edge_on(
         db=db, pool_id=serial_pool.id, node_id=holder.id, attribute_name=NEW_ATTRIBUTE_NAME
     )
     assert renamed["identifier"] == holder.id, "the IS_RESERVED edge must still name the object that holds the number"

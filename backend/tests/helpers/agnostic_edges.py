@@ -57,6 +57,9 @@ class EdgeState:
     """`"outbound"` or `"inbound"` relative to the vertex the query anchored on, where a query
     reports it. Copying an edge onto a new vertex is direction-specific, so a test that cannot see
     the direction cannot say which half of a copy went wrong."""
+    edge_id: str | None = None
+    """The edge's element id, where a query reports it, so an edge deleted and recreated with the same
+    properties does not compare equal to the original."""
 
     @property
     def is_open(self) -> bool:
@@ -219,6 +222,23 @@ async def global_edges_by_vertex_uuid(db: InfrahubDatabase, vertex_uuid: str) ->
                e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id
         """,
         params={"vertex_uuid": vertex_uuid, "global_branch": GLOBAL_BRANCH_NAME},
+    )
+    return [EdgeState(**dict(result)) for result in results]
+
+
+async def attribute_edges(db: InfrahubDatabase, node_id: str, attribute_name: str) -> list[EdgeState]:
+    """Every edge touching the named attribute vertex of this node, whichever branch it sits on."""
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
+        WITH DISTINCT a
+        MATCH (a)-[e]-()
+        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
+               e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id,
+               CASE WHEN startNode(e) = a THEN "outbound" ELSE "inbound" END AS direction,
+               elementId(e) AS edge_id
+        """,
+        params={"node_id": node_id, "attribute_name": attribute_name},
     )
     return [EdgeState(**dict(result)) for result in results]
 
@@ -398,6 +418,56 @@ async def pool_reservation_edges(db: InfrahubDatabase, pool_id: str, attribute_i
         params={"pool_id": pool_id, "attribute_id": attribute_id},
     )
     return [EdgeState(**dict(result)) for result in results]
+
+
+async def active_is_reserved_edges_on(
+    db: InfrahubDatabase, node_id: str, attribute_name: str, pool_id: str | None = None, open_only: bool = False
+) -> list[dict[str, Any]]:
+    """Every property of each active IS_RESERVED edge on this object's named attribute vertex.
+
+    Limited to one pool's edges when `pool_id` is given, and to open edges when `open_only` is set.
+    An open edge carries no `to` property.
+    """
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
+        WITH DISTINCT a
+        MATCH (pool:Node)-[is_reserved:IS_RESERVED]->(a)
+        WHERE ($pool_id IS NULL OR pool.uuid = $pool_id)
+          AND is_reserved.status = "active"
+          AND (NOT $open_only OR is_reserved.to IS NULL)
+        RETURN properties(is_reserved) AS is_reserved
+        """,
+        params={"node_id": node_id, "attribute_name": attribute_name, "pool_id": pool_id, "open_only": open_only},
+    )
+    return [dict(result["is_reserved"]) for result in results]
+
+
+async def open_is_reserved_edge_on(
+    db: InfrahubDatabase, node_id: str, attribute_name: str, pool_id: str | None = None
+) -> dict[str, Any]:
+    """Every property of the one open IS_RESERVED edge on this object's named attribute vertex."""
+    edges = await active_is_reserved_edges_on(
+        db=db, node_id=node_id, attribute_name=attribute_name, pool_id=pool_id, open_only=True
+    )
+    assert len(edges) == 1, f"expected one open IS_RESERVED edge, found {len(edges)}"
+    return edges[0]
+
+
+async def set_open_is_reserved_edge_provenance(
+    db: InfrahubDatabase, node_id: str, attribute_name: str, provenance: str
+) -> None:
+    """Overwrite the provenance on the open IS_RESERVED edges of this object's named attribute vertex."""
+    await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
+        WITH DISTINCT a
+        MATCH ()-[is_reserved:IS_RESERVED]->(a)
+        WHERE is_reserved.status = "active" AND is_reserved.to IS NULL
+        SET is_reserved.provenance = $provenance
+        """,
+        params={"node_id": node_id, "attribute_name": attribute_name, "provenance": provenance},
+    )
 
 
 async def attribute_metadata(db: InfrahubDatabase, node_id: str, attribute_name: str) -> VertexMetadata:
