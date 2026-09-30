@@ -179,7 +179,7 @@ async def test_gather_aggregates_worker_and_server_resources(resource_environmen
     assert data.server.memory_total == 16_000_000_000
     assert data.server.memory_available == 10_000_000_000
 
-    # The database reports cores/memory today but enforces no Cypher-parallelism cap.
+    # The test database leaves the Cypher parallel runtime's worker limit at its default.
     assert data.database.system_info is not None
     assert data.database.system_info.processor_available > 0
     assert data.database.system_info.memory_total > 0
@@ -343,7 +343,7 @@ async def test_optout_snapshot_carries_resources_without_transmission(
     assert payload["server"]["memory_total"] == 16_000_000_000
     assert payload["server"]["memory_available"] == 10_000_000_000
 
-    # The database reports cores/memory but enforces no Cypher-parallelism cap.
+    # The test database leaves the Cypher parallel runtime's worker limit at its default.
     assert payload["database"]["system_info"]["processor_assigned"] is None
 
 

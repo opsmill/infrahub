@@ -81,9 +81,10 @@ backend/infrahub/telemetry/
 │                        #   (stdlib); host identifier; per-process ComponentResources
 ├── database.py          # add processor_assigned to system_info via
 │                        #   server.cypher.parallel.worker_limit (SHOW SETTINGS) — confirmed
-│                        #   with the backend owner as the intended knob (research D3); the
-│                        #   setting's own semantics were not independently re-verified
-│                        #   against Neo4j's docs, so revisit if the audit figure looks wrong;
+│                        #   with the backend owner as the intended knob (research D3), and
+│                        #   since adopted by the infrahub-enterprise chart presets as the
+│                        #   Neo4j CPU budget (infrahub-helm#93); it caps the parallel
+│                        #   runtime's workers, not Neo4j's total CPU use;
 │                        #   existing
 │                        #   processor_available/memory_* already cover DB cores + RAM
 └── tasks.py             # gather: aggregate hosts → extended workers fields + new server block

@@ -45,7 +45,7 @@ DOCKER_HOST=unix://$HOME/.docker/run/docker.sock \
 - Call the gather; inspect the built `TelemetryData` (`database.system_info`, `workers`, and the new `server` block).
 
 **Expected**:
-- `database.system_info`: `processor_available` > 0, `memory_total` > 0, and the new `processor_assigned is None`.
+- `database.system_info`: `processor_available` > 0, `memory_total` > 0, and the new `processor_assigned is None`, since the test Neo4j leaves `server.cypher.parallel.worker_limit` at its default.
 - the new `server` block reflects the one api_server host (not multiplied by gunicorn process count).
 - `workers.total == 2` counts the two git_agent processes and `server.total` the api_server ones; the new `workers.processor_*`/`memory_*` equal the git_agent host sum.
 - Force one metric source to raise → only that field is `None`; the snapshot is still produced (FR-006).
