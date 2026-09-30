@@ -1,0 +1,14 @@
+changelog/+upgrade-python-3.14-neo4j.changed.md
+  h_846b829e71a038 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5e7de303b687c2a9156dcb54c6d96fba942a90f0",
+  "prompts": {},
+  "humans": {
+    "h_846b829e71a038": {
+      "author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}
