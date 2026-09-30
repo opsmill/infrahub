@@ -1,8 +1,4 @@
-"""Git repositories card on the branch details page: the import error band.
-
-Relies on the `broken_repository` fixture (`tests/e2e/branches/conftest.py`): a branch holding one
-CoreRepository whose initial import failed.
-"""
+"""Git repositories card on the branch details page: the import error band."""
 
 from __future__ import annotations
 

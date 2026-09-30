@@ -89,6 +89,31 @@ describe("getToggleSelectedRowHandler", () => {
     expect(rows.selectedIds()).toEqual(["b", "c", "d"]);
   });
 
+  it("deselects the range when the shift-clicked row is selected", () => {
+    // GIVEN
+    const rows = createRowsTable(["a", "b", "c", "d", "e"]);
+    rows.press("a");
+    rows.press("e", { shiftKey: true });
+    rows.press("b");
+
+    // WHEN
+    rows.press("d", { shiftKey: true });
+
+    // THEN
+    expect(rows.selectedIds()).toEqual(["a", "e"]);
+  });
+
+  it("toggles only the clicked row when the first-ever click is a shift-click", () => {
+    // GIVEN
+    const rows = createRowsTable(["a", "b", "c", "d", "e"]);
+
+    // WHEN
+    rows.press("d", { shiftKey: true });
+
+    // THEN
+    expect(rows.selectedIds()).toEqual(["d"]);
+  });
+
   it("ranges from the same row by id after rows are inserted above it", () => {
     // GIVEN
     const rows = createRowsTable(["a", "b", "c", "d", "e"]);

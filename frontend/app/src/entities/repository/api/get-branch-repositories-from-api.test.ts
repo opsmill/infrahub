@@ -31,7 +31,12 @@ describe("getBranchRepositoriesFromApi", () => {
 
     expect(result).toEqual({ data: connection });
     expect(mockQuery).toHaveBeenCalledWith(
-      expect.objectContaining({ context: expect.objectContaining({ branch: "feature" }) })
+      expect.objectContaining({
+        context: expect.objectContaining({
+          branch: "feature",
+          processErrorMessage: expect.any(Function),
+        }),
+      })
     );
   });
 

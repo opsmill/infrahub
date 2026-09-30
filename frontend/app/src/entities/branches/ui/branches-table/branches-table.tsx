@@ -20,6 +20,8 @@ export function BranchesTable() {
   const sortedBranches = sortByName(allBranches.filter((b) => !b.is_default));
   const flatData = [...allBranches.filter((b) => b.is_default), ...sortedBranches];
 
+  const rows = useBranchTableRows(flatData);
+
   const isLoading = isPending || isFetchingNextPage;
 
   return (
@@ -31,7 +33,7 @@ export function BranchesTable() {
     >
       <BranchesDataTable
         columns={columns}
-        data={useBranchTableRows(flatData)}
+        data={rows}
         isLoading={isLoading}
         renderEmpty={() => <BranchesEmpty />}
         data-testid="branches-table"

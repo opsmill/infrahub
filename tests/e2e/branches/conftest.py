@@ -8,7 +8,7 @@ and leaves it in Import Error on that branch.
 from __future__ import annotations
 
 import asyncio
-import contextlib
+import logging
 from typing import TYPE_CHECKING
 
 import pytest
@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 
     from helpers import BranchAPI
     from infrahub_sdk import InfrahubClient
+
+logger = logging.getLogger(__name__)
 
 POLL_ATTEMPTS = 30
 POLL_INTERVAL_SECONDS = 5
@@ -50,7 +52,7 @@ async def _wait_for_import_error(client: InfrahubClient, branch: str, repository
 
 
 async def _wait_for_failed_import_task(client: InfrahubClient, branch: str, repository_id: str) -> str:
-    # sync_status flips before the flow run ends Failed; the band reads the run's error lines.
+    # sync_status flips before the flow run ends Failed; the error text comes from the failed flow run.
     for _ in range(POLL_ATTEMPTS):
         response = await client.execute_graphql(
             query=FAILED_IMPORT_TASK_QUERY,
@@ -122,10 +124,14 @@ async def broken_repository(
         yield make
     finally:
         for branch in created_branches:
-            with contextlib.suppress(Exception):
+            try:
                 await branch_api.delete(branch)
+            except Exception:
+                logger.warning("Teardown could not delete branch %s", branch, exc_info=True)
         # Repositories are branch-agnostic, so the node outlives its branch.
         for repository_name in created_repositories:
-            with contextlib.suppress(Exception):
+            try:
                 repository = await infrahub_client.get(kind="CoreRepository", name__value=repository_name)
                 await repository.delete()
+            except Exception:
+                logger.warning("Teardown could not delete repository %s", repository_name, exc_info=True)

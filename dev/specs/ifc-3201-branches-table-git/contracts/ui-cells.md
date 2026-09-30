@@ -10,7 +10,8 @@ This file covers the props and rendering contracts for what the feature adds or 
 - **Cell input**: each new cell takes `{ row: BranchTableRow }` and switches on `row.state`, with an early return per state: `pending`, then non-`ok`, then `ok`.
 - **Loading**: `@infrahub/ui` `Spinner`, the `cells/branch-proposed-changes-cell.tsx::BranchProposedChangesCell` pattern, in the Repository cell only. Git state and Commit stay blank while pending (FR-011), so a pending branch shows one `role=status`, not three.
 - **Blank**: an empty `TableCell`. No `-`, no `—`, no placeholder text (FR-007).
-- **Muted text**: `<span className="text-subtle-muted">…</span>`.
+- **Muted text**: `<span className="text-foreground-muted">…</span>`. Not `text-subtle-muted`: that tier is under 4.5:1 contrast and reserved for decorative text (FR-007, FR-012, FR-013).
+- **Repeated rows and tab order**: on a non-anchor row, the checkbox, the branch name link, the proposed-changes pill and the actions menu trigger are excluded from the tab order. The commit copy button stays tabbable on every row (FR-008).
 - **Headers**: `TableColumnHeaderSimple` over the new `BRANCH_FIELD_SCHEMAS` entries, with no filter or sort control (FR-015).
 - **Column position**: the three columns sit after `proposed_changes`. The display column ids are `repository`, `git_state` and `commit`.
 - **Link rule**: repository links carry the **row's** branch via `getBranchQspOverride(row.branch.name, Boolean(row.branch.is_default))`. The default branch gets no `branch` parameter.
@@ -28,7 +29,7 @@ interface BranchRepositoryCellProps { row: BranchTableRow }
 | `empty`, `row.branch.sync_with_git` falsy | muted "Not synced with Git" |
 | `empty`, `row.branch.sync_with_git === true` | muted "No repositories" |
 | `denied` | muted "No permission" |
-| `error` | muted "Could not load repositories", carrying `row.errorMessage` (the query error's message) as a tooltip (`Tooltip` from `@infrahub/ui`), so the no-op `processErrorMessage` loses nothing (FR-013) |
+| `error` | muted "Could not load repositories", carrying `row.errorMessage` (the query error's message) as a tooltip (`Tooltip` from `@infrahub/ui`) for pointer users, plus a `sr-only` span holding `row.errorMessage` next to the visible text so keyboard and screen-reader users reach it. The no-op `processErrorMessage` therefore loses nothing (FR-013) |
 
 ## `BranchGitStateCell` — `cells/branch-git-state-cell.tsx` (new)
 
@@ -84,6 +85,8 @@ It renders the markup `RepositoryRow`'s first `<td>` renders today, moved verbat
 - a `Link` to `getObjectDetailsUrl(kind, id, [getBranchQspOverride(branchName, isDefaultBranch)])` with `title={name}`, `className="truncate"` and the text `name`;
 - when `isReadOnly`, a "Read-only" chip (`rounded bg-content-strong px-1 text-foreground-muted text-xs`).
 
+The truncated name is revealed through the native `title`, not `Tooltip`. Accepted for this feature (it is the card's existing markup); aligning it with the `Tooltip` the branch name uses is a follow-up.
+
 `RepositoryRow` renders `<td className="px-3"><RepositoryNameLink … /></td>` and keeps its Git state `<td>` (with the unreachable icon) and its commit `<td>` (with the `—` fallback) unchanged.
 
 ## `useBranchTableRows` — `entities/branches/ui/hooks/use-branch-table-rows.ts` (new)
@@ -92,8 +95,9 @@ It renders the markup `RepositoryRow`'s first `<td>` renders today, moved verbat
 export function useBranchTableRows(branches: BranchListItem[]): BranchTableRow[];
 ```
 
-- It calls `useQueries({ queries: branches.map((b) => getBranchRepositoriesQueryOptions({ branchName: b.name, syncWithGit: Boolean(b.sync_with_git) })), combine })`, one entry per branch. The `combine` returns a stable per-branch record, and rows are rebuilt only for branches whose result reference changed, so one resolution re-renders one branch's rows (SC-007, research R13). No `useMemo`. The query key, the `queryFn` and the 10 s "while syncing" `refetchInterval` are #10779's own, so the cache is shared with the branch details card.
-- It maps result i to `BranchRepositoriesFetch` (`data` present → `data`; else `isError` → error with the error's message; else pending) under `branches[i].id`. A stale success therefore stays rendered when a background refetch fails (data-model invariant 9). It then returns `toBranchTableRows({ branches, fetchByBranchId, orderRepositories: rankRepositories })`.
+- It calls `useQueries({ queries: branches.map((b) => getBranchRepositoriesQueryOptions({ branchName: b.name, syncWithGit: Boolean(b.sync_with_git) })), combine })`, one entry per branch. The `combine` flat-maps the branches and returns each branch's cached rows, so rows are rebuilt only for branches whose branch object or fetch changed, and one resolution re-renders one branch's rows (SC-007, research R13). No `useMemo`. The query key, the `queryFn` and the 10 s "while syncing" `refetchInterval` are #10779's own, so the cache is shared with the branch details card.
+- It maps result i to `BranchRepositoriesFetch` (`data` present → `data`; else `isError` → error with the error's message; else pending) under `branches[i].id`. A stale success therefore stays rendered when a background refetch fails (data-model invariant 9). An error fetch is cached per `Error` object, so a settled error keeps its reference.
+- It calls `toBranchTableRows({ branches, fetchByBranchId, orderRepositories: rankRepositories })` **once over all loaded branches** inside `combine`, returns the rows grouped as `Record<branchId, BranchTableRow[]>`, and flattens them in branch order outside `combine`. Row identity comes from TanStack's structural sharing on that record (paired by branch id); there is no cache.
 - It shows no toast and throws no error, and it never reads the branch selector's current branch.
 - Caller: `branches-table.tsx::BranchesTable`, as `data={useBranchTableRows(flatData)}`. `flatData` is today's ordering: default first, then `sortByName`. `BRANCHES_PER_PAGE` is unchanged.
 

@@ -1,11 +1,11 @@
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import type {
   BranchRepositoriesFetch,
+  BranchTableRepository,
   BranchTableRow,
 } from "@/entities/branches/domain/model/branch-table-row";
-import type { BranchRepository } from "@/entities/repository/domain/model/branch-repository";
 
-type OrderRepositories = (repositories: BranchRepository[]) => BranchRepository[];
+type OrderRepositories = (repositories: BranchTableRepository[]) => BranchTableRepository[];
 
 function toRowsForBranch(
   branch: BranchListItem,

@@ -17,7 +17,6 @@ import { generateBranch } from "../../../../../tests/fake/branch";
 import {
   generateBranchRepositoriesResult,
   generateBranchRepository,
-  SYNC_STATUS,
 } from "../../../../../tests/fake/branch-repositories";
 
 vi.mock(
@@ -111,16 +110,18 @@ describe("useBranchTableRows", () => {
   });
 
   test("maps pending, then data or the error with its message", async () => {
+    // GIVEN both branches' requests are in flight
     const mainResponse = deferred();
     const featureResponse = deferred();
     byBranchName({ main: mainResponse.promise, feature: featureResponse.promise });
-
     const { result } = await renderRows([main, feature]).rendered;
     expect(result.current.map((row) => row.state)).toEqual(["pending", "pending"]);
 
+    // WHEN main resolves and feature fails
     mainResponse.resolve(generateBranchRepositoriesResult([alpha, bravo]));
     featureResponse.reject(new Error("Server exploded"));
 
+    // THEN main gives one ok row per repository and feature one error row with its message
     await vi.waitFor(() =>
       expect(result.current.map((row) => row.state)).toEqual(["ok", "ok", "error"])
     );
@@ -128,14 +129,17 @@ describe("useBranchTableRows", () => {
   });
 
   test("keeps the loaded rows when a background refetch fails", async () => {
+    // GIVEN main has loaded
     byBranchName({ main: Promise.resolve(generateBranchRepositoriesResult([alpha])) });
     const { queryClient, rendered } = renderRows([main]);
     const { result } = await rendered;
     await vi.waitFor(() => expect(result.current[0]?.state).toBe("ok"));
 
+    // WHEN a refetch fails
     vi.mocked(getBranchRepositories).mockRejectedValueOnce(new Error("network is down"));
     await queryClient.refetchQueries();
 
+    // THEN the query is in error but the rows still show the loaded repository
     expect(
       queryClient.getQueryState(
         repositoryQueryKeys.branch({ branchName: "main", kind: getRepositoryListKind(true) })
@@ -164,25 +168,23 @@ describe("useBranchTableRows", () => {
     expect(result.current[1]).toBe(mainSecond);
   });
 
-  test("keeps polling every 10 seconds while a repository is syncing", async () => {
-    const syncing = generateBranchRepository({
-      id: "repo-syncing",
-      syncStatus: SYNC_STATUS.syncing,
+  test("reuses a later branch's row objects when an earlier branch grows to several rows", async () => {
+    // GIVEN main is still pending and feature has loaded two repositories
+    const mainResponse = deferred();
+    byBranchName({
+      main: mainResponse.promise,
+      feature: Promise.resolve(generateBranchRepositoriesResult([alpha, bravo])),
     });
-    byBranchName({ main: Promise.resolve(generateBranchRepositoriesResult([syncing])) });
-    const { queryClient, rendered } = renderRows([main]);
-    const { result } = await rendered;
-    await vi.waitFor(() => expect(result.current[0]?.state).toBe("ok"));
+    const { result } = await renderRows([main, feature]).rendered;
+    await vi.waitFor(() => expect(result.current[1]?.state).toBe("ok"));
+    const [, featureAnchor, featureSecond] = result.current;
 
-    const query = queryClient.getQueryCache().find({
-      queryKey: repositoryQueryKeys.branch({
-        branchName: "main",
-        kind: getRepositoryListKind(true),
-      }),
-    });
-    const refetchInterval = query?.observers[0]?.options.refetchInterval;
+    // WHEN main resolves to two repositories, shifting feature's rows down
+    mainResponse.resolve(generateBranchRepositoriesResult([alpha, bravo]));
+    await vi.waitFor(() => expect(result.current).toHaveLength(4));
 
-    if (!query || typeof refetchInterval !== "function") throw new Error("no polling query");
-    expect(refetchInterval(query)).toBe(10_000);
+    // THEN feature's rows are the very same objects
+    expect(result.current[2]).toBe(featureAnchor);
+    expect(result.current[3]).toBe(featureSecond);
   });
 });

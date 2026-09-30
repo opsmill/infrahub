@@ -22,7 +22,7 @@ Approach (research R1–R13):
 
 **Language/Version**: TypeScript (strict), React 19 with the React Compiler (no `useMemo`/`useCallback`/`React.memo`; existing `React.useMemo` calls in touched files are removed).
 
-**Primary Dependencies**: TanStack Table v8 (8.21.3; row selection, `getRowId`, `enableRowSelection` predicate), TanStack Query (`useQueries`, `queryOptions`), `@infrahub/ui` (`Checkbox`, `Spinner`, `Tooltip`), Tailwind v4 theme tokens (`text-subtle-muted`, `text-foreground-muted`), `lucide-react`. No new dependency.
+**Primary Dependencies**: TanStack Table v8 (8.21.3; row selection, `getRowId`, `enableRowSelection` predicate), TanStack Query (`useQueries`, `queryOptions`), `@infrahub/ui` (`Checkbox`, `Spinner`, `Tooltip`), Tailwind v4 theme tokens (`text-foreground-muted` for the state texts), `lucide-react`. No new dependency.
 
 **Storage**: N/A (reads only).
 
@@ -32,7 +32,7 @@ Approach (research R1–R13):
 
 **Project Type**: Web application, frontend slice (`frontend/app`). `frontend/packages/ui` is read-only.
 
-**Performance Goals**: The branch cells render as fast as today (SC-004). Repository requests are one per loaded branch (≈40 per page of `BRANCHES_PER_PAGE = 40`), independent of the repository count. Repeated branch cells add no request: proposed-changes queries are deduplicated by query key. `useBranchTableRows` passes a `combine` to `useQueries` and returns a stable per-branch record; rows are rebuilt only for branches whose result reference changed, so one resolution re-renders one branch's rows (SC-007, research R13). No `useMemo`.
+**Performance Goals**: The branch cells render as fast as today (SC-004). Repository requests are one per loaded branch (≈40 per page of `BRANCHES_PER_PAGE = 40`), independent of the repository count. Repeated branch cells add no request: proposed-changes queries are deduplicated by query key. `useBranchTableRows` passes a `combine` to `useQueries` that calls `toBranchTableRows` once per branch and caches the rows by branch object and fetch object; rows are rebuilt only for branches whose result changed, so one resolution re-renders one branch's rows (SC-007, research R13 and its addendum). No `useMemo`.
 
 **Constraints**: Only data the backend returns today. There is no Upstream, "behind by N", Last import or operational status (FR-016). No column filter, sort or hide (FR-015, FR-017). `isTruncated` is ignored (spec Assumptions). Page size still counts branches (FR-010).
 
@@ -63,12 +63,12 @@ Approach (research R1–R13):
 - **Selection handler test**: `get-toggle-selected-row-handler.test.ts` covers the generic `<T>` handler and the anchor stored by row id.
 - **Component tests**: `get-branch-table-columns.test.tsx` covers cells per state, headers, pill colour, commit, and the empty, denied and error texts; `branches-data-table.test.tsx` and `branches-table.test.tsx` cover the rest. One test per SC-006 state (loaded, loading, "Not synced with Git", "No repositories", denied, failed, no colour, no commit), plus:
   - selection: one branch; shift-range over two branches; shift-range after a branch expanded from pending to N still counts branches; select-all; the header checkbox's indeterminate and all states with non-anchor rows present; logout reset clears the selection; a selected branch stays selected through pending → N;
-  - accessibility: only the anchor checkbox is in the tab order, named "Select <branch>"; non-anchor checkboxes are named "Select <branch> (<repository name>)";
+  - accessibility: only the anchor checkbox is in the tab order, named "Select <branch>"; non-anchor checkboxes are named "Select <branch> (<repository name>)"; the name link, proposed-changes pill and actions menu are out of the tab order on non-anchor rows, the commit copy button is not;
   - pending: one `role=status` per pending branch (the Repository cell's spinner only), not three;
-  - failed: "Could not load repositories" carries the error message as a tooltip; a failed background refetch keeps the loaded rows (data-model invariant 9);
+  - failed: "Could not load repositories" carries the error message as a tooltip and as visually hidden text; a failed background refetch keeps the loaded rows (data-model invariant 9);
   - the column order, no filter or sort control;
   - the grid template has one track per column and the three new tracks are fixed.
-- **Branch details card**: its failed state renders without a toast (`branch-repositories-card.test.tsx`, touched only if the existing test does not already cover it).
+- **Branch details card**: its failed state renders the server error message and no toast (`branch-repositories-card.test.tsx`, touched only if the existing test does not already cover it).
 - **`CommitHash`**: its lifted test.
 - Deviation from IV's mock rule, house style: component tests mock the `ui/queries/*.query` hook and use-case tests mock `api/*-from-api`, per `dev/guides/frontend/writing-component-tests.md`; no external HTTP is mocked because none is called.
 - **E2E: one happy-path case, in this PR.** The constitution asks for E2E on user-facing features and the fixture it needs exists on this base. New file `tests/e2e/branches/test_branches_git_columns.py` (`pytestmark = pytest.mark.shard_branches_repo`; `tests/e2e/conftest.py::_SHARD_MARKERS` is a fixed set, so there is no own marker): the `/branches` row for the broken branch shows the repository name, the "Import Error" pill and a 7-character commit; a second assertion checks a branch with no repositories reads "Not synced with Git".
@@ -162,7 +162,7 @@ Outside `frontend/app/`: `changelog/+ifc-3201-branches-table-git.added.md` (NEW)
 
 | Risk | Mitigation |
 |---|---|
-| A non-permission GraphQL error toasts once. The shared client's `error-handling.ts::handleGraphQLErrors` calls `notifyUser` unless the request context sets `processErrorMessage`, and #10779's `get-branch-repositories-from-api.ts::fetchConnection` passes only `{ branch }`. Network errors do not toast. | The toast is deduplicated (`toastId: "alert-error"`), so at most one toast per page. FR-013's "no toast" holds for network errors only. Decision: close the gap. `fetchConnection` passes a no-op `processErrorMessage` in its request context, so a GraphQL-level failure surfaces only as the row's "Could not load repositories" (and, on the branch details card, as its own failed state). One-line change in a #10779 file, recorded in Complexity Tracking (research R10). The failure message stays reachable: the "Could not load repositories" text carries the query error's message as a tooltip, and the card's failed state is asserted to render without a toast. |
+| A non-permission GraphQL error toasts once. The shared client's `error-handling.ts::handleGraphQLErrors` calls `notifyUser` unless the request context sets `processErrorMessage`, and #10779's `get-branch-repositories-from-api.ts::fetchConnection` passes only `{ branch }`. Network errors do not toast. | The toast is deduplicated (`toastId: "alert-error"`), so at most one toast per page. FR-013's "no toast" holds for network errors only. Decision: close the gap. `fetchConnection` passes a no-op `processErrorMessage` in its request context, so a GraphQL-level failure surfaces only as the row's "Could not load repositories" (and, on the branch details card, as its own failed state). One-line change in a #10779 file, recorded in Complexity Tracking (research R10). The failure message stays reachable: the "Could not load repositories" text carries the query error's message as a tooltip and as visually hidden text, and the card's failed state shows the same message and is asserted to render without a toast. |
 | Unreachable repositories rank above healthy ones although their status isn't shown (FR-016). | Spec FR-006a states the rule. Rows are still grouped by rank, then by name. |
 | ≈40 requests per page (N+1 over HTTP). | Accepted by the spec and recorded as a Constitution V deviation (Complexity Tracking). The cache is shared, SC-007 bounds refocus requests and re-renders, and batching is a follow-up (R5). |
 | `isTruncated` is ignored, so a list over 500 repositories is silently partial. | Spec Assumptions. `REPOSITORY_FETCH_LIMIT` is far above real counts. |

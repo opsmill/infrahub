@@ -21,9 +21,13 @@ const OPEN_STATE_FILTER = { name: STATE_VALUES_FILTER, value: [OPEN_STATE] };
 
 interface BranchProposedChangesCellProps {
   branchName: string;
+  excludeFromTabOrder?: boolean;
 }
 
-export function BranchProposedChangesCell({ branchName }: BranchProposedChangesCellProps) {
+export function BranchProposedChangesCell({
+  branchName,
+  excludeFromTabOrder,
+}: BranchProposedChangesCellProps) {
   const { schema } = useSchema(PROPOSED_CHANGE_OBJECT, { throwIfNotFound: true });
   const filters = [{ name: "source_branch__value", value: branchName }, OPEN_STATE_FILTER];
   const { data, isPending } = useGetProposedChanges({ schema, filters });
@@ -56,7 +60,7 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
   return (
     <TableCell className="h-auto min-h-14">
       <Row className="flex-wrap">
-        <LinkPill href={detailUrl} className="max-w-40">
+        <LinkPill href={detailUrl} excludeFromTabOrder={excludeFromTabOrder} className="max-w-40">
           <Icon icon={getSchemaIcon(schema)} className="shrink-0 text-accent" />
           <span className="truncate">{firstPC.node.name.value}</span>
         </LinkPill>
@@ -64,6 +68,7 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
         {remainingCount > 0 && (
           <Link
             to={listUrl}
+            tabIndex={excludeFromTabOrder ? -1 : undefined}
             className="shrink-0 whitespace-nowrap text-foreground-muted text-sm hover:underline"
           >
             +{remainingCount} more

@@ -61,7 +61,7 @@ export function isBranchAnchorRow(row: BranchTableRow): boolean {
 }
 ```
 
-`BranchListItem` comes from `entities/branches/domain/model/branch.ts`. Cells narrow on `state`. `repository` is non-null exactly when `state === "ok"`. `errorMessage` exists only on the `error` row; the Repository cell shows it as the tooltip of "Could not load repositories" (FR-013).
+`BranchListItem` comes from `entities/branches/domain/model/branch.ts`. Cells narrow on `state`. `repository` is non-null exactly when `state === "ok"`. `errorMessage` exists only on the `error` row; the Repository cell shows it as the tooltip of "Could not load repositories" and as visually hidden text next to it (FR-013).
 
 ### Rows per state, and which row is the anchor
 
@@ -88,6 +88,8 @@ export function toBranchTableRows(params: {
 ```
 
 The rule is pure: no I/O, React or TanStack, and it imports only its own `domain/model` (research R2). The hook passes `orderRepositories: rankRepositories`; tests pass the same function.
+
+The hook calls the rule **once over all loaded branches** and groups the result by `branch.id` before handing it to TanStack, whose structural sharing keeps a branch's row objects when its fetch is unchanged, even when an earlier branch's row count changes (invariant 9 and SC-007 are asserted in `use-branch-table-rows.test.ts`).
 
 **Invariants** (each asserted in `to-branch-table-rows.test.ts`):
 

@@ -61,10 +61,13 @@ describe("toBranchTableRows", () => {
   });
 
   it("orders import errors first, then unreachable, then by name case-insensitively", () => {
+    // GIVEN repositories in no particular order, one failing import and one unreachable
     const fetch = generateBranchRepositoriesResult([charlie, bravo, broken, unreachable, alpha]);
 
+    // WHEN rows are built
     const rows = toRows([main], [[main.id, fetch]]);
 
+    // THEN the failing ones lead and the anchor id stays on the first row
     expect(rows.map((row) => row.repository?.name)).toEqual([
       "zulu",
       "yankee",
@@ -84,15 +87,19 @@ describe("toBranchTableRows", () => {
   it.each([true, false, null])(
     "gives one empty row when sync_with_git is %s and there are no repositories",
     (syncWithGit) => {
+      // GIVEN a branch with no repositories
       const branch = generateBranch({ id: "branch-x", sync_with_git: syncWithGit });
 
+      // WHEN rows are built
       const rows = toRows([branch], [[branch.id, generateBranchRepositoriesResult([])]]);
 
+      // THEN there is a single empty anchor row
       expect(rows).toEqual([{ id: branch.id, branch, state: "empty", repository: null }]);
     }
   );
 
   it("lists read-only repositories on a branch not synced with Git", () => {
+    // GIVEN a local branch with a read-only repository
     const branch = generateBranch({ id: "branch-local", sync_with_git: false });
     const readOnly = generateBranchRepository({
       id: "repo-ro",
@@ -100,33 +107,44 @@ describe("toBranchTableRows", () => {
       kind: READONLY_REPOSITORY_KIND,
     });
 
+    // WHEN rows are built
     const rows = toRows([branch], [[branch.id, generateBranchRepositoriesResult([readOnly])]]);
 
+    // THEN the read-only repository gets an ok row
     expect(rows).toEqual([{ id: branch.id, branch, state: "ok", repository: readOnly }]);
   });
 
   it("gives one anchor row for denied, error, pending and a missing entry", () => {
-    expect(toRows([main], [[main.id, denied]])).toEqual([
-      { id: main.id, branch: main, state: "denied", repository: null },
-    ]);
-    expect(toRows([main], [[main.id, failed]])).toEqual([
-      {
-        id: main.id,
-        branch: main,
-        state: "error",
-        repository: null,
-        errorMessage: "Server exploded",
-      },
-    ]);
-    expect(toRows([main], [[main.id, pending]])).toEqual([
-      { id: main.id, branch: main, state: "pending", repository: null },
-    ]);
-    expect(toRows([main], [])).toEqual([
-      { id: main.id, branch: main, state: "pending", repository: null },
+    // GIVEN each fetch outcome that carries no repository
+    const entries: Array<Array<[string, BranchRepositoriesFetch]>> = [
+      [[main.id, denied]],
+      [[main.id, failed]],
+      [[main.id, pending]],
+      [],
+    ];
+
+    // WHEN rows are built for each
+    const results = entries.map((entry) => toRows([main], entry));
+
+    // THEN each gives a single anchor row in the matching state
+    expect(results).toEqual([
+      [{ id: main.id, branch: main, state: "denied", repository: null }],
+      [
+        {
+          id: main.id,
+          branch: main,
+          state: "error",
+          repository: null,
+          errorMessage: "Server exploded",
+        },
+      ],
+      [{ id: main.id, branch: main, state: "pending", repository: null }],
+      [{ id: main.id, branch: main, state: "pending", repository: null }],
     ]);
   });
 
   it("keeps the anchor id across every state", () => {
+    // GIVEN every fetch outcome
     const fetches: BranchRepositoriesFetch[] = [
       pending,
       generateBranchRepositoriesResult([]),
@@ -135,8 +153,10 @@ describe("toBranchTableRows", () => {
       failed,
     ];
 
+    // WHEN rows are built for each
     const anchorIds = fetches.map((fetch) => toRows([main], [[main.id, fetch]])[0]?.id);
 
+    // THEN the first row always carries the branch id
     expect(anchorIds).toEqual(Array(fetches.length).fill(main.id));
   });
 

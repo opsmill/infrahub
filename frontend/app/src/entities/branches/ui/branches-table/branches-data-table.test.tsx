@@ -28,6 +28,8 @@ vi.mock("@/entities/branches/ui/queries/delete-branches.mutation");
 
 const COLUMN_COUNT = 11;
 
+const deleteBranches = vi.fn();
+
 const solo = generateBranch({ id: "branch-solo", name: "solo" });
 const alpha = generateBranch({ id: "branch-alpha", name: "alpha" });
 const zulu = generateBranch({ id: "branch-zulu", name: "zulu" });
@@ -107,7 +109,7 @@ describe("BranchesDataTable selection", () => {
       isPending: false,
     } as unknown as ReturnType<typeof useGetProposedChanges>);
     vi.mocked(useDeleteBranchesMutation).mockReturnValue({
-      mutateAsync: vi.fn(),
+      mutateAsync: deleteBranches,
       isPending: false,
     } as unknown as ReturnType<typeof useDeleteBranchesMutation>);
   });
@@ -126,9 +128,16 @@ describe("BranchesDataTable selection", () => {
     // THEN
     await expect.element(component.getByRole("link", { name: "repo-three" })).toBeVisible();
     const { container } = component;
-    for (const columnIndex of [0, 1, 2]) {
-      const texts = [0, 1, 2].map((rowIndex) => cellText(container, columnIndex, rowIndex));
-      expect(new Set(texts).size).toBe(1);
+    for (const [columnIndex, expected] of [
+      [0, "alphatest-branch's description"],
+      [1, "Open"],
+      [2, "Add VLANs"],
+    ] as const) {
+      expect([0, 1, 2].map((rowIndex) => cellText(container, columnIndex, rowIndex))).toEqual([
+        expected,
+        expected,
+        expected,
+      ]);
     }
     expect([0, 1, 2].map((rowIndex) => cellText(container, 3, rowIndex))).toEqual([
       "repo-one",
@@ -169,6 +178,20 @@ describe("BranchesDataTable selection", () => {
     const dialog = component.getByRole("dialog");
     await expect.element(dialog).toHaveTextContent("Are you sure you want to remove the branch");
     expect(dialog.element().textContent?.match(/alpha/g)).toHaveLength(1);
+  });
+
+  test("confirming the bulk delete of a multi-repository branch deletes it once", async () => {
+    // GIVEN
+    const component = await render(table(okRows(alpha, ["repo-one", "repo-two", "repo-three"])));
+    await tick(component.getByRole("checkbox", { name: "Select alpha (repo-three)" }));
+    await component.getByRole("button", { name: "Delete" }).click();
+
+    // WHEN
+    await component.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
+
+    // THEN
+    await vi.waitFor(() => expect(deleteBranches).toHaveBeenCalledTimes(1));
+    expect(deleteBranches).toHaveBeenCalledWith({ names: ["alpha"], deleteFromGit: false });
   });
 
   test("shift-click onto a later multi-repository branch's row counts branches", async () => {
@@ -285,9 +308,11 @@ describe("BranchesDataTable selection", () => {
     await expect
       .element(component.getByRole("checkbox", { name: "Select late", exact: true }))
       .toBeChecked();
-    await expect
-      .element(component.getByRole("checkbox", { name: "Select alpha", exact: true }))
-      .not.toBeChecked();
+    for (const name of ["Select alpha", "Select alpha (repo-two)", "Select alpha (repo-three)"]) {
+      await expect
+        .element(component.getByRole("checkbox", { name, exact: true }))
+        .not.toBeChecked();
+    }
     await expect
       .element(component.getByRole("checkbox", { name: "Select zulu", exact: true }))
       .not.toBeChecked();

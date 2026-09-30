@@ -142,12 +142,12 @@ class TestBranchesCreationDeletion:
     async def test_search_for_a_branch(self, admin_page: Page, data_scenario_branches: ScenarioBranchesHandle) -> None:
         await admin_page.goto("/branches")
         await expect(_anchor_branch_link(admin_page, "main")).to_be_visible()
-        await expect(admin_page.get_by_role("link", name="den1-maintenance-conflict")).to_be_visible()
-        await expect(admin_page.get_by_role("link", name="atl1-delete-upstream")).to_be_visible()
+        await expect(_anchor_branch_link(admin_page, "den1-maintenance-conflict")).to_be_visible()
+        await expect(_anchor_branch_link(admin_page, "atl1-delete-upstream")).to_be_visible()
         await admin_page.get_by_role("searchbox", name="Search").fill("main")
         await expect(_anchor_branch_link(admin_page, "main")).to_be_visible()
-        await expect(admin_page.get_by_role("link", name="den1-maintenance-conflict")).to_be_visible()
-        await expect(admin_page.get_by_role("link", name="atl1-delete-upstream")).not_to_be_visible()
+        await expect(_anchor_branch_link(admin_page, "den1-maintenance-conflict")).to_be_visible()
+        await expect(_anchor_branch_link(admin_page, "atl1-delete-upstream")).not_to_be_visible()
 
         await admin_page.get_by_role("searchbox", name="Search").fill("")
-        await expect(admin_page.get_by_role("link", name="atl1-delete-upstream")).to_be_visible()
+        await expect(_anchor_branch_link(admin_page, "atl1-delete-upstream")).to_be_visible()
