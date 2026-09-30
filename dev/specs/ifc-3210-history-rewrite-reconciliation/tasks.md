@@ -206,6 +206,11 @@ healthy branch is still sent, and a second worker converges on it.
       `backend/infrahub/message_bus/messages/refresh_git_fetch.py`, per
       [data-model.md](data-model.md), "Message change". A coalesced message still populates the
       required single-branch fields from its first pair.
+- [ ] T024y [US3] Add a model validator to `RefreshGitFetch` asserting that
+      `infrahub_branch_name`, `infrahub_branch_id` and `commit` equal the first entry of `branches`
+      whenever `branches` is set. A worker on the previous code reads only the single-branch fields,
+      so a mismatch converges it onto a branch the message was not about. PR #10669 is no precedent
+      here: it sends one message per moved ref and adds no field, so this coalescing is new.
 - [ ] T025 [US3] Read the list in
       `backend/infrahub/message_bus/operations/git/repository.py::fetch`. Reset every pair inside
       one lock acquisition and one fetch. Fall back to the single-branch fields when `branches` is
