@@ -26694,6 +26694,9 @@ type RepositoryBranchDrifts {
   When the remote was last checked for movement. Read-only repositories only.
   """
   checked_at: DateTime
+  """
+  One row per open branch the caller may view, and for a read-write repository only those synchronised with Git. The set is the branch list as it stands now: an `at` in the past changes the values each row reports, never which branches are listed.
+  """
   edges: [RepositoryBranchDriftNode!]!
   fetched_at: DateTime
   repository_id: String!

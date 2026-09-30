@@ -63,6 +63,9 @@ class RepositoryBranchValuesQuery(Query):
 
     name = "repository_branch_values"
     type = QueryType.READ
+    # The row bound below is exact rather than a page, so a literal LIMIT could only ever truncate
+    # an unordered result.
+    insert_limit = False
 
     def __init__(
         self,

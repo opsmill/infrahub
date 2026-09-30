@@ -87,6 +87,7 @@ async def _load_generic_repository(graphql_context: GraphqlContext, repository_i
             kind=CoreGenericRepository,
             id=repository_id,
             branch=graphql_context.branch,
+            at=graphql_context.at,
         )
     except NodeNotFoundError:
         return None
@@ -238,16 +239,15 @@ def _viewable_branches(graphql_context: GraphqlContext, kind: str, branches: lis
     ]
 
 
-def _drift_branches(graphql_context: GraphqlContext, kind: str, at: Timestamp) -> list[Branch]:
-    """Return the branches a drift row may be reported for.
+def _drift_branches(graphql_context: GraphqlContext, kind: str) -> list[Branch]:
+    """Return the branches a drift row may be reported for, as the branch list stands now.
 
-    A branch on its way out has no drift worth reporting, and one that did not exist at the
-    requested time has none to report either.
+    A branch on its way out has no drift worth reporting. The set is not rewound to an `at` in the
+    past, because a branch carries one status rather than a history of them, so a row set selected
+    partly by the requested time and partly by today's status would answer as of neither.
     """
     branches = [
-        branch
-        for branch in registry.branch.values()
-        if branch.name != GLOBAL_BRANCH_NAME and not branch.is_terminal and Timestamp(branch.get_created_at()) <= at
+        branch for branch in registry.branch.values() if branch.name != GLOBAL_BRANCH_NAME and not branch.is_terminal
     ]
     return _viewable_branches(graphql_context=graphql_context, kind=kind, branches=branches)
 
@@ -419,7 +419,7 @@ class RepositoryBranchDriftResolver:
             at=at,
             read=_drift_read(
                 repository=repository,
-                branches=_drift_branches(graphql_context=graphql_context, kind=repository.get_kind(), at=at),
+                branches=_drift_branches(graphql_context=graphql_context, kind=repository.get_kind()),
             ),
         )
 

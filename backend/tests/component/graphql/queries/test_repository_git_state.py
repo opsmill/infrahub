@@ -416,6 +416,44 @@ async def test_commit_log_tracks_a_branch_that_does_not_sync_with_git(
     ]
 
 
+async def test_commit_log_answers_as_of_the_requested_time(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    repository: Node,
+) -> None:
+    """The repository node is read at `at` too, not only the per-branch values."""
+    before_the_later_import = Timestamp()
+    repo = await NodeManager.get_one(db=db, id=repository.id, branch=default_branch, raise_on_error=True)
+    repo.commit.value = REMOTE_HEAD
+    await repo.save(db=db)
+
+    reloaded = await NodeManager.get_one(db=db, id=repository.id, branch=default_branch, raise_on_error=True)
+    assert reloaded.commit.value == REMOTE_HEAD
+
+    response = await graphql_query(
+        query=COMMITS_QUERY_INFRAHUB_SIDE_ONLY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session_admin,
+        at=before_the_later_import,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert response.data["InfrahubRepositoryCommits"] == {
+        "repository_id": repository.id,
+        "branch_name": default_branch.name,
+        "git_ref": REPOSITORY_DEFAULT_BRANCH,
+        "imported_commit": MAIN_COMMIT,
+        "checked_at": None,
+    }
+
+
 async def test_commit_log_reports_a_branch_the_import_filters_skip_as_untracked(
     db: InfrahubDatabase,
     default_permission_backend: None,
@@ -1011,16 +1049,20 @@ async def test_drift_answers_as_of_the_requested_time(
     }
 
 
-async def test_drift_omits_a_branch_created_after_the_requested_time(
+async def test_drift_lists_a_branch_created_after_the_requested_time(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
     session_admin: AccountSession,
     service: InfrahubServices,
     repository: Node,
+    synced_branch: Branch,
 ) -> None:
+    """`at` moves the values, never the row set, which is the branch list as it stands now."""
     before_the_branch_existed = Timestamp()
-    await create_branch(branch_name="branch2", db=db)
+    later_branch = await create_branch(branch_name="branch3", db=db)
+    later_branch.sync_with_git = True
+    await later_branch.save(db=db)
 
     response = await graphql_query(
         query=DRIFT_QUERY,
@@ -1034,13 +1076,10 @@ async def test_drift_omits_a_branch_created_after_the_requested_time(
 
     assert not response.errors
     assert response.data
-    assert _drift_rows(response.data["InfrahubRepositoryBranchDrift"]) == {
-        default_branch.name: _drift_row(
-            branch_name=default_branch.name,
-            git_ref=REPOSITORY_DEFAULT_BRANCH,
-            tracked_commit=MAIN_COMMIT,
-            condition=RepositoryGitCondition.UNAVAILABLE,
-        )
+    assert set(_drift_rows(response.data["InfrahubRepositoryBranchDrift"])) == {
+        default_branch.name,
+        synced_branch.name,
+        later_branch.name,
     }
 
 
