@@ -117,8 +117,10 @@ async def test_new_closes_the_connection_when_initialisation_does_not_finish(
     monkeypatch.setattr(NATSCache, "_ensure_kv", staticmethod(never_finishes))
 
     initialising = asyncio.create_task(NATSCache.new())
-    await asyncio.wait_for(connected.wait(), timeout=30)
-    initialising.cancel()
+    try:
+        await asyncio.wait_for(connected.wait(), timeout=30)
+    finally:
+        initialising.cancel()
 
     with pytest.raises(asyncio.CancelledError):
         await initialising

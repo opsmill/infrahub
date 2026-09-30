@@ -964,8 +964,9 @@ class DiffFieldNodesQuery(DiffChangedNodesQuery):
 // -------------------------------------
 // Identify nodes with an attribute/relationship added/removed on branch
 // -------------------------------------
-MATCH (p:Node)-[diff_rel:HAS_ATTRIBUTE|IS_RELATED {branch: $branch_name}]-()
-WHERE (
+MATCH (p:Node)-[diff_rel:HAS_ATTRIBUTE|IS_RELATED {branch: $branch_name}]-(q)
+WHERE q.branch_support = $branch_aware
+AND (
     ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
     OR ($from_time <= diff_rel.to < $to_time)
 )
@@ -983,9 +984,10 @@ class DiffPropertyNodesQuery(DiffChangedNodesQuery):
 // -------------------------------------
 // Identify nodes with a property added/removed on branch
 // -------------------------------------
-MATCH (n:Node)-[:HAS_ATTRIBUTE|IS_RELATED]-(:Attribute|Relationship)
+MATCH (n:Node)-[:HAS_ATTRIBUTE|IS_RELATED]-(p:Attribute|Relationship)
     -[diff_rel:IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE {branch: $branch_name}]->()
-WHERE (
+WHERE p.branch_support = $branch_aware
+AND (
     ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
     OR ($from_time <= diff_rel.to < $to_time)
 )
