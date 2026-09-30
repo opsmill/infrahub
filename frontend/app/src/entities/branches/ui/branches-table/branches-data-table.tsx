@@ -64,12 +64,9 @@ export function BranchesDataTable({
 
   const allHeaders = table.getFlatHeaders();
   const allRows = table.getRowModel().rows;
-  const style = React.useMemo<React.CSSProperties>(
-    () => ({
-      gridTemplateColumns: gridTemplateColumns(allHeaders.length),
-    }),
-    [allHeaders.length, gridTemplateColumns]
-  );
+  const style: React.CSSProperties = {
+    gridTemplateColumns: gridTemplateColumns(allHeaders.length),
+  };
 
   const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original.branch);
 

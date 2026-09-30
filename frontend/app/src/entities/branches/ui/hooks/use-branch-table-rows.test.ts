@@ -174,14 +174,12 @@ describe("useBranchTableRows", () => {
     const { result } = await rendered;
     await vi.waitFor(() => expect(result.current[0]?.state).toBe("ok"));
 
-    const query = queryClient
-      .getQueryCache()
-      .find({
-        queryKey: repositoryQueryKeys.branch({
-          branchName: "main",
-          kind: getRepositoryListKind(true),
-        }),
-      });
+    const query = queryClient.getQueryCache().find({
+      queryKey: repositoryQueryKeys.branch({
+        branchName: "main",
+        kind: getRepositoryListKind(true),
+      }),
+    });
     const refetchInterval = query?.observers[0]?.options.refetchInterval;
 
     if (!query || typeof refetchInterval !== "function") throw new Error("no polling query");
