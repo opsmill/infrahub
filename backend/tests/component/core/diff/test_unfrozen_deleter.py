@@ -1,8 +1,10 @@
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import pytest
 
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.model.path import (
     BranchTrackingId,
@@ -19,8 +21,11 @@ from infrahub.core.diff.unfrozen_deleter import (
     UnfrozenDiffDeletionPlan,
     UnfrozenDiffDeletionPlanner,
 )
+from infrahub.core.initialization import create_branch, create_root_node
+from infrahub.core.merge.merge_locker import MergeLocker
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.lock import InfrahubLock
 from tests.helpers.diff_factories import EnrichedRootFactory
 
 from .repository.base import DiffRepositoryTestBase
@@ -49,6 +54,49 @@ FROZEN_PARTNER_CASES = [
 ]
 
 
+@dataclass
+class HeldLockCase:
+    name: str
+    hold_lock: Callable[[DiffLocker, MergeLocker], InfrahubLock]
+    tracking_id: TrackingId
+    expected_events: list[str]
+
+
+WAITED_ON = ["lock released", "delete"]
+NOT_WAITED_ON = ["delete", "lock released"]
+
+HELD_LOCK_CASES = [
+    HeldLockCase(
+        name="incremental_diff_update_lock",
+        hold_lock=lambda diff_locker, _: diff_locker.acquire_lock(
+            target_branch_name="main", source_branch_name="branch-a", is_incremental=True
+        ),
+        tracking_id=NameTrackingId(name="named"),
+        expected_events=WAITED_ON,
+    ),
+    HeldLockCase(
+        name="full_diff_update_lock",
+        hold_lock=lambda diff_locker, _: diff_locker.acquire_lock(
+            target_branch_name="main", source_branch_name="branch-a", is_incremental=False
+        ),
+        tracking_id=NameTrackingId(name="named"),
+        expected_events=WAITED_ON,
+    ),
+    HeldLockCase(
+        name="merge_lock_with_branch_diff",
+        hold_lock=lambda _, merge_locker: merge_locker.acquire_global_lock(),
+        tracking_id=BranchTrackingId(name="branch-a"),
+        expected_events=WAITED_ON,
+    ),
+    HeldLockCase(
+        name="merge_lock_with_named_diff",
+        hold_lock=lambda _, merge_locker: merge_locker.acquire_global_lock(),
+        tracking_id=NameTrackingId(name="named"),
+        expected_events=NOT_WAITED_ON,
+    ),
+]
+
+
 class RecordingDiffRepository(DiffRepository):
     def __init__(self, db: InfrahubDatabase, deserializer: EnrichedDiffDeserializer, events: list[str]) -> None:
         super().__init__(db=db, deserializer=deserializer)
@@ -59,9 +107,14 @@ class RecordingDiffRepository(DiffRepository):
         await super().delete_diff_roots(diff_root_uuids=diff_root_uuids, include_frozen=include_frozen)
 
 
-def planned_diffs(plan: UnfrozenDiffDeletionPlan) -> list[tuple[str, str, set[frozenset[str]]]]:
+def planned_diffs(plan: UnfrozenDiffDeletionPlan) -> list[tuple[str, str, set[frozenset[str]], bool]]:
     return [
-        (batch.base_branch_name, batch.diff_branch_name, {frozenset(diff) for diff in batch.diffs})
+        (
+            batch.base_branch_name,
+            batch.diff_branch_name,
+            {frozenset(diff) for diff in batch.diffs},
+            batch.has_branch_diffs,
+        )
         for batch in plan.batches
     ]
 
@@ -83,12 +136,18 @@ class TestUnfrozenDiffDeleter(DiffRepositoryTestBase):
         return DiffLocker()
 
     @pytest.fixture
-    def planner(self, diff_repository: DiffRepository) -> UnfrozenDiffDeletionPlanner:
-        return UnfrozenDiffDeletionPlanner(diff_repository=diff_repository)
+    def merge_locker(self) -> MergeLocker:
+        return MergeLocker()
 
     @pytest.fixture
-    def deleter(self, diff_repository: DiffRepository, diff_locker: DiffLocker) -> UnfrozenDiffDeleter:
-        return UnfrozenDiffDeleter(diff_repository=diff_repository, diff_locker=diff_locker)
+    def planner(self, db: InfrahubDatabase, diff_repository: DiffRepository) -> UnfrozenDiffDeletionPlanner:
+        return UnfrozenDiffDeletionPlanner(db=db, diff_repository=diff_repository)
+
+    @pytest.fixture
+    def deleter(
+        self, diff_repository: DiffRepository, diff_locker: DiffLocker, merge_locker: MergeLocker
+    ) -> UnfrozenDiffDeleter:
+        return UnfrozenDiffDeleter(diff_repository=diff_repository, diff_locker=diff_locker, merge_locker=merge_locker)
 
     async def _save_diff(
         self,
@@ -152,8 +211,8 @@ class TestUnfrozenDiffDeleter(DiffRepositoryTestBase):
         plan = await planner.plan(branch_name=None, include_branch_diffs=False)
 
         assert planned_diffs(plan=plan) == [
-            ("main", "branch-a", {root_pair(diffs=branch_a_named)}),
-            ("main", "main", {root_pair(diffs=main_named)}),
+            ("main", "branch-a", {root_pair(diffs=branch_a_named)}, False),
+            ("main", "main", {root_pair(diffs=main_named)}, False),
         ]
         assert plan.num_diffs == 2
         assert plan.kept_root_uuids == ()
@@ -181,9 +240,9 @@ class TestUnfrozenDiffDeleter(DiffRepositoryTestBase):
         plan = await planner.plan(branch_name=None, include_branch_diffs=True)
 
         assert planned_diffs(plan=plan) == [
-            ("main", "branch-a", {root_pair(diffs=branch_a), root_pair(diffs=branch_a_named)}),
-            ("main", "branch-b", {root_pair(diffs=branch_b)}),
-            ("main", "main", {root_pair(diffs=main_named)}),
+            ("main", "branch-a", {root_pair(diffs=branch_a), root_pair(diffs=branch_a_named)}, True),
+            ("main", "branch-b", {root_pair(diffs=branch_b)}, True),
+            ("main", "main", {root_pair(diffs=main_named)}, False),
         ]
         assert plan.kept_root_uuids == ()
 
@@ -205,9 +264,9 @@ class TestUnfrozenDiffDeleter(DiffRepositoryTestBase):
         main_plan = await planner.plan(branch_name="main", include_branch_diffs=True)
 
         assert planned_diffs(plan=branch_plan) == [
-            ("main", "branch-a", {root_pair(diffs=branch_a), root_pair(diffs=branch_a_named)})
+            ("main", "branch-a", {root_pair(diffs=branch_a), root_pair(diffs=branch_a_named)}, True)
         ]
-        assert planned_diffs(plan=main_plan) == [("main", "main", {root_pair(diffs=main_named)})]
+        assert planned_diffs(plan=main_plan) == [("main", "main", {root_pair(diffs=main_named)}, False)]
 
     async def test_plans_a_base_root_left_without_its_branch_root_under_the_default_branch(
         self, diff_repository: DiffRepository, planner: UnfrozenDiffDeletionPlanner, reset_database: None
@@ -219,7 +278,7 @@ class TestUnfrozenDiffDeleter(DiffRepositoryTestBase):
         assert (await planner.plan(branch_name="branch-a", include_branch_diffs=True)).batches == ()
         assert (await planner.plan(branch_name=None, include_branch_diffs=False)).batches == ()
         assert planned_diffs(plan=await planner.plan(branch_name="main", include_branch_diffs=True)) == [
-            ("main", "main", {frozenset({diffs.base_branch_diff.uuid})})
+            ("main", "main", {frozenset({diffs.base_branch_diff.uuid})}, True)
         ]
 
     @pytest.mark.parametrize("case", FROZEN_PARTNER_CASES, ids=lambda case: case.name)
@@ -244,6 +303,28 @@ class TestUnfrozenDiffDeleter(DiffRepositoryTestBase):
 
             assert plan.batches == ()
             assert plan.kept_root_uuids == (unfrozen_root.uuid,)
+
+    async def test_keeps_the_branch_diffs_of_a_merged_branch(
+        self,
+        db: InfrahubDatabase,
+        diff_repository: DiffRepository,
+        planner: UnfrozenDiffDeletionPlanner,
+        reset_database: None,
+    ) -> None:
+        await create_root_node(db=db)
+        merged_branch = await create_branch(branch_name="branch-merged", db=db)
+        merged_branch.status = BranchStatus.MERGED
+        await merged_branch.save(db=db)
+        merged = await self._save_diff(diff_repository=diff_repository, branch_name="branch-merged")
+        merged_named = await self._save_diff(
+            diff_repository=diff_repository, branch_name="branch-merged", tracking_id=NameTrackingId(name="named")
+        )
+
+        for branch_name in (None, "branch-merged"):
+            plan = await planner.plan(branch_name=branch_name, include_branch_diffs=True)
+
+            assert planned_diffs(plan=plan) == [("main", "branch-merged", {root_pair(diffs=merged_named)}, False)]
+            assert set(plan.kept_merged_branch_root_uuids) == root_pair(diffs=merged)
 
     async def test_deletes_the_planned_diffs_and_leaves_the_others_intact(
         self,
@@ -292,44 +373,44 @@ class TestUnfrozenDiffDeleter(DiffRepositoryTestBase):
 
         assert await self._root_uuids(diff_repository=diff_repository) == root_pair(diffs=diffs)
 
-    @pytest.mark.parametrize("is_incremental", [True, False], ids=["incremental_lock", "full_lock"])
-    async def test_waits_for_the_diff_update_of_the_branch_in_progress(
+    @pytest.mark.parametrize("case", HELD_LOCK_CASES, ids=lambda case: case.name)
+    async def test_waits_for_the_diff_update_or_merge_in_progress(
         self,
         db: InfrahubDatabase,
         diff_repository: DiffRepository,
         diff_locker: DiffLocker,
+        merge_locker: MergeLocker,
         planner: UnfrozenDiffDeletionPlanner,
         reset_database: None,
-        is_incremental: bool,
+        case: HeldLockCase,
     ) -> None:
-        await self._save_diff(diff_repository=diff_repository, branch_name="branch-a")
+        await self._save_diff(diff_repository=diff_repository, branch_name="branch-a", tracking_id=case.tracking_id)
         events: list[str] = []
         deleter = UnfrozenDiffDeleter(
             diff_repository=RecordingDiffRepository(
                 db=db, deserializer=EnrichedDiffDeserializer(parent_adder=DiffParentNodeAdder()), events=events
             ),
             diff_locker=diff_locker,
+            merge_locker=merge_locker,
         )
         plan = await planner.plan(branch_name="branch-a", include_branch_diffs=True)
-        update_started = asyncio.Event()
-        update_may_finish = asyncio.Event()
+        lock_held = asyncio.Event()
+        lock_may_be_released = asyncio.Event()
 
-        async def update_diff() -> None:
-            async with diff_locker.acquire_lock(
-                target_branch_name=self.base_branch_name, source_branch_name="branch-a", is_incremental=is_incremental
-            ):
-                update_started.set()
-                await update_may_finish.wait()
-                events.append("update finished")
+        async def hold_lock() -> None:
+            async with case.hold_lock(diff_locker, merge_locker):
+                lock_held.set()
+                await lock_may_be_released.wait()
+                events.append("lock released")
 
-        update = asyncio.create_task(update_diff())
-        await update_started.wait()
+        holder = asyncio.create_task(hold_lock())
+        await lock_held.wait()
         deletion = asyncio.create_task(deleter.delete(plan=plan))
         for _ in range(10):
             await asyncio.sleep(0)
-        update_may_finish.set()
-        await update
+        lock_may_be_released.set()
+        await holder
         await deletion
 
-        assert events == ["update finished", "delete"]
+        assert events == case.expected_events
         assert await self._root_uuids(diff_repository=diff_repository) == set()
