@@ -194,7 +194,7 @@ Do not read `LOCAL_AHEAD` as a replacement for the gate. It narrows the hole; #1
 | # | Decision | Basis |
 |---|---|---|
 | 1 | PRD FR-015 and FR-016 defer to epic IFC-3220. | The Jira epic already states it. The delivery queue they read does not exist. |
-| 2 | The suppression marker is a cache key. A fifth attribute and a temporal graph read both remain live alternatives that would remove the cache; `research.md` R4 says what each costs. |
+| 2 | The suppression marker is a cache key. | A fifth attribute and a temporal graph read both remain live alternatives that would remove the cache. `research.md` R4 says what each costs. |
 | 3 | The recorder writes through the SDK node API, not through an extended SDK helper. | Keeps the epic inside one repository. `research.md` R6. |
 | 4 | `RefreshGitFetch` gains an optional list and keeps its single-branch fields. | Five unrelated emission sites use them. `research.md` R5. |
 | 5 | FR-017 is added on top of the PRD. | Removing the divergence case alone leaves the wrong message reachable from every other pull caller. `spec.md`, "Decisions Taken During Specification". |
