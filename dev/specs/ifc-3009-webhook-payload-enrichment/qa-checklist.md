@@ -43,7 +43,7 @@ EOF
 uv run --with fastapi --with uvicorn python /tmp/qa_receiver.py | tee /tmp/qa-webhooks.jsonl
 ```
 
-3. Log in at `http://localhost:8000` as `admin` / `infrahub`, open the GraphQL sandbox and create a webhook for every event on every branch (on Linux, use the host IP instead of `host.docker.internal`):
+3. Log in at `http://localhost:8000` with the administrator account listed in `docs/docs/tutorials/getting-started/readme.mdx`, open the GraphQL sandbox and create a webhook for every event on every branch (on Linux, use the host IP instead of `host.docker.internal`):
 
 ```graphql
 mutation {
