@@ -34,7 +34,7 @@ Decisions taken by the feature owner at the phase 1 checkpoint. They are binding
 Clarifications settled from the research brief and the base branch (PR #10779), without a user question:
 
 - Q: What exactly does the Repository cell contain, and where does its link go? → A: **The same as the branch details page's repository row**: the repository name linking to the repository's page opened on that branch, and a "Read-only" marker for read-only repositories.
-- Q: In which order do a branch's repository rows appear? → A: **The branch details page's order**: repositories with a failed import first, then the rest in the order the backend returns. The ordering rule is reused, not re-implemented.
+- Q: In which order do a branch's repository rows appear? → A: **The branch details page's order**: failed imports first, then unreachable remotes, then by name. The ordering rule is reused, not re-implemented.
 - Q: Does the Git state cell also flag an unreachable remote (the repository's operational status), as the branch details row does? → A: **No.** The ticket scopes Git state to the import outcome (`sync_status`) only. Operational status stays on the branch details page.
 - Q: Can the three new columns be hidden? → A: **No.** The branches list has no column picker today and this feature does not add one.
 - Q: Are other screens affected? → A: **No.** The branches table is rendered by the branches page only.
@@ -72,7 +72,7 @@ A branch linked to three repositories appears three times in the list, once per 
 2. **Given** a branch shown on several rows, **When** the operator ticks the checkbox on any of those rows, **Then** every row of that branch shows as selected, the toolbar reports 1 selected, and the bulk delete dialog lists that branch once.
 3. **Given** two branches with several repositories each, **When** the operator uses shift-click to select a range covering both, **Then** the toolbar reports 2 selected.
 4. **Given** the list is scrolled to load more branches, **When** the next page arrives, **Then** the new branches append with their repository rows, and the number of branches per page is unchanged from today.
-5. **Given** a branch with several repositories of which one failed to import, **When** its rows render, **Then** the failed repository is the branch's first row and the others follow in the order the backend returns them, identically across reloads.
+5. **Given** a branch with several repositories of which one failed to import, **When** its rows render, **Then** the failed repository is the branch's first row and the others follow in the branch details page's order (unreachable remotes next, then by name), identically across reloads.
 
 ---
 
@@ -115,7 +115,7 @@ A branch that is not synced with Git, or that has no repositories at all, still 
 - **FR-004**: The Git state MUST be the repository's `sync_status` as resolved on that branch, rendered with the label, colour and description defined in the schema. When no colour is defined, the pill MUST fall back to a neutral style and still show the label or value.
 - **FR-005**: The Commit cell MUST show the first 7 characters of the imported commit in a monospace face, expose the full hash on hover, and offer a copy control that copies the full hash. When there is no commit, the cell MUST be blank.
 - **FR-006**: The Repository cell MUST show the repository's name as a link to that repository's page opened on the row's branch, and MUST mark read-only repositories with the same "Read-only" marker the branch details page uses.
-- **FR-006a**: Within a branch, repository rows MUST be ordered with failed imports first and the remainder in backend order, using the same ordering rule as the branch details page.
+- **FR-006a**: Within a branch, repository rows MUST be ordered by the same rule as the branch details page: repositories whose last import failed first, then repositories whose remote is unreachable, then the rest, each group sorted by repository name (case-insensitive). The unreachable status itself is not shown (FR-016); it only affects order.
 - **FR-007**: A branch that returns zero repositories MUST occupy exactly one row. Its Repository cell MUST read "Not synced with Git" when the branch is not synced with Git and "No repositories" otherwise; its Git state and Commit cells MUST be blank.
 - **FR-008**: Selection MUST be per branch: ticking any row of a branch selects the branch, all of its rows show as selected, the selection count reports branches, and bulk actions receive each branch once.
 - **FR-009**: Shift-click range selection MUST continue to work and MUST count branches, not rows.
@@ -154,4 +154,5 @@ A branch that is not synced with Git, or that has no repositories at all, still 
 - Merged and deleting branches, if shown by the current list filters, fan out like any other branch; whatever repositories the backend returns for them are shown.
 - The epic spec (`dev/specs/infp-671-cross-branch-repo-status/spec.md`) lists "extra columns on the global branches view" as out of scope for the backend query work; this ticket is the frontend follow-up that supersedes that line and adds no backend change.
 - The branches table is rendered only by the branches page, so no other screen changes.
+- When the backend truncates a branch's repository list, the list shows only the returned repositories, with no "more" marker.
 - Out of scope: "Upstream" and "Last import" columns (IFC-3146, IFC-3147), the repository's operational status (unreachable remote), filters or sorting on the new columns, column hiding, any backend change, the branch-details page itself, and resolving the visual similarity between the branch "Status" pill and the "Git state" pill beyond keeping them separated by the "Proposed changes" column and using different pill shapes.
