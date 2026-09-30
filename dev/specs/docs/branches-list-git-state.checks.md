@@ -1,6 +1,6 @@
 # Prose checks — branch-synchronization.mdx, "Checking Git state from the branches list"
 
-## Subject walk (17 sentences incl. table cells)
+## Subject walk (19 sentences incl. table cells)
 
 1. The Branches page / shows — ok (UI surface displays)
 2. Three columns / follow — ok (position)
@@ -24,7 +24,7 @@
 
 Rewrites: 3.
 
-## Verb walk (non-technical verbs: 12)
+## Verb walk (non-technical verbs: 14)
 
 shows, follow, linking, carries, defines, hover, takes (replaced), repeat, comes, ticking, says (replaced), affects (replaced), refreshes, organized.
 Replaced 3 (takes, says, affects). Remainder literal.
