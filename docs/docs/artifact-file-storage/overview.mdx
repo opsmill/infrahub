@@ -121,6 +121,12 @@ Unlike artifacts, which can be regenerated from their definitions, user-uploaded
 
 <ReferenceLink title="How to backup object storage" url="../deploy-manage/maintain-upgrade/database-backup/backup-and-restore#step-3-backup-the-object-storage" />
 
+### Encryption at rest
+
+By default, stored files are kept as they were uploaded or generated. Infrahub can encrypt the files it stores, and refuse to serve a stored file that was modified.
+
+<ReferenceLink title="Encrypt stored files" url="./encryption" />
+
 ### Backend migration
 
 :::warning Backend migration
@@ -136,5 +142,6 @@ Switching storage backends (for example, from `local` to `s3`) does not migrate 
 ## Further reading
 
 - [Configure storage](./configure.mdx): Practical steps for uploading and retrieving content
+- [Encrypt stored files](./encryption.mdx): Encrypting artifacts and file objects in the object storage
 - [File objects](../schema/file-object): Attaching files to nodes with full version control
 - [Configuration reference](../reference/configuration.mdx): All storage-related environment variables and settings

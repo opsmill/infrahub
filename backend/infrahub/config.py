@@ -373,6 +373,14 @@ class StorageSettings(BaseSettings):
     local: FileSystemStorageSettings = FileSystemStorageSettings()
     s3: S3StorageSettings = S3StorageSettings()
     max_file_size: int = Field(default=50, ge=1, description="Maximum file size in MB for file uploads")
+    encryption_enabled: bool = Field(
+        default=False,
+        description=(
+            "Encrypt the artifacts and files stored from now on with a key derived from INFRAHUB_SECURITY_SECRET_KEY, "
+            "and refuse to serve a stored file that fails its integrity check. Files stored before are served only "
+            "if they match their recorded checksum."
+        ),
+    )
 
 
 class DatabaseSettings(BaseSettings):
@@ -1190,7 +1198,11 @@ class SecuritySettings(BaseSettings):
         default=THIRTY_DAYS_IN_SECONDS, description="Lifetime of refresh token in seconds"
     )
     secret_key: str = Field(
-        default_factory=generate_uuid, description="The secret key used to validate authentication tokens"
+        default_factory=generate_uuid,
+        description=(
+            "The secret key used to validate authentication tokens. With storage encryption enabled, the key that "
+            "encrypts stored files is derived from it: changing it makes those files unreadable."
+        ),
     )
     oauth2_providers: list[Oauth2Provider] = Field(default_factory=list, description="The selected OAuth2 providers")
     oauth2_provider_settings: SecurityOAuth2ProviderSettings = Field(default_factory=SecurityOAuth2ProviderSettings)

@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from infrahub.api.dependencies import get_current_user, get_db
 from infrahub.api.storage import file_object
+from infrahub.api.storage.content import read_stored_object
 from infrahub.core import registry
 from infrahub.core.protocols import CoreFileObject
 from infrahub.database import InfrahubDatabase  # noqa: TC001
@@ -42,8 +43,8 @@ async def get_file(
         file_url = request.url_for("download_file_object_by_storage_id", storage_id=identifier)
         raise HTTPException(status_code=403, detail=f"Use {file_url.path} instead.")
 
-    content = registry.storage.retrieve(identifier=identifier)
-    return Response(content=content)
+    content = await read_stored_object(db=db, identifier=identifier, recorded_checksum=None)
+    return Response(content=content.decode())
 
 
 @router.post("/upload/content")

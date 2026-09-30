@@ -1,0 +1,47 @@
+---
+title: Encrypt stored files
+---
+
+# Encrypt stored files
+
+Infrahub can encrypt the artifacts and file objects it stores, on the local filesystem or in an S3-compatible bucket, and refuse to serve a stored file that was modified. Files are encrypted with AES-256-GCM using a key derived from `INFRAHUB_SECURITY_SECRET_KEY`.
+
+Encryption protects stored files from someone who has access to the storage, or to a copy of it, but not to the API servers' secret. It does not protect them from Infrahub users who can read the files through Infrahub, and it does not replace TLS for data in transit.
+
+## Prerequisites
+
+An `INFRAHUB_SECURITY_SECRET_KEY` of at least 32 random characters, set to the same value on every API server. Infrahub refuses to start with a generated secret or with the value from the example deployment files. Changing the secret ends every user session: users have to log in again, while API tokens keep working.
+
+:::warning
+The encryption key is never stored: Infrahub derives it from `INFRAHUB_SECURITY_SECRET_KEY` when it starts. Keep that secret in your secrets manager. Without it, encrypted files cannot be recovered, even from a backup.
+:::
+
+## Enable encryption
+
+Set `INFRAHUB_STORAGE_ENCRYPTION_ENABLED=true` on every API server, then restart them. Task workers need neither the setting nor the secret: they store and read files through the API.
+
+From then on:
+
+- Every artifact generated and every file uploaded is stored encrypted, and Infrahub checks that it is unchanged each time it serves it.
+- A file stored before encryption was enabled stays as it is. Infrahub serves it only while it matches the checksum recorded when it was stored. A file that no artifact or file object refers to is served as it is.
+
+## Files that fail their integrity check
+
+Infrahub never serves a stored file that was modified: the request fails with a `409` error, and the API server logs a warning with the storage identifier of the file. A file that is missing from the storage returns a `404` error, as it does without encryption.
+
+To repair a file object, upload the file again. To repair an artifact, delete it and regenerate its artifact definition.
+
+## Limitations
+
+- Changing `INFRAHUB_SECURITY_SECRET_KEY` makes the files encrypted with the previous value unreadable: they are refused until the previous value is restored.
+- Encryption cannot be turned off again: with it off, artifacts stored while it was on fail to load, file objects are served as their encrypted bytes, and files modified in the storage are served again. Turn it back on to read them.
+- Files stored before encryption was enabled stay in plaintext in the storage, and so do their copies outside Infrahub, such as older backups, S3 object versions and filesystem snapshots.
+
+## Back up and restore
+
+Back up the graph database and the object storage at the same time, and restore them together. The backups contain neither the key nor the secret: restore them with the value of `INFRAHUB_SECURITY_SECRET_KEY` that was in use when they were taken.
+
+## Next
+
+- [About storage](./overview.mdx)
+- [Configure storage](./configure.mdx)

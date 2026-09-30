@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, BinaryIO
 
 import boto3
@@ -9,10 +10,20 @@ import botocore.exceptions
 import fastapi_storages
 from typing_extensions import Self
 
-from infrahub.exceptions import NodeNotFoundError
+from infrahub.exceptions import NodeNotFoundError, StorageEncryptionError
+from infrahub.storage_encryption.crypto import is_envelope, open_envelope, seal
 
 if TYPE_CHECKING:
     from infrahub.config import StorageSettings
+    from infrahub.storage_encryption.crypto import StorageKey
+
+
+@dataclass(frozen=True)
+class StoredContent:
+    content: bytes
+
+    authenticated: bool
+    """Whether the content was decrypted from an envelope that proved it unchanged."""
 
 
 class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
@@ -74,9 +85,16 @@ fastapi_storages.InfrahubS3ObjectStorage = InfrahubS3ObjectStorage
 class InfrahubObjectStorage:
     _settings: StorageSettings
     _storage: fastapi_storages.base.BaseStorage
+    _key: StorageKey | None = None
 
-    def __init__(self, settings: StorageSettings) -> None:
+    def __init__(self, settings: StorageSettings, key: StorageKey | None = None) -> None:
+        """Access the configured storage driver.
+
+        With encryption enabled, `key` seals every object written and opens every encrypted object read;
+        without it, writing an object or reading an encrypted one raises.
+        """
         self._settings = settings
+        self._key = key
 
         driver = getattr(fastapi_storages, self._settings.driver.name)
 
@@ -84,25 +102,50 @@ class InfrahubObjectStorage:
         self._storage = driver(**driver_settings.model_dump(by_alias=True))
 
     @classmethod
-    async def init(cls, settings: StorageSettings) -> Self:
-        return cls(settings)
+    async def init(cls, settings: StorageSettings, key: StorageKey | None = None) -> Self:
+        return cls(settings, key=key)
+
+    def _active_key(self) -> StorageKey:
+        if self._key is None:
+            raise StorageEncryptionError(
+                "Storage encryption is enabled but this process has no key; only the API server reads and "
+                "writes stored objects"
+            )
+        return self._key
 
     def store(self, identifier: str, content: BinaryIO) -> None:
-        self._storage.write(content, identifier)
+        if not self._settings.encryption_enabled:
+            self._storage.write(content, identifier)
+            return
+        key = self._active_key()
+        content.seek(0)
+        self._storage.write(io.BytesIO(seal(identifier=identifier, content=content.read(), key=key)), identifier)
 
     def retrieve(self, identifier: str) -> str:
-        try:
-            with self._storage.open(identifier) as f:
-                return f.read().decode()
-        except (FileNotFoundError, botocore.exceptions.ClientError) as err:
-            raise NodeNotFoundError(node_type="StorageObject", identifier=identifier) from err
+        return self.retrieve_binary(identifier=identifier).decode()
 
     def retrieve_binary(self, identifier: str) -> bytes:
+        return self.read(identifier=identifier).content
+
+    def read(self, identifier: str) -> StoredContent:
+        """Return the content of a stored object, decrypted when it is encrypted and encryption is enabled.
+
+        An object stored before encryption was enabled is returned as it is, not authenticated.
+
+        Raises:
+            NodeNotFoundError: If no object is stored under `identifier`.
+            StorageIntegrityError: If an encrypted object uses another key or fails authentication.
+
+        """
         try:
             with self._storage.open(identifier) as f:
-                return f.read()
+                stored = f.read()
         except (FileNotFoundError, botocore.exceptions.ClientError) as err:
             raise NodeNotFoundError(node_type="StorageObject", identifier=identifier) from err
+        if not self._settings.encryption_enabled or not is_envelope(stored):
+            return StoredContent(content=stored, authenticated=False)
+        content = open_envelope(identifier=identifier, content=stored, key=self._active_key())
+        return StoredContent(content=content, authenticated=True)
 
     def delete(self, identifier: str) -> None:
         """Delete a file from storage.

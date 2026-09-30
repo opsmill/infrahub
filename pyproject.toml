@@ -40,6 +40,7 @@ dependencies = [
     # Dependencies specific to the API Server
     "fastapi==0.141.1",
     "fastapi-storages>=0.3,<0.4",
+    "cryptography>=50,<51",
     "graphene>=3.4,<3.5",
     "gunicorn>=23.0.0,<24",
     "lunr>=0.7.0.post1,<0.8",
