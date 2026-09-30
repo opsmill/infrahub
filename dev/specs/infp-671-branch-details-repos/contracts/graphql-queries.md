@@ -80,7 +80,7 @@ Reuses `frontend/app/src/entities/tasks/api/get-task-list-from-api.ts::GET_TASK_
 
 Reuses `frontend/app/src/entities/tasks/api/get-task-count-from-api.ts::TASK_COUNT` via `getTaskCount`:
 
-- Variables: `{ branchName, state: ["FAILED", "CRASHED"] }`.
+- Variables: `{ branchName, state: ["FAILED"] }`. FAILED only: the Tasks page filters on a single state, so the count matches what its link opens.
 - Query key: `tasksQueryKeys.count({ branchName, state })`. `refetchInterval: 10_000`.
 
 ## Refresh
