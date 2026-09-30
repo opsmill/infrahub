@@ -1,0 +1,1 @@
+Prevented Infrahub from serving an artifact file that no longer matches its checksum, for example after it was modified in the object storage; reading it now returns an error asking to regenerate the artifact.
