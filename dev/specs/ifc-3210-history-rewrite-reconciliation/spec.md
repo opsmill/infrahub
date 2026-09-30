@@ -426,16 +426,10 @@ No new node kind is introduced.
 - **Pausing synchronisation, and pinning a repository to a chosen commit.** INFP-672 covers both.
 - **Changing the meaning of the repository synchronisation status.** See FR-013.
 
-## Open decisions
-
-Nothing in this design is unresolved for engineering reasons. What remains is a list of decisions
-that belong to a person, and it lives in one place: "Decisions needing confirmation" in
-[plan.md](plan.md). The review history is in [critiques/](critiques/).
-
 ## Decisions Taken During Specification
 
-These were settled without asking, and they are closed. What still needs a person is the table in
-"Decisions needing confirmation" in [plan.md](plan.md), which is the only such list.
+These were settled without asking, and they are closed. The review history is in
+[critiques/](critiques/).
 
 1. **PRD open question on FR-015 and FR-016**: both defer to epic IFC-3220. The delivery queue they
    read does not exist yet, and the Jira epic already states this.

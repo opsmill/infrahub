@@ -189,20 +189,6 @@ Do not read `LOCAL_AHEAD` as a replacement for the gate. It narrows the hole; #1
 | **The record write emits a live node event.** | Computed attributes, display labels and human-friendly ids that read the repository node recompute on a rewrite. Webhooks and action rules fire. | Accepted. A rewrite is rare. No new `NodeMutationOrigin` member: the trigger builders already match `live` explicitly and would ignore a new value for free, but the record goes through an SDK mutation that always stamps `live`, and no channel carries an origin from the worker through GraphQL. See `research.md` R6 and ADR 0016. Revisit if a high-frequency writer of the same attributes appears. |
 | **A rewritten trunk re-imports every object, unprompted.** | On a large repository that is the most expensive operation in the git subsystem, and nobody asked for it. | Accepted. The alternative is leaving the branch stuck, which is the defect being removed. FR-018 makes a failure of that import loud rather than retried blindly, which is where the real risk sits. |
 
-## Decisions needing confirmation
-
-| # | Decision | Who confirms |
-|---|---|---|
-| 1 | The FR-014 consumer is the webhook subsystem. See `research.md` R8. | Patrick Ogenstad |
-| 2 | The four attributes and their GraphQL surface. "Ask First" under `AGENTS.md`. | A maintainer |
-| 3 | The new event and its `EventType` member. "Ask First" under `AGENTS.md`. | A maintainer |
-| 4 | The merge order against PR #10542. | Patrick Ogenstad |
-| 5 | Whether slice G waits for PR #10669 to reach `develop`. It is merged into `pog-repo-commit-visibility-ifc-3101`, which has not landed. | Patrick Ogenstad |
-| 6 | The reworded SC-006. The epic asks for the reason to be determinable from the repository **view**, and also puts every display surface out of scope with INFP-671. The spec resolves that to the stored state, readable through the repository API. | Patrick Ogenstad |
-
-This table is the only list of open decisions. Every other file links here rather than repeating
-it.
-
 ## Settled without asking
 
 | # | Decision | Basis |

@@ -35,9 +35,8 @@ Two open questions in the source PRD were resolved during specification instead 
 as `[NEEDS CLARIFICATION]` markers:
 
 - FR-015 and FR-016 defer to epic IFC-3220. The Jira epic already states this, so it is settled.
-- The FR-014 consumer is the webhook subsystem. This one needs Patrick Ogenstad to confirm. It is
-  recorded in "Decisions needing confirmation" in `plan.md`, which is the only list of open
-  decisions.
+- The FR-014 consumer is the webhook subsystem. This one needs Patrick Ogenstad to confirm.
+  `research.md` R8 states the decision and the two alternatives he may prefer.
 
 **Three items are partial, and honestly so.** The spec names `CoreGenericRepository`,
 `CoreRepository` and `CoreReadOnlyRepository`, which are schema node kinds carried from the source

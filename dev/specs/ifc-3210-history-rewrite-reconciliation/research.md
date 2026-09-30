@@ -555,15 +555,3 @@ the one under "How git errors are classified". It has to be rewritten to describ
 **Leave the other three alone.** They cover the trunk fallback (PR #10542), the persisted writeback
 state (IFC-3220) and push-before-graph-write (PR #10465). Rewriting those would claim three other
 fixes shipped.
-
----
-
-## R13. Open questions carried forward
-
-1. **The FR-014 consumer.** Decided as the webhook subsystem. Patrick must confirm. See R8.
-2. **Schema and GraphQL sign-off.** The four attributes and the new event are "Ask First" changes.
-   Design complete, implementation gated on a maintainer.
-3. **Rebase order against #10542.** If #10542 merges first, `git/base.py` needs a rebase pass. If
-   this epic merges first, #10542 inherits the conflict. Patrick owns both, so he picks the order.
-4. **Whether the read-only slice waits for #10669.** Cheaper after it merges, possible before. See
-   R10.
