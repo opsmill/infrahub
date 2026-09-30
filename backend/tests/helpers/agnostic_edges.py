@@ -9,6 +9,7 @@ because the shape they produce is one no current code path can reach.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
@@ -454,6 +455,29 @@ async def open_is_reserved_edge_on(
     return edges[0]
 
 
+class IsReservedEdge(Enum):
+    """The state of the one active IS_RESERVED edge a pool may hold on an attribute."""
+
+    OPEN = "open"
+    CLOSED = "closed"
+    ABSENT = "absent"
+
+
+def single_is_reserved_edge(edges: list[dict[str, Any]]) -> IsReservedEdge:
+    """Reduce the active IS_RESERVED edges to one state, failing if the pool holds more than one."""
+    assert len(edges) <= 1, f"expected at most one active IS_RESERVED edge, found {len(edges)}"
+    if not edges:
+        return IsReservedEdge.ABSENT
+    return IsReservedEdge.OPEN if "to" not in edges[0] else IsReservedEdge.CLOSED
+
+
+async def is_reserved_edge_on(db: InfrahubDatabase, pool_id: str, node_id: str, attribute_name: str) -> IsReservedEdge:
+    """The state of the pool's active IS_RESERVED edge on this object's named attribute."""
+    return single_is_reserved_edge(
+        await active_is_reserved_edges_on(db=db, node_id=node_id, attribute_name=attribute_name, pool_id=pool_id)
+    )
+
+
 async def set_open_is_reserved_edge_provenance(
     db: InfrahubDatabase, node_id: str, attribute_name: str, provenance: str
 ) -> None:
@@ -468,6 +492,23 @@ async def set_open_is_reserved_edge_provenance(
         """,
         params={"node_id": node_id, "attribute_name": attribute_name, "provenance": provenance},
     )
+
+
+async def attributes_holding_only_is_reserved_edges(db: InfrahubDatabase, pool_id: str) -> int:
+    """How many of the pool's Attribute vertices have no edge but IS_RESERVED ones, a shape no write may leave."""
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $pool_id})-[:IS_RESERVED]->(a:Attribute)
+        WITH DISTINCT a
+        WHERE NOT EXISTS {
+            MATCH (a)-[other]-()
+            WHERE type(other) <> "IS_RESERVED"
+        }
+        RETURN count(a) AS nbr
+        """,
+        params={"pool_id": pool_id},
+    )
+    return results[0]["nbr"]
 
 
 async def attribute_metadata(db: InfrahubDatabase, node_id: str, attribute_name: str) -> VertexMetadata:

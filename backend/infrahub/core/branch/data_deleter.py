@@ -10,6 +10,7 @@ from infrahub.core.query.branch import (
     DeleteBranchAgnosticAttributesQuery,
     DeleteBranchAgnosticRelationshipsQuery,
     DeleteBranchEdgesQuery,
+    DeleteBranchReservedAttributesQuery,
 )
 from infrahub.core.query.branch_agnostic_retirement import RetireBranchAgnosticFieldsQuery
 from infrahub.core.query.standard_node import StandardNodeDeleteQuery
@@ -105,6 +106,9 @@ class BranchDataDeleter:
     async def _delete_agnostic_peers(self, branch_name: str) -> int:
         """Drop the agnostic attributes and relationships of Nodes that exist on no other branch.
 
+        Also drops the attributes a number pool reserves that exist only on this branch, whose global
+        IS_RESERVED edge would otherwise keep them alive after the branch's edges are gone.
+
         Both queries locate those Nodes through the branch's IS_PART_OF edges, so this has to
         finish before the edge deletion starts removing them. Resuming a delete that failed part
         way through this stage is safe for the same reason: no IS_PART_OF edge has been touched yet.
@@ -124,9 +128,16 @@ class BranchDataDeleter:
         )
         await attributes_query.execute(db=self.db)
 
-        edges_removed = relationships_query.stats.get_counter(
-            "relationships_deleted"
-        ) + attributes_query.stats.get_counter("relationships_deleted")
+        reserved_attributes_query = await DeleteBranchReservedAttributesQuery.init(
+            db=self.db, branch_name=branch_name, batch_size=batch_size
+        )
+        await reserved_attributes_query.execute(db=self.db)
+
+        edges_removed = (
+            relationships_query.stats.get_counter("relationships_deleted")
+            + attributes_query.stats.get_counter("relationships_deleted")
+            + reserved_attributes_query.stats.get_counter("relationships_deleted")
+        )
         if edges_removed:
             self.log.info(
                 f"Deleted agnostic peers of nodes only on branch '{branch_name}', {edges_removed} edge(s) removed"

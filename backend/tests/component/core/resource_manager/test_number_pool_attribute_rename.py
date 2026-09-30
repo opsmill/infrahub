@@ -34,6 +34,7 @@ from tests.helpers.agnostic_edges import (
     EdgeState,
     IsReservedEdge,
     attribute_edges,
+    attributes_holding_only_is_reserved_edges,
     is_reserved_edge_on,
     open_active_edges,
     open_is_reserved_edge_on,
@@ -413,6 +414,33 @@ async def test_rebasing_an_older_branch_past_a_rename_leaves_the_old_is_reserved
         await is_reserved_edge_on(db=db, pool_id=serial_pool.id, node_id=holder.id, attribute_name=NEW_ATTRIBUTE_NAME)
         == IsReservedEdge.OPEN
     )
+
+
+@pytest.mark.parametrize("case", BRANCH_RENAME_CASES, ids=lambda case: case.name)
+async def test_deleting_the_branch_that_renamed_the_attribute_deletes_the_new_is_reserved_edge(
+    db: InfrahubDatabase, default_branch: Branch, serial_pool: CoreNumberPool, case: BranchRenameCase
+) -> None:
+    """The new attribute vertex lives only on the renaming branch, so it goes with that branch.
+
+    Its IS_RESERVED edge is deleted with it rather than closed, and the old vertex keeps the default
+    branch's open IS_RESERVED edge.
+    """
+    await pooled_widget(db=db, default_branch=default_branch, pool=serial_pool, support=case.serial_branch_support)
+    branch = await create_branch(db=db, branch_name="renames-then-is-deleted")
+    await rename_the_attribute(db=db, branch=branch, schema=registry.schema.get_schema_branch(name=branch.name))
+    assert (NEW_ATTRIBUTE_NAME, GLOBAL_BRANCH_NAME, "active", True) in await is_reserved_edges(
+        db=db, pool_id=serial_pool.id
+    )
+
+    await delete_branch(db=db, branch=branch)
+
+    assert await is_reserved_edges(db=db, pool_id=serial_pool.id) == {
+        (PREVIOUS_ATTRIBUTE_NAME, GLOBAL_BRANCH_NAME, "active", True)
+    }, "the default branch still holds the old vertex, and the new one went with the branch"
+    assert await attributes_holding_only_is_reserved_edges(db=db, pool_id=serial_pool.id) == 0, (
+        "no pool may be left pointing at an attribute with nothing else linked to it"
+    )
+    assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START]
 
 
 @pytest.mark.parametrize("case", BRANCH_RENAME_CASES, ids=lambda case: case.name)
