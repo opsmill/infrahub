@@ -126,8 +126,26 @@ The `tab` argument on each helper is a string-literal union (e.g. `BranchDetails
 | Modal/dialog | `Modal`, `ModalOverlay` | `@infrahub/ui` |
 | Button | `Button`, `LinkButton` | `@infrahub/ui` |
 | Spinner | `Spinner` | `@infrahub/ui` |
+| Short commit hash (7 chars, full hash on hover, optional copy button) | `CommitHash` | `shared/components/display/commit-hash.tsx` |
 
 More primitives (`Sheet`, `Tree`, `Menu`, `Select`, `ListBox`, `Autocomplete`, `SortableList`, `Checkbox`, `Popover`, `useDismissGuard`, …) live in `@infrahub/ui` — check `frontend/packages/ui/src/index.ts` first; `design-system.md` owns that inventory.
+
+### Table row selection
+
+| Need | Use | Location |
+|------|-----|----------|
+| Checkbox click with shift-range select | `getToggleSelectedRowHandler({ row, table })` — remembers the last-clicked row by id, not index, so rows inserted between two clicks don't shift the range | `entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler.ts` |
+
+**One entity fanned out over several rows** (the branches table: one row per branch × repository). Only the first row per entity is selectable; the others mirror it:
+
+- Give the first row the entity's id as its row id (`getRowId: (row) => row.id`) and expose a predicate (`isBranchAnchorRow`: `row.id === row.branch.id`).
+- Pass `enableRowSelection: (row) => isBranchAnchorRow(row.original)` so select-all and range selection count each entity once.
+- In the selection cell, resolve the anchor with `table.getRow(row.original.branch.id)` and bind `isSelected` and `getToggleSelectedRowHandler({ row: anchor, table })` to it, so a mirror row's checkbox toggles the entity.
+- Set `excludeFromTabOrder` on mirror-row controls (checkbox, links, actions) so keyboard users tab through each entity once.
+
+Reference: `entities/branches/ui/branches-table/branches-data-table.tsx` and `get-branch-table-columns.tsx`.
+
+<!-- Extracted from specs/ifc-3201-branches-table-git on 2026-09-30 -->
 
 ### Hooks
 

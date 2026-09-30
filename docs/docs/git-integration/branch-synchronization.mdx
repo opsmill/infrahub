@@ -245,9 +245,34 @@ query {
 
 Only branches matching your configured rules should appear in the results.
 
+## Checking Git state from the branches list
+
+The **Branches** page shows the Git repositories on each branch next to the branch itself, so a failed import is visible without opening the branch or the repository. Three columns follow **Proposed Changes**:
+
+| Column | What it shows |
+|---|---|
+| **Repository** | The repository name, linking to the repository's page on that branch. A read-only repository carries a **Read-only** marker. |
+| **Git state** | The repository's sync status on that branch, with the label and color the schema defines for it, such as **In Sync** or **Import Error**. Hover the pill to read the status description. |
+| **Commit** | The first seven characters of the commit that branch has imported. Hover the hash to see it in full, or use the copy button next to it to copy the full hash. |
+
+A branch with several repositories occupies one row per repository, and its name, status and proposed changes repeat on each row. Within a branch, a repository whose last import failed comes first, then any repository whose remote cannot be reached, then the rest in alphabetical order. Selection still works on branches: ticking any row of a branch selects the whole branch, and the selection count and bulk delete each count that branch once.
+
+The repositories listed for a branch follow the same rule as the query in the next section. A read-write repository appears only on branches that sync with Git, while a read-only repository appears on every branch. With two read-only repositories, every branch has at least two rows.
+
+A branch with no repository to show still occupies one row, and its **Repository** cell shows the reason:
+
+| Repository cell | Meaning |
+|---|---|
+| **Not synced with Git** | The branch does not sync with Git, and no read-only repository exists. |
+| **No repositories** | The branch syncs with Git, but no repository is connected to Infrahub. |
+| **No permission** | Your account is not allowed to view repositories on that branch. |
+| **Could not load repositories** | The request for that branch's repositories failed. Hover the text to read the error message. |
+
+These states apply to one branch at a time, and the rest of the list loads normally. While a repository on a branch is syncing, Infrahub refreshes that branch's rows until the sync finishes.
+
 ## Checking a repository's status on every branch
 
-Listing branches tells you which ones Infrahub tracks. To see what a single repository looks like from each of those branches at once, including the commit each branch resolves and whether its last import succeeded, use the `InfrahubRepositoryBranchStatus` query. It returns one row per branch and reads everything from the graph, so it does not contact a Git server or a task worker.
+The branches list is organized by branch. To see what a single repository looks like from every branch at once, including the commit each branch resolves and whether its last import succeeded, use the `InfrahubRepositoryBranchStatus` query. It returns one row per branch and reads everything from the graph, so it does not contact a Git server or a task worker.
 
 The `id` argument accepts the repository's ID or its name.
 
