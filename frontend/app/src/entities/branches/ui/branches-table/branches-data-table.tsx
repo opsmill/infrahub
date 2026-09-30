@@ -4,7 +4,10 @@ import React from "react";
 import { COLUMN_MAX_WIDTH, WIDE_COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
-import type { BranchTableRow } from "@/entities/branches/domain/model/branch-table-row";
+import {
+  type BranchTableRow,
+  isBranchAnchorRow,
+} from "@/entities/branches/domain/model/branch-table-row";
 import { BranchesToolbar } from "@/entities/branches/ui/branches-table/branches-toolbar";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
 
@@ -47,7 +50,7 @@ export function BranchesDataTable({
   const table = useReactTable({
     columns,
     data,
-    enableRowSelection: true,
+    enableRowSelection: (row) => isBranchAnchorRow(row.original),
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
     getRowId: (row) => row.id,

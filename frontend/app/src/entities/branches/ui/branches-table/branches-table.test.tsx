@@ -2,6 +2,8 @@ import { focusManager } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { BRANCHES_PER_PAGE } from "@/entities/branches/api/get-branches-from-api";
+import { getBranches } from "@/entities/branches/domain/use-cases/get-branches";
 import { BranchesTable } from "@/entities/branches/ui/branches-table/branches-table";
 import { useGetBranchesPaginated } from "@/entities/branches/ui/queries/get-branches.query";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
@@ -19,6 +21,10 @@ import {
 
 vi.mock("@/entities/authentication/ui/auth-provider");
 vi.mock("@/entities/branches/ui/queries/get-branches.query");
+vi.mock("@/entities/branches/domain/use-cases/get-branches", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/entities/branches/domain/use-cases/get-branches")>()),
+  getBranches: vi.fn(),
+}));
 vi.mock("@/entities/proposed-changes/ui/queries/get-proposed-changes.query");
 vi.mock("@/entities/schema/ui/hooks/useSchema");
 vi.mock("@/entities/nodes/object/ui/queries/get-objects-count.query");
@@ -152,5 +158,40 @@ describe("BranchesTable", () => {
 
     // THEN
     for (const name of ["main", "alpha", "zulu"]) expect(requestCount(name)).toBeLessThanOrEqual(2);
+  });
+  test("scrolling to the next page appends its branches with their repository rows", async () => {
+    // GIVEN
+    const { useGetBranchesPaginated: realUseGetBranchesPaginated } = await vi.importActual<
+      typeof import("@/entities/branches/ui/queries/get-branches.query")
+    >("@/entities/branches/ui/queries/get-branches.query");
+    vi.mocked(useGetBranchesPaginated).mockImplementation(realUseGetBranchesPaginated);
+    const firstPage = Array.from({ length: BRANCHES_PER_PAGE }, (_, index) =>
+      generateBranch({ id: `branch-${index}`, name: `page-one-${String(index).padStart(2, "0")}` })
+    );
+    const secondPage = [generateBranch({ id: "branch-next", name: "page-two" })];
+    vi.mocked(getBranches).mockImplementation(async (params) =>
+      params?.offset ? secondPage : firstPage
+    );
+    vi.mocked(getBranchRepositories).mockResolvedValue(threeRepositories);
+    const component = await render(<BranchesTable />);
+    await expect
+      .element(component.getByRole("link", { name: "page-one-39" }).first())
+      .toBeVisible();
+
+    // WHEN
+    [...component.container.querySelectorAll('[data-testid="branch-identifier-cell"]')]
+      .at(-1)
+      ?.scrollIntoView();
+
+    // THEN
+    await expect.element(component.getByRole("link", { name: "page-two" }).first()).toBeVisible();
+    await expect
+      .poll(() => identifierCellNames(component.container).slice(-4))
+      .toEqual(["page-one-39", "page-two", "page-two", "page-two"]);
+    expect(identifierCellNames(component.container)).toHaveLength((BRANCHES_PER_PAGE + 1) * 3);
+    expect(vi.mocked(getBranches).mock.calls.map(([params]) => params?.offset)).toEqual([
+      0,
+      BRANCHES_PER_PAGE,
+    ]);
   });
 });
