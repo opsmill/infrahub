@@ -291,8 +291,8 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 )
                 log.info("Migrations completed")
 
-        # The default branch derived its changes with its own schema, so its changes to a kind whose schema the
-        # branch changed are replayed too, to be derived again with the branch's.
+        # Replay the default branch's changes to the kinds whose schema this branch changed, so their derived values
+        # are computed again with the branch's schema.
         default_branch_diff: EnrichedDiffRoot | None = None
         if send_events and user_branch.name in registry.get_altered_schema_branches():
             branch_schema_kinds = registry.schema.get_schema_branch(
@@ -346,7 +346,6 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         if branch_diff is not None
         else []
     )
-    # the default branch's changes use the attribute names the migrations renamed on the branch
     default_branch_changelogs = (
         DiffChangelogCollector(
             diff=default_branch_diff,
@@ -377,7 +376,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 changed_fields=frozenset(node_changelog.updated_fields),
             )
         )
-    # A profile assigned on the branch applied the profile's values of the old base.
+    # Refresh the nodes whose profiles the branch changed, since the profile values they applied predate the rebase.
     profile_refresh_node_ids = [
         node_changelog.node_id
         for action, node_changelog in branch_changelogs
