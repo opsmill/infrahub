@@ -434,22 +434,12 @@ that belong to a person, and it lives in one place: "Decisions needing confirmat
 
 ## Decisions Taken During Specification
 
-These decisions were made without asking the user. Patrick Ogenstad must confirm the ones marked
-"to confirm".
+These were settled without asking, and they are closed. What still needs a person is the table in
+"Decisions needing confirmation" in [plan.md](plan.md), which is the only such list.
 
 1. **PRD open question on FR-015 and FR-016**: both defer to epic IFC-3220. The delivery queue they
-   read does not exist yet, and the Jira epic already states this. Settled, not open.
-2. **PRD open question on the FR-014 consumer (to confirm)**: the consumer is the webhook
-   subsystem. The new event is registered as an `EventType` member, so it appears in the
-   `event_type` enum of `CoreStandardWebhook` and `CoreCustomWebhook`. An operator can then point a
-   webhook at it with no code change, and the acceptance test can wire one and assert a single
-   delivery. This is the only subscriber mechanism in the product that an operator can wire
-   themselves, and it is what makes the requirement testable. The alternatives Patrick may prefer
-   are a built-in notification surface, or deferring the signal to the visibility work of INFP-671.
-3. **New schema attributes and GraphQL fields (needs sign-off)**: `AGENTS.md` lists database schema
-   changes and GraphQL schema changes as "Ask First". The design is complete in `data-model.md` and
-   `contracts/`, but it must not be implemented before a maintainer signs off.
-4. **FR-017 is added on top of the PRD.** The PRD's FR-003 forbids the word "conflict" for a
+   read does not exist yet, and the Jira epic already states this.
+2. **FR-017 is added on top of the PRD.** The PRD's FR-003 forbids the word "conflict" for a
    divergent history. The current error classifier maps the divergent-branches text of Git to a
    conflict message. Removing the divergence case alone would leave the same wrong message for any
    future unclassified pull failure. FR-017 states the message contract so that a test can hold it.
