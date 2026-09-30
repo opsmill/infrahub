@@ -106,7 +106,7 @@ class _StubImpactedResolver(ImpactedSubscriberResolver):
         subscriber_kind: str,
         every_target: list[str],
     ) -> TargetSelection:
-        return TargetSelection(ids=self.impacted, widened=False)
+        return TargetSelection(ids=self.impacted)
 
 
 class _StubSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun]):

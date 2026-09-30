@@ -814,7 +814,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         client=client,
     )
     impacted_artifacts = selection.ids
-    if selection.widened:
+    if selection.widening is not None:
         log.warning(
             f"Artifact definition {artifact_definition.name.value} query does not guarantee unique targets. All targets will be processed."
         )
@@ -1105,7 +1105,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     )
     definition_name = model.generator_definition.definition_name
     impacted_instances = selection.ids
-    if selection.widened:
+    if selection.widening is not None:
         log.warning(
             f"Generator definition {definition_name} query does not guarantee unique targets. All targets will be processed."
         )
