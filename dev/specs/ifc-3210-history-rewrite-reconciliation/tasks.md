@@ -528,8 +528,9 @@ What is left is the branch that is **both** ahead locally and rewritten remotely
 an ancestor of the other, the classification is `REWRITE`, and the reset discards the unpushed
 commit. Rare, but real, and the reason the gate survives.
 
-T011's force-push helper is not gated: it extends the harness #10465 introduced, but that harness
-is already on this branch's base. T014 (classify) and T016 to T022 are not gated either; only the
+T011's force-push helper is not gated. The Gogs harness and `_push_commit_to_remote` are on
+`develop` already. Only the two `pre-receive` hook helpers come from #10465, and no task here
+needs them. T014 (classify) and T016 to T022 are not gated either; only the
 reset in T015 is.
 
 ### What waits for a person
