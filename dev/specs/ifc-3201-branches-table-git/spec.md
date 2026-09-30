@@ -96,7 +96,7 @@ A branch that is not synced with Git, or that has no repositories at all, still 
 
 ### Edge Cases
 
-- A repository whose Git state has no colour defined in the schema: the pill falls back to a neutral style and still shows the label (or the raw value if no label).
+- A repository whose Git state has no colour defined in the schema: the pill falls back to a neutral style and still shows the state's value (or its label if there is no value), as the branch details page's pill already does.
 - A repository row with no commit yet: the Commit cell is blank, with no copy control.
 - A freshly created synced branch reports the default branch's fork-point commit; it is displayed as returned, not treated as empty.
 - A branch whose repositories change from loading to N rows: the row count grows in place; the branch keeps its position in the list.
@@ -112,7 +112,7 @@ A branch that is not synced with Git, or that has no repositories at all, still 
 - **FR-001**: The branches list MUST show three additional columns, in this order after "Proposed changes": "Repository", "Git state", "Commit".
 - **FR-002**: For each branch, the list MUST show one row per Git repository visible on that branch, each row carrying the branch's existing cells plus that repository's name, Git state and imported commit.
 - **FR-003**: The set of repositories shown for a branch MUST be what the backend returns for that branch. The list MUST NOT re-derive that set on the client from the branch's sync flag or status.
-- **FR-004**: The Git state MUST be the repository's `sync_status` as resolved on that branch, rendered with the label, colour and description defined in the schema. When no colour is defined, the pill MUST fall back to a neutral style and still show the label or value.
+- **FR-004**: The Git state MUST be the repository's `sync_status` as resolved on that branch, rendered with the label, colour and description defined in the schema. When no colour is defined, the pill MUST fall back to a neutral style and still show the state's value or label, identically to the branch details page's pill.
 - **FR-005**: The Commit cell MUST show the first 7 characters of the imported commit in a monospace face, expose the full hash on hover, and offer a copy control that copies the full hash. When there is no commit, the cell MUST be blank.
 - **FR-006**: The Repository cell MUST show the repository's name as a link to that repository's page opened on the row's branch, and MUST mark read-only repositories with the same "Read-only" marker the branch details page uses.
 - **FR-006a**: Within a branch, repository rows MUST be ordered by the same rule as the branch details page: repositories whose last import failed first, then repositories whose remote is unreachable, then the rest, each group sorted by repository name (case-insensitive). The unreachable status itself is not shown (FR-016); it only affects order.
