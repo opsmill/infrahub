@@ -436,11 +436,9 @@ async def trigger_update_jinja2_computed_attributes(
 
     node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
     workflow = get_workflow()
-    async for node_ids in node_query.fetch_all_paginated(
-        client=client, branch_name=branch_name, page_size=get_submission_chunk_size()
+    async for node_ids in node_query.fetch_all_chunked(
+        client=client, branch_name=branch_name, chunk_size=get_submission_chunk_size()
     ):
-        if not node_ids:
-            continue
         await workflow.submit_workflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
             context=context,
