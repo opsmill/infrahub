@@ -145,9 +145,16 @@ It shares the consequence with the others but not the failure, so it can ship af
 Update the commit. Assert that the import happened, that the record was written and that no reset
 ran.
 
-A moved **tag** cannot be used for this scenario. Both read-only fetch paths leave an existing tag
-alone: the plain `fetch()`, and `--tags` without `--force`. No lineage break would ever be seen.
-IFC-2874 fixes that fetch flag and is out of scope here, so the scenario uses a branch.
+A moved **tag** cannot be used for this scenario, and the reason is worse than it first looks.
+Both read-only fetch paths run `--prune --tags --prune-tags` without `--force`. Against a
+force-moved tag git does not quietly skip it: it rejects the update with
+`! [rejected] <tag> -> <tag> (would clobber existing tag)` **and exits 1**. `InfrahubRepositoryBase.fetch`
+turns that into a `GitCommandError` and raises, so the repository goes to an error status on every
+cycle, and `InfrahubReadOnlyRepository.update_latest_commit` fails outright. The local tag never
+moves, so no lineage break is ever observed either.
+
+IFC-2874 fixes that missing flag and is out of scope here, so the scenario uses a force-pushed
+branch.
 
 **Acceptance Scenarios**:
 
@@ -406,8 +413,9 @@ No new node kind is introduced.
 - **Pruning orphaned commit worktrees**, and the per-worker inconsistency in re-deriving historical
   content. Both are pre-existing, neither is caused by this work, and both are tracked separately.
   This work changes their rate by making rewrites routine, which is why they are named here.
-- **The fetch-flag inconsistency** that leaves a read-only repository pinned to a force-moved tag on
-  a stale commit. IFC-2874 covers it.
+- **The fetch-flag inconsistency** on force-moved tags. The read-only fetch paths omit `--force`,
+  so git rejects the tag update and exits 1: the repository errors on every cycle and stays pinned
+  to the stale commit. IFC-2874 covers it.
 - **The branch-support inconsistency** between read-only and read-write repositories on their
   tracked ref and commit attributes.
 - **Pausing synchronisation, and pinning a repository to a chosen commit.** INFP-672 covers both.

@@ -421,8 +421,10 @@ cycles. Exactly one record, exactly one signal, and a healthy repository.
 **Goal**: a read-only repository whose tracked ref resolves to a non-descendant commit records the
 break and is never reset.
 
-**Independent test**: force-move a tag on a live remote that a read-only repository tracks. Update
-the commit. The import happened, the record was written, and no reset ran.
+**Independent test**: force-push a **branch** on a live remote that a read-only repository tracks.
+Update the commit. The import happened, the record was written, and no reset ran. A moved tag
+cannot be used: the read-only fetch omits `--force`, so git rejects the tag update and exits 1,
+which fails the fetch instead of producing a lineage break.
 
 **Maps to**: FR-009.
 
@@ -453,9 +455,10 @@ the commit. The import happened, the record was written, and no reset ran.
 - [ ] T063 [US5] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`, which is where the Gogs harness and
       `readonly_sync_dataset` live: a **force-pushed branch** tracked by a read-only repository
-      writes the record and performs no reset. Do not use a moved tag: neither read-only fetch path
-      force-updates an existing tag, so no lineage break would be seen. IFC-2874 fixes that flag and
-      is out of scope. `test_readonly_repository.py` has no live remote.
+      writes the record and performs no reset. Do not use a moved tag: the read-only fetch omits
+      `--force`, so git rejects the update with "would clobber existing tag" and exits 1. That fails
+      the fetch rather than producing a lineage break. IFC-2874 fixes the flag and is out of scope.
+      `test_readonly_repository.py` has no live remote.
 
 **Checkpoint**: the quietest repository type is no longer the least honest one.
 
