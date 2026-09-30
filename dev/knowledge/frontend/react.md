@@ -48,6 +48,8 @@ const [filtered, setFiltered] = useState([]);
 useEffect(() => setFiltered(items.filter(i => i.active)), [items]);
 ```
 
+**Keeping loaded data across a cold poll.** TanStack's `placeholderData: keepPreviousData` only fills in while `data` is `undefined` after a query-key change. A refetch on the *same* key replaces `data` outright, so a poll that answers "not available yet" blanks a list that was already loaded. When a view must keep showing the last good answer, retain it during render (the pattern above, keyed to the same entity so a branch or object switch does not leak the old list) rather than through query options. `entities/repository/ui/hooks/use-last-loaded-commit-pages.ts` is the reference.
+
 ## URL is the source of truth for shareable state
 
 Anything a user might bookmark, share, or refresh-and-resume (filters, current selection, mode toggle) lives in the URL — not in `useState`. Use `nuqs` for typed URL params, or `useFilters` for the standard filter pattern.
