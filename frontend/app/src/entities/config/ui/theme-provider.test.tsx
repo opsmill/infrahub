@@ -77,6 +77,25 @@ describe("ThemeProvider", () => {
     expect(isDark()).toBe(true);
   });
 
+  test("saves system for the next load when the visitor never chose", async () => {
+    // GIVEN
+    mockDesktop(false);
+
+    // WHEN
+    await render(withFlag(true));
+
+    // THEN
+    await expect.poll(() => localStorage.getItem("infrahub.theme.choice")).toBe("system");
+  });
+
+  test("saves nothing while the deployment disables dark", async () => {
+    // WHEN
+    await render(withFlag(false));
+
+    // THEN
+    expect(localStorage.getItem("infrahub.theme.choice")).toBeNull();
+  });
+
   test("tracks a desktop that changes appearance while the page is open", async () => {
     // GIVEN
     const setDesktop = mockDesktop(false);

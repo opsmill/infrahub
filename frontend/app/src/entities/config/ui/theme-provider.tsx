@@ -79,6 +79,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme: Theme = isDarkThemeEnabled ? (storedTheme ?? "system") : "light";
   const resolvedTheme: ResolvedTheme = theme === "system" ? systemTheme : theme;
 
+  // The pre-paint script only reads storage, so a visitor who never chose needs "system" saved.
+  React.useEffect(() => {
+    if (isDarkThemeEnabled && storedTheme === null) {
+      writeStoredTheme("system");
+    }
+  }, [isDarkThemeEnabled, storedTheme]);
+
   // Before the browser paints, so no frame this provider commits shows the wrong palette.
   React.useLayoutEffect(() => {
     paint(resolvedTheme);

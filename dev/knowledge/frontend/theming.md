@@ -112,8 +112,8 @@ Two things manage the class, and one way reads it:
 2. **`ThemeProvider`** (`entities/config/ui/theme-provider.tsx`) — the app's own implementation,
    no library. It is mounted in `app/app.tsx` directly inside `ConfigProvider`, because it reads
    the `dark_theme` flag through `useFeatureFlag`, and config only exists below that provider.
-   `infrahub.theme.choice` is written only when the user picks; a browser with no stored choice gets
-   `system`, and other tabs pick up a change through the `storage` event. The flag never touches
+   `infrahub.theme.choice` holds the user's pick; with the flag on, a browser with no stored choice
+   gets `system` saved so the pre-paint script can resolve it, and other tabs pick up a change through the `storage` event. The flag never touches
    the key, so turning it back on restores the user's choice.
 
    While the choice is `system` it follows the desktop live (`matchMedia`). It applies the class
