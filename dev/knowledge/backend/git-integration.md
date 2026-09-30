@@ -207,6 +207,11 @@ individually:
 | `operational_status` | AGNOSTIC | One value shared by every branch |
 | `name`, `description`, `location` | AGNOSTIC | One value shared by every branch |
 
+`CoreReadOnlyRepository` is the exception, and it matters. It overrides `commit` **and** `ref` to
+AWARE, so on that kind both reach branch diffs and both are merged. Anything reasoning about "the
+repository's per-branch state is invisible" holds for `CoreRepository` and not for the read-only
+kind.
+
 LOCAL is what makes per-branch repository state invisible to users. The diff query
 (`core/query/diff.py`) selects only `node.branch_support IN [$branch_aware, $branch_agnostic]`, and
 the bulk merge (`core/diff/query/bulk_merge.py`) touches only `branch_support = "aware"`. So a LOCAL
