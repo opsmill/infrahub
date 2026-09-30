@@ -1,0 +1,95 @@
+---
+title: Prometheus metrics
+---
+
+# Prometheus metrics
+
+Infrahub exposes the metrics below in the Prometheus text format. The API server serves them on `/metrics` on its HTTP port, and each task worker serves them on the port set by `INFRAHUB_METRICS_PORT` (default `8000`). Task-manager metrics come from the Prefect exporter included in the [observability stack](../deploy-manage/install-configure/install/observability-stack.mdx).
+
+To choose which metrics to watch and configure scraping, see [Metrics](../deploy-manage/run-observe/metrics.mdx).
+
+## HTTP requests
+
+Recorded by the API server for every request except `/health`. The `path` label contains the route template, such as `/api/schema/{schema_kind}`, not the literal URL.
+
+| Metric | Type | Labels | Description |
+|---|---|---|---|
+| `infrahub_requests_total` | Counter | `method`, `path`, `status_code`, `app_name` | Total HTTP requests |
+| `infrahub_request_duration_seconds` | Histogram | `method`, `path`, `status_code`, `app_name` | HTTP request duration, with buckets at 0.1, 0.25 and 0.5 seconds |
+| `infrahub_requests_in_progress` | Gauge | `method`, `app_name` | HTTP requests currently in progress |
+
+## Instance
+
+| Metric | Type | Labels | Description |
+|---|---|---|---|
+| `infrahub_info` | Gauge | `version`, `worker_id` | Always `1`. Identifies the Infrahub version and the process that reports it |
+
+## GraphQL
+
+Recorded by the API server for each GraphQL request.
+
+| Metric | Type | Labels | Description |
+|---|---|---|---|
+| `infrahub_graphql_duration_seconds` | Histogram | `type`, `operation`, `branch`, `name`, `query_id` | Query duration, in seconds |
+| `infrahub_graphql_response_size_bytes` | Histogram | `type`, `operation`, `branch`, `name`, `query_id` | Response size, in bytes |
+| `infrahub_graphql_query_depth` | Histogram | `type`, `operation`, `branch`, `name`, `query_id` | Query depth |
+| `infrahub_graphql_query_height` | Histogram | `type`, `operation`, `branch`, `name`, `query_id` | Query height |
+| `infrahub_graphql_query_objects` | Histogram | `type`, `operation`, `branch`, `name`, `query_id` | Number of objects in the query |
+| `infrahub_graphql_top_level_queries` | Histogram | `type`, `operation`, `branch`, `name`, `query_id` | Number of top-level queries |
+| `infrahub_graphql_variables` | Histogram | `type`, `operation`, `branch`, `name`, `query_id` | Number of variables |
+| `infrahub_graphql_errors` | Histogram | `type`, `operation`, `branch`, `name`, `query_id` | Number of errors in the response |
+| `infrahub_graphql_generate_schema` | Histogram | `branch` | Time to generate the GraphQL schema of a branch |
+
+## Database
+
+Recorded by every process that queries the database, so both the API server and the task workers report them.
+
+| Metric | Type | Labels | Description |
+|---|---|---|---|
+| `infrahub_db_query_execution_seconds` | Histogram | `type`, `query`, `runtime`, `context1`, `context2` | Execution time of a database query |
+| `infrahub_db_transaction_retries` | Counter | `name` | Transactions retried after a transient error |
+| `infrahub_db_last_connection_pool_usage` | Gauge | `address` | Last known number of active connections in the driver pool |
+| `infrahub_db_reference_query_floor_seconds` | Gauge | | All-time minimum execution time of the reference permission query |
+| `infrahub_db_reference_query_window_min_seconds` | Gauge | | Minimum execution time of the reference query over the recent sliding window |
+| `infrahub_db_reference_query_stress_ratio_median` | Gauge | | Recent median reference-query time divided by the all-time floor. `1.0` means the database is not under stress |
+
+## Locks
+
+| Metric | Type | Labels | Description |
+|---|---|---|---|
+| `infrahub_lock_acquire_seconds` | Histogram | `lock`, `type` | Time to acquire a lock |
+| `infrahub_lock_reserved_duration_seconds` | Histogram | `lock`, `type` | Time a lock is held by a client |
+
+## API admission control
+
+Recorded by the API server when priority-aware backpressure is enabled (`INFRAHUB_API_BACKPRESSURE_ENABLED`, default `true`, see the [configuration reference](./configuration.mdx#api)). The `priority` label is `high`, `medium` or `low`, taken from the `X-Priority` request header.
+
+| Metric | Type | Labels | Description |
+|---|---|---|---|
+| `infrahub_admission_offered_total` | Counter | `priority` | Requests entering the admission layer |
+| `infrahub_admission_admitted_total` | Counter | `priority` | Requests admitted |
+| `infrahub_admission_rejected_total` | Counter | `priority`, `reason` | Requests rejected with `429 Too Many Requests` |
+| `infrahub_admission_in_flight` | Gauge | `priority` | Admitted requests currently running |
+| `infrahub_admission_waiters` | Gauge | `priority` | Requests queued for a slot |
+| `infrahub_admission_sojourn_seconds` | Histogram | `priority` | Time a request waited for a slot |
+| `infrahub_admission_max_concurrency` | Gauge | | Effective number of admission slots per API worker |
+| `infrahub_admission_missing_priority_total` | Counter | | Requests with a missing or invalid `X-Priority` header |
+| `infrahub_admission_sustained_load_seconds` | Gauge | | Seconds the worker has continuously seen database stress at or above the significant-load ratio, `0` below it |
+
+## Task manager (Prefect exporter)
+
+The observability stack runs [`prometheus-prefect-exporter`](https://github.com/PrefectHQ/prometheus-prefect-exporter) 3.3.0 against the task manager API. The metrics most useful for Infrahub are:
+
+| Metric | Labels | Description |
+|---|---|---|
+| `prefect_work_queues_late_runs_count` | `work_queue_name`, `work_pool_name`, `priority`, `is_paused`, `status`, `healthy`, `type`, health-check policy labels | Flow runs in the queue whose scheduled start time has passed |
+| `prefect_info_work_queues` | same as above | Work queue state; `0` when paused, `1` otherwise |
+| `prefect_info_work_pools` | `work_pool_name`, `type`, `is_paused`, `status` | Work pool state; `0` when paused, `1` otherwise |
+| `prefect_info_flow_runs` | `deployment_name`, `flow_name`, `state_name`, `work_queue_name` | Number of flow runs per state, counting only runs that started within the last `OFFSET_MINUTES` (default 3) |
+| `prefect_deployment_failed_flow_runs` | `deployment_name`, `flow_name`, `last_failed_run_id`, `state_name` | Last failed or crashed flow runs per deployment, within `FAILED_RUNS_OFFSET_MINUTES` (default 7 days) |
+| `prefect_flow_runs_total_run_time` | `flow_name` | Total run time of flow runs, in seconds |
+| `prefect_flow_runs_total`, `prefect_flows_total`, `prefect_deployments_total`, `prefect_work_pools_total`, `prefect_work_queues_total` | | Object counts |
+
+## Dependencies
+
+The observability stack also scrapes Neo4j on port `2004` and RabbitMQ on port `15692`. Their metrics are documented by each project: [Neo4j metrics](https://neo4j.com/docs/operations-manual/current/monitoring/metrics/reference/) and [RabbitMQ Prometheus plugin](https://www.rabbitmq.com/docs/prometheus).

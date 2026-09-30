@@ -1,0 +1,95 @@
+---
+title: Metrics
+---
+
+# Metrics
+
+Infrahub exposes Prometheus metrics from the API server and from each task worker. Use them to track API latency and errors, database load and lock contention.
+
+:::info
+
+The task manager doesn't expose metrics through Infrahub. To check that scheduled work starts on time, scrape the Prefect exporter included in the [observability stack](../install-configure/install/observability-stack.mdx).
+
+:::
+
+For the full list of metric names, types and labels, see the [Prometheus metrics reference](../../reference/metrics.mdx).
+
+## Where metrics are exposed
+
+| Source | Endpoint | What it reports |
+|---|---|---|
+| API server | `/metrics` on the HTTP port (`8000`) | HTTP requests, GraphQL queries, database queries and connection pool, locks, API admission control |
+| Task worker | `/metrics` on `INFRAHUB_METRICS_PORT` (default `8000`) | Database queries, locks, and the version of each worker |
+| Prefect exporter | `/metrics` on port `8000` of the exporter container | Task manager: work queues, work pools, flow runs and their states |
+| [Infrahub Exporter](https://docs.infrahub.app/exporter) | Its own endpoint | Metrics and service discovery built from the objects stored in Infrahub, not the health of Infrahub itself |
+
+The `/metrics` endpoint of the API server has no metric for the task manager queue. Use the Prefect exporter for that, as described in [Monitor the task manager](#monitor-the-task-manager).
+
+The API server runs several worker processes, four by default, and `/metrics` combines their values in one response. Gauges such as `infrahub_info` report one series per process, with a `pid` label.
+
+:::info
+
+The `/metrics` endpoint doesn't require authentication. If the API port is reachable from networks you don't trust, restrict access to `/metrics` at your load balancer or ingress.
+
+:::
+
+To turn off the task worker endpoint, set `INFRAHUB_METRICS_PORT=0`.
+
+## Scrape the metrics
+
+The [observability stack](../install-configure/install/observability-stack.mdx) scrapes the API server, the task workers and the Prefect exporter, plus Neo4j and RabbitMQ, and includes Grafana dashboards for them. If you deploy it, there is nothing to configure.
+
+To scrape Infrahub from your own Prometheus, add a job per source. Scrape each task worker directly rather than through a shared address, so that every worker is collected:
+
+```yaml title="prometheus.yml"
+scrape_configs:
+  - job_name: infrahub-server
+    static_configs:
+      - targets: ["infrahub-server:8000"]
+
+  - job_name: infrahub-worker
+    dns_sd_configs:
+      - names: ["task-worker"]
+        type: A
+        port: 8000
+
+  - job_name: task-manager-exporter
+    static_configs:
+      - targets: ["infrahub-task-manager-exporter:8000"]
+```
+
+The host names match the service names of the Docker Compose deployment. On Kubernetes, use the service names of your release.
+
+## Monitor the task manager
+
+Infrahub runs Generators, Transformations, checks, Git operations and other background work as flow runs in the task manager. When task workers are all busy, flow runs wait past their scheduled start time. The Prefect exporter reports this per work queue:
+
+- **`prefect_work_queues_late_runs_count`** is the number of flow runs in a queue whose scheduled start time has passed. A value that stays above zero means flow runs are scheduled faster than the workers start them: add task workers, or look for long-running tasks in the [task list](./tasks.mdx).
+- **`prefect_info_work_queues`** and **`prefect_info_work_pools`** are `0` when a queue or pool is paused. The `healthy` and `status` labels report the task manager's own health check.
+- **`prefect_deployment_failed_flow_runs`** lists recent failed or crashed flow runs per deployment.
+
+`prefect_info_flow_runs` counts flow runs by state, but only runs that started in the last three minutes. Runs that are scheduled and not yet started are never counted, so it measures throughput, not backlog.
+
+In Grafana, the **Prefect / Platform Overview** and **Prefect / Flow Runs Overview** dashboards show flow-run states and work-queue counts from the Prefect exporter. They don't chart `prefect_work_queues_late_runs_count`, so add a panel or an alert rule for it.
+
+## Metrics to watch
+
+| To detect | Watch |
+|---|---|
+| Slow or failing API requests | `infrahub_request_duration_seconds`, `infrahub_requests_total` with a `5xx` `status_code` |
+| Expensive GraphQL queries | `infrahub_graphql_duration_seconds`, `infrahub_graphql_query_objects`, `infrahub_graphql_response_size_bytes` |
+| Database connection pressure | `infrahub_db_last_connection_pool_usage`, used to size `INFRAHUB_DB_MAX_CONCURRENT_QUERIES` in [performance tuning](../install-configure/performance-tuning.mdx#concurrent-queries-against-the-database) |
+| Database under stress | `infrahub_db_reference_query_stress_ratio_median`, where `1.0` means no stress |
+| Requests rejected under load | `infrahub_admission_rejected_total`, `infrahub_admission_waiters` |
+| Lock contention | `infrahub_lock_acquire_seconds` |
+| Flow runs starting late | `prefect_work_queues_late_runs_count` |
+
+GraphQL metrics are labelled by branch and by query name, so their number of series grows with the number of branches and distinct queries.
+
+## Related resources
+
+- [Prometheus metrics reference](../../reference/metrics.mdx)
+- [Observability stack](../install-configure/install/observability-stack.mdx)
+- [Performance tuning](../install-configure/performance-tuning.mdx)
+- [Tasks](./tasks.mdx)
+- [Log forwarding](./log-forwarding/overview.mdx)
