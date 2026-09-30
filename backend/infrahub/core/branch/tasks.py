@@ -18,7 +18,13 @@ from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracke
 from infrahub.core.constants import PROFILES_RELATIONSHIP_NAME, SYSTEM_USER_ID, DiffAction, MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
-from infrahub.core.diff.model.path import BranchTrackingId, ConflictLevel, ConflictSelection, EnrichedDiffRoot
+from infrahub.core.diff.model.path import (
+    BranchTrackingId,
+    ConflictLevel,
+    ConflictSelection,
+    EnrichedDiffConflict,
+    EnrichedDiffRoot,
+)
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.diff.summary_cache import DiffSummaryCache
@@ -85,8 +91,14 @@ if TYPE_CHECKING:
 RETIREMENT_BATCH_SIZE = 500
 """How many deleted-node uuids one retirement query evaluates at a time."""
 
-REBASABLE_CONFLICT_LEVELS = frozenset({ConflictLevel.ATTRIBUTE_PROPERTY, ConflictLevel.RELATIONSHIP_PROPERTY})
-"""Conflict levels on which a rebase can apply a resolution in favor of the branch."""
+
+def _rebase_keeps_branch_side(conflict_level: ConflictLevel, conflict: EnrichedDiffConflict) -> bool:
+    """Whether a rebase, which keeps the branch's edges, leaves the branch with its side of the conflict.
+
+    The default branch can disconnect a relationship's vertex, which the branch's edges on that relationship hang
+    from, and an attribute it removed leaves the branch's value edge on nothing.
+    """
+    return conflict_level is ConflictLevel.ATTRIBUTE_PROPERTY and conflict.base_branch_action is not DiffAction.REMOVED
 
 
 def _build_unrebasable_conflicts_message(
@@ -202,14 +214,13 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=base_branch, diff_branch=user_branch
         )
-        # A rebase keeps the branch's side of every conflict, which leaves a cardinality-one relationship with both
-        # peers and cannot apply a resolution in favor of the default branch.
+        # A rebase keeps the branch's edges, so it cannot apply a resolution in favor of the default branch.
         conflicts_to_resolve: list[str] = []
         conflicts_to_update: list[str] = []
         async for conflict_path, conflict_level, conflict in diff_repository.get_all_conflicts_with_level_for_diff(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         ):
-            if conflict_level not in REBASABLE_CONFLICT_LEVELS:
+            if not _rebase_keeps_branch_side(conflict_level=conflict_level, conflict=conflict):
                 conflicts_to_update.append(conflict_path)
             elif conflict.selected_branch is not ConflictSelection.DIFF_BRANCH:
                 conflicts_to_resolve.append(conflict_path)
