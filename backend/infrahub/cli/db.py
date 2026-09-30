@@ -32,7 +32,7 @@ from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
-from infrahub.core.diff.unfrozen_deleter import UnfrozenDiffDeleter
+from infrahub.core.diff.unfrozen_deleter import UnfrozenDiffDeleter, UnfrozenDiffDeletionPlanner
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
 from infrahub.core.graph.index import node_indexes, rel_indexes
@@ -563,19 +563,27 @@ async def delete_diffs_cmd(
         "-b",
         help="Only delete the diffs of this branch, which does not need to exist anymore.",
     ),
+    include_branch_diffs: bool = typer.Option(
+        False,
+        "--include-branch-diffs",
+        help="Also delete the diffs that track a branch over its lifetime, not only the named diffs.",
+    ),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     """Delete the stored diffs that are not frozen, for every branch or for a single one.
 
-    Frozen diffs are kept: they record what a closed or merged proposed change, or a merged or
-    deleted branch, changed. A deleted diff is calculated again from the start of its branch the next
-    time it is requested, and the conflict resolutions recorded in it are lost. The diffs of a branch
-    are deleted once any diff update of that branch in progress has finished.
+    By default only named diffs are deleted: diffs computed under a name for a given time range,
+    which Infrahub also creates on its own. With --include-branch-diffs, the diffs tracking a branch
+    over its lifetime are deleted too; such a diff is calculated again from the start of its branch
+    the next time it is requested, and the conflict resolutions recorded in it are lost. Frozen diffs
+    are always kept: they record what a closed or merged proposed change, or a merged or deleted
+    branch, changed. The diffs of a branch are deleted once any diff update of that branch in
+    progress has finished.
 
     Raises:
-        Exit: When --branch names the default branch or the confirmation prompt is declined
-            (raises typer.Exit to terminate the CLI command).
+        Exit: When the confirmation prompt is declined (raises typer.Exit to terminate the CLI
+            command).
 
     """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
@@ -590,22 +598,15 @@ async def delete_diffs_cmd(
     dbdriver = await context.init_db(retry=1)
 
     try:
-        root = await get_root_node(db=dbdriver)
-        if branch == root.default_branch:
-            console.print(
-                f"[red]Diffs are stored per branch against the default branch '{branch}'; "
-                "omit --branch to delete the diffs of every branch.[/red]"
-            )
-            raise typer.Exit(code=1)
-
         initialize_lock()
-        deleter = UnfrozenDiffDeleter(
-            diff_repository=DiffRepository(
-                db=dbdriver, deserializer=EnrichedDiffDeserializer(parent_adder=DiffParentNodeAdder())
-            ),
-            diff_locker=DiffLocker(),
+        diff_repository = DiffRepository(
+            db=dbdriver, deserializer=EnrichedDiffDeserializer(parent_adder=DiffParentNodeAdder())
         )
-        plan = await deleter.plan(branch_name=branch)
+        planner = UnfrozenDiffDeletionPlanner(diff_repository=diff_repository)
+        deleter = UnfrozenDiffDeleter(diff_repository=diff_repository, diff_locker=DiffLocker())
+
+        plan = await planner.plan(branch_name=branch, include_branch_diffs=include_branch_diffs)
+        kind = "unfrozen diff" if include_branch_diffs else "unfrozen named diff"
 
         if plan.kept_root_uuids:
             console.print(
@@ -613,10 +614,10 @@ async def delete_diffs_cmd(
                 f"{', '.join(plan.kept_root_uuids)}[/yellow]"
             )
         if not plan.batches:
-            console.print("No unfrozen diff to delete.")
+            console.print(f"No {kind} to delete.")
             return
 
-        table = Table(title="Unfrozen diffs")
+        table = Table(title=f"{kind.capitalize()}s")
         table.add_column("Branch")
         table.add_column("Base branch")
         table.add_column("Diffs", justify="right")
@@ -624,14 +625,13 @@ async def delete_diffs_cmd(
             table.add_row(batch.diff_branch_name, batch.base_branch_name, str(len(batch.diffs)))
         console.print(table)
 
-        if not yes and not typer.confirm(f"Delete these {plan.num_diffs} unfrozen diff(s)?"):
+        if not yes and not typer.confirm(f"Delete these {plan.num_diffs} {kind}(s)?"):
             console.print("Aborted; no diff was deleted.")
             raise typer.Exit(code=1)
 
-        for batch in plan.batches:
-            console.print(f"Deleting {len(batch.diffs)} diff(s) of branch '{batch.diff_branch_name}'")
-            await deleter.delete(batch=batch)
-        console.print(f"[green]Deleted {plan.num_diffs} unfrozen diff(s).[/green]")
+        console.print("Each branch waits for any diff update of it in progress to finish before its diffs are deleted.")
+        await deleter.delete(plan=plan)
+        console.print(f"[green]Deleted {plan.num_diffs} {kind}(s).[/green]")
     finally:
         await dbdriver.close()
 

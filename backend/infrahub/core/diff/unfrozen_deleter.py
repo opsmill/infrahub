@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
+
+from .model.path import NameTrackingId
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
-
     from .diff_locker import DiffLocker
-    from .model.path import EnrichedDiffRootMetadata
     from .repository.repository import DiffRepository
 
 
@@ -41,14 +40,21 @@ class UnfrozenDiffDeletionPlan:
     def num_diffs(self) -> int:
         return sum(len(batch.diffs) for batch in self.batches)
 
-    @classmethod
-    def from_roots(cls, roots: Iterable[EnrichedDiffRootMetadata], branch_name: str | None) -> Self:
-        """Group the unfrozen diffs among the roots by the branch whose diff update lock covers them.
+
+class UnfrozenDiffDeletionPlanner:
+    """Find the stored diffs that are not frozen, grouped by the branch whose diff update lock covers them."""
+
+    def __init__(self, diff_repository: DiffRepository) -> None:
+        self.diff_repository = diff_repository
+
+    async def plan(self, branch_name: str | None, include_branch_diffs: bool) -> UnfrozenDiffDeletionPlan:
+        """List the unfrozen named diffs, and the unfrozen branch diffs too when include_branch_diffs is set.
 
         Args:
             branch_name: Only plan the diffs of this branch; every branch when None.
 
         """
+        roots = await self.diff_repository.get_roots_metadata(exclude_merged=False)
         roots_by_uuid = {root.uuid: root for root in roots}
         handled_uuids: set[str] = set()
         diffs_by_branches: dict[tuple[str, str], list[tuple[str, ...]]] = defaultdict(list)
@@ -65,6 +71,10 @@ class UnfrozenDiffDeletionPlan:
 
             if branch_name is not None and root.diff_branch_name != branch_name:
                 continue
+            if not include_branch_diffs and not any(
+                isinstance(member.tracking_id, NameTrackingId) for member in members
+            ):
+                continue
             if any(member.is_frozen for member in members):
                 # Deleting a root also deletes whatever its partner edge points to.
                 kept_root_uuids.extend(member.uuid for member in members if not member.is_frozen)
@@ -77,36 +87,32 @@ class UnfrozenDiffDeletionPlan:
             UnfrozenDiffBatch(base_branch_name=base_branch_name, diff_branch_name=diff_branch_name, diffs=tuple(diffs))
             for (base_branch_name, diff_branch_name), diffs in sorted(diffs_by_branches.items())
         )
-        return cls(batches=batches, kept_root_uuids=tuple(kept_root_uuids))
+        return UnfrozenDiffDeletionPlan(batches=batches, kept_root_uuids=tuple(kept_root_uuids))
 
 
 class UnfrozenDiffDeleter:
-    """Delete the stored diffs that are not frozen, one branch at a time."""
+    """Delete the diffs of an unfrozen diff deletion plan, one branch at a time."""
 
     def __init__(self, diff_repository: DiffRepository, diff_locker: DiffLocker) -> None:
         self.diff_repository = diff_repository
         self.diff_locker = diff_locker
 
-    async def plan(self, branch_name: str | None) -> UnfrozenDiffDeletionPlan:
-        """List the unfrozen diffs of branch_name, or of every branch when it is None."""
-        roots = await self.diff_repository.get_roots_metadata(exclude_merged=False)
-        return UnfrozenDiffDeletionPlan.from_roots(roots=roots, branch_name=branch_name)
+    async def delete(self, plan: UnfrozenDiffDeletionPlan) -> None:
+        """Delete the planned diffs of each branch once no diff update of that branch is in progress.
 
-    async def delete(self, batch: UnfrozenDiffBatch) -> None:
-        """Delete the diffs of the batch once no diff update of its branch is in progress.
-
-        A root frozen since the batch was planned is kept.
+        A root frozen since the plan was made is kept.
         """
-        async with (
-            self.diff_locker.acquire_lock(
-                target_branch_name=batch.base_branch_name,
-                source_branch_name=batch.diff_branch_name,
-                is_incremental=True,
-            ),
-            self.diff_locker.acquire_lock(
-                target_branch_name=batch.base_branch_name,
-                source_branch_name=batch.diff_branch_name,
-                is_incremental=False,
-            ),
-        ):
-            await self.diff_repository.delete_diff_roots(diff_root_uuids=batch.root_uuids)
+        for batch in plan.batches:
+            async with (
+                self.diff_locker.acquire_lock(
+                    target_branch_name=batch.base_branch_name,
+                    source_branch_name=batch.diff_branch_name,
+                    is_incremental=True,
+                ),
+                self.diff_locker.acquire_lock(
+                    target_branch_name=batch.base_branch_name,
+                    source_branch_name=batch.diff_branch_name,
+                    is_incremental=False,
+                ),
+            ):
+                await self.diff_repository.delete_diff_roots(diff_root_uuids=batch.root_uuids)
