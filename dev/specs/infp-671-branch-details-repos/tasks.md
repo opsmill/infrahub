@@ -122,7 +122,7 @@
 
 ### Implementation for User Story 4
 
-- [X] T041 [P] [US4] Create `BranchTask`/`BranchTasksPage` in `frontend/app/src/entities/tasks/domain/model/branch-task.ts` (data-model.md).
+- [X] T041 [P] [US4] Create `TaskListItem`/`TaskListPage` in `frontend/app/src/entities/tasks/domain/model/task-list-item.ts` (data-model.md).
 - [X] T042 [P] [US4] Implement `getWorkflowLabel` in `frontend/app/src/entities/tasks/domain/model/workflow-labels.ts` to pass T038 (reuse `BRANCH_VALIDATE_WORKFLOW`, `BRANCH_REBASE_WORKFLOW`, `BRANCH_MERGE_WORKFLOW` from `frontend/app/src/entities/tasks/domain/model/task.ts`; the tasks entity keeps its own copy of the import workflow ids rather than importing `repository`).
 - [X] T043 [P] [US4] Implement `getTaskRelatedLabel` in `frontend/app/src/entities/tasks/domain/rules/get-task-related-label.ts` to pass T039.
 - [X] T044 [US4] Implement `getBranchTasks` in `frontend/app/src/entities/tasks/domain/use-cases/get-branch-tasks.ts` over `GET_TASK_LIST` from `frontend/app/src/entities/tasks/api/get-task-list-from-api.ts` to pass T040. Depends on T041.

@@ -91,7 +91,7 @@ frontend/app/src/
 │       ├── queries/get-repository-import-error.query.ts # NEW
 │       └── branch-repositories/                         # NEW card + children (+ tests, fixtures)
 ├── entities/tasks/
-│   ├── domain/model/branch-task.ts                      # NEW
+│   ├── domain/model/task-list-item.ts                   # NEW
 │   ├── domain/model/workflow-labels.ts (+ test)         # NEW
 │   ├── domain/rules/get-task-related-label.ts (+ test)  # NEW
 │   ├── domain/use-cases/get-branch-tasks.ts (+ test)    # NEW over GET_TASK_LIST

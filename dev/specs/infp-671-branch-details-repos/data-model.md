@@ -61,19 +61,20 @@ type RepositoryImportError =
 - `getLastErrorLine(logs): string | null` (rule, `domain/rules/get-last-error-line.ts`) — last log with `severity` `error` or `critical` (case-insensitive), message verbatim (no trim of inner newlines; trailing whitespace trimmed).
 - `taskId` is kept in `not-found` when a task exists without an error line, so the band can still link to it; when `null`, the band links to the repository (FR-022).
 
-## BranchTask (`entities/tasks/domain/model/branch-task.ts`)
+## TaskListItem (`entities/tasks/domain/model/task-list-item.ts`)
 
 | Field | Type | Source |
 |---|---|---|
 | `id` | `string` | `id` |
 | `title` | `string` | `title` |
-| `state` | `StateType \| null` | `state` |
+| `branch` | `string \| null` | `branch` |
+| `state` | `TaskState \| null` | `state` |
 | `workflow` | `string \| null` | `workflow` |
 | `relatedNodes` | `{ id: string; kind: string }[]` | `related_nodes` (nulls dropped) |
 | `updatedAt` | `string` | `updated_at` |
 
 ```ts
-type BranchTasksPage = { tasks: BranchTask[]; count: number };
+type TaskListPage = { tasks: TaskListItem[]; count: number };
 ```
 
 - Use case `getBranchTasks({ branchName, offset, limit })` over `GET_TASK_LIST` (research R3).
