@@ -185,7 +185,7 @@ class TestBranchDetailsTasks:
 
         tasks_card = admin_page.get_by_test_id("branch-tasks-card")
         validate_row = tasks_card.get_by_role("row").filter(has_text="Validate")
-        await expect(validate_row.first).to_be_visible(timeout=30_000)
+        await expect(validate_row.first).to_be_visible()
 
         await validate_row.first.get_by_role("link").click()
         await expect(admin_page).to_have_url(re.compile(r"/tasks/[0-9a-f-]+"))

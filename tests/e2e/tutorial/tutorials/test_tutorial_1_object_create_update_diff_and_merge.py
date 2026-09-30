@@ -142,7 +142,7 @@ class TestTutorial1ObjectAndBranch:
         merge_row = (
             admin_page.get_by_test_id("branch-tasks-card").get_by_role("row").filter(has_text="Merge branch graphQL")
         )
-        await expect(merge_row.first).to_contain_text("COMPLETED", timeout=30_000)
+        await expect(merge_row.first).to_contain_text("COMPLETED")
 
         # validate merged changes in main
         await admin_page.get_by_test_id("branch-selector-trigger").click()
