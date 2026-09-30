@@ -81,6 +81,13 @@ const scenarios = [
       readOnlyOnly: t.includes("scn-readonly") && !t.includes("scn-repo-01"),
     }),
   },
+  // Set SCN_MANY_BRANCHES=1 after `seed.py up --many-branches`.
+  ...(process.env.SCN_MANY_BRANCHES === "1"
+    ? [
+        { branch: "scn-b-04", checks: (t) => ({ band: t.includes("scn-fixtures — import failed") }) },
+        { branch: "scn-b-02", checks: (t) => ({ noImportBand: !t.includes("— import failed") }) },
+      ]
+    : []),
 ];
 
 const browser = await chromium.launch();

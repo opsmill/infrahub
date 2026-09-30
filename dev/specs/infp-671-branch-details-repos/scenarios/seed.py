@@ -2,7 +2,7 @@
 """Seed a local Infrahub with branches, Git repositories and tasks for the branch details page.
 
 Usage:
-    uv run --no-project seed.py up [--with-unreachable]
+    uv run --no-project seed.py up [--with-unreachable] [--many-branches [N]]
     uv run --no-project seed.py status
     uv run --no-project seed.py down
 
@@ -71,11 +71,31 @@ BRANCHES: dict[str, tuple[bool, str, dict[str, str]]] = {
     "scn-many-tasks": (True, "More than 10 tasks on the branch", {}),
     "scn-no-git": (False, "Sync with Git off", {}),
 }
-EXPECTED_SYNC = {
-    branch: {repo: ("error-import" if overlays.get(repo) == "broken" else "in-sync") for repo in RW_REPOS}
-    for branch, (sync, _, overlays) in BRANCHES.items()
-    if sync
-}
+# --many-branches: small branches that page the repository page's branch list for scn-fixtures.
+EXTRA_PREFIX = "scn-b-"
+EXTRA_DEFAULT = 11
+# By index % 4: 1 and 3 stay on main's commit, 2 gets its own commit, 0 fails to import.
+EXTRA_OVERLAYS = {2: "change", 0: "broken"}
+EXTRA_DESCRIPTIONS = {None: "in sync, main's commit", "change": "in sync, own commit", "broken": "import error"}
+
+
+def extra_branches(count: int) -> dict[str, tuple[bool, str, dict[str, str]]]:
+    extras: dict[str, tuple[bool, str, dict[str, str]]] = {}
+    for i in range(1, count + 1):
+        overlay = EXTRA_OVERLAYS.get(i % 4)
+        description = f"Branch list filler, scn-fixtures {EXTRA_DESCRIPTIONS[overlay]}"
+        extras[f"{EXTRA_PREFIX}{i:02d}"] = (True, description, {"scn-fixtures": overlay} if overlay else {})
+    return extras
+
+
+def expected_sync(branches: dict[str, tuple[bool, str, dict[str, str]]]) -> dict[str, dict[str, str]]:
+    return {
+        branch: {repo: ("error-import" if overlays.get(repo) == "broken" else "in-sync") for repo in RW_REPOS}
+        for branch, (sync, _, overlays) in branches.items()
+        if sync
+    }
+
+
 NO_REIMPORT = {("scn-many-errors", "scn-repo-02")}  # its band says the error details couldn't be found
 VALIDATE_RUNS = 12  # scn-many-tasks: enough tasks for a second page
 SETTLED_STATES = {"COMPLETED", "FAILED", "CANCELLED", "CRASHED"}
@@ -376,9 +396,9 @@ def add_unreachable(api: Api) -> bool:
     return wait_for("unreachable repositories report their operational_status", check)
 
 
-def create_branches(api: Api) -> None:
+def create_branches(api: Api, branches: dict[str, tuple[bool, str, dict[str, str]]]) -> None:
     existing = api.branches()
-    for name, (sync, description, _) in BRANCHES.items():
+    for name, (sync, description, _) in branches.items():
         if name in existing:
             continue
         api.gql(
@@ -390,17 +410,17 @@ def create_branches(api: Api) -> None:
         log(f"created branch {name} (sync_with_git={sync})")
 
 
-def sync_mismatches(api: Api, branch: str) -> dict[str, str]:
+def sync_mismatches(api: Api, branch: str, expected: dict[str, str]) -> dict[str, str]:
     repos = api.repos(branch)
     return {
         repo: f"{repos.get(repo, {}).get('sync_status', {}).get('value')} != {want}"
-        for repo, want in EXPECTED_SYNC[branch].items()
+        for repo, want in expected.items()
         if repos.get(repo, {}).get("sync_status", {}).get("value") != want
         and not (repo == HIDDEN_REPO and not bare_path(repo).exists())
     }
 
 
-def reimport_failed(api: Api, branch: str) -> None:
+def reimport_failed(api: Api, branch: str, overlays: dict[str, str]) -> None:
     """Run "Import current commit" for each broken repository of the branch.
 
     A failing periodic sync is tagged with the default branch only, so the branch page can't find
@@ -408,7 +428,7 @@ def reimport_failed(api: Api, branch: str) -> None:
     looks up. NO_REIMPORT repositories are left alone so the "details not found" band shows too.
     """
     repos = api.repos(branch)
-    for repo, overlay in BRANCHES[branch][2].items():
+    for repo, overlay in overlays.items():
         if overlay != "broken" or (branch, repo) in NO_REIMPORT or repo not in repos:
             continue
         repo_id = repos[repo]["id"]
@@ -469,7 +489,20 @@ def remove_unreachable(api: Api) -> None:
     stop_http("deny")
 
 
-def up(with_unreachable: bool) -> int:
+def remove_extra_branches(api: Api, keep: set[str]) -> None:
+    """`up` converges: extra branches past the requested --many-branches count are deleted."""
+    for name in sorted(api.branches()):
+        if name.startswith(EXTRA_PREFIX) and name not in keep:
+            api.gql(
+                "mutation($name: String!) { BranchDelete(data: {name: $name}, wait_until_completion: true) { ok } }",
+                {"name": name},
+            )
+            log(f"deleted branch {name}")
+
+
+def up(with_unreachable: bool, many_branches: int) -> int:
+    branches = BRANCHES | extra_branches(many_branches)
+    expected = expected_sync(branches)
     api = Api()
     STATE.mkdir(parents=True, exist_ok=True)
     BARE.mkdir(parents=True, exist_ok=True)
@@ -487,25 +520,41 @@ def up(with_unreachable: bool) -> int:
         ),
     )  # fmt: skip
 
-    create_branches(api)
+    remove_extra_branches(api, set(branches))
+    if set(branches) - set(api.branches()) and set(UNREACHABLE) & set(api.repos()):
+        # Infrahub can't push a new branch to them, which fails the branch's "Create branch in Git
+        # Repositories" task and skips the remotes after them. They are added back at the end.
+        log("new branches to create: removing the unreachable repositories first")
+        remove_unreachable(api)
+    create_branches(api, branches)
 
-    def branches_pushed() -> tuple[bool, object]:
-        missing = [
-            f"{repo}@{b}" for b, (sync, _, _) in BRANCHES.items() if sync for repo in RW_REPOS
+    def unpushed() -> list[tuple[str, str]]:
+        return [
+            (repo, b) for b, (sync, _, _) in branches.items() if sync for repo in RW_REPOS
             if bare_path(repo).exists() and not remote_has_branch(repo, b)
         ]  # fmt: skip
-        return not missing, missing
 
-    ok &= wait_for("Infrahub pushed every scn branch to the fixture remotes", branches_pushed)
+    # Infrahub pushes each new branch to every read-write remote in turn.
+    push_timeout = TIMEOUT + 30 * max(0, len(branches) - len(BRANCHES))
+    if not wait_for(
+        "Infrahub pushed every scn branch to the fixture remotes",
+        lambda: (not (m := unpushed()), [f"{r}@{b}" for r, b in m]),
+        push_timeout,
+    ):
+        # A branch whose Git push task failed is never pushed again; create it from main like Infrahub would.
+        for repo, b in unpushed():
+            git("branch", b, "main", cwd=bare_path(repo))
+            log(f"created {repo}@{b} from main (Infrahub never pushed it)")
 
     # One branch at a time: a single sync of a repository that picks up several updated Git branches
     # runs as one task tagged with only one of them, and the other branches lose their import task.
-    for branch in EXPECTED_SYNC:
-        for repo, overlay in BRANCHES[branch][2].items():
+    for branch, want in expected.items():
+        overlays = branches[branch][2]
+        for repo, overlay in overlays.items():
             if bare_path(repo).exists():
                 push_overlay(repo, branch, overlay)
-        ok &= wait_for(f"sync_status on {branch}", lambda b=branch: (not (m := sync_mismatches(api, b)), m))
-        reimport_failed(api, branch)
+        ok &= wait_for(f"sync_status on {branch}", lambda b=branch, w=want: (not (m := sync_mismatches(api, b, w)), m))
+        reimport_failed(api, branch, overlays)
 
     if wait_tasks_settled(api, "scn-generator-failed"):
         run_generators(api)
@@ -516,7 +565,7 @@ def up(with_unreachable: bool) -> int:
     else:
         remove_unreachable(api)
 
-    for branch in BRANCHES:
+    for branch in branches:
         ok &= wait_tasks_settled(api, branch)
     status(api)
     return 0 if ok else 1
@@ -534,7 +583,7 @@ def status(api: Api | None = None) -> int:
             f"  {name:18} {repo['__typename']:24} {repo['operational_status']['value']:17} {repo['location']['value']}"
         )
     print("\nBranches:")
-    for name in BRANCHES:
+    for name in [*BRANCHES, *sorted(n for n in branches if n.startswith(EXTRA_PREFIX))]:
         if name not in branches:
             print(f"  {name:22} MISSING")
             continue
@@ -585,11 +634,15 @@ def main() -> int:
         "--with-unreachable", action="store_true",
         help="also add unreachable repositories; they are global and show on every branch",
     )  # fmt: skip
+    up_parser.add_argument(
+        "--many-branches", type=int, nargs="?", const=EXTRA_DEFAULT, default=0, metavar="N",
+        help=f"also add N small Sync-with-Git branches {EXTRA_PREFIX}NN (default {EXTRA_DEFAULT}) so branch lists page",
+    )  # fmt: skip
     sub.add_parser("status", help="print repositories, per-branch sync_status and task states")
     sub.add_parser("down", help="delete every scn- branch and repository, stop local servers")
     args = parser.parse_args()
     if args.command == "up":
-        return up(args.with_unreachable)
+        return up(args.with_unreachable, args.many_branches)
     if args.command == "status":
         return status()
     return down()

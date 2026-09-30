@@ -7,13 +7,21 @@ branch details page can be tried by hand. Everything it creates is named `scn-*`
 cd dev/specs/infp-671-branch-details-repos/scenarios
 uv run --no-project seed.py up                     # create or complete the seed (idempotent)
 uv run --no-project seed.py up --with-unreachable  # also add unreachable repositories (global: every branch shows them)
+uv run --no-project seed.py up --with-unreachable --many-branches  # also add 11 scn-b-NN branches (QA seed)
 uv run --no-project seed.py status                 # sync_status per branch, operational_status, task states
 uv run --no-project seed.py down                   # delete every scn- branch and repository, stop the local servers
 PLAYWRIGHT_MODULE=/path/to/frontend/app/node_modules/playwright/index.js \
-  SCN_UNREACHABLE=1 node verify.mjs /tmp/scn-shots  # screenshots + checks (SCN_UNREACHABLE=1 after --with-unreachable)
+  SCN_UNREACHABLE=1 node verify.mjs /tmp/scn-shots  # screenshots + checks (SCN_UNREACHABLE=1 after --with-unreachable,
+                                                    # SCN_MANY_BRANCHES=1 after --many-branches)
 ```
 
-`up` converges: run without `--with-unreachable` and it removes the unreachable repositories again.
+`up` converges: run without `--with-unreachable` and it removes the unreachable repositories again;
+run without `--many-branches` (or with a smaller `N`) and it deletes the `scn-b-NN` branches it no
+longer wants. `--many-branches N` adds `N` branches instead of 11. When `up` has branches to create
+and the unreachable repositories exist, it deletes them first and adds them back at the end:
+Infrahub can't push a new branch to them, which would fail that branch's "Create branch in Git
+Repositories" task.
+
 Environment overrides: `INFRAHUB_ADDRESS`, `INFRAHUB_USERNAME`, `INFRAHUB_PASSWORD`, `SCN_STATE_DIR`,
 `SCN_GIT_HOST`, `SCN_GIT_BIND`, `SCN_TIMEOUT`, `FRONTEND_URL`.
 
@@ -58,10 +66,39 @@ writable repositories to your network.
 | `scn-many-tasks` | Tasks table over 10 rows (12 Validate runs), tasks pager (`?tasks_page=2`) | http://localhost:8080/branches/scn-many-tasks |
 | `scn-no-git` | Sync with Git off: only the read-only repository is listed | http://localhost:8080/branches/scn-no-git |
 
+With `--many-branches`, `scn-b-01`…`scn-b-11` are Sync-with-Git branches that only change
+`scn-fixtures`: `scn-b-04` and `scn-b-08` fail to import it (with an "Import current commit" task),
+`scn-b-02`, `scn-b-06` and `scn-b-10` give it a commit of their own, the others keep main's commit.
+
 With `--with-unreachable`, every branch also shows amber bands for `scn-badcreds` (Credential
 Error), `scn-unreachable` (Connectivity Error) and `scn-repo-04` (Error), with a warning icon on the
 rows and no commit on the `scn-` branches. On `scn-many-errors`, `scn-repo-04` is both in Import
 Error and unreachable: one red band, warning icon on its row.
+
+## Which page and feature each scenario serves
+
+One load covers the four features of the INFP-671 epic. Pages:
+
+- **Header**: the Git status indicator at the right of the app header (IFC-3199). It counts
+  repositories in Import Error on the branch selected in the top bar; `operational_status` is ignored.
+- **Branch details**: `/branches/<name>`, Git repositories and Tasks cards (INFP-671, #10779).
+- **Repository page**: Integrations → Git Repositories → a repository, `/objects/CoreRepository/<id>`:
+  the Branches card and the "On this branch" card (IFC-3130).
+- **Branch list**: `/branches`, Repository, Git state and Commit columns (IFC-3201, not built yet).
+
+| Scenario | Header | Branch details | Repository page | Branch list |
+|---|---|---|---|---|
+| `main` | all clear | default branch: Details card only | first row, `default` badge | first branch |
+| `scn-all-clear` | all clear | everything in sync, both pagers | In Sync | sync on, all In Sync |
+| `scn-import-error` | failing | one red band | `scn-fixtures`: Import Error row | Import Error row first |
+| `scn-many-errors` | failing | 3 bands + Show all, details-not-found band | Import Error on 5 repositories | 5 Import Error rows first |
+| `scn-generator-failed` | all clear | failed tasks, "11 failed" | `scn-fixtures`: own commit | sync on, own commit |
+| `scn-many-tasks` | all clear | tasks pager | In Sync | sync on |
+| `scn-no-git` | all clear | Sync with Git off: read-only only | absent for read-write, listed for `scn-readonly` | sync off, read-only rows only |
+| `scn-b-01`…`11` (`--many-branches`) | failing on 04 and 08 | same states, one repository | `scn-fixtures` pages (17 rows); `scn-readonly` "Infrahub branches" pages (every branch) | more sync-on branches, mixed states |
+| demo branches (`atl1-…`, …) | all clear | Sync with Git off | absent for read-write | sync off |
+| `demo-git-failed` (demo data) | failing: `demo-edge` is in Import Error there | Sync with Git off, so `demo-edge` isn't listed | absent for read-write | sync off |
+| `--with-unreachable` | no effect | amber bands, warning icons | Details card: `operational_status` error | no effect (row order only) |
 
 ## Not covered
 
@@ -70,4 +107,9 @@ Error and unreachable: one red band, warning icon on its row.
 - Exactly 10 repositories (no pager): the instance already has more.
 - A repository stuck in `syncing`, and the no-access state (needs a restricted account and role):
   component tests only.
+- Header: the "No Git repositories", loading and "could not be checked" states (block or throttle
+  the GraphQL request in devtools for the last two).
+- Repository page: branch statuses other than Open (Rebase needed, Merging, Merge failed) for the
+  Status filter, and 21+ rows for the pager's ellipsis on `scn-fixtures` (`scn-readonly` has them).
+- Branch list: more than 40 branches for its infinite scroll; use `--many-branches 30`.
 - Tasks stay in the task manager after `down`; it has no delete.
