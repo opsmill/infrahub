@@ -16,6 +16,20 @@ Backend asks found while building this frontend-only feature. None of them block
 1. Run the bootstrap import in its own subflow (e.g. reuse `git-repository-import-object`, or `sync-git-repo-with-origin`), so it gets its own tagged, `Failed` run.
 2. At minimum, log the failure at `error` instead of `info`.
 
+## Failed periodic syncs are tagged with the default branch only
+
+**Where**: the `sync-git-repo-with-origin` subflow of `git_repositories_sync` (`backend/infrahub/git/tasks.py`).
+
+**Problem**: on the `scenarios/` seed, a periodic sync that fails to import a branch's commit leaves a
+failed task tagged with the default branch (`main`) only. The branch's `sync_status` is
+`error-import`, but `InfrahubTask(branch: <branch>, related_node__ids: [<repo>])` finds no task, so
+the band says the error details couldn't be found. Research R2 expected `build_import_plan` to add
+the branch tag; the live result says otherwise, and the cause isn't traced yet. "Import current
+commit" on the branch does produce a findable task.
+
+**Ask**: tag the sync run with every branch it imports, before the import can fail, or run each
+branch's import in its own tagged subflow.
+
 ## Structured "last import" on the repository
 
 **Problem**: the frontend finds an import failure indirectly. It looks up the latest import flow run by tags, then takes the last `error`/`critical` log line, which is Prefect's `Finished in state Failed('Flow run encountered an exception: …')` wrapper. A periodic-sync failure message also lists every failing branch, not only the one being viewed.

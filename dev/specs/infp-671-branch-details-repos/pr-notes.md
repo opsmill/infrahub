@@ -1,13 +1,31 @@
 # PR notes: INFP-671 branch details repositories
 
-Draft material for the PR description. Nothing here has been walked against a live stack: there
-was no dedicated Infrahub stack to seed data on (the only running one belongs to another branch
-and is read-only).
+Draft material for the PR description.
+
+## Live check against a seeded stack
+
+`scenarios/` seeds a local stack (see its README). It creates these `scn-` branches: `scn-all-clear`,
+`scn-import-error`, `scn-many-errors`, `scn-generator-failed`, `scn-many-tasks` and `scn-no-git`,
+plus unreachable repositories (`--with-unreachable`). Every scenario page was checked with
+`scenarios/verify.mjs` (screenshots plus text checks), except these, which the seed can't produce:
+
+- the "Not synchronised with Git" and "No Git repositories" empty states: repositories are global,
+  so every branch lists some
+- exactly 10 repositories (no pager): the instance already has more
+- a repository stuck mid-sync (`syncing`)
+- the no-permission state (needs a restricted account and role).
+
+These four are covered by component tests only. The e2e tests are still not run (see below).
+
+Seeding found a backend issue: a failed periodic sync's task is tagged with the default branch
+(`main`) only, so on another branch the band may not find its error line and falls back to "The
+error details couldn't be found for this import." The seed works around it by running "Import
+current commit" on each broken branch. Backend ask in `follow-ups.md`.
 
 ## R2 verification (T001)
 
-Verified by reading this branch's backend code, not by reproducing each path live (see
-`research.md`, "R2 verification results").
+Verified by reading this branch's backend code (see `research.md`, "R2 verification results").
+The seeded stack contradicts it for the periodic sync (see above).
 
 - Every import runs `InfrahubRepositoryIntegrator.build_import_plan`, which tags the running flow
   with the branch it imports into and the repository id. The band's lookup
@@ -29,7 +47,8 @@ Details in `follow-ups.md`:
 
 1. Run the worker-bootstrap import in its own tagged subflow, or at least log its failure at
    `error` instead of `info`.
-2. Expose the latest import task and its error per branch on `CoreGenericRepository` (for example
+2. Tag a failed periodic sync's task with the branch it imported, not only the default branch.
+3. Expose the latest import task and its error per branch on `CoreGenericRepository` (for example
    `last_import_task`), so the UI links to it without log parsing. Also: tag
    `git-repository-import-object` with the repository id at flow start, and
    `sync-git-repo-with-origin` with the branch it imports, instead of relying on
@@ -44,7 +63,8 @@ gate? The default stands until you answer: ship ungated, visibility only.
 
 ## E2E tests written but not run
 
-No e2e stack was available. CI runs them in the `shard_branches_repo` shard:
+They need the compose `/remote` directory, and the only local stack belongs to another worktree,
+so they were not run locally. CI runs them in the `shard_branches_repo` shard:
 `uv run pytest tests/e2e/branches/ -m shard_branches_repo`.
 
 - `tests/e2e/branches/test_branch_details_repositories.py::TestBranchDetailsRepositoryImportError::test_import_error_band_links_to_the_task_page`
@@ -62,7 +82,8 @@ No e2e stack was available. CI runs them in the `shard_branches_repo` shard:
 
 ## Quickstart scenarios (to walk by hand)
 
-All 11 are still to walk by hand against a stack seeded as `quickstart.md` describes.
+Not walked one by one by hand. `verify.mjs` covered the seeded pages (see "Live check" above);
+9 (no permission) and the empty state in 10 were not reachable on the seeded stack.
 
 - [ ] 1. Header on `/branches/bdr-demo`. Covered by
   `branch-details-header.test.tsx` (order, copy button name, status and default badges,
