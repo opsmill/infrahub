@@ -92,7 +92,7 @@ The band's text is the **last** log whose `severity` is `error` or `critical` (t
 **Decision**:
 - `entities/repository/ui/queries/repository.query-keys.ts::repositoryQueryKeys` (new): `all: ["repositories"]`, `branch: ({ branchName, kind }) => [...all, "branch", branchName, kind]`, `importError: ({ branchName, repositoryId }) => [...all, "import-error", branchName, repositoryId]`.
 - `tasksQueryKeys` gains `branchList: ({ branchName, offset, limit }) => [...all, "branch-list", …]`; the failed count keeps `tasksQueryKeys.count(…)`.
-- `RefreshButton` (`entities/nodes/object/ui/object-details/refresh-button.tsx`) gains an optional `queryKeys?: ReadonlyArray<readonly unknown[]>`; when set it invalidates each and counts fetching across all (`useIsFetching` with a predicate). The single-key API is unchanged for today's callers. The branch header passes `[branchesQueryKeys.details({ branchName }), repositoryQueryKeys.all, tasksQueryKeys.all]`.
+- `RefreshButton` (`entities/nodes/object/ui/object-details/refresh-button.tsx`) gains an optional `queryKeys?: ReadonlyArray<readonly unknown[]>`; when set it invalidates each and counts fetching across all (`useIsFetching` with a predicate). The single-key API is unchanged for today's callers. The branch header passes `[branchesQueryKeys.all, repositoryQueryKeys.all, tasksQueryKeys.all]`: `branchesQueryKeys.all` rather than `.details({ branchName })`, because the header and the action buttons read other branch queries too.
 
 **Rationale**: The page spans three entities with different key roots; a synthetic page-level root would break the documented key shape (`dev/guidelines/frontend/naming-conventions.md`).
 

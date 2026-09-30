@@ -85,7 +85,7 @@ Reuses `frontend/app/src/entities/tasks/api/get-task-count-from-api.ts::TASK_COU
 
 ## Refresh
 
-Header `RefreshButton queryKeys={[branchesQueryKeys.details({ branchName }), repositoryQueryKeys.all, tasksQueryKeys.all]}` invalidates Q1–Q4 and the branch details.
+Header `RefreshButton queryKeys={[branchesQueryKeys.all, repositoryQueryKeys.all, tasksQueryKeys.all]}` invalidates Q1–Q4 and every branch query. `branchesQueryKeys.all` rather than `.details({ branchName })`, because the header and the action buttons read other branch queries too.
 
 ## Request budget per page view
 
