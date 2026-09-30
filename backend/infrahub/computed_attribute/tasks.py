@@ -308,21 +308,19 @@ async def trigger_update_python_computed_attributes(
 
     client = get_client()
     client.request_context = context.to_request_context()
-    nodes = await client.all(kind=computed_attribute_kind, branch=branch_name)
-    object_ids = [node.id for node in nodes]
 
-    if not object_ids:
-        return
-
-    chunk_size = get_submission_chunk_size()
-    for chunk in chunked(object_ids, chunk_size):
-        await get_workflow().submit_workflow(
+    node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
+    workflow = get_workflow()
+    async for node_ids in node_query.fetch_all_chunked(
+        client=client, branch_name=branch_name, chunk_size=get_submission_chunk_size()
+    ):
+        await workflow.submit_workflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
             context=context,
             parameters={
                 "branch_name": branch_name,
                 "node_kind": computed_attribute_kind,
-                "object_ids": chunk,
+                "object_ids": node_ids,
                 "computed_attribute_name": computed_attribute_name,
                 "computed_attribute_kind": computed_attribute_kind,
                 "context": context,
