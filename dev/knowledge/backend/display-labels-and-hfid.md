@@ -131,7 +131,7 @@ When a schema is updated to add or change a `display_label` or a `human_friendly
 ```
 SchemaUpdatedEvent
   -> display_labels_setup_jinja2 / hfid_setup (gathers triggers, detects new/changed definitions)
-  -> trigger_update_display_labels / trigger_update_hfid (pages through all node ids of the kind at the client's pagination size, never below one submission chunk)
+  -> trigger_update_display_labels / trigger_update_hfid (pages through all node ids of the kind in uuid order, at the client's pagination size, never below one submission chunk)
   -> process_display_label / process_hfid (one flow per submission chunk: queries the chunk via GraphQL, renders the values, bulk-writes changed ones)
 ```
 

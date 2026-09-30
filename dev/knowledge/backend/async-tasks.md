@@ -334,16 +334,16 @@ nodes = q.parse_response(response=response)
 
 | Situation | Approach |
 |-----------|----------|
-| Need only `id` (fan-out pattern) | Subclass `NodeIDQuery` from `infrahub.core.query.node_query` |
+| Need only `id` (fan-out pattern) | Subclass `NodeIDQuery` from `infrahub.core.graphql_query.node_id_query` |
 | Need a few scalar/relationship fields, read-only | Standalone query model with `execute_graphql()` |
 | Need to mutate the fetched node afterwards | Keep `client.get()` / `client.filters()` with `include=[...]` to narrow fetched fields; use `do_full_update=False` on `.update()` |
 
 ### Existing query model base
 
-`NodeIDQuery` in `backend/infrahub/core/query/node_query.py` is the base class for queries that only need the `id` field. Subclass it with a unique `query_name: ClassVar[str]` for each domain:
+`NodeIDQuery` in `backend/infrahub/core/graphql_query/node_id_query.py` is the base class for queries that only need the `id` field. It pages by offset with ordering disabled (`order: {disable: true}`), so pages follow the node uuid alone. A schema `order_by` field would break that: a fan-out whose flows rewrite the field while paging continues shifts nodes across page boundaries, repeating some and skipping others. Subclass it with a unique `query_name: ClassVar[str]` for each domain:
 
 ```python
-from infrahub.core.query.node_query import NodeIDQuery
+from infrahub.core.graphql_query.node_id_query import NodeIDQuery
 
 class DisplayLabelNodeIDQuery(NodeIDQuery):
     query_name: ClassVar[str] = "DisplayLabelFetchNodeIDs"

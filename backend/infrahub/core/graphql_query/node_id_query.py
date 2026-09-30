@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from infrahub_sdk.graphql import Query
+from infrahub_sdk.types import Order
 from pydantic import BaseModel
 
 from infrahub.utilities.chunks import chunked
@@ -25,7 +26,9 @@ class NodeIDQuery(BaseModel):
             variables={"offset": int | None, "limit": int | None},
             query={
                 self.kind: {
-                    "@filters": {"offset": "$offset", "limit": "$limit"},
+                    # Pages follow the node uuid alone: a schema order_by field can be rewritten mid-paging by
+                    # the recomputes these ids feed, which would shift nodes across page boundaries.
+                    "@filters": {"offset": "$offset", "limit": "$limit", "order": Order(disable=True)},
                     "edges": {"node": {"id": None}},
                 }
             },
