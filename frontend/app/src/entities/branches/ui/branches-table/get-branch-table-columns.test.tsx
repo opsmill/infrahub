@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import type { BranchTableRow } from "@/entities/branches/domain/model/branch-table-row";
 import { BranchesDataTable } from "@/entities/branches/ui/branches-table/branches-data-table";
 import { getBranchTableColumns } from "@/entities/branches/ui/branches-table/get-branch-table-columns";
@@ -30,6 +31,19 @@ const SYNC_STATUS_NO_COLOUR = {
 };
 
 const featureBranch = { id: "branch-feature", name: "feature", is_default: false };
+
+const LOAD_ERROR_MESSAGE = "Repository query timed out";
+
+const settledRow = (
+  state: "empty" | "denied" | "error",
+  branch: Partial<BranchListItem> = {}
+): BranchTableRow => {
+  const { branch: rowBranch } = generateBranchTableRow({ branch: { ...featureBranch, ...branch } });
+  const base = { id: rowBranch.id, branch: rowBranch, repository: null };
+  return state === "error"
+    ? { ...base, state, errorMessage: LOAD_ERROR_MESSAGE }
+    : { ...base, state };
+};
 
 const renderTable = (rows: BranchTableRow[]) =>
   render(
@@ -261,5 +275,49 @@ describe("getBranchTableColumns", () => {
     expect(cellOf(container, "Repository")?.querySelector("[role='status']")).not.toBeNull();
     expect(cellOf(container, "Git state")?.textContent).toBe("");
     expect(cellOf(container, "Commit")?.textContent).toBe("");
+  });
+
+  test.each([
+    { row: settledRow("empty", { sync_with_git: false }), text: "Not synced with Git" },
+    {
+      row: settledRow("empty", { sync_with_git: null }),
+      text: "Not synced with Git",
+    },
+    { row: settledRow("empty", { sync_with_git: true }), text: "No repositories" },
+    { row: settledRow("denied"), text: "No permission" },
+    { row: settledRow("error"), text: "Could not load repositories" },
+  ])(
+    "reads $text in the Repository cell of a $row.state row, with the branch cells kept",
+    async ({ row, text }) => {
+      // WHEN
+      const component = await renderTable([row]);
+
+      // THEN
+      const label = component.getByText(text, { exact: true });
+      await expect.element(label).toBeVisible();
+      await expect.element(label).toHaveClass("text-subtle-muted");
+      await expect.element(component.getByRole("link", { name: "feature" })).toBeVisible();
+      const { container } = component;
+      expect(cellOf(container, "Repository")?.textContent).toBe(text);
+      expect(cellOf(container, "Git state")?.textContent).toBe("");
+      expect(cellOf(container, "Commit")?.textContent).toBe("");
+      for (const column of ["Repository", "Git state", "Commit"]) {
+        expect(cellOf(container, column)?.textContent).not.toMatch(/[-—]/);
+      }
+    }
+  );
+
+  test("shows the load error's message when hovering Could not load repositories", async () => {
+    // GIVEN
+    const component = await renderTable([settledRow("error")]);
+    await initPointerTracking(component.locator);
+
+    // WHEN
+    await component.getByText("Could not load repositories", { exact: true }).hover();
+
+    // THEN
+    await expect
+      .element(component.getByRole("tooltip", { name: LOAD_ERROR_MESSAGE }))
+      .toBeVisible();
   });
 });

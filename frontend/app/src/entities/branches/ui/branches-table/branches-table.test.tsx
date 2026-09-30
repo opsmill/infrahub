@@ -1,5 +1,6 @@
 import { focusManager } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { page } from "vitest/browser";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { BRANCHES_PER_PAGE } from "@/entities/branches/api/get-branches-from-api";
@@ -49,6 +50,49 @@ const threeRepositories = generateBranchRepositoriesResult([
   generateBranchRepository({ id: "repo-3", name: "repo-three" }),
 ]);
 
+const repositoryConnection = {
+  count: 1,
+  edges: [
+    {
+      node: {
+        id: "repo-main",
+        __typename: "CoreReadOnlyRepository",
+        display_label: "main-repo",
+        name: { value: "main-repo" },
+        commit: { value: null },
+        sync_status: { value: "in-sync", label: "In Sync", color: null, description: null },
+        operational_status: { value: "online", label: "Online", color: null },
+      },
+    },
+  ],
+};
+
+const graphQLResponseFor = (url: string) => {
+  if (url.endsWith("/graphql/alpha")) {
+    return {
+      data: null,
+      errors: [{ message: "Repository index unavailable", extensions: { code: "NODE_NOT_FOUND" } }],
+    };
+  }
+  if (url.endsWith("/graphql/zulu")) {
+    return {
+      data: null,
+      errors: [
+        {
+          message: "You do not have one of the following permissions",
+          extensions: { code: "PERMISSION_DENIED", http_status: 403 },
+        },
+      ],
+    };
+  }
+  return {
+    data: {
+      CoreGenericRepository: repositoryConnection,
+      CoreReadOnlyRepository: repositoryConnection,
+    },
+  };
+};
+
 const deferred = () => {
   let resolve: (value: BranchRepositoriesResult) => void = () => {};
   const promise = new Promise<BranchRepositoriesResult>((res) => {
@@ -97,6 +141,7 @@ describe("BranchesTable", () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     focusManager.setFocused(undefined);
     vi.clearAllMocks();
   });
@@ -193,5 +238,29 @@ describe("BranchesTable", () => {
       0,
       BRANCHES_PER_PAGE,
     ]);
+  });
+
+  test("reads Could not load repositories and No permission on one row each, with no toast", async () => {
+    // GIVEN
+    const { getBranchRepositories: realGetBranchRepositories } = await vi.importActual<
+      typeof import("@/entities/repository/domain/use-cases/get-branch-repositories")
+    >("@/entities/repository/domain/use-cases/get-branch-repositories");
+    vi.mocked(getBranchRepositories).mockImplementation(realGetBranchRepositories);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => Response.json(graphQLResponseFor(url)))
+    );
+
+    // WHEN
+    const component = await render(<BranchesTable />);
+
+    // THEN
+    await expect.element(component.getByText("Could not load repositories")).toBeVisible();
+    await expect.element(component.getByText("No permission")).toBeVisible();
+    await expect.element(component.getByRole("link", { name: "main-repo" })).toBeVisible();
+    expect(identifierCellNames(component.container)).toEqual(["main", "alpha", "zulu"]);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(page.getByRole("alert").elements()).toHaveLength(0);
+    expect(document.querySelector(".Toastify__toast")).toBeNull();
   });
 });

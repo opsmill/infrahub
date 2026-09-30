@@ -1,4 +1,4 @@
-import { Spinner } from "@infrahub/ui";
+import { Spinner, Tooltip } from "@infrahub/ui";
 
 import { TableCell } from "@/shared/components/table/table-cell";
 
@@ -18,8 +18,32 @@ export function BranchRepositoryCell({ row }: BranchRepositoryCellProps) {
     );
   }
 
+  if (row.state === "error") {
+    return (
+      <TableCell className="h-auto min-h-14">
+        <Tooltip message={row.errorMessage} nonInteractiveTrigger>
+          <span className="text-subtle-muted">Could not load repositories</span>
+        </Tooltip>
+      </TableCell>
+    );
+  }
+
+  if (row.state === "denied") {
+    return (
+      <TableCell className="h-auto min-h-14">
+        <span className="text-subtle-muted">No permission</span>
+      </TableCell>
+    );
+  }
+
   if (row.state !== "ok") {
-    return <TableCell className="h-auto min-h-14" />;
+    return (
+      <TableCell className="h-auto min-h-14">
+        <span className="text-subtle-muted">
+          {row.branch.sync_with_git ? "No repositories" : "Not synced with Git"}
+        </span>
+      </TableCell>
+    );
   }
 
   return (
