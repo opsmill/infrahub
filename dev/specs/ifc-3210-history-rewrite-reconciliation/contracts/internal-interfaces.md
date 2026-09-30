@@ -58,18 +58,18 @@ Rows are evaluated in order. The first match wins.
 | `remote_head` is `None`, `imported_commit` is `None` | `UNCHANGED` |
 | `imported_commit` is `None` | `FAST_FORWARD` |
 | `remote_head == imported_commit` | `UNCHANGED` |
-| `imported_commit` is an ancestor of `remote_head` | `FAST_FORWARD` |
-| **`remote_head` is an ancestor of `imported_commit`** | **`LOCAL_AHEAD`** |
 | **The imported commit is absent from the local object database, `target_changed` is false** | **`REWRITE`** (see below) |
 | **The imported commit is absent, `target_changed` is true** | **`RETARGET`** |
+| `imported_commit` is an ancestor of `remote_head` | `FAST_FORWARD` |
+| `remote_head` is an ancestor of `imported_commit` | `LOCAL_AHEAD` |
 | Neither is an ancestor, `target_changed` is false | `REWRITE` |
 | Neither is an ancestor, `target_changed` is true | `RETARGET` |
 | Any other git failure | propagates as `RepositoryError`; the branch joins `failed_imports` |
 
-The two absent-object rows sit **above** the ancestry rows, because those rows cannot run when the
-object is missing. They also honour `target_changed`: a deliberate re-target whose old commit has
-been garbage-collected is still a re-target, and recording it as a rewrite would consume the marker
-and write a false record.
+The absent-object rows come **before** the three ancestry rows because those rows cannot be
+evaluated at all when the object is gone: the ancestry call raises instead of answering. They also
+honour `target_changed`, so a deliberate re-target whose old commit has been garbage-collected is
+still a re-target rather than a recorded rewrite.
 
 **The `LOCAL_AHEAD` row is what keeps this safe without PR #10465.** A branch left ahead of its
 remote after a rejected push is a state the product reaches today. Without that row it falls into
@@ -196,9 +196,19 @@ nothing.
 is_ancestor(repository, ancestor_commit, descendant_commit) -> bool
 ```
 
-It wraps `git merge-base --is-ancestor` through GitPython's `Repo.is_ancestor`. Every git failure
-leaves it as a `RepositoryError`, so the detector handles one exception type and imports no git
-library.
+```text
+has_commit(repository, commit) -> bool
+```
+
+`is_ancestor` wraps `git merge-base --is-ancestor` through GitPython's `Repo.is_ancestor`. Every
+git failure leaves it as a `RepositoryError`, so the detector handles one exception type and
+imports no git library.
+
+`has_commit` answers whether the object is present, and it is what makes the absent-object rows
+reachable. Without it "the object is gone" and "git could not be asked" arrive as the same
+`RepositoryError`, so a commit that was garbage-collected raises on every cycle and the branch
+never classifies at all. It is a separate call precisely so a missing object is a fact the detector
+can act on rather than a failure it has to swallow.
 
 ---
 

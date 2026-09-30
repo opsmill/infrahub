@@ -74,7 +74,8 @@ classification is:
 | Neither is an ancestor, tracking target unchanged | `REWRITE` |
 | Neither is an ancestor, tracking target changed | `RETARGET` |
 | The remote carries no such ref | `REMOTE_ABSENT` |
-| Imported commit is not present locally | `REWRITE` (safe classification, see below) |
+| Imported commit is not present locally, tracking target unchanged | `REWRITE` (safe classification, see below) |
+| Imported commit is not present locally, tracking target changed | `RETARGET` |
 
 **`LOCAL_AHEAD` is not symmetry for its own sake.** It is the case a first draft of this design got
 wrong, and getting it wrong is dangerous. After a rejected push the local branch sits ahead of

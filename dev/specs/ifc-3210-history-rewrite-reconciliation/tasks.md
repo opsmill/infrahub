@@ -70,9 +70,12 @@ its own.
 - [ ] T006 [P] Define `ReconciledBranch` in `backend/infrahub/git/divergence/models.py`. It carries
       the Infrahub branch name, the branch UUID, the commit, and an optional `RefDivergence`.
 - [ ] T007 Write the ancestry gateway in `backend/infrahub/git/divergence/gateway.py`. It exposes
-      `is_ancestor` as a `Protocol` plus a GitPython implementation over `Repo.is_ancestor`. Every
-      git failure leaves as a `RepositoryError`, so the detector imports no git library. Mirror the
-      shape of `backend/infrahub/git/refs_check/gateway.py` from PR #10669.
+      `is_ancestor` and `has_commit` as a `Protocol`, plus a GitPython implementation over
+      `Repo.is_ancestor`. Every git failure leaves as a `RepositoryError`, so the detector imports no
+      git library. Mirror the shape of `backend/infrahub/git/refs_check/gateway.py` from PR #10669.
+- [ ] T007y Make `has_commit` distinguish a missing object from a failed git call. Without it both
+      arrive as `RepositoryError`, so a garbage-collected commit raises on every cycle and the
+      branch never classifies. The absent-object rows of the contract table depend on this.
 - [ ] T008 Write `RemoteDivergenceDetector.classify` in
       `backend/infrahub/git/divergence/detector.py`, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 1. It takes
