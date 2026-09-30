@@ -62,6 +62,22 @@ async def connectivity(message: messages.GitRepositoryConnectivity) -> None:
         await message_bus.reply_if_initiator_meta(message=response, initiator=message)
 
 
+@flow(name="refresh-git-clone", flow_run_name="Clone git repository {message.repository_name} on " + WORKER_IDENTITY)
+async def clone(message: messages.RefreshGitClone) -> None:
+    """Create this worker's local copy if it has none; an existing copy is left exactly as it is."""
+    if message.meta and message.meta.initiator_id == WORKER_IDENTITY:
+        log.info("Ignoring git clone request originating from self", worker=WORKER_IDENTITY)
+        return
+
+    await get_initialized_repo(
+        client=get_client(),
+        repository_id=message.repository_id,
+        name=message.repository_name,
+        repository_kind=message.repository_kind,
+        infrahub_branch_name=message.infrahub_branch_name,
+    )
+
+
 @flow(name="refresh-git-fetch", flow_run_name="Fetch git repository {message.repository_name} on " + WORKER_IDENTITY)
 async def fetch(message: messages.RefreshGitFetch) -> None:
     if message.meta and message.meta.initiator_id == WORKER_IDENTITY:

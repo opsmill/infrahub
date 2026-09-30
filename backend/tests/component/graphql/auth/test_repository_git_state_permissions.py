@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.core.account import ObjectPermission
@@ -16,8 +17,11 @@ from tests.adapters.message_bus import BusRecorder
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.graphql import graphql_mutation, graphql_query
 from tests.helpers.permissions import define_permissions
+from tests.helpers.repository_git_state import RecordingRepositoryGitStateReader
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
@@ -92,6 +96,16 @@ async def tag(db: InfrahubDatabase, default_branch: Branch, register_core_models
     await node.new(db=db, name="not-a-repository")
     await node.save(db=db)
     return node
+
+
+@pytest.fixture(autouse=True)
+def recording_reader() -> Iterator[RecordingRepositoryGitStateReader]:
+    """Answer from a double, so a permitted read never waits on a worker these tests do not run."""
+    reader = RecordingRepositoryGitStateReader()
+    original = config.OVERRIDE.repository_git_state_reader
+    config.OVERRIDE.repository_git_state_reader = reader
+    yield reader
+    config.OVERRIDE.repository_git_state_reader = original
 
 
 @pytest.fixture

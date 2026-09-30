@@ -140,8 +140,12 @@ another's); holding the repository lock in the handler and cloning (rejected by 
 `imported_commit` and `git_ref` to the worker. The worker computes everything else on the main
 clone (`get_git_repo_main()`), read-only and with no fetch:
 
-- head: `origin/<branch>` for read-write; `origin/<ref>` then `<ref>` for read-only (the same
-  fallback order as `InfrahubReadOnlyRepository.update_latest_commit`, without its fetch).
+- head: `origin/<branch>` for read-write; `origin/<ref>` then `refs/tags/<ref>` for read-only, and
+  then the ref as a commit hash only when the resolved commit's hash starts with it.
+  Revised on 2026-09-30: the first design used a bare `<ref>` as the fallback, matching
+  `InfrahubReadOnlyRepository.update_latest_commit`, but a bare name also resolves the local branch
+  the clone checked out, which survives the remote branch being deleted and would keep reporting it
+  in sync. With no head, the read-only kind reports `REF_MISSING` (FR-029).
 - resolvability, first: does the clone hold an object for `imported_commit`? If not, the condition is
   `ORPHANED` and no ancestry test is attempted. This ordering is required, not stylistic:
   `Repo.is_ancestor` raises `GitCommandError` on an unresolvable rev rather than returning `False`,
@@ -217,7 +221,8 @@ query, then sends a single `GitBranchHeadsGet` carrying `[{branch_name, git_ref,
 The row set is decided entirely on the API side, so `sync_with_git` does not travel. The worker
 answers from `InfrahubRepositoryBase.get_branches_from_remote()` (the
 local mirror of `origin/*`, no fetch) and tag refs, and classifies each row: `NOT_TRACKED` when there
-is no tracked commit, `NO_REMOTE` when the ref has no remote counterpart, else `IN_SYNC` / `BEHIND` /
+is no tracked commit, `REF_MISSING` when a read-only row's configured ref has no remote counterpart,
+`NO_REMOTE` when a mapped read-write branch has none, else `IN_SYNC` / `BEHIND` /
 `REWRITTEN` by the same rule as above, without a pending count. The row set is branches synchronised
 with Git for the read-write kind and every branch for the read-only kind, excluding merged and
 deleting branches and the global branch, so the column lines up with the sibling card's rows.
@@ -377,7 +382,8 @@ auto-gc runs during fetch, and it respects worktree roots. Today's fetch flags
 (`prune=True, tags=True, prune_tags=True`) already force-update tags, so the check adds no new
 object-deletion risk. Residual risks to pin with an integration test against a fixture remote whose
 tag is moved: the old commit stays readable through its worktree on every worker, and a deleted
-upstream tag makes the check report `NO_REMOTE` rather than raise
+upstream tag makes the commit view report `REF_MISSING` (FR-029) and the check mark the pinning
+branches' `sync_status` (FR-030) rather than raise
 (`update_latest_commit` raises `ValueError("Ref ... not found")` in that case and must not be
 reused).
 
