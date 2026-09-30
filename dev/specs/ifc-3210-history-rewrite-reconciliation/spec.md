@@ -425,15 +425,11 @@ No new node kind is introduced.
 - **Pausing synchronisation, and pinning a repository to a chosen commit.** INFP-672 covers both.
 - **Changing the meaning of the repository synchronisation status.** See FR-013.
 
-## Known defects
+## Open decisions
 
-Four review passes produced 66 findings. All are closed.
-[known-defects.md](known-defects.md) records what the last pass found and how each item was
-resolved, including the two that were design holes rather than text: where the detector gets the
-commit it compares against, and the merge guard that covered the destination worktree but not the
-source branch.
-
-What remains open is five decisions that belong to a person, listed in [plan.md](plan.md).
+Nothing in this design is unresolved for engineering reasons. What remains is a list of decisions
+that belong to a person, and it lives in one place: "Decisions needing confirmation" in
+[plan.md](plan.md). The review history is in [critiques/](critiques/).
 
 ## Decisions Taken During Specification
 

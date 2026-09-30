@@ -572,8 +572,9 @@ read-write repository's configured default branch. Neither writes a record.
 - [ ] T080 Run `/pre-ci`. It covers the whole-repository `ruff check . --exclude python_sdk` and
       `ruff format --check` that `invoke lint` misses, plus `docs.validate` for the generated
       documentation. CI fails on any of them.
-- [ ] T081 Print `/review-pr <n>` and wait for the verdict before the PR leaves draft. A session
-      that wrote the code cannot review it.
+- [ ] T081 Get an independent review before the PR leaves draft. A session that wrote the code
+      cannot review it: it knows the intent, so it confirms its own assumptions instead of testing
+      them.
 
 ---
 

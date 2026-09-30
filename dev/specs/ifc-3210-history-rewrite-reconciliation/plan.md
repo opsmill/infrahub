@@ -197,6 +197,10 @@ Do not read `LOCAL_AHEAD` as a replacement for the gate. It narrows the hole; #1
 | 3 | The new event and its `EventType` member. "Ask First" under `AGENTS.md`. | A maintainer |
 | 4 | The merge order against PR #10542. | Patrick Ogenstad |
 | 5 | Whether slice G waits for PR #10669 to reach `develop`. It is merged into `pog-repo-commit-visibility-ifc-3101`, which has not landed. | Patrick Ogenstad |
+| 6 | The reworded SC-006. The epic asks for the reason to be determinable from the repository **view**, and also puts every display surface out of scope with INFP-671. The spec resolves that to the stored state, readable through the repository API. | Patrick Ogenstad |
+
+This table is the only list of open decisions. Every other file links here rather than repeating
+it.
 
 ## Settled without asking
 
