@@ -53,13 +53,15 @@ Approach (research R1–R13):
 | VII. Simplicity & Maintainability | ✅ | Details are listed after this table. |
 | Quality gates | ✅ | biome ci, knip, betterer ci, vitest. Towncrier fragment `changelog/+ifc-3201-branches-table-git.added.md`. `dev/knowledge/frontend/shared-components.md` gains `CommitHash` only if #10658 has not merged first (its row travels with the lift). |
 
-- **User-facing documentation**: one section in `docs/docs/git-integration/branch-synchronization.mdx` (or the page the docs skill chooses in phase 4.6) describing the three columns, the per-repository rows and the two empty-state texts ("Not synced with Git", "No repositories"). Owned by the docs phase, in the same PR.
+- **User-facing documentation**: one section in `docs/docs/git-integration/branch-synchronization.mdx` describing the three columns, the per-repository rows and the two empty-state texts ("Not synced with Git", "No repositories"). Owned by the docs phase, in the same PR.
 - **Knowledge capture**: the anchor-row selection pattern goes in `dev/knowledge/frontend/shared-components.md` (phase 4.5).
 
 **IV. Test Discipline, in detail:**
 
 - **Pure rule test**: `to-branch-table-rows.test.ts` covers N rows, unique ids, the anchor first, injected ordering, both empty texts' states, denied, error, pending and a missing entry, and isolation between branches.
-- **Component tests**: one test per SC-006 state (loaded, loading, "Not synced with Git", "No repositories", denied, failed, no colour, no commit), plus:
+- **Hook test**: `use-branch-table-rows.test.ts` covers the query-result mapping, including a failed background refetch keeping the loaded rows (invariant 9).
+- **Selection handler test**: `get-toggle-selected-row-handler.test.ts` covers the generic `<T>` handler and the anchor stored by row id.
+- **Component tests**: `get-branch-table-columns.test.tsx` covers cells per state, headers, pill colour, commit, and the empty, denied and error texts; `branches-data-table.test.tsx` and `branches-table.test.tsx` cover the rest. One test per SC-006 state (loaded, loading, "Not synced with Git", "No repositories", denied, failed, no colour, no commit), plus:
   - selection: one branch; shift-range over two branches; shift-range after a branch expanded from pending to N still counts branches; select-all; the header checkbox's indeterminate and all states with non-anchor rows present; logout reset clears the selection; a selected branch stays selected through pending → N;
   - accessibility: only the anchor checkbox is in the tab order, named "Select <branch>"; non-anchor checkboxes are named "Select <branch> (<repository name>)";
   - pending: one `role=status` per pending branch (the Repository cell's spinner only), not three;
@@ -68,6 +70,7 @@ Approach (research R1–R13):
   - the grid template has one track per column and the three new tracks are fixed.
 - **Branch details card**: its failed state renders without a toast (`branch-repositories-card.test.tsx`, touched only if the existing test does not already cover it).
 - **`CommitHash`**: its lifted test.
+- Deviation from IV's mock rule, house style: component tests mock the `ui/queries/*.query` hook and use-case tests mock `api/*-from-api`, per `dev/guides/frontend/writing-component-tests.md`; no external HTTP is mocked because none is called.
 - **E2E: one happy-path case, in this PR.** The constitution asks for E2E on user-facing features and the fixture it needs exists on this base. New file `tests/e2e/branches/test_branches_git_columns.py` (`pytestmark = pytest.mark.shard_branches_repo`; `tests/e2e/conftest.py::_SHARD_MARKERS` is a fixed set, so there is no own marker): the `/branches` row for the broken branch shows the repository name, the "Import Error" pill and a 7-character commit; a second assertion checks a branch with no repositories reads "Not synced with Git".
   - **Pre-step**: verify on a live stack how a `sync_with_git=False` branch holding a `CoreRepository` renders on the branch details page. #10779's `test_branch_details_repositories.py` creates its branch with `sync_with_git=False` (via the `tests/e2e/helpers.py::BranchAPI.create` default) while its card queries read-only repositories for such a branch, so that test's premise needs checking before this feature's E2E reuses the fixture (Risks).
   - The import-error fixture is class-local today, `test_branch_details_repositories.py::TestBranchDetailsRepositoryImportError::broken_repository` (#10779, on this base). It is promoted to `tests/e2e/branches/conftest.py` as a **function-scoped** fixture (it uses `tmp_path`), together with its helpers, and gains a `sync_with_git: bool` parameter: `True` for this feature's test, while the branch details test keeps whatever it needs. The details test switches to the shared one. This is the third touch on a #10779 file (Complexity Tracking).
@@ -95,6 +98,7 @@ dev/specs/ifc-3201-branches-table-git/
 ├── research.md          # R1–R13 + risks
 ├── data-model.md
 ├── quickstart.md
+├── pr-notes.md          # PR description notes (T041)
 ├── contracts/
 │   ├── ui-cells.md
 │   └── graphql.md
@@ -103,7 +107,7 @@ dev/specs/ifc-3201-branches-table-git/
 
 ### Source Code (repository root)
 
-All paths are under `frontend/app/`. There is no `api/` change in any entity.
+All paths are under `frontend/app/`. The only `api/` change is `entities/repository/api/get-branch-repositories-from-api.ts` (no-op `processErrorMessage`).
 
 ```text
 src/entities/branches/
@@ -112,11 +116,13 @@ src/entities/branches/
 ├── domain/rules/to-branch-table-rows.test.ts             # NEW
 └── ui/
     ├── hooks/use-branch-table-rows.ts                    # NEW useBranchTableRows (useQueries → rule)
+    ├── hooks/use-branch-table-rows.test.ts               # NEW query-result mapping, stale success wins
     └── branches-table/
         ├── branch-field-schemas.ts                       # CHANGED + repository, git_state, commit
         ├── get-branch-table-columns.tsx                  # CHANGED BranchTableRow helper, r.branch.* accessors, anchor lookup, 3 display columns
+        ├── get-branch-table-columns.test.tsx             # NEW cells per state, headers, pill colour, commit, empty/denied/error texts
         ├── branches-data-table.tsx                       # CHANGED row type, enableRowSelection predicate, selectedRows → branches, fixed tracks for the 3 new columns (REPOSITORY_TRACK, GIT_STATE_TRACK, COMMIT_TRACK), useMemo removed
-        ├── branches-data-table.test.tsx                  # NEW selection, a11y names, cells per state, headers, grid template (one track per column, 3 fixed)
+        ├── branches-data-table.test.tsx                  # NEW selection, a11y names, grid template (one track per column, 3 fixed)
         ├── branches-table.tsx                            # CHANGED data = useBranchTableRows(flatData), useMemo removed
         ├── branches-table.test.tsx                       # NEW pending → N rows, branch cells first, no toast
         └── cells/
@@ -125,19 +131,23 @@ src/entities/branches/
             ├── branch-git-state-cell.tsx                 # NEW
             └── branch-commit-cell.tsx                    # NEW
 
+src/entities/repository/api/
+└── get-branch-repositories-from-api.ts                   # CHANGED fetchConnection passes a no-op processErrorMessage (#10779 file)
+
 src/entities/repository/ui/branch-repositories/
 ├── repository-name-link.tsx                              # NEW extracted from RepositoryRow (icon, link, Read-only chip)
 └── repository-row.tsx                                    # CHANGED uses RepositoryNameLink (#10779 file)
 
 src/entities/nodes/object/ui/object-table/utils/
-└── get-toggle-selected-row-handler.ts                    # CHANGED generic <T extends NodeCore> → <T>; last-selected anchor stored by row id
+├── get-toggle-selected-row-handler.ts                    # CHANGED generic <T extends NodeCore> → <T>; last-selected anchor stored by row id
+└── get-toggle-selected-row-handler.test.ts               # NEW generic handler, anchor by row id
 
 src/shared/components/display/
 ├── commit-hash.tsx                                       # NEW lifted byte-identical from #10658
 └── commit-hash.test.tsx                                  # NEW lifted byte-identical from #10658
 
 tests/fake/
-└── branch-table-rows.ts                                  # NEW FULL_COMMIT_HASH, SYNC_STATUS_NO_COLOUR, generateBranchTableRow
+└── branch-table-rows.ts                                  # NEW FULL_COMMIT_HASH, generateBranchTableRow (SYNC_STATUS_NO_COLOUR is local to get-branch-table-columns.test.tsx)
 ```
 
 Outside `frontend/app/`: `changelog/+ifc-3201-branches-table-git.added.md` (NEW); `docs/docs/git-integration/branch-synchronization.mdx` (CHANGED, docs phase); `tests/e2e/branches/conftest.py` (NEW or CHANGED, promoted fixture), `tests/e2e/branches/test_branches_git_columns.py` (NEW), `tests/e2e/branches/test_branch_details_repositories.py` (CHANGED), `tests/e2e/branches/test_branches.py` (CHANGED only if the locator audit finds a violation).

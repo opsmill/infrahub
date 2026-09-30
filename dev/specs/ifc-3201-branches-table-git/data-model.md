@@ -41,6 +41,8 @@ The hook maps each query result as follows. The first matching case wins:
 
 `data` comes first so that a stale success stays rendered when a background refetch fails (invariant 9).
 
+The fetch's `message` becomes the `error` row's `errorMessage`.
+
 A branch with no entry in the map is treated as `pending`.
 
 ## `BranchTableRow` (same file)
@@ -97,7 +99,7 @@ The rule is pure: no I/O, React or TanStack, and it imports only its own `domain
 6. **Stability**: the anchor id does not change as the fetch moves between `pending`, `ok`, `empty`, `denied` and `error`, so selection survives a state change.
 7. **Isolation**: one branch's fetch never affects another branch's rows (SC-005).
 8. **Backend-authoritative set**: the repositories shown are exactly those in the result, with no filtering on `sync_with_git`, `status` or `kind` (FR-003). This includes read-only repositories on a `sync_with_git=false` branch.
-9. **Stale success wins**: a background refetch failure keeps the last loaded rows. The hook's mapping (`data` first, then `isError`, then pending) guarantees it; it is asserted in the hook's component test (`branches-table.test.tsx`), since the rule only sees the mapped fetch.
+9. **Stale success wins**: a background refetch failure keeps the last loaded rows. The hook's mapping (`data` first, then `isError`, then pending) guarantees it; it is asserted in the hook's test (`use-branch-table-rows.test.ts`, T011), since the rule only sees the mapped fetch.
 
 ## `BRANCH_FIELD_SCHEMAS` additions (`entities/branches/ui/branches-table/branch-field-schemas.ts`)
 
@@ -114,7 +116,7 @@ None of them is added to `BRANCH_FILTER_DEFINITIONS` (FR-015). The column ids ma
 ## Test fakes (`tests/fake/branch-table-rows.ts`, new)
 
 - `FULL_COMMIT_HASH`: a 40-character hex string whose first 7 characters are `8f3c2a1`.
-- `SYNC_STATUS_NO_COLOUR = { value: "mystery", label: "Mystery", color: null, description: null }`.
+- `SYNC_STATUS_NO_COLOUR = { value: "mystery", label: "Mystery", color: null, description: null }` is not in this file: it is a constant local to `get-branch-table-columns.test.tsx` (T015).
 - `generateBranchTableRow(overrides)`: an `ok` row over `generateBranch` and `generateBranchRepository`.
 
 It reuses `tests/fake/branch.ts::generateBranch` and `tests/fake/branch-repositories.ts::{SYNC_STATUS, OPERATIONAL_STATUS, generateBranchRepository, generateBranchRepositoriesResult}`.

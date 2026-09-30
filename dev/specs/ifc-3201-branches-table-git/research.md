@@ -148,8 +148,9 @@ The options compared (P = pages loaded, 40 branches per page, R = number of repo
 New fakes go in `tests/fake/branch-table-rows.ts`:
 
 - `FULL_COMMIT_HASH`: 40 characters.
-- `SYNC_STATUS_NO_COLOUR`: `{ value: "mystery", label: "Mystery", color: null, description: null }`.
 - `generateBranchTableRow(overrides)`.
+
+`SYNC_STATUS_NO_COLOUR` (`{ value: "mystery", label: "Mystery", color: null, description: null }`) is a constant local to `get-branch-table-columns.test.tsx`, not a shared fake.
 
 That file imports `BranchListItem` from `entities/branches/domain/model/branch`. `tests/fake/branch.ts` keeps its stale `domain/branch.mappers` import, because fixing it would change betterer's results.
 
