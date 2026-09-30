@@ -816,7 +816,8 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     impacted_artifacts = selection.ids
     if selection.widening is not None:
         log.warning(
-            f"Artifact definition {artifact_definition.name.value} query does not guarantee unique targets. All targets will be processed."
+            f"Artifact definition {artifact_definition.name.value}: {selection.widening.detail}. "
+            "All targets will be processed."
         )
     elif not impacted_artifacts:
         log.info(
