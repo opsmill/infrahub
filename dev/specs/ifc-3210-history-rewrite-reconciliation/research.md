@@ -229,7 +229,7 @@ travels in band on the workflow model.
   early return. It is a change to the mutation, not a reuse.
 - Reader: **the detector's caller, and nothing else.** A present marker makes `target_changed` true,
   so the detector returns `RETARGET`. The branch is still reset onto the remote head; only the
-  record is skipped. The read is destructive.
+  record is skipped. The delete happens after the commit write, not at the read.
 - Scope: **read-write repositories only.** A read-only re-target is carried in band on the
   workflow model, because the mutation already computes the comparison. That removes the cache from
   the read-only path entirely: no expiry, no timing question, no lost marker.
@@ -258,12 +258,12 @@ design and the marker goes away.
 `HistoryRewriteRecorder`. That does not work: the recorder writes nothing unless the classification
 is already `REWRITE`, so on a `RETARGET` it would return before reaching the marker and never
 consume it. The marker would then survive its full hour and suppress the *next*, genuine, rewrite
-of that branch. Reading at classification time makes one marker suppress exactly one
-classification, and keeps `RETARGET` reachable in the detector's own tests.
+of that branch. Reading at classification time keeps `RETARGET` reachable in the detector's own
+tests, and deleting after the commit write keeps a failed cycle retryable.
 
 **Rationale**: the comparison is already computed in the mutation for read-only, so one of the two
 writers is nearly free. The cache is already how this codebase coordinates repository state across
-workers. The read is destructive, so a marker cannot suppress twice.
+workers. The marker is deleted once the commit write lands, so it cannot suppress twice.
 
 **Known failure mode, accepted and documented**: if the cache is flushed between the mutation and
 the reconciliation, a deliberate re-target is recorded as a rewrite. That costs more than a wrong
@@ -421,7 +421,7 @@ it" has to mean for the requirement to be testable.
 **Precedent, and why it is not repeated.** `CommitUpdatedEvent` already exists and
 `EventType.REPOSITORY_UPDATE_COMMIT` is already in the webhook enum, yet no `EventTrigger` in the
 codebase lists it. The difference here is the acceptance test: the test wires a webhook to the new
-event and asserts exactly one delivery per rewrite, so the wiring is held by a test rather than
+event and asserts a single delivery per rewrite, so the wiring is held by a test rather than
 assumed.
 
 **Emission point**: the recorder, immediately after a successful record, and only when the

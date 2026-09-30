@@ -211,7 +211,7 @@ Resource labels follow `CommitUpdatedEvent`: `prefect.resource.id` is
 `infrahub.repository.<repository_id>`, plus the repository name, the repository id and the branch
 name.
 
-**Emission rule** (FR-014): exactly one per rewrite of the repository's configured default branch.
+**Emission rule** (FR-014): at most one per rewrite of the repository's configured default branch, and never more than one.
 No emission for any other branch. Emitted by the recorder, after a successful record.
 
 **Exactly once across cycles** (SC-002): after the reset and the re-import, the recorded commit

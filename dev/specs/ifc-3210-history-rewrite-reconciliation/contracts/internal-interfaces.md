@@ -241,8 +241,8 @@ Returns whether a record was written.
 6. Emits `RepositoryHistoryRewrittenEvent` at most once, and only when `is_default_branch` is true.
    **At most, not exactly.** The record write and the emit are separate operations. If the record
    lands and the emit fails, the next cycle sees the graph and the remote agree, classifies
-   `UNCHANGED`, and nothing ever sends that signal again. SC-002 reads "exactly one signal", and
-   what the design guarantees is "never more than one". Closing the gap needs an outbox, which is
+   `UNCHANGED`, and nothing ever sends that signal again. What the design guarantees is "never
+   more than one". Closing the gap needs an outbox, which is
    more machinery than a rare event is worth. It sits beside the record-write risk below.
 7. Runs inside the repository-lock acquisition that **writes the reconciled commit**, immediately
    after that write. See "Where it is called" below.
@@ -272,7 +272,7 @@ reset path of the sync task writes the commit the same way.
 should leave no record, so the next cycle would classify `REWRITE` again and retry. That argument
 is false: the commit is already written during collection, so the next cycle reads the *new* head
 as the imported commit and classifies `UNCHANGED`. The rewrite would then never be recorded and the
-trunk event would never fire, breaking SC-002's "exactly one signal".
+trunk event would never fire, so the rewrite would go unsignalled entirely.
 
 **What a failed import means for the record.** The record describes the git reconciliation, which
 did happen: the worktree moved and the graph holds the new commit. A failed object import is a

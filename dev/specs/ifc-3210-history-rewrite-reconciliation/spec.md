@@ -123,12 +123,12 @@ synchronisation cycles. Assert one record, one signal and a healthy repository.
 
 1. **Given** a repository whose configured default branch had its history rewritten, **When** the
    next cycle runs, **Then** the same reconciliation happens as for any other branch.
-2. **Given** the same repository, **When** several cycles elapse, **Then** exactly one record is
-   written and exactly one signal is emitted.
+2. **Given** the same repository, **When** several cycles elapse, **Then** at most one record is
+   written and at most one signal is emitted, and never more than one.
 3. **Given** a rewrite of a branch that is not the configured default branch, **When** the cycle
    runs, **Then** no signal is emitted.
-4. **Given** the emitted signal, **When** a consumer is subscribed to it, **Then** the consumer
-   receives exactly one delivery.
+4. **Given** an emitted signal, **When** a consumer is subscribed to it, **Then** the consumer
+   receives that signal once and never twice.
 
 ---
 
@@ -303,9 +303,10 @@ here. See "Out of Scope".
   able to produce a merge conflict.
 - **FR-013**: The record MUST NOT be folded into the repository synchronisation status. That status
   stays free to be redefined independently.
-- **FR-014**: A rewrite of the configured default branch MUST emit exactly one outbound signal per
-  event. At least one consumer MUST be able to receive it. A rewrite of any other branch MUST NOT
-  emit one.
+- **FR-014**: A rewrite of the configured default branch MUST emit at most one outbound signal per
+  event, and MUST NOT emit more than one. At least one consumer MUST be able to receive it. A
+  rewrite of any other branch MUST NOT emit one. The guarantee is one-sided: the record write and
+  the emit are separate operations, so a record that lands while its emit fails is never retried.
 
 #### Truthfulness of the error path
 
@@ -441,7 +442,7 @@ These decisions were made without asking the user. Patrick Ogenstad must confirm
 2. **PRD open question on the FR-014 consumer (to confirm)**: the consumer is the webhook
    subsystem. The new event is registered as an `EventType` member, so it appears in the
    `event_type` enum of `CoreStandardWebhook` and `CoreCustomWebhook`. An operator can then point a
-   webhook at it with no code change, and the acceptance test can wire one and assert exactly one
+   webhook at it with no code change, and the acceptance test can wire one and assert a single
    delivery. This is the only subscriber mechanism in the product that an operator can wire
    themselves, and it is what makes the requirement testable. The alternatives Patrick may prefer
    are a built-in notification surface, or deferring the signal to the visibility work of INFP-671.

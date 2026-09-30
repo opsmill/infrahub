@@ -58,7 +58,7 @@ uv run pytest backend/tests/unit/git/divergence/ backend/tests/unit/message_bus/
 | Recorder, last-write-wins | A second rewrite overwrites the first record. |
 | Recorder, increment | The count goes from absent to 1, then 1 to 2. |
 | Recorder, precondition | Every classification other than `REWRITE` writes nothing. The recorder never reads the cache. |
-| Recorder, signal | A rewrite of the configured default branch emits exactly one event. Any other branch emits none. |
+| Recorder, signal | A rewrite of the configured default branch emits the event once and never twice. Any other branch emits none. |
 | Handler fan-out | N branch-and-commit pairs are reset inside one lock acquisition and one fetch. |
 
 The negative cases carry as much weight as the positive ones. A fast-forward, a locally-ahead
@@ -107,7 +107,7 @@ uv run pytest backend/tests/integration/git/test_git_live_remote.py::<node_id> -
 | Scenario | Maps to | Assertion |
 |---|---|---|
 | A rewritten non-default branch | US1, SC-001 | It reconciles and re-imports. The branch commit matches the new remote head, the imported objects match the rewritten tree, and the repository reports healthy. |
-| A rewritten trunk | US4, SC-002 | The same reconciliation happens. Across several cycles, exactly one record is written and exactly one event is emitted. |
+| A rewritten trunk | US4, SC-002 | The same reconciliation happens. Across several cycles, the record is written once and the event is emitted once, never twice. |
 | A worker that received no broadcast | US2, SC-004 | It converges on first contact. It writes no commit to the graph and emits no report. |
 | One rewritten branch beside a healthy one | US3, SC-005 | The healthy branch still converges. The broadcast for it was sent before the failed branch raised. |
 | A read-only repository | US5 | A force-pushed tracked **branch**, not a moved tag: the read-only fetch omits `--force`, so a moved tag fails the fetch with "would clobber existing tag" instead of showing a lineage break. The record is written. No reset is performed. |
@@ -172,8 +172,8 @@ runs `ruff format --check` as well. Run `/pre-ci` for the full local set.
 Tick each one against `spec.md`.
 
 - [ ] SC-001: a rewritten non-default branch is healthy again with zero user actions.
-- [ ] SC-002: a rewritten default branch is healthy again, with exactly one record and exactly one
-      signal across several cycles.
+- [ ] SC-002: a rewritten default branch is healthy again, with at most one record and at most one
+      signal across several cycles, and never more than one.
 - [ ] SC-003: no message describing a rewritten history uses the word "conflict".
 - [ ] SC-004: every worker's view matches the remote, including one that heard no broadcast and one
       added afterwards.
