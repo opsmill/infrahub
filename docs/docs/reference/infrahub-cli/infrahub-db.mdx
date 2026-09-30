@@ -172,11 +172,12 @@ Delete the stored diffs that are not frozen, for every branch or for a single on
 
 By default only named diffs are deleted: diffs computed under a name for a given time range,
 which Infrahub also creates on its own. With --include-branch-diffs, the diffs tracking a branch
-over its lifetime are deleted too; such a diff is calculated again from the start of its branch
-the next time it is requested, and the conflict resolutions recorded in it are lost. Frozen diffs
-are always kept: they record what a closed or merged proposed change, or a merged or deleted
-branch, changed. The diffs of a branch are deleted once any diff update of that branch in
-progress has finished.
+over its lifetime are deleted too, except those of a merged branch, which could not be calculated
+again. A deleted branch diff is calculated again from the start of its branch the next time it is
+requested, and the conflict resolutions recorded in it are lost. Frozen diffs are always kept:
+they record what a closed or merged proposed change, or a merged or deleted branch, changed. The
+diffs of a branch are deleted once any diff update of that branch in progress has finished, and
+branch diffs once any merge in progress has finished.
 
 **Usage**:
 
