@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
-from infrahub.core.constants import BranchSupportType, RelationshipStatus
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, RelationshipStatus
 from infrahub.core.query import Query
+from infrahub.core.query.agnostic_field_closure import CLOSE_UNRETAINED_AGNOSTIC_FIELDS
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -71,6 +72,12 @@ class AttributeRenameQuery(Query):
 
         # Set metadata for vertex properties on default/global branch
         self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
+        # Elsewhere, edges owned by another branch are shadowed rather than closed
+        self.params["shadow_other_branch_edges"] = not (self.branch.is_default or self.branch.is_global)
+
+        # Read by the closure of the old attribute vertices' global edges
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        self.params["at"] = self.at.to_string()
 
         self.add_to_query(self.render_match())
 
@@ -155,62 +162,62 @@ class AttributeRenameQuery(Query):
         """ % {"branch_filter": branch_filter, "add_uuid": add_uuid}
         self.add_to_query(query)
 
-        if not (self.branch.is_default or self.branch.is_global):
-            query = """
-            // --------------
-            // An edge owned by another branch cannot be modified from here, so the old attribute is
-            // ended by shadowing it with a deleted edge; the ones this branch owns are closed below.
-            // IS_RESERVED edges remain global.
-            // --------------
-            CALL (peer_node, r, active_attr) {
-                WITH peer_node, r, active_attr
-                WHERE r.branch <> $branch_name
-                  AND NOT type(r) = "IS_RESERVED"
-                  AND startNode(r) = peer_node
-                CREATE (active_attr)<-[:$(type(r)) $rel_props_delete ]-(peer_node)
-            }
-            CALL (peer_node, r, active_attr) {
-                WITH peer_node, r, active_attr
-                WHERE r.branch <> $branch_name
-                  AND NOT type(r) = "IS_RESERVED"
-                  AND endNode(r) = peer_node
-                CREATE (active_attr)-[:$(type(r)) $rel_props_delete ]->(peer_node)
-            }
-            CALL (r) {
-                WITH r
-                WHERE r.branch = $branch_name
-                SET r.to = $current_time, r.to_user_id = $user_id
-            }
-            RETURN DISTINCT new_attr
-            """
-            self.add_to_query(query)
-        else:
-            query = """
-            CALL (r) {
-                WITH r
-                WHERE r.branch = $branch_name
-                SET r.to = $current_time, r.to_user_id = $user_id
-            }
+        query = """
+        // --------------
+        // An edge owned by another branch cannot be modified from here, so on a branch other than the
+        // default one the old attribute is ended by shadowing it with a deleted edge. IS_RESERVED
+        // edges remain global.
+        // --------------
+        CALL (peer_node, r, active_attr) {
+            WITH peer_node, r, active_attr
+            WHERE $shadow_other_branch_edges
+              AND r.branch <> $branch_name
+              AND NOT type(r) = "IS_RESERVED"
+              AND startNode(r) = peer_node
+            CREATE (active_attr)<-[:$(type(r)) $rel_props_delete ]-(peer_node)
+        }
+        CALL (peer_node, r, active_attr) {
+            WITH peer_node, r, active_attr
+            WHERE $shadow_other_branch_edges
+              AND r.branch <> $branch_name
+              AND NOT type(r) = "IS_RESERVED"
+              AND endNode(r) = peer_node
+            CREATE (active_attr)-[:$(type(r)) $rel_props_delete ]->(peer_node)
+        }
+        // --------------
+        // The edges this branch owns are closed
+        // --------------
+        CALL (r) {
+            WITH r
+            WHERE r.branch = $branch_name
+            SET r.to = $current_time, r.to_user_id = $user_id
+        }
+        WITH DISTINCT active_attr, new_attr, active_node
+        // --------------
+        // Set metadata on new Attribute and Node vertices if on default/global branch
+        // --------------
+        CALL (new_attr, active_node) {
             WITH new_attr, active_node
-            // --------------
-            // Set metadata on new Attribute and Node vertices if on default/global branch
-            // --------------
-            CALL (new_attr, active_node) {
-                WITH new_attr, active_node
-                WHERE $set_metadata
-                // The renamed Attribute vertex is created here, so it has no prior metadata to snapshot
-                SET new_attr.created_at = $current_time, new_attr.created_by = $user_id
-                SET new_attr.updated_at = $current_time, new_attr.updated_by = $user_id
-                SET active_node.previous_updated_at = CASE
-                        WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
-                        ELSE active_node.previous_updated_at
-                    END,
-                    active_node.previous_updated_by = CASE
-                        WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
-                        ELSE active_node.previous_updated_by
-                    END
-                SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
-            }
-            RETURN DISTINCT new_attr
-            """
-            self.add_to_query(query)
+            WHERE $set_metadata
+            // The renamed Attribute vertex is created here, so it has no prior metadata to snapshot
+            SET new_attr.created_at = $current_time, new_attr.created_by = $user_id
+            SET new_attr.updated_at = $current_time, new_attr.updated_by = $user_id
+            SET active_node.previous_updated_at = CASE
+                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
+                    ELSE active_node.previous_updated_at
+                END,
+                active_node.previous_updated_by = CASE
+                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
+                    ELSE active_node.previous_updated_by
+                END
+            SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+        }
+        // --------------
+        // Retire the global edges linked to the old Attribute vertex if it is no longer reachable
+        // on any branch.
+        // --------------
+        WITH collect(active_attr) AS agnostic_candidates, count(new_attr) AS nbr_new_attributes
+        %(close_unretained_agnostic_fields)s
+        RETURN nbr_new_attributes
+        """ % {"close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS}
+        self.add_to_query(query)
