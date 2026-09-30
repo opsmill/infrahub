@@ -1,3 +1,4 @@
+# noqa: INP001
 """Smart-HTTP Git server over `git http-backend`, or a server that answers 401 to everything.
 
 Usage: python3 githttp.py <port> <project root> serve|deny
@@ -10,7 +11,7 @@ while this serves them, then the server is stopped (connection refused) or resta
 import http.server
 import os
 import socket
-import subprocess
+import subprocess  # noqa: S404
 import sys
 from urllib.parse import urlsplit
 
@@ -40,7 +41,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         }
         if self.headers.get("Git-Protocol"):
             env["GIT_PROTOCOL"] = self.headers["Git-Protocol"]
-        out = subprocess.run(["git", "http-backend"], input=body, env=env, capture_output=True, check=False).stdout
+        out = subprocess.run(["git", "http-backend"], input=body, env=env, capture_output=True, check=False).stdout  # noqa: S607
         head, _, payload = out.partition(b"\r\n\r\n")
         status = 200
         headers = []
@@ -60,7 +61,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         self._deny() if MODE == "deny" else self._backend()
 
-    do_POST = do_GET
+    do_POST = do_GET  # noqa: N815 (BaseHTTPRequestHandler naming)
 
     def log_message(self, *args: object) -> None:
         pass

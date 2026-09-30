@@ -1,3 +1,4 @@
+# noqa: INP001
 from infrahub_sdk.generator import InfrahubGenerator
 
 

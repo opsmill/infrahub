@@ -1,3 +1,4 @@
+# noqa: INP001
 """Seed a local Infrahub with branches, Git repositories and tasks for the branch details page.
 
 Usage:
@@ -11,16 +12,21 @@ Everything this script creates is named `scn-*`. Standard library only.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import shutil
 import signal
-import subprocess
+import subprocess  # noqa: S404
 import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 HERE = Path(__file__).resolve().parent
 FIXTURES = HERE / "fixtures"
@@ -37,6 +43,7 @@ GIT_HOST = os.environ.get("SCN_GIT_HOST", "host.docker.internal")
 CRED_PORT = int(os.environ.get("SCN_CRED_PORT", "9419"))  # answers 401 once seeded
 CONN_PORT = int(os.environ.get("SCN_CONN_PORT", "9420"))  # nothing listens once seeded
 TIMEOUT = int(os.environ.get("SCN_TIMEOUT", "420"))
+HTTP_UNAUTHORIZED = 401
 
 SMALL_REPOS = [f"scn-repo-{i:02d}" for i in range(1, 12)]
 RW_REPOS = ["scn-fixtures", *SMALL_REPOS]
@@ -56,7 +63,7 @@ BRANCHES: dict[str, tuple[bool, str, dict[str, str]]] = {
     "scn-many-errors": (
         True,
         "Five repositories fail to import (3 bands + Show all)",
-        {name: "broken" for name in ["scn-fixtures", "scn-repo-01", "scn-repo-02", "scn-repo-03", "scn-repo-04"]},
+        dict.fromkeys(["scn-fixtures", "scn-repo-01", "scn-repo-02", "scn-repo-03", "scn-repo-04"], "broken"),
     ),
     "scn-generator-failed": (True, "Generator runs, one definition fails", {"scn-fixtures": "generators"}),
     "scn-many-tasks": (True, "More than 10 tasks on the branch", {}),
@@ -83,12 +90,13 @@ class Api:
     def __init__(self) -> None:
         self.token = self._login()
 
-    def _request(self, path: str, payload: dict, token: str | None = None) -> dict:
+    @staticmethod
+    def _request(path: str, payload: dict, token: str | None = None) -> dict:
         headers = {"Content-Type": "application/json"}
         if token:
             headers["Authorization"] = f"Bearer {token}"
-        req = urllib.request.Request(ADDRESS + path, data=json.dumps(payload).encode(), headers=headers)
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        req = urllib.request.Request(ADDRESS + path, data=json.dumps(payload).encode(), headers=headers)  # noqa: S310
+        with urllib.request.urlopen(req, timeout=120) as resp:  # noqa: S310
             return json.load(resp)
 
     def _login(self) -> str:
@@ -100,7 +108,7 @@ class Api:
         try:
             result = self._request(path, payload, self.token)
         except urllib.error.HTTPError as exc:
-            if exc.code != 401:
+            if exc.code != HTTP_UNAUTHORIZED:
                 raise
             self.token = self._login()
             result = self._request(path, payload, self.token)
@@ -138,7 +146,7 @@ class Api:
 def git(*args: str, cwd: Path | None = None, check: bool = True) -> str:
     env = {**os.environ, "GIT_AUTHOR_NAME": "scn", "GIT_AUTHOR_EMAIL": "scn@example.invalid"}
     env |= {"GIT_COMMITTER_NAME": "scn", "GIT_COMMITTER_EMAIL": "scn@example.invalid"}
-    proc = subprocess.run(["git", *args], cwd=cwd, env=env, capture_output=True, text=True, check=False)
+    proc = subprocess.run(["git", *args], cwd=cwd, env=env, capture_output=True, text=True, check=False)  # noqa: S603, S607
     if check and proc.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed: {proc.stderr.strip()}")
     return proc.stdout.strip()
@@ -209,7 +217,7 @@ def pid_alive(pid_file: Path) -> bool:
     if not pid_file.exists():
         return False
     try:
-        os.kill(int(pid_file.read_text().strip()), 0)
+        os.kill(int(pid_file.read_text(encoding="utf-8").strip()), 0)
     except (ValueError, ProcessLookupError, PermissionError):
         return False
     return True
@@ -217,7 +225,7 @@ def pid_alive(pid_file: Path) -> bool:
 
 def stop_pid(pid_file: Path, name: str) -> None:
     if pid_alive(pid_file):
-        os.kill(int(pid_file.read_text().strip()), signal.SIGTERM)
+        os.kill(int(pid_file.read_text(encoding="utf-8").strip()), signal.SIGTERM)
         log(f"stopped {name}")
     pid_file.unlink(missing_ok=True)
 
@@ -253,11 +261,9 @@ def stop_http(mode: str) -> None:
     pid_file = HTTP_PID[mode]
     if not pid_file.exists():
         return
-    for pid in pid_file.read_text().split():
-        try:
+    for pid in pid_file.read_text(encoding="utf-8").split():
+        with contextlib.suppress(ProcessLookupError):
             os.kill(int(pid), signal.SIGTERM)
-        except ProcessLookupError:
-            pass
     pid_file.unlink()
     log(f"stopped HTTP git server ({mode})")
 
@@ -265,7 +271,9 @@ def stop_http(mode: str) -> None:
 # --------------------------------------------------------------------------- waits
 
 
-def wait_for(what: str, predicate, timeout: int = TIMEOUT, interval: float = 5) -> bool:
+def wait_for(
+    what: str, predicate: Callable[[], tuple[bool, object]], timeout: int = TIMEOUT, interval: float = 5
+) -> bool:
     deadline = time.monotonic() + timeout
     while True:
         done, detail = predicate()
@@ -279,7 +287,7 @@ def wait_for(what: str, predicate, timeout: int = TIMEOUT, interval: float = 5) 
 
 
 def wait_tasks_settled(api: Api, branch: str, timeout: int = TIMEOUT) -> bool:
-    def check():
+    def check() -> tuple[bool, object]:
         pending = [t["title"] for t in api.tasks(branch) if t["state"] not in SETTLED_STATES]
         return not pending, pending
 
@@ -292,8 +300,8 @@ def wait_tasks_settled(api: Api, branch: str, timeout: int = TIMEOUT) -> bool:
 def create_rw_repo(api: Api, repo: str, location: str) -> None:
     api.gql(
         "mutation($name: String!, $loc: String!) { CoreRepositoryCreate(data: {"
-        " name: {value: $name}, location: {value: $loc}, default_branch: {value: \"main\"},"
-        " description: {value: \"infp-671 scenario fixture\"} }) { ok } }",
+        ' name: {value: $name}, location: {value: $loc}, default_branch: {value: "main"},'
+        ' description: {value: "infp-671 scenario fixture"} }) { ok } }',
         {"name": repo, "loc": location},
     )
     log(f"created CoreRepository {repo} -> {location}")
@@ -307,16 +315,19 @@ def create_repos(api: Api) -> None:
     if RO_REPO not in existing:
         api.gql(
             "mutation($name: String!, $loc: String!) { CoreReadOnlyRepositoryCreate(data: {"
-            " name: {value: $name}, location: {value: $loc}, ref: {value: \"main\"},"
-            " description: {value: \"infp-671 scenario fixture\"} }) { ok } }",
+            ' name: {value: $name}, location: {value: $loc}, ref: {value: "main"},'
+            ' description: {value: "infp-671 scenario fixture"} }) { ok } }',
             {"name": RO_REPO, "loc": f"git://{GIT_HOST}/{RO_REPO}.git"},
         )
         log(f"created CoreReadOnlyRepository {RO_REPO}")
 
 
 def add_unreachable(api: Api) -> bool:
-    """Create the unreachable repositories while they are reachable (Infrahub refuses a remote it
-    can't clone), then take them away: stop serving one port, answer 401 on the other."""
+    """Create the unreachable repositories, then take their remotes away.
+
+    Infrahub refuses a remote it can't clone, so they are created while reachable. Then one port
+    stops serving and the other answers 401.
+    """
     missing = [name for name in UNREACHABLE if name not in api.repos()]
     if missing:
         stop_http("deny")
@@ -326,7 +337,10 @@ def add_unreachable(api: Api) -> bool:
             create_rw_repo(api, name, f"http://{GIT_HOST}:{UNREACHABLE[name][0]}/{name}.git")
         wait_for(
             "unreachable fixtures imported while reachable",
-            lambda: (all(api.repos().get(n, {}).get("sync_status", {}).get("value") == "in-sync" for n in missing), missing),
+            lambda: (
+                all(api.repos().get(n, {}).get("sync_status", {}).get("value") == "in-sync" for n in missing),
+                missing,
+            ),
         )
         stop_http("serve")
     start_http("deny", [CRED_PORT])
@@ -338,7 +352,7 @@ def add_unreachable(api: Api) -> bool:
 
     want = {name: status for name, (_, status) in UNREACHABLE.items()} | {HIDDEN_REPO: "error"}
 
-    def check():
+    def check() -> tuple[bool, object]:
         repos = api.repos()
         bad = {n: repos.get(n, {}).get("operational_status", {}).get("value") for n in want}
         bad = {n: v for n, v in bad.items() if v != want[n]}
@@ -389,13 +403,17 @@ def reimport_failed(api: Api, branch: str) -> None:
         """
         if api.gql(query, {"branch": branch, "id": repo_id})["data"]["InfrahubTask"]["count"]:
             continue
-        api.gql("mutation($id: String!) { InfrahubRepositoryProcess(data: {id: $id}) { ok } }", {"id": repo_id}, branch=branch)
+        api.gql(
+            "mutation($id: String!) { InfrahubRepositoryProcess(data: {id: $id}) { ok } }",
+            {"id": repo_id},
+            branch=branch,
+        )
         log(f"ran Import current commit for {repo} on {branch}")
 
 
 def run_generators(api: Api) -> None:
     branch = "scn-generator-failed"
-    query = '{ CoreGeneratorDefinition { edges { node { id name { value } } } } }'
+    query = "{ CoreGeneratorDefinition { edges { node { id name { value } } } } }"
     defs = {
         e["node"]["name"]["value"]: e["node"]["id"]
         for e in api.gql(query, branch=branch)["data"]["CoreGeneratorDefinition"]["edges"]
@@ -449,14 +467,14 @@ def up(with_unreachable: bool) -> int:
         "scn repositories in sync on main",
         lambda: (
             not (bad := {n: r["sync_status"]["value"] for n, r in api.repos().items()
-                         if n in [*RW_REPOS, RO_REPO] and r["sync_status"]["value"] != "in-sync"}),
+                         if n in {*RW_REPOS, RO_REPO} and r["sync_status"]["value"] != "in-sync"}),
             bad,
         ),
     )  # fmt: skip
 
     create_branches(api)
 
-    def branches_pushed():
+    def branches_pushed() -> tuple[bool, object]:
         missing = [
             f"{repo}@{b}" for b, (sync, _, _) in BRANCHES.items() if sync for repo in RW_REPOS
             if bare_path(repo).exists() and not remote_has_branch(repo, b)
@@ -497,7 +515,9 @@ def status(api: Api | None = None) -> int:
     branches = api.branches()
     print("\nRepositories (operational_status is global):")
     for name, repo in sorted(api.repos().items()):
-        print(f"  {name:18} {repo['__typename']:24} {repo['operational_status']['value']:17} {repo['location']['value']}")
+        print(
+            f"  {name:18} {repo['__typename']:24} {repo['operational_status']['value']:17} {repo['location']['value']}"
+        )
     print("\nBranches:")
     for name in BRANCHES:
         if name not in branches:
@@ -529,7 +549,9 @@ def down() -> int:
         )
         log(f"deleted branch {name}")
     for name, repo in api.repos().items():
-        mutation = "CoreReadOnlyRepositoryDelete" if repo["__typename"] == "CoreReadOnlyRepository" else "CoreRepositoryDelete"
+        mutation = (
+            "CoreReadOnlyRepositoryDelete" if repo["__typename"] == "CoreReadOnlyRepository" else "CoreRepositoryDelete"
+        )
         api.gql(f"mutation($id: String!) {{ {mutation}(data: {{id: $id}}) {{ ok }} }}", {"id": repo["id"]})
         log(f"deleted {repo['__typename']} {name}")
     stop_pid(DAEMON_PID, "git daemon")
