@@ -14,11 +14,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
 
-from infrahub.computed_attribute.scoping import (
-    ComputedAttributeRef,
-    scope_python_transforms,
-)
-from infrahub.core.constants import ComputedAttributeKind
 from infrahub.log import get_logger
 
 from .recompute_coalescing import (
@@ -38,7 +33,6 @@ log = get_logger()
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from infrahub.computed_attribute.scoping import ChangedElementSet
     from infrahub.core.query_group.subscribers import SubscriberRef
     from infrahub.core.schema.schema_branch_computed import TransformReadSet
 
@@ -49,16 +43,12 @@ if TYPE_CHECKING:
 class PythonAttributeReadSet:
     """One Python transform computed attribute and the schema elements its query reads.
 
-    ``gathered`` is ``False`` when the gather failed outright, so nothing is known about any pair
-    and none of them may be dropped as covered by another pass.
-
     ``pinned`` is ``False`` when the query root is not restricted to a single object.
     """
 
     kind: str
     attribute_name: str
     read_set: TransformReadSet
-    gathered: bool = True
     pinned: bool = True
 
 
@@ -177,17 +167,12 @@ class IndexedPythonTargetResolver:
         *,
         changes: Iterable[MergeChange],
         branch: str,
-        schema_changed_elements: ChangedElementSet | None = None,
     ) -> list[AffectedTarget]:
         """Derive the affected Python computed attributes and the nodes to recompute for each.
 
         Changes are grouped by their (kind, action, changed fields) signature so the narrowing runs
         once per distinct shape. Targets are deduplicated per (kind, attribute) across the whole
         change set and returned in a deterministic order.
-
-        A merge that changed the schema also drives the schema-scoped backfill, which refreshes the
-        attributes it selects one whole kind at a time. Those pairs are dropped here, since keeping
-        them would recompute the same nodes twice.
         """
         ids_by_signature = group_ids_by_signature(changes)
 
@@ -206,18 +191,11 @@ class IndexedPythonTargetResolver:
                 )
                 accumulator.add(selection=selection, node_ids=node_ids, deleted=signature.action == DELETED)
 
-        covered = (
-            _covered_by_schema_pass(read_sets=read_sets, branch=branch, changed_elements=schema_changed_elements)
-            if schema_changed_elements is not None
-            else set()
-        )
         targets = [
-            await self._build_target(accumulator=accumulators[key], branch=branch)
-            for key in sorted(accumulators)
-            if key not in covered
+            await self._build_target(accumulator=accumulators[key], branch=branch) for key in sorted(accumulators)
         ]
         selected = [target for target in targets if target is not None]
-        _log_selection(branch=branch, selected=selected, covered=sorted(covered & set(accumulators)))
+        _log_selection(branch=branch, selected=selected)
         return selected
 
     async def _build_target(self, *, accumulator: _Accumulator, branch: str) -> AffectedTarget | None:
@@ -285,42 +263,15 @@ class IndexedPythonTargetResolver:
         return cached
 
 
-def _covered_by_schema_pass(
-    *, read_sets: list[PythonAttributeReadSet], branch: str, changed_elements: ChangedElementSet
-) -> set[tuple[str, str]]:
-    """The (kind, attribute) pairs the schema-scoped backfill refreshes for this schema change.
-
-    Both sides run the same scoper over the same candidates, so what one selects is what the other
-    can drop. Only a gathered pair qualifies: the schema pass builds its candidates from the
-    transforms it could gather, so a pair it never gathered is a pair it never submits.
-    """
-    candidates = [attribute for attribute in read_sets if attribute.gathered]
-    report = scope_python_transforms(
-        candidate_attributes=[
-            ComputedAttributeRef(
-                branch=branch,
-                kind=attribute.kind,
-                attribute_name=attribute.attribute_name,
-                computed_kind=ComputedAttributeKind.TRANSFORM_PYTHON,
-            )
-            for attribute in candidates
-        ],
-        read_sets={(branch, attribute.kind, attribute.attribute_name): attribute.read_set for attribute in candidates},
-        changed_elements=changed_elements,
-    )
-    return {(ref.kind, ref.attribute_name) for ref in report.selected}
-
-
-def _log_selection(*, branch: str, selected: list[AffectedTarget], covered: list[tuple[str, str]]) -> None:
+def _log_selection(*, branch: str, selected: list[AffectedTarget]) -> None:
     """Report what the pass recomputes, so an operator can tell narrowing from widening."""
-    if not selected and not covered:
+    if not selected:
         return
 
     log.info(
-        "Coalesced Python recompute on branch %s selected %s, and left %s to the schema pass",
+        "Coalesced Python recompute on branch %s selected %s",
         branch,
-        [_target_summary(target) for target in selected] or "nothing",
-        [f"{kind}.{attribute_name}" for kind, attribute_name in covered] or "nothing",
+        [_target_summary(target) for target in selected],
     )
 
 

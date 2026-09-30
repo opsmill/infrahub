@@ -23,7 +23,6 @@ if TYPE_CHECKING:
 
     from infrahub_sdk.client import InfrahubClient
 
-    from infrahub.computed_attribute.scoping import ChangedElementSet
     from infrahub.core.query_group.subscribers import SubscriberRef
     from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
@@ -99,9 +98,9 @@ class SchemaDeclaredPythonAttributes:
 class GatheredPythonReadSets:
     """The reads, mapped from the transform queries the gather resolved and analyzed.
 
-    Every query is mapped the same way the schema-scoped backfill maps it, so both sides scope a
-    schema change on the same read set. A root that is not restricted to a single object is carried
-    as a separate fact rather than folded into the mapping.
+    Every query is mapped the same way the schema-scoped backfill maps it, so both sides agree on
+    what a query reads. A root that is not restricted to a single object is carried as a separate
+    fact rather than folded into the mapping.
     """
 
     def __init__(self, db: InfrahubDatabase) -> None:
@@ -159,10 +158,7 @@ class ComposedPythonReadSetSource:
             log.exception("Widening every Python computed attribute on %s: the read-set gather failed", branch)
             return [
                 PythonAttributeReadSet(
-                    kind=attribute.kind,
-                    attribute_name=attribute.attribute_name,
-                    read_set=TransformReadSet.imprecise(),
-                    gathered=False,
+                    kind=attribute.kind, attribute_name=attribute.attribute_name, read_set=TransformReadSet.imprecise()
                 )
                 for attribute in declared
             ]
@@ -209,7 +205,6 @@ class UnavailablePythonTargetResolver:
         *,
         changes: Iterable[MergeChange],  # noqa: ARG002
         branch: str,  # noqa: ARG002
-        schema_changed_elements: ChangedElementSet | None = None,  # noqa: ARG002
     ) -> list[AffectedTarget]:
         raise RuntimeError("the Python target resolver could not be built")
 
