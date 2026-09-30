@@ -364,7 +364,7 @@ class TestDiffCoordinator:
             base_branch=default_branch, diff_branch=branch, diff_id=branch_diff.uuid
         )
 
-        # the default branch side of a diff can hold far more nodes than the branch side, so it is never hydrated
+        # a recalculation needs only the metadata of the default branch diff it replaces
         assert recording_repository.loaded_diffs == [(branch.name, branch_diff.uuid)]
         assert recalculated_diff is not None
         recalculated_base_diff = await diff_repository.get_one(
