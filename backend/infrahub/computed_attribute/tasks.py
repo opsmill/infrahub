@@ -346,11 +346,11 @@ async def process_jinja2(
     object_ids: list[str] | None = None,
     recompute_depth: int = 0,
 ) -> None:
-    """Recompute a single Jinja2 computed attribute in response to a node mutation.
+    """Recompute a Jinja2 computed attribute on one node (``object_id``) or on a set of nodes (``object_ids``).
 
-    The live trigger passes a single ``object_id``; the coalesced merge/rebase recompute passes
-    the union of changed node ids in ``object_ids``. ``computed_attribute_kind`` differs from
-    ``node_kind`` when the dependency crosses a relationship.
+    Passing ``object_ids`` makes it a coalesced pass (writes stamped ``recompute``), as the merge and
+    rebase recompute, the chained recompute and a whole-kind backfill do. ``computed_attribute_kind``
+    differs from ``node_kind`` when the dependency crosses a relationship.
     """
     log = get_run_logger()
     client = get_client()

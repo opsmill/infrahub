@@ -1,1 +1,1 @@
-Refreshing display labels, human-friendly IDs and Jinja2 computed attributes after their template changes, for example after merging a branch that changed one, now processes nodes in batches instead of one task per node, which makes it much faster on kinds with many nodes.
+Fixed display labels, human-friendly IDs and Jinja2 computed attributes taking too long to refresh on kinds with many nodes after their schema definition changed.
