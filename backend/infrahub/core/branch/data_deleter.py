@@ -109,9 +109,11 @@ class BranchDataDeleter:
         Also drops the attributes a number pool reserves that exist only on this branch, whose global
         IS_RESERVED edge would otherwise keep them alive after the branch's edges are gone.
 
-        Both queries locate those Nodes through the branch's IS_PART_OF edges, so this has to
-        finish before the edge deletion starts removing them. Resuming a delete that failed part
-        way through this stage is safe for the same reason: no IS_PART_OF edge has been touched yet.
+        The agnostic queries locate those Nodes through the branch's IS_PART_OF edges, and the
+        reserved-attribute query locates its attributes through the branch's HAS_ATTRIBUTE edges, so
+        this has to finish before the edge deletion starts removing them. Resuming a delete that
+        failed part way through this stage is safe for the same reason: none of those edges has been
+        touched yet.
 
         Returns the number of edges removed, which is every edge of the peers detached here, not
         only the agnostic ones that led to them.

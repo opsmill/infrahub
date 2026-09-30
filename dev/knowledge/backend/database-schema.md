@@ -200,7 +200,7 @@ global, so the attribute moves to the converting pool on every branch at once.
 
 A pool's `IS_RESERVED` edge is closed once no branch can reach its attribute vertex — not the default
 branch, not any non-deleting branch, and not a branch created before the change, which reaches the
-vertex through its fork point. No separate query does this: the branch-agnostic retirement queries
+vertex through its fork point. No separate query closes the edge: the branch-agnostic retirement queries
 (`RetireNodeAgnosticFieldsQuery`, `RetireBranchAgnosticFieldsQuery`, and `AttributeRenameQuery`,
 which ends with `CLOSE_UNRETAINED_AGNOSTIC_FIELDS`) also take as candidates the attributes carrying an open `-global-`
 `IS_RESERVED` edge, whatever their branch support, and run the same predicate

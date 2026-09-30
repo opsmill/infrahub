@@ -197,7 +197,7 @@ where nothing else has moved the numbers.
       so neither the agnostic case nor a default-branch-only run can stand in for the rest.
 
       **Amended 2026-09-29 — the existing agnostic retirement queries' candidate set is widened to
-      fields carrying an open `-global-` `IS_RESERVED` edge; no separate queries; no migration.**
+      fields carrying an open `-global-` `IS_RESERVED` edge; no separate query closes the edge; no migration.**
       `UNRETAINED_AGNOSTIC_FIELD_PREDICATE` already resolves each branch's own view of the owning and
       existence edges, so it answers the reachability question for a branch-aware attribute too, and
       its quick filter (an open global edge on the field) already admits one through its
