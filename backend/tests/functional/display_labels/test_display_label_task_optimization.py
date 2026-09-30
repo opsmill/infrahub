@@ -76,6 +76,8 @@ class TestDisplayLabelTaskOptimization(TestInfrahubApp):
         """
         # Limit 4 -> chunk size 2, so three nodes already split into [2, 1].
         monkeypatch.setenv("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "4")
+        # The default pagination size would return all three ids in one page, leaving paging between chunks untested.
+        monkeypatch.setattr(client.config, "pagination_size", 2)
 
         recorder = WorkflowRecorder()
         with override_workflow(recorder, dependency_provider=dependency_provider):
