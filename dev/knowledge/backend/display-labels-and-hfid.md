@@ -137,6 +137,8 @@ SchemaUpdatedEvent
 
 Each chunk runs as a coalesced pass (`object_ids`, origin `recompute`), the same shape as the merge and rebase recompute. One flow per node would cost a Prefect submission and a flow run for every node, even when every value is already current, as after a merge that carried the recomputed values. The trigger definitions and gathering logic live in `backend/infrahub/display_labels/` and `backend/infrahub/hfid/`.
 
+A node whose display label template raises while rendering keeps its stored label and logs a warning; the rest of its flow's nodes are still written.
+
 A branch merge or rebase refreshes display labels and human-friendly ids through the coalesced recompute of the changed nodes rather than this whole-kind chain. See [merge-recompute.md](merge-recompute.md).
 
 ### Manual Override

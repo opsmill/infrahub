@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from infrahub_sdk.template.exceptions import JinjaTemplateError
 from prefect import flow
 from prefect.logging import get_run_logger
 
@@ -76,7 +77,11 @@ async def process_display_label(
 
     writes: list[AttributeValueWrite] = []
     for node in update_candidates:
-        value = await jinja_template.render(variables=node.variables)
+        try:
+            value = await jinja_template.render(variables=node.variables)
+        except JinjaTemplateError as exc:
+            log.warning(f"Skipping display label recompute for node {node.node_id}: template raised {exc}")
+            continue
         if value != node.display_label_value:
             writes.append(AttributeValueWrite(node_id=node.node_id, field=DISPLAY_LABEL_FIELD, value=value))
 
