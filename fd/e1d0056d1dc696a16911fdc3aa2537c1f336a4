@@ -1,0 +1,22 @@
+backend/tests/component/core/resource_manager/test_number_pool.py
+  s_7d719d42034f96::t_195dbe6f3ce468 11,20,523-540,544-566
+  s_7d719d42034f96::t_e4548e8d713085 541-543
+backend/infrahub/core/node/resource_manager/number_pool.py
+  s_7d719d42034f96::t_a914481e676246 7,66-70,76-77,82-83,102,226-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fde1d0056d1dc696a16911fdc3aa2537c1f336a4",
+  "prompts": {},
+  "sessions": {
+    "s_7d719d42034f96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "703e70b0-5c2c-470f-aa75-61897706f918",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

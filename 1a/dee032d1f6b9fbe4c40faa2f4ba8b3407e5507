@@ -1,0 +1,22 @@
+docs/docs/webhooks/overview.mdx
+  s_d9e4ea96a53151::t_424ffa87a1d6fd 291-292
+  s_d9e4ea96a53151::t_9abc6b5e6bd3c1 197-199,222-223,248-269,284-285,287-290,293-295,297,299
+  s_d9e4ea96a53151::t_06063d4097f451 286,296,298,300
+  s_d9e4ea96a53151::t_d4fdeca84939be 301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1adee032d1f6b9fbe4c40faa2f4ba8b3407e5507",
+  "prompts": {},
+  "sessions": {
+    "s_d9e4ea96a53151": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92c4c7dc-848d-45d9-bb7c-4c7e6fa1833a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

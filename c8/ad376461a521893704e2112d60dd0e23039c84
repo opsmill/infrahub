@@ -1,0 +1,506 @@
+.agents/rules/backend-component-design.md
+  h_7ec9b28dd2a5ab 11-23
+.agents/rules/code-doc-style.md
+  h_7ec9b28dd2a5ab 5-9,11
+.agents/rules/python-module-layout.md
+  h_7ec9b28dd2a5ab 11-12,14
+.agents/rules/testing-python.md
+  h_7ec9b28dd2a5ab 34-35,74-78,88-91,100-103
+.agents/skills/audit-docs/SKILL.md
+  h_7ec9b28dd2a5ab 35,57
+.agents/skills/creating-changelog-entries/SKILL.md
+  h_7ec9b28dd2a5ab 27-31
+.agents/skills/harvesting-review/SKILL.md
+  h_7ec9b28dd2a5ab 183,317
+.agents/skills/migrate-feature-page/SKILL.md
+  h_7ec9b28dd2a5ab 327
+.github/workflows/chromatic.yml
+  h_7ec9b28dd2a5ab 44
+.github/workflows/ci-docker-image.yml
+  h_7ec9b28dd2a5ab 99,111,156
+.github/workflows/issue-triage-labeler.lock.yml
+  h_7ec9b28dd2a5ab 166,1180
+.github/workflows/issue-triage-sweep.lock.yml
+  h_7ec9b28dd2a5ab 163,1166
+.github/workflows/push-bench-image.yml
+  h_7ec9b28dd2a5ab 27,47,86
+AGENTS.md
+  h_7ec9b28dd2a5ab 138,140,143,169,175,209
+CHANGELOG.md
+  h_7ec9b28dd2a5ab 14-52
+README.md
+  h_7ec9b28dd2a5ab 83
+backend/AGENTS.md
+  h_7ec9b28dd2a5ab 33-34,44-45,47-49,51,72-75,85,106-112,134,146
+backend/CLAUDE.md
+  h_7ec9b28dd2a5ab 1
+backend/infrahub/api/admission/middleware.py
+  h_7ec9b28dd2a5ab 30-31,35-41,44,46-48,50-51,84-87,92-97,135-150,159,173
+backend/infrahub/api/schema.py
+  h_7ec9b28dd2a5ab 24-25,132-133,135-145
+backend/infrahub/computed_attribute/gather.py
+  h_7ec9b28dd2a5ab 28-29,47,49,52,57-58,62-79,81,97-100,103,109,163-206,218,220-223,233-246,249-252,259-265
+backend/infrahub/computed_attribute/models.py
+  h_7ec9b28dd2a5ab 4,86,90,272-277,300,310-315
+backend/infrahub/computed_attribute/recompute_resolution.py
+  h_7ec9b28dd2a5ab 5-6,10,23-26
+backend/infrahub/computed_attribute/tasks.py
+  h_7ec9b28dd2a5ab 3,10,45,142,743-745,747,750-752,756-758,849-873,883-885,887-892,897-908,910-925,927-929,931-932,936
+backend/infrahub/computed_attribute/transform_recompute.py
+  h_7ec9b28dd2a5ab 52
+backend/infrahub/computed_attribute/triggers.py
+  h_7ec9b28dd2a5ab 52-55
+backend/infrahub/config.py
+  h_7ec9b28dd2a5ab 16,31,58-85,326-367,396-399,428-436,483-488,553-556,579-584,612-615,631-636,873-894,908-934,942-945,947,953-956,1395,1398,1421-1433,1464,1502-1512,1541-1549,1855,1930-1931,2006-2009,2092,2119-2151
+backend/infrahub/core/attribute.py
+  h_7ec9b28dd2a5ab 451-452,456-458,460,462,649-651
+backend/infrahub/core/branch/data_deleter.py
+  h_7ec9b28dd2a5ab 24-26,144-146
+backend/infrahub/core/branch/tasks.py
+  h_7ec9b28dd2a5ab 19,50,241-242,244-245,529
+backend/infrahub/core/diff/calculator.py
+  h_7ec9b28dd2a5ab 2,10-11,14,16,50,64,80-114,199,201-202,205,210,212-213,216,221,223-224,227
+backend/infrahub/core/diff/coordinator.py
+  h_7ec9b28dd2a5ab 9,484-513,517,519,527,570,580
+backend/infrahub/core/diff/data_check_synchronizer.py
+  h_7ec9b28dd2a5ab 113-115,117,120,156-158,160,163
+backend/infrahub/core/diff/enricher/hierarchy.py
+  h_7ec9b28dd2a5ab 101-103
+backend/infrahub/core/diff/enricher/labels.py
+  h_7ec9b28dd2a5ab 18,178-202,206,215-218
+backend/infrahub/core/diff/payload_builder.py
+  h_7ec9b28dd2a5ab 3,8,14-15,22-37
+backend/infrahub/core/diff/query/save.py
+  h_7ec9b28dd2a5ab 89-140,142-147,166-170,225-228,284-287,323-342,523,562-566,573-575
+backend/infrahub/core/diff/query_parser.py
+  h_7ec9b28dd2a5ab 331,356,539-545,552-559,618
+backend/infrahub/core/diff/repository/repository.py
+  h_7ec9b28dd2a5ab 1-2,51-56,66,70-71,285-306,308,317-353,419-422
+backend/infrahub/core/graph/__init__.py
+  h_7ec9b28dd2a5ab 1
+backend/infrahub/core/graph/index.py
+  h_7ec9b28dd2a5ab 19-28
+backend/infrahub/core/migrations/graph/m079_range_diff_indexes.py
+  h_7ec9b28dd2a5ab 1-77
+backend/infrahub/core/query/agnostic_retention.py
+  h_7ec9b28dd2a5ab 23-28,107-133
+backend/infrahub/core/query/branch_agnostic_retirement.py
+  h_7ec9b28dd2a5ab 7,21-22,24-78,88,97-102,126
+backend/infrahub/core/query/diff.py
+  h_7ec9b28dd2a5ab 123,126-138,143,272,282-284,286-288,291-299,444-446,448-450,464-470,664-666,668-670,684-690,922-998
+backend/infrahub/core/query/node.py
+  h_7ec9b28dd2a5ab 18,1433-1516
+backend/infrahub/core/query/node_agnostic_retirement.py
+  h_7ec9b28dd2a5ab 78-123
+backend/infrahub/core/query_group/subscribers.py
+  h_7ec9b28dd2a5ab 13,23-27,45-49,53-54,56-57,59-67,72-76,83-92
+backend/infrahub/events/limits.py
+  h_7ec9b28dd2a5ab 32-35
+backend/infrahub/exceptions.py
+  h_7ec9b28dd2a5ab 126-137
+backend/infrahub/git/base.py
+  h_7ec9b28dd2a5ab 35-41,54-76,1128-1135,1145-1172,1182,1191-1195,1211-1215,1217-1222,1229,1261,1280-1293
+backend/infrahub/git/constants.py
+  h_7ec9b28dd2a5ab 4-8
+backend/infrahub/git/global_config.py
+  h_7ec9b28dd2a5ab 1-75
+backend/infrahub/git/integrator.py
+  h_7ec9b28dd2a5ab 47,1942-1951,2048-2051,2136,2146,2199,2207
+backend/infrahub/git/repository.py
+  h_7ec9b28dd2a5ab 294-297,314-320
+backend/infrahub/git_credential/askpass.py
+  h_7ec9b28dd2a5ab 5,9,40
+backend/infrahub/git_credential/client.py
+  h_7ec9b28dd2a5ab 1-20
+backend/infrahub/git_credential/helper.py
+  h_7ec9b28dd2a5ab 5,9,58
+backend/infrahub/graphql/mutations/convert_object_type.py
+  h_7ec9b28dd2a5ab 44,51,67
+backend/infrahub/graphql/mutations/repository.py
+  h_7ec9b28dd2a5ab 305-306
+backend/infrahub/message_bus/messages/git_repository_connectivity.py
+  h_7ec9b28dd2a5ab 15-17
+backend/infrahub/message_bus/operations/git/repository.py
+  h_7ec9b28dd2a5ab 5-10,33-35,42
+backend/infrahub/middleware.py
+  h_7ec9b28dd2a5ab 8-13,23
+backend/infrahub/repositories/create_repository.py
+  h_7ec9b28dd2a5ab 57-58
+backend/infrahub/server.py
+  h_7ec9b28dd2a5ab 65,238-240,243-247
+backend/infrahub/services/__init__.py
+  h_7ec9b28dd2a5ab 14-15,99-104
+backend/infrahub/services/adapters/cache/nats.py
+  h_7ec9b28dd2a5ab 53-61,145-151
+backend/infrahub/services/component.py
+  h_7ec9b28dd2a5ab 27-72,90,153,155-158
+backend/infrahub/services/heartbeat.py
+  h_7ec9b28dd2a5ab 1-175
+backend/infrahub/services/scheduler.py
+  h_7ec9b28dd2a5ab 15,21-23,34-40,44,47,52-53,56-57,60-61,69-70
+backend/infrahub/storage.py
+  h_7ec9b28dd2a5ab 7,19-23,45-58
+backend/infrahub/tls/bundle.py
+  h_7ec9b28dd2a5ab 1-110
+backend/infrahub/tls/context_builder.py
+  h_7ec9b28dd2a5ab 4-5,19,22-23
+backend/infrahub/transformations/tasks.py
+  h_7ec9b28dd2a5ab 4,35,55
+backend/infrahub/webhook/models.py
+  h_7ec9b28dd2a5ab 14,417
+backend/infrahub/workers/dependencies.py
+  h_7ec9b28dd2a5ab 48-49,51
+backend/infrahub/workers/infrahub_async.py
+  h_7ec9b28dd2a5ab 29,40,68-86,228,235-236,273-278
+backend/tests/adapters/log.py
+  h_7ec9b28dd2a5ab 8,28
+backend/tests/adapters/python_target_sources.py
+  h_7ec9b28dd2a5ab 55
+backend/tests/component/api/test_admission_middleware.py
+  h_7ec9b28dd2a5ab 24-30,102,104-105,110,161,163-164,169,195,197-198,204,247,251-252,258,323,325-326,334,373,375-376,381,395,397-398,403,457,461-462,467,545,577,604,650,680,682-683,688,722-786
+backend/tests/component/api/test_cors_priority.py
+  h_7ec9b28dd2a5ab 4,8,10-11,16-18,20-22,24,27-28,30-31,33-43,45-46,48-50,54-59,62-65,67,83-119,123-125
+backend/tests/component/computed_attribute/_base.py
+  h_7ec9b28dd2a5ab 13,29,120-131
+backend/tests/component/computed_attribute/test_gather.py
+  h_7ec9b28dd2a5ab 23-24,143-182,216,253,256,262,264-265,269-298,307,312,320-325,329-444,475,498-502,529,537,542-554,610,673-675
+backend/tests/component/computed_attribute/test_query_transform_targets.py
+  h_7ec9b28dd2a5ab 1-324
+backend/tests/component/computed_attribute/test_scoped_recompute_python.py
+  h_7ec9b28dd2a5ab 8,10,12,19,109-145
+backend/tests/component/computed_attribute/test_transform_lifecycle_recompute.py
+  h_7ec9b28dd2a5ab 201-204,255
+backend/tests/component/core/agnostic_retirement/support.py
+  h_7ec9b28dd2a5ab 14,16-19,24,31,86-103
+backend/tests/component/core/agnostic_retirement/test_on_branch_delete.py
+  h_7ec9b28dd2a5ab 22,29,56-62,160-259
+backend/tests/component/core/agnostic_retirement/test_on_merge.py
+  h_7ec9b28dd2a5ab 24,89,118,157
+backend/tests/component/core/agnostic_retirement/test_on_rebase.py
+  h_7ec9b28dd2a5ab 5-6,22,25-28,30-31,34,53,61-62,68,74,77-96,189-280
+backend/tests/component/core/constraint_validators/test_node_uniqueness.py
+  h_7ec9b28dd2a5ab 1-2,7,12,138-175
+backend/tests/component/core/diff/diff_calculator/test_base_scope.py
+  h_7ec9b28dd2a5ab 1-55
+backend/tests/component/core/diff/diff_calculator/test_base_updates.py
+  h_7ec9b28dd2a5ab 6,1180-1279
+backend/tests/component/core/diff/diff_calculator/test_changed_nodes.py
+  h_7ec9b28dd2a5ab 1-90
+backend/tests/component/core/diff/diff_calculator/test_nodes.py
+  h_7ec9b28dd2a5ab 10,441-480
+backend/tests/component/core/diff/repository/test_diff_repository.py
+  h_7ec9b28dd2a5ab 3-4,27-29,44-55,800-904,1140-1192
+backend/tests/component/core/diff/test_coordinator_lock.py
+  h_7ec9b28dd2a5ab 2-3,29,70-130,136-148,156-181,195-215,229-249,267-274,291-298,300,368,373-382
+backend/tests/component/core/diff/test_diff_labels_enricher.py
+  h_7ec9b28dd2a5ab 1-3,8,14,24,115-116,118-119,186-280
+backend/tests/component/core/migrations/graph/test_079_range_diff_indexes.py
+  h_7ec9b28dd2a5ab 1-61
+backend/tests/component/core/test_attribute.py
+  h_7ec9b28dd2a5ab 2,9,376-495
+backend/tests/component/core/test_node_display_label_query.py
+  h_7ec9b28dd2a5ab 1-118
+backend/tests/component/graphql/mutations/test_object_conversion.py
+  h_7ec9b28dd2a5ab 84-138
+backend/tests/component/query/test_node_agnostic_retirement_query.py
+  h_7ec9b28dd2a5ab 18,28,91-95,103-110,113,468-502
+backend/tests/component/services/adapters/nats/test_nats.py
+  h_7ec9b28dd2a5ab 2,5,93-129
+backend/tests/functional/api/test_load_schema.py
+  h_7ec9b28dd2a5ab 20,669-675,706-711,798-800,916,983-984,987-988,995-997,999-1000,1003-1006,1013-1015
+backend/tests/functional/computed_attributes/test_computed_attribute.py
+  h_7ec9b28dd2a5ab 19,112,116,135-142
+backend/tests/functional/convert_object_type/test_convert_object_type.py
+  h_7ec9b28dd2a5ab 22,159-206
+backend/tests/helpers/admission.py
+  h_7ec9b28dd2a5ab 1-79
+backend/tests/helpers/db_query_failer.py
+  h_7ec9b28dd2a5ab 1-54
+backend/tests/helpers/db_session_tracker.py
+  h_7ec9b28dd2a5ab 1-64
+backend/tests/helpers/schema_errors.py
+  h_7ec9b28dd2a5ab 1-30
+backend/tests/helpers/tls.py
+  h_7ec9b28dd2a5ab 3,6,8-10,13-22
+backend/tests/integration/git/conftest.py
+  h_7ec9b28dd2a5ab 21-26,64-76,85-117,136-138,153,216-218
+backend/tests/integration/git/test_auth_and_access.py
+  h_7ec9b28dd2a5ab 6-7,18,20,23-28,33,74-75,83-84,100,112,116,118-123,127,129,131,137-141,149-155,157-164
+backend/tests/integration/git/test_git_live_remote.py
+  h_7ec9b28dd2a5ab 8,10,15-16,19-26,376-499
+backend/tests/unit/api/test_schema_load_contract.py
+  h_7ec9b28dd2a5ab 7-8,12,14,18,203,297,300-303,354,356-407
+backend/tests/unit/computed_attribute/test_triggers.py
+  h_7ec9b28dd2a5ab 82-86,91-92
+backend/tests/unit/config/log_forwarding_multi_dest.toml
+  h_7ec9b28dd2a5ab 9
+backend/tests/unit/config/test_ldap_settings.py
+  h_7ec9b28dd2a5ab 70-72
+backend/tests/unit/config/test_log_forwarding.py
+  h_7ec9b28dd2a5ab 21-22,64-81,233-236,249,275,294
+backend/tests/unit/config/test_tls_settings.py
+  h_7ec9b28dd2a5ab 1-462
+backend/tests/unit/config/test_trace_settings.py
+  h_7ec9b28dd2a5ab 52-54,60-62
+backend/tests/unit/core/diff/test_data_check_synchronizer.py
+  h_7ec9b28dd2a5ab 1-113
+backend/tests/unit/core/query_group/test_subscribers.py
+  h_7ec9b28dd2a5ab 1-77
+backend/tests/unit/core/test_attribute.py
+  h_7ec9b28dd2a5ab 2,6,11,132-165
+backend/tests/unit/event/test_limits.py
+  h_7ec9b28dd2a5ab 77,79-82
+backend/tests/unit/git/test_git_error_enrichment.py
+  h_7ec9b28dd2a5ab 10,14-15,23-25,65-130,136-183,198-201,206-207
+backend/tests/unit/git/test_git_repository.py
+  h_7ec9b28dd2a5ab 12,14,16,19,21-25,27,278-450
+backend/tests/unit/git/test_global_config.py
+  h_7ec9b28dd2a5ab 1-340
+backend/tests/unit/git_credential/test_client.py
+  h_7ec9b28dd2a5ab 1-100
+backend/tests/unit/services/test_heartbeat.py
+  h_7ec9b28dd2a5ab 1-241
+backend/tests/unit/services/test_scheduler.py
+  h_7ec9b28dd2a5ab 3-6,8-11,60-118
+backend/tests/unit/test_storage.py
+  h_7ec9b28dd2a5ab 3,9-13,75-153
+backend/tests/unit/tls/test_bundle.py
+  h_7ec9b28dd2a5ab 1-111
+backend/tests/unit/workers/test_client_config.py
+  h_7ec9b28dd2a5ab 1-86
+backend/tests/unit/workflows/test_initialization.py
+  h_7ec9b28dd2a5ab 4-5,14-17,108,110,121,125,137,206,213
+changelog/+blank-ca-bundle-setting.fixed.md
+  h_7ec9b28dd2a5ab 1
+changelog/+diff-base-peer-added-and-removed-before-window.fixed.md
+  h_7ec9b28dd2a5ab 1
+changelog/+diff-base-relationship-removal-before-window.fixed.md
+  h_7ec9b28dd2a5ab 1
+changelog/+diff-base-scope-empty-branch.fixed.md
+  h_7ec9b28dd2a5ab 1
+changelog/+diff-save-large-nodes.fixed.md
+  h_7ec9b28dd2a5ab 1
+changelog/+diff-update-result-overhead.fixed.md
+  h_7ec9b28dd2a5ab 1
+changelog/+ifc-3044-live-recompute-narrowing.changed.md
+  h_7ec9b28dd2a5ab 1-3
+changelog/+large-branch-diff-update.fixed.md
+  h_7ec9b28dd2a5ab 1
+changelog/+no-shedding-page-loads.fixed.md
+  h_7ec9b28dd2a5ab 1
+changelog/+rebase-agnostic-retirement.fixed.md
+  h_7ec9b28dd2a5ab 1
+changelog/+s3-syslog-tls-insecure.added.md
+  h_7ec9b28dd2a5ab 1
+changelog/+shared-transform-computed-attribute.fixed.md
+  h_7ec9b28dd2a5ab 1
+changelog/+transform-data-input-walk.fixed.md
+  h_7ec9b28dd2a5ab 1
+changelog/10616.fixed.md
+  h_7ec9b28dd2a5ab 1
+changelog/10637.added.md
+  h_7ec9b28dd2a5ab 1-3
+changelog/6938.fixed.md
+  h_7ec9b28dd2a5ab 1
+dev/README.md
+  h_7ec9b28dd2a5ab 53,71,103-104,115-128
+dev/documentation-architecture.md
+  h_7ec9b28dd2a5ab 9-10,14,16-17,19,21-27,30-31,38-55,60-62,69-70,72,78-80,84-85,92-93,97-99
+dev/guidelines/backend/asgi-middleware.md
+  h_7ec9b28dd2a5ab 37-39
+dev/guidelines/backend/component-design.md
+  h_7ec9b28dd2a5ab 1-129
+dev/guidelines/backend/exceptions.md
+  h_7ec9b28dd2a5ab 31,45-54,120-135
+dev/guidelines/backend/prefect-payloads.md
+  h_7ec9b28dd2a5ab 1-61
+dev/guidelines/backend/python.md
+  h_7ec9b28dd2a5ab 23-33,180-188,191,195-200,202-204,211,303,305-308,311-327,339,352-353,355,357-361,421-422
+dev/guidelines/backend/testing.md
+  h_7ec9b28dd2a5ab 17,31,58-59,62-86,103-118,230-231,240,243-244,246-247,384,405-424,444-445,460,465-466
+dev/guidelines/backend/typing.md
+  h_7ec9b28dd2a5ab 5-6,9
+dev/guidelines/code-doc-style.md
+  h_7ec9b28dd2a5ab 1-53
+dev/guidelines/documentation.md
+  h_7ec9b28dd2a5ab 3,102,124-125
+dev/guidelines/repository-organization.md
+  h_7ec9b28dd2a5ab 589-595
+dev/guides/backend/creating-async-tasks.md
+  h_7ec9b28dd2a5ab 72,304
+dev/knowledge/backend/api-backpressure.md
+  h_7ec9b28dd2a5ab 38,87,91-104,115-119,254-259,266,287-298
+dev/knowledge/backend/architecture.md
+  h_7ec9b28dd2a5ab 3
+dev/knowledge/backend/async-tasks.md
+  h_7ec9b28dd2a5ab 75,106-134,410-445,459-460,466
+dev/knowledge/backend/computed-attributes.md
+  h_7ec9b28dd2a5ab 122-135,178
+dev/knowledge/backend/database-schema.md
+  h_7ec9b28dd2a5ab 342-344
+dev/knowledge/backend/display-labels-and-hfid.md
+  h_7ec9b28dd2a5ab 123-126,195
+dev/knowledge/backend/events.md
+  h_7ec9b28dd2a5ab 51-56,118-123
+dev/knowledge/backend/git-integration.md
+  h_7ec9b28dd2a5ab 187,190-195,242-246,255-256
+dev/knowledge/backend/permissions.md
+  h_7ec9b28dd2a5ab 55-59
+dev/knowledge/backend/query-pattern.md
+  h_7ec9b28dd2a5ab 120-121,283-287,298-301,397
+dev/knowledge/backend/schema-definitions.md
+  h_7ec9b28dd2a5ab 200-215
+dev/knowledge/backend/testing.md
+  h_7ec9b28dd2a5ab 3,178,321
+dev/knowledge/backend/tls.md
+  h_7ec9b28dd2a5ab 1-119
+dev/knowledge/frontend/react.md
+  h_7ec9b28dd2a5ab 59
+dev/knowledge/frontend/request-priority.md
+  h_7ec9b28dd2a5ab 65-107,115,117-119
+dev/specs/ifc-2437-merge-failure-recovery/data-model.md
+  h_7ec9b28dd2a5ab 131
+dev/specs/ifc-2437-merge-failure-recovery/research.md
+  h_7ec9b28dd2a5ab 94-95,98-106
+dev/specs/ifc-2843-retire-agnostic-edges/plan.md
+  h_7ec9b28dd2a5ab 280,520-522
+dev/specs/ifc-2843-retire-agnostic-edges/quickstart.md
+  h_7ec9b28dd2a5ab 253-276
+dev/specs/ifc-2843-retire-agnostic-edges/research.md
+  h_7ec9b28dd2a5ab 88-89,125-135,319-350,498
+dev/specs/ifc-2843-retire-agnostic-edges/spec.md
+  h_7ec9b28dd2a5ab 279-281,283-285,429-432
+dev/specs/ifc-2843-retire-agnostic-edges/tasks.md
+  h_7ec9b28dd2a5ab 188-191,235-238,314
+dev/specs/infp-546-git-solid-refactor/contracts/error-registry.md
+  h_7ec9b28dd2a5ab 30-33,39-44,74-80
+dev/specs/infp-546-git-solid-refactor/quickstart.md
+  h_7ec9b28dd2a5ab 75
+dev/specs/infp-546-git-solid-refactor/research.md
+  h_7ec9b28dd2a5ab 154
+development/docker-compose.yml
+  h_7ec9b28dd2a5ab 5,86-87,129-130,136
+development/grafana/CLAUDE.md
+  h_7ec9b28dd2a5ab 1
+docker-compose.yml
+  h_7ec9b28dd2a5ab 8,74,109-110,182-183,189,282,315,361
+docs/AGENTS.md
+  h_7ec9b28dd2a5ab 78
+docs/CLAUDE.md
+  h_7ec9b28dd2a5ab 1
+docs/_templates/message-bus-events.j2
+  h_7ec9b28dd2a5ab 36,62
+docs/docs/deploy-manage/install-configure/install/community.mdx
+  h_7ec9b28dd2a5ab 192,198,201-202,205-238,243,249,314-321
+docs/docs/deploy-manage/install-configure/install/enterprise.mdx
+  h_7ec9b28dd2a5ab 118,124,136,142,145-146,149-183,245-252
+docs/docs/deploy-manage/install-configure/production-deployment/overview.mdx
+  h_7ec9b28dd2a5ab 51-52,59-60
+docs/docs/deploy-manage/install-configure/production-deployment/private-ca.mdx
+  h_7ec9b28dd2a5ab 1-240
+docs/docs/deploy-manage/run-observe/log-forwarding/configure-log-forwarding.mdx
+  h_7ec9b28dd2a5ab 115-116
+docs/docs/deploy-manage/run-observe/log-forwarding/overview.mdx
+  h_7ec9b28dd2a5ab 183
+docs/docs/git-integration/connect-repository.mdx
+  h_7ec9b28dd2a5ab 373-374,379-384,436,438,440-443,445,447,449,451,455,467,471
+docs/docs/git-integration/overview.mdx
+  h_7ec9b28dd2a5ab 170
+docs/docs/overview/next-steps.mdx
+  h_7ec9b28dd2a5ab 11
+docs/docs/reference/configuration.mdx
+  h_7ec9b28dd2a5ab 31,37,44-51,56-58,87-88,94-95,114-115,127-128,131,140,144-145,155,159-160,172,179,188,192,211-212,219,221-222,238,240,243,257,261,270,274,281,285,299,301,311,313,321,323,332-336,339,342,349,383-384,392,396,410-411,421,426-427
+docs/docs/reference/message-bus-events.mdx
+  h_7ec9b28dd2a5ab 58,214
+docs/docs/release-notes/deprecation-guides/schema-load-write-contract.mdx
+  h_7ec9b28dd2a5ab 119-153,193-199
+docs/docs/release-notes/infrahub/release-1_11_3.mdx
+  h_7ec9b28dd2a5ab 1-60
+docs/redirects-pending/learn-labs.yml
+  h_7ec9b28dd2a5ab 1-21
+docs/sidebars.ts
+  h_7ec9b28dd2a5ab 25,31,43,71-74,401
+frontend/app/AGENTS.md
+  h_7ec9b28dd2a5ab 58-59
+frontend/app/src/entities/diff/ui/artifact-diff/artifact-content-diff.tsx
+  h_7ec9b28dd2a5ab 4,14,301-303,305-306
+frontend/app/src/entities/diff/ui/content-diff/collapsed-lines.test.ts
+  h_7ec9b28dd2a5ab 1-213
+frontend/app/src/entities/diff/ui/content-diff/collapsed-lines.ts
+  h_7ec9b28dd2a5ab 1-83
+frontend/app/src/entities/diff/ui/content-diff/content-diff.test.tsx
+  h_7ec9b28dd2a5ab 1-66
+frontend/app/src/entities/diff/ui/content-diff/content-diff.tsx
+  h_7ec9b28dd2a5ab 1-14,16,18-27,29,31-32,34-38,40-43,45-46,48-49,51-55,57-72,74-92,94-99,101-107,109-176
+frontend/app/src/entities/diff/ui/file-diff/file-content-diff.tsx
+  h_7ec9b28dd2a5ab 3-6,8,11,14,16-17,20-21,322-324,326-327
+frontend/app/src/entities/homepage/ui/getting-started.tsx
+  h_7ec9b28dd2a5ab 113-114,116,120,125-126
+frontend/app/src/entities/nodes/relationships/ui/relationship-combobox-list.test.tsx
+  h_7ec9b28dd2a5ab 15-17
+frontend/app/src/shared/api/graphql/client.test.ts
+  h_7ec9b28dd2a5ab 6-7,14,337-352
+frontend/app/src/shared/api/graphql/client.ts
+  h_7ec9b28dd2a5ab 17-18,69,92-97
+frontend/app/src/shared/api/graphql/error-handling.test.ts
+  h_7ec9b28dd2a5ab 1-65
+frontend/app/src/shared/api/graphql/error-handling.ts
+  h_7ec9b28dd2a5ab 6-10,23-31,40,51-62
+frontend/app/src/shared/api/rate-limit/policy.test.ts
+  h_7ec9b28dd2a5ab 1-408
+frontend/app/src/shared/api/rate-limit/policy.ts
+  h_7ec9b28dd2a5ab 1-147
+frontend/app/src/shared/api/rate-limit/retry-notice.test.ts
+  h_7ec9b28dd2a5ab 1-163
+frontend/app/src/shared/api/rate-limit/retry-notice.ts
+  h_7ec9b28dd2a5ab 1-69
+frontend/app/src/shared/api/rate-limit/retrying-fetch.test.ts
+  h_7ec9b28dd2a5ab 1-212
+frontend/app/src/shared/api/rate-limit/retrying-fetch.ts
+  h_7ec9b28dd2a5ab 1-40
+frontend/app/src/shared/api/rate-limit/shed-envelope.test.ts
+  h_7ec9b28dd2a5ab 1-226
+frontend/app/src/shared/api/rate-limit/shed-envelope.ts
+  h_7ec9b28dd2a5ab 1-77
+frontend/app/src/shared/api/rest/client.test.ts
+  h_7ec9b28dd2a5ab 4-5,7-8,77-109
+frontend/app/src/shared/api/rest/client.ts
+  h_7ec9b28dd2a5ab 5-6,23-35,76,85-87
+frontend/app/src/shared/api/rest/fetch.test.ts
+  h_7ec9b28dd2a5ab 4-5,7-26,32-33,41,61-87
+frontend/app/src/shared/api/rest/fetch.ts
+  h_7ec9b28dd2a5ab 2-3,60
+frontend/app/src/shared/libs/graphiql/use-graphiql-fetcher.ts
+  h_7ec9b28dd2a5ab 5,24
+frontend/app/src/shared/utils/common.test.ts
+  h_7ec9b28dd2a5ab 1-46
+frontend/app/src/shared/utils/common.ts
+  h_7ec9b28dd2a5ab 81-94
+frontend/app/src/unidiff.d.ts
+  h_7ec9b28dd2a5ab 1-8
+frontend/app/tests/fake/shed-response.ts
+  h_7ec9b28dd2a5ab 1-35
+frontend/packages/ui/src/components/menu/menu.stories.tsx
+  h_7ec9b28dd2a5ab 88-100,146-167
+frontend/packages/ui/src/components/menu/menu.tsx
+  h_7ec9b28dd2a5ab 1,67-68,120
+python_testcontainers/uv.lock
+  h_7ec9b28dd2a5ab 38,45,47,752-753,1065,1067,1069,1841-1842
+tasks/docs.py
+  h_7ec9b28dd2a5ab 15,301-326,334,345-346,355,361,365,367-368,378,381-384,392,399,421-422,446-460,483,499-500,513-518,537
+tests/e2e/branches/test_branch_details.py
+  h_7ec9b28dd2a5ab 6-11,22-23,33-34,39-46,190-264
+uv.lock
+  h_7ec9b28dd2a5ab 100,106,108,2775-2776,3435,3437,3439
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c8ad376461a521893704e2112d60dd0e23039c84",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
