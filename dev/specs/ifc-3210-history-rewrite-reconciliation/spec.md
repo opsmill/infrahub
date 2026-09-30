@@ -391,6 +391,15 @@ No new node kind is introduced.
 - **Pausing synchronisation, and pinning a repository to a chosen commit.** INFP-672 covers both.
 - **Changing the meaning of the repository synchronisation status.** See FR-013.
 
+## Known defects
+
+This spec set has **18 open findings** from a fourth code-aware review pass, including two
+blockers. They are listed in [known-defects.md](known-defects.md) and are **not fixed**.
+
+Read that file before implementing anything. The two blockers are design questions, not edits:
+where the detector gets the commit it compares against, and the fact that the merge guard covers
+the destination worktree but not the source branch.
+
 ## Decisions Taken During Specification
 
 These decisions were made without asking the user. Patrick Ogenstad must confirm the ones marked
