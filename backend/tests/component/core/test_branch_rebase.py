@@ -122,14 +122,14 @@ async def test_merge_relationship_many(
 
 
 async def _change_car_on_both_branches(
-    db: InfrahubDatabase, branch: Branch, car_id: str, field_name: str, main_owner: Node, branch_owner: Node
+    db: InfrahubDatabase, branch: Branch, car_id: str, field_names: list[str], main_owner: Node, branch_owner: Node
 ) -> None:
     car_main = await NodeManager.get_one(db=db, id=car_id)
     car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_id)
-    if field_name == "name":
+    if "name" in field_names:
         car_main.name.value = "camry-main"
         car_branch.name.value = "camry-branch"
-    else:
+    if "owner" in field_names:
         await car_main.owner.update(db=db, data=main_owner)
         await car_branch.owner.update(db=db, data=branch_owner)
     await car_main.save(db=db)
@@ -175,31 +175,56 @@ async def _rebase(db: InfrahubDatabase, default_branch: Branch, branch: Branch, 
 @dataclass
 class UnrebasableConflictCase:
     name: str
-    field_name: str
+    field_names: list[str]
     selection: ConflictSelection | None
     conflict_path_suffixes: list[str]
+    expected_message: str
+    """The rebase error, with `{car_id}` standing for the id of the conflicting car."""
 
 
 NAME_CONFLICT_PATH_SUFFIXES = ["display_label/value", "human_friendly_id/value", "name/value"]
+UNREBASABLE_CONFLICT_MESSAGE_START = (
+    "Branch branch2 contains conflicts with the default branch that must be addressed before rebasing."
+)
+RESOLVE_NAME_CONFLICTS_INSTRUCTION = (
+    " Resolve these conflicts in favor of the branch, in a proposed change or with the ResolveDiffConflict mutation,"
+    " or update the data so that both branches agree: data/{car_id}/display_label/value,"
+    " data/{car_id}/human_friendly_id/value, data/{car_id}/name/value."
+)
+UPDATE_OWNER_CONFLICT_INSTRUCTION = (
+    " Update the data so that both branches agree on these conflicts: data/{car_id}/owner/peer."
+)
 UNREBASABLE_CONFLICT_CASES = [
     UnrebasableConflictCase(
         name="unresolved_attribute",
-        field_name="name",
+        field_names=["name"],
         selection=None,
         conflict_path_suffixes=NAME_CONFLICT_PATH_SUFFIXES,
+        expected_message=UNREBASABLE_CONFLICT_MESSAGE_START + RESOLVE_NAME_CONFLICTS_INSTRUCTION,
     ),
     UnrebasableConflictCase(
         name="attribute_resolved_for_the_default_branch",
-        field_name="name",
+        field_names=["name"],
         selection=ConflictSelection.BASE_BRANCH,
         conflict_path_suffixes=NAME_CONFLICT_PATH_SUFFIXES,
+        expected_message=UNREBASABLE_CONFLICT_MESSAGE_START + RESOLVE_NAME_CONFLICTS_INSTRUCTION,
     ),
     # the rebased branch would see the default branch's peer next to its own
     UnrebasableConflictCase(
         name="cardinality_one_peer_resolved_for_the_branch",
-        field_name="owner",
+        field_names=["owner"],
         selection=ConflictSelection.DIFF_BRANCH,
         conflict_path_suffixes=["owner/peer"],
+        expected_message=UNREBASABLE_CONFLICT_MESSAGE_START + UPDATE_OWNER_CONFLICT_INSTRUCTION,
+    ),
+    UnrebasableConflictCase(
+        name="unresolved_attribute_and_cardinality_one_peer",
+        field_names=["name", "owner"],
+        selection=None,
+        conflict_path_suffixes=[*NAME_CONFLICT_PATH_SUFFIXES, "owner/peer"],
+        expected_message=UNREBASABLE_CONFLICT_MESSAGE_START
+        + RESOLVE_NAME_CONFLICTS_INSTRUCTION
+        + UPDATE_OWNER_CONFLICT_INSTRUCTION,
     ),
 ]
 
@@ -223,7 +248,7 @@ async def test_branch_rebase_rejects_a_conflict_it_cannot_apply(
         db=db,
         branch=branch2,
         car_id=car_camry_main.id,
-        field_name=case.field_name,
+        field_names=case.field_names,
         main_owner=person_albert_main,
         branch_owner=person_john_main,
     )
@@ -232,12 +257,7 @@ async def test_branch_rebase_rejects_a_conflict_it_cannot_apply(
     )
     assert conflict_paths == [f"data/{car_camry_main.id}/{suffix}" for suffix in case.conflict_path_suffixes]
 
-    expected_message = (
-        "Branch branch2 contains conflicts with the default branch that must be addressed:"
-        f" {', '.join(conflict_paths)}. A rebase keeps the branch's side of a conflict, so it accepts a conflict"
-        " on an attribute or relationship property once it is resolved in favor of the branch. Please update the"
-        " data to address any other conflict before rebasing."
-    )
+    expected_message = case.expected_message.format(car_id=car_camry_main.id)
     with pytest.raises(ValidationError, match=f"^{re.escape(expected_message)}$"):
         await _rebase(db=db, default_branch=default_branch, branch=branch2, dependency_provider=dependency_provider)
 
@@ -262,7 +282,7 @@ async def test_branch_rebase_applies_a_conflict_resolved_for_the_branch(
         db=db,
         branch=branch2,
         car_id=car_camry_main.id,
-        field_name="name",
+        field_names=["name"],
         main_owner=person_albert_main,
         branch_owner=person_john_main,
     )
