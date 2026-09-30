@@ -112,6 +112,30 @@ async def test_one_row_per_node_after_a_kind_migration(
         assert {node_id: labels.display_label for node_id, labels in query.get_stored_labels().items()} == expected
 
 
+async def test_one_value_per_label_when_two_attributes_share_its_name(
+    db: InfrahubDatabase, default_branch: Branch, person_jane_main: Node
+) -> None:
+    """Of two attributes with the same name active on the branch, only the most recent one is read."""
+    await db.execute_query(
+        query="""
+        MATCH (n:Node {uuid: $uuid})-[r:HAS_ATTRIBUTE]->(:Attribute {name: "display_label"})
+        CREATE (n)-[r2:HAS_ATTRIBUTE]->(duplicate:Attribute {uuid: randomUUID(), name: "display_label"})
+        SET r2 = properties(r), r2.from = "2000-01-01T00:00:00Z"
+        MERGE (av:AttributeValue {value: "Duplicate", is_default: false})
+        CREATE (duplicate)-[r3:HAS_VALUE]->(av)
+        SET r3 = properties(r), r3.from = "2000-01-01T00:00:00Z"
+        """,
+        params={"uuid": person_jane_main.get_id()},
+    )
+
+    query = await run_query(db=db, branch=default_branch, ids=[person_jane_main.get_id()])
+
+    [result] = list(query.get_results())
+    stored_values = result.get_as_type(label="stored_values", return_type=list)
+    assert sorted(name for name, _ in stored_values) == [DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME]
+    assert query.get_stored_labels()[person_jane_main.get_id()].display_label == "Jane"
+
+
 async def test_kind_without_template_is_left_out(
     db: InfrahubDatabase,
     default_branch: Branch,

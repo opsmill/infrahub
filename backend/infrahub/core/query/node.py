@@ -1434,14 +1434,12 @@ class NodeListGetStoredLabelsQuery(Query):
         // Collect the value of each requested label attribute active on the branch, one row per node
         // --------------------------
         CALL (n) {
-            MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute)
-            WHERE attr.name IN $label_names
-            // a deleted or migrated node holds several edges to the same attribute: resolve each pair once
-            WITH DISTINCT n, attr
-            CALL (n, attr) {
-                MATCH (n)-[r:HAS_ATTRIBUTE]->(attr)
+            UNWIND $label_names AS attr_name
+            // resolve each requested name to a single attribute, even if several claim to be active
+            CALL (n, attr_name) {
+                MATCH (n)-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: attr_name})
                 WHERE %(branch_filter)s
-                RETURN r AS attr_edge
+                RETURN attr, r AS attr_edge
                 ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
                 LIMIT 1
             }
