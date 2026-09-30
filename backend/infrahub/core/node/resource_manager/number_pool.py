@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub import lock
 from infrahub.core import registry
+from infrahub.core.protocols import CoreNumberPoolRange
 from infrahub.core.query.resource_manager import (
     NumberPoolGetFree,
     NumberPoolGetReserved,
@@ -39,6 +40,25 @@ class CoreNumberPool(Node):
             sum_excluded_values += end_range - start_range + 1
 
         return len(attribute.parameters.get_excluded_single_values()) + sum_excluded_values
+
+    async def load_ranges(self, db: InfrahubDatabase) -> list[CoreNumberPoolRange]:
+        """Return the ranges the pool allocates from, lowest start first.
+
+        Args:
+            db: Database connection.
+
+        Returns:
+            The range nodes linked to this pool, ordered by their start value.
+
+        """
+        # Reached through the registry because importing the node manager here would create an import cycle.
+        pool_ranges = await registry.manager.query(
+            db=db,
+            schema=CoreNumberPoolRange,
+            filters={"pool__ids": [self.get_id()]},
+            branch_agnostic=True,
+        )
+        return sorted(pool_ranges, key=lambda pool_range: int(pool_range.start.value))
 
     async def get_used(
         self,
