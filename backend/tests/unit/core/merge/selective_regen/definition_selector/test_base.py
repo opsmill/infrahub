@@ -11,7 +11,7 @@ from infrahub.core.merge.selective_regen.fallbacks import repositories_forcing_f
 from infrahub.core.merge.selective_regen.gate import DefinitionGate
 from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResolver
 from infrahub.core.merge.selective_regen.models import GateResult, LoadedDefinition
-from infrahub.core.regeneration.models import TargetSelection
+from infrahub.core.regeneration.models import TargetSelection, Widening, WideningReason
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 
 if TYPE_CHECKING:
@@ -92,10 +92,11 @@ class _StubGate(DefinitionGate):
 
 
 class _StubImpactedResolver(ImpactedSubscriberResolver):
-    """A resolver that returns a fixed list of impacted subscriber ids."""
+    """A resolver that returns a fixed list of impacted subscriber ids, or every target when it widens."""
 
-    def __init__(self, impacted: list[str]) -> None:
+    def __init__(self, impacted: list[str], widening: Widening | None = None) -> None:
         self.impacted = impacted
+        self.widening = widening
 
     async def resolve(
         self,
@@ -106,6 +107,8 @@ class _StubImpactedResolver(ImpactedSubscriberResolver):
         subscriber_kind: str,
         every_target: list[str],
     ) -> TargetSelection:
+        if self.widening is not None:
+            return TargetSelection(ids=every_target, widening=self.widening)
         return TargetSelection(ids=self.impacted)
 
 
@@ -315,3 +318,62 @@ async def test_select_processes_each_definition_independently() -> None:
     requests = await _run_select(selector)
 
     assert [request.generator_definition.definition_name for request in requests] == ["selected"]
+
+
+@dataclass
+class WideningLogCase:
+    name: str
+    regenerate_all_members: bool
+    widening: Widening | None
+    expected_info: list[str]
+    expected_target_members: list[list[str]]
+
+
+WIDENING_LOG_CASES = [
+    WideningLogCase(
+        name="widened_selection_logs_the_reason_and_renders_every_member",
+        regenerate_all_members=False,
+        widening=Widening(reason=WideningReason.RELATIONSHIP_REACHED_CHANGE, kinds=("TestInterface",)),
+        expected_info=[
+            "gen: the query reads TestInterface through a relationship, and a change there cannot be traced back "
+            "to specific targets. All instances will be processed."
+        ],
+        expected_target_members=[[]],
+    ),
+    WideningLogCase(
+        name="narrowed_selection_logs_nothing",
+        regenerate_all_members=False,
+        widening=None,
+        expected_info=[],
+        expected_target_members=[["m1"]],
+    ),
+    WideningLogCase(
+        name="forced_regeneration_skips_the_resolver_and_logs_nothing",
+        regenerate_all_members=True,
+        widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS),
+        expected_info=[],
+        expected_target_members=[[]],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", WIDENING_LOG_CASES, ids=lambda case: case.name)
+async def test_select_logs_why_every_member_is_processed(
+    case: WideningLogCase, caplog: pytest.LogCaptureFixture
+) -> None:
+    definition = _generator_definition()
+    selector = _StubSelector(
+        gate=_StubGate(
+            {definition.definition_name: GateResult(regenerate_all_members=case.regenerate_all_members, selected=True)}
+        ),
+        impacted_resolver=_StubImpactedResolver(["s1"], widening=case.widening),
+        definitions=[definition],
+        member_ids=["m1", "m2"],
+        subscriber_by_member={"m1": "s1", "m2": "s2"},
+    )
+
+    with caplog.at_level(logging.INFO, logger="test_base"):
+        requests = await _run_select(selector)
+
+    assert [record.getMessage() for record in caplog.records if record.levelno == logging.INFO] == case.expected_info
+    assert [request.target_members for request in requests] == case.expected_target_members
