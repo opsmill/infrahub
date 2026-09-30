@@ -1,4 +1,4 @@
-import { infiniteQueryOptions, keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 
 import type { ContextParams, InfiniteQueryConfig, PaginationParams } from "@/shared/api/types";
 
@@ -8,7 +8,7 @@ import {
   type GetRepositoryCommitsParams,
   getRepositoryCommits,
 } from "@/entities/repository/domain/use-cases/get-repository-commits";
-import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
+import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
 export const REPOSITORY_COMMITS_PAGE_SIZE = 20;
 export const REPOSITORY_COMMITS_POLL_INTERVAL_MS = 10_000;
@@ -17,7 +17,7 @@ type GetRepositoryCommitsQueryParams = Omit<GetRepositoryCommitsParams, keyof Pa
 
 export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQueryParams) {
   return infiniteQueryOptions({
-    queryKey: repositoryQueryKeys.commits({
+    queryKey: repositoriesQueryKeys.commits({
       repositoryId: params.repositoryId,
       branchName: params.branchName,
       limit: REPOSITORY_COMMITS_PAGE_SIZE,
@@ -37,8 +37,6 @@ export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQue
         ? REPOSITORY_COMMITS_POLL_INTERVAL_MS
         : false;
     },
-    refetchIntervalInBackground: true,
-    placeholderData: keepPreviousData,
   });
 }
 

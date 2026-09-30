@@ -1,11 +1,11 @@
 export interface RepositoryCommitsKeyParams {
   repositoryId: string;
   branchName: string;
-  limit?: number;
+  limit: number;
 }
 
-export const repositoryQueryKeys = {
-  all: ["repository"] as const,
+export const repositoriesQueryKeys = {
+  all: ["repositories"] as const,
   commits: (params: RepositoryCommitsKeyParams) =>
-    [...repositoryQueryKeys.all, "commits", params] as const,
+    [...repositoriesQueryKeys.all, "commits", params] as const,
 } as const;

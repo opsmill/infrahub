@@ -30,7 +30,7 @@ function FreshnessLine({ log }: RepositoryCommitsHeaderProps) {
     <p className="flex flex-wrap items-center gap-x-1.5 text-foreground-muted text-sm">
       {gitRef && (
         <span className="flex items-center gap-1">
-          Tracking <code className="font-mono text-foreground">{gitRef}</code>
+          Tracking <code className="font-mono text-foreground text-xs">{gitRef}</code>
         </span>
       )}
       {checkedAt && (
@@ -63,7 +63,9 @@ function ConditionNotice({ log }: RepositoryCommitsHeaderProps) {
   }
 
   if (condition === REPOSITORY_GIT_CONDITION.BEHIND && pendingCount !== null) {
-    return <p className="text-sm">{pluralize(pendingCount, "commit")} pending import</p>;
+    return (
+      <p className="font-medium text-sm">{pluralize(pendingCount, "commit")} pending import</p>
+    );
   }
 
   return null;
@@ -72,7 +74,7 @@ function ConditionNotice({ log }: RepositoryCommitsHeaderProps) {
 function AmberNotice({ children }: { children: string }) {
   return (
     <Row
-      role="status"
+      role="note"
       className="rounded-md bg-amber-50 px-3 py-2 text-amber-800 text-sm dark:bg-amber-200/10 dark:text-amber-200"
     >
       <TriangleAlertIcon className="size-4 shrink-0" aria-hidden="true" />

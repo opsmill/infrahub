@@ -19,21 +19,29 @@ export interface RepositoryCommitsTabProps {
   objectId: string;
 }
 
+const gridTemplateColumns = () =>
+  "fit-content(8rem) minmax(16rem, 1fr) fit-content(14rem) fit-content(12rem) fit-content(16rem) 2.5rem";
+
 export function RepositoryCommitsTab({ objectId }: RepositoryCommitsTabProps) {
-  const { data, error, isPending, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useGetRepositoryCommits({ repositoryId: objectId });
+  const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetRepositoryCommits({
+    repositoryId: objectId,
+  });
   const pages = useLastLoadedCommitPages(data?.pages);
   const log = pages?.[0];
 
-  if (error) {
+  if (error && !log) {
     return <ErrorScreen message={error.message} />;
   }
 
-  if (isPending || !log) {
-    return <Spinner className="m-4" />;
+  if (!log) {
+    return <Spinner className="mx-auto my-4" />;
   }
 
-  const commits = pages.flatMap((page) => page.commits);
+  const commits = [
+    ...new Map(
+      pages.flatMap((page) => page.commits).map((commit) => [commit.hash, commit])
+    ).values(),
+  ];
 
   if (commits.length === 0) {
     const emptyState = getEmptyState(log);
@@ -54,9 +62,10 @@ export function RepositoryCommitsTab({ objectId }: RepositoryCommitsTabProps) {
         <DataTable
           columns={getRepositoryCommitsColumns(log.importedCommit)}
           data={commits}
-          isLoading={isFetchingNextPage}
+          gridTemplateColumns={gridTemplateColumns}
           renderEmpty={() => <NoDataFound message="This ref has no commits." />}
         />
+        {isFetchingNextPage && <Spinner className="mx-auto my-2" />}
       </InfiniteScroll>
     </Col>
   );

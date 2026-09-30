@@ -25,7 +25,7 @@ export function getRepositoryCommitsColumns(
       header: () => <ColumnHeader>Hash</ColumnHeader>,
       cell: ({ cell }) => (
         <TableCell>
-          <code className="font-mono">{cell.getValue()}</code>
+          <code className="font-mono text-xs">{cell.getValue()}</code>
         </TableCell>
       ),
     }),
@@ -33,7 +33,9 @@ export function getRepositoryCommitsColumns(
       header: () => <ColumnHeader>Summary</ColumnHeader>,
       cell: ({ cell }) => (
         <TableCell>
-          <span className="truncate">{cell.getValue()}</span>
+          <span className="truncate" title={cell.getValue()}>
+            {cell.getValue()}
+          </span>
         </TableCell>
       ),
     }),

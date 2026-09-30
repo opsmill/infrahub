@@ -113,6 +113,47 @@ export const generateRewrittenCommitsResponse = () =>
     ],
   });
 
+export const generateOrphanedCommitsResponse = () =>
+  generateRepositoryCommitsResponse({
+    condition: "ORPHANED",
+    imported_commit: fullHash(BEHIND_IMPORTED),
+    remote_head: fullHash(BEHIND_HEAD),
+    edges: [{ node: node(BEHIND_HEAD, "HEAD", "Bump firmware baseline", "Grace Hopper") }],
+  });
+
+export const PAGE_ONE_HEAD = "a000001";
+export const PAGE_ONE_LAST = "a000020";
+export const PAGE_TWO_FIRST = "b000001";
+
+export const generateFirstCommitsPage = () =>
+  generateRepositoryCommitsResponse({
+    condition: "IN_SYNC",
+    imported_commit: fullHash(PAGE_ONE_HEAD),
+    remote_head: fullHash(PAGE_ONE_HEAD),
+    edges: Array.from({ length: 20 }, (_, index) => {
+      const position = String(index + 1).padStart(6, "0");
+      return {
+        node: node(
+          `a${position}`,
+          index === 0 ? "HEAD" : "HISTORY",
+          `Page one commit ${index + 1}`,
+          "Ada Lovelace"
+        ),
+      };
+    }),
+  });
+
+export const generateSecondCommitsPage = () =>
+  generateRepositoryCommitsResponse({
+    condition: "IN_SYNC",
+    imported_commit: fullHash(PAGE_ONE_HEAD),
+    remote_head: fullHash(PAGE_ONE_HEAD),
+    edges: [
+      { node: node(PAGE_ONE_LAST, "HISTORY", "Page one commit 20", "Ada Lovelace") },
+      { node: node(PAGE_TWO_FIRST, "HISTORY", "Page two commit 1", "Linus Torvalds") },
+    ],
+  });
+
 export const NOT_CLONED_MESSAGE = "No worker holds a copy of this repository yet.";
 
 export const generateNotClonedCommitsResponse = () =>
@@ -120,6 +161,18 @@ export const generateNotClonedCommitsResponse = () =>
     condition: "UNAVAILABLE",
     fetched_at: null,
     unavailable: { reason: "NOT_CLONED", message: NOT_CLONED_MESSAGE },
+  });
+
+export const JUST_CHECKED_AT = "2025-03-11T08:30:00Z";
+
+export const generateJustCheckedCommitsResponse = () =>
+  generateRepositoryCommitsResponse({
+    condition: "IN_SYNC",
+    imported_commit: fullHash(IN_SYNC_HEAD),
+    remote_head: fullHash(IN_SYNC_HEAD),
+    fetched_at: JUST_CHECKED_AT,
+    checked_at: JUST_CHECKED_AT,
+    edges: [{ node: node(IN_SYNC_HEAD, "HEAD", "Add device inventory", "Ada Lovelace") }],
   });
 
 export const READ_ONLY_FETCHED_AT = "2025-03-10T12:00:00Z";

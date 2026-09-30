@@ -16,8 +16,15 @@ export type GetRepositoryCommits = (
 ) => Promise<GetRepositoryCommitsResult>;
 
 // gql.tada types the DateTime scalar as unknown; the wire carries ISO 8601 strings.
+function dateTime(value: unknown): string {
+  if (typeof value !== "string") {
+    throw new Error("Expected an ISO 8601 DateTime string");
+  }
+  return value;
+}
+
 function dateTimeOrNull(value: unknown): string | null {
-  return typeof value === "string" ? value : null;
+  return value === null || value === undefined ? null : dateTime(value);
 }
 
 export const getRepositoryCommits: GetRepositoryCommits = async (params) => {
@@ -48,7 +55,7 @@ export const getRepositoryCommits: GetRepositoryCommits = async (params) => {
         shortHash: node.short_hash,
         summary: node.summary,
         authorName: node.author_name,
-        authoredAt: String(node.authored_at),
+        authoredAt: dateTime(node.authored_at),
         state: node.state,
       })
     ),

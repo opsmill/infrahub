@@ -1,31 +1,45 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { formatWithPreferences } from "@/shared/context/date-preferences-context";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
+import type { RepositoryGitCondition } from "@/entities/repository/domain/model/repository";
 
 import { render } from "../../../../tests/components/render";
+import { generateBranch } from "../../../../tests/fake/branch";
 import {
   BEHIND_HEAD,
   BEHIND_IMPORTED,
   fullHash,
   generateBehindCommitsResponse,
+  generateFirstCommitsPage,
   generateInSyncCommitsResponse,
+  generateJustCheckedCommitsResponse,
   generateNotClonedCommitsResponse,
+  generateOrphanedCommitsResponse,
   generateReadOnlyCommitsResponse,
+  generateRepositoryCommitsResponse,
   generateRewrittenCommitsResponse,
+  generateSecondCommitsPage,
   IN_SYNC_HEAD,
+  JUST_CHECKED_AT,
   NOT_CLONED_MESSAGE,
+  PAGE_ONE_HEAD,
+  PAGE_ONE_LAST,
+  PAGE_TWO_FIRST,
   READ_ONLY_CHECKED_AT,
   READ_ONLY_FETCHED_AT,
   type RepositoryCommitsWire,
 } from "../../../../tests/fake/repository-commit";
 import { RepositoryCommitsTab } from "./repository-commits-tab";
 
+vi.mock("@/entities/branches/ui/branches-provider");
 vi.mock("@/entities/repository/api/get-repository-commits-from-api");
 
 const apiMock = vi.mocked(getRepositoryCommitsFromApi);
+const useCurrentBranchMock = vi.mocked(useCurrentBranch);
 
 type ApiResult = Awaited<ReturnType<typeof getRepositoryCommitsFromApi>>;
 
@@ -44,18 +58,30 @@ function CaptureQueryClient() {
   return null;
 }
 
-const renderTab = () =>
-  render(
-    <>
-      <CaptureQueryClient />
-      <RepositoryCommitsTab objectId="repo-1" />
-    </>
-  );
+const tab = () => (
+  <>
+    <CaptureQueryClient />
+    <RepositoryCommitsTab objectId="repo-1" />
+  </>
+);
+
+const renderTab = () => render(tab());
+
+const useBranch = (name: string) =>
+  useCurrentBranchMock.mockReturnValue({
+    currentBranch: generateBranch({ name }),
+    setCurrentBranch: () => {},
+  });
 
 describe("RepositoryCommitsTab", () => {
+  beforeEach(() => {
+    useBranch("test-branch");
+  });
+
   afterEach(() => {
     vi.resetAllMocks();
-    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
   });
 
   test("renders every commit field newest-first as returned", async () => {
@@ -115,12 +141,47 @@ describe("RepositoryCommitsTab", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("status").filter({ hasText: "The tracked ref was rewritten" }))
+      .element(component.getByRole("note").filter({ hasText: "The tracked ref was rewritten" }))
       .toBeVisible();
     expect(component.getByText(/pending import/i).query()).toBeNull();
+    expect(component.getByText("Imported", { exact: true }).query()).toBeNull();
     const rows = component.getByTestId("data-table-row");
     await expect.element(rows.nth(1).getByText("Not on current history")).toBeVisible();
     await expect.element(rows.nth(2).getByText("Not on current history")).toBeVisible();
+  });
+
+  test.each<{ condition: RepositoryGitCondition; texts: string[] }>([
+    {
+      condition: "ORPHANED",
+      texts: ["The imported commit could not be found on the remote."],
+    },
+    {
+      condition: "NOT_TRACKED",
+      texts: ["No commit log", "This branch tracks no remote ref."],
+    },
+    {
+      condition: "NO_REMOTE",
+      texts: ["No commit log", "The tracked ref has no remote counterpart."],
+    },
+    {
+      condition: "UNAVAILABLE",
+      texts: ["Commit log not available yet", "Waiting for a worker to answer."],
+    },
+  ])("explains the $condition condition", async ({ condition, texts }) => {
+    // GIVEN
+    const response =
+      condition === "ORPHANED"
+        ? generateOrphanedCommitsResponse()
+        : generateRepositoryCommitsResponse({ condition, unavailable: null });
+    apiMock.mockResolvedValue(apiResult(response));
+
+    // WHEN
+    const component = await renderTab();
+
+    // THEN
+    for (const text of texts) {
+      await expect.element(component.getByText(text)).toBeVisible();
+    }
   });
 
   test("renders the not-yet-available message when no worker holds a copy", async () => {
@@ -166,6 +227,80 @@ describe("RepositoryCommitsTab", () => {
     expect(component.getByText("Commit log not available yet").query()).toBeNull();
   });
 
+  test("keeps the loaded rows when a later poll fails", async () => {
+    // GIVEN
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateBehindCommitsResponse()))
+      .mockRejectedValue(new Error("boom"));
+    const component = await renderTab();
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+
+    // WHEN
+    await queryClient.refetchQueries();
+
+    // THEN
+    expect(apiMock).toHaveBeenCalledTimes(2);
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    await expect.element(component.getByText(BEHIND_IMPORTED)).toBeVisible();
+    expect(component.getByText("boom").query()).toBeNull();
+  });
+
+  test("replaces the not-yet-available state with the rows once a worker answers", async () => {
+    // GIVEN
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
+      .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+    const component = await renderTab();
+    await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
+
+    // WHEN
+    await queryClient.refetchQueries();
+
+    // THEN
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    await expect.element(component.getByText(BEHIND_IMPORTED)).toBeVisible();
+    expect(component.getByText("Commit log not available yet").query()).toBeNull();
+  });
+
+  test("drops the previous branch's rows when the branch changes", async () => {
+    // GIVEN
+    useBranch("main");
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateBehindCommitsResponse()))
+      .mockResolvedValue(apiResult(generateNotClonedCommitsResponse()));
+    const component = await renderTab();
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+
+    // WHEN
+    useBranch("feature");
+    await component.rerender(tab());
+
+    // THEN
+    await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
+    expect(apiMock).toHaveBeenLastCalledWith(expect.objectContaining({ branchName: "feature" }));
+    expect(component.getByTestId("data-table-row").query()).toBeNull();
+    expect(component.getByText(BEHIND_HEAD).query()).toBeNull();
+  });
+
+  test("loads the next page when the end of the list comes into view", async () => {
+    // GIVEN
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
+      .mockResolvedValue(apiResult(generateSecondCommitsPage()));
+    const component = await renderTab();
+    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+    expect(apiMock).toHaveBeenCalledTimes(1);
+
+    // WHEN
+    await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
+
+    // THEN
+    await expect.element(component.getByText(PAGE_TWO_FIRST)).toBeVisible();
+    expect(apiMock).toHaveBeenNthCalledWith(2, expect.objectContaining({ offset: 20, limit: 20 }));
+    await expect.element(component.getByText(PAGE_ONE_LAST)).toBeVisible();
+    expect(component.getByText(PAGE_ONE_LAST).elements()).toHaveLength(1);
+  });
+
   test("shows both the check time and the update time when they differ", async () => {
     // GIVEN
     apiMock.mockResolvedValue(apiResult(generateReadOnlyCommitsResponse()));
@@ -181,6 +316,20 @@ describe("RepositoryCommitsTab", () => {
       .element(component.getByText(`Updated ${formatDateTime(READ_ONLY_FETCHED_AT)}`))
       .toBeVisible();
     await expect.element(component.getByText("Tracking v1.2.0")).toBeVisible();
+  });
+
+  test("shows only the check time when the last check brought the update", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(apiResult(generateJustCheckedCommitsResponse()));
+
+    // WHEN
+    const component = await renderTab();
+
+    // THEN
+    await expect
+      .element(component.getByText(`Checked ${formatDateTime(JUST_CHECKED_AT)}`))
+      .toBeVisible();
+    expect(component.getByText(/Updated/).query()).toBeNull();
   });
 
   test("shows only the update time when the remote was never checked", async () => {
