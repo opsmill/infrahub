@@ -1108,7 +1108,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     impacted_instances = selection.ids
     if selection.widening is not None:
         log.warning(
-            f"Generator definition {definition_name} query does not guarantee unique targets. All targets will be processed."
+            f"Generator definition {definition_name}: {selection.widening.detail}. All targets will be processed."
         )
     elif not impacted_instances:
         log.info(
