@@ -2,7 +2,7 @@
 
 The repository is added on a throwaway branch from a fixture repo without an `.infrahub.yml`, so
 its initial import (`git-repository-add-read-write`) fails deterministically and leaves it in
-Import Error on that branch (see dev/specs/infp-671-branch-details-repos/research.md, R2).
+Import Error on that branch.
 """
 
 from __future__ import annotations
