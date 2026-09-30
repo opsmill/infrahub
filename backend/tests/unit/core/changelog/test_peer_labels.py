@@ -45,7 +45,7 @@ def test_referenced_peer_ids_covers_current_previous_and_many_peers() -> None:
 
     ids = resolver.referenced_peer_ids(changelog=_changelog_with_both_cardinalities())
 
-    assert ids == ["current", "previous", "car-1"]
+    assert ids == {"current", "previous", "car-1"}
 
 
 async def test_resolve_reports_what_was_referenced_and_what_was_resolved() -> None:
@@ -88,7 +88,7 @@ def test_labels_of_falls_back_to_the_placeholder_for_an_unresolved_peer() -> Non
     assert labels is PLACEHOLDER_LABELS
 
 
-async def test_a_peer_referenced_twice_is_counted_twice_and_resolved_once() -> None:
+async def test_a_peer_referenced_twice_is_counted_and_resolved_once() -> None:
     changelog = NodeChangelog(node_id="source", node_kind="TestPerson", display_label="label")
     changelog.relationships["owner"] = RelationshipCardinalityOneChangelog(name="owner", peer_id="shared")
     changelog.relationships["previous_owner"] = RelationshipCardinalityOneChangelog(
@@ -100,7 +100,6 @@ async def test_a_peer_referenced_twice_is_counted_twice_and_resolved_once() -> N
     ids = resolver.referenced_peer_ids(changelog=changelog)
     peer_labels = await resolver.resolve(changelog=changelog)
 
-    # The references are reported as they are; the loader is the one that deduplicates them.
-    assert ids == ["shared", "shared"]
-    assert peer_labels.referenced_count == 2
+    assert ids == {"shared"}
+    assert peer_labels.referenced_count == 1
     assert peer_labels.resolved_count == 1

@@ -19,7 +19,7 @@ class ResolvedPeerLabels:
 
     @property
     def referenced_count(self) -> int:
-        """How many peer references were asked for, duplicates included."""
+        """How many distinct peers were asked for."""
         return self._referenced_count
 
     @property
@@ -56,12 +56,12 @@ class PeerLabelResolver:
         labels = await self._label_loader.load_labels(referenced_peer_ids)
         return ResolvedPeerLabels(labels=labels, referenced_count=len(referenced_peer_ids))
 
-    def referenced_peer_ids(self, changelog: NodeChangelog) -> list[str]:
+    def referenced_peer_ids(self, changelog: NodeChangelog) -> set[str]:
         """Collect the IDs of every peer referenced by this changelog's relationships."""
-        ids: list[str] = []
+        ids: set[str] = set()
         for relationship in changelog.relationships.values():
             if isinstance(relationship, RelationshipCardinalityOneChangelog):
-                ids += [peer_id for peer_id in (relationship.peer_id, relationship.peer_id_previous) if peer_id]
+                ids.update(peer_id for peer_id in (relationship.peer_id, relationship.peer_id_previous) if peer_id)
             elif isinstance(relationship, RelationshipCardinalityManyChangelog):
-                ids += [peer.peer_id for peer in relationship.peers if peer.peer_id]
+                ids.update(peer.peer_id for peer in relationship.peers if peer.peer_id)
         return ids
