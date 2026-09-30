@@ -77,8 +77,7 @@ classification is:
 | Imported commit is not present locally, tracking target unchanged | `REWRITE` (safe classification, see below) |
 | Imported commit is not present locally, tracking target changed | `RETARGET` |
 
-**`LOCAL_AHEAD` is not symmetry for its own sake.** It is the case a first draft of this design got
-wrong, and getting it wrong is dangerous. After a rejected push the local branch sits ahead of
+**`LOCAL_AHEAD` is not symmetry for its own sake.** After a rejected push the local branch sits ahead of
 `origin/`; `git-integration.md` lists it under Known limitations, and `compare_local_remote` flags
 the branch every cycle. Collapse that into "not an ancestor" and the branch classifies `REWRITE`,
 the sync resets it, and the unpushed commit is gone — which is precisely the loss PR #10465 exists
@@ -149,8 +148,8 @@ path that advances a branch worktree **from the remote** goes through `pull`: th
 and the `RefreshGitFetch` handler when no commit is pinned. Putting the rule there makes the
 property true by construction for those paths rather than by broadcast coverage.
 
-**It does not cover every path, and an earlier draft claimed it did.** Two paths advance a
-destination worktree from purely local state, with no fetch and no pull:
+**It does not cover every path.** Two paths advance a destination worktree from purely local
+state, with no fetch and no pull:
 
 - `git/repository.py::InfrahubRepository.merge` runs `git merge` in the destination worktree.
 - `git/base.py::InfrahubRepositoryBase.create_branch_in_git` branches from the local trunk.
@@ -201,9 +200,6 @@ it. #10465 reverses it: `merge` pushes first, records second, and resets the des
 when either step fails. Until that lands on `develop`, the unpushed-merge-commit state is
 reachable, so the pull-path reset and the sync-path reset both stay gated on it.
 
-An earlier draft of this note said the fix was "already present on this branch". That was true
-while the branch was based on #10465 and stopped being true when it was rebased onto `develop`.
-
 ---
 
 ## R4. Telling a rewrite from a re-target
@@ -238,10 +234,9 @@ travels in band on the workflow model.
   and short enough that a stale marker cannot suppress an unrelated rewrite days later.
 
 **What makes the read-write marker readable.** A `default_branch` edit moves no git ref, so
-`compare_local_remote` reports nothing for it. Two earlier drafts got this wrong: the first assumed
-the cycle would classify it anyway, the second had the mutation submit a sync for that repository.
-**No such workflow exists.** `GIT_REPOSITORIES_SYNC` is one cron flow over every repository, with
-`concurrency_limit=1` and `CANCEL_NEW`, so a submission is either cancelled or re-runs the fleet.
+`compare_local_remote` reports nothing for it, and there is no per-repository sync to submit:
+`GIT_REPOSITORIES_SYNC` is one cron flow over every repository, with `concurrency_limit=1` and
+`CANCEL_NEW`, so a submission is either cancelled or re-runs the fleet.
 
 The answer is the candidate selection in R2: the collector considers branches whose **graph commit**
 differs from the remote head, as well as those whose local head does. A `default_branch` edit
@@ -254,10 +249,9 @@ timing-free answer and it removes the cache completely. Rejected because the PRD
 four scalars and argues that decision explicitly. If that constraint is relaxed, this is the better
 design and the marker goes away.
 
-**Why the caller reads it and not the recorder.** A first draft put the read in
-`HistoryRewriteRecorder`. That does not work: the recorder writes nothing unless the classification
-is already `REWRITE`, so on a `RETARGET` it would return before reaching the marker and never
-consume it. The marker would then survive its full hour and suppress the *next*, genuine, rewrite
+**Why the caller reads it and not the recorder.** The recorder writes nothing unless the
+classification is already `REWRITE`, so on a `RETARGET` it would return before reaching the marker
+and never consume it. The marker would then survive its full hour and suppress the *next*, genuine, rewrite
 of that branch. Reading at classification time keeps `RETARGET` reachable in the detector's own
 tests, and deleting after the commit write keeps a failed cycle retryable.
 
@@ -489,9 +483,7 @@ record to the read-only path. It does not add a second remote-listing mechanism.
 Until that stack lands, none of it is available here.
 
 **Consequence for sequencing**: the read-only slice (User Story 5) is slightly cheaper once #10669
-reaches `develop`, because the scheduled flow already contacts the remote. It is **not** cheaper
-for the reason an earlier draft gave. `RefMovement.previous_head` is not the imported commit: it
-comes from `_resolve_local_head`, which reads the local clone from disk, and this design requires
+reaches `develop`, because the scheduled flow already contacts the remote. `RefMovement.previous_head` is **not** the imported commit: it comes from `_resolve_local_head`, which reads the local clone from disk, and this design requires
 the graph value. What #10669 does supply is `TrackedCommitReader`, which reads the graph, so the
 classification takes its inputs from there and uses `_detect_movements` only as the "this ref
 moved" trigger.

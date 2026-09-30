@@ -167,8 +167,7 @@ So:
   `reset_to_commit` for every branch on every other worker, where today it does so for the trunk
   only. `InfrahubRepository.rebase` merges into non-trunk branches and pushes, so without #10465 an
   unpushed merge commit can sit on a feature-branch worktree that the widened broadcast would
-  discard. An earlier draft called this slice gate-free because it "never resets anything". It
-  does.
+  discard.
 - **Slice B** is blocked on #10465, like the other resets. Its classification and its corrected
   error message can be written and merged first, because they change no worktree, but the reset
   itself waits. No setting turns it on or off: the task is simply gated.

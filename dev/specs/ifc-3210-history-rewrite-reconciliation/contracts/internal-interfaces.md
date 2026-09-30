@@ -28,8 +28,7 @@ inputs, and they drive different outcomes.
 
 `imported_commit` below is always the **graph** commit. It is never the local worktree head.
 
-Conflating them breaks the feature in one of two ways, and an earlier draft of this design did not
-say which input it meant:
+Conflating them breaks the feature in one of two ways:
 
 - Use the worktree head for the classification, and a worker that missed the broadcast classifies
   `REWRITE` again on the next cycle. It writes a second record, increments the count and fires the
@@ -268,11 +267,9 @@ reset path of the sync task writes the commit the same way.
   aborts collection for every branch and skips the broadcast; the record write must therefore be
   isolated per branch like the other per-branch failures.
 
-**Why not after the import, which an earlier draft specified.** That draft argued a failed import
-should leave no record, so the next cycle would classify `REWRITE` again and retry. That argument
-is false: the commit is already written during collection, so the next cycle reads the *new* head
-as the imported commit and classifies `UNCHANGED`. The rewrite would then never be recorded and the
-trunk event would never fire, so the rewrite would go unsignalled entirely.
+**Not after the import.** The commit is written during collection, so a recorder placed after the
+import would find the next cycle reading the *new* head as the imported commit and classifying
+`UNCHANGED`. The rewrite would never be recorded and the trunk event would never fire.
 
 **What a failed import means for the record.** The record describes the git reconciliation, which
 did happen: the worktree moved and the graph holds the new commit. A failed object import is a
@@ -560,19 +557,16 @@ different branch, tag **or commit**", and both of those reach the flow as an exp
    stops matching the remote head. There is no per-repository sync to submit:
    `GIT_REPOSITORIES_SYNC` is a single cron flow with `concurrency_limit=1` and `CANCEL_NEW`.
 
-> An earlier draft had the recorder read the marker. That is incompatible with the recorder writing
-> nothing unless the classification is already `REWRITE`: the recorder would return at step 1 and
-> never consume the marker, which would then survive its full hour and suppress the next genuine
-> rewrite of that branch. One reader, one consumer, and the consumption happens at classification
-> time.
+> The recorder must not be the reader. It writes nothing unless the classification is already
+> `REWRITE`, so on a `RETARGET` it would return before reaching the marker and leave it to survive
+> its full hour and suppress the next genuine rewrite of that branch.
 
 ### How the read-write marker gets read
 
-A `default_branch` edit **moves no git ref**, so `compare_local_remote` reports nothing for it. An
-earlier draft answered this by having the mutation submit a sync for that repository. **There is no
-such workflow.** `GIT_REPOSITORIES_SYNC` is one cron flow over every repository, with
-`concurrency_limit=1` and `CANCEL_NEW`, so a submission would either be cancelled or re-run the
-whole fleet.
+A `default_branch` edit **moves no git ref**, so `compare_local_remote` reports nothing for it.
+There is no per-repository sync to submit either: `GIT_REPOSITORIES_SYNC` is one cron flow over
+every repository, with `concurrency_limit=1` and `CANCEL_NEW`, so a submission would either be
+cancelled or re-run the whole fleet.
 
 The widened candidate selection is what makes the marker readable. The edit changes which remote
 branch feeds Infrahub's default branch, so the graph commit for that branch stops matching the

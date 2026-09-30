@@ -648,8 +648,8 @@ nowhere else. A reset onto the remote head discards it silently. #10465 reorders
 is rebased onto `develop`, so it carries the old ordering too; the gate is about the reconciliation
 not reaching a deployment that still has it.
 
-**Both reset sites carry that hazard, not just the pull path.** An earlier draft of this plan gated
-only Phase 5, which was wrong: T018 resets a branch in the sync path for exactly the same reason.
+**Every reset site carries that hazard, not just the pull path.** The sync path resets a branch for
+exactly the same reason, and so does the widened broadcast.
 
 The `LOCAL_AHEAD` classification narrows the hole a long way. The ordinary shape of a rejected push
 is a branch merely ahead of its remote, and that classifies `LOCAL_AHEAD`, which resets nothing.
@@ -701,10 +701,9 @@ reported bug: a rewritten non-default branch stops being stuck, stops being desc
 and returns to a healthy state with no user action. They ship without the schema change and without
 the signal, but the step that actually reconciles the branch is a reset, and every reset is gated.
 
-An earlier draft claimed this increment shipped without #10465. It cannot: drop the reset and
-nothing is reconciled. What *can* ship before #10465 is the classification and the corrected error
-message, which stop the wrong "conflict" wording and the status flap without changing any
-worktree.
+What ships before #10465 is the classification and the corrected error message, which stop the
+wrong "conflict" wording and the status flap without changing any worktree. The reset that actually
+reconciles a branch waits.
 
 **Second increment**: Phase 4. It removes the outage half of the bug, where one branch's failure
 stops every other branch converging. It also needs no schema change.
