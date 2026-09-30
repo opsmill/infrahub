@@ -12,17 +12,22 @@ export function CopyToClipboardButton({ data, ...props }: CopyToClipboardProps) 
   const { isCopied, copyToClipboard } = useCopyToClipboard();
 
   return (
-    <Tooltip message={isCopied ? "Copied!" : "Copy"}>
-      <Button
-        variant="ghost"
-        shape="square"
-        size="xs"
-        className="text-foreground-muted"
-        onPress={() => copyToClipboard(data)}
-        {...props}
-      >
-        {isCopied ? <CopyCheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
-      </Button>
-    </Tooltip>
+    <>
+      <Tooltip message={isCopied ? "Copied!" : "Copy"}>
+        <Button
+          variant="ghost"
+          shape="square"
+          size="xs"
+          className="text-foreground-muted"
+          onPress={() => copyToClipboard(data)}
+          {...props}
+        >
+          {isCopied ? <CopyCheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+        </Button>
+      </Tooltip>
+      <span role="status" className="sr-only">
+        {isCopied && "Copied to clipboard"}
+      </span>
+    </>
   );
 }
