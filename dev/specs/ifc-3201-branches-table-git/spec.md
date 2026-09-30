@@ -54,7 +54,7 @@ Decisions taken by the conductor on `critiques/critique-2026-09-30.md`. The owne
 
 ### Session 2026-09-30 (review)
 
-Corrections from the phase 5 review pass (`review-synthesis.md`, "Spec corrections implied"). They supersede the matching critique answers above.
+Corrections from the phase 4 review pass (`review-synthesis.md` in this directory, "Spec corrections implied"). They supersede the matching critique answers above.
 
 - Q: Which colour do the state texts ("Not synced with Git", "No repositories", "No permission", "Could not load repositories") use? → A: **`text-foreground-muted`**. `text-subtle-muted` is under 4.5:1 contrast and is kept for decorative text, while these states are what the ticket delivers (FR-007, FR-012, FR-013).
 - Q: Is a hover tooltip enough to carry the load error's message (E3)? → A: **No.** The message is also rendered as visually hidden text next to "Could not load repositories", so keyboard and screen-reader users reach it; the tooltip stays for pointer users (FR-013).

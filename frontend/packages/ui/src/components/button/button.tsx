@@ -139,7 +139,7 @@ export function LinkButton({
   excludeFromTabOrder,
   ...props
 }: LinkButtonProps) {
-  // React Aria's Link honours excludeFromTabOrder at runtime but leaves it out of its prop types.
+  // react-aria-components@1.20 `Link` honours excludeFromTabOrder at runtime but omits it from `LinkProps`.
   const tabOrderProps = { excludeFromTabOrder };
 
   return (

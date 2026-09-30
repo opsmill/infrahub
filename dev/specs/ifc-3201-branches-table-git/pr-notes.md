@@ -64,6 +64,23 @@ Advisory items left as follow-ups:
 - Make the `broken_repository` E2E fixture a plain fixture instead of a factory.
 - Align the repository name's overflow reveal with `Tooltip`.
 
+## Cubic (local, before the PR)
+
+Round 1 (`cubic review -b ple-branch-details-repos-infp-671`): 7 findings, no P0/P1.
+
+Fixed:
+
+- `spec.md` cited `review-synthesis.md` without committing it; the synthesis is now in this directory.
+- `opsmill-implement-report.md` still said the review pass was in progress and listed T039/T040 as deferred; updated.
+- `dev/specs/docs/branches-list-git-state.checks.md` headed its walks with the wrong counts (17/12 for 19/14); corrected.
+- The `LinkButton` workaround comment now names `react-aria-components@1.20`, per the code-doc rule on upstream workarounds.
+
+Declined, with reasons that will also answer the same findings on the PR:
+
+- One repositories request per loaded branch (P2): the recorded Constitution V deviation above, with the backend list-of-ids follow-up. No client-side concurrency cap exists in TanStack Query; batching belongs in the backend variant.
+- E2E tests never run against a stack (P2): recorded under "Live-stack verification pending"; they run in this PR's CI E2E job.
+- Base stacked toward `stable` (P3): epic IFC-3104 mandates that every PR under it targets the integration branch `cross-branch-repo-status-infp-671`; #10779 sits on it and this PR sits on #10779. The integration branch catches up with `develop` once and lands there when the epic completes.
+
 ## Stacking and rebase
 
 This branch is stacked on #10779, which is stacked on `stable`. If #10779 is squash-merged, rebase this branch with `--onto` so its commits are not replayed:

@@ -3,7 +3,7 @@
 **Spec dir**: `dev/specs/ifc-3201-branches-table-git/`
 **Branch**: `ple-branches-table-git-ifc-3201` (base `origin/ple-branch-details-repos-infp-671`, PR #10779)
 **Base commit at start of implementation**: `6ba0561c28`
-**Head commit at end of implementation**: `8d370d917c`
+**Head commit at end of implementation**: `8d370d917c` (before the review fix pass `5e9ecfd9d1`, the docs/knowledge commit and the rebase onto the moved base; the PR tip is whatever `git log -1` shows at PR time)
 **Run**: 2026-09-30, seven clean-context chunks dispatched sequentially, one fixup by the orchestrator.
 
 ## 1. Chunk ledger
@@ -24,8 +24,6 @@
 |---|---|
 | T032 | Live-stack premise verification: needs a running Infrahub. Code-derived expectation recorded; confirm live before merge. |
 | T034 | The details E2E was switched to the shared fixture with `sync_with_git=True`; the `uv run pytest` run needs the e2e stack. |
-| T039 | User-facing docs: owned by the ship pipeline's phase 4.6 (docs skill), same PR. |
-| T040 | Knowledge capture: owned by phase 4.5. |
 | T042 | Quickstart scenarios 1–14 on a dev stack (incl. dark theme, network-tab request count): pending. |
 
 ## 3. Local-pass evidence
@@ -78,13 +76,12 @@ Post-fix gate: `biome ci .` → `Checked 1643 files … No fixes applied.` (dire
 
 - E2E tests were written and collected but not run: no Infrahub stack was available and none was started (owner instruction). Recorded as pending in `pr-notes.md`.
 - The `sync_with_git=True` change to #10779's details E2E rests on reading `getRepositoryListKind`, not on a live run.
-- T039/T040 deferred to the pipeline's docs and knowledge phases rather than done inline.
+- T039/T040 were done by the pipeline's docs and knowledge phases after the review pass, not inline in chunk 7 (both ticked; commit `f6e307168c` before the rebase).
 - The pre-existing fetcher test that broke on the T003 context option was fixed by widening its assertion (`expect.objectContaining` on the context), not by reverting T003.
 - Chunk 1's commit carries an `Opus 5.5` co-author line (the sub-agent's own attribution); not amended.
 
 ## 6. Suggested next steps
 
-1. Phase 4 review synthesis and fix pass (in progress).
-2. Phase 4.5 knowledge capture (T040), phase 4.6 docs (T039).
-3. Phase 5 CI gate re-run after fixes; phase 5.5 cubic loop.
-4. Before merge: run the three E2E files against a stack (T032/T034), and quickstart scenarios (T042).
+1. Done: phase 4 review fix pass (§4), phase 4.5 knowledge, phase 4.6 docs, phase 5 gate (green after the fix pass), rebase onto the moved base.
+2. Phase 5.5 cubic loop, then the PR (see `pr-notes.md`).
+3. Before merge: run the three E2E files against a stack (T032/T034), and quickstart scenarios (T042).
