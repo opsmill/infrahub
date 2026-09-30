@@ -445,7 +445,6 @@ async def trigger_update_python_computed_attributes(
 
     client = get_client()
     client.request_context = context.to_request_context()
-<<<<<<< HEAD
 
     if widened and await _widened_run_must_skip(
         log=log,
@@ -455,14 +454,6 @@ async def trigger_update_python_computed_attributes(
         computed_attribute_name=computed_attribute_name,
     ):
         return
-
-    nodes = await client.all(kind=computed_attribute_kind, branch=branch_name)
-    object_ids = [node.id for node in nodes]
-||||||| c49e5a44b
-    nodes = await client.all(kind=computed_attribute_kind, branch=branch_name)
-    object_ids = [node.id for node in nodes]
-=======
->>>>>>> origin/stable
 
     node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
     workflow = get_workflow()
