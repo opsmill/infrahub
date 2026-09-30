@@ -470,6 +470,10 @@ which fails the fetch instead of producing a lineage break.
 
 **Maps to**: FR-009.
 
+**Depends on Phase 9's in-band flag.** The flow this phase classifies in is submitted by two
+different mutations, one of which is a deliberate re-point, so the flag has to exist before the
+classification can tell them apart.
+
 > **Attachment point depends on PR #10669 reaching `develop`.** It is merged, but into
 > `pog-repo-commit-visibility-ifc-3101`, which has not landed. If it is on `develop`, attach to
 > `backend/infrahub/git/refs_check/checker.py::ReadOnlyRepositoryRefsChecker._detect_movements`,
@@ -478,13 +482,16 @@ which fails the fetch instead of producing a lineage break.
 > `backend/infrahub/git/repository.py::InfrahubReadOnlyRepository.update_latest_commit`. The record
 > and the precondition are identical either way. See [research.md](research.md) R10.
 
-- [ ] T071 [US5] Classify the resolved commit against the graph commit on the
-      **import-last-commit** path, and call the recorder on a `REWRITE`. Perform no reset (FR-009).
-      Do **not** attach this to `InfrahubRepositoryMutation.mutate_update`: that method submits its
-      workflows only when `ref` or `commit` changes, so a force-pushed branch never reaches it, and
-      anything routed through it would arrive with `target_changed` true and classify every rewrite
-      as a re-target. See the mutation table in
+- [ ] T071 [US5] Classify the resolved commit against the graph commit in
+      `backend/infrahub/git/tasks.py::import_read_only_repository_last_commit`, and call the
+      recorder on a `REWRITE`. Perform no reset (FR-009).
+      **Take `target_changed` from the model, never from the fact that this flow is running.** Two
+      mutations submit it: `ReadOnlyRepositoryImportLastCommit` for an ordinary pick-up, and
+      `InfrahubRepositoryMutation.mutate_update` on every `ref` or `commit` change, which is a
+      deliberate re-point. See the table in
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 7.
+      **The in-band flag in Phase 9 is a prerequisite for this task**, not a follow-up. Landing the
+      classification first records a false rewrite on every read-only re-point.
 - [ ] T072 [US5] Confirm the import path is unchanged: detection changes what is recorded, never
       what is imported.
 - [ ] T073 [P] [US5] Component-test the read-only classification in

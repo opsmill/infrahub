@@ -462,17 +462,23 @@ changes. So a genuine rewrite never reaches that path at all, and anything route
 always arrive with `target_changed` true — classifying every read-only rewrite as a `RETARGET` and
 recording nothing.
 
-The path a rewrite actually takes is `ReadOnlyRepositoryImportLastCommit`, which submits
-`import_read_only_repository_last_commit`. That is where the detection belongs, and
-`target_changed` is false there: nothing was re-pointed.
+The path a rewrite takes is `import_read_only_repository_last_commit`, so that is where the
+detection belongs. **That flow does not tell you whether anything was re-pointed**, because two
+different mutations submit it:
 
-Splitting them by mutation:
-
-| Mutation | Meaning | `target_changed` |
+| Submitted by | Meaning | `target_changed` |
 |---|---|---|
 | `ReadOnlyRepositoryImportLastCommit` | pick up whatever the tracked ref now resolves to | false |
 | `InfrahubRepositoryMutation.mutate_update`, `ref` changed | deliberate re-point | true |
 | `InfrahubRepositoryMutation.mutate_update`, `commit` changed | deliberate re-pin | true |
+
+`mutate_update` submits `GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT` alongside
+`GIT_REPOSITORIES_PULL_READ_ONLY` on every `ref` or `commit` change. So the flow **must** read
+`target_changed` from its own model and must never infer it from the fact that it is running. The
+flag is set by whichever mutation submitted the work.
+
+That also fixes the phase order: the in-band flag ships **with** the classification, not after it.
+A classification that lands first would treat every re-point as a rewrite.
 
 ### Which commit is the "imported" one here
 
