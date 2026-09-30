@@ -319,7 +319,7 @@ it waits on the worker read. T049 to T052 are separate files and parallel.
 - [x] T055 [US1] Register the tab: add `REPOSITORY_COMMITS_TAB` to `frontend/app/src/entities/repository/domain/model/repository.ts`, the tab entry gated with `isOfKind(GENERIC_REPOSITORY_KIND, ...)` in `frontend/app/src/entities/nodes/object/ui/object-details/object-details-tabs.tsx`, the route element `frontend/app/src/pages/objects/object-details/repository-commits.tsx`, and the nested route in `frontend/app/src/app/router.tsx`
 - [x] T056 [P] [US1] Create `frontend/app/src/entities/repository/ui/repository-commits-tab.test.tsx` querying by accessible name rather than by class: rows render every field, both markers are identifiable, the rewritten banner replaces the pending range, the not-yet-available state renders distinctly from an error, a poll answering unavailable keeps the previously loaded page, and the copy action places the full hash on the clipboard and announces itself. Fixtures cover rewritten and not-cloned, which cannot be produced against a live repository
 - [x] T057 [P] [US1] Create `frontend/app/src/entities/repository/domain/rules/is-git-state-available.test.ts` over every condition and unavailable reason
-- [x] T058 [P] [US1] Add `changelog/ifc-3101-repository-commits-tab.added.md` for the Commits tab
+- [x] T058 [P] [US1] Add `changelog/+ifc-3101-repository-commits-tab.added.md` for the Commits tab
 
 ### Block 3.6 [PR 7]: end to end
 
