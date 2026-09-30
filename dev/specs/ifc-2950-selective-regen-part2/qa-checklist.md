@@ -113,7 +113,7 @@ Add it in the UI under **Integrations > Git Repositories** and wait until the **
 
 ### 4. A change that cannot be traced back regenerates every device
 
-**What this verifies**: Infrahub still regenerates every target when it cannot identify the affected ones, so no artifact stays out of date.
+**What this verifies**: Infrahub still regenerates every target when it cannot identify the affected ones.
 
 **Steps**:
 
