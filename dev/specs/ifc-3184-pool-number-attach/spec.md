@@ -215,9 +215,10 @@ record deletion, is what frees a number. `provenance` is irrelevant to every row
 | Two branches hand-set the same number, both attached | Both records exist. At merge a uniqueness constraint refuses; without one, both survive and the free-number query collapses them. | Follows from FR-028 — test the constraint path |
 | Merge of a value change on a tracked attribute | The record follows the attribute. If conflict resolution reverts the value, the liveness join hides the record and the number is free again. | Test the conflict-revert path — shares a mechanism with FR-036a |
 | Object deleted on a branch while another branch still holds it | The number must stay taken until no live branch holds it (FR-036a). | **Confirmed broken.** Reproduced: freed on every branch and reallocated into a collision |
+| Object deleted, or its number changed, on the default branch while an older branch still holds it | The number must stay taken while the older branch still holds it at its fork point, and becomes free once that branch rebases past the change, is deleted, or moves the number itself (FR-036a). | Tested (T018, amended 2026-09-29): the default branch closes its own value edge, so a read of open edges alone freed the number |
 | One object holds different values on different branches | Each value counts as taken while some branch holds it. | **Verified working** — must stay working |
 | Object converted to another type | The record must follow to the new object's attribute. | **Confirmed broken post-move** — foundational work item 2 |
-| Attribute renamed or object converted, on any branch | A new `-global-` record on the new attribute; the old one stays open for every branch that has not taken the change, including branches created before a change on the default branch. The old record becomes an orphan once no branch can reach it. | Tested on the default branch and on a user branch; retiring the orphan is separate work |
+| Attribute renamed or object converted, on any branch | A new `-global-` `IS_RESERVED` edge on the new attribute; the old one stays open for every branch that has not taken the change, including branches created before a change on the default branch. The old `IS_RESERVED` edge is closed once no branch can reach it (object delete, merge/rebase of a delete, rename, branch delete). | Tested on the default branch, on a user branch, and with a branch created before the change (T017a); a branch-agnostic rename still leaves the old vertex reachable |
 | Object re-pooled from A to B | A's record ends, B's begins; A reports nothing for it and A's bucket stays empty. | New — test, including that A's bucket does not acquire B's number |
 | Detach on a branch, then delete that branch | No branch displays a pool source, because none was ever written. | Resolved by FR-030b — test it holds |
 | A tracked value falls outside the effective space | Retained, invisible to allocation, reported in the bucket. Re-entering the space moves it to in use. | New state, two paths — test both |
@@ -414,8 +415,8 @@ review; the first three are one change set.
    attribute: a rename or conversion on a user branch freed the default branch's number. On a user
    branch the rename writes no `IS_RESERVED` edge on that branch. Item 3 is scoped to the record: a
    branch-agnostic attribute's own edges keep the rename's pre-existing handling. Reads resolve
-   forward, so the old record counts nothing once no branch holds a value through it; retiring it is
-   separate work.
+   forward, so the old `IS_RESERVED` edge counts nothing once no branch holds a value through it. It
+   is closed once no branch can reach the old attribute at all — T017a.
 
 4. **Fix FR-036a.** Written *after* (1), against the post-move edge chain — doing it first means
    writing it twice.

@@ -198,6 +198,32 @@ An attribute vertex carries at most one open record. When an object conversion f
 already held by another pool's open record, it closes that record before writing its own. Records are
 global, so the attribute moves to the converting pool on every branch at once.
 
+A pool's `IS_RESERVED` edge is closed once no branch can reach its attribute vertex — not the default
+branch, not any non-deleting branch, and not a branch created before the change, which reaches the
+vertex through its fork point. No separate query does this: the branch-agnostic retirement queries
+(`RetireNodeAgnosticFieldsQuery`, `RetireBranchAgnosticFieldsQuery`, and `AttributeRenameQuery`,
+which ends with `CLOSE_UNRETAINED_AGNOSTIC_FIELDS`) also take as candidates the attributes carrying an open `-global-`
+`IS_RESERVED` edge, whatever their branch support, and run the same predicate
+(`core/query/agnostic_retention.py`). They close every open `-global-` edge on an unretained field; on
+a branch-aware attribute the `IS_RESERVED` edge is the only one. They run where an attribute can
+become unreachable: an object delete (a conversion included, since it deletes the converted object),
+a merge or rebase that carries a delete across, an attribute rename, and a branch delete.
+
+A branch delete removes only the branch's own edges, so an attribute whose every other edge is on the
+deleted branch would be left holding nothing but its `-global-` `IS_RESERVED` edge: an object created
+on that branch, or the new vertex of an attribute renamed on it. `BranchDataDeleter` therefore deletes
+those attributes outright with `DeleteBranchReservedAttributesQuery`, alongside the other branch-only
+peers and before the branch's edges are removed. Every edge except an `IS_RESERVED` edge must be on the
+deleted branch; a `-global-` owning or value edge is data on every branch and keeps the vertex.
+
+Renaming a
+branch-agnostic attribute is not handled yet: the old vertex's global edges stay open for branches
+that have not taken the rename, and nothing retires it once no branch uses the old name, so its
+`IS_RESERVED` edge stays open. A rename on the default branch followed by a rebase
+of an older branch also leaves the old `IS_RESERVED` edge open for good: the rebase re-evaluates only
+nodes the base branch removed, and the rebased branch holds no edges on the old vertex, so its later
+delete never reaches that edge.
+
 ## Determining Edge Activity
 
 An edge is **active** for a query (branch + timestamp) when ALL conditions are met:
