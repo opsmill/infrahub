@@ -53,7 +53,7 @@ server: TelemetryServerData = Field(default_factory=TelemetryServerData)
 
 ## Per-process reading (transits the cache, not part of the payload)
 
-Written by each process into `workers:resources:{component}:worker:{WORKER_IDENTITY}` at heartbeat time:
+Read by each process on its main loop every 10 seconds and written into `workers:resources:{component}:worker:{WORKER_IDENTITY}` by its liveness heartbeat, alongside the active key and with the same expiry:
 
 | Field | Type | Source |
 |-------|------|--------|
@@ -65,7 +65,7 @@ Written by each process into `workers:resources:{component}:worker:{WORKER_IDENT
 
 Internal transport shape (a small typed model in `resources.py`), **not** a payload model — the payload carries only the per-component aggregate, never per-process rows (FR-004). The `host` identifier is dedup-only and never emitted.
 
-`host`, the resolved cgroup path, and the host's logical CPU count are read once per process and cached — none can change without a container restart. `processor_available`, `processor_assigned`, `memory_total`, and `memory_available` are all re-read on each heartbeat, since a live limit reconfiguration (a `docker update`, a Kubernetes in-place pod resize) changes them without restarting the process (D12).
+`host`, the resolved cgroup path, and the host's logical CPU count are read once per process and cached — none can change without a container restart. `processor_available`, `processor_assigned`, `memory_total`, and `memory_available` are all re-read every 10 seconds, since a live limit reconfiguration (a `docker update`, a Kubernetes in-place pod resize) changes them without restarting the process (D12).
 
 ## Field derivation per component
 

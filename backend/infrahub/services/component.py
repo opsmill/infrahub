@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import threading
 from typing import TYPE_CHECKING, Any
 
 from attr import Factory, dataclass
@@ -44,6 +45,32 @@ RESOURCE_READ_MAX_ATTEMPTS = 3
 log = get_logger()
 
 
+class LatestResourceReading:
+    """This process's most recent resource reading, read on the main loop and written by the liveness beat.
+
+    The beat runs on its own thread and must only touch the cache, so the reading is taken
+    elsewhere and handed over here; a beat therefore keeps carrying the last reading while
+    a long flow blocks the main loop.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._payload: str | None = None
+
+    def publish(self, reading: WorkerResourceReading) -> None:
+        payload = reading.model_dump_json()
+        with self._lock:
+            self._payload = payload
+
+    def latest(self) -> str | None:
+        """The serialized reading, or ``None`` before the first one is published."""
+        with self._lock:
+            return self._payload
+
+
+LATEST_RESOURCE_READING = LatestResourceReading()
+
+
 def get_component_names(component_type: ComponentType) -> list[str]:
     """Return the component labels a worker of this type reports under in the cache."""
     names = []
@@ -54,25 +81,40 @@ def get_component_names(component_type: ComponentType) -> list[str]:
     return names
 
 
-async def refresh_worker_heartbeat(cache: InfrahubCache, component_type: ComponentType) -> None:
+async def refresh_worker_heartbeat(
+    cache: InfrahubCache,
+    component_type: ComponentType,
+    resources: LatestResourceReading = LATEST_RESOURCE_READING,
+) -> None:
     """Publish this worker's liveness to the cache.
 
     Writes the ``workers:active:*`` key whose 15-second expiry defines the active-worker set, keeps
     the primary API-server election alive, and refreshes the two-hour ``workers:worker:*`` presence
-    key. The function only touches ``cache``, so it can run on any event loop as long as ``cache``
-    was created on that loop; ``WorkerHeartbeat`` relies on this to beat from its own thread.
+    key. Alongside the active key it writes the latest published resource reading, under the same
+    expiry, so resources are reported exactly as long as the worker is. The function only touches
+    ``cache``, so it can run on any event loop as long as ``cache`` was created on that loop;
+    ``WorkerHeartbeat`` relies on this to beat from its own thread.
 
     Args:
         cache: Cache connection to write through.
         component_type: Type of the running process, which selects the keys to write.
+        resources: Where the latest resource reading is published; nothing is written for
+            resources until one has been.
 
     """
+    reading = resources.latest()
     for component in get_component_names(component_type):
         await cache.set(
             key=f"workers:active:{component}:worker:{WORKER_IDENTITY}",
             value=Timestamp().to_string(),
             expires=KVTTL.FIFTEEN,
         )
+        if reading is not None:
+            await cache.set(
+                key=f"{RESOURCE_KEY_PREFIX}{component}:worker:{WORKER_IDENTITY}",
+                value=reading,
+                expires=KVTTL.FIFTEEN,
+            )
     if component_type == ComponentType.API_SERVER:
         await _set_primary_api_server(cache=cache)
     await cache.set(key=f"workers:worker:{WORKER_IDENTITY}", value=Timestamp().to_string(), expires=KVTTL.TWO_HOURS)
@@ -176,13 +218,12 @@ class InfrahubComponent:
         The recurring refresh runs on the ``WorkerHeartbeat`` thread; this is for the one-off writes
         at startup, before that thread exists.
         """
+        self.refresh_resources()
         await refresh_worker_heartbeat(cache=self.cache, component_type=self.component_type)
-        for component in self.component_names:
-            await self.cache.set(
-                key=f"{RESOURCE_KEY_PREFIX}{component}:worker:{WORKER_IDENTITY}",
-                value=self._read_own_resources().model_dump_json(),
-                expires=KVTTL.FIFTEEN,
-            )
+
+    def refresh_resources(self) -> None:
+        """Read this process's resources and publish the reading for the liveness beat to carry."""
+        LATEST_RESOURCE_READING.publish(self._read_own_resources())
 
     def _read_own_resources(self) -> WorkerResourceReading:
         """Read this process's resource allocation, retrying a transient failure.

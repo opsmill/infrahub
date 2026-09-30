@@ -26,7 +26,7 @@ Technical approach: reuse the existing telemetry gatherer, the `safe_metric` deg
 
 **Project Type**: Single backend service; changes localized to the telemetry module and the component/heartbeat service
 
-**Performance Goals**: Cold daily path; cost is negligible. Reads are O(active workers) cache keys (already scanned today) plus a handful of local file reads per process at heartbeat time
+**Performance Goals**: Cold daily path; cost is negligible. Reads are O(active workers) cache keys (already scanned today) plus a handful of local file reads per process every 10 seconds
 
 **Constraints**: MUST NOT block or fail the snapshot; each metric degrades independently to `null`; payload changes are additive, with the version bump gated on receiving-service confirmation rather than made this phase; **no new third-party package**, though `psutil` is promoted from a dev-only pin to a production runtime dependency (research D1, an Ask-First gate); cgroup v2 primary with a v1 fallback, `null` where neither is present
 
@@ -90,9 +90,11 @@ backend/infrahub/telemetry/
 └── tasks.py             # gather: aggregate hosts → extended workers fields + new server block
 
 backend/infrahub/services/
-└── component.py         # refresh_heartbeat self-reports this process's resources via
-                         #   _read_own_resources(); the gatherer reads them back through
-                         #   the new read_worker_resources() scan; WorkerInfo is unchanged
+├── component.py         # the liveness heartbeat writes this process's latest resource
+│                        #   reading beside its active key; the gatherer reads them back
+│                        #   through the new read_worker_resources() scan; WorkerInfo gains
+│                        #   a read-only component attribution
+└── scheduler.py         # a 10-second main-loop schedule takes the reading and publishes it
 
 backend/infrahub/cli/
 └── telemetry.py         # NEW: `infrahub telemetry probe-resources`, which explains a
@@ -116,7 +118,7 @@ Outside `backend/`, the feature also touches `pyproject.toml`/`uv.lock` (the `ps
 promotion), `docs/` (the FAQ entry plus the generated CLI reference and its sidebar
 entry), and three Towncrier fragments under `changelog/`.
 
-**Structure Decision**: Single backend project. The behaviour lives in `backend/infrahub/telemetry/` (a new `resources.py` reader, three new Pydantic models, gather wiring) and one existing collaborator, `backend/infrahub/services/component.py` (heartbeat self-report via `_read_own_resources()`, read back by the new `read_worker_resources()` scan; `WorkerInfo` unchanged). Alongside it the feature adds one CLI command under `backend/infrahub/cli/` to explain a reading, promotes `psutil` in `pyproject.toml`, and updates the docs and changelog. No new top-level package, no cross-cutting refactor. This honors Principle VII and the backend-component-design rule (the reader is a small, injectable unit; the gatherer already follows the DI/builder pattern established in the parent telemetry work).
+**Structure Decision**: Single backend project. The behaviour lives in `backend/infrahub/telemetry/` (a new `resources.py` reader, three new Pydantic models, gather wiring) and one existing collaborator, `backend/infrahub/services/component.py` (resources read by a main-loop schedule and written by the liveness heartbeat, read back by the new `read_worker_resources()` scan; `WorkerInfo` gains a read-only component attribution). Alongside it the feature adds one CLI command under `backend/infrahub/cli/` to explain a reading, promotes `psutil` in `pyproject.toml`, and updates the docs and changelog. No new top-level package, no cross-cutting refactor. This honors Principle VII and the backend-component-design rule (the reader is a small, injectable unit; the gatherer already follows the DI/builder pattern established in the parent telemetry work).
 
 ## Complexity Tracking
 
