@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Generator, Unpack
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind, RelationshipStatus
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, RelationshipStatus
 from infrahub.core.query import Query, QueryInitKwargs, QueryResult, QueryType
 
 if TYPE_CHECKING:
@@ -531,21 +531,70 @@ class NumberPoolChangeReserved(Query):
 def reserved_values_query() -> str:
     """Cypher fragment to find all Attributes reserved for a given NumberPool
 
-    Finds every active value of each reserved Attribute on every non-deleting branch.
+    Finds every value some non-deleting branch holds on each reserved Attribute. A value counts when
+    its HAS_VALUE edge is open now, or when a branch forked from the edge's branch while the edge was
+    open and has written no edge of its own that hides the default-branch version.
 
     Final values are res (IS_RESERVED edge) and value (an active Attribute value).
     """
     return """
+    // --------------
+    // Read the branches once: the ones being deleted, and the fork window of every other user branch
+    // --------------
+    MATCH (branch:Branch)
+    WITH collect(branch) AS branches
+    WITH
+        [b IN branches WHERE b.status = "DELETING" | b.name] AS deleting_branches,
+        [b IN branches
+            WHERE b.status <> "DELETING" AND NOT b.is_default AND NOT b.is_global
+            | {name: b.name, origin_name: b.origin_branch, fork_at: b.branched_from}] AS branch_windows
+    // --------------
+    // Start with all the Attributes currently reserved for this pool
+    // --------------
     MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(attr:Attribute { name: $attribute_name })
     WHERE res.status = "active" AND res.from <= $at AND (res.to IS NULL OR res.to > $at)
-    MATCH (attr)-[hv:HAS_VALUE]->(av:AttributeValueIndexed)
-    WHERE hv.status = "active"
-      AND hv.from <= $at AND (hv.to IS NULL OR hv.to > $at)
-      AND NOT EXISTS {
-          MATCH (deleting:Branch { name: hv.branch })
-          WHERE deleting.status = "DELETING"
-      }
-    WITH DISTINCT res, av.value AS value
+    CALL (attr, deleting_branches, branch_windows) {
+        // --------------
+        // Every value edge open now, on any branch that is not being deleted
+        // --------------
+        MATCH (attr)-[hv:HAS_VALUE]->(av)
+        WHERE hv.status = "active"
+          AND hv.from <= $at AND (hv.to IS NULL OR hv.to > $at)
+          AND NOT hv.branch IN deleting_branches
+        RETURN av.value AS value
+        UNION
+        // --------------
+        // For any edges closed on the default branch, check if they are still reachable
+        // on other branches.
+        // Start with closed edges on the default branch that user branches might still see as active.
+        // --------------
+        MATCH (attr)-[hv:HAS_VALUE {branch: $default_branch_name}]->(av:AttributeValueIndexed)
+        WHERE hv.status = "active"
+        AND hv.to <= $at
+        AND any(
+            window IN branch_windows WHERE window.origin_name = hv.branch
+            AND hv.from <= window.fork_at AND window.fork_at < hv.to
+        )
+        WITH hv, av, COLLECT {
+            // --------------
+            // Find any branches with edges that override the default branch HAS_VALUE edge.
+            // Any value edge the branch wrote that is open now hides the origin's value: an active one
+            // (the branch changed the value) or a deleted one (it removed the object or the attribute).
+            // --------------
+            MATCH (attr)-[hiding:HAS_VALUE]->()
+            WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+            RETURN hiding.branch AS branch_name
+        } AS hiding_branches
+        // --------------
+        // If all the branches that this HAS_VALUE edge are visible on have overridden the value,
+        // then leave it out b/c it is no longer active.
+        // --------------
+        WHERE any(window IN branch_windows WHERE window.origin_name = hv.branch
+            AND hv.from <= window.fork_at AND window.fork_at < hv.to
+            AND NOT window.name IN hiding_branches)
+        RETURN av.value AS value
+    }
+    WITH DISTINCT res, value
     """ % {"number_pool": InfrahubKind.NUMBERPOOL}
 
 
@@ -575,6 +624,8 @@ class NumberPoolGetUsed(Query):
 
         self.params["attribute_name"] = self.pool.node_attribute.value
         self.params["at"] = self.at.to_string()
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        self.params["default_branch_name"] = registry.default_branch
 
         query = """
         %(reserved_values)s
@@ -633,6 +684,8 @@ class NumberPoolGetFree(Query):
 
         self.params["attribute_name"] = self.pool.node_attribute.value
         self.params["at"] = self.at.to_string()
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        self.params["default_branch_name"] = registry.default_branch
 
         query = """
         %(reserved_values)s
