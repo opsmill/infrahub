@@ -7,7 +7,6 @@ import {
   MenuTrigger,
   Popover,
   Spinner,
-  ThemeSwitchMenuItem,
 } from "@infrahub/ui";
 import {
   CircleUserIcon,
@@ -37,6 +36,7 @@ import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useLogoutMutation } from "@/entities/authentication/ui/queries/logout.mutation";
 import { AboutModal } from "@/entities/config/ui/about-modal";
 import { AppInfo } from "@/entities/config/ui/app-info";
+import { ThemeMenuItem } from "@/entities/config/ui/theme-menu-item";
 import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
 import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import { useGetAccountProfile } from "@/entities/user-profile/ui/queries/get-account-profile.query";
@@ -59,8 +59,6 @@ export const AccountMenu = () => {
 
 const CommonMenuItems = ({ onAboutClick }: { onAboutClick: () => void }) => (
   <>
-    <ThemeSwitchMenuItem />
-
     <MenuItem onAction={onAboutClick}>
       <InfoIcon /> About Infrahub
     </MenuItem>
@@ -137,6 +135,7 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
           <Menu variant="picker" aria-label="Account menu">
             <CommonMenuItems onAboutClick={onAboutClick} />
             <MenuSeparator />
+            <ThemeMenuItem />
             <MenuItem href="/login" routerOptions={{ state: { from: location } }}>
               <LogInIcon />
               Log in
@@ -202,6 +201,8 @@ const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }
               <SlidersHorizontalIcon /> Global preferences
             </MenuItem>
           )}
+
+          <ThemeMenuItem />
 
           <MenuSeparator />
 
