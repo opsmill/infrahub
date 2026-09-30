@@ -28,7 +28,7 @@ interface BranchRepositoryCellProps { row: BranchTableRow }
 | `empty`, `row.branch.sync_with_git` falsy | muted "Not synced with Git" |
 | `empty`, `row.branch.sync_with_git === true` | muted "No repositories" |
 | `denied` | muted "No permission" |
-| `error` | muted "Could not load repositories", carrying `row.errorMessage` (the query error's message) as a tooltip (`Tooltip` from `@infrahub/ui`, or `title`), so the no-op `processErrorMessage` loses nothing (FR-013) |
+| `error` | muted "Could not load repositories", carrying `row.errorMessage` (the query error's message) as a tooltip (`Tooltip` from `@infrahub/ui`), so the no-op `processErrorMessage` loses nothing (FR-013) |
 
 ## `BranchGitStateCell` — `cells/branch-git-state-cell.tsx` (new)
 

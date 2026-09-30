@@ -10,13 +10,16 @@
 ## Feature tests
 
 ```bash
-cd frontend/app && pnpm vitest run src/entities/branches src/entities/repository src/shared/components/display
+cd frontend/app && pnpm vitest run src/entities/branches src/entities/repository src/entities/nodes/object/ui/object-table/utils src/shared/components/display
 ```
 
 This covers:
 
 - `to-branch-table-rows.test.ts`: the rule invariants.
-- `branches-data-table.test.tsx`: selection, cells per state, headers and the grid template.
+- `use-branch-table-rows.test.ts`: the query-result mapping, stale success wins.
+- `get-branch-table-columns.test.tsx`: cells per state, headers, pill colour, commit, and the empty, denied and error texts.
+- `branches-data-table.test.tsx`: selection and the grid template.
+- `get-toggle-selected-row-handler.test.ts`: the generic shift-range handler.
 - `branches-table.test.tsx`: pending → N rows.
 - `commit-hash.test.tsx`: the lifted test.
 - #10779's `branch-repositories-card.test.tsx`: the regression net for the `RepositoryNameLink` extraction.

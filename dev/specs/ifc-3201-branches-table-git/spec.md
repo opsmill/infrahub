@@ -155,7 +155,7 @@ A branch that is not synced with Git, or that has no repositories at all, still 
 - **SC-001**: An operator can identify every branch whose repository import failed by scanning the branches list, with zero branch or repository pages opened.
 - **SC-002**: A branch with N repositories appears on exactly N rows; a branch with none appears on exactly 1 row, with the explicit empty text and never a dash.
 - **SC-003**: Selecting a multi-repository branch and running bulk delete acts on exactly one branch; the selection count matches the number of distinct branches selected.
-- **SC-004**: Branch name, status and proposed-change cells appear as fast as before the change; the new cells fill in afterwards without shifting any column horizontally. Rows below a branch may move down when its repositories arrive.
+- **SC-004**: Branch name, status and proposed-change cells are rendered before any repository data resolves; the new cells fill in afterwards without shifting any column horizontally. Rows below a branch may move down when its repositories arrive.
 - **SC-005**: A permission or load failure on one branch's repositories leaves every other row of the list fully rendered.
 - **SC-006**: Every state in this spec (loaded, loading, empty for both texts, denied, failed, no colour, no commit) has an automated test; the frontend lint, unused-code, type-regression and unit test gates pass.
 - **SC-007**: Resolving one branch's repositories re-renders that branch's rows only; a window refocus issues at most one repository request per loaded branch.

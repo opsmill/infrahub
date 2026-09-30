@@ -11,7 +11,7 @@ They are defined in `frontend/app/src/entities/repository/api/get-branch-reposit
 - `GET_BRANCH_REPOSITORIES`, over `CoreGenericRepository(limit: $limit)`, used when the branch has `sync_with_git = true`.
 - `GET_BRANCH_READONLY_REPOSITORIES`, over `CoreReadOnlyRepository(limit: $limit)`, used when `sync_with_git` is `false` or `null`.
 
-Both select `count` and `edges.node { id __typename display_label name { value } commit { value } sync_status { value label color description } operational_status { value label color } }`. The table uses every field except `operational_status.color`, `count` and `display_label`. `display_label` serves only as the name fallback, and operational status serves ordering only.
+Both select `count` and `edges.node { id __typename display_label name { value } commit { value } sync_status { value label color description } operational_status { value label color } }`. The table uses every field except `operational_status.color` and `count`. `display_label` serves as the name fallback, and operational status serves ordering only.
 
 ## How the table calls them
 
