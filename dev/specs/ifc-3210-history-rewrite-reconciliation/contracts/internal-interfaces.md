@@ -91,32 +91,38 @@ Returns whether a record was written.
 4. Writes all four attributes in one mutation, on the Infrahub branch named.
 5. Overwrites the previous record. It never accumulates and never clears.
 6. Emits `RepositoryHistoryRewrittenEvent` exactly once, and only when `is_default_branch` is true.
-7. Runs inside the **same** repository-lock acquisition that applies the branch import, after the
-   import has succeeded. See "Where it is called" below.
+7. Runs inside the repository-lock acquisition that **writes the reconciled commit**, immediately
+   after that write. See "Where it is called" below.
 
 ### Where it is called
 
 `RepositorySyncer.sync` takes the repository lock twice: once around `collect_pending_imports`, and
-once per branch around `apply_branch_import`. The recorder runs inside the **second** one, after
-`apply_branch_import` returns.
+once per branch around `apply_branch_import`. The reconciled commit is written inside the **first**
+one: `collect_pending_imports` calls `pull`, which defaults `update_commit_value=True`, and the
+reset path of T014 writes the commit the same way.
 
-Two things follow, and both are the reason for the placement:
+**The recorder runs there, beside that write.** Both properties the placement needs hold:
 
-- **The count is safe.** The read-then-increment of step 3 happens under the same lock hold as the
-  import. Calling the recorder from `collect_pending_imports` would put it in the *first*
-  acquisition, and two workers could then read the same count and write the same value.
-- **The record cannot outrun the work it describes.** A record written during collection, followed
-  by a failed import, would claim a reconciliation that never completed, and would fire the trunk
-  event for it. Writing after the import means a failed import leaves no record and no event, and
-  the next cycle classifies the branch `REWRITE` again and retries the whole thing.
+- **The count is safe.** The read-then-increment of step 3 happens inside a lock hold. What is
+  unsafe is a call placed *between* the two acquisitions, not a call inside the first one.
+- **The record and the commit agree.** They are written under one lock hold, so either both land
+  or neither does. A record can never name a commit the graph does not also hold.
 
-The classification is produced during collection and carried to this point on
-`ReconciledBranch.divergence`.
+**Why not after the import, which an earlier draft specified.** That draft argued a failed import
+should leave no record, so the next cycle would classify `REWRITE` again and retry. That argument
+is false: the commit is already written during collection, so the next cycle reads the *new* head
+as the imported commit and classifies `UNCHANGED`. The rewrite would then never be recorded and the
+trunk event would never fire, breaking SC-002's "exactly one signal".
+
+**What a failed import means for the record.** The record describes the git reconciliation, which
+did happen: the worktree moved and the graph holds the new commit. A failed object import is a
+separate condition, reported through `failed_imports` and the repository's synchronisation status.
+Conflating the two would make the record lie about git in order to describe an import.
 
 ### Injected ports
 
 Principle III and `.agents/rules/backend-component-design.md` require the collaborators to be named
-protocols passed to the constructor, so the unit tests of T039 need no database and no mocks.
+protocols passed to the constructor, so the unit tests of T040 need no database and no mocks.
 
 | Port | What it does |
 |---|---|
@@ -139,8 +145,8 @@ in-memory one. The recorder itself imports neither the SDK nor the event service
 
 Changed. `backend/infrahub/git/base.py`.
 
-Before it pulls, it asks whether the branch worktree head is an ancestor of the remote head. When it
-is not, it hard-resets onto the remote head instead of pulling.
+Before it pulls, it compares the branch worktree head and the remote head by ancestry. It
+hard-resets onto the remote head only when **neither** is an ancestor of the other.
 
 ### Contract
 
@@ -149,8 +155,19 @@ is not, it hard-resets onto the remote head instead of pulling.
 | No origin | Returns `False`, unchanged. |
 | Worktree head equals remote head | Returns `True`, unchanged. |
 | Worktree head is an ancestor of remote head | Pulls, unchanged. |
-| Worktree head is not an ancestor | Hard-resets onto the remote head and creates the commit worktree. |
+| **Remote head is an ancestor of worktree head** | **Returns `True`. Resets nothing.** The worktree holds commits the remote does not. |
+| Neither is an ancestor of the other | Hard-resets onto the remote head and creates the commit worktree. |
 | No worktree, `create_if_missing` and a branch id | Creates the worktree, unchanged. |
+
+**The locally-ahead row is mandatory here, not only in the detector.** FR-001a forbids resetting
+such a branch. A rule keyed on "not an ancestor" would catch it, because a branch that is ahead of
+its remote is also not an ancestor of it, and the reset would discard the unpushed commit this
+whole feature is careful about.
+
+The pull path answers this without any classification context: "is the remote head an ancestor of
+the worktree head" is a pure ancestry question, the same gateway call the detector makes. What the
+pull path cannot do is tell a rewrite from a deliberate re-target, because that needs the
+suppression marker. It does not need to: both reset, and neither records.
 
 ### Rules
 
@@ -207,7 +224,11 @@ It sends one coalesced `RefreshGitFetch` covering every reconciled branch, befor
 - Exactly one message per repository per cycle. The handler holds the repository lock once and
   fetches once.
 - When the cycle advanced no branch, no message is sent.
-- When every branch failed, no message is sent, and the failure is raised as it is today.
+- When every branch failed, no message is sent. **The failure is not "raised as it is today":**
+  today `sync_repository_from_origin` catches `RepositoryError` and `CommitNotFoundError` and only
+  calls `log.info`, so nothing propagates out of the flow. FR-018 and T026 change that for the
+  configured default branch, which is a real behaviour change and must be called out as one in the
+  changelog fragment.
 - **The single-branch fields stay populated.** `infrahub_branch_name` and `infrahub_branch_id` are
   required on the message, so a coalesced message fills them, and `commit`, from its first pair. A
   worker still running the previous code then converges one branch instead of failing to construct
@@ -245,7 +266,13 @@ Changed. Attachment point depends on whether PR #10669 has merged. See `research
 
 1. The import proceeds exactly as it does today. Detection changes nothing about it.
 2. No reset is ever performed on a read-only repository (FR-009).
-3. The record is written when the classification is `REWRITE`.
+3. The record is written when the classification is `REWRITE`, **inside the repository-lock
+   acquisition that writes the tracked commit**. Section 2 rule 7 and `data-model.md` invariant 3
+   both require the read-then-increment of `rewrite_count` to sit inside a lock hold, and a
+   read-only repository has no branch import to anchor it to. `import_read_only_repository_last_commit`
+   already takes `lock.registry.get(name=..., namespace="repository")` around
+   `update_latest_commit`, so the call belongs inside that block. If the attachment point is the
+   refs checker of PR #10669 instead, its `_converge` already holds the same lock.
 4. Nothing is recorded when the tracked ref itself changed (FR-002, SC-007). The suppression marker
    carries that, written by the same mutation that changed the ref.
 5. A read-only repository never emits the trunk signal, because it has no configured default branch.

@@ -46,18 +46,24 @@ uv run pytest backend/tests/unit/git/divergence/ backend/tests/unit/message_bus/
 |---|---|
 | Classifier, unchanged | The remote head equals the imported commit, so the result is `UNCHANGED`. |
 | Classifier, fast-forward | The imported commit is an ancestor, so the result is `FAST_FORWARD` and nothing is recorded. |
-| Classifier, rewrite | Not an ancestor and the target did not change, so the result is `REWRITE`. |
-| Classifier, re-target | Not an ancestor and the target changed, so the result is `RETARGET`. |
+| Classifier, locally ahead | The remote head is an ancestor of the imported commit, so the result is `LOCAL_AHEAD`. Nothing is reset and nothing is recorded. |
+| Classifier, remote absent | The remote carries no such ref, so the result is `REMOTE_ABSENT`. |
+| Classifier, rewrite | Neither is an ancestor and the target did not change, so the result is `REWRITE`. |
+| Classifier, re-target | Neither is an ancestor and the target changed, so the result is `RETARGET`. |
 | Classifier, missing object | The ancestry question cannot be answered, so the result is `REWRITE`. |
 | Classifier, never imported | No imported commit, so the result is never `REWRITE` or `RETARGET`. |
+| Suppression, present | A present marker makes `target_changed` true and is gone afterwards. |
+| Suppression, absent | An absent marker makes `target_changed` false. |
+| Suppression, consumed once | A second classification after the same marker is not suppressed. |
 | Recorder, last-write-wins | A second rewrite overwrites the first record. |
 | Recorder, increment | The count goes from absent to 1, then 1 to 2. |
-| Recorder, precondition | A `RETARGET` writes nothing. A present suppression marker turns a `REWRITE` into a skip and consumes the marker. |
+| Recorder, precondition | Every classification other than `REWRITE` writes nothing. The recorder never reads the cache. |
 | Recorder, signal | A rewrite of the configured default branch emits exactly one event. Any other branch emits none. |
 | Handler fan-out | N branch-and-commit pairs are reset inside one lock acquisition and one fetch. |
 
-The negative cases carry as much weight as the positive ones. A fast-forward and a deliberate
-re-target must both come out clean.
+The negative cases carry as much weight as the positive ones. A fast-forward, a locally-ahead
+branch and a deliberate re-target must all come out clean. The locally-ahead case is the one that
+would discard a user's unpushed commit if it were wrong.
 
 ---
 

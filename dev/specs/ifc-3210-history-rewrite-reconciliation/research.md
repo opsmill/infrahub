@@ -20,7 +20,7 @@ changes `git/repository.py`, so the merge path differs from `develop`.
 | The pull sets no rebase and no fast-forward strategy | `git/base.py::InfrahubRepositoryBase.pull` calls `repo.remotes.origin.pull(<remote branch>)`; `workers/infrahub_async.py::set_git_global_config` sets neither `pull.rebase` nor `pull.ff` | Yes |
 | A diverged remote is reported as a conflict | `git/base.py::InfrahubRepositoryBase._raise_enriched_error_static` maps Git's divergent-branches text to "there are conflicts that must be resolved" | Yes |
 | One test asserts that text | `backend/tests/component/git/test_git_repository.py::test_pull_branch_conflict` | Yes |
-| A second test asserts it | `backend/tests/integration/git/test_repository.py` | **No.** On the base branch that file parametrises `"Need to specify how to reconcile"` against `RepositoryOperationalStatus.ERROR` in `test_repository_operational_status`. It asserts the status, not the text. It still has to change, because the status it asserts is the flapping one. |
+| A second test asserts it | `backend/tests/integration/git/test_repository.py` | **No, and it is not what it looks like.** That file parametrises `"Need to specify how to reconcile"` in `test_repository_operational_status`, but that string is the **stderr the test injects** into `GitCommandError`, not a message it asserts. The test asserts `operational_status` only. Git still emits that text, so the parameter must stay as it is. Changing it would make the classifier fall through to its generic branch, which yields the same `ERROR`, so the test would stay green while testing nothing. |
 | The sync broadcast covers the trunk only | `git/tasks.py::sync_repository_from_origin` sends one `RefreshGitFetch` for `staging_branch or registry.default_branch` | Yes |
 | A failed branch suppresses that broadcast | `git/repository.py::InfrahubRepository.raise_if_branches_failed` raises inside `RepositorySyncer.sync`; `sync_repository_from_origin` catches `RepositoryError` **after** the sync call and **before** the send, so the send never runs | Yes |
 | The broadcast handler fetches, then resets or pulls | `message_bus/operations/git/repository.py::fetch` | Yes |
@@ -121,8 +121,13 @@ the per-branch failure isolation that is already there: a branch that fails clas
 ## R3. Where the self-healing reset runs
 
 **Decision**: inside `git/base.py::InfrahubRepositoryBase.pull`, before the `origin.pull` call. When
-the branch worktree head is not an ancestor of the remote head, hard-reset onto the remote head
-instead of pulling.
+**neither** the worktree head nor the remote head is an ancestor of the other, hard-reset onto the
+remote head instead of pulling. When the remote head is an ancestor of the worktree head, do
+nothing: the worktree is ahead, not diverged.
+
+The "neither is an ancestor" wording is load-bearing. A rule keyed on "the worktree head is not an
+ancestor of the remote head" also fires on a locally-ahead branch, and the reset would discard the
+unpushed commit. FR-001a forbids exactly that.
 
 **Rationale**: FR-005 requires convergence to hold for a worker that received no broadcast. Every
 path that advances a branch worktree goes through `pull` — the sync collector, and the
@@ -341,8 +346,12 @@ must still be corrected rather than deleted. FR-017 states the contract.
   text. It becomes a test of the new behaviour: a branch whose remote history diverged is reset to
   the remote head by `pull`, with no exception at all.
 - `backend/tests/integration/git/test_repository.py::test_repository_operational_status`
-  parametrises `"Need to specify how to reconcile"` against `ERROR`. That parameter has to change
-  with the message.
+  parametrises `"Need to specify how to reconcile"` against `ERROR`. **That parameter must not
+  change.** It is the stderr the test injects into `GitCommandError`, and git still emits that
+  text. Swapping it for Infrahub's new wording would send the classifier down its generic branch,
+  which returns the same `ERROR`, so the test would keep passing while no longer exercising the
+  divergent-branches case. Add an assertion on the message instead: it must not contain the word
+  "conflict".
 
 **The status flap**: on a diverged branch, `operational_status` goes to `ERROR` on every cycle and
 `fetch()` sets it back to `ONLINE` on the next one, so it flaps once a minute. Removing the failure

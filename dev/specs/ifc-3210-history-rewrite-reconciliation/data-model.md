@@ -214,8 +214,9 @@ the classification, not from a guard.
 
 ### The re-target suppression marker
 
-Written by `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`, read and deleted by
-the recorder. See `research.md` R4 for why this shape was chosen.
+Written by `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`, read and
+deleted by the component that calls the detector. See `research.md` R4 for why this shape was
+chosen, and why the recorder must not be the reader.
 
 | Property | Value |
 |---|---|
@@ -223,9 +224,14 @@ the recorder. See `research.md` R4 for why this shape was chosen.
 | Value | The new tracking target, for diagnostics only. |
 | Time to live | One hour. |
 | Written when | `CoreReadOnlyRepository.ref` changes, or `CoreRepository.default_branch` changes. The write lands after the update succeeds and before any workflow is submitted. |
-| Read when | The classifier returned `REWRITE`. |
-| Effect | Turns `REWRITE` into `RETARGET`, so nothing is recorded. |
-| Consumed | Yes. The recorder deletes it after reading, so it cannot suppress twice. |
+| Read by | The detector's caller, and nothing else. Two of them: the sync path in `collect_pending_imports`, and the read-only detection path. |
+| Read when | Before every classification, not only before a `REWRITE`. |
+| Effect | Makes `target_changed` true, so the detector returns `RETARGET` and no reset and no record follow. |
+| Consumed | Yes. The read deletes it, so one marker suppresses exactly one classification. |
+
+**The recorder must not read this key.** It returns early on any classification other than
+`REWRITE`, so on a `RETARGET` it would never reach the read and never consume the marker. The
+marker would then survive its full hour and suppress the next genuine rewrite of that branch.
 
 ---
 

@@ -139,14 +139,18 @@ head, the imported objects match the rewritten tree, and the repository reports 
 - [ ] T018 [US1] Rewrite `backend/tests/component/git/test_git_repository.py::test_pull_branch_conflict`
       as a test of the new behaviour: a branch whose remote history diverged is reset to the remote
       head with no exception at all. Rename it so the name says what it asserts.
-- [ ] T019 [P] [US1] Update the `"Need to specify how to reconcile"` parameter in
-      `backend/tests/integration/git/test_repository.py::test_repository_operational_status` to the
-      new message. That parameter asserts the operational status, which no longer flaps once the
-      failure is gone.
+- [ ] T019 [P] [US1] Leave the `"Need to specify how to reconcile"` parameter in
+      `backend/tests/integration/git/test_repository.py::test_repository_operational_status`
+      **unchanged**. It is the stderr the test injects into `GitCommandError`, not a message the
+      test asserts, and git still emits that text. Replacing it with Infrahub's new wording would
+      make the classifier fall through to its generic branch, which still yields `ERROR`, so the
+      test would keep passing while no longer exercising the divergent-branches case at all.
+      Instead, add an assertion that the resulting message does not contain the word "conflict"
+      (FR-003, SC-003).
 - [ ] T020 [US1] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`: a rewritten non-default branch
       reconciles and re-imports, and the repository reports healthy.
-- [ ] T021 [P] [US1] Add a live-remote test asserting a fast-forward still fast-forwards and writes
+- [ ] T021 [US1] Add a live-remote test asserting a fast-forward still fast-forwards and writes
       no record, in `backend/tests/integration/git/test_git_live_remote.py`.
 
 **Checkpoint**: a rewritten non-default branch is healthy again with no user action. SC-001 and
@@ -261,12 +265,15 @@ and emits no report.
       `RewriteEventEmitter`, so the unit tests of T040 need no database and no mocks
       (`.agents/rules/backend-component-design.md`). The recorder itself imports neither the SDK
       nor the event service, and it never reads the cache.
-- [ ] T038 [US1] Call the recorder from `backend/infrahub/git/sync.py::RepositorySyncer.sync`,
-      inside the **second** lock acquisition, straight after `apply_branch_import` returns for that
-      branch. Do **not** call it from `collect_pending_imports`: that runs under the first
-      acquisition, so the read-then-increment of `rewrite_count` would race, and a record written
-      there would claim a reconciliation that a later failed import never completed. The
-      classification reaches this point on `ReconciledBranch.divergence`.
+- [ ] T038 [US1] Call the recorder from
+      `backend/infrahub/git/repository.py::InfrahubRepository.collect_pending_imports`, immediately
+      after the reconciled commit is written for that branch, inside the collection lock hold. The
+      count increment is safe there because it is inside a lock hold; what is unsafe is a call
+      placed *between* the two acquisitions. Do **not** move it after `apply_branch_import`: the
+      commit is already written by then, so a failed import would leave the next cycle classifying
+      `UNCHANGED` and the rewrite would never be recorded at all. See
+      [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 2, "Where it is
+      called".
 - [ ] T039 [US1] Write the production `RepositoryRecordStore` in
       `backend/infrahub/git/divergence/store.py`, backed by the SDK node API. It reads
       `rewrite_count` and writes the four attributes in one call, so the `python_sdk` submodule
@@ -282,7 +289,7 @@ and emits no report.
       first reconciliation increments the count it inherited. This is what LOCAL does, and the
       test exists so nobody meets it in production. See [data-model.md](data-model.md), "What LOCAL
       does not do".
-- [ ] T042 [US1] Add the branch-safety test in
+- [ ] T042 [US1] Add the branch-safety test, in the same file as T041, in
       `backend/tests/component/git/test_repository_rewrite_branch_safety.py`: the four attributes
       appear in no branch diff on `CoreRepository` or `CoreReadOnlyRepository`, and merging a
       branch that carries a record does not carry it to the destination. The constitution's
@@ -415,7 +422,7 @@ read-write repository's configured default branch. Neither writes a record.
       `dev/knowledge/backend/git-integration.md`, "Repository state and branch support". It says
       `commit`, `sync_status` and `internal_status` are LOCAL. On `CoreReadOnlyRepository`, `commit`
       and `ref` are AWARE, so they do reach branch diffs and merges.
-- [ ] T063 [P] State in `dev/knowledge/backend/git-integration.md`, "How the workers converge",
+- [ ] T063 State in `dev/knowledge/backend/git-integration.md`, "How the workers converge",
       that the periodic sync's broadcast covered only the trunk or the staging branch and that a
       failed branch suppressed it, and that this feature changes both.
 - [ ] T064 [P] Correct the "Key Files" table in
@@ -426,7 +433,10 @@ read-write repository's configured default branch. Neither writes a record.
       `dev/knowledge/backend/git-integration.md` that describe this feature as planned. They now
       describe what shipped: the ancestry detection, the pull-path reset, the widened broadcast and
       the record.
-- [ ] T066 [P] Document the two limitations in the repository topic docs under `docs/`: rewriting
+- [ ] T066 [P] Document the two limitations under `docs/docs/git-integration/`, which is the
+      published section. Do not edit `docs/archive/topics/repository.mdx`: neither
+      `docusaurus.config.ts` nor `sidebars.ts` references it, so an edit there ships nothing. The
+      two limitations are: rewriting
       history means content at discarded commits can no longer be reliably re-derived, and schema
       already applied to a branch is not rewound.
 - [ ] T067 [P] Document the accepted failure mode of the suppression marker in
@@ -508,14 +518,14 @@ reset in T014 is.
 |---|---|
 | 1 | T003, T004 |
 | 2 | T005, T006 then T009, T010 |
-| 3 | T012 with T011; T019 with T018; T021 with T020 |
+| 3 | T012 with T011; T019 with T018. T020 and T021 both write `test_git_live_remote.py`, so they are sequential. |
 | 4 | T027 alone, once T022 and T023 are done |
 | 5 | T032 and T034 |
-| 6 | T040 alone, once T037 and T039 are done; T041 with T042 |
+| 6 | T040 alone, once T037 and T039 are done. T041 and T042 both write `test_repository_rewrite_branch_safety.py`, so they are sequential. |
 | 7 | T048 alone, once T046 is done |
 | 8 | T053 alone, once T051 is done |
 | 9 | T059 alone, once T055 is done |
-| 10 | T062, T063, T064, T066, T067 |
+| 10 | T064, T066, T067. T062 and T063 both edit `git-integration.md`, so they are sequential. |
 
 ---
 

@@ -42,8 +42,9 @@ rewritten branch, both of which already exist as operations.
 **Constraints**: the repository lock is the most contended lock in the git subsystem. The widened
 broadcast must stay at one message and one lock hold per repository per cycle.
 
-**Scale/Scope**: ten existing backend modules touched, plus one new five-file package. 69 tasks
-across 10 phases. No frontend work.
+**Scale/Scope**: ten existing backend modules touched, plus one new package of seven files
+(`models`, `detector`, `gateway`, `recorder`, `store`, `suppression`, `__init__`). 71 tasks across
+10 phases. No frontend work.
 
 ## Constitution Check
 
@@ -53,7 +54,7 @@ across 10 phases. No frontend work.
 |---|---|
 | **I. Schema-Driven Integrity** | Pass. The four attributes are declared in the schema layer. The generated schema, protocols and GraphQL schema are regenerated, never hand-edited. |
 | **II. Branch-Safe by Default** | Pass, and it is the central design decision. `BranchSupportType.LOCAL` makes the record per branch, diff-invisible and never merged. The principle requires that merge behaviour be specified and tested rather than assumed, so a dedicated branch-safety test asserts it. |
-| **III. Type Safety & Explicit Contracts** | Pass. The detector returns a four-member enum, not a boolean, precisely so that `REWRITE` and `RETARGET` cannot collapse at a call site. The message change and the new event are Pydantic models. |
+| **III. Type Safety & Explicit Contracts** | Pass. The detector returns a six-member enum, not a boolean, so that `REWRITE`, `RETARGET` and `LOCAL_AHEAD` cannot collapse at a call site. The last of those is the one that would discard a user's unpushed commit if it collapsed into `REWRITE`. The message change and the new event are Pydantic models. |
 | **IV. Test Discipline** | Pass. Three modules are unit-testable without a database, which is what makes the no-mocking rule practical. Every other test uses testcontainers. |
 | **V. Query Performance** | Pass. One extra graph read per rewritten branch, on a rare path. No new query pattern. |
 | **VI. Security & Input Boundaries** | Pass. No new mutation, no new permission. Read access to the record follows read access to the repository. |
@@ -99,8 +100,9 @@ backend/infrahub/
 │   │   ├── detector.py                  # RemoteDivergenceDetector
 │   │   ├── gateway.py                   # the ancestry question, the only git code here
 │   │   ├── recorder.py                  # HistoryRewriteRecorder
-│   │   └── suppression.py               # the re-target marker, read and write
-│   ├── base.py                          # pull(): reset on divergence; error message
+│   │   ├── store.py                     # the SDK-backed RepositoryRecordStore
+│   │   └── suppression.py               # the re-target marker, read and consume
+│   ├── base.py                          # pull(): reset only when neither head is an ancestor
 │   ├── repository.py                    # collect_pending_imports(): classify updated branches
 │   ├── sync.py                          # RepositorySyncer.sync(): return the outcome
 │   └── tasks.py                         # broadcast every reconciled branch, before the raise
