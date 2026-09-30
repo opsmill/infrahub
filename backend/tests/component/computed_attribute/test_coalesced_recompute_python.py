@@ -8,6 +8,7 @@ per affected attribute instead of one per changed node.
 
 from __future__ import annotations
 
+import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -340,6 +341,25 @@ class TestCoalescedRecomputePython(CoalescedPythonTestBase):
         )
 
         assert submissions == {OWNER_ATTRIBUTE: sorted(dataset.car_ids)}
+
+    async def test_passes_resolving_at_once_on_one_database_each_narrow(
+        self,
+        dataset: PythonRecomputeDataset,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+    ) -> None:
+        """A worker runs its flows concurrently over one database object, so no pass may read through a shared session."""
+        resolvers = [await build_python_target_resolver(db=db) for _ in range(8)]
+        change = MergeChange(
+            node_id=dataset.person_id, kind=PERSON_KIND, action="updated", changed_fields=frozenset({"name"})
+        )
+
+        results = await asyncio.gather(
+            *(resolver.resolve(changes=[change], branch=default_branch.name) for resolver in resolvers)
+        )
+
+        for targets in results:
+            assert [(target.attribute_name, target.whole_kind) for target in targets] == [(OWNER_ATTRIBUTE, False)]
 
     async def test_a_pair_the_schema_pass_refreshes_is_dropped(
         self,
