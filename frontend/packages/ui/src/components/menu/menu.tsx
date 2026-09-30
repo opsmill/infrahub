@@ -1,4 +1,4 @@
-import { ChevronRightIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon } from "lucide-react";
 import React from "react";
 import {
   Header as AriaHeader,
@@ -64,7 +64,8 @@ export function Menu<T extends object>({
           className,
           cn(
             "no-scrollbar max-h-[inherit] overflow-auto p-1 outline-hidden",
-            "*:[[role='group']:not(:last-child)]:mb-2"
+            // A separator after a section already spaces it, so the margin would double the gap.
+            "*:[[role='group']:has(+:not([role='separator']))]:mb-2"
           )
         )}
         renderEmptyState={
@@ -116,6 +117,7 @@ export function MenuItem({
       {(renderProps) => (
         <>
           {typeof children === "function" ? children(renderProps) : children}
+          {renderProps.isSelected && <CheckIcon className="ml-auto" />}
           {renderProps.hasSubmenu && <ChevronRightIcon className="ml-auto" />}
         </>
       )}

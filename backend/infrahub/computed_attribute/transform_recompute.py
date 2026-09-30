@@ -49,9 +49,7 @@ class TransformRecomputeSubmitter:
             return 0
 
         schema_branch = registry.schema.get_schema_branch(name=branch_name)
-        resolver = RecomputeResolver(
-            attributes_by_transform=schema_branch.computed_attributes.python_attributes_by_transform
-        )
+        resolver = RecomputeResolver.from_schema_branch(schema_branch)
         definitions = resolver.resolve(transform_name=transform.name.value, transform_id=transform_id)
 
         log.info(

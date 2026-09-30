@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import re
-import ssl
 import sys
 import tomllib
 from dataclasses import dataclass
@@ -14,6 +13,7 @@ from infrahub_sdk.utils import generate_uuid
 from pydantic import (
     AliasChoices,
     BaseModel,
+    BeforeValidator,
     EmailStr,
     Field,
     PrivateAttr,
@@ -28,7 +28,7 @@ from typing_extensions import Self
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
 from infrahub.log import get_logger
-from infrahub.tls.context_builder import TlsContextBuilder
+from infrahub.tls.bundle import resolve_ca_bundle
 
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
@@ -53,6 +53,34 @@ def default_cors_allow_headers() -> list[str]:
 
 def default_append_git_suffix_domains() -> list[str]:
     return ["github.com", "gitlab.com"]
+
+
+def _resolve_ca_bundle_setting(setting_name: str, value: str) -> str:
+    """Validate a CA bundle setting at startup and return the file every consumer can read.
+
+    The value is either the path of an existing PEM file or the PEM text itself. Text is written to a
+    file under the system temporary directory, so git, boto3, the Neo4j driver and redis-py, which only
+    take a path, can use it; once loaded, every CA setting therefore holds a path.
+
+    Raises:
+        ValueError: When the path does not exist or cannot be read, the content is not a PEM bundle, or
+            the text cannot be written to disk.
+
+    """
+    try:
+        return resolve_ca_bundle(value)
+    except ValueError as exc:
+        raise ValueError(f"{setting_name}: {exc}") from exc
+
+
+def _blank_ca_bundle_setting_as_unset(value: Any) -> Any:
+    """Read an empty or whitespace-only CA setting as unset, since a blanked environment variable is one."""
+    if isinstance(value, str) and not value.strip():
+        return None
+    return value
+
+
+CaBundleSetting = Annotated[str | None, BeforeValidator(_blank_ca_bundle_setting_as_unset)]
 
 
 class EnterpriseFeatures(StrEnum):
@@ -295,6 +323,48 @@ class S3StorageSettings(BaseSettings):
         alias="AWS_S3_CUSTOM_DOMAIN",
         validation_alias=AliasChoices("INFRAHUB_STORAGE_CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN"),
     )
+    tls_ca_file: CaBundleSetting = Field(
+        default=None,
+        alias="AWS_CA_BUNDLE",
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_TLS_CA_FILE", "AWS_CA_BUNDLE"),
+        description=(
+            "File path to a CA cert or bundle in PEM format, or the PEM text itself, used to verify the certificate "
+            "of the S3 endpoint. Also accepted under the standard AWS name `AWS_CA_BUNDLE`. Falls back to "
+            "`tls.ca_bundle` when unset. Cannot be combined with `use_ssl=false`."
+        ),
+    )
+    tls_insecure: bool = Field(
+        default=False,
+        alias="AWS_S3_TLS_INSECURE",
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_TLS_INSECURE"),
+        description=(
+            "Skip TLS certificate validation of the S3 endpoint. Takes precedence over `tls_ca_file`, which may "
+            "stay configured. Cannot be combined with `use_ssl=false`. Test and development environments only; "
+            "never enable in production."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        """Reject TLS settings on a plaintext endpoint, where boto3 would silently ignore them.
+
+        Raises:
+            ValueError: If ``tls_ca_file`` or ``tls_insecure`` is set while ``use_ssl`` is disabled.
+
+        """
+        if self.tls_ca_file is not None and not self.use_ssl:
+            raise ValueError(
+                "storage.s3.tls_ca_file cannot be combined with storage.s3.use_ssl=false, because the CA bundle "
+                "would be silently ignored on a plaintext endpoint. Enable use_ssl or drop the CA setting."
+            )
+        if self.tls_insecure and not self.use_ssl:
+            raise ValueError(
+                "storage.s3.tls_insecure cannot be combined with storage.s3.use_ssl=false, because a plaintext "
+                "endpoint has no certificate to validate. Enable use_ssl or drop tls_insecure."
+            )
+        if self.tls_ca_file is not None:
+            self.tls_ca_file = _resolve_ca_bundle_setting("storage.s3.tls_ca_file", self.tls_ca_file)
+        return self
 
 
 class StorageSettings(BaseSettings):
@@ -323,7 +393,10 @@ class DatabaseSettings(BaseSettings):
     policy: str | None = Field(default=None, description="Routing policy for database connections")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
-    tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
+    tls_ca_file: CaBundleSetting = Field(
+        default=None,
+        description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
+    )
     query_size_limit: int = Field(
         default=5_000,
         ge=1,
@@ -351,6 +424,15 @@ class DatabaseSettings(BaseSettings):
     )
     max_concurrent_queries_delay: float = Field(
         default=0.01, ge=0, description="Delay to add when max_concurrent_queries is reached."
+    )
+    diff_save_concurrency: int = Field(
+        default=4,
+        ge=1,
+        description=(
+            "Number of batches of diff nodes written at the same time when a diff is saved. Each batch is "
+            "its own transaction on its own connection, so a higher value uses more database cores and "
+            "connections from the pool."
+        ),
     )
     path_traversal_query_timeout: float = Field(
         default=30,
@@ -397,6 +479,12 @@ class DatabaseSettings(BaseSettings):
             "this long. Unset by default, leaving the driver's own default in charge: no liveness check."
         ),
     )
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        if self.tls_ca_file is not None:
+            self.tls_ca_file = _resolve_ca_bundle_setting("database.tls_ca_file", self.tls_ca_file)
+        return self
 
     @property
     def address_members(self) -> list[str]:
@@ -462,7 +550,10 @@ class BrokerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
-    tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
+    tls_ca_file: CaBundleSetting = Field(
+        default=None,
+        description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
+    )
     username: str = "infrahub"
     password: str = "infrahub"
     address: str = "localhost"
@@ -484,6 +575,12 @@ class BrokerSettings(BaseSettings):
             "work, so it is not recommended for production."
         ),
     )
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        if self.tls_ca_file is not None:
+            self.tls_ca_file = _resolve_ca_bundle_setting("broker.tls_ca_file", self.tls_ca_file)
+        return self
 
     @property
     def service_port(self) -> int:
@@ -512,7 +609,10 @@ class CacheSettings(BaseSettings):
     password: str = ""
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
-    tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
+    tls_ca_file: CaBundleSetting = Field(
+        default=None,
+        description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
+    )
     clean_up_deadlocks_interval_mins: int = Field(
         default=15,
         ge=1,
@@ -527,6 +627,12 @@ class CacheSettings(BaseSettings):
             "Only enforced with the Redis cache driver."
         ),
     )
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        if self.tls_ca_file is not None:
+            self.tls_ca_file = _resolve_ca_bundle_setting("cache.tls_ca_file", self.tls_ca_file)
+        return self
 
     @property
     def service_port(self) -> int:
@@ -764,6 +870,28 @@ class GitSettings(BaseSettings):
         description="When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. "
         "Requires delete_branch_after_merge to be enabled.",
     )
+    tls_insecure: bool = Field(
+        default=False,
+        description=(
+            "Skip TLS certificate validation when git connects to HTTPS remotes, by setting `http.sslVerify` to "
+            "false in the global git configuration. Takes precedence over `tls_ca_file`, which may stay configured. "
+            "Test and development environments only; never enable in production."
+        ),
+    )
+    tls_ca_file: CaBundleSetting = Field(
+        default=None,
+        description=(
+            "File path to a CA cert or bundle in PEM format, or the PEM text itself, used to verify the certificate "
+            "of HTTPS git remotes, set as `http.sslCAInfo` in the global git configuration. Falls back to "
+            "`tls.ca_bundle` when unset."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        if self.tls_ca_file is not None:
+            self.tls_ca_file = _resolve_ca_bundle_setting("git.tls_ca_file", self.tls_ca_file)
+        return self
 
     @model_validator(mode="after")
     def validate_sync_branch_names(self) -> Self:
@@ -777,6 +905,33 @@ class GitSettings(BaseSettings):
         return self
 
 
+class TLSSettings(BaseSettings):
+    """Global TLS defaults shared by every component that opens outbound TLS connections."""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_TLS_")
+    ca_bundle: CaBundleSetting = Field(
+        default=None,
+        description=(
+            "File path to a CA cert or bundle in PEM format, or the PEM text itself, trusted by every component "
+            "that opens outbound TLS connections: git, the HTTP client (webhooks, SSO, telemetry, task manager), the "
+            "database, the message broker, the cache, S3 object storage, the trace exporter, log forwarding and "
+            "LDAP. PEM text is written to a file under the system temporary directory at startup, so components "
+            "that only read a file can use it. A component with its "
+            "own `tls_ca_file` or `tls_ca_bundle` keeps that value, and a component with `tls_insecure` enabled or "
+            "a plaintext connection (S3 with `use_ssl` disabled, a trace exporter without TLS) is left alone. The "
+            "bundle replaces the system trust store for the components it applies to, so include the "
+            "public root certificates in the file when those components must keep reaching public services. When "
+            "unset, each component uses the system trust store."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_ca_bundle(self) -> Self:
+        if self.ca_bundle is not None:
+            self.ca_bundle = _resolve_ca_bundle_setting("tls.ca_bundle", self.ca_bundle)
+        return self
+
+
 class HTTPSettings(BaseSettings):
     """The HTTP settings control how Infrahub interacts with external HTTP servers. This can be things like webhooks and OAuth2 providers."""
 
@@ -784,24 +939,21 @@ class HTTPSettings(BaseSettings):
     timeout: int = Field(default=10, description="Default connection timeout in seconds")
     tls_insecure: bool = Field(
         default=False,
-        description="Indicates if Infrahub will validate server certificates or if the validation is ignored.",
+        description=(
+            "Indicates if Infrahub will validate server certificates or if the validation is ignored. Takes "
+            "precedence over `tls_ca_bundle`, which may stay configured."
+        ),
     )
-    tls_ca_bundle: str | None = Field(
+    tls_ca_bundle: CaBundleSetting = Field(
         default=None,
         description="Custom CA bundle in PEM format. The value should either be the CA bundle as a string, alternatively as a file path.",
     )
 
     @model_validator(mode="after")
-    def set_tls_context(self) -> Self:
-        try:
-            # Validate that the context can be created, we want to raise this error during application start
-            # instead of running into issues later when we first try to use the tls context.
-            TlsContextBuilder.build(
-                insecure=self.tls_insecure, ca_bundle=self.tls_ca_bundle, force_verify=bool(self.tls_ca_bundle)
-            )
-        except ssl.SSLError as exc:
-            raise ValueError(f"Unable load CA bundle from {self.tls_ca_bundle}: {exc}") from exc
-
+    def validate_tls_configuration(self) -> Self:
+        # Resolve at startup so an unusable bundle fails the process instead of the first outbound request.
+        if self.tls_ca_bundle is not None:
+            self.tls_ca_bundle = _resolve_ca_bundle_setting("http.tls_ca_bundle", self.tls_ca_bundle)
         return self
 
 
@@ -1240,10 +1392,10 @@ class TraceSettings(BaseSettings):
             "http/protobuf the endpoint URL scheme decides. Implied off when `tls_ca_bundle` is set."
         ),
     )
-    tls_ca_bundle: str | None = Field(
+    tls_ca_bundle: CaBundleSetting = Field(
         default=None,
         description=(
-            "Path to a PEM-encoded certificate authority bundle used to verify the OTLP "
+            "Path to a PEM-encoded certificate authority bundle, or the PEM text itself, used to verify the OTLP "
             "collector's TLS certificate, for a collector using a private or self-signed "
             "certificate. Supported by both exporter protocols; with http/protobuf the "
             "endpoint must use https://. Checked at startup."
@@ -1265,6 +1417,19 @@ class TraceSettings(BaseSettings):
         default=TraceTransportProtocol.GRPC, description="Protocol to be used for exporting traces"
     )
     exporter_endpoint: str | None = Field(default=None, description="OTLP endpoint for exporting traces")
+
+    @property
+    def uses_tls(self) -> bool:
+        """Whether the OTLP exporter connection is encrypted, as decided by the protocol-specific setting.
+
+        With grpc the ``insecure`` flag decides, with http/protobuf the endpoint URL scheme does. A CA bundle
+        only makes sense on an encrypted connection: on grpc it would otherwise switch a plaintext exporter to TLS.
+        """
+        if self.exporter_type is not TraceExporterType.OTLP:
+            return False
+        if self.exporter_protocol is TraceTransportProtocol.GRPC:
+            return not self.insecure
+        return bool(self.exporter_endpoint and self.exporter_endpoint.startswith("https://"))
 
     @model_validator(mode="after")
     def validate_tls_configuration(self) -> Self:
@@ -1296,10 +1461,7 @@ class TraceSettings(BaseSettings):
                 f"would be silently ignored on a plaintext connection. Use an https:// endpoint, or drop {tls_setting}."
             )
         if self.tls_ca_bundle is not None:
-            try:
-                ssl.create_default_context(cafile=self.tls_ca_bundle)
-            except (ssl.SSLError, OSError) as exc:
-                raise ValueError(f"Unable to load trace CA bundle from {self.tls_ca_bundle}: {exc}") from exc
+            self.tls_ca_bundle = _resolve_ca_bundle_setting("trace.tls_ca_bundle", self.tls_ca_bundle)
         return self
 
 
@@ -1337,8 +1499,17 @@ class LogForwardingDestination(BaseModel):
         default=TcpFraming.NEWLINE, description="TCP framing method (newline or octet-counting)."
     )
     tls_enabled: bool = Field(default=False, description="Enable TLS encryption for TCP connections.")
-    tls_ca_bundle: str | None = Field(
-        default=None, description="Path or PEM string for CA bundle to validate syslog server certificate."
+    tls_ca_bundle: CaBundleSetting = Field(
+        default=None,
+        description="File path to a CA bundle in PEM format, or the PEM text itself, to validate the syslog server certificate.",
+    )
+    tls_insecure: bool = Field(
+        default=False,
+        description=(
+            "Skip TLS certificate validation of the syslog server. Requires `tls_enabled`. Takes precedence over "
+            "`tls_ca_bundle`, which may stay configured. Test and development environments only; never enable in "
+            "production."
+        ),
     )
     queue_size: int = Field(default=10000, ge=1, description="Maximum number of messages in the per-destination queue.")
     max_reconnect_interval: int = Field(
@@ -1367,6 +1538,15 @@ class LogForwardingDestination(BaseModel):
     def validate_tls_protocol(self) -> Self:
         if self.tls_enabled and self.protocol == SyslogProtocol.UDP:
             raise ValueError("TLS is only supported with TCP protocol, not UDP.")
+        if self.tls_insecure and not self.tls_enabled:
+            raise ValueError(
+                f"log_forwarding.destinations[{self.name}].tls_insecure requires tls_enabled, because a plaintext "
+                "destination has no certificate to validate. Enable tls_enabled or drop tls_insecure."
+            )
+        if self.tls_ca_bundle is not None:
+            self.tls_ca_bundle = _resolve_ca_bundle_setting(
+                f"log_forwarding.destinations[{self.name}].tls_ca_bundle", self.tls_ca_bundle
+            )
         return self
 
 
@@ -1672,7 +1852,7 @@ class LDAPSettings(BaseSettings):
         default=False,
         description="Upgrade a plain `ldap://` connection to TLS using STARTTLS instead of connecting via `ldaps://`.",
     )
-    tls_ca_bundle: str | None = Field(
+    tls_ca_bundle: CaBundleSetting = Field(
         default=None,
         description=(
             "PEM-encoded certificate authority bundle used to verify the LDAP "
@@ -1747,12 +1927,8 @@ class LDAPSettings(BaseSettings):
             return self
         if self.tls_insecure and self.tls_ca_bundle is not None:
             raise ValueError("ldap.tls_insecure cannot be combined with ldap.tls_ca_bundle; pick one.")
-        try:
-            TlsContextBuilder.build(
-                insecure=self.tls_insecure, ca_bundle=self.tls_ca_bundle, force_verify=bool(self.tls_ca_bundle)
-            )
-        except ssl.SSLError as exc:
-            raise ValueError(f"Unable to load LDAP CA bundle from {self.tls_ca_bundle}: {exc}") from exc
+        if self.tls_ca_bundle is not None:
+            self.tls_ca_bundle = _resolve_ca_bundle_setting("ldap.tls_ca_bundle", self.tls_ca_bundle)
         return self
 
     @model_validator(mode="after")
@@ -1826,6 +2002,10 @@ class ConfiguredSettings:
     @property
     def main(self) -> MainSettings:
         return self.active_settings.main
+
+    @property
+    def tls(self) -> TLSSettings:
+        return self.active_settings.tls
 
     @property
     def api(self) -> ApiSettings:
@@ -1909,6 +2089,7 @@ class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
     main: MainSettings = MainSettings()
+    tls: TLSSettings = TLSSettings()
     api: ApiSettings = ApiSettings()
     git: GitSettings = GitSettings()
     dev: DevelopmentSettings = DevelopmentSettings()
@@ -1933,6 +2114,39 @@ class Settings(BaseSettings):
     def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
         if self.git.delete_git_branch_after_merge and not self.main.delete_branch_after_merge:
             raise ValueError("'delete_git_branch_after_merge' requires 'delete_branch_after_merge' to be enabled")
+        return self
+
+    @model_validator(mode="after")
+    def apply_global_tls_ca_bundle(self) -> Self:
+        """Resolve the CA bundle each component ends up trusting.
+
+        A component-specific CA setting always wins. The global ``tls.ca_bundle`` only fills the components
+        that left theirs unset, still verify certificates and connect over TLS (S3 with ``use_ssl`` disabled
+        and a plaintext trace exporter are left alone), so every adapter keeps reading its own setting and
+        the resolved values are what shows up when inspecting the settings.
+        """
+        ca_bundle = self.tls.ca_bundle
+        if ca_bundle is None:
+            return self
+
+        components: list[tuple[BaseModel, str]] = [
+            (self.git, "tls_ca_file"),
+            (self.http, "tls_ca_bundle"),
+            (self.database, "tls_ca_file"),
+            (self.broker, "tls_ca_file"),
+            (self.cache, "tls_ca_file"),
+            (self.ldap, "tls_ca_bundle"),
+            *((destination, "tls_ca_bundle") for destination in self.log_forwarding.destinations),
+        ]
+        if self.storage.s3.use_ssl:
+            components.append((self.storage.s3, "tls_ca_file"))
+        if self.trace.uses_tls:
+            components.append((self.trace, "tls_ca_bundle"))
+
+        for component, field_name in components:
+            if getattr(component, "tls_insecure", False) or getattr(component, field_name) is not None:
+                continue
+            setattr(component, field_name, ca_bundle)
         return self
 
     @property

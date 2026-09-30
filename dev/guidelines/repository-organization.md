@@ -586,20 +586,13 @@ dev/
 │   │   └── python.md            # Domain-specific
 │   └── frontend/
 │       └── typescript.md         # Domain-specific
-├── guides/
-│   ├── docs/
-│   │   ├── writing-a-guide.md   # Category-specific
-│   │   └── writing-a-topic.md   # Category-specific
-│   └── frontend/
-│       ├── writing-unit-tests.md      # Domain-specific
-│       └── writing-component-tests.md # Domain-specific
-└── skills/
-    └── neo4j-cypher-guide/
-        ├── SKILL.md
-        └── references/
-            ├── deprecated-syntax.md
-            ├── subqueries.md
-            └── qpp.md
+└── guides/
+    ├── docs/
+    │   ├── writing-a-guide.md   # Category-specific
+    │   └── writing-a-topic.md   # Category-specific
+    └── frontend/
+        ├── writing-unit-tests.md      # Domain-specific
+        └── writing-component-tests.md # Domain-specific
 ```
 
 ### Bad Organization
@@ -618,4 +611,3 @@ dev/
 
 - [ADR-0001: Context Nuggets Pattern](../adr/0001-context-nuggets-pattern.md) - Decision record for this pattern
 - [Dev README](../README.md) - Quick navigation guide
-- [AGENTS.md](../../AGENTS.md) - Root-level map and glossary

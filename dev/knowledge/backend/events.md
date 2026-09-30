@@ -48,12 +48,12 @@ available in the event payload's changelog.
 
 Events truncate to `get_related_resource_budget()`, which sits below that
 maximum rather than on it. Prefect's events worker appends run-context
-resources — flow run, task run, flow, deployment, work queue, work pool, and
-one per flow-run tag — after the event has been handed over, extending the list
-in place in a way that skips the client-side validation. An event that leaves
-Infrahub on the maximum therefore arrives above it, and the Prefect API answers
-by closing the `/events/in` websocket rather than by dropping the single event.
-The reserved headroom keeps the enlarged event acceptable.
+resources (flow run, task run, flow, deployment, work queue, work pool, and
+one per flow-run tag) after the event has been handed over, and attaches only
+as many of them as still fit under the maximum, logging a warning for the rest.
+An event that leaves Infrahub on the maximum therefore reaches the API valid
+but stripped of its run context, which carries the tags a run is filtered by.
+The reserved headroom keeps room for those resources.
 
 Group mutation events (`member_added` / `member_removed`) follow the same rule.
 Each member and each ancestor is a single related resource carrying its own
@@ -115,8 +115,12 @@ Emit single-expression parameters through `jinja_parameter()` in `trigger/models
 The per-node trigger families — Jinja2 computed attributes, Python computed attributes (owner and
 query), display labels, human-friendly ids, and profile refresh — build one automation per branch
 whose definition differs from the default branch, plus one default-branch automation that owns
-every other branch. Divergence is the schema hash for the schema-driven families and the
-repository commit for the Python transform ones.
+every other branch. Divergence is the schema hash for the schema-driven families. The two Python
+transform families diverge on the repository commit or on that same whole-branch schema hash, so
+any schema difference gives a branch its own automations, whether or not the transform query reads
+the part that changed. A branch that edits the `CoreGraphQLQuery` text through the API moves
+neither, so it keeps the default-branch automations and its reads are answered with the default
+branch's read set.
 
 The default-branch automation has to exclude the branches that own their own automation.
 **Prefect ORs the patterns of a single label**, so `match["infrahub.branch.name"] = ["!b1", "!b2"]`

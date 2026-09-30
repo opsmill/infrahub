@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
 from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
+from prefect.utilities.annotations import quote
 
 from infrahub import lock
 from infrahub.core.constants import ComputedAttributeKind, MutationAction
@@ -38,9 +40,9 @@ from .models import (
     ComputedAttrJinja2GraphQL,
     ComputedAttrJinja2GraphQLResponse,
     ComputedAttrJinja2TriggerDefinition,
-    PythonTransformTarget,
 )
 from .read_sets import transform_read_set_from_query_report
+from .recompute_resolution import RecomputeResolver
 from .scoping import (
     ChangedElementSet,
     ComputedAttributeRef,
@@ -137,7 +139,7 @@ async def _transform_value_for_node(
         branch_name=branch_name,
         commit=commit,
         location=f"{file_path}::{class_name}",
-        data=data,
+        data=quote(data),
         convert_query_response=convert_query_response,
     )  # type: ignore[call-overload]
 
@@ -738,15 +740,22 @@ async def computed_attribute_setup_python(
             # database session is available, so that the scoping decision itself stays pure. A
             # derived read is checked against the schema of the trigger's own branch, whose derived
             # definitions are what decide the read can be held against a single kind.
+            # Attributes that share a transform on one branch share its analyzer, so the read set
+            # is derived once per transform. Deriving it again parses the Jinja2 of every derived
+            # field the query reads.
             read_sets: dict[tuple[str, str, str], TransformReadSet] = {}
+            read_sets_by_transform: dict[tuple[str, str], TransformReadSet] = {}
             for trigger in triggers_python:
                 definition = trigger.computed_attribute.computed_attribute
-                read_sets[trigger.branch, definition.kind, definition.attribute.name] = (
-                    transform_read_set_from_query_report(
+                transform_key = (trigger.branch, trigger.computed_attribute.name)
+                if transform_key not in read_sets_by_transform:
+                    read_sets_by_transform[transform_key] = transform_read_set_from_query_report(
                         report=trigger.computed_attribute.query_analyzer.query_report,
                         schema_branch=registry.schema.get_schema_branch(name=trigger.branch),
                     )
-                )
+                read_sets[trigger.branch, definition.kind, definition.attribute.name] = read_sets_by_transform[
+                    transform_key
+                ]
 
             # Since we can have multiple trigger per NodeKind
             # we need to extract the list of unique node that should be processed
@@ -837,6 +846,31 @@ async def process_transform_lifecycle(
             await _reconcile_python_computed_attribute_automations(db=db)
 
 
+def _attributes_fed_by_transform(
+    *, schema_branch: SchemaBranch, transform_name: str, transform_id: str
+) -> dict[str, list[str]]:
+    """The Python computed attributes one transform feeds, per kind that owns them.
+
+    An attribute wires its transform by name or by id, so both keys answer here. Empty when the
+    schema feeds no attribute from this transform.
+    """
+    definitions = RecomputeResolver.from_schema_branch(schema_branch).resolve(
+        transform_name=transform_name, transform_id=transform_id
+    )
+    attributes_by_kind: dict[str, list[str]] = defaultdict(list)
+    for definition in definitions:
+        attributes_by_kind[definition.kind].append(definition.attribute.name)
+    return attributes_by_kind
+
+
+def _every_python_attribute(schema_branch: SchemaBranch) -> dict[str, list[str]]:
+    """Every Python computed attribute of the branch, per kind that owns them."""
+    return {
+        kind: [attribute.name for attribute in attributes]
+        for kind, attributes in schema_branch.computed_attributes.get_python_attributes_per_node().items()
+    }
+
+
 @flow(
     name="query-computed-attribute-transform-targets",
     flow_run_name="Query for potential targets of computed attributes for {node_kind}",
@@ -846,27 +880,60 @@ async def query_transform_targets(
     node_kind: str,  # noqa: ARG001
     object_id: str,
     context: EventContext,
+    graphql_query_id: str | None = None,
+    transform_name: str | None = None,
+    transform_id: str | None = None,
 ) -> None:
+    """Recompute the readers of a node that a transform's GraphQL query reads.
+
+    The parameters identify the automation's own query and transform. They are optional, so an
+    automation stored before they existed keeps working.
+    """
+    log = get_run_logger()
     await add_tags(branches=[branch_name])
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
     client = get_client()
     client.request_context = context.to_request_context()
-    refs = await fetch_subscriber_refs(client=client, node_ids=[object_id], branch=branch_name)
-    subscribers = [PythonTransformTarget(object_id=ref.id, kind=ref.kind) for ref in refs]
+    subscribers = await fetch_subscriber_refs(
+        client=client,
+        node_ids=[object_id],
+        branch=branch_name,
+        query_ids={graphql_query_id} if graphql_query_id else None,
+    )
+    if not subscribers:
+        log.info(
+            f"No subscriber to recompute on {branch_name}: no group holding {object_id} was reported "
+            f"for the query {graphql_query_id} of the transform {transform_name}"
+        )
+        return
 
-    nodes_with_computed_attributes = schema_branch.computed_attributes.get_python_attributes_per_node()
+    if transform_name is None or transform_id is None:
+        log.info(
+            "Recomputing every Python computed attribute of the subscriber kinds: this automation "
+            f"names no transform, on {branch_name}"
+        )
+        attributes_by_kind = _every_python_attribute(schema_branch)
+    else:
+        attributes_by_kind = _attributes_fed_by_transform(
+            schema_branch=schema_branch, transform_name=transform_name, transform_id=transform_id
+        )
+        if not attributes_by_kind:
+            log.info(
+                "Recomputing every Python computed attribute of the subscriber kinds: the schema of "
+                f"{branch_name} feeds no attribute from the transform {transform_name} ({transform_id})"
+            )
+            attributes_by_kind = _every_python_attribute(schema_branch)
 
-    # Group by (kind, attribute_name) so each attribute gets one batch workflow submission
-    batches: dict[tuple[str, str], list[str]] = {}
+    # One batch per (kind, attribute), with the ids deduplicated: a subscriber is reported once
+    # per group holding the changed node, and processing it twice writes the same value twice.
+    batches: dict[tuple[str, str], set[str]] = defaultdict(set)
     for subscriber in subscribers:
-        if subscriber.kind in nodes_with_computed_attributes:
-            for computed_attribute in nodes_with_computed_attributes[subscriber.kind]:
-                key = (subscriber.kind, computed_attribute.name)
-                batches.setdefault(key, []).append(subscriber.object_id)
+        for attribute_name in attributes_by_kind.get(subscriber.kind, []):
+            batches[subscriber.kind, attribute_name].add(subscriber.id)
 
     chunk_size = get_submission_chunk_size()
     for (kind, attribute_name), batch_object_ids in batches.items():
-        for chunk in chunked(batch_object_ids, chunk_size):
+        for chunk in chunked(sorted(batch_object_ids), chunk_size):
             await get_workflow().submit_workflow(
                 workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
                 context=context,

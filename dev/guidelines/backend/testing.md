@@ -14,9 +14,7 @@ Tests are organized by type:
 - **Integration tests** (`tests/integration/`): Require Neo4j via testcontainers
 - **Integration Docker tests** (`tests/integration_docker/`): Integration tests that run in a full environment with containers
 
-**Pick the cheapest tier the logic actually needs.** If the unit under test operates purely on in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test in `tests/unit/` without database fixtures — do not default to a component test just because nearby tests use one. Reach for the database (component) or a container (integration/integration_docker) only when the behavior genuinely depends on it.
-
-Note that at some point the current integration tests will be merged with the functional tests and the `tests/integration_docker` tests will move to `tests/integration`.
+**Pick the cheapest tier the logic actually needs.** If the unit under test operates purely on in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test in `tests/unit/` without database fixtures — do not default to a component test just because nearby tests use one. Reach for the database (component) or a container (integration/integration_docker) only when the behavior genuinely depends on it. A `Query` subclass is the standing example: its Cypher and the rows it reads back are database behavior, so it is covered at the component layer against the real database — directly or through the resolver or manager that calls it — never by a unit test that hand-builds `QueryResult` rows.
 
 ### Running integration_docker tests locally
 
@@ -30,7 +28,7 @@ GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null uv run pytest backend/te
 
 With an empty config `commit.gpgsign` defaults to off, and dulwich falls back to your OS username/host for the commit author, so no `[user]` block is needed. CI does not sign commits, so this only affects local runs.
 
-Test files mirror source structure: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
+Test files mirror source structure: `backend/infrahub/core/node/standard.py` → `backend/tests/unit/core/node/test_standard.py`
 
 ## Test Documentation
 
@@ -57,7 +55,34 @@ Skip tests that test the framework rather than our integration:
 
 A useful rule of thumb: if the test would still pass after we delete our implementation and reinstall the library, the test belongs to the library, not us.
 
+**Skip tests that string-match a feature query's generated text.** A test asserting the built Cypher contains or equals a given string pins the implementation, not the behavior: it breaks on a harmless rewording and still passes on a query that is wrong in ways the string never captured. Assert the query's observable behavior (a component test against the database), and state the reasoning behind the query's shape in its own comments or docstring. Exact query-text assertions belong only where the string *is* the output contract — the query-building infrastructure itself (assembly, parameter interpolation).
+
 **The exception is a bound that encodes a domain invariant.** `Field(ge=1)` on a multiplier that must never shrink the value it scales is not arbitrary tuning — it is a rule about how the feature behaves, and deleting it changes behavior with nothing failing. Assert those, but write the test against the invariant rather than the mechanism: name it for the rule, not for the constraint (`test_<what must hold>`, not `test_field_rejects_zero`), cover the boundary value that must stay legal, and add a test that the **shipped defaults** satisfy the invariant. Cross-field `model_validator` logic is ours outright and always warrants a test.
+
+**Skip a test that duplicates coverage the suite already has.** Before writing one, find the existing coverage by tracing the code's callers to the test that asserts their output. A grep for the class or method name is not a coverage check: the component suite drives most core classes through the resolver or manager that calls them, so the name never appears in the test that covers it. The diff-count query is the worked case below: `DiffCountChanges` is reached through the diff-tree resolver and, via a wrapper, the diff coordinator, and nothing in the test tree names it — yet `backend/tests/component/graphql/diff/test_diff_tree_query.py` drives the resolver path and asserts the two untracked-change counts it produces against the real database; a unit test that hand-builds `QueryResult` rows for the same method re-asserts a mapping while missing the one thing that can break — what the driver actually returns. When the higher layer leaves a case unasserted, add the case to that test rather than opening a unit file beside it.
+
+```python
+# ❌ Bad - fabricates driver output, so it passes whatever the real query returns
+def test_each_row_is_mapped_to_its_branch() -> None:
+    query = DiffCountChanges(branch_names=["main", "feature"], diff_from=Timestamp(), diff_to=Timestamp())
+    query.results = [QueryResult(data=["main", 3], labels=["branch_name", "num_changes"])]
+
+    assert query.get_num_changes_by_branch() == {"main": 3, "feature": 0}
+
+# ✅ Good - the component test that already drives the query through the resolver asserts the
+#           field it populates, against the real database
+async def test_diff_tree_one_attr_change(db: InfrahubDatabase, default_branch: Branch, diff_branch: Branch) -> None:
+    ...
+    result = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_QUERY,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name},
+    )
+
+    assert result.data["DiffTree"]["num_untracked_diff_changes"] == 2
+```
 
 ## Async tests
 
@@ -74,6 +99,22 @@ def test_returns_config() -> None:
     cfg = asyncio.run(get_config())
     assert cfg.ldap.enabled is False
 ```
+
+## One database session per concurrent path
+
+A Neo4j session carries a single connection and cannot serve two coroutines at once, and everything reached through one `InfrahubDatabase` shares its session. Racing two calls on the same one wedges the connection: one coroutine raises `read() called while another coroutine is already waiting for incoming data`, the other parks on the socket where `asyncio.wait_for` cannot cancel it. `db` is module-scoped, so the wedge takes every later test in the module with it.
+
+```python
+# Good - a session per racing call
+async with db.start_session() as db_1, db.start_session() as db_2:
+    await asyncio.gather(build_coordinator(db_1).update(), build_coordinator(db_2).update())
+
+# Bad - both calls queue on the module's one connection
+coordinator = build_coordinator(db)
+await asyncio.gather(coordinator.update(), coordinator.update())
+```
+
+Code that opens a session of its own is safe to race: flows do, pinned by [`test_flow_session_convention.py`](../../../backend/tests/unit/workflows/test_flow_session_convention.py), and so does GraphQL execution. A component a test calls directly does not.
 
 ## Test Schemas
 
@@ -153,13 +194,8 @@ import pytest
 @dataclass
 class MyFunctionTestCase:
     name: str
-    """Descriptive name for the test scenario (used as test ID)."""
-
     input_value: str
-    """The input to pass to the function."""
-
     expected: bool
-    """The expected return value."""
 
 
 MY_FUNCTION_TEST_CASES: list[MyFunctionTestCase] = [
@@ -181,7 +217,6 @@ MY_FUNCTION_TEST_CASES: list[MyFunctionTestCase] = [
     [pytest.param(tc, id=tc.name) for tc in MY_FUNCTION_TEST_CASES],
 )
 def test_my_function(test_case: MyFunctionTestCase) -> None:
-    """Test that my_function handles various inputs correctly."""
     result = my_function(value=test_case.input_value)
     assert result == test_case.expected
 ```
@@ -192,45 +227,24 @@ def test_my_function(test_case: MyFunctionTestCase) -> None:
 
 2. **Use descriptive names** that explain the scenario: `empty_dict_returns_false`, `nested_key_found_at_second_level`, `invalid_input_raises_error`.
 
-3. **Document fields with inline docstrings** (per Python standards):
+3. **Leave a field undocumented when its name says what it holds.** An inline docstring below a
+   field is for the one that needs explaining (see [Python standards](python.md#docstrings)):
 
    ```python
    @dataclass
    class QueryTestCase:
        name: str
-       """Descriptive name for the test scenario."""
-
        query: str
-       """The Cypher query to execute."""
-
        params: dict[str, Any]
-       """Parameters to pass to the query."""
-
        expected_count: int
-       """Expected number of results."""
+       """Rows visible on the branch, not rows matched before the branch filter."""
    ```
 
-4. **Define test cases as module-level constants** with uppercase names and type hints:
+4. **Define test cases as module-level constants** with uppercase names and type hints
+   (`QUERY_TEST_CASES: list[QueryTestCase] = [...]`), placed before the test function that uses them.
 
-   ```python
-   QUERY_TEST_CASES: list[QueryTestCase] = [...]
-   ```
-
-5. **Place test case lists before the test function** that uses them.
-
-6. **Use keyword arguments** when constructing test cases for clarity:
-
-   ```python
-   # Good
-   MyTestCase(
-       name="scenario_one",
-       input_value="test",
-       expected=True,
-   )
-
-   # Bad
-   MyTestCase("scenario_one", "test", True)
-   ```
+5. **Use keyword arguments** when constructing test cases —
+   `MyTestCase(name="scenario_one", input_value="test", expected=True)`, never positionally.
 
 ### Complex Test Cases
 
@@ -367,7 +381,7 @@ This keeps the unit under test a pure function of `(input, clock)`, so a state m
 behavior depends on elapsed time is tested exactly — cross an interval boundary, assert the
 transition — with no wall-clock flakiness and no patching. Duration is a parameter of the logic,
 not an ambient fact; treat it like any other injected collaborator (see
-[Backend Component Design](../../../.agents/rules/backend-component-design.md)).
+[Backend Component Design](component-design.md)).
 
 Use monotonic time for durations. Wall-clock time (`datetime.now`) is for timestamps that get
 stored or displayed, and it can jump backwards.
@@ -388,6 +402,26 @@ The deadline applies to every wait, not only polls: wrap a bare `await event.wai
 regression into a whole-suite hang that only pytest-timeout ends, minutes later, with the cause
 hidden.
 
+### Never assert on elapsed time
+
+`assert elapsed_seconds < N` encodes the speed of the machine that wrote it. It passes on a fast
+runner with the regression present, flakes on a loaded one without it, and the margin narrows every
+time the fixture grows, so it is both a weak guard and a source of flakes. This covers any assertion
+whose outcome depends on how fast the host is, wall-clock gaps between events included.
+
+A deadline that only bounds a wait is not such an assertion: it is a guard that turns a hang into a
+fast failure, and nothing the test asserts depends on how long it took.
+
+Hold the shape instead of the duration:
+
+- Count the work. When a fix turns a scan into a lookup, assert the number of calls, queries or
+  comparisons; a counting double fails identically on every machine.
+- Keep the measurement out of the suite. The numbers that justified the change belong in the commit
+  message or the pull request, where they are read once, not in an assertion CI re-runs forever.
+
+When the behavior under test genuinely is a schedule, inject the clock as above so the schedule
+becomes a value the test reads exactly, rather than a duration it races.
+
 ## Exception Testing
 
 When testing that code raises an exception, use the `match` parameter of `pytest.raises` to validate the error message:
@@ -407,11 +441,8 @@ When testing GraphQL mutations or queries that return errors, always assert on t
 # Bad - only checks that some error occurred
 assert result.errors
 
-# Bad - a substring check passes for any error that mentions the ID
-assert TEMPLATE_ID in str(result.errors[0])
-
-# Bad - slightly better but still a substring match, any error containing
-# this text passes even if the overall message changed
+# Bad - a substring check passes for any error that mentions the text,
+# even if the overall message changed
 assert f"The template requested {{'id': '{TEMPLATE_ID}'}} was not found." in str(result.errors[0])
 
 # Good - exact match on the error message
@@ -426,12 +457,13 @@ The exact-match principle above is not limited to error messages — it applies 
 - **Assert the exact collection, not a subset or membership.** When a function returns a set/list/dict of results (deleted ids, affected targets, computed keys), assert full equality against the expected value. `assert x in result` / `assert expected.issubset(result)` pass even when the result grows or shrinks incorrectly. If the result is deterministic, `assert result == {…}` (or exact set equality) catches both missing and extra items.
 - **Don't stop at non-emptiness when a specific result is expected.** `assert result` (or `assert len(result) > 0`) is fine for an existence-only contract, but it does not verify *which* result came back — assert the specific expected value when that is part of the behavior under test. And avoid checks that don't even establish non-emptiness: `assert result != frozenset()` is `True` for an empty `list`/`dict`, so it passes when nothing was returned.
 - **Assert a positive count where the number matters.** A test that only checks "no failures" can pass while measuring zero of the thing it claims to test — e.g. if a workflow/name string changes so nothing is counted. Assert that the expected count is `> 0` (or the exact number) so a silently-zero run fails.
-- **Make the scenario actually hold.** A "missing row" test must not create the row; a "no second object" test must prove the count is one. Verify the setup produces the state under test.
+- **Make the scenario actually hold.** A "missing row" test must not create the row; a "no second object" test must prove the count is one. Verify the setup produces the state under test. The fixture must also let each clause fail on its own: a secondary sort key is only exercised by cases that tie on the primary one, and a chunked read only covers the partial final chunk when the fixture size is not an exact multiple of the chunk constant — derive the size from that constant rather than hard-coding a round number.
 - **Make removal assertions branch-attributable.** A "data is gone" check must read on the branch that held the data, and assert the data resolved *before* the operation as well as after — a read on the wrong branch raises the same not-found either way, so the assertion passes whether or not the code ran.
 - **Denial tests must verify nothing changed.** When asserting an operation is rejected, also reload the target and assert its state is unchanged (or that no row was created/deleted). Asserting only that an error was returned does not prove the write was actually blocked.
 - **When a result is reachable via more than one code path, assert an intermediate signal too.** If "the lookup was never attempted" and "the lookup ran and found nothing" converge on the same final value (e.g. both produce an empty filter), asserting only that final value can't tell a working implementation from a regressed one that silently skipped the lookup. Also assert what was queried or which branch ran — a signal only the intended path produces.
 - **Assert persistence from storage, not from the layer the code wrote.** When the contract is that state reaches (or is restored in) the database, reload it from the DB (e.g. `Branch.get_by_name` and check `active_schema_hash`) instead of reading back the in-memory registry/cache the code under test updated — that assertion is self-confirming and cannot detect a failure to persist.
-- **Pin literal expected values — don't derive them with the code's own dependencies.** Computing the expectation with the same serializer/formatter the implementation calls (`ujson.dumps`, `yaml.dump`, the function under test itself) makes the assertion a tautology: it passes even when the library's output changes. Write the raw expected string into the test.
+- **Pin literal expected values — don't derive them with the code's own logic.** Computing the expectation with the same serializer, formatter, or formula the implementation uses (`ujson.dumps`, `yaml.dump`, the function under test itself, a mirrored `min(...)`/hash expression, a baseline constant computed the same way as the code) makes the assertion a tautology: it moves with the bug and passes either way. Write the raw expected value into the test, or obtain the baseline from a source independent of the path under test.
+- **A fixture copied from a live file needs a sync assertion.** When tests read expectations from a hand-maintained copy of a real config file, add one test asserting the copy equals the live file — otherwise the real file changes, the copy goes stale, and every test keeps passing.
 - **A "does not raise" test still needs an assertion.** When the contract is that an exception is swallowed, also assert a side effect that only the guarded path produces (state set before the raiser was called). With no assertion, a regression that returns early before the guard passes identically.
 
 ## Graph integrity assertions

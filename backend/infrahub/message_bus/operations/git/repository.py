@@ -2,7 +2,12 @@ from prefect import flow
 
 from infrahub import lock
 from infrahub.core.constants import RepositoryOperationalStatus
-from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError, RepositoryError
+from infrahub.exceptions import (
+    RepositoryConnectionError,
+    RepositoryCredentialsError,
+    RepositoryError,
+    RepositoryPermissionError,
+)
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
@@ -25,13 +30,16 @@ async def connectivity(message: messages.GitRepositoryConnectivity) -> None:
     )
 
     try:
-        InfrahubRepository.check_connectivity(name=message.repository_name, url=message.repository_location)
+        InfrahubRepository.check_connectivity(
+            name=message.repository_name, url=message.repository_location, require_write=message.requires_write
+        )
     except RepositoryError as exc:
         response_data.success = False
         response_data.message = exc.message
         response_data.operational_status = {
             RepositoryConnectionError: RepositoryOperationalStatus.ERROR_CONNECTION,
             RepositoryCredentialsError: RepositoryOperationalStatus.ERROR_CRED,
+            RepositoryPermissionError: RepositoryOperationalStatus.ERROR_CRED,
         }.get(type(exc), RepositoryOperationalStatus.ERROR).value
 
     if message.reply_requested:
