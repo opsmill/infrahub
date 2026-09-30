@@ -29,6 +29,8 @@ from tests.integration.git.conftest import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
+
     from infrahub_sdk import InfrahubClient
     from testcontainers.core.container import DockerContainer
 
@@ -180,6 +182,39 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         )
         await node.save()
         return {"repo_name": repo_name, "node_id": node.id}
+
+    @pytest.fixture
+    def rejected_push_to_main(
+        self, protected_branch_dataset: dict, gogs_server: GogsServer
+    ) -> Generator[Callable[[], None], None, None]:
+        """Make the remote reject pushes to main, yielding a callable that lifts the rejection."""
+        repo_name = protected_branch_dataset["repo_name"]
+        _install_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
+
+        def lift_rejection() -> None:
+            _remove_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
+
+        yield lift_rejection
+        lift_rejection()
+
+    @pytest.fixture
+    def block_commit_worktree(self) -> Generator[Callable[[Path], Callable[[], None]], None, None]:
+        """Yield a callable that occupies a commit worktree directory, returning a callable that releases it."""
+        blocked: list[Path] = []
+
+        def block(directory: Path) -> Callable[[], None]:
+            directory.mkdir()
+            (directory / "blocker.txt").write_text("blocking worktree creation\n")
+            blocked.append(directory)
+
+            def release() -> None:
+                shutil.rmtree(directory, ignore_errors=True)
+
+            return release
+
+        yield block
+        for directory in blocked:
+            shutil.rmtree(directory, ignore_errors=True)
 
     @pytest.fixture(scope="class")
     async def readonly_sync_dataset(
@@ -370,7 +405,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         protected_branch_dataset: dict,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        gogs_server: GogsServer,
+        rejected_push_to_main: Callable[[], None],
     ) -> None:
         """A merge whose push is rejected raises and leaves everything at the pre-merge state.
 
@@ -401,19 +436,15 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         commit_before = str(main_repo.head.commit)
         graph_commit_before = repository.commit.value
 
-        _install_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
-        try:
-            with pytest.raises(
-                RepositoryError,
-                match=(
-                    rf"^Unable to push the branch main to the remote for repository {repo_name}: "
-                    r"the remote refused the update \(for example missing push permission or branch protection\): "
-                    r"\[remote rejected\] \(pre-receive hook declined\)$"
-                ),
-            ):
-                await infrahub_repo.merge(source_branch="blocked-change", dest_branch="main")
-        finally:
-            _remove_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
+        with pytest.raises(
+            RepositoryError,
+            match=(
+                rf"^Unable to push the branch main to the remote for repository {repo_name}: "
+                r"the remote refused the update \(for example missing push permission or branch protection\): "
+                r"\[remote rejected\] \(pre-receive hook declined\)$"
+            ),
+        ):
+            await infrahub_repo.merge(source_branch="blocked-change", dest_branch="main")
 
         assert str(main_repo.head.commit) == commit_before
 
@@ -433,7 +464,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         protected_branch_dataset: dict,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        gogs_server: GogsServer,
+        rejected_push_to_main: Callable[[], None],
     ) -> None:
         """After a rejected push, lifting the rejection and merging again delivers the merge everywhere.
 
@@ -464,19 +495,17 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         main_repo = infrahub_repo.get_git_repo_worktree(identifier="main")
         commit_before = str(main_repo.head.commit)
 
-        _install_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
-        try:
-            with pytest.raises(
-                RepositoryError,
-                match=(
-                    rf"^Unable to push the branch main to the remote for repository {repo_name}: "
-                    r"the remote refused the update \(for example missing push permission or branch protection\): "
-                    r"\[remote rejected\] \(pre-receive hook declined\)$"
-                ),
-            ):
-                await infrahub_repo.merge(source_branch="retried-change", dest_branch="main")
-        finally:
-            _remove_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
+        with pytest.raises(
+            RepositoryError,
+            match=(
+                rf"^Unable to push the branch main to the remote for repository {repo_name}: "
+                r"the remote refused the update \(for example missing push permission or branch protection\): "
+                r"\[remote rejected\] \(pre-receive hook declined\)$"
+            ),
+        ):
+            await infrahub_repo.merge(source_branch="retried-change", dest_branch="main")
+
+        rejected_push_to_main()
 
         merged_commit = await infrahub_repo.merge(source_branch="retried-change", dest_branch="main")
 
@@ -500,6 +529,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         db: InfrahubDatabase,
         client: InfrahubClient,
         fast_forward_merges: None,
+        block_commit_worktree: Callable[[Path], Callable[[], None]],
     ) -> None:
         """A failure recording the merge after a successful push resets the worktree behind the remote.
 
@@ -527,14 +557,13 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         # The merge fast-forwards the destination to the source tip, so the commit worktree
         # directory is known ahead of time and can be blocked to fail the writeback after the push.
         blocked_directory = infrahub_repo.directory_commits / merge_commit
-        blocked_directory.mkdir()
-        (blocked_directory / "blocker.txt").write_text("blocking worktree creation\n")
+        release_blocked_directory = block_commit_worktree(blocked_directory)
 
-        try:
-            with pytest.raises(RepositoryError, match=rf"'{re.escape(str(blocked_directory))}' already exists"):
-                await infrahub_repo.merge(source_branch="recorded-change", dest_branch="main")
-        finally:
-            shutil.rmtree(blocked_directory)
+        with pytest.raises(RepositoryError, match=rf"'{re.escape(str(blocked_directory))}' already exists"):
+            await infrahub_repo.merge(source_branch="recorded-change", dest_branch="main")
+
+        # The synchronization below records the pushed merge commit, which needs this worktree.
+        release_blocked_directory()
 
         assert str(main_repo.head.commit) == commit_before
 
