@@ -93,6 +93,8 @@ Key methods:
 | Branch merge or rebase | Coalesced | `CoalescedRecomputeBuilder` + `BulkRecomputeWriter` | Affected computed attrs across the whole change set |
 | Template added or changed (schema update), or `InfrahubRecomputeComputedAttribute` without `node_ids` | Coalesced, one flow per chunk of node ids | `trigger_update_jinja2_computed_attributes` | Every node of the kind |
 
+The async and coalesced process flow skips a node whose template raises while rendering: the node keeps its stored value, a warning is logged, and the rest of the flow's nodes are still written.
+
 ## Python Transform Computed Attributes
 
 Python transform computed attributes take their value from a Python transformation rather than a Jinja2 template. The schema wires an attribute to a transform with `computed_attribute: {kind: TransformPython, transform: <name-or-id>}`. Computation always runs asynchronously in a worker, so the value appears a few seconds after the triggering change.

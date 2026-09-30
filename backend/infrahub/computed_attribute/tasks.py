@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
+from infrahub_sdk.template.exceptions import JinjaTemplateError
 from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
@@ -405,7 +406,11 @@ async def process_jinja2(
             log.debug("No nodes found that requires updates")
 
         for node in found:
-            value = await jinja_template.render(variables=node.variables)
+            try:
+                value = await jinja_template.render(variables=node.variables)
+            except JinjaTemplateError as exc:
+                log.warning(f"Skipping recompute of '{attribute.name}' for node {node.node_id}: template raised {exc}")
+                continue
             if value != node.computed_attribute_value:
                 writes.append(AttributeValueWrite(node_id=node.node_id, field=attribute.name, value=value))
 
