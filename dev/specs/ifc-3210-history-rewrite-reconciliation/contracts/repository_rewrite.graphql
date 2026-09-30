@@ -27,7 +27,7 @@ type CoreGenericRepository {
   "When the last reconciliation of this branch completed."
   last_rewrite_at: TextAttribute
 
-  "How many times this branch has been reconciled, cumulative."
+  "How many reconciliations are visible on this branch, cumulative. Includes any inherited from the branch it forked from; see data-model.md."
   rewrite_count: NumberAttribute
 }
 
@@ -84,13 +84,15 @@ mutation RecordRepositoryRewrite(
 #
 # C1. The four fields are present on all three repository node kinds.
 # C2. All four are nullable. A repository whose default branch was never reconciled returns null
-#     for each, on every branch.
+#     for each on every branch that has not itself been reconciled.
 # C3. A write on one branch is not visible on another branch that already existed when the write
 #     happened. LOCAL isolates writes, diffs and merges.
 # C4. A branch created AFTER a reconciliation of the branch it forked from reads that branch's four
-#     values, because Branch.get_branches_and_times_to_query falls back to the origin branch as of
-#     branched_from. This is inheritance, not isolation, and it is the same behaviour the `commit`
-#     attribute beside them already has. See data-model.md, "What LOCAL does not do".
+#     values, because the branch read path falls back to the origin branch as of branched_from.
+#     This is inheritance, not isolation, and it is the same behaviour the `commit` attribute
+#     beside them already has. It applies to a REBASED branch too: Branch.rebase moves
+#     branched_from forward, so a rebased branch starts reading the default branch's later record.
+#     See data-model.md, "What LOCAL does not do".
 # C5. They never appear in a branch diff and never appear in a proposed change, because they are
 #     declared BranchSupportType.LOCAL. A branch-safety test asserts this rather than inferring it
 #     from the declaration.

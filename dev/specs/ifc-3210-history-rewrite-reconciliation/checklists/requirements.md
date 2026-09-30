@@ -6,9 +6,9 @@
 
 ## Content Quality
 
-- [x] No implementation details (languages, frameworks, APIs)
+- [~] No implementation details (languages, frameworks, APIs) — see Notes
 - [x] Focused on user value and business needs
-- [x] Written for non-technical stakeholders
+- [~] Written for non-technical stakeholders — see Notes
 - [x] All mandatory sections completed
 
 ## Requirement Completeness
@@ -27,7 +27,7 @@
 - [x] All functional requirements have clear acceptance criteria
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
-- [x] No implementation details leak into specification
+- [~] No implementation details leak into specification — see Notes
 
 ## Notes
 
@@ -38,6 +38,12 @@ as `[NEEDS CLARIFICATION]` markers:
 - The FR-014 consumer is the webhook subsystem. This one needs Patrick Ogenstad to confirm. It is
   recorded under "Decisions Taken During Specification" in `spec.md`.
 
-The entity names in "Key Entities" (`CoreGenericRepository`, `CoreRepository`,
-`CoreReadOnlyRepository`) are schema node kinds, not implementation choices. They come from the
-source PRD and name the data the feature touches.
+**Three items are partial, and honestly so.** The spec names `CoreGenericRepository`,
+`CoreRepository` and `CoreReadOnlyRepository` (schema node kinds, carried from the source PRD), and
+also the webhook `event_type` enum, the `EventType` member, the error classifier and the hard-reset
+primitive. Those last four are implementation detail by the letter of the checklist.
+
+They are kept deliberately. The FR-014 consumer decision is meaningless without naming the
+subscriber mechanism, and the "no conflict" requirement is untestable without naming the classifier
+that produces the wrong message today. A reviewer needs them to judge the decisions. Marking these
+items a clean pass would have been the dishonest option.

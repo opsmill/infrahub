@@ -54,10 +54,15 @@ groups the synchronisation state together.
 #### What LOCAL does not do
 
 **LOCAL isolates writes, diffs and merges. It does not isolate reads.**
-`core/branch/models.py::Branch.get_branches_and_times_to_query` returns the origin branch as of
-`branched_from` alongside the branch itself, so a read on a branch falls back to the branch it
-forked from. A branch created after the default branch was reconciled therefore reads the default
-branch's four values, and its own first reconciliation increments a count it inherited.
+The branch read path resolves a branch against its origin branch as of `branched_from`
+(`core/branch/models.py::Branch.get_branches_and_times_to_query_global` on the production path,
+`get_branches_and_times_to_query` for the non-global variant), so a read on a branch falls back to
+the branch it forked from. A branch created after the default branch was reconciled therefore reads
+the default branch's four values, and its own first reconciliation increments a count it inherited.
+
+**A rebase does the same thing, later.** `Branch.rebase` moves `branched_from` forward to the
+rebase time, so a branch that had no record of its own starts reading whatever the default branch
+recorded in the meantime.
 
 This is not a defect to fix here. It is exactly how the `commit` attribute beside it already
 behaves, and it is the right answer for `commit`: a new branch starts at the trunk's commit. The
@@ -226,7 +231,7 @@ chosen, and why the recorder must not be the reader.
 | Written when | `CoreReadOnlyRepository.ref` changes, or `CoreRepository.default_branch` changes. The write lands after the update succeeds and before any workflow is submitted. |
 | Read by | The detector's caller, and nothing else. Two of them: the sync path in `collect_pending_imports`, and the read-only detection path. |
 | Read when | Before every classification, not only before a `REWRITE`. |
-| Effect | Makes `target_changed` true, so the detector returns `RETARGET` and no reset and no record follow. |
+| Effect | Makes `target_changed` true, so the detector returns `RETARGET`. The branch is still reset onto the remote head; only the record is skipped. |
 | Consumed | Yes. The read deletes it, so one marker suppresses exactly one classification. |
 
 **The recorder must not read this key.** It returns early on any classification other than

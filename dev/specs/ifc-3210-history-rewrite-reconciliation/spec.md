@@ -247,7 +247,12 @@ here. See "Out of Scope".
 - **FR-004**: On a rewritten branch the system MUST reset to the remote history and re-import. It
   MUST NOT fail.
 - **FR-005**: Every worker MUST enforce reset-on-divergence on its own clone before it advances a
-  branch worktree. Convergence MUST NOT depend on receiving a notification.
+  branch worktree **from the remote**. Convergence MUST NOT depend on receiving a notification.
+  This covers the synchronisation collector and the convergence handler.
+- **FR-005a**: A worker MUST NOT build a merge on a branch worktree whose history the remote has
+  discarded. The merge path advances the destination worktree from local state, without contacting
+  the remote, so FR-005 does not reach it. That path MUST fetch and apply the same ancestry check
+  before it merges.
 - **FR-006**: The worker-convergence broadcast MUST cover every branch reconciled in a cycle. It
   MUST be sent before a failed branch aborts the flow.
 - **FR-007**: A worker that reconciles itself MUST NOT record the commit and MUST NOT emit the
@@ -282,10 +287,15 @@ here. See "Out of Scope".
 #### Failure handling and observability
 
 - **FR-018**: A reconciliation that fails on the repository's configured default branch MUST be
-  raised and MUST be recorded against the repository. The system MUST NOT retry it automatically
-  within the same cycle. A failed trunk reconciliation can force a re-initialisation that discards
-  every local branch worktree and commit worktree on that worker, because the trunk worktree is the
-  primary clone. That blast radius is recoverable but not contained, so the failure must be loud.
+  logged at error level and MUST be recorded against the repository. The system MUST NOT retry it
+  automatically within the same cycle. A failed trunk reconciliation can force a re-initialisation
+  that discards every local branch worktree and commit worktree on that worker, because the trunk
+  worktree is the primary clone. That blast radius is recoverable but not contained, so the failure
+  must be loud.
+- **FR-018a**: A failure on one repository MUST NOT stop any other repository from synchronising in
+  the same cycle. "Loud" under FR-018 means visible and recorded, never propagated out of the
+  synchronisation flow. Propagating it would recreate, at repository level, the outage FR-006
+  removes at branch level.
 - **FR-019**: Each reconciliation MUST log the repository, the branch, the commit that was
   discarded and the commit that replaced it. Until the visibility work of INFP-671 ships, this log
   line is the only way an operator learns that a reconciliation happened.
@@ -302,9 +312,10 @@ here. See "Out of Scope".
 - **`CoreReadOnlyRepository`**: detected and recorded, never reconciled. It resolves a commit and
   creates a commit worktree instead of pulling a branch. The divergence failure this work removes
   cannot occur there.
-- **Ref classification**: a typed value with four cases. Unchanged, fast-forward, rewrite and
-  re-target. It is a type and not a boolean, so that "diverged" and "re-targeted" cannot collapse
-  into each other at a call site.
+- **Ref classification**: a typed value with six cases. Unchanged, fast-forward, locally-ahead,
+  rewrite, re-target and remote-absent. It is a type and not a boolean, so that "diverged",
+  "re-targeted" and "ahead of the remote" cannot collapse into each other at a call site.
+  Locally-ahead is the one that protects an unpushed commit from being reset away.
 - **Trunk-rewrite signal**: one outbound event per rewrite of the configured default branch.
 - **Repository operational status**: unchanged. It describes whether the remote is reachable, which
   is a different phase.

@@ -42,8 +42,9 @@ rewritten branch, both of which already exist as operations.
 **Constraints**: the repository lock is the most contended lock in the git subsystem. The widened
 broadcast must stay at one message and one lock hold per repository per cycle.
 
-**Scale/Scope**: ten existing backend modules touched, plus one new package of seven files
-(`models`, `detector`, `gateway`, `recorder`, `store`, `suppression`, `__init__`). 71 tasks across
+**Scale/Scope**: eleven existing backend modules touched (the ten in the tree below plus
+`events/__init__.py`, which exports the new event), plus one new package of seven files
+(`models`, `detector`, `gateway`, `recorder`, `store`, `suppression`, `__init__`). 76 tasks across
 10 phases. No frontend work.
 
 ## Constitution Check

@@ -109,9 +109,11 @@ the per-branch failure isolation that is already there: a branch that fails clas
 
 **Alternatives rejected**:
 
-- Classify inside `compare_local_remote` and change its return type. It is called from more than
-  the sync path, and widening its contract pulls the classification into callers that do not need
-  it.
+- Classify inside `compare_local_remote` and change its return type. Its only production caller is
+  `collect_pending_imports`, so this is not about protecting other callers; it is that the method
+  answers "which refs differ" and the classification answers "why", and folding the second into the
+  first gives one method two reasons to change. Its three test callers would also all need
+  rewriting.
 - Classify inside `pull()`. The pull is also the self-healing path of R3, and that path must not
   record or report (FR-007). Keeping the sync-side classification separate from the pull-side reset
   is what keeps FR-007 enforceable.
@@ -130,20 +132,36 @@ ancestor of the remote head" also fires on a locally-ahead branch, and the reset
 unpushed commit. FR-001a forbids exactly that.
 
 **Rationale**: FR-005 requires convergence to hold for a worker that received no broadcast. Every
-path that advances a branch worktree goes through `pull` — the sync collector, and the
-`RefreshGitFetch` handler when no commit is pinned. Putting the rule there makes the property true
-by construction rather than by broadcast coverage.
+path that advances a branch worktree **from the remote** goes through `pull`: the sync collector,
+and the `RefreshGitFetch` handler when no commit is pinned. Putting the rule there makes the
+property true by construction for those paths rather than by broadcast coverage.
+
+**It does not cover every path, and an earlier draft claimed it did.** Two paths advance a
+destination worktree from purely local state, with no fetch and no pull:
+
+- `git/repository.py::InfrahubRepository.merge` runs `git merge` in the destination worktree.
+- `git/base.py::InfrahubRepositoryBase.create_branch_in_git` branches from the local trunk.
+
+A worker that missed the broadcast and then runs a merge builds on the discarded history. The
+broadcast (FR-006) makes that unlikely, not impossible, and "unlikely" is what FR-005 exists to
+replace. FR-005a therefore requires the merge path to fetch and run the same ancestry check on its
+destination worktree before merging. Branch creation is left alone: a branch created from a stale
+trunk converges on its own first pull, and creating it is not a merge of anything.
 
 **What the pull-side reset must not do** (FR-007): it must not write the commit to the graph, must
 not write the rewrite record, and must not emit the signal. `pull` already takes
 `update_commit_value`, and the broadcast handler already passes `update_commit_value=False`. The
 record and the signal are written by the recorder in the sync path, never here.
 
-**Why #10465 is a prerequisite.** Today `InfrahubRepository.merge` writes the commit to the graph
-before it pushes, so a rejected push leaves a merge commit that exists on one worker's disk and
-nowhere else. An unconditional reset in `pull` would discard it silently. #10465 moves the push
-ahead of the graph write and resets the destination worktree when either step fails, so the state
-cannot arise. Implementation of the pull-path reset must wait for #10465 to land.
+**Why #10465 is a prerequisite.** On `develop`, `InfrahubRepository.merge` writes the commit to
+the graph before it pushes, so a rejected push leaves a merge commit that exists on one worker's
+disk and nowhere else. A reset would discard it silently.
+
+**That fix is already present on this branch**, which is based on #10465: `merge` now pushes
+first, records second, and resets the destination worktree when either step fails. The gate is
+therefore not about this branch's own behaviour — it is that the reconciliation must not reach a
+deployment whose merge path still has the old ordering. The pull-path reset and the sync-path
+reset both stay gated on #10465 reaching `develop`.
 
 ---
 
@@ -169,9 +187,16 @@ passes the result as `target_changed`. One mechanism covers both repository kind
   early return. It is a change to the mutation, not a reuse.
 - Reader: **the detector's caller, and nothing else.** A present marker makes `target_changed` true,
   so the detector returns `RETARGET` and no reset and no record follow. The read is destructive.
-- Time to live: one hour. The read-only import the same mutation submits runs within seconds. The
-  read-write cycle runs within a minute. An hour is generous on both and short enough that a stale
-  marker cannot suppress an unrelated rewrite days later.
+- Time to live: one hour, **and both writers must trigger the classification themselves.** The
+  read-only mutation already submits its pull and import, so the classification runs within
+  seconds. The read-write side has no such trigger: a `default_branch` edit moves no git ref, so
+  `compare_local_remote` reports nothing and the periodic cycle classifies nothing until the new
+  target next moves on the remote, possibly hours later. The mutation must therefore submit the
+  repository sync as well. An hour is then generous for both, and short enough that a stale marker
+  cannot suppress an unrelated rewrite days later.
+
+  An earlier draft of this section argued the read-write cycle "runs within a minute". It does
+  run within a minute, but it classifies nothing, which is not the same thing.
 
 **Why the caller reads it and not the recorder.** A first draft put the read in
 `HistoryRewriteRecorder`. That does not work: the recorder writes nothing unless the classification

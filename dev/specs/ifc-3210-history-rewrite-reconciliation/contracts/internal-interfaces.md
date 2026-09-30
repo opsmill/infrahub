@@ -35,7 +35,8 @@ Rows are evaluated in order. The first match wins.
 | **`remote_head` is an ancestor of `imported_commit`** | **`LOCAL_AHEAD`** |
 | Neither is an ancestor, `target_changed` is false | `REWRITE` |
 | Neither is an ancestor, `target_changed` is true | `RETARGET` |
-| The ancestry question cannot be answered | `REWRITE` |
+| The imported commit is absent from the local object database | `REWRITE` (see below) |
+| Any other git failure | propagates as `RepositoryError`; the branch joins `failed_imports` |
 
 **The `LOCAL_AHEAD` row is what keeps this safe without PR #10465.** A branch left ahead of its
 remote after a rejected push is a state the product reaches today. Without that row it falls into
@@ -45,6 +46,13 @@ it, the branch resets nothing, records nothing, and keeps exactly today's behavi
 `REMOTE_ABSENT` likewise keeps current behaviour: a tracked ref that disappeared from the remote is
 not a lineage break. `spec.md` names it as an edge case.
 
+**Only a genuinely missing object maps to `REWRITE`.** The gateway turns every git failure into a
+`RepositoryError`, so a rule of "cannot be answered means rewrite" would let a lock file, an I/O
+error or a permission problem on a fast-forward branch write a spurious record and fire the trunk
+signal. The gateway must therefore distinguish "this object is not here" from "git could not be
+asked", and only the first is a classification. Everything else propagates, and T013 sends the
+branch to `failed_imports` as it does for any other per-branch git failure.
+
 ### Rules
 
 - The detector never contacts the remote. The caller fetches first.
@@ -53,8 +61,23 @@ not a lineage break. `spec.md` names it as an edge case.
 - **`target_changed` is supplied by the caller, and the caller is the only component that touches
   the suppression marker.** It reads the marker, deletes it, and passes the result here. Neither
   the detector nor the recorder reads the cache. See section 8.
-- Only `REWRITE` leads to a reset and a record. `LOCAL_AHEAD`, `RETARGET`, `REMOTE_ABSENT`,
-  `UNCHANGED` all leave the branch alone.
+- **Reset and record are two different decisions.** `REWRITE` and `RETARGET` both reset: both
+  describe a branch whose local history no longer leads to the remote's, and both must end with
+  the worktree on the remote head. Only `REWRITE` records. `LOCAL_AHEAD`, `REMOTE_ABSENT` and
+  `UNCHANGED` do neither.
+
+| Classification | Reset | Record | Signal |
+|---|---|---|---|
+| `UNCHANGED` | no | no | no |
+| `FAST_FORWARD` | pull, as today | no | no |
+| `LOCAL_AHEAD` | no | no | no |
+| `REWRITE` | yes | yes | trunk only |
+| `RETARGET` | **yes** | no | no |
+| `REMOTE_ABSENT` | no | no | no |
+
+  A `RETARGET` that reset nothing would leave the branch stuck on a history the remote no longer
+  has, which is the defect this feature removes. The PRD says a deliberate re-target is
+  "reconciled, not reported" — reconciled is the reset, not reported is the missing record.
 
 ### Ancestry gateway
 
@@ -105,8 +128,15 @@ reset path of T014 writes the commit the same way.
 
 - **The count is safe.** The read-then-increment of step 3 happens inside a lock hold. What is
   unsafe is a call placed *between* the two acquisitions, not a call inside the first one.
-- **The record and the commit agree.** They are written under one lock hold, so either both land
-  or neither does. A record can never name a commit the graph does not also hold.
+- **The record cannot name a commit the graph lacks**, because the commit is written first. The
+  two are separate GraphQL mutations, so a lock hold is **not** a transaction and they are not
+  atomic. If the record write fails after the commit write, the commit stands and the record is
+  lost: the next cycle classifies `UNCHANGED`, so that rewrite is never recorded and its trunk
+  signal never fires. This is an accepted residual risk, listed in the plan's risk table. The
+  reverse ordering would be worse, because it would let a record name a commit that was never
+  written. `collect_pending_imports` also lets graph errors propagate, so a failed record write
+  aborts collection for every branch and skips the broadcast; the record write must therefore be
+  isolated per branch like the other per-branch failures.
 
 **Why not after the import, which an earlier draft specified.** That draft argued a failed import
 should leave no record, so the next cycle would classify `REWRITE` again and retry. That argument
@@ -202,6 +232,11 @@ sync(repo, staging_branch) -> SyncOutcome
    fast-forwarded or was reconciled from a rewrite.
 4. The per-branch failure isolation that exists today is unchanged: one failing branch never stops
    the others being collected or imported.
+5. **Its other two callers must be updated with it.** `sync` stops raising, so
+   `git/tasks.py::sync_git_repo_with_origin_and_tag_on_failure` no longer reaches its `except` and
+   would stop tagging failures, and `git/tasks.py::add_git_repository` calls `sync` directly and
+   would silently ignore a failed initial import. Both must read the returned failures and act on
+   them.
 
 ---
 
@@ -224,11 +259,21 @@ It sends one coalesced `RefreshGitFetch` covering every reconciled branch, befor
 - Exactly one message per repository per cycle. The handler holds the repository lock once and
   fetches once.
 - When the cycle advanced no branch, no message is sent.
-- When every branch failed, no message is sent. **The failure is not "raised as it is today":**
-  today `sync_repository_from_origin` catches `RepositoryError` and `CommitNotFoundError` and only
-  calls `log.info`, so nothing propagates out of the flow. FR-018 and T026 change that for the
-  configured default branch, which is a real behaviour change and must be called out as one in the
-  changelog fragment.
+- When every branch failed, no message is sent.
+- **A trunk failure is made loud without being made fatal.** Today
+  `sync_repository_from_origin` catches `RepositoryError` and `CommitNotFoundError` and calls
+  `log.info`; nothing propagates. FR-018 raises the severity of that path for the configured
+  default branch: log at error level and record the failure against the repository's
+  synchronisation status. It does **not** propagate out of the flow.
+
+  Propagating would be a worse bug than the one it reports. `sync_remote_repositories` loops over
+  every repository with no per-repository `try`, so a raise from one repository aborts the cycle
+  for every repository after it, on every cycle. That is the outage US3 removes at branch level,
+  recreated at repository level. "Loud" means visible and recorded, not fatal to its neighbours.
+
+  Belt and braces: `sync_remote_repositories` also gains a per-repository `try` so that no future
+  failure in one repository can stop the others. That guard is missing today and is worth having
+  whatever FR-018 does.
 - **The single-branch fields stay populated.** `infrahub_branch_name` and `infrahub_branch_id` are
   required on the message, so a coalesced message fills them, and `commit`, from its first pair. A
   worker still running the previous code then converges one branch instead of failing to construct
@@ -288,7 +333,13 @@ New. Written by `backend/infrahub/graphql/mutations/repository.py::InfrahubRepos
 | Trigger | Marker written for |
 |---|---|
 | `CoreReadOnlyRepository.ref` changes | The branch the mutation ran on |
+| `CoreReadOnlyRepository.commit` changes | The branch the mutation ran on |
 | `CoreRepository.default_branch` changes | Infrahub's default branch |
+
+The `commit` trigger is easy to miss. SC-007 covers re-pointing to "a different branch, tag **or
+commit**", and `mutate_update` submits the pull and the import when only `commit` changes. Pinning
+a read-only repository to a commit that does not descend from the imported one is a deliberate
+re-point, so it must be suppressed exactly like a `ref` change.
 
 1. The marker is written after the update succeeds, and **before** any workflow is submitted. The
    read-only path submits a pull and an import from inside the same mutation. If the marker landed
@@ -309,6 +360,29 @@ New. Written by `backend/infrahub/graphql/mutations/repository.py::InfrahubRepos
 > never consume the marker, which would then survive its full hour and suppress the next genuine
 > rewrite of that branch. One reader, one consumer, and the consumption happens at classification
 > time.
+
+### The read-write path must also trigger the classification
+
+Writing the marker is not enough on the read-write side. Nothing reads it unless a classification
+happens, and a `default_branch` edit **moves no git ref**, so `compare_local_remote` reports
+nothing and the periodic cycle classifies nothing. The trunk is next classified only when the new
+target moves on the remote, which can be hours later, long after the one-hour marker expired. The
+edit would then be recorded as a rewrite and would fire the trunk signal, breaking SC-007.
+
+So the mutation must do what the read-only path already does: **submit the repository sync for that
+repository immediately after writing the marker**, so the classification runs within seconds. The
+read-only branch of `mutate_update` already submits its pull and import this way; the read-write
+branch gains the symmetric call.
+
+Two consequences worth stating:
+
+- It partly closes the known limitation that editing `default_branch` is never reconciled
+  (`dev/knowledge/backend/git-integration.md`). That is a side effect, not a goal, and the rest of
+  that limitation stays open.
+- If the new trunk was never imported locally, `compare_local_remote` reports it as a **new**
+  branch rather than an updated one. New branches are not classified at all, so no record is
+  written and the marker simply expires unused. That is the correct outcome, reached by a
+  different route.
 
 ### The read-write writer does not exist yet
 

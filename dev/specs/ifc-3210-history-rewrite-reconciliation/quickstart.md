@@ -121,8 +121,13 @@ uv run pytest backend/tests/integration/git/test_git_live_remote.py::<node_id> -
 The developer journey, end to end.
 
 ```bash
-uv run pytest -c tests/e2e/pytest.ini tests/e2e/<node_id> -q
+uv run invoke dev.build
+INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false \
+  uv run pytest -c tests/e2e/pytest.ini tests/e2e/<node_id> -q
 ```
+
+Without the local image the suite runs against a published one, so it would not exercise this
+change at all.
 
 **What must pass**: a developer rebases a branch Infrahub tracks and force-pushes it. The branch
 keeps synchronising, its imported objects match the rewritten history, and the repository reports
@@ -173,8 +178,8 @@ Tick each one against `spec.md`.
 - [ ] SC-004: every worker's view matches the remote, including one that heard no broadcast and one
       added afterwards.
 - [ ] SC-005: a rewritten branch never blocks another branch of the same repository.
-- [ ] SC-006: the repository view alone explains why content at an earlier commit cannot be
-      re-derived.
+- [ ] SC-006: the repository's stored state, read through the repository API, explains why content
+      at an earlier commit cannot be re-derived. The human-facing view belongs to INFP-671.
 - [ ] SC-007: a deliberate re-point produces no rewrite report.
 - [ ] The three stale statements in `dev/knowledge/backend/` are corrected.
 - [ ] A changelog fragment exists. This is a user-visible change.
