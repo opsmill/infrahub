@@ -476,10 +476,18 @@ anything read from disk. This needs saying because the read-only path makes it e
 calls `init` without a commit, and the update mutation submits `pull_read_only` concurrently, which
 can write the new commit to the graph first.
 
-`GitReadOnlyRepositoryImportCommit` carries no commit today, so the graph value has to be added to
-it. The mutation already loads the node, so it reads `repo.commit.value` and puts it on the model.
-Re-reading it later in the flow would race the concurrent pull and compare the new commit against
-itself.
+The graph commit is read **inside the repository lock, in the flow**, not in the mutation. The
+mutation loads the node anyway, so putting `repo.commit.value` on the model looks cheaper, and it
+is wrong: that read happens outside the lock. Two `ImportLastCommit` runs queued together would
+both carry the same old commit, both classify `REWRITE`, and both record, so the count rises twice
+for one rewrite.
+
+Reading inside the lock costs one query on a path that already holds the lock, and makes the
+read-then-increment of the count atomic with respect to another run.
+
+There is no race with the concurrent `pull_read_only` to avoid here. That flow is submitted by
+`mutate_update`, which is the re-point path and always arrives with `target_changed` true, so it
+never records.
 
 ### Contract, either way
 
@@ -507,14 +515,12 @@ New. Written by `backend/infrahub/graphql/mutations/repository.py::InfrahubRepos
 
 | Trigger | Marker written for |
 |---|---|
-| `CoreReadOnlyRepository.ref` changes | The branch the mutation ran on |
-| `CoreReadOnlyRepository.commit` changes | The branch the mutation ran on |
 | `CoreRepository.default_branch` changes | Infrahub's default branch |
 
-The `commit` trigger is easy to miss. SC-007 covers re-pointing to "a different branch, tag **or
-commit**", and `mutate_update` submits the pull and the import when only `commit` changes. Pinning
-a read-only repository to a commit that does not descend from the imported one is a deliberate
-re-point, so it must be suppressed exactly like a `ref` change.
+**That is the whole table.** Read-only repositories write no marker. A read-only re-point, whether
+it changes `ref` or `commit`, is carried in band on the workflow model instead. SC-007 covers "a
+different branch, tag **or commit**", and both of those reach the flow as an explicit
+`target_changed` flag rather than through the cache.
 
 1. The marker is written after the update succeeds, and **before** any workflow is submitted. The
    read-only path submits a pull and an import from inside the same mutation. If the marker landed

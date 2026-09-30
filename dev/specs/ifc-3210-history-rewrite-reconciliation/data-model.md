@@ -233,11 +233,11 @@ chosen, and why the recorder must not be the reader.
 | Key | Repository id plus Infrahub branch name, under a namespace of its own. |
 | Value | The new tracking target, for diagnostics only. |
 | Time to live | One hour. |
-| Written when | `CoreReadOnlyRepository.ref` changes, `CoreReadOnlyRepository.commit` changes, or `CoreRepository.default_branch` changes. SC-007 covers "branch, tag **or commit**". The write lands after the update succeeds and before any workflow is submitted. |
-| Read by | The detector's caller, and nothing else. Two of them: the sync path in `collect_pending_imports`, and the read-only detection path. |
+| Written when | `CoreRepository.default_branch` changes. Read-write repositories only: a read-only re-point travels in band on the workflow model. The write lands after the update succeeds and before any workflow is submitted. |
+| Read by | The detector's caller in the sync path, `collect_pending_imports`, and nothing else. |
 | Read when | Before every classification, not only before a `REWRITE`. |
 | Effect | Makes `target_changed` true, so the detector returns `RETARGET`. The branch is still reset onto the remote head; only the record is skipped. |
-| Consumed | Yes. The read deletes it, so one marker suppresses exactly one classification. |
+| Consumed | Yes, but only after the commit write for that branch succeeds. Deleting at classification time would lose the marker to a failure in the reset, the write or the import, and the next cycle would record a false rewrite and fire a false trunk webhook. |
 
 **The recorder must not read this key.** It returns early on any classification other than
 `REWRITE`, so on a `RETARGET` it would never reach the read and never consume the marker. The

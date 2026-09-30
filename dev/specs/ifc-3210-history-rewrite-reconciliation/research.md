@@ -216,7 +216,8 @@ target that produced the imported commit is not stored anywhere.
 
 **Decision**: the mutation that changes a tracking target writes a short-lived suppression marker in
 the shared cache. The component that calls the detector reads and deletes it in one step, and
-passes the result as `target_changed`. One mechanism covers both repository kinds.
+passes the result as `target_changed`. Read-only repositories do not use it at all: their re-point
+travels in band on the workflow model.
 
 - Key: repository id plus Infrahub branch name.
 - Writer, read-only: `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`

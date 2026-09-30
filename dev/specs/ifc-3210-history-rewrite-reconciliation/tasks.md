@@ -469,12 +469,11 @@ which fails the fetch instead of producing a lineage break.
       what is imported.
 - [ ] T068 [P] [US5] Component-test the read-only classification in
       `backend/tests/component/git/test_readonly_rewrite.py`.
-- [ ] T069 [US5] Add a `commit` field to `GitReadOnlyRepositoryImportCommit` in
-      `backend/infrahub/git/models.py`, carrying the previously imported commit, and set it in
-      `backend/infrahub/graphql/mutations/repository.py::ReadOnlyRepositoryImportLastCommit`, which
-      already loads the node. Without it the classifier has no "imported" side on this path, and
-      re-reading the graph later races the concurrent `pull_read_only` and compares the new commit
-      against itself.
+- [ ] T069 [US5] Read the previously imported commit from the graph **inside the repository lock**,
+      in `backend/infrahub/git/tasks.py::import_read_only_repository_last_commit`, which already
+      takes that lock around `update_latest_commit`. Do not read it in the mutation and carry it on
+      the model: that read is outside the lock, so two queued runs both carry the same old commit,
+      both classify `REWRITE` and both record, and the count rises twice for one rewrite.
 - [ ] T070 [US5] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`, which is where the Gogs harness and
       `readonly_sync_dataset` live: a **force-pushed branch** tracked by a read-only repository
@@ -499,13 +498,12 @@ read-write repository's configured default branch. Neither writes a record.
 - [ ] T071 [US6] Write the suppression marker's read and write in
       `backend/infrahub/git/divergence/suppression.py`, per [data-model.md](data-model.md),
       "Cache key". The read is destructive: it reads and deletes in one step.
-- [ ] T072 [US6] Write the marker from
+- [ ] T072 [US6] Set the in-band `target_changed` flag from
       `backend/infrahub/graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`
       when `CoreReadOnlyRepository.ref` changes **or when only `commit` changes**. It already
       computes both comparisons. SC-007 covers re-pointing to "a different branch, tag or commit",
-      and the mutation submits the pull and the import on a commit-only change too, so leaving that
-      out records a false rewrite. The write lands after the update succeeds and **before** either
-      workflow is submitted, or the import can beat it and record a spurious rewrite.
+      so leaving the commit-only case out records a false rewrite. Read-only repositories write no
+      cache marker.
 - [ ] T073 [US6] Add the `default_branch` comparison to the same method for `CoreRepository`, and
       write the marker for Infrahub's default branch. **This comparison does not exist yet**: the
       method returns to `super().mutate_update` immediately for any kind other than read-only, so
@@ -530,9 +528,11 @@ read-write repository's configured default branch. Neither writes a record.
       `target_changed` true and is gone afterwards, and an absent marker yields false. Both
       directions are asserted, so the behaviour is stated rather than assumed. Assert the marker is
       consumed exactly once, which is what stops it suppressing a later genuine rewrite.
-- [ ] T077 [US6] Component-test the mutation's ordering in
-      `backend/tests/component/graphql/mutations/test_repository.py`: the marker exists before the
-      workflows are submitted.
+- [ ] T077 [US6] Component-test both re-point paths in
+      `backend/tests/component/graphql/mutations/test_repository.py`: a `CoreRepository`
+      `default_branch` edit writes the cache marker before the workflows are submitted, and a
+      read-only `ref` or `commit` change sets `target_changed` on the workflow model and writes no
+      marker.
 - [ ] T077y [US6] Add a **multi-cycle** live-remote test for a `default_branch` edit: change the
       configured default branch, then run several synchronisation cycles. Assert that no record is
       written and no trunk event fires on **any** cycle, not only the first. One cycle passes while
