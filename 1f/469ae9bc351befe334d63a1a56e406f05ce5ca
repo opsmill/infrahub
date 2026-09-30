@@ -1,0 +1,39 @@
+backend/infrahub/api/artifact.py
+  s_28a24420e8443a::t_55891ed89ca830 8,17,64-67
+backend/infrahub/api/storage/storage.py
+  s_28a24420e8443a::t_335c0325f12b34 11,14,47-49
+backend/infrahub/artifacts/content.py
+  s_28a24420e8443a::t_a25162463a3b4e 1-76
+backend/infrahub/artifacts/queries.py
+  s_28a24420e8443a::t_22fce08f17eff3 1-55
+backend/infrahub/config.py
+  s_28a24420e8443a::t_d8069685e08034 376-379
+backend/infrahub/exceptions.py
+  s_28a24420e8443a::t_f66bfa287e5e2d 574-601
+backend/tests/component/api/test_11_artifact.py
+  s_28a24420e8443a::t_e48d97082510b7 1,18,26-32,92-93,98,167,182-397
+changelog/+artifact-checksum-check.security.md
+  s_28a24420e8443a::t_615ee12dd5354c 1
+docker-compose.yml
+  s_28a24420e8443a::t_b695d6f260eef7 184
+docs/docs/artifact-file-storage/overview.mdx
+  s_28a24420e8443a::t_b7d6b42993e382 80-83
+docs/docs/reference/configuration.mdx
+  s_28a24420e8443a::t_47b0303a8538de 364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f469ae9bc351befe334d63a1a56e406f05ce5ca",
+  "prompts": {},
+  "sessions": {
+    "s_28a24420e8443a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c428f6ff-8b5f-4e39-b549-3de1bb8fce8b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Simon AURA--SCUSSEL <simon@opsmill.com>"
+    }
+  }
+}
