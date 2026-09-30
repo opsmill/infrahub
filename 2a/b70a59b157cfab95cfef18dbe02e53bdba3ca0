@@ -1,0 +1,23 @@
+.github/workflows/chromatic.yml
+  s_4e7f701e8c4e49::t_251c057d2ce745 33
+.github/workflows/ci.yml
+  s_4e7f701e8c4e49::t_a41df4ad2e0bd7 65,113,146,189,770,1076
+changelog/+ci-node24-actions.housekeeping.md
+  s_4e7f701e8c4e49::t_db915521f3a337 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ab70a59b157cfab95cfef18dbe02e53bdba3ca0",
+  "prompts": {},
+  "sessions": {
+    "s_4e7f701e8c4e49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9386701a-7e1e-47e7-8072-02959e13c3a7",
+        "model": "unknown"
+      },
+      "human_author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}
