@@ -524,14 +524,22 @@ re-point, so it must be suppressed exactly like a `ref` change.
 3. **The marker covers read-write repositories only.** A read-only re-target is carried in band
    instead: the mutation already computes the comparison, so it travels on the workflow model as an
    explicit flag. No cache, no expiry and no timing question on that path. See section 7.
-4. **Exactly one component reads the marker: the detector's caller in the sync path**,
-   `collect_pending_imports`. It reads and deletes it in one step, then passes the result to
-   `classify` as `target_changed`. The detector never touches the cache, and neither does the
-   recorder.
-5. The read is destructive, so one marker suppresses one classification. A marker that outlived its
-   reconciliation cannot go on suppressing genuine rewrites for the rest of its hour.
-6. A lost marker produces one spurious record. The reconciliation is identical either way. This is
-   documented in `research.md` R4 and in the knowledge docs.
+4. **Exactly one component touches the marker: the detector's caller in the sync path**,
+   `collect_pending_imports`. It reads the marker, passes the result to `classify` as
+   `target_changed`, and **deletes it only after the commit write for that branch has succeeded**.
+   The detector never touches the cache, and neither does the recorder.
+5. Deleting at classification time is wrong. The reset, the commit write and the import all come
+   after it, and any of them can fail. The marker would already be gone, so the next cycle sees a
+   re-target it has no record of, classifies `REWRITE`, writes a record and **fires the trunk
+   webhook**. Deleting after the commit write means a failed cycle simply retries with the marker
+   still in place.
+6. A lost marker costs more than a wrong row. It produces a false rewrite record **and** a false
+   trunk webhook to whatever a customer has subscribed. `research.md` R4 carries this as an
+   accepted loss path.
+7. The cache has no atomic get-and-delete, so reading and deleting are two operations with a window
+   between them. Nothing guards that window except `GIT_REPOSITORIES_SYNC` running with
+   `concurrency_limit=1` and `CANCEL_NEW`, which keeps two cycles from overlapping. If that ever
+   changes, this needs a compare-and-delete.
 7. The marker is read within one cron cycle of being written, because the widened candidate
    selection above puts the re-targeted trunk in the classified set as soon as its graph commit
    stops matching the remote head. There is no per-repository sync to submit:

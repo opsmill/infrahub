@@ -265,9 +265,19 @@ writers is nearly free. The cache is already how this codebase coordinates repos
 workers. The read is destructive, so a marker cannot suppress twice.
 
 **Known failure mode, accepted and documented**: if the cache is flushed between the mutation and
-the reconciliation, a deliberate re-target writes one spurious rewrite record. The reconciliation
-itself is identical either way, so the consequence is one wrong row, not wrong behaviour. The
-count on that branch is then one too high.
+the reconciliation, a deliberate re-target is recorded as a rewrite. That costs more than a wrong
+row. The count on the branch goes one too high, and the trunk signal fires, so whatever a customer
+has wired to that webhook receives a security-remediation notice for an ordinary configuration
+change.
+
+Two things keep the window small. The marker is deleted only after the commit write for that branch
+succeeds, so a cycle that fails anywhere earlier retries with the marker still in place. And the
+widened candidate set classifies a re-targeted trunk on the next cycle, within a minute of the
+edit.
+
+The read and the delete are separate operations, because the cache has no atomic get-and-delete.
+Nothing guards the window between them except `GIT_REPOSITORIES_SYNC` running with
+`concurrency_limit=1` and `CANCEL_NEW`.
 
 **Alternatives rejected**:
 
