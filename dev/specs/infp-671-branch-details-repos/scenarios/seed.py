@@ -40,6 +40,8 @@ DAEMON_PID = STATE / "git-daemon.pid"
 HTTP_PID = {"serve": STATE / "githttp-serve.pid", "deny": STATE / "githttp-deny.pid"}
 # How the task workers reach this machine.
 GIT_HOST = os.environ.get("SCN_GIT_HOST", "host.docker.internal")
+# The fixture servers have no auth and accept pushes, so they stay on loopback; githttp.py reads it too.
+GIT_BIND = os.environ.setdefault("SCN_GIT_BIND", "127.0.0.1")
 CRED_PORT = int(os.environ.get("SCN_CRED_PORT", "9419"))  # answers 401 once seeded
 CONN_PORT = int(os.environ.get("SCN_CONN_PORT", "9420"))  # nothing listens once seeded
 TIMEOUT = int(os.environ.get("SCN_TIMEOUT", "420"))
@@ -250,7 +252,7 @@ def start_git_daemon() -> None:
     if pid_alive(DAEMON_PID):
         return
     git(
-        "daemon", "--export-all", "--enable=receive-pack", "--reuseaddr", "--detach",
+        "daemon", "--export-all", "--enable=receive-pack", "--reuseaddr", "--detach", f"--listen={GIT_BIND}",
         f"--pid-file={DAEMON_PID}", f"--base-path={BARE}", str(BARE),
     )  # fmt: skip
     time.sleep(1)

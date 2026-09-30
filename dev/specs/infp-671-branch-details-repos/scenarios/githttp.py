@@ -67,13 +67,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         pass
 
 
-class DualStackServer(http.server.ThreadingHTTPServer):
-    # host.docker.internal resolves to an IPv6 address inside the containers.
-    address_family = socket.AF_INET6
-
-    def server_bind(self) -> None:
-        self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
-        super().server_bind()
+# Docker Desktop forwards host.docker.internal to the host's loopback; see README for other setups.
+BIND = os.environ.get("SCN_GIT_BIND", "127.0.0.1")
 
 
-DualStackServer(("::", PORT), Handler).serve_forever()
+class Server(http.server.ThreadingHTTPServer):
+    address_family = socket.AF_INET6 if ":" in BIND else socket.AF_INET
+
+
+Server((BIND, PORT), Handler).serve_forever()

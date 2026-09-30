@@ -15,12 +15,18 @@ PLAYWRIGHT_MODULE=/path/to/frontend/app/node_modules/playwright/index.js \
 
 `up` converges: run without `--with-unreachable` and it removes the unreachable repositories again.
 Environment overrides: `INFRAHUB_ADDRESS`, `INFRAHUB_USERNAME`, `INFRAHUB_PASSWORD`, `SCN_STATE_DIR`,
-`SCN_GIT_HOST`, `SCN_TIMEOUT`, `FRONTEND_URL`.
+`SCN_GIT_HOST`, `SCN_GIT_BIND`, `SCN_TIMEOUT`, `FRONTEND_URL`.
+
+The fixture servers have no authentication and accept pushes, so they listen on `127.0.0.1` only
+(`SCN_GIT_BIND`). Docker Desktop forwards `host.docker.internal` to the host's loopback, so the task
+workers still reach them. On Docker Engine on Linux `host.docker.internal` is the bridge gateway:
+set `SCN_GIT_BIND` to that address (for example `172.17.0.1`), not `0.0.0.0`, which would expose
+writable repositories to your network.
 
 ## How it works
 
 - Bare fixture repositories live in `~/.cache/scn-infp-671/git` (`SCN_STATE_DIR`) and are served by
-  `git daemon` on port 9418; the task workers reach them as `git://host.docker.internal/<repo>.git`.
+  `git daemon` on `127.0.0.1:9418`; the task workers reach them as `git://host.docker.internal/<repo>.git`.
 - `scn-fixtures` and `scn-repo-01`…`scn-repo-11` are read-write repositories with an empty
   `.infrahub.yml`, so importing them creates nothing; `scn-readonly` is read-only. With the demo's
   `demo-edge` that is 14 repositories (16 with `--with-unreachable`), so the table always paginates.
