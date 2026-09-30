@@ -113,7 +113,10 @@ function BranchRepositoriesBody({
       <BranchRepositoriesDenied />
     ) : (
       // A failed page past the first has no pager to leave it, as the count came with the page.
-      <BranchRepositoriesFailed onGoToFirstPage={page > 1 ? () => onPageChange(1) : undefined} />
+      <BranchRepositoriesFailed
+        errorMessage={error.message}
+        onGoToFirstPage={page > 1 ? () => onPageChange(1) : undefined}
+      />
     );
   }
   if (isPending || !data) return <BranchRepositoriesLoading />;

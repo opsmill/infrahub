@@ -1,8 +1,4 @@
-"""Repository, Git state and Commit columns on the branches list.
-
-Relies on the `broken_repository` fixture (`tests/e2e/branches/conftest.py`) for a branch holding a
-CoreRepository in Import Error, and on a throwaway branch without Git sync for the empty state.
-"""
+"""Repository, Git state and Commit columns on the branches list."""
 
 from __future__ import annotations
 

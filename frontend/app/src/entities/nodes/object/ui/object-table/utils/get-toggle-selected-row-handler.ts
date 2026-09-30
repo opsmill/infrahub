@@ -1,7 +1,7 @@
 import type { CellContext } from "@tanstack/react-table";
 import type { PressEvent } from "react-aria-components";
 
-// Ids, not indexes: rows can be inserted above the last-selected one between two clicks.
+// Rows can be inserted above the last-selected one between two clicks.
 const lastSelectedIdByTable = new WeakMap<object, string>();
 
 export function getToggleSelectedRowHandler<T>({

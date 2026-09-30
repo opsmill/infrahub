@@ -12,54 +12,42 @@ import { getBranchRepositoriesQueryOptions } from "@/entities/repository/ui/quer
 
 type BranchRepositoriesQueryResult = UseQueryResult<BranchRepositoriesResult, Error>;
 
-const PENDING_FETCH: BranchRepositoriesFetch = { status: "pending" };
-
-// Module-level identity caches keep one branch's rows as the same objects while its
-// query result is unchanged, so resolving another branch does not re-render them (SC-007).
-const errorFetchByError = new WeakMap<Error, BranchRepositoriesFetch>();
-const rowsByBranch = new WeakMap<
-  BranchListItem,
-  WeakMap<BranchRepositoriesFetch, BranchTableRow[]>
->();
-
-function toFetch(result: BranchRepositoriesQueryResult): BranchRepositoriesFetch {
-  if (result.data) return result.data;
-  if (!result.isError) return PENDING_FETCH;
-
-  const cached = errorFetchByError.get(result.error);
-  if (cached) return cached;
-  const fetch: BranchRepositoriesFetch = { status: "error", message: result.error.message };
-  errorFetchByError.set(result.error, fetch);
-  return fetch;
+function toFetch(result: BranchRepositoriesQueryResult | undefined): BranchRepositoriesFetch {
+  if (result?.data) return result.data;
+  if (result?.isError) return { status: "error", message: result.error.message };
+  return { status: "pending" };
 }
 
-function getBranchRows(branch: BranchListItem, fetch: BranchRepositoriesFetch): BranchTableRow[] {
-  const rowsByFetch = rowsByBranch.get(branch) ?? new WeakMap();
-  rowsByBranch.set(branch, rowsByFetch);
-
-  const cached = rowsByFetch.get(fetch);
-  if (cached) return cached;
-  const rows = toBranchTableRows({
-    branches: [branch],
-    fetchByBranchId: new Map([[branch.id, fetch]]),
-    orderRepositories: rankRepositories,
-  });
-  rowsByFetch.set(fetch, rows);
-  return rows;
+// Keyed by branch id so TanStack's structural sharing pairs rows by branch rather than by array
+// index; otherwise every row below a branch that grows from pending to N would be a new object.
+function groupByBranchId(rows: BranchTableRow[]): Record<string, BranchTableRow[]> {
+  const grouped: Record<string, BranchTableRow[]> = {};
+  for (const row of rows) {
+    (grouped[row.branch.id] ??= []).push(row);
+  }
+  return grouped;
 }
 
 export function useBranchTableRows(branches: BranchListItem[]): BranchTableRow[] {
-  return useQueries({
+  const rowsByBranchId = useQueries({
     queries: branches.map((branch) =>
       getBranchRepositoriesQueryOptions({
         branchName: branch.name,
         syncWithGit: Boolean(branch.sync_with_git),
       })
     ),
-    combine: (results) =>
-      branches.flatMap((branch, index) => {
-        const result = results[index];
-        return getBranchRows(branch, result ? toFetch(result) : PENDING_FETCH);
-      }),
+    combine: (results) => {
+      const fetchByBranchId = new Map(
+        branches.map((branch, index) => [branch.id, toFetch(results[index])])
+      );
+      const rows = toBranchTableRows({
+        branches,
+        fetchByBranchId,
+        orderRepositories: rankRepositories,
+      });
+      return groupByBranchId(rows);
+    },
   });
+
+  return branches.flatMap((branch) => rowsByBranchId[branch.id] ?? []);
 }

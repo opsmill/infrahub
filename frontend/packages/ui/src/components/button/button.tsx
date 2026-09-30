@@ -128,12 +128,24 @@ export function Button({ variant, size, shape, isDisabledAndFocusable, ...props 
   );
 }
 
-export interface LinkButtonProps extends AriaLinkProps, VariantProps<typeof buttonVariants> {}
+export interface LinkButtonProps extends AriaLinkProps, VariantProps<typeof buttonVariants> {
+  excludeFromTabOrder?: boolean;
+}
 
-export function LinkButton({ variant, size, shape, ...props }: LinkButtonProps) {
+export function LinkButton({
+  variant,
+  size,
+  shape,
+  excludeFromTabOrder,
+  ...props
+}: LinkButtonProps) {
+  // React Aria's Link honours excludeFromTabOrder at runtime but leaves it out of its prop types.
+  const tabOrderProps = { excludeFromTabOrder };
+
   return (
     <AriaLink
       {...props}
+      {...tabOrderProps}
       className={composeAriaClassName(props.className, buttonVariants({ variant, size, shape }))}
     />
   );

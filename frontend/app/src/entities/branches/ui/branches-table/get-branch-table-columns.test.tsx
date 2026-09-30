@@ -88,6 +88,7 @@ describe("getBranchTableColumns", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -205,7 +206,9 @@ describe("getBranchTableColumns", () => {
     // GIVEN
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("isSecureContext", true);
-    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    vi.spyOn(navigator, "clipboard", "get").mockReturnValue({
+      writeText,
+    } as unknown as Clipboard);
     const component = await renderTable([generateBranchTableRow({ branch: featureBranch })]);
     await initPointerTracking(component.locator);
 
@@ -285,25 +288,26 @@ describe("getBranchTableColumns", () => {
     },
     { row: settledRow("empty", { sync_with_git: true }), text: "No repositories" },
     { row: settledRow("denied"), text: "No permission" },
-    { row: settledRow("error"), text: "Could not load repositories" },
+    {
+      row: settledRow("error"),
+      text: "Could not load repositories",
+      cellText: `Could not load repositories${LOAD_ERROR_MESSAGE}`,
+    },
   ])(
     "reads $text in the Repository cell of a $row.state row, with the branch cells kept",
-    async ({ row, text }) => {
+    async ({ row, text, cellText = text }) => {
       // WHEN
       const component = await renderTable([row]);
 
       // THEN
       const label = component.getByText(text, { exact: true });
       await expect.element(label).toBeVisible();
-      await expect.element(label).toHaveClass("text-subtle-muted");
+      await expect.element(label).toHaveClass("text-foreground-muted");
       await expect.element(component.getByRole("link", { name: "feature" })).toBeVisible();
       const { container } = component;
-      expect(cellOf(container, "Repository")?.textContent).toBe(text);
+      expect(cellOf(container, "Repository")?.textContent).toBe(cellText);
       expect(cellOf(container, "Git state")?.textContent).toBe("");
       expect(cellOf(container, "Commit")?.textContent).toBe("");
-      for (const column of ["Repository", "Git state", "Commit"]) {
-        expect(cellOf(container, column)?.textContent).not.toMatch(/[-—]/);
-      }
     }
   );
 
@@ -319,5 +323,50 @@ describe("getBranchTableColumns", () => {
     await expect
       .element(component.getByRole("tooltip", { name: LOAD_ERROR_MESSAGE }))
       .toBeVisible();
+  });
+
+  test("gives the error reason to assistive technology without hovering", async () => {
+    // WHEN
+    const component = await renderTable([settledRow("error")]);
+
+    // THEN
+    await expect
+      .element(component.getByText("Could not load repositories", { exact: true }))
+      .toBeVisible();
+    const reason = cellOf(component.container, "Repository")?.querySelector(".sr-only");
+    expect(reason?.textContent).toBe(LOAD_ERROR_MESSAGE);
+  });
+
+  test("keeps only the commit copy button of a mirror row in the tab order", async () => {
+    // GIVEN
+    vi.mocked(useGetProposedChanges).mockReturnValue({
+      data: {
+        pages: [{ count: 2, items: [{ id: "pc-1", node: { name: { value: "Add VLANs" } } }] }],
+      },
+      isPending: false,
+    } as unknown as ReturnType<typeof useGetProposedChanges>);
+    const anchorRow = generateBranchTableRow({ branch: featureBranch });
+    const mirrorRow = { ...anchorRow, id: `${anchorRow.branch.id}:second-repository` };
+
+    // WHEN
+    const component = await renderTable([anchorRow, mirrorRow]);
+
+    // THEN
+    const tabIndexes = (elements: Element[]) =>
+      elements.map((element) => (element as HTMLElement).tabIndex);
+    await expect.element(component.getByRole("link", { name: "feature" }).first()).toBeVisible();
+    for (const control of [
+      component.getByRole("link", { name: "feature" }),
+      component.getByRole("link", { name: "Add VLANs" }),
+      component.getByRole("link", { name: "+1 more" }),
+      component.getByTestId("branch-actions-cell-feature"),
+    ]) {
+      expect(tabIndexes(control.elements())).toEqual([0, -1]);
+    }
+    expect(
+      tabIndexes(
+        component.getByRole("button", { name: `Copy commit ${FULL_COMMIT_HASH}` }).elements()
+      )
+    ).toEqual([0, 0]);
   });
 });

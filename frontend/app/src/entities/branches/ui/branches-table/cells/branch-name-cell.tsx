@@ -53,6 +53,7 @@ export function BranchNameCell({
               variant="ghost"
               size="sm"
               href={getBranchDetailsUrl(branch.name)}
+              excludeFromTabOrder={excludeFromTabOrder}
               className="min-w-0 shrink rounded-full px-2.5 text-accent data-hovered:bg-accent/10 data-hovered:underline"
             >
               {/* The ellipsis has to sit on a child: `text-overflow` does nothing on

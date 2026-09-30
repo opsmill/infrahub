@@ -22,7 +22,7 @@ Result on 2026-09-30: the tip of `ple-branches-card-ifc-3130` is still `e1042bef
 
 This PR changes three things that #10779 introduced. The owner can land them on #10779 first, which shrinks this diff to the table work.
 
-- `get-branch-repositories-from-api.ts::fetchConnection` passes a no-op `processErrorMessage` in the request context. Callers render their own failed state, so the shared client's error toast is suppressed. The details card already renders its own failed state (`BranchRepositoriesFailed`), so it stops toasting as well.
+- `get-branch-repositories-from-api.ts::fetchConnection` passes a no-op `processErrorMessage` in the request context. Callers render their own failed state, so the shared client's error toast is suppressed. The details card already renders its own failed state (`BranchRepositoriesFailed`), so it stops toasting as well. That failed state now shows the server error message, so the suppressed toast loses no information on either page.
 - `RepositoryNameLink` is extracted from `repository-row.tsx` into `repository-name-link.tsx`, so the card and the table cell share one link.
 - The E2E `broken_repository` fixture moves from `test_branch_details_repositories.py` into `tests/e2e/branches/conftest.py`. It becomes a factory that takes `sync_with_git`, so both E2E files share it.
 
@@ -33,6 +33,10 @@ This PR changes three things that #10779 introduced. The owner can land them on 
 - The generic is widened from `T extends NodeCore` to `T`, because branch table rows are not nodes.
 - The shift-click anchor is stored by row id, not by row index. Rows can be inserted above the last-selected row between two clicks, which happens when a branch's repositories resolve. The range is still computed from the current indexes of the two rows. Object-table behaviour is unchanged when no rows are inserted, and its tests stay green.
 
+## Shared `LinkButton` change (`frontend/packages/ui`)
+
+`LinkButtonProps` gains an optional `excludeFromTabOrder`. React Aria's `Link` honours the prop at runtime but omits it from its types, so `LinkButton` forwards it through a spread with a one-line comment. The branches table uses it to keep the repeated branch-name link and Proposed changes pill on mirror rows out of the tab order (FR-008). `LinkPill` inherits the prop unchanged.
+
 ## Constitution V deviation: N+1 over HTTP
 
 The table sends one repositories request per loaded branch: about 40 per page (`BRANCHES_PER_PAGE = 40`), 120 after three pages. No branch-anchored or multi-repository query exists, and only per-branch reads meet FR-003, FR-011 and FR-012 without a backend change. The cache is shared with the details card, and SC-007 bounds refocus requests and re-renders.
@@ -41,7 +45,24 @@ Follow-up: a backend list-of-ids variant of `InfrahubRepositoryBranchStatus`, so
 
 ## Error tooltip text
 
-A branch whose repositories request fails shows "Could not load repositories", and its tooltip shows the raw GraphQL `error.message`. This is the same text the shared client toasts today, so no new wording reaches users.
+A branch whose repositories request fails shows "Could not load repositories", and its tooltip shows the raw GraphQL `error.message`. The same message is also rendered as visually hidden text for keyboard and screen-reader users, and the branch details card's failed state shows it too. This is the same text the shared client toasts today, so no new wording reaches users.
+
+## Review
+
+Eight reviewers ran on the implementation: code, tests, UI, errors, types, comments, simplify, and a CodeRabbit-style pass. The CodeRabbit CLI was not installed, so that pass was done manually instead. There were no blockers; the must-fix and should-fix items were applied in the fix pass, and the spec was corrected to match (spec Clarifications, "Session 2026-09-30 (review)").
+
+Accepted as is:
+
+- `RepositoryNameLink` reveals a truncated name with the native `title`, not `Tooltip`.
+- The hook returns rows grouped by branch id from `combine` and relies on TanStack's structural sharing for row identity; the first implementation's `WeakMap` caches were removed after the review pass's identity test showed they did not survive an earlier branch growing (research R13 addendum).
+
+Advisory items left as follow-ups:
+
+- Derive the grid tracks from the column ids instead of their position (`branches-data-table.tsx`).
+- Unify the chip shapes (Git state, Read-only, Status) across the design system.
+- Add shared test mock helpers (for example a `mockBranchTableDeps()`) for the branches table tests.
+- Make the `broken_repository` E2E fixture a plain fixture instead of a factory.
+- Align the repository name's overflow reveal with `Tooltip`.
 
 ## Stacking and rebase
 

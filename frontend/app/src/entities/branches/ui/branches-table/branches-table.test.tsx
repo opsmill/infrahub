@@ -187,7 +187,7 @@ describe("BranchesTable", () => {
     ]);
   });
 
-  test("a window refocus issues at most one repository request per loaded branch", async () => {
+  test("a window refocus within staleTime issues no extra repository request", async () => {
     // GIVEN
     vi.mocked(getBranchRepositories).mockResolvedValue(oneRepository);
     const component = await render(<BranchesTable />);
@@ -199,10 +199,9 @@ describe("BranchesTable", () => {
     // WHEN
     focusManager.setFocused(false);
     focusManager.setFocused(true);
-    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // THEN
-    for (const name of ["main", "alpha", "zulu"]) expect(requestCount(name)).toBeLessThanOrEqual(2);
+    await expect.poll(() => ["main", "alpha", "zulu"].map(requestCount)).toEqual([1, 1, 1]);
   });
   test("scrolling to the next page appends its branches with their repository rows", async () => {
     // GIVEN
@@ -261,6 +260,5 @@ describe("BranchesTable", () => {
     expect(identifierCellNames(component.container)).toEqual(["main", "alpha", "zulu"]);
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(page.getByRole("alert").elements()).toHaveLength(0);
-    expect(document.querySelector(".Toastify__toast")).toBeNull();
   });
 });

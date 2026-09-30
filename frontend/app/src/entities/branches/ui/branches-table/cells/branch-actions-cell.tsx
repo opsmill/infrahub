@@ -14,9 +14,10 @@ import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/s
 
 export interface BranchActionsCellProps {
   branch: BranchListItem;
+  excludeFromTabOrder?: boolean;
 }
 
-export function BranchActionsCell({ branch }: BranchActionsCellProps) {
+export function BranchActionsCell({ branch, excludeFromTabOrder }: BranchActionsCellProps) {
   const { isAuthenticated } = useAuth();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { clearBranchIfCurrent } = useNavigateAfterBranchRemoval();
@@ -32,6 +33,7 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
             size="sm"
             shape="square"
             variant="ghost"
+            excludeFromTabOrder={excludeFromTabOrder}
             data-testid={`branch-actions-cell-${branch.name}`}
           >
             <Icon icon={"mdi:dots-vertical"} className="text-subtle-muted" />

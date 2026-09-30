@@ -275,7 +275,7 @@ describe("BranchRepositoriesCard", () => {
     expect(component.container.querySelector(".rounded-full")).toBeNull();
   });
 
-  test("says the repositories couldn't be loaded when the query fails", async () => {
+  test("says the repositories couldn't be loaded, with the reason, when the query fails", async () => {
     // GIVEN
     vi.mocked(getBranchRepositories).mockRejectedValue(
       new BranchRepositoriesError("UNKNOWN", "Something broke")
@@ -287,6 +287,7 @@ describe("BranchRepositoriesCard", () => {
 
     // THEN
     await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
+    await expect.element(component.getByText("Something broke")).toBeVisible();
   });
 
   test("offers the first page when a later page fails, as the pager came with the page", async () => {
@@ -420,7 +421,7 @@ describe("BranchRepositoriesCard", () => {
     await expect.element(component.getByText("—")).toBeVisible();
   });
 
-  test("renders its failed state with no toast when the repositories request returns a GraphQL error", async () => {
+  test("shows the server message in its failed state, with no toast, when the repositories request returns a GraphQL error", async () => {
     // GIVEN
     serve([]);
     const { getBranchRepositories: realGetBranchRepositories } = await vi.importActual<
@@ -450,8 +451,9 @@ describe("BranchRepositoriesCard", () => {
         .getByRole("alert")
         .elements()
         .map((alert) => alert.textContent)
-    ).toEqual(["Repositories couldn't be loaded."]);
-    expect(document.querySelector(".Toastify__toast")).toBeNull();
-    expect(document.body.textContent).not.toContain("Repository index unavailable");
+    ).toEqual(["Repositories couldn't be loaded.Repository index unavailable"]);
+    await expect
+      .element(component.getByText("Repository index unavailable", { exact: true }))
+      .toBeVisible();
   });
 });

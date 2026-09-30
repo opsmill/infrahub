@@ -32,5 +32,6 @@
 ## Notes
 
 - Validation iteration 1: all items pass. Ready for `/speckit-clarify`.
+- Validation iteration 3 (after review 2026-09-30): all items still pass, no state toggled. FR-007, FR-008, FR-012 and FR-013 were reworded under "Session 2026-09-30 (review)". The `text-foreground-muted` token in FR-007/FR-012/FR-013 is a named design token for a contrast requirement, not a framework detail.
 - Validation iteration 2 (after critique 2026-09-30): all items still pass. SC-004 is reworded to be meetable, SC-007 is added (request and re-render bound, stated as observable counts), and FR-006a, FR-008, FR-011, FR-013, Edge Cases and Assumptions gained owner-reviewable decisions recorded under "Session 2026-09-30 (critique)".
 - The empty-state wording ("Not synced with Git" / "No repositories"), the degraded texts ("No permission" / "Could not load repositories") and the copy control on commits are owner decisions, not defaults; changing them is a spec change.

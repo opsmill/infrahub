@@ -83,7 +83,12 @@ export function getBranchFieldsColumns(): Array<ColumnDef<BranchTableRow>> {
       header: () => (
         <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.proposed_changes} />
       ),
-      cell: ({ row }) => <BranchProposedChangesCell branchName={row.original.branch.name} />,
+      cell: ({ row }) => (
+        <BranchProposedChangesCell
+          branchName={row.original.branch.name}
+          excludeFromTabOrder={!isBranchAnchorRow(row.original)}
+        />
+      ),
     }),
     ...getBranchRepositoryColumns(),
     columnHelper.accessor((r) => r.branch.branched_from, {
@@ -119,7 +124,12 @@ export function getBranchActionsColumn(): ColumnDef<BranchTableRow> {
   return columnHelper.display({
     id: "actions",
     header: () => <ActionsHeaderCell />,
-    cell: ({ row }) => <BranchActionsCell branch={row.original.branch} />,
+    cell: ({ row }) => (
+      <BranchActionsCell
+        branch={row.original.branch}
+        excludeFromTabOrder={!isBranchAnchorRow(row.original)}
+      />
+    ),
   });
 }
 

@@ -16,7 +16,7 @@ Code references name the module and symbol; line numbers are left out on purpose
 
 ## R1 — Selection: the anchor row
 
-**Decision**: The first row of each branch has id `branch.id` and every later row has id `${branch.id}:${repository.id}`. The table sets `enableRowSelection: (row) => isBranchAnchorRow(row.original)`. The identifier cell resolves `anchor = table.getRow(row.original.branch.id)` and reads `anchor.getIsSelected()`. It also passes `{ row: anchor, table }` to the shared shift-range handler. `selectedRows = table.getSelectedRowModel().flatRows.map((r) => r.original.branch)`. The row `Checkbox` in `branch-name-cell.tsx::BranchNameCell` gains `aria-label={`Select ${branch.name}`}` on the anchor row and `aria-label={`Select ${branch.name} (${repository.name})`}` plus exclusion from the tab order on every other row (spec FR-008). The shared shift-range handler stores the last-selected row **id** instead of `row.index`, and resolves both indexes at shift time.
+**Decision**: The first row of each branch has id `branch.id` and every later row has id `${branch.id}:${repository.id}`. The table sets `enableRowSelection: (row) => isBranchAnchorRow(row.original)`. The identifier cell resolves `anchor = table.getRow(row.original.branch.id)` and reads `anchor.getIsSelected()`. It also passes `{ row: anchor, table }` to the shared shift-range handler. `selectedRows = table.getSelectedRowModel().flatRows.map((r) => r.original.branch)`. The row `Checkbox` in `branch-name-cell.tsx::BranchNameCell` gains `aria-label={`Select ${branch.name}`}` on the anchor row and `aria-label={`Select ${branch.name} (${repository.name})`}` plus exclusion from the tab order on every other row (spec FR-008). After review, the branch name link, the proposed-changes pill and the actions menu trigger are also out of the tab order on non-anchor rows; the commit copy button is not. The shared shift-range handler stores the last-selected row **id** instead of `row.index`, and resolves both indexes at shift time.
 
 **Rationale**: these TanStack Table 8.21.3 semantics were checked in `table-core/src/features/RowSelection.ts`:
 
@@ -95,7 +95,7 @@ The options compared (P = pages loaded, 40 branches per page, R = number of repo
 
 ## R7 — Extract `RepositoryNameLink`
 
-**Decision**: add `entities/repository/ui/branch-repositories/repository-name-link.tsx::RepositoryNameLink({ repository, branchName, isDefaultBranch })`. It holds the `FolderGitIcon`, a `Link` to `getObjectDetailsUrl(kind, id, [getBranchQspOverride(branchName, isDefaultBranch)])` with `title={name}`, and the "Read-only" chip. `repository-row.tsx::RepositoryRow` uses it and keeps the unreachable icon and the `—` commit fallback.
+**Decision**: add `entities/repository/ui/branch-repositories/repository-name-link.tsx::RepositoryNameLink({ repository, branchName, isDefaultBranch })`. It holds the `FolderGitIcon`, a `Link` to `getObjectDetailsUrl(kind, id, [getBranchQspOverride(branchName, isDefaultBranch)])` with `title={name}`, and the "Read-only" chip. `repository-row.tsx::RepositoryRow` uses it and keeps the unreachable icon and the `—` commit fallback. The native `title` stays after review (accepted); aligning it with `Tooltip` is a follow-up.
 
 **Rationale**: FR-006 asks for the same name, link and marker as branch details. Two callers satisfy VII. The existing `branch-repositories-card.test.tsx` is the regression net.
 
@@ -123,7 +123,7 @@ The options compared (P = pages loaded, 40 branches per page, R = number of repo
 |---|---|---|
 | `pending` | `Spinner` (the `branch-proposed-changes-cell.tsx` pattern) | blank |
 | `denied` (use-case returns `{ status: "denied" }` when every GraphQL error is `PERMISSION_DENIED`) | muted "No permission" | blank |
-| `error` (the use-case throws, and no earlier `data` is held) | muted "Could not load repositories", with the query error's message as a tooltip | blank |
+| `error` (the use-case throws, and no earlier `data` is held) | muted "Could not load repositories", with the query error's message as a tooltip and as visually hidden text | blank |
 
 **Rationale**: FR-011 to FR-013 and SC-005. The query client default is `retry: false` (`shared/api/rest/client.ts::queryClient`), so a failure settles immediately. One spinner per pending branch keeps first paint calm (spec FR-011).
 
@@ -135,7 +135,7 @@ The options compared (P = pages loaded, 40 branches per page, R = number of repo
 - Network errors throw without a toast.
 - Any other GraphQL error calls `notifyUser`, which toasts, deduplicated by `toastId: "alert-error"`, unless the request context supplies `processErrorMessage`.
 
-`get-branch-repositories-from-api.ts::fetchConnection` passes only `{ branch }`, so FR-013's "no toast" does not hold for GraphQL-level errors. The minimal fix is to pass a no-op `processErrorMessage` in that context. That is a one-line change to a #10779 file, and it also affects the branch details card, which renders its own failed state. **Decision: make the change.** FR-013 is explicit, and a page-level toast for a per-row degraded cell is the wrong surface on both pages. Nothing is lost: the use-case's thrown `Error` joins the backend messages, and the Repository cell shows that message as the tooltip of "Could not load repositories". The card's failed state is asserted to render without a toast.
+`get-branch-repositories-from-api.ts::fetchConnection` passes only `{ branch }`, so FR-013's "no toast" does not hold for GraphQL-level errors. The minimal fix is to pass a no-op `processErrorMessage` in that context. That is a one-line change to a #10779 file, and it also affects the branch details card, which renders its own failed state. **Decision: make the change.** FR-013 is explicit, and a page-level toast for a per-row degraded cell is the wrong surface on both pages. Nothing is lost: the use-case's thrown `Error` joins the backend messages, and the Repository cell shows that message as the tooltip of "Could not load repositories" (and as visually hidden text). The card's failed state renders the same server message and is asserted to render without a toast.
 
 ## R11 — `isTruncated` ignored
 
@@ -166,9 +166,17 @@ That file imports `BranchListItem` from `entities/branches/domain/model/branch`.
 
 **Alternatives**: `useMemo` over the results array (forbidden by the React Compiler rule, and it would still rebuild every branch on each update).
 
+### R13 addendum (review, 2026-09-30) — one rule call per branch
+
+**Decision**: `combine` calls `toBranchTableRows` once over all loaded branches and returns the rows as a record keyed by branch id; the hook flattens that record in branch order outside `combine`. No module-level caches.
+
+**Rationale**: `query-core`'s `QueriesObserver` runs `replaceEqualDeep(previous, combine(input))` on the combined result. `replaceEqualDeep` pairs array entries by index and object entries by key, so a flat array loses identity for every row below a branch that grows, while a record keyed by branch id keeps each unchanged branch's row array (and its row objects) by reference. A per-branch `WeakMap` cache was tried first and did not survive the shift either, because `replaceEqualDeep` copies mismatched array entries instead of returning the cached object; the identity test added in the review pass caught it.
+
+**Alternatives**: module-level `WeakMap` caches keyed by branch and fetch object (first implementation; failed the shift case above). Calling the rule once per branch (contract deviation, no longer needed).
+
 ## Risks
 
-1. The GraphQL-level error toast (R10) is closed by the no-op `processErrorMessage`; the residual effect is that the branch details card loses a toast it never needed.
+1. The GraphQL-level error toast (R10) is closed by the no-op `processErrorMessage`; the branch details card loses a toast it never needed, and its failed state now shows the server message instead.
 2. Unreachable repositories rank up without the reason shown (FR-016), so rows can look out of order.
 3. ≈40 queries per page (N+1 over HTTP). Accepted as a Constitution V deviation, bounded by SC-007, with a backend list-of-ids variant as the follow-up (R5).
 4. `isTruncated` is ignored, so a truncated list is silently partial (R11).
