@@ -109,9 +109,10 @@ head, the imported objects match the rewritten tree, and the repository reports 
 
 - [ ] T012 [US1] Add a force-push helper to
       `backend/tests/integration/git/test_git_live_remote.py`, beside the existing
-      `_push_commit_to_remote` and the two hook helpers, which all live in that module and not in
-      `conftest.py`. It builds a divergent history inside the Gogs container and pushes it with
-      `--force`.
+      `_push_commit_to_remote`, which lives in that module and not in `conftest.py`. It builds a
+      divergent history inside the Gogs container and pushes it with `--force`. The two
+      `pre-receive` hook helpers are **not** on this branch: they come from #10465, and no task
+      here needs them.
 - [ ] T013 [P] [US1] Add a fixture that creates a Gogs repository with a tracked non-default branch
       already imported, in `backend/tests/integration/git/conftest.py`. The rewrite tests all start
       from that state.
@@ -122,7 +123,7 @@ head, the imported objects match the rewritten tree, and the repository reports 
       `backend/infrahub/git/repository.py::InfrahubRepository._collect_staging_imports`. It calls
       `self.pull(branch_name=self.default_branch)` outside the `ACTIVE` loop, so a rewritten trunk
       on a staging repository would be neither classified nor recorded, and before T041 would still
-      fail with the old message. No spec file mentioned this path before this task.
+      fail with the old message.
 - [ ] T015 [US1] Thread the per-branch graph commits down to
       `backend/infrahub/git/repository.py::InfrahubRepository.collect_pending_imports`. They are
       loaded once per cycle by `get_repositories_commit_per_branch` and live on
@@ -713,7 +714,7 @@ rather than shipping with the rest of the phase.
 | 7 | T069 alone, once T067 is done |
 | 8 | T074 alone, once T072 is done |
 | 9 | T083 alone, once T077 is done |
-| 10 | T087, T089, T090. The two tasks editing `git-integration.md` are sequential. |
+| 10 | T088, T090, T091. The two tasks editing `git-integration.md` are sequential. |
 
 ---
 

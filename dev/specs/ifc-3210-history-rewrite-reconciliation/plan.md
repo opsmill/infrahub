@@ -42,9 +42,10 @@ rewritten branch, both of which already exist as operations.
 **Constraints**: the repository lock is the most contended lock in the git subsystem. The widened
 broadcast must stay at one message and one lock hold per repository per cycle.
 
-**Scale/Scope**: eleven existing backend modules touched (the ten in the tree below plus
-`events/__init__.py`, which exports the new event), plus one new package of seven files
-(`models`, `detector`, `gateway`, `recorder`, `store`, `suppression`, `__init__`). No frontend
+**Scale/Scope**: thirteen existing backend modules touched, plus one new package of seven files
+(`models`, `detector`, `gateway`, `recorder`, `store`, `suppression`, `__init__`). Beyond the tree
+below that is `events/__init__.py`, which exports the new event, `exceptions.py`, which gains the
+divergent-history error, and `git/models.py`, which gains the in-band re-point flag. No frontend
 work. The task count is in the table at the end of [tasks.md](tasks.md).
 
 ## Constitution Check

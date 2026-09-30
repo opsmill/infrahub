@@ -391,7 +391,9 @@ It sends one coalesced `RefreshGitFetch` covering every reconciled branch, befor
   pull-path self-heal of FR-005 replaces it, and that is gated on PR #10465. Until it lands, keep
   sending the trunk message unconditionally: the "no branch advanced, no message" rule ships with
   the pull-path reset, not before it.
-- When every branch failed, no message is sent.
+- When every branch failed, the coalesced message carries no pairs. The unconditional trunk
+  message above still goes, because it is what heals a stale worker and nothing in this phase
+  replaces it.
 - **A trunk failure is made loud without being made fatal.** Today
   `sync_repository_from_origin` catches `RepositoryError` and `CommitNotFoundError` and calls
   `log.info`; nothing propagates. FR-018 raises the severity of that path for the configured
