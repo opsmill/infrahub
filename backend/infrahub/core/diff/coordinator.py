@@ -399,7 +399,7 @@ class DiffCoordinator:
                     return None
                 if not current_branch_diff.partner_uuid:
                     raise ResourceNotFoundError(f"Diff {diff_id} for branch {diff_branch.name} has no partner diff")
-                # only the partner's uuid and proposed change are read, and its nodes can far outnumber the branch's
+                # a recalculation replaces the partner and reads only its uuid and proposed change
                 current_base_diff = await self.diff_repo.get_one_metadata(
                     diff_branch_name=base_branch.name, diff_id=current_branch_diff.partner_uuid
                 )
