@@ -47,7 +47,7 @@ Recorded by every process that queries the database, so both the API server and 
 | Metric | Type | Labels | Description |
 |---|---|---|---|
 | `infrahub_db_query_execution_seconds` | Histogram | `type`, `query`, `runtime`, `context1`, `context2` | Execution time of a database query |
-| `infrahub_db_transaction_retries` | Counter | `name` | Transactions retried after a transient error |
+| `infrahub_db_transaction_retries_total` | Counter | `name` | Transactions retried after a transient error |
 | `infrahub_db_last_connection_pool_usage` | Gauge | `address` | Last known number of active connections in the driver pool |
 | `infrahub_db_reference_query_floor_seconds` | Gauge | | All-time minimum execution time of the reference permission query |
 | `infrahub_db_reference_query_window_min_seconds` | Gauge | | Minimum execution time of the reference query over the recent sliding window |
