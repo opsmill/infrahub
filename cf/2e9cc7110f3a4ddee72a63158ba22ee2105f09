@@ -1,0 +1,24 @@
+backend/infrahub/health.py
+  s_2f147521a27904::t_ab19c0517d8386 8,10
+  s_2f147521a27904::t_73cc5d65fe0be1 62,66
+  s_2f147521a27904::t_64790b6ec9ebdc 184-188,190-199
+backend/tests/unit/health/test_health.py
+  s_2f147521a27904::t_57b7394cce95cf 9
+  s_2f147521a27904::t_12bfc19d0fec9a 227-236,238-240,242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "cf2e9cc7110f3a4ddee72a63158ba22ee2105f09",
+  "prompts": {},
+  "sessions": {
+    "s_2f147521a27904": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc19b123-f090-4700-8cfd-ea1e0e3530bf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}

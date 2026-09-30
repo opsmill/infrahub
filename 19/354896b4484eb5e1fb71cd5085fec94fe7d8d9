@@ -1,0 +1,33 @@
+dev/README.md
+  s_f9f34a44a3a084::t_e7303c53c4edc4 81
+  s_f9f34a44a3a084::t_89d4dfd6b4aafa 27,79-80
+  s_f9f34a44a3a084::t_26352eee73fe6d 82
+dev/specs/sync-pr-automation/quickstart.md
+  s_f9f34a44a3a084::t_e7303c53c4edc4 99-100
+.github/workflows/sync-pr-manage.yml
+  s_f9f34a44a3a084::t_941c0884991a3e 9,28,35,42-43,77
+  s_f9f34a44a3a084::t_89d4dfd6b4aafa 1-8,10-27,29-34,36-41,44-76,78-107
+utilities/sync_pr/tests/test_workflows.py
+  s_f9f34a44a3a084::t_89d4dfd6b4aafa 1-9,11-18,36,38,42-51
+  s_f9f34a44a3a084::t_b1fc1b1ae99cd1 10,34,39-41
+  s_f9f34a44a3a084::t_31342f7424a34b 19-33,35,37
+dev/knowledge/sync-pr-automation.md
+  s_f9f34a44a3a084::t_89d4dfd6b4aafa 1-4,6-10,12-14,16-18,20-29,34-48,50-54,56-59,61,63-65,67-74,76-77,79,82-111
+  s_f9f34a44a3a084::t_fcf2f9ebdb0c34 5,11,15,19,30-33,49,55,60,62,66,75,78,80-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "19354896b4484eb5e1fb71cd5085fec94fe7d8d9",
+  "prompts": {},
+  "sessions": {
+    "s_f9f34a44a3a084": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50b9befc-1389-4d4c-99f9-321b275b2173",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,69 @@
+frontend/app/src/shared/components/form/fields/float.field.tsx
+  b5ec3ed9c63e65c4 1-67
+backend/infrahub/core/attribute.py
+  b5ec3ed9c63e65c4 44,760-794
+frontend/app/src/entities/schema/ui/field-schema-icon.tsx
+  b5ec3ed9c63e65c4 11
+backend/infrahub/types.py
+  b5ec3ed9c63e65c4 242-251,347,373
+backend/tests/unit/core/test_attribute_float.py
+  b5ec3ed9c63e65c4 1-46,48-216
+frontend/app/src/entities/schema/constants.ts
+  b5ec3ed9c63e65c4 17,33
+frontend/app/src/shared/components/form/dynamic-form.tsx
+  b5ec3ed9c63e65c4 96-99
+frontend/app/src/shared/components/form/utils/getFormFieldFromAttribute.ts
+  b5ec3ed9c63e65c4 9,27,32,120-132,192-200
+frontend/app/src/entities/schema/types.ts
+  b5ec3ed9c63e65c4 20
+frontend/app/src/entities/schema/utils/validation/validate-float-attribute.test.ts
+  b5ec3ed9c63e65c4 1,3-5,9-10,14-15,19-20,23-25,29-30,34-35,39-40,44-45,49-50,54-55,59-60,64-65
+backend/infrahub/graphql/types/__init__.py
+  b5ec3ed9c63e65c4 11,44
+backend/infrahub/graphql/mutations/attribute.py
+  b5ec3ed9c63e65c4 3,60-67
+docs/docs/topics/schema.mdx
+  b5ec3ed9c63e65c4 164-165,194
+docs/docs/snippets/attribute-kind-params.mdx
+  b5ec3ed9c63e65c4 15-24
+backend/tests/component/core/test_attribute_float.py
+  b5ec3ed9c63e65c4 1-440
+docs/docs/reference/schema/attribute.mdx
+  b5ec3ed9c63e65c4 186
+backend/infrahub/core/schema/attribute_parameters.py
+  b5ec3ed9c63e65c4 21,185-225
+backend/infrahub/core/query/attribute.py
+  b5ec3ed9c63e65c4 404,407
+backend/infrahub/core/schema/attribute_schema.py
+  b5ec3ed9c63e65c4 18,161-163,289-296,320
+frontend/app/src/entities/nodes/object/ui/filters/dynamic-filter-input.tsx
+  b5ec3ed9c63e65c4 112-113,117
+frontend/app/src/entities/nodes/object/ui/object-table/cells/table-attribute-cell.tsx
+  b5ec3ed9c63e65c4 44
+frontend/app/src/shared/components/form/type.ts
+  b5ec3ed9c63e65c4 171-174,199
+frontend/app/src/entities/schema/utils/validation/validate-float-attribute.ts
+  b5ec3ed9c63e65c4 1-28
+backend/infrahub/graphql/types/attribute.py
+  b5ec3ed9c63e65c4 5,178-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.23",
+  "base_commit_sha": "1b265b83edeb784d43ed51917d1bbcf984a6e001",
+  "prompts": {
+    "b5ec3ed9c63e65c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d05870d-786d-412b-bcaf-055e91c58cc5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 1162,
+      "total_deletions": 15,
+      "accepted_lines": 961,
+      "overriden_lines": 26
+    }
+  }
+}

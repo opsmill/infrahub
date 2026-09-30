@@ -1,0 +1,59 @@
+utilities/sync_pr/tests/test_github.py
+  s_f9f34a44a3a084::t_84597f35cea8f3 377-455
+utilities/sync_pr/github.py
+  s_f9f34a44a3a084::t_ffd29527e2f999 326-329,331,355-358,391-394
+  s_f9f34a44a3a084::t_d99eb7d3fae968 267
+  s_f9f34a44a3a084::t_c239a8a83c41ce 13,137-158,206-207,387-390
+  s_f9f34a44a3a084::t_7e742bb5fbdc73 395
+utilities/sync_pr/tests/test_manage.py
+  s_f9f34a44a3a084::t_67c708e3c61420 286-309,337,478,778
+  s_f9f34a44a3a084::t_675c322c1e51ae 20-21
+.github/sync-pr/config.yml
+  s_f9f34a44a3a084::t_0e37c1a91c6207 15
+utilities/sync_pr/tests/fixtures/record.py
+  s_f9f34a44a3a084::t_b43f8dcb224985 7,91,110
+utilities/sync_pr/tests/fixtures/__init__.py
+  s_f9f34a44a3a084::t_b43f8dcb224985 13,26
+dev/specs/sync-pr-automation/contracts/config.md
+  s_f9f34a44a3a084::t_0e37c1a91c6207 14
+utilities/sync_pr/tests/conftest.py
+  s_f9f34a44a3a084::t_b43f8dcb224985 25,44,104,135-138,358
+dev/knowledge/sync-pr-automation.md
+  s_f9f34a44a3a084::t_0e37c1a91c6207 58
+utilities/sync_pr/tests/fixtures/loader.py
+  s_f9f34a44a3a084::t_b43f8dcb224985 9,32-33
+  s_f9f34a44a3a084::t_ec9c55347e8ac2 34-35
+dev/specs/sync-pr-automation/research.md
+  s_f9f34a44a3a084::t_0e37c1a91c6207 208-209,214-220,222
+utilities/sync_pr/gate.py
+  s_f9f34a44a3a084::t_819fc637615ec7 5,11,14,21-22,50-95,99,102-106,108,110,114-121,129-130
+utilities/sync_pr/tests/fixtures/workflow_runs_10693.json
+  s_f9f34a44a3a084::t_ffd29527e2f999 1-46
+utilities/sync_pr/tests/test_fixtures.py
+  s_f9f34a44a3a084::t_b12f62fa82944c 52-62,86
+utilities/sync_pr/tests/test_gate.py
+  s_f9f34a44a3a084::t_9d7bf556d55246 8,24-40,51,60,104,157,163,220,242,254,256,274,282,294,302,313,322
+  s_f9f34a44a3a084::t_1bf17870237f97 331-435
+utilities/sync_pr/tests/fixtures/check_runs_10693.json
+  s_f9f34a44a3a084::t_220168d785e2b4 6,17,28,39,50,61,72,83,94,105,116,127,138,149,160,171,182,193,204,215,226,237,248,259,270,281,292,303,314,325,336,347,358,369,380,391,402,413,424,435,446,457,468,479,490,501,512,523,534,545,556,567,578,589,600,611,622,633,644,655
+dev/specs/sync-pr-automation/tasks.md
+  s_f9f34a44a3a084::t_0e37c1a91c6207 52,192
+utilities/sync_pr/manage.py
+  s_f9f34a44a3a084::t_72cbb0a6d7d37e 397-403
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "20d0d0624cdea27f15bd5c4719f09317a18d7af1",
+  "prompts": {},
+  "sessions": {
+    "s_f9f34a44a3a084": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50b9befc-1389-4d4c-99f9-321b275b2173",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

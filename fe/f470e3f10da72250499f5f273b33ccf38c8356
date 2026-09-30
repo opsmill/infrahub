@@ -1,0 +1,29 @@
+dev/specs/dependabot-autopilot/contracts/verdict.schema.json
+  s_43d8e382eba497::t_bfe7e77a97e9f5 1-61
+dev/specs/dependabot-autopilot/contracts/workflows.md
+  s_43d8e382eba497::t_caebd78403b5c5 1-60
+dev/specs/dependabot-autopilot/data-model.md
+  s_43d8e382eba497::t_79482abc1f4d57 1-100
+dev/specs/dependabot-autopilot/plan.md
+  s_43d8e382eba497::t_0ee7d2a0e1939a 1-181
+dev/specs/dependabot-autopilot/quickstart.md
+  s_43d8e382eba497::t_be59c73ea77bf2 1-38
+dev/specs/dependabot-autopilot/research.md
+  s_43d8e382eba497::t_eae1228062fbdd 1-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fef470e3f10da72250499f5f273b33ccf38c8356",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

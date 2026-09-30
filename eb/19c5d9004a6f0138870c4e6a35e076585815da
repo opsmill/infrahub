@@ -1,0 +1,36 @@
+.github/workflows/dependabot-autopilot-analyze.md
+  s_ce99ced981c340::t_ab88502a5309d4 107-108
+  s_ce99ced981c340::t_d161d171910bbf 109-110
+  s_ce99ced981c340::t_a615652c43fcb8 106
+dev/specs/dependabot-autopilot/research.md
+  s_ce99ced981c340::t_1dcb2b60cc21b4 69
+dev/specs/dependabot-autopilot/contracts/workflows.md
+  s_ce99ced981c340::t_1dcb2b60cc21b4 12
+dev/specs/dependabot-autopilot/plan.md
+  s_ce99ced981c340::t_a615652c43fcb8 72
+  s_ce99ced981c340::t_1dcb2b60cc21b4 73,117
+skills-lock.json
+  s_ce99ced981c340::t_1dcb2b60cc21b4 4
+dev/guides/dependabot-autopilot.md
+  s_ce99ced981c340::t_1dcb2b60cc21b4 13
+dev/specs/dependabot-autopilot/tasks.md
+  s_ce99ced981c340::t_1dcb2b60cc21b4 31
+.github/workflows/dependabot-autopilot-analyze.lock.yml
+  s_ce99ced981c340::t_56eb9968740f10 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb19c5d9004a6f0138870c4e6a35e076585815da",
+  "prompts": {},
+  "sessions": {
+    "s_ce99ced981c340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ecf758-799f-473b-a565-dc575a274ded",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

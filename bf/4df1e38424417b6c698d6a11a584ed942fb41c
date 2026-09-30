@@ -1,0 +1,25 @@
+utilities/sync_pr/tests/test_workflows.py
+  s_f9f34a44a3a084::t_9152956ee63040 1-26
+.github/workflows/sync-pr-manage.yml
+  s_f9f34a44a3a084::t_9152956ee63040 42-45,116-119
+dev/knowledge/sync-pr-automation.md
+  s_f9f34a44a3a084::t_58db0c5f6c2453 21
+dev/specs/sync-pr-automation/research.md
+  s_f9f34a44a3a084::t_6d0b75b8528f5a 158-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf4df1e38424417b6c698d6a11a584ed942fb41c",
+  "prompts": {},
+  "sessions": {
+    "s_f9f34a44a3a084": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50b9befc-1389-4d4c-99f9-321b275b2173",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

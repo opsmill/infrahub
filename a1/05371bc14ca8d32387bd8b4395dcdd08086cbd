@@ -1,0 +1,19 @@
+.gitignore
+  s_a6571e53116779::t_40dc98df00d996 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "a105371bc14ca8d32387bd8b4395dcdd08086cbd",
+  "prompts": {},
+  "sessions": {
+    "s_a6571e53116779": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2fa4ceb2-64d8-4d94-91af-a926363f5bbe",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}

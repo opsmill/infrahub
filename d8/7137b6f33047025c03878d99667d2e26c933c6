@@ -1,0 +1,27 @@
+docs/docs/guides/artifact-content-composition.mdx
+  561ec9d9319f4129 1-251
+docs/sidebars.ts
+  561ec9d9319f4129 111
+docs/docs/topics/artifact.mdx
+  561ec9d9319f4129 78-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "d87137b6f33047025c03878d99667d2e26c933c6",
+  "prompts": {
+    "561ec9d9319f4129": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0c8061-7e3c-4171-aa53-481a407b0c9d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Copier",
+      "messages": [],
+      "total_additions": 28682,
+      "total_deletions": 15,
+      "accepted_lines": 28667,
+      "overriden_lines": 0
+    }
+  }
+}
