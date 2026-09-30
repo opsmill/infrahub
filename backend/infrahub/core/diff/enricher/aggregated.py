@@ -10,7 +10,7 @@ class AggregatedDiffEnricher:
         enriched_diffs = EnrichedDiffs.from_calculated_diffs(calculated_diffs=calculated_diffs, tracking_id=tracking_id)
 
         for enricher in self.enrichers:
-            await enricher.enrich(enriched_diff_root=enriched_diffs.base_branch_diff, calculated_diffs=calculated_diffs)
-            await enricher.enrich(enriched_diff_root=enriched_diffs.diff_branch_diff, calculated_diffs=calculated_diffs)
+            for enriched_diff_root in enriched_diffs.roots:
+                await enricher.enrich(enriched_diff_root=enriched_diff_root, calculated_diffs=calculated_diffs)
 
         return enriched_diffs

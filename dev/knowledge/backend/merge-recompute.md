@@ -26,6 +26,7 @@ merge / rebase
 
 The builder, submitter, and coordinator live in `core/merge/recompute_coalescing.py`. The build step is pure, so it is unit and component testable without a database or a worker. A merge recomputes on the destination branch; a rebase recomputes on the user branch.
 
+<<<<<<< HEAD
 ## The Python transform family
 
 **Location:** `core/merge/python_target_resolution.py` (the narrowing), `core/merge/python_target_sources.py` (the database and client sources)
@@ -61,6 +62,13 @@ The `live` match also removes the two echo loops: the coalesced Jinja2, display-
 Group membership is refreshed by the recompute itself, not separately. Every read of a transform query passes `update_group=True`, and the API submits one `update_graphql_query_group` flow per request, which upserts the query group and adds the subscriber. The coalesced flow reads once per node in its batch, so a merge touching N nodes of a Python-attribute kind upserts N groups. While the pass runs and the stored Python node-input automations do not carry the origin filter yet, the merge replay adds its own per-node flows and the upserts are about 2N. That state ends when those automations are reconciled, and it arises once, on the upgrade that introduces the filter.
 
 When the resolution of this family raises, the pass logs it and widens every declared Python attribute to its whole kind, rather than letting the failure cancel the three schema-derived submissions. It cannot drop the family instead: the per-node automations no longer answer a replayed change, so nothing else would refresh those values. The widened set is rebuilt from the schema rather than from anything the resolver worked out, whatever stage it failed at, so it can include an attribute with no transform configured and one whose transform is absent. Those runs log a warning and stop, under the rule above. The submission carries a `widened` flag for it, separate from `coalesced`, because a coalesced submission of resolved ids came from a resolution that found the transform. The flag marks every whole-kind submission this pass makes, whether it came from this rebuild or from one attribute widened by a resolution that otherwise succeeded, through an unpinned query or a failed reader lookup. The whole-kind runs started elsewhere, by a transform edit, a schema-scoped backfill or the recalculate mutation, carry no flag and skip nothing.
+||||||| c49e5a44b
+=======
+Every rebase replays all of the branch's own changes onto the new base: one `rebase` node event per node in the branch's diff, and a coalesced recompute built from those changes. Unlike a merge, which replays them once, a rebase moves every change on the branch to the rebase time, so the next rebase replays them all again. A value on the branch that never depended on the branch's changes already reads what the default branch computed, so the default branch's changes are replayed only for the kinds whose schema the branch changed: the default branch derived those with its own schema, and the replay derives them again with the branch's. A branch with nothing in its diff gets the `BranchRebasedEvent` alone. Replaying onto a base that moved adds two steps:
+
+- The builder runs with `refresh_updated_nodes`, so an updated node also recomputes its own derived values, whichever fields changed: every value it derived on the branch read the old base, including one that reads no changed field, such as a computed attribute a schema change wrote.
+- The rebase submits a profile refresh for every node whose profiles changed on the branch, since the profile values it applied were the old base's.
+>>>>>>> origin/stable
 
 ## Node mutation origin
 
@@ -70,7 +78,7 @@ Every node mutation event carries an `origin` label (`infrahub.node.origin`), on
 |--------|--------|---------|
 | `live` | default | A direct edit through the API. |
 | `merge` | the merge post-process | A replay of a merged change. |
-| `rebase` | the rebase flow | A replay of a rebased change. |
+| `rebase` | the rebase flow | A change replayed onto the rebased branch. |
 | `recompute` | the bulk writer on a coalesced pass | A derived-value recompute write. |
 
 The four families' per-node triggers match only `live`, so `merge`, `rebase`, and `recompute` events do not start their per-node flows. This is what lets the coalesced pass be the single dispatcher for those families without double-processing. Other consumers (user action rules, webhooks, profiles) keep receiving every event whatever the origin.
@@ -106,6 +114,7 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 | Direct edit, same node | inline during `Node._update()` | n/a | inline, in dependency order |
 | Direct edit, reader on another node | per-node async process flow, `coalesced=False` | `live` | the emitted `live` events and their per-node triggers |
 | Merge or rebase | coalesced pass, `coalesced=True` | `recompute` | `RecomputeChainSubmitter` |
+| Whole-kind backfill: a Jinja2, display-label or HFID template change, or `InfrahubRecomputeComputedAttribute` without `node_ids` | coalesced pass per chunk of node ids, `coalesced=True` | `recompute` | `RecomputeChainSubmitter` |
 | A recompute write feeding a reader | chained coalesced pass, `coalesced=True` | `recompute` | `RecomputeChainSubmitter`, depth-bounded |
 
 ## Key Files
