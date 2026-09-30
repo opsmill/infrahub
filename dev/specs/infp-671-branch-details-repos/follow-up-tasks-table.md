@@ -1,4 +1,6 @@
-# Follow-up ticket (draft): one tasks table across the app
+# Follow-up ticket: one tasks table across the app
+
+Filed as [IFC-3245](https://opsmill.atlassian.net/browse/IFC-3245) (Draft).
 
 **Type:** Story (frontend). **Epic:** INFP-671, or the Tasks area if there is one.
 **Depends on:** INFP-671 branch details (ships `TasksTable` and IFC-3130's `TablePagination`).
