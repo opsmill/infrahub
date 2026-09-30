@@ -64,9 +64,22 @@ classification is:
 |---|---|
 | Equal | `UNCHANGED` |
 | Imported is an ancestor of remote head | `FAST_FORWARD` |
-| Imported is not an ancestor, tracking target unchanged | `REWRITE` |
-| Imported is not an ancestor, tracking target changed | `RETARGET` |
+| **Remote head is an ancestor of imported** | **`LOCAL_AHEAD`** |
+| Neither is an ancestor, tracking target unchanged | `REWRITE` |
+| Neither is an ancestor, tracking target changed | `RETARGET` |
+| The remote carries no such ref | `REMOTE_ABSENT` |
 | Imported commit is not present locally | `REWRITE` (safe classification, see below) |
+
+**`LOCAL_AHEAD` is not symmetry for its own sake.** It is the case a first draft of this design got
+wrong, and getting it wrong is dangerous. After a rejected push the local branch sits ahead of
+`origin/`; `git-integration.md` lists it under Known limitations, and `compare_local_remote` flags
+the branch every cycle. Collapse that into "not an ancestor" and the branch classifies `REWRITE`,
+the sync resets it, and the unpushed commit is gone — which is precisely the loss PR #10465 exists
+to prevent, reintroduced by the detection layer rather than the merge layer.
+
+With the row, a locally-ahead branch resets nothing and records nothing, so today's behaviour is
+preserved. It also removes the once-a-minute "update was detected but the commit remained the same
+after pull()" log line, because no pull is attempted.
 
 **The missing-object case.** If the imported commit is no longer in the local object database, the
 ancestry test cannot run. `Repo.is_ancestor` raises rather than answering. The branch is then
@@ -138,24 +151,33 @@ repository was re-pointed at a different target. The detector sees only two comm
 target that produced the imported commit is not stored anywhere.
 
 **Decision**: the mutation that changes a tracking target writes a short-lived suppression marker in
-the shared cache. The recorder reads it, skips the record, and deletes it. One mechanism covers
-both repository kinds.
+the shared cache. The component that calls the detector reads and deletes it in one step, and
+passes the result as `target_changed`. One mechanism covers both repository kinds.
 
 - Key: repository id plus Infrahub branch name.
-- Writer, read-only: `graphql/mutations/repository.py::RepositoryUpdate.mutate_update` already
-  computes `new_ref != current_ref` for `CoreReadOnlyRepository`. It sets the marker on that
-  comparison.
-- Writer, read-write: the same mutation compares the previous and the new `default_branch` on
-  `CoreRepository`. It sets the marker for Infrahub's default branch, which is the branch that
-  mapping feeds.
-- Reader: `HistoryRewriteRecorder`. A present marker turns `REWRITE` into `RETARGET`.
+- Writer, read-only: `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`
+  already computes `new_ref != current_ref` for `CoreReadOnlyRepository`. It sets the marker on
+  that comparison.
+- Writer, read-write: **this comparison does not exist yet.** The same method returns to
+  `super().mutate_update` immediately for any kind other than read-only, so nothing there compares
+  the old and new `default_branch` on `CoreRepository`. The comparison has to be added before that
+  early return. It is a change to the mutation, not a reuse.
+- Reader: **the detector's caller, and nothing else.** A present marker makes `target_changed` true,
+  so the detector returns `RETARGET` and no reset and no record follow. The read is destructive.
 - Time to live: one hour. The read-only import the same mutation submits runs within seconds. The
   read-write cycle runs within a minute. An hour is generous on both and short enough that a stale
   marker cannot suppress an unrelated rewrite days later.
 
+**Why the caller reads it and not the recorder.** A first draft put the read in
+`HistoryRewriteRecorder`. That does not work: the recorder writes nothing unless the classification
+is already `REWRITE`, so on a `RETARGET` it would return before reaching the marker and never
+consume it. The marker would then survive its full hour and suppress the *next*, genuine, rewrite
+of that branch. Reading at classification time makes one marker suppress exactly one
+classification, and keeps `RETARGET` reachable in the detector's own tests.
+
 **Rationale**: the comparison is already computed in the mutation for read-only, so one of the two
-writers costs nothing. The cache is already how this codebase coordinates repository state across
-workers. The marker is consumed, so it cannot suppress twice.
+writers is nearly free. The cache is already how this codebase coordinates repository state across
+workers. The read is destructive, so a marker cannot suppress twice.
 
 **Known failure mode, accepted and documented**: if the cache is flushed between the mutation and
 the reconciliation, a deliberate re-target writes one spurious rewrite record. The reconciliation

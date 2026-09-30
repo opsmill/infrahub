@@ -18,9 +18,13 @@ testcontainers. No test uses an external or locally-running Neo4j.
    Neo4j or fail the SDK login.
 
 ```bash
-env | grep '^INFRAHUB_' | cut -d= -f1 | while read -r v; do unset "$v"; done
+unset $(env | grep -o '^INFRAHUB_[^=]*')
 export INFRAHUB_USE_TEST_CONTAINERS=1
 ```
+
+Do not pipe into `while read ... unset`. In bash every stage of a pipeline runs in a subshell, so
+the `unset` would affect the subshell only and the calling shell would keep its variables. zsh runs
+the last stage in the current shell, which hides the bug on a zsh machine and lets it through to CI.
 
 4. Run one `backend/tests/component/` package per pytest session. Errors in the last package of a
    long run are contention, not the code.

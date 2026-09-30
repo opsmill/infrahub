@@ -83,10 +83,16 @@ mutation RecordRepositoryRewrite(
 # --- Contract assertions ------------------------------------------------------------------------
 #
 # C1. The four fields are present on all three repository node kinds.
-# C2. All four are nullable. A repository that was never reconciled returns null for each.
-# C3. Reading them on two different branches of the same repository returns two independent values.
-# C4. They never appear in a branch diff and never appear in a proposed change, because they are
+# C2. All four are nullable. A repository whose default branch was never reconciled returns null
+#     for each, on every branch.
+# C3. A write on one branch is not visible on another branch that already existed when the write
+#     happened. LOCAL isolates writes, diffs and merges.
+# C4. A branch created AFTER a reconciliation of the branch it forked from reads that branch's four
+#     values, because Branch.get_branches_and_times_to_query falls back to the origin branch as of
+#     branched_from. This is inheritance, not isolation, and it is the same behaviour the `commit`
+#     attribute beside them already has. See data-model.md, "What LOCAL does not do".
+# C5. They never appear in a branch diff and never appear in a proposed change, because they are
 #     declared BranchSupportType.LOCAL. A branch-safety test asserts this rather than inferring it
 #     from the declaration.
-# C5. Merging a branch that carries a record does not carry that record onto the destination.
-# C6. No new permission gates them. Read access follows read access to the repository.
+# C6. Merging a branch that carries a record does not carry that record onto the destination.
+# C7. No new permission gates them. Read access follows read access to the repository.

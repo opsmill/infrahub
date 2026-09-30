@@ -44,7 +44,7 @@ Where the two disagree, the Jira epic wins. One disagreement was found. See F1.
 | User stories 9 and 10 | Out of scope, per F5. |
 | SC-001 to SC-005, SC-007 | Verbatim in meaning. SC-006 changed, per F1. |
 | Key entities | All six carried, plus the classification type the plan introduces. |
-| Edge cases | All eleven carried. Two added: a tracked ref that disappears from the remote, and an imported commit no longer present in the local object database. |
+| Edge cases | The PRD lists eleven. Eight are carried as edge cases. Two (the orphaned delivery and the reverted delivery) are out of scope with the delivery work. One — a deliberate change of tracking target — is carried as a user story and a requirement instead of an edge case. Three are added: a non-trunk rewrite notifying nobody, a tracked ref that disappears from the remote, and an imported commit no longer present in the local object database. `spec.md` therefore lists eleven in total, which is a coincidence of the arithmetic and not a one-to-one mapping. |
 | Assumptions | All five carried. |
 | Out of scope | All eight carried. |
 | Governance gates | Both crossed gates carried into `plan.md` and marked as needing sign-off. |

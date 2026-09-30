@@ -30,11 +30,11 @@ its own.
 
 | Gate | Blocks | Who |
 |---|---|---|
-| **PR #10465 merged into `develop` and forward-merged** | T030–T034 only. Nothing else. | Patrick Ogenstad |
-| **Schema and GraphQL sign-off** ("Ask First" under `AGENTS.md`) | T035–T041 | A maintainer |
-| **The FR-014 consumer confirmed** | T042–T048 | Patrick Ogenstad |
+| **PR #10465 merged into `develop` and forward-merged** | T030–T034 in full, and T014's reset. Nothing else. | Patrick Ogenstad |
+| **Schema and GraphQL sign-off** ("Ask First" under `AGENTS.md`) | T035–T043 | A maintainer |
+| **The FR-014 consumer confirmed** | T044–T050 | Patrick Ogenstad |
 | **Merge order agreed against PR #10542** | T030–T034 | Patrick Ogenstad |
-| **Whether to wait for PR #10669** | T049–T052, and only which file they attach to | Patrick Ogenstad |
+| **Whether to wait for PR #10669** | T051–T054, and only which file they attach to | Patrick Ogenstad |
 
 ---
 
@@ -64,8 +64,9 @@ its own.
 - [ ] T005 [P] Define `RefClassification` and `RefDivergence` in
       `backend/infrahub/git/divergence/models.py`, per
       [data-model.md](data-model.md), "New in-process types". `RefClassification` is a `StrEnum`
-      with `UNCHANGED`, `FAST_FORWARD`, `REWRITE` and `RETARGET`. `RefDivergence` is a frozen
-      dataclass that rejects `REWRITE` or `RETARGET` without an `imported_commit`.
+      with `UNCHANGED`, `FAST_FORWARD`, `LOCAL_AHEAD`, `REWRITE`, `RETARGET` and `REMOTE_ABSENT`.
+      `RefDivergence` holds a nullable `remote_head` and enforces the three validation rules in
+      that section.
 - [ ] T006 [P] Define `ReconciledBranch` in `backend/infrahub/git/divergence/models.py`. It carries
       the Infrahub branch name, the branch UUID, the commit, and an optional `RefDivergence`.
 - [ ] T007 Write the ancestry gateway in `backend/infrahub/git/divergence/gateway.py`. It exposes
@@ -77,9 +78,11 @@ its own.
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 1. It takes
       `target_changed` from its caller and never reads the cache itself.
 - [ ] T009 [P] Write unit tests for the detector in
-      `backend/tests/unit/git/divergence/test_detector.py`. Cover all six rows of the contract
-      table, including the two negative cases that carry the most weight: a fast-forward and a
-      re-target must both come out clean. No database.
+      `backend/tests/unit/git/divergence/test_detector.py`. Cover every row of the contract table.
+      The negative cases carry the most weight: a fast-forward, a deliberate re-target, a branch
+      that is only ahead of its remote, and an absent remote ref must all come out clean. The
+      locally-ahead case is the one that would discard an unpushed commit if it were wrong, so
+      assert it names `LOCAL_AHEAD` and not `REWRITE`. No database.
 - [ ] T010 [P] Write unit tests for the models in
       `backend/tests/unit/git/divergence/test_models.py`. Assert that a `REWRITE` without an
       `imported_commit` is rejected.
@@ -101,9 +104,11 @@ head, the imported objects match the rewritten tree, and the repository reports 
 
 ### Test harness
 
-- [ ] T011 [US1] Add a force-push helper to `backend/tests/integration/git/conftest.py`, beside the
-      existing `_push_commit_to_remote`. It builds a divergent history inside the Gogs container
-      and pushes it with `--force`.
+- [ ] T011 [US1] Add a force-push helper to
+      `backend/tests/integration/git/test_git_live_remote.py`, beside the existing
+      `_push_commit_to_remote` and the two hook helpers, which all live in that module and not in
+      `conftest.py`. It builds a divergent history inside the Gogs container and pushes it with
+      `--force`.
 - [ ] T012 [P] [US1] Add a fixture that creates a Gogs repository with a tracked non-default branch
       already imported, in `backend/tests/integration/git/conftest.py`. The rewrite tests all start
       from that state.
@@ -116,7 +121,11 @@ head, the imported objects match the rewritten tree, and the repository reports 
       a branch that fails classification joins `failed_imports` and the cycle continues.
 - [ ] T014 [US1] Reset a `REWRITE` branch to the remote head in `collect_pending_imports` instead of
       pulling it, then record the commit and pin the commit worktree exactly as the fast-forward
-      path already does.
+      path already does. Reset **only** on `REWRITE`. A `LOCAL_AHEAD`, `RETARGET` or
+      `REMOTE_ABSENT` branch keeps today's behaviour and is never reset.
+      **This reset is gated on PR #10465** for the same reason T030 is: a branch that is both ahead
+      locally and rewritten remotely classifies `REWRITE`, and resetting it discards the unpushed
+      merge commit. The rest of T013 to T021 is not gated.
 - [ ] T015 [US1] Return `ReconciledBranch` entries from `collect_pending_imports`, so the syncer and
       then the broadcast can name every branch the cycle advanced.
 - [ ] T016 [US1] Give the divergent-branches case its own message in
@@ -247,23 +256,38 @@ and emits no report.
       `cd frontend/app && pnpm codegen`. CI fails when any of them is stale.
 - [ ] T037 [US1] Write `HistoryRewriteRecorder` in
       `backend/infrahub/git/divergence/recorder.py`, per
-      [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 2. It writes all
-      four attributes in one mutation through the SDK node API, so the `python_sdk` submodule needs
-      no change.
-- [ ] T038 [US1] Call the recorder from
-      `backend/infrahub/git/repository.py::InfrahubRepository.collect_pending_imports`, inside the
-      same repository-lock acquisition that applies the branch import. The read-then-increment of
-      `rewrite_count` is not safe between acquisitions.
-- [ ] T039 [P] [US1] Unit-test the recorder in
-      `backend/tests/unit/git/divergence/test_recorder.py`: last-write-wins, the increment from
-      absent to 1 and 1 to 2, a `RETARGET` writing nothing, and a rejected divergence whose two
-      commits are equal. No database.
-- [ ] T040 [US1] Add the branch-safety test in
+      [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 2. Take its two
+      collaborators as constructor-injected protocols, `RepositoryRecordStore` and
+      `RewriteEventEmitter`, so the unit tests of T040 need no database and no mocks
+      (`.agents/rules/backend-component-design.md`). The recorder itself imports neither the SDK
+      nor the event service, and it never reads the cache.
+- [ ] T038 [US1] Call the recorder from `backend/infrahub/git/sync.py::RepositorySyncer.sync`,
+      inside the **second** lock acquisition, straight after `apply_branch_import` returns for that
+      branch. Do **not** call it from `collect_pending_imports`: that runs under the first
+      acquisition, so the read-then-increment of `rewrite_count` would race, and a record written
+      there would claim a reconciliation that a later failed import never completed. The
+      classification reaches this point on `ReconciledBranch.divergence`.
+- [ ] T039 [US1] Write the production `RepositoryRecordStore` in
+      `backend/infrahub/git/divergence/store.py`, backed by the SDK node API. It reads
+      `rewrite_count` and writes the four attributes in one call, so the `python_sdk` submodule
+      needs no change.
+- [ ] T040 [P] [US1] Unit-test the recorder in
+      `backend/tests/unit/git/divergence/test_recorder.py` against in-memory ports: last-write-wins,
+      the increment from absent to 1 and 1 to 2, a `RETARGET`, a `LOCAL_AHEAD` and a
+      `REMOTE_ABSENT` each writing nothing, and a rejected divergence whose two commits are equal.
+      No database, no mocks.
+- [ ] T041 [US1] Component-test the read inheritance in
+      `backend/tests/component/git/test_repository_rewrite_branch_safety.py`: a branch created
+      after the default branch was reconciled reads the default branch's four values, and its own
+      first reconciliation increments the count it inherited. This is what LOCAL does, and the
+      test exists so nobody meets it in production. See [data-model.md](data-model.md), "What LOCAL
+      does not do".
+- [ ] T042 [US1] Add the branch-safety test in
       `backend/tests/component/git/test_repository_rewrite_branch_safety.py`: the four attributes
       appear in no branch diff on `CoreRepository` or `CoreReadOnlyRepository`, and merging a
       branch that carries a record does not carry it to the destination. The constitution's
       branch-safe principle requires this to be asserted rather than inferred from the declaration.
-- [ ] T041 [US1] Add a live-remote test asserting the record's contents after a rewrite, in
+- [ ] T043 [US1] Add a live-remote test asserting the record's contents after a rewrite, in
       `backend/tests/integration/git/test_git_live_remote.py`.
 
 **Checkpoint**: SC-006 holds for the stored state. The human-facing view is INFP-671's.
@@ -284,25 +308,25 @@ cycles. Exactly one record, exactly one signal, and a healthy repository.
 > [research.md](research.md) R8. Patrick may prefer a built-in notification surface, or deferring
 > the signal to INFP-671.
 
-- [ ] T042 [US4] Add `RepositoryHistoryRewrittenEvent` to
+- [ ] T044 [US4] Add `RepositoryHistoryRewrittenEvent` to
       `backend/infrahub/events/repository_action.py` and export it from
       `backend/infrahub/events/__init__.py`, per [data-model.md](data-model.md), "New event".
-- [ ] T043 [US4] Add the matching member to
+- [ ] T045 [US4] Add the matching member to
       `backend/infrahub/core/constants/__init__.py::EventType`. That is what puts it in the
       `event_type` enum of `CoreStandardWebhook` and `CoreCustomWebhook`, which is the consumer.
-- [ ] T044 [US4] Emit the event from `HistoryRewriteRecorder` in
+- [ ] T046 [US4] Emit the event from `HistoryRewriteRecorder` in
       `backend/infrahub/git/divergence/recorder.py`, after a successful record, and only when the
       reconciled branch is the repository's configured default branch.
-- [ ] T045 [US4] Regenerate the events reference documentation with `uv run invoke docs.generate`
+- [ ] T047 [US4] Regenerate the events reference documentation with `uv run invoke docs.generate`
       and commit it.
-- [ ] T046 [P] [US4] Unit-test the emission rule in
+- [ ] T048 [P] [US4] Unit-test the emission rule in
       `backend/tests/unit/git/divergence/test_recorder.py`: the trunk emits exactly one event, and
       any other branch emits none.
-- [ ] T047 [US4] Add a live-remote test in
+- [ ] T049 [US4] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`: a rewritten trunk produces exactly
       one record and exactly one signal **across several synchronisation cycles**. One cycle is not
       enough, because a single-cycle test would pass while the exactly-once property is broken.
-- [ ] T048 [US4] Add a live-remote test that wires a webhook to the new event and asserts exactly
+- [ ] T050 [US4] Add a live-remote test that wires a webhook to the new event and asserts exactly
       one delivery per rewrite, in `backend/tests/integration/git/test_git_live_remote.py`. This
       test is what holds the wiring, so the event cannot become a dead one.
 
@@ -327,13 +351,13 @@ the commit. The import happened, the record was written, and no reset ran.
 > `backend/infrahub/git/repository.py::InfrahubReadOnlyRepository.update_latest_commit`. The record
 > and the precondition are identical either way. See [research.md](research.md) R10.
 
-- [ ] T049 [US5] Classify the resolved commit against the imported one at the attachment point
+- [ ] T051 [US5] Classify the resolved commit against the imported one at the attachment point
       chosen above, and call the recorder on a `REWRITE`. Perform no reset (FR-009).
-- [ ] T050 [US5] Confirm the import path is unchanged: detection changes what is recorded, never
+- [ ] T052 [US5] Confirm the import path is unchanged: detection changes what is recorded, never
       what is imported.
-- [ ] T051 [P] [US5] Component-test the read-only classification in
+- [ ] T053 [P] [US5] Component-test the read-only classification in
       `backend/tests/component/git/test_readonly_rewrite.py`.
-- [ ] T052 [US5] Add a live-remote test in
+- [ ] T054 [US5] Add a live-remote test in
       `backend/tests/integration/git/test_readonly_repository.py`: a force-moved tag on a read-only
       repository writes the record and performs no reset.
 
@@ -350,26 +374,32 @@ read-write repository's configured default branch. Neither writes a record.
 
 **Maps to**: FR-002, SC-007.
 
-- [ ] T053 [US6] Write the suppression marker's read and write in
+- [ ] T055 [US6] Write the suppression marker's read and write in
       `backend/infrahub/git/divergence/suppression.py`, per [data-model.md](data-model.md),
-      "Cache key". The read consumes the marker.
-- [ ] T054 [US6] Write the marker from
-      `backend/infrahub/graphql/mutations/repository.py::RepositoryUpdate.mutate_update` when
-      `CoreReadOnlyRepository.ref` changes. It already computes `new_ref != current_ref`. The write
-      lands after the update succeeds and **before** either workflow is submitted, or the import
-      can beat it and record a spurious rewrite.
-- [ ] T055 [US6] Write the marker from the same mutation when `CoreRepository.default_branch`
-      changes, for Infrahub's default branch, which is the branch that mapping feeds.
-- [ ] T056 [US6] Read and consume the marker in `HistoryRewriteRecorder`, turning a `REWRITE` into
-      a skip.
-- [ ] T057 [P] [US6] Unit-test the suppression in
-      `backend/tests/unit/git/divergence/test_recorder.py`: a present marker skips the record and
-      is consumed, and an absent marker writes it. Both directions are asserted, so the behaviour
-      is stated rather than assumed.
-- [ ] T058 [US6] Component-test the mutation's ordering in
+      "Cache key". The read is destructive: it reads and deletes in one step.
+- [ ] T056 [US6] Write the marker from
+      `backend/infrahub/graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`
+      when `CoreReadOnlyRepository.ref` changes. It already computes `new_ref != current_ref`. The
+      write lands after the update succeeds and **before** either workflow is submitted, or the
+      import can beat it and record a spurious rewrite.
+- [ ] T057 [US6] Add the `default_branch` comparison to the same method for `CoreRepository`, and
+      write the marker for Infrahub's default branch. **This comparison does not exist yet**: the
+      method returns to `super().mutate_update` immediately for any kind other than read-only, so
+      the comparison goes before that early return.
+- [ ] T058 [US6] Consume the marker at classification time, in the two components that call the
+      detector: `collect_pending_imports` for read-write, and the read-only detection point of
+      T051. Pass the result as `target_changed`. The recorder must **not** read the cache: it
+      returns early on any classification other than `REWRITE`, so a marker read there would never
+      be consumed on a `RETARGET` and would go on to suppress the next genuine rewrite.
+- [ ] T059 [P] [US6] Unit-test the suppression in
+      `backend/tests/unit/git/divergence/test_suppression.py`: a present marker yields
+      `target_changed` true and is gone afterwards, and an absent marker yields false. Both
+      directions are asserted, so the behaviour is stated rather than assumed. Assert the marker is
+      consumed exactly once, which is what stops it suppressing a later genuine rewrite.
+- [ ] T060 [US6] Component-test the mutation's ordering in
       `backend/tests/component/graphql/mutations/test_repository.py`: the marker exists before the
       workflows are submitted.
-- [ ] T059 [US6] Add a live-remote test in
+- [ ] T061 [US6] Add a live-remote test in
       `backend/tests/integration/git/test_readonly_repository.py`: changing the tracked ref to a
       different tag records nothing.
 
@@ -381,42 +411,43 @@ read-write repository's configured default branch. Neither writes a record.
 
 **Purpose**: correct what is wrong in the knowledge docs today, and describe what shipped.
 
-- [ ] T060 [P] Correct the branch-support table in
+- [ ] T062 [P] Correct the branch-support table in
       `dev/knowledge/backend/git-integration.md`, "Repository state and branch support". It says
       `commit`, `sync_status` and `internal_status` are LOCAL. On `CoreReadOnlyRepository`, `commit`
       and `ref` are AWARE, so they do reach branch diffs and merges.
-- [ ] T061 [P] State in `dev/knowledge/backend/git-integration.md`, "How the workers converge",
+- [ ] T063 [P] State in `dev/knowledge/backend/git-integration.md`, "How the workers converge",
       that the periodic sync's broadcast covered only the trunk or the staging branch and that a
       failed branch suppressed it, and that this feature changes both.
-- [ ] T062 [P] Correct the "Key Files" table in
+- [ ] T064 [P] Correct the "Key Files" table in
       `dev/knowledge/backend/merge-failure-recovery.md`. It attributes the merge-start logic to
       `core/branch/tasks.py::_do_merge_branch`. That logic now lives in
       `core/merge/orchestrator.py`. Check the surrounding prose for the same claim.
-- [ ] T063 Rewrite the four "Volatile section" notes in
+- [ ] T065 Rewrite the four "Volatile section" notes in
       `dev/knowledge/backend/git-integration.md` that describe this feature as planned. They now
       describe what shipped: the ancestry detection, the pull-path reset, the widened broadcast and
       the record.
-- [ ] T064 [P] Document the two limitations in the repository topic docs under `docs/`: rewriting
+- [ ] T066 [P] Document the two limitations in the repository topic docs under `docs/`: rewriting
       history means content at discarded commits can no longer be reliably re-derived, and schema
       already applied to a branch is not rewound.
-- [ ] T065 [P] Document the accepted failure mode of the suppression marker in
+- [ ] T067 [P] Document the accepted failure mode of the suppression marker in
       `dev/knowledge/backend/git-sync.md`: a cache flush between the re-target mutation and the
       reconciliation writes one spurious record and leaves the count one too high. The
       reconciliation itself is identical either way.
-- [ ] T066 Add a towncrier changelog fragment under `changelog/`. This is a user-visible change.
-      Use the `creating-changelog-entries` skill. The filename follows the repository convention: a
-      descriptive slug, not the ticket number, because IFC-3210 is a Jira epic and not a GitHub
-      issue.
-- [ ] T067 Add the end-to-end scenario under `tests/e2e/`: a developer rebases a branch Infrahub
+- [ ] T068 Add a towncrier changelog fragment under `changelog/`. This is a user-visible change.
+      Use the `creating-changelog-entries` skill. Filename: the convention is a bare GitHub issue
+      number when the release note should link that issue, and a `+slug` otherwise. The epic lists
+      #6299 under "Advances", not "Closes", so a slug is the safer default. Confirm with Patrick
+      whether this closes #6299; if it does, the stem is `6299`.
+- [ ] T069 Add the end-to-end scenario under `tests/e2e/`: a developer rebases a branch Infrahub
       tracks and force-pushes it. The branch keeps synchronising, its imported objects match the
       rewritten history, and the repository reports healthy throughout. The constitution requires
       an E2E test for a user-facing feature, and the PRD names this scenario. Run it with `--pdb`
       while developing it; a failure then freezes the session with the stack and every fixture
       alive.
-- [ ] T068 Run `/pre-ci`. It covers the whole-repository `ruff check . --exclude python_sdk` and
+- [ ] T070 Run `/pre-ci`. It covers the whole-repository `ruff check . --exclude python_sdk` and
       `ruff format --check` that `invoke lint` misses, plus `docs.validate` for the generated
       documentation. CI fails on any of them.
-- [ ] T069 Print `/review-pr <n>` and wait for the verdict before the PR leaves draft. A session
+- [ ] T071 Print `/review-pr <n>` and wait for the verdict before the PR leaves draft. A session
       that wrote the code cannot review it.
 
 ---
@@ -439,26 +470,35 @@ Phase 10 (Documentation) follows whatever has landed.
 
 ### What waits for PR #10465
 
-Only **T030 to T034**, the whole of Phase 5. Five tasks. Everything else can be written, reviewed
-and merged before the writeback ordering fix lands.
+**T030 to T034**, the whole of Phase 5, plus **the reset inside T014**. Six items. Everything else
+can be written, reviewed and merged before the writeback ordering fix lands.
 
 The reason is narrow and must not be relaxed. Today a repository merge writes the commit to the
 graph before it pushes, so a rejected push leaves a merge commit on one worker's disk and nowhere
-else. An unconditional reset in `pull` would discard it silently. #10465 moves the push ahead of
-the graph write and resets the destination worktree when either step fails, so the state cannot
-arise.
+else. A reset onto the remote head discards it silently. #10465 moves the push ahead of the graph
+write and resets the destination worktree when either step fails, so the state cannot arise.
+
+**Both reset sites carry that hazard, not just the pull path.** An earlier draft of this plan gated
+only Phase 5, which was wrong: T014 resets a branch in the sync path for exactly the same reason.
+
+The `LOCAL_AHEAD` classification narrows the hole a long way. The ordinary shape of a rejected push
+is a branch merely ahead of its remote, and that classifies `LOCAL_AHEAD`, which resets nothing.
+What is left is the branch that is **both** ahead locally and rewritten remotely: neither commit is
+an ancestor of the other, the classification is `REWRITE`, and the reset discards the unpushed
+commit. Rare, but real, and the reason the gate survives.
 
 T011's force-push helper is not gated: it extends the harness #10465 introduced, but that harness
-is already on this branch's base.
+is already on this branch's base. T013 (classify) and T015 to T021 are not gated either; only the
+reset in T014 is.
 
 ### What waits for a person
 
 | Tasks | Waiting on | Who |
 |---|---|---|
-| T030–T034 | PR #10465 merged, and the merge order agreed against PR #10542 | Patrick Ogenstad |
-| T035–T041 | Schema and GraphQL sign-off | A maintainer |
-| T042–T048 | The FR-014 consumer confirmed | Patrick Ogenstad |
-| T049–T052 | Whether to wait for PR #10669 to merge | Patrick Ogenstad |
+| T030–T034, and T014's reset | PR #10465 merged, and the merge order agreed against PR #10542 | Patrick Ogenstad |
+| T035–T043 | Schema and GraphQL sign-off | A maintainer |
+| T044–T050 | The FR-014 consumer confirmed | Patrick Ogenstad |
+| T051–T054 | Whether to wait for PR #10669 to merge | Patrick Ogenstad |
 
 ---
 
@@ -471,11 +511,11 @@ is already on this branch's base.
 | 3 | T012 with T011; T019 with T018; T021 with T020 |
 | 4 | T027 alone, once T022 and T023 are done |
 | 5 | T032 and T034 |
-| 6 | T039 alone, once T037 is done |
-| 7 | T046 alone, once T044 is done |
-| 8 | T051 alone, once T049 is done |
-| 9 | T057 alone, once T056 is done |
-| 10 | T060, T061, T062, T064, T065 |
+| 6 | T040 alone, once T037 and T039 are done; T041 with T042 |
+| 7 | T048 alone, once T046 is done |
+| 8 | T053 alone, once T051 is done |
+| 9 | T059 alone, once T055 is done |
+| 10 | T062, T063, T064, T066, T067 |
 
 ---
 
@@ -510,9 +550,9 @@ both come out clean.
 | 3 US1 reconcile | 11 |
 | 4 US3 broadcast | 8 |
 | 5 US2 self-heal | 5 |
-| 6 US1 record | 7 |
+| 6 US1 record | 9 |
 | 7 US4 trunk signal | 7 |
 | 8 US5 read-only | 4 |
 | 9 US6 re-target | 7 |
 | 10 Documentation and polish | 10 |
-| **Total** | **69** |
+| **Total** | **71** |

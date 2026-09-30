@@ -209,8 +209,15 @@ either case.
   not the behaviour.
 - **A merged branch or a branch being deleted.** Synchronisation already excludes these before
   reconciliation is reached. The behaviour is unchanged.
+- **A deliberate change of tracking target.** Re-pointing a read-only repository to a new tag, or
+  editing a repository's configured default branch, breaks lineage without rewriting anything. It
+  is reconciled and not reported. User Story 6 covers it.
 - **A tracked ref that disappears from the remote.** This is an absent ref, not a lineage break. It
   keeps its current behaviour and writes no record.
+- **A branch left ahead of its remote.** After a rejected push the local branch holds commits the
+  remote does not. The remote head is then an ancestor of the imported commit. This is not a
+  rewrite. The branch MUST NOT be reset, because the reset would discard a commit that exists on
+  one worker only.
 - **The commit Infrahub imported is no longer present in the local object database.** Ancestry
   cannot be tested. The branch is treated as diverged, which is the safe classification, and the
   record names the imported commit as the previous commit.
@@ -225,8 +232,11 @@ here. See "Out of Scope".
 #### Detection
 
 - **FR-001**: The system MUST classify a tracked ref's remote head against the imported commit by
-  ancestry. The classification MUST distinguish unchanged, fast-forward and diverged. Equality
-  alone MUST NOT be used.
+  ancestry. The classification MUST distinguish unchanged, fast-forward, local-ahead and diverged.
+  Equality alone MUST NOT be used.
+- **FR-001a**: The system MUST NOT treat a branch whose remote head is an ancestor of the imported
+  commit as a rewrite. Such a branch holds commits the remote does not. It MUST NOT be reset and
+  MUST NOT be recorded. Resetting it would discard a commit that exists on one worker only.
 - **FR-002**: The system MUST distinguish a lineage break under an unchanged tracking target from a
   lineage break caused by the tracking target itself changing. Only the first is a rewrite.
 - **FR-003**: The system MUST NOT describe a divergent history as a merge conflict. This applies to

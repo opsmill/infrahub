@@ -42,7 +42,8 @@ rewritten branch, both of which already exist as operations.
 **Constraints**: the repository lock is the most contended lock in the git subsystem. The widened
 broadcast must stay at one message and one lock hold per repository per cycle.
 
-**Scale/Scope**: seven backend modules touched, two new. Roughly 40 tasks. No frontend work.
+**Scale/Scope**: ten existing backend modules touched, plus one new five-file package. 69 tasks
+across 10 phases. No frontend work.
 
 ## Constitution Check
 
@@ -133,7 +134,7 @@ Each slice is independently testable and delivers value on its own.
 | Slice | User story | Depends on | Gated on #10465 |
 |---|---|---|---|
 | **A. Classify** | Foundation for US1 | Nothing | No |
-| **B. Reconcile in the sync path** | US1 | A | No |
+| **B. Reconcile in the sync path** | US1 | A | **Partly.** See below. |
 | **C. Broadcast every branch, before the raise** | US3 | B | No |
 | **D. Self-heal in the pull path** | US2 | A | **Yes** |
 | **E. Record the event** | US1 | A, and schema sign-off | No |
@@ -142,14 +143,35 @@ Each slice is independently testable and delivers value on its own.
 | **H. Re-target suppression** | US6 | E | No |
 | **I. Documentation** | — | B, C, D, E | No |
 
-Slices A, B, C, E, F, H and I can be written and merged before #10465 lands. Slice D and the
-force-push test harness cannot.
+### What #10465 actually gates, and why slice B is only partly free
+
+Both slice B and slice D reset a branch onto the remote head. Both can therefore discard a commit
+that exists on one worker's disk and nowhere else, which is the state a rejected push leaves behind
+until #10465 lands.
+
+The `LOCAL_AHEAD` classification removes most of that exposure. A branch that is merely ahead of
+its remote — the ordinary shape of a rejected push — classifies `LOCAL_AHEAD`, and neither slice
+resets it. Today's behaviour is preserved exactly.
+
+What remains is the branch that is **both** ahead locally and rewritten remotely. Neither commit is
+then an ancestor of the other, the classification is `REWRITE`, and the reset discards the unpushed
+merge commit. That case is rare but real, and it is the reason the gate exists.
+
+So:
+
+- **Slice A, C, E, F, G, H and I** are free of the gate. They never reset anything.
+- **Slice B** may be written and reviewed now. Its reset must not be enabled on a deployment
+  running without #10465, because of the both-ahead-and-rewritten case.
+- **Slice D** is fully gated, because the pull path has no classification context to lean on and
+  runs from every worker.
+
+Do not read `LOCAL_AHEAD` as a replacement for the gate. It narrows the hole; #10465 closes it.
 
 ## Risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| **PR #10465 does not land.** | Slice D cannot ship. Without it, an unconditional reset can discard a merge commit that exists on one worker only. | Slice D is the only gated slice. Everything else ships without it. Do not relax the gate. |
+| **PR #10465 does not land.** | Slice D cannot ship, and slice B's reset cannot be enabled. Either can discard a merge commit that exists on one worker only. | The `LOCAL_AHEAD` classification narrows this to the branch that is both ahead locally and rewritten remotely. Slice D stays fully gated, slice B's reset stays behind the same gate. Do not relax either. |
 | **PR #10542 (IFC-3105) rewrites `git/base.py`.** | A rebase conflict in `pull` and in the error classifier, the two places slice D and slice A touch. | Patrick owns both branches. Agree the merge order before slice D starts. #10542 removes the trunk fallback this epic would otherwise inherit, so landing it first is the better order. |
 | **The suppression marker is lost.** | One spurious rewrite record on a deliberate re-target, and a count one too high. | Accepted and documented. The reconciliation is identical either way. A test covers the marker being present; a second test covers it being absent, and asserts the record is written, so the behaviour is stated rather than assumed. |
 | **The widened broadcast increases lock contention.** | Slower merges and syncs under load. | One coalesced message per repository per cycle, one lock hold, one fetch. A unit test asserts the fan-out over N pairs happens inside one acquisition. |

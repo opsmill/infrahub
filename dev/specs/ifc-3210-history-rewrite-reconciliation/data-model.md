@@ -21,7 +21,7 @@ Declared in `backend/infrahub/core/schema/definitions/core/repository.py`, on th
 | `last_rewrite_previous_commit` | `Text` | yes | none | `LOCAL` | The commit Infrahub had imported on this branch before the reconciliation. |
 | `last_rewrite_commit` | `Text` | yes | none | `LOCAL` | The commit Infrahub reconciled onto. |
 | `last_rewrite_at` | `DateTime` | yes | none | `LOCAL` | When the reconciliation completed. |
-| `rewrite_count` | `Number` | yes | none | `LOCAL` | How many times this branch has been reconciled, cumulative. |
+| `rewrite_count` | `Number` | yes | none | `LOCAL` | How many reconciliations are visible on this branch, cumulative. See "What LOCAL does not do" below: a branch inherits the count of the branch it forked from. |
 
 Order weights place them after `sync_status` and before the relationships, so the repository form
 groups the synchronisation state together.
@@ -50,6 +50,27 @@ groups the synchronisation state together.
 4. The system never clears any of the four (FR-011). Nothing in the product resets them.
 5. A `RETARGET` classification writes none of them (FR-002, SC-007).
 6. A worker that reset itself from its own pull path writes none of them (FR-007).
+
+#### What LOCAL does not do
+
+**LOCAL isolates writes, diffs and merges. It does not isolate reads.**
+`core/branch/models.py::Branch.get_branches_and_times_to_query` returns the origin branch as of
+`branched_from` alongside the branch itself, so a read on a branch falls back to the branch it
+forked from. A branch created after the default branch was reconciled therefore reads the default
+branch's four values, and its own first reconciliation increments a count it inherited.
+
+This is not a defect to fix here. It is exactly how the `commit` attribute beside it already
+behaves, and it is the right answer for `commit`: a new branch starts at the trunk's commit. The
+same inheritance is defensible for the record, because a branch forked from a rewritten history did
+inherit that rewrite.
+
+**Clearing the four values when a branch is created is rejected.** It would add a write to every
+branch creation, on a path that has nothing to do with git repositories, to fix a reading that is
+arguably correct. Principle VII.
+
+**What it costs, stated plainly**: `rewrite_count` means "reconciliations visible on this branch",
+not "reconciliations of this branch". `last_rewrite_at` on a young branch can predate the branch.
+A test asserts the inheritance so nobody discovers it in production.
 
 #### What they do not do
 
@@ -82,11 +103,24 @@ A `StrEnum` in `backend/infrahub/git/divergence/models.py`.
 |---|---|
 | `UNCHANGED` | The remote head equals the imported commit. |
 | `FAST_FORWARD` | The imported commit is an ancestor of the remote head. |
-| `REWRITE` | The imported commit is not an ancestor, and the tracking target did not change. |
-| `RETARGET` | The imported commit is not an ancestor, and the tracking target changed. |
+| `LOCAL_AHEAD` | The remote head is an ancestor of the imported commit. The local copy holds commits the remote does not. |
+| `REWRITE` | Neither commit is an ancestor of the other, and the tracking target did not change. |
+| `RETARGET` | Neither commit is an ancestor of the other, and the tracking target changed. |
+| `REMOTE_ABSENT` | The remote carries no such ref any more. |
 
 It is an enum and not a boolean because Principle III requires that `REWRITE` and `RETARGET` cannot
 collapse into each other at a call site.
+
+**`LOCAL_AHEAD` is load-bearing, not a completeness exercise.** A branch left ahead of its remote is
+a state the product reaches today: after a rejected push the local branch sits ahead of `origin/`,
+`compare_local_remote` flags it every cycle, and `pull` returns `True` with no change. Without this
+member, "neither is an ancestor" would swallow that case, classify it `REWRITE`, and reset the
+branch onto the remote — discarding the very commit PR #10465 exists to protect. `LOCAL_AHEAD`
+resets nothing and records nothing, so the current behaviour is preserved exactly.
+
+It also closes a documented defect on its own: `dev/knowledge/backend/git-integration.md` lists "a
+branch left ahead of its remote is re-reported every cycle" under Known limitations. A branch
+classified `LOCAL_AHEAD` needs no pull, so the once-a-minute log line stops.
 
 ### `RefDivergence`
 
@@ -97,11 +131,15 @@ A frozen dataclass. What one classification decided, for one branch.
 | `branch_name` | `str` | The remote branch, or the tracked ref for a read-only repository. |
 | `infrahub_branch_name` | `str` | The Infrahub branch the remote branch maps onto. |
 | `imported_commit` | `str \| None` | What Infrahub had. `None` when the branch was never imported. |
-| `remote_head` | `str` | What the remote publishes now. |
+| `remote_head` | `str \| None` | What the remote publishes now. `None` when the remote carries no such ref. |
 | `classification` | `RefClassification` | The decision. |
 
-Validation: `REWRITE` and `RETARGET` both require `imported_commit` to be set. A branch with no
-imported commit can only be `UNCHANGED` or `FAST_FORWARD`.
+Validation:
+
+- `REWRITE`, `RETARGET` and `LOCAL_AHEAD` all require both commits to be set.
+- A branch with no imported commit can only be `UNCHANGED` or `FAST_FORWARD`.
+- A `None` `remote_head` can only be `REMOTE_ABSENT`, or `UNCHANGED` when the branch was never
+  imported either.
 
 ### `ReconciledBranch`
 
@@ -176,7 +214,7 @@ the classification, not from a guard.
 
 ### The re-target suppression marker
 
-Written by `graphql/mutations/repository.py::RepositoryUpdate.mutate_update`, read and deleted by
+Written by `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`, read and deleted by
 the recorder. See `research.md` R4 for why this shape was chosen.
 
 | Property | Value |

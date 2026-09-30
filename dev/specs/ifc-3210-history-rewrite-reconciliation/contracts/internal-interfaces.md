@@ -23,22 +23,38 @@ classify(
 
 ### Contract
 
+Rows are evaluated in order. The first match wins.
+
 | Input | Output |
 |---|---|
-| `imported_commit` is `None` | `UNCHANGED` when `remote_head` is `None`, else `FAST_FORWARD` |
+| `remote_head` is `None`, `imported_commit` is set | `REMOTE_ABSENT` |
+| `remote_head` is `None`, `imported_commit` is `None` | `UNCHANGED` |
+| `imported_commit` is `None` | `FAST_FORWARD` |
 | `remote_head == imported_commit` | `UNCHANGED` |
 | `imported_commit` is an ancestor of `remote_head` | `FAST_FORWARD` |
-| Not an ancestor, `target_changed` is false | `REWRITE` |
-| Not an ancestor, `target_changed` is true | `RETARGET` |
+| **`remote_head` is an ancestor of `imported_commit`** | **`LOCAL_AHEAD`** |
+| Neither is an ancestor, `target_changed` is false | `REWRITE` |
+| Neither is an ancestor, `target_changed` is true | `RETARGET` |
 | The ancestry question cannot be answered | `REWRITE` |
+
+**The `LOCAL_AHEAD` row is what keeps this safe without PR #10465.** A branch left ahead of its
+remote after a rejected push is a state the product reaches today. Without that row it falls into
+"neither is an ancestor", classifies `REWRITE`, and the reset discards the unpushed commit. With
+it, the branch resets nothing, records nothing, and keeps exactly today's behaviour.
+
+`REMOTE_ABSENT` likewise keeps current behaviour: a tracked ref that disappeared from the remote is
+not a lineage break. `spec.md` names it as an edge case.
 
 ### Rules
 
 - The detector never contacts the remote. The caller fetches first.
 - The detector never writes. It returns a value.
 - The detector runs without a database, so its unit tests need none.
-- `target_changed` is supplied by the caller, which reads the suppression marker. The detector does
-  not read the cache.
+- **`target_changed` is supplied by the caller, and the caller is the only component that touches
+  the suppression marker.** It reads the marker, deletes it, and passes the result here. Neither
+  the detector nor the recorder reads the cache. See section 8.
+- Only `REWRITE` leads to a reset and a record. `LOCAL_AHEAD`, `RETARGET`, `REMOTE_ABSENT`,
+  `UNCHANGED` all leave the branch alone.
 
 ### Ancestry gateway
 
@@ -56,8 +72,8 @@ library.
 
 New. `backend/infrahub/git/divergence/recorder.py`.
 
-The sole write path for the four attributes. It owns last-write-wins, the increment, the
-unchanged-target precondition and the trunk signal.
+The sole write path for the four attributes. It owns last-write-wins, the increment and the trunk
+signal.
 
 ```text
 record(repository_id, repository_name, infrahub_branch_name, divergence, is_default_branch) -> bool
@@ -67,25 +83,55 @@ Returns whether a record was written.
 
 ### Contract
 
-1. Writes nothing unless `divergence.classification` is `REWRITE`.
-2. Reads the suppression marker for this repository and branch. When present, it deletes the marker,
-   writes nothing, and returns false.
-3. Rejects a divergence whose `imported_commit` equals its `remote_head`. That is a classifier bug.
-4. Reads the current `rewrite_count` on that branch, writes `count + 1`, treating an absent value
+1. Writes nothing unless `divergence.classification` is `REWRITE`. `RETARGET` arrives already
+   classified, so the recorder needs no precondition of its own and never reads the cache.
+2. Rejects a divergence whose `imported_commit` equals its `remote_head`. That is a classifier bug.
+3. Reads the current `rewrite_count` on that branch, writes `count + 1`, treating an absent value
    as zero.
-5. Writes all four attributes in one mutation, on the Infrahub branch named.
-6. Overwrites the previous record. It never accumulates and never clears.
-7. Emits `RepositoryHistoryRewrittenEvent` exactly once, and only when `is_default_branch` is true.
-8. Runs inside the **same** repository-lock acquisition that applies the branch import, never
-   between two acquisitions. The read-then-increment of step 4 is not safe otherwise: the
-   collection phase and each branch import take the lock separately, and a recorder call placed
-   between them would let two workers read the same count and write the same value.
+4. Writes all four attributes in one mutation, on the Infrahub branch named.
+5. Overwrites the previous record. It never accumulates and never clears.
+6. Emits `RepositoryHistoryRewrittenEvent` exactly once, and only when `is_default_branch` is true.
+7. Runs inside the **same** repository-lock acquisition that applies the branch import, after the
+   import has succeeded. See "Where it is called" below.
+
+### Where it is called
+
+`RepositorySyncer.sync` takes the repository lock twice: once around `collect_pending_imports`, and
+once per branch around `apply_branch_import`. The recorder runs inside the **second** one, after
+`apply_branch_import` returns.
+
+Two things follow, and both are the reason for the placement:
+
+- **The count is safe.** The read-then-increment of step 3 happens under the same lock hold as the
+  import. Calling the recorder from `collect_pending_imports` would put it in the *first*
+  acquisition, and two workers could then read the same count and write the same value.
+- **The record cannot outrun the work it describes.** A record written during collection, followed
+  by a failed import, would claim a reconciliation that never completed, and would fire the trunk
+  event for it. Writing after the import means a failed import leaves no record and no event, and
+  the next cycle classifies the branch `REWRITE` again and retries the whole thing.
+
+The classification is produced during collection and carried to this point on
+`ReconciledBranch.divergence`.
+
+### Injected ports
+
+Principle III and `.agents/rules/backend-component-design.md` require the collaborators to be named
+protocols passed to the constructor, so the unit tests of T039 need no database and no mocks.
+
+| Port | What it does |
+|---|---|
+| `RepositoryRecordStore` | Reads `rewrite_count` for one repository and branch, and writes the four attributes in one call. |
+| `RewriteEventEmitter` | Emits `RepositoryHistoryRewrittenEvent`. |
+
+The production `RepositoryRecordStore` is backed by the SDK node API. A test substitutes an
+in-memory one. The recorder itself imports neither the SDK nor the event service.
 
 ### Rules
 
 - The recorder is never called from a worker's own pull path. That is FR-007, and the pull path has
   no recorder reference at all, so the rule holds by construction.
-- The recorder writes through the SDK node API. It does not change the `python_sdk` submodule.
+- The production store writes through the SDK node API. It does not change the `python_sdk`
+  submodule.
 
 ---
 
@@ -208,7 +254,7 @@ Changed. Attachment point depends on whether PR #10669 has merged. See `research
 
 ## 8. Re-target suppression marker
 
-New. Written by `backend/infrahub/graphql/mutations/repository.py::RepositoryUpdate.mutate_update`.
+New. Written by `backend/infrahub/graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`.
 
 ### Contract
 
@@ -219,9 +265,28 @@ New. Written by `backend/infrahub/graphql/mutations/repository.py::RepositoryUpd
 
 1. The marker is written after the update succeeds, and **before** any workflow is submitted. The
    read-only path submits a pull and an import from inside the same mutation. If the marker landed
-   after the submission, the import could reach the recorder first and record a spurious rewrite on
-   a deliberate re-target.
+   after the submission, the import could reach the classification first and record a spurious
+   rewrite on a deliberate re-target.
 2. It expires after one hour.
-3. The recorder consumes it: it reads, deletes, and skips the record.
-4. A lost marker produces one spurious record. The reconciliation is identical either way. This is
+3. **Exactly one component reads it: the detector's caller.** It reads and deletes the marker in
+   one step, then passes the result to `classify` as `target_changed`. The detector never touches
+   the cache, and neither does the recorder. Two callers do this: the sync path in
+   `collect_pending_imports`, and the read-only detection path of section 7.
+4. The read is destructive, so one marker suppresses one classification. A marker that outlived its
+   reconciliation cannot go on suppressing genuine rewrites for the rest of its hour.
+5. A lost marker produces one spurious record. The reconciliation is identical either way. This is
    documented in `research.md` R4 and in the knowledge docs.
+
+> An earlier draft had the recorder read the marker. That is incompatible with the recorder writing
+> nothing unless the classification is already `REWRITE`: the recorder would return at step 1 and
+> never consume the marker, which would then survive its full hour and suppress the next genuine
+> rewrite of that branch. One reader, one consumer, and the consumption happens at classification
+> time.
+
+### The read-write writer does not exist yet
+
+`InfrahubRepositoryMutation.mutate_update` currently returns to `super().mutate_update` immediately
+for any kind other than `CoreReadOnlyRepository`, so there is **no** existing comparison of the old
+and new `default_branch`. Only the read-only comparison (`current_ref` against `new_ref`) is
+already there. The read-write marker therefore needs that comparison added before the early return.
+This is a change to the mutation, not a reuse of something already computed.
