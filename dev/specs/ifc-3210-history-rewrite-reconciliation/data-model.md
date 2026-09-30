@@ -77,6 +77,11 @@ arguably correct. Principle VII.
 not "reconciliations of this branch". `last_rewrite_at` on a young branch can predate the branch.
 A test asserts the inheritance so nobody discovers it in production.
 
+**`commit` inherits the same way, and that one is a defect.** `git_branch_create` never writes the
+new branch's commit, so a branch reads the trunk's value as of its fork point. The classifier would
+then compare a branch's remote head against an unrelated trunk commit. Branch creation writes the
+commit, which is a task of its own.
+
 #### What they do not do
 
 - They are not folded into `sync_status` (FR-013). `sync_status` keeps its current meaning and stays

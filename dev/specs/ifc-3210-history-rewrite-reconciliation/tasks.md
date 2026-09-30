@@ -126,22 +126,38 @@ head, the imported objects match the rewritten tree, and the repository reports 
       cycle by `get_repositories_commit_per_branch`. The collector has no graph read of its own, and
       `get_commit_value` reads git rather than the graph, so without this the classifier has no
       input (FR-001b).
-- [ ] T015 [US1] Classify the `updated_branches` list in `collect_pending_imports`, after `fetch()`
-      and before the per-branch `pull()`, **using the graph commit** as `imported_commit` and never
-      the local worktree head. Keep the existing per-branch failure isolation: a branch that fails
-      classification joins `failed_imports` and the cycle continues. See
+- [ ] T015 [US1] Build the candidate set in `collect_pending_imports` as the **union** of two
+      comparisons: the branches `compare_local_remote` returns (local head against remote head), and
+      the branches whose **graph commit** differs from the remote head. `compare_local_remote` alone
+      misses a `default_branch` edit, which moves no ref, and misses a worker whose graph already
+      matches the remote.
+- [ ] T015y [US1] Classify each candidate after `fetch()` and before the per-branch `pull()`,
+      **using the graph commit** as `imported_commit` and never the local worktree head. Keep the
+      existing per-branch failure isolation: a branch that fails classification joins
+      `failed_imports` and the cycle continues. See
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 1, "Two
       comparisons, not one".
-- [ ] T016 [US1] Reset a `REWRITE` branch to the remote head in `collect_pending_imports` instead of
-      pulling it, then record the commit and pin the commit worktree exactly as the fast-forward
-      path already does. Reset on `REWRITE` **and on `RETARGET`**: both leave the branch on a
-      history the remote no longer has, and both must end on the remote head. Only `REWRITE` goes
-      on to the recorder. A `LOCAL_AHEAD` or `REMOTE_ABSENT` branch keeps today's behaviour and is
-      never reset. See the decision table in
+- [ ] T016 [US1] Decide the reset in `collect_pending_imports` from **this worker's worktree
+      against the remote head**, not from the classification. Reset when neither is an ancestor of
+      the other. Do nothing when the worktree is equal, is ahead, or when the remote carries no such
+      ref. Pull as today when the worktree is behind. Then record the commit and pin the commit
+      worktree as the fast-forward path already does.
+      This is what repairs a worker whose graph already equals the remote while its own worktree is
+      stale (FR-001c). Keying the reset on the classification would leave that worker on the
+      discarded history, flagged by `compare_local_remote` every cycle and repaired by nothing,
+      because the `pull` fix of T034 is never reached on this path.
+      The record follows the classification instead, and only `REWRITE` reaches the recorder. See
+      the two tables in
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 1.
       **This reset is gated on PR #10465** for the same reason T034 is: a branch that is both ahead
       locally and rewritten remotely classifies `REWRITE`, and resetting it discards the unpushed
-      merge commit. The rest of T015 to T023 is not gated.
+      merge commit.
+- [ ] T016y [US1] Make `backend/infrahub/git/tasks.py::git_branch_create` write the new branch's
+      commit to the graph after it creates and pushes the branch. It never does today, and `commit`
+      is LOCAL, so the branch inherits the trunk's value at the fork point. The classifier then
+      compares a branch's remote head against a trunk commit that has nothing to do with it, which
+      can classify a healthy branch `REWRITE`. It also makes the "no recorded commit means
+      `FAST_FORWARD`" rule in the contract dead code, because an inherited value is always present.
 - [ ] T017 [US1] Return `ReconciledBranch` entries from `collect_pending_imports`, so the syncer and
       then the broadcast can name every branch the cycle advanced.
 - [ ] T018 [US1] Give the divergent-branches case its own message in
@@ -457,14 +473,19 @@ read-write repository's configured default branch. Neither writes a record.
       write the marker for Infrahub's default branch. **This comparison does not exist yet**: the
       method returns to `super().mutate_update` immediately for any kind other than read-only, so
       the comparison goes before that early return.
-- [ ] T067 [US6] Submit the repository sync from the same mutation, right after the marker is
-      written. Without it nothing reads the marker: a `default_branch` edit moves no git ref, so
-      `compare_local_remote` reports nothing and the trunk is not classified until the new target
-      next moves on the remote — by which time the marker has expired and the edit is recorded as
-      a rewrite. The read-only branch of the method already submits its own workflows this way.
+- [ ] T067 [US6] Carry the read-only re-target **in band** instead of through the cache: add an
+      explicit `target_changed` flag to `GitRepositoryPullReadOnly` and
+      `GitReadOnlyRepositoryImportCommit`, set from the comparison the mutation already computes.
+      That removes the marker from the read-only path entirely, with no expiry and no timing
+      question. The cache marker then covers read-write repositories only.
+      Do **not** try to submit a per-repository sync to make the read-write marker readable. There
+      is no such workflow: `GIT_REPOSITORIES_SYNC` is one cron flow over every repository, with
+      `concurrency_limit=1` and `CANCEL_NEW`. The widened candidate set of T015 is what makes it
+      readable, within one cycle.
 - [ ] T068 [US6] Consume the marker at classification time, in the two components that call the
-      detector: `collect_pending_imports` for read-write, and the read-only detection point of
-      T060. Pass the result as `target_changed`. The recorder must **not** read the cache: it
+      detector: `collect_pending_imports` reads the cache marker for read-write, and the read-only
+      detection point of T060 reads the in-band flag from its workflow model. Pass either as
+      `target_changed`. The recorder must **not** read the cache: it
       returns early on any classification other than `REWRITE`, so a marker read there would never
       be consumed on a `RETARGET` and would go on to suppress the next genuine rewrite.
 - [ ] T069 [P] [US6] Unit-test the suppression in

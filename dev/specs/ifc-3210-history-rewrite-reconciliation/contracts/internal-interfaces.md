@@ -86,6 +86,21 @@ signal. The gateway must therefore distinguish "this object is not here" from "g
 asked", and only the first is a classification. Everything else propagates, and the classification task sends the
 branch to `failed_imports` as it does for any other per-branch git failure.
 
+### Which branches the collector considers
+
+`compare_local_remote` returns branches whose **local** head differs from the remote. That set
+alone is not enough: a `default_branch` edit moves no ref, so it reports nothing, and the re-target
+would never be classified at all.
+
+The collector therefore takes the union of two sets:
+
+- local head differs from the remote head — what `compare_local_remote` already gives, and what
+  decides the reset;
+- **graph commit differs from the remote head** — what decides the record, and what catches a
+  re-target that moved no ref.
+
+Both are needed. Neither is a subset of the other.
+
 ### Where the graph commit comes from
 
 `collect_pending_imports` has no graph read of its own, and `get_commit_value` reads **git**, not
@@ -96,6 +111,13 @@ rather than re-read, so the cycle costs no extra query.
 
 A branch with no recorded commit has never been imported. It cannot be a rewrite, so it classifies
 `FAST_FORWARD` and takes the ordinary import path.
+
+**That rule is close to dead code until branch creation writes a commit.** `git_branch_create`
+creates and pushes the branch but never calls `update_commit_value`, and `commit` is LOCAL, so the
+branch inherits the trunk's value as of its fork point. A read therefore almost always returns
+something, and the classifier compares a branch's remote head against a trunk commit that has
+nothing to do with it. That can classify a healthy branch `REWRITE`. Branch creation must write the
+commit.
 
 ### Rules
 
@@ -112,14 +134,35 @@ A branch with no recorded commit has never been imported. It cannot be a rewrite
   the worktree on the remote head. Only `REWRITE` records. `LOCAL_AHEAD`, `REMOTE_ABSENT` and
   `UNCHANGED` do neither.
 
-| Classification | Reset | Record | Signal |
-|---|---|---|---|
-| `UNCHANGED` | no | no | no |
-| `FAST_FORWARD` | pull, as today | no | no |
-| `LOCAL_AHEAD` | no | no | no |
-| `REWRITE` | yes | yes | trunk only |
-| `RETARGET` | **yes** | no | no |
-| `REMOTE_ABSENT` | no | no | no |
+**The classification decides the record. It does not decide the reset.** They read different
+inputs, so one table cannot carry both.
+
+Record and signal, from the classification (graph against remote):
+
+| Classification | Record | Signal |
+|---|---|---|
+| `UNCHANGED` | no | no |
+| `FAST_FORWARD` | no | no |
+| `LOCAL_AHEAD` | no | no |
+| `REWRITE` | yes | trunk only |
+| `RETARGET` | no | no |
+| `REMOTE_ABSENT` | no | no |
+
+Reset, from this worker's worktree against the remote, decided independently:
+
+| Worktree against remote head | Action |
+|---|---|
+| Equal | nothing |
+| Worktree is an ancestor of the remote head | pull, as today |
+| Remote head is an ancestor of the worktree | nothing. The worktree is ahead, not diverged |
+| Neither is an ancestor | reset onto the remote head |
+| The remote carries no such ref | nothing |
+
+A worker whose graph already matches the remote still resets when its own worktree does not. That
+is the `UNCHANGED` row of the first table meeting the last row of the second, and it is the whole
+point of FR-001c. A single table keyed on the classification would leave that worker on the
+discarded history for ever, flagged by `compare_local_remote` on every cycle and repaired by
+nothing.
 
   A `RETARGET` that reset nothing would leave the branch stuck on a history the remote no longer
   has, which is the defect this feature removes. The PRD says a deliberate re-target is
@@ -409,14 +452,21 @@ re-point, so it must be suppressed exactly like a `ref` change.
    after the submission, the import could reach the classification first and record a spurious
    rewrite on a deliberate re-target.
 2. It expires after one hour.
-3. **Exactly one component reads it: the detector's caller.** It reads and deletes the marker in
-   one step, then passes the result to `classify` as `target_changed`. The detector never touches
-   the cache, and neither does the recorder. Two callers do this: the sync path in
-   `collect_pending_imports`, and the read-only detection path of section 7.
-4. The read is destructive, so one marker suppresses one classification. A marker that outlived its
+3. **The marker covers read-write repositories only.** A read-only re-target is carried in band
+   instead: the mutation already computes the comparison, so it travels on the workflow model as an
+   explicit flag. No cache, no expiry and no timing question on that path. See section 7.
+4. **Exactly one component reads the marker: the detector's caller in the sync path**,
+   `collect_pending_imports`. It reads and deletes it in one step, then passes the result to
+   `classify` as `target_changed`. The detector never touches the cache, and neither does the
+   recorder.
+5. The read is destructive, so one marker suppresses one classification. A marker that outlived its
    reconciliation cannot go on suppressing genuine rewrites for the rest of its hour.
-5. A lost marker produces one spurious record. The reconciliation is identical either way. This is
+6. A lost marker produces one spurious record. The reconciliation is identical either way. This is
    documented in `research.md` R4 and in the knowledge docs.
+7. The marker is read within one cron cycle of being written, because the widened candidate
+   selection above puts the re-targeted trunk in the classified set as soon as its graph commit
+   stops matching the remote head. There is no per-repository sync to submit:
+   `GIT_REPOSITORIES_SYNC` is a single cron flow with `concurrency_limit=1` and `CANCEL_NEW`.
 
 > An earlier draft had the recorder read the marker. That is incompatible with the recorder writing
 > nothing unless the classification is already `REWRITE`: the recorder would return at step 1 and
@@ -424,28 +474,18 @@ re-point, so it must be suppressed exactly like a `ref` change.
 > rewrite of that branch. One reader, one consumer, and the consumption happens at classification
 > time.
 
-### The read-write path must also trigger the classification
+### How the read-write marker gets read
 
-Writing the marker is not enough on the read-write side. Nothing reads it unless a classification
-happens, and a `default_branch` edit **moves no git ref**, so `compare_local_remote` reports
-nothing and the periodic cycle classifies nothing. The trunk is next classified only when the new
-target moves on the remote, which can be hours later, long after the one-hour marker expired. The
-edit would then be recorded as a rewrite and would fire the trunk signal, breaking SC-007.
+A `default_branch` edit **moves no git ref**, so `compare_local_remote` reports nothing for it. An
+earlier draft answered this by having the mutation submit a sync for that repository. **There is no
+such workflow.** `GIT_REPOSITORIES_SYNC` is one cron flow over every repository, with
+`concurrency_limit=1` and `CANCEL_NEW`, so a submission would either be cancelled or re-run the
+whole fleet.
 
-So the mutation must do what the read-only path already does: **submit the repository sync for that
-repository immediately after writing the marker**, so the classification runs within seconds. The
-read-only branch of `mutate_update` already submits its pull and import this way; the read-write
-branch gains the symmetric call.
-
-Two consequences worth stating:
-
-- It partly closes the known limitation that editing `default_branch` is never reconciled
-  (`dev/knowledge/backend/git-integration.md`). That is a side effect, not a goal, and the rest of
-  that limitation stays open.
-- If the new trunk was never imported locally, `compare_local_remote` reports it as a **new**
-  branch rather than an updated one. New branches are not classified at all, so no record is
-  written and the marker simply expires unused. That is the correct outcome, reached by a
-  different route.
+The widened candidate selection is what makes the marker readable. The edit changes which remote
+branch feeds Infrahub's default branch, so the graph commit for that branch stops matching the
+remote head, and the next cron cycle picks it up. That is within a minute, well inside the marker's
+hour.
 
 ### The read-write writer does not exist yet
 

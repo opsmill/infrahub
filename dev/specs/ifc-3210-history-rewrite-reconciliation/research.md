@@ -107,9 +107,15 @@ commit, which is still the true answer to "what did Infrahub hold".
 **Decision**: inside `git/repository.py::InfrahubRepository.collect_pending_imports`, over the
 `updated_branches` list returned by `compare_local_remote`, after `fetch()` and before `pull()`.
 
-**Rationale**: `compare_local_remote` already gives the set of branches whose remote head differs.
-That set is exactly the input FR-001 needs, and the fetch that precedes it has already brought the
-remote objects in, so the ancestry test needs no network. Classifying inside the collector keeps
+**Rationale**: the fetch that precedes it has already brought the remote objects in, so the
+ancestry test needs no network.
+
+**The candidate set is a union, not just `compare_local_remote`.** That method compares each
+worker's **local** heads against the remote, which is the right input for deciding a reset and the
+wrong one for deciding a record. The collector adds branches whose **graph commit** differs from
+the remote head. Without that second set a `default_branch` edit is never classified, because it
+moves no ref, and a worker whose graph already matches the remote never records anything it should.
+FR-001b is the rule; this is where it is applied. Classifying inside the collector keeps
 the per-branch failure isolation that is already there: a branch that fails classification joins
 `failed_imports` and the rest of the cycle continues.
 
@@ -222,16 +228,29 @@ passes the result as `target_changed`. One mechanism covers both repository kind
 - Reader: **the detector's caller, and nothing else.** A present marker makes `target_changed` true,
   so the detector returns `RETARGET`. The branch is still reset onto the remote head; only the
   record is skipped. The read is destructive.
-- Time to live: one hour, **and both writers must trigger the classification themselves.** The
-  read-only mutation already submits its pull and import, so the classification runs within
-  seconds. The read-write side has no such trigger: a `default_branch` edit moves no git ref, so
-  `compare_local_remote` reports nothing and the periodic cycle classifies nothing until the new
-  target next moves on the remote, possibly hours later. The mutation must therefore submit the
-  repository sync as well. An hour is then generous for both, and short enough that a stale marker
-  cannot suppress an unrelated rewrite days later.
+- Scope: **read-write repositories only.** A read-only re-target is carried in band on the
+  workflow model, because the mutation already computes the comparison. That removes the cache from
+  the read-only path entirely: no expiry, no timing question, no lost marker.
+- Time to live: one hour. The widened candidate selection below puts a re-targeted trunk in the
+  classified set on the next cron cycle, so the marker is read within a minute. An hour is generous
+  and short enough that a stale marker cannot suppress an unrelated rewrite days later.
 
-  An earlier draft of this section argued the read-write cycle "runs within a minute". It does
-  run within a minute, but it classifies nothing, which is not the same thing.
+**What makes the read-write marker readable.** A `default_branch` edit moves no git ref, so
+`compare_local_remote` reports nothing for it. Two earlier drafts got this wrong: the first assumed
+the cycle would classify it anyway, the second had the mutation submit a sync for that repository.
+**No such workflow exists.** `GIT_REPOSITORIES_SYNC` is one cron flow over every repository, with
+`concurrency_limit=1` and `CANCEL_NEW`, so a submission is either cancelled or re-runs the fleet.
+
+The answer is the candidate selection in R2: the collector considers branches whose **graph commit**
+differs from the remote head, as well as those whose local head does. A `default_branch` edit
+changes which remote branch feeds Infrahub's default branch, so the graph commit stops matching and
+the next cycle classifies it. That selection is needed for FR-001b regardless, so the re-target
+case costs nothing extra.
+
+**Alternative rejected**: storing the tracking target as a fifth attribute. It is the only
+timing-free answer and it removes the cache completely. Rejected because the PRD fixes the shape at
+four scalars and argues that decision explicitly. If that constraint is relaxed, this is the better
+design and the marker goes away.
 
 **Why the caller reads it and not the recorder.** A first draft put the read in
 `HistoryRewriteRecorder`. That does not work: the recorder writes nothing unless the classification
