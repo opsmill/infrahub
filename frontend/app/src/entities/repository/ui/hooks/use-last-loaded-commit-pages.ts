@@ -6,7 +6,7 @@ import { isGitStateAvailable } from "@/entities/repository/domain/rules/is-git-s
 // A refetch on the same query key replaces the data outright, so a poll answering UNAVAILABLE
 // would blank a list that was already loaded.
 export function useLastLoadedCommitPages(pages: RepositoryCommitLog[] | undefined) {
-  const [lastLoaded, setLastLoaded] = useState(pages);
+  const [lastLoaded, setLastLoaded] = useState<RepositoryCommitLog[]>();
 
   const firstPage = pages?.[0];
   const isColdAnswer = firstPage !== undefined && !isGitStateAvailable(firstPage);
