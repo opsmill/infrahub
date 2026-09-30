@@ -172,6 +172,41 @@ describe("ThemeProvider", () => {
     expect(isDark()).toBe(true);
   });
 
+  test("falls back to system when another tab clears storage", async () => {
+    // GIVEN
+    mockDesktop(false);
+    localStorage.setItem("infrahub.theme.choice", "dark");
+    const component = await render(withFlag(true));
+    await expect.element(component.getByTestId("theme")).toHaveTextContent("dark");
+
+    // WHEN
+    localStorage.clear();
+    window.dispatchEvent(new StorageEvent("storage", { key: null }));
+
+    // THEN
+    await expect.element(component.getByTestId("theme")).toHaveTextContent("system");
+    expect(isDark()).toBe(false);
+  });
+
+  test("still applies a choice when the browser blocks storage", async () => {
+    // GIVEN
+    mockDesktop(false);
+    const blocked = () => {
+      throw new DOMException("Site data is blocked", "SecurityError");
+    };
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(blocked);
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(blocked);
+    const component = await render(withFlag(true));
+    await expect.element(component.getByTestId("theme")).toHaveTextContent("system");
+
+    // WHEN
+    await component.getByRole("button", { name: "go dark" }).click();
+
+    // THEN
+    await expect.element(component.getByTestId("theme")).toHaveTextContent("dark");
+    expect(isDark()).toBe(true);
+  });
+
   test("ignores a stored value that is not a theme", async () => {
     // GIVEN
     mockDesktop(false);

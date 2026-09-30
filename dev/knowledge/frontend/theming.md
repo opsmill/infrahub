@@ -125,8 +125,8 @@ Two things manage the class, and one way reads it:
    (`entities/config/ui/theme-menu-item.tsx`), the "Theme" submenu in the account menu.
 3. **Reading the painted theme** — `useTheme().resolvedTheme` (`light` or `dark`, with `system`
    resolved and the flag applied); `useTheme().theme` is the choice, `system` included, which only
-   the theme picker needs. With no provider mounted, `useTheme()` returns light, so a component
-   renders in isolation and in tests. Components never read storage or the class for this.
+   the theme picker needs. `useTheme()` throws outside a `ThemeProvider`, so a test rendering a
+   theme consumer mounts one. Components never read storage or the class for this.
 
 The deployment gate is `INFRAHUB_EXPERIMENTAL_DARK_THEME`, in the shared config block of both
 compose files: `development/docker-compose.yml` defaults it to `true` and the root compose file to

@@ -14,11 +14,7 @@ interface ThemeContextValue {
   setTheme: (theme: Theme) => void;
 }
 
-export const ThemeContext = React.createContext<ThemeContextValue>({
-  theme: "light",
-  resolvedTheme: "light",
-  setTheme: () => {},
-});
+export const ThemeContext = React.createContext<ThemeContextValue | null>(null);
 
 function readStoredTheme(): Theme | null {
   try {
