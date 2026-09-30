@@ -562,6 +562,13 @@ different branch, tag **or commit**", and both of those reach the flow as an exp
    selection above puts the re-targeted trunk in the classified set as soon as its graph commit
    stops matching the remote head. There is no per-repository sync to submit:
    `GIT_REPOSITORIES_SYNC` is a single cron flow with `concurrency_limit=1` and `CANCEL_NEW`.
+8. **A marker whose branch never becomes a candidate is still deleted at the end of the cycle.**
+   A re-point can leave the graph commit and the worktree both equal to the remote head, for
+   example when the remote default branch is renamed without moving and `default_branch` is edited
+   to match. The branch then enters no candidate set, nothing reads the marker, and for the rest of
+   its hour it would turn a genuine trunk rewrite into a `RETARGET`: reset, no record, no trunk
+   webhook. Sweeping the repository's remaining markers when the cycle finishes with it bounds
+   every marker to one cycle.
 
 > The recorder must not be the reader. It writes nothing unless the classification is already
 > `REWRITE`, so on a `RETARGET` it would return before reaching the marker and leave it to survive
@@ -601,10 +608,19 @@ reaches it. This guard closes that.
 
 1. Fetch, then compare the **source** branch worktree and the **destination** branch worktree
    against their remote heads, using the same ancestry gateway as section 1.
-2. When either has diverged, **refuse the merge** and raise a typed error naming a divergent remote
-   history. The message never says "conflict" (FR-003, FR-017).
-3. Never reset a diverged branch and merge it (FR-005c).
-4. A locally-ahead branch is not diverged. It merges as it does today.
+2. When either has diverged, compare the **graph commit** for that branch against the remote head
+   as well. The two answers mean different things:
+
+| Worktree | Graph commit | Action |
+|---|---|---|
+| Diverged | also diverged | **Refuse.** The rewrite is unrecorded, and merging would erase it. |
+| Diverged | matches the remote | **Reset the worktree and merge.** The rewrite is already recorded; only this clone is behind. |
+
+3. A refusal raises a typed error naming a divergent remote history. The message never says
+   "conflict" (FR-003, FR-017).
+4. Never reset a branch whose **graph commit** is stale and then merge it (FR-005c). That is the
+   case where the merge commit would hide the rewrite.
+5. A locally-ahead branch is not diverged. It merges as it does today.
 
 ### Why it refuses instead of reconciling
 
@@ -617,6 +633,11 @@ is worse: it merges objects the graph never imported.
 Reconciliation has one owner. The synchronisation cycle resets, records, signals and re-imports,
 under the repository lock. A refused merge fails loudly, the next cycle reconciles, and the retry
 succeeds.
+
+**That is why a stale clone alone is not a refusal.** The cron heals whichever worker runs it, not
+the worker the merge lands on, so refusing on a stale worktree with a current graph commit would
+refuse again on every retry. Resetting is safe there: nothing is lost, because the rewrite is
+already recorded.
 
 ### Accepted residual risk
 
