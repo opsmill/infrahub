@@ -257,9 +257,7 @@ Here are some example payloads of some events that may be sent.
               "peer_id": "182c6980-3c4e-6a1d-39b0-c51f2e4d7a10",
               "peer_kind": "BuiltinTag",
               "peer_display_label": "peering",
-              "peer_hfid": [
-                "peering"
-              ],
+              "peer_hfid": null,
               "peer_status": "added",
               "properties": {}
             }
@@ -291,7 +289,7 @@ The `changelog` of a node event identifies every object it mentions in two ways:
 | `display_label` | The changelog | The node's [display label](../schema/display_label) |
 | `hfid` | The changelog | The node's [human-friendly ID](../schema/nodes-and-attributes#human-friendly-identifier-hfid), or `null` when its kind defines none |
 | `peer_id`, `peer_kind` | Each relationship peer | The ID and kind of the peer |
-| `peer_display_label`, `peer_hfid` | Each relationship peer | The peer's display label and human-friendly ID |
+| `peer_display_label`, `peer_hfid` | Each relationship peer | The peer's display label and human-friendly ID; `peer_hfid` is `null` when the peer's kind defines none, as for a tag |
 
 For a relationship that holds a single peer, only the current peer includes labels. When the peer changes, the previous one is identified by `peer_id_previous` and `peer_kind_previous` alone.
 
