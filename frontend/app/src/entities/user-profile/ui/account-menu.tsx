@@ -36,6 +36,7 @@ import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useLogoutMutation } from "@/entities/authentication/ui/queries/logout.mutation";
 import { AboutModal } from "@/entities/config/ui/about-modal";
 import { AppInfo } from "@/entities/config/ui/app-info";
+import { useFeatureFlag } from "@/entities/config/ui/hooks/use-feature-flag";
 import { ThemeMenuItem } from "@/entities/config/ui/theme-menu-item";
 import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
 import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
@@ -57,39 +58,50 @@ export const AccountMenu = () => {
   );
 };
 
-const CommonMenuItems = ({ onAboutClick }: { onAboutClick: () => void }) => (
-  <>
-    <MenuItem onAction={onAboutClick}>
-      <InfoIcon /> About Infrahub
-    </MenuItem>
+const CommonMenuItems = ({ onAboutClick }: { onAboutClick: () => void }) => {
+  const isDarkThemeEnabled = useFeatureFlag("dark_theme");
 
-    <MenuItem href={INFRAHUB_DOC_LOCAL} target="_blank" rel="noreferrer">
-      <FileTextIcon /> Infrahub documentation
-    </MenuItem>
+  return (
+    <>
+      {isDarkThemeEnabled && (
+        <>
+          <ThemeMenuItem />
+          <MenuSeparator />
+        </>
+      )}
 
-    <MenuItem href={constructPath("/graphql")}>
-      <Icon icon="mdi:graphql" className="text-base" />
-      GraphQL Sandbox
-    </MenuItem>
+      <MenuItem onAction={onAboutClick}>
+        <InfoIcon /> About Infrahub
+      </MenuItem>
 
-    <MenuItem href={INFRAHUB_SWAGGER_DOC_URL} target="_blank" rel="noreferrer">
-      <Icon icon="mdi:code-json" className="text-base" />
-      Swagger documentation
-    </MenuItem>
+      <MenuItem href={INFRAHUB_DOC_LOCAL} target="_blank" rel="noreferrer">
+        <FileTextIcon /> Infrahub documentation
+      </MenuItem>
 
-    <MenuSeparator />
+      <MenuItem href={constructPath("/graphql")}>
+        <Icon icon="mdi:graphql" className="text-base" />
+        GraphQL Sandbox
+      </MenuItem>
 
-    <MenuItem href={INFRAHUB_GITHUB_URL} target="_blank" rel="noreferrer">
-      <Icon icon="mdi:github" className="text-base" />
-      GitHub Repository
-    </MenuItem>
+      <MenuItem href={INFRAHUB_SWAGGER_DOC_URL} target="_blank" rel="noreferrer">
+        <Icon icon="mdi:code-json" className="text-base" />
+        Swagger documentation
+      </MenuItem>
 
-    <MenuItem href={INFRAHUB_DISCORD_URL} target="_blank" rel="noreferrer">
-      <Icon icon="mdi:discord" className="text-base" />
-      Join our Discord server
-    </MenuItem>
-  </>
-);
+      <MenuSeparator />
+
+      <MenuItem href={INFRAHUB_GITHUB_URL} target="_blank" rel="noreferrer">
+        <Icon icon="mdi:github" className="text-base" />
+        GitHub Repository
+      </MenuItem>
+
+      <MenuItem href={INFRAHUB_DISCORD_URL} target="_blank" rel="noreferrer">
+        <Icon icon="mdi:discord" className="text-base" />
+        Join our Discord server
+      </MenuItem>
+    </>
+  );
+};
 
 const AppInfoFooter = () => (
   <div className="border-border-strong border-t px-2.5 py-1">
@@ -135,7 +147,6 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
           <Menu variant="picker" aria-label="Account menu">
             <CommonMenuItems onAboutClick={onAboutClick} />
             <MenuSeparator />
-            <ThemeMenuItem />
             <MenuItem href="/login" routerOptions={{ state: { from: location } }}>
               <LogInIcon />
               Log in
@@ -201,10 +212,6 @@ const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }
               <SlidersHorizontalIcon /> Global preferences
             </MenuItem>
           )}
-
-          <ThemeMenuItem />
-
-          <MenuSeparator />
 
           <CommonMenuItems onAboutClick={onAboutClick} />
 

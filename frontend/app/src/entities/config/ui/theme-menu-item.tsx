@@ -5,7 +5,6 @@ import { type Selection, Text } from "react-aria-components";
 import { Badge } from "@/shared/components/ui/badge";
 
 import { type Theme, ThemeSchema } from "@/entities/config/domain/model/theme";
-import { useFeatureFlag } from "@/entities/config/ui/hooks/use-feature-flag";
 import { useTheme } from "@/entities/config/ui/theme-provider";
 
 const LABELS: Record<Theme, string> = {
@@ -15,12 +14,7 @@ const LABELS: Record<Theme, string> = {
 };
 
 export function ThemeMenuItem() {
-  const isDarkThemeEnabled = useFeatureFlag("dark_theme");
   const { theme, setTheme } = useTheme();
-
-  if (!isDarkThemeEnabled) {
-    return null;
-  }
 
   const handleSelectionChange = (keys: Selection) => {
     const [next] = keys === "all" ? [] : keys;

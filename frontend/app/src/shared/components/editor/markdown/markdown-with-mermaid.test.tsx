@@ -30,7 +30,7 @@ const shapeLuminance = () => {
   return luminance(getComputedStyle(shape).fill);
 };
 
-const inTheme = (theme: ResolvedTheme, markdownText = DIAGRAM) => (
+const MermaidWithTheme = (theme: ResolvedTheme, markdownText = DIAGRAM) => (
   <ThemeContext value={{ theme, resolvedTheme: theme, setTheme: () => {} }}>
     <MarkdownWithMermaid markdownText={markdownText} fallback={null} />
   </ThemeContext>
@@ -39,7 +39,7 @@ const inTheme = (theme: ResolvedTheme, markdownText = DIAGRAM) => (
 describe("MarkdownWithMermaid", () => {
   test("renders a light diagram in the light theme", async () => {
     // WHEN
-    await render(inTheme("light"));
+    await render(MermaidWithTheme("light"));
 
     // THEN
     await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
@@ -48,7 +48,7 @@ describe("MarkdownWithMermaid", () => {
 
   test("renders a dark diagram in the dark theme", async () => {
     // WHEN
-    await render(inTheme("dark"));
+    await render(MermaidWithTheme("dark"));
 
     // THEN
     await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
@@ -57,12 +57,12 @@ describe("MarkdownWithMermaid", () => {
 
   test("re-renders the diagram when the theme changes while mounted", async () => {
     // GIVEN
-    const component = await render(inTheme("light"));
+    const component = await render(MermaidWithTheme("light"));
     await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
     const light = shapeLuminance();
 
     // WHEN
-    await component.rerender(inTheme("dark"));
+    await component.rerender(MermaidWithTheme("dark"));
 
     // THEN
     // The flip re-runs the pipeline; poll until the freshly baked SVG replaces the light one.
@@ -83,7 +83,7 @@ describe("MarkdownWithMermaid", () => {
     const source = '```mermaid\n%%{init: {"theme":"default"}}%%\ngraph TD\n  A --> B\n```';
 
     // WHEN
-    await render(inTheme("dark", source));
+    await render(MermaidWithTheme("dark", source));
 
     // THEN
     await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
