@@ -186,7 +186,7 @@ async def test_a_resolver_that_could_not_be_built_widens_every_declared_attribut
 
 
 async def test_an_empty_change_set_resolves_nothing_without_reading_the_database() -> None:
-    """A rebase that replayed no data change has nothing to resolve, and must not widen.
+    """A merge or rebase that moved no data has nothing to resolve, and must not widen.
 
     The read-set index is loaded before the changes are inspected, so without the early return a
     failure loading it would widen every declared attribute for a change set that is empty.

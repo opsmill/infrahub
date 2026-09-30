@@ -143,7 +143,7 @@ class TestPostMergeSchemaEvent:
         register_core_models_schema: SchemaBranch,
         car_person_schema: SchemaBranch,
     ) -> None:
-        """The pass must not depend on the schema side, so a lost schema event cannot cost the recompute."""
+        """A failed schema event does not stop the other events or the pass."""
         source_branch = await create_branch(branch_name="feature", db=db)
         failing = FailingInfrahubEvent(failing_kind=SchemaUpdatedEvent)
         resolver = RecordingPythonTargetResolver(targets=[])

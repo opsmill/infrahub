@@ -387,7 +387,7 @@ class TestCoalescedRecomputePython(CoalescedPythonTestBase):
         default_branch: Branch,
         admin_account: CoreAccount,
     ) -> None:
-        """The schema backfill runs as a separate flow with no retry, so the pass cannot leave these cars to it."""
+        """A merge that also changes the schema still recomputes the readers of its data change."""
         source_branch = await create_branch(branch_name="schema_and_data", db=db)
         event_service = MemoryInfrahubEvent()
         dispatcher = PostMergeDispatcher(
