@@ -141,8 +141,13 @@ today and records the lineage break. It performs no reset.
 **Why this priority**: Read-only is today the only repository type that reports nothing at all.
 It shares the consequence with the others but not the failure, so it can ship after P1.
 
-**Independent Test**: Force-move a tag on a live remote that a read-only repository tracks. Update
-the commit. Assert that the import happened, that the record was written and that no reset ran.
+**Independent Test**: Force-push a **branch** that a read-only repository tracks, on a live remote.
+Update the commit. Assert that the import happened, that the record was written and that no reset
+ran.
+
+A moved **tag** cannot be used for this scenario. Both read-only fetch paths leave an existing tag
+alone: the plain `fetch()`, and `--tags` without `--force`. No lineage break would ever be seen.
+IFC-2874 fixes that fetch flag and is out of scope here, so the scenario uses a branch.
 
 **Acceptance Scenarios**:
 
@@ -237,6 +242,14 @@ here. See "Out of Scope".
 - **FR-001a**: The system MUST NOT treat a branch whose remote head is an ancestor of the imported
   commit as a rewrite. Such a branch holds commits the remote does not. It MUST NOT be reset and
   MUST NOT be recorded. Resetting it would discard a commit that exists on one worker only.
+- **FR-001b**: The system MUST keep two comparisons apart. Whether the history was rewritten is
+  decided from the commit **recorded in the graph** for that branch. Whether a given worker's clone
+  must move is decided from **that worker's own branch worktree**. The first drives the record and
+  the signal. The second drives the reset.
+- **FR-001c**: A worker whose clone is stale MUST reset even when the graph already holds the
+  remote's commit, and MUST record nothing when it does. Without this, every worker except the one
+  that ran the reconciliation keeps the discarded history. Recording from it would produce one
+  record per worker instead of one per event.
 - **FR-002**: The system MUST distinguish a lineage break under an unchanged tracking target from a
   lineage break caused by the tracking target itself changing. Only the first is a rewrite.
 - **FR-003**: The system MUST NOT describe a divergent history as a merge conflict. This applies to
@@ -249,10 +262,14 @@ here. See "Out of Scope".
 - **FR-005**: Every worker MUST enforce reset-on-divergence on its own clone before it advances a
   branch worktree **from the remote**. Convergence MUST NOT depend on receiving a notification.
   This covers the synchronisation collector and the convergence handler.
-- **FR-005a**: A worker MUST NOT build a merge on a branch worktree whose history the remote has
-  discarded. The merge path advances the destination worktree from local state, without contacting
-  the remote, so FR-005 does not reach it. That path MUST fetch and apply the same ancestry check
-  before it merges.
+- **FR-005a**: A worker MUST NOT build a merge on **either** branch worktree whose history the
+  remote has discarded. The merge path reads its source commit from the local branch ref and
+  advances the destination worktree from local state, without contacting the remote, so FR-005 does
+  not reach it. That path MUST fetch and apply the same ancestry check to the source branch and to
+  the destination branch before it merges.
+- **FR-005b**: The system MUST NOT push a commit the remote has already discarded. Merging a stale
+  source branch into the trunk and pushing the result restores commits a rewrite removed. When a
+  rewrite exists to remove a leaked credential, that restores the credential.
 - **FR-006**: The worker-convergence broadcast MUST cover every branch reconciled in a cycle. It
   MUST be sent before a failed branch aborts the flow.
 - **FR-007**: A worker that reconciles itself MUST NOT record the commit and MUST NOT emit the
@@ -393,12 +410,13 @@ No new node kind is introduced.
 
 ## Known defects
 
-This spec set has **18 open findings** from a fourth code-aware review pass, including two
-blockers. They are listed in [known-defects.md](known-defects.md) and are **not fixed**.
+Four review passes produced 66 findings. All are closed.
+[known-defects.md](known-defects.md) records what the last pass found and how each item was
+resolved, including the two that were design holes rather than text: where the detector gets the
+commit it compares against, and the merge guard that covered the destination worktree but not the
+source branch.
 
-Read that file before implementing anything. The two blockers are design questions, not edits:
-where the detector gets the commit it compares against, and the fact that the merge guard covers
-the destination worktree but not the source branch.
+What remains open is five decisions that belong to a person, listed in [plan.md](plan.md).
 
 ## Decisions Taken During Specification
 

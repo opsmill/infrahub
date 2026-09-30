@@ -1,197 +1,99 @@
-# Known defects in this spec set
+# Review findings and how they were resolved
 
 **Date**: 2026-09-30
-**Status**: open, not fixed
-**Source**: fourth code-aware review pass (cubic, 275 repo learnings, 5 custom agents)
+**Status**: the eighteen findings of the fourth review pass are closed. Nothing is open.
+**History**: four review passes, 66 findings fixed. See
+[critiques/critique-20260929-1530.md](critiques/critique-20260929-1530.md).
 
-This design went through four review passes: one document critique and three code-aware runs. The
-first three rounds' findings were fixed and are recorded in
-[critiques/critique-20260929-1530.md](critiques/critique-20260929-1530.md). This file holds what
-the fourth round found. **None of it is fixed.**
-
-The decision to stop fixing was deliberate. The counts were 12, 14, 23, 18. Each round went a
-layer deeper rather than mopping up the last one, and the fourth round found the most fundamental
-problem of all. Grinding further would keep trading review cycles for a design that needs two
-decisions from a person, not more editing.
-
-Read the two blockers before anything else. They are not defects to work around; they are
-unresolved design questions.
+This file was written when the fourth pass was handed over unfixed. It has since been worked
+through. It is kept as the record of what that pass found and how each item was resolved, so a
+reviewer can check the reasoning rather than take it on trust.
 
 ---
 
-## Blockers
+## The two blockers, and how they were resolved
 
-### B1. The detector's `imported_commit` is never defined, and neither candidate works
+### B1. The detector's input was never defined
 
-**Where**: the whole design. `contracts/internal-interfaces.md` section 1, `research.md` R1 and R2.
+**What it was.** The detector compares `imported_commit` against the remote head, and no document
+said where `imported_commit` came from. The cron runs on any worker and `compare_local_remote`
+reads that worker's own refs, so both candidate sources broke something. The local worktree head
+made a stale worker classify `REWRITE` again and fire the trunk signal twice. The graph commit made
+every worker except the reconciling one classify `UNCHANGED`, reset nothing, and keep the discarded
+history.
 
-The detector compares `imported_commit` against `remote_head`. No document says where
-`imported_commit` comes from in the sync path. Both available sources break something, because the
-periodic cron runs on **any** worker and `compare_local_remote` compares that worker's own local
-refs.
+**Resolution.** The design was asking one question where it needed two, and they are now separate:
 
-| Source | What breaks |
+| Question | Inputs | Drives | Who runs it |
+|---|---|---|---|
+| Was the history rewritten? | the commit **recorded in the graph**, against the remote head | the record and the trunk signal | whichever worker runs the cycle |
+| Does this clone need to move? | this worker's **branch worktree head**, against the remote head | the reset | every worker, independently |
+
+Both then come out right with no guard. The reconciling worker sees a stale graph commit and
+records once. Every other worker sees a stale worktree, resets, and records nothing.
+
+FR-001b and FR-001c state it. `contracts/internal-interfaces.md` section 1 carries the table and
+names where the graph commit comes from: `RepositoryData.branches`, already loaded once per cycle,
+passed down rather than re-read. The `pull` contract in section 3 already compared the worktree, so
+that half needed no change once the question was named.
+
+### B2. The merge guard covered the destination but not the source
+
+**What it was.** FR-005a stopped a worker merging *onto* a stale destination worktree. It said
+nothing about the source. `merge` reads the commit it merges from the local source ref
+(`get_commit_value(..., remote=False)`) and nothing fetches first, so a worker holding a stale
+source branch merges the pre-rewrite history into the trunk and **pushes it**. Discarded commits
+return to the remote for everyone. A rewrite that removed a leaked credential would restore it.
+
+**Resolution.** FR-005a now covers both worktrees, and FR-005b states the property plainly: never
+push what the remote already discarded. The merge task fetches and checks the source branch and the
+destination branch before merging, and a live-remote test asserts the discarded commits do not
+reappear on the remote.
+
+---
+
+## The other findings
+
+| Was | Resolution |
 |---|---|
-| The worker's local branch head | A worker that missed the broadcast classifies `REWRITE` again on the next cycle. It writes a second record, increments the count and fires the trunk signal a second time. Breaks SC-002 ("exactly one record and one signal however many cycles elapse") and FR-014. |
-| The commit recorded in the graph | After the first reconciliation the graph already holds the new commit, so the classification is `UNCHANGED`, which the contract table maps to "no reset". That worker's clone stays on the discarded history for ever. |
-
-**The likely resolution, not yet designed.** These are two different questions that the spec
-conflates into one comparison:
-
-- *Has the history been rewritten?* — graph commit against remote head. Drives the record and the
-  signal. Belongs to whichever worker runs the sync.
-- *Does this worker's clone need to move?* — local worktree head against remote head. Drives the
-  reset. Belongs to every worker independently.
-
-Splitting them probably fixes B1 and makes FR-005 fall out naturally. It also changes the
-classification contract, the recorder's placement and several tests, so it is a design change and
-not an edit.
-
-### B2. The merge guard covers the destination but not the source
-
-**Where**: `spec.md` FR-005a, task T032.
-
-FR-005a was added in the third round to stop a worker merging onto a destination worktree whose
-history the remote discarded. It does not cover the **source** side.
-`InfrahubRepository.merge` reads the source commit from the local branch ref
-(`get_commit_value(..., remote=False)`), and `merge_git_repository` performs no fetch.
-
-So a worker that missed the broadcast for a rewritten feature branch merges the **old source
-history** into the trunk and pushes it. Commits a rebase removed are put back on the remote. If the
-rebase existed to remove a leaked credential, this restores it.
-
-That makes B2 the most serious finding in four rounds. FR-005a needs to cover both sides of a
-merge, or the merge path needs to refuse to run on any branch it has not just verified against the
-remote.
+| Dropping the unconditional trunk broadcast removed today's heal in an ungated phase, while its replacement sat in a gated one | The "no branch advanced, no message" rule now ships **with** the pull-path reset, not before it |
+| The read-only test force-moved a tag, which neither read-only fetch path force-updates, so it could never pass | The scenario is a force-pushed **branch**. IFC-2874 stays out of scope |
+| Slice C was called gate-free although the widened broadcast resets every branch on every worker | Slice C is gated too. The gate is now stated as "every step that resets a worktree" |
+| The commit-only re-point was suppressed in one file out of three | `data-model.md` and the task now list `commit` as a marker trigger alongside `ref` |
+| The read-only side had no defined "imported" commit, and a concurrent pull could overwrite it first | Same rule as B1. The graph commit travels on the workflow model, read before either workflow can overwrite it |
+| The record write lost its per-branch isolation in the task | Its own task. A failed record joins `failed_imports` instead of aborting collection for every branch |
+| The MVP claimed to ship without #10465 while its core step was gated on it | Corrected. What ships before #10465 is the classification and the corrected message, which change no worktree |
+| A Phase 3 test asserted Phase 5 behaviour | That test now asserts the message only. The reset assertion lives in Phase 5, its only home |
+| The gated count said six; the range was seven | Gates name **phases** now, not id ranges, so renumbering cannot make them wrong again |
+| The missing-object row was unreachable and ignored the marker | Moved above the ancestry rows, and split on `target_changed` so a re-target with a collected object is not recorded as a rewrite |
+| Four task references went stale after a renumber, for the third round running | Task ids are gone from the contract files and the alignment check. They are named by what they do |
+| R12 told an implementer to rewrite four volatile notes | Limited to the one that belongs to this feature. The other three belong to #10542, IFC-3220 and #10465 |
+| The handler unit test needed injected collaborators nobody had planned | Its own task, before the test |
 
 ---
 
-## Correctness gaps
+## What is still open, and it is not a defect
 
-### D1. Dropping the unconditional trunk broadcast removes today's healing early
+Five decisions belong to a person, not to this document:
 
-Today `sync_repository_from_origin` sends the pinned trunk commit **every cycle**, even when
-nothing changed. That is what heals a worker which missed an earlier broadcast, within a minute.
+1. Which consumer receives the trunk-rewrite event.
+2. Sign-off on the four schema attributes and their GraphQL fields ("Ask First" under `AGENTS.md`).
+3. Merge order against PR #10542, which rewrites `git/base.py`.
+4. Whether the read-only phase waits for PR #10669.
+5. Confirmation of the reworded SC-006, where the epic asks for a repository view and also puts
+   every display surface out of scope.
 
-The contract's "when the cycle advanced no branch, no message is sent" removes it. That change sits
-in Phase 4, which is not gated. Its replacement — the pull-path self-heal — is Phase 5, which is
-gated on PR #10465. Between the two, a stale worker stays stale and its merges fail on a
-non-fast-forward push. No document names this as a behaviour change.
-
-### D2. The read-only test cannot pass as written
-
-User Story 5's independent test, T058 and the quickstart all force-move a **tag** that a read-only
-repository tracks. Both read-only fetch paths leave an existing moved tag alone: the plain
-`fetch()`, and `--tags` without `--force`. So no lineage break is ever observed.
-
-`spec.md` "Out of Scope" names IFC-2874 as the fix for exactly this, and puts it outside this work.
-Either the scenario becomes a force-pushed tracked branch, or IFC-2874 becomes a dependency.
-
-### D3. Slice C is called gate-free but performs a hard reset
-
-`plan.md` says slices other than B and D need no #10465 gate because they "never reset anything".
-Slice C does: T024 makes the convergence handler run `reset_to_commit` for every pair on every
-other worker, where today it does so for the trunk only. `InfrahubRepository.rebase` merges into
-non-trunk branches and pushes, so without #10465 an unpushed merge commit can sit on a
-feature-branch worktree that the widened broadcast would discard.
-
-### D4. The commit-only re-point is suppressed in one file out of three
-
-`contracts/internal-interfaces.md` section 8 lists a change of `CoreReadOnlyRepository.commit` as a
-marker trigger, because SC-007 covers "branch, tag **or commit**". Task T060 writes the marker only
-for a `ref` change, and the "Written when" row in `data-model.md` also omits `commit`. A
-commit-only re-point therefore records a false rewrite. The third round's log claims this was
-fixed; it was fixed in one file.
-
-### D5. The read-only side has no defined "imported" commit
-
-`update_latest_commit` resolves only the new head. `import_read_only_repository_last_commit` calls
-`init` without a commit, so nothing loads the previously imported one. The mutation also submits
-`pull_read_only` concurrently, and that flow can write the new commit to the graph first. Which
-commit plays the "imported" role on the read-only path is undefined and depends on timing. This is
-B1 again, in the read-only path.
-
-### D6. The record write loses its per-branch isolation in the task
-
-`contracts/internal-interfaces.md` section 2 requires the record write to be isolated per branch,
-because `collect_pending_imports` lets graph errors propagate. Task T042 places the call without
-saying so. An SDK error from the store would abort collection for every branch and skip the
-broadcast.
+`plan.md` lists them with the reasoning.
 
 ---
 
-## Sequencing contradictions
+## The one lesson worth keeping
 
-### S1. The MVP claim contradicts its own gate
+Three of the four design holes across all passes, and both blockers, came from reasoning about a
+function without following what calls it. "Every path goes through `pull`", "the recorder can run
+after the import", "the merge destination is the only stale worktree" — each is a claim a
+call-graph check disproves in minutes.
 
-"Implementation strategy" says Phases 1 to 3 fix the reported bug without PR #10465. T015's reset —
-the step that actually reconciles a rewritten branch — is gated on #10465 by the gate table,
-`plan.md` and T015's own text. The increment either needs the gate or does not fix the bug.
-
-### S2. A Phase 3 test asserts Phase 5 behaviour
-
-T019 rewrites `test_pull_branch_conflict` to expect `pull` to reset a diverged branch without
-raising. That reset is built by T032, in gated Phase 5. In Phase 3 `pull` still raises, so T019
-fails. T036 also duplicates the same assertion.
-
-### S3. Wrong count of gated items
-
-"T032 to T038, plus the reset inside T015. Six items." T032 to T038 is seven tasks, so the total is
-eight.
-
----
-
-## Contract and reference errors
-
-### C1. The missing-object row is unreachable and ignores the marker
-
-The classification table says first match wins, but the missing-object row sits **after** the
-ancestry rows, which cannot run when the object is missing. The row also maps to `REWRITE`
-regardless of `target_changed`, so a deliberate re-target with a missing object records a false
-rewrite and consumes its marker.
-
-### C2. Four task references are wrong after the last renumber
-
-| Where | Says | Should be |
-|---|---|---|
-| `contracts/internal-interfaces.md` §1 | T013 sends the branch to `failed_imports` | T014 |
-| `contracts/internal-interfaces.md` §2 | the reset path of T014 writes the commit | T015 |
-| `contracts/internal-interfaces.md` §2 | the unit tests of T040 | T044 |
-| `alignment-check.md` F7 | the E2E task is T069 | T074 |
-
-This is the third round in a row that prose references drifted after tasks were renumbered. The
-renumbering script rewires ranges and bare ids inside `tasks.md` only; references in the other six
-files are not touched.
-
-### C3. R12 still tells an implementer to rewrite four volatile notes
-
-Task T070 correctly limits the rewrite to the single note under "How git errors are classified".
-`research.md` R12 still names all four, and the other three belong to PR #10542, IFC-3220 and
-PR #10465. Following R12 would claim three other people's fixes shipped.
-
-### C4. The handler unit test needs a refactor nobody planned
-
-T029 asks for a fan-out unit test with a fake lock registry and no mocks. The `fetch` handler reads
-the module-global `lock.registry` and calls `get_initialized_repo(get_client())`. Injecting those
-collaborators is a change to the handler that T024 does not include.
-
----
-
-## What to do with this
-
-1. **B1 and B2 need a decision before implementation starts.** B1 changes the classification
-   contract. B2 is a security-relevant hole in a requirement added two rounds ago.
-2. The rest can be absorbed during implementation, provided this file travels with the spec.
-3. The four wrong task references in C2 will keep recurring until the renumbering step also
-   rewrites references in the sibling files, or until tasks stop being renumbered.
-
-## Honest note on the review history
-
-Four passes, 48 findings fixed, 18 still open. The trend in the counts (12, 14, 23, 18) shows the
-reviewer going deeper rather than the design converging. The fourth pass found the most fundamental
-problem in the whole design, which suggests a fifth would find more.
-
-Three of the four design holes in the previous round, and both blockers here, share one cause: the
-design was written by reading functions in isolation instead of following which code calls which.
-"Every path goes through `pull`", "the recorder can run after the import", "the merge destination
-is the only stale worktree" — each is the kind of claim a call-graph check disproves in minutes.
+The second recurring failure was narrower and dumber: changing a decision in one file and leaving
+it stated the old way in the other six. `AGENTS.md` already says to grep the whole spec directory
+when a decision changes. Doing that from the start would have removed most of two review rounds.

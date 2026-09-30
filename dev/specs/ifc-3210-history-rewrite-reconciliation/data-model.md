@@ -228,7 +228,7 @@ chosen, and why the recorder must not be the reader.
 | Key | Repository id plus Infrahub branch name, under a namespace of its own. |
 | Value | The new tracking target, for diagnostics only. |
 | Time to live | One hour. |
-| Written when | `CoreReadOnlyRepository.ref` changes, or `CoreRepository.default_branch` changes. The write lands after the update succeeds and before any workflow is submitted. |
+| Written when | `CoreReadOnlyRepository.ref` changes, `CoreReadOnlyRepository.commit` changes, or `CoreRepository.default_branch` changes. SC-007 covers "branch, tag **or commit**". The write lands after the update succeeds and before any workflow is submitted. |
 | Read by | The detector's caller, and nothing else. Two of them: the sync path in `collect_pending_imports`, and the read-only detection path. |
 | Read when | Before every classification, not only before a `REWRITE`. |
 | Effect | Makes `target_changed` true, so the detector returns `RETARGET`. The branch is still reset onto the remote head; only the record is skipped. |

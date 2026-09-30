@@ -110,7 +110,7 @@ uv run pytest backend/tests/integration/git/test_git_live_remote.py::<node_id> -
 | A rewritten trunk | US4, SC-002 | The same reconciliation happens. Across several cycles, exactly one record is written and exactly one event is emitted. |
 | A worker that received no broadcast | US2, SC-004 | It converges on first contact. It writes no commit to the graph and emits no report. |
 | One rewritten branch beside a healthy one | US3, SC-005 | The healthy branch still converges. The broadcast for it was sent before the failed branch raised. |
-| A read-only repository | US5 | The record is written. No reset is performed. |
+| A read-only repository | US5 | A force-pushed tracked **branch**, not a moved tag. The record is written. No reset is performed. |
 | A deliberate ref change | US6, SC-007 | Nothing is recorded. |
 | A webhook on the trunk event | FR-014 | Exactly one delivery per rewrite. |
 

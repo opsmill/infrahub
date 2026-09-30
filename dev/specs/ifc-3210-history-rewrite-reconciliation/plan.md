@@ -162,7 +162,13 @@ merge commit. That case is rare but real, and it is the reason the gate exists.
 
 So:
 
-- **Slice A, C, E, F, G, H and I** are free of the gate. They never reset anything.
+- **Slice A, E, F, G, H and I** are free of the gate. They never reset anything.
+- **Slice C** is gated too. Widening the broadcast makes the convergence handler run
+  `reset_to_commit` for every branch on every other worker, where today it does so for the trunk
+  only. `InfrahubRepository.rebase` merges into non-trunk branches and pushes, so without #10465 an
+  unpushed merge commit can sit on a feature-branch worktree that the widened broadcast would
+  discard. An earlier draft called this slice gate-free because it "never resets anything". It
+  does.
 - **Slice B** may be written and reviewed now. Its reset must not be enabled on a deployment
   running without #10465, because of the both-ahead-and-rewritten case.
 - **Slice D** is fully gated, because the pull path has no classification context to lean on and

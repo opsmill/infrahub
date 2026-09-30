@@ -30,7 +30,7 @@ Where the two disagree, the Jira epic wins. One disagreement was found. See F1.
 | F4 | ℹ️ | added | none | `spec.md` FR-019 | An observability requirement: each reconciliation logs the repository, the branch, the discarded commit and the new commit. Genuinely new, and small. It exists because the display surface is out of scope, so while INFP-671 is unbuilt the log line is the only way an operator learns a reconciliation happened. It also supports SC-006 under F1's reading. |
 | F5 | ✅ | dropped by contract | PRD FR-015, FR-016, and user stories 9 and 10 | `spec.md` "Out of Scope" | Deferred to epic IFC-3220. Not drift: the Jira epic's "Out of scope" list says so explicitly, and the user confirmed the same default. The delivery queue both requirements read does not exist yet. |
 | F6 | ✅ | expansion of detail | PRD user stories 3 and 6, edge cases, SC-005 and SC-007 | `spec.md` US3 and US6 | The PRD lists these as user stories and success criteria but gives them no journey of their own. The spec promotes them to first-class, independently testable journeys. Allowed: the spec may be longer and more precise. |
-| F7 | ✅ | missing, then fixed | PRD "Testing Decisions" → "E2E scenario" | `tasks.md` T069 | The first `tasks.md` had no end-to-end task, although the PRD names the scenario and the constitution requires an E2E test for a user-facing feature. Added as T069 before this report was written. |
+| F7 | ✅ | missing, then fixed | PRD "Testing Decisions" → "E2E scenario" | `tasks.md`, end-to-end task | The first `tasks.md` had no end-to-end task, although the PRD names the scenario and the constitution requires an E2E test for a user-facing feature. Added before this report was written. |
 
 ---
 

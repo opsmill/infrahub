@@ -12,8 +12,35 @@ user-facing GraphQL surface is in `repository_rewrite.graphql`.
 
 New. `backend/infrahub/git/divergence/detector.py`.
 
-Classifies one tracked ref's remote head against the commit Infrahub imported. It holds no git
-code: a gateway supplies the two commits and answers the ancestry question.
+Classifies one tracked ref's remote head against the commit Infrahub **recorded in the graph** for
+that branch. It holds no git code: a gateway supplies the two commits and answers the ancestry
+question.
+
+### Two comparisons, not one
+
+The design turns on keeping these apart. They answer different questions, they read different
+inputs, and they drive different outcomes.
+
+| Question | Inputs | Drives | Who runs it |
+|---|---|---|---|
+| Was the history rewritten? | the commit **recorded in the graph** for this branch, against the remote head | the record and the trunk signal | whichever worker runs the synchronisation cycle |
+| Does this clone need to move? | this worker's **branch worktree head**, against the remote head | the reset | every worker, independently, in `pull` |
+
+`imported_commit` below is always the **graph** commit. It is never the local worktree head.
+
+Conflating them breaks the feature in one of two ways, and an earlier draft of this design did not
+say which input it meant:
+
+- Use the worktree head for the classification, and a worker that missed the broadcast classifies
+  `REWRITE` again on the next cycle. It writes a second record, increments the count and fires the
+  trunk signal twice. SC-002 and FR-014 both fail.
+- Use the graph commit for the reset, and once the reconciling worker has recorded the new commit
+  every other worker classifies `UNCHANGED`, resets nothing, and keeps the discarded history for
+  ever. SC-004 fails.
+
+Splitting them makes both correct without a guard. The reconciling worker sees a stale graph commit
+and records once. Every other worker sees a stale worktree and resets, records nothing, and
+converges.
 
 ```text
 classify(
@@ -33,10 +60,16 @@ Rows are evaluated in order. The first match wins.
 | `remote_head == imported_commit` | `UNCHANGED` |
 | `imported_commit` is an ancestor of `remote_head` | `FAST_FORWARD` |
 | **`remote_head` is an ancestor of `imported_commit`** | **`LOCAL_AHEAD`** |
+| **The imported commit is absent from the local object database, `target_changed` is false** | **`REWRITE`** (see below) |
+| **The imported commit is absent, `target_changed` is true** | **`RETARGET`** |
 | Neither is an ancestor, `target_changed` is false | `REWRITE` |
 | Neither is an ancestor, `target_changed` is true | `RETARGET` |
-| The imported commit is absent from the local object database | `REWRITE` (see below) |
 | Any other git failure | propagates as `RepositoryError`; the branch joins `failed_imports` |
+
+The two absent-object rows sit **above** the ancestry rows, because those rows cannot run when the
+object is missing. They also honour `target_changed`: a deliberate re-target whose old commit has
+been garbage-collected is still a re-target, and recording it as a rewrite would consume the marker
+and write a false record.
 
 **The `LOCAL_AHEAD` row is what keeps this safe without PR #10465.** A branch left ahead of its
 remote after a rejected push is a state the product reaches today. Without that row it falls into
@@ -50,14 +83,27 @@ not a lineage break. `spec.md` names it as an edge case.
 `RepositoryError`, so a rule of "cannot be answered means rewrite" would let a lock file, an I/O
 error or a permission problem on a fast-forward branch write a spurious record and fire the trunk
 signal. The gateway must therefore distinguish "this object is not here" from "git could not be
-asked", and only the first is a classification. Everything else propagates, and T013 sends the
+asked", and only the first is a classification. Everything else propagates, and the classification task sends the
 branch to `failed_imports` as it does for any other per-branch git failure.
+
+### Where the graph commit comes from
+
+`collect_pending_imports` has no graph read of its own, and `get_commit_value` reads **git**, not
+the graph. The per-branch graph commits are already loaded once per cycle by
+`git/utils.py::get_repositories_commit_per_branch` and carried on `RepositoryData.branches`, which
+`sync_repository_from_origin` already holds. They are passed down into `collect_pending_imports`
+rather than re-read, so the cycle costs no extra query.
+
+A branch with no recorded commit has never been imported. It cannot be a rewrite, so it classifies
+`FAST_FORWARD` and takes the ordinary import path.
 
 ### Rules
 
 - The detector never contacts the remote. The caller fetches first.
 - The detector never writes. It returns a value.
 - The detector runs without a database, so its unit tests need none.
+- The detector is given the graph commit. It never reads the worktree, and it never decides whether
+  this worker needs to reset. That decision belongs to the `pull` contract in section 3.
 - **`target_changed` is supplied by the caller, and the caller is the only component that touches
   the suppression marker.** It reads the marker, deletes it, and passes the result here. Neither
   the detector nor the recorder reads the cache. See section 8.
@@ -122,7 +168,7 @@ Returns whether a record was written.
 `RepositorySyncer.sync` takes the repository lock twice: once around `collect_pending_imports`, and
 once per branch around `apply_branch_import`. The reconciled commit is written inside the **first**
 one: `collect_pending_imports` calls `pull`, which defaults `update_commit_value=True`, and the
-reset path of T014 writes the commit the same way.
+reset path of the sync task writes the commit the same way.
 
 **The recorder runs there, beside that write.** Both properties the placement needs hold:
 
@@ -152,7 +198,7 @@ Conflating the two would make the record lie about git in order to describe an i
 ### Injected ports
 
 Principle III and `.agents/rules/backend-component-design.md` require the collaborators to be named
-protocols passed to the constructor, so the unit tests of T040 need no database and no mocks.
+protocols passed to the constructor, so the recorder's unit tests need no database and no mocks.
 
 | Port | What it does |
 |---|---|
@@ -258,7 +304,12 @@ It sends one coalesced `RefreshGitFetch` covering every reconciled branch, befor
 
 - Exactly one message per repository per cycle. The handler holds the repository lock once and
   fetches once.
-- When the cycle advanced no branch, no message is sent.
+- When the cycle advanced no branch, no message is sent. **This removes a heal that exists today.**
+  `sync_repository_from_origin` currently sends the pinned trunk commit every cycle even when
+  nothing changed, which brings a worker that missed an earlier broadcast back within a minute. The
+  pull-path self-heal of FR-005 replaces it, and that is gated on PR #10465. Until it lands, keep
+  sending the trunk message unconditionally: the "no branch advanced, no message" rule ships with
+  the pull-path reset, not before it.
 - When every branch failed, no message is sent.
 - **A trunk failure is made loud without being made fatal.** Today
   `sync_repository_from_origin` catches `RepositoryError` and `CommitNotFoundError` and calls
@@ -306,6 +357,18 @@ Changed. Attachment point depends on whether PR #10669 has merged. See `research
 | If #10669 has merged | If it has not |
 |---|---|
 | `backend/infrahub/git/refs_check/checker.py::ReadOnlyRepositoryRefsChecker._detect_movements` already produces `RefMovement(previous_head, new_head)`. Classify each movement and call the recorder. | `backend/infrahub/git/repository.py::InfrahubReadOnlyRepository.update_latest_commit` resolves the same two commits. Classify there and call the recorder. |
+
+### Which commit is the "imported" one here
+
+The same rule as section 1: **the commit recorded in the graph** for that Infrahub branch, never
+anything read from disk. This needs saying because the read-only path makes it easy to get wrong.
+`update_latest_commit` resolves only the *new* head, `import_read_only_repository_last_commit`
+calls `init` without a commit, and the mutation submits `pull_read_only` concurrently, which can
+write the new commit to the graph first.
+
+So the graph commit must be read **before** either workflow can overwrite it. The mutation already
+holds it as `current_commit`, so it travels on the workflow model rather than being re-read later.
+Re-reading would race the concurrent pull and compare the new commit against itself.
 
 ### Contract, either way
 

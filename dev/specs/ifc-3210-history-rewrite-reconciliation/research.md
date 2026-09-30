@@ -150,9 +150,18 @@ destination worktree from purely local state, with no fetch and no pull:
 
 A worker that missed the broadcast and then runs a merge builds on the discarded history. The
 broadcast (FR-006) makes that unlikely, not impossible, and "unlikely" is what FR-005 exists to
-replace. FR-005a therefore requires the merge path to fetch and run the same ancestry check on its
-destination worktree before merging. Branch creation is left alone: a branch created from a stale
-trunk converges on its own first pull, and creating it is not a merge of anything.
+replace.
+
+**Both sides of the merge are exposed, and the source side is the dangerous one.** `merge` reads
+the commit it merges from the local source ref (`get_commit_value(..., remote=False)`), and
+`merge_git_repository` performs no fetch. A worker holding a stale source branch therefore merges
+the **pre-rewrite** history into the trunk and pushes it, putting the discarded commits back on the
+remote. If the rewrite existed to strip a leaked credential, the merge restores it. The destination
+side only corrupts one worker's view; the source side corrupts the remote, for everyone.
+
+FR-005a therefore covers both worktrees, and FR-005b states the property plainly: never push what
+the remote already discarded. Branch creation is left alone: a branch created from a stale trunk
+converges on its own first pull, and creating it is not a merge of anything.
 
 **What the pull-side reset must not do** (FR-007): it must not write the commit to the graph, must
 not write the rewrite record, and must not emit the signal. `pull` already takes
@@ -473,8 +482,11 @@ feature. Tasks cover all three.
 3. `merge-failure-recovery.md`, "Key Files": it attributes the merge-start logic to
    `core/branch/tasks.py::_do_merge_branch`. That logic now lives in `core/merge/orchestrator.py`.
 
-The same file's four "Volatile section" notes in `git-integration.md` describe this feature as
-planned. They have to be rewritten to describe what shipped.
+One of the four "Volatile section" notes in `git-integration.md` describes this feature as planned:
+the one under "How git errors are classified". It has to be rewritten to describe what shipped.
+**Leave the other three alone.** They cover the trunk fallback (PR #10542), the persisted writeback
+state (IFC-3220) and push-before-graph-write (PR #10465). Rewriting those would claim three other
+fixes shipped.
 
 ---
 
