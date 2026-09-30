@@ -30,8 +30,8 @@ function dateTimeOrNull(value: unknown): string | null {
 export const getRepositoryCommits: GetRepositoryCommits = async (params) => {
   const { data, errors } = await getRepositoryCommitsFromApi(params);
 
-  if (errors?.[0]?.message) {
-    throw new Error(errors[0].message);
+  if (errors?.length) {
+    throw new Error(errors.map((error) => error.message).join("; "));
   }
 
   const log = data.InfrahubRepositoryCommits;
