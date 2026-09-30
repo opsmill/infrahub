@@ -10,7 +10,7 @@ to call back into Infrahub to resolve them:
 | Field | On | Value |
 |-------|----|-------|
 | `display_label`, `hfid` | the node | the node's display label and human-friendly ID; `hfid` is `None` for a kind without one |
-| `peer_display_label`, `peer_hfid` | each peer of a cardinality-many relationship, and the current peer of a cardinality-one relationship | the peer's display label and human-friendly ID, or `None` when the peer could not be resolved |
+| `peer_display_label`, `peer_hfid` | each peer of a cardinality-many relationship, and the current peer of a cardinality-one relationship | the peer's display label and human-friendly ID; `peer_hfid` is `None` for a kind without one, and both are `None` when the peer could not be resolved |
 
 The previous peer of a cardinality-one relationship carries only `peer_id_previous` and
 `peer_kind_previous`.
@@ -29,7 +29,8 @@ reads labels the same way.
 
 `RelationshipChangelogGetter` fills the mutated node's relationship peers with their labels, then
 builds the *secondary* changelogs: a relationship change on the mutated node also changes the
-reciprocal relationship on each peer, so each affected peer gets its own node event. Three
+reciprocal relationship on each peer whose schema declares one, so each such peer gets its own node
+event. A one-way relationship (a tag never lists what points at it) produces no secondary. Three
 components do the work, injected by `builder.py`:
 
 - `PeerLabelResolver` (`peer_labels.py`) collects every peer id the changelog references and resolves
