@@ -1,4 +1,4 @@
-import { FolderGitIcon, GitCommitIcon } from "lucide-react";
+import { FolderGitIcon, GitCommitIcon, GitCompareArrowsIcon } from "lucide-react";
 import type React from "react";
 
 import { TablePagination } from "@/shared/components/table/table-pagination";
@@ -48,7 +48,9 @@ export function BranchRepositoriesTable({
           <thead className="bg-content-muted text-left text-foreground-muted">
             <tr className="border-b">
               <HeaderCell icon={<FolderGitIcon className="size-3.5" />}>Repository</HeaderCell>
-              <HeaderCell className="w-36">Git state</HeaderCell>
+              <HeaderCell icon={<GitCompareArrowsIcon className="size-3.5" />} className="w-36">
+                Git state
+              </HeaderCell>
               <HeaderCell icon={<GitCommitIcon className="size-3.5" />} className="w-44">
                 Commit
               </HeaderCell>
