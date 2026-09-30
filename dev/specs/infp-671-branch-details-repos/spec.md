@@ -72,7 +72,7 @@ For each repository whose import failed on the branch, a red band under the tabl
 **Acceptance Scenarios**:
 
 1. **Given** a repository in Import Error on the branch whose latest import task logged an error line, **When** the page opens, **Then** a red band under the table shows "<repository> — import failed", the last error-level line of that task's log verbatim in monospace (line breaks kept), and a "View task log" link to that task's details page.
-2. **Given** a repository in Import Error for which no import task, or no error-level log line, can be found on this branch, **When** the page opens, **Then** its band still shows, says the error details couldn't be found, and links to the repository instead of a task.
+2. **Given** a repository in Import Error for which no import task, or no error-level log line, can be found on this branch, **When** the page opens, **Then** its band still shows and says the error details couldn't be found. It links to the task's log when a task was found without an error line, and to the repository when no task was found.
 3. **Given** a repository whose `operational_status` is `error-cred`, `error-connection` or `error`, **When** the page opens, **Then** its row shows a warning icon with an accessible label naming the problem, and an amber band says Infrahub can't fetch new commits so the commit shown may be out of date, with an "Open repository" link.
 4. **Given** 5 repositories with bands, **When** the page opens, **Then** the first 3 bands show, followed by a line reading "2 more repositories with errors:" and their names, with a "Show all" control; **When** the user activates it, **Then** all 5 bands show and the control reads "Collapse".
 5. **Given** a repository that is both in Import Error and unreachable, **When** the page opens, **Then** it gets one band, the import error band, and its row still shows the unreachable icon.
@@ -136,7 +136,7 @@ The branch page header matches the object details page: the branch name, a copy 
 
 ### Edge Cases
 
-- **Import task not tagged with the repository.** Some import flows tag their task with the branch only, or the repository only (see `research.md`). When the latest import task can't be found, the band still shows, without an error line, and links to the repository (US2 scenario 2). It never disappears.
+- **Import task not tagged with the repository.** Some import flows tag their task with the branch only, or the repository only (see `research.md`). When the latest import task can't be found, the band still shows, without an error line, and links to the repository; when the task is found but has no error line, it links to the task's log (US2 scenario 2, FR-022). It never disappears.
 - **Long error line.** Shown in full, wrapped, line breaks preserved. It is not truncated.
 - **Very long repository or branch names.** Truncated with the full name available on hover; the Read-only tag and Git state stay visible.
 - **A repository whose `sync_status` has no schema colour or label.** Shows the raw value in a neutral tag.
@@ -178,7 +178,7 @@ The branch page header matches the object details page: the branch name, a copy 
 #### Error bands
 
 - **FR-021**: For each repository in Import Error, the card MUST show a red band under the table with the repository name, "import failed", the last error-level log line of the repository's latest import task on this branch shown verbatim in monospace with line breaks kept, and a "View task log" link to that task's details page (`/tasks/<task id>`, keeping the branch context).
-- **FR-022**: When no import task, or no error-level log line, is found for a failing repository, its band MUST still show, say that the error details couldn't be found, and link to the repository's page instead.
+- **FR-022**: When no import task, or no error-level log line, is found for a failing repository, its band MUST still show and say that the error details couldn't be found. If an import task was found without an error line, the band MUST link to that task's log ("View task log"); if no task was found, it MUST link to the repository's page ("Open repository").
 - **FR-023**: For each unreachable repository (FR-012) that is not in Import Error, the card MUST show an amber band with the repository name, the problem, the sentence "Infrahub can't fetch new commits, so the commit shown may be out of date." and an "Open repository" link.
 - **FR-024**: Bands MUST follow the row order of FR-013 and MUST cover every failing repository, not only those on the current page.
 - **FR-025**: When there are more than 3 bands, only the first 3 MUST show, followed by a summary line "<N> more repositories with errors: <names>" (singular for 1) and a "Show all" control, which expands every band and then reads "Collapse".

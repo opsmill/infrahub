@@ -59,7 +59,7 @@ type RepositoryImportError =
 
 - Input: `{ branchName, repositoryId }`.
 - `getLastErrorLine(logs): string | null` (rule, `domain/rules/get-last-error-line.ts`) — last log with `severity` `error` or `critical` (case-insensitive), message verbatim (no trim of inner newlines; trailing whitespace trimmed).
-- `taskId` is kept in `not-found` when a task exists without an error line, so the band can still link to it; when `null`, the band links to the repository (FR-022).
+- `taskId` is kept in `not-found` when a task exists without an error line, so the band links to its log; when `null`, the band links to the repository (FR-022).
 
 ## TaskListItem (`entities/tasks/domain/model/task-list-item.ts`)
 
