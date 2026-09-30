@@ -17,7 +17,7 @@ merge (BranchMergeOrchestrator.merge)
   -> run_follow_ups threads merge_diff_cache_key + proposed_change_id to post_process_branch_merge
        -> PostMergeRegenerationDispatcher.dispatch(target_branch, merge_diff_cache_key)
             -> flag off / no key / summary unavailable -> full regeneration (blanket triggers)
-            -> RegenerationSelector.build_plan(diff_summary, target_branch)  -> generator runs + artifact generates
+            -> RegenerationPlanner.build_plan(diff_summary, target_branch)  -> generator runs + artifact generates
             -> _dispatch_plan(plan)
 ```
 
@@ -25,12 +25,14 @@ Every uncertain signal short-circuits to `submit_full_regeneration` (the two `TR
 
 ## Selection
 
-`RegenerationSelector` (`selective_regen/orchestrator.py`, `MergeSelectiveRegeneration`) turns a `list[NodeDiff]` summary into a plan of generator runs and artifact generations. It loads the generator and artifact definitions on the **target (destination) branch**, then runs each through a definition selector.
+`MergeSelectiveRegeneration` (`selective_regen/orchestrator.py`, the `RegenerationPlanner` implementation) turns a `list[NodeDiff]` summary into a plan of generator runs and artifact generations. It holds one `CascadeParticipant` per definition kind (`selective_regen/participant.py`): each participant loads its definitions on the **target (destination) branch** and runs them through its definition selector. A participant's role in the cascade is its class: `CascadeSource` (generators) carries an output capture, `CascadeTerminal` (artifacts) does not. Adding a definition kind means adding a participant; the planner does not change.
+
+The planner computes the diff's modified kinds once per plan and passes them to every participant. Before that, a `ModifiedKindsExpander` adds the node kind behind each changed Profile (`SchemaProfileExpander`, `core/regeneration/profiles.py`, resolved from the target branch's schema), because a Profile's values apply to the nodes it targets. A Profile-only change therefore selects every definition whose query reads the profiled node kind. The proposed-change pipeline runs the same expander for its generator and artifact loops.
 
 The selectors live in `selective_regen/definition_selector/`. The shared loop in `base.py` applies, per definition:
 
-- The **gate** (`gate.py`): the definition is selected when the diff changed its query, the definition node itself (including its `fingerprint` element), a data kind its query reads, or its target group membership.
-- The **member reconciliation** (`impacted.py`, `core/regeneration/members.py`): live group members are fetched on the target branch, impacted subscriber ids are mapped to member ids, new members without a subscriber are force-rendered, and the result is emitted as a member-id filter.
+- The **gate** (`gate.py`): the definition is selected when the diff changed its query, the definition node itself (including its `fingerprint` element), a data kind its query reads (after the Profile expansion above), or its target group membership.
+- The **member reconciliation** (`impacted.py`, `core/regeneration/members.py`): live group members are fetched on the target branch, impacted subscriber ids are resolved through the `ImpactedSubscriberResolver` protocol (implemented by `FieldLevelImpactResolver`, `core/regeneration/impact.py`, which the proposed-change pipeline also uses) and mapped to member ids, new members without a subscriber are force-rendered, and the result is emitted as a member-id filter.
   - Narrowing to specific subscribers requires the query to target unique nodes (`QueryImpactClassifier`, `core/regeneration/impact_classifier.py`). A change on a root kind maps straight to its members. A change on a kind read through a relationship is mapped back to the owning members by walking the relationship chains that reach it: the query's read surface reconstructs those chains (`relationship_reached_paths` / `ReachedPathResolver`, `graphql/analyzer.py`), and each hop is resolved to the owners referencing the changed nodes until the chain ends at the root members (`ReachedMemberResolver`, `core/regeneration/impact.py`). Every hop returns a superset of the truly-related nodes, so the resolved member set is a superset — over-execution, never under.
   - A relationship-reached change widens to every member only when a chain cannot be pinned: a hop along it is an inline/named-fragment refinement rather than a relationship on its owner, or the kind is read **both** at a root and through a relationship. In the both-read case the two read paths are indistinguishable once a change is in hand, so narrowing would drop the members reached only by the relationship; the decision keys on `traversed_kinds` for this reason.
   - A read of a `display_label` or `human_friendly_id` is imprecise: the value can be composed from a peer's attribute the read set never names, so a change to that peer moves the value without touching any kind the query reads. Each such read's declared paths are followed to the kind that owns the backing attribute, and the relationship chain from that peer back to the reading member is reported (`DerivedFieldDependencyResolver` / `DerivedPathResolver`, `core/regeneration/derived_dependencies.py` / `core/schema/derived_path.py`). `QueryClassifierBuilder` (`classifier_builder.py`) folds each resolved peer into the classifier as a traversed kind carrying that chain, so a peer change narrows like any relationship-reached change; when the reading kind is itself relationship-reached, the peer chain is extended through that kind's own chains to the root. A derived read that cannot be resolved to a peer chain — no declared path, a peer already read at a root, or an unresolvable segment — sets `depends_on_everything`, and any real change on the query branch then widens.
@@ -53,8 +55,8 @@ The dependency closure and `fingerprint` are computed at repository import. The 
 Generators dispatched by the follow-up write their output after the merge diff was captured, so those writes are absent from that diff. On a merge that runs at least one generator, `_dispatch_plan` (`regeneration_dispatcher.py`):
 
 1. Awaits each generator run so its writes have landed, isolating failures per generator (one failure does not abort the others or discard the narrowing already computed).
-2. Captures the nodes those generators wrote, scoped to the members each generator tracks, through `GeneratorTrackingGroupDiffCapturer` (`generator_diff_capturer.py`). The capturer reads each generator's per-member tracking group rather than the whole branch timeframe.
-3. Selects only the artifacts that read the captured output (`RegenerationSelector.select_artifacts`), and dispatches those alongside the merge-diff artifacts. Requests selected by both are consolidated into one request per artifact definition (member and limit filters unioned; an empty filter, meaning all members, subsumes a specific one).
+2. Captures the nodes those generators wrote, scoped to the members each generator tracks, through `GeneratorTrackingGroupDiffCapturer` (`generator_output.py`), the output capture the generator `CascadeSource` carries. The capturer reads each generator's per-member tracking group rather than the whole branch timeframe.
+3. Selects only the artifacts that read the captured output (`RegenerationPlanner.reselect_from_cascade_output`, which re-plans every participant except the sources), and dispatches those alongside the merge-diff artifacts. Requests selected by both are consolidated into one request per artifact definition (member and limit filters unioned; an empty filter, meaning all members, subsumes a specific one).
 
 The capture widens to regenerating every artifact when any generator's tracked set is unresolved or the output cannot be captured. A generator run failure regenerates every artifact without re-running the generators (which would fail the same way). The merge-diff artifacts are dispatched only after the generator-output capture, so the capture never selects on their own writes.
 
@@ -89,11 +91,15 @@ A per-merge line records the path taken (selective, with generator/artifact coun
 | `core/diff/summary_serializer.py` | `DiffSummarySerializer` — the `EnrichedDiffRoot -> list[NodeDiff]` converter |
 | `core/diff/summary_cache.py` | `DiffSummaryCache` — the merge-scoped cache |
 | `core/merge/regeneration_dispatcher.py` | `PostMergeRegenerationDispatcher`, the cascade, `submit_full_regeneration`, `FullRegenerationReason` |
-| `core/merge/selective_regen/orchestrator.py` | `RegenerationSelector` / `MergeSelectiveRegeneration`, `build_merge_selective_regeneration` |
+| `core/merge/selective_regen/orchestrator.py` | `RegenerationPlanner` / `MergeSelectiveRegeneration`, `build_merge_selective_regeneration` |
+| `core/merge/selective_regen/participant.py` | `CascadeParticipant`, `CascadeSource`, `CascadeTerminal` |
 | `core/merge/selective_regen/definition_selector/` | Shared select loop (`base.py`) and the artifact / generator selectors |
 | `core/merge/selective_regen/gate.py`, `impacted.py`, `fallbacks.py` | Definition gate, member impact, untrusted-closure widening |
-| `core/merge/selective_regen/generator_diff_capturer.py` | `GeneratorTrackingGroupDiffCapturer` (group-scoped output capture) |
+| `core/merge/selective_regen/generator_output.py` | `GeneratorCascadeOutput`, `GeneratorTrackingGroupDiffCapturer` (group-scoped output capture) |
 | `core/regeneration/` | Predicates, member mapping, definition models shared with the proposed-change pipeline |
+| `core/regeneration/impact.py` | `FieldLevelImpactResolver` (changed nodes to impacted subscribers), `ReachedMemberResolver` (relationship-reached changes to owning members) |
+| `core/regeneration/profiles.py` | `SchemaProfileExpander` — adds the profiled node kind for each changed Profile |
+| `core/relationship/dependent_resolver.py` | `DependentNodeResolver` / `QueryDependentNodeResolver` — nodes that reference changed peers through a relationship, shared with the uniqueness validators |
 | `core/regeneration/derived_dependencies.py`, `classifier_builder.py`, `core/schema/derived_path.py` | Resolve a `display_label` / `human_friendly_id` read's backing peers and fold them into the classifier as traversed kinds |
 | `graphql/analyzer.py` | `ReachedPathResolver` / `relationship_reached_paths` — reconstructs the relationship chains reaching each related kind |
 | `core/branch/tasks.py` | `_build_post_merge_regeneration_dispatcher`, `post_process_branch_merge` wiring |

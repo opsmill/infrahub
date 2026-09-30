@@ -1,0 +1,1 @@
+When a change to a related node alters a display label or human-friendly ID, only the artifacts and Generator instances of the targets that show that label or ID are now regenerated after a merge or in a proposed change, instead of every target of the definition.
