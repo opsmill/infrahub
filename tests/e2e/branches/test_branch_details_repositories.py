@@ -97,27 +97,32 @@ class TestBranchDetailsRepositoryImportError:
         GitRepo(name=repository_name, src_directory=source, dst_directory=remote_dir)
 
         await branch_api.create(branch)
-        mutation = Mutation(
-            mutation="CoreRepositoryCreate",
-            input_data={
-                "data": {
-                    "name": {"value": repository_name},
-                    "location": {"value": f"/remote/{repository_name}"},
-                }
-            },
-            query={"ok": None},
-        )
-        await infrahub_client.execute_graphql(
-            query=mutation.render(), branch_name=branch, tracker="mutation-repository-create"
-        )
+        try:
+            mutation = Mutation(
+                mutation="CoreRepositoryCreate",
+                input_data={
+                    "data": {
+                        "name": {"value": repository_name},
+                        "location": {"value": f"/remote/{repository_name}"},
+                    }
+                },
+                query={"ok": None},
+            )
+            await infrahub_client.execute_graphql(
+                query=mutation.render(), branch_name=branch, tracker="mutation-repository-create"
+            )
 
-        repository_id = await _wait_for_import_error(infrahub_client, branch, repository_name)
-        task_id = await _wait_for_failed_import_task(infrahub_client, branch, repository_id)
+            repository_id = await _wait_for_import_error(infrahub_client, branch, repository_name)
+            task_id = await _wait_for_failed_import_task(infrahub_client, branch, repository_id)
 
-        yield branch, repository_name, task_id
-
-        with contextlib.suppress(Exception):
-            await branch_api.delete(branch)
+            yield branch, repository_name, task_id
+        finally:
+            with contextlib.suppress(Exception):
+                await branch_api.delete(branch)
+            # Repositories are branch-agnostic, so the node outlives its branch.
+            with contextlib.suppress(Exception):
+                repository = await infrahub_client.get(kind="CoreRepository", name__value=repository_name)
+                await repository.delete()
 
     async def test_import_error_band_links_to_the_task_page(
         self, admin_page: Page, broken_repository: tuple[str, str, str]
