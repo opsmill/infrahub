@@ -30,7 +30,7 @@ Expected: 101 allocations from 100-200 ascending on a pool with 100-200 (weight 
 ## User Story 2: existing pools unchanged
 
 ```bash
-cd backend && uv run pytest tests/component/core/migrations/graph/m079_number_pool_ranges
+cd backend && uv run pytest tests/component/core/migrations/graph/m080_number_pool_ranges
 uv run pytest tests/unit/core/graph/test_graph_version.py
 ```
 
