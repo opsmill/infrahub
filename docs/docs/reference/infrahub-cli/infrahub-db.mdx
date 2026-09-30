@@ -170,10 +170,13 @@ $ infrahub db reset [OPTIONS] [CONFIG_FILE]
 
 Delete the stored diffs that are not frozen, for every branch or for a single one.
 
-Frozen diffs are kept: they record what a closed or merged proposed change, or a merged or
-deleted branch, changed. A deleted diff is calculated again from the start of its branch the next
-time it is requested, and the conflict resolutions recorded in it are lost. The diffs of a branch
-are deleted once any diff update of that branch in progress has finished.
+By default only named diffs are deleted: diffs computed under a name for a given time range,
+which Infrahub also creates on its own. With --include-branch-diffs, the diffs tracking a branch
+over its lifetime are deleted too; such a diff is calculated again from the start of its branch
+the next time it is requested, and the conflict resolutions recorded in it are lost. Frozen diffs
+are always kept: they record what a closed or merged proposed change, or a merged or deleted
+branch, changed. The diffs of a branch are deleted once any diff update of that branch in
+progress has finished.
 
 **Usage**:
 
@@ -188,6 +191,7 @@ $ infrahub db delete-diffs [OPTIONS] [CONFIG_FILE]
 **Options**:
 
 * `-b, --branch TEXT`: Only delete the diffs of this branch, which does not need to exist anymore.
+* `--include-branch-diffs`: Also delete the diffs that track a branch over its lifetime, not only the named diffs.
 * `-y, --yes`: Skip the confirmation prompt.
 * `--help`: Show this message and exit.
 
