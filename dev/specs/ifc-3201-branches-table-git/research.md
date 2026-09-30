@@ -177,3 +177,21 @@ That file imports `BranchListItem` from `entities/branches/domain/model/branch`.
 7. The PR touches three #10779 files and changes the shared toggle handler (generic widened, id-keyed anchor) (plan Complexity Tracking and Risks).
 8. Anchor selection relies on the row order matching the data order, which `manualSorting: true` guarantees today; index drift after expansion is handled by the id-keyed anchor (R1).
 9. E2E is in scope: one `/branches` case over the `broken_repository` fixture promoted from `test_branch_details_repositories.py` to `tests/e2e/branches/conftest.py` (plan IV). The promotion touches a #10779 test file. The fixture's branch is created with `sync_with_git=False` today, so the branch details test's premise is verified on a live stack first (plan IV pre-step).
+
+## E2E premise verification
+
+**Status**: code-derived expectation, to be confirmed on a live stack (T032 ⚠️ partial: no stack was available in the implementing run).
+
+**Expectation**: the branch details card and the `/branches` rows list repositories through `entities/repository/domain/use-cases/get-branch-repositories.ts::getRepositoryListKind(syncWithGit)`. `getRepositoryListKind(false)` returns `CoreReadOnlyRepository`, so a `sync_with_git=False` branch lists only read-only repositories and its card should NOT list the broken `CoreRepository` the fixture creates. `getRepositoryListKind(true)` returns `CoreGenericRepository`, which includes it.
+
+**Consequence for the E2E cases**:
+
+| Test | `sync_with_git` |
+|---|---|
+| `tests/e2e/branches/test_branch_details_repositories.py::test_import_error_band_links_to_the_task_page` | `True` (was `False` through `BranchAPI.create`'s default; changes #10779's premise) |
+| `tests/e2e/branches/test_branches_git_columns.py::test_broken_repository_row_shows_its_git_state_and_commit` | `True` |
+| `tests/e2e/branches/test_branches_git_columns.py::test_branch_without_git_sync_reads_not_synced` | `False`, no fixture repository |
+
+**Commit on a failed import**: expected to be set. `backend/infrahub/git/base.py` records the commit value when the repository is cloned (`update_commit_value`), before `.infrahub.yml` is read and the import fails. Also to be confirmed live.
+
+**To confirm**: on a running stack, create the broken repository on a `sync_with_git=False` branch and on a `sync_with_git=True` branch, open each branch's details page, and record whether the Git repositories card lists it and whether the repository's `commit` is set on that branch.
