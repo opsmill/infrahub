@@ -71,10 +71,14 @@ evaluated at all when the object is gone: the ancestry call raises instead of an
 honour `target_changed`, so a deliberate re-target whose old commit has been garbage-collected is
 still a re-target rather than a recorded rewrite.
 
-**The `LOCAL_AHEAD` row is what keeps this safe without PR #10465.** A branch left ahead of its
-remote after a rejected push is a state the product reaches today. Without that row it falls into
-"neither is an ancestor", classifies `REWRITE`, and the reset discards the unpushed commit. With
-it, the branch resets nothing, records nothing, and keeps exactly today's behaviour.
+**`LOCAL_AHEAD` narrows the exposure to PR #10465. It does not remove it.** A branch left ahead of
+its remote after a rejected push is a state the product reaches today. Without that row it falls
+into "neither is an ancestor", classifies `REWRITE`, and the reset discards the unpushed commit.
+With it, that branch resets nothing and keeps today's behaviour.
+
+What is left is the branch that is **both** ahead locally and rewritten remotely. Neither commit is
+an ancestor of the other, so it classifies `REWRITE` and the reset discards the unpushed merge
+commit. Every step that resets a worktree therefore stays gated on #10465.
 
 `REMOTE_ABSENT` likewise keeps current behaviour: a tracked ref that disappeared from the remote is
 not a lineage break. `spec.md` names it as an edge case.
@@ -424,6 +428,11 @@ Changed. `backend/infrahub/message_bus/operations/git/repository.py::fetch`.
 3. When `branches` is present, it resets each pair in turn, inside that one lock hold.
 4. When `branches` is absent, it behaves exactly as it does today.
 5. It still passes `update_commit_value=False`. A broadcast never writes to the graph.
+6. **It resets with `reset_to_commit` and runs no ancestry check**, so it does not honour
+   `LOCAL_AHEAD`: a pinned SHA moves the worktree whether or not it holds commits the remote does
+   not. That is deliberate, because the broadcast carries a SHA the sending worker already resolved
+   and the receiving worker is meant to converge on exactly it. It is also why widening the
+   broadcast is gated on #10465 along with every other reset.
 6. One pair failing does not stop the rest. Each failure is logged with the branch it belongs to,
    and that branch converges on first contact through the pull-path rule of FR-005. The broadcast
    is a pre-warm, so a pair it could not converge costs promptness and not correctness.

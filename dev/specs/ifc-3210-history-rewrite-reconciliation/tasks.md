@@ -123,12 +123,14 @@ head, the imported objects match the rewritten tree, and the repository reports 
       `self.pull(branch_name=self.default_branch)` outside the `ACTIVE` loop, so a rewritten trunk
       on a staging repository would be neither classified nor recorded, and before T037 would still
       fail with the old message. No spec file mentioned this path before this task.
-- [ ] T014 [US1] Pass the per-branch graph commits into
-      `backend/infrahub/git/repository.py::InfrahubRepository.collect_pending_imports`.
-      `sync_repository_from_origin` already holds them on `RepositoryData.branches`, loaded once per
-      cycle by `get_repositories_commit_per_branch`. The collector has no graph read of its own, and
-      `get_commit_value` reads git rather than the graph, so without this the classifier has no
-      input (FR-001b).
+- [ ] T014 [US1] Thread the per-branch graph commits down to
+      `backend/infrahub/git/repository.py::InfrahubRepository.collect_pending_imports`. They are
+      loaded once per cycle by `get_repositories_commit_per_branch` and live on
+      `RepositoryData.branches` in `sync_remote_repositories`. Neither
+      `sync_repository_from_origin` nor the subflow below it,
+      `sync_git_repo_with_origin_and_tag_on_failure`, receives them today, so passing them through
+      both is part of this task. The collector has no graph read of its own, and `get_commit_value`
+      reads git rather than the graph, so without this the classifier has no input (FR-001b).
 - [ ] T015 [US1] Build the candidate set in `collect_pending_imports` as the **union** of two
       comparisons: the branches `compare_local_remote` returns (local head against remote head), and
       the branches whose **graph commit** differs from the remote head. `compare_local_remote` alone
@@ -229,8 +231,10 @@ healthy branch is still sent, and a second worker converges on it.
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 4.
 - [ ] T030 [US3] Broadcast before the raise in
       `backend/infrahub/git/tasks.py::sync_repository_from_origin`. Send one coalesced
-      `RefreshGitFetch` covering every reconciled branch, then raise for the failures. Send nothing
-      when the cycle advanced no branch.
+      `RefreshGitFetch` covering every reconciled branch, then raise for the failures.
+      **Keep sending the trunk message every cycle, even when no branch advanced.** That message is
+      what heals a worker which missed an earlier broadcast, and its replacement is the pull-path
+      reset in Phase 5. Dropping it here would leave a gap with no self-heal on either side.
 - [ ] T031 [US3] Log a failed trunk reconciliation at error level and record it against the
       repository in `sync_repository_from_origin`, and do not retry it inside the same cycle
       (FR-018). Do **not** let it propagate: `sync_remote_repositories` loops over every repository

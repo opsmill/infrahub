@@ -169,8 +169,9 @@ So:
   unpushed merge commit can sit on a feature-branch worktree that the widened broadcast would
   discard. An earlier draft called this slice gate-free because it "never resets anything". It
   does.
-- **Slice B** may be written and reviewed now. Its reset must not be enabled on a deployment
-  running without #10465, because of the both-ahead-and-rewritten case.
+- **Slice B** is blocked on #10465, like the other resets. Its classification and its corrected
+  error message can be written and merged first, because they change no worktree, but the reset
+  itself waits. No setting turns it on or off: the task is simply gated.
 - **Slice D** is fully gated, because the pull path has no classification context to lean on and
   runs from every worker.
 
