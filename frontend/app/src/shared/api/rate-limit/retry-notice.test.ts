@@ -147,6 +147,24 @@ describe("notifyRetryScheduled", () => {
     expect(toastMock.dismiss).toHaveBeenCalledExactlyOnceWith(TOAST_ID);
   });
 
+  it("keeps the notice until the grace of the latest settled replay has passed", () => {
+    // GIVEN two announced replays, the first settled 300 ms before the second
+    vi.useFakeTimers();
+    const first = announce(2000);
+    const second = announce(2000);
+    first("replayed");
+    vi.advanceTimersByTime(300);
+    second("replayed");
+
+    // WHEN the first replay's grace would have ended
+    vi.advanceTimersByTime(200);
+
+    // THEN the notice is still up, and closes once the second one's grace has passed
+    expect(toastMock.dismiss).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(300);
+    expect(toastMock.dismiss).toHaveBeenCalledExactlyOnceWith(TOAST_ID);
+  });
+
   it("ignores a second report about the same replay", () => {
     // GIVEN a replay already reported as fired, its grace timer pending
     vi.useFakeTimers();
