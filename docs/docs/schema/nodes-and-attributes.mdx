@@ -178,7 +178,7 @@ nodes:
 
 If `name` also has `unique: true`, the node has two constraints: `["cluster", "name__value"]` and `["name__value"]`. The second one requires every virtual machine name to be unique across all clusters, so the composite constraint has no effect. Creating `vm01` in a second cluster then fails with `Violates uniqueness constraint 'name'`.
 
-Infrahub loads a schema with this combination without a warning. The schema view in the web UI lists every constraint on the node, including the ones Infrahub added, so check it when a write fails on a constraint you did not define.
+Infrahub loads a schema with this combination without a warning. To see every constraint on a node, including the ones Infrahub added, open **Schemas** in the web UI, select the node, and check **Uniqueness constraints** on the **Properties** tab. Start there when a write fails on a constraint you did not define.
 
 ### Optimizing uniqueness constraints
 
