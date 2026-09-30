@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { page } from "vitest/browser";
 
 import {
   BranchRepositoriesError,
@@ -64,6 +65,7 @@ describe("BranchRepositoriesCard", () => {
 
   afterEach(() => {
     window.history.replaceState(null, "", initialUrl);
+    vi.unstubAllGlobals();
   });
 
   test("lists every repository with its Git state and commit, and the count in the header", async () => {
@@ -416,5 +418,40 @@ describe("BranchRepositoriesCard", () => {
     // THEN
     await expect.element(component.getByText("mystery")).toBeVisible();
     await expect.element(component.getByText("—")).toBeVisible();
+  });
+
+  test("renders its failed state with no toast when the repositories request returns a GraphQL error", async () => {
+    // GIVEN
+    serve([]);
+    const { getBranchRepositories: realGetBranchRepositories } = await vi.importActual<
+      typeof import("@/entities/repository/domain/use-cases/get-branch-repositories")
+    >("@/entities/repository/domain/use-cases/get-branch-repositories");
+    vi.mocked(getBranchRepositories).mockImplementation(realGetBranchRepositories);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          data: null,
+          errors: [
+            { message: "Repository index unavailable", extensions: { code: "NODE_NOT_FOUND" } },
+          ],
+        })
+      )
+    );
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN
+    await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(
+      page
+        .getByRole("alert")
+        .elements()
+        .map((alert) => alert.textContent)
+    ).toEqual(["Repositories couldn't be loaded."]);
+    expect(document.querySelector(".Toastify__toast")).toBeNull();
+    expect(document.body.textContent).not.toContain("Repository index unavailable");
   });
 });
