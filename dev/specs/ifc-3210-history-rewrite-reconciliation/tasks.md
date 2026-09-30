@@ -433,12 +433,23 @@ the commit. The import happened, the record was written, and no reset ran.
 > `backend/infrahub/git/repository.py::InfrahubReadOnlyRepository.update_latest_commit`. The record
 > and the precondition are identical either way. See [research.md](research.md) R10.
 
-- [ ] T060 [US5] Classify the resolved commit against the imported one at the attachment point
-      chosen above, and call the recorder on a `REWRITE`. Perform no reset (FR-009).
+- [ ] T060 [US5] Classify the resolved commit against the graph commit on the
+      **import-last-commit** path, and call the recorder on a `REWRITE`. Perform no reset (FR-009).
+      Do **not** attach this to `InfrahubRepositoryMutation.mutate_update`: that method submits its
+      workflows only when `ref` or `commit` changes, so a force-pushed branch never reaches it, and
+      anything routed through it would arrive with `target_changed` true and classify every rewrite
+      as a re-target. See the mutation table in
+      [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 7.
 - [ ] T061 [US5] Confirm the import path is unchanged: detection changes what is recorded, never
       what is imported.
 - [ ] T062 [P] [US5] Component-test the read-only classification in
       `backend/tests/component/git/test_readonly_rewrite.py`.
+- [ ] T062y [US5] Add a `commit` field to `GitReadOnlyRepositoryImportCommit` in
+      `backend/infrahub/git/models.py`, carrying the previously imported commit, and set it in
+      `backend/infrahub/graphql/mutations/repository.py::ReadOnlyRepositoryImportLastCommit`, which
+      already loads the node. Without it the classifier has no "imported" side on this path, and
+      re-reading the graph later races the concurrent `pull_read_only` and compares the new commit
+      against itself.
 - [ ] T063 [US5] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`, which is where the Gogs harness and
       `readonly_sync_dataset` live: a **force-pushed branch** tracked by a read-only repository

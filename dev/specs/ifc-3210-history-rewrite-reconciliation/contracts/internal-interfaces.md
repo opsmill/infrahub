@@ -401,17 +401,38 @@ Changed. Attachment point depends on whether PR #10669 has merged. See `research
 |---|---|
 | `backend/infrahub/git/refs_check/checker.py::ReadOnlyRepositoryRefsChecker._detect_movements` already produces `RefMovement(previous_head, new_head)`. Classify each movement and call the recorder. | `backend/infrahub/git/repository.py::InfrahubReadOnlyRepository.update_latest_commit` resolves the same two commits. Classify there and call the recorder. |
 
+### Which mutation carries a rewrite, and it is not the update one
+
+A force-pushed branch changes neither `ref` nor `commit` on the node, and
+`InfrahubRepositoryMutation.mutate_update` submits its workflows **only** when one of those
+changes. So a genuine rewrite never reaches that path at all, and anything routed through it would
+always arrive with `target_changed` true — classifying every read-only rewrite as a `RETARGET` and
+recording nothing.
+
+The path a rewrite actually takes is `ReadOnlyRepositoryImportLastCommit`, which submits
+`import_read_only_repository_last_commit`. That is where the detection belongs, and
+`target_changed` is false there: nothing was re-pointed.
+
+Splitting them by mutation:
+
+| Mutation | Meaning | `target_changed` |
+|---|---|---|
+| `ReadOnlyRepositoryImportLastCommit` | pick up whatever the tracked ref now resolves to | false |
+| `InfrahubRepositoryMutation.mutate_update`, `ref` changed | deliberate re-point | true |
+| `InfrahubRepositoryMutation.mutate_update`, `commit` changed | deliberate re-pin | true |
+
 ### Which commit is the "imported" one here
 
 The same rule as section 1: **the commit recorded in the graph** for that Infrahub branch, never
 anything read from disk. This needs saying because the read-only path makes it easy to get wrong.
 `update_latest_commit` resolves only the *new* head, `import_read_only_repository_last_commit`
-calls `init` without a commit, and the mutation submits `pull_read_only` concurrently, which can
-write the new commit to the graph first.
+calls `init` without a commit, and the update mutation submits `pull_read_only` concurrently, which
+can write the new commit to the graph first.
 
-So the graph commit must be read **before** either workflow can overwrite it. The mutation already
-holds it as `current_commit`, so it travels on the workflow model rather than being re-read later.
-Re-reading would race the concurrent pull and compare the new commit against itself.
+`GitReadOnlyRepositoryImportCommit` carries no commit today, so the graph value has to be added to
+it. The mutation already loads the node, so it reads `repo.commit.value` and puts it on the model.
+Re-reading it later in the flow would race the concurrent pull and compare the new commit against
+itself.
 
 ### Contract, either way
 
@@ -424,8 +445,9 @@ Re-reading would race the concurrent pull and compare the new commit against its
    already takes `lock.registry.get(name=..., namespace="repository")` around
    `update_latest_commit`, so the call belongs inside that block. If the attachment point is the
    refs checker of PR #10669 instead, its `_converge` already holds the same lock.
-4. Nothing is recorded when the tracked ref itself changed (FR-002, SC-007). The suppression marker
-   carries that, written by the same mutation that changed the ref.
+4. Nothing is recorded when the tracked ref or the pinned commit changed (FR-002, SC-007). The
+   in-band `target_changed` flag on the workflow model carries that. Read-only repositories do not
+   use the cache marker at all.
 5. A read-only repository never emits the trunk signal, because it has no configured default branch.
 
 ---
