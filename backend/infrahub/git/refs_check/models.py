@@ -21,12 +21,14 @@ class RefHeads:
 
 @dataclass(frozen=True)
 class RefMovement:
-    """A tracked ref whose remote head no longer matches the local view of it."""
+    """A tracked ref whose remote head differs from what the pool was last told about it on one branch."""
 
     ref: str
 
-    previous_head: str | None
-    """What this worker's copy resolved the ref to, absent when it held no such ref."""
+    infrahub_branch_name: str
+
+    previous_head: str
+    """The head last announced to the pool for this branch, or the commit it imported when none was."""
 
     new_head: str
 

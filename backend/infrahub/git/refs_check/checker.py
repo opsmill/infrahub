@@ -1,20 +1,24 @@
 """Deciding whether a read-only repository's tracked refs have moved, and converging the pool.
 
-The check never writes the tracked commit and never imports. It compares the local view of each
-tracked ref against the remote, and when they differ it brings the new objects in while leaving
-every worker on the commit Infrahub already tracks.
+The check never writes the tracked commit and never imports. It asks two separate questions of
+each tracked ref's remote head. Whether this worker has to fetch is decided against its own copy.
+Whether the pool has to be told is decided against what the pool was last told, which is shared, so
+the answer does not depend on which worker happened to run the check.
 """
 
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import RepositoryError
 from infrahub.git.state.cache_keys import (
+    REFS_CHECK_ANNOUNCED_TTL_SECONDS,
     REFS_CHECK_LAST_TTL_SECONDS,
+    refs_check_announced_key,
     refs_check_due_key,
     refs_check_last_key,
     refs_check_running_key,
@@ -32,11 +36,27 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
-    from ..models import GitReadOnlyRepositoryCheckRefs
+    from ..models import GitReadOnlyRepositoryCheckRefs, TrackedRef
     from .gateway import CheckRefFormat, RepositoryRefsGateway
+    from .models import RefHeads
     from .tracked_commit import TrackedCommitReader
 
 log = get_logger()
+
+
+@dataclass(frozen=True)
+class _Convergence:
+    """What one check found it has to do once the remote has been listed."""
+
+    fetch: bool
+    """Whether this worker's copy is behind the remote on any tracked ref."""
+
+    movements: tuple[RefMovement, ...]
+    """What the pool has to be told, one entry per Infrahub branch."""
+
+    @property
+    def needed(self) -> bool:
+        return self.fetch or bool(self.movements)
 
 
 class RefNameValidator:
@@ -158,17 +178,18 @@ class ReadOnlyRepositoryRefsChecker:
             # for good and block every later operation on the repository.
             try:
                 async with asyncio.timeout(self._detect_timeout_seconds):
-                    movements = await self._detect_movements(model)
+                    heads = await self._gateway.read_heads(model, self._tracked_ref_names(model))
             except TimeoutError:
                 reason = f"Timed out after {self._detect_timeout_seconds}s reading the remote refs."
                 log.warning("Refs check timed out", repository=model.repository_name, reason=reason)
                 return await self._record_failure(model, reason=reason, contacted_remote=True)
 
-            if movements:
+            convergence = await self._plan_convergence(model, heads)
+            if convergence.needed:
                 # Convergence is unbounded, so take the claim's lease again rather than spending
                 # what the listing left of it.
                 await self._renew_claim(model, run_id=run_id)
-                await self._converge(model, movements)
+                await self._converge(model, convergence)
         except RepositoryError as exc:
             reason = str(exc)
             log.warning("Refs check failed", repository=model.repository_name, reason=reason)
@@ -183,7 +204,7 @@ class ReadOnlyRepositoryRefsChecker:
             repository_id=model.repository_id,
             repository_name=model.repository_name,
             outcome=RefsCheckOutcome.COMPLETED,
-            movements=tuple(movements),
+            movements=convergence.movements,
             contacted_remote=True,
         )
 
@@ -246,38 +267,111 @@ class ReadOnlyRepositoryRefsChecker:
         except Exception as exc:  # noqa: BLE001
             log.warning("Could not record the refs check time", repository=model.repository_name, reason=str(exc))
 
-    async def _detect_movements(self, model: GitReadOnlyRepositoryCheckRefs) -> list[RefMovement]:
-        movements: list[RefMovement] = []
-        for heads in await self._gateway.read_heads(model, self._tracked_ref_names(model)):
-            if heads.remote_head is None:
-                log.info("Tracked ref is absent from the remote", repository=model.repository_name, ref=heads.ref)
+    async def _plan_convergence(
+        self, model: GitReadOnlyRepositoryCheckRefs, heads: tuple[RefHeads, ...]
+    ) -> _Convergence:
+        remote_heads: dict[str, str] = {}
+        fetch = False
+        for ref_heads in heads:
+            if ref_heads.remote_head is None:
+                log.info("Tracked ref is absent from the remote", repository=model.repository_name, ref=ref_heads.ref)
                 continue
-            if heads.remote_head == heads.local_head:
+            remote_heads[ref_heads.ref] = ref_heads.remote_head
+            if ref_heads.remote_head != ref_heads.local_head:
+                fetch = True
+
+        movements: list[RefMovement] = []
+        for tracked in model.refs:
+            new_head = remote_heads.get(tracked.ref)
+            if new_head is None:
+                continue
+            previous_head = await self._announced_head(model, tracked=tracked, remote_head=new_head)
+            if previous_head is None or previous_head == new_head:
                 continue
 
             log.info(
                 "Tracked ref moved upstream",
                 repository=model.repository_name,
-                ref=heads.ref,
-                previous_head=heads.local_head,
-                new_head=heads.remote_head,
+                branch=tracked.infrahub_branch_name,
+                ref=tracked.ref,
+                previous_head=previous_head,
+                new_head=new_head,
             )
-            movements.append(RefMovement(ref=heads.ref, previous_head=heads.local_head, new_head=heads.remote_head))
+            movements.append(
+                RefMovement(
+                    ref=tracked.ref,
+                    infrahub_branch_name=tracked.infrahub_branch_name,
+                    previous_head=previous_head,
+                    new_head=new_head,
+                )
+            )
 
-        return movements
+        return _Convergence(fetch=fetch, movements=tuple(movements))
+
+    async def _announced_head(
+        self, model: GitReadOnlyRepositoryCheckRefs, *, tracked: TrackedRef, remote_head: str
+    ) -> str | None:
+        """Return the head the pool was last told about on this branch, or None when there is nothing to compare.
+
+        The shared value is a hint rather than the record. When it is missing the imported commit
+        stands in for it, which is what keeps an empty cache from announcing every repository at
+        once; a stand-in found equal to the remote is written back so later checks skip the graph.
+        """
+        announced = await self._cache.get(
+            key=refs_check_announced_key(model.repository_id, tracked.infrahub_branch_name)
+        )
+        if announced is not None:
+            return announced
+
+        imported = await self._tracked_commit_reader.read(
+            repository_id=model.repository_id, branch_name=tracked.infrahub_branch_name
+        )
+        if imported is None:
+            log.info(
+                "Not announcing a branch with no imported commit",
+                repository=model.repository_name,
+                branch=tracked.infrahub_branch_name,
+                ref=tracked.ref,
+            )
+        elif imported == remote_head:
+            await self._record_announced(model, branch_name=tracked.infrahub_branch_name, head=remote_head)
+        return imported
+
+    async def _record_announced(self, model: GitReadOnlyRepositoryCheckRefs, *, branch_name: str, head: str) -> None:
+        """Remember the head the pool now knows about, best effort.
+
+        A value that could not be written costs one repeated broadcast on a later check, which every
+        recipient absorbs by resetting to the commit it is already on. Letting it raise would instead
+        leave the remaining branches of this check unannounced.
+        """
+        try:
+            await self._cache.set(
+                key=refs_check_announced_key(model.repository_id, branch_name),
+                value=head,
+                expires=REFS_CHECK_ANNOUNCED_TTL_SECONDS,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning(
+                "Could not record the announced head",
+                repository=model.repository_name,
+                branch=branch_name,
+                reason=str(exc),
+            )
 
     @staticmethod
     def _tracked_ref_names(model: GitReadOnlyRepositoryCheckRefs) -> tuple[str, ...]:
         """Return each distinct tracked ref once, so two branches on one ref cost one listing."""
         return tuple(dict.fromkeys(tracked.ref for tracked in model.refs))
 
-    async def _converge(self, model: GitReadOnlyRepositoryCheckRefs, movements: list[RefMovement]) -> None:
-        moved_refs = {movement.ref for movement in movements}
+    async def _converge(self, model: GitReadOnlyRepositoryCheckRefs, convergence: _Convergence) -> None:
+        movements = {movement.infrahub_branch_name: movement for movement in convergence.movements}
         async with self._lock_registry.get(name=model.repository_name, namespace="repository"):
-            await self._gateway.fetch(model)
+            if convergence.fetch:
+                await self._gateway.fetch(model)
 
             for tracked in model.refs:
-                if tracked.ref not in moved_refs:
+                movement = movements.get(tracked.infrahub_branch_name)
+                if movement is None:
                     continue
                 # Read under the lock rather than carried in with the request: an import that
                 # landed since the check started has already moved the pool to its own commit, and
@@ -309,3 +403,5 @@ class ReadOnlyRepositoryRefsChecker:
                         commit=commit,
                     )
                 )
+                # Only after the broadcast, so one that failed is seen again and retried by the next check.
+                await self._record_announced(model, branch_name=tracked.infrahub_branch_name, head=movement.new_head)

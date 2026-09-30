@@ -809,7 +809,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         repo = self.get_git_repo_main()
         try:
-            repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True)
+            # A read-only repository may track a tag, and git refuses to move an existing tag unless
+            # forced; the commit it used to point at stays readable through its own worktree.
+            repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True, force=self.is_read_only)
         except GitCommandError as exc:
             await self._raise_enriched_error(error=exc)
 

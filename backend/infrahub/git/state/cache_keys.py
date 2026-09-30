@@ -18,6 +18,10 @@ REFS_CHECK_LAST_TTL_SECONDS = 30 * 24 * 60 * 60
 """Bounded so a deleted repository's key does not linger; a check time older than this reads as
 absent rather than stale."""
 
+REFS_CHECK_ANNOUNCED_TTL_SECONDS = 30 * 24 * 60 * 60
+"""Bounded so a deleted repository's key does not linger; an expired value falls back to the
+imported commit, which costs at most one repeated broadcast."""
+
 
 def warm_up_key(repository_id: str) -> str:
     return f"{CACHE_KEY_PREFIX}:warmup:{repository_id}"
@@ -33,3 +37,7 @@ def refs_check_running_key(repository_id: str) -> str:
 
 def refs_check_last_key(repository_id: str) -> str:
     return f"{CACHE_KEY_PREFIX}:refs_check:last:{repository_id}"
+
+
+def refs_check_announced_key(repository_id: str, branch_name: str) -> str:
+    return f"{CACHE_KEY_PREFIX}:refs_check:announced:{repository_id}:{branch_name}"
