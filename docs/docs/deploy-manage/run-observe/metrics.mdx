@@ -64,11 +64,11 @@ The host names match the service names of the Docker Compose deployment. On Kube
 
 Infrahub runs Generators, Transformations, checks, Git operations and other background work as flow runs in the task manager. When task workers are all busy, flow runs wait past their scheduled start time. The Prefect exporter reports this per work queue:
 
-- **`prefect_work_queues_late_runs_count`** is the number of flow runs in a queue whose scheduled start time has passed. A value that stays above zero means flow runs are scheduled faster than the workers start them: add task workers, or look for long-running tasks in the [task list](./tasks.mdx).
+- **`prefect_work_queues_late_runs_count`** is the number of flow runs in a queue that are in the `Late` state: the task manager marks a run late once it is 15 seconds past its scheduled start. A value that stays above zero means flow runs are scheduled faster than the workers start them: add task workers, or look for long-running tasks in the [task list](./tasks.mdx).
 - **`prefect_info_work_queues`** and **`prefect_info_work_pools`** are `0` when a queue or pool is paused. The `healthy` and `status` labels report the task manager's own health check.
 - **`prefect_deployment_failed_flow_runs`** lists recent failed or crashed flow runs per deployment.
 
-`prefect_info_flow_runs` counts flow runs by state, but only runs that started in the last three minutes. Runs that are scheduled and not yet started are never counted, so it measures throughput, not backlog.
+`prefect_info_flow_runs` counts flow runs by state, but only runs whose start time, or scheduled start time if they haven't started, is within the last three minutes. A run that waits longer than that drops out of the count, so it measures throughput, not backlog.
 
 In Grafana, the **Prefect / Platform Overview** and **Prefect / Flow Runs Overview** dashboards show flow-run states and work-queue counts from the Prefect exporter. They don't chart `prefect_work_queues_late_runs_count`, so add a panel or an alert rule for it.
 

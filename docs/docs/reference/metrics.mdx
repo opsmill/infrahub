@@ -82,10 +82,10 @@ The observability stack runs [`prometheus-prefect-exporter`](https://github.com/
 
 | Metric | Labels | Description |
 |---|---|---|
-| `prefect_work_queues_late_runs_count` | `work_queue_name`, `work_pool_name`, `priority`, `is_paused`, `status`, `healthy`, `type`, health-check policy labels | Flow runs in the queue whose scheduled start time has passed |
+| `prefect_work_queues_late_runs_count` | `work_queue_name`, `work_pool_name`, `priority`, `is_paused`, `status`, `healthy`, `type`, health-check policy labels | Flow runs in the queue in the `Late` state, which the task manager sets 15 seconds after the scheduled start |
 | `prefect_info_work_queues` | same as above | Work queue state; `0` when paused, `1` otherwise |
 | `prefect_info_work_pools` | `work_pool_name`, `type`, `is_paused`, `status` | Work pool state; `0` when paused, `1` otherwise |
-| `prefect_info_flow_runs` | `deployment_name`, `flow_name`, `state_name`, `work_queue_name` | Number of flow runs per state, counting only runs that started within the last `OFFSET_MINUTES` (default 3) |
+| `prefect_info_flow_runs` | `deployment_name`, `flow_name`, `state_name`, `work_queue_name` | Number of flow runs per state, counting only runs whose start time, or scheduled start time if not started, is within the last `OFFSET_MINUTES` (default 3) |
 | `prefect_deployment_failed_flow_runs` | `deployment_name`, `flow_name`, `last_failed_run_id`, `state_name` | Last failed or crashed flow runs per deployment, within `FAILED_RUNS_OFFSET_MINUTES` (default 7 days) |
 | `prefect_flow_runs_total_run_time` | `flow_name` | Total run time of flow runs, in seconds |
 | `prefect_flow_runs_total`, `prefect_flows_total`, `prefect_deployments_total`, `prefect_work_pools_total`, `prefect_work_queues_total` | | Object counts |
