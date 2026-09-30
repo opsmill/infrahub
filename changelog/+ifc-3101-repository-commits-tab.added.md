@@ -1,0 +1,3 @@
+Added a Commits tab to the repository page. It lists the commits of the branch you are viewing, newest first, with the short hash, summary, author and date of each one, and marks which commit Infrahub has imported and which one is the current head of the remote. Commits the remote has that Infrahub has not imported yet are shown as pending import, and a notice appears when the tracked ref was rewritten so the imported commit is no longer part of its history. The tab says how fresh the listing is, and a button next to each hash copies the full hash to the clipboard.
+
+When Infrahub has not yet read the repository's history, the tab shows a not-yet-available state and picks the listing up on its own once it exists.
