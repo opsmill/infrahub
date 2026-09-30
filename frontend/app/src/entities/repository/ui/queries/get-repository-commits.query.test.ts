@@ -128,4 +128,15 @@ describe("getRepositoryCommitsQueryOptions", () => {
       { ...params, limit: REPOSITORY_COMMITS_PAGE_SIZE },
     ]);
   });
+
+  test("does not replay every loaded page on window focus", () => {
+    // GIVEN
+    const params = { repositoryId: "repo-42", branchName: "feature" };
+
+    // WHEN
+    const { refetchOnWindowFocus } = getRepositoryCommitsQueryOptions(params);
+
+    // THEN
+    expect(refetchOnWindowFocus).toBe(false);
+  });
 });

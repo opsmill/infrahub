@@ -37,6 +37,8 @@ export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQue
         ? REPOSITORY_COMMITS_POLL_INTERVAL_MS
         : false;
     },
+    // Every loaded page is a worker round trip, and a focus refetch replays all of them.
+    refetchOnWindowFocus: false,
   });
 }
 
