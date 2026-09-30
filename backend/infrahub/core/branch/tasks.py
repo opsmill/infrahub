@@ -436,7 +436,6 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     for event in events:
         await event_service.send(event)
 
-<<<<<<< HEAD
     # The rebase session closed further up, and this pass runs queries of its own.
     async with database.start_session() as recompute_db:
         python_resolver: PythonTargetResolver
@@ -456,34 +455,11 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             )
             schema_branch = registry.schema.get_schema_branch(name=schema_name)
             coordinator = MergeRecomputeCoordinator(
-                builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
+                builder=CoalescedRecomputeBuilder(schema_branch=schema_branch, refresh_updated_nodes=True),
                 submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
                 python_resolver=python_resolver,
             )
             await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
-||||||| c49e5a44b
-    with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
-        schema_name = (
-            user_branch.name if user_branch.name in registry.get_altered_schema_branches() else registry.default_branch
-        )
-        schema_branch = registry.schema.get_schema_branch(name=schema_name)
-        coordinator = MergeRecomputeCoordinator(
-            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-            submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
-        )
-        await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
-=======
-    with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
-        schema_name = (
-            user_branch.name if user_branch.name in registry.get_altered_schema_branches() else registry.default_branch
-        )
-        schema_branch = registry.schema.get_schema_branch(name=schema_name)
-        coordinator = MergeRecomputeCoordinator(
-            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch, refresh_updated_nodes=True),
-            submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
-        )
-        await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
->>>>>>> origin/stable
 
     if profile_refresh_node_ids:
         with log_exception_guard(log, "Failed to submit the post-rebase profile refresh"):
