@@ -120,19 +120,28 @@ async def test_merge_relationship_many(
     assert len(await org1_branch.tags.get(db=db)) == 3
 
 
-async def _change_car_on_both_branches(
-    db: InfrahubDatabase, branch: Branch, car_id: str, field_names: list[str], main_owner: Node, branch_owner: Node
-) -> None:
+async def _create_branch_with_conflicting_car(
+    db: InfrahubDatabase, car_id: str, field_names: list[str], main_person: Node, branch_person: Node
+) -> Branch:
+    if "driver" in field_names:
+        car_before_branch = await NodeManager.get_one(db=db, id=car_id)
+        await car_before_branch.driver.update(db=db, data=branch_person)
+        await car_before_branch.save(db=db)
+    branch = await create_branch(db=db, branch_name="branch2")
     car_main = await NodeManager.get_one(db=db, id=car_id)
     car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_id)
     if "name" in field_names:
         car_main.name.value = "camry-main"
         car_branch.name.value = "camry-branch"
     if "owner" in field_names:
-        await car_main.owner.update(db=db, data=main_owner)
-        await car_branch.owner.update(db=db, data=branch_owner)
+        await car_main.owner.update(db=db, data=main_person)
+        await car_branch.owner.update(db=db, data=branch_person)
+    if "driver" in field_names:
+        await car_main.driver.update(db=db, data=None)
+        await car_branch.driver.update(db=db, data={"id": branch_person.id, "_relation__is_protected": True})
     await car_main.save(db=db)
     await car_branch.save(db=db)
+    return branch
 
 
 async def _select_every_conflict(
@@ -168,12 +177,17 @@ class UnrebasableConflictCase:
     name: str
     field_names: list[str]
     selection: ConflictSelection | None
-    conflict_path_suffixes: list[str]
+    conflict_paths: list[str]
+    """The conflicts of the branch, with `{car_id}` and `{driver_id}` standing for the ids of the car and its driver."""
     expected_message: str
-    """The rebase error, with `{car_id}` standing for the id of the conflicting car."""
+    """The rebase error, with the same placeholders as the conflict paths."""
 
 
-NAME_CONFLICT_PATH_SUFFIXES = ["display_label/value", "human_friendly_id/value", "name/value"]
+NAME_CONFLICT_PATHS = [
+    "data/{car_id}/display_label/value",
+    "data/{car_id}/human_friendly_id/value",
+    "data/{car_id}/name/value",
+]
 UNREBASABLE_CONFLICT_MESSAGE_START = (
     "Branch branch2 contains conflicts with the default branch that must be addressed before rebasing."
 )
@@ -185,19 +199,23 @@ RESOLVE_NAME_CONFLICTS_INSTRUCTION = (
 UPDATE_OWNER_CONFLICT_INSTRUCTION = (
     " Update the data so that both branches agree on these conflicts: data/{car_id}/owner/peer."
 )
+UPDATE_DRIVER_CONFLICTS_INSTRUCTION = (
+    " Update the data so that both branches agree on these conflicts: data/{car_id}/driver/property/IS_PROTECTED,"
+    " data/{driver_id}/cars_driven/property/IS_PROTECTED."
+)
 UNREBASABLE_CONFLICT_CASES = [
     UnrebasableConflictCase(
         name="unresolved_attribute",
         field_names=["name"],
         selection=None,
-        conflict_path_suffixes=NAME_CONFLICT_PATH_SUFFIXES,
+        conflict_paths=NAME_CONFLICT_PATHS,
         expected_message=UNREBASABLE_CONFLICT_MESSAGE_START + RESOLVE_NAME_CONFLICTS_INSTRUCTION,
     ),
     UnrebasableConflictCase(
         name="attribute_resolved_for_the_default_branch",
         field_names=["name"],
         selection=ConflictSelection.BASE_BRANCH,
-        conflict_path_suffixes=NAME_CONFLICT_PATH_SUFFIXES,
+        conflict_paths=NAME_CONFLICT_PATHS,
         expected_message=UNREBASABLE_CONFLICT_MESSAGE_START + RESOLVE_NAME_CONFLICTS_INSTRUCTION,
     ),
     # the rebased branch would see the default branch's peer next to its own
@@ -205,17 +223,28 @@ UNREBASABLE_CONFLICT_CASES = [
         name="cardinality_one_peer_resolved_for_the_branch",
         field_names=["owner"],
         selection=ConflictSelection.DIFF_BRANCH,
-        conflict_path_suffixes=["owner/peer"],
+        conflict_paths=["data/{car_id}/owner/peer"],
         expected_message=UNREBASABLE_CONFLICT_MESSAGE_START + UPDATE_OWNER_CONFLICT_INSTRUCTION,
     ),
     UnrebasableConflictCase(
         name="unresolved_attribute_and_cardinality_one_peer",
         field_names=["name", "owner"],
         selection=None,
-        conflict_path_suffixes=[*NAME_CONFLICT_PATH_SUFFIXES, "owner/peer"],
+        conflict_paths=[*NAME_CONFLICT_PATHS, "data/{car_id}/owner/peer"],
         expected_message=UNREBASABLE_CONFLICT_MESSAGE_START
         + RESOLVE_NAME_CONFLICTS_INSTRUCTION
         + UPDATE_OWNER_CONFLICT_INSTRUCTION,
+    ),
+    # the default branch removed the driver, which leaves the branch's property on a disconnected relationship
+    UnrebasableConflictCase(
+        name="relationship_property_resolved_for_the_branch",
+        field_names=["driver"],
+        selection=ConflictSelection.DIFF_BRANCH,
+        conflict_paths=[
+            "data/{car_id}/driver/property/IS_PROTECTED",
+            "data/{driver_id}/cars_driven/property/IS_PROTECTED",
+        ],
+        expected_message=UNREBASABLE_CONFLICT_MESSAGE_START + UPDATE_DRIVER_CONFLICTS_INSTRUCTION,
     ),
 ]
 
@@ -234,21 +263,20 @@ async def test_branch_rebase_rejects_a_conflict_it_cannot_apply(
     person_john_main: Node,
     person_albert_main: Node,
 ) -> None:
-    branch2 = await create_branch(db=db, branch_name="branch2")
-    await _change_car_on_both_branches(
+    branch2 = await _create_branch_with_conflicting_car(
         db=db,
-        branch=branch2,
         car_id=car_camry_main.id,
         field_names=case.field_names,
-        main_owner=person_albert_main,
-        branch_owner=person_john_main,
+        main_person=person_albert_main,
+        branch_person=person_john_main,
     )
     conflict_paths = await _select_every_conflict(
         db=db, default_branch=default_branch, branch=branch2, selection=case.selection
     )
-    assert conflict_paths == [f"data/{car_camry_main.id}/{suffix}" for suffix in case.conflict_path_suffixes]
+    ids = {"car_id": car_camry_main.id, "driver_id": person_john_main.id}
+    assert conflict_paths == [path.format(**ids) for path in case.conflict_paths]
 
-    expected_message = case.expected_message.format(car_id=car_camry_main.id)
+    expected_message = case.expected_message.format(**ids)
     with pytest.raises(ValidationError, match=f"^{re.escape(expected_message)}$"):
         await _rebase(db=db, default_branch=default_branch, branch=branch2, dependency_provider=dependency_provider)
 
@@ -268,19 +296,17 @@ async def test_branch_rebase_applies_a_conflict_resolved_for_the_branch(
     person_john_main: Node,
     person_albert_main: Node,
 ) -> None:
-    branch2 = await create_branch(db=db, branch_name="branch2")
-    await _change_car_on_both_branches(
+    branch2 = await _create_branch_with_conflicting_car(
         db=db,
-        branch=branch2,
         car_id=car_camry_main.id,
         field_names=["name"],
-        main_owner=person_albert_main,
-        branch_owner=person_john_main,
+        main_person=person_albert_main,
+        branch_person=person_john_main,
     )
     conflict_paths = await _select_every_conflict(
         db=db, default_branch=default_branch, branch=branch2, selection=ConflictSelection.DIFF_BRANCH
     )
-    assert conflict_paths == [f"data/{car_camry_main.id}/{suffix}" for suffix in NAME_CONFLICT_PATH_SUFFIXES]
+    assert conflict_paths == [path.format(car_id=car_camry_main.id) for path in NAME_CONFLICT_PATHS]
     # a branch an upgrade could not rebase keeps this status, which only a rebase clears
     branch2.status = BranchStatus.NEED_UPGRADE_REBASE
     await branch2.save(db=db)
