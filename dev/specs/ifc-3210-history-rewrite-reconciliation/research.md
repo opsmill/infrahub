@@ -303,8 +303,12 @@ count on that branch is then one too high.
 
 **Coalescing.** The handler takes the repository lock and fetches once per message. That lock is
 contended by merges and by other syncs. One message per cycle carrying N pairs is one lock hold
-instead of N. This is the same shape PR #10669 uses for the read-only refs check, and it needs a
-new field on `RefreshGitFetch`.
+instead of N. It needs a new field on `RefreshGitFetch`.
+
+PR #10669 is **not** precedent for this. Its refs check sends one `RefreshGitFetch` per moved ref,
+inside a loop, and adds no field to the message. The coalescing here is new, which is why the
+message change needs a validator: the single-branch fields must always equal the first entry of
+`branches`, or a worker on the previous code converges a branch the message was not about.
 
 **Message shape**: add an optional list of branch-and-commit pairs. Keep the existing single-branch
 fields, because five other emission sites use them and rewriting all six is outside this epic.
@@ -337,9 +341,15 @@ human-friendly ids that read the repository node will therefore recompute on a r
 and user action rules will fire.
 
 **Decision on the origin label**: do not add a new `NodeMutationOrigin` value for this bookkeeping.
-A rewrite is rare, the extra event is one per reconciled branch, and a new enum value would need
-every coalesced family's trigger builder to be revisited. This is the YAGNI reading of Principle
-VII. Note it in the plan so a future high-frequency writer of the same attributes revisits it.
+A rewrite is rare and the extra event is one per reconciled branch.
+
+The reason is not that the trigger builders would need revisiting. They match
+`NodeMutationOrigin.LIVE` explicitly, so a new value is ignored by every one of them with no change
+at all. The real cost is on the writing side: the record goes through an ordinary SDK mutation,
+which always stamps `live`. Stamping anything else needs a way to carry the origin from the worker
+through the GraphQL mutation, and no such channel exists. That is the work a new value would
+actually buy, and it is not worth it for a rare write. Note it in the plan so a future
+high-frequency writer of the same attributes revisits it.
 
 **Idempotence for the trunk (SC-002).** The recorder writes only when the classification is
 `REWRITE`. After the reset and the re-import, the recorded commit equals the remote head, so the
@@ -416,8 +426,11 @@ conflict message for the case where a conflict was observed.
 **Current behaviour**: `_raise_enriched_error_static` matches Git's
 "Need to specify how to reconcile divergent branches" and returns "there are conflicts that must be
 resolved". After this feature, the sync path never reaches that pull on a diverged branch, so the
-message becomes unreachable from the sync. It stays reachable from any other `pull` caller, so it
-must still be corrected rather than deleted. FR-017 states the contract.
+message becomes unreachable. `InfrahubRepositoryBase.pull` holds the **only** `origin.pull` call in
+the backend, so once the sync classifies a diverged branch and resets it instead of pulling, no
+caller reaches the divergent-branches text at all. The classifier entry is corrected rather than
+deleted because git still emits that text on any future caller, and leaving a wrong mapping in
+place for the next one to find is how this defect arrived. FR-017 states the contract.
 
 **Test consequences**:
 

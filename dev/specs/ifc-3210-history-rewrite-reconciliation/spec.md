@@ -359,7 +359,11 @@ No new node kind is introduced.
 - **SC-001**: A rewritten non-default branch returns to a healthy synchronised state with zero user
   actions.
 - **SC-002**: A rewritten default branch returns to a healthy state with zero user actions. It
-  produces exactly one record and exactly one signal, however many synchronisation cycles elapse.
+  produces at most one record and at most one signal, however many synchronisation cycles elapse,
+  and never more than one. The guarantee is one-sided on purpose: the record write and the emit are
+  separate operations, so a record that lands while its emit fails is never retried, because the
+  next cycle sees the graph and the remote agree. Closing that needs an outbox, which is more
+  machinery than a rare event is worth.
 - **SC-003**: No message that describes a rewritten history uses the word "conflict".
 - **SC-004**: After a reconciliation, every worker's view of the branch matches the remote. This
   includes workers that received no broadcast and workers added afterwards.

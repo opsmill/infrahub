@@ -104,10 +104,20 @@ Both are needed. Neither is a subset of the other.
 ### Where the graph commit comes from
 
 `collect_pending_imports` has no graph read of its own, and `get_commit_value` reads **git**, not
-the graph. The per-branch graph commits are already loaded once per cycle by
-`git/utils.py::get_repositories_commit_per_branch` and carried on `RepositoryData.branches`, which
-`sync_repository_from_origin` already holds. They are passed down into `collect_pending_imports`
-rather than re-read, so the cycle costs no extra query.
+the graph. The per-branch graph commits are loaded once per cycle by
+`git/utils.py::get_repositories_commit_per_branch` and carried on `RepositoryData.branches`.
+
+**They are not where they need to be yet.** That data lives in `sync_remote_repositories`.
+`sync_repository_from_origin` does not receive it, and neither does the subflow below it,
+`sync_git_repo_with_origin_and_tag_on_failure`. Threading it from
+`sync_remote_repositories` through both of those to `collect_pending_imports` is part of the work,
+not an existing affordance. Re-reading it lower down instead would add a query per repository per
+cycle and would race the writes the same cycle makes.
+
+**"Exactly one record" assumes cycles do not overlap.** Two cycles running at once would both read
+the same stale graph commit and both record. `GIT_REPOSITORIES_SYNC` prevents that today with
+`concurrency_limit=1` and `CANCEL_NEW`. If that ever changes, the count needs a compare-and-set
+rather than a read-then-write.
 
 A branch with no recorded commit has never been imported. It cannot be a rewrite, so it classifies
 `FAST_FORWARD` and takes the ordinary import path.
@@ -202,7 +212,12 @@ Returns whether a record was written.
    as zero.
 4. Writes all four attributes in one mutation, on the Infrahub branch named.
 5. Overwrites the previous record. It never accumulates and never clears.
-6. Emits `RepositoryHistoryRewrittenEvent` exactly once, and only when `is_default_branch` is true.
+6. Emits `RepositoryHistoryRewrittenEvent` at most once, and only when `is_default_branch` is true.
+   **At most, not exactly.** The record write and the emit are separate operations. If the record
+   lands and the emit fails, the next cycle sees the graph and the remote agree, classifies
+   `UNCHANGED`, and nothing ever sends that signal again. SC-002 reads "exactly one signal", and
+   what the design guarantees is "never more than one". Closing the gap needs an outbox, which is
+   more machinery than a rare event is worth. It sits beside the record-write risk below.
 7. Runs inside the repository-lock acquisition that **writes the reconciled commit**, immediately
    after that write. See "Where it is called" below.
 

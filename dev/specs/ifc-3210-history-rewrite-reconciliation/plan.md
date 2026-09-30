@@ -66,7 +66,7 @@ broadcast must stay at one message and one lock hold per repository per cycle.
 | Gate | Status |
 |---|---|
 | Database schema or migration change | **Yes.** Four branch-local attributes on the repository generic. Optional with no default, so no data migration and no `GRAPH_VERSION` bump. **Needs sign-off.** |
-| GraphQL schema modification | **Yes.** The attributes surface on three repository node kinds. **Needs sign-off.** |
+| GraphQL schema modification | **Yes.** Two of them. The four attributes surface on three repository node kinds, and the new `EventType` member is added to the `event_type` enum of `CoreStandardWebhook` and `CoreCustomWebhook` through `EventType.available_types()`. Both **need sign-off**. |
 | New dependency | No |
 | CI/CD workflow change | No |
 | Authentication or authorization change | No. No new mutation. The record is readable by anyone who can read the repository. |
@@ -185,7 +185,7 @@ Do not read `LOCAL_AHEAD` as a replacement for the gate. It narrows the hole; #1
 | **The suppression marker is lost.** | One spurious rewrite record on a deliberate re-target, and a count one too high. | Accepted and documented. The reconciliation is identical either way. A test covers the marker being present; a second test covers it being absent, and asserts the record is written, so the behaviour is stated rather than assumed. |
 | **The widened broadcast increases lock contention.** | Slower merges and syncs under load. | One coalesced message per repository per cycle, one lock hold, one fetch. A unit test asserts the fan-out over N pairs happens inside one acquisition. |
 | **PR #10669 changes the read-only attachment point.** | Slice G attaches in one of two places. | Both attachment points are named in `contracts/internal-interfaces.md` section 7. The record and the precondition are identical either way. |
-| **The record write emits a live node event.** | Computed attributes, display labels and human-friendly ids that read the repository node recompute on a rewrite. Webhooks and action rules fire. | Accepted. A rewrite is rare. No new `NodeMutationOrigin` member, per `research.md` R6 and ADR 0016. Revisit if a high-frequency writer of the same attributes ever appears. |
+| **The record write emits a live node event.** | Computed attributes, display labels and human-friendly ids that read the repository node recompute on a rewrite. Webhooks and action rules fire. | Accepted. A rewrite is rare. No new `NodeMutationOrigin` member: the trigger builders already match `live` explicitly and would ignore a new value for free, but the record goes through an SDK mutation that always stamps `live`, and no channel carries an origin from the worker through GraphQL. See `research.md` R6 and ADR 0016. Revisit if a high-frequency writer of the same attributes appears. |
 | **A rewritten trunk re-imports every object, unprompted.** | On a large repository that is the most expensive operation in the git subsystem, and nobody asked for it. | Accepted. The alternative is leaving the branch stuck, which is the defect being removed. FR-018 makes a failure of that import loud rather than retried blindly, which is where the real risk sits. |
 
 ## Decisions needing confirmation
