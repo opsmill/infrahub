@@ -1,22 +1,31 @@
-"""A conversion moves the pool's IS_RESERVED edge onto the object that replaces the converted one."""
+"""A conversion moves the pool's IS_RESERVED edge onto the object that replaces the converted one.
+
+The IS_RESERVED edge on the replaced object stays open while any branch still reaches that object,
+and is closed once none does.
+"""
 
 from __future__ import annotations
 
+from copy import deepcopy
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_sdk.convert_object_type import ConversionFieldInput
 
 from infrahub.core import registry
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, InfrahubKind
 from infrahub.core.convert_object_type.object_conversion import convert_object_type
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
+from tests.component.core.resource_manager.conftest import delete_branch
 from tests.helpers.agnostic_edges import (
+    IsReservedEdge,
     active_is_reserved_edges_on,
+    is_reserved_edge_on,
     open_is_reserved_edge_on,
     set_open_is_reserved_edge_provenance,
 )
@@ -206,4 +215,102 @@ async def test_converting_an_object_on_a_branch_leaves_its_is_reserved_edge_open
     )
     assert await convert_pool.get_free(db=db, branch=default_branch) != allocated, (
         "a conversion on a branch must not offer the default branch's number again"
+    )
+
+
+@dataclass
+class SupportCase:
+    name: str
+    branch_support: BranchSupportType
+
+
+SUPPORT_CASES = [
+    SupportCase(name="branch-aware", branch_support=BranchSupportType.AWARE),
+    SupportCase(name="branch-agnostic", branch_support=BranchSupportType.AGNOSTIC),
+]
+
+
+def convert_base(support: BranchSupportType) -> GenericSchema:
+    base = deepcopy(CONVERT_BASE)
+    base.get_attribute(name=TRACKED_ATTRIBUTE_NAME).branch = support
+    return base
+
+
+async def pooled_convertible(
+    db: InfrahubDatabase, default_branch: Branch, support: BranchSupportType
+) -> tuple[CoreNumberPool, Node]:
+    """A pool on the generic whose tracked attribute has the given branch support, and an object holding a number."""
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(
+            generics=[convert_base(support=support)], nodes=[deepcopy(CONVERT_SOURCE), deepcopy(CONVERT_TARGET)]
+        ),
+    )
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+    await pool.new(
+        db=db,
+        name="convert-pool",
+        node=GENERIC_KIND,
+        node_attribute=TRACKED_ATTRIBUTE_NAME,
+        start_range=POOL_START,
+        end_range=POOL_END,
+    )
+    await pool.save(db=db)
+    holder = await holder_holding_a_pooled_number(db=db, branch=default_branch, pool=pool)
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=holder.id, attribute_name=TRACKED_ATTRIBUTE_NAME)
+        == IsReservedEdge.OPEN
+    )
+    return pool, holder
+
+
+@pytest.mark.parametrize("case", SUPPORT_CASES, ids=lambda case: case.name)
+async def test_converting_closes_the_is_reserved_edge_on_the_replaced_object(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    case: SupportCase,
+) -> None:
+    pool, holder = await pooled_convertible(db=db, default_branch=default_branch, support=case.branch_support)
+
+    converted = await convert_to(db=db, branch=default_branch, node=holder, target_kind=TARGET_KIND)
+
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=holder.id, attribute_name=TRACKED_ATTRIBUTE_NAME)
+        == IsReservedEdge.CLOSED
+    ), "no branch reaches the replaced object"
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=converted.id, attribute_name=TRACKED_ATTRIBUTE_NAME)
+        == IsReservedEdge.OPEN
+    ), "the replacement carries the reservation on"
+    assert await pool.get_used(db=db, branch=default_branch) == [POOL_START]
+
+
+@pytest.mark.parametrize("case", SUPPORT_CASES, ids=lambda case: case.name)
+async def test_an_older_branch_keeps_the_replaced_is_reserved_edge_open_until_it_is_deleted(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    case: SupportCase,
+) -> None:
+    pool, holder = await pooled_convertible(db=db, default_branch=default_branch, support=case.branch_support)
+    older = await create_branch(db=db, branch_name="predates-the-conversion")
+
+    converted = await convert_to(db=db, branch=default_branch, node=holder, target_kind=TARGET_KIND)
+
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=holder.id, attribute_name=TRACKED_ATTRIBUTE_NAME)
+        == IsReservedEdge.OPEN
+    ), "the older branch still holds the replaced object"
+
+    await delete_branch(db=db, branch=older)
+
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=holder.id, attribute_name=TRACKED_ATTRIBUTE_NAME)
+        == IsReservedEdge.CLOSED
+    )
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=converted.id, attribute_name=TRACKED_ATTRIBUTE_NAME)
+        == IsReservedEdge.OPEN
     )
