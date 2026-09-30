@@ -1,0 +1,37 @@
+backend/infrahub/artifacts/models.py
+  s_28a24420e8443a::t_f46f2685870a1f 34-37
+backend/infrahub/git/integrator.py
+  s_28a24420e8443a::t_632b376d384603 2233
+  s_28a24420e8443a::t_7df13c1cfdb8ff 10,2168-2186,2231-2232,2234-2235
+backend/tests/component/git/test_git_repository.py
+  s_28a24420e8443a::t_82e2127f10fa2e 1,4,10,12,50-51,53,1005-1072,1076-1167
+  s_28a24420e8443a::t_632b376d384603 1073-1075
+  s_28a24420e8443a::t_a2cdf72dea3d84 1168-1169
+changelog/+artifact-checksum-check.security.md
+  s_28a24420e8443a::t_07dbbc797c3b85 1
+backend/infrahub/git/models.py
+  s_28a24420e8443a::t_7df13c1cfdb8ff 87-90
+backend/infrahub/git/tasks.py
+  s_28a24420e8443a::t_2f518c52c7f8d8 630
+docs/docs/artifact-file-storage/overview.mdx
+  s_28a24420e8443a::t_7af1e5408d19c1 82
+backend/tests/component/proposed_change/test_artifact_definition_generate_members.py
+  s_28a24420e8443a::t_c3e7791b35c045 211-246
+  s_28a24420e8443a::t_98664664209359 247-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc473753f7ab6e24fa6d94449654d40edb12a275",
+  "prompts": {},
+  "sessions": {
+    "s_28a24420e8443a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c428f6ff-8b5f-4e39-b549-3de1bb8fce8b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Simon AURA--SCUSSEL <simon@opsmill.com>"
+    }
+  }
+}
