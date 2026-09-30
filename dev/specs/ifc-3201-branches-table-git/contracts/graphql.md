@@ -33,4 +33,4 @@ Both select `count` and `edges.node { id __typename display_label name { value }
 | every GraphQL error is `PERMISSION_DENIED` | `{ status: "denied" }` | one `denied` row |
 | any other GraphQL error, network error, or no data | throws | one `error` row |
 
-Only the per-branch GraphQL error toast differs from the spec (FR-013). The shared client toasts non-permission GraphQL errors because this context sets no `processErrorMessage`; see research R10.
+The shared client toasts non-permission GraphQL errors unless the request context sets `processErrorMessage`; this feature makes `fetchConnection` pass a no-op one, so FR-013's "no toast" holds, and the thrown error's message becomes the tooltip of "Could not load repositories" (research R10). A failed background refetch keeps the last loaded rows (data-model invariant 9).
