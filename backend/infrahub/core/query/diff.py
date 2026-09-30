@@ -928,8 +928,8 @@ class DiffChangedNodesQuery(DiffCalculationQuery):
 
     The paths queries page their rows with SKIP and LIMIT, so every page re-runs their match over each edge
     changed on the branch. Running them one chunk of the uuids listed here at a time keeps every match small.
-    Every condition here is one the matching paths query applies as well, so the list is a superset of the
-    nodes it returns paths for and partitioning by it loses no row.
+    Every condition here other than ``node_kinds`` is one the matching paths query applies as well, so
+    partitioning by the list loses no row of the requested kinds.
     """
 
     def __init__(self, node_kinds: list[str] | None = None, **kwargs: Any) -> None:
