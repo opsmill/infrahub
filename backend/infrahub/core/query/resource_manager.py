@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Generator, Unpack
 
 from infrahub.core import registry
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, RelationshipStatus
+from infrahub.core.constants import InfrahubKind, RelationshipStatus
 from infrahub.core.query import Query, QueryInitKwargs, QueryResult, QueryType
 
 if TYPE_CHECKING:
@@ -568,7 +568,7 @@ def reserved_values_query() -> str:
         // on other branches.
         // Start with closed edges on the default branch that user branches might still see as active.
         // --------------
-        MATCH (attr)-[hv:HAS_VALUE {branch: $default_branch_name}]->(av:AttributeValueIndexed)
+        MATCH (attr)-[hv:HAS_VALUE {branch: $default_branch_name}]->(av)
         WHERE hv.status = "active"
         AND hv.to <= $at
         AND any(
@@ -624,7 +624,6 @@ class NumberPoolGetUsed(Query):
 
         self.params["attribute_name"] = self.pool.node_attribute.value
         self.params["at"] = self.at.to_string()
-        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
         self.params["default_branch_name"] = registry.default_branch
 
         query = """
@@ -684,7 +683,6 @@ class NumberPoolGetFree(Query):
 
         self.params["attribute_name"] = self.pool.node_attribute.value
         self.params["at"] = self.at.to_string()
-        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
         self.params["default_branch_name"] = registry.default_branch
 
         query = """
