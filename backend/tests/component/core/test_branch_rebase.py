@@ -1,5 +1,4 @@
 import re
-from collections.abc import Generator
 from dataclasses import dataclass
 from uuid import uuid4
 
@@ -26,7 +25,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import MigrationError, ValidationError
-from infrahub.workers.dependencies import build_cache, build_database
+from infrahub.workers.dependencies import build_database
 from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION
 from tests.adapters.cache import MemoryCache
 from tests.adapters.workflow import WorkflowRecorder
@@ -155,14 +154,6 @@ async def _select_every_conflict(
     return sorted(conflict_path for conflict_path, _ in conflicts)
 
 
-@pytest.fixture
-def memory_cache(dependency_provider: Provider) -> Generator[None, None, None]:
-    """Serve the rebase flow's cache from memory rather than from a cache another module's app left running."""
-    # A lambda rather than the bare class: fast_depends reads the callable's return annotation.
-    with override_dependency(build_cache, lambda: MemoryCache(), dependency_provider=dependency_provider):  # noqa: PLW0108
-        yield
-
-
 async def _rebase(db: InfrahubDatabase, default_branch: Branch, branch: Branch, dependency_provider: Provider) -> None:
     context = InfrahubContext.init(
         branch=default_branch,
@@ -235,7 +226,7 @@ async def test_branch_rebase_rejects_a_conflict_it_cannot_apply(
     db: InfrahubDatabase,
     default_branch: Branch,
     dependency_provider: Provider,
-    memory_cache: None,
+    memory_cache: MemoryCache,
     workflow_recorder: WorkflowRecorder,
     register_simplified_proposed_change_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
@@ -269,7 +260,7 @@ async def test_branch_rebase_applies_a_conflict_resolved_for_the_branch(
     db: InfrahubDatabase,
     default_branch: Branch,
     dependency_provider: Provider,
-    memory_cache: None,
+    memory_cache: MemoryCache,
     workflow_recorder: WorkflowRecorder,
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
@@ -474,7 +465,7 @@ async def test_rebase_schemas_handed_to_the_update_coordinator(
     db: InfrahubDatabase,
     default_branch: Branch,
     dependency_provider: Provider,
-    memory_cache: None,
+    memory_cache: MemoryCache,
     workflow_recorder: WorkflowRecorder,
     register_core_models_schema: SchemaBranch,
 ) -> None:
@@ -584,7 +575,7 @@ async def test_failed_rebase_keeps_the_branch_data(
     db: InfrahubDatabase,
     default_branch: Branch,
     dependency_provider: Provider,
-    memory_cache: None,
+    memory_cache: MemoryCache,
     workflow_recorder: WorkflowRecorder,
     register_core_models_schema: SchemaBranch,
 ) -> None:
