@@ -9,7 +9,6 @@ branch that still uses the old attribute. Once no branch uses the old vertex, th
 from __future__ import annotations
 
 import uuid
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -28,7 +27,8 @@ from tests.component.core.resource_manager.conftest import (
     SERIAL_ATTRIBUTE_NAME,
     SERIAL_POOL_START,
     delete_branch,
-    pooled_holder,
+    pooled_widget,
+    widget_schema,
 )
 from tests.helpers.agnostic_edges import (
     EdgeState,
@@ -40,14 +40,13 @@ from tests.helpers.agnostic_edges import (
     open_is_reserved_edge_on,
     set_open_is_reserved_edge_provenance,
 )
-from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, WIDGET_KIND
+from tests.helpers.schema.agnostic_retirement import WIDGET_KIND
 
 if TYPE_CHECKING:
     from fast_depends import Provider
 
     from infrahub.core.branch import Branch
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-    from infrahub.core.schema import SchemaRoot
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
@@ -118,22 +117,6 @@ async def rename_the_attribute(db: InfrahubDatabase, branch: Branch, schema: Sch
     result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not result.errors
     assert result.nbr_migrations_executed == 1
-
-
-def widget_schema(serial_branch_support: BranchSupportType) -> SchemaRoot:
-    """The widget schema with its pooled attribute given the requested branch support."""
-    schema = deepcopy(AGNOSTIC_RETIREMENT_SCHEMA)
-    widget = next(node for node in schema.nodes if node.kind == WIDGET_KIND)
-    widget.get_attribute(name=PREVIOUS_ATTRIBUTE_NAME).branch = serial_branch_support
-    return schema
-
-
-async def pooled_widget(
-    db: InfrahubDatabase, default_branch: Branch, pool: CoreNumberPool, support: BranchSupportType
-) -> Node:
-    """Register the widget with its pooled serial at the given branch support and allocate one."""
-    registry.schema.register_schema(schema=widget_schema(serial_branch_support=support), branch=default_branch.name)
-    return await pooled_holder(db=db, branch=default_branch, kind=WIDGET_KIND, pool=pool, name="holds-a-pooled-serial")
 
 
 @pytest.fixture
@@ -371,45 +354,38 @@ async def test_an_older_branch_keeps_the_old_is_reserved_edge_open_until_it_is_d
     )
 
 
-async def test_rebasing_an_older_branch_past_a_rename_leaves_the_old_is_reserved_edge_open(
+async def test_the_old_is_reserved_edge_closes_once_every_older_branch_rebases_past_a_rename(
     db: InfrahubDatabase,
     default_branch: Branch,
     serial_pool: CoreNumberPool,
     dependency_provider: Provider,
 ) -> None:
-    """Pins a known gap rather than the goal.
-
-    The rebase re-evaluates only the nodes the base branch removed, and a rename removes none. After
-    the rebase the branch forks after the default branch closed its owning edge to the old vertex and
-    holds no edges of its own there, so a later branch delete never considers the IS_RESERVED edge either.
-    """
     holder = await pooled_widget(
         db=db, default_branch=default_branch, pool=serial_pool, support=BranchSupportType.AWARE
     )
-    older = await create_branch(db=db, branch_name="rebases-past-the-rename")
+    first = await create_branch(db=db, branch_name="rebases-past-the-rename-first")
+    last = await create_branch(db=db, branch_name="rebases-past-the-rename-last")
 
     await rename_the_attribute(
         db=db, branch=default_branch, schema=registry.schema.get_schema_branch(name=default_branch.name)
     )
-    rebased = await _rebase_branch(
-        db=db, default_branch=default_branch, branch=older, dependency_provider=dependency_provider
-    )
+    await _rebase_branch(db=db, default_branch=default_branch, branch=first, dependency_provider=dependency_provider)
 
     assert (
         await is_reserved_edge_on(
             db=db, pool_id=serial_pool.id, node_id=holder.id, attribute_name=PREVIOUS_ATTRIBUTE_NAME
         )
         == IsReservedEdge.OPEN
-    ), "the rebase does not re-evaluate a rename"
+    ), "the branch not yet rebased still reads the old vertex at its fork point"
 
-    await delete_branch(db=db, branch=rebased)
+    await _rebase_branch(db=db, default_branch=default_branch, branch=last, dependency_provider=dependency_provider)
 
     assert (
         await is_reserved_edge_on(
             db=db, pool_id=serial_pool.id, node_id=holder.id, attribute_name=PREVIOUS_ATTRIBUTE_NAME
         )
-        == IsReservedEdge.OPEN
-    ), "the rebased branch holds nothing on the old vertex, so its delete does not reach the IS_RESERVED edge"
+        == IsReservedEdge.CLOSED
+    ), "once the last branch reading the old vertex rebases past the rename, no branch reaches it"
     assert (
         await is_reserved_edge_on(db=db, pool_id=serial_pool.id, node_id=holder.id, attribute_name=NEW_ATTRIBUTE_NAME)
         == IsReservedEdge.OPEN

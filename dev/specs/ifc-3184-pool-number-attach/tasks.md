@@ -235,13 +235,10 @@ where nothing else has moved the numbers.
       of scope), and leaves the old vertex's `-global-` edges open, because a branch that has not
       taken the rename still reads the value through it. Nothing yet detects when no branch uses the
       old name, so the old vertex and its `IS_RESERVED` edge are never retired. The correct behaviour
-      is undecided and belongs with a follow-up on branch-agnostic renames; no test pins it. **Also
-      left out:** a rename on the default branch followed by a rebase of an older branch leaves the
-      old `IS_RESERVED` edge open for good, because the rebase only re-evaluates nodes the base branch
-      removed and the rebased branch holds no edges on the old vertex, so its later delete never
-      reaches that edge; a test pins that too, and T017b fixes it.
+      is undecided and belongs with a follow-up on branch-agnostic renames; no test pins it. A rename
+      on the default branch followed by a rebase of an older branch is T017b's.
 
-- [ ] T017b [US1] **Close the old `IS_RESERVED` edge when an older branch rebases past a rename.**
+- [X] T017b [US1] **Close the old `IS_RESERVED` edge when an older branch rebases past a rename.**
       **Blocked:** bring the pending changes on `develop` forward first; do not start before they
       land on this branch.
 
@@ -268,6 +265,25 @@ where nothing else has moved the numbers.
       `test_number_pool_attribute_rename.py::test_rebasing_an_older_branch_past_a_rename_leaves_the_old_is_reserved_edge_open`
       to assert the old `IS_RESERVED` edge is closed after the rebase, and drop the rebase-past-rename
       gap from T017a's *Left out* and from `dev/knowledge/backend/database-schema.md`.
+
+      **Amended 2026-09-30 — the prescribed fix is struck; the edge now closes.** The pending
+      `develop` change (`c64090f63c`) removed the diff from the rebase hook: its candidates now come
+      from a graph query of the nodes whose default-branch `IS_PART_OF` edge turned `deleted` in the
+      rebased window, because the stored base diff is scoped to the fields the branch changed. There
+      is no `UPDATED` action left to widen to.
+
+      That query, renamed `NodesToCheckForGlobalEdgesQuery`, gains a second arm: it starts from the
+      open `-global-` `IS_RESERVED` edges and returns the owning node of each attribute whose
+      default-branch `HAS_ATTRIBUTE` edge was closed in place within the same window, which is how a
+      rename on the default branch ends the old vertex. It mirrors the arm branch delete already uses
+      for the same case, and anchoring on `IS_RESERVED` bounds the scan by the number of pool
+      reservations rather than by every closed owning edge. The hook, renamed
+      `_retire_agnostic_fields_of_base_changes`, is otherwise unchanged; the retention predicate still
+      decides what closes, and a second test pins that an older branch not yet rebased keeps the edge
+      open.
+
+      Only a default-branch change can leave this gap: a branch reads another branch's edges only
+      through the default branch at its fork point, and only a rebase moves a fork point.
 
 - [X] T018 [US1] Implement cross-branch liveness as a **union** (FR-036a) in the queries from T007,
       reusing the *shape* of `UNRETAINED_AGNOSTIC_FIELD_PREDICATE`: per-branch window
