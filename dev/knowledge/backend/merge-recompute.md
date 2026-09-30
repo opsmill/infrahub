@@ -75,7 +75,7 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 | Direct edit, same node | inline during `Node._update()` | n/a | inline, in dependency order |
 | Direct edit, reader on another node | per-node async process flow, `coalesced=False` | `live` | the emitted `live` events and their per-node triggers |
 | Merge or rebase | coalesced pass, `coalesced=True` | `recompute` | `RecomputeChainSubmitter` |
-| Jinja2, display-label or HFID template change, whole-kind backfill | coalesced pass per page of node ids, `coalesced=True` | `recompute` | `RecomputeChainSubmitter` |
+| Jinja2, display-label or HFID template change, whole-kind backfill | coalesced pass per chunk of node ids, `coalesced=True` | `recompute` | `RecomputeChainSubmitter` |
 | A recompute write feeding a reader | chained coalesced pass, `coalesced=True` | `recompute` | `RecomputeChainSubmitter`, depth-bounded |
 
 ## Key Files

@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from infrahub_sdk.graphql import Query
 from pydantic import BaseModel
 
+from infrahub.utilities.chunks import chunked
+
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
@@ -56,3 +58,20 @@ class NodeIDQuery(BaseModel):
             if len(page) < page_size:
                 break
             offset += page_size
+
+    async def fetch_all_chunked(
+        self, client: InfrahubClient, branch_name: str, chunk_size: int
+    ) -> AsyncGenerator[list[str], None]:
+        """Yield every node id of the kind in chunks of at most ``chunk_size``.
+
+        Pages are fetched at the client's pagination size, or at ``chunk_size`` when that is larger.
+
+        Raises:
+            ValueError: if ``chunk_size`` is not positive.
+
+        """
+        # Paging below the chunk size would cap every chunk at the page size.
+        page_size = max(client.config.pagination_size, chunk_size)
+        async for page in self.fetch_all_paginated(client=client, branch_name=branch_name, page_size=page_size):
+            for chunk in chunked(page, chunk_size):
+                yield chunk
