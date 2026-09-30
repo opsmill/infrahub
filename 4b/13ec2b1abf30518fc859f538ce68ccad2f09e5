@@ -1,0 +1,19 @@
+dev/specs/ifc-3065-number-pool-ranges/research.md
+  s_7d719d42034f96::t_2818ae930dc23f 89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b13ec2b1abf30518fc859f538ce68ccad2f09e5",
+  "prompts": {},
+  "sessions": {
+    "s_7d719d42034f96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "703e70b0-5c2c-470f-aa75-61897706f918",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
