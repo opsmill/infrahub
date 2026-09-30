@@ -459,3 +459,31 @@ class TestNumberPoolGetResource:
         assert [record.is_open for record in handed_over] == [False], (
             "the pool that held the attribute before must no longer account for it"
         )
+
+
+async def _add_range(db: InfrahubDatabase, pool: CoreNumberPool, start: int, end: int) -> Node:
+    pool_range = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOLRANGE)
+    await pool_range.new(db=db, start=start, end=end, pool=pool.get_id())
+    await pool_range.save(db=db)
+    return pool_range
+
+
+async def test_load_ranges(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """The pool's ranges come back lowest start first, whatever order they were created in."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    await initialize_registry(db=db)
+
+    pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
+    await pool.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
+    await pool.save(db=db)
+
+    assert await pool.load_ranges(db=db) == []
+
+    second = await _add_range(db=db, pool=pool, start=300, end=400)
+    first = await _add_range(db=db, pool=pool, start=100, end=200)
+
+    ranges = await pool.load_ranges(db=db)
+    assert [(item.start.value, item.end.value) for item in ranges] == [(100, 200), (300, 400)]
+    assert [item.get_id() for item in ranges] == [first.get_id(), second.get_id()]
