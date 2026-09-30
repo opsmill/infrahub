@@ -2,7 +2,7 @@
 
 **Branch**: `history-rewrite-reconciliation-ifc-3210` | **Date**: 2026-09-29 | **Spec**: [spec.md](spec.md)
 
-**Base branch**: `origin/pog-fix-merge-push-ordering-IFC-1449` (PR #10465, the prerequisite)
+**Branches from**: `develop` | **Prerequisite**: PR #10465, on `pog-fix-merge-push-ordering-IFC-1449`
 
 **Input**: Jira epic IFC-3210. PRD: Notion `992228b83025825990bc011568cc2f4b`, Confluence 896466945.
 
@@ -29,7 +29,7 @@ event that a webhook can subscribe to.
 **Storage**: Neo4j through the Infrahub schema layer. Git worktrees on each worker's own disk.
 
 **Testing**: pytest 9.0. Unit tests without a database. Component and integration tests through
-testcontainers. The Gogs-backed live-remote harness of PR #10465.
+testcontainers. The Gogs-backed live-remote harness, already on `develop`.
 
 **Target Platform**: Linux server, multi-worker
 
@@ -44,8 +44,8 @@ broadcast must stay at one message and one lock hold per repository per cycle.
 
 **Scale/Scope**: eleven existing backend modules touched (the ten in the tree below plus
 `events/__init__.py`, which exports the new event), plus one new package of seven files
-(`models`, `detector`, `gateway`, `recorder`, `store`, `suppression`, `__init__`). 76 tasks across
-10 phases. No frontend work.
+(`models`, `detector`, `gateway`, `recorder`, `store`, `suppression`, `__init__`). No frontend
+work. The task count is in the table at the end of [tasks.md](tasks.md).
 
 ## Constitution Check
 
@@ -138,7 +138,7 @@ Each slice is independently testable and delivers value on its own.
 |---|---|---|---|
 | **A. Classify** | Foundation for US1 | Nothing | No |
 | **B. Reconcile in the sync path** | US1 | A | **Partly.** See below. |
-| **C. Broadcast every branch, before the raise** | US3 | B | No |
+| **C. Broadcast every branch, before the raise** | US3 | B | **Yes.** See below. |
 | **D. Self-heal in the pull path** | US2 | A | **Yes** |
 | **E. Record the event** | US1 | A, and schema sign-off | No |
 | **F. Signal a rewritten trunk** | US4 | E | No |
@@ -196,7 +196,7 @@ Do not read `LOCAL_AHEAD` as a replacement for the gate. It narrows the hole; #1
 | 2 | The four attributes and their GraphQL surface. "Ask First" under `AGENTS.md`. | A maintainer |
 | 3 | The new event and its `EventType` member. "Ask First" under `AGENTS.md`. | A maintainer |
 | 4 | The merge order against PR #10542. | Patrick Ogenstad |
-| 5 | Whether slice G waits for PR #10669 to merge. | Patrick Ogenstad |
+| 5 | Whether slice G waits for PR #10669 to reach `develop`. It is merged into `pog-repo-commit-visibility-ifc-3101`, which has not landed. | Patrick Ogenstad |
 
 ## Settled without asking
 

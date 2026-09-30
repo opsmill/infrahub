@@ -10,8 +10,8 @@ description: "Task list for Git history-rewrite reconciliation (IFC-3210)"
 **Prerequisites**: [plan.md](plan.md), [spec.md](spec.md), [research.md](research.md),
 [data-model.md](data-model.md), [contracts/](contracts/)
 
-**Branch**: `history-rewrite-reconciliation-ifc-3210`, based on
-`origin/pog-fix-merge-push-ordering-IFC-1449`
+**Branch**: `history-rewrite-reconciliation-ifc-3210`, branched from `develop`.
+**Prerequisite**: PR #10465, which must reach `develop` before any reset ships.
 
 **Tests**: included. The constitution requires them, and the PRD names the test set.
 
@@ -34,7 +34,7 @@ its own.
 | **Schema and GraphQL sign-off** ("Ask First" under `AGENTS.md`) | Phase 6 | A maintainer |
 | **The FR-014 consumer confirmed** | Phase 7 | Patrick Ogenstad |
 | **Merge order agreed against PR #10542** | Phase 5 | Patrick Ogenstad |
-| **Whether to wait for PR #10669** | Phase 8, and only which file it attaches to | Patrick Ogenstad |
+| **Whether to wait for PR #10669 to reach `develop`** | Phase 8, and only which file it attaches to | Patrick Ogenstad |
 
 ---
 
@@ -436,7 +436,8 @@ which fails the fetch instead of producing a lineage break.
 
 **Maps to**: FR-009.
 
-> **Attachment point depends on PR #10669.** If it has merged, attach to
+> **Attachment point depends on PR #10669 reaching `develop`.** It is merged, but into
+> `pog-repo-commit-visibility-ifc-3101`, which has not landed. If it is on `develop`, attach to
 > `backend/infrahub/git/refs_check/checker.py::ReadOnlyRepositoryRefsChecker._detect_movements`,
 > whose `RefMovement` already carries the two commits the ancestry test needs. If it has not,
 > attach to
@@ -616,8 +617,12 @@ commit. Rare, but real, and the reason the gate survives.
 
 T011's force-push helper is not gated. The Gogs harness and `_push_commit_to_remote` are on
 `develop` already. Only the two `pre-receive` hook helpers come from #10465, and no task here
-needs them. T015 (classify) and T017 to T023 are not gated either; only the
-reset in T016 is.
+needs them.
+
+Inside Phase 3, T015 (build the candidate set), T015y (classify), T017 and T018 to T021 are not
+gated: they change no worktree. **T016 is gated, and so is anything that asserts its behaviour.**
+T022 asserts that a rewritten branch reconciles, which only T016 delivers, so it moves with T016
+rather than shipping with the rest of the phase.
 
 ### What waits for a person
 
@@ -626,7 +631,7 @@ reset in T016 is.
 | Every reset: Phase 5, the sync-path reset in Phase 3, the widened broadcast in Phase 4 | PR #10465 merged, and the merge order agreed against PR #10542 | Patrick Ogenstad |
 | Phase 6 | Schema and GraphQL sign-off | A maintainer |
 | Phase 7 | The FR-014 consumer confirmed | Patrick Ogenstad |
-| Phase 8 | Whether to wait for PR #10669 to merge | Patrick Ogenstad |
+| Phase 8 | Whether to wait for PR #10669 to reach `develop` | Patrick Ogenstad |
 
 ---
 

@@ -3,7 +3,7 @@
 **Feature**: `dev/specs/ifc-3210-history-rewrite-reconciliation`
 **Branch**: `history-rewrite-reconciliation-ifc-3210`
 **Branches from**: `develop`
-**Prerequisite**: PR #10465, on `pog-fix-merge-push-ordering-IFC-1449`
+**Prerequisite**: PR #10465, on `pog-fix-merge-push-ordering-IFC-1449`, not yet on `develop`
 **Date**: 2026-09-29, re-checked against `develop` on 2026-09-30
 
 Every claim below was first checked against PR #10465's branch, because that branch was the
@@ -473,13 +473,20 @@ the commit Infrahub already tracks.
 **Decision**: build on it, do not rebuild it. This epic adds the ancestry classification and the
 record to the read-only path. It does not add a second remote-listing mechanism.
 
-**Consequence for sequencing**: the read-only slice (User Story 5) is cheapest once #10669 has
-merged into `develop` and this branch has been rebased onto it, because `RefMovement` already
-carries `previous_head` and `new_head` — the two inputs the ancestry test needs. If #10669 has not
-merged when the read-only slice starts, the classification attaches to
-`git/repository.py::InfrahubReadOnlyRepository.update_latest_commit` instead, which resolves the
-same two commits. The record and the precondition are identical either way. The tasks name both
-attachment points.
+**Where it is now**: merged, but into `pog-repo-commit-visibility-ifc-3101`, not into `develop`.
+Until that stack lands, none of it is available here.
+
+**Consequence for sequencing**: the read-only slice (User Story 5) is slightly cheaper once #10669
+reaches `develop`, because the scheduled flow already contacts the remote. It is **not** cheaper
+for the reason an earlier draft gave. `RefMovement.previous_head` is not the imported commit: it
+comes from `_resolve_local_head`, which reads the local clone from disk, and this design requires
+the graph value. What #10669 does supply is `TrackedCommitReader`, which reads the graph, so the
+classification takes its inputs from there and uses `_detect_movements` only as the "this ref
+moved" trigger.
+
+If #10669 is not on `develop` when the slice starts, the classification attaches to
+`git/repository.py::InfrahubReadOnlyRepository.update_latest_commit` instead. The record and the
+precondition are identical either way. The tasks name both attachment points.
 
 **Other Patrick PRs checked**:
 
@@ -494,8 +501,9 @@ attachment points.
 
 ## R11. The test harness
 
-**Decision**: extend the Gogs-backed live-remote harness introduced by #10465. Add one force-push
-helper beside the existing `_push_commit_to_remote`.
+**Decision**: extend the Gogs-backed live-remote harness, which is already on `develop`. Add one
+force-push helper beside the existing `_push_commit_to_remote`. Only the two `pre-receive` hook
+helpers come from #10465, and nothing here needs them.
 
 **What exists on `develop`** (`backend/tests/integration/git/conftest.py`,
 `test_git_live_remote.py`):

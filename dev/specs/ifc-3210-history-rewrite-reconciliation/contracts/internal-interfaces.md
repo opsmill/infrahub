@@ -410,11 +410,21 @@ Changed. `backend/infrahub/message_bus/operations/git/repository.py::fetch`.
 
 ## 7. Read-only detection
 
-Changed. Attachment point depends on whether PR #10669 has merged. See `research.md` R10.
+Changed. Attachment point depends on whether PR #10669 has reached **`develop`**. It is merged,
+but into `pog-repo-commit-visibility-ifc-3101`, which has not landed yet. See `research.md` R10.
 
-| If #10669 has merged | If it has not |
+| If #10669 is on `develop` | If it is not |
 |---|---|
-| `backend/infrahub/git/refs_check/checker.py::ReadOnlyRepositoryRefsChecker._detect_movements` already produces `RefMovement(previous_head, new_head)`. Classify each movement and call the recorder. | `backend/infrahub/git/repository.py::InfrahubReadOnlyRepository.update_latest_commit` resolves the same two commits. Classify there and call the recorder. |
+| `backend/infrahub/git/refs_check/checker.py::ReadOnlyRepositoryRefsChecker._detect_movements` tells you a ref moved. Use that as the trigger only. | `backend/infrahub/git/repository.py::InfrahubReadOnlyRepository.update_latest_commit` resolves the new head. Classify there. |
+
+**Do not use `RefMovement.previous_head` as the imported commit.** It comes from
+`_resolve_local_head`, which reads `git_repo.commit("origin/<ref>")` off the local clone. That is a
+disk read, and this section requires the graph value. A worker whose clone is stale would compare
+two disk values and classify a rewrite that never happened, or miss one that did.
+
+#10669 already carries the right reader: `refs_check/tracked_commit.py::TrackedCommitReader`, which
+`_converge` uses for the same reason. Take `imported_commit` from that, and take only the "this ref
+moved" signal from `_detect_movements`.
 
 ### Which mutation carries a rewrite, and it is not the update one
 

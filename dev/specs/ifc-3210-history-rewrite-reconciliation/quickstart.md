@@ -89,7 +89,7 @@ merge behaviour rather than inferring it from the attribute declaration.
 
 ## 3. Integration tests against a live remote
 
-These use the Gogs harness of PR #10465. They need the new force-push helper.
+These use the Gogs harness, which is already on `develop`. They need the new force-push helper.
 
 ```bash
 uv run pytest backend/tests/integration/git/test_git_live_remote.py -q

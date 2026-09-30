@@ -393,12 +393,12 @@ No new node kind is introduced.
 
 ## Dependencies
 
-- **PR opsmill/infrahub#10465 (IFC-1449)**, branch `pog-fix-merge-push-ordering-IFC-1449`, targets
+- **PR opsmill/infrahub#10465 (IFC-1449)**, on `pog-fix-merge-push-ordering-IFC-1449`, targets
   `develop`, still a draft. It moves the push ahead of the graph write and resets the destination
-  worktree on failure. The spec artifacts are written against that branch. The pull-path reset
-  (FR-005) and the live-remote test harness work cannot start until it lands.
-- The Gogs-backed live-remote test harness introduced by that PR, including its server-side hook
-  mechanism for simulating remote-side policy.
+  worktree on failure. This branch comes off `develop`, so it carries the old ordering: every step
+  that resets a worktree waits for #10465 to reach `develop`.
+- The Gogs-backed live-remote test harness, which is already on `develop`. Only its two
+  server-side `pre-receive` hook helpers come from #10465, and nothing here needs them.
 - The existing hard-reset primitive that pins a branch worktree to a named commit.
 - The existing worker-convergence broadcast and its handler.
 
