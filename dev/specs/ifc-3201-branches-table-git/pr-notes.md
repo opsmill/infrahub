@@ -75,6 +75,8 @@ Fixed:
 - `dev/specs/docs/branches-list-git-state.checks.md` headed its walks with the wrong counts (17/12 for 19/14); corrected.
 - The `LinkButton` workaround comment now names `react-aria-components@1.20`, per the code-doc rule on upstream workarounds.
 
+Round 2 (after the fixes) could not run: the cubic CLI returned `Subscription expired` with an empty issue list. The four fixes above are verified against the source; cubic's PR review is the second round.
+
 Declined, with reasons that will also answer the same findings on the PR:
 
 - One repositories request per loaded branch (P2): the recorded Constitution V deviation above, with the backend list-of-ids follow-up. No client-side concurrency cap exists in TanStack Query; batching belongs in the backend variant.
