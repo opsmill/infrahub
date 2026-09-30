@@ -345,7 +345,7 @@ def add_unreachable(api: Api) -> bool:
         for name in missing:
             ensure_bare_repo(name)
             create_rw_repo(api, name, f"http://{GIT_HOST}:{UNREACHABLE[name][0]}/{name}.git")
-        wait_for(
+        imported = wait_for(
             "unreachable fixtures imported while reachable",
             lambda: (
                 all(api.repos().get(n, {}).get("sync_status", {}).get("value") == "in-sync" for n in missing),
@@ -353,6 +353,9 @@ def add_unreachable(api: Api) -> bool:
             ),
         )
         stop_http("serve")
+        if not imported:
+            log(f"FAILED: {missing} never imported while reachable, so they can't be made unreachable")
+            return False
     start_http("deny", [CRED_PORT])
 
     hidden = bare_path(HIDDEN_REPO)
