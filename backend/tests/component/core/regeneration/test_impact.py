@@ -7,7 +7,7 @@ import pytest
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
-from infrahub.core.regeneration.models import TargetSelection
+from infrahub.core.regeneration.models import TargetSelection, Widening, WideningReason
 from tests.constants import TestKind
 from tests.helpers.diff_summary import node_diff
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -164,7 +164,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
                 )
             ],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
 
     async def test_display_label_backing_change_selects_subscriber(
         self,
@@ -193,7 +193,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
             every_target=[dataset["subscriber_id"]],
             client=client,
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
 
     async def test_related_node_change_selects_subscriber(
         self,
@@ -220,4 +220,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
                 )
             ],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=True)
+        assert resolved == TargetSelection(
+            ids=[dataset["subscriber_id"]],
+            widening=Widening(reason=WideningReason.RELATIONSHIP_REACHED_CHANGE, kinds=(TestKind.PERSON,)),
+        )
