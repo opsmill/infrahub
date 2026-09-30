@@ -84,6 +84,10 @@ class RequestArtifactGenerate(BaseModel):
     timeout: int = Field(..., description="Timeout for requests used to generate this artifact")
     variables: dict = Field(..., description="Input variables when generating the artifact")
     context: InfrahubContext = Field(..., description="The context of the task")
+    check_stored_file: bool = Field(
+        default=False,
+        description="Store the file again when the content is unchanged but the stored copy is missing or refused",
+    )
 
 
 class GitRepositoryAdd(BaseModel):
