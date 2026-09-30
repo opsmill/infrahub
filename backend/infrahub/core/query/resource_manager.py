@@ -321,10 +321,10 @@ class NumberPoolGetReserved(Query):
         self.return_labels = ["value", "identifier"]
 
     def get_reservation(self) -> int | None:
-        """Return the value a single record resolves to.
+        """Return the value a single IS_RESERVED edge resolves to.
 
         Returns:
-            The reserved integer value, or None if no live record resolves to one.
+            The reserved integer value, or None if no live IS_RESERVED edge resolves to one.
 
         """
         result = self.get_result()
@@ -349,10 +349,10 @@ class NumberPoolGetReserved(Query):
 
 
 class IPPoolChangeReserved(Query):
-    """Point an IP pool's records at a new identifier.
+    """Point an IP pool's IS_RESERVED edges at a new identifier.
 
     Used when a node is converted to a different type and its id changes. An IP pool reserves the
-    allocated `:Node` itself, so the record keeps its target and only the identifier moves.
+    allocated `:Node` itself, so the IS_RESERVED edge keeps its target and only the identifier moves.
     """
 
     name = "ip_pool_change_reserved"
@@ -411,8 +411,9 @@ class NumberPoolChangeReserved(Query):
 
     The IS_RESERVED edges are moved from the `:Attribute` vertices of the old object to the
     `:Attribute` vertices of the replacement object. Handles multiple pools for different Attributes.
-    The record on the old attribute is left open, because any branch created before the conversion still
-    holds the replaced object.
+    This query does not close the IS_RESERVED edge on the old attribute: a branch created before the
+    conversion may still hold the replaced object. The retirement run by the conversion's object
+    delete, and later by a branch delete, closes that edge once no branch reaches the old attribute.
     """
 
     name = "number_pool_change_reserved"
@@ -471,7 +472,7 @@ class NumberPoolChangeReserved(Query):
           AND old_rel.status = "active"
           AND (old_rel.to IS NULL OR old_rel.to >= $not_closed_before)
         // --------------
-        // The old edge stays open: branches that predate the conversion still hold the replaced object
+        // Not closed here: object-delete and branch-delete retirement close it once no branch reaches it
         // --------------
         WITH DISTINCT pool, properties(old_rel) AS old_props
         // --------------
@@ -488,7 +489,7 @@ class NumberPoolChangeReserved(Query):
         WITH pool, old_props, tracked_attribute_name
         WHERE is_active = TRUE
         // --------------
-        // And the kind it tracks, so a pool cannot follow the record onto a kind it knows nothing about.
+        // And the kind it tracks, so a pool cannot follow the IS_RESERVED edge onto a kind it knows nothing about.
         // --------------
         CALL (pool) {
             MATCH (pool)-[:HAS_ATTRIBUTE]->(:Attribute { name: "node" })-[hv:HAS_VALUE]->(av)
@@ -551,7 +552,7 @@ def reserved_values_query() -> str:
 class NumberPoolGetUsed(Query):
     """A pool is branch-agnostic, and so is the set of numbers it accounts for.
 
-    The read carries no branch filter at all: the record is global, and a value counts while any
+    The read carries no branch filter at all: the IS_RESERVED edge is global, and a value counts while any
     branch holds it.
     """
 
@@ -603,7 +604,7 @@ class NumberPoolGetUsed(Query):
 class NumberPoolGetFree(Query):
     """A pool is branch-agnostic, and so is the set of numbers it accounts for.
 
-    The read carries no branch filter at all: the record is global, and a value counts while any
+    The read carries no branch filter at all: the IS_RESERVED edge is global, and a value counts while any
     branch holds it.
     """
 
@@ -778,7 +779,7 @@ class NumberPoolSetReserved(Query):
         self.params["identifier"] = self.identifier
         self.params["at"] = self.at.to_string()
         self.params["provenance"] = self.provenance.value
-        # A record written before provenance existed carries none, and an absent provenance already
+        # An IS_RESERVED edge written before provenance existed carries none, and an absent provenance already
         # reads as an allocation.
         self.params["allocated_provenance"] = PoolRecordProvenance.ALLOCATED.value
         self.params["attribute_id"] = self.attribute_id
