@@ -6,6 +6,10 @@ memory rather than loading it through the database.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+import pytest
+
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
     DISPLAY_LABEL,
@@ -89,11 +93,32 @@ def test_same_node_update_has_no_async_targets() -> None:
     assert result.targets == frozenset()
 
 
-def test_replayed_update_recomputes_own_values_reading_the_changed_field() -> None:
-    """A change replayed onto a moved base recomputes the node's own derived values that read the changed field."""
+@dataclass
+class ReplayedUpdateTestCase:
+    name: str
+    changed_field: str
+
+
+REPLAYED_UPDATE_TEST_CASES: list[ReplayedUpdateTestCase] = [
+    ReplayedUpdateTestCase(name="field_every_template_reads", changed_field="name"),
+    ReplayedUpdateTestCase(name="field_no_template_reads", changed_field="summary"),
+]
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [pytest.param(test_case, id=test_case.name) for test_case in REPLAYED_UPDATE_TEST_CASES],
+)
+def test_replayed_update_recomputes_all_own_values(test_case: ReplayedUpdateTestCase) -> None:
+    """A change replayed onto a moved base recomputes all of the node's own derived values, whichever field changed."""
     builder = CoalescedRecomputeBuilder(schema_branch=_profile_schema_branch(), refresh_updated_nodes=True)
     changes = [
-        MergeChange(node_id="node-0", kind=PROFILE_NODE_KIND, action="updated", changed_fields=frozenset({"name"}))
+        MergeChange(
+            node_id="node-0",
+            kind=PROFILE_NODE_KIND,
+            action="updated",
+            changed_fields=frozenset({test_case.changed_field}),
+        )
     ]
 
     result = builder.build(changes=changes, branch="branch")

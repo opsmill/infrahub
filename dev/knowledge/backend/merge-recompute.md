@@ -28,7 +28,7 @@ The builder, submitter, and coordinator live in `core/merge/recompute_coalescing
 
 A rebase replays the branch's own changes onto the new base, the way a merge replays them onto the destination: one `rebase` node event per node in the branch's diff, and a coalesced recompute built from those changes. A value on the branch that never depended on the branch's changes already reads what the default branch computed, so the default branch's changes are replayed only for the kinds whose schema the branch changed: the default branch derived those with its own schema, and the replay derives them again with the branch's. A branch with nothing in its diff gets the `BranchRebasedEvent` alone. Replaying onto a base that moved adds two steps:
 
-- The builder runs with `refresh_updated_nodes`, so an updated node also recomputes its own derived values that read a changed field; the values it refreshed inline on the save read the old base.
+- The builder runs with `refresh_updated_nodes`, so an updated node also recomputes its own derived values, whichever fields changed: every value it derived on the branch read the old base, including one that reads no changed field, such as a computed attribute a schema change wrote.
 - The rebase submits a profile refresh for every node whose profiles changed on the branch, since the profile values it applied were the old base's.
 
 ## Node mutation origin
