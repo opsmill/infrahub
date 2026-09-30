@@ -135,7 +135,7 @@ SchemaUpdatedEvent
   -> process_display_label / process_hfid (one flow per submission chunk: queries the chunk via GraphQL, renders the values, bulk-writes changed ones)
 ```
 
-Each chunk runs as a coalesced pass (`object_ids`, origin `recompute`), the same shape a rebase uses to replay a kind whose schema it changed. One flow per node would cost a Prefect submission and a flow run for every node, even when every value is already current, as after a merge that carried the recomputed values. The trigger definitions and gathering logic live in `backend/infrahub/display_labels/` and `backend/infrahub/hfid/`.
+Each chunk runs as a coalesced pass (`object_ids`, origin `recompute`), the same shape as the merge and rebase recompute. One flow per node would cost a Prefect submission and a flow run for every node, even when every value is already current, as after a merge that carried the recomputed values. The trigger definitions and gathering logic live in `backend/infrahub/display_labels/` and `backend/infrahub/hfid/`.
 
 A branch merge or rebase refreshes display labels and human-friendly ids through the coalesced recompute of the changed nodes rather than this whole-kind chain. See [merge-recompute.md](merge-recompute.md).
 
