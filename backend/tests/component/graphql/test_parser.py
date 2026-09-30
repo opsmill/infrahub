@@ -357,3 +357,61 @@ async def test_inline_fragment_nested_in_inline_fragment(
 
     assert result.errors is None
     assert result.data == {"TestCriticality": {"edges": [{"node": {"name": {"value": "low"}}}]}}
+
+
+async def test_expand_directive_through_fragment_spread(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    """The @expand directive applies at the same path whether the node selection is inline or reached through a fragment."""
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="low", level=4)
+    await obj.save(db=db)
+
+    query = """
+    query {
+        TestCriticality {
+            edges {
+                ...EdgeFields
+            }
+        }
+    }
+
+    fragment EdgeFields on EdgedTestCriticality {
+        node @expand {
+            id
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["TestCriticality"]["edges"] == [
+        {
+            "node": {
+                "id": obj.id,
+                "__typename": "TestCriticality",
+                "name": {"value": "low", "is_default": False, "is_from_profile": False},
+                "label": {"value": "Low", "is_default": False, "is_from_profile": False},
+                "level": {"value": 4, "is_default": False, "is_from_profile": False},
+                "color": {"value": "#444444", "is_default": True, "is_from_profile": False},
+                "mylist": {"value": ["one", "two"], "is_default": True, "is_from_profile": False},
+                "is_true": {"value": True, "is_default": True, "is_from_profile": False},
+                "is_false": {"value": False, "is_default": True, "is_from_profile": False},
+                "json_no_default": {"value": None, "is_default": True, "is_from_profile": False},
+                "json_default": {"value": {"value": "bob"}, "is_default": True, "is_from_profile": False},
+                "description": {"value": None, "is_default": True, "is_from_profile": False},
+                "time": {"value": None, "is_default": True, "is_from_profile": False},
+                "status": {"value": None, "is_default": True, "is_from_profile": False},
+            }
+        }
+    ]

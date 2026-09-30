@@ -192,7 +192,7 @@ class GraphQLExtractor:
         return self.apply_directives(selection_set=selection_set, fields=fields, path=path)
 
     async def _collect_fields(self, selection_set: SelectionSetNode, path: str) -> dict[str, dict | None]:
-        """Collect the fields of a selection set, reading inline fragments as selections at the same path.
+        """Collect the fields of a selection set, reading fragments as selections at the same path.
 
         Directives are applied by the enclosing field, not per fragment, so their injected selections land in
         the field's own selection set.
@@ -209,11 +209,9 @@ class GraphQLExtractor:
             elif isinstance(node, InlineFragmentNode):
                 deep_merge_dict(dicta=fields, dictb=await self._collect_fields(node.selection_set, path=path))
 
-            elif isinstance(node, FragmentSpreadNode):
-                if node.name.value in self.info.fragments:
-                    fragment_fields = await self.extract_fields(self.info.fragments[node.name.value].selection_set)
-                    if fragment_fields:
-                        deep_merge_dict(dicta=fields, dictb=fragment_fields)
+            elif isinstance(node, FragmentSpreadNode) and node.name.value in self.info.fragments:
+                fragment = self.info.fragments[node.name.value]
+                deep_merge_dict(dicta=fields, dictb=await self._collect_fields(fragment.selection_set, path=path))
 
         return fields
 
