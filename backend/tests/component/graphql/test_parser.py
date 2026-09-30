@@ -185,7 +185,7 @@ async def test_directive_merge_fields(
 async def test_same_root_field_selected_twice_reads_all_selections(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
 ) -> None:
-    """A root field repeated as siblings must read the union of every occurrence, not only the first node's."""
+    """A root field repeated as siblings reads the union of every occurrence."""
     obj = await Node.init(db=db, schema=criticality_schema)
     await obj.new(db=db, name="low", level=4)
     await obj.save(db=db)
@@ -222,7 +222,7 @@ async def test_same_root_field_selected_twice_reads_all_selections(
 async def test_sibling_fragment_spreads_merge_overlapping_selections(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
 ) -> None:
-    """Two fragment spreads reaching the same field keep the sub-selections of both, not only the last."""
+    """Two fragment spreads reaching the same field keep the sub-selections of both."""
     obj = await Node.init(db=db, schema=criticality_schema)
     await obj.new(db=db, name="low", level=4)
     await obj.save(db=db)

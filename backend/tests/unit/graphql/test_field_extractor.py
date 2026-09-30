@@ -31,7 +31,7 @@ def _extract(query: str) -> dict[str, Any]:
 
 
 def test_a_fragment_spread_inside_an_inline_fragment_is_expanded() -> None:
-    """A spread nested in an inline fragment contributes the fragment's fields, not its name."""
+    """A spread nested in an inline fragment contributes the fragment's fields."""
     fields = _extract("""
         query {
           InfrahubRepositoryCommits(repository_id: "x") {
