@@ -35,7 +35,9 @@ describe("TasksTable", () => {
       await expect.element(component.getByRole("columnheader", { name: header })).toBeVisible();
     }
     await expect.element(component.getByRole("cell", { name: "ple-branch" })).toBeVisible();
-    await expect.element(component.getByRole("cell", { name: "Import", exact: true })).toBeVisible();
+    await expect
+      .element(component.getByRole("cell", { name: "Import", exact: true }))
+      .toBeVisible();
     await expect.element(component.getByRole("cell", { name: "—" })).toBeVisible();
   });
 
