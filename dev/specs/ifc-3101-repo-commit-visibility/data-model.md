@@ -205,8 +205,12 @@ GitRepositoryWarmUp
 
 GitReadOnlyRepositoryCheckRefs
   repository_id, repository_name, location
-  refs: list[TrackedRef]   TrackedRef: infrahub_branch_name, infrahub_branch_id, ref, commit
+  refs: list[TrackedRef]   TrackedRef: infrahub_branch_name, infrahub_branch_id, ref
 ```
+
+`TrackedRef` carries no commit. The commit a convergence pins the pool to is read through
+`TrackedCommitReader` once the repository lock is held, because an import that lands between the
+request being built and the lock being taken has already moved the pool to its own commit.
 
 ## Reader seam (`infrahub.git.state`, not the resolver module)
 

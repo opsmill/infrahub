@@ -7,12 +7,12 @@ import pytest
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.core.account import ObjectPermission
-from infrahub.core.constants import InfrahubKind, PermissionAction, PermissionDecision
+from infrahub.core.constants import InfrahubKind, PermissionAction, PermissionDecision, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.services import InfrahubServices
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.message_bus import BusRecorder
+from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.graphql import graphql_mutation, graphql_query
 from tests.helpers.permissions import define_permissions
 
@@ -62,8 +62,15 @@ async def repository(db: InfrahubDatabase, default_branch: Branch, register_core
 @pytest.fixture
 async def read_only_repository(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> Node:
     repo = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
+    # Active because the check-refs mutation refuses any other internal status, which would
+    # otherwise decide the outcome of the test that expects the permission to be granted.
     await repo.new(
-        db=db, name="permissioned-read-only-repo", location="/tmp/permissioned-ro-repo", ref="main", commit=None
+        db=db,
+        name="permissioned-read-only-repo",
+        location="/tmp/permissioned-ro-repo",
+        ref="main",
+        commit=None,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
     )
     await repo.save(db=db)
     return repo
@@ -79,7 +86,8 @@ async def tag(db: InfrahubDatabase, default_branch: Branch, register_core_models
 
 @pytest.fixture
 async def service(db: InfrahubDatabase) -> InfrahubServices:
-    return await InfrahubServices.new(database=db, message_bus=BusRecorder(), workflow=WorkflowLocalExecution())
+    # These tests are about who may reach the mutation, not about what it triggers.
+    return await InfrahubServices.new(database=db, message_bus=BusRecorder(), workflow=WorkflowRecorder())
 
 
 async def _account_session(db: InfrahubDatabase, name: str, permissions: list[ObjectPermission]) -> AccountSession:

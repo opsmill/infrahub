@@ -330,6 +330,16 @@ async def test_rabbitmq_initial_setup(rabbitmq_api: RabbitMQManager) -> None:
     )
     assert (
         Binding(
+            source="infrahub.events",
+            destination=f"worker-events-{WORKER_IDENTITY}",
+            destination_type="queue",
+            routing_key="refresh.git.*",
+            arguments={},
+        )
+        in agent_bindings
+    )
+    assert (
+        Binding(
             source="",
             destination=f"worker-events-{WORKER_IDENTITY}",
             destination_type="queue",
