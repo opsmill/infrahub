@@ -123,7 +123,7 @@ describe("getRepositoryCommitsQueryOptions", () => {
 
     // THEN
     expect(queryKey).toEqual([
-      "repository",
+      "repositories",
       "commits",
       { ...params, limit: REPOSITORY_COMMITS_PAGE_SIZE },
     ]);
