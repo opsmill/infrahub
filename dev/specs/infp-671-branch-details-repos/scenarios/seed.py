@@ -213,19 +213,35 @@ def push_overlay(repo: str, branch: str, overlay: str) -> None:
 # --------------------------------------------------------------------------- local servers
 
 
-def pid_alive(pid_file: Path) -> bool:
+def read_pids(pid_file: Path) -> list[int]:
+    """Pids in the file, which holds one per server (`start_http` writes several, space-separated)."""
     if not pid_file.exists():
-        return False
+        return []
     try:
-        os.kill(int(pid_file.read_text(encoding="utf-8").strip()), 0)
-    except (ValueError, ProcessLookupError, PermissionError):
+        return [int(pid) for pid in pid_file.read_text(encoding="utf-8").split()]
+    except ValueError:
+        return []
+
+
+def pid_alive(pid_file: Path) -> bool:
+    pids = read_pids(pid_file)
+    if not pids:
         return False
+    for pid in pids:
+        try:
+            os.kill(pid, 0)
+        except (ProcessLookupError, PermissionError):
+            return False
     return True
 
 
 def stop_pid(pid_file: Path, name: str) -> None:
-    if pid_alive(pid_file):
-        os.kill(int(pid_file.read_text(encoding="utf-8").strip()), signal.SIGTERM)
+    stopped = False
+    for pid in read_pids(pid_file):
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.kill(pid, signal.SIGTERM)
+            stopped = True
+    if stopped:
         log(f"stopped {name}")
     pid_file.unlink(missing_ok=True)
 
@@ -245,6 +261,7 @@ def start_http(mode: str, ports: list[int]) -> None:
     """Start githttp.py on each port; `serve` serves BARE over smart HTTP, `deny` answers 401."""
     if pid_alive(HTTP_PID[mode]):
         return
+    stop_http(mode)  # a partly dead set still holds some of the ports
     pids = []
     for port in ports:
         proc = subprocess.Popen(  # noqa: S603
@@ -258,14 +275,7 @@ def start_http(mode: str, ports: list[int]) -> None:
 
 
 def stop_http(mode: str) -> None:
-    pid_file = HTTP_PID[mode]
-    if not pid_file.exists():
-        return
-    for pid in pid_file.read_text(encoding="utf-8").split():
-        with contextlib.suppress(ProcessLookupError):
-            os.kill(int(pid), signal.SIGTERM)
-    pid_file.unlink()
-    log(f"stopped HTTP git server ({mode})")
+    stop_pid(HTTP_PID[mode], f"HTTP git server ({mode})")
 
 
 # --------------------------------------------------------------------------- waits
