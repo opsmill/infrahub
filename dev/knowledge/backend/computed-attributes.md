@@ -91,7 +91,7 @@ Key methods:
 | Local attribute/relationship change | Inline | `_recompute_local_jinja2()` | Self-targeting computed attrs |
 | Remote peer attribute change | Async | Prefect task | Cross-node computed attrs |
 | Branch merge or rebase | Coalesced | `CoalescedRecomputeBuilder` + `BulkRecomputeWriter` | Affected computed attrs across the whole change set |
-| Template added or changed (schema update) | Coalesced, one flow per chunk of node ids | `trigger_update_jinja2_computed_attributes` | Every node of the kind |
+| Template added or changed (schema update), or `InfrahubRecomputeComputedAttribute` without `node_ids` | Coalesced, one flow per chunk of node ids | `trigger_update_jinja2_computed_attributes` | Every node of the kind |
 
 ## Python Transform Computed Attributes
 
