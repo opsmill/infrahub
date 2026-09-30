@@ -159,9 +159,26 @@ the **pre-rewrite** history into the trunk and pushes it, putting the discarded 
 remote. If the rewrite existed to strip a leaked credential, the merge restores it. The destination
 side only corrupts one worker's view; the source side corrupts the remote, for everyone.
 
-FR-005a therefore covers both worktrees, and FR-005b states the property plainly: never push what
-the remote already discarded. Branch creation is left alone: a branch created from a stale trunk
-converges on its own first pull, and creating it is not a merge of anything.
+FR-005a therefore covers both worktrees. **It refuses the merge rather than reconciling it**, and
+FR-005c says why that distinction matters.
+
+Reconciling inside the merge path looks tempting and destroys the evidence.
+`InfrahubRepository.merge` calls `update_commit_value` on the destination before it pushes, so a
+reset-then-merge writes the merge commit to the graph. The next cycle then compares the graph
+against the remote, finds them equal, and classifies `UNCHANGED`. No record, no trunk signal, no
+re-import of the rewritten content. Resetting the source is worse still: it pulls in the rewritten
+history and merges objects the graph never imported.
+
+Refusing keeps one owner for reconciliation. The synchronisation cycle resets, records, signals and
+re-imports, in that order, under the repository lock. The merge fails with a typed error, the next
+cycle reconciles, and the retry succeeds.
+
+**Accepted residual risk**: the remote can be rewritten between the guard's fetch and the push that
+follows. The guard narrows that window, it does not close it. FR-005b is a best-effort property,
+not a guarantee.
+
+Branch creation is left alone: a branch created from a stale trunk converges on its own first pull,
+and creating it is not a merge of anything.
 
 **What the pull-side reset must not do** (FR-007): it must not write the commit to the graph, must
 not write the rewrite record, and must not emit the signal. `pull` already takes
@@ -203,7 +220,8 @@ passes the result as `target_changed`. One mechanism covers both repository kind
   the old and new `default_branch` on `CoreRepository`. The comparison has to be added before that
   early return. It is a change to the mutation, not a reuse.
 - Reader: **the detector's caller, and nothing else.** A present marker makes `target_changed` true,
-  so the detector returns `RETARGET` and no reset and no record follow. The read is destructive.
+  so the detector returns `RETARGET`. The branch is still reset onto the remote head; only the
+  record is skipped. The read is destructive.
 - Time to live: one hour, **and both writers must trigger the classification themselves.** The
   read-only mutation already submits its pull and import, so the classification runs within
   seconds. The read-write side has no such trigger: a `default_branch` edit moves no git ref, so

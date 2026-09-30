@@ -251,22 +251,31 @@ and emits no report.
 - [ ] T035 [US2] Confirm by inspection that the pull path holds no reference to the recorder, so
       FR-007 holds by construction rather than by a runtime check. Record the finding in the task's
       commit message.
-- [ ] T036 [US2] Guard **both sides** of the merge path (FR-005a, FR-005b): fetch, then run the
-      ancestry check on the **source** branch and on the **destination** branch in
-      `backend/infrahub/git/tasks.py::merge_git_repository` before calling `repo.merge`. Reset
-      either worktree when neither head is an ancestor of the other.
-      The source side is the dangerous one. `merge` reads the commit it merges from the local source
-      ref via `get_commit_value(..., remote=False)`, and nothing fetches first, so a worker holding
-      a stale source branch merges the pre-rewrite history into the trunk and **pushes it**. That
-      puts discarded commits back on the remote for everyone. A rewrite that removed a leaked
-      credential would restore it.
+- [ ] T036 [US2] Guard **both sides** of the merge path (FR-005a, FR-005b, FR-005c): in
+      `backend/infrahub/git/tasks.py::merge_git_repository`, fetch and compare the **source** branch
+      and the **destination** branch against the remote before calling `repo.merge`. When either has
+      diverged, **refuse the merge** with a typed error naming a divergent remote history.
+      **Do not reset and merge.** `merge` calls `update_commit_value` on the destination before it
+      pushes, so a reset-then-merge writes the merge commit to the graph. The next cycle then finds
+      the graph and the remote in agreement, classifies `UNCHANGED`, and the rewrite is never
+      recorded, never signalled and never re-imported. Resetting the source is worse: it merges
+      objects the graph never imported.
+      The source side is the dangerous one either way. `merge` reads the commit it merges from the
+      local source ref via `get_commit_value(..., remote=False)`, and nothing fetches first, so a
+      worker holding a stale source branch would merge the pre-rewrite history into the trunk and
+      **push it**. A rewrite that removed a leaked credential would restore it.
+- [ ] T036y [US2] Add the typed error for a divergent remote history to
+      `backend/infrahub/exceptions.py` and map it in the error classifier, so the merge failure
+      names the real cause and never says "conflict" (FR-003, FR-017).
 - [ ] T037 [P] [US2] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`: a worker whose destination worktree
-      holds a discarded history does not merge onto it.
+      holds a discarded history refuses the merge instead of merging onto it.
 - [ ] T038 [US2] Add a live-remote test for the source side, in the same file: a worker holding a
-      stale **source** branch does not merge the pre-rewrite history into the trunk, and the
-      discarded commits do not reappear on the remote after the merge. This is the security-relevant
-      half of FR-005a.
+      stale **source** branch refuses the merge, and the discarded commits do not reappear on the
+      remote. This is the security-relevant half of FR-005a.
+- [ ] T038y [US2] Add a live-remote test that the refused merge leaves the rewrite recordable: after
+      the refusal, the next synchronisation cycle reconciles the branch, writes the record and fires
+      the trunk signal. This is what a reset-then-merge would have destroyed (FR-005c).
 - [ ] T039 [US2] Add a live-remote test that a worker which missed the broadcast resets and records
       nothing, while the graph already holds the remote commit (FR-001c). This is the case that
       decides whether the classification reads the graph or the worktree.

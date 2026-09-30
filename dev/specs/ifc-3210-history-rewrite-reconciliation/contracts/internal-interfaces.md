@@ -454,3 +454,41 @@ for any kind other than `CoreReadOnlyRepository`, so there is **no** existing co
 and new `default_branch`. Only the read-only comparison (`current_ref` against `new_ref`) is
 already there. The read-write marker therefore needs that comparison added before the early return.
 This is a change to the mutation, not a reuse of something already computed.
+
+---
+
+## 9. The merge guard
+
+Changed. `backend/infrahub/git/tasks.py::merge_git_repository`.
+
+FR-005 covers paths that advance a worktree **from the remote**. The merge path advances the
+destination from local state and reads its source commit from the local branch ref, so FR-005 never
+reaches it. This guard closes that.
+
+### Contract
+
+1. Fetch, then compare the **source** branch worktree and the **destination** branch worktree
+   against their remote heads, using the same ancestry gateway as section 1.
+2. When either has diverged, **refuse the merge** and raise a typed error naming a divergent remote
+   history. The message never says "conflict" (FR-003, FR-017).
+3. Never reset a diverged branch and merge it (FR-005c).
+4. A locally-ahead branch is not diverged. It merges as it does today.
+
+### Why it refuses instead of reconciling
+
+`InfrahubRepository.merge` calls `update_commit_value` on the destination **before** it pushes. So
+a reset-then-merge writes the merge commit to the graph, the next cycle finds the graph and the
+remote in agreement, and the branch classifies `UNCHANGED`. The rewrite is then never recorded,
+the trunk signal never fires, and the rewritten content is never re-imported. Resetting the source
+is worse: it merges objects the graph never imported.
+
+Reconciliation has one owner. The synchronisation cycle resets, records, signals and re-imports,
+under the repository lock. A refused merge fails loudly, the next cycle reconciles, and the retry
+succeeds.
+
+### Accepted residual risk
+
+The remote can be rewritten between this guard's fetch and the push that follows the merge. The
+guard narrows that window and does not close it, so FR-005b is best-effort rather than guaranteed.
+Closing it would need the remote to reject the push, which is branch protection on the remote and
+outside this work.
