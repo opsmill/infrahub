@@ -156,11 +156,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     id: UUID = Field(..., description="Internal UUID of the repository")
     name: str = Field(..., description="Primary name of the repository")
-    default_branch_name: str | None = Field(None, description="Default branch to use when pulling the repository")
+    default_branch_name: str | None = Field(
+        default=None, description="Default branch to use when pulling the repository"
+    )
     type: str | None = None
-    location: str | None = Field(None, description="Location of the remote repository")
+    location: str | None = Field(default=None, description="Location of the remote repository")
     has_origin: bool = Field(
-        False, description="Flag to indicate if a remote repository (named origin) is present in the config."
+        default=False, description="Flag to indicate if a remote repository (named origin) is present in the config."
     )
 
     client: InfrahubClient | None = Field(
@@ -168,12 +170,14 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         description="Infrahub Client, used to query the Repository and Branch information in the graph and to update the commit.",
     )
 
-    cache_repo: Repo | None = Field(None, description="Internal cache of the GitPython Repo object")
-    is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
+    cache_repo: Repo | None = Field(default=None, description="Internal cache of the GitPython Repo object")
+    is_read_only: bool = Field(default=False, description="If true, changes will not be synced to remote")
 
-    internal_status: str = Field("active", description="Internal status: Active, Inactive, Staging")
-    reinitialized: bool = Field(False, description="Re-clone is needed because the local directory was missing")
-    infrahub_branch_name: str | None = Field(None, description="Infrahub branch on which to sync the remote repository")
+    internal_status: str = Field(default="active", description="Internal status: Active, Inactive, Staging")
+    reinitialized: bool = Field(default=False, description="Re-clone is needed because the local directory was missing")
+    infrahub_branch_name: str | None = Field(
+        default=None, description="Infrahub branch on which to sync the remote repository"
+    )
     model_config = ConfigDict(arbitrary_types_allowed=True, ignored_types=(Flow, Task))
 
     def get_client(self) -> InfrahubClient:

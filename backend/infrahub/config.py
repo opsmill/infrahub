@@ -482,6 +482,9 @@ class BrokerSettings(BaseSettings):
         default=2, description="The maximum number of concurrent messages fetched by each worker", ge=1
     )
     virtualhost: str = Field(default="/", description="The virtual host to connect to")
+    rpc_timeout: int = Field(
+        default=30, ge=1, description="The maximum number of seconds to wait for a worker to answer an RPC request"
+    )
     driver: BrokerDriver = BrokerDriver.RabbitMQ
 
     @property
@@ -755,6 +758,12 @@ class GitSettings(BaseSettings):
         default=False,
         description="When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. "
         "Requires delete_branch_after_merge to be enabled.",
+    )
+    read_only_refs_check_interval_mins: int = Field(
+        default=15,
+        ge=1,
+        le=1440,
+        description="Time (in minutes) between two checks of a read-only repository's remote for movement of its tracked refs.",
     )
 
     @model_validator(mode="after")

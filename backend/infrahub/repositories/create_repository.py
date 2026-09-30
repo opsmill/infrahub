@@ -46,6 +46,9 @@ class RepositoryFinalizer:
 
         Raises:
             ValidationError: When connectivity to the remote repository cannot be established.
+            WorkerTimeoutError: When no worker answered the connectivity check in time.
+            Exception: Whatever the connectivity check itself failed with, such as a broker that is
+                unreachable. The repository is removed before any of these are re-raised.
             ValueError: When the repository kind is neither a regular nor a read-only repository.
 
         """
@@ -55,9 +58,23 @@ class RepositoryFinalizer:
                 repository_name=obj.name.value,
                 repository_location=obj.location.value,
             )
-            response = await self.services.message_bus.rpc(
-                message=message, response_class=GitRepositoryConnectivityResponse
-            )
+            try:
+                response = await self.services.message_bus.rpc(
+                    message=message, response_class=GitRepositoryConnectivityResponse
+                )
+            # The creating mutation runs outside a transaction, so an unverified repository would
+            # otherwise survive with its name taken and no way to retry.
+            except Exception:
+                log.warning("repository_removal_after_connectivity_check_failed", name=obj.name.value, id=obj.id)
+                try:
+                    await obj.delete(db=db)
+                except Exception:
+                    # Surfaced here rather than raised, so a failed cleanup cannot replace the
+                    # failure the caller needs to see.
+                    log.exception("repository_removal_failed", name=obj.name.value, id=obj.id)
+                else:
+                    log.warning("repository_removed", name=obj.name.value, id=obj.id)
+                raise
 
             if response.data.success is False:
                 await obj.delete(db=db)
