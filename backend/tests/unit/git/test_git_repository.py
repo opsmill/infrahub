@@ -19,17 +19,12 @@ from pydantic import Field
 from infrahub import config
 from infrahub.core.constants import RepositoryOperationalStatus
 from infrahub.core.registry import registry
-<<<<<<< HEAD
 from infrahub.exceptions import (
     RepositoryConnectionError,
     RepositoryCredentialsError,
     RepositoryError,
+    RepositoryInvalidBranchError,
 )
-||||||| c49e5a44b
-from infrahub.exceptions import RepositoryError
-=======
-from infrahub.exceptions import RepositoryError, RepositoryInvalidBranchError
->>>>>>> origin/stable
 from infrahub.git import InfrahubRepository
 from infrahub.git.repository import FailedImport, ImportStep, PendingObjectImport
 from tests.helpers.file_repo import MultipleStagesFileRepo

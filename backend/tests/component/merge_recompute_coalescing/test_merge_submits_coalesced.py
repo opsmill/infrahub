@@ -18,20 +18,14 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
-<<<<<<< HEAD
+from infrahub.events.branch_action import BranchRebasedEvent
+from infrahub.events.node_action import NodeCreatedEvent, NodeMutatedEvent, NodeUpdatedEvent
 from infrahub.workers.dependencies import (
     build_cache,
     build_component,
     build_database,
     build_event_service,
 )
-||||||| c49e5a44b
-from infrahub.workers.dependencies import build_cache, build_database, build_event_service
-=======
-from infrahub.events.branch_action import BranchRebasedEvent
-from infrahub.events.node_action import NodeCreatedEvent, NodeMutatedEvent, NodeUpdatedEvent
-from infrahub.workers.dependencies import build_cache, build_database, build_event_service
->>>>>>> origin/stable
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     DISPLAY_LABELS_PROCESS_JINJA2,
