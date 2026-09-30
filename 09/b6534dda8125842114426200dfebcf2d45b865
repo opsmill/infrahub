@@ -1,0 +1,31 @@
+.agents/skills/opsmill-dev-analyzing-dependency-bumps/SKILL.md
+  s_43d8e382eba497::t_ff99dff75d31e9 1-115
+.github/dependabot.yml
+  s_43d8e382eba497::t_f3bca31d8f34d1 2-4
+.github/labels.yml
+  s_43d8e382eba497::t_dbcfad6df942d7 266-284
+.github/workflows/dependabot-autopilot-act.yml
+  s_43d8e382eba497::t_ae05c8739a5821 1-149
+.github/workflows/dependabot-autopilot-analyze.lock.yml
+  s_43d8e382eba497::t_299dd7ed19ce3a 1-1764
+.github/workflows/dependabot-autopilot-analyze.md
+  s_43d8e382eba497::t_76a231baa71756 1-163
+skills-lock.json
+  s_43d8e382eba497::t_aac0d02b47a328 4-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "09b6534dda8125842114426200dfebcf2d45b865",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

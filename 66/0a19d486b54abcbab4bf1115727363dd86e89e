@@ -1,0 +1,33 @@
+frontend/app/src/entities/schema/utils/validation/validate-float-attribute.ts
+  991acf4dd42e9bba 1,3
+backend/infrahub/core/query/attribute.py
+  991acf4dd42e9bba 388
+backend/infrahub/core/utils.py
+  991acf4dd42e9bba 176,181,184,188,192
+frontend/app/src/entities/schema/utils/validation/validate-float-attribute.test.ts
+  991acf4dd42e9bba 33,63
+frontend/app/src/entities/schema/utils/validation/validate-number-attribute.test.ts
+  991acf4dd42e9bba 36,47,241,246
+frontend/app/src/entities/schema/utils/validation/validate-number-attribute.ts
+  991acf4dd42e9bba 4,11,19,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.23",
+  "base_commit_sha": "660a19d486b54abcbab4bf1115727363dd86e89e",
+  "prompts": {
+    "991acf4dd42e9bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9c2f581-4036-4e9e-b7f5-085ca852d3fb",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 18,
+      "total_deletions": 43,
+      "accepted_lines": 18,
+      "overriden_lines": 0
+    }
+  }
+}

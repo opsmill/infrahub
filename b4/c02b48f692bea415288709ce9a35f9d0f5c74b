@@ -1,0 +1,19 @@
+dev/specs/dependabot-autopilot/contracts/workflows.md
+  s_ce99ced981c340::t_446b0356859b56 14-15,31-33,41-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4c02b48f692bea415288709ce9a35f9d0f5c74b",
+  "prompts": {},
+  "sessions": {
+    "s_ce99ced981c340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ecf758-799f-473b-a565-dc575a274ded",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

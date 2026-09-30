@@ -1,0 +1,63 @@
+.github/scripts/dependabot_autopilot/__main__.py
+  s_43d8e382eba497::t_f9d338b168d85f 6,11,14-18,23,25-34,41-53,67-71,93-178,202-205
+.github/scripts/dependabot_autopilot/digest.py
+  s_43d8e382eba497::t_95241bdbafffdd 1-72
+.github/scripts/dependabot_autopilot/http_transport.py
+  s_43d8e382eba497::t_f4597002d45af3 1-44
+.github/scripts/dependabot_autopilot/jira_adapter.py
+  s_43d8e382eba497::t_46c22c82687569 1-193
+.github/scripts/dependabot_autopilot/opportunities.py
+  s_43d8e382eba497::t_c38cdb8a2b7fbd 1-217
+.github/scripts/dependabot_autopilot/ports.py
+  s_43d8e382eba497::t_d4ff1b62a0af6a 10,207-263
+.github/scripts/dependabot_autopilot/slack_adapter.py
+  s_43d8e382eba497::t_721748d3dbf9b6 1-36
+.github/scripts/dependabot_autopilot/tests/fakes.py
+  s_43d8e382eba497::t_3b668173016ba2 6,12,19-21,28,33,36-37,232-339
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_comments_page1.handcrafted.json
+  s_43d8e382eba497::t_4b5cb4970d685f 1-44
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_comments_page2.handcrafted.json
+  s_43d8e382eba497::t_b6bcac19dc497a 1-27
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_create_issue.handcrafted.json
+  s_43d8e382eba497::t_8456a545f5b142 1-5
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_search_digest.handcrafted.json
+  s_43d8e382eba497::t_669e09d3951441 1-35
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_search_jql_empty.handcrafted.json
+  s_43d8e382eba497::t_ea7c168a3c8b48 1-4
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_search_jql_page1.handcrafted.json
+  s_43d8e382eba497::t_12de8ec8924946 1-21
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_search_jql_page2.handcrafted.json
+  s_43d8e382eba497::t_eb1d764363abf1 1-14
+.github/scripts/dependabot_autopilot/tests/test_digest.py
+  s_43d8e382eba497::t_410eb6b651e168 1-149
+.github/scripts/dependabot_autopilot/tests/test_fakes.py
+  s_43d8e382eba497::t_8f5f7da8331a45 8,12,17,19,24-25,96-106
+.github/scripts/dependabot_autopilot/tests/test_jira_adapter.py
+  s_43d8e382eba497::t_c2dd804702b1cd 1-341
+.github/scripts/dependabot_autopilot/tests/test_main.py
+  s_43d8e382eba497::t_7c391299c9644d 3,5,12-13,15,20-26,31-42,112-330
+.github/scripts/dependabot_autopilot/tests/test_opportunities.py
+  s_43d8e382eba497::t_b5b7ff26cdc539 1-454
+.github/scripts/dependabot_autopilot/tests/test_slack_adapter.py
+  s_43d8e382eba497::t_fd7d25dbe215dc 1-55
+.github/workflows/dependabot-autopilot-act.yml
+  s_43d8e382eba497::t_9a16c863c86532 34-35,152-239
+.github/workflows/dependabot-autopilot-digest.yml
+  s_43d8e382eba497::t_4ffdf5085ee5d9 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d2d2e10009b9d9041a8987c4ddee08412fd903a",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

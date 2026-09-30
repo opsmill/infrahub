@@ -1,0 +1,23 @@
+frontend/app/src/shared/components/form/fields/float.field.tsx
+  71cef13283c273d0 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.23",
+  "base_commit_sha": "86cc1b6d28a0d1d0afb6eedb87671e492bb03fab",
+  "prompts": {
+    "71cef13283c273d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb9b54ac-6e12-414e-9e10-76eed774ee2e",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,48 @@
+backend/infrahub/core/changelog/relationship_getter.py
+  s_20e0c986f2472f::t_8c77763a4ccc52 22-24,36-43,46-48
+  s_20e0c986f2472f::t_02894e82f49cad 7,61-62,65-67,72,87,97,100,108,113,122,126,132,135,147,153-164,166,176,180,184-185,187-192,195-196
+backend/infrahub/core/changelog/peer_labels.py
+  s_20e0c986f2472f::t_8bff85206bed1f 1-67
+backend/tests/unit/core/changelog/test_peer_labels.py
+  s_20e0c986f2472f::t_75f8c05ffdb9fd 37-38
+  s_20e0c986f2472f::t_9567e1eba452f8 1-2,4-10,12-13,17-21,25-26,31-36,39-43,45-51,55-86
+  s_20e0c986f2472f::t_25c3c5bd4b6e9a 11
+  s_20e0c986f2472f::t_bb1cf02b14cdbd 3,14-16,22-24,27-30,44,52-54,97
+  s_20e0c986f2472f::t_01c70067cdeb18 87-96,98-100
+backend/tests/component/core/changelog/test_models.py
+  s_20e0c986f2472f::t_56dcc4a8eda007 5
+  s_20e0c986f2472f::t_fbc1dd46e54b8b 177,318,426,509,583,639,757
+backend/tests/component/core/changelog/test_enrichment.py
+  s_20e0c986f2472f::t_56dcc4a8eda007 15,23-24,26,209-213
+  s_20e0c986f2472f::t_217d6a55237176 165-167,183-185,235-237
+backend/infrahub/core/changelog/builder.py
+  s_20e0c986f2472f::t_8c77763a4ccc52 10-11,13,38-39,41-45
+backend/infrahub/core/changelog/reciprocal.py
+  s_20e0c986f2472f::t_b5c5009ff2f38d 1-112
+backend/tests/unit/core/changelog/test_reciprocal.py
+  s_20e0c986f2472f::t_deed7c76c55bc8 1-4,10,12-124
+  s_20e0c986f2472f::t_33b21641b2965b 5-9,11,125-235
+backend/tests/unit/core/changelog/test_secondary_merger.py
+  s_20e0c986f2472f::t_9747ab6fc49615 1-76
+  s_20e0c986f2472f::t_01c70067cdeb18 77-102
+backend/infrahub/core/changelog/secondary_merger.py
+  s_20e0c986f2472f::t_0c7e1a65843cc8 1-45
+backend/tests/unit/core/changelog/test_models.py
+  s_20e0c986f2472f::t_1b8649f19112f0 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "489f031b7cdb783f469ddacc99fda49360000ef2",
+  "prompts": {},
+  "sessions": {
+    "s_20e0c986f2472f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee2ac3d-8227-4aa5-ba94-9bd97fe8b12f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

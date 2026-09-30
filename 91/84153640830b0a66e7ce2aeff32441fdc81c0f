@@ -1,0 +1,23 @@
+docs/docs/topics/log-forwarding.mdx
+  ef3016c04da19a8f 193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "9184153640830b0a66e7ce2aeff32441fdc81c0f",
+  "prompts": {
+    "ef3016c04da19a8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "274140a7-324a-404e-b0fe-d89e558aadbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 933,
+      "overriden_lines": 0
+    }
+  }
+}

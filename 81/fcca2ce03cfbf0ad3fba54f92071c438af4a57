@@ -1,0 +1,25 @@
+docs/docs/topics/graphql.mdx
+  e2700c71af9bffb3 270
+docs/docs/guides/graphql-fragment.mdx
+  e2700c71af9bffb3 95,109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "81fcca2ce03cfbf0ad3fba54f92071c438af4a57",
+  "prompts": {
+    "e2700c71af9bffb3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0a03608-5b8f-4405-94b9-c92dd7474b5a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}

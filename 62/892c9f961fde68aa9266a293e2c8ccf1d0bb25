@@ -1,0 +1,21 @@
+backend/tests/component/graphql/resource_manager/test_resource_manager.py
+  s_33417b8a8baa91::t_4ba2cd4c48a95f 20
+backend/tests/component/graphql/resource_manager/test_number_pool_mutation.py
+  s_33417b8a8baa91::t_4ba2cd4c48a95f 1-629
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62892c9f961fde68aa9266a293e2c8ccf1d0bb25",
+  "prompts": {},
+  "sessions": {
+    "s_33417b8a8baa91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c44ff9c-821c-4bbe-a666-79a4c734ebf2",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

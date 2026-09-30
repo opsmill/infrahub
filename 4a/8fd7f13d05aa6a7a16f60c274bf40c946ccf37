@@ -1,0 +1,27 @@
+backend/infrahub/core/changelog/relationship_getter.py
+  s_20e0c986f2472f::t_0141363af7719c 147-151
+backend/infrahub/core/changelog/hfid_resolver.py
+  s_20e0c986f2472f::t_eaf69b0e7729b8 43,86
+backend/infrahub/core/node/__init__.py
+  s_20e0c986f2472f::t_08162da583c68f 1169-1172
+backend/tests/component/core/changelog/test_relationship_mapper.py
+  s_20e0c986f2472f::t_b3c633f3cff5a2 40
+backend/tests/unit/core/changelog/test_relationship_getter.py
+  s_20e0c986f2472f::t_e8b0359b7c1a0b 36-38,42,47-48,50-52,60-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a8fd7f13d05aa6a7a16f60c274bf40c946ccf37",
+  "prompts": {},
+  "sessions": {
+    "s_20e0c986f2472f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee2ac3d-8227-4aa5-ba94-9bd97fe8b12f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

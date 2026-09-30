@@ -1,0 +1,24 @@
+.agents/skills/assigning-pr-reviewers/SKILL.md
+  s_2838866ed66104::t_aeba15e57bdb1b 109-110
+.github/workflows/pr-default-reviewer.md
+  s_2838866ed66104::t_ffc4cf0a515285 42-48,51,54,60
+  s_2838866ed66104::t_aeba15e57bdb1b 149-150
+.github/workflows/pr-default-reviewer.lock.yml
+  s_2838866ed66104::t_8d53b68a991c64 1,509
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5a40d2de4f081ec1d262fdc8121426a28eca2854",
+  "prompts": {},
+  "sessions": {
+    "s_2838866ed66104": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c20fb3ba-c043-4e8c-a7d9-4e79a9866fb2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

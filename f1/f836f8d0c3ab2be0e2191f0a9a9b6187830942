@@ -1,0 +1,25 @@
+.github/scripts/dependabot_autopilot/__main__.py
+  s_43d8e382eba497::t_735dcda741f16f 1-97
+.github/scripts/dependabot_autopilot/flow.py
+  s_43d8e382eba497::t_032718def9d8f7 1-448
+.github/scripts/dependabot_autopilot/tests/test_evaluate_flow.py
+  s_43d8e382eba497::t_40c092801d4d1b 1-782
+.github/scripts/dependabot_autopilot/tests/test_main.py
+  s_43d8e382eba497::t_41c422d7910de8 1-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1f836f8d0c3ab2be0e2191f0a9a9b6187830942",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

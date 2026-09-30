@@ -1,0 +1,32 @@
+backend/tests/unit/config/test_config.py
+  s_cc23bb5658950a::t_4db36499255dee 111-126
+backend/tests/unit/database/test_get_db.py
+  s_cc23bb5658950a::t_f00ac2adfe5cb8 3,6-7,11-12,14-17,19-20,22-24
+  s_cc23bb5658950a::t_d858cdaab14959 1-2,4-5,8-10,13,18,21,25-31
+changelog/10120.changed.md
+  s_cc23bb5658950a::t_c3ccaf116075aa 1
+backend/infrahub/database/__init__.py
+  s_cc23bb5658950a::t_3bc83a1d629c84 561
+backend/infrahub/config.py
+  s_cc23bb5658950a::t_f500365cf511cd 363-367
+changelog/10120.added.md
+  s_cc23bb5658950a::t_5917d8574a5644 1
+docs/docs/reference/configuration.mdx
+  s_cc23bb5658950a::t_c002a6bedc86f6 110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "07ee6dbc9c2382bdf083816d06b8df4e2bacf644",
+  "prompts": {},
+  "sessions": {
+    "s_cc23bb5658950a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7be26c30-7ba2-406f-b618-97627518913b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}

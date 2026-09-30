@@ -1,0 +1,20 @@
+backend/tests/component/trigger/test_zombie_detection.py
+  s_a897986bbedff2::t_647ea1424b745c 123-149
+  s_a897986bbedff2::t_20a273e28d4089 59,66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2bcea93d152e80f921decdb27ab05eccf748e1e5",
+  "prompts": {},
+  "sessions": {
+    "s_a897986bbedff2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76691411-f19b-4b27-b0db-2f65b1dd55bc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}

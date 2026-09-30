@@ -1,0 +1,55 @@
+.github/scripts/dependabot_autopilot/digest.py
+  s_ce99ced981c340::t_cc25e00fec5db8 21
+  s_ce99ced981c340::t_305fcf632c58aa 26,54-60
+  s_ce99ced981c340::t_7f9c072aeaf9e0 1-20,22-25,27-53,61-72
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_search_digest.handcrafted.json
+  s_ce99ced981c340::t_8dc090a719fcbb 1-35
+.github/workflows/dependabot-autopilot-digest.yml
+  s_ce99ced981c340::t_348a2fd5e217a3 34
+  s_ce99ced981c340::t_74d99a1096f85e 1-33,35-41
+.github/scripts/dependabot_autopilot/tests/test_digest.py
+  s_ce99ced981c340::t_d2d6000429b34d 61-63
+  s_ce99ced981c340::t_c5a97c5bd37903 1-60,64-149
+.github/scripts/dependabot_autopilot/tests/test_main.py
+  s_ce99ced981c340::t_cb47e8e01b2da5 12,21,23,238-320
+.github/scripts/dependabot_autopilot/tests/test_fakes.py
+  s_ce99ced981c340::t_8dc090a719fcbb 7,49-53,56-57
+.github/scripts/dependabot_autopilot/tests/test_adapters.py
+  s_ce99ced981c340::t_8dc090a719fcbb 12,31,594-596,600-630,634-654,751-798
+  s_ce99ced981c340::t_d2d6000429b34d 597-599
+  s_ce99ced981c340::t_826433ef87fc58 631-633
+.github/scripts/dependabot_autopilot/opportunities.py
+  s_ce99ced981c340::t_141487a35593ff 28-29
+.github/scripts/dependabot_autopilot/ports.py
+  s_ce99ced981c340::t_2c8779a1e9ca2c 239-241,243-244
+  s_ce99ced981c340::t_7c273284a9107e 242
+  s_ce99ced981c340::t_c2390258c2c408 10
+.github/scripts/dependabot_autopilot/__main__.py
+  s_ce99ced981c340::t_d2d6000429b34d 143
+  s_ce99ced981c340::t_4b75bb97b5622f 11-12,15,21,32,68,144-170,197-198
+.github/scripts/dependabot_autopilot/adapters.py
+  s_ce99ced981c340::t_1563f68f4de18a 35,48,52,296,317-335,412-440
+  s_ce99ced981c340::t_02769623eff595 441-442
+dev/specs/dependabot-autopilot/tasks.md
+  s_ce99ced981c340::t_e5e42dc4e2414c 113-115
+.github/scripts/dependabot_autopilot/tests/fakes.py
+  s_ce99ced981c340::t_ebde99d7fa442a 237-238,251-261
+  s_ce99ced981c340::t_2b79718499292a 31
+  s_ce99ced981c340::t_1d8b692df948ea 262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b7c68dafebe4808ed03f1503bc431710928d302",
+  "prompts": {},
+  "sessions": {
+    "s_ce99ced981c340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ecf758-799f-473b-a565-dc575a274ded",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+backend/infrahub/graphql/queries/search.py
+  s_5a724923a3aa16::t_2ceb1d3c466d7c 249-259
+  s_5a724923a3aa16::t_eb85b919df5755 199-201
+  s_5a724923a3aa16::t_a8d457e470c142 134-173
+  s_5a724923a3aa16::t_59d66da8adbe58 10-12,17-18
+backend/tests/component/graphql/queries/test_search.py
+  s_5a724923a3aa16::t_95ad75c235158c 94-95
+  s_5a724923a3aa16::t_8b9e6c1fd44e61 5,8
+  s_5a724923a3aa16::t_4c7c40b807a108 168,170-174,176-186,188-206,208,210-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "7842bd3158ae6f738f77777ba30940b47200c8ae",
+  "prompts": {},
+  "sessions": {
+    "s_5a724923a3aa16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cce90b5-bda0-49b4-a74e-9400a12db808",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+backend/infrahub/artifacts/content.py
+  s_28a24420e8443a::t_261d9d1b9a5746 42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "72239ea07b8081f6e063682ee81375296003b97e",
+  "prompts": {},
+  "sessions": {
+    "s_28a24420e8443a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c428f6ff-8b5f-4e39-b549-3de1bb8fce8b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Simon AURA--SCUSSEL <simon@opsmill.com>"
+    }
+  }
+}

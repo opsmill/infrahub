@@ -1,0 +1,19 @@
+backend/tests/component/core/changelog/test_relationship_mapper.py
+  s_20e0c986f2472f::t_46165289bc0bcb 19,26-31,38-46,54-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77a73ab9142e5e3c803a5cb3eed31ff9373b14a3",
+  "prompts": {},
+  "sessions": {
+    "s_20e0c986f2472f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee2ac3d-8227-4aa5-ba94-9bd97fe8b12f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

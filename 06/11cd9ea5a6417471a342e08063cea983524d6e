@@ -1,0 +1,21 @@
+.agents/rules/python-module-layout.md
+  s_d52982193a4de3::t_e0198227302248 12
+dev/guidelines/backend/python.md
+  s_d52982193a4de3::t_e0198227302248 35-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0611cd9ea5a6417471a342e08063cea983524d6e",
+  "prompts": {},
+  "sessions": {
+    "s_d52982193a4de3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56f21911-e56e-4ea4-a675-cca05f6cbad4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+changelog/8508.added.md
+  s_5d898f8b0be85d::t_e1f8319c88e418 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "c58e34539b6166af0ab7986dd23be98bcbb4ce14",
+  "prompts": {},
+  "sessions": {
+    "s_5d898f8b0be85d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e73432e-5602-47b5-8c40-0fff13bfcd8c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}

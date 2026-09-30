@@ -1,0 +1,36 @@
+frontend/app/.betterer.results
+  376fa329e2185481 193-197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "aca0edb8a3f56e2c7634ddee249b01642bece6ec",
+  "prompts": {
+    "376fa329e2185481": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a172657-500c-482b-bb9b-84b163488428",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 647,
+      "total_deletions": 647,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    },
+    "b7d33b2a1890d280": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21d17be5-72fe-49d2-8985-c793ec95e50a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 85,
+      "overriden_lines": 0
+    }
+  }
+}
