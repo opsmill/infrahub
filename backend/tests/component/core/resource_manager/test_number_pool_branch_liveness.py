@@ -11,7 +11,6 @@ from copy import deepcopy
 import pytest
 
 from infrahub.core.branch import Branch
-from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.initialization import create_branch, initialize_registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -19,7 +18,7 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from tests.helpers.agnostic_edges import TEST_ACTOR_ID
+from tests.component.core.resource_manager.conftest import delete_branch
 from tests.helpers.schema import TICKET, load_schema
 
 POOL_START = 1
@@ -40,6 +39,18 @@ async def _make_pool(db: InfrahubDatabase) -> CoreNumberPool:
     return pool
 
 
+@pytest.fixture(scope="class")
+async def pool(
+    db: InfrahubDatabase,
+    default_branch_scope_class: Branch,
+    register_core_models_schema_scope_class: SchemaBranch,
+) -> CoreNumberPool:
+    """Class-scoped, so each class builds its own pool once and its tests share it."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    await initialize_registry(db=db)
+    return await _make_pool(db=db)
+
+
 async def _new_ticket(db: InfrahubDatabase, pool: CoreNumberPool, title: str) -> Node:
     ticket = await Node.init(db=db, schema=TICKET.kind)
     await ticket.new(db=db, title=title, ticket_id={"from_pool": {"id": pool.id}})
@@ -49,17 +60,6 @@ async def _new_ticket(db: InfrahubDatabase, pool: CoreNumberPool, title: str) ->
 
 class TestBranchLiveness:
     """The pool and its schema are built once; each test adds to the state the one before it left."""
-
-    @pytest.fixture(scope="class")
-    async def pool(
-        self,
-        db: InfrahubDatabase,
-        default_branch_scope_class: Branch,
-        register_core_models_schema_scope_class: SchemaBranch,
-    ) -> CoreNumberPool:
-        await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-        await initialize_registry(db=db)
-        return await _make_pool(db=db)
 
     async def test_a_number_changed_on_a_branch_is_still_held_by_the_default_branch(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, pool: CoreNumberPool
@@ -183,17 +183,6 @@ class TestOlderBranchLiveness:
     held by an earlier test's older branch, so the freed number is the lowest free one.
     """
 
-    @pytest.fixture(scope="class")
-    async def pool(
-        self,
-        db: InfrahubDatabase,
-        default_branch_scope_class: Branch,
-        register_core_models_schema_scope_class: SchemaBranch,
-    ) -> CoreNumberPool:
-        await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-        await initialize_registry(db=db)
-        return await _make_pool(db=db)
-
     async def test_an_object_deleted_on_the_default_branch_is_still_held_by_an_older_branch(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, pool: CoreNumberPool
     ) -> None:
@@ -274,8 +263,7 @@ class TestOlderBranchLiveness:
         await ticket.delete(db=db)
         assert held in await pool.get_used(db=db, branch=default_branch_scope_class)
 
-        result = await BranchDataDeleter(db=db, batch_size=5).delete(branch=older, user_id=TEST_ACTOR_ID)
-        assert result.branch_deleted
+        await delete_branch(db=db, branch=older)
 
         assert held not in await pool.get_used(db=db, branch=default_branch_scope_class), (
             "with the older branch deleted, no branch holds the number"
