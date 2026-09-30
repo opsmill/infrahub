@@ -19,11 +19,11 @@ The system automatically detects several types of conflicts:
 
 The [Proposed Change](../proposed-changes/overview.mdx) feature in Infrahub provides comprehensive tools for managing these conflicts with intuitive side-by-side diffs that clearly highlight differences between branches. For step-by-step resolution mechanics during review, see [Resolve a proposed-change conflict](../proposed-changes/resolve-conflict.mdx).
 
-Conflicts can also surface during a [rebase](./rebase.mdx). A rebase keeps the branch's side of a conflict, so it accepts a conflict on an attribute, or on a property of a relationship, once you resolve it in favor of the branch. The rebase stops on any other conflict until you update the data so that both branches agree:
+Conflicts can also surface during a [rebase](./rebase.mdx). A rebase keeps the branch's side of a conflict, so it stops on a conflict until you address it, and its error lists what each conflict needs:
 
-- A conflict that is unresolved, or resolved in favor of the main branch.
-- A conflict on the object a cardinality-one relationship points to, such as the datacenter a device is assigned to.
-- A conflict between the deletion of an object in one branch and a change to it in the other.
+- A conflict on an attribute, or on a property of a relationship, passes once you resolve it in favor of the branch. Open a proposed change for the branch to choose the branch for the value of an attribute, as described in [Resolve a proposed-change conflict](../proposed-changes/resolve-conflict.mdx). For any other property, use the `ResolveDiffConflict` GraphQL mutation with the conflict ID that the `DiffTree` query returns.
+- A conflict on the object a cardinality-one relationship points to, such as the datacenter a device is assigned to, passes only once you update the data so that both branches agree.
+- A conflict between the deletion of an object in one branch and a change to it in the other also passes only once you update the data so that both branches agree.
 
 This also applies to a branch in the `NEED_UPGRADE_REBASE` status after an upgrade, which only a rebase returns to `OPEN`.
 
