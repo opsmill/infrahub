@@ -1,0 +1,28 @@
+backend/tests/unit/graphql/test_parser_extractor.py
+  s_a66d1159c15df9::t_c9fb59dc9c39cd 1-3,5-9,13-26,29-69
+  s_a66d1159c15df9::t_8669e04080804f 4,10-12
+  s_a66d1159c15df9::t_dabb6dc8202341 27-28
+backend/infrahub/graphql/parser.py
+  s_a66d1159c15df9::t_6627ac4c899496 202-204,208-210
+backend/tests/component/graphql/test_parser.py
+  s_a66d1159c15df9::t_582bc71b259801 290-346
+  s_a66d1159c15df9::t_686c072c8004e5 347-388
+backend/infrahub/graphql/field_extractor.py
+  s_a66d1159c15df9::t_134f98fa618ddb 11,59,61,64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "63a6208c35425c6b2d151debbb487efeae076789",
+  "prompts": {},
+  "sessions": {
+    "s_a66d1159c15df9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87c16f8b-f316-4253-a135-66b6d19fe2aa",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
