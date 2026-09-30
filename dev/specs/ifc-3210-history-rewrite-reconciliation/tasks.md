@@ -139,9 +139,15 @@ head, the imported objects match the rewritten tree, and the repository reports 
       comparisons, not one".
 - [ ] T017 [US1] Decide the reset in `collect_pending_imports` from **this worker's worktree
       against the remote head**, not from the classification. Reset when neither is an ancestor of
-      the other. Do nothing when the worktree is equal, is ahead, or when the remote carries no such
-      ref. Pull as today when the worktree is behind. Then record the commit and pin the commit
-      worktree as the fast-forward path already does.
+      the other. Pull as today when the worktree is behind. Do nothing when the worktree is ahead,
+      or when the remote carries no such ref.
+      **When the worktree already equals the remote head but the graph commit does not, write the
+      commit and queue the import anyway.** Do not fall through to `pull` for this: it returns early
+      at `if commit_after == commit_before: return True`, before `update_commit_value`, so a
+      worktree that did not move writes nothing and imports nothing. Miss this and the graph never
+      catches up, so a `default_branch` edit records a rewrite and fires the trunk event on every
+      cycle after the first.
+      Then record the commit and pin the commit worktree as the fast-forward path already does.
       This is what repairs a worker whose graph already equals the remote while its own worktree is
       stale (FR-001c). Keying the reset on the classification would leave that worker on the
       discarded history, flagged by `compare_local_remote` every cycle and repaired by nothing,
@@ -524,6 +530,11 @@ read-write repository's configured default branch. Neither writes a record.
 - [ ] T077 [US6] Component-test the mutation's ordering in
       `backend/tests/component/graphql/mutations/test_repository.py`: the marker exists before the
       workflows are submitted.
+- [ ] T077y [US6] Add a **multi-cycle** live-remote test for a `default_branch` edit: change the
+      configured default branch, then run several synchronisation cycles. Assert that no record is
+      written and no trunk event fires on **any** cycle, not only the first. One cycle passes while
+      the bug is present: the marker suppresses cycle 1, and cycles 2 onward are what record a false
+      rewrite and fire a false trunk webhook once a minute.
 - [ ] T078 [US6] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`, beside the other live-remote tests:
       changing the tracked ref to a different branch records nothing.

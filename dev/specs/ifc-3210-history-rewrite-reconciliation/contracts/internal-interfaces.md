@@ -160,13 +160,25 @@ Record and signal, from the classification (graph against remote):
 
 Reset, from this worker's worktree against the remote, decided independently:
 
-| Worktree against remote head | Action |
-|---|---|
-| Equal | nothing |
-| Worktree is an ancestor of the remote head | pull, as today |
-| Remote head is an ancestor of the worktree | nothing. The worktree is ahead, not diverged |
-| Neither is an ancestor | reset onto the remote head |
-| The remote carries no such ref | nothing |
+| Worktree against remote head | Graph commit | Action |
+|---|---|---|
+| Equal | equals the remote head | nothing |
+| Equal | **differs from the remote head** | **write the commit, queue the import, and record if the classification is `REWRITE`** |
+| Worktree is an ancestor of the remote head | any | pull, as today |
+| Remote head is an ancestor of the worktree | any | nothing. The worktree is ahead, not diverged |
+| Neither is an ancestor | any | reset onto the remote head |
+| The remote carries no such ref | any | nothing |
+
+**The second row is the one that is easy to lose.** The candidate set includes branches selected
+because the graph commit differs, and on those the worktree can already be at the remote head, so
+nothing needs resetting. `pull` cannot be relied on to close the gap: it returns early at
+`if commit_after == commit_before: return True`, **before** `update_commit_value`, so a worktree
+that did not move writes no commit and queues no import.
+
+Without that row the graph never catches up. A `default_branch` edit then consumes its marker on
+the first cycle and classifies `RETARGET`, and every cycle after that classifies `REWRITE`, writes
+a record and fires the trunk event again. The failure repeats once a minute for the life of the
+repository.
 
 A worker whose graph already matches the remote still resets when its own worktree does not. That
 is the `UNCHANGED` row of the first table meeting the last row of the second, and it is the whole
