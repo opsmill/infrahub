@@ -212,7 +212,9 @@ class UnavailablePythonTargetResolver:
         raise RuntimeError("the Python target resolver could not be built")
 
 
-async def build_python_target_resolver(*, db: InfrahubDatabase) -> PythonTargetResolver:
+async def build_python_target_resolver(
+    *, db: InfrahubDatabase, refresh_updated_nodes: bool = False
+) -> PythonTargetResolver:
     """Build the resolver for one recompute pass."""
     return IndexedPythonTargetResolver(
         read_set_source=ComposedPythonReadSetSource(
@@ -220,4 +222,5 @@ async def build_python_target_resolver(*, db: InfrahubDatabase) -> PythonTargetR
             analyzed_reads=GatheredPythonReadSets(db=db),
         ),
         subscriber_source=ClientSubscriberSource(client=get_client()),
+        refresh_updated_nodes=refresh_updated_nodes,
     )

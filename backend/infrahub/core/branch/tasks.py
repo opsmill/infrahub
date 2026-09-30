@@ -440,7 +440,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     async with database.start_session() as recompute_db:
         python_resolver: PythonTargetResolver
         try:
-            python_resolver = await build_python_target_resolver(db=recompute_db)
+            python_resolver = await build_python_target_resolver(db=recompute_db, refresh_updated_nodes=True)
         except Exception:
             # Handed on as a resolver that raises, which widens every declared attribute. Skipping
             # the family instead would leave the replayed changes with nothing to refresh them.
