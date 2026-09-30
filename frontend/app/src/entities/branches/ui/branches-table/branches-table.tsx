@@ -1,5 +1,3 @@
-import React from "react";
-
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import { sortByName } from "@/shared/utils/common";
 
@@ -16,17 +14,11 @@ export function BranchesTable() {
   const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } =
     useGetBranchesPaginated({ filters });
 
-  const columns = React.useMemo(() => getBranchTableColumns(), []);
+  const columns = getBranchTableColumns();
 
-  const flatData = React.useMemo(() => {
-    if (!data?.pages) return [];
-
-    const allBranches = data.pages.flat();
-    const sortedBranches = sortByName(allBranches.filter((b) => !b.is_default));
-    const branches = [...allBranches.filter((b) => b.is_default), ...sortedBranches];
-
-    return branches;
-  }, [data]);
+  const allBranches = data?.pages.flat() ?? [];
+  const sortedBranches = sortByName(allBranches.filter((b) => !b.is_default));
+  const flatData = [...allBranches.filter((b) => b.is_default), ...sortedBranches];
 
   const isLoading = isPending || isFetchingNextPage;
 
