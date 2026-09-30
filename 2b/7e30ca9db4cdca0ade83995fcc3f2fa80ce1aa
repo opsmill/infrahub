@@ -1,0 +1,19 @@
+docker-compose.yml
+  s_28a24420e8443a::t_f2901939d78a60 184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b7e30ca9db4cdca0ade83995fcc3f2fa80ce1aa",
+  "prompts": {},
+  "sessions": {
+    "s_28a24420e8443a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c428f6ff-8b5f-4e39-b549-3de1bb8fce8b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Simon AURA--SCUSSEL <simon@opsmill.com>"
+    }
+  }
+}
