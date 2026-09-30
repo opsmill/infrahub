@@ -16,6 +16,10 @@ export interface BranchesDataTableProps extends React.HTMLAttributes<HTMLDivElem
   gridTemplateColumns?: (columnCount: number) => string;
 }
 
+export const REPOSITORY_TRACK = "minmax(12rem, 18rem)";
+export const GIT_STATE_TRACK = "9rem";
+export const COMMIT_TRACK = "8rem";
+
 // Same capping rule as the shared DataTable: `fit-content` so short columns shrink
 // to fit, with a ceiling so one long value cannot stretch the column off-screen.
 const defaultGridTemplateColumns = (columnCount: number) =>
@@ -23,7 +27,10 @@ const defaultGridTemplateColumns = (columnCount: number) =>
     `fit-content(${WIDE_COLUMN_MAX_WIDTH})`,
     `fit-content(${COLUMN_MAX_WIDTH})`,
     "minmax(150px, 200px)",
-    `repeat(${columnCount - 4}, fit-content(${COLUMN_MAX_WIDTH}))`,
+    REPOSITORY_TRACK,
+    GIT_STATE_TRACK,
+    COMMIT_TRACK,
+    `repeat(${columnCount - 7}, fit-content(${COLUMN_MAX_WIDTH}))`,
     "2.5rem",
   ].join(" ");
 
