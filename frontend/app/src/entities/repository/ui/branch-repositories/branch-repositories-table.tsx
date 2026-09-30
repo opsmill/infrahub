@@ -49,7 +49,7 @@ export function BranchRepositoriesTable({
             <tr className="border-b">
               <HeaderCell icon={<FolderGitIcon className="size-3.5" />}>Repository</HeaderCell>
               <HeaderCell className="w-36">Git state</HeaderCell>
-              <HeaderCell icon={<GitCommitIcon className="size-3.5 text-info" />} className="w-44">
+              <HeaderCell icon={<GitCommitIcon className="size-3.5" />} className="w-44">
                 Commit
               </HeaderCell>
             </tr>

@@ -51,7 +51,7 @@ export function RepositoryRow({ repository, branchName, isDefaultBranch }: Repos
           )}
         </span>
       </td>
-      <td className="bg-info-surface px-3 font-mono text-xs tabular-nums">
+      <td className="px-3 font-mono text-xs tabular-nums">
         {commit ? (
           <span className="block truncate" title={commit}>
             {commit}
