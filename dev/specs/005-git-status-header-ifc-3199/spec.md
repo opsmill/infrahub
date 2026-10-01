@@ -325,13 +325,15 @@ where repositories do exist.
 
 ## Changed in review
 
-The reviewer raised five points after implementation; all were adopted.
+The reviewer raised eight points across two rounds; all were adopted.
+
+### First round
 
 1. **Named for what it reports.** The feature is the repository *sync* status, not "Git
-   status": `RepositorySyncStatus`, `deriveRepositorySyncIndicator`, and state names
-   `no-repositories` / `failing` / `in-sync` in place of `inert` / `error` / `neutral`.
-2. **Logic left the component.** `ui/` renders; the two counts and the derivation now sit
-   behind `useRepositorySyncIndicator` in `ui/queries/`.
+   status": `RepositorySyncStatus` and state names `none` / `failing` / `in-sync` in place
+   of `inert` / `error` / `neutral`.
+2. **Logic left the component.** `ui/` renders; the counting and the verdict sit in the
+   `domain/` layer.
 3. **The empty state is no longer disabled** (FR-006). It is a dimmed but reachable link.
 4. **The destination is filtered only when something is failing** (FR-008).
 5. **The informational pulse uses the `ring` theme tokens** rather than a hardcoded blue.
@@ -339,3 +341,19 @@ The reviewer raised five points after implementation; all were adopted.
 Points 3 and 4 together removed the element-type switch between states, and with it the
 remount, the mid-session role change, and the accessible-name collision that the switch's
 button variant had caused in an unrelated end-to-end test.
+
+### Second round
+
+6. **One query, not two.** The two counts were separate queries with separate refresh
+   timers, and a derivation rule refereed the race between their loading states. They
+   collapsed into a single `getRepositorySyncHealth` use case returning
+   `none` / `failing` / `in-sync`, behind one `queryOptions` and one cache key. The race,
+   the rule, and its test went with them.
+7. **The verdict is domain state, not query state.** `RepositorySyncHealth` says what is
+   true of the repositories; whether the lookup is still running or has failed stays in the
+   component, where TanStack Query already reports it.
+8. **Query keys are declared, not inlined**, in `ui/queries/repository.query-keys.ts`.
+
+The use case awaits the total first and returns `none` without issuing the second request,
+rather than running both counts together: a branch with no repositories has nothing failing
+by definition.

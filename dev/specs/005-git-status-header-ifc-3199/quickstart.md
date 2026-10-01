@@ -10,15 +10,15 @@ cd frontend/app
 pnpm test
 ```
 
-Expected: the derivation rule's tests cover all five states plus precedence; the component
-tests cover all five rendered states, the link's filter and branch parameter, and the header
-mounting both indicators.
+Expected: the use-case tests cover the three sync verdicts and the requests each one makes;
+the component tests cover all five rendered states, the link's filter and branch parameter,
+and the header mounting both indicators.
 
 Targeted run while iterating:
 
 ```bash
 cd frontend/app
-pnpm test -- derive-repository-sync-indicator
+pnpm test -- get-repository-sync-health
 pnpm test -- repository-sync-status
 ```
 
