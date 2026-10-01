@@ -136,6 +136,8 @@ class RelationshipChangelogGetter:
             if existing is None:
                 merged[secondary.node_id] = secondary
                 continue
+            if existing.parent is None and secondary.parent is not None:
+                existing.add_parent(parent=secondary.parent)
             for name, relationship in secondary.relationships.items():
                 current = existing.relationships.get(name)
                 if current is None:

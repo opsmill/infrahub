@@ -7,7 +7,7 @@ from infrahub.core.changelog.models import (
     RelationshipPeerChangelog,
 )
 from infrahub.core.changelog.relationship_getter import RelationshipChangelogGetter
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, RelationshipKind
 
 
 def _secondary(node_id: str, relationship_name: str) -> NodeChangelog:
@@ -81,3 +81,25 @@ def test_merge_secondaries_keeps_one_entry_when_a_merged_relationship_repeats_a_
         ("source", DiffAction.ADDED),
         ("other", DiffAction.ADDED),
     ]
+
+
+def test_merge_secondaries_keeps_the_parent_of_a_later_secondary() -> None:
+    """The peer's parent survives the merge whichever of its secondaries carries it."""
+    without_parent = NodeChangelog(node_id="rack-1", node_kind="LocationRack", display_label="rack-1")
+    without_parent.add_relationship(
+        relationship_changelog=RelationshipCardinalityOneChangelog(
+            name="primary_of", peer_id="site-2", peer_kind="LocationSite"
+        )
+    )
+    with_parent = NodeChangelog(node_id="rack-1", node_kind="LocationRack", display_label="rack-1")
+    parent_relationship = RelationshipCardinalityOneChangelog(name="site", peer_id="site-2", peer_kind="LocationSite")
+    parent_relationship.set_parent_from_relationship(rel_kind=RelationshipKind.PARENT)
+    with_parent.add_relationship(relationship_changelog=parent_relationship)
+
+    merged = RelationshipChangelogGetter._merge_secondaries_by_node([without_parent, with_parent])
+
+    assert len(merged) == 1
+    assert set(merged[0].relationships) == {"primary_of", "site"}
+    assert merged[0].parent is not None
+    assert merged[0].parent.node_id == "site-2"
+    assert merged[0].root_node_id == "site-2"
