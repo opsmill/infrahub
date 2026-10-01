@@ -18,7 +18,7 @@
 
 The branches list tells you a branch exists, whether it is open or merged, and who created it. It says nothing about the branch's Git repositories. When an import fails on one branch out of fifty, the only way to find it today is to open each branch (or each repository page) in turn. The branch details page (PR #10779) shows Git health for one branch once you are there; this feature puts the same signal one level up, in the list, so a failing repository is visible while scanning branches, without opening any of them.
 
-A branch can have several repositories, and their states differ. Rather than summarise them into one cell, the list shows one row per branch and repository, the way every other table in the app shows one thing per row. A failing repository is therefore its own row, not a detail hidden inside a branch row.
+A branch can have several repositories, and their states differ. The list keeps one row per branch and shows a branch's repositories the way the Proposed changes cell shows a many-valued relationship: the first repository, failed imports first, as a link, followed by "+N more" that opens the branch. The Git state column shows the worst state among them with an n/N count, so a failing repository surfaces on its branch's row however many healthy ones the branch also has. The full list, with every commit, stays on the branch details page.
 
 ## Clarifications
 
@@ -63,123 +63,133 @@ Corrections from the phase 4 review pass (`review-synthesis.md` in this director
 - Q: How does the hook keep one branch's resolution from re-rendering the others (SC-007)? → A: **It calls the row rule once over all loaded branches and returns the rows grouped by branch id.** TanStack's structural sharing then pairs rows by branch, not by array index, so a branch growing from one pending row to N leaves every other branch's row objects untouched. No caches (research R13).
 - Q: What does the branch details card show once the error toast is suppressed? → A: **Its failed state shows the server's error message**, so suppressing the toast loses no information on either page.
 
+### Session 2026-10-01 (owner, after trying it on a dev stack)
+
+The owner tried the one-row-per-repository list on a dev stack and reversed it. These answers supersede the matching 2026-09-30 answers above, which stay as history. Measurements and the single-request finding: research R14.
+
+- Q: One row per branch × repository, or one row per branch? → A: **One row per branch.** With 24 branches × 16 repositories the fan-out rendered 279 rows, 280 checkboxes and about 15 000 DOM nodes and was visibly slow, while the 24 repository requests took 0.36 s in total: the cost is rendering, not fetching. The ticket's "one row per repository" assumed one or two repositories per branch. This reverses the 2026-09-30 fan-out answer and the critique answers that depend on it (P1 multiplier, P2 anchor change, P4 tab order).
+- Q: What does the Repositories cell show? → A: **The first repository as a pill, then "+N more".** Repositories are ordered by the branch details rule (failed imports first, then unreachable remotes, then by name), the first one is a pill linking to the repository's page on the row's branch, and when there are more, "+N more" links to the branch details page, as the Proposed changes cell does.
+- Q: What does the Git state cell show? → A: **A roll-up**: the Git state pill of the worst state (the first repository's, since failed imports rank first), followed by an `n/N` count of the repositories in that state when the branch has more than one, with a tooltip listing the count per state label (for example `Import Error: 1 · In Sync: 15`).
+- Q: Is the Commit column kept? → A: **No, it is dropped.** The commit is shown in the repository pill's tooltip (7 characters) and on the branch details page. The copy control on commits goes with it.
+- Q: How does selection work? → A: **The ordinary way**: one row per branch, so one checkbox per branch, named "Select <branch>". The anchor-row selection and the tab-order rules for repeated rows are gone with the repeated rows.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Spot a broken repository from the branches list (Priority: P1)
 
-An operator opens the branches list and, without opening any branch, sees for every branch which Git repositories it has, whether each repository's last import on that branch succeeded, and which commit that branch has imported.
+An operator opens the branches list and, without opening any branch, sees for every branch which Git repository comes first on it (a failed import if there is one) and the worst Git state among the branch's repositories.
 
-**Why this priority**: This is the whole reason for the ticket. Everything else (row fan-out, empty states) exists to make this reading correct.
+**Why this priority**: This is the whole reason for the ticket. Everything else (the "+N more" link, the count, the empty states) exists to make this reading correct.
 
-**Independent Test**: With one repository whose import failed on one branch, load the branches list and confirm that branch's row shows the repository's name, a Git state pill reading the failed state in the schema's colour, and the imported commit, while other branches show their own states.
+**Independent Test**: With one repository whose import failed on one branch, load the branches list and confirm that branch's row shows the failed repository's name and a Git state pill reading the failed state in the schema's colour, while other branches show their own states.
 
 **Acceptance Scenarios**:
 
-1. **Given** a branch whose repository last imported successfully, **When** the operator views the branches list, **Then** that branch's row shows the repository's name, a Git state pill with the schema's label and colour for the successful state, and the first 7 characters of the imported commit.
-2. **Given** a branch whose repository failed to import, **When** the operator views the list, **Then** the Git state pill reads the failed state in the schema's colour for it, and hovering the pill shows the state's description.
-3. **Given** a repository row with a commit, **When** the operator hovers the commit, **Then** the full hash is shown; **When** they press the copy control, **Then** the full hash is copied and the control confirms it.
-4. **Given** the list is loading a branch's repository data, **When** the branch row is already visible, **Then** the branch's own cells (name, status, proposed changes, actions) render immediately, the Repository cell shows a loading indicator until the data arrives, and the Git state and Commit cells stay blank until then.
+1. **Given** a branch with one repository that last imported successfully, **When** the operator views the branches list, **Then** that branch's row shows the repository's name as a link to the repository's page on that branch, and a Git state pill with the schema's label and colour for the successful state, with no count.
+2. **Given** a branch with one repository that failed to import, **When** the operator views the list, **Then** the Git state pill reads the failed state in the schema's colour for it, and hovering the pill shows the state's description.
+3. **Given** a branch with a repository, **When** the operator hovers the repository's name, **Then** a tooltip shows the repository's Git state label and the first 7 characters of the commit that branch has imported, and says "read-only" for a read-only repository.
+4. **Given** the list is loading a branch's repository data, **When** the branch row is already visible, **Then** the branch's own cells (name, status, proposed changes, actions) render immediately, the Repositories cell shows one loading indicator until the data arrives, and the Git state cell stays blank until then.
 
 ---
 
-### User Story 2 - A branch with several repositories reads as several rows (Priority: P2)
+### User Story 2 - A branch with several repositories reads as one row with its worst state (Priority: P2)
 
-A branch linked to three repositories appears three times in the list, once per repository, each row carrying that repository's Git state and commit. Bulk actions still operate on branches, not rows.
+A branch linked to sixteen repositories still appears once in the list. Its Repositories cell names the repository that needs attention first and offers the rest through "+15 more", and its Git state cell tells how many repositories share the worst state.
 
-**Why this priority**: Multiple repositories are common in real deployments, and the ticket forbids summarising them. Getting selection and bulk actions right is what keeps the fan-out from breaking existing behaviour.
+**Why this priority**: Real deployments link many repositories to every branch (each read-only repository appears on every branch). One row per repository made the list unusable at that scale (research R14); a roll-up keeps the failing signal while the list stays one row per branch.
 
-**Independent Test**: With a branch linked to three repositories, load the list and confirm three consecutive rows for that branch; tick one of them and confirm the toolbar reports one selected branch and the bulk delete dialog lists the branch once.
+**Independent Test**: With a branch linked to three repositories of which one failed to import, load the list and confirm one row for that branch, whose Repositories cell shows the failed repository followed by "+2 more", and whose Git state cell shows the failed state followed by "1/3".
 
 **Acceptance Scenarios**:
 
-1. **Given** a branch with N repositories, **When** the list renders, **Then** the branch appears on N consecutive rows, each showing the same branch name, status and proposed changes and a different repository, Git state and commit.
-2. **Given** a branch shown on several rows, **When** the operator ticks the checkbox on any of those rows, **Then** every row of that branch shows as selected, the toolbar reports 1 selected, and the bulk delete dialog lists that branch once.
-3. **Given** two branches with several repositories each, **When** the operator uses shift-click to select a range covering both, **Then** the toolbar reports 2 selected.
-4. **Given** the list is scrolled to load more branches, **When** the next page arrives, **Then** the new branches append with their repository rows, and the number of branches per page is unchanged from today.
-5. **Given** a branch with several repositories of which one failed to import, **When** its rows render, **Then** the failed repository is the branch's first row and the others follow in the branch details page's order (unreachable remotes next, then by name), identically across reloads.
+1. **Given** a branch with N ≥ 2 repositories, **When** the list renders, **Then** the branch appears on exactly one row, its Repositories cell shows the first repository followed by "+N−1 more", and "+N−1 more" links to the branch's details page.
+2. **Given** a branch with three repositories of which one failed to import, **When** its row renders, **Then** the Repositories cell shows the failed repository, the Git state cell shows the failed state's pill followed by "1/3", and hovering the pill and count lists the count per state label, for example "Import Error: 1 · In Sync: 2".
+3. **Given** a branch with several repositories, **When** the operator ticks its checkbox, **Then** the toolbar reports 1 selected and the bulk delete dialog lists that branch once, as it does today.
+4. **Given** the list is scrolled to load more branches, **When** the next page arrives, **Then** the new branches append one row each, and the number of branches per page is unchanged from today.
+5. **Given** a branch with several repositories, **When** its row renders, **Then** the repository shown first follows the branch details page's order (failed imports first, then unreachable remotes, then by name), identically across reloads.
 
 ---
 
 ### User Story 3 - A branch with no repositories reads as deliberately empty (Priority: P3)
 
-A branch that is not synced with Git, or that has no repositories at all, still appears exactly once, and its Repository cell says so in words rather than with a dash, so the operator knows nothing is missing.
+A branch that is not synced with Git, or that has no repositories at all, says so in words in its Repositories cell rather than with a dash, so the operator knows nothing is missing.
 
 **Why this priority**: The ticket calls out that an empty state must not look broken. This story also covers the degraded states (no permission, load failure), which must never hide the branch itself.
 
-**Independent Test**: With a branch that is not synced with Git and has no read-only repositories, load the list and confirm one row whose Repository cell reads "Not synced with Git" and whose Git state and Commit cells are blank.
+**Independent Test**: With a branch that is not synced with Git and has no read-only repositories, load the list and confirm its Repositories cell reads "Not synced with Git" and its Git state cell is blank.
 
 **Acceptance Scenarios**:
 
-1. **Given** a branch not synced with Git and with no read-only repositories, **When** the list renders, **Then** the branch has exactly one row, its Repository cell reads "Not synced with Git", and its Git state and Commit cells are blank.
-2. **Given** a branch synced with Git but with no repositories registered, **When** the list renders, **Then** the branch has exactly one row and its Repository cell reads "No repositories".
-3. **Given** a branch not synced with Git that has read-only repositories, **When** the list renders, **Then** those repositories are listed as rows like any other.
-4. **Given** the operator lacks permission to read a branch's repositories, **When** the list renders, **Then** that branch has exactly one row, its branch cells render normally, and its Repository cell reads "No permission" in a muted style; no other branch is affected.
-5. **Given** repository data for a branch fails to load, **When** the list renders, **Then** that branch has exactly one row, its branch cells render normally, its Repository cell reads "Could not load repositories" in a muted style, and no toast or page-level error appears.
+1. **Given** a branch not synced with Git and with no read-only repositories, **When** the list renders, **Then** its Repositories cell reads "Not synced with Git" and its Git state cell is blank.
+2. **Given** a branch synced with Git but with no repositories registered, **When** the list renders, **Then** its Repositories cell reads "No repositories".
+3. **Given** a branch not synced with Git that has read-only repositories, **When** the list renders, **Then** those repositories are shown like any other (first repository, "+N more", Git state roll-up).
+4. **Given** the operator lacks permission to read a branch's repositories, **When** the list renders, **Then** that branch's cells render normally, its Repositories cell reads "No permission" in a muted style and its Git state cell is blank; no other branch is affected.
+5. **Given** repository data for a branch fails to load, **When** the list renders, **Then** that branch's cells render normally, its Repositories cell reads "Could not load repositories" in a muted style, its Git state cell is blank, and no toast or page-level error appears.
 
 ---
 
 ### Edge Cases
 
 - A repository whose Git state has no colour defined in the schema: the pill falls back to a neutral style and still shows the state's value (or its label if there is no value), as the branch details page's pill already does.
-- A repository row with no commit yet: the Commit cell is blank, with no copy control.
+- A repository with no commit yet: its tooltip shows the Git state label only, without a commit part.
 - A freshly created synced branch reports the default branch's fork-point commit; it is displayed as returned, not treated as empty.
-- A branch whose repositories change from loading to N rows: the row count grows in place; the branch keeps its position in the list; rows below it move down.
-- Short pending rows may let the infinite scroll request the next page earlier than today; accepted.
-- A repository that is currently syncing: its row keeps refreshing at the same cadence the branch details page already uses, and stops when the sync settles.
-- The default branch: it stays first in the list and fans out like any other branch.
-- Existing filters (status, name, created-by, dates) continue to filter by branch; no filter or sort is offered on the three new columns.
-- Column count changes: the table's column layout accommodates the three new columns without misplacing the existing ones.
+- "Worst" is the first repository in the branch details order. Only a failed import ranks above the others by state; an unreachable remote ranks next without being shown (FR-016), so a branch with no failed import shows the Git state of its first-ranked repository, and the count and tooltip still give every state present.
+- Several repositories in the worst state: the count `n/N` counts every repository whose state value equals the shown one.
+- A branch whose repositories change from loading to loaded: the row keeps its position; the two new columns have fixed widths, so no column shifts sideways. The row may grow taller if the cell wraps.
+- A repository that is currently syncing: the branch's cells keep refreshing at the same cadence the branch details page already uses, and stop when the sync settles.
+- The default branch: it stays first in the list; its repository link carries no branch parameter.
+- Existing filters (status, name, created-by, dates) continue to filter by branch; no filter or sort is offered on the two new columns.
+- Column count changes: the table's column layout accommodates the two new columns without misplacing the existing ones.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: The branches list MUST show three additional columns, in this order after "Proposed changes": "Repository", "Git state", "Commit".
-- **FR-002**: For each branch, the list MUST show one row per Git repository visible on that branch, each row carrying the branch's existing cells plus that repository's name, Git state and imported commit.
-- **FR-003**: The set of repositories shown for a branch MUST be what the backend returns for that branch. The list MUST NOT re-derive that set on the client from the branch's sync flag or status.
-- **FR-004**: The Git state MUST be the repository's `sync_status` as resolved on that branch, rendered with the label, colour and description defined in the schema. When no colour is defined, the pill MUST fall back to a neutral style and still show the state's value or label, identically to the branch details page's pill.
-- **FR-005**: The Commit cell MUST show the first 7 characters of the imported commit in a monospace face, expose the full hash on hover, and offer a copy control that copies the full hash. When there is no commit, the cell MUST be blank.
-- **FR-006**: The Repository cell MUST show the repository's name as a link to that repository's page opened on the row's branch, and MUST mark read-only repositories with the same "Read-only" marker the branch details page uses.
-- **FR-006a**: Within a branch, repository rows MUST be ordered by the same rule as the branch details page: repositories whose last import failed first, then repositories whose remote is unreachable, then the rest, each group sorted by repository name (case-insensitive). The unreachable status itself is not shown (FR-016); it only affects order. The anchor row of a branch may therefore change when a repository's reachability changes; selection is keyed by branch and is unaffected.
-- **FR-007**: A branch that returns zero repositories MUST occupy exactly one row. Its Repository cell MUST read "Not synced with Git" when the branch is not synced with Git and "No repositories" otherwise, in muted text (`text-foreground-muted`); its Git state and Commit cells MUST be blank.
-- **FR-008**: Selection MUST be per branch: ticking any row of a branch selects the branch, all of its rows show as selected, the selection count reports branches, and bulk actions receive each branch once. Only the checkbox on a branch's first row is in the keyboard tab order, named "Select <branch>"; the checkboxes on its other rows are skipped by Tab and named "Select <branch> (<repository name>)". The other repeated branch controls (the branch name link, the proposed-changes pill and the actions menu) are likewise in the tab order on the first row only. The commit copy button stays in the tab order on every row.
-- **FR-009**: Shift-click range selection MUST continue to work and MUST count branches, not rows.
-- **FR-010**: Pagination MUST continue to count branches per page; a page with N branches renders at least N rows.
-- **FR-011**: Repository data MUST load per branch, after the branch rows are shown: branch cells render immediately, and the Repository cell shows a loading indicator until that branch's data arrives; Git state and Commit stay blank until then.
-- **FR-012**: When the operator lacks permission to read a branch's repositories, that branch MUST render exactly one row with its branch cells intact and a muted (`text-foreground-muted`) "No permission" text in the Repository cell. No other branch is affected and no page-level error is shown.
-- **FR-013**: When repository data for a branch fails to load for any other reason, that branch MUST render exactly one row with a muted (`text-foreground-muted`) "Could not load repositories" text in the Repository cell, without toasts or page-level errors. The load error's message MUST stay reachable: it is shown as a tooltip on that text for pointer users and rendered as visually hidden text alongside it for keyboard and screen-reader users. The branch details card's failed state shows the same message.
-- **FR-014**: A repository that is currently syncing MUST keep its row's Git state and commit refreshing at the cadence already used by the branch details page, and stop when the sync settles.
-- **FR-015**: The three new columns MUST NOT be filterable or sortable in this feature. Existing filters and the default ordering (default branch first, then by name) are unchanged.
-- **FR-016**: The list MUST NOT show an upstream commit, a "behind by N" figure, a last-import time, or the repository's operational (remote reachability) status.
-- **FR-017**: The three new columns MUST always be shown; no column-hiding control is added to the branches list.
+- **FR-001**: The branches list MUST show two additional columns, in this order after "Proposed changes": "Repositories", "Git state".
+- **FR-002**: The list MUST keep one row per branch. Repository data MUST NOT add rows.
+- **FR-003**: The set of repositories counted and shown for a branch MUST be what the backend returns for that branch. The list MUST NOT re-derive that set on the client from the branch's sync flag or status.
+- **FR-004**: For a branch with N ≥ 1 repositories, the Repositories cell MUST show the first repository (FR-005) as a pill linking to that repository's page opened on the row's branch (no branch parameter on the default branch). Hovering it MUST show the repository's Git state label and the first 7 characters of its commit (omitted when there is no commit), and "read-only" for a read-only repository. When N > 1 it MUST be followed by a "+N−1 more" link to the branch's details page.
+- **FR-005**: Repositories MUST be ordered by the same rule as the branch details page: repositories whose last import failed first, then repositories whose remote is unreachable, then the rest, each group sorted by repository name (case-insensitive). The unreachable status itself is not shown (FR-016); it only affects order.
+- **FR-006**: For a branch with N ≥ 1 repositories, the Git state cell MUST show the first repository's `sync_status` as resolved on that branch (the worst state), rendered with the label, colour and description defined in the schema. When no colour is defined, the pill MUST fall back to a neutral style and still show the state's value or label, identically to the branch details page's pill. When N > 1, the pill MUST be followed by an `n/N` count, where n is the number of repositories whose state value equals the shown one, and hovering them MUST list the count per state label.
+- **FR-007**: For a branch that returns zero repositories, the Repositories cell MUST read "Not synced with Git" when the branch is not synced with Git and "No repositories" otherwise, in muted text (`text-foreground-muted`); the Git state cell MUST be blank.
+- **FR-008**: Selection MUST stay per row, which is per branch, as today. The row checkbox MUST be named "Select <branch>".
+- **FR-009**: Shift-click range selection MUST continue to work unchanged.
+- **FR-010**: Pagination MUST continue to count branches per page; a page with N branches renders N rows.
+- **FR-011**: Repository data MUST load per branch, one request per branch shared with the branch details page, after the branch rows are shown: branch cells render immediately, and the Repositories cell shows one loading indicator until that branch's data arrives; the Git state cell stays blank until then.
+- **FR-012**: When the operator lacks permission to read a branch's repositories, that branch MUST render with its branch cells intact, a muted (`text-foreground-muted`) "No permission" text in the Repositories cell and a blank Git state cell. No other branch is affected and no page-level error is shown.
+- **FR-013**: When repository data for a branch fails to load for any other reason, that branch MUST render a muted (`text-foreground-muted`) "Could not load repositories" text in the Repositories cell and a blank Git state cell, without toasts or page-level errors. The load error's message MUST stay reachable: it is shown as a tooltip on that text for pointer users and rendered as visually hidden text alongside it for keyboard and screen-reader users. The branch details card's failed state shows the same message.
+- **FR-014**: A repository that is currently syncing MUST keep its branch's Repositories and Git state cells refreshing at the cadence already used by the branch details page, and stop when the sync settles.
+- **FR-015**: The two new columns MUST NOT be filterable or sortable in this feature. Existing filters and the default ordering (default branch first, then by name) are unchanged.
+- **FR-016**: The list MUST NOT show a Commit column, an upstream commit, a "behind by N" figure, a last-import time, or the repository's operational (remote reachability) status. The commit appears only in the repository pill's tooltip and on the branch details page.
+- **FR-017**: The two new columns MUST always be shown; no column-hiding control is added to the branches list.
 
 ### Key Entities *(include if feature involves data)*
 
-- **Branch row**: one line of the table. Identified by the pair (branch, repository), or (branch, none) when the branch has no repositories or its repository data is loading, denied or failed. Carries the branch's existing attributes and the repository's Git state and commit.
+- **Branch row**: one line of the table per branch, as today. Carries the branch's existing attributes and, once loaded, the branch's repositories in ranked order.
 - **Repository on a branch**: a Git repository as seen from one branch: name, kind (read/write or read-only), Git state (`sync_status`: value, label, colour, description) and imported commit. Already modelled by PR #10779 for the branch details page.
-- **Git state**: the outcome of the repository's last import on that branch, as a schema-defined dropdown value. Distinct from the branch's own lifecycle status.
+- **Git state**: the outcome of the repository's last import on that branch, as a schema-defined dropdown value. Distinct from the branch's own lifecycle status. The list shows the first-ranked repository's Git state, with a count per state.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: An operator can identify every branch whose repository import failed by scanning the branches list, with zero branch or repository pages opened.
-- **SC-002**: A branch with N repositories appears on exactly N rows; a branch with none appears on exactly 1 row, with the explicit empty text and never a dash.
-- **SC-003**: Selecting a multi-repository branch and running bulk delete acts on exactly one branch; the selection count matches the number of distinct branches selected.
-- **SC-004**: Branch name, status and proposed-change cells are rendered before any repository data resolves; the new cells fill in afterwards without shifting any column horizontally. Rows below a branch may move down when its repositories arrive.
+- **SC-001**: An operator can identify every branch with a failed repository import by scanning the branches list, with zero branch or repository pages opened.
+- **SC-002**: Every branch appears on exactly one row; a branch with no repositories shows the explicit empty text and never a dash.
+- **SC-003**: Selecting a branch and running bulk delete acts on exactly the selected branches; the selection count matches, as today.
+- **SC-004**: Branch name, status and proposed-change cells are rendered before any repository data resolves; the new cells fill in afterwards without shifting any column horizontally.
 - **SC-005**: A permission or load failure on one branch's repositories leaves every other row of the list fully rendered.
-- **SC-006**: Every state in this spec (loaded, loading, empty for both texts, denied, failed, no colour, no commit) has an automated test; the frontend lint, unused-code, type-regression and unit test gates pass.
-- **SC-007**: Resolving one branch's repositories re-renders that branch's rows only; a window refocus issues at most one repository request per loaded branch.
+- **SC-006**: Every state in this spec (one repository, several with a count, loading, empty for both texts, denied, failed, no colour, no commit) has an automated test; the frontend lint, unused-code, type-regression and unit test gates pass.
+- **SC-007**: The list issues exactly one repository request per loaded branch, and a window refocus within the query's freshness window issues none.
 
 ## Assumptions
 
-- The branch details work (PR #10779) is the base and merges before this feature. Its per-branch repository query, model, Git state pill and test fixtures are reused unchanged; this feature adds no second way of fetching or rendering repository state.
-- The commit display component from PR #10658 is lifted byte-identical at its path so that the eventual merge of both branches is conflict-free. This is stated in the PR description.
-- Repository data is fetched once per visible branch (about 40 requests per page of 40 branches) using the branch details page's query, so both pages share one cache. A per-repository or single-request alternative is a follow-up if profiling calls for it.
-- The row set per branch follows the backend: a read/write repository appears only on branches synced with Git; a read-only repository appears on every branch. The list displays the branch's sync flag only to choose the empty-state wording.
-- A read-only repository appears on every branch, so with R read-only repositories every branch has at least R rows. The owner accepts this multiplier; it is the backend's row set.
-- Merged and deleting branches, if shown by the current list filters, fan out like any other branch; whatever repositories the backend returns for them are shown.
+- The branch details work (PR #10779) is the base and merges before this feature. Its per-branch repository query, ordering rule, Git state pill and test fixtures are reused unchanged; this feature adds no second way of fetching or rendering repository state.
+- No commit display component is lifted from PR #10658: the list has no Commit column (superseded 2026-10-01).
+- Repository data is fetched once per visible branch (about 40 requests per page of 40 branches) using the branch details page's query, so both pages share one cache. A single request for every branch needs a backend change (research R14).
+- The repositories per branch follow the backend: a read/write repository appears only on branches synced with Git; a read-only repository appears on every branch. The list uses the branch's sync flag only to choose the empty-state wording.
+- A read-only repository appears on every branch, so with R read-only repositories every branch counts at least R repositories in its "+N more" and `n/N` figures.
+- Merged and deleting branches, if shown by the current list filters, show whatever repositories the backend returns for them.
 - The epic spec (`dev/specs/infp-671-cross-branch-repo-status/spec.md`) lists "extra columns on the global branches view" as out of scope for the backend query work; this ticket is the frontend follow-up that supersedes that line and adds no backend change.
 - The branches table is rendered only by the branches page, so no other screen changes.
-- When the backend truncates a branch's repository list, the list shows only the returned repositories, with no "more" marker.
-- Out of scope: "Upstream" and "Last import" columns (IFC-3146, IFC-3147), the repository's operational status (unreachable remote), filters or sorting on the new columns, column hiding, any backend change, the branch-details page itself, and resolving the visual similarity between the branch "Status" pill and the "Git state" pill beyond keeping them separated by the "Proposed changes" column and using different pill shapes.
+- When the backend truncates a branch's repository list, the list counts only the returned repositories, with no extra marker.
+- Out of scope: "Upstream" and "Last import" columns (IFC-3146, IFC-3147), a Commit column, the repository's operational status (unreachable remote), filters or sorting on the new columns, column hiding, any backend change, the branch-details page itself, and resolving the visual similarity between the branch "Status" pill and the "Git state" pill beyond keeping them separated by the "Proposed changes" and "Repositories" columns and using different pill shapes.

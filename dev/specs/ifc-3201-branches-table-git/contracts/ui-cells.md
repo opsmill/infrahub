@@ -2,45 +2,50 @@
 
 **Feature**: [../spec.md](../spec.md) | **Data model**: [../data-model.md](../data-model.md)
 
-This file covers the props and rendering contracts for what the feature adds or changes on `/branches`. Paths are relative to `frontend/app/src/`. Strings are verbatim from the spec.
+This file covers the props and rendering contracts for what the feature adds or changes on `/branches`, after the rework to one row per branch (2026-10-01, `../rework-contract.md`). Paths are relative to `frontend/app/src/`. Strings are verbatim from the spec.
 
 ## Common rules
 
 - **Cell shape**: every new cell renders `TableCell` (`shared/components/table/table-cell.tsx`) with `className="h-auto min-h-14"`, the same row height as the existing cells.
-- **Cell input**: each new cell takes `{ row: BranchTableRow }` and switches on `row.state`, with an early return per state: `pending`, then non-`ok`, then `ok`.
-- **Loading**: `@infrahub/ui` `Spinner`, the `cells/branch-proposed-changes-cell.tsx::BranchProposedChangesCell` pattern, in the Repository cell only. Git state and Commit stay blank while pending (FR-011), so a pending branch shows one `role=status`, not three.
+- **Cell input**: each new cell takes `{ branch: BranchListItem }` and calls `useGetBranchRepositories({ branchName: branch.name, syncWithGit: Boolean(branch.sync_with_git) })` from `entities/repository/ui/queries/get-branch-repositories.query.ts` (#10779). Both cells of a row share one query by key. Early returns: pending, then denied, then error, then empty, then loaded.
+- **Ordering**: `ranked = rankRepositories(repositories)`; `ranked[0]` is "the first repository" and its state is the worst (FR-005).
+- **Loading**: `@infrahub/ui` `Spinner`, the `cells/branch-proposed-changes-cell.tsx::BranchProposedChangesCell` pattern, in the Repositories cell only. Git state stays blank while pending (FR-011), so a pending branch shows one `role="status"`.
 - **Blank**: an empty `TableCell`. No `-`, no `—`, no placeholder text (FR-007).
 - **Muted text**: `<span className="text-foreground-muted">…</span>`. Not `text-subtle-muted`: that tier is under 4.5:1 contrast and reserved for decorative text (FR-007, FR-012, FR-013).
-- **Repeated rows and tab order**: on a non-anchor row, the checkbox, the branch name link, the proposed-changes pill and the actions menu trigger are excluded from the tab order. The commit copy button stays tabbable on every row (FR-008).
 - **Headers**: `TableColumnHeaderSimple` over the new `BRANCH_FIELD_SCHEMAS` entries, with no filter or sort control (FR-015).
-- **Column position**: the three columns sit after `proposed_changes`. The display column ids are `repository`, `git_state` and `commit`.
-- **Link rule**: repository links carry the **row's** branch via `getBranchQspOverride(row.branch.name, Boolean(row.branch.is_default))`. The default branch gets no `branch` parameter.
+- **Column position**: the two columns sit after `proposed_changes`. The display column ids are `repositories` and `git_state`.
+- **Link rule**: the repository pill carries the **row's** branch via `getBranchQspOverride(branch.name, Boolean(branch.is_default))`. The default branch gets no `branch` parameter.
 
-## `BranchRepositoryCell` — `entities/branches/ui/branches-table/cells/branch-repository-cell.tsx` (new)
+## `BranchRepositoriesCell` — `entities/branches/ui/branches-table/cells/branch-repositories-cell.tsx` (new)
 
 ```ts
-interface BranchRepositoryCellProps { row: BranchTableRow }
+interface BranchRepositoriesCellProps { branch: BranchListItem }
 ```
 
-| `row.state` | Renders |
+| Query state | Renders |
 |---|---|
-| `pending` | `Spinner` |
-| `ok` | `<RepositoryNameLink repository={row.repository} branchName={row.branch.name} isDefaultBranch={Boolean(row.branch.is_default)} />` |
-| `empty`, `row.branch.sync_with_git` falsy | muted "Not synced with Git" |
-| `empty`, `row.branch.sync_with_git === true` | muted "No repositories" |
-| `denied` | muted "No permission" |
-| `error` | muted "Could not load repositories", carrying `row.errorMessage` (the query error's message) as a tooltip (`Tooltip` from `@infrahub/ui`) for pointer users, plus a `sr-only` span holding `row.errorMessage` next to the visible text so keyboard and screen-reader users reach it. The no-op `processErrorMessage` therefore loses nothing (FR-013) |
+| pending | `Spinner` |
+| `{ status: "denied" }` | muted "No permission" |
+| error | muted "Could not load repositories", wrapped in `@infrahub/ui` `Tooltip` with `error.message`, plus `<span className="sr-only">{error.message}</span>` next to the visible text (FR-013) |
+| ok, 0 repositories, `branch.sync_with_git` falsy | muted "Not synced with Git" |
+| ok, 0 repositories, `branch.sync_with_git === true` | muted "No repositories" |
+| ok, N ≥ 1 | the Proposed changes layout, `Row className="flex-wrap"`: the pill below, then, when N > 1, the "+N more" link below |
+
+**Pill**: `LinkPill` to `getObjectDetailsUrl(ranked[0].kind, ranked[0].id, [getBranchQspOverride(branch.name, Boolean(branch.is_default))])`, `className="max-w-40"`, content `FolderGitIcon` (`shrink-0`) + `<span className="truncate">{name}</span>`. It is wrapped in `Tooltip` whose message is one line: `<Git state label> · <7-char commit>`; the commit part is omitted when `commit` is `null`, and ` · read-only` is appended when `isReadOnly` (FR-004).
+
+**"+N more"**: react-router `Link` to `getBranchDetailsUrl(branch.name)`, text `+{N - 1} more`, `className="shrink-0 whitespace-nowrap text-foreground-muted text-sm hover:underline"` (the Proposed changes cell's "+N more").
 
 ## `BranchGitStateCell` — `cells/branch-git-state-cell.tsx` (new)
 
 ```ts
-interface BranchGitStateCellProps { row: BranchTableRow }
+interface BranchGitStateCellProps { branch: BranchListItem }
 ```
 
-| `row.state` | Renders |
+| Query state | Renders |
 |---|---|
-| `ok` | `<GitStatePill syncStatus={row.repository.syncStatus} />` (`entities/repository/ui/branch-repositories/git-state-pill.tsx`) |
-| `pending`, `empty`, `denied`, `error` | blank |
+| pending, denied, error, or 0 repositories | blank (no spinner, no dash) |
+| ok, N = 1 | `<GitStatePill syncStatus={ranked[0].syncStatus} />` (`entities/repository/ui/branch-repositories/git-state-pill.tsx`) |
+| ok, N > 1 | the same pill followed by `<span className="text-foreground-muted text-xs">{n}/{N}</span>`, where `n` = repositories whose `syncStatus.value` equals `ranked[0].syncStatus.value`; the pair is wrapped in a `Tooltip` listing counts per label, for example `Import Error: 1 · In Sync: 15` (FR-006) |
 
 `GitStatePill` behaviour, reused unchanged:
 
@@ -50,67 +55,20 @@ interface BranchGitStateCellProps { row: BranchTableRow }
 
 The chip is `rounded-md`, which separates it from the Status column's `rounded-full` pill. The unreachable warning icon is **not** rendered here (FR-016).
 
-## `BranchCommitCell` — `cells/branch-commit-cell.tsx` (new)
-
-```ts
-interface BranchCommitCellProps { row: BranchTableRow }
-```
-
-| `row.state` | Renders |
-|---|---|
-| `ok`, `repository.commit` non-null | `<CommitHash hash={row.repository.commit} copyable />` |
-| `ok` with `commit === null`, or `pending`, `empty`, `denied`, `error` | blank, with no copy control |
-
-`CommitHash` (`shared/components/display/commit-hash.tsx`, lifted from #10658) has the props `{ hash: string; copyable?: boolean }`. It renders:
-
-- a `font-mono text-xs` span with `title={hash}` showing `hash.slice(0, 7)`;
-- with `copyable`, a `CopyToClipboardButton` with `data={hash}` and `aria-label="Copy commit <hash>"`. Its tooltip reads "Copy" and then "Copied!" (FR-005, US1-AS3).
-
-A fork-point commit on a new branch renders as returned.
-
-## `RepositoryNameLink` — `entities/repository/ui/branch-repositories/repository-name-link.tsx` (new, extracted)
-
-```ts
-interface RepositoryNameLinkProps {
-  repository: BranchRepository;
-  branchName: string;
-  isDefaultBranch: boolean;
-}
-```
-
-It renders the markup `RepositoryRow`'s first `<td>` renders today, moved verbatim:
-
-- a `div.flex.min-w-0.items-center.gap-1.5` wrapper;
-- a `FolderGitIcon` (`size-3.5 text-foreground-muted`, `aria-hidden`);
-- a `Link` to `getObjectDetailsUrl(kind, id, [getBranchQspOverride(branchName, isDefaultBranch)])` with `title={name}`, `className="truncate"` and the text `name`;
-- when `isReadOnly`, a "Read-only" chip (`rounded bg-content-strong px-1 text-foreground-muted text-xs`).
-
-The truncated name is revealed through the native `title`, not `Tooltip`. Accepted for this feature (it is the card's existing markup); aligning it with the `Tooltip` the branch name uses is a follow-up.
-
-`RepositoryRow` renders `<td className="px-3"><RepositoryNameLink … /></td>` and keeps its Git state `<td>` (with the unreachable icon) and its commit `<td>` (with the `—` fallback) unchanged.
-
-## `useBranchTableRows` — `entities/branches/ui/hooks/use-branch-table-rows.ts` (new)
-
-```ts
-export function useBranchTableRows(branches: BranchListItem[]): BranchTableRow[];
-```
-
-- It calls `useQueries({ queries: branches.map((b) => getBranchRepositoriesQueryOptions({ branchName: b.name, syncWithGit: Boolean(b.sync_with_git) })), combine })`, one entry per branch. The `combine` flat-maps the branches and returns each branch's cached rows, so rows are rebuilt only for branches whose branch object or fetch changed, and one resolution re-renders one branch's rows (SC-007, research R13). No `useMemo`. The query key, the `queryFn` and the 10 s "while syncing" `refetchInterval` are #10779's own, so the cache is shared with the branch details card.
-- It maps result i to `BranchRepositoriesFetch` (`data` present → `data`; else `isError` → error with the error's message; else pending) under `branches[i].id`. A stale success therefore stays rendered when a background refetch fails (data-model invariant 9). An error fetch is cached per `Error` object, so a settled error keeps its reference.
-- It calls `toBranchTableRows({ branches, fetchByBranchId, orderRepositories: rankRepositories })` **once over all loaded branches** inside `combine`, returns the rows grouped as `Record<branchId, BranchTableRow[]>`, and flattens them in branch order outside `combine`. Row identity comes from TanStack's structural sharing on that record (paired by branch id); there is no cache.
-- It shows no toast and throws no error, and it never reads the branch selector's current branch.
-- Caller: `branches-table.tsx::BranchesTable`, as `data={useBranchTableRows(flatData)}`. `flatData` is today's ordering: default first, then `sortByName`. `BRANCHES_PER_PAGE` is unchanged.
-
-## Selection contract — `branches-data-table.tsx::BranchesDataTable` and `get-branch-table-columns.tsx`
+## Table — `branches-data-table.tsx::BranchesDataTable` and `get-branch-table-columns.tsx`
 
 | Aspect | Contract |
 |---|---|
-| Row type | `columns: ColumnDef<BranchTableRow>[]`, `data: BranchTableRow[]`, `getRowId: (row) => row.id` |
-| Selectable row | `enableRowSelection: (row) => isBranchAnchorRow(row.original)`. Only the anchor, the first row of each branch, is selectable |
-| Row checkbox | Rendered on **every** row of a branch. `isSelected = table.getRow(row.original.branch.id).getIsSelected()`. `onClickCheckbox = getToggleSelectedRowHandler({ row: anchor, table })`. On the anchor row its accessible name is `Select <branch name>` and it is in the tab order; on every other row it is named `Select <branch name> (<repository name>)` and is excluded from the tab order (FR-008) |
-| Ticking any row | Toggles the anchor, so every row of that branch shows as selected (FR-008) |
-| Shift-click | The range is anchored on anchor rows. `get-toggle-selected-row-handler.ts::getToggleSelectedRowHandler` stores the last-selected row **id** and resolves both indexes at shift time via `table.getRow(id).index`, so a range stays correct after a branch above expands from pending to N; if the stored id no longer exists it falls back to a plain toggle. Non-anchor rows in the range are no-ops, so the count is in branches (FR-009) |
-| Header checkbox | `getIsAllRowsSelected` / `getIsSomePageRowsSelected` / `toggleAllRowsSelected` over selectable rows, which means branches |
-| `selectedRows` | `table.getSelectedRowModel().flatRows.map((r) => r.original.branch)`: `BranchListItem[]`, one per selected branch, in table order. It is passed unchanged to `BranchesToolbar({ selectedBranches })`, so "N selected" and the delete modal list each branch once (SC-003) |
-| Logout | The existing effect `toggleAllRowsSelected(false)` is unchanged |
-| Other columns | Accessors read `r.branch.*` with explicit ids (`status`, `branched_from`, `updated_at`, `created_at`, `created_by`). `proposed_changes` and `actions` read `row.original.branch`. All repeat on every row |
+| Row type | `BranchListItem`, `getRowId: (row) => row.id`, as on the base branch |
+| Selection | The base branch's per-row selection and its `getToggleSelectedRowHandler({ row, table })` call, unchanged (FR-008, FR-009) |
+| Row checkbox | `aria-label={`Select ${branch.name}`}` |
+| Grid template | `[fit-content(WIDE), fit-content(MAX), minmax(150px, 200px), REPOSITORIES_TRACK, GIT_STATE_TRACK, repeat(columnCount - 6, fit-content(MAX)), 2.5rem]`, `REPOSITORIES_TRACK = "minmax(12rem, 18rem)"`, `GIT_STATE_TRACK = "9rem"`; fixed so cells filling in do not shift columns (SC-004) |
+| Memoization | none; `React.useMemo` stays removed (React Compiler) |
+
+## `RepositoryNameLink`
+
+See code: the table no longer uses it; the extraction from `repository-row.tsx` is kept or reverted by the rework's implementer.
+
+## Superseded 2026-10-01
+
+`BranchRepositoryCell`, `BranchCommitCell` (and its `CommitHash`), `useBranchTableRows`, the anchor-row selection contract (`enableRowSelection` predicate, `isBranchAnchorRow`, mirror rows, tab-order exclusion, id-keyed shift-range handler) and the three-track grid template described the one-row-per-repository fan-out. They were removed with it (research R14).

@@ -15,17 +15,9 @@ interface BranchNameCellProps {
   branch: BranchListItem;
   isSelected?: boolean;
   onClickCheckbox?: (e: PressEvent) => void;
-  repositoryName?: string;
-  excludeFromTabOrder?: boolean;
 }
 
-export function BranchNameCell({
-  branch,
-  isSelected,
-  onClickCheckbox,
-  repositoryName,
-  excludeFromTabOrder,
-}: BranchNameCellProps) {
+export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNameCellProps) {
   const { isAuthenticated } = useAuth();
 
   return (
@@ -37,10 +29,7 @@ export function BranchNameCell({
         <Checkbox
           isSelected={isSelected}
           onPress={onClickCheckbox}
-          aria-label={
-            repositoryName ? `Select ${branch.name} (${repositoryName})` : `Select ${branch.name}`
-          }
-          excludeFromTabOrder={excludeFromTabOrder}
+          aria-label={`Select ${branch.name}`}
           data-testid="branch-checkbox-cell"
           className="mt-2"
         />
@@ -53,7 +42,6 @@ export function BranchNameCell({
               variant="ghost"
               size="sm"
               href={getBranchDetailsUrl(branch.name)}
-              excludeFromTabOrder={excludeFromTabOrder}
               className="min-w-0 shrink rounded-full px-2.5 text-accent data-hovered:bg-accent/10 data-hovered:underline"
             >
               {/* The ellipsis has to sit on a child: `text-overflow` does nothing on
