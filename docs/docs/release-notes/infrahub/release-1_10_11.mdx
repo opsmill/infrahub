@@ -1,0 +1,30 @@
+---
+title: Release 1.10.11
+release_date: 2026-10-01
+release_type: security
+description: "Stops Infrahub from serving an artifact file that no longer matches its checksum, and lets Re-generate restore a correct copy. Also makes the artifact and file viewers show why content could not be loaded."
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.10.11</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>October 1st, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.10.11](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.10.11)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Security
+
+- Prevented Infrahub from serving an artifact file that no longer matches its checksum, for example after it was modified in the object storage; reading it now returns an error asking to regenerate the artifact, and Re-generate on the artifact page stores a correct copy.
+
+### Fixed
+
+- Fixed the artifact and file viewers showing "Sorry, no data found." when the content could not be loaded; they now show the reason returned by the server.
