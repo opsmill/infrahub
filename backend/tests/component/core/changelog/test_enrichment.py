@@ -12,6 +12,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.changelog.builder import build_relationship_changelog_getter
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
 from infrahub.core.changelog.enrichment import NodeLabelLoader, NodeLabels, node_label_loader
 from infrahub.core.changelog.hfid_resolver import ChangelogHfidResolver
@@ -19,7 +20,10 @@ from infrahub.core.changelog.models import (
     RelationshipCardinalityManyChangelog,
     RelationshipCardinalityOneChangelog,
 )
+from infrahub.core.changelog.peer_labels import PeerLabelResolver
+from infrahub.core.changelog.reciprocal import ReciprocalRelationshipBuilder
 from infrahub.core.changelog.relationship_getter import RelationshipChangelogGetter
+from infrahub.core.changelog.secondary_merger import SecondaryChangelogMerger
 from infrahub.core.constants import RelationshipDeleteBehavior, SchemaPathType
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -158,11 +162,9 @@ async def test_mutation_enriches_the_mutated_nodes_own_relationships(
     assert dog.node_changelog.hfid == await dog.get_hfid(db=db)
     assert dog.node_changelog.hfid
 
-    await RelationshipChangelogGetter(
-        db=db,
-        branch=default_branch,
-        label_loader=node_label_loader(db=db, branch=default_branch, node_loader=NodeManager.get_many),
-    ).get_changelogs(primary_changelog=dog.node_changelog)
+    await build_relationship_changelog_getter(db=db, branch=default_branch).get_changelogs(
+        primary_changelog=dog.node_changelog
+    )
 
     owner_rel = dog.node_changelog.relationships["owner"]
     assert isinstance(owner_rel, RelationshipCardinalityOneChangelog)
@@ -178,11 +180,9 @@ async def test_mutation_enriches_secondary_peer_changelogs(
 ) -> None:
     person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
 
-    secondaries = await RelationshipChangelogGetter(
-        db=db,
-        branch=default_branch,
-        label_loader=node_label_loader(db=db, branch=default_branch, node_loader=NodeManager.get_many),
-    ).get_changelogs(primary_changelog=dog.node_changelog)
+    secondaries = await build_relationship_changelog_getter(db=db, branch=default_branch).get_changelogs(
+        primary_changelog=dog.node_changelog
+    )
     person_secondary = next(secondary for secondary in secondaries if secondary.node_id == person.id)
 
     # The peer node's real label and HFID are resolved, not the placeholder.
@@ -206,7 +206,11 @@ async def test_mutation_changelog_survives_label_reader_failure(
     person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
 
     secondaries = await RelationshipChangelogGetter(
-        db=db, branch=default_branch, label_loader=NodeLabelLoader(reader=_RaisingLabelReader())
+        db=db,
+        branch=default_branch,
+        peer_label_resolver=PeerLabelResolver(label_loader=NodeLabelLoader(reader=_RaisingLabelReader())),
+        reciprocal_builder=ReciprocalRelationshipBuilder(),
+        merger=SecondaryChangelogMerger(),
     ).get_changelogs(primary_changelog=dog.node_changelog)
 
     # The label read failed, so the secondaries carry placeholder labels rather than the failure
@@ -228,11 +232,9 @@ async def test_unresolvable_peer_falls_back_to_placeholder(
     deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[person_john_main])
     assert {node.id for node in deleted} == {person_john_main.id, *car_ids}
 
-    secondaries = await RelationshipChangelogGetter(
-        db=db,
-        branch=default_branch,
-        label_loader=node_label_loader(db=db, branch=default_branch, node_loader=NodeManager.get_many),
-    ).get_changelogs(primary_changelog=person_john_main.node_changelog)
+    secondaries = await build_relationship_changelog_getter(db=db, branch=default_branch).get_changelogs(
+        primary_changelog=person_john_main.node_changelog
+    )
     car_secondaries = [secondary for secondary in secondaries if secondary.node_id in car_ids]
     assert len(car_secondaries) == len(car_ids)
 

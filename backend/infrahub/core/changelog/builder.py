@@ -7,7 +7,10 @@ from infrahub.core.manager import NodeManager
 from .diff import DiffChangelogCollector
 from .enrichment import node_label_loader
 from .hfid_resolver import ChangelogHfidResolver
+from .peer_labels import PeerLabelResolver
+from .reciprocal import ReciprocalRelationshipBuilder
 from .relationship_getter import RelationshipChangelogGetter
+from .secondary_merger import SecondaryChangelogMerger
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -32,7 +35,12 @@ def build_diff_changelog_collector(
 
 
 def build_relationship_changelog_getter(db: InfrahubDatabase, branch: Branch) -> RelationshipChangelogGetter:
-    """Build a relationship changelog getter whose label loader reads from the same database and branch."""
+    """Build a relationship changelog getter whose peer labels are read from the same database and branch."""
+    label_loader = node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
     return RelationshipChangelogGetter(
-        db=db, branch=branch, label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
+        db=db,
+        branch=branch,
+        peer_label_resolver=PeerLabelResolver(label_loader=label_loader),
+        reciprocal_builder=ReciprocalRelationshipBuilder(),
+        merger=SecondaryChangelogMerger(),
     )

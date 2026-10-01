@@ -4,15 +4,12 @@ from typing import TYPE_CHECKING
 
 from opentelemetry import trace
 
-from infrahub.core.changelog.enrichment import PLACEHOLDER_LABELS, NodeLabelLoader, NodeLabels
-from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipKind
-from infrahub.log import get_logger
+from infrahub.core.constants import DiffAction
 
 from .models import (
     NodeChangelog,
     RelationshipCardinalityManyChangelog,
     RelationshipCardinalityOneChangelog,
-    RelationshipPeerChangelog,
 )
 
 if TYPE_CHECKING:
@@ -22,36 +19,9 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
-log = get_logger()
-
-
-def peer_relationships(peer_schema: MainSchemaTypes, rel_schema: RelationshipSchema) -> list[RelationshipSchema]:
-    """Return the peer's side of ``rel_schema``.
-
-    A hierarchy declares ``parent`` and ``children`` under one identifier, so only the mirrored
-    direction tells them apart. When no candidate mirrors the direction the whole set is returned
-    and logged: the answer is a guess, but dropping it would hide a change that did happen.
-    """
-    candidates = peer_schema.get_relationships_by_identifier(id=rel_schema.get_identifier())
-    mirrored = [candidate for candidate in candidates if candidate.mirrors(rel_schema)]
-    if mirrored:
-        return mirrored
-
-    if candidates:
-        log.warning(
-            "No peer relationship mirrors the direction, reporting every candidate",
-            peer_kind=peer_schema.kind,
-            identifier=rel_schema.get_identifier(),
-            direction=rel_schema.direction.value,
-            candidates=[candidate.name for candidate in candidates],
-        )
-
-    return candidates
-
-
-def _labels_for(peer_id: str, labels: dict[str, NodeLabels]) -> NodeLabels:
-    """Return a peer's labels, or a placeholder when it could not be resolved (e.g. deleted)."""
-    return labels.get(peer_id, PLACEHOLDER_LABELS)
+    from .peer_labels import PeerLabelResolver, ResolvedPeerLabels
+    from .reciprocal import ReciprocalRelationshipBuilder
+    from .secondary_merger import SecondaryChangelogMerger
 
 
 class RelationshipChangelogGetter:
@@ -63,10 +33,19 @@ class RelationshipChangelogGetter:
     for every referenced peer in a single batched load.
     """
 
-    def __init__(self, db: InfrahubDatabase, branch: Branch, label_loader: NodeLabelLoader) -> None:
+    def __init__(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        peer_label_resolver: PeerLabelResolver,
+        reciprocal_builder: ReciprocalRelationshipBuilder,
+        merger: SecondaryChangelogMerger,
+    ) -> None:
         self._db = db
         self._branch = branch
-        self._label_loader = label_loader
+        self._peer_label_resolver = peer_label_resolver
+        self._reciprocal_builder = reciprocal_builder
+        self._merger = merger
 
     async def get_changelogs(self, primary_changelog: NodeChangelog) -> list[NodeChangelog]:
         """Enrich the mutated node's relationships in place and return the secondaries they imply.
@@ -79,19 +58,18 @@ class RelationshipChangelogGetter:
             The secondary changelogs, one per affected peer.
 
         """
-        referenced_peer_ids = self._referenced_peer_ids(changelog=primary_changelog)
-        labels = await self._label_loader.load_labels(referenced_peer_ids)
-        self._enrich_relationship_peers(changelog=primary_changelog, labels=labels)
+        peer_labels = await self._peer_label_resolver.resolve(changelog=primary_changelog)
+        peer_labels.enrich(changelog=primary_changelog)
 
         with trace.get_tracer(__name__).start_as_current_span("changelog.build_secondaries") as span:
-            span.set_attribute("changelog.referenced_peer_count", len(referenced_peer_ids))
-            span.set_attribute("changelog.resolved_peer_count", len(labels))
-            secondaries = self._build_secondaries(primary_changelog=primary_changelog, labels=labels)
+            span.set_attribute("changelog.referenced_peer_count", peer_labels.referenced_count)
+            span.set_attribute("changelog.resolved_peer_count", peer_labels.resolved_count)
+            secondaries = self._build_secondaries(primary_changelog=primary_changelog, peer_labels=peer_labels)
             span.set_attribute("changelog.secondary_count", len(secondaries))
         return secondaries
 
     def _build_secondaries(
-        self, primary_changelog: NodeChangelog, labels: dict[str, NodeLabels]
+        self, primary_changelog: NodeChangelog, peer_labels: ResolvedPeerLabels
     ) -> list[NodeChangelog]:
         """Build one secondary changelog per peer whose reciprocal relationship changed."""
         schema_branch = self._db.schema.get_schema_branch(name=self._branch.name)
@@ -106,7 +84,7 @@ class RelationshipChangelogGetter:
                         node_schema=node_schema,
                         primary_changelog=primary_changelog,
                         schema_branch=schema_branch,
-                        labels=labels,
+                        peer_labels=peer_labels,
                     )
                 )
             elif isinstance(relationship, RelationshipCardinalityManyChangelog):
@@ -116,70 +94,10 @@ class RelationshipChangelogGetter:
                         node_schema=node_schema,
                         primary_changelog=primary_changelog,
                         schema_branch=schema_branch,
-                        labels=labels,
+                        peer_labels=peer_labels,
                     )
                 )
-        return self._merge_secondaries_by_node(secondaries)
-
-    @staticmethod
-    def _merge_secondaries_by_node(secondaries: list[NodeChangelog]) -> list[NodeChangelog]:
-        """Collapse the secondaries so each affected peer yields a single changelog.
-
-        A mutation can change several relationships to the same peer, and each produces its own
-        secondary for that peer; emitting them separately would deliver duplicate events. Fold the
-        later ones into the first changelog seen for the peer, keeping every distinct reciprocal
-        relationship it carries.
-        """
-        merged: dict[str, NodeChangelog] = {}
-        for secondary in secondaries:
-            existing = merged.get(secondary.node_id)
-            if existing is None:
-                merged[secondary.node_id] = secondary
-                continue
-            if existing.parent is None and secondary.parent is not None:
-                existing.add_parent(parent=secondary.parent)
-            for name, relationship in secondary.relationships.items():
-                current = existing.relationships.get(name)
-                if current is None:
-                    existing.relationships[name] = relationship
-                elif isinstance(current, RelationshipCardinalityManyChangelog) and isinstance(
-                    relationship, RelationshipCardinalityManyChangelog
-                ):
-                    # Two source relationships resolved to the same many peer-side name; keep every
-                    # distinct peer change rather than dropping the later relationship's entries.
-                    seen = {(peer.peer_id, peer.peer_status) for peer in current.peers}
-                    for peer in relationship.peers:
-                        key = (peer.peer_id, peer.peer_status)
-                        if key in seen:
-                            continue
-                        seen.add(key)
-                        current.peers.append(peer)
-        return list(merged.values())
-
-    @staticmethod
-    def _referenced_peer_ids(changelog: NodeChangelog) -> list[str]:
-        """Collect the IDs of every peer referenced by this changelog's relationships."""
-        ids: list[str] = []
-        for relationship in changelog.relationships.values():
-            if isinstance(relationship, RelationshipCardinalityOneChangelog):
-                ids += [peer_id for peer_id in (relationship.peer_id, relationship.peer_id_previous) if peer_id]
-            elif isinstance(relationship, RelationshipCardinalityManyChangelog):
-                ids += [peer.peer_id for peer in relationship.peers if peer.peer_id]
-        return ids
-
-    @staticmethod
-    def _enrich_relationship_peers(changelog: NodeChangelog, labels: dict[str, NodeLabels]) -> None:
-        """Fill each relationship peer of the mutated node with its display label and HFID.
-
-        A peer that could not be resolved keeps both unset, as the diff path leaves them.
-        """
-        for relationship in changelog.relationships.values():
-            for peer in relationship.peer_entries():
-                peer_labels = labels.get(peer.peer_id) if peer.peer_id else None
-                if peer_labels is None:
-                    continue
-                peer.peer_display_label = peer_labels.display_label
-                peer.peer_hfid = peer_labels.hfid
+        return self._merger.merge(secondaries)
 
     def _parse_cardinality_one_relationship(
         self,
@@ -187,12 +105,12 @@ class RelationshipChangelogGetter:
         node_schema: MainSchemaTypes,
         primary_changelog: NodeChangelog,
         schema_branch: SchemaBranch,
-        labels: dict[str, NodeLabels],
+        peer_labels: ResolvedPeerLabels,
     ) -> list[NodeChangelog]:
         secondaries: list[NodeChangelog] = []
         rel_schema = node_schema.get_relationship(name=relationship.name)
 
-        if relationship.peer_status == DiffAction.ADDED:
+        if relationship.peer_status in (DiffAction.ADDED, DiffAction.UPDATED):
             peer_schema = schema_branch.get(name=str(relationship.peer_kind), duplicate=False)
             secondaries.extend(
                 self._process_reciprocal_peers(
@@ -201,45 +119,20 @@ class RelationshipChangelogGetter:
                     peer_schema=peer_schema,
                     rel_schema=rel_schema,
                     primary_changelog=primary_changelog,
-                    labels=labels,
+                    peer_labels=peer_labels,
                     peer_status=DiffAction.ADDED,
                 )
             )
-        elif relationship.peer_status == DiffAction.UPDATED:
-            peer_schema = schema_branch.get(name=str(relationship.peer_kind), duplicate=False)
-            secondaries.extend(
-                self._process_reciprocal_peers(
-                    peer_id=str(relationship.peer_id),
-                    peer_kind=str(relationship.peer_kind),
-                    peer_schema=peer_schema,
-                    rel_schema=rel_schema,
-                    primary_changelog=primary_changelog,
-                    labels=labels,
-                    peer_status=DiffAction.ADDED,
-                )
-            )
+        if relationship.peer_status in (DiffAction.UPDATED, DiffAction.REMOVED):
             previous_peer_schema = schema_branch.get(name=str(relationship.peer_kind_previous), duplicate=False)
             secondaries.extend(
                 self._process_reciprocal_peers(
+                    peer_id=str(relationship.peer_id_previous),
+                    peer_kind=str(relationship.peer_kind_previous),
                     peer_schema=previous_peer_schema,
-                    peer_id=str(relationship.peer_id_previous),
-                    peer_kind=str(relationship.peer_kind_previous),
                     rel_schema=rel_schema,
                     primary_changelog=primary_changelog,
-                    labels=labels,
-                    peer_status=DiffAction.REMOVED,
-                )
-            )
-        elif relationship.peer_status == DiffAction.REMOVED:
-            peer_schema = schema_branch.get(name=str(relationship.peer_kind_previous), duplicate=False)
-            secondaries.extend(
-                self._process_reciprocal_peers(
-                    peer_id=str(relationship.peer_id_previous),
-                    peer_kind=str(relationship.peer_kind_previous),
-                    peer_schema=peer_schema,
-                    rel_schema=rel_schema,
-                    primary_changelog=primary_changelog,
-                    labels=labels,
+                    peer_labels=peer_labels,
                     peer_status=DiffAction.REMOVED,
                 )
             )
@@ -251,38 +144,26 @@ class RelationshipChangelogGetter:
         node_schema: MainSchemaTypes,
         primary_changelog: NodeChangelog,
         schema_branch: SchemaBranch,
-        labels: dict[str, NodeLabels],
+        peer_labels: ResolvedPeerLabels,
     ) -> list[NodeChangelog]:
         secondaries: list[NodeChangelog] = []
         rel_schema = node_schema.get_relationship(name=relationship.name)
 
         for peer in relationship.peers:
-            if peer.peer_status == DiffAction.ADDED:
-                peer_schema = schema_branch.get(name=peer.peer_kind, duplicate=False)
-                secondaries.extend(
-                    self._process_reciprocal_peers(
-                        peer_id=peer.peer_id,
-                        peer_kind=peer.peer_kind,
-                        peer_schema=peer_schema,
-                        rel_schema=rel_schema,
-                        primary_changelog=primary_changelog,
-                        labels=labels,
-                        peer_status=DiffAction.ADDED,
-                    )
+            if peer.peer_status not in (DiffAction.ADDED, DiffAction.REMOVED):
+                continue
+            peer_schema = schema_branch.get(name=peer.peer_kind, duplicate=False)
+            secondaries.extend(
+                self._process_reciprocal_peers(
+                    peer_id=peer.peer_id,
+                    peer_kind=peer.peer_kind,
+                    peer_schema=peer_schema,
+                    rel_schema=rel_schema,
+                    primary_changelog=primary_changelog,
+                    peer_labels=peer_labels,
+                    peer_status=peer.peer_status,
                 )
-            elif peer.peer_status == DiffAction.REMOVED:
-                peer_schema = schema_branch.get(name=peer.peer_kind, duplicate=False)
-                secondaries.extend(
-                    self._process_reciprocal_peers(
-                        peer_id=peer.peer_id,
-                        peer_kind=peer.peer_kind,
-                        peer_schema=peer_schema,
-                        rel_schema=rel_schema,
-                        primary_changelog=primary_changelog,
-                        labels=labels,
-                        peer_status=DiffAction.REMOVED,
-                    )
-                )
+            )
         return secondaries
 
     def _process_reciprocal_peers(
@@ -292,66 +173,24 @@ class RelationshipChangelogGetter:
         peer_schema: MainSchemaTypes,
         rel_schema: RelationshipSchema,
         primary_changelog: NodeChangelog,
-        labels: dict[str, NodeLabels],
+        peer_labels: ResolvedPeerLabels,
         peer_status: DiffAction,
     ) -> list[NodeChangelog]:
         """Build the secondary changelog a peer gets when its relationship to the primary changes."""
-        peer_labels = _labels_for(peer_id=peer_id, labels=labels)
+        labels = peer_labels.labels_of(peer_id=peer_id)
         node_changelog = NodeChangelog(
             node_id=peer_id,
             node_kind=peer_kind,
-            display_label=peer_labels.display_label,
-            hfid=peer_labels.hfid,
+            display_label=labels.display_label,
+            hfid=labels.hfid,
         )
-        for peer_relation in peer_relationships(peer_schema=peer_schema, rel_schema=rel_schema):
-            if peer_relation.cardinality == RelationshipCardinality.ONE:
-                node_changelog.add_relationship(
-                    relationship_changelog=self._reciprocal_one_relationship(
-                        name=peer_relation.name,
-                        primary_changelog=primary_changelog,
-                        peer_status=peer_status,
-                        rel_kind=peer_relation.kind,
-                    )
-                )
-            elif peer_relation.cardinality == RelationshipCardinality.MANY:
-                node_changelog.relationships[peer_relation.name] = RelationshipCardinalityManyChangelog(
-                    name=peer_relation.name,
-                    peers=[
-                        RelationshipPeerChangelog(
-                            peer_id=primary_changelog.node_id,
-                            peer_kind=primary_changelog.node_kind,
-                            peer_display_label=primary_changelog.display_label,
-                            peer_hfid=primary_changelog.hfid,
-                            peer_status=peer_status,
-                        )
-                    ],
-                )
+        for reciprocal in self._reciprocal_builder.build(
+            peer_schema=peer_schema,
+            rel_schema=rel_schema,
+            primary_changelog=primary_changelog,
+            peer_status=peer_status,
+        ).values():
+            # Adding the relationship lifts the parent it names onto the changelog of the peer.
+            node_changelog.add_relationship(relationship_changelog=reciprocal)
 
         return [node_changelog] if node_changelog.relationships else []
-
-    @staticmethod
-    def _reciprocal_one_relationship(
-        name: str, primary_changelog: NodeChangelog, peer_status: DiffAction, rel_kind: RelationshipKind
-    ) -> RelationshipCardinalityOneChangelog:
-        """Build the one-cardinality reciprocal, placing the primary as the current or removed peer.
-
-        The peer holds the mutated node through this relationship, so when the relationship is a
-        parent one the mutated node is the peer's parent and is recorded as such.
-        """
-        if peer_status == DiffAction.REMOVED:
-            # The primary is the removed (previous) peer, so no current-peer label.
-            changelog = RelationshipCardinalityOneChangelog(
-                name=name,
-                peer_id_previous=primary_changelog.node_id,
-                peer_kind_previous=primary_changelog.node_kind,
-            )
-        else:
-            changelog = RelationshipCardinalityOneChangelog(
-                name=name,
-                peer_id=primary_changelog.node_id,
-                peer_kind=primary_changelog.node_kind,
-                peer_display_label=primary_changelog.display_label,
-                peer_hfid=primary_changelog.hfid,
-            )
-        changelog.set_parent_from_relationship(rel_kind=rel_kind)
-        return changelog

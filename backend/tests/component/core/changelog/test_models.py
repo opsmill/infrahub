@@ -2,7 +2,7 @@ from typing import Any
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.changelog.enrichment import node_label_loader
+from infrahub.core.changelog.builder import build_relationship_changelog_getter
 from infrahub.core.changelog.models import (
     AttributeChangelog,
     ChangelogRelatedNode,
@@ -12,7 +12,6 @@ from infrahub.core.changelog.models import (
     RelationshipCardinalityOneChangelog,
     RelationshipPeerChangelog,
 )
-from infrahub.core.changelog.relationship_getter import RelationshipChangelogGetter
 from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -176,11 +175,7 @@ async def test_node_changelog_creation(
     )
     assert not dog1.node_changelog.parent
 
-    relationship_changelogs = RelationshipChangelogGetter(
-        db=db,
-        branch=default_branch,
-        label_loader=node_label_loader(db=db, branch=default_branch, node_loader=NodeManager.get_many),
-    )
+    relationship_changelogs = build_relationship_changelog_getter(db=db, branch=default_branch)
     secondary_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=dog1.node_changelog)
     assert len(secondary_changelogs) == 1
 
@@ -321,11 +316,7 @@ async def test_node_changelog_update_with_cardinality_one_relationship(
     )
     assert not dog1_update.node_changelog.parent
 
-    relationship_changelogs = RelationshipChangelogGetter(
-        db=db,
-        branch=default_branch,
-        label_loader=node_label_loader(db=db, branch=default_branch, node_loader=NodeManager.get_many),
-    )
+    relationship_changelogs = build_relationship_changelog_getter(db=db, branch=default_branch)
     secondary_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=dog1_update.node_changelog)
     assert len(secondary_changelogs) == 2
 
@@ -433,11 +424,7 @@ async def test_node_changelog_delete_with_cardinality_many_relationship(
     assert RelationshipPeerChangelog(peer_id=dog1.id, peer_kind="TestDog", peer_status=DiffAction.REMOVED) in animals
     assert RelationshipPeerChangelog(peer_id=dog2.id, peer_kind="TestDog", peer_status=DiffAction.REMOVED) in animals
 
-    relationship_changelogs = RelationshipChangelogGetter(
-        db=db,
-        branch=default_branch,
-        label_loader=node_label_loader(db=db, branch=default_branch, node_loader=NodeManager.get_many),
-    )
+    relationship_changelogs = build_relationship_changelog_getter(db=db, branch=default_branch)
     secondary_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=person1_update.node_changelog)
 
     assert len(secondary_changelogs) == 2
@@ -520,11 +507,7 @@ async def test_secondary_changelog_names_the_hierarchy_children_relationship(
     await rack.new(db=db, name="rack-1", parent=site)
     await rack.save(db=db)
 
-    getter = RelationshipChangelogGetter(
-        db=db,
-        branch=default_branch,
-        label_loader=node_label_loader(db=db, branch=default_branch, node_loader=NodeManager.get_many),
-    )
+    getter = build_relationship_changelog_getter(db=db, branch=default_branch)
     attached = await getter.get_changelogs(primary_changelog=rack.node_changelog)
 
     assert [changelog.node_id for changelog in attached] == [site.id]
@@ -598,11 +581,7 @@ async def test_deleted_middle_node_reports_both_hierarchy_sides(
         ),
     }
 
-    getter = RelationshipChangelogGetter(
-        db=db,
-        branch=default_branch,
-        label_loader=node_label_loader(db=db, branch=default_branch, node_loader=NodeManager.get_many),
-    )
+    getter = build_relationship_changelog_getter(db=db, branch=default_branch)
     secondaries = await getter.get_changelogs(primary_changelog=to_delete.node_changelog)
 
     by_node = {changelog.node_id: changelog for changelog in secondaries}
@@ -658,11 +637,7 @@ async def test_secondary_changelog_hierarchy_move_reports_both_parents(
     await moved.parent.update(data=site_2, db=db)
     await moved.save(db=db)
 
-    getter = RelationshipChangelogGetter(
-        db=db,
-        branch=default_branch,
-        label_loader=node_label_loader(db=db, branch=default_branch, node_loader=NodeManager.get_many),
-    )
+    getter = build_relationship_changelog_getter(db=db, branch=default_branch)
     secondaries = await getter.get_changelogs(primary_changelog=moved.node_changelog)
 
     by_node = {changelog.node_id: changelog for changelog in secondaries}
@@ -780,11 +755,7 @@ async def test_secondary_changelog_names_the_previous_peer_own_relationship(
     await moved.location.update(data=rack, db=db)
     await moved.save(db=db)
 
-    getter = RelationshipChangelogGetter(
-        db=db,
-        branch=default_branch,
-        label_loader=node_label_loader(db=db, branch=default_branch, node_loader=NodeManager.get_many),
-    )
+    getter = build_relationship_changelog_getter(db=db, branch=default_branch)
     by_node = {
         changelog.node_id: changelog
         for changelog in await getter.get_changelogs(primary_changelog=moved.node_changelog)
@@ -885,11 +856,7 @@ async def test_secondary_changelog_records_the_parent_its_reciprocal_relationshi
     await updated_site.racks.update(data=[rack], db=db)
     await updated_site.save(db=db)
 
-    getter = RelationshipChangelogGetter(
-        db=db,
-        branch=default_branch,
-        label_loader=node_label_loader(db=db, branch=default_branch, node_loader=NodeManager.get_many),
-    )
+    getter = build_relationship_changelog_getter(db=db, branch=default_branch)
     secondaries = await getter.get_changelogs(primary_changelog=updated_site.node_changelog)
 
     assert [changelog.node_id for changelog in secondaries] == [rack.id]
