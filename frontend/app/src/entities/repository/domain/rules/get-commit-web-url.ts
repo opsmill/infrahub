@@ -3,15 +3,26 @@ const SCP_PREFIX = `git@${GITHUB_HOST}:`;
 const PATH_SEGMENT = /^[A-Za-z0-9._-]+$/;
 const COMMIT_HASH = /^[0-9a-f]{7,64}$/i;
 
-function parseRemote(location: string): URL | null {
-  const httpsLike = location.startsWith(SCP_PREFIX)
-    ? `https://${GITHUB_HOST}/${location.slice(SCP_PREFIX.length)}`
-    : location.replace(/^ssh:\/\//, "https://");
+const SSH_SCHEME = "ssh://";
+const SSH_DEFAULT_PORT = "22";
+
+function toUrl(location: string): URL | null {
   try {
-    return new URL(httpsLike);
+    return new URL(location);
   } catch {
     return null;
   }
+}
+
+function parseRemote(location: string): URL | null {
+  if (location.startsWith(SCP_PREFIX)) {
+    return toUrl(`https://${GITHUB_HOST}/${location.slice(SCP_PREFIX.length)}`);
+  }
+  if (!location.startsWith(SSH_SCHEME)) return toUrl(location);
+
+  const url = toUrl(`https://${location.slice(SSH_SCHEME.length)}`);
+  if (url?.port === SSH_DEFAULT_PORT) url.port = "";
+  return url;
 }
 
 function getGitHubRepositoryPath(location: string): string | null {

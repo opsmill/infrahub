@@ -18,6 +18,8 @@ describe("getCommitWebUrl", () => {
     "git@github.com:opsmill/infrahub-demo.git",
     "ssh://git@github.com/opsmill/infrahub-demo",
     "ssh://git@github.com/opsmill/infrahub-demo.git",
+    "ssh://git@github.com:22/opsmill/infrahub-demo",
+    "ssh://git@github.com:22/opsmill/infrahub-demo.git",
   ])("builds the commit page URL for %s", (location) => {
     expect(getCommitWebUrl(location, HASH)).toBe(COMMIT_URL);
   });
@@ -41,6 +43,8 @@ describe("getCommitWebUrl", () => {
     ["a scp-like remote on another host", "git@gitlab.com:opsmill/infrahub-demo.git"],
     ["an ssh remote on another host", "ssh://git@gitlab.com/opsmill/infrahub-demo.git"],
     ["a non-default port", "https://github.com:8443/opsmill/infrahub-demo"],
+    ["an ssh remote on a non-default port", "ssh://git@github.com:2222/opsmill/infrahub-demo.git"],
+    ["an https remote on the ssh port", "https://github.com:22/opsmill/infrahub-demo"],
     ["an unsupported scheme", "ftp://github.com/opsmill/infrahub-demo"],
     ["an owner without a repository", "https://github.com/opsmill"],
     ["the host alone", "https://github.com"],
