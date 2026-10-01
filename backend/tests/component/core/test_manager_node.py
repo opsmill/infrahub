@@ -11,7 +11,7 @@ from infrahub.core.manager import NodeManager, identify_node_class
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreMenuItem
 from infrahub.core.protocols_base import CoreNode
-from infrahub.core.query.node import NodeToProcess
+from infrahub.core.query.node import NodeListGetRelationshipsQuery, NodeToProcess
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
@@ -589,6 +589,39 @@ async def test_get_many_relationship_fields(
     # make sure we didn't get other relationships
     with pytest.raises(LookupError):
         list(nodes[europe_id].things)
+
+
+async def test_get_many_attribute_fields_leave_relationships_to_be_read_on_demand(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
+) -> None:
+    """A load restricted to attributes issues no relationship query, and each relationship is still read on demand."""
+    paris_id = hierarchical_location_data["paris"].id
+    europe_id = hierarchical_location_data["europe"].id
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+    nodes = await NodeManager.get_many(db=counting_db, ids=[paris_id, europe_id], fields={"name": None})
+
+    # The attribute-only load issues no relationship query.
+    assert counting_db.count_for(NodeListGetRelationshipsQuery.name) == 0
+
+    # The requested attribute is loaded.
+    paris = nodes[paris_id]
+    assert paris.name.value == "paris"
+    # Every relationship is left unread, not read as empty: a synchronous read raises instead of returning nothing.
+    with pytest.raises(LookupError, match=r"^you can't get a relationship before the cache has been populated\.$"):
+        paris.parent.get_one()
+    for rel_manager in (paris.children, paris.things):
+        with pytest.raises(
+            LookupError, match=r"^you can't iterate over the relationships before the cache has been populated\.$"
+        ):
+            list(rel_manager)
+
+    # A read on demand still fetches the real peers.
+    parent = await paris.parent.get_peer(db=db)
+    assert parent is not None
+    assert parent.get_id() == europe_id
+    europe_children = await nodes[europe_id].children.get_peers(db=db)
+    assert set(europe_children) == {paris_id, hierarchical_location_data["london"].id}
 
 
 async def test_query_no_filter(
