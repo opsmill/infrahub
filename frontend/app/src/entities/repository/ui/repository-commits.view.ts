@@ -1,4 +1,5 @@
 import type { BadgeProps } from "@/shared/components/ui/badge";
+import { warnUnexpectedType } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
 
 import {
@@ -88,6 +89,7 @@ export function getStateBadges(
     case RepositoryCommitState.HISTORY:
       return [];
     default:
+      warnUnexpectedType(state);
       return [];
   }
 }
