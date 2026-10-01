@@ -28,16 +28,8 @@ export const generateRepositoryCommitNode = (
 export const generateRepositoryCommit = (
   overrides: Partial<RepositoryCommit> = {}
 ): RepositoryCommit => {
-  const shortHash = overrides.short_hash ?? "abc1234";
-  return {
-    hash: fullHash(shortHash),
-    short_hash: shortHash,
-    summary: "Add device inventory",
-    author_name: "Ada Lovelace",
-    authored_at: "2025-03-10T10:00:00Z",
-    state: "HISTORY",
-    ...overrides,
-  };
+  const { authored_at, ...commit } = generateRepositoryCommitNode(overrides);
+  return { ...commit, authored_at: String(authored_at) };
 };
 
 export const generateRepositoryCommitsResponse = (
