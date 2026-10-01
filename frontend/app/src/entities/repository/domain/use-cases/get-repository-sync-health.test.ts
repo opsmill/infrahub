@@ -1,21 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getObjectsCount } from "@/entities/nodes/object/domain/use-cases/get-objects-count";
-import { REPOSITORY_ERROR_IMPORT_FILTER } from "@/entities/repository/domain/model/repository";
+import { getRepositorySyncCountsFromApi } from "@/entities/repository/api/get-repository-sync-counts-from-api";
 import { getRepositorySyncHealth } from "@/entities/repository/domain/use-cases/get-repository-sync-health";
 
-vi.mock("@/entities/nodes/object/domain/use-cases/get-objects-count");
+vi.mock("@/entities/repository/api/get-repository-sync-counts-from-api");
 
-const getObjectsCountMock = vi.mocked(getObjectsCount);
+const getRepositorySyncCountsFromApiMock = vi.mocked(getRepositorySyncCountsFromApi);
 
-/** The two counts are told apart by their filter, never by call order. */
-const mockCounts = ({ total, failing }: { total: number; failing?: number }) => {
-  getObjectsCountMock.mockImplementation(async ({ filters }) => {
-    const isFailingLookup = filters?.some(
-      (filter) => filter.name === REPOSITORY_ERROR_IMPORT_FILTER.name
-    );
-    return isFailingLookup ? (failing ?? 0) : total;
-  });
+type CountsResponse = Awaited<ReturnType<typeof getRepositorySyncCountsFromApi>>;
+
+const mockCounts = ({ total, failing }: { total: number; failing: number }) => {
+  getRepositorySyncCountsFromApiMock.mockResolvedValue({
+    data: { total: { count: total }, failing: { count: failing } },
+  } as unknown as CountsResponse);
 };
 
 describe("getRepositorySyncHealth", () => {
@@ -25,24 +22,13 @@ describe("getRepositorySyncHealth", () => {
 
   it("reports none when the branch has no repositories", async () => {
     // GIVEN
-    mockCounts({ total: 0 });
+    mockCounts({ total: 0, failing: 0 });
 
     // WHEN
     const health = await getRepositorySyncHealth("branch1");
 
     // THEN
     expect(health).toBe("none");
-  });
-
-  it("does not ask for the failing count when there are no repositories", async () => {
-    // GIVEN
-    mockCounts({ total: 0 });
-
-    // WHEN
-    await getRepositorySyncHealth("branch1");
-
-    // THEN none failing follows from none at all, so the second request is never issued
-    expect(getObjectsCountMock).toHaveBeenCalledTimes(1);
   });
 
   it("reports failing when at least one repository carries the import error", async () => {
@@ -67,6 +53,17 @@ describe("getRepositorySyncHealth", () => {
     expect(health).toBe("in-sync");
   });
 
+  it("takes both counts from a single request", async () => {
+    // GIVEN
+    mockCounts({ total: 3, failing: 1 });
+
+    // WHEN
+    await getRepositorySyncHealth("branch1");
+
+    // THEN
+    expect(getRepositorySyncCountsFromApiMock).toHaveBeenCalledTimes(1);
+  });
+
   it("asks about the given branch, at current state", async () => {
     // GIVEN
     mockCounts({ total: 3, failing: 0 });
@@ -75,18 +72,28 @@ describe("getRepositorySyncHealth", () => {
     await getRepositorySyncHealth("branch1");
 
     // THEN
-    expect(getObjectsCountMock).toHaveBeenCalledTimes(2);
-    for (const call of getObjectsCountMock.mock.calls) {
-      expect(call[0].branchName).toBe("branch1");
-      expect(call[0].atDate).toBeNull();
-    }
+    expect(getRepositorySyncCountsFromApiMock).toHaveBeenCalledWith({
+      branchName: "branch1",
+      atDate: null,
+    });
   });
 
-  it("propagates a failed lookup rather than reporting health", async () => {
+  it("raises the reported error rather than returning a verdict", async () => {
     // GIVEN
-    getObjectsCountMock.mockRejectedValue(new Error("boom"));
+    getRepositorySyncCountsFromApiMock.mockResolvedValue({
+      data: null,
+      errors: [{ message: "boom" }],
+    } as unknown as CountsResponse);
 
     // WHEN / THEN
     await expect(getRepositorySyncHealth("branch1")).rejects.toThrow("boom");
+  });
+
+  it("propagates a failed request rather than reporting health", async () => {
+    // GIVEN
+    getRepositorySyncCountsFromApiMock.mockRejectedValue(new Error("offline"));
+
+    // WHEN / THEN
+    await expect(getRepositorySyncHealth("branch1")).rejects.toThrow("offline");
   });
 });

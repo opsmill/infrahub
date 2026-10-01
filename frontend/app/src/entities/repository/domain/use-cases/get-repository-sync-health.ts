@@ -1,8 +1,4 @@
-import { getObjectsCount } from "@/entities/nodes/object/domain/use-cases/get-objects-count";
-import {
-  GENERIC_REPOSITORY_KIND,
-  REPOSITORY_ERROR_IMPORT_FILTER,
-} from "@/entities/repository/domain/model/repository";
+import { getRepositorySyncCountsFromApi } from "@/entities/repository/api/get-repository-sync-counts-from-api";
 
 export type RepositorySyncHealth = "none" | "failing" | "in-sync";
 
@@ -10,12 +6,16 @@ export type GetRepositorySyncHealth = (branch: string) => Promise<RepositorySync
 
 export const getRepositorySyncHealth: GetRepositorySyncHealth = async (branch: string) => {
   // `atDate: null` reports current state, whatever time frame the page is showing.
-  const context = { objectKind: GENERIC_REPOSITORY_KIND, branchName: branch, atDate: null };
+  const { data, errors } = await getRepositorySyncCountsFromApi({
+    branchName: branch,
+    atDate: null,
+  });
 
-  const total = await getObjectsCount(context);
-  if (total === 0) return "none";
+  if (errors?.[0]?.message) {
+    throw new Error(errors[0].message);
+  }
 
-  const failing = await getObjectsCount({ ...context, filters: [REPOSITORY_ERROR_IMPORT_FILTER] });
+  if (data.total.count === 0) return "none";
 
-  return failing > 0 ? "failing" : "in-sync";
+  return data.failing.count > 0 ? "failing" : "in-sync";
 };

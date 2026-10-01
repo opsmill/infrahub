@@ -1,11 +1,8 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getObjectsCountFromApi } from "@/entities/nodes/object/api/get-objects-count-from-api";
-import {
-  GENERIC_REPOSITORY_KIND,
-  REPOSITORY_ERROR_IMPORT_FILTER,
-} from "@/entities/repository/domain/model/repository";
+import { getRepositorySyncCountsFromApi } from "@/entities/repository/api/get-repository-sync-counts-from-api";
+import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import { RepositorySyncStatus } from "@/entities/repository/ui/repository-sync-status";
 
 import { render } from "../../../../tests/components/render";
@@ -13,15 +10,15 @@ import { initPointerTracking } from "../../../../tests/components/utils";
 import { generateBranch } from "../../../../tests/fake/branch";
 
 vi.mock("@/entities/branches/ui/branches-provider");
-vi.mock("@/entities/nodes/object/api/get-objects-count-from-api");
+vi.mock("@/entities/repository/api/get-repository-sync-counts-from-api");
 
-type CountResponse = Awaited<ReturnType<typeof getObjectsCountFromApi>>;
+type CountsResponse = Awaited<ReturnType<typeof getRepositorySyncCountsFromApi>>;
 
-const countResponse = (count: number) =>
-  ({ data: { [GENERIC_REPOSITORY_KIND]: { count } } }) as unknown as CountResponse;
+const countsResponse = (total: number, failing: number) =>
+  ({ data: { total: { count: total }, failing: { count: failing } } }) as unknown as CountsResponse;
 
 const errorResponse = () =>
-  ({ data: null, errors: [{ message: "boom" }] }) as unknown as CountResponse;
+  ({ data: null, errors: [{ message: "boom" }] }) as unknown as CountsResponse;
 
 const FAILING_LABEL = "Repositories failed to import on this branch";
 const IN_SYNC_LABEL = "All Git repositories are in sync on this branch";
@@ -30,9 +27,8 @@ const CHECK_FAILED_LABEL = "Git repository sync status could not be checked";
 
 describe("RepositorySyncStatus", () => {
   const useCurrentBranchMock = vi.mocked(useCurrentBranch);
-  const getObjectsCountFromApiMock = vi.mocked(getObjectsCountFromApi);
+  const getRepositorySyncCountsFromApiMock = vi.mocked(getRepositorySyncCountsFromApi);
 
-  /** The two counts are told apart by their filter, never by call order. */
   const mockCounts = ({
     total,
     failing,
@@ -40,19 +36,13 @@ describe("RepositorySyncStatus", () => {
     total: number | "error";
     failing: number | "error";
   }) => {
-    getObjectsCountFromApiMock.mockImplementation(async ({ filters }) => {
-      const isFailingLookup = filters?.some(
-        (filter) =>
-          filter.name === REPOSITORY_ERROR_IMPORT_FILTER.name &&
-          filter.value === REPOSITORY_ERROR_IMPORT_FILTER.value
-      );
-      const outcome = isFailingLookup ? failing : total;
-      return outcome === "error" ? errorResponse() : countResponse(outcome);
-    });
+    getRepositorySyncCountsFromApiMock.mockImplementation(async () =>
+      total === "error" || failing === "error" ? errorResponse() : countsResponse(total, failing)
+    );
   };
 
   const mockNeverSettles = () => {
-    getObjectsCountFromApiMock.mockImplementation(() => new Promise(() => {}));
+    getRepositorySyncCountsFromApiMock.mockImplementation(() => new Promise(() => {}));
   };
 
   const onBranch = (overrides: Parameters<typeof generateBranch>[0] = {}) => {
@@ -192,20 +182,6 @@ describe("RepositorySyncStatus", () => {
     expect(glyph?.className).not.toContain("text-danger");
   });
 
-  test("reports no repositories, not check-failed, when the branch is empty and the failure lookup fails", async () => {
-    // GIVEN
-    onBranch({ name: "branch1" });
-    mockCounts({ total: 0, failing: "error" });
-
-    // WHEN
-    const component = await render(<RepositorySyncStatus />);
-
-    // THEN
-    await expect
-      .element(component.getByRole("link", { name: NO_REPOSITORIES_LABEL }))
-      .toBeVisible();
-  });
-
   test("shows a loading treatment, holding its place, until the first lookup settles", async () => {
     // GIVEN
     onBranch({ name: "branch1" });
@@ -302,10 +278,9 @@ describe("RepositorySyncStatus", () => {
     await render(<RepositorySyncStatus />);
 
     // THEN
-    expect(getObjectsCountFromApiMock).toHaveBeenCalledTimes(2);
-    for (const call of getObjectsCountFromApiMock.mock.calls) {
-      expect(call[0].branchName).toBe("branch1");
-    }
+    expect(getRepositorySyncCountsFromApiMock).toHaveBeenCalledWith(
+      expect.objectContaining({ branchName: "branch1" })
+    );
   });
 
   test("asks about now, ignoring the header time frame", async () => {
@@ -317,10 +292,9 @@ describe("RepositorySyncStatus", () => {
     await render(<RepositorySyncStatus />);
 
     // THEN
-    expect(getObjectsCountFromApiMock).toHaveBeenCalledTimes(2);
-    for (const call of getObjectsCountFromApiMock.mock.calls) {
-      expect(call[0].atDate).toBeNull();
-    }
+    expect(getRepositorySyncCountsFromApiMock).toHaveBeenCalledWith(
+      expect.objectContaining({ atDate: null })
+    );
   });
 
   test("does not carry a time-frame selection into the link", async () => {
@@ -337,21 +311,6 @@ describe("RepositorySyncStatus", () => {
     expect(await hrefOf(component)).not.toContain("at=");
   });
 
-  test("counts every repository kind through the generic kind", async () => {
-    // GIVEN
-    onBranch({ name: "branch1" });
-    mockCounts({ total: 3, failing: 0 });
-
-    // WHEN
-    await render(<RepositorySyncStatus />);
-
-    // THEN
-    expect(getObjectsCountFromApiMock).toHaveBeenCalledTimes(2);
-    for (const call of getObjectsCountFromApiMock.mock.calls) {
-      expect(call[0].objectKind).toBe(GENERIC_REPOSITORY_KIND);
-    }
-  });
-
   test("keeps a resolved state when the refresh interval fires", async () => {
     // GIVEN
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -360,13 +319,13 @@ describe("RepositorySyncStatus", () => {
     const component = await render(<RepositorySyncStatus />);
     const indicator = component.getByRole("link", { name: FAILING_LABEL });
     await expect.element(indicator).toBeVisible();
-    const callsBefore = getObjectsCountFromApiMock.mock.calls.length;
+    const callsBefore = getRepositorySyncCountsFromApiMock.mock.calls.length;
 
     // WHEN
     await vi.advanceTimersByTimeAsync(10_000);
 
-    // THEN the lookups ran again and the resolved state stayed put
-    expect(getObjectsCountFromApiMock.mock.calls.length).toBeGreaterThan(callsBefore);
+    // THEN the lookup ran again and the resolved state stayed put
+    expect(getRepositorySyncCountsFromApiMock.mock.calls.length).toBeGreaterThan(callsBefore);
     await expect.element(indicator).toBeVisible();
   });
 

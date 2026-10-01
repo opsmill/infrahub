@@ -348,13 +348,13 @@ button variant had caused in an unrelated end-to-end test.
 6. **One query, not two.** The two counts were separate queries with separate refresh
    timers, and a derivation rule refereed the race between their loading states. They
    collapsed into a single `getRepositorySyncHealth` use case returning
-   `none` / `failing` / `in-sync`, behind one `queryOptions` and one cache key. The race,
-   the rule, and its test went with them.
+   `none` / `failing` / `in-sync`, behind one `queryOptions` and one cache key, over one
+   aliased request. The race, the rule, and its test went with them.
 7. **The verdict is domain state, not query state.** `RepositorySyncHealth` says what is
    true of the repositories; whether the lookup is still running or has failed stays in the
    component, where TanStack Query already reports it.
 8. **Query keys are declared, not inlined**, in `ui/queries/repository.query-keys.ts`.
 
-The use case awaits the total first and returns `none` without issuing the second request,
-rather than running both counts together: a branch with no repositories has nothing failing
-by definition.
+Both counts come back from one request. The two aliases of the same kind — one unfiltered,
+one narrowed to the import error — are resolved server-side in a single document, the shape
+the proposed-changes counts already use.
