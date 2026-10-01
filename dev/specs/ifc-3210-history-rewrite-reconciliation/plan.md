@@ -143,7 +143,7 @@ Each slice is independently testable and delivers value on its own.
 | **D. Self-heal in the pull path** | US2 | A | **Yes** |
 | **E. Record the event** | US1 | A, and schema sign-off | No |
 | **F. Signal a rewritten trunk** | US4 | E | No |
-| **G. Read-only detection** | US5 | A, E | No |
+| **G. Read-only detection** | US5 | A, E, H | No |
 | **H. Re-target suppression** | US6 | E | No |
 | **I. Documentation** | — | B, C, D, E | No |
 

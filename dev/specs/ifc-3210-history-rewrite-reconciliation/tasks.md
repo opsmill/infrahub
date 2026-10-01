@@ -236,6 +236,11 @@ healthy branch is still sent, and a second worker converges on it.
 - [ ] T031 [US3] Return a `SyncOutcome` from `backend/infrahub/git/sync.py::RepositorySyncer.sync`
       instead of raising. It carries the reconciled branches and the failures, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 4.
+      **Update its other two callers in the same change**, or the API change loses behaviour that
+      exists today. `git/tasks.py::sync_git_repo_with_origin_and_tag_on_failure` tags a failure from
+      its `except`, which the return no longer reaches, and `git/tasks.py::add_git_repository` calls
+      `sync` directly and would ignore a failed initial import in silence. Both must read the
+      returned failures and act on them.
 - [ ] T032 [US3] Broadcast before the raise in
       `backend/infrahub/git/tasks.py::sync_repository_from_origin`. Send one coalesced
       `RefreshGitFetch` covering every reconciled branch, then re-raise the failures of branches
@@ -271,6 +276,9 @@ healthy branch is still sent, and a second worker converges on it.
       `backend/tests/integration/git/test_git_live_remote.py`: a repository with one failing branch
       and one healthy branch still broadcasts for the healthy one, and a second worker converges on
       it.
+      **This test moves with the widened broadcast, for the same reason T026 does.** The second
+      worker converges on a branch that is not the trunk, which only the widened broadcast delivers,
+      and that is gated on PR #10465.
 
 **Checkpoint**: SC-005 holds. One developer's rebase is no longer a repository-wide event.
 
@@ -315,7 +323,8 @@ emits no signal.
       nothing is lost, and refusing there would refuse again on every retry, because the cron heals
       whichever worker runs it rather than the one the merge lands on. A refusal raises a typed
       error naming a divergent remote history.
-      **Do not reset and merge.** `merge` calls `update_commit_value` on the destination before it
+      **In that refusing case, do not reset and merge instead.** `merge` calls
+      `update_commit_value` on the destination before it
       pushes, so a reset-then-merge writes the merge commit to the graph. The next cycle then finds
       the graph and the remote in agreement, classifies `UNCHANGED`, and the rewrite is never
       recorded, never signalled and never re-imported. Resetting the source is worse: it merges
@@ -654,8 +663,8 @@ Phase 1 (Setup)
         │     ├─> Phase 4 (US3: broadcast every branch, before the raise)
         │     └─> Phase 6 (US1: record)  [needs schema sign-off]
         │           ├─> Phase 7 (US4: the trunk signal)  [needs the consumer confirmed]
-        │           ├─> Phase 8 (US5: read-only)
         │           └─> Phase 9 (US6: re-target suppression)
+        │                 └─> Phase 8 (US5: read-only)  [needs Phase 9's in-band flag]
         └─> Phase 5 (US2: self-heal in the pull path)  [GATED on PR #10465]
 
 Phase 10 (Documentation) follows whatever has landed.
