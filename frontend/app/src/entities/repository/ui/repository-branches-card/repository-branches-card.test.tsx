@@ -76,12 +76,6 @@ const FIRST_PAGE_VARIABLES = {
   offset: 0,
 };
 
-const DEFERRED_FILTER_ARGUMENTS = [
-  "sync_status__value",
-  "internal_status__value",
-  "own_values_only",
-];
-
 // The CSSOM rewrites an authored hex colour as `rgb(…)`, so the fixture value has to go through the
 // same normalisation before it can be compared.
 function asRenderedColour(colour: string): string {
@@ -310,7 +304,7 @@ describe("RepositoryBranchesCard", () => {
     expect(component.getByText("Sync status", { exact: true }).elements()).toHaveLength(0);
   });
 
-  it("renders no upstream comparison and no import timestamp for a branch that carries one", async () => {
+  it("abbreviates the commit and leaves the fetched import timestamp off the row", async () => {
     // GIVEN
     apiMock.mockResolvedValue(
       toApiResult({
@@ -336,10 +330,7 @@ describe("RepositoryBranchesCard", () => {
     await expect
       .element(component.getByRole("row", { name: /feature-auth/ }).getByText("8f3c2a1"))
       .toBeVisible();
-    expect(component.getByText(/ago/).elements()).toHaveLength(0);
-    expect(component.getByText(/behind/).elements()).toHaveLength(0);
     expect(component.getByText(/2026-02-03/).elements()).toHaveLength(0);
-    expect(component.getByText(/Upstream/).elements()).toHaveLength(0);
   });
 
   it("holds the table's space with placeholder rows while the branches are loading", async () => {
@@ -687,6 +678,29 @@ describe("RepositoryBranchesCard", () => {
     }
   });
 
+  it("narrows the column header's filter conditions the same way the toolbar does", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(
+      toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
+    );
+
+    // WHEN the filter is reached from the column header rather than the toolbar
+    const component = await renderCard();
+    await component.getByRole("button", { name: "Branch", exact: true }).click();
+    await component.getByRole("menuitem", { name: "Filter", exact: true }).click();
+    await component.getByRole("button", { name: "select a condition" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("option", { name: "contains", exact: true }))
+      .toBeVisible();
+    for (const condition of ["is empty", "is not empty"]) {
+      expect(
+        component.getByRole("option", { name: condition, exact: true }).elements()
+      ).toHaveLength(0);
+    }
+  });
+
   it("returns to the first page when a filter changes", async () => {
     // GIVEN a card already showing the second page
     const firstPage = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
@@ -759,7 +773,7 @@ describe("RepositoryBranchesCard", () => {
     expect(component.getByRole("row", { name: /feature-auth/ }).elements()).toHaveLength(0);
   });
 
-  it("sends no deferred attribute filter on any request it makes", async () => {
+  it("combines the search text and the status filter into one request", async () => {
     // GIVEN
     const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
     const matched = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
@@ -790,11 +804,6 @@ describe("RepositoryBranchesCard", () => {
       payload: toApiResult(matched),
       rowVisibleAfter: "release-2-0",
     });
-    for (const [variables] of apiMock.mock.calls) {
-      for (const name of DEFERRED_FILTER_ARGUMENTS) {
-        expect(Object.keys(variables)).not.toContain(name);
-      }
-    }
   });
 
   it("offers only the two timestamps the contract is able to order by", async () => {

@@ -164,7 +164,7 @@ Vitest runs in **browser mode**. Coverage to expect:
    so omitting the rendered-output half is a type error. Reading `apiMock.mock.calls[...]` directly
    in a card test file compiles and defeats the pairing; keeping it out of those files is on the
    reviewer. See [the UI contract](contracts/repository-branch-status-ui.md).
-2. **Reset `window.history` in `afterEach`.** `tests/components/render.tsx` uses `BrowserRouter`, so
+2. **Reset `window.history` in `beforeEach`.** `tests/components/render.tsx` uses `BrowserRouter`, so
    nuqs writes to the real `window.location`; without the reset the paging tests become
    order-dependent — passing alone, failing in a full run. Do **not** reach for `renderAt` from
    `link-tab.test.tsx`: it is private and it overrides the whole wrapper, dropping `NuqsAdapter`,

@@ -12,7 +12,7 @@ every FR carries a stated verification method.
 
 **Status**: T001–T064 (there is no T007), T034a, T078 and T080–T084 are on the branch — work units
 1–7 complete, US3 filters and ordering included.
-Outstanding: T065–T066 (e2e), T067–T070 (documentation and changelog) and T071–T077 (gates).
+Outstanding: T065–T066 (e2e), T067–T069 (documentation) and T071–T077 (gates).
 T079 and T085 are follow-ups blocked on backend work.
 A ticked box means the file exists at the path named.
 
@@ -532,7 +532,8 @@ risk those keys carry is not reachable on this route.
       `Badge` is misfiled under "Layout"; and there is **no entry at all** for
       `shared/components/errors/` or for skeletons. The first two are exactly the traps that would
       mislead the next reader.
-- [ ] T070 [P] Add the Towncrier fragment `changelog/3130.added.md` describing the user-facing change.
+- [x] T070 [P] Add the Towncrier fragment
+      `changelog/+ifc-3130-repository-branches-card.added.md` describing the user-facing change.
 
 ### Verification and gates
 

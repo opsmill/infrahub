@@ -14,7 +14,7 @@ export interface TablePaginationState {
   setPage: (page: number) => void;
 }
 
-const mountedUrlKeys = new Map<string, Set<WeakRef<object>>>();
+const mountedUrlKeys = new Map<string, number>();
 
 function useUniqueUrlKey(urlKey: string) {
   useEffect(() => {
@@ -22,35 +22,25 @@ function useUniqueUrlKey(urlKey: string) {
       return;
     }
 
-    const holders = mountedUrlKeys.get(urlKey) ?? new Set<WeakRef<object>>();
+    const mountCount = (mountedUrlKeys.get(urlKey) ?? 0) + 1;
 
-    for (const holder of holders) {
-      if (holder.deref() === undefined) {
-        holders.delete(holder);
-      }
-    }
+    mountedUrlKeys.set(urlKey, mountCount);
 
-    // The cleanup stands in for the mounted table and is held only weakly, so a cleanup React never
-    // ran is collected instead of leaving the key looking occupied for the rest of the session.
-    const release = () => {
-      holders.delete(releaseRef);
-
-      if (holders.size === 0) {
-        mountedUrlKeys.delete(urlKey);
-      }
-    };
-    const releaseRef = new WeakRef(release);
-
-    holders.add(releaseRef);
-    mountedUrlKeys.set(urlKey, holders);
-
-    if (holders.size > 1) {
+    if (mountCount > 1) {
       console.warn(
         `useTablePagination: urlKey "${urlKey}" is already used by another mounted table. Give each table its own key, or they will page together.`
       );
     }
 
-    return release;
+    return () => {
+      const remaining = (mountedUrlKeys.get(urlKey) ?? 1) - 1;
+
+      if (remaining > 0) {
+        mountedUrlKeys.set(urlKey, remaining);
+      } else {
+        mountedUrlKeys.delete(urlKey);
+      }
+    };
   }, [urlKey]);
 }
 

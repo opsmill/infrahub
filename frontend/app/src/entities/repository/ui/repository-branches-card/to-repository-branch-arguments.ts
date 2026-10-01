@@ -1,18 +1,13 @@
 import type { InfrahubNodeMetadataOrder } from "@/shared/api/graphql/generated/types";
 
 import { type Filter, SEARCH_ANY_FILTER } from "@/entities/nodes/filters/domain/model/filter";
-import { isFieldFiltered } from "@/entities/nodes/filters/domain/rules/is-field-filtered";
-import { getFilterDefinitionName } from "@/entities/nodes/object/domain/rules/filter-definition";
 import {
-  NODE_METADATA_SORT_FIELDS,
+  type NodeMetadataSortField,
   SORT_DIRECTION,
   type Sort,
 } from "@/entities/nodes/sort/domain/model/sort";
 import type { GetRepositoryBranchStatusFromApiParams } from "@/entities/repository/api/get-repository-branch-status-from-api";
-import {
-  BRANCH_ROW_FILTER_DEFINITIONS,
-  isFilterableBranchStatus,
-} from "@/entities/repository/ui/repository-branches-card/branch-row-fields";
+import { isFilterableBranchStatus } from "@/entities/repository/ui/repository-branches-card/branch-row-fields";
 
 export type RepositoryBranchArguments = Pick<
   GetRepositoryBranchStatusFromApiParams,
@@ -21,7 +16,8 @@ export type RepositoryBranchArguments = Pick<
 
 const NAME_FILTER = "name__value";
 const STATUS_FILTER = "status__value";
-const [CREATED_AT_SORT_FIELD, UPDATED_AT_SORT_FIELD] = NODE_METADATA_SORT_FIELDS;
+const CREATED_AT_SORT_FIELD: NodeMetadataSortField = "node_metadata__created_at";
+const UPDATED_AT_SORT_FIELD: NodeMetadataSortField = "node_metadata__updated_at";
 
 function findFilterValue(filters: Filter[], name: string): unknown {
   return filters.find((filter) => filter.name === name)?.value;
@@ -77,13 +73,13 @@ export function toRepositoryBranchArguments(
   };
 }
 
-/** Whether the row set the server answered with was narrowed by anything the user asked for. */
+/**
+ * Whether the row set the server answered with was narrowed by anything the user asked for. Derived
+ * from the arguments themselves, so a filter the contract has no argument for cannot make an empty
+ * result claim it was filtered.
+ */
 export function hasRepositoryBranchFilters(filters: Filter[]): boolean {
-  return filters.some(
-    (filter) =>
-      filter.name === SEARCH_ANY_FILTER ||
-      BRANCH_ROW_FILTER_DEFINITIONS.some((definition) =>
-        isFieldFiltered(filter, getFilterDefinitionName(definition))
-      )
-  );
+  const { name__value, status__value } = toRepositoryBranchArguments(filters, []);
+
+  return name__value !== undefined || status__value !== undefined;
 }

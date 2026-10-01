@@ -62,14 +62,25 @@ describe("toRepositoryBranchArguments", () => {
     });
   });
 
-  it("offers only conditions every active filter can be mapped from", () => {
-    // GIVEN a filter the toolbar counts as active
-    const filters: Filter[] = [{ name: "name__isnull", value: true }];
+  it.each([
+    ["an emptiness filter", { name: "name__isnull", value: true }],
+    ["a multi-value filter", { name: "name__values", value: ["main", "staging"] }],
+    ["a field the contract cannot narrow on", { name: "description__value", value: "anything" }],
+  ])("does not count %s the request cannot apply as active", (_label, filter) => {
+    // GIVEN a filter that reached the url from somewhere this card's controls cannot produce
+    const filters: Filter[] = [filter];
 
-    // THEN the emptiness condition that produced it is not one the toolbar can offer, so no filter
-    // the user is able to set can be counted as active and then dropped from the request
-    expect(hasRepositoryBranchFilters(filters)).toBe(true);
+    // THEN an empty result must not claim it was narrowed by something never sent
     expect(toRepositoryBranchArguments(filters, [])).toEqual({});
+    expect(hasRepositoryBranchFilters(filters)).toBe(false);
+  });
+
+  it("counts a filter the request does apply as active", () => {
+    // GIVEN
+    const filters: Filter[] = [{ name: "status__value", value: "OPEN" }];
+
+    // THEN
+    expect(hasRepositoryBranchFilters(filters)).toBe(true);
     expect(BRANCH_ROW_FILTER_CONDITIONS).toEqual(["contains"]);
   });
 });
