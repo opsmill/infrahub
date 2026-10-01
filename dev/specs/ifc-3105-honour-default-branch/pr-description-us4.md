@@ -54,9 +54,9 @@ that branch, so this diff is only User Story 4.
 
 **Implementation**
 
-- `InfrahubRepository.validate_remote_branch` returns `BranchSkipReason | None` instead of `bool`.
-  The collision predicate is one method, `_collides_with_infrahub_default_branch`, which
+- The collision predicate is one method, `_collides_with_infrahub_default_branch`, which
   `validate_remote_branch` and `collect_pending_imports` both call, so it is never re-derived.
+  `validate_remote_branch` keeps its `bool` return.
 - `CollectedImports` gains `skipped_branches` and `advanced_skipped_branches`. `skipped_branches` is
   decided from the remote, not from the new/updated comparison: a clone whose remote HEAD is the
   colliding branch holds it as a local branch, so the comparison does not list it until it moves.
@@ -83,7 +83,7 @@ that branch, so this diff is only User Story 4.
 
 Medium, and confined to `git/{repository,sync,tasks}.py`.
 
-1. `backend/infrahub/git/repository.py` - `BranchSkipReason`, `_collides_with_infrahub_default_branch`,
+1. `backend/infrahub/git/repository.py` - `_collides_with_infrahub_default_branch`,
    `validate_remote_branch`, `collect_pending_imports`, `_get_colliding_branch_name` and
    `_find_skipped_branches`. The whole collection contract. Both ref reads are skipped on a clone
    with no `origin`, or when no name collides.
@@ -173,8 +173,7 @@ the setting themselves.
 
 ## Impact & rollout
 
-- **Backward compatibility:** no message or API change. `validate_remote_branch` changed its return
-  type, and its only callers are the two sites in `collect_pending_imports`.
+- **Backward compatibility:** no message or API change. `validate_remote_branch` keeps its signature.
 - **Performance:** when a name collides, one local read of the colliding branch's remote-tracking ref
   before the fetch and one after. Nothing otherwise. No network call.
 - **Config/env changes:** none.

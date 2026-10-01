@@ -62,13 +62,6 @@ class FailedImport:
     reason: str
 
 
-class BranchSkipReason(StrEnum):
-    """Why a remote branch is not imported into Infrahub."""
-
-    DEFAULT_BRANCH_COLLISION = "default_branch_collision"
-    INVALID_BRANCH_NAME = "invalid_branch_name"
-
-
 @dataclass
 class CollectedImports:
     """Outcome of the git/branch-setup phase of a sync.
@@ -199,10 +192,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         """Whether the branch is named like Infrahub's default branch while that name maps to another branch."""
         return branch_name == registry.default_branch and branch_name != self.default_branch
 
-    def validate_remote_branch(self, branch_name: str) -> BranchSkipReason | None:
+    def validate_remote_branch(self, branch_name: str) -> bool:
         """Process a remote branch to validate that we can use it safely.
-
-        Returns None when the branch can be imported, otherwise the reason it must be skipped.
 
         - Make sure that the branch name won't conflict with infrahub's default branch
         - Make sure that a representation of the branch can be created in the database
@@ -213,7 +204,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             # default branch to that of Infrahub. In that scenario we can't import a branch from the
             # repository if it matches the default branch of Infrahub
             log.warning("Ignoring import of mismatched default branch %s of repository %s", branch_name, self.name)
-            return BranchSkipReason.DEFAULT_BRANCH_COLLISION
+            return False
 
         try:
             # Check if the branch can be created in the database
@@ -224,7 +215,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 branch_name,
                 ", ".join(error["msg"] for error in e.errors()),
             )
-            return BranchSkipReason.INVALID_BRANCH_NAME
+            return False
 
         # Surface a warning when the branch conflicts with the default branch so users
         # know a future merge will be rejected, but still allow the import to proceed.
@@ -237,7 +228,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 self.name,
                 exc,
             )
-            return None
+            return True
 
         if has_conflicts:
             log.warning(
@@ -245,7 +236,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 "the merge will be rejected until the conflict is resolved upstream"
             )
 
-        return None
+        return True
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
         branches = {}
@@ -351,7 +342,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             new_branches, updated_branches = await self._exclude_read_only_branches(new_branches, updated_branches)
 
             for branch_name in new_branches:
-                if self.validate_remote_branch(branch_name=branch_name) is not None:
+                if not self.validate_remote_branch(branch_name=branch_name):
                     continue
 
                 infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
@@ -383,7 +374,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 imports.append(PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit))
 
             for branch_name in updated_branches:
-                if self.validate_remote_branch(branch_name=branch_name) is not None:
+                if not self.validate_remote_branch(branch_name=branch_name):
                     continue
 
                 infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)

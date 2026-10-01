@@ -44,10 +44,10 @@ The read-write kind implements the mapping described below; the read-only kind r
 - Because of that mapping, when the repository's default branch differs from Infrahub's, a remote
   branch literally named like Infrahub's default branch cannot be imported — it would collide with
   the mapped default. The skip is decided in `InfrahubRepository.validate_remote_branch`, *not* in
-  `_get_mapped_target_branch`. It returns `None` for a branch to import, or a `BranchSkipReason`:
-  `DEFAULT_BRANCH_COLLISION` for this case, `INVALID_BRANCH_NAME` for a name Infrahub cannot store
-  as a branch. The collision test itself is one method, `_collides_with_infrahub_default_branch`,
-  which `validate_remote_branch` and the skip record both call, so nothing re-derives it.
+  `_get_mapped_target_branch`. It returns `False` for this case and for a name Infrahub cannot
+  store as a branch, and `True` for a branch to import. The collision test itself is one method,
+  `_collides_with_infrahub_default_branch`, which `validate_remote_branch` and the skip record both
+  call, so nothing re-derives it.
 - The sync never creates the colliding branch locally, so it usually shows up as new on every sync
   and is skipped again, logging "Ignoring import of mismatched default branch" to the process log
   each time. A clone whose remote HEAD is the colliding branch does hold it as a local branch, and

@@ -136,6 +136,6 @@ grep -rn "check_connectivity\|validate_remote_branch" backend/tests
 | Site | Change | Task | Done |
 |---|---|---|---|
 | `unit/git/test_git_repository.py::test_check_connectivity_ignores_cwd_git_pointer` | T047 removes `check_connectivity`; its neutral-working-directory assertion is ported to `test_remote_refs.py` first (T045), then this test is deleted | T045, T047 | [ ] |
-| `unit/git/test_git_repository.py::test_validate_remote_branch_allows_conflicting_branch` | asserts `is True`; becomes `is None` once the return type is `BranchSkipReason \| None` | T054, T055 | [ ] |
+| `unit/git/test_git_repository.py::test_validate_remote_branch_allows_conflicting_branch` | asserts `is True`, unchanged: the `bool` return is kept (an interim `BranchSkipReason \| None` return was reverted on 2026-10-01) | T054, T055 | [x] |
 
 Rows in this section are US3/US4 work and stay open until those PRs land.

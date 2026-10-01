@@ -129,7 +129,7 @@ backend/
 │   │   │                            #   mapping hook implementations, skipped_branches collection;
 │   │   │                            #   CollectedImports.skipped_branches + advanced_skipped_branches (the dataclass
 │   │   │                            #   lives here, not in models.py);
-│   │   │                            #   validate_remote_branch moves here, returns BranchSkipReason | None (one
+│   │   │                            #   validate_remote_branch moves here, keeps its bool return (one
 │   │   │                            #   collision predicate method, shared with the skip record);
 │   │   │                            #   collect_pending_imports records the colliding branch from the remote, reads
 │   │   │                            #   its ref before fetch() and records whether it advanced or appeared;
@@ -176,8 +176,8 @@ backend/
     ├── unit/git/
     │   ├── test_git_repository.py               # construction rejection, read-only fetch classification, mapping hooks,
     │   │                                        #   webhook branch resolution, worktree identifier under a non-main
-    │   │                                        #   Infrahub default, validate_remote_branch's skip reasons,
-    │   │                                        #   collect_pending_imports records skipped_branches at both call sites,
+    │   │                                        #   Infrahub default, which branches validate_remote_branch rejects,
+    │   │                                        #   collect_pending_imports records skipped_branches from the remote,
     │   │                                        #   message models declare no trunk field, _update_operational_status
     │   │                                        #   writes on the branch the factory set
     │   ├── test_graph_settings.py               # NEW. resolve_graph_settings returns node values on the branch it was

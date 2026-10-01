@@ -18,23 +18,24 @@ between them would drop the branch while telling the operator nothing — the ex
 feature exists to delete. It now lives in `_collides_with_infrahub_default_branch`, which every caller
 uses (see below).
 
-So `validate_remote_branch` reports **why** it rejected a branch instead of returning a bare `bool`:
+`validate_remote_branch` keeps its `bool` return: `True` means "import this branch", `False` means
+"skip it".
 
 ```python
-class BranchSkipReason(StrEnum):
-    DEFAULT_BRANCH_COLLISION = "default_branch_collision"
-    INVALID_BRANCH_NAME = "invalid_branch_name"
-
-# None means "import this branch"; a member means "skip it, for this reason".
-def validate_remote_branch(self, branch_name: str) -> BranchSkipReason | None
+def validate_remote_branch(self, branch_name: str) -> bool
 ```
 
 `validate_remote_branch` moves to `InfrahubRepository` with this change (research.md D3); it is
 reached only through `collect_pending_imports`, which is defined on the read-write class.
 
 `collect_pending_imports` calls it at **two** sites, the new-branch loop and the updated-branch loop,
-and both skip on any reason. The remaining validation (`Branch(name=...)` construction, conflict
-warning) is unchanged in behaviour; only the return value's shape changes.
+and both skip a branch it rejects. The remaining validation (`Branch(name=...)` construction,
+conflict warning) is unchanged in behaviour.
+
+(Corrected 2026-10-01, after code review. An earlier version of this contract had
+`validate_remote_branch` return a `BranchSkipReason | None` enum so the two loops could record the
+skip from the reason. The skip is now recorded from the remote instead, as set out below, so no
+caller read the reason and the enum was removed.)
 
 `CollectedImports.skipped_branches` is **not** derived from those loops. A clone whose remote HEAD is
 the colliding branch holds it as a local branch, so `compare_local_remote` lists it in neither loop

@@ -484,15 +484,17 @@ written anywhere" and is left as a follow-up.
 
 **Decision**:
 
-- `validate_remote_branch` returns *why* it rejected a branch (`BranchSkipReason | None`) instead of
-  a bare `bool`, and moves to the read-write class. The collision predicate stays at the decision
-  point; the caller must not re-evaluate it. Re-deriving
+- `validate_remote_branch` moves to the read-write class and keeps its `bool` return. (Corrected
+  2026-10-01, after code review: the first version returned *why* it rejected a branch, as a
+  `BranchSkipReason | None` enum, so the loops could record the skip from the reason. Once the skip
+  was recorded from the remote, per the 2026-09-30 correction below, no caller read the reason and
+  the enum was removed.) The collision predicate is not re-derived in a caller. Re-deriving
   `branch_name == registry.default_branch and branch_name != self.default_branch` inside
   `collect_pending_imports` would hold one predicate in two files, and a drift between them would
   drop the branch while reporting nothing — the defect class this feature exists to delete.
 - `InfrahubRepository.collect_pending_imports` records the colliding branch in a new
   `skipped_branches` field on `CollectedImports`. It calls `validate_remote_branch` at two sites, the
-  new-branch and the updated-branch loops, and both skip on any reason; the record itself is decided
+  new-branch and the updated-branch loops, and both skip a branch it rejects; the record itself is decided
   from the remote, as the 2026-09-30 correction below sets out.
 - `collect_pending_imports` also captures the colliding branch's remote-tracking ref with
   `_get_remote_tracking_commit` immediately **before** `self.fetch()` and records, in a second new
@@ -582,7 +584,7 @@ outcome-level test each headline requirement ultimately rests on; every other ro
 | Read-only fetch failure keeps its classified error (FR-004) | unit | `backend/tests/unit/git/test_git_repository.py` | A local remote that disappears, no graph |
 | Mapping hooks for both kinds (D3) | unit | `backend/tests/unit/git/test_git_repository.py` | Pure functions of two strings |
 | `resolve_graph_settings` returns the node's `default_branch`, `internal_status` and `location`, read on the branch it was given (D1) | unit | `backend/tests/unit/git/test_graph_settings.py` | The resolver is the single resolution point; a stub client asserts which branch it queried. Off the model it needs no repository object at all. The "repository factory" module suite |
-| `validate_remote_branch` returns `DEFAULT_BRANCH_COLLISION` for the collision, `INVALID_BRANCH_NAME` for a name pydantic rejects, and `None` otherwise (D6) | unit | `backend/tests/unit/git/test_git_repository.py` | Pins the predicate at its single site, which is what stops the caller from re-deriving it |
+| `validate_remote_branch` returns `False` for the collision and for a name pydantic rejects, and `True` otherwise (D6) | unit | `backend/tests/unit/git/test_git_repository.py` | Pins the predicate at its single site, which is what stops the caller from re-deriving it |
 | `collect_pending_imports` records the colliding branch in `skipped_branches` whether the comparison lists it as new, as updated, or not at all because the clone holds it as the remote's HEAD (D6) | unit | `backend/tests/unit/git/test_git_repository.py` | The "collision reporting" module suite the PRD asks for, below the flow tier |
 | The two message models no longer declare a trunk field (FR-003) | unit | `backend/tests/unit/git/test_git_repository.py` or the message-model test module | `assert "default_branch_name" not in GitRepositoryAdd.model_fields` and the same for `GitRepositoryMerge.default_branch`. The "message-model cleanup" module suite; the grep in `quickstart.md` Scenario 3 is a manual recipe and cannot enforce this in CI |
 | ⭐ **Evidence for FR-009.** Push to a non-default trunk from a worker with no local branch of that name | component | existing `backend/tests/component/git/test_git_repository.py::test_merge_writes_back_to_non_main_default_branch`, adapted | Already exists; construction changes only. The assertion is on the remote ref the push advanced, which is what the pre-fix refspec got wrong |
@@ -641,7 +643,7 @@ Principle IV, including the fallback if a reviewer reads the e2e clause more str
 - The same edit must also refresh `git-sync.md`'s **existing** branch-import section, which is not
   merely incomplete but becomes wrong: it names `validate_remote_branch` as the place the skip
   happens and states that it "logs ... and returns `False`". D3 moves that method to the read-write
-  class, D6 changes its return type to `BranchSkipReason | None`, and the operator-facing record
+  class (D6 at first changed its return type too; that was reverted, see D6), and the operator-facing record
   moves from the structlog line to the task log. Scoping the FR-011 edit to "the new lifecycle
   section" would leave the page stale on exactly the facts it exists to record.
 - `docs/docs/git-integration/connect-repository.mdx` documents the connect-time rejection and the

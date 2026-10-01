@@ -22,7 +22,7 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.git.models import GitRepositoryAdd, GitRepositoryMerge
-from infrahub.git.repository import BranchSkipReason, FailedImport, ImportStep, InfrahubReadOnlyRepository
+from infrahub.git.repository import FailedImport, ImportStep, InfrahubReadOnlyRepository
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.git import LocalRemote, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
@@ -127,7 +127,7 @@ async def test_validate_remote_branch_allows_conflicting_branch(
     merge time instead.
     """
     repository = await _build_repository_with_conflict(tmp_path, monkeypatch)
-    assert repository.validate_remote_branch(branch_name="change1") is None
+    assert repository.validate_remote_branch(branch_name="change1") is True
 
 
 async def test_has_conflicting_changes_no_false_positive(
@@ -569,26 +569,22 @@ async def clone_trunk_repository(
 
 
 @dataclass
-class SkipReasonCase:
+class ValidateRemoteBranchCase:
     name: str
     branch_name: str
-    expected: BranchSkipReason | None
+    expected: bool
 
 
-SKIP_REASON_CASES = [
-    SkipReasonCase(
-        name="name_of_the_infrahub_default_branch",
-        branch_name="main",
-        expected=BranchSkipReason.DEFAULT_BRANCH_COLLISION,
-    ),
-    SkipReasonCase(name="name_infrahub_cannot_store", branch_name="ab", expected=BranchSkipReason.INVALID_BRANCH_NAME),
-    SkipReasonCase(name="ordinary_branch", branch_name="feature-1", expected=None),
+VALIDATE_REMOTE_BRANCH_CASES = [
+    ValidateRemoteBranchCase(name="name_of_the_infrahub_default_branch", branch_name="main", expected=False),
+    ValidateRemoteBranchCase(name="name_infrahub_cannot_store", branch_name="ab", expected=False),
+    ValidateRemoteBranchCase(name="ordinary_branch", branch_name="feature-1", expected=True),
 ]
 
 
-@pytest.mark.parametrize("case", SKIP_REASON_CASES, ids=[case.name for case in SKIP_REASON_CASES])
-async def test_validate_remote_branch_reports_why_a_branch_is_skipped(
-    case: SkipReasonCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, patch_prefect_logger: None
+@pytest.mark.parametrize("case", VALIDATE_REMOTE_BRANCH_CASES, ids=[case.name for case in VALIDATE_REMOTE_BRANCH_CASES])
+async def test_validate_remote_branch_decides_whether_a_branch_is_imported(
+    case: ValidateRemoteBranchCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, patch_prefect_logger: None
 ) -> None:
     remote = LocalRemote.create(directory=tmp_path / "source-repo", trunk=TRUNK, branches=["main", "ab", "feature-1"])
     repository = await clone_trunk_repository(tmp_path, monkeypatch, remote)
