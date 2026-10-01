@@ -2,6 +2,7 @@ import { Button, Tooltip } from "@infrahub/ui";
 import { CopyCheckIcon, CopyIcon } from "lucide-react";
 import type { ButtonProps as AriaButtonProps } from "react-aria-components";
 
+import { CopiedAnnouncement } from "@/shared/components/a11y/copied-announcement";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
 interface CopyToClipboardProps extends Omit<AriaButtonProps, "children" | "onPress"> {
@@ -25,9 +26,7 @@ export function CopyToClipboardButton({ data, ...props }: CopyToClipboardProps) 
           {isCopied ? <CopyCheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
         </Button>
       </Tooltip>
-      <span role="status" className="sr-only">
-        {isCopied && <span key={copyCount}>Copied to clipboard</span>}
-      </span>
+      <CopiedAnnouncement isCopied={isCopied} copyCount={copyCount} />
     </>
   );
 }

@@ -1,6 +1,7 @@
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
 import { CopyIcon, EllipsisVerticalIcon, ExternalLinkIcon } from "lucide-react";
 
+import { CopiedAnnouncement } from "@/shared/components/a11y/copied-announcement";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
@@ -48,9 +49,7 @@ export function RepositoryCommitRowActions({ commit, webUrl }: RepositoryCommitR
         </Popover>
       </MenuTrigger>
 
-      <span role="status" className="sr-only">
-        {isCopied && <span key={copyCount}>Copied to clipboard</span>}
-      </span>
+      <CopiedAnnouncement isCopied={isCopied} copyCount={copyCount} />
     </StickyRightCell>
   );
 }
