@@ -17,8 +17,8 @@ export function useLastLoadedCommitPages(pages: RepositoryCommitLog[] | undefine
 
   const isSameLog =
     firstPage !== undefined &&
-    lastLoaded?.[0]?.repositoryId === firstPage.repositoryId &&
-    lastLoaded[0].branchName === firstPage.branchName;
+    lastLoaded?.[0]?.repository_id === firstPage.repository_id &&
+    lastLoaded[0].branch_name === firstPage.branch_name;
 
   return isColdAnswer && isSameLog ? lastLoaded : pages;
 }

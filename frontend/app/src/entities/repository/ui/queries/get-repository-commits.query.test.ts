@@ -1,12 +1,11 @@
 import { describe, expect, test } from "vitest";
 
 import {
-  REPOSITORY_COMMIT_STATE,
-  REPOSITORY_GIT_CONDITION,
-  REPOSITORY_GIT_UNAVAILABLE_REASON,
   type RepositoryCommit,
   type RepositoryCommitLog,
-  type RepositoryGitCondition,
+  RepositoryCommitState,
+  RepositoryGitCondition,
+  RepositoryGitUnavailableReason,
 } from "@/entities/repository/domain/model/repository";
 import {
   getRepositoryCommitsQueryOptions,
@@ -18,30 +17,29 @@ const PARAMS = { repositoryId: "repo-1", branchName: "main" };
 
 function buildCommit(index: number): RepositoryCommit {
   return {
-    id: `commit-${index}`,
-    __typename: "RepositoryCommit",
     hash: `${index}`.padStart(40, "0"),
-    shortHash: `${index}`.padStart(7, "0"),
+    short_hash: `${index}`.padStart(7, "0"),
     summary: `Commit ${index}`,
-    authorName: "Ada",
-    authoredAt: "2026-01-01T00:00:00Z",
-    state: REPOSITORY_COMMIT_STATE.HISTORY,
+    author_name: "Ada",
+    authored_at: "2026-01-01T00:00:00Z",
+    state: RepositoryCommitState.HISTORY,
   };
 }
 
 function buildLog(condition: RepositoryGitCondition, commitCount = 1): RepositoryCommitLog {
   return {
-    ...PARAMS,
-    gitRef: "main",
+    repository_id: PARAMS.repositoryId,
+    branch_name: PARAMS.branchName,
+    git_ref: "main",
     condition,
-    importedCommit: null,
-    remoteHead: null,
-    pendingCount: null,
-    fetchedAt: null,
-    checkedAt: null,
+    imported_commit: null,
+    remote_head: null,
+    pending_count: null,
+    fetched_at: null,
+    checked_at: null,
     unavailable:
-      condition === REPOSITORY_GIT_CONDITION.UNAVAILABLE
-        ? { reason: REPOSITORY_GIT_UNAVAILABLE_REASON.NOT_CLONED, message: "not cloned" }
+      condition === RepositoryGitCondition.UNAVAILABLE
+        ? { reason: RepositoryGitUnavailableReason.NOT_CLONED, message: "not cloned" }
         : null,
     commits: Array.from({ length: commitCount }, (_, index) => buildCommit(index)),
   };
@@ -59,7 +57,7 @@ function resolveRefetchInterval(pages: RepositoryCommitLog[] | undefined) {
 describe("getRepositoryCommitsQueryOptions", () => {
   test("polls while the first page is still unavailable", () => {
     // GIVEN
-    const pages = [buildLog(REPOSITORY_GIT_CONDITION.UNAVAILABLE)];
+    const pages = [buildLog(RepositoryGitCondition.UNAVAILABLE)];
 
     // WHEN
     const interval = resolveRefetchInterval(pages);
@@ -70,7 +68,7 @@ describe("getRepositoryCommitsQueryOptions", () => {
 
   test("stops polling once the first page carries a git state", () => {
     // GIVEN
-    const pages = [buildLog(REPOSITORY_GIT_CONDITION.BEHIND)];
+    const pages = [buildLog(RepositoryGitCondition.BEHIND)];
 
     // WHEN
     const interval = resolveRefetchInterval(pages);
@@ -93,7 +91,7 @@ describe("getRepositoryCommitsQueryOptions", () => {
   test("requests the next offset when the last page is full", () => {
     // GIVEN
     const { getNextPageParam } = getRepositoryCommitsQueryOptions(PARAMS);
-    const lastPage = buildLog(REPOSITORY_GIT_CONDITION.IN_SYNC, REPOSITORY_COMMITS_PAGE_SIZE);
+    const lastPage = buildLog(RepositoryGitCondition.IN_SYNC, REPOSITORY_COMMITS_PAGE_SIZE);
 
     // WHEN
     const nextOffset = getNextPageParam(lastPage, [lastPage], 0, [0]);
@@ -105,7 +103,7 @@ describe("getRepositoryCommitsQueryOptions", () => {
   test("stops paging when the last page is short", () => {
     // GIVEN
     const { getNextPageParam } = getRepositoryCommitsQueryOptions(PARAMS);
-    const lastPage = buildLog(REPOSITORY_GIT_CONDITION.IN_SYNC, REPOSITORY_COMMITS_PAGE_SIZE - 1);
+    const lastPage = buildLog(RepositoryGitCondition.IN_SYNC, REPOSITORY_COMMITS_PAGE_SIZE - 1);
 
     // WHEN
     const nextOffset = getNextPageParam(lastPage, [lastPage], 0, [0]);

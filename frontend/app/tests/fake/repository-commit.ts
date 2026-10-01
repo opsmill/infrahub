@@ -1,31 +1,9 @@
-import type {
-  RepositoryCommitState,
-  RepositoryGitCondition,
-  RepositoryGitUnavailableReason,
-} from "@/entities/repository/domain/model/repository";
+import type { RepositoryCommitsResponse } from "@/entities/repository/api/get-repository-commits-from-api";
+import type { RepositoryCommitState } from "@/entities/repository/domain/model/repository";
 
-export interface RepositoryCommitNodeWire {
-  hash: string;
-  short_hash: string;
-  summary: string;
-  author_name: string;
-  authored_at: string;
-  state: RepositoryCommitState;
-}
+export type RepositoryCommitsWire = RepositoryCommitsResponse["InfrahubRepositoryCommits"];
 
-export interface RepositoryCommitsWire {
-  repository_id: string;
-  branch_name: string;
-  git_ref: string | null;
-  condition: RepositoryGitCondition;
-  imported_commit: string | null;
-  remote_head: string | null;
-  pending_count: number | null;
-  fetched_at: string | null;
-  checked_at: string | null;
-  unavailable: { reason: RepositoryGitUnavailableReason; message: string } | null;
-  edges: Array<{ node: RepositoryCommitNodeWire }>;
-}
+type RepositoryCommitNodeWire = RepositoryCommitsWire["edges"][number]["node"];
 
 export const fullHash = (shortHash: string) => shortHash.padEnd(40, "0");
 

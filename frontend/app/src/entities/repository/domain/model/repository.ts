@@ -1,3 +1,12 @@
+import {
+  type RepositoryCommit as GeneratedRepositoryCommit,
+  RepositoryCommitState as GeneratedRepositoryCommitState,
+  type RepositoryCommits as GeneratedRepositoryCommits,
+  RepositoryGitCondition as GeneratedRepositoryGitCondition,
+  type RepositoryGitUnavailable as GeneratedRepositoryGitUnavailable,
+  RepositoryGitUnavailableReason as GeneratedRepositoryGitUnavailableReason,
+} from "@/shared/api/graphql/generated/types";
+
 export const REPOSITORY_OBJECTS_TAB = "repository_objects";
 export const REPOSITORY_GROUP = "CoreRepositoryGroup";
 export const REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME = "sync_status";
@@ -8,65 +17,37 @@ export const READONLY_REPOSITORY_KIND = "CoreReadOnlyRepository";
 
 export const REPOSITORY_COMMITS_TAB = "repository_commits";
 
-export const REPOSITORY_COMMIT_STATE = {
-  HEAD: "HEAD",
-  IMPORTED: "IMPORTED",
-  PENDING: "PENDING",
-  HISTORY: "HISTORY",
-  UNRELATED: "UNRELATED",
-} as const;
+export const RepositoryCommitState = GeneratedRepositoryCommitState;
+export type RepositoryCommitState = GeneratedRepositoryCommitState;
 
-export type RepositoryCommitState =
-  (typeof REPOSITORY_COMMIT_STATE)[keyof typeof REPOSITORY_COMMIT_STATE];
+export const RepositoryGitCondition = GeneratedRepositoryGitCondition;
+export type RepositoryGitCondition = GeneratedRepositoryGitCondition;
 
-export const REPOSITORY_GIT_CONDITION = {
-  IN_SYNC: "IN_SYNC",
-  BEHIND: "BEHIND",
-  REWRITTEN: "REWRITTEN",
-  ORPHANED: "ORPHANED",
-  NO_REMOTE: "NO_REMOTE",
-  NOT_TRACKED: "NOT_TRACKED",
-  UNAVAILABLE: "UNAVAILABLE",
-} as const;
+export const RepositoryGitUnavailableReason = GeneratedRepositoryGitUnavailableReason;
+export type RepositoryGitUnavailableReason = GeneratedRepositoryGitUnavailableReason;
 
-export type RepositoryGitCondition =
-  (typeof REPOSITORY_GIT_CONDITION)[keyof typeof REPOSITORY_GIT_CONDITION];
+export type RepositoryGitUnavailable = Pick<
+  GeneratedRepositoryGitUnavailable,
+  "reason" | "message"
+>;
 
-export const REPOSITORY_GIT_UNAVAILABLE_REASON = {
-  NOT_CLONED: "NOT_CLONED",
-  NOT_IMPLEMENTED: "NOT_IMPLEMENTED",
-  TIMEOUT: "TIMEOUT",
-} as const;
+export type RepositoryCommit = Pick<
+  GeneratedRepositoryCommit,
+  "hash" | "short_hash" | "summary" | "author_name" | "authored_at" | "state"
+>;
 
-export type RepositoryGitUnavailableReason =
-  (typeof REPOSITORY_GIT_UNAVAILABLE_REASON)[keyof typeof REPOSITORY_GIT_UNAVAILABLE_REASON];
-
-export interface RepositoryGitUnavailable {
-  reason: RepositoryGitUnavailableReason;
-  message: string;
-}
-
-export interface RepositoryCommit {
-  id: string;
-  __typename: "RepositoryCommit";
-  hash: string;
-  shortHash: string;
-  summary: string;
-  authorName: string;
-  authoredAt: string;
-  state: RepositoryCommitState;
-}
-
-export interface RepositoryCommitLog {
-  repositoryId: string;
-  branchName: string;
-  gitRef: string | null;
-  condition: RepositoryGitCondition;
-  importedCommit: string | null;
-  remoteHead: string | null;
-  pendingCount: number | null;
-  fetchedAt: string | null;
-  checkedAt: string | null;
+export type RepositoryCommitLog = Pick<
+  GeneratedRepositoryCommits,
+  | "repository_id"
+  | "branch_name"
+  | "git_ref"
+  | "condition"
+  | "imported_commit"
+  | "remote_head"
+  | "pending_count"
+  | "fetched_at"
+  | "checked_at"
+> & {
   unavailable: RepositoryGitUnavailable | null;
   commits: RepositoryCommit[];
-}
+};

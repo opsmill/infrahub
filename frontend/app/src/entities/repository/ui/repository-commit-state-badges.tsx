@@ -1,8 +1,8 @@
 import { Badge, type BadgeProps } from "@/shared/components/ui/badge";
 
 import {
-  REPOSITORY_COMMIT_STATE,
   type RepositoryCommit,
+  RepositoryCommitState,
 } from "@/entities/repository/domain/model/repository";
 
 interface StateBadge {
@@ -17,17 +17,17 @@ const UNRELATED_BADGE: StateBadge = { label: "Not on current history", variant: 
 
 function getStateBadges(commit: RepositoryCommit, importedCommit: string | null): StateBadge[] {
   switch (commit.state) {
-    case REPOSITORY_COMMIT_STATE.HEAD:
+    case RepositoryCommitState.HEAD:
       return commit.hash === importedCommit
         ? [REMOTE_HEAD_BADGE, IMPORTED_BADGE]
         : [REMOTE_HEAD_BADGE];
-    case REPOSITORY_COMMIT_STATE.IMPORTED:
+    case RepositoryCommitState.IMPORTED:
       return [IMPORTED_BADGE];
-    case REPOSITORY_COMMIT_STATE.PENDING:
+    case RepositoryCommitState.PENDING:
       return [PENDING_BADGE];
-    case REPOSITORY_COMMIT_STATE.UNRELATED:
+    case RepositoryCommitState.UNRELATED:
       return [UNRELATED_BADGE];
-    case REPOSITORY_COMMIT_STATE.HISTORY:
+    case RepositoryCommitState.HISTORY:
       return [];
   }
 }

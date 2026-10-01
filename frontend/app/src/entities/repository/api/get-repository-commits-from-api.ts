@@ -1,4 +1,9 @@
-import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
+import {
+  graphql,
+  graphqlClient,
+  type ResultOf,
+  type VariablesOf,
+} from "@/shared/api/graphql/client";
 import type { BranchContextParams } from "@/shared/api/types";
 
 const REPOSITORY_COMMITS = graphql(`
@@ -30,6 +35,8 @@ const REPOSITORY_COMMITS = graphql(`
     }
   }
 `);
+
+export type RepositoryCommitsResponse = ResultOf<typeof REPOSITORY_COMMITS>;
 
 export interface GetRepositoryCommitsFromApiParams
   extends BranchContextParams,

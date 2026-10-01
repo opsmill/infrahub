@@ -6,8 +6,8 @@ import { pluralize } from "@/shared/utils/string";
 
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import {
-  REPOSITORY_GIT_CONDITION,
   type RepositoryCommitLog,
+  RepositoryGitCondition,
 } from "@/entities/repository/domain/model/repository";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
@@ -31,7 +31,7 @@ export function RepositoryCommitsHeader({ log }: RepositoryCommitsHeaderProps) {
 }
 
 function FreshnessLine({ log }: RepositoryCommitsHeaderProps) {
-  const { gitRef, checkedAt, fetchedAt } = log;
+  const { git_ref: gitRef, checked_at: checkedAt, fetched_at: fetchedAt } = log;
   const showFetchedAt = fetchedAt !== null && fetchedAt !== checkedAt;
 
   return (
@@ -60,17 +60,17 @@ const REWRITTEN_NOTICE =
 const ORPHANED_NOTICE = "The imported commit could not be found on the remote.";
 
 function ConditionNotice({ log }: RepositoryCommitsHeaderProps) {
-  const { condition, pendingCount } = log;
+  const { condition, pending_count: pendingCount } = log;
 
-  if (condition === REPOSITORY_GIT_CONDITION.REWRITTEN) {
+  if (condition === RepositoryGitCondition.REWRITTEN) {
     return <AmberNotice>{REWRITTEN_NOTICE}</AmberNotice>;
   }
 
-  if (condition === REPOSITORY_GIT_CONDITION.ORPHANED) {
+  if (condition === RepositoryGitCondition.ORPHANED) {
     return <AmberNotice>{ORPHANED_NOTICE}</AmberNotice>;
   }
 
-  if (condition === REPOSITORY_GIT_CONDITION.BEHIND && pendingCount !== null) {
+  if (condition === RepositoryGitCondition.BEHIND && pendingCount !== null) {
     return (
       <p className="font-medium text-sm">{pluralize(pendingCount, "commit")} pending import</p>
     );

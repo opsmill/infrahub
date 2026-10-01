@@ -21,7 +21,7 @@ export function getRepositoryCommitsColumns(
   importedCommit: string | null
 ): Array<ColumnDef<RepositoryCommit>> {
   return [
-    columnHelper.accessor("shortHash", {
+    columnHelper.accessor("short_hash", {
       header: () => <ColumnHeader>Hash</ColumnHeader>,
       cell: ({ cell }) => (
         <TableCell>
@@ -39,7 +39,7 @@ export function getRepositoryCommitsColumns(
         </TableCell>
       ),
     }),
-    columnHelper.accessor("authorName", {
+    columnHelper.accessor("author_name", {
       header: () => <ColumnHeader>Author</ColumnHeader>,
       cell: ({ cell }) => (
         <TableCell>
@@ -47,7 +47,7 @@ export function getRepositoryCommitsColumns(
         </TableCell>
       ),
     }),
-    columnHelper.accessor("authoredAt", {
+    columnHelper.accessor("authored_at", {
       header: () => <ColumnHeader>Date</ColumnHeader>,
       cell: ({ cell }) => (
         <TableCell>
@@ -71,7 +71,7 @@ export function getRepositoryCommitsColumns(
         <StickyRightCell>
           <CopyToClipboardButton
             data={row.original.hash}
-            aria-label={`Copy full hash ${row.original.shortHash}`}
+            aria-label={`Copy full hash ${row.original.short_hash}`}
           />
         </StickyRightCell>
       ),

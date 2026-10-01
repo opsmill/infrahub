@@ -8,8 +8,8 @@ import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
 import {
-  REPOSITORY_GIT_CONDITION,
   type RepositoryCommitLog,
+  RepositoryGitCondition,
 } from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useLastLoadedCommitPages } from "@/entities/repository/ui/hooks/use-last-loaded-commit-pages";
@@ -61,8 +61,9 @@ export function RepositoryCommitsManager({ repositoryId }: RepositoryCommitsMana
         onLoadMore={fetchNextPage}
       >
         <DataTable
-          columns={getRepositoryCommitsColumns(log.importedCommit)}
+          columns={getRepositoryCommitsColumns(log.imported_commit)}
           data={commits}
+          getRowId={(commit) => commit.hash}
           gridTemplateColumns={gridTemplateColumns}
           renderEmpty={() => <NoDataFound message="This ref has no commits." />}
         />
@@ -74,14 +75,14 @@ export function RepositoryCommitsManager({ repositoryId }: RepositoryCommitsMana
 
 function getEmptyState(log: RepositoryCommitLog) {
   switch (log.condition) {
-    case REPOSITORY_GIT_CONDITION.UNAVAILABLE:
+    case RepositoryGitCondition.UNAVAILABLE:
       return {
         title: "Commit log not available yet",
         message: log.unavailable?.message ?? "Waiting for a worker to answer.",
       };
-    case REPOSITORY_GIT_CONDITION.NOT_TRACKED:
+    case RepositoryGitCondition.NOT_TRACKED:
       return { title: "No commit log", message: "This branch tracks no remote ref." };
-    case REPOSITORY_GIT_CONDITION.NO_REMOTE:
+    case RepositoryGitCondition.NO_REMOTE:
       return { title: "No commit log", message: "The tracked ref has no remote counterpart." };
     default:
       return null;
