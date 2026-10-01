@@ -244,6 +244,7 @@ async def test_reads_each_profile_separately(db: InfrahubDatabase, default_branc
         include_relationships=ALL_FILTERS,
     )
 
+    assert len(result) == 2
     assert {profile_data.uuid: profile_data for profile_data in result} == {
         first.id: ProfileData(
             uuid=first.id,
