@@ -192,11 +192,7 @@ class GraphQLExtractor:
         return self.apply_directives(selection_set=selection_set, fields=fields, path=path)
 
     async def _collect_fields(self, selection_set: SelectionSetNode, path: str) -> dict[str, dict | None]:
-        """Collect the fields of a selection set, reading fragments as selections at the same path.
-
-        Directives are applied by the enclosing field, not per fragment, so their injected selections land in
-        the field's own selection set.
-        """
+        """Collect a selection set's fields, reading fragments at the enclosing field's path so that field's directives cover them."""
         fields: dict[str, dict | None] = {}
         for node in selection_set.selections:
             if isinstance(node, FieldNode):
