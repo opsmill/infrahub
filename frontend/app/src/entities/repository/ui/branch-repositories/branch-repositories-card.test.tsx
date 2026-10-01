@@ -445,7 +445,9 @@ describe("BranchRepositoriesCard", () => {
 
     // THEN
     await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    for (let sample = 0; sample < 5; sample += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
     expect(
       page
         .getByRole("alert")

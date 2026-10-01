@@ -49,7 +49,7 @@ function toStatusFetch(
 export function useBranchRepositorySummaries(
   branches: BranchListItem[]
 ): Record<string, BranchRepositorySummary> {
-  const { data: allBranches } = useGetBranches();
+  const { data: allBranches, error: branchesError } = useGetBranches();
   const defaultBranch = allBranches ? findSelectedBranch(allBranches, null) : null;
   const defaultBranchName = defaultBranch?.name ?? "";
 
@@ -57,7 +57,9 @@ export function useBranchRepositorySummaries(
     { branchName: defaultBranchName, syncWithGit: true },
     { enabled: Boolean(defaultBranch) }
   );
-  const listFetch = toRepositoryListFetch(repositoryList);
+  const listFetch = branchesError
+    ? { status: "error" as const, message: branchesError.message }
+    : toRepositoryListFetch(repositoryList);
   const repositories: BranchRepositoryRef[] =
     repositoryList.data?.status === "ok"
       ? repositoryList.data.repositories.map(({ id, name, kind, isReadOnly }) => ({
