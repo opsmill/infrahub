@@ -126,7 +126,7 @@ The `tab` argument on each helper is a string-literal union (e.g. `BranchDetails
 | Button | `Button`, `LinkButton` | `@infrahub/ui` |
 | Spinner | `Spinner` | `@infrahub/ui` |
 
-Two limits worth knowing before you pick a paging primitive: `Pagination` always renders "of {count}" and cannot hide the total, so a list that must not show one (`entities/repository/ui/repository-commits-tab.tsx`) uses `DataTable` inside `InfiniteScroll` instead; and `DataTable`'s `isLoading` renders `ObjectTableSkeleton`, whose first column is a checkbox, so a table without row selection shows its own spinner for a next-page fetch rather than passing `isLoading`.
+Two limits worth knowing before you pick a paging primitive: `Pagination` always renders "of {count}" and cannot hide the total, so a list that must not show one (`entities/repository/ui/repository-commits-manager.tsx`) uses `DataTable` inside `InfiniteScroll` instead; and `DataTable`'s `isLoading` renders `ObjectTableSkeleton`, whose first column is a checkbox, so a table without row selection shows its own spinner for a next-page fetch rather than passing `isLoading`.
 
 More primitives (`Sheet`, `Tree`, `Menu`, `Select`, `ListBox`, `Autocomplete`, `SortableList`, `Checkbox`, `Popover`, `useDismissGuard`, …) live in `@infrahub/ui` — check `frontend/packages/ui/src/index.ts` first; `design-system.md` owns that inventory.
 

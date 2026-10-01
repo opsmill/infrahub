@@ -15,7 +15,7 @@ export interface RepositoryCommitsHeaderProps {
 
 export function RepositoryCommitsHeader({ log }: RepositoryCommitsHeaderProps) {
   return (
-    <Col className="gap-1.5 px-4 py-3">
+    <Col className="gap-1.5 px-2 py-2">
       <FreshnessLine log={log} />
       <ConditionNotice log={log} />
     </Col>

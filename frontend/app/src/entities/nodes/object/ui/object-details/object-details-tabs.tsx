@@ -8,7 +8,7 @@ import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/domain/rul
 import { ObjectTaskTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
-import { RepositoryCommitsLinkTab } from "@/entities/repository/ui/repository-commits-link-tab";
+import { RepositoryCommitsTab } from "@/entities/repository/ui/repository-commits-tab";
 import { RepositoryObjectsTab } from "@/entities/repository/ui/repository-objects-tab";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
@@ -43,7 +43,7 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
           ))}
           {isTaskTarget && <ObjectTaskTab objectKind={objectKind} objectId={objectId} />}
           {isRepository && <RepositoryObjectsTab objectKind={objectKind} objectId={objectId} />}
-          {isRepository && <RepositoryCommitsLinkTab objectKind={objectKind} objectId={objectId} />}
+          {isRepository && <RepositoryCommitsTab objectKind={objectKind} objectId={objectId} />}
         </Row>
       </nav>
     </ScrollArea>
