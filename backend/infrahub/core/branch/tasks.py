@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from opentelemetry import trace
 from prefect import flow, get_run_logger
 from prefect.client.schemas.objects import State  # noqa: TC002
 from prefect.states import Completed, Failed
@@ -420,13 +421,15 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     # The database session used for the rebase has already closed here, so open a fresh one for the
     # changelog's own database reads.
     async with database.start_session() as changelog_db:
-        branch_changelogs, default_branch_changelogs = await _collect_rebase_changelogs(
-            db=changelog_db,
-            branch=user_branch,
-            branch_diff=branch_diff,
-            default_branch_diff=default_branch_diff,
-            migrations=migrations,
-        )
+        with trace.get_tracer(__name__).start_as_current_span("rebase.collect_changelogs") as span:
+            branch_changelogs, default_branch_changelogs = await _collect_rebase_changelogs(
+                db=changelog_db,
+                branch=user_branch,
+                branch_diff=branch_diff,
+                default_branch_diff=default_branch_diff,
+                migrations=migrations,
+            )
+            span.set_attribute("changelog.changelog_count", len(branch_changelogs) + len(default_branch_changelogs))
     for action, node_changelog in [*branch_changelogs, *default_branch_changelogs]:
         mutation_action = MutationAction.from_diff_action(diff_action=action)
         meta = EventMeta.from_parent(parent=rebase_event, branch=user_branch)

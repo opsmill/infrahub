@@ -5,6 +5,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.changelog.enrichment import node_label_loader
 from infrahub.core.changelog.models import (
     AttributeChangelog,
+    ChangelogRelatedNode,
     NodeChangelog,
     PropertyChangelog,
     RelationshipCardinalityManyChangelog,
@@ -314,7 +315,7 @@ async def test_node_changelog_update_with_cardinality_one_relationship(
                 peer_kind_previous="TestPerson",
                 peer_id=person2.id,
                 peer_kind="TestPerson",
-                properties={},
+                properties={"is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None)},
             )
         },
     )
@@ -818,3 +819,81 @@ async def test_secondary_changelog_names_the_previous_peer_own_relationship(
             ],
         )
     }
+
+
+PARENT_SIDE_SCHEMA: dict[str, Any] = {
+    "version": "1.0",
+    "nodes": [
+        {
+            "name": "Site",
+            "namespace": "Yyy",
+            "display_label": "name__value",
+            "attributes": [{"name": "name", "kind": "Text"}],
+            "relationships": [
+                {
+                    "name": "racks",
+                    "peer": "YyyRack",
+                    "identifier": "site__rack",
+                    "cardinality": "many",
+                    "direction": "inbound",
+                    "optional": True,
+                }
+            ],
+        },
+        {
+            "name": "Rack",
+            "namespace": "Yyy",
+            "display_label": "name__value",
+            "attributes": [{"name": "name", "kind": "Text"}],
+            "relationships": [
+                {
+                    "name": "site",
+                    "peer": "YyySite",
+                    "identifier": "site__rack",
+                    "kind": "Parent",
+                    "cardinality": "one",
+                    "direction": "outbound",
+                    "optional": False,
+                }
+            ],
+        },
+    ],
+}
+
+
+async def test_secondary_changelog_records_the_parent_its_reciprocal_relationship_names(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, data_schema: None
+) -> None:
+    """A peer holding the mutated node through a parent relationship reports it as its parent."""
+    registry.schema.register_schema(schema=SchemaRoot(**PARENT_SIDE_SCHEMA), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    await default_branch.save(db=db)
+
+    site = await Node.init(db=db, schema="YyySite", branch=default_branch)
+    await site.new(db=db, name="site-1")
+    await site.save(db=db)
+
+    new_site = await Node.init(db=db, schema="YyySite", branch=default_branch)
+    await new_site.new(db=db, name="site-2")
+    await new_site.save(db=db)
+
+    rack = await Node.init(db=db, schema="YyyRack", branch=default_branch)
+    await rack.new(db=db, name="rack-1", site=site)
+    await rack.save(db=db)
+
+    updated_site = await NodeManager.get_one(id=new_site.id, db=db, raise_on_error=True)
+    await updated_site.racks.update(data=[rack], db=db)
+    await updated_site.save(db=db)
+
+    getter = RelationshipChangelogGetter(
+        db=db,
+        branch=default_branch,
+        label_loader=node_label_loader(db=db, branch=default_branch, node_loader=NodeManager.get_many),
+    )
+    secondaries = await getter.get_changelogs(primary_changelog=updated_site.node_changelog)
+
+    assert [changelog.node_id for changelog in secondaries] == [rack.id]
+    secondary = secondaries[0]
+    assert list(secondary.relationships) == ["site"]
+    assert secondary.parent == ChangelogRelatedNode(node_id=new_site.id, node_kind="YyySite")
+    assert secondary.root_node_id == new_site.id
