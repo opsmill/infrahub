@@ -108,7 +108,7 @@ uv run pytest backend/tests/integration/git/test_git_live_remote.py::<node_id> -
 |---|---|---|
 | A rewritten non-default branch | US1, SC-001 | It reconciles and re-imports. The branch commit matches the new remote head, the imported objects match the rewritten tree, and the repository reports healthy. |
 | A rewritten trunk | US4, SC-002 | The same reconciliation happens. Across several cycles, the record is written once and the event is emitted once, never twice. |
-| A worker that received no broadcast | US2, SC-004 | It converges on first contact. It writes no commit to the graph and emits no report. |
+| A worker that received no broadcast | US2, SC-004 | It converges on first contact. It writes no rewrite record and emits no signal. |
 | One rewritten branch beside a healthy one | US3, SC-005 | The healthy branch still converges. The broadcast for it was sent before the failed branch raised. |
 | A read-only repository | US5 | A force-pushed tracked **branch**, not a moved tag: the read-only fetch omits `--force`, so a moved tag fails the fetch with "would clobber existing tag" instead of showing a lineage break. The record is written. No reset is performed. |
 | A deliberate ref change | US6, SC-007 | Nothing is recorded. |

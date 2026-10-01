@@ -328,8 +328,12 @@ suppression marker. It does not need to: both reset, and neither records.
 
 ### Rules
 
-- The reset honours `update_commit_value` the same way the pull does. The broadcast handler passes
-  `update_commit_value=False`, so a self-healing worker writes nothing to the graph.
+- The reset honours `update_commit_value` the same way the pull does, and forces no value of its
+  own. The broadcast handler passes `update_commit_value=False`, so a reset driven by a broadcast
+  writes nothing. A worker that heard **no** broadcast reaches the reset through `pull` or through
+  `collect_pending_imports`, and both default to `True`, so that worker does write the commit. The
+  write is idempotent: the reconciling worker already stored the same value. Do not read the
+  broadcast handler's flag as a property of self-healing.
 - The reset writes no rewrite record and emits no event, whatever the caller (FR-007).
 - No message raised from this path calls a divergent history a conflict (FR-003, FR-017).
 - **This change cannot be implemented before PR #10465 lands.** Without the push-before-graph-write
@@ -372,6 +376,12 @@ sync(repo, staging_branch) -> SyncOutcome
 Changed. `backend/infrahub/git/tasks.py`.
 
 It sends one coalesced `RefreshGitFetch` covering every reconciled branch, before any raise.
+
+**The catch boundary.** This function is the single owner of logging and recording a failed
+reconciliation. It never propagates a failure of the configured default branch. It re-raises the
+failure of any other branch, because the existing path tags the repository from that raise, and the
+per-repository `try` added to `sync_remote_repositories` keeps the raise from reaching the next
+repository.
 
 ### Contract
 

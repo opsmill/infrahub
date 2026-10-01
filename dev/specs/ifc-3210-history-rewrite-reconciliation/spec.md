@@ -68,15 +68,16 @@ construction.
 
 **Independent Test**: Reconcile a branch on one worker while a second worker receives no
 broadcast. Make the second worker advance that branch worktree. Assert that it ends on the remote
-head, writes no commit to the graph and emits no report.
+head, writes no rewrite record and emits no signal.
 
 **Acceptance Scenarios**:
 
 1. **Given** a branch reconciled while one worker was unavailable, **When** that worker later runs
    any operation that advances the branch worktree, **Then** it detects the divergence itself and
    resets to the remote head.
-2. **Given** the same worker, **When** it resets, **Then** it writes no commit to the graph and
-   emits no rewrite record and no signal.
+2. **Given** the same worker, **When** it resets, **Then** it writes no rewrite record and emits
+   no signal. It may write the branch commit, because it reaches the reset through a path that
+   updates it. That value is the one the reconciling worker already stored.
 3. **Given** the same worker, **When** it resets, **Then** the operation it was asked to run
    completes successfully.
 4. **Given** a worker that has never seen the repository, **When** it first touches it, **Then** it
@@ -110,14 +111,15 @@ it.
 ### User Story 4 - A rewritten trunk is reconciled and announced (Priority: P2)
 
 The configured default branch of a repository has its history rewritten. Infrahub reconciles it in
-exactly the same way as any other branch. It also emits one outbound signal, because on a
+exactly the same way as any other branch. It also emits at most one outbound signal, because on a
 synchronised repository a rewritten trunk is a security remediation, a migration or a mistake.
 
 **Why this priority**: The trunk carries the largest blast radius, but the reconciliation logic is
 the same as P1. Only the signal is new. It depends on P1 landing first.
 
 **Independent Test**: Rewrite the trunk of a tracked repository on a live remote. Run several
-synchronisation cycles. Assert one record, one signal and a healthy repository.
+synchronisation cycles. Assert at most one record, at most one signal, never a second of either,
+and a healthy repository. SC-002 says why the guarantee is one-sided.
 
 **Acceptance Scenarios**:
 

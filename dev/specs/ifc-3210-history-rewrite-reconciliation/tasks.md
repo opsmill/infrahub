@@ -238,7 +238,9 @@ healthy branch is still sent, and a second worker converges on it.
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 4.
 - [ ] T032 [US3] Broadcast before the raise in
       `backend/infrahub/git/tasks.py::sync_repository_from_origin`. Send one coalesced
-      `RefreshGitFetch` covering every reconciled branch, then raise for the failures.
+      `RefreshGitFetch` covering every reconciled branch, then re-raise the failures of branches
+      **other than** the configured default branch, which keeps today's failure tagging working.
+      A failed default branch never leaves this flow: T033 owns it.
       **Keep sending the trunk message every cycle, even when no branch advanced.** That message is
       what heals a worker which missed an earlier broadcast, and its replacement is the pull-path
       reset in Phase 5. Dropping it here would leave a gap with no self-heal on either side.
@@ -280,8 +282,8 @@ healthy branch is still sent, and a second worker converges on it.
 depend on a broadcast.
 
 **Independent test**: reconcile a branch on one worker while a second receives no broadcast. Make
-the second advance that branch worktree. It ends on the remote head, writes no commit to the graph,
-and emits no report.
+the second advance that branch worktree. It ends on the remote head, writes no rewrite record and
+emits no signal.
 
 **Maps to**: FR-005, FR-007, SC-004.
 
@@ -342,7 +344,7 @@ and emits no report.
       the remote head by `pull`, and nothing is raised.
 - [ ] T051 [US2] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`: a worker that received no broadcast
-      converges on first contact, writes no commit to the graph and emits no report.
+      converges on first contact, writes no rewrite record and emits no signal.
 - [ ] T052 [P] [US2] Add a live-remote test that a worker which has never seen the repository
       clones fresh and needs no reset, in
       `backend/tests/integration/git/test_git_live_remote.py`.
@@ -459,7 +461,7 @@ cycles. The record written once, the signal emitted once, never twice, and a hea
       other branch emits none.
 - [ ] T070 [US4] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`: a rewritten trunk produces exactly
-      one record and one signal **across several synchronisation cycles**, never two. One cycle is not
+      at most one record and at most one signal **across several synchronisation cycles**, never two. One cycle is not
       enough, because a single-cycle test would pass while the exactly-once property is broken.
 - [ ] T071 [US4] Add a live-remote test that wires a webhook to the new event and asserts exactly
       one delivery per rewrite, in `backend/tests/integration/git/test_git_live_remote.py`. This
