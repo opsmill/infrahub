@@ -4,9 +4,13 @@ import { type CSSProperties, type ReactNode, useLayoutEffect, useRef, useState }
 
 import { DesignHistory, type Knob, type Variant } from "./design-history-panel";
 import { OverviewRev01 } from "./overview/rev-01";
+import { OverviewRev02 } from "./overview/rev-02";
 import { SideNavRev01 } from "./side-nav/rev-01";
+import { SideNavRev02 } from "./side-nav/rev-02";
 import { SinglePageRev01 } from "./single-page/rev-01";
+import { SinglePageRev02 } from "./single-page/rev-02";
 import { TabsRev01 } from "./tabs/rev-01";
+import { TabsRev02 } from "./tabs/rev-02";
 
 const PR_URL: string | undefined = undefined;
 
@@ -54,6 +58,12 @@ const VARIANTS: Variant[] = [
         date: DATE,
         render: (k) => fill(<SideNavRev01 knobs={k} />),
       },
+      {
+        rev: 2,
+        note: "Section bodies render flush; the shell owns the gutter",
+        date: DATE,
+        render: (k) => fill(<SideNavRev02 knobs={k} />),
+      },
     ],
   },
   {
@@ -66,6 +76,12 @@ const VARIANTS: Variant[] = [
         note: "First cut: today's tabs plus Preferences and Global",
         date: DATE,
         render: (k) => fill(<TabsRev01 knobs={k} />),
+      },
+      {
+        rev: 2,
+        note: "Section bodies render flush; the shell owns the gutter",
+        date: DATE,
+        render: (k) => fill(<TabsRev02 knobs={k} />),
       },
     ],
   },
@@ -80,6 +96,12 @@ const VARIANTS: Variant[] = [
         date: DATE,
         render: (k) => fill(<SinglePageRev01 knobs={k} />),
       },
+      {
+        rev: 2,
+        note: "Section bodies render flush; the shell owns the gutter",
+        date: DATE,
+        render: (k) => fill(<SinglePageRev02 knobs={k} />),
+      },
     ],
   },
   {
@@ -92,6 +114,12 @@ const VARIANTS: Variant[] = [
         note: "First cut: card grid with live summaries",
         date: DATE,
         render: (k) => fill(<OverviewRev01 knobs={k} />),
+      },
+      {
+        rev: 2,
+        note: "Section bodies render flush; the shell owns the gutter",
+        date: DATE,
+        render: (k) => fill(<OverviewRev02 knobs={k} />),
       },
     ],
   },
