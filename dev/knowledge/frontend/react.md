@@ -62,6 +62,6 @@ The REST client sets `retry: false` app-wide (`shared/api/rest/client.ts`), so a
 
 TanStack Query runs `replaceEqualDeep` on what `combine` returns. It pairs arrays by index and objects by key, so if `combine` returns a flat array and one upstream result grows (a pending entry becomes N rows), every entry after it shifts and is copied as a new object. Downstream row identity is lost. Return a record keyed by a stable id and flatten it outside `combine`. A module-level cache doesn't help: mismatched array entries are still copied.
 
-No in-repo example yet.
+In-repo example: `entities/branches/ui/hooks/use-branch-repository-summaries.ts::useBranchRepositorySummaries`, whose `combine` returns a record keyed by branch name.
 
 <!-- Extracted from specs/ifc-3201-branches-table-git on 2026-09-30 -->

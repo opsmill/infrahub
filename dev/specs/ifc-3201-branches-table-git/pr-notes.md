@@ -103,6 +103,12 @@ Advisory items left as follow-ups:
 
 ## Cubic (local, before the PR)
 
+Rounds on rework A (shape A):
+
+- Round A1 (`3f930f2446`): 3 findings. Fixed: the lifted status fetcher now passes the no-op `processErrorMessage` (so it is no longer byte-identical to #10658, by one context option); the no-toast test helper samples over 500 ms instead of once; stale formatter name in the spec docs; the docs empty-state rows now say merged and deleting branches are listed by no repository.
+- Round A2 (`3e77224276`): 5 findings. Fixed: a page the backend cut at 500 rows is detected (`count > rows.length`) and branches absent from it read "Could not load repositories" with the reason, instead of a false "No repositories"; branch creation and the list's reload button invalidate the repository status cache so a new branch never reads "No repositories" for a minute; the knowledge note cites `useBranchRepositorySummaries` as the in-repo example; rebased onto #10779's moved tip. Declined: unused fixture exports and unused row fields/query variables in the byte-identical #10658 lift (`tests/fake/repository.ts`, `repository-branch-status.ts`, the status query document). Trimming them would fork #10658's files; they are reconciled when #10658 lands.
+
+
 Round 1 (`cubic review -b ple-branch-details-repos-infp-671`): 7 findings, no P0/P1.
 
 Fixed:

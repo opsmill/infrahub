@@ -33,7 +33,9 @@ function toStatusFetch(
   repository: BranchRepositoryRef,
   result: UseQueryResult<RepositoryBranchStatusPage>
 ): RepositoryStatusFetch {
-  if (result.data) return { status: "ok", repository, rows: result.data.rows };
+  if (result.data) {
+    return { status: "ok", repository, rows: result.data.rows, count: result.data.count };
+  }
   if (!result.error) return { status: "pending" };
   if (
     result.error instanceof RepositoryBranchStatusError &&
