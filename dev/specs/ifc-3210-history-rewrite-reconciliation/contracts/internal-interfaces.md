@@ -70,14 +70,15 @@ evaluated at all when the object is gone: the ancestry call raises instead of an
 honour `target_changed`, so a deliberate re-target whose old commit has been garbage-collected is
 still a re-target rather than a recorded rewrite.
 
-**`LOCAL_AHEAD` narrows the exposure to PR #10465. It does not remove it.** A branch left ahead of
-its remote after a rejected push is a state the product reaches today. Without that row it falls
-into "neither is an ancestor", classifies `REWRITE`, and the reset discards the unpushed commit.
-With it, that branch resets nothing and keeps today's behaviour.
+**`LOCAL_AHEAD` is load-bearing.** A branch left ahead of its remote is a state the product
+reaches. Without that row it falls into "neither is an ancestor", classifies `REWRITE`, and the
+reset discards the unpushed commit. With it, that branch resets nothing and keeps today's
+behaviour.
 
-What is left is the branch that is **both** ahead locally and rewritten remotely. Neither commit is
-an ancestor of the other, so it classifies `REWRITE` and the reset discards the unpushed merge
-commit. Every step that resets a worktree therefore stays gated on #10465.
+A branch that is **both** ahead locally and rewritten remotely still classifies `REWRITE`, and the
+reset moves it to the remote head. That is safe for the merge path: `InfrahubRepository.merge`
+pushes the merge commit before it records it and resets the destination worktree when either step
+fails, so no merge commit survives on one worker alone.
 
 `REMOTE_ABSENT` likewise keeps current behaviour: a tracked ref that disappeared from the remote is
 not a lineage break. `spec.md` names it as an edge case.
@@ -336,8 +337,9 @@ suppression marker. It does not need to: both reset, and neither records.
   broadcast handler's flag as a property of self-healing.
 - The reset writes no rewrite record and emits no event, whatever the caller (FR-007).
 - No message raised from this path calls a divergent history a conflict (FR-003, FR-017).
-- **This change cannot be implemented before PR #10465 lands.** Without the push-before-graph-write
-  ordering, an unconditional reset can discard a merge commit that exists on one worker only.
+- **The unconditional reset is safe because of the merge ordering.** `InfrahubRepository.merge`
+  pushes before it records and resets the destination worktree on failure, so no merge commit is
+  left on one worker alone for this reset to discard.
 
 ---
 
@@ -398,9 +400,9 @@ repository.
 - When the cycle advanced no branch, no message is sent. **This removes a heal that exists today.**
   `sync_repository_from_origin` currently sends the pinned trunk commit every cycle even when
   nothing changed, which brings a worker that missed an earlier broadcast back within a minute. The
-  pull-path self-heal of FR-005 replaces it, and that is gated on PR #10465. Until it lands, keep
-  sending the trunk message unconditionally: the "no branch advanced, no message" rule ships with
-  the pull-path reset, not before it.
+  pull-path self-heal of FR-005 replaces it. **Order the two:** keep sending the trunk message
+  unconditionally until the pull-path reset ships, then drop it. Shipping the "no branch advanced,
+  no message" rule first leaves a stale worker with no heal on either side.
 - When every branch failed, the coalesced message carries no pairs. The unconditional trunk
   message above still goes, because it is what heals a stale worker and nothing in this phase
   replaces it.
@@ -440,8 +442,7 @@ Changed. `backend/infrahub/message_bus/operations/git/repository.py::fetch`.
 6. **It resets with `reset_to_commit` and runs no ancestry check**, so it does not honour
    `LOCAL_AHEAD`: a pinned SHA moves the worktree whether or not it holds commits the remote does
    not. That is deliberate, because the broadcast carries a SHA the sending worker already resolved
-   and the receiving worker is meant to converge on exactly it. It is also why widening the
-   broadcast is gated on #10465 along with every other reset.
+   and the receiving worker is meant to converge on exactly it.
 7. One pair failing does not stop the rest. Each failure is logged with the branch it belongs to,
    and that branch converges on first contact through the pull-path rule of FR-005. The broadcast
    is a pre-warm, so a pair it could not converge costs promptness and not correctness.

@@ -2,7 +2,7 @@
 
 **Branch**: `history-rewrite-reconciliation-ifc-3210` | **Date**: 2026-09-29 | **Spec**: [spec.md](spec.md)
 
-**Branches from**: `develop` | **Prerequisite**: PR #10465, on `pog-fix-merge-push-ordering-IFC-1449`
+**Branches from**: `develop`
 
 **Input**: Jira epic IFC-3210. PRD: Notion `992228b83025825990bc011568cc2f4b`, Confluence 896466945.
 
@@ -138,53 +138,37 @@ without a database.
 
 Each slice is independently testable and delivers value on its own.
 
-| Slice | User story | Depends on | Gated on #10465 |
-|---|---|---|---|
-| **A. Classify** | Foundation for US1 | Nothing | No |
-| **B. Reconcile in the sync path** | US1 | A | **Partly.** See below. |
-| **C. Broadcast every branch, before the raise** | US3 | B | **Yes.** See below. |
-| **D. Self-heal in the pull path** | US2 | A | **Yes** |
-| **E. Record the event** | US1 | A, and schema sign-off | No |
-| **F. Signal a rewritten trunk** | US4 | E | No |
-| **G. Read-only detection** | US5 | A, E, H | No |
-| **H. Re-target suppression** | US6 | E | No |
-| **I. Documentation** | — | B, C, D, E | No |
+| Slice | User story | Depends on |
+|---|---|---|
+| **A. Classify** | Foundation for US1 | Nothing |
+| **B. Reconcile in the sync path** | US1 | A |
+| **C. Broadcast every branch, before the raise** | US3 | B |
+| **D. Self-heal in the pull path** | US2 | A |
+| **E. Record the event** | US1 | A, and schema sign-off |
+| **F. Signal a rewritten trunk** | US4 | E |
+| **G. Read-only detection** | US5 | A, E, H |
+| **H. Re-target suppression** | US6 | E |
+| **I. Documentation** | — | B, C, D, E |
 
-### What #10465 actually gates, and why slice B is only partly free
+### Why every reset in this plan is safe
 
-Both slice B and slice D reset a branch onto the remote head. Both can therefore discard a commit
-that exists on one worker's disk and nowhere else, which is the state a rejected push leaves behind
-until #10465 lands.
+Slices B, C and D reset a branch onto the remote head. The one state that would make such a reset
+lossy is a merge commit that exists on a single worker's disk and nowhere else.
 
-The `LOCAL_AHEAD` classification removes most of that exposure. A branch that is merely ahead of
-its remote — the ordinary shape of a rejected push — classifies `LOCAL_AHEAD`, and neither slice
-resets it. Today's behaviour is preserved exactly.
+`InfrahubRepository.merge` no longer leaves that state. It pushes the merge commit, then records
+it, and resets the destination worktree to its pre-merge commit when either step fails. A rejected
+push leaves the destination either at its pre-merge state, where a later attempt re-derives the
+merge, or trailing the remote, which the periodic synchronisation repairs. That ordering arrived
+with IFC-1449.
 
-What remains is the branch that is **both** ahead locally and rewritten remotely. Neither commit is
-then an ancestor of the other, the classification is `REWRITE`, and the reset discards the unpushed
-merge commit. That case is rare but real, and it is the reason the gate exists.
-
-So:
-
-- **Slice A, E, F, G, H and I** are free of the gate. They never reset anything.
-- **Slice C** is gated too. Widening the broadcast makes the convergence handler run
-  `reset_to_commit` for every branch on every other worker, where today it does so for the trunk
-  only. `InfrahubRepository.rebase` merges into non-trunk branches and pushes, so without #10465 an
-  unpushed merge commit can sit on a feature-branch worktree that the widened broadcast would
-  discard.
-- **Slice B** is blocked on #10465, like the other resets. Its classification and its corrected
-  error message can be written and merged first, because they change no worktree, but the reset
-  itself waits. No setting turns it on or off: the task is simply gated.
-- **Slice D** is fully gated, because the pull path has no classification context to lean on and
-  runs from every worker.
-
-Do not read `LOCAL_AHEAD` as a replacement for the gate. It narrows the hole; #10465 closes it.
+`LOCAL_AHEAD` carries its own weight on top of that. A branch merely ahead of its remote classifies
+`LOCAL_AHEAD` and no slice resets it, so an unpushed commit from any other source is preserved too.
+Keep the row: it is a correctness rule in the detector, not a workaround for the merge path.
 
 ## Risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| **PR #10465 does not land.** | Slice D cannot ship, and slice B's reset cannot be enabled. Either can discard a merge commit that exists on one worker only. | The `LOCAL_AHEAD` classification narrows this to the branch that is both ahead locally and rewritten remotely. Slice D stays fully gated, slice B's reset stays behind the same gate. Do not relax either. |
 | **PR #10542 (IFC-3105) rewrites `git/base.py`.** | A rebase conflict in `pull` and in the error classifier, the two places slice D and slice A touch. | Patrick owns both branches. Agree the merge order before slice D starts. #10542 removes the trunk fallback this epic would otherwise inherit, so landing it first is the better order. |
 | **The suppression marker is lost.** | A deliberate re-target is recorded as a rewrite, the count goes one too high, **and the trunk signal fires**, so whatever a customer has wired to that webhook receives a security-remediation notice for an ordinary configuration change. | Accepted and documented. The reconciliation is identical either way. A test covers the marker being present; a second test covers it being absent, and asserts the record is written, so the behaviour is stated rather than assumed. |
 | **The widened broadcast increases lock contention.** | Slower merges and syncs under load. | One coalesced message per repository per cycle, one lock hold, one fetch. A unit test asserts the fan-out over N pairs happens inside one acquisition. |

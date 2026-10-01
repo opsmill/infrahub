@@ -3,16 +3,13 @@
 **Feature**: `dev/specs/ifc-3210-history-rewrite-reconciliation`
 **Branch**: `history-rewrite-reconciliation-ifc-3210`
 **Branches from**: `develop`
-**Prerequisite**: PR #10465, on `pog-fix-merge-push-ordering-IFC-1449`, not yet on `develop`
-**Date**: 2026-09-29, re-checked against `develop` on 2026-09-30
+**Date**: 2026-09-29, re-checked against `develop` on 2026-10-01
 
-Every claim below was first checked against PR #10465's branch, because that branch was the
-starting point while the design was written. This spec branch has since been rebased onto
-`develop`, so the facts were re-checked there.
+Every claim below is checked against `develop`.
 
-Only the merge path differs between the two, and the difference matters: on `develop`
-`git/repository.py::InfrahubRepository.merge` writes the commit to the graph **before** it pushes.
-#10465 reverses that. Each claim below says which code it describes where it matters.
+The merge path matters most to this design. `git/repository.py::InfrahubRepository.merge` pushes
+the merge commit before it records it, and resets the destination worktree to its pre-merge commit
+when either step fails. That ordering arrived with IFC-1449.
 
 ---
 
@@ -80,8 +77,8 @@ classification is:
 **`LOCAL_AHEAD` is not symmetry for its own sake.** After a rejected push the local branch sits ahead of
 `origin/`; `git-integration.md` lists it under Known limitations, and `compare_local_remote` flags
 the branch every cycle. Collapse that into "not an ancestor" and the branch classifies `REWRITE`,
-the sync resets it, and the unpushed commit is gone — which is precisely the loss PR #10465 exists
-to prevent, reintroduced by the detection layer rather than the merge layer.
+the sync resets it, and the unpushed commit is gone. That is the loss IFC-1449 removed at the
+merge layer, reintroduced at the detection layer.
 
 With the row, a locally-ahead branch resets nothing and records nothing, so today's behaviour is
 preserved. It also removes the once-a-minute "update was detected but the commit remained the same
@@ -191,14 +188,11 @@ not write the rewrite record, and must not emit the signal. `pull` already takes
 `update_commit_value`, and the broadcast handler already passes `update_commit_value=False`. The
 record and the signal are written by the recorder in the sync path, never here.
 
-**Why #10465 is a prerequisite.** On `develop`, `InfrahubRepository.merge` writes the commit to
-the graph before it pushes, so a rejected push leaves a merge commit that exists on one worker's
-disk and nowhere else. A reset would discard it silently.
-
-**That is the ordering on `develop` today, and therefore on this branch**, which is rebased onto
-it. #10465 reverses it: `merge` pushes first, records second, and resets the destination worktree
-when either step fails. Until that lands on `develop`, the unpushed-merge-commit state is
-reachable, so the pull-path reset and the sync-path reset both stay gated on it.
+**Why an unconditional reset is safe.** `InfrahubRepository.merge` pushes the merge commit first,
+records it second, and resets the destination worktree to its pre-merge commit when either step
+fails. A rejected push therefore leaves no merge commit that exists on one worker's disk and
+nowhere else, which is the one state a reset onto the remote head would have discarded. That
+ordering arrived with IFC-1449 and it is what makes the pull-path and sync-path resets safe.
 
 ---
 
@@ -512,8 +506,7 @@ precondition are identical either way. The tasks name both attachment points.
 ## R11. The test harness
 
 **Decision**: extend the Gogs-backed live-remote harness, which is already on `develop`. Add one
-force-push helper beside the existing `_push_commit_to_remote`. Only the two `pre-receive` hook
-helpers come from #10465, and nothing here needs them.
+force-push helper beside the existing `_push_commit_to_remote`.
 
 **What exists on `develop`** (`backend/tests/integration/git/conftest.py`,
 `test_git_live_remote.py`):
@@ -521,9 +514,8 @@ helpers come from #10465, and nothing here needs them.
 - A Gogs container fixture with an API token and repository creation.
 - `_push_commit_to_remote`: makes a commit inside the remote container and pushes it.
 - `_install_remote_branch_rejection_hook` / `_remove_remote_branch_rejection_hook`: a server-side
-  `pre-receive` hook that rejects updates, used to simulate branch protection. **These two come
-  from #10465 and are not on `develop`.** Nothing in this design needs them, but a task that wants
-  to simulate remote-side policy does, and must wait for that PR.
+  `pre-receive` hook that rejects updates, used to simulate branch protection. Nothing in this
+  design needs them, but a task that wants to simulate remote-side policy has them.
 - Config-reset fixtures for merge and branch-name settings.
 
 **What is missing**: a force-push helper. A rewrite is a force-push, and the Gogs bare repository
@@ -550,8 +542,9 @@ feature. Tasks cover all three.
 3. `merge-failure-recovery.md`, "Key Files": it attributes the merge-start logic to
    `core/branch/tasks.py::_do_merge_branch`. That logic now lives in `core/merge/orchestrator.py`.
 
-One of the four "Volatile section" notes in `git-integration.md` describes this feature as planned:
-the one under "How git errors are classified". It has to be rewritten to describe what shipped.
-**Leave the other three alone.** They cover the trunk fallback (PR #10542), the persisted writeback
-state (IFC-3220) and push-before-graph-write (PR #10465). Rewriting those would claim three other
-fixes shipped.
+Two of the four "Volatile section" notes in `git-integration.md` need rewriting. The one under
+"How git errors are classified" describes this feature as planned. The one on the merge ordering
+describes push-before-graph-write as intended, and it shipped with IFC-1449, so the paragraph above
+it still says a merge commit "exists on exactly one worker's disk", which is no longer true.
+**Leave the other two alone.** They cover the trunk fallback (PR #10542) and the persisted
+writeback state (IFC-3220). Rewriting those would claim two other fixes shipped.
