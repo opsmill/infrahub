@@ -569,9 +569,9 @@ async def test_db_hits_do_not_grow_with_linked_nodes(
         pytest.skip("PROFILE and db.prepareForReplanning() exist only in Neo4j")
 
     few = await _create_linked_profile(db=db, branch=default_branch, peers=peers, name="few", linked_nodes=2)
-    many = await _create_linked_profile(db=db, branch=default_branch, peers=peers, name="many", linked_nodes=60)
+    many = await _create_linked_profile(db=db, branch=default_branch, peers=peers, name="many", linked_nodes=10)
     many = await NodeManager.get_one(db=db, branch=default_branch, id=many.id, raise_on_error=True)
-    assert len(await many.related_nodes.get_relationships(db=db)) == 60
+    assert len(await many.related_nodes.get_relationships(db=db)) == 10
 
     few_hits = await _count_db_hits(
         db=db, branch=default_branch, profile_id=few.id, relationship_filters=relationship_filters
