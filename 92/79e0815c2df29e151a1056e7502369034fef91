@@ -1,0 +1,25 @@
+changelog/+generator-capture-unstored-diff.fixed.md
+  s_9595999eed8325::t_be3403abf35b7d 1
+backend/tests/integration/proposed_change/test_merge_selective_regen.py
+  s_9595999eed8325::t_c68512c5d7d92d 295-305
+  s_9595999eed8325::t_df8665777645b1 502
+  s_9595999eed8325::t_ef097bc49a2ef1 639,681,731
+  s_9595999eed8325::t_9df1ab73f0fffa 439,449,451-452
+  s_9595999eed8325::t_d3cd89a215bc2d 479-480
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9279e0815c2df29e151a1056e7502369034fef91",
+  "prompts": {},
+  "sessions": {
+    "s_9595999eed8325": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "109c86ec-725f-47bc-8f4f-f23df2a60d80",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
