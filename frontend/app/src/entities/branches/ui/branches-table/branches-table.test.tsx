@@ -101,8 +101,10 @@ const identifierCellNames = (container: HTMLElement) =>
   );
 
 const expectNoToast = async () => {
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  expect(page.getByRole("alert").elements()).toHaveLength(0);
+  for (let sample = 0; sample < 5; sample += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(page.getByRole("alert").elements()).toHaveLength(0);
+  }
 };
 
 describe("BranchesTable", () => {

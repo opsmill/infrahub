@@ -60,6 +60,8 @@ export function getRepositoryBranchStatusFromApi({
     variables,
     context: {
       branch: branchName,
+      // Callers render their own failed state, so the shared client's error toast is suppressed.
+      processErrorMessage: () => {},
     },
   });
 }

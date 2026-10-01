@@ -20,7 +20,7 @@ Binding contract: `rework-contract-a.md`; reasoning: research R15; spec: Clarifi
 |---|---|
 | `frontend/app/src/entities/repository/domain/model/repository-branch-status.ts` | `identical (`cmp` against `git show`, re-checked after formatting)` |
 | `frontend/app/src/entities/repository/domain/model/repository-branch-status.test.ts` | `identical (`cmp` against `git show`, re-checked after formatting)` |
-| `frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts` | `identical (`cmp` against `git show`, re-checked after formatting)` |
+| `frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts` | `identical except a no-op `processErrorMessage` in the request context (added after cubic found the status request still toasted; #10658's card may want the same)` |
 | `frontend/app/src/entities/repository/domain/use-cases/get-repository-branch-status.ts` | `identical (`cmp` against `git show`, re-checked after formatting)` |
 | `frontend/app/src/entities/repository/domain/use-cases/get-repository-branch-status.test.ts` | `identical (`cmp` against `git show`, re-checked after formatting)` |
 | `frontend/app/src/shared/api/graphql/error-handling.ts` (`hasThrownCatalogueCode`, additive) | `identical (`cmp` against `git show`, re-checked after formatting)` |
