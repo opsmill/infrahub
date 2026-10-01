@@ -319,27 +319,24 @@ async def test_reads_each_profile_separately(db: InfrahubDatabase, default_branc
         relationship_filters=ALL_FILTERS,
     )
 
-    assert result == sorted(
-        [
-            ProfileData(
-                uuid=first.id,
-                priority=10,
-                attribute_values={"description": "first"},
-                relationship_peers={SITE_FILTER: _ids(peers.sites[0]), LABELS_FILTER: _ids(peers.labels[0])},
-            ),
-            ProfileData(
-                uuid=second.id,
-                priority=20,
-                attribute_values={"description": "second"},
-                relationship_peers={
-                    SITE_FILTER: _ids(peers.sites[1]),
-                    RACK_FILTER: _ids(peers.racks[0]),
-                    LABELS_FILTER: _ids(*peers.labels[1:]),
-                },
-            ),
-        ],
-        key=lambda profile_data: profile_data.uuid,
-    )
+    assert {profile_data.uuid: profile_data for profile_data in result} == {
+        first.id: ProfileData(
+            uuid=first.id,
+            priority=10,
+            attribute_values={"description": "first"},
+            relationship_peers={SITE_FILTER: _ids(peers.sites[0]), LABELS_FILTER: _ids(peers.labels[0])},
+        ),
+        second.id: ProfileData(
+            uuid=second.id,
+            priority=20,
+            attribute_values={"description": "second"},
+            relationship_peers={
+                SITE_FILTER: _ids(peers.sites[1]),
+                RACK_FILTER: _ids(peers.racks[0]),
+                LABELS_FILTER: _ids(*peers.labels[1:]),
+            },
+        ),
+    }
 
 
 async def test_excludes_deleted_profiles(db: InfrahubDatabase, default_branch: Branch, peers: Peers) -> None:
