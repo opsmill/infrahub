@@ -3,9 +3,8 @@ from copy import deepcopy
 import pytest
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind, MetadataOptions
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch, initialize_registry
-from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.registry import registry
@@ -19,8 +18,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.queries.resource_manager import resolve_number_pool_utilization
 from infrahub.pools.number_pool_repository import NumberPoolRepository
-from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from tests.helpers.agnostic_edges import pool_reservation_edges
+from tests.helpers.number_pool import add_pool_range, shorthand_mirror
 from tests.helpers.schema import TICKET, load_schema
 
 
@@ -465,92 +464,6 @@ class TestNumberPoolGetResource:
         )
 
 
-def _mirror(db: InfrahubDatabase) -> NumberPoolShorthandMirror:
-    return NumberPoolShorthandMirror(repository=NumberPoolRepository(db=db))
-
-
-async def _add_range(db: InfrahubDatabase, pool: CoreNumberPool, start: int, end: int) -> Node:
-    pool_range = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOLRANGE)
-    await pool_range.new(db=db, start=start, end=end, pool=pool.get_id())
-    await pool_range.save(db=db)
-    return pool_range
-
-
-async def test_get_ranges(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> None:
-    """The pool's ranges come back lowest start first, whatever order they were created in."""
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    await initialize_registry(db=db)
-
-    pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
-    await pool.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
-    await pool.save(db=db)
-
-    assert await NumberPoolRepository(db=db).get_ranges(pool_id=pool.get_id()) == []
-
-    second = await _add_range(db=db, pool=pool, start=300, end=400)
-    first = await _add_range(db=db, pool=pool, start=100, end=200)
-
-    ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool.get_id())
-    assert [(item.start.value, item.end.value) for item in ranges] == [(100, 200), (300, 400)]
-    assert [item.get_id() for item in ranges] == [first.get_id(), second.get_id()]
-
-
-async def test_sync_shorthand_from_ranges(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> None:
-    """The shorthand carries the bounds of a single range and is null for any other range count."""
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    await initialize_registry(db=db)
-
-    pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
-    await pool.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
-    await pool.save(db=db)
-
-    await _mirror(db=db).sync(pool=pool)
-    assert pool.start_range.value is None
-    assert pool.end_range.value is None
-
-    await _add_range(db=db, pool=pool, start=100, end=200)
-    await _mirror(db=db).sync(pool=pool)
-    assert pool.start_range.value == 100
-    assert pool.end_range.value == 200
-
-    await _add_range(db=db, pool=pool, start=300, end=400)
-    await _mirror(db=db).sync(pool=pool)
-    assert pool.start_range.value is None
-    assert pool.end_range.value is None
-
-    reloaded = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool.get_id(), kind=CoreNumberPool)
-    assert reloaded.start_range.value is None
-    assert reloaded.end_range.value is None
-
-
-async def test_sync_shorthand_writes_only_the_shorthand_at_the_given_time(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> None:
-    """The mirror saves the two shorthand attributes at the caller's timestamp and nothing else."""
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    await initialize_registry(db=db)
-
-    pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
-    await pool.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
-    await pool.save(db=db)
-    await _add_range(db=db, pool=pool, start=100, end=200)
-
-    sync_at = Timestamp()
-    pool.description.value = "pending change owned by another writer"
-    await _mirror(db=db).sync(pool=pool, at=sync_at)
-
-    at_sync = await NodeManager.get_one(db=db, id=pool.get_id(), at=sync_at)
-    assert at_sync is not None
-    assert (at_sync.get_attribute("start_range").value, at_sync.get_attribute("end_range").value) == (100, 200)
-
-    reloaded = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool.get_id(), kind=CoreNumberPool)
-    assert reloaded.description.value is None
-
-
 @pytest.mark.xfail(
     strict=True, reason="allocation still reads the shorthand bounds; walking the range set lands with IFC-3065 phase 3"
 )
@@ -564,62 +477,10 @@ async def test_allocation_from_a_pool_holding_several_ranges_starts_at_the_lowes
     pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await pool.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
     await pool.save(db=db)
-    await _add_range(db=db, pool=pool, start=100, end=200)
-    await _add_range(db=db, pool=pool, start=300, end=400)
-    await _mirror(db=db).sync(pool=pool)
+    await add_pool_range(db=db, pool=pool, start=100, end=200)
+    await add_pool_range(db=db, pool=pool, start=300, end=400)
+    await shorthand_mirror(db=db).sync(pool=pool)
     assert (pool.start_range.value, pool.end_range.value) == (None, None)
 
     attribute = registry.schema.get_node_schema(name=TICKET.kind).get_attribute(name="ticket_id")
     assert await pool.get_next(db=db, branch=default_branch, attribute=attribute) == 100
-
-
-async def test_sync_shorthand_records_the_caller_and_leaves_a_correct_mirror_untouched(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> None:
-    """The write is recorded under the caller's account, and a mirror that is already right is not rewritten."""
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    await initialize_registry(db=db)
-
-    pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
-    await pool.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
-    await pool.save(db=db)
-    await _add_range(db=db, pool=pool, start=100, end=200)
-
-    sync_at = Timestamp()
-    await _mirror(db=db).sync(pool=pool, at=sync_at, user_id="first-writer")
-
-    async def shorthand_metadata() -> list[tuple[str | None, str | None]]:
-        loaded = await NodeManager.get_one(db=db, id=pool.get_id(), include_metadata=MetadataOptions.USER_TIMESTAMPS)
-        assert loaded is not None
-        metadata = []
-        for name in ("start_range", "end_range"):
-            attribute = loaded.get_attribute(name)
-            updated_at = attribute._get_updated_at()
-            metadata.append((attribute._get_updated_by(), updated_at.to_string() if updated_at else None))
-        return metadata
-
-    assert await shorthand_metadata() == [("first-writer", sync_at.to_string()), ("first-writer", sync_at.to_string())]
-
-    reloaded = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool.get_id(), kind=CoreNumberPool)
-    await _mirror(db=db).sync(pool=reloaded, at=Timestamp(), user_id="second-writer")
-
-    assert await shorthand_metadata() == [("first-writer", sync_at.to_string()), ("first-writer", sync_at.to_string())]
-
-
-async def test_sync_shorthand_mirrors_the_ranges_the_caller_holds(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> None:
-    """Ranges handed in by the caller are mirrored as given, without reading the pool's ranges again."""
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    await initialize_registry(db=db)
-
-    pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
-    await pool.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
-    await pool.save(db=db)
-    held_range = await _add_range(db=db, pool=pool, start=100, end=200)
-    await _add_range(db=db, pool=pool, start=300, end=400)
-
-    await _mirror(db=db).sync(pool=pool, ranges=[held_range])
-
-    reloaded = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool.get_id(), kind=CoreNumberPool)
-    assert (reloaded.start_range.value, reloaded.end_range.value) == (100, 200)
