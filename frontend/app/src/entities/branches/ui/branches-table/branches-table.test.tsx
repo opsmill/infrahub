@@ -1,13 +1,17 @@
-import { focusManager } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { BranchesTable } from "@/entities/branches/ui/branches-table/branches-table";
-import { useGetBranchesPaginated } from "@/entities/branches/ui/queries/get-branches.query";
+import {
+  useGetBranches,
+  useGetBranchesPaginated,
+} from "@/entities/branches/ui/queries/get-branches.query";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 import { useGetProposedChanges } from "@/entities/proposed-changes/ui/queries/get-proposed-changes.query";
+import { mapRepositoryBranchStatusPage } from "@/entities/repository/domain/model/repository-branch-status";
 import { getBranchRepositories } from "@/entities/repository/domain/use-cases/get-branch-repositories";
+import { getRepositoryBranchStatus } from "@/entities/repository/domain/use-cases/get-repository-branch-status";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 import { render } from "../../../../../tests/components/render";
@@ -16,6 +20,10 @@ import {
   generateBranchRepositoriesResult,
   generateBranchRepository,
 } from "../../../../../tests/fake/branch-repositories";
+import {
+  generateRepositoryBranchStatus,
+  generateRepositoryBranchStatusPage,
+} from "../../../../../tests/fake/repository";
 
 vi.mock("@/entities/authentication/ui/auth-provider");
 vi.mock("@/entities/branches/ui/queries/get-branches.query");
@@ -31,6 +39,7 @@ vi.mock(
     getBranchRepositories: vi.fn(),
   })
 );
+vi.mock("@/entities/repository/domain/use-cases/get-repository-branch-status");
 
 const main = generateBranch({
   id: "branch-main",
@@ -40,55 +49,50 @@ const main = generateBranch({
 });
 const alpha = generateBranch({ id: "branch-alpha", name: "alpha", status: "NEED_REBASE" });
 const zulu = generateBranch({ id: "branch-zulu", name: "zulu" });
+const yankee = generateBranch({ id: "branch-yankee", name: "yankee" });
 
-const oneRepository = generateBranchRepositoriesResult([generateBranchRepository()]);
-const threeRepositories = generateBranchRepositoriesResult([
+const REPOSITORIES = generateBranchRepositoriesResult([
   generateBranchRepository({ id: "repo-1", name: "repo-one" }),
   generateBranchRepository({ id: "repo-2", name: "repo-two" }),
   generateBranchRepository({ id: "repo-3", name: "repo-three" }),
 ]);
 
-const repositoryConnection = {
-  count: 1,
-  edges: [
-    {
-      node: {
-        id: "repo-main",
-        __typename: "CoreReadOnlyRepository",
-        display_label: "main-repo",
-        name: { value: "main-repo" },
-        commit: { value: null },
-        sync_status: { value: "in-sync", label: "In Sync", color: null, description: null },
-        operational_status: { value: "online", label: "Online", color: null },
-      },
-    },
+const statusPage = (...branchNames: string[]) =>
+  mapRepositoryBranchStatusPage(
+    generateRepositoryBranchStatusPage({
+      rows: branchNames.map((name) => generateRepositoryBranchStatus({ name: { value: name } })),
+    })
+  );
+
+const statusErrorResponse = (code: string, message: string) => ({
+  data: null,
+  errors: [
+    { message, extensions: { code, http_status: code === "PERMISSION_DENIED" ? 403 : 404 } },
   ],
+});
+
+const serveRealStatusOverFetch = async (respond: (repositoryId: string) => unknown) => {
+  const { getRepositoryBranchStatus: real } = await vi.importActual<
+    typeof import("@/entities/repository/domain/use-cases/get-repository-branch-status")
+  >("@/entities/repository/domain/use-cases/get-repository-branch-status");
+  vi.mocked(getRepositoryBranchStatus).mockImplementation(real);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_url: string, init?: RequestInit) => {
+      const { variables } = JSON.parse(String(init?.body ?? "{}"));
+      return Response.json(respond(variables?.id));
+    })
+  );
 };
 
-const graphQLResponseFor = (url: string) => {
-  if (url.endsWith("/graphql/alpha")) {
-    return {
-      data: null,
-      errors: [{ message: "Repository index unavailable", extensions: { code: "NODE_NOT_FOUND" } }],
-    };
-  }
-  if (url.endsWith("/graphql/zulu")) {
-    return {
-      data: null,
-      errors: [
-        {
-          message: "You do not have one of the following permissions",
-          extensions: { code: "PERMISSION_DENIED", http_status: 403 },
-        },
-      ],
-    };
-  }
-  return {
-    data: {
-      CoreGenericRepository: repositoryConnection,
-      CoreReadOnlyRepository: repositoryConnection,
-    },
-  };
+const mockBranchPages = (...pages: Array<Array<ReturnType<typeof generateBranch>>>) => {
+  vi.mocked(useGetBranchesPaginated).mockReturnValue({
+    data: { pages },
+    fetchNextPage: vi.fn(),
+    hasNextPage: false,
+    isPending: false,
+    isFetchingNextPage: false,
+  } as unknown as ReturnType<typeof useGetBranchesPaginated>);
 };
 
 const identifierCellNames = (container: HTMLElement) =>
@@ -96,9 +100,10 @@ const identifierCellNames = (container: HTMLElement) =>
     link.textContent?.trim()
   );
 
-const requestCount = (branchName: string) =>
-  vi.mocked(getBranchRepositories).mock.calls.filter(([params]) => params.branchName === branchName)
-    .length;
+const expectNoToast = async () => {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  expect(page.getByRole("alert").elements()).toHaveLength(0);
+};
 
 describe("BranchesTable", () => {
   beforeEach(() => {
@@ -121,18 +126,16 @@ describe("BranchesTable", () => {
       },
       isPending: false,
     } as unknown as ReturnType<typeof useGetProposedChanges>);
-    vi.mocked(useGetBranchesPaginated).mockReturnValue({
-      data: { pages: [[zulu, main, alpha]] },
-      fetchNextPage: vi.fn(),
-      hasNextPage: false,
-      isPending: false,
-      isFetchingNextPage: false,
-    } as unknown as ReturnType<typeof useGetBranchesPaginated>);
+    vi.mocked(useGetBranches).mockReturnValue({
+      data: [alpha, main, zulu, yankee],
+    } as unknown as ReturnType<typeof useGetBranches>);
+    mockBranchPages([zulu, main, alpha]);
+    vi.mocked(getBranchRepositories).mockResolvedValue(REPOSITORIES);
+    vi.mocked(getRepositoryBranchStatus).mockResolvedValue(statusPage("main", "alpha", "zulu"));
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
-    focusManager.setFocused(undefined);
     vi.clearAllMocks();
   });
 
@@ -148,69 +151,81 @@ describe("BranchesTable", () => {
     await expect.element(component.getByText("Rebase needed")).toBeVisible();
     await expect.element(component.getByRole("link", { name: "Add VLANs" }).first()).toBeVisible();
     expect(identifierCellNames(component.container)).toEqual(["main", "alpha", "zulu"]);
-    expect(
-      component.getByTestId("branches-table").getByRole("status").elements().length
-    ).toBeGreaterThanOrEqual(3);
+    expect(component.getByTestId("branches-table").getByRole("status").elements()).toHaveLength(3);
   });
 
-  test("issues one repository request per branch, shared by both of its cells", async () => {
-    // GIVEN
-    vi.mocked(getBranchRepositories).mockResolvedValue(threeRepositories);
-
+  test("issues one repository-list request and one status request per repository", async () => {
     // WHEN
     const component = await render(<BranchesTable />);
 
     // THEN
     await expect.element(component.getByRole("link", { name: "+2 more" }).nth(2)).toBeVisible();
     await expect.element(component.getByText("3/3", { exact: true }).nth(2)).toBeVisible();
-    expect(vi.mocked(getBranchRepositories).mock.calls.map(([params]) => params)).toEqual(
-      expect.arrayContaining([
-        { branchName: "main", syncWithGit: true },
-        { branchName: "alpha", syncWithGit: false },
-        { branchName: "zulu", syncWithGit: false },
-      ])
-    );
-    for (const name of ["main", "alpha", "zulu"]) expect(requestCount(name)).toBe(1);
+    expect(vi.mocked(getBranchRepositories).mock.calls).toEqual([
+      [{ branchName: "main", syncWithGit: true }],
+    ]);
+    expect(vi.mocked(getRepositoryBranchStatus).mock.calls.map(([params]) => params.id)).toEqual([
+      "repo-1",
+      "repo-2",
+      "repo-3",
+    ]);
   });
 
-  test("a window refocus within staleTime issues no extra repository request", async () => {
+  test("loading a second page of branches issues no new status request", async () => {
     // GIVEN
-    vi.mocked(getBranchRepositories).mockResolvedValue(oneRepository);
+    vi.mocked(getRepositoryBranchStatus).mockResolvedValue(
+      statusPage("main", "alpha", "zulu", "yankee")
+    );
     const component = await render(<BranchesTable />);
-    await expect
-      .element(component.getByRole("link", { name: "infrastructure-templates" }).nth(2))
-      .toBeVisible();
-    for (const name of ["main", "alpha", "zulu"]) expect(requestCount(name)).toBe(1);
+    await expect.element(component.getByText("3/3", { exact: true }).nth(2)).toBeVisible();
 
     // WHEN
-    focusManager.setFocused(false);
-    focusManager.setFocused(true);
+    mockBranchPages([zulu, main, alpha], [yankee]);
+    await component.rerender(<BranchesTable />);
 
     // THEN
-    await expect.poll(() => ["main", "alpha", "zulu"].map(requestCount)).toEqual([1, 1, 1]);
+    await expect.element(component.getByRole("link", { name: "yankee" })).toBeVisible();
+    await expect.element(component.getByText("3/3", { exact: true }).nth(3)).toBeVisible();
+    expect(getBranchRepositories).toHaveBeenCalledTimes(1);
+    expect(getRepositoryBranchStatus).toHaveBeenCalledTimes(3);
   });
 
-  test("reads Could not load repositories and No permission on one row each, with no toast", async () => {
+  test("reads No permission on every row when the status read is denied, with no toast", async () => {
     // GIVEN
-    const { getBranchRepositories: realGetBranchRepositories } = await vi.importActual<
-      typeof import("@/entities/repository/domain/use-cases/get-branch-repositories")
-    >("@/entities/repository/domain/use-cases/get-branch-repositories");
-    vi.mocked(getBranchRepositories).mockImplementation(realGetBranchRepositories);
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => Response.json(graphQLResponseFor(url)))
+    await serveRealStatusOverFetch(() =>
+      statusErrorResponse("PERMISSION_DENIED", "You do not have one of the following permissions")
     );
 
     // WHEN
     const component = await render(<BranchesTable />);
 
     // THEN
-    await expect.element(component.getByText("Could not load repositories")).toBeVisible();
-    await expect.element(component.getByText("No permission")).toBeVisible();
-    await expect.element(component.getByRole("link", { name: "main-repo" })).toBeVisible();
-    await expect.element(component.getByText("in-sync", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("No permission").nth(2)).toBeVisible();
+    expect(component.getByText("No permission").elements()).toHaveLength(3);
     expect(identifierCellNames(component.container)).toEqual(["main", "alpha", "zulu"]);
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(page.getByRole("alert").elements()).toHaveLength(0);
+    await expectNoToast();
+  });
+
+  test("reads Could not load repositories on every row when one status read fails, with no toast", async () => {
+    // GIVEN
+    await serveRealStatusOverFetch((repositoryId) =>
+      repositoryId === "repo-2"
+        ? statusErrorResponse("NODE_NOT_FOUND", "Repository index unavailable")
+        : {
+            data: {
+              InfrahubRepositoryBranchStatus: generateRepositoryBranchStatusPage({
+                rows: [generateRepositoryBranchStatus({ name: { value: "main" } })],
+              }),
+            },
+          }
+    );
+
+    // WHEN
+    const component = await render(<BranchesTable />);
+
+    // THEN
+    await expect.element(component.getByText("Could not load repositories").nth(2)).toBeVisible();
+    expect(component.getByText("Could not load repositories").elements()).toHaveLength(3);
+    await expectNoToast();
   });
 });

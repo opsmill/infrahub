@@ -4,13 +4,13 @@ import React from "react";
 import { COLUMN_MAX_WIDTH, WIDE_COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
-import type { BranchListItem } from "@/entities/branches/domain/model/branch";
+import type { BranchTableRow } from "@/entities/branches/ui/branches-table/branch-table-row";
 import { BranchesToolbar } from "@/entities/branches/ui/branches-table/branches-toolbar";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
 
 export interface BranchesDataTableProps extends React.HTMLAttributes<HTMLDivElement> {
-  columns: ColumnDef<BranchListItem>[];
-  data: Array<BranchListItem>;
+  columns: ColumnDef<BranchTableRow>[];
+  data: Array<BranchTableRow>;
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
   gridTemplateColumns?: (columnCount: number) => string;

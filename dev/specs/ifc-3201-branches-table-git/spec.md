@@ -73,6 +73,18 @@ The owner tried the one-row-per-repository list on a dev stack and reversed it. 
 - Q: Is the Commit column kept? → A: **No, it is dropped.** The commit is shown in the repository pill's tooltip (7 characters) and on the branch details page. The copy control on commits goes with it.
 - Q: How does selection work? → A: **The ordinary way**: one row per branch, so one checkbox per branch, named "Select <branch>". The anchor-row selection and the tab-order rules for repeated rows are gone with the repeated rows.
 
+### Session 2026-10-01 (architecture review)
+
+Owner decisions after the architecture review of the one-row-per-branch implementation. Binding contract: `rework-contract-a.md`; reasoning: research R15. These answers supersede the matching answers above (data source, ordering, per-branch denial and failure, shared cache), which stay as history.
+
+- Q: Where does the list read repository data from? → A: **From the epic's `InfrahubRepositoryBranchStatus`, once per repository, pivoted to one summary per branch in the branches domain.** The per-branch `CoreGenericRepository` requests issued from inside the cells are gone. Why: the two cells owned and duplicated the data and its derivation (same query, same ranking); pure derivation lived in `.tsx`; the roll-up reused the details card's band ordering and showed an unreachable repository as "In Sync" above a real failure; and the per-branch query mirrored the backend's row-set rule on the client, which the epic's query exists to keep server-side.
+- Q: In which order are a branch's repositories ranked? → A: **By Git state severity, `error-import` > `unknown` > `syncing` > `in-sync`, then by repository name (case-insensitive).** A value outside this list ranks with `unknown`. Operational status (remote reachability) no longer affects the order.
+- Q: What does a permission denial do? → A: **It blanks the column for every row.** The status query needs repository view permission on all branches, and its denial is not per branch, so every row's Repositories cell reads "No permission" and every Git state cell is blank. A load failure of any repository's status likewise reads "Could not load repositories" on every row. The branch cells always render.
+- Q: What do merged branches show, if the list filter shows them? → A: **"No repositories".** The status query excludes merged, deleting and global branches from its rows.
+- Q: Is the cache still shared with the branch details page? → A: **No.** The list reads a different query; the details page keeps #10779's per-branch query.
+- Q: How many requests does the list issue? → A: **1 + R** (one repository list, one status request per repository; 16 on the dev stack), independent of how many branch pages are loaded. The backend `repository_ids` follow-up collapses this to 2 without touching cells or rules.
+- Q: What bounds a window refocus? → A: **A 60 s stale time on the status queries.** A refocus within 60 s of the last fetch issues no request; a status query polls every 10 s only while one of its rows is syncing.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Spot a broken repository from the branches list (Priority: P1)
@@ -106,7 +118,7 @@ A branch linked to sixteen repositories still appears once in the list. Its Repo
 2. **Given** a branch with three repositories of which one failed to import, **When** its row renders, **Then** the Repositories cell shows the failed repository, the Git state cell shows the failed state's pill followed by "1/3", and hovering the pill and count lists the count per state label, for example "Import Error: 1 · In Sync: 2".
 3. **Given** a branch with several repositories, **When** the operator ticks its checkbox, **Then** the toolbar reports 1 selected and the bulk delete dialog lists that branch once, as it does today.
 4. **Given** the list is scrolled to load more branches, **When** the next page arrives, **Then** the new branches append one row each, and the number of branches per page is unchanged from today.
-5. **Given** a branch with several repositories, **When** its row renders, **Then** the repository shown first follows the branch details page's order (failed imports first, then unreachable remotes, then by name), identically across reloads.
+5. **Given** a branch with several repositories, **When** its row renders, **Then** the repository shown first follows the severity order (failed imports, then unknown, then syncing, then in sync, each by name), identically across reloads.
 
 ---
 
@@ -123,8 +135,8 @@ A branch that is not synced with Git, or that has no repositories at all, says s
 1. **Given** a branch not synced with Git and with no read-only repositories, **When** the list renders, **Then** its Repositories cell reads "Not synced with Git" and its Git state cell is blank.
 2. **Given** a branch synced with Git but with no repositories registered, **When** the list renders, **Then** its Repositories cell reads "No repositories".
 3. **Given** a branch not synced with Git that has read-only repositories, **When** the list renders, **Then** those repositories are shown like any other (first repository, "+N more", Git state roll-up).
-4. **Given** the operator lacks permission to read a branch's repositories, **When** the list renders, **Then** that branch's cells render normally, its Repositories cell reads "No permission" in a muted style and its Git state cell is blank; no other branch is affected.
-5. **Given** repository data for a branch fails to load, **When** the list renders, **Then** that branch's cells render normally, its Repositories cell reads "Could not load repositories" in a muted style, its Git state cell is blank, and no toast or page-level error appears.
+4. **Given** the operator lacks permission to read repositories on every branch, **When** the list renders, **Then** every branch's cells render normally, every Repositories cell reads "No permission" in a muted style and every Git state cell is blank.
+5. **Given** a repository's status fails to load, **When** the list renders, **Then** every branch's cells render normally, every Repositories cell reads "Could not load repositories" in a muted style, every Git state cell is blank, and no toast or page-level error appears.
 
 ---
 
@@ -133,10 +145,13 @@ A branch that is not synced with Git, or that has no repositories at all, says s
 - A repository whose Git state has no colour defined in the schema: the pill falls back to a neutral style and still shows the state's value (or its label if there is no value), as the branch details page's pill already does.
 - A repository with no commit yet: its tooltip shows the Git state label only, without a commit part.
 - A freshly created synced branch reports the default branch's fork-point commit; it is displayed as returned, not treated as empty.
-- "Worst" is the first repository in the branch details order. Only a failed import ranks above the others by state; an unreachable remote ranks next without being shown (FR-016), so a branch with no failed import shows the Git state of its first-ranked repository, and the count and tooltip still give every state present.
+- "Worst" is the first repository in severity order (`error-import` > `unknown` > `syncing` > `in-sync`, then by name). An unreachable remote whose last import succeeded ranks as `in-sync`, so it never hides a failed import elsewhere (superseded 2026-10-01: the branch details band ordering is no longer used). A state value outside the list ranks with `unknown`.
+- A merged branch, if the list filter shows it, has no status rows and reads "No repositories".
+- Repository permission is checked by the status query on all branches at once: a denial reads "No permission" on every row, not on one.
 - Several repositories in the worst state: the count `n/N` counts every repository whose state value equals the shown one.
 - A branch whose repositories change from loading to loaded: the row keeps its position; the two new columns have fixed widths, so no column shifts sideways. The row may grow taller if the cell wraps.
-- A repository that is currently syncing: the branch's cells keep refreshing at the same cadence the branch details page already uses, and stop when the sync settles.
+- A repository that is currently syncing: its status query refreshes every 10 s, the cadence the branch details page already uses, and stops when the sync settles.
+- A branch page loaded by scrolling: it is summarized from the status rows already loaded, with no new status request.
 - The default branch: it stays first in the list; its repository link carries no branch parameter.
 - Existing filters (status, name, created-by, dates) continue to filter by branch; no filter or sort is offered on the two new columns.
 - Column count changes: the table's column layout accommodates the two new columns without misplacing the existing ones.
@@ -147,18 +162,18 @@ A branch that is not synced with Git, or that has no repositories at all, says s
 
 - **FR-001**: The branches list MUST show two additional columns, in this order after "Proposed changes": "Repositories", "Git state".
 - **FR-002**: The list MUST keep one row per branch. Repository data MUST NOT add rows.
-- **FR-003**: The set of repositories counted and shown for a branch MUST be what the backend returns for that branch. The list MUST NOT re-derive that set on the client from the branch's sync flag or status.
+- **FR-003**: The set of repositories counted and shown for a branch MUST be what the backend returns for that branch: the rows of `InfrahubRepositoryBranchStatus` whose branch name matches, one query per repository (read/write repositories list only branches synced with Git, read-only repositories list every branch; merged, deleting and global branches are excluded). The list MUST NOT re-derive that set on the client from the branch's sync flag or status.
 - **FR-004**: For a branch with N ≥ 1 repositories, the Repositories cell MUST show the first repository (FR-005) as a pill linking to that repository's page opened on the row's branch (no branch parameter on the default branch). Hovering it MUST show the repository's Git state label and the first 7 characters of its commit (omitted when there is no commit), and "read-only" for a read-only repository. When N > 1 it MUST be followed by a "+N−1 more" link to the branch's details page.
-- **FR-005**: Repositories MUST be ordered by the same rule as the branch details page: repositories whose last import failed first, then repositories whose remote is unreachable, then the rest, each group sorted by repository name (case-insensitive). The unreachable status itself is not shown (FR-016); it only affects order.
+- **FR-005**: Repositories MUST be ordered by Git state severity, `error-import` > `unknown` > `syncing` > `in-sync`, each group sorted by repository name (case-insensitive). A state value outside this list ranks with `unknown`. Operational status (remote reachability) MUST NOT affect the order (superseded 2026-10-01: the branch details band ordering).
 - **FR-006**: For a branch with N ≥ 1 repositories, the Git state cell MUST show the first repository's `sync_status` as resolved on that branch (the worst state), rendered with the label, colour and description defined in the schema. When no colour is defined, the pill MUST fall back to a neutral style and still show the state's value or label, identically to the branch details page's pill. When N > 1, the pill MUST be followed by an `n/N` count, where n is the number of repositories whose state value equals the shown one, and hovering them MUST list the count per state label.
 - **FR-007**: For a branch that returns zero repositories, the Repositories cell MUST read "Not synced with Git" when the branch is not synced with Git and "No repositories" otherwise, in muted text (`text-foreground-muted`); the Git state cell MUST be blank.
 - **FR-008**: Selection MUST stay per row, which is per branch, as today. The row checkbox MUST be named "Select <branch>".
 - **FR-009**: Shift-click range selection MUST continue to work unchanged.
 - **FR-010**: Pagination MUST continue to count branches per page; a page with N branches renders N rows.
-- **FR-011**: Repository data MUST load per branch, one request per branch shared with the branch details page, after the branch rows are shown: branch cells render immediately, and the Repositories cell shows one loading indicator until that branch's data arrives; the Git state cell stays blank until then.
-- **FR-012**: When the operator lacks permission to read a branch's repositories, that branch MUST render with its branch cells intact, a muted (`text-foreground-muted`) "No permission" text in the Repositories cell and a blank Git state cell. No other branch is affected and no page-level error is shown.
-- **FR-013**: When repository data for a branch fails to load for any other reason, that branch MUST render a muted (`text-foreground-muted`) "Could not load repositories" text in the Repositories cell and a blank Git state cell, without toasts or page-level errors. The load error's message MUST stay reachable: it is shown as a tooltip on that text for pointer users and rendered as visually hidden text alongside it for keyboard and screen-reader users. The branch details card's failed state shows the same message.
-- **FR-014**: A repository that is currently syncing MUST keep its branch's Repositories and Git state cells refreshing at the cadence already used by the branch details page, and stop when the sync settles.
+- **FR-011**: Repository data MUST be fetched by the page, not by the cells: one repository-list request on the default branch, then one `InfrahubRepositoryBranchStatus` request per repository (1 + R requests), independent of how many branch pages are loaded. The fetch starts after the branch rows are shown: branch cells render immediately, and every Repositories cell shows one loading indicator until the repository list and every status request have arrived; the Git state cell stays blank until then. Cells receive the per-branch summary as data and own no fetch.
+- **FR-012**: When the operator lacks repository view permission on all branches, every branch MUST render with its branch cells intact, a muted (`text-foreground-muted`) "No permission" text in every Repositories cell and a blank Git state cell. No page-level error is shown.
+- **FR-013**: When any status request fails for another reason and holds no earlier data, every branch MUST render a muted (`text-foreground-muted`) "Could not load repositories" text in the Repositories cell and a blank Git state cell, without toasts or page-level errors. The load error's message MUST stay reachable: it is shown as a tooltip on that text for pointer users and rendered as visually hidden text alongside it for keyboard and screen-reader users. A failed background refetch keeps the last loaded rows.
+- **FR-014**: A status query with a row whose `sync_status` is `syncing` MUST refresh every 10 s, the cadence already used by the branch details page, and stop when the sync settles. Status queries MUST have a 60 s stale time, so a window refocus within 60 s of the last fetch issues no request.
 - **FR-015**: The two new columns MUST NOT be filterable or sortable in this feature. Existing filters and the default ordering (default branch first, then by name) are unchanged.
 - **FR-016**: The list MUST NOT show a Commit column, an upstream commit, a "behind by N" figure, a last-import time, or the repository's operational (remote reachability) status. The commit appears only in the repository pill's tooltip and on the branch details page.
 - **FR-017**: The two new columns MUST always be shown; no column-hiding control is added to the branches list.
@@ -166,7 +181,7 @@ A branch that is not synced with Git, or that has no repositories at all, says s
 ### Key Entities *(include if feature involves data)*
 
 - **Branch row**: one line of the table per branch, as today. Carries the branch's existing attributes and, once loaded, the branch's repositories in ranked order.
-- **Repository on a branch**: a Git repository as seen from one branch: name, kind (read/write or read-only), Git state (`sync_status`: value, label, colour, description) and imported commit. Already modelled by PR #10779 for the branch details page.
+- **Repository on a branch**: a Git repository as seen from one branch: name, kind (read/write or read-only), Git state (`sync_status`: value, label, colour, description) and imported commit. Built page-side from one `InfrahubRepositoryBranchStatus` row and the repository list (`BranchRepositoryState`, data-model.md).
 - **Git state**: the outcome of the repository's last import on that branch, as a schema-defined dropdown value. Distinct from the branch's own lifecycle status. The list shows the first-ranked repository's Git state, with a count per state.
 
 ## Success Criteria *(mandatory)*
@@ -177,19 +192,21 @@ A branch that is not synced with Git, or that has no repositories at all, says s
 - **SC-002**: Every branch appears on exactly one row; a branch with no repositories shows the explicit empty text and never a dash.
 - **SC-003**: Selecting a branch and running bulk delete acts on exactly the selected branches; the selection count matches, as today.
 - **SC-004**: Branch name, status and proposed-change cells are rendered before any repository data resolves; the new cells fill in afterwards without shifting any column horizontally.
-- **SC-005**: A permission or load failure on one branch's repositories leaves every other row of the list fully rendered.
-- **SC-006**: Every state in this spec (one repository, several with a count, loading, empty for both texts, denied, failed, no colour, no commit) has an automated test; the frontend lint, unused-code, type-regression and unit test gates pass.
-- **SC-007**: The list issues exactly one repository request per loaded branch, and a window refocus within the query's freshness window issues none.
+- **SC-005**: A permission or load failure on repository data leaves every branch's own cells (name, status, proposed changes, actions) fully rendered.
+- **SC-006**: Every state in this spec (one repository, several with a count, loading, empty for both texts, denied, failed, no colour, no commit, severity order) has an automated test; the frontend lint, unused-code, type-regression and unit test gates pass.
+- **SC-007**: 1 + R requests per page load, no new status requests on scroll, no re-fetch within 60 s of refocus.
 
 ## Assumptions
 
-- The branch details work (PR #10779) is the base and merges before this feature. Its per-branch repository query, ordering rule, Git state pill and test fixtures are reused unchanged; this feature adds no second way of fetching or rendering repository state.
-- No commit display component is lifted from PR #10658: the list has no Commit column (superseded 2026-10-01).
-- Repository data is fetched once per visible branch (about 40 requests per page of 40 branches) using the branch details page's query, so both pages share one cache. A single request for every branch needs a backend change (research R14).
+- The branch details work (PR #10779) is the base and merges before this feature. Its repository-list hook, Git state pill and test fixtures are reused unchanged; its per-branch query stays the details page's and is no longer called by the list (superseded 2026-10-01, architecture review).
+- The status read is lifted from PR #10658 (`InfrahubRepositoryBranchStatus` API, model and use case); its hook is not, because it forces the current branch. The list adds a query-options factory and a `branchStatus` query key instead (plan Complexity Tracking).
+- Repository data is fetched with 1 + R requests: the repository list once, then one status request per repository (`limit: 500`) on the default branch, taken from the branches provider by `is_default`, never by name. The cache is not shared with the branch details page. The backend `repository_ids` follow-up collapses this to 2 requests (research R15).
 - The repositories per branch follow the backend: a read/write repository appears only on branches synced with Git; a read-only repository appears on every branch. The list uses the branch's sync flag only to choose the empty-state wording.
 - A read-only repository appears on every branch, so with R read-only repositories every branch counts at least R repositories in its "+N more" and `n/N` figures.
-- Merged and deleting branches, if shown by the current list filters, show whatever repositories the backend returns for them.
-- The epic spec (`dev/specs/infp-671-cross-branch-repo-status/spec.md`) lists "extra columns on the global branches view" as out of scope for the backend query work; this ticket is the frontend follow-up that supersedes that line and adds no backend change.
+- Merged and deleting branches, if shown by the current list filters, read "No repositories": the status query excludes them.
+- The status query needs repository view permission on all branches; without it the whole column reads "No permission".
+- The commit shown for a fresh synced branch is the fork-point commit, as the backend resolves it.
+- The epic spec (`dev/specs/infp-671-cross-branch-repo-status/spec.md`) lists "extra columns on the global branches view" as out of scope for the backend query work; this ticket is the frontend follow-up that supersedes that line, reads the epic's query and adds no backend change.
 - The branches table is rendered only by the branches page, so no other screen changes.
 - When the backend truncates a branch's repository list, the list counts only the returned repositories, with no extra marker.
 - Out of scope: "Upstream" and "Last import" columns (IFC-3146, IFC-3147), a Commit column, the repository's operational status (unreachable remote), filters or sorting on the new columns, column hiding, any backend change, the branch-details page itself, and resolving the visual similarity between the branch "Status" pill and the "Git state" pill beyond keeping them separated by the "Proposed changes" and "Repositories" columns and using different pill shapes.

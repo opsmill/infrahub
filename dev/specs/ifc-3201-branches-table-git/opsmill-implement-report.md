@@ -101,3 +101,19 @@ The owner tried the fan-out on a dev stack (24 branches × 16 repositories: 279 
 | Backend follow-ups | A `repository_ids` list variant of `InfrahubRepositoryBranchStatus`; the aliased-resolver HTTP 500 (`read() called while another coroutine is already waiting for incoming data`) when 16 `InfrahubRepositoryBranchStatus` fields share one document. `Branch` has no repositories field. |
 
 Still pending from §2: T032, T034 and T042 (live stack), now against the rewritten quickstart scenarios.
+
+## 8. Rework A (2026-10-01)
+
+The architecture review of §7's implementation found three defects: the two cells owned and duplicated the data and its derivation (pure logic in `.tsx`); the roll-up reused the details card's band ordering, so an unreachable but in-sync repository could hide a syncing or unknown one; and the per-branch query mirrored the backend's row-set rule on the client (`getRepositoryListKind`). Binding contract: `rework-contract-a.md`; reasoning: research R15; spec: Clarifications "Session 2026-10-01 (architecture review)"; tasks: Phase 9 (T059–T077), with T048–T050 superseded.
+
+| Area | Change |
+|---|---|
+| Data | The page owns the fetch: `useBranchRepositorySummaries` reads the repository list once on the default branch and `InfrahubRepositoryBranchStatus` once per repository (`useQueries`, `staleTime` 60 s, 10 s poll while syncing); `combine` → pure `summarizeBranchRepositories`. 1 + R requests, independent of pagination. |
+| Ordering | `compareSyncStatusSeverity`: `error-import` > `unknown` > `syncing` > `in-sync`, then name. Operational status no longer takes part. |
+| Rows and cells | `BranchTableRow` (`BranchListItem` + `repositorySummary`) via `toBranchTableRows`; both cells are pure; the tooltip string is `formatRepositorySummary`; the Git state tooltip wraps the count only, with `sr-only` text. |
+| Lifted from #10658 | Status model, API, use case, their tests, `hasThrownCatalogueCode`; SHA and `cmp` results in `pr-notes.md`. Not the hook (it forces the current branch): a `branchStatus` key and a factory-only query file instead. |
+| Spec consequences | Denial or failure reads on every row; merged branches read "No repositories"; cache no longer shared with the branch details page. |
+| Documents | Spec, plan, research R15 (R5/R9/R10/R14 per-branch parts superseded), data model, contracts, quickstart, tasks Phase 9, PR notes, the docs section's ordering and state sentences and its prose checks, `dev/knowledge/frontend/react.md`, `dev/guidelines/frontend/page-architecture.md`. |
+| Cubic | Nine local findings folded in (listed in `pr-notes.md`). |
+
+Still pending: T032, T034 and T042 (live stack), now against the rework A quickstart.

@@ -6,20 +6,16 @@ import { Row } from "@/shared/components/container";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { LinkPill } from "@/shared/components/ui/link-pill";
 
-import type { BranchListItem } from "@/entities/branches/domain/model/branch";
+import { formatRepositoryState } from "@/entities/branches/domain/rules/format-repository-summary";
+import type { BranchTableRow } from "@/entities/branches/ui/branches-table/branch-table-row";
 import {
   getBranchDetailsUrl,
   getBranchQspOverride,
 } from "@/entities/branches/ui/routing/branch-urls";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import type { BranchRepository } from "@/entities/repository/domain/model/branch-repository";
-import { rankRepositories } from "@/entities/repository/domain/rules/rank-repositories";
-import { useGetBranchRepositories } from "@/entities/repository/ui/queries/get-branch-repositories.query";
-
-const SHORT_COMMIT_LENGTH = 7;
 
 interface BranchRepositoriesCellProps {
-  branch: BranchListItem;
+  branch: BranchTableRow;
 }
 
 export function BranchRepositoriesCell({ branch }: BranchRepositoriesCellProps) {
@@ -31,29 +27,26 @@ export function BranchRepositoriesCell({ branch }: BranchRepositoriesCellProps) 
 }
 
 function BranchRepositoriesCellContent({ branch }: BranchRepositoriesCellProps) {
-  const { data, isPending, error } = useGetBranchRepositories({
-    branchName: branch.name,
-    syncWithGit: Boolean(branch.sync_with_git),
-  });
+  const summary = branch.repositorySummary;
 
-  if (isPending) return <Spinner />;
+  if (summary.status === "pending") return <Spinner />;
 
-  if (error) {
+  if (summary.status === "denied") {
+    return <span className="text-foreground-muted">No permission</span>;
+  }
+
+  if (summary.status === "error") {
     return (
       <>
-        <Tooltip message={error.message} nonInteractiveTrigger>
+        <Tooltip message={summary.message} nonInteractiveTrigger>
           <span className="text-foreground-muted">Could not load repositories</span>
         </Tooltip>
-        <span className="sr-only">{error.message}</span>
+        <span className="sr-only">{summary.message}</span>
       </>
     );
   }
 
-  if (data.status === "denied") {
-    return <span className="text-foreground-muted">No permission</span>;
-  }
-
-  const [first, ...others] = rankRepositories(data.repositories);
+  const [first, ...others] = summary.repositories;
 
   if (!first) {
     return (
@@ -63,16 +56,17 @@ function BranchRepositoriesCellContent({ branch }: BranchRepositoriesCellProps) 
     );
   }
 
-  const href = getObjectDetailsUrl(first.kind, first.id, [
+  const { repository } = first;
+  const href = getObjectDetailsUrl(repository.kind, repository.id, [
     getBranchQspOverride(branch.name, Boolean(branch.is_default)),
   ]);
 
   return (
     <Row className="flex-wrap">
-      <Tooltip message={getRepositorySummary(first)}>
+      <Tooltip message={formatRepositoryState(first)}>
         <LinkPill href={href} className="max-w-40">
           <FolderGitIcon className="shrink-0 text-accent" aria-hidden />
-          <span className="truncate">{first.name}</span>
+          <span className="truncate">{repository.name}</span>
         </LinkPill>
       </Tooltip>
 
@@ -86,14 +80,4 @@ function BranchRepositoriesCellContent({ branch }: BranchRepositoriesCellProps) 
       )}
     </Row>
   );
-}
-
-function getRepositorySummary({ syncStatus, commit, isReadOnly }: BranchRepository): string {
-  return [
-    syncStatus.label || syncStatus.value,
-    commit?.slice(0, SHORT_COMMIT_LENGTH),
-    isReadOnly && "read-only",
-  ]
-    .filter(Boolean)
-    .join(" · ");
 }

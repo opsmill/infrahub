@@ -251,7 +251,7 @@ The **Branches** page shows the Git repositories on each branch next to the bran
 
 | Column | What it shows |
 |---|---|
-| **Repositories** | The branch's first repository, linking to the repository's page on that branch. A repository whose last import failed comes first, then any repository whose remote cannot be reached, then the rest in alphabetical order. Hover the name to read its Git state, the first seven characters of the commit that branch has imported, and whether the repository is read-only. When the branch has more repositories, **+N more** opens the branch, whose details page lists all of them. |
+| **Repositories** | The branch's first repository, linking to the repository's page on that branch. A repository whose last import failed comes first, then any repository with an unknown status, then any repository that is syncing, then the rest, each group in alphabetical order. Hover the name to read its Git state, the first seven characters of the commit that branch has imported, and whether the repository is read-only. When the branch has more repositories, **+N more** opens the branch, whose details page lists all of them. |
 | **Git state** | The worst sync status among the branch's repositories, with the label and color the schema defines for it, such as **In Sync** or **Import Error**. When the branch has several repositories, a count such as **1/3** gives how many of them share that status. Hover the count to see how many repositories have each status. |
 
 The repositories listed for a branch follow the same rule as the query in the next section. A read-write repository appears only on branches that sync with Git, while a read-only repository appears on every branch.
@@ -261,11 +261,11 @@ A branch with no repository to show reads one of these texts in its **Repositori
 | Repositories cell | Meaning |
 |---|---|
 | **Not synced with Git** | The branch does not sync with Git, and no read-only repository exists. |
-| **No repositories** | The branch syncs with Git, but no repository is connected to Infrahub. |
-| **No permission** | Your account is not allowed to view repositories on that branch. |
-| **Could not load repositories** | The request for that branch's repositories failed. Hover the text to read the error message. |
+| **No repositories** | The branch syncs with Git, but no repository is connected to Infrahub, or the branch is merged. |
+| **No permission** | Your account is not allowed to view repositories on every branch, so every branch reads this text. |
+| **Could not load repositories** | A request for repository status failed, so every branch reads this text. Hover the text to read the error message. |
 
-These states apply to one branch at a time, and the rest of the list loads normally. While a repository on a branch is syncing, Infrahub refreshes that branch's cells until the sync finishes.
+The branch columns load normally in every one of these states. While a repository on a branch is syncing, Infrahub refreshes that branch's cells until the sync finishes.
 
 ## Checking a repository's status on every branch
 
