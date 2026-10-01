@@ -11,6 +11,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
+from infrahub.database import DatabaseType
 from infrahub.profiles.queries.get_profile_data import GetProfileDataQuery, ProfileData, RelationshipFilter
 from tests.helpers.schema import load_schema
 
@@ -567,6 +568,9 @@ async def _create_linked_profile(
 async def test_db_hits_do_not_grow_with_linked_nodes(
     db: InfrahubDatabase, default_branch: Branch, peers: Peers, relationship_filters: list[RelationshipFilter]
 ) -> None:
+    if db.db_type != DatabaseType.NEO4J:
+        pytest.skip("PROFILE and db.prepareForReplanning() exist only in Neo4j")
+
     few = await _create_linked_profile(db=db, branch=default_branch, peers=peers, name="few", linked_nodes=2)
     many = await _create_linked_profile(db=db, branch=default_branch, peers=peers, name="many", linked_nodes=60)
     many = await NodeManager.get_one(db=db, branch=default_branch, id=many.id, raise_on_error=True)
