@@ -18,6 +18,7 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.component.core.resource_manager.conftest import delete_branch
 from tests.helpers.schema import TICKET, load_schema
 
@@ -67,7 +68,7 @@ class TestBranchLiveness:
         """Moving the value on a branch must not free the number the default branch still holds."""
         ticket = await _new_ticket(db=db, pool=pool, title="moved-on-a-branch")
         held = ticket.get_attribute("ticket_id").value
-        assert await pool.get_used(db=db, branch=default_branch_scope_class) == [held]
+        assert await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class) == [held]
         assert isinstance(held, int)
 
         branch = await create_branch(branch_name="liveness-value-change", db=db)
@@ -76,12 +77,14 @@ class TestBranchLiveness:
         on_branch.get_attribute("ticket_id").value = moved_to
         await on_branch.save(db=db)
 
-        assert await pool.get_used(db=db, branch=default_branch_scope_class) == [held, moved_to], (
-            "the default branch still holds its number and the branch now holds another"
-        )
-        assert await pool.get_free(db=db, branch=default_branch_scope_class) not in [held, moved_to], (
-            "neither the default branch's number nor the one the branch moved to may be offered"
-        )
+        assert await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class) == [
+            held,
+            moved_to,
+        ], "the default branch still holds its number and the branch now holds another"
+        assert await NumberPoolRepository(db=db).get_free(pool=pool, branch=default_branch_scope_class) not in [
+            held,
+            moved_to,
+        ], "neither the default branch's number nor the one the branch moved to may be offered"
 
     async def test_an_object_deleted_on_a_branch_is_still_held_by_the_default_branch(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, pool: CoreNumberPool
@@ -89,16 +92,16 @@ class TestBranchLiveness:
         """Deleting the object on a branch must not free the number the default branch still holds."""
         ticket = await _new_ticket(db=db, pool=pool, title="deleted-on-a-branch")
         held = ticket.get_attribute("ticket_id").value
-        used_before = await pool.get_used(db=db, branch=default_branch_scope_class)
+        used_before = await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class)
 
         branch = await create_branch(branch_name="liveness-object-delete", db=db)
         on_branch = await NodeManager.get_one(db=db, id=ticket.id, branch=branch, raise_on_error=True)
         await on_branch.delete(db=db)
 
-        assert await pool.get_used(db=db, branch=default_branch_scope_class) == used_before, (
-            f"deleting the object on a branch freed ticket_id={held} the default branch still holds"
-        )
-        assert await pool.get_free(db=db, branch=default_branch_scope_class) != held
+        assert (
+            await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class) == used_before
+        ), f"deleting the object on a branch freed ticket_id={held} the default branch still holds"
+        assert await NumberPoolRepository(db=db).get_free(pool=pool, branch=default_branch_scope_class) != held
 
     async def test_a_number_another_branch_holds_is_never_allocated(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, pool: CoreNumberPool
@@ -125,21 +128,37 @@ class TestBranchLiveness:
         """The other half of the union: once no branch holds the number any more, the pool offers it."""
         ticket = await _new_ticket(db=db, pool=pool, title="released-everywhere")
         assert ticket.get_attribute("ticket_id").value == 6, "the tests before this one hold 1 through 5"
-        assert await pool.get_used(db=db, branch=default_branch_scope_class) == [1, 2, 3, 4, 5, 6]
+        assert await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class) == [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+        ]
 
         branch = await create_branch(branch_name="liveness-released-everywhere", db=db)
         on_branch = await NodeManager.get_one(db=db, id=ticket.id, branch=branch, raise_on_error=True)
         await on_branch.delete(db=db)
-        assert await pool.get_used(db=db, branch=default_branch_scope_class) == [1, 2, 3, 4, 5, 6], (
-            "one branch letting go is not every branch letting go"
-        )
+        assert await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class) == [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+        ], "one branch letting go is not every branch letting go"
 
         await ticket.delete(db=db)
 
-        assert await pool.get_used(db=db, branch=default_branch_scope_class) == [1, 2, 3, 4, 5], (
-            "with no branch holding it, the number stops counting as used"
-        )
-        assert await pool.get_free(db=db, branch=default_branch_scope_class) == 6, (
+        assert await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class) == [
+            1,
+            2,
+            3,
+            4,
+            5,
+        ], "with no branch holding it, the number stops counting as used"
+        assert await NumberPoolRepository(db=db).get_free(pool=pool, branch=default_branch_scope_class) == 6, (
             "and the pool offers it again rather than skipping past it"
         )
 
@@ -193,10 +212,10 @@ class TestOlderBranchLiveness:
         await ticket.delete(db=db)
 
         assert await NodeManager.get_one(db=db, id=ticket.id, branch=older) is not None
-        assert held in await pool.get_used(db=db, branch=default_branch_scope_class), (
+        assert held in await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class), (
             "the older branch still holds the object, so its number stays used"
         )
-        assert await pool.get_free(db=db, branch=default_branch_scope_class) != held, (
+        assert await NumberPoolRepository(db=db).get_free(pool=pool, branch=default_branch_scope_class) != held, (
             "a number an older branch still holds must never be offered again"
         )
 
@@ -213,11 +232,11 @@ class TestOlderBranchLiveness:
 
         on_older = await NodeManager.get_one(db=db, id=ticket.id, branch=older, raise_on_error=True)
         assert on_older.get_attribute("ticket_id").value == held
-        used = await pool.get_used(db=db, branch=default_branch_scope_class)
+        used = await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class)
         assert {held, moved_to} <= set(used), (
             "the default branch now holds the new number and the older branch still holds the old one"
         )
-        assert await pool.get_free(db=db, branch=default_branch_scope_class) != held
+        assert await NumberPoolRepository(db=db).get_free(pool=pool, branch=default_branch_scope_class) != held
 
     async def test_rebasing_the_older_branch_past_the_delete_frees_the_number(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, pool: CoreNumberPool
@@ -226,14 +245,14 @@ class TestOlderBranchLiveness:
         held = ticket.get_attribute("ticket_id").value
         older = await create_branch(branch_name="rebased-past-the-delete", db=db)
         await ticket.delete(db=db)
-        assert held in await pool.get_used(db=db, branch=default_branch_scope_class)
+        assert held in await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class)
 
         await older.rebase(db=db)
 
-        assert held not in await pool.get_used(db=db, branch=default_branch_scope_class), (
+        assert held not in await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class), (
             "once the older branch forks after the delete, no branch holds the number"
         )
-        assert await pool.get_free(db=db, branch=default_branch_scope_class) == held
+        assert await NumberPoolRepository(db=db).get_free(pool=pool, branch=default_branch_scope_class) == held
 
     async def test_a_branch_being_deleted_holds_nothing(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, pool: CoreNumberPool
@@ -243,16 +262,16 @@ class TestOlderBranchLiveness:
         held = ticket.get_attribute("ticket_id").value
         older = await create_branch(branch_name="deleting-after-the-delete", db=db)
         await ticket.delete(db=db)
-        assert held in await pool.get_used(db=db, branch=default_branch_scope_class)
+        assert held in await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class)
 
         await db.execute_query(
             query='MATCH (b:Branch {name: $name}) SET b.status = "DELETING"', params={"name": older.name}
         )
 
-        assert held not in await pool.get_used(db=db, branch=default_branch_scope_class), (
+        assert held not in await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class), (
             "a branch being deleted holds nothing, so no branch holds the number"
         )
-        assert await pool.get_free(db=db, branch=default_branch_scope_class) == held
+        assert await NumberPoolRepository(db=db).get_free(pool=pool, branch=default_branch_scope_class) == held
 
     async def test_deleting_the_older_branch_frees_the_number(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, pool: CoreNumberPool
@@ -261,14 +280,14 @@ class TestOlderBranchLiveness:
         held = ticket.get_attribute("ticket_id").value
         older = await create_branch(branch_name="deleted-after-the-delete", db=db)
         await ticket.delete(db=db)
-        assert held in await pool.get_used(db=db, branch=default_branch_scope_class)
+        assert held in await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class)
 
         await delete_branch(db=db, branch=older)
 
-        assert held not in await pool.get_used(db=db, branch=default_branch_scope_class), (
+        assert held not in await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class), (
             "with the older branch deleted, no branch holds the number"
         )
-        assert await pool.get_free(db=db, branch=default_branch_scope_class) == held
+        assert await NumberPoolRepository(db=db).get_free(pool=pool, branch=default_branch_scope_class) == held
 
     async def test_an_older_branch_that_moved_the_number_itself_holds_only_its_own(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, pool: CoreNumberPool
@@ -283,7 +302,7 @@ class TestOlderBranchLiveness:
 
         await ticket.delete(db=db)
 
-        used = await pool.get_used(db=db, branch=default_branch_scope_class)
+        used = await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class)
         assert POOL_END in used, "the older branch holds the object with the number it moved to"
         assert held not in used, "and no branch holds the number it moved off"
-        assert await pool.get_free(db=db, branch=default_branch_scope_class) == held
+        assert await NumberPoolRepository(db=db).get_free(pool=pool, branch=default_branch_scope_class) == held

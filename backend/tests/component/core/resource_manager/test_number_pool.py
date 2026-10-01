@@ -16,6 +16,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.queries.resource_manager import resolve_number_pool_utilization
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.schema import TICKET, load_schema
 
@@ -45,7 +46,7 @@ async def test_allocate_from_number_pool(
     await ticket1.delete(db=db)
 
     # Check pool status
-    assert await np1.get_free(db=db, branch=default_branch) == 1
+    assert await NumberPoolRepository(db=db).get_free(pool=np1, branch=default_branch) == 1
 
     recreated_ticket1 = await Node.init(db=db, schema=TICKET.kind)
     await recreated_ticket1.new(db=db, title="ticket1", ticket_id={"from_pool": {"id": np1.id}})
@@ -53,9 +54,9 @@ async def test_allocate_from_number_pool(
     assert recreated_ticket1.ticket_id.value == 1
 
     # Validate methods at the pool level
-    assert await np1.get_used(db=db, branch=default_branch) == [1, 2]
+    assert await NumberPoolRepository(db=db).get_used(pool=np1, branch=default_branch) == [1, 2]
 
-    assert await np1.get_free(db=db, branch=default_branch) == 3
+    assert await NumberPoolRepository(db=db).get_free(pool=np1, branch=default_branch) == 3
 
 
 async def test_allocate_reuses_value_when_attribute_not_globally_unique(
@@ -121,7 +122,7 @@ class TestNumberPoolAllocation:
         await origin_ticket.new(db=db, title="origin", ticket_id=5)
         await origin_ticket.save(db=db)
 
-        assert await pool.get_taken(db=db, branch=branch, min_value=1, max_value=10) == {5}
+        assert await NumberPoolRepository(db=db).get_taken(pool=pool, branch=branch, min_value=1, max_value=10) == {5}
 
     async def test_allocate_skips_value_already_present_on_target(
         self, db: InfrahubDatabase, pool: CoreNumberPool, present_ticket: Node
@@ -407,7 +408,7 @@ class TestNumberPoolGetResource:
         )
 
         assert again == 1, "asking again for an attribute the pool already accounts for must not draw a second number"
-        assert await ticket_pool.get_used(db=db, branch=default_branch) == [1]
+        assert await NumberPoolRepository(db=db).get_used(pool=ticket_pool, branch=default_branch) == [1]
 
     async def test_an_attribute_with_no_vertex_yet_draws_a_number(
         self, db: InfrahubDatabase, default_branch: Branch, ticket_pool: CoreNumberPool, ticket: Node
@@ -422,7 +423,7 @@ class TestNumberPoolGetResource:
         )
 
         assert drawn == 2, "with no attribute to anchor on the pool draws the next number rather than reusing one"
-        assert await ticket_pool.get_used(db=db, branch=default_branch) == [1], (
+        assert await NumberPoolRepository(db=db).get_used(pool=ticket_pool, branch=default_branch) == [1], (
             "and records nothing, because the caller writing the attribute writes the record"
         )
 
@@ -468,7 +469,7 @@ async def _add_range(db: InfrahubDatabase, pool: CoreNumberPool, start: int, end
     return pool_range
 
 
-async def test_load_ranges(
+async def test_get_ranges(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """The pool's ranges come back lowest start first, whatever order they were created in."""
@@ -479,11 +480,11 @@ async def test_load_ranges(
     await pool.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
     await pool.save(db=db)
 
-    assert await pool.load_ranges(db=db) == []
+    assert await NumberPoolRepository(db=db).get_ranges(pool_id=pool.get_id()) == []
 
     second = await _add_range(db=db, pool=pool, start=300, end=400)
     first = await _add_range(db=db, pool=pool, start=100, end=200)
 
-    ranges = await pool.load_ranges(db=db)
+    ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool.get_id())
     assert [(item.start.value, item.end.value) for item in ranges] == [(100, 200), (300, 400)]
     assert [item.get_id() for item in ranges] == [first.get_id(), second.get_id()]
