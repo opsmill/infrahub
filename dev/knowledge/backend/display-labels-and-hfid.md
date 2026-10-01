@@ -40,7 +40,7 @@ HFID values are stored using `IndexedListAttribute`, a subclass of `ListAttribut
 - Returns `AttributeDBNodeType.INDEXED` from `get_db_node_type()`, so the `AttributeValue` node gets the `AttributeValueIndexed` label in Neo4j (enabling RANGE/TEXT index lookups)
 - Falls back to non-indexed storage (`DEFAULT`) with a warning when the serialized value exceeds `MAX_STRING_LENGTH` (4096 bytes). These oversized HFIDs are still saved but are not retrievable via `get_one_by_hfid`.
 
-`HumanFriendlyIdentifier.compute()` converts all resolved path values to strings via `str()`. This ensures consistent JSON serialization — callers, the GraphQL API, and the stored value all use `list[str]`.
+`HumanFriendlyIdentifier.compute()` converts all resolved path values to strings via `str()`, so callers, the GraphQL API and the stored value all use `list[str]`.
 
 ### HFID Lookup
 
@@ -103,7 +103,7 @@ if self._existing:
 2. `Node.save()` -> `resolve_relationships()` (loads peers with extra_filters) -> `_create()`
 3. `_create()` -> `add_human_friendly_id()` / `add_display_label()` (compute and persist)
 
-**Note:** `NodeCreateAllQuery` (`core/query/node.py` ~lines 169-180) routes HFID and display_label attributes based on their `get_db_node_type()`. The `IndexedListAttribute` used for HFID returns `INDEXED` when within size limits, so the value lands in the `attributes_indexed` bucket and gets the `AttributeValueIndexed` label. Oversized values fall back to `DEFAULT` (no index).
+**Note:** `NodeCreateAllQuery` (`core/query/node.py`) routes HFID and display_label attributes based on their `get_db_node_type()`. The `IndexedListAttribute` used for HFID returns `INDEXED` when within size limits, so the value lands in the `attributes_indexed` bucket and gets the `AttributeValueIndexed` label. Oversized values fall back to `DEFAULT` (no index).
 
 ### Update
 
@@ -122,7 +122,7 @@ if self._existing:
 
 ### Bulk Reads of Stored Labels
 
-Loading a node object to call `get_display_label()` costs one attribute and one relationship-manager instance per schema field, plus a Jinja2 compile of the template when the stored value was not loaded — around a millisecond of CPU per node. Code that only needs the labels of many nodes reads the stored attribute directly instead: `NodeListGetDisplayLabelQuery` (`core/query/node.py`) returns `{node_id: display_label}` for the nodes active on a branch that carry a non-empty stored label (a kind without a template stores the `NULL_VALUE` sentinel string, which the query treats as empty), and `get_stored_display_labels()` (`core/diff/payload_builder.py`) batches it by `query_size_limit`. The diff labels enricher (`core/diff/enricher/labels.py`) resolves every label this way and falls back to `get_display_labels_per_kind()` (node objects, on-the-fly compute) only for the ids the query did not return: schema nodes, kinds without a template, nodes created before labels were stored. A large diff went from ~42 s to ~3 s of enrichment with this split.
+Loading node objects to read their labels costs about a millisecond of CPU per node, so code that needs the labels of many nodes reads the stored attributes instead, through `NodeManager.get_stored_labels()` (`core/manager.py`). It runs `NodeListGetStoredLabelsQuery` (`core/query/node.py`) in batches of `query_size_limit` ids and reads only the requested label attributes (`display_label`, `human_friendly_id` or both). Each node active on the branch comes back as a `NodeStoredLabels` with its kind and its stored values; an empty value, including the `NULL_VALUE` sentinel an unset label stores, reads as `None`, because whether it means empty or must be computed depends on the schema. A caller takes a non-`None` value as the node's label and loads the node for the rest.
 
 ### Async Backfill After Schema Changes
 
@@ -151,14 +151,14 @@ For attribute kinds whose accepted input form differs from their normalized stor
 |------|-----------------|
 | `IPHost` | `ipaddress.ip_interface(value).with_prefixlen` (e.g. `192.0.2.1` → `192.0.2.1/32`) |
 | `IPNetwork` | `ipaddress.ip_network(value).with_prefixlen` (e.g. `2001:db8:0:0::/32` → `2001:db8::/32`) |
-| `IPAddress` | `str(ipaddress.ip_address(value))` (e.g. `2001:0DB8::0001` → `2001:db8::1`); a prefix or netmask is rejected outright rather than normalized |
+| `IPAddress` | `str(ipaddress.ip_address(value))` (e.g. `2001:0DB8::0001` → `2001:db8::1`); a prefix or netmask is rejected, not normalized |
 | `MacAddress` | `netaddr.EUI(addr=value).format(dialect=netaddr.mac_unix_expanded).upper()` (e.g. `aa-bb-cc-dd-ee-ff` → `AA:BB:CC:DD:EE:FF`) |
 
-`_normalize_value()` is intentionally a separate hook from `serialize_value()`. The latter is also used by `HashedPassword` (destructive hash), `ListAttribute`/`JSONAttribute` (type-changing JSON dump), and the base class (Enum unwrap) — transforms that cannot run on `attr.value` itself. For kinds that need input-time normalization, `serialize_value()` delegates to `_normalize_value(self.value)` so the normalized form has a single source of truth per class. When adding a new kind that needs input-time normalization, override `_normalize_value()` (not `serialize_value`).
+`_normalize_value()` is a separate hook from `serialize_value()`. The latter is also used by `HashedPassword` (destructive hash), `ListAttribute`/`JSONAttribute` (type-changing JSON dump), and the base class (Enum unwrap) — transforms that cannot run on `attr.value` itself. For kinds that need input-time normalization, `serialize_value()` delegates to `_normalize_value(self.value)` so the normalized form has a single source of truth per class. When adding a new kind that needs input-time normalization, override `_normalize_value()` (not `serialize_value`).
 
 `_normalize_value()` is a `classmethod` so a value can be checked without building an attribute instance. `AttributeKindUpdateValidatorQuery` relies on that to enforce canonicality when an attribute's kind changes: a kind change runs no data migration over the stored values, so a value that parses under the new kind but is not already in its canonical form would survive un-rewritten and then miss every `__value` filter and uniqueness comparison. The check is unconditional — kinds that do not normalize inherit the identity `_normalize_value()`, so it is a no-op for them and a newly added normalizing kind is covered without touching the validator.
 
-The practical consequence is that a kind change into a normalizing kind is only allowed when the existing values are already canonical. Converting `Text` → `MacAddress` over `aa-bb-cc-dd-ee-ff` is refused, and `IPAddress` ↔ `IPHost` is refused in both directions because neither side's stored form is canonical for the other.
+A kind change into a normalizing kind is allowed only when the existing values are already canonical. Converting `Text` → `MacAddress` over `aa-bb-cc-dd-ee-ff` is refused, and `IPAddress` ↔ `IPHost` is refused in both directions because neither side's stored form is canonical for the other.
 
 
 ## Hierarchical Relationships and Inline Fragments
@@ -192,8 +192,8 @@ parent { node { ... on LocationSite { name { value } } } }
 | `core/attribute.py` | `IndexedListAttribute` (HFID storage with indexing and size fallback) |
 | `core/node/node_property_attribute.py` | `DisplayLabel`, `HumanFriendlyIdentifier` classes |
 | `core/node/__init__.py` | `resolve_relationships()`, `_collect_extra_filters()`, `add_display_label()`, `_update()` |
-| `core/query/node.py` | `NodeGetByHFIDQuery` (branch-aware HFID lookup), `NodeListGetDisplayLabelQuery` (bulk read of stored display labels) |
-| `core/manager.py` | `NodeManager.get_one_by_hfid()` (uses `NodeGetByHFIDQuery`) |
+| `core/query/node.py` | `NodeGetByHFIDQuery` (branch-aware HFID lookup), `NodeListGetStoredLabelsQuery` (bulk read of stored labels) |
+| `core/manager.py` | `NodeManager.get_one_by_hfid()` (uses `NodeGetByHFIDQuery`), `NodeManager.get_stored_labels()` (batched stored-label read) |
 | `core/schema/schema_branch_display.py` | `DisplayLabels` registry, `TemplateLabel` |
 | `core/schema/schema_branch_hfid.py` | `HFIDs` registry, `HFIDDefinition` |
 | `core/schema/schema_branch.py` | `validate_display_label()`, `process_human_friendly_id()` |

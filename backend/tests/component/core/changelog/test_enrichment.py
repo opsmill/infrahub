@@ -12,9 +12,9 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.changelog.builder import build_relationship_changelog_getter
+from infrahub.core.changelog.builder import build_node_label_loader, build_relationship_changelog_getter
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
-from infrahub.core.changelog.enrichment import NodeLabelLoader, NodeLabels, node_label_loader
+from infrahub.core.changelog.enrichment import NodeLabelLoader, NodeLabels
 from infrahub.core.changelog.hfid_resolver import ChangelogHfidResolver
 from infrahub.core.changelog.models import (
     RelationshipCardinalityManyChangelog,
@@ -34,11 +34,20 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
+from infrahub.core.query.node import (
+    NodeListGetAttributeQuery,
+    NodeListGetInfoQuery,
+    NodeListGetRelationshipsQuery,
+    NodeListGetStoredLabelsQuery,
+)
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from tests.constants import TestKind
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
+from tests.helpers.schema import CAR_SCHEMA
 
 # A relationship only ZzzItem declares, so pointing it at a ZzzOwner leaves that owner unchanged.
 _ONE_DIRECTIONAL_SCHEMA: dict[str, Any] = {
@@ -173,6 +182,71 @@ async def test_mutation_enriches_the_mutated_nodes_own_relationships(
     assert owner_rel.peer_hfid == await person.get_hfid(db=db)
 
 
+async def test_label_load_reads_the_stored_labels_without_loading_the_nodes(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    animal_person_schema: SchemaBranch,
+) -> None:
+    """A label read returns the real labels from one stored-labels query, loading no node."""
+    person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+    labels = await build_node_label_loader(db=counting_db, branch=default_branch).load_labels([person.id, dog.id])
+
+    assert labels == {
+        person.id: NodeLabels(display_label=await person.get_display_label(db=db), hfid=await person.get_hfid(db=db)),
+        dog.id: NodeLabels(display_label=await dog.get_display_label(db=db), hfid=await dog.get_hfid(db=db)),
+    }
+    assert counting_db.count_for(NodeListGetStoredLabelsQuery.name) == 1
+    assert counting_db.count_for(NodeListGetInfoQuery.name) == 0
+    assert counting_db.count_for(NodeListGetAttributeQuery.name) == 0
+    assert counting_db.count_for(NodeListGetRelationshipsQuery.name) == 0
+
+
+async def test_hfid_load_reads_the_stored_hfids_without_loading_the_nodes(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    animal_person_schema: SchemaBranch,
+) -> None:
+    """An HFID-only read returns the real HFIDs from one stored-labels query, loading no node."""
+    person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+    hfids = await build_node_label_loader(db=counting_db, branch=default_branch).load_hfids([person.id, dog.id])
+
+    assert hfids == {person.id: await person.get_hfid(db=db), dog.id: await dog.get_hfid(db=db)}
+    assert counting_db.count_for(NodeListGetStoredLabelsQuery.name) == 1
+    assert counting_db.count_for(NodeListGetInfoQuery.name) == 0
+    assert counting_db.count_for(NodeListGetAttributeQuery.name) == 0
+    assert counting_db.count_for(NodeListGetRelationshipsQuery.name) == 0
+
+
+async def test_label_load_of_a_kind_without_display_label_reads_only_the_two_label_attributes(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    """A kind without a display label has nothing stored to read, so its node is loaded.
+
+    Only the two label attributes are read, and no edge.
+    """
+    registry.schema.register_schema(schema=CAR_SCHEMA, branch=default_branch.name)
+    manufacturer = await Node.init(db=db, schema=TestKind.MANUFACTURER, branch=default_branch)
+    await manufacturer.new(db=db, name="Omnicorp")
+    await manufacturer.save(db=db)
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+    labels = await build_node_label_loader(db=counting_db, branch=default_branch).load_labels([manufacturer.id])
+
+    assert labels == {
+        manufacturer.id: NodeLabels(display_label=f"{TestKind.MANUFACTURER}(ID: {manufacturer.id})", hfid=None)
+    }
+    assert counting_db.count_for(NodeListGetStoredLabelsQuery.name) == 1
+    assert counting_db.rows_for(NodeListGetAttributeQuery.name) == 2
+    assert counting_db.count_for(NodeListGetRelationshipsQuery.name) == 0
+
+
 async def test_mutation_enriches_secondary_peer_changelogs(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -261,9 +335,7 @@ async def test_merge_enriches_node_hfid_and_peer_label(
         diff=diff,
         db=db,
         branch=branch,
-        hfid_resolver=ChangelogHfidResolver(
-            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
-        ),
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
     ).collect_changelogs()
 
     car_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == car.id)
@@ -290,7 +362,7 @@ async def test_merge_changelog_survives_label_reader_failure(
     register_simplified_proposed_change_schema: SchemaBranch,
     car_person_schema: None,
 ) -> None:
-    diff, branch, _owner, car = await _merge_car_owned_by_person(db, default_branch, "merge_label_failure")
+    diff, branch, owner, car = await _merge_car_owned_by_person(db, default_branch, "merge_label_failure")
 
     changelogs = await DiffChangelogCollector(
         diff=diff,
@@ -299,10 +371,12 @@ async def test_merge_changelog_survives_label_reader_failure(
         hfid_resolver=ChangelogHfidResolver(label_loader=NodeLabelLoader(reader=_RaisingLabelReader())),
     ).collect_changelogs()
 
-    # The collection completes despite the label read failing; the HFID just degrades to None.
+    # The collection completes despite the label read failing. The created car's HFID is carried by
+    # the diff, so it needs no read; the owner's HFID is not in the diff and degrades to None.
     car_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == car.id)
-    assert car_changelog.hfid is None
-    assert changelogs
+    assert car_changelog.hfid == ["Volvo"]
+    owner_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == owner.id)
+    assert owner_changelog.hfid is None
 
 
 async def test_merge_changelog_reports_deleted_node_hfid(
@@ -336,9 +410,7 @@ async def test_merge_changelog_reports_deleted_node_hfid(
         diff=diff,
         db=db,
         branch=branch,
-        hfid_resolver=ChangelogHfidResolver(
-            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
-        ),
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
     ).collect_changelogs()
 
     # The car is gone when the batch load runs, but its HFID is recovered from the diff.
@@ -373,9 +445,7 @@ async def test_merge_fills_peer_hfid_for_a_peer_that_did_not_change(
         diff=diff,
         db=db,
         branch=branch,
-        hfid_resolver=ChangelogHfidResolver(
-            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
-        ),
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
     ).collect_changelogs()
 
     # The owner has no reciprocal relationship, so it is not a changed node, yet its HFID is still
@@ -417,9 +487,7 @@ async def test_merge_tolerates_dropped_kind_referencing_an_unchanged_peer(
         diff=diff,
         db=db,
         branch=branch,
-        hfid_resolver=ChangelogHfidResolver(
-            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
-        ),
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
     ).collect_changelogs()
 
     item_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == item.id)
@@ -446,9 +514,7 @@ async def test_merge_tolerates_kind_deleted_in_migration(
         diff=diff,
         db=db,
         branch=branch,
-        hfid_resolver=ChangelogHfidResolver(
-            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
-        ),
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
     ).collect_changelogs()
 
     by_id = {changelog.node_id: changelog for _, changelog in changelogs}
@@ -490,9 +556,7 @@ async def test_collector_applies_a_rename_migration_to_the_changelog(
         diff=diff,
         branch=branch,
         db=db,
-        hfid_resolver=ChangelogHfidResolver(
-            label_loader=node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
-        ),
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
         migration_tracker=MigrationTracker(migrations=[rename]),
     ).collect_changelogs()
 

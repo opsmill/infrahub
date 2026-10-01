@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 import pytest
 
 from infrahub.core.branch import Branch
+from infrahub.core.changelog.builder import build_node_label_loader
 from infrahub.core.changelog.diff import DiffChangelogCollector
-from infrahub.core.changelog.enrichment import node_label_loader
 from infrahub.core.changelog.hfid_resolver import ChangelogHfidResolver
 from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog, RelationshipCardinalityOneChangelog
 from infrahub.core.constants import DiffAction
@@ -39,9 +39,7 @@ async def test_events_from_diff(
         diff=diff,
         db=db,
         branch=branch1,
-        hfid_resolver=ChangelogHfidResolver(
-            label_loader=node_label_loader(db=db, branch=branch1, node_loader=NodeManager.get_many)
-        ),
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch1)),
     )
     changelogs = await diff_events.collect_changelogs()
     assert len(changelogs) == 2
@@ -111,9 +109,7 @@ async def test_merge_diff_changelogs(
         diff=diff,
         db=db,
         branch=branch5,
-        hfid_resolver=ChangelogHfidResolver(
-            label_loader=node_label_loader(db=db, branch=branch5, node_loader=NodeManager.get_many)
-        ),
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch5)),
     )
     events = await diff_events.collect_changelogs()
     assert len(events) == 5
@@ -247,9 +243,7 @@ class TestConflict:
             diff=diff,
             db=db,
             branch=branch2,
-            hfid_resolver=ChangelogHfidResolver(
-                label_loader=node_label_loader(db=db, branch=branch2, node_loader=NodeManager.get_many)
-            ),
+            hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch2)),
         )
         events = await diff_events.collect_changelogs()
 
@@ -312,9 +306,7 @@ class TestConflict:
             diff=diff,
             db=db,
             branch=branch2,
-            hfid_resolver=ChangelogHfidResolver(
-                label_loader=node_label_loader(db=db, branch=branch2, node_loader=NodeManager.get_many)
-            ),
+            hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch2)),
         )
         events = await diff_events.collect_changelogs()
         match conflict_selection:
