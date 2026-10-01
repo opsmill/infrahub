@@ -117,6 +117,8 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
         nodes = await NodeManager.get_many(
             db=self.db, branch=self.branch, ids=node_ids, at=at, include_metadata=MetadataOptions.SOURCE
         )
+        if not nodes:
+            return
         peer_profile_ids = await self._get_peer_profile_ids_by_node(
             schema=schema, node_ids=list(nodes), rel_names=required_rel_names, at=at
         )
