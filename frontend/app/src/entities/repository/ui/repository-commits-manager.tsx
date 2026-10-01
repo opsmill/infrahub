@@ -14,12 +14,16 @@ import { RepositoryCommitsHeader } from "@/entities/repository/ui/repository-com
 
 export interface RepositoryCommitsManagerProps {
   repositoryId: string;
+  repositoryLocation: string | null;
 }
 
 const gridTemplateColumns = () =>
   "fit-content(8rem) minmax(16rem, 1fr) fit-content(14rem) fit-content(12rem) fit-content(16rem) 2.5rem";
 
-export function RepositoryCommitsManager({ repositoryId }: RepositoryCommitsManagerProps) {
+export function RepositoryCommitsManager({
+  repositoryId,
+  repositoryLocation,
+}: RepositoryCommitsManagerProps) {
   const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetRepositoryCommits({
     repositoryId,
   });
@@ -53,7 +57,10 @@ export function RepositoryCommitsManager({ repositoryId }: RepositoryCommitsMana
         onLoadMore={fetchNextPage}
       >
         <DataTable
-          columns={getRepositoryCommitsColumns(log.imported_commit)}
+          columns={getRepositoryCommitsColumns({
+            importedCommit: log.imported_commit,
+            repositoryLocation,
+          })}
           data={commits}
           getRowId={(commit) => commit.hash}
           gridTemplateColumns={gridTemplateColumns}

@@ -3,5 +3,19 @@ import { RepositoryCommitsManager } from "@/entities/repository/ui/repository-co
 
 export function Component() {
   const { objectData } = useObjectDetailsOutlet();
-  return <RepositoryCommitsManager repositoryId={objectData.id} />;
+  const { location } = objectData;
+  const repositoryLocation =
+    location &&
+    typeof location === "object" &&
+    "value" in location &&
+    typeof location.value === "string"
+      ? location.value
+      : null;
+
+  return (
+    <RepositoryCommitsManager
+      repositoryId={objectData.id}
+      repositoryLocation={repositoryLocation}
+    />
+  );
 }

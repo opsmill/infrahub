@@ -61,7 +61,13 @@ function CaptureQueryClient() {
 const tab = () => (
   <>
     <CaptureQueryClient />
-    <RepositoryCommitsManager repositoryId="repo-1" />
+    {/* Bounded like the tab panel, or the scroll sentinel can start in view and load page two on its own. */}
+    <div className="h-96">
+      <RepositoryCommitsManager
+        repositoryId="repo-1"
+        repositoryLocation="https://github.com/opsmill/infrahub-demo.git"
+      />
+    </div>
   </>
 );
 
@@ -374,7 +380,8 @@ describe("RepositoryCommitsManager", () => {
     const component = await renderTab();
 
     // WHEN
-    await component.getByRole("button", { name: `Copy full hash ${BEHIND_HEAD}` }).click();
+    await component.getByRole("button", { name: `Actions for commit ${BEHIND_HEAD}` }).click();
+    await component.getByRole("menuitem", { name: "Copy commit hash" }).click();
 
     // THEN
     expect(writeText).toHaveBeenCalledWith(fullHash(BEHIND_HEAD));

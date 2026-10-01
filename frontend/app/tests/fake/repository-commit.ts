@@ -1,5 +1,8 @@
 import type { RepositoryCommitsResponse } from "@/entities/repository/api/get-repository-commits-from-api";
-import type { RepositoryCommitState } from "@/entities/repository/domain/model/repository";
+import type {
+  RepositoryCommit,
+  RepositoryCommitState,
+} from "@/entities/repository/domain/model/repository";
 
 export type RepositoryCommitsWire = RepositoryCommitsResponse["InfrahubRepositoryCommits"];
 
@@ -10,6 +13,21 @@ export const fullHash = (shortHash: string) => shortHash.padEnd(40, "0");
 export const generateRepositoryCommitNode = (
   overrides: Partial<RepositoryCommitNodeWire> = {}
 ): RepositoryCommitNodeWire => {
+  const shortHash = overrides.short_hash ?? "abc1234";
+  return {
+    hash: fullHash(shortHash),
+    short_hash: shortHash,
+    summary: "Add device inventory",
+    author_name: "Ada Lovelace",
+    authored_at: "2025-03-10T10:00:00Z",
+    state: "HISTORY",
+    ...overrides,
+  };
+};
+
+export const generateRepositoryCommit = (
+  overrides: Partial<RepositoryCommit> = {}
+): RepositoryCommit => {
   const shortHash = overrides.short_hash ?? "abc1234";
   return {
     hash: fullHash(shortHash),
