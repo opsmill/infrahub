@@ -18,13 +18,14 @@ import pytest
 from infrahub import lock
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
-from infrahub.computed_attribute.scoping import ChangedElementSet
 from infrahub.computed_attribute.tasks import trigger_update_python_computed_attributes
 from infrahub.context import InfrahubContext
 from infrahub.core.branch.tasks import rebase_branch
-from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
+from infrahub.core.changelog.models import AttributeChangelog, NodeChangelog
+from infrahub.core.constants import ComputedAttributeKind, DiffAction, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.merge.post_merge import PostMergeDispatcher
 from infrahub.core.merge.python_target_sources import build_python_target_resolver
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
@@ -32,13 +33,16 @@ from infrahub.core.merge.recompute_coalescing import (
     MergeChange,
     MergeRecomputeCoordinator,
 )
+from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispatcher
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema.computed_attribute import ComputedAttribute
+from infrahub.events.schema_action import ChangedElementsPayload, SchemaUpdatedEvent
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
+from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.python_target_sources import FailingPythonTargetResolver
 from tests.component.computed_attribute._base import (
     CAR_PERSON_PYTHON_SCHEMA,
@@ -54,6 +58,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.merge.recompute_coalescing import PythonTargetResolver
+    from infrahub.core.models import SchemaDiff
     from infrahub.core.protocols import CoreAccount
     from infrahub.core.schema import SchemaRoot
     from infrahub.database import InfrahubDatabase
@@ -171,6 +176,17 @@ async def _seed(
     return PythonRecomputeDataset(car_ids=[car.id for car in cars], person_id=person.id)
 
 
+def _person_name_schema_diff(branch: Branch) -> tuple[SchemaDiff, str]:
+    """A schema change on the person name, which the owner-reading transform reads, with its hash."""
+    base_schema = registry.schema.get_schema_branch(name=branch.name)
+    candidate = base_schema.duplicate()
+    person = candidate.get(name=PERSON_KIND, duplicate=True)
+    person.get_attribute(name="name").description = "The name of the owner"
+    candidate.set(name=PERSON_KIND, schema=person)
+    candidate.process()
+    return base_schema.diff(other=candidate), candidate.get_hash()
+
+
 class CoalescedPythonTestBase(ScopedRecomputeTestBase):
     """Runs the coalesced pass and reports the submissions it produced."""
 
@@ -184,7 +200,6 @@ class CoalescedPythonTestBase(ScopedRecomputeTestBase):
         default_branch: Branch,
         admin_account: CoreAccount,
         changes: Iterable[MergeChange],
-        schema_changed_elements: ChangedElementSet | None = None,
         python_resolver: PythonTargetResolver | None = None,
     ) -> dict[str, list[str] | str]:
         """Run the pass and report one entry per attribute it submitted."""
@@ -199,9 +214,12 @@ class CoalescedPythonTestBase(ScopedRecomputeTestBase):
             changes=changes,
             branch=branch.name,
             context=self._context(admin_account, branch),
-            schema_changed_elements=schema_changed_elements,
         )
+        return self._submissions(recorder=recorder, branch=branch)
 
+    @staticmethod
+    def _submissions(*, recorder: WorkflowRecorder, branch: Branch) -> dict[str, list[str] | str]:
+        """One entry per attribute the pass submitted."""
         submissions: dict[str, list[str] | str] = {}
         for call in recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM):
             attribute_name = call["parameters"]["computed_attribute_name"]
@@ -361,7 +379,7 @@ class TestCoalescedRecomputePython(CoalescedPythonTestBase):
         for targets in results:
             assert [(target.attribute_name, target.whole_kind) for target in targets] == [(OWNER_ATTRIBUTE, False)]
 
-    async def test_a_pair_the_schema_pass_refreshes_is_dropped(
+    async def test_a_merge_that_also_changes_the_schema_recomputes_its_data_change(
         self,
         dataset: PythonRecomputeDataset,
         db: InfrahubDatabase,
@@ -369,28 +387,49 @@ class TestCoalescedRecomputePython(CoalescedPythonTestBase):
         default_branch: Branch,
         admin_account: CoreAccount,
     ) -> None:
-        """A schema-changing merge refreshes this pair one whole kind at a time already.
-
-        Both sides read their candidates from the same gather and scope them with the same rules,
-        so what one selects is what the other drops.
-        """
-        submissions = await self._run_pass(
-            db=db,
-            recorder=workflow_recorder,
+        """A merge that also changes the schema still recomputes the readers of its data change."""
+        source_branch = await create_branch(branch_name="schema_and_data", db=db)
+        event_service = MemoryInfrahubEvent()
+        dispatcher = PostMergeDispatcher(
+            repository_merge_dispatcher=RepositoryMergeDispatcher(
+                db=db, source_branch=source_branch, destination_branch=default_branch, workflow=workflow_recorder
+            ),
+            workflow=workflow_recorder,
+            event_service=event_service,
             default_branch=default_branch,
-            admin_account=admin_account,
-            changes=[
-                MergeChange(
-                    node_id=dataset.person_id,
-                    kind=PERSON_KIND,
-                    action="updated",
-                    changed_fields=frozenset({"name"}),
+            python_resolver=await build_python_target_resolver(db=db),
+        )
+        schema_diff, schema_hash = _person_name_schema_diff(default_branch)
+
+        await dispatcher.dispatch_events(
+            branch=source_branch,
+            proposed_change_id=None,
+            node_events=[
+                (
+                    DiffAction.UPDATED,
+                    NodeChangelog(
+                        node_id=dataset.person_id,
+                        node_kind=PERSON_KIND,
+                        display_label="owner01",
+                        attributes={"name": AttributeChangelog(name="name", value="owner02", kind="Text")},
+                    ),
                 )
             ],
-            schema_changed_elements=ChangedElementSet(changed_fields={PERSON_KIND: frozenset({"name"})}),
+            context=InfrahubContext.init(
+                branch=default_branch,
+                account=AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=admin_account.id),
+            ),
+            schema_diff=schema_diff,
+            schema_hash=schema_hash,
         )
 
-        assert submissions == {}
+        schema_events = [event for event in event_service.events if isinstance(event, SchemaUpdatedEvent)]
+        assert [event.changed_elements for event in schema_events] == [
+            ChangedElementsPayload(added_kinds=[], removed_kinds=[], changed_fields={PERSON_KIND: ["name"]})
+        ]
+        assert self._submissions(recorder=workflow_recorder, branch=default_branch) == {
+            OWNER_ATTRIBUTE: sorted(dataset.car_ids)
+        }
 
 
 class TestCoalescedRecomputePythonDeletedPeer(CoalescedPythonTestBase):
@@ -671,41 +710,6 @@ class TestCoalescedRecomputePythonUnpinnedQuery(CoalescedPythonTestBase):
                     changed_fields=frozenset({"name"}),
                 )
             ],
-        )
-
-        assert submissions == {
-            NAME_ATTRIBUTE: sorted(unpinned_dataset.car_ids),
-            OWNER_ATTRIBUTE: WHOLE_KIND,
-        }
-
-    async def test_an_unpinned_query_survives_a_schema_change_it_does_not_read(
-        self,
-        unpinned_dataset: PythonRecomputeDataset,
-        db: InfrahubDatabase,
-        workflow_recorder: WorkflowRecorder,
-        default_branch: Branch,
-        admin_account: CoreAccount,
-    ) -> None:
-        """The restriction must not make the schema pass look like it covers the attribute.
-
-        The schema pass maps the same query without the restriction, so a change to a kind the
-        query never reads selects nothing there. Dropping the pair as covered would leave the
-        gated automations as the only other path, and they ignore a replayed change.
-        """
-        submissions = await self._run_pass(
-            db=db,
-            recorder=workflow_recorder,
-            default_branch=default_branch,
-            admin_account=admin_account,
-            changes=[
-                MergeChange(
-                    node_id=unpinned_dataset.car_ids[0],
-                    kind=CAR_KIND,
-                    action="updated",
-                    changed_fields=frozenset({"name"}),
-                )
-            ],
-            schema_changed_elements=ChangedElementSet(changed_fields={PERSON_KIND: frozenset({"height"})}),
         )
 
         assert submissions == {

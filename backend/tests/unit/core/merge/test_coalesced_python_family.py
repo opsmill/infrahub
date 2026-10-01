@@ -7,7 +7,6 @@ these tests pin the wiring between the two, not the narrowing itself.
 
 from __future__ import annotations
 
-from infrahub.computed_attribute.scoping import ChangedElementSet
 from infrahub.core.merge.python_target_sources import UnavailablePythonTargetResolver
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
@@ -35,7 +34,6 @@ from tests.helpers.merge_recompute.dataset import build_chain_schema, chain_kind
 
 BRANCH = "main"
 PYTHON_KIND = "TestingProbe"
-SCHEMA_SCOPE = ChangedElementSet(changed_fields={PYTHON_KIND: frozenset({"digest"})})
 
 
 def _schema_branch() -> SchemaBranch:
@@ -100,15 +98,11 @@ async def test_the_coordinator_submits_the_python_family_alongside_the_schema_on
 
     # A generator, since both derivations read the change set and the second would find it empty.
     submissions = await coordinator.run(
-        changes=(change for change in [_root_change()]),
-        branch=BRANCH,
-        context=_event_context(),
-        schema_changed_elements=SCHEMA_SCOPE,
+        changes=(change for change in [_root_change()]), branch=BRANCH, context=_event_context()
     )
 
     assert _families(submissions) == {COMPUTED_ATTRIBUTE, PYTHON_COMPUTED_ATTRIBUTE}
-    # The derivation decides for itself what the schema pass already covers, so it needs that scope.
-    assert resolver.calls == [ResolveCall(branch=BRANCH, node_ids=("l1-0",), schema_scope=SCHEMA_SCOPE)]
+    assert resolver.calls == [ResolveCall(branch=BRANCH, node_ids=("l1-0",))]
 
 
 async def test_a_chained_level_derives_the_python_targets_of_its_writes() -> None:
@@ -128,8 +122,7 @@ async def test_a_chained_level_derives_the_python_targets_of_its_writes() -> Non
     )
 
     assert _families(submissions) == {COMPUTED_ATTRIBUTE, PYTHON_COMPUTED_ATTRIBUTE}
-    # A chained level replays data writes, never a schema change.
-    assert resolver.calls == [ResolveCall(branch=BRANCH, node_ids=("l1-0",), schema_scope=None)]
+    assert resolver.calls == [ResolveCall(branch=BRANCH, node_ids=("l1-0",))]
     python_calls = [
         call for call in recorder.submit_calls if call["parameters"].get("computed_attribute_kind") == PYTHON_KIND
     ]
@@ -193,7 +186,7 @@ async def test_a_resolver_that_could_not_be_built_widens_every_declared_attribut
 
 
 async def test_an_empty_change_set_resolves_nothing_without_reading_the_database() -> None:
-    """A rebase that replayed no data change has nothing to resolve, and must not widen.
+    """A merge or rebase that moved no data has nothing to resolve, and must not widen.
 
     The read-set index is loaded before the changes are inspected, so without the early return a
     failure loading it would widen every declared attribute for a change set that is empty.
@@ -206,23 +199,6 @@ async def test_an_empty_change_set_resolves_nothing_without_reading_the_database
     )
 
     submissions = await coordinator.run(changes=[], branch=BRANCH, context=_event_context())
-
-    assert resolver.calls == []
-    assert [submission for submission in submissions if submission.family == PYTHON_COMPUTED_ATTRIBUTE] == []
-
-
-async def test_a_schema_only_merge_widens_nothing() -> None:
-    """The schema half belongs to the scoped backfill, so a merge that moved no data widens nothing."""
-    resolver = FailingPythonTargetResolver()
-    coordinator = MergeRecomputeCoordinator(
-        builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch_with_a_python_attribute()),
-        submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
-        python_resolver=resolver,
-    )
-
-    submissions = await coordinator.run(
-        changes=[], branch=BRANCH, context=_event_context(), schema_changed_elements=SCHEMA_SCOPE
-    )
 
     assert resolver.calls == []
     assert [submission for submission in submissions if submission.family == PYTHON_COMPUTED_ATTRIBUTE] == []
