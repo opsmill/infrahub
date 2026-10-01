@@ -229,7 +229,8 @@ either case.
 - **A branch left ahead of its remote.** After a rejected push the local branch holds commits the
   remote does not. The remote head is then an ancestor of the imported commit. This is not a
   rewrite. The branch MUST NOT be reset, because the reset would discard a commit that exists on
-  one worker only.
+  one worker only. The push-ordering work of IFC-1449 removes that state at its source. Until PR
+  #10465 reaches `develop`, every step that resets a worktree waits for it. See "Dependencies".
 - **The commit Infrahub imported is no longer present in the local object database.** Ancestry
   cannot be tested. The branch is treated as diverged, which is the safe classification, and the
   record names the imported commit as the previous commit.
@@ -264,8 +265,10 @@ here. See "Out of Scope".
 
 #### Reconciliation
 
-- **FR-004**: On a rewritten branch the system MUST reset to the remote history and re-import. It
-  MUST NOT fail.
+- **FR-004**: On a rewritten branch the system MUST reset to the remote history and re-import. The
+  divergence itself MUST NOT be the failure. The reset MUST happen, and the import MUST be
+  attempted on the new commit. An import that then fails on the content of that commit is an
+  ordinary import failure. FR-018 governs it.
 - **FR-005**: Every worker MUST enforce reset-on-divergence on its own clone before it advances a
   branch worktree **from the remote**. Convergence MUST NOT depend on receiving a notification.
   This covers the synchronisation collector and the convergence handler.
