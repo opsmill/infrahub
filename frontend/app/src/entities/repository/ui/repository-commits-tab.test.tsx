@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
+import { getRepositoryCommitStatusFromApi } from "@/entities/repository/api/get-repository-commit-status-from-api";
 
 import { render } from "../../../../tests/components/render";
 import {
@@ -11,14 +11,14 @@ import {
 } from "../../../../tests/fake/repository-commit";
 import { RepositoryCommitsTab } from "./repository-commits-tab";
 
-vi.mock("@/entities/repository/api/get-repository-commits-from-api");
+vi.mock("@/entities/repository/api/get-repository-commit-status-from-api");
 
-const apiMock = vi.mocked(getRepositoryCommitsFromApi);
+const apiMock = vi.mocked(getRepositoryCommitStatusFromApi);
 
-type ApiResult = Awaited<ReturnType<typeof getRepositoryCommitsFromApi>>;
+type ApiResult = Awaited<ReturnType<typeof getRepositoryCommitStatusFromApi>>;
 
-const apiResult = (response: RepositoryCommitsWire) =>
-  ({ data: { InfrahubRepositoryCommits: response } }) as unknown as ApiResult;
+const apiResult = ({ condition, pending_count }: RepositoryCommitsWire) =>
+  ({ data: { InfrahubRepositoryCommits: { condition, pending_count } } }) as ApiResult;
 
 const renderTab = () =>
   render(<RepositoryCommitsTab objectKind="CoreRepository" objectId="repo-1" />);
@@ -36,6 +36,7 @@ describe("RepositoryCommitsTab", () => {
     const component = await renderTab();
 
     // THEN
+    expect(apiMock).toHaveBeenCalledWith(expect.objectContaining({ repositoryId: "repo-1" }));
     const tab = component.getByRole("link", { name: "Commits 2 pending import" });
     await expect.element(tab).toBeVisible();
     await expect.element(tab.getByText("2")).toBeVisible();
