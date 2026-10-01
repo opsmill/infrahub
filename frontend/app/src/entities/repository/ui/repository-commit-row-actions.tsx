@@ -12,7 +12,7 @@ export interface RepositoryCommitRowActionsProps {
 }
 
 export function RepositoryCommitRowActions({ commit, webUrl }: RepositoryCommitRowActionsProps) {
-  const { isCopied, copyToClipboard } = useCopyToClipboard();
+  const { isCopied, copyCount, copyToClipboard } = useCopyToClipboard();
 
   return (
     <StickyRightCell>
@@ -28,13 +28,18 @@ export function RepositoryCommitRowActions({ commit, webUrl }: RepositoryCommitR
 
         <Popover placement="bottom end">
           <Menu aria-label="Commit actions">
-            <MenuItem onAction={() => copyToClipboard(commit.hash)}>
+            <MenuItem textValue="Copy commit hash" onAction={() => copyToClipboard(commit.hash)}>
               <CopyIcon />
               <span>Copy commit hash</span>
             </MenuItem>
 
             {webUrl && (
-              <MenuItem href={webUrl} target="_blank" rel="noopener noreferrer">
+              <MenuItem
+                textValue="View on GitHub"
+                href={webUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <ExternalLinkIcon />
                 <span>View on GitHub</span>
               </MenuItem>
@@ -44,7 +49,7 @@ export function RepositoryCommitRowActions({ commit, webUrl }: RepositoryCommitR
       </MenuTrigger>
 
       <span role="status" className="sr-only">
-        {isCopied && "Copied to clipboard"}
+        {isCopied && <span key={copyCount}>Copied to clipboard</span>}
       </span>
     </StickyRightCell>
   );

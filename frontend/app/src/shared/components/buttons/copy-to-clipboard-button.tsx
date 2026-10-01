@@ -9,7 +9,7 @@ interface CopyToClipboardProps extends Omit<AriaButtonProps, "children" | "onPre
 }
 
 export function CopyToClipboardButton({ data, ...props }: CopyToClipboardProps) {
-  const { isCopied, copyToClipboard } = useCopyToClipboard();
+  const { isCopied, copyCount, copyToClipboard } = useCopyToClipboard();
 
   return (
     <>
@@ -26,7 +26,7 @@ export function CopyToClipboardButton({ data, ...props }: CopyToClipboardProps) 
         </Button>
       </Tooltip>
       <span role="status" className="sr-only">
-        {isCopied && "Copied to clipboard"}
+        {isCopied && <span key={copyCount}>Copied to clipboard</span>}
       </span>
     </>
   );

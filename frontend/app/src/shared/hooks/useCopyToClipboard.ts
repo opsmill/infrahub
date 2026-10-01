@@ -19,10 +19,12 @@ const COPIED_FEEDBACK_DURATION = 2000;
 
 export function useCopyToClipboard() {
   const [isCopied, setIsCopied] = React.useState(false);
+  const [copyCount, setCopyCount] = React.useState(0);
 
   const copyToClipboard = React.useCallback(async (value: string) => {
     function confirmCopied() {
       setIsCopied(true);
+      setCopyCount((count) => count + 1);
       setTimeout(() => setIsCopied(false), COPIED_FEEDBACK_DURATION);
     }
 
@@ -41,5 +43,5 @@ export function useCopyToClipboard() {
     }
   }, []);
 
-  return { isCopied, copyToClipboard };
+  return { isCopied, copyCount, copyToClipboard };
 }

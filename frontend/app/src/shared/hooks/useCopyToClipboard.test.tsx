@@ -4,11 +4,12 @@ import { render } from "vitest-browser-react";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
 function CopyButton({ value }: { value: string }) {
-  const { isCopied, copyToClipboard } = useCopyToClipboard();
+  const { isCopied, copyCount, copyToClipboard } = useCopyToClipboard();
   return (
     <button
       data-testid="copy-btn"
       data-copied={String(isCopied)}
+      data-copy-count={copyCount}
       onClick={() => copyToClipboard(value)}
     >
       {isCopied ? "copied" : "copy"}
@@ -92,5 +93,27 @@ describe("useCopyToClipboard", () => {
     // THEN
     expect(execCommand).toHaveBeenCalledWith("copy");
     await expect.element(component.getByText("copied")).toBeVisible();
+  });
+
+  it("counts every successful copy so repeated copies can be announced again", async () => {
+    // GIVEN
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("isSecureContext", true);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    const component = await render(<CopyButton value="test-value" />);
+    const button = component.getByTestId("copy-btn");
+    await expect.element(button).toHaveAttribute("data-copy-count", "0");
+
+    // WHEN
+    await button.click();
+    await expect.element(button).toHaveAttribute("data-copy-count", "1");
+    await button.click();
+
+    // THEN
+    await expect.element(button).toHaveAttribute("data-copy-count", "2");
   });
 });
