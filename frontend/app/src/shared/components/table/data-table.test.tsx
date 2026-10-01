@@ -1,5 +1,6 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { describe, expect, test } from "vitest";
+import type { JSX } from "react";
+import { describe, expect, expectTypeOf, test } from "vitest";
 
 import { DataTable } from "@/shared/components/table/data-table";
 
@@ -264,12 +265,12 @@ describe("DataTable rows that are not nodes", () => {
     await expect.element(rows.nth(1).getByText("e5f6a7b")).toBeVisible();
   });
 
-  test("accepts row selection only for node rows", () => {
+  test("rejects row selection on non-node rows at the type level", () => {
     const commits: CommitRow[] = [];
 
-    expect(() => (
+    const tables = (
       <>
-        {/* @ts-expect-error rows that are not nodes cannot be selected */}
+        {/* @ts-expect-error rows that are not nodes need getRowId and cannot be selected */}
         <DataTable columns={commitColumns} data={commits} enableRowSelection />
         <DataTable
           columns={commitColumns}
@@ -279,6 +280,8 @@ describe("DataTable rows that are not nodes", () => {
           enableRowSelection
         />
       </>
-    )).not.toThrow();
+    );
+
+    expectTypeOf(tables).toEqualTypeOf<JSX.Element>();
   });
 });
