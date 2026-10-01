@@ -228,7 +228,9 @@ rewritten history are indistinguishable and both are reported as "New commit det
   that long; this is consistent with the lack of reconciliation rather than a separate bug.
 - **A skipped branch is re-evaluated every cycle.** A remote branch named like Infrahub's default, on
   a repository whose trunk is something else, is never created locally by the sync, so every sync
-  skips it again and the process log repeats once a minute. The operator-facing warning is gated separately, and a
+  usually skips it again and the process log repeats once a minute. The exception is a clone whose
+  remote HEAD is that branch: the clone holds it locally, so it is not re-evaluated, and nothing is
+  logged, until it moves. The operator-facing warning is gated separately, and a
   push to that branch can go unreported when more than one worker runs; both are covered in
   [Git Sync](git-sync.md#branch-import-and-mapping).
 - **A branch left ahead of its remote is re-reported every cycle too.** After a failed push the local

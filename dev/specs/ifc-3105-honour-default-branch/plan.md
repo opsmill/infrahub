@@ -127,14 +127,15 @@ backend/
 │   │   ├── repository.py            # InfrahubRepository: required default_branch + internal_status, init/new call
 │   │   │                            #   resolve_graph_settings once and set infrahub_branch_name from their parameter,
 │   │   │                            #   mapping hook implementations, skipped_branches collection;
-│   │   │                            #   validate_remote_branch moves here, returns BranchSkipReason | None (predicate
-│   │   │                            #   stays at the decision point, caller never re-tests it);
-│   │   │                            #   collect_pending_imports captures the remote heads before fetch() and records
-│   │   │                            #   which skipped branches advanced or appeared;
+│   │   │                            #   validate_remote_branch moves here, returns BranchSkipReason | None (one
+│   │   │                            #   collision predicate method, shared with the skip record);
+│   │   │                            #   collect_pending_imports records the colliding branch from the remote, reads
+│   │   │                            #   its ref before fetch() and records whether it advanced or appeared;
 │   │   │                            #   InfrahubReadOnlyRepository: identity hooks; get_initialized_repo(infrahub_branch_name)
 │   │   ├── sync.py                  # RepositoryAdder.add without trunk kwargs;
 │   │   │                            #   RepositorySyncer.sync -> SyncReport(skipped_branches, imported_branches,
-│   │   │                            #   advanced_skipped_branches), report attached to the raise so a partial import
+│   │   │                            #   failed_import_branches, advanced_skipped_branches), report attached to the
+│   │   │                            #   raise so a partial import
 │   │   │                            #   failure still reports
 │   │   ├── models.py                # CollectedImports.skipped_branches + advanced_skipped_branches;
 │   │   │                            #   remove GitRepositoryAdd.default_branch_name,
@@ -144,7 +145,7 @@ backend/
 │   │                                #   flow control for the staging early return, not a trunk carrier;
 │   │                                #   sync child flow: no trunk/status params, construction moves INSIDE the try so a
 │   │                                #   failing node read is still node-tagged, warning + node link only when a branch was
-│   │                                #   skipped AND something moved; add_tags repeats imported branches;
+│   │                                #   skipped AND something moved; add_tags repeats attempted import branches;
 │   │                                #   bootstrap/sync helpers stop forwarding node values; every get_initialized_repo
 │   │                                #   caller passes infrahub_branch_name; git_branch_create/delete resolve on
 │   │                                #   registry.default_branch (the Infrahub branch is gone when delete fans out);
@@ -257,8 +258,8 @@ factories and the connectivity flow respectively.
   message field, `ls-remote` invocation and parsing, verbatim rejection messages, flow mapping.
 - [contracts/sync-task-log.md](./contracts/sync-task-log.md): `SyncReport`, verbatim warning text,
   the two carriers (once at connect, then for a cycle that imported something or saw the skipped
-  branch advance), the pre-fetch head capture (a branch absent from it counts as moved), the node-link rule and the
-  observable outcomes.
+  branch advance), the pre-fetch head capture (a branch absent from it counts as moved), the
+  node-link rule and the observable outcomes.
 - [quickstart.md](./quickstart.md): manual scenarios per user story and the local gate to run
   before pushing.
 
@@ -326,8 +327,8 @@ factories and the connectivity flow respectively.
   because each worker compares against its own remote-tracking refs. Those refs are also moved by the
   post-sync `RefreshGitFetch` broadcast, so the push can equally go unreported (corrected 2026-09-29;
   research.md D6). An operator reading the Tasks tab may read either as a bug. It is bounded by the
-  worker count rather than the cycle rate, it is recorded in the spec's Assumptions and the contract, and it belongs in the PR
-  description alongside the `operational_status` move.
+  worker count rather than the cycle rate, it is recorded in the spec's Assumptions and the
+  contract, and it belongs in the PR description alongside the `operational_status` move.
 - **Follow-ups to file**: an on-demand configuration-validation action for a connected repository
   (INFP-672); connect-time validation of a read-only repository's `ref`, including tag and commit-SHA
   handling; and the worktree identifier collision when Infrahub's default branch is not `main` and the

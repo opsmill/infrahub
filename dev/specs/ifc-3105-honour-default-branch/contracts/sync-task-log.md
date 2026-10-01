@@ -10,11 +10,13 @@ multi-worker limitation the second trigger accepts ("The detection is per worker
 
 ## Collection
 
-The collision predicate stays where the decision is made. `validate_remote_branch` already evaluates
+The collision predicate is defined once. Before this change `validate_remote_branch` evaluated
 `branch_name == registry.default_branch and branch_name != self.default_branch`
-(`git/repository.py::InfrahubRepository.validate_remote_branch`) and returns `False`; it must not be re-derived in the caller. Re-deriving it there would put one
-predicate in two files, and a drift between them would drop the branch while telling the operator
-nothing — the exact defect class this feature exists to delete.
+(`git/repository.py::InfrahubRepository.validate_remote_branch`) and returned `False` for it; it must
+not be re-derived in a caller. Re-deriving it there would put one predicate in two places, and a drift
+between them would drop the branch while telling the operator nothing — the exact defect class this
+feature exists to delete. It now lives in `_collides_with_infrahub_default_branch`, which every caller
+uses (see below).
 
 So `validate_remote_branch` reports **why** it rejected a branch instead of returning a bare `bool`:
 
@@ -75,14 +77,14 @@ which says nothing about whether the remote head moved since the last fetch.
 
 **The detection is per worker, and it can miss a push.** Git storage is per worker and the periodic
 sync has no worker affinity, so each worker compares against its own remote-tracking refs. Those move
-on every fetch, not only the sync's: after each sync the initiating worker broadcasts
+on every fetch, not only the sync's: after each successful sync the initiating worker broadcasts
 `RefreshGitFetch`, and every other worker fetches on receipt. A push to the skipped branch is
 therefore absorbed by whichever fetch runs first. When that is a broadcast fetch on a worker whose
 next sync then finds nothing moved, the push is never reported. One worker alone ignores its own
 broadcasts, so there only its rarer fetches outside the sync can absorb a push: on a changed
-location, or on a pinned commit missing from the clone. The same push can also be reported by more than one worker, at
-most once each. This is accepted and documented, not solved (corrected 2026-09-29, after review found
-the broadcast interplay). A reliable signal needs a baseline only the sync writes, such as a
+location, or on a pinned commit missing from the clone. The same push can also be reported by more
+than one worker, at most once each. This is accepted and documented, not solved (corrected
+2026-09-29, after review found the broadcast interplay). A reliable signal needs a baseline only the sync writes, such as a
 worker-local ref updated after each comparison: still no graph state, but a follow-up decision.
 
 ## Report
@@ -95,6 +97,10 @@ class SyncReport:
     failed_import_branches: tuple[str, ...]
     advanced_skipped_branches: tuple[str, ...]
 
+    @property
+    def attempted_import_branches(self) -> tuple[str, ...]:
+        return self.imported_branches + self.failed_import_branches
+
 async def RepositorySyncer.sync(self, repo: InfrahubRepository, staging_branch: str | None = None) -> SyncReport
 ```
 
@@ -104,15 +110,16 @@ async def RepositorySyncer.sync(self, repo: InfrahubRepository, staging_branch: 
   branch is the permanently-skipped colliding one.
 - `failed_import_branches` holds the Infrahub branch name of every import the run attempted and
   failed. It plays no part in deciding whether to report; it exists so the carrier can keep those
-  branches' run tags (step 4 of carrier 2).
+  branches' run tags (step 4 of carrier 2), through `attempted_import_branches`, the imported and
+  the failed branches together.
 - `advanced_skipped_branches` is copied from `CollectedImports.advanced_skipped_branches`. Non-empty
   means a skipped branch received a commit since this worker's previous fetch.
 - The two together are the run's answer to "is this cycle worth reporting". Both empty means nothing
   moved: no warning, no node link.
 - `sync` still raises through `raise_if_branches_failed` when any import failed.
 
-**The report must survive that raise.** `raise_if_branches_failed` is the last statement of `sync`
-(`git/sync.py:129`), so a run that imported the trunk fine but failed some other branch would, if the
+**The report must survive that raise.** `raise_if_branches_failed` is the last call in `sync`
+(`git/sync.py::RepositorySyncer.sync`), so a run that imported the trunk fine but failed some other branch would, if the
 report were returned only on success, emit no skipped-branch warning at all. At connect that breaks
 FR-008's "MUST be recorded when the repository is connected", and it breaks it precisely for a
 repository that is already in trouble and whose operator most needs the full picture.
@@ -140,17 +147,16 @@ Both carriers emit the same text.
 
 1. Already calls `add_tags(branches=[...], nodes=[model.repository_id])` as its first statement, so
    the run is linked to the repository node before anything else happens.
-2. Already runs `RepositorySyncer.sync(repo)` after the add (`git/tasks.py:103`), for an active
-   repository.
+2. Already runs `RepositorySyncer.sync(repo)` after the add, for an active repository.
 3. Emits one warning per `report.skipped_branches` entry, unconditionally — **on both the success
    and the failure path**. The call at step 2 is wrapped so that a
    `RepositoryBranchesFailedError` still yields its report, the warnings are logged, and the error is
    re-raised unchanged. This run happens exactly once per repository, so the condition is reported
    exactly once, at the moment the operator connects it, whether or not every branch imported.
 
-No tagging change is needed here. A repository added in staging returns at `git/tasks.py:100` before
-the sync and reports nothing; the condition is then reported by the first cycle that imports
-something after the proposed change merges.
+No tagging change is needed here. A repository added in staging returns before the sync and reports
+nothing; the condition is then reported by the first cycle that imports something, or sees the
+skipped branch move, after the proposed change merges.
 
 ## Carrier 2: per synchronisation cycle
 
@@ -158,11 +164,11 @@ something after the proposed change merges.
 
 1. Build the repository object through the factory (no trunk or status parameters), **inside** the
    existing `try`. The construction now performs a graph read that can raise `RepositoryError`
-   (`contracts/repository-object.md`, error contract); today it sits outside the `try`
-   (`git/tasks.py:225` versus `:235`), so such a failure would bypass this flow's own tag-on-failure
-   handler and leave the run unlinked from the repository node — invisible in the Tasks tab that
-   SC-005 relies on. The cycle survives either way, because `sync_repository_from_origin` isolates
-   it one level up (`git/tasks.py:338`); the visibility is what is lost.
+   (`contracts/repository-object.md`, error contract); before this change it sat outside the `try`,
+   so such a failure would bypass this flow's own tag-on-failure handler and leave the run unlinked
+   from the repository node — invisible in the Tasks tab that SC-005 relies on. The cycle survives
+   either way, because `git/tasks.py::sync_repository_from_origin` isolates it one level up; the
+   visibility is what is lost.
 2. `report = await syncer.sync(repo, staging_branch=...)`, with the same failure-path handling as
    carrier 1: a `RepositoryBranchesFailedError` still yields its report.
 3. Emit one warning per skipped branch **only when** `report.skipped_branches` is non-empty **and**

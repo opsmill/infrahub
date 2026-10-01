@@ -132,8 +132,9 @@ against a Gogs remote whose default branch is `master`.
 
    **Expected**: a "Sync git repo with origin" task is listed and its log contains one skipped-branch
    warning naming `main`, even though the cycle imported nothing. This is the case the design exists
-   to cover: the operator has just pushed to the branch Infrahub is not importing. Run this scenario
-   with a single task worker. With more than one, a worker's refs can be moved by another worker's
+   to cover: the operator has just pushed to the branch Infrahub is not importing. This expected
+   outcome holds on a single-worker stack, so scale the task workers down to one for this step. On
+   the two-worker stack of the prerequisites, a worker's refs can be moved by another worker's
    post-sync broadcast fetch before its own sync compares, so the push may produce no entry, or one
    per worker; that is a documented limitation (research.md D6, correction of 2026-09-29).
 

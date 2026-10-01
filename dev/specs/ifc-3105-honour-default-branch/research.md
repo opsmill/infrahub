@@ -137,6 +137,10 @@ test must construct with the trunk instead; the plan keeps it and adds a mutatio
   because it diffs remote heads against *local* branches and the colliding branch has none, which is
   why D6 captures the pre-fetch heads separately. `collect_pending_imports` calls `fetch` at
   `git/repository.py:159`, so the capture point is the statement before it.
+- *As found before implementation. Two points above changed (D6 correction of 2026-09-30): a clone
+  whose remote HEAD is the colliding branch does hold it locally, so the early return can fire and
+  the skip is recorded from the remote instead; and the capture reads that one remote-tracking ref,
+  not every remote head.*
 - Tags added mid-run with `workflows/utils.py::add_tags` are rebuilt from the tags known at flow
   start, so two in-flow tag updates clobber each other (documented in
   `dev/knowledge/backend/async-tasks.md`). Any later call must therefore repeat every tag an earlier
@@ -455,7 +459,9 @@ import that will never arrive. So a second discriminator is used alongside it: *
 branch's own remote head move during this run's fetch**. This is answerable in the run too, and
 without persisting anything, because the unfiltered fetch keeps a remote-tracking ref for the
 colliding branch and the listing already reads its commit (see "Tests and fixtures" above). Capturing
-the remote heads immediately before `fetch` and comparing after it is a local ref read.
+the remote heads immediately before `fetch` and comparing after it is a local ref read. (As landed,
+the capture reads only the colliding branch's ref, and "never created locally" has the remote-HEAD
+exception: see the 2026-09-30 correction under **Decision**.)
 
 The cost is that the comparison is per worker. Git storage is per worker and the periodic sync has no
 worker affinity, so each worker answers "moved since *my* last fetch" independently and one push can
@@ -466,7 +472,7 @@ clones before the heads are read, so its first sync sees nothing move; the conne
 covers the first announcement unconditionally.
 
 **Correction, 2026-09-29 (implementation review).** "My last fetch" is not only the sync's own. After
-every sync the initiating worker broadcasts `RefreshGitFetch`, and every other worker fetches on
+every successful sync the initiating worker broadcasts `RefreshGitFetch`, and every other worker fetches on
 receipt, which moves the same remote-tracking refs this comparison reads. So with more than one
 worker a push to the skipped branch is usually absorbed by a broadcast fetch before the next sync on
 that worker compares, and it can go unreported altogether; duplication is the rarer outcome. A single
@@ -484,17 +490,18 @@ written anywhere" and is left as a follow-up.
   `branch_name == registry.default_branch and branch_name != self.default_branch` inside
   `collect_pending_imports` would hold one predicate in two files, and a drift between them would
   drop the branch while reporting nothing — the defect class this feature exists to delete.
-- `InfrahubRepository.collect_pending_imports` records each branch whose reason is
-  `DEFAULT_BRANCH_COLLISION` in a new `skipped_branches` field on `CollectedImports`. It calls
-  `validate_remote_branch` at two sites (`git/repository.py:178` for new branches, `:211` for updated
-  ones); both record.
-- `collect_pending_imports` also captures the remote heads by calling `get_branches_from_remote`
-  immediately **before** `self.fetch()` and records, in a second new `CollectedImports` field, every
-  skipped branch whose head differs afterwards, a branch missing from the capture included: it was
-  pushed after this clone last fetched. (Corrected 2026-09-29: the first version left missing branches
-  out as a "cold-clone rule". A worker with no clone makes one inside `init`, before the capture, so
-  that rule never prevented a false positive; it only silenced a colliding branch pushed after
-  connect.) The capture is a local ref read; no additional network call is made.
+- `InfrahubRepository.collect_pending_imports` records the colliding branch in a new
+  `skipped_branches` field on `CollectedImports`. It calls `validate_remote_branch` at two sites, the
+  new-branch and the updated-branch loops, and both skip on any reason; the record itself is decided
+  from the remote, as the 2026-09-30 correction below sets out.
+- `collect_pending_imports` also captures the colliding branch's remote-tracking ref with
+  `_get_remote_tracking_commit` immediately **before** `self.fetch()` and records, in a second new
+  `CollectedImports` field, the skipped branch when its head differs afterwards, a branch missing
+  from the capture included: it was pushed after this clone last fetched. (Corrected 2026-09-29: the
+  first version left missing branches out as a "cold-clone rule". A worker with no clone makes one
+  inside `init`, before the capture, so that rule never prevented a false positive; it only silenced
+  a colliding branch pushed after connect.) The capture is a local ref read; no additional network
+  call is made.
 - **Correction, 2026-09-30 (code review).** "Never created locally" does not hold when the remote's
   HEAD is the colliding branch: the clone checks HEAD out as a local branch, so `compare_local_remote`
   lists it in neither loop until it moves, and a loop-derived `skipped_branches` stayed empty at
@@ -502,8 +509,7 @@ written anywhere" and is left as a follow-up.
   one method, `_collides_with_infrahub_default_branch`, shared by `validate_remote_branch` and
   `collect_pending_imports`, and the colliding branch is recorded whenever the remote holds it after
   the fetch (on an `ACTIVE` repository). One method keeps the predicate in one place, which is what
-  the no-re-derivation rule above protects. The capture reads only that branch's remote-tracking ref,
-  not every remote head.
+  the no-re-derivation rule above protects.
 - `RepositorySyncer.sync` returns a frozen `SyncReport` carrying both the skipped branch names and
   the branches it imported, **and attaches it to the error raised by `raise_if_branches_failed`**.
   Without that, a run whose imports partly failed would return no report and emit no warning; at
@@ -577,7 +583,7 @@ outcome-level test each headline requirement ultimately rests on; every other ro
 | Mapping hooks for both kinds (D3) | unit | `backend/tests/unit/git/test_git_repository.py` | Pure functions of two strings |
 | `resolve_graph_settings` returns the node's `default_branch`, `internal_status` and `location`, read on the branch it was given (D1) | unit | `backend/tests/unit/git/test_graph_settings.py` | The resolver is the single resolution point; a stub client asserts which branch it queried. Off the model it needs no repository object at all. The "repository factory" module suite |
 | `validate_remote_branch` returns `DEFAULT_BRANCH_COLLISION` for the collision, `INVALID_BRANCH_NAME` for a name pydantic rejects, and `None` otherwise (D6) | unit | `backend/tests/unit/git/test_git_repository.py` | Pins the predicate at its single site, which is what stops the caller from re-deriving it |
-| `collect_pending_imports` populates `skipped_branches` from the collision reason, at both call sites (D6) | unit | `backend/tests/unit/git/test_git_repository.py` | The "collision reporting" module suite the PRD asks for, below the flow tier |
+| `collect_pending_imports` records the colliding branch in `skipped_branches` whether the comparison lists it as new, as updated, or not at all because the clone holds it as the remote's HEAD (D6) | unit | `backend/tests/unit/git/test_git_repository.py` | The "collision reporting" module suite the PRD asks for, below the flow tier |
 | The two message models no longer declare a trunk field (FR-003) | unit | `backend/tests/unit/git/test_git_repository.py` or the message-model test module | `assert "default_branch_name" not in GitRepositoryAdd.model_fields` and the same for `GitRepositoryMerge.default_branch`. The "message-model cleanup" module suite; the grep in `quickstart.md` Scenario 3 is a manual recipe and cannot enforce this in CI |
 | ⭐ **Evidence for FR-009.** Push to a non-default trunk from a worker with no local branch of that name | component | existing `backend/tests/component/git/test_git_repository.py::test_merge_writes_back_to_non_main_default_branch`, adapted | Already exists; construction changes only. The assertion is on the remote ref the push advanced, which is what the pre-fix refspec got wrong |
 | ⭐ **Evidence for US1 scenario 5.** The merge write-back still resolves the trunk once `GitRepositoryMerge.default_branch` is gone | component | same file | `merge_git_repository` is the fifth direct factory caller (D4) and the one whose branch choice is not obvious. Asserts the remote trunk ref advanced with the model no longer carrying a trunk, and that the node was read on `model.destination_branch` |
