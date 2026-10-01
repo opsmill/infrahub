@@ -14,7 +14,7 @@ The behavior is gated by `selective_execution_after_merge` (env `INFRAHUB_SELECT
 merge (BranchMergeOrchestrator.merge)
   -> serialize the in-memory enriched branch_diff -> list[NodeDiff]  (before the diff is frozen)
   -> after the MERGED transition + write-block lift: cache the summary under the merge key
-  -> run_follow_ups threads merge_diff_cache_key + proposed_change_id to post_process_branch_merge
+  -> run_follow_ups threads merge_diff_cache_key to post_process_branch_merge
        -> PostMergeRegenerationDispatcher.dispatch(target_branch, merge_diff_cache_key)
             -> flag off / no key / summary unavailable -> full regeneration (blanket triggers)
             -> RegenerationSelector.build_plan(diff_summary, target_branch)  -> generator runs + artifact generates
@@ -52,12 +52,12 @@ The dependency closure and `fingerprint` are computed at repository import. The 
 Generators dispatched by the follow-up write their output after the merge diff was captured, so those writes are absent from that diff. On a merge that runs at least one generator, `_dispatch_plan` (`regeneration_dispatcher.py`):
 
 1. Awaits each generator run so its writes have landed, isolating failures per generator (one failure does not abort the others or discard the narrowing already computed).
-2. Captures the nodes those generators wrote, scoped to the members each generator tracks, through `GeneratorTrackingGroupDiffCapturer` (`generator_diff_capturer.py`). The capturer reads each generator's per-member tracking group rather than the whole branch timeframe.
+2. Captures the nodes those generators wrote, scoped to the members each generator tracks, through `GeneratorTrackingGroupDiffCapturer` (`generator_diff_capturer.py`). The capturer calculates the target branch's diff over the window the generators ran in, in memory and never stored, and keeps only the nodes in each generator's per-member tracking group, which leaves out concurrent writes to the branch.
 3. Selects only the artifacts that read the captured output (`RegenerationSelector.select_artifacts`), and dispatches those alongside the merge-diff artifacts. Requests selected by both are consolidated into one request per artifact definition (member and limit filters unioned; an empty filter, meaning all members, subsumes a specific one).
 
-The capture widens to regenerating every artifact when any generator's tracked set is unresolved or the output cannot be captured. A generator run failure regenerates every artifact without re-running the generators (which would fail the same way). The merge-diff artifacts are dispatched only after the generator-output capture, so the capture never selects on their own writes.
+The capture keeps every change in the window when any generator's tracked set is unresolved or empty, and every artifact is regenerated when the output cannot be captured. A generator run failure regenerates every artifact without re-running the generators (which would fail the same way). The merge-diff artifacts are dispatched only after the generator-output capture, so the capture never selects on their own writes.
 
-A proposed-change merge already reflects generator output in its branch diff, so it keeps the plain selective artifact path; the cascade is the direct-merge case, distinguished by `proposed_change_id`.
+The cascade engages on any merge whose plan selects an after-merge generator, whether the branch merged directly or through a proposed change: the follow-up is not told which.
 
 ## Known limitation: content composition
 
