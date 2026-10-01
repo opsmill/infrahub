@@ -1,6 +1,6 @@
 import { Spinner } from "@infrahub/ui";
 
-import { Col } from "@/shared/components/container";
+import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -10,7 +10,10 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import { getEmptyState, getLoadedCommits } from "@/entities/repository/ui/repository-commits.view";
-import { RepositoryCommitsHeader } from "@/entities/repository/ui/repository-commits-header";
+import {
+  RepositoryCommitsHeader,
+  RepositoryCommitsRefreshButton,
+} from "@/entities/repository/ui/repository-commits-header";
 
 export interface RepositoryCommitsManagerProps {
   repositoryId: string;
@@ -29,16 +32,22 @@ export function RepositoryCommitsManager({
   });
   const pages = data?.pages ?? [];
   const [log] = pages;
+  const commits = getLoadedCommits(pages);
 
-  if (error && !log) {
-    return <ErrorScreen message={error.message} />;
+  if (error && commits.length === 0) {
+    return (
+      <Col className="h-full gap-0">
+        <Row className="p-2">
+          <RepositoryCommitsRefreshButton />
+        </Row>
+        <ErrorScreen message={error.message} />
+      </Col>
+    );
   }
 
   if (!log) {
     return <LoadingIndicator className="h-full p-4" />;
   }
-
-  const commits = getLoadedCommits(pages);
 
   if (commits.length === 0) {
     const emptyState = getEmptyState(log);

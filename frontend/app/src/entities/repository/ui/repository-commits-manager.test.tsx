@@ -1,6 +1,7 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { queryClient as appQueryClient } from "@/shared/api/rest/client";
 import { formatWithPreferences } from "@/shared/context/date-preferences-context";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
@@ -85,6 +86,7 @@ describe("RepositoryCommitsManager", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.resetAllMocks();
     vi.unstubAllGlobals();
     Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
@@ -213,6 +215,54 @@ describe("RepositoryCommitsManager", () => {
     // THEN
     await expect.element(component.getByText("Worker did not answer in time")).toBeVisible();
     expect(component.getByText("Commit log not available yet").query()).toBeNull();
+  });
+
+  test("offers a refresh on the error screen when the first load fails", async () => {
+    // GIVEN
+    apiMock.mockRejectedValue(new Error("Worker did not answer in time"));
+
+    // WHEN
+    const component = await renderTab();
+
+    // THEN
+    await expect.element(component.getByText("Worker did not answer in time")).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Refresh data" })).toBeVisible();
+  });
+
+  test("renders the error screen when a poll fails after an unavailable answer", async () => {
+    // GIVEN
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
+      .mockRejectedValue(new Error("Worker did not answer in time"));
+    const component = await renderTab();
+    await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
+
+    // WHEN
+    await queryClient.refetchQueries();
+
+    // THEN
+    await expect.element(component.getByText("Worker did not answer in time")).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Refresh data" })).toBeVisible();
+    expect(component.getByText("Commit log not available yet").query()).toBeNull();
+  });
+
+  test("refetches the log when refresh is pressed on the error screen", async () => {
+    // GIVEN
+    apiMock
+      .mockRejectedValueOnce(new Error("Worker did not answer in time"))
+      .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+    const component = await renderTab();
+    await expect.element(component.getByText("Worker did not answer in time")).toBeVisible();
+    vi.spyOn(appQueryClient, "invalidateQueries").mockImplementation((filters) =>
+      queryClient.invalidateQueries(filters)
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Refresh data" }).click();
+
+    // THEN
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    expect(apiMock).toHaveBeenCalledTimes(2);
   });
 
   test("keeps the loaded rows when a later poll answers unavailable", async () => {

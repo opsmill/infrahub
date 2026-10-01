@@ -16,14 +16,20 @@ export function RepositoryCommitsHeader({ log }: RepositoryCommitsHeaderProps) {
   return (
     <Col className="gap-1.5 p-2">
       <Row className="items-center gap-2">
-        <RefreshButton
-          className="rounded-md border-border-strong"
-          queryKey={repositoriesQueryKeys.all}
-        />
+        <RepositoryCommitsRefreshButton />
         <FreshnessLine log={log} />
       </Row>
       <ConditionNotice log={log} />
     </Col>
+  );
+}
+
+export function RepositoryCommitsRefreshButton() {
+  return (
+    <RefreshButton
+      className="rounded-md border-border-strong"
+      queryKey={repositoriesQueryKeys.all}
+    />
   );
 }
 
