@@ -45,7 +45,18 @@ const fetched = (
 });
 
 describe("summarizeBranchRepositories", () => {
-  it("marks every branch denied when any repository is denied", () => {
+  it("marks every branch denied when every repository is denied", () => {
+    // GIVEN
+    const fetches: RepositoryStatusFetch[] = [{ status: "denied" }, { status: "denied" }];
+
+    // WHEN
+    const summaries = summarizeBranchRepositories([main, feature], fetches);
+
+    // THEN
+    expect(summaries).toEqual({ main: { status: "denied" }, feature: { status: "denied" } });
+  });
+
+  it("marks every branch pending while any repository is still loading", () => {
     // GIVEN
     const fetches: RepositoryStatusFetch[] = [
       { status: "pending" },
@@ -57,7 +68,7 @@ describe("summarizeBranchRepositories", () => {
     const summaries = summarizeBranchRepositories([main, feature], fetches);
 
     // THEN
-    expect(summaries).toEqual({ main: { status: "denied" }, feature: { status: "denied" } });
+    expect(summaries).toEqual({ main: { status: "pending" }, feature: { status: "pending" } });
   });
 
   it("marks every branch pending over an error", () => {
@@ -167,6 +178,23 @@ describe("summarizeBranchRepositories", () => {
 
     // THEN the unsynced branch keeps its empty ok summary
     expect(summaries.local).toEqual({ status: "ok", repositories: [], counts: [] });
+  });
+
+  it("leaves out a denied repository and summarises the rest", () => {
+    // GIVEN one repository kind the account cannot view and one it can
+    const fetches: RepositoryStatusFetch[] = [
+      { status: "denied" },
+      fetched("visible", [row("main")]),
+    ];
+
+    // WHEN
+    const summaries = summarizeBranchRepositories([main], fetches);
+
+    // THEN
+    expect(summaries.main).toMatchObject({
+      status: "ok",
+      repositories: [{ repository: { name: "visible" } }],
+    });
   });
 
   it("gives a branch with no rows an empty ok summary", () => {

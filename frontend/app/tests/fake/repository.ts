@@ -57,8 +57,7 @@ export const generateRepositoryBranchStatusPage = ({
   edges: rows.map((node) => ({ node })),
 });
 
-export const BRANCH_NAMES_BEFORE = ["main", "feature-auth", "staging"] as const;
-export const BRANCH_NAMES_AFTER = ["release-2-0", "hotfix-tls", "spike-graph"] as const;
+const BRANCH_NAMES_BEFORE = ["main", "feature-auth", "staging"] as const;
 
 const branchRow = (name: string) =>
   generateRepositoryBranchStatus({
@@ -66,19 +65,10 @@ const branchRow = (name: string) =>
     is_default: { value: name === "main" },
   });
 
-// No branch appears in both payloads, so a rendered row set can only belong to one of them.
 export const generateRepositoryBranchStatusPayloadBefore = (options?: {
   count?: number;
 }): RepositoryBranchStatusPageWire =>
   generateRepositoryBranchStatusPage({
     rows: BRANCH_NAMES_BEFORE.map((name) => branchRow(name)),
-    count: options?.count,
-  });
-
-export const generateRepositoryBranchStatusPayloadAfter = (options?: {
-  count?: number;
-}): RepositoryBranchStatusPageWire =>
-  generateRepositoryBranchStatusPage({
-    rows: BRANCH_NAMES_AFTER.map((name) => branchRow(name)),
     count: options?.count,
   });

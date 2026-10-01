@@ -22,7 +22,7 @@ Re-walked 2026-10-01 after the rework to one row per branch (Repositories and Gi
 16. [Could not load repositories] A request for repository status / failed, so every branch / reads — ok (rework A)
 17. (you) / Hover the text — ok
 18. The branch columns / load normally — ok (rework A; replaces "These states apply to one branch at a time")
-19. Infrahub / refreshes — ok (the UI polls, `get-branch-repositories.query.ts`)
+19. Infrahub / refreshes — ok (the UI polls, `get-repository-branch-status.query.ts`)
 20. The branches list / is organized by branch — property, ok (next section, unchanged)
 
 Rewrites: 0. The 2026-09-30 rewrites ("occupies", "shows the reason") went with the per-repository rows.

@@ -262,7 +262,7 @@ A branch with no repository to show reads one of these texts in its **Repositori
 |---|---|
 | **Not synced with Git** | The branch does not sync with Git, and no read-only repository lists it. Merged and deleting branches are listed by no repository. |
 | **No repositories** | The branch syncs with Git, but no repository lists it: none is connected to Infrahub, or the branch is merged or deleting. |
-| **No permission** | Your account is not allowed to view repositories on every branch, so every branch reads this text. |
+| **No permission** | Your account cannot view any repository kind on every branch, so every branch reads this text. If you can view one kind but not the other, the repositories you cannot view are left out silently. |
 | **Could not load repositories** | A request for repository status failed, so every branch reads this text; or a repository's status list was cut short before this branch, so only this branch reads it. Hover the text to read the reason. |
 
 The branch columns load normally in every one of these states. While a repository on a branch is syncing, Infrahub refreshes that branch's cells until the sync finishes.
