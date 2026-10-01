@@ -679,6 +679,64 @@ describe("RepositoryBranchesCard", () => {
     }
   });
 
+  it("narrows the conditions offered when an active filter tag is edited", async () => {
+    // GIVEN a branch-name filter already applied, so its tag is on screen
+    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const matched = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
+    apiMock.mockResolvedValueOnce(toApiResult(unfiltered)).mockResolvedValue(toApiResult(matched));
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unfiltered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await openFilterField(component, "Branch");
+    await component.getByRole("textbox").fill("release");
+    await component.getByRole("button", { name: "Apply", exact: true }).click();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, name__value: "release", partial_match: true },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+
+    // WHEN the tag is reopened to change it
+    await component.getByRole("row", { name: "Branch contains release" }).click();
+    await component.getByRole("button", { name: "select a condition" }).click();
+
+    // THEN the edit form offers no condition the request would drop
+    await expect
+      .element(component.getByRole("option", { name: "contains", exact: true }))
+      .toBeVisible();
+    for (const condition of ["is empty", "is not empty"]) {
+      expect(
+        component.getByRole("option", { name: condition, exact: true }).elements()
+      ).toHaveLength(0);
+    }
+  });
+
+  it("drops the previous repository's rows instead of showing them under another header", async () => {
+    // GIVEN a card that has settled on one repository
+    const first = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    apiMock.mockResolvedValue(toApiResult(first));
+    const component = await render(
+      <RepositoryBranchesCard repositoryId={REPOSITORY_ID} schema={repositorySchema} />
+    );
+    await expect.element(component.getByText("feature-auth", { exact: true })).toBeVisible();
+
+    // WHEN it is pointed at another repository whose request has not answered yet
+    apiMock.mockImplementation(() => new Promise(() => {}));
+    await component.rerender(
+      <RepositoryBranchesCard repositoryId="other-repository-id" schema={repositorySchema} />
+    );
+
+    // THEN the first repository's rows are gone rather than held over under the new header
+    expect(component.getByText("feature-auth", { exact: true }).elements()).toHaveLength(0);
+  });
+
   it("ignores a filter another table left on the global url key", async () => {
     // GIVEN the key every other table in the product filters against
     const payload = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
