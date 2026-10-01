@@ -38673,6 +38673,7 @@ export type RepositoryBranchDrifts = {
   __typename: 'RepositoryBranchDrifts';
   /** When the remote was last checked for movement. Read-only repositories only. */
   checked_at: Maybe<Scalars['DateTime']['output']>;
+  /** One row per open branch the caller may view, and for a read-write repository only those synchronised with Git. The set is the branch list as it stands now: an `at` in the past changes the values each row reports, never which branches are listed. */
   edges: Array<RepositoryBranchDriftNode>;
   fetched_at: Maybe<Scalars['DateTime']['output']>;
   repository_id: Scalars['String']['output'];

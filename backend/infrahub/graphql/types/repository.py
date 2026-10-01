@@ -102,4 +102,10 @@ class RepositoryBranchDrifts(ObjectType):
         description="Set when the git-derived drift answer could not be produced. It does not suppress edges, "
         "which is resolved separately.",
     )
-    edges = List(NonNull(RepositoryBranchDriftNode), required=True)
+    edges = List(
+        NonNull(RepositoryBranchDriftNode),
+        required=True,
+        description="One row per open branch the caller may view, and for a read-write repository only those "
+        "synchronised with Git. The set is the branch list as it stands now: an `at` in the past changes the "
+        "values each row reports, never which branches are listed.",
+    )
