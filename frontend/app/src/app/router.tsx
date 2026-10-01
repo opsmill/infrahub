@@ -193,6 +193,11 @@ export const router = createBrowserRouter([
                 lazy: () => import("@/pages/global-preferences"),
               },
               {
+                // PROTOTYPE design-jam account-settings
+                path: "/_proto/account-settings",
+                lazy: () => import("@/pages/_proto/account-settings"),
+              },
+              {
                 path: "/proposed-changes",
                 children: [
                   {
