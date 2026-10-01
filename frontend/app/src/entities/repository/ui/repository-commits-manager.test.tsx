@@ -1,4 +1,4 @@
-import { type QueryClient, useQueryClient } from "@tanstack/react-query";
+import { InfiniteQueryObserver, type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { queryClient as appQueryClient } from "@/shared/api/rest/client";
@@ -7,6 +7,7 @@ import { formatWithPreferences } from "@/shared/context/date-preferences-context
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
 import type { RepositoryGitCondition } from "@/entities/repository/domain/model/repository";
+import { getRepositoryCommitsQueryOptions } from "@/entities/repository/ui/queries/get-repository-commits.query";
 
 import { render } from "../../../../tests/components/render";
 import { generateBranch } from "../../../../tests/fake/branch";
@@ -427,6 +428,40 @@ describe("RepositoryCommitsManager", () => {
     expect(apiMock).toHaveBeenNthCalledWith(3, expect.objectContaining({ offset: 20, limit: 20 }));
     await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
     expect(component.getByText("Older commits could not be loaded right now.").query()).toBeNull();
+  });
+
+  test("hides the retry notice while a scroll-triggered page load is in flight", async () => {
+    // GIVEN
+    let answerNextPage: (result: ApiResult) => void = () => {};
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
+      .mockRejectedValueOnce(new Error("Worker did not answer in time"))
+      .mockReturnValueOnce(
+        new Promise<ApiResult>((resolve) => {
+          answerNextPage = resolve;
+        })
+      );
+    const component = await renderTab();
+    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+    await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
+    await expect
+      .element(component.getByText("Older commits could not be loaded right now."))
+      .toBeVisible();
+
+    // WHEN
+    const nextPage = new InfiniteQueryObserver(
+      queryClient,
+      getRepositoryCommitsQueryOptions({ repositoryId: "repo-1", branchName: "test-branch" })
+    ).fetchNextPage();
+
+    // THEN
+    await expect
+      .poll(() => component.getByText("Older commits could not be loaded right now.").query())
+      .toBeNull();
+    expect(component.getByRole("button", { name: "Retry" }).query()).toBeNull();
+    answerNextPage(apiResult(generateSecondCommitsPage()));
+    await nextPage;
+    await expect.element(component.getByText(PAGE_TWO_FIRST)).toBeVisible();
   });
 
   test("shows both the check time and the update time when they differ", async () => {

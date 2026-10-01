@@ -48,6 +48,7 @@ export function RepositoryCommitsManager({
   const commits = getLoadedCommits(pages);
   // Starting a retry clears the error it answers, so the notice stays up until the retry settles.
   const historyRetry = retryInFlight ?? getHistoryRetry(pages, { isFetchNextPageError });
+  const isLoadingMoreOnScroll = isFetchingNextPage && !retryInFlight;
 
   const retryHistory = async (retry: HistoryRetry) => {
     setRetryInFlight(retry);
@@ -96,8 +97,8 @@ export function RepositoryCommitsManager({
           gridTemplateColumns={gridTemplateColumns}
           renderEmpty={() => <NoDataFound message="This ref has no commits." />}
         />
-        {isFetchingNextPage && !retryInFlight && <Spinner className="mx-auto my-2" />}
-        {historyRetry && (
+        {isLoadingMoreOnScroll && <Spinner className="mx-auto my-2" />}
+        {historyRetry && !isLoadingMoreOnScroll && (
           <Row className="items-center justify-center gap-2 p-2 text-foreground-muted text-sm">
             <p>Older commits could not be loaded right now.</p>
             <Button
