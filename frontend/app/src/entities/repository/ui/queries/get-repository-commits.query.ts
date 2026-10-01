@@ -23,6 +23,7 @@ import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/reposito
 
 export const REPOSITORY_COMMITS_PAGE_SIZE = 20;
 export const REPOSITORY_COMMITS_POLL_INTERVAL_MS = 10_000;
+export const REPOSITORY_COMMITS_STALE_TIME_MS = 60_000;
 
 type GetRepositoryCommitsQueryParams = Omit<GetRepositoryCommitsParams, keyof PaginationParams>;
 
@@ -89,8 +90,9 @@ export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQue
         oldData as RepositoryCommitPages | undefined,
         newData as RepositoryCommitPages
       ),
-    // Every loaded page is a worker round trip, and a focus refetch replays all of them.
+    // Every loaded page is a worker round trip, and a focus or remount refetch replays all of them.
     refetchOnWindowFocus: false,
+    staleTime: REPOSITORY_COMMITS_STALE_TIME_MS,
   });
 }
 

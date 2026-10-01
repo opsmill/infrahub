@@ -13,6 +13,7 @@ import {
   getRepositoryCommitsQueryOptions,
   REPOSITORY_COMMITS_PAGE_SIZE,
   REPOSITORY_COMMITS_POLL_INTERVAL_MS,
+  REPOSITORY_COMMITS_STALE_TIME_MS,
 } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
@@ -284,5 +285,16 @@ describe("getRepositoryCommitsQueryOptions", () => {
       // THEN
       expect(client.getQueryData(statusKey)).toEqual(known);
     });
+  });
+
+  test("does not replay every loaded page on a quick remount", () => {
+    // WHEN
+    const { staleTime } = getRepositoryCommitsQueryOptions({
+      repositoryId: "repo-42",
+      branchName: "feature",
+    });
+
+    // THEN
+    expect(staleTime).toBe(REPOSITORY_COMMITS_STALE_TIME_MS);
   });
 });
