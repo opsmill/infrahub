@@ -1,5 +1,8 @@
+from dataclasses import dataclass
+
 import pytest
 
+from infrahub.core.constants import RelationshipCardinality, RelationshipDirection, RelationshipKind
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -335,3 +338,189 @@ def test_object_kinds_different_from_another_schema_branch() -> None:
     assert (
         reference.get_object_kinds_different_from(_processed_profile_schema_branch(cross_relationship_hfid=False)) == []
     )
+
+
+@dataclass(frozen=True, kw_only=True)
+class HfidConstraintOrderCase:
+    """Processed uniqueness constraints and human-friendly ID for one schema."""
+
+    name: str
+    kind: str
+    schema_root: SchemaRoot
+    expected_uniqueness_constraints: list[list[str]]
+    expected_human_friendly_id: list[str]
+
+
+def _device_interface_schema(
+    *,
+    human_friendly_id: list[str],
+    uniqueness_constraints: list[list[str]] | None,
+    extra_attribute_names: tuple[str, ...] = (),
+) -> SchemaRoot:
+    interface_attributes = [AttributeSchema(name="name", kind="Text")]
+    interface_attributes.extend(
+        AttributeSchema(name=attribute_name, kind="Text") for attribute_name in extra_attribute_names
+    )
+    copied_constraints = (
+        [list(constraint) for constraint in uniqueness_constraints] if uniqueness_constraints is not None else None
+    )
+    return SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Device",
+                namespace="Testing",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            ),
+            NodeSchema(
+                name="Interface",
+                namespace="Testing",
+                human_friendly_id=list(human_friendly_id),
+                uniqueness_constraints=copied_constraints,
+                attributes=interface_attributes,
+                relationships=[
+                    RelationshipSchema(
+                        name="device",
+                        peer="TestingDevice",
+                        optional=False,
+                        kind=RelationshipKind.PARENT,
+                        cardinality=RelationshipCardinality.ONE,
+                        direction=RelationshipDirection.OUTBOUND,
+                    )
+                ],
+            ),
+        ]
+    )
+
+
+_INTERFACE_HFID = ["device__name__value", "name__value"]
+_INTERFACE_HFID_CONSTRAINT = ["device", "name__value"]
+
+HFID_CONSTRAINT_ORDER_CASES = [
+    HfidConstraintOrderCase(
+        name="reversed_relationship_fields",
+        kind="TestingInterface",
+        schema_root=_device_interface_schema(
+            human_friendly_id=_INTERFACE_HFID,
+            uniqueness_constraints=[["name__value", "device"]],
+        ),
+        expected_uniqueness_constraints=[["name__value", "device"]],
+        expected_human_friendly_id=list(_INTERFACE_HFID),
+    ),
+    HfidConstraintOrderCase(
+        name="same_order_relationship_fields",
+        kind="TestingInterface",
+        schema_root=_device_interface_schema(
+            human_friendly_id=_INTERFACE_HFID,
+            uniqueness_constraints=[[*_INTERFACE_HFID_CONSTRAINT]],
+        ),
+        expected_uniqueness_constraints=[[*_INTERFACE_HFID_CONSTRAINT]],
+        expected_human_friendly_id=list(_INTERFACE_HFID),
+    ),
+    HfidConstraintOrderCase(
+        name="no_constraint",
+        kind="TestingInterface",
+        schema_root=_device_interface_schema(
+            human_friendly_id=_INTERFACE_HFID,
+            uniqueness_constraints=None,
+        ),
+        expected_uniqueness_constraints=[[*_INTERFACE_HFID_CONSTRAINT]],
+        expected_human_friendly_id=list(_INTERFACE_HFID),
+    ),
+    HfidConstraintOrderCase(
+        name="empty_constraint_list",
+        kind="TestingInterface",
+        schema_root=_device_interface_schema(
+            human_friendly_id=_INTERFACE_HFID,
+            uniqueness_constraints=[],
+        ),
+        expected_uniqueness_constraints=[[*_INTERFACE_HFID_CONSTRAINT]],
+        expected_human_friendly_id=list(_INTERFACE_HFID),
+    ),
+    HfidConstraintOrderCase(
+        name="unrelated_constraint",
+        kind="TestingInterface",
+        schema_root=_device_interface_schema(
+            human_friendly_id=_INTERFACE_HFID,
+            uniqueness_constraints=[["status__value"]],
+            extra_attribute_names=("status",),
+        ),
+        expected_uniqueness_constraints=[["status__value"], [*_INTERFACE_HFID_CONSTRAINT]],
+        expected_human_friendly_id=list(_INTERFACE_HFID),
+    ),
+    HfidConstraintOrderCase(
+        name="subset_constraint",
+        kind="TestingInterface",
+        schema_root=_device_interface_schema(
+            human_friendly_id=_INTERFACE_HFID,
+            uniqueness_constraints=[["name__value"]],
+        ),
+        expected_uniqueness_constraints=[["name__value"], [*_INTERFACE_HFID_CONSTRAINT]],
+        expected_human_friendly_id=list(_INTERFACE_HFID),
+    ),
+    HfidConstraintOrderCase(
+        name="superset_constraint",
+        kind="TestingInterface",
+        schema_root=_device_interface_schema(
+            human_friendly_id=_INTERFACE_HFID,
+            uniqueness_constraints=[["name__value", "device", "status__value"]],
+            extra_attribute_names=("status",),
+        ),
+        expected_uniqueness_constraints=[
+            ["name__value", "device", "status__value"],
+            [*_INTERFACE_HFID_CONSTRAINT],
+        ],
+        expected_human_friendly_id=list(_INTERFACE_HFID),
+    ),
+    HfidConstraintOrderCase(
+        name="equivalent_constraint_after_unrelated",
+        kind="TestingInterface",
+        schema_root=_device_interface_schema(
+            human_friendly_id=_INTERFACE_HFID,
+            uniqueness_constraints=[["status__value"], ["name__value", "device"]],
+            extra_attribute_names=("status",),
+        ),
+        expected_uniqueness_constraints=[["status__value"], ["name__value", "device"]],
+        expected_human_friendly_id=list(_INTERFACE_HFID),
+    ),
+    HfidConstraintOrderCase(
+        name="reordered_attribute_fields",
+        kind="TestingAsset",
+        schema_root=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Asset",
+                    namespace="Testing",
+                    human_friendly_id=["name__value", "serial__value"],
+                    uniqueness_constraints=[["serial__value", "name__value"]],
+                    attributes=[
+                        AttributeSchema(name="name", kind="Text"),
+                        AttributeSchema(name="serial", kind="Text"),
+                    ],
+                )
+            ]
+        ),
+        expected_uniqueness_constraints=[["serial__value", "name__value"]],
+        expected_human_friendly_id=["name__value", "serial__value"],
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [pytest.param(case, id=case.name) for case in HFID_CONSTRAINT_ORDER_CASES],
+)
+def test_processed_schema_keeps_one_hfid_constraint_per_field_set(case: HfidConstraintOrderCase) -> None:
+    """Processing keeps one uniqueness constraint per HFID field set and preserves each list's order.
+
+    A constraint listing the same fields in another order is the HFID constraint. A subset, superset,
+    or unrelated constraint stays, and the HFID-derived constraint is appended in HFID order when absent.
+    A second process leaves the constraints and the human-friendly ID unchanged.
+    """
+    branch = SchemaBranch(cache={}, name="test")
+    branch.load_schema(schema=case.schema_root)
+
+    for _ in range(2):
+        branch.process()
+        schema = branch.get(name=case.kind, duplicate=False)
+        assert schema.uniqueness_constraints == case.expected_uniqueness_constraints
+        assert schema.human_friendly_id == case.expected_human_friendly_id
