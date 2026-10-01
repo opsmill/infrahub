@@ -21,6 +21,7 @@ import { useColumnVisibility } from "@/entities/nodes/columns/ui/hooks/use-colum
 import { isFieldFiltered } from "@/entities/nodes/filters/domain/rules/is-field-filtered";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
+import type { FilterConditionSelectProps } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
 import { TableColumnHeaderSimple } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-simple";
 import {
@@ -58,6 +59,7 @@ export interface TableColumnHeaderProps {
   isDisabled?: boolean;
   className?: string;
   role?: React.AriaRole;
+  filterConditions?: FilterConditionSelectProps["filterConditions"];
 }
 
 export function TableColumnHeader({
@@ -66,6 +68,7 @@ export function TableColumnHeader({
   isDisabled,
   className,
   role,
+  filterConditions,
 }: TableColumnHeaderProps) {
   if (isDisabled) {
     return (
@@ -80,6 +83,7 @@ export function TableColumnHeader({
         attributeSchema={columnSchema}
         className={className}
         role={role}
+        filterConditions={filterConditions}
       />
     );
   }
@@ -91,6 +95,7 @@ export function TableColumnHeader({
         relationshipSchema={columnSchema}
         className={className}
         role={role}
+        filterConditions={filterConditions}
       />
     );
   }
@@ -101,6 +106,7 @@ export function TableColumnHeader({
       schema={schema}
       className={className}
       role={role}
+      filterConditions={filterConditions}
     />
   );
 }
@@ -110,6 +116,7 @@ interface SortableAttributeColumnHeaderProps {
   attributeSchema: AttributeSchema;
   className?: string;
   role?: React.AriaRole;
+  filterConditions?: FilterConditionSelectProps["filterConditions"];
 }
 
 function SortableAttributeColumnHeader({
@@ -117,6 +124,7 @@ function SortableAttributeColumnHeader({
   attributeSchema,
   className,
   role,
+  filterConditions,
 }: SortableAttributeColumnHeaderProps) {
   const { customSort, setCustomSort } = useSort(schema);
   const activeSort = findSortForField(customSort, attributeSchema);
@@ -135,6 +143,7 @@ function SortableAttributeColumnHeader({
       schema={schema}
       className={className}
       role={role}
+      filterConditions={filterConditions}
       activeSort={activeSort}
       sortItems={
         <>
@@ -163,6 +172,7 @@ interface SortableRelationshipColumnHeaderProps {
   relationshipSchema: RelationshipSchema;
   className?: string;
   role?: React.AriaRole;
+  filterConditions?: FilterConditionSelectProps["filterConditions"];
 }
 
 function SortableRelationshipColumnHeader({
@@ -170,6 +180,7 @@ function SortableRelationshipColumnHeader({
   relationshipSchema,
   className,
   role,
+  filterConditions,
 }: SortableRelationshipColumnHeaderProps) {
   const { customSort, setCustomSort } = useSort(schema);
   const { schema: peerSchema } = useSchema(relationshipSchema.peer);
@@ -185,6 +196,7 @@ function SortableRelationshipColumnHeader({
         schema={schema}
         className={className}
         role={role}
+        filterConditions={filterConditions}
       />
     );
   }
@@ -205,6 +217,7 @@ function SortableRelationshipColumnHeader({
       schema={schema}
       className={className}
       role={role}
+      filterConditions={filterConditions}
       activeSort={activeSort}
       sortItems={
         <SubmenuTrigger>
@@ -247,6 +260,8 @@ interface ColumnHeaderMenuProps {
   schema?: ModelSchema;
   className?: string;
   role?: React.AriaRole;
+  /** Narrows the conditions the filter entry offers, for a caller whose request cannot honour them all. */
+  filterConditions?: FilterConditionSelectProps["filterConditions"];
   activeSort?: Sort | null;
   sortItems?: React.ReactNode;
 }
@@ -256,6 +271,7 @@ function ColumnHeaderMenu({
   schema,
   className,
   role,
+  filterConditions,
   activeSort = null,
   sortItems,
 }: ColumnHeaderMenuProps) {
@@ -337,7 +353,11 @@ function ColumnHeaderMenu({
         {isRelationshipSchema(columnSchema) ? (
           <RelationshipFilterForm relationshipSchema={columnSchema} onSuccess={closeFilterForm} />
         ) : (
-          <AttributeFilterForm attributeSchema={columnSchema} onSuccess={closeFilterForm} />
+          <AttributeFilterForm
+            attributeSchema={columnSchema}
+            filterConditions={filterConditions}
+            onSuccess={closeFilterForm}
+          />
         )}
       </Popover>
     </>
