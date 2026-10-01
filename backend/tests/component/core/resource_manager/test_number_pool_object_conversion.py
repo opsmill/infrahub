@@ -15,6 +15,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
@@ -127,7 +128,7 @@ async def test_converting_an_object_carries_its_record_onto_the_replacement_inta
     holder = await holder_holding_a_pooled_number(db=db, branch=default_branch, pool=convert_pool)
     allocated = holder.get_attribute(TRACKED_ATTRIBUTE_NAME).value
     assert allocated == POOL_START
-    assert await convert_pool.get_used(db=db, branch=default_branch) == [allocated]
+    assert await NumberPoolRepository(db=db).get_used(pool=convert_pool, branch=default_branch) == [allocated]
 
     await db.execute_query(
         query="""
@@ -150,10 +151,10 @@ async def test_converting_an_object_carries_its_record_onto_the_replacement_inta
     assert converted.get_attribute(TRACKED_ATTRIBUTE_NAME).value == allocated, (
         "the conversion carries the number across"
     )
-    assert await convert_pool.get_used(db=db, branch=default_branch) == [allocated], (
+    assert await NumberPoolRepository(db=db).get_used(pool=convert_pool, branch=default_branch) == [allocated], (
         "the pool must still account for the number, now on the object the conversion produced"
     )
-    assert await convert_pool.get_free(db=db, branch=default_branch) != allocated, (
+    assert await NumberPoolRepository(db=db).get_free(pool=convert_pool, branch=default_branch) != allocated, (
         "a number an object still holds must never be offered again"
     )
 
@@ -178,7 +179,7 @@ async def test_a_pool_does_not_follow_its_record_onto_a_kind_it_does_not_track(
     """A pool tracks a kind. Sharing an attribute name with some other kind is not a claim on it."""
     holder = await holder_holding_a_pooled_number(db=db, branch=default_branch, pool=convert_pool)
     allocated = holder.get_attribute(TRACKED_ATTRIBUTE_NAME).value
-    assert await convert_pool.get_used(db=db, branch=default_branch) == [allocated]
+    assert await NumberPoolRepository(db=db).get_used(pool=convert_pool, branch=default_branch) == [allocated]
 
     converted = await convert_to(db=db, branch=default_branch, node=holder, target_kind=OUTSIDER_KIND)
 
@@ -200,7 +201,7 @@ async def test_a_pool_does_not_follow_its_record_onto_a_kind_it_does_not_track(
         },
     )
     assert records[0]["live"] == 0, "the pool must not account for an attribute of a kind it does not track"
-    assert await convert_pool.get_used(db=db, branch=default_branch) == [], (
+    assert await NumberPoolRepository(db=db).get_used(pool=convert_pool, branch=default_branch) == [], (
         "and the number it held is released rather than left charged to an object outside the pool"
     )
 
@@ -211,7 +212,7 @@ async def test_converting_an_object_on_a_branch_leaves_its_record_open(
     """The object is only replaced on the branch; on the default branch it still holds its number."""
     holder = await holder_holding_a_pooled_number(db=db, branch=default_branch, pool=convert_pool)
     allocated = holder.get_attribute(TRACKED_ATTRIBUTE_NAME).value
-    assert await convert_pool.get_used(db=db, branch=default_branch) == [allocated]
+    assert await NumberPoolRepository(db=db).get_used(pool=convert_pool, branch=default_branch) == [allocated]
 
     branch = await create_branch(db=db, branch_name="convert-on-a-branch")
     on_branch = await registry.manager.get_one(db=db, id=holder.get_id(), branch=branch, raise_on_error=True)
@@ -225,9 +226,9 @@ async def test_converting_an_object_on_a_branch_leaves_its_record_open(
     assert moved["identifier"] == converted.get_id()
     assert moved["branch"] == GLOBAL_BRANCH_NAME
 
-    assert set(await convert_pool.get_used(db=db, branch=default_branch)) == {allocated}, (
+    assert set(await NumberPoolRepository(db=db).get_used(pool=convert_pool, branch=default_branch)) == {allocated}, (
         "the number stays used, held by the default branch's object and the branch's replacement"
     )
-    assert await convert_pool.get_free(db=db, branch=default_branch) != allocated, (
+    assert await NumberPoolRepository(db=db).get_free(pool=convert_pool, branch=default_branch) != allocated, (
         "a conversion on a branch must not offer the default branch's number again"
     )

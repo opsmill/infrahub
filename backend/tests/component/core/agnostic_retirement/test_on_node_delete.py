@@ -17,6 +17,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.timestamp import Timestamp
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -413,7 +414,9 @@ class TestAgnosticRetirementOnDelete:
         await holder.save(db=db)
 
         assert holder.get_attribute(name="serial").value == SERIAL_POOL_START
-        assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START]
+        assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == [
+            SERIAL_POOL_START
+        ]
 
         before = await attribute_global_edges(db=db, node_id=holder.id, attribute_name="serial")
         assert open_edge_types(before) == {
@@ -440,11 +443,13 @@ class TestAgnosticRetirementOnDelete:
         assert [(edge.edge_type, edge.branch, edge.status, edge.to_time) for edge in reserved_after] == [
             ("IS_RESERVED", GLOBAL_BRANCH_NAME, "active", deleted_at.to_string())
         ], "the record hangs off the attribute, so retirement closes it with the rest of the field"
-        assert await serial_pool.get_used(db=db, branch=default_branch) == []
+        assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == []
 
         reallocated = await Node.init(db=db, schema=WIDGET_KIND, branch=default_branch)
         await reallocated.new(db=db, name="takes-the-freed-serial", serial={"from_pool": {"id": serial_pool.id}})
         await reallocated.save(db=db)
 
         assert reallocated.get_attribute(name="serial").value == SERIAL_POOL_START
-        assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START]
+        assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == [
+            SERIAL_POOL_START
+        ]

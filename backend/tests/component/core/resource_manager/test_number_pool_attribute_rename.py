@@ -23,6 +23,7 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.resource_manager import PoolRecordProvenance
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.component.core.resource_manager.conftest import SERIAL_ATTRIBUTE_NAME, SERIAL_POOL_START
 from tests.helpers.agnostic_edges import EdgeState, open_active_edges
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, WIDGET_KIND
@@ -146,7 +147,7 @@ async def test_renaming_a_pool_tracked_attribute_keeps_its_record_global_and_its
     await holder.save(db=db)
 
     assert holder.get_attribute(name=PREVIOUS_ATTRIBUTE_NAME).value == SERIAL_POOL_START
-    assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START]
+    assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == [SERIAL_POOL_START]
 
     before = await attribute_edges_on_any_branch(db=db, node_id=holder.id, attribute_name=PREVIOUS_ATTRIBUTE_NAME)
     assert _edge_summary(before) == EXPECTED_AGNOSTIC_EDGES, (
@@ -167,7 +168,7 @@ async def test_renaming_a_pool_tracked_attribute_keeps_its_record_global_and_its
     serial_pool.get_attribute("node_attribute").value = NEW_ATTRIBUTE_NAME
     await serial_pool.save(db=db)
 
-    assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START], (
+    assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == [SERIAL_POOL_START], (
         "the number is still held by the renamed attribute and must stay reported as used"
     )
 
@@ -184,7 +185,7 @@ async def test_renaming_a_branch_aware_pooled_attribute_keeps_only_its_record_gl
     await holder.save(db=db)
 
     assert holder.get_attribute(name=PREVIOUS_ATTRIBUTE_NAME).value == SERIAL_POOL_START
-    assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START]
+    assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == [SERIAL_POOL_START]
 
     before = await attribute_edges_on_any_branch(db=db, node_id=holder.id, attribute_name=PREVIOUS_ATTRIBUTE_NAME)
     assert _edge_summary(before) == expected_aware_edges(default_branch.name), (
@@ -205,7 +206,7 @@ async def test_renaming_a_branch_aware_pooled_attribute_keeps_only_its_record_gl
     serial_pool.get_attribute("node_attribute").value = NEW_ATTRIBUTE_NAME
     await serial_pool.save(db=db)
 
-    assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START], (
+    assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == [SERIAL_POOL_START], (
         "the pool must still account for the number the renamed attribute holds"
     )
 
@@ -236,7 +237,7 @@ async def test_renaming_a_pooled_attribute_on_a_branch_leaves_the_default_branch
     holder = await Node.init(db=db, schema=WIDGET_KIND, branch=default_branch)
     await holder.new(db=db, name="holds-a-pooled-serial", serial={"from_pool": {"id": serial_pool.id}})
     await holder.save(db=db)
-    assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START]
+    assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == [SERIAL_POOL_START]
 
     branch = await create_branch(db=db, branch_name=f"rename-{case.name}")
     await rename_the_attribute(db=db, branch=branch, schema=registry.schema.get_schema_branch(name=branch.name))
@@ -250,10 +251,10 @@ async def test_renaming_a_pooled_attribute_on_a_branch_leaves_the_default_branch
     assert on_default.get_attribute(name=PREVIOUS_ATTRIBUTE_NAME).value == SERIAL_POOL_START, (
         "a rename on a branch must not touch the value the default branch holds"
     )
-    assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START], (
+    assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == [SERIAL_POOL_START], (
         "the default branch's number must stay reported as used"
     )
-    assert await serial_pool.get_free(db=db, branch=default_branch) != SERIAL_POOL_START, (
+    assert await NumberPoolRepository(db=db).get_free(pool=serial_pool, branch=default_branch) != SERIAL_POOL_START, (
         "a rename on a branch must not offer the default branch's number again"
     )
 
