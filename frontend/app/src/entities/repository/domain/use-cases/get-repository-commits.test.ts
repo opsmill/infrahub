@@ -49,4 +49,15 @@ describe("getRepositoryCommits", () => {
     // THEN
     await expect(read).rejects.toThrow("No worker answered; Retry in 30 seconds");
   });
+
+  test("throws when the response carries neither data nor errors", async () => {
+    // GIVEN
+    apiMock.mockResolvedValueOnce({ data: null } as unknown as ApiResponse);
+
+    // WHEN
+    const read = getRepositoryCommits(PARAMS);
+
+    // THEN
+    await expect(read).rejects.toThrow("The commit log response carried no data");
+  });
 });

@@ -20,5 +20,9 @@ export const getRepositoryCommits: GetRepositoryCommits = async (params) => {
     throw new Error(errors.map((error) => error.message).join("; "));
   }
 
+  if (!data?.InfrahubRepositoryCommits) {
+    throw new Error("The commit log response carried no data");
+  }
+
   return mapToRepositoryCommitLog(data.InfrahubRepositoryCommits);
 };
