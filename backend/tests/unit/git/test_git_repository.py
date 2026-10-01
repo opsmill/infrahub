@@ -20,11 +20,7 @@ from infrahub_sdk.uuidt import UUIDT
 from pydantic import Field
 
 from infrahub import config
-<<<<<<< HEAD
 from infrahub.core.constants import RepositoryInternalStatus, RepositoryOperationalStatus
-=======
-from infrahub.core.constants import RepositoryOperationalStatus
->>>>>>> origin/develop
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
     RepositoryConnectionError,
@@ -33,12 +29,8 @@ from infrahub.exceptions import (
     RepositoryInvalidBranchError,
 )
 from infrahub.git import InfrahubRepository
-<<<<<<< HEAD
 from infrahub.git.models import GitRepositoryAdd, GitRepositoryMerge
-from infrahub.git.repository import FailedImport, ImportStep, InfrahubReadOnlyRepository
-=======
-from infrahub.git.repository import FailedImport, ImportStep, PendingObjectImport
->>>>>>> origin/develop
+from infrahub.git.repository import FailedImport, ImportStep, InfrahubReadOnlyRepository, PendingObjectImport
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.git import LocalRemote, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
@@ -275,7 +267,113 @@ async def test_pull_infrahub_default_branch_pulls_repository_default_branch(
     assert commit_after == new_commit
 
 
-<<<<<<< HEAD
+def _init_source_repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Point the repositories directory into `tmp_path` and create a one-commit source repository on `main`."""
+    repos_dir = tmp_path / "repositories"
+    repos_dir.mkdir()
+    monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
+    monkeypatch.setattr(registry, "_default_branch", "main")
+
+    source_dir = tmp_path / "source-repo"
+    source_dir.mkdir()
+    source = Repo.init(source_dir, initial_branch="main")
+    with source.config_writer() as cfg:
+        cfg.set_value("user", "name", "Test")
+        cfg.set_value("user", "email", "test@test.local")
+    (source_dir / "data.txt").write_text("v1\n", encoding="utf-8")
+    source.index.add(["data.txt"])
+    source.index.commit("commit 1")
+    return source_dir
+
+
+@dataclass
+class _CloneSpy:
+    """Counts clone attempts and records, for each failed one, whether it left a local copy behind."""
+
+    attempts: int = 0
+    failed_attempts_left_a_copy: list[bool] = field(default_factory=list)
+
+    def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        create_locally = InfrahubRepository.create_locally
+
+        async def spying_create_locally(repository: InfrahubRepository, *args: Any, **kwargs: Any) -> bool:
+            self.attempts += 1
+            # Hand control back to the event loop so concurrent initializations actually interleave.
+            await asyncio.sleep(0)
+            try:
+                return await create_locally(repository, *args, **kwargs)
+            except RepositoryError:
+                self.failed_attempts_left_a_copy.append(repository.directory_default.is_dir())
+                raise
+
+        monkeypatch.setattr(InfrahubRepository, "create_locally", spying_create_locally)
+
+
+async def test_concurrent_init_clones_the_missing_directory_once(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Concurrent initializations of an absent clone must produce exactly one clone.
+
+    Cloning deletes whatever is on disk first, so a second clone running alongside would wipe the
+    directory the first one just built and invalidate the git objects opened against it.
+    """
+    source_dir = _init_source_repository(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    clones = _CloneSpy()
+    clones.install(monkeypatch=monkeypatch)
+
+    init_kwargs: dict[str, Any] = {
+        "id": UUIDT.new(),
+        "name": "concurrently-initialized-repo",
+        "location": str(source_dir),
+        "default_branch": "main",
+        "client": InfrahubClient(config=Config(requester=dummy_async_request)),
+    }
+    first, second = await asyncio.gather(
+        open_repository(**init_kwargs),
+        open_repository(**init_kwargs),
+    )
+
+    assert clones.attempts == 1
+    assert [first.reinitialized, second.reinitialized].count(True) == 1
+    for repository in (first, second):
+        assert repository.validate_local_directories()
+
+
+async def test_concurrent_init_clones_over_the_copy_a_failed_clone_left(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An initialization waiting on a concurrent clone that fails part-way must clone over what it left.
+
+    The failed clone leaves a copy on disk that no longer validates; rejecting that copy would fail the
+    waiting initialization along with the one that actually broke.
+    """
+    source_dir = _init_source_repository(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    clones = _CloneSpy()
+    clones.install(monkeypatch=monkeypatch)
+
+    shared_kwargs: dict[str, Any] = {
+        "id": UUIDT.new(),
+        "name": "concurrently-initialized-repo",
+        "location": str(source_dir),
+        "client": InfrahubClient(config=Config(requester=dummy_async_request)),
+    }
+    # The first clone succeeds, but checking out a branch the remote lacks fails and leaves it half-built.
+    failed, waiting = await asyncio.gather(
+        open_repository(**shared_kwargs, default_branch="missing-branch"),
+        open_repository(**shared_kwargs, default_branch="main"),
+        return_exceptions=True,
+    )
+
+    assert isinstance(failed, RepositoryInvalidBranchError)
+    assert clones.failed_attempts_left_a_copy == [True]
+    assert isinstance(waiting, InfrahubRepository)
+    assert waiting.reinitialized is True
+    assert waiting.validate_local_directories()
+    assert clones.attempts == 2
+
+
 class RecordingGraphqlClient(InfrahubClient):
     """An SDK client that records the branch of every GraphQL call instead of sending it."""
 
@@ -433,117 +531,6 @@ async def test_read_only_fetch_failure_keeps_its_classified_error(
     monkeypatch.setattr(registry, "_default_branch", "main")
     monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
 
-=======
-def _init_source_repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Point the repositories directory into `tmp_path` and create a one-commit source repository on `main`."""
-    repos_dir = tmp_path / "repositories"
-    repos_dir.mkdir()
-    monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
-    monkeypatch.setattr(registry, "_default_branch", "main")
-
-    source_dir = tmp_path / "source-repo"
-    source_dir.mkdir()
-    source = Repo.init(source_dir, initial_branch="main")
-    with source.config_writer() as cfg:
-        cfg.set_value("user", "name", "Test")
-        cfg.set_value("user", "email", "test@test.local")
-    (source_dir / "data.txt").write_text("v1\n", encoding="utf-8")
-    source.index.add(["data.txt"])
-    source.index.commit("commit 1")
-    return source_dir
-
-
-@dataclass
-class _CloneSpy:
-    """Counts clone attempts and records, for each failed one, whether it left a local copy behind."""
-
-    attempts: int = 0
-    failed_attempts_left_a_copy: list[bool] = field(default_factory=list)
-
-    def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        create_locally = InfrahubRepository.create_locally
-
-        async def spying_create_locally(repository: InfrahubRepository, *args: Any, **kwargs: Any) -> bool:
-            self.attempts += 1
-            # Hand control back to the event loop so concurrent initializations actually interleave.
-            await asyncio.sleep(0)
-            try:
-                return await create_locally(repository, *args, **kwargs)
-            except RepositoryError:
-                self.failed_attempts_left_a_copy.append(repository.directory_default.is_dir())
-                raise
-
-        monkeypatch.setattr(InfrahubRepository, "create_locally", spying_create_locally)
-
-
-async def test_concurrent_init_clones_the_missing_directory_once(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Concurrent initializations of an absent clone must produce exactly one clone.
-
-    Cloning deletes whatever is on disk first, so a second clone running alongside would wipe the
-    directory the first one just built and invalidate the git objects opened against it.
-    """
-    source_dir = _init_source_repository(tmp_path=tmp_path, monkeypatch=monkeypatch)
-    clones = _CloneSpy()
-    clones.install(monkeypatch=monkeypatch)
-
-    init_kwargs: dict[str, Any] = {
-        "id": UUIDT.new(),
-        "name": "concurrently-initialized-repo",
-        "location": str(source_dir),
-        "default_branch_name": "main",
-        "client": InfrahubClient(config=Config(requester=dummy_async_request)),
-    }
-    first, second = await asyncio.gather(
-        InfrahubRepository.init(**init_kwargs),
-        InfrahubRepository.init(**init_kwargs),
-    )
-
-    assert clones.attempts == 1
-    assert [first.reinitialized, second.reinitialized].count(True) == 1
-    for repository in (first, second):
-        assert repository.validate_local_directories()
-
-
-async def test_concurrent_init_clones_over_the_copy_a_failed_clone_left(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """An initialization waiting on a concurrent clone that fails part-way must clone over what it left.
-
-    The failed clone leaves a copy on disk that no longer validates; rejecting that copy would fail the
-    waiting initialization along with the one that actually broke.
-    """
-    source_dir = _init_source_repository(tmp_path=tmp_path, monkeypatch=monkeypatch)
-    clones = _CloneSpy()
-    clones.install(monkeypatch=monkeypatch)
-
-    shared_kwargs: dict[str, Any] = {
-        "id": UUIDT.new(),
-        "name": "concurrently-initialized-repo",
-        "location": str(source_dir),
-        "client": InfrahubClient(config=Config(requester=dummy_async_request)),
-    }
-    # The first clone succeeds, but checking out a branch the remote lacks fails and leaves it half-built.
-    failed, waiting = await asyncio.gather(
-        InfrahubRepository.init(**shared_kwargs, default_branch_name="missing-branch"),
-        InfrahubRepository.init(**shared_kwargs, default_branch_name="main"),
-        return_exceptions=True,
-    )
-
-    assert isinstance(failed, RepositoryInvalidBranchError)
-    assert clones.failed_attempts_left_a_copy == [True]
-    assert isinstance(waiting, InfrahubRepository)
-    assert waiting.reinitialized is True
-    assert waiting.validate_local_directories()
-    assert clones.attempts == 2
-
-
-def test_check_connectivity_ignores_cwd_git_pointer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Git operations must not be affected by a broken .git worktree pointer in the process current working directory."""
->>>>>>> origin/develop
     source_dir = tmp_path / "source-repo"
     source_dir.mkdir()
     source = Repo.init(source_dir, initial_branch="main")
@@ -647,12 +634,12 @@ async def test_push_classifies_transport_error(case: PushErrorCase) -> None:
     repository = _FailingPushRepository(
         id=UUIDT.new(),
         name="push-repo",
-        default_branch_name="main",
+        default_branch="main",
         location="https://gitlab.example.com/net/repo.git",
         has_origin=True,
         cache_repo=None,
         is_read_only=False,
-        internal_status="active",
+        internal_status=RepositoryInternalStatus.ACTIVE,
         reinitialized=False,
         infrahub_branch_name="main",
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
@@ -734,12 +721,12 @@ async def test_collect_pending_imports_isolates_per_branch_push_failure() -> Non
     repository = _BranchSyncRepository(
         id=UUIDT.new(),
         name="sync-repo",
-        default_branch_name="main",
+        default_branch="main",
         location="https://gitlab.example.com/net/repo.git",
         has_origin=True,
         cache_repo=None,
         is_read_only=False,
-        internal_status="active",
+        internal_status=RepositoryInternalStatus.ACTIVE,
         reinitialized=False,
         infrahub_branch_name="main",
         client=InfrahubClient(config=Config(requester=dummy_async_request)),

@@ -245,16 +245,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     class that uses an "InfrahubRepository" or "InfrahubReadOnlyRepository" as input
     """
 
-<<<<<<< HEAD
-    async def initialize_local(self, commit: str | None = None) -> None:
-        """Bring this worker's local copy in line with the repository, cloning it if it is missing.
-
-        Raises:
-            CommitNotFoundError: When the requested commit is absent from the local clone and cannot
-                be fetched from the remote.
-
-        """
-=======
     def _has_valid_local_directories(self) -> bool:
         """Return whether the local clone is usable, without raising when it is simply absent."""
         try:
@@ -274,10 +264,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             return True
         return False
 
-    @classmethod
-    async def init(cls, commit: str | None = None, **kwargs: Any) -> Self:
-        self = cls(**kwargs)
->>>>>>> origin/develop
+    async def initialize_local(self, commit: str | None = None) -> None:
+        """Bring this worker's local copy in line with the repository, cloning it if it is missing.
+
+        Raises:
+            CommitNotFoundError: When the requested commit is absent from the local clone and cannot
+                be fetched from the remote.
+
+        """
         log = get_logger()
         if not self._has_valid_local_directories():
             await self.ensure_location_is_defined()
