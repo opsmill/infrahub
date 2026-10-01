@@ -61,7 +61,7 @@ The warning appears:
 - In the "Adding repository" task, when you add the repository on Infrahub's default branch.
 - In a later synchronization task, when that synchronization imports a branch or detects a new commit on the skipped branch.
 
-A synchronization where nothing changed on the remote adds no task. If you add the repository on another Infrahub branch, Infrahub imports no other remote branches until you merge that branch, so the first warning comes from a synchronization after the merge.
+A successful synchronization where nothing changed on the remote adds no task. If you add the repository on another Infrahub branch, Infrahub imports no other remote branches until you merge that branch, so the first warning comes from a synchronization after the merge.
 
 With more than one task worker, a push to the skipped branch is not always reported. Each worker compares the new commit against its own copy of the repository, and a fetch triggered by another worker can update that copy first. The same push can also be reported by more than one worker.
 
