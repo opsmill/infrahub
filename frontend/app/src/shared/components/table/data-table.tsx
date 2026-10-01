@@ -22,19 +22,33 @@ import {
   ObjectTableToolbar,
 } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar";
 
-export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
+interface DataTableBaseProps<T> extends React.HTMLAttributes<HTMLDivElement> {
   columnOrder?: ColumnOrderState;
   columns: ColumnDef<T>[];
   count?: number;
   data: Array<T>;
-  /** Required when rows are not nodes; defaults to the node `id`. */
-  getRowId?: (row: T) => string;
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
-  /** Selection hands rows to the node toolbar, so only enable it for node rows. */
+  gridTemplateColumns?: (columnCount: number) => string;
+}
+
+interface NodeDataTableProps<T extends NodeCore> extends DataTableBaseProps<T> {
+  getRowId?: never;
   toolbarActions?: ObjectTableSelectionToolbarProps["renderMore"];
   enableRowSelection?: RowSelectionOptions<T>["enableRowSelection"];
-  gridTemplateColumns?: (columnCount: number) => string;
+}
+
+/** Rows that are not nodes have no `id` to key on and no node toolbar to select into. */
+interface PlainDataTableProps<T> extends DataTableBaseProps<T> {
+  getRowId: (row: T) => string;
+  toolbarActions?: never;
+  enableRowSelection?: never;
+}
+
+interface DataTableGridProps<T> extends DataTableBaseProps<T> {
+  getRowId: (row: T) => string;
+  enableRowSelection: RowSelectionOptions<T>["enableRowSelection"];
+  renderSelectionToolbar?: (selectedRows: T[], onClose: () => void) => React.ReactNode;
 }
 
 // `fit-content` keeps short columns shrink-to-fit while capping long ones. A bare
@@ -44,23 +58,45 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
 const defaultGridTemplateColumns = (columnCount: number) =>
   `repeat(${columnCount - 2}, fit-content(${COLUMN_MAX_WIDTH})) 1fr 2.5rem`;
 
-const asNode = (row: unknown) => row as NodeCore;
+const getNodeId = (row: NodeCore) => row.id;
 
-const getNodeId = (row: unknown) => asNode(row).id;
+export function DataTable<T extends NodeCore>(props: NodeDataTableProps<T>): React.ReactNode;
+export function DataTable<T>(props: PlainDataTableProps<T>): React.ReactNode;
+export function DataTable<T>(props: NodeDataTableProps<T & NodeCore> | PlainDataTableProps<T>) {
+  if (props.getRowId) {
+    return <DataTableGrid {...props} getRowId={props.getRowId} enableRowSelection={false} />;
+  }
 
-export function DataTable<T>({
+  const { toolbarActions, enableRowSelection = true, ...nodeProps } = props;
+  return (
+    <DataTableGrid
+      {...nodeProps}
+      getRowId={getNodeId}
+      enableRowSelection={enableRowSelection}
+      renderSelectionToolbar={(selectedRows, onClose) => (
+        <ObjectTableToolbar
+          selectedRows={selectedRows}
+          onClose={onClose}
+          renderMore={toolbarActions}
+        />
+      )}
+    />
+  );
+}
+
+function DataTableGrid<T>({
   columnOrder,
   columns,
   count,
   data,
   isLoading,
   renderEmpty,
-  toolbarActions,
+  renderSelectionToolbar,
   enableRowSelection,
-  getRowId = getNodeId,
+  getRowId,
   gridTemplateColumns = defaultGridTemplateColumns,
   ...props
-}: DataTableProps<T>) {
+}: DataTableGridProps<T>) {
   const { isAuthenticated } = useAuth();
 
   const table = useReactTable({
@@ -90,7 +126,7 @@ export function DataTable<T>({
     [allHeaders.length, gridTemplateColumns]
   );
 
-  const selectedRows = table.getSelectedRowModel().flatRows.map((row) => asNode(row.original));
+  const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);
 
   // `min-w-max` stops the grid from being squeezed into its scroll container.
   // Without it the tracks compress until columns are unreadably narrow instead of
@@ -141,13 +177,7 @@ export function DataTable<T>({
           </div>
         ))}
 
-      {selectedRows.length > 0 && (
-        <ObjectTableToolbar
-          selectedRows={selectedRows}
-          onClose={table.resetRowSelection}
-          renderMore={toolbarActions}
-        />
-      )}
+      {selectedRows.length > 0 && renderSelectionToolbar?.(selectedRows, table.resetRowSelection)}
     </div>
   );
 }

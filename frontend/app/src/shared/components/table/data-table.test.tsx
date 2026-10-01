@@ -263,4 +263,22 @@ describe("DataTable rows that are not nodes", () => {
     await expect.element(rows.nth(0).getByText("Add device inventory")).toBeVisible();
     await expect.element(rows.nth(1).getByText("e5f6a7b")).toBeVisible();
   });
+
+  test("accepts row selection only for node rows", () => {
+    const commits: CommitRow[] = [];
+
+    expect(() => (
+      <>
+        {/* @ts-expect-error rows that are not nodes cannot be selected */}
+        <DataTable columns={commitColumns} data={commits} enableRowSelection />
+        <DataTable
+          columns={commitColumns}
+          data={commits}
+          getRowId={(commit: CommitRow) => commit.hash}
+          // @ts-expect-error rows that are not nodes cannot be selected
+          enableRowSelection
+        />
+      </>
+    )).not.toThrow();
+  });
 });
