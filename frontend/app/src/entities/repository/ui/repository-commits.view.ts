@@ -71,6 +71,8 @@ export function getStateBadges(
       return [UNRELATED_BADGE];
     case RepositoryCommitState.HISTORY:
       return [];
+    default:
+      return [];
   }
 }
 

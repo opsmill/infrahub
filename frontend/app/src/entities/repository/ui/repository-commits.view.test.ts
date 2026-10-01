@@ -133,6 +133,17 @@ describe("getStateBadges", () => {
     // THEN
     expect(badges.map(({ label }) => label)).toEqual(labels);
   });
+
+  test("shows no badge for a state this client does not know", () => {
+    // GIVEN
+    const commit = { hash: "a".repeat(40), state: "FUTURE_STATE" as RepositoryCommitState };
+
+    // WHEN
+    const badges = getStateBadges(commit, null);
+
+    // THEN
+    expect(badges).toEqual([]);
+  });
 });
 
 describe("getFreshness", () => {
