@@ -337,7 +337,11 @@ where nothing else has moved the numbers.
       covers the default-branch direction (a delete and a value change), a rebase past the change, a
       branch being deleted, and an older branch that moved the number itself.
 - [ ] T019 [P] [US1] Property-style unit test for one-sidedness (invariant I3): for any branch set,
-      the union result is a superset of every single-branch result. *(Critique E10.)*
+      the union result is a superset of every single-branch result. *(Critique E10.)* *(Dropped
+      2026-09-30 by the user: T018 put the union in Cypher, so a property test can only be a random
+      database-backed history, and the deterministic cases in `test_number_pool_branch_liveness.py`
+      already cover each shape of I3. A rebase that runs the retirement pass while a second older
+      branch still holds the number was added there instead.)*
 
 ### 1e. The pool leaves `HAS_SOURCE`
 
@@ -360,7 +364,7 @@ where nothing else has moved the numbers.
       `graphql/mutations/profile.py::InfrahubProfileMutation._validate_no_resource_pools_in_data`
       claiming graphene includes unset fields as `None` keys. It does not, and a reviewer will read
       the new resolver against it.
-- [ ] T024a [US1] Component test: allocating from a pool **named** rather than identified leaves a
+- [X] T024a [US1] Component test: allocating from a pool **named** rather than identified leaves a
       reservation record. `handle_pool` accepts either — `number_pool_id` is a uuid or a pool name,
       resolved through `registry.manager.query(filters={"name__value": ...})` — and the name path had
       no coverage asserting a record at all.
