@@ -11,7 +11,7 @@ import {
   summarizeBranchRepositories,
 } from "@/entities/branches/domain/rules/summarize-branch-repositories";
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
-import { REPOSITORY_FETCH_LIMIT } from "@/entities/repository/domain/model/repository";
+import { REPOSITORY_BRANCH_STATUS_LIMIT } from "@/entities/repository/domain/model/repository";
 import {
   RepositoryBranchStatusError,
   type RepositoryBranchStatusPage,
@@ -82,7 +82,7 @@ export function useBranchRepositorySummaries(
       getRepositoryBranchStatusQueryOptions({
         id,
         branchName: defaultBranchName,
-        limit: REPOSITORY_FETCH_LIMIT,
+        limit: REPOSITORY_BRANCH_STATUS_LIMIT,
       })
     ),
     combine: (results) =>
