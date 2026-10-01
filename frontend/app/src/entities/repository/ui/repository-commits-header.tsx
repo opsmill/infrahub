@@ -4,10 +4,12 @@ import { Col, Row } from "@/shared/components/container";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { pluralize } from "@/shared/utils/string";
 
+import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import {
   REPOSITORY_GIT_CONDITION,
   type RepositoryCommitLog,
 } from "@/entities/repository/domain/model/repository";
+import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
 export interface RepositoryCommitsHeaderProps {
   log: RepositoryCommitLog;
@@ -15,8 +17,14 @@ export interface RepositoryCommitsHeaderProps {
 
 export function RepositoryCommitsHeader({ log }: RepositoryCommitsHeaderProps) {
   return (
-    <Col className="gap-1.5 px-2 py-2">
-      <FreshnessLine log={log} />
+    <Col className="gap-1.5 p-2">
+      <Row className="items-center gap-2">
+        <RefreshButton
+          className="rounded-md border-border-strong"
+          queryKey={repositoriesQueryKeys.all}
+        />
+        <FreshnessLine log={log} />
+      </Row>
       <ConditionNotice log={log} />
     </Col>
   );

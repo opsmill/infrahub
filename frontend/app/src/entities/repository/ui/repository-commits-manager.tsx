@@ -1,13 +1,12 @@
 import { Spinner } from "@infrahub/ui";
 
-import { Col, Row } from "@/shared/components/container";
+import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
-import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import {
   REPOSITORY_GIT_CONDITION,
   type RepositoryCommitLog,
@@ -15,7 +14,6 @@ import {
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useLastLoadedCommitPages } from "@/entities/repository/ui/hooks/use-last-loaded-commit-pages";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
-import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import { RepositoryCommitsHeader } from "@/entities/repository/ui/repository-commits-header";
 
 export interface RepositoryCommitsManagerProps {
@@ -55,12 +53,6 @@ export function RepositoryCommitsManager({ repositoryId }: RepositoryCommitsMana
 
   return (
     <Col className="h-full gap-0">
-      <Row className="p-2">
-        <RefreshButton
-          className="rounded-md border-border-strong"
-          queryKey={repositoriesQueryKeys.all}
-        />
-      </Row>
       <RepositoryCommitsHeader log={log} />
       <InfiniteScroll
         scrollX
