@@ -9,7 +9,7 @@ import { TablePagination } from "@/shared/components/table/table-pagination";
 import { Badge } from "@/shared/components/ui/badge";
 import { useTablePagination } from "@/shared/hooks/use-table-pagination";
 import { formatNumberDisplay } from "@/shared/utils/number";
-import { clampPage, getOffset, getTotalPages, PAGE_SIZE } from "@/shared/utils/table-pagination";
+import { clampPage, getTotalPages, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
 import { FilterScopeProvider } from "@/entities/nodes/filters/ui/filter-scope-context";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
@@ -146,7 +146,7 @@ function RepositoryBranchesCardInScope({ repositoryId, schema }: RepositoryBranc
   const title = isOfKind(READONLY_REPOSITORY_KIND, schema)
     ? READ_ONLY_BRANCHES_TITLE
     : BRANCHES_TITLE;
-  const { page, setPage, pageSize } = useTablePagination({ urlKey: BRANCHES_URL_KEY });
+  const { page, setPage, pageSize, offset } = useTablePagination({ urlKey: BRANCHES_URL_KEY });
   const [filters] = useFilters();
   const { appliedSort } = useSort(BRANCH_ROW_SORT_SCHEMA);
 
@@ -156,7 +156,7 @@ function RepositoryBranchesCardInScope({ repositoryId, schema }: RepositoryBranc
   const { data, error, isPending } = useGetRepositoryBranchStatus({
     id: repositoryId,
     limit: pageSize,
-    offset: getOffset(page, pageSize),
+    offset,
     ...queryArguments,
   });
 
