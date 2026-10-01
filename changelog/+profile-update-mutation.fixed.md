@@ -1,1 +1,1 @@
-Fixed a slow update of the attributes of a Profile when many objects use the Profile.
+Fixed a slow update of a Profile with many objects, when the update does not change the objects or templates that use the Profile.
