@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub.core.manager import NodeManager
 
 from .diff import DiffChangelogCollector
-from .enrichment import node_label_loader
+from .enrichment import NodeLabelLoader, node_label_loader
 from .hfid_resolver import ChangelogHfidResolver
 from .peer_labels import PeerLabelResolver
 from .reciprocal import ReciprocalRelationshipBuilder
@@ -20,11 +20,22 @@ if TYPE_CHECKING:
     from .diff import MigrationTracker
 
 
+def build_node_label_loader(db: InfrahubDatabase, branch: Branch) -> NodeLabelLoader:
+    """Build a label loader that reads the stored labels first and loads nodes only for the rest."""
+    return node_label_loader(
+        db=db,
+        branch=branch,
+        schema_branch=db.schema.get_schema_branch(name=branch.name),
+        stored_label_loader=NodeManager.get_stored_labels,
+        node_loader=NodeManager.get_many,
+    )
+
+
 def build_diff_changelog_collector(
     diff: EnrichedDiffRoot, db: InfrahubDatabase, branch: Branch, migration_tracker: MigrationTracker | None = None
 ) -> DiffChangelogCollector:
     """Build a changelog collector whose HFID resolver reads from the same database and branch."""
-    label_loader = node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
+    label_loader = build_node_label_loader(db=db, branch=branch)
     return DiffChangelogCollector(
         diff=diff,
         db=db,
@@ -36,7 +47,7 @@ def build_diff_changelog_collector(
 
 def build_relationship_changelog_getter(db: InfrahubDatabase, branch: Branch) -> RelationshipChangelogGetter:
     """Build a relationship changelog getter whose peer labels are read from the same database and branch."""
-    label_loader = node_label_loader(db=db, branch=branch, node_loader=NodeManager.get_many)
+    label_loader = build_node_label_loader(db=db, branch=branch)
     return RelationshipChangelogGetter(
         db=db,
         branch=branch,
