@@ -13,6 +13,12 @@ The compiler automatically memoizes components and values.
 
 Write simple code; the compiler optimizes it.
 
+A consequence worth knowing before writing a test: **an assertion that a value keeps its identity
+across renders proves nothing.** The compiler re-adds the memoization, so the test passes whether
+or not the `useMemo` is there — deleting the hook leaves it green. Mutation-test any stability
+assertion by removing the thing it claims to protect; if it still passes, delete the test and
+record the property somewhere it can actually hold.
+
 ## React 19: No forwardRef
 
 `ref` is a regular prop in React 19.

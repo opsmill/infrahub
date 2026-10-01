@@ -25,6 +25,8 @@ We document significant architectural decisions using ADRs.
 | [0017](0017-coalesced-merge-rebase-recompute.md) | Coalesced Deduplicated Recompute Pass on Merge and Rebase | Accepted | 2026-07-31 |
 | [0018](0018-static-transform-lifecycle-triggers.md) | Static Kind-Scoped Lifecycle Triggers for Python-Transform Recompute | Accepted | 2026-07-31 |
 | [0019](0019-transform-lifecycle-owns-node-input-reconciliation.md) | Transform Lifecycle Flow Owns Node-Input Automation Reconciliation | Accepted | 2026-07-31 |
+| [0020](0020-experimental-flag-gates-pre-release-ui.md) | A Pre-Release UI Feature Is Gated by an Experimental Settings Flag, Not by the Running Version | Accepted | 2026-08-24 |
+| [0021](0021-application-owned-theme-resolution.md) | The Application Resolves the Theme Once and Hands the Answer Down | Accepted | 2026-08-24 |
 
 ## Creating a New ADR
 
