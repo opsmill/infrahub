@@ -268,20 +268,16 @@ describe("DataTable rows that are not nodes", () => {
   test("rejects row selection on non-node rows at the type level", () => {
     const commits: CommitRow[] = [];
 
-    const tables = (
-      <>
-        {/* @ts-expect-error rows that are not nodes need getRowId and cannot be selected */}
-        <DataTable columns={commitColumns} data={commits} enableRowSelection />
-        <DataTable
-          columns={commitColumns}
-          data={commits}
-          getRowId={(commit: CommitRow) => commit.hash}
-          // @ts-expect-error rows that are not nodes cannot be selected
-          enableRowSelection
-        />
-      </>
+    const table = (
+      <DataTable
+        columns={commitColumns}
+        data={commits}
+        getRowId={(commit: CommitRow) => commit.hash}
+        // @ts-expect-error rows that are not nodes cannot be selected
+        enableRowSelection
+      />
     );
 
-    expectTypeOf(tables).toEqualTypeOf<JSX.Element>();
+    expectTypeOf(table).toEqualTypeOf<JSX.Element>();
   });
 });
