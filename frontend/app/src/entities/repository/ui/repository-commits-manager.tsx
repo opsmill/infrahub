@@ -7,12 +7,9 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
-import {
-  type RepositoryCommitLog,
-  RepositoryGitCondition,
-} from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
+import { getEmptyState, getLoadedCommits } from "@/entities/repository/ui/repository-commits.view";
 import { RepositoryCommitsHeader } from "@/entities/repository/ui/repository-commits-header";
 
 export interface RepositoryCommitsManagerProps {
@@ -37,11 +34,7 @@ export function RepositoryCommitsManager({ repositoryId }: RepositoryCommitsMana
     return <LoadingIndicator className="h-full p-4" />;
   }
 
-  const commits = [
-    ...new Map(
-      pages.flatMap((page) => page.commits).map((commit) => [commit.hash, commit])
-    ).values(),
-  ];
+  const commits = getLoadedCommits(pages);
 
   if (commits.length === 0) {
     const emptyState = getEmptyState(log);
@@ -70,20 +63,4 @@ export function RepositoryCommitsManager({ repositoryId }: RepositoryCommitsMana
       </InfiniteScroll>
     </Col>
   );
-}
-
-function getEmptyState(log: RepositoryCommitLog) {
-  switch (log.condition) {
-    case RepositoryGitCondition.UNAVAILABLE:
-      return {
-        title: "Commit log not available yet",
-        message: log.unavailable?.message ?? "Waiting for a worker to answer.",
-      };
-    case RepositoryGitCondition.NOT_TRACKED:
-      return { title: "No commit log", message: "This branch tracks no remote ref." };
-    case RepositoryGitCondition.NO_REMOTE:
-      return { title: "No commit log", message: "The tracked ref has no remote counterpart." };
-    default:
-      return null;
-  }
 }
