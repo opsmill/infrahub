@@ -79,6 +79,7 @@ The read-write kind implements the mapping described below; the read-only kind r
   other remote branches are imported during sync; branches created in Infrahub with
   `sync_with_git` are imported regardless.
 
+<<<<<<< HEAD
 ### A push to the skipped branch can go unreported
 
 The advance check compares against the remote-tracking refs, and those move on every fetch, not only
@@ -91,6 +92,28 @@ one a repository makes when its location changed, or when a pinned commit is mis
 More than one worker can also each report the same
 push, at most once per worker. Reporting it reliably needs a baseline that only the sync writes, such
 as a worker-local ref updated after each comparison.
+=======
+## Cloning and the repository lock
+
+Creating the local copy deletes whatever is already at the repository directory before cloning
+into it. The creation primitive does not take the repository lock itself, so every caller that
+reaches it holds that lock; `init()`, which clones only when it finds no usable copy, also
+re-checks once the lock is held and clones only if the copy is still absent or unusable. Two flows
+on the same worker can otherwise ask for the same repository at the same time — a periodic sync
+and a refresh request, say — and the second clone wipes the directory the first one just built,
+invalidating the git objects already opened against it and leaving the sync unable to resolve a
+commit.
+
+The re-check treats a copy that fails validation like an absent one. The copy was absent before
+the lock was taken, so a copy that is present but broken once the lock is held was left by a
+concurrent clone that failed part-way (the clone succeeded but the checkout did not, say), and
+cloning over it is the only way back to a usable copy. A `Repo` already opened on that broken copy
+is closed first: once the directory is replaced it would keep reading the deleted object store.
+The check before the lock still raises on a broken copy rather than replacing it.
+
+The lock is reentrant per context, so a caller that already holds it for a wider critical section
+pays nothing extra.
+>>>>>>> origin/develop
 
 ## Git error surfacing
 

@@ -153,6 +153,10 @@ class IndexedPythonTargetResolver:
 
     Both caches live and die with the instance, and every flow run builds its own, so each level of
     a chain gathers the index again.
+
+    ``refresh_updated_nodes`` also makes an updated node of the target kind its own target whichever
+    fields changed, for a change set replayed onto a base that moved under the values the node
+    derived when it was saved.
     """
 
     def __init__(
@@ -160,9 +164,11 @@ class IndexedPythonTargetResolver:
         *,
         read_set_source: PythonReadSetSource,
         subscriber_source: PythonSubscriberSource,
+        refresh_updated_nodes: bool = False,
     ) -> None:
         self.read_set_source = read_set_source
         self.subscriber_source = subscriber_source
+        self.refresh_updated_nodes = refresh_updated_nodes
         self._read_sets: dict[str, list[PythonAttributeReadSet]] = {}
         self._subscriber_cache: dict[_SubscriberQuery, list[SubscriberRef]] = {}
 
@@ -189,7 +195,9 @@ class IndexedPythonTargetResolver:
         accumulators: dict[tuple[str, str], _Accumulator] = {}
         for signature, node_ids in ids_by_signature.items():
             for attribute in read_sets:
-                selection = _select(signature=signature, attribute=attribute)
+                selection = _select(
+                    signature=signature, attribute=attribute, refresh_updated_nodes=self.refresh_updated_nodes
+                )
                 if selection is None:
                     continue
                 key = (attribute.kind, attribute.attribute_name)
@@ -277,19 +285,6 @@ class IndexedPythonTargetResolver:
         return cached
 
 
-class DisabledPythonTargetResolver:
-    """The resolver used while the coalescing switch is off: the per-node automations own the work."""
-
-    async def resolve(
-        self,
-        *,
-        changes: Iterable[MergeChange],  # noqa: ARG002
-        branch: str,  # noqa: ARG002
-        schema_changed_elements: ChangedElementSet | None = None,  # noqa: ARG002
-    ) -> list[AffectedTarget]:
-        return []
-
-
 def _covered_by_schema_pass(
     *, read_sets: list[PythonAttributeReadSet], branch: str, changed_elements: ChangedElementSet
 ) -> set[tuple[str, str]]:
@@ -336,7 +331,9 @@ def _target_summary(target: AffectedTarget) -> str:
     return f"{target.target_kind}.{target.attribute_name}={node_count} node(s)"
 
 
-def _select(*, signature: ChangeSignature, attribute: PythonAttributeReadSet) -> _Selection | None:
+def _select(
+    *, signature: ChangeSignature, attribute: PythonAttributeReadSet, refresh_updated_nodes: bool
+) -> _Selection | None:
     """Decide whether one change signature affects one attribute, or return None when it cannot.
 
     Raises:
@@ -361,7 +358,11 @@ def _select(*, signature: ChangeSignature, attribute: PythonAttributeReadSet) ->
         # moved, so the new node's own value is all there is to compute.
         return _Narrow(self_ids=True, reader_lookup=False, precise=True) if attribute.kind == signature.kind else None
 
-    return _select_reader(signature=signature, read_set=attribute.read_set, target_kind=attribute.kind)
+    selection = _select_reader(signature=signature, read_set=attribute.read_set, target_kind=attribute.kind)
+    if selection is None and refresh_updated_nodes and signature.action == UPDATED and signature.kind == attribute.kind:
+        # Every value the node derived read the old base, including one that reads no changed field.
+        return _Narrow(self_ids=True, reader_lookup=False, precise=True)
+    return selection
 
 
 def _select_reader(*, signature: ChangeSignature, read_set: TransformReadSet, target_kind: str) -> _Selection | None:

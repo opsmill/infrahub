@@ -2,10 +2,20 @@ from prefect import flow
 
 from infrahub import lock
 from infrahub.core.constants import RepositoryOperationalStatus
+<<<<<<< HEAD
 from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError, RepositoryError
 from infrahub.git.remote_refs import ensure_branch_exists, list_remote_refs
 from infrahub.git.repository import get_initialized_repo
+=======
+from infrahub.exceptions import (
+    RepositoryConnectionError,
+    RepositoryCredentialsError,
+    RepositoryError,
+    RepositoryPermissionError,
+)
+from infrahub.git.repository import InfrahubRepository, get_initialized_repo
+>>>>>>> origin/develop
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import (
@@ -27,6 +37,7 @@ async def connectivity(message: messages.GitRepositoryConnectivity) -> None:
     )
 
     try:
+<<<<<<< HEAD
         refs = list_remote_refs(name=message.repository_name, url=message.repository_location)
         if message.default_branch is not None:
             ensure_branch_exists(
@@ -35,6 +46,11 @@ async def connectivity(message: messages.GitRepositoryConnectivity) -> None:
                 repository_name=message.repository_name,
                 location=message.repository_location,
             )
+=======
+        InfrahubRepository.check_connectivity(
+            name=message.repository_name, url=message.repository_location, require_write=message.requires_write
+        )
+>>>>>>> origin/develop
     except RepositoryError as exc:
         log.exception("Repository connectivity or branch check failed", repository=message.repository_name)
         response_data.success = False
@@ -42,6 +58,7 @@ async def connectivity(message: messages.GitRepositoryConnectivity) -> None:
         response_data.operational_status = {
             RepositoryConnectionError: RepositoryOperationalStatus.ERROR_CONNECTION,
             RepositoryCredentialsError: RepositoryOperationalStatus.ERROR_CRED,
+            RepositoryPermissionError: RepositoryOperationalStatus.ERROR_CRED,
         }.get(type(exc), RepositoryOperationalStatus.ERROR).value
 
     if message.reply_requested:

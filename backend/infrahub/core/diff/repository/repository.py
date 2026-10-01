@@ -1,3 +1,5 @@
+import asyncio
+from itertools import batched
 from typing import AsyncGenerator, Generator, Iterable, Sequence
 
 from neo4j.exceptions import TransientError
@@ -18,6 +20,7 @@ from infrahub.log import get_logger
 
 from ..model.field_specifiers_map import NodeFieldSpecifierMap
 from ..model.path import (
+    ConflictLevel,
     ConflictSelection,
     EnrichedDiffConflict,
     EnrichedDiffNode,
@@ -46,7 +49,12 @@ from ..query.has_conflicts_query import EnrichedDiffHasConflictQuery
 from ..query.link_proposed_change import EnrichedDiffLinkProposedChangeQuery
 from ..query.merge_tracking_id import EnrichedDiffMergedTrackingIdQuery
 from ..query.roots_metadata import EnrichedDiffRootsMetadataQuery
-from ..query.save import EnrichedDiffRootsUpsertQuery, EnrichedNodeBatchCreateQuery, EnrichedNodesLinkQuery
+from ..query.save import (
+    EnrichedDiffNodesCreateQuery,
+    EnrichedDiffRootsUpsertQuery,
+    EnrichedNodeBatchCreateQuery,
+    EnrichedNodesLinkQuery,
+)
 from ..query.time_range_query import EnrichedDiffTimeRangeQuery
 from ..query.update_conflict_query import EnrichedDiffConflictUpdateQuery
 from .deserializer import EnrichedDiffDeserializer
@@ -56,11 +64,12 @@ log = get_logger()
 
 class DiffRepository:
     def __init__(
-        self, db: InfrahubDatabase, deserializer: EnrichedDiffDeserializer, max_save_batch_size: int = 1000
+        self, db: InfrahubDatabase, deserializer: EnrichedDiffDeserializer, max_save_batch_size: int | None = None
     ) -> None:
         self.db = db
         self.deserializer = deserializer
-        self.max_save_batch_size = max_save_batch_size
+        # a fifth of the query size limit keeps the default at 1000 properties, which is also the floor
+        self.max_save_batch_size = max_save_batch_size or max(int(config.SETTINGS.database.query_size_limit / 5), 1000)
 
     async def _run_get_diff_query(
         self,
@@ -251,7 +260,7 @@ class DiffRepository:
         self, enriched_diffs: EnrichedDiffs
     ) -> Generator[list[EnrichedNodeCreateRequest], None, None]:
         node_requests = []
-        for diff_root in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
+        for diff_root in enriched_diffs.roots:
             size_count = 0
             for node in diff_root.nodes:
                 node_size_count = node.num_properties
@@ -274,10 +283,30 @@ class DiffRepository:
         await root_query.execute(db=self.db)
         log.info("Diff metadata updated.")
 
-    async def _save_node_batch(self, node_create_batch: list[EnrichedNodeCreateRequest]) -> None:
-        node_query = await EnrichedNodeBatchCreateQuery.init(db=self.db, node_create_batch=node_create_batch)
+    @retry_db_transaction(name="enriched_diff_nodes_create")
+    async def _run_diff_nodes_create_query(self, diff_root_uuid: str, diff_nodes: list[EnrichedDiffNode]) -> None:
+        create_query = await EnrichedDiffNodesCreateQuery.init(
+            db=self.db, diff_root_uuid=diff_root_uuid, diff_nodes=diff_nodes
+        )
+        await create_query.execute(db=self.db)
+
+    async def _create_diff_nodes(self, enriched_diffs: EnrichedDiffs) -> None:
+        """Create, with its node-level properties, the DiffNode of every node the roots do not hold yet.
+
+        Writing a root locks it, so these queries run one after the other; the batches that then write
+        the fields of the nodes never touch the root and can run concurrently.
+        """
+        chunk_size = config.SETTINGS.database.query_size_limit
+        for diff_root in enriched_diffs.roots:
+            for nodes_chunk in batched(diff_root.nodes, chunk_size):
+                log.info(f"Creating diff nodes, num_nodes={len(nodes_chunk)}")
+                await self._run_diff_nodes_create_query(diff_root_uuid=diff_root.uuid, diff_nodes=list(nodes_chunk))
+
+    @retry_db_transaction(name="enriched_diff_node_batch_save")
+    async def _save_node_batch(self, db: InfrahubDatabase, node_create_batch: list[EnrichedNodeCreateRequest]) -> None:
+        node_query = await EnrichedNodeBatchCreateQuery.init(db=db, node_create_batch=node_create_batch)
         try:
-            await node_query.execute(db=self.db)
+            await node_query.execute(db=db)
         except TransientError as exc:
             if not exc.code or "OutOfMemoryError".lower() not in str(exc.code).lower():
                 raise
@@ -286,10 +315,43 @@ class DiffRepository:
                 log.info(
                     f"Updating node {node_request.node.uuid}, num_properties={node_request.node.num_properties}..."
                 )
-                single_node_query = await EnrichedNodeBatchCreateQuery.init(
-                    db=self.db, node_create_batch=[node_request]
-                )
-                await single_node_query.execute(db=self.db)
+                single_node_query = await EnrichedNodeBatchCreateQuery.init(db=db, node_create_batch=[node_request])
+                await single_node_query.execute(db=db)
+
+    async def _save_node_batches(self, enriched_diffs: EnrichedDiffs) -> None:
+        """Write the fields of every node, several batches at a time.
+
+        Each batch is its own transaction on its own session. A repository whose database is already a
+        transaction keeps the batches on it, one after the other, so the caller's transaction sees them.
+        """
+        node_create_batches = list(self._get_node_create_request_batch(enriched_diffs=enriched_diffs))
+        count_nodes_remaining = sum(len(node_create_batch) for node_create_batch in node_create_batches)
+
+        if self.db.is_transaction:
+            for batch_num, node_create_batch in enumerate(node_create_batches):
+                log.info(f"Saving node batch #{batch_num}...")
+                await self._save_node_batch(db=self.db, node_create_batch=node_create_batch)
+                count_nodes_remaining -= len(node_create_batch)
+                log.info(f"Batch saved. {count_nodes_remaining=}")
+            return
+
+        semaphore = asyncio.Semaphore(config.SETTINGS.database.diff_save_concurrency)
+
+        async def save_batch(batch_num: int, node_create_batch: list[EnrichedNodeCreateRequest]) -> None:
+            nonlocal count_nodes_remaining
+            async with semaphore, self.db.start_session() as batch_db:
+                log.info(f"Saving node batch #{batch_num}...")
+                await self._save_node_batch(db=batch_db, node_create_batch=node_create_batch)
+            count_nodes_remaining -= len(node_create_batch)
+            log.info(f"Batch saved. {count_nodes_remaining=}")
+
+        try:
+            async with asyncio.TaskGroup() as task_group:
+                for batch_num, node_create_batch in enumerate(node_create_batches):
+                    task_group.create_task(save_batch(batch_num=batch_num, node_create_batch=node_create_batch))
+        except ExceptionGroup as exc_group:
+            # the batches share one cause, so callers get the first failure as they would from a sequential save
+            raise exc_group.exceptions[0] from exc_group
 
     async def _drop_nodes(self, diff_root: EnrichedDiffRoot, node_identifiers: list[NodeIdentifier]) -> None:
         drop_node_query = await EnrichedDiffDropNodesQuery.init(
@@ -304,7 +366,7 @@ class DiffRepository:
         await link_query.execute(db=self.db)
 
     async def _update_hierarchy_links(self, enriched_diffs: EnrichedDiffs) -> None:
-        for diff_root in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
+        for diff_root in enriched_diffs.roots:
             nodes_to_update = []
             for node in diff_root.nodes:
                 if any(r.nodes for r in node.relationships):
@@ -355,15 +417,10 @@ class DiffRepository:
             await self._save_root_metadata(enriched_diffs=enriched_diffs)
             return
 
-        count_nodes_remaining = len(enriched_diffs.base_branch_diff.nodes) + len(enriched_diffs.diff_branch_diff.nodes)
-        log.info(f"Saving diff (num_nodes={count_nodes_remaining})...")
-        for batch_num, node_create_batch in enumerate(
-            self._get_node_create_request_batch(enriched_diffs=enriched_diffs)
-        ):
-            log.info(f"Saving node batch #{batch_num}...")
-            await self._save_node_batch(node_create_batch=node_create_batch)
-            count_nodes_remaining -= len(node_create_batch)
-            log.info(f"Batch saved. {count_nodes_remaining=}")
+        num_nodes = sum(len(diff_root.nodes) for diff_root in enriched_diffs.roots)
+        log.info(f"Saving diff ({num_nodes=})...")
+        await self._create_diff_nodes(enriched_diffs=enriched_diffs)
+        await self._save_node_batches(enriched_diffs=enriched_diffs)
         if node_identifiers_to_drop:
             await self._drop_nodes(diff_root=enriched_diffs.diff_branch_diff, node_identifiers=node_identifiers_to_drop)
         await self._update_hierarchy_links(enriched_diffs=enriched_diffs)
@@ -488,6 +545,7 @@ class DiffRepository:
         to_time: Timestamp | None = None,
         tracking_id: TrackingId | None = None,
         proposed_change_id: str | None = None,
+        diff_ids: list[str] | None = None,
         exclude_merged: bool = True,
     ) -> list[EnrichedDiffRootMetadata]:
         query = await EnrichedDiffRootsMetadataQuery.init(
@@ -498,6 +556,7 @@ class DiffRepository:
             to_time=to_time,
             tracking_id=tracking_id,
             proposed_change_id=proposed_change_id,
+            diff_ids=diff_ids,
             exclude_merged=exclude_merged,
         )
         await query.execute(db=self.db)
@@ -507,6 +566,12 @@ class DiffRepository:
                 self.deserializer.build_diff_root_metadata(root_node=neo4j_node, proposed_change_id=pc_id)
             )
         return diff_roots
+
+    async def get_one_metadata(self, diff_branch_name: str, diff_id: str) -> EnrichedDiffRootMetadata:
+        diff_roots = await self.get_roots_metadata(diff_branch_names=[diff_branch_name], diff_ids=[diff_id])
+        if not diff_roots:
+            raise ResourceNotFoundError(f"Cannot find diff for branch {diff_branch_name} with ID {diff_id}")
+        return diff_roots[0]
 
     async def diff_has_conflicts(
         self,
@@ -544,12 +609,27 @@ class DiffRepository:
         tracking_id: TrackingId | None = None,
         diff_id: str | None = None,
     ) -> AsyncGenerator[tuple[str, EnrichedDiffConflict], None]:
+        async for conflict_path, _, conflict in self.get_all_conflicts_with_level_for_diff(
+            diff_branch_name=diff_branch_name, tracking_id=tracking_id, diff_id=diff_id
+        ):
+            yield (conflict_path, conflict)
+
+    async def get_all_conflicts_with_level_for_diff(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
+    ) -> AsyncGenerator[tuple[str, ConflictLevel, EnrichedDiffConflict], None]:
         query = await EnrichedDiffAllConflictsQuery.init(
             db=self.db, diff_branch_name=diff_branch_name, tracking_id=tracking_id, diff_id=diff_id
         )
         await query.execute(db=self.db)
-        for conflict_path, conflict_node in query.get_conflict_paths_and_nodes():
-            yield (conflict_path, self.deserializer.deserialize_conflict(diff_conflict_node=conflict_node))
+        for conflict_path, conflict_level, conflict_node in query.get_conflict_paths_levels_and_nodes():
+            yield (
+                conflict_path,
+                conflict_level,
+                self.deserializer.deserialize_conflict(diff_conflict_node=conflict_node),
+            )
 
     async def get_conflicted_node_uuids(
         self,

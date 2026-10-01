@@ -1,0 +1,1 @@
+Fixed recreating a branch's diff, as happens after a rebase, reading the whole default branch side of the previous diff. A diff stored by an earlier version can hold every change made on the default branch since the branch was created, so the refresh could take minutes, exhaust worker memory and hold up a merge of the branch.

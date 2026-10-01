@@ -74,7 +74,12 @@ class RepositoryFinalizer:
             message = messages.GitRepositoryConnectivity(
                 repository_name=obj.name.value,
                 repository_location=obj.location.value,
+<<<<<<< HEAD
                 default_branch=configured_default_branch(obj),
+=======
+                # A read-write repository must be push-able; a read-only one never pushes.
+                requires_write=obj.get_kind() == REPOSITORY,
+>>>>>>> origin/develop
             )
             response = await self.services.message_bus.rpc(
                 message=message, response_class=GitRepositoryConnectivityResponse

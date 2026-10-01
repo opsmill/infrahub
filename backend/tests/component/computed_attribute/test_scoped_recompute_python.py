@@ -5,14 +5,18 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.computed_attribute.tasks import computed_attribute_setup_python
+from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
+from infrahub.core.schema import AttributeSchema
 from infrahub.events.schema_action import ChangedElementsPayload
 from infrahub.workflows.catalogue import TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
 from tests.component.computed_attribute._base import (
     CAR_PERSON_PYTHON_SCHEMA,
     ScopedRecomputeCase,
     ScopedRecomputeTestBase,
+    commit_schema_branch,
     create_transform01,
 )
 from tests.helpers.schema import load_schema
@@ -102,3 +106,40 @@ class TestScopedRecomputePython(ScopedRecomputeTestBase):
             changed_elements=case.changed_elements,
         )
         assert self._submitted_attribute_names(workflow_recorder) == case.expected_submitted
+
+    async def test_a_schema_altered_branch_recomputes_what_it_shares_with_main(
+        self,
+        db: InfrahubDatabase,
+        transform_dataset: None,
+        workflow_recorder: WorkflowRecorder,
+        admin_account: CoreAccount,
+    ) -> None:
+        """A schema change on a branch recomputes the attributes the branch shares with main.
+
+        The branch declares no computed attribute of its own. Its candidates are the owner
+        automations scoped to it, and it has those only because its schema hash differs from the
+        default branch. The attribute it shares reads TestCar.name, so the same change that
+        selects it on main selects it here.
+        """
+        branch = await create_branch(branch_name="branch_alters_schema", db=db)
+
+        branch_schema = registry.schema.get_schema_branch(name=branch.name)
+        person_schema = branch_schema.get_node("TestPerson")
+        person_schema.attributes.append(AttributeSchema(name="nickname", kind="Text", optional=True))
+        branch_schema.set(name="TestPerson", schema=person_schema)
+        await commit_schema_branch(db=db, branch=branch, schema_branch=branch_schema)
+
+        # The premise: without this the branch owns no automation and the flow below has nothing
+        # to select, which would pass for the wrong reason.
+        assert branch.name in registry.get_altered_schema_branches()
+
+        await computed_attribute_setup_python(
+            context=self._context(admin_account, branch),
+            branch_name=branch.name,
+            changed_elements=ChangedElementsPayload(changed_fields={"TestCar": ["name"]}),
+        )
+
+        assert self._submitted_attribute_names(workflow_recorder) == {
+            "computed_desc_python",
+            "computed_desc_python_opaque",
+        }

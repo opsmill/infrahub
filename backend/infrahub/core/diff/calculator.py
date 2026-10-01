@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from itertools import batched
 
 from infrahub import config
 from infrahub.core import registry
@@ -6,9 +7,13 @@ from infrahub.core.branch import Branch
 from infrahub.core.diff.query_parser import DiffQueryParser
 from infrahub.core.query.diff import (
     DiffCalculationQuery,
+    DiffChangedNodesQuery,
+    DiffFieldNodesQuery,
     DiffFieldPathsQuery,
     DiffMigratedKindNodesQuery,
+    DiffNodeNodesQuery,
     DiffNodePathsQuery,
+    DiffPropertyNodesQuery,
     DiffPropertyPathsQuery,
 )
 from infrahub.core.timestamp import Timestamp
@@ -30,6 +35,7 @@ class DiffCalculationRequest:
     to_time: Timestamp
     current_node_field_specifiers: NodeFieldSpecifierMap | None = field(default=None)
     new_node_field_specifiers: NodeFieldSpecifierMap | None = field(default=None)
+    node_kinds: list[str] | None = field(default=None)
 
 
 class DiffCalculator:
@@ -42,6 +48,7 @@ class DiffCalculator:
         query_class: type[DiffCalculationQuery],
         calculation_request: DiffCalculationRequest,
         limit: int,
+        node_uuids: list[str] | None = None,
     ) -> None:
         has_more_data = True
         offset = 0
@@ -55,6 +62,7 @@ class DiffCalculator:
                 diff_to=calculation_request.to_time,
                 current_node_field_specifiers=calculation_request.current_node_field_specifiers,
                 new_node_field_specifiers=calculation_request.new_node_field_specifiers,
+                node_uuids=node_uuids,
                 limit=limit,
                 offset=offset,
             )
@@ -69,6 +77,42 @@ class DiffCalculator:
             if last_result:
                 has_more_data = last_result.get_as_type("has_more_data", bool)
             offset += limit
+
+    async def _run_node_scoped_calculation_queries(
+        self,
+        diff_parser: DiffQueryParser,
+        nodes_query_class: type[DiffChangedNodesQuery],
+        paths_query_class: type[DiffCalculationQuery],
+        calculation_request: DiffCalculationRequest,
+        limit: int,
+        node_chunk_size: int,
+    ) -> None:
+        """Run one level of the calculation one chunk of changed nodes at a time.
+
+        Paging the paths query by rows re-runs its match over every edge changed on the branch for each page.
+        Listing the changed nodes first and scoping each run of the paths query to a chunk of them keeps every
+        match small; the row pagination inside a chunk stays as the memory bound.
+        """
+        nodes_query = await nodes_query_class.init(
+            db=self.db,
+            branch=calculation_request.diff_branch,
+            base_branch=calculation_request.base_branch,
+            diff_branch_from_time=calculation_request.branch_from_time,
+            diff_from=calculation_request.from_time,
+            diff_to=calculation_request.to_time,
+            node_kinds=calculation_request.node_kinds,
+        )
+        await nodes_query.execute(db=self.db)
+        node_uuids = nodes_query.get_node_uuids()
+        log.info(f"Diff calculation covers {len(node_uuids)} changed nodes, {node_chunk_size=}")
+        for node_uuids_chunk in batched(node_uuids, node_chunk_size):
+            await self._run_diff_calculation_query(
+                diff_parser=diff_parser,
+                query_class=paths_query_class,
+                calculation_request=calculation_request,
+                limit=limit,
+                node_uuids=list(node_uuids_chunk),
+            )
 
     async def _apply_kind_migrated_nodes(
         self, branch_diff: DiffRoot, calculation_request: DiffCalculationRequest
@@ -94,6 +138,12 @@ class DiffCalculator:
             log.info(f"Migrated kind nodes query complete {limit=}, {offset=}")
             last_result = None
             for migrated_kind_node in diff_query.get_migrated_kind_nodes():
+                last_result = migrated_kind_node
+                if (
+                    calculation_request.node_kinds is not None
+                    and migrated_kind_node.kind not in calculation_request.node_kinds
+                ):
+                    continue
                 migrated_kind_identifier = NodeIdentifier(
                     uuid=migrated_kind_node.uuid,
                     kind=migrated_kind_node.kind,
@@ -113,7 +163,6 @@ class DiffCalculator:
                 )
                 diff_nodes_by_identifier[migrated_kind_identifier] = new_diff_node
                 diff_nodes_to_add.append(new_diff_node)
-                last_result = migrated_kind_node
             has_more_data = False
             if last_result:
                 has_more_data = last_result.has_more_data
@@ -128,7 +177,14 @@ class DiffCalculator:
         to_time: Timestamp,
         include_unchanged: bool = True,
         previous_node_specifiers: NodeFieldSpecifierMap | None = None,
+        node_kinds: list[str] | None = None,
     ) -> CalculatedDiffs:
+        """Calculate the diff of the diff branch against the base branch over a time range.
+
+        Args:
+            node_kinds: Calculate the changes of the diff branch for nodes of these kinds only.
+
+        """
         if diff_branch.name == registry.default_branch:
             diff_branch_from_time = from_time
         else:
@@ -151,32 +207,39 @@ class DiffCalculator:
             branch_from_time=diff_branch_from_time,
             from_time=from_time,
             to_time=to_time,
+            node_kinds=node_kinds,
         )
 
         log.info("Beginning diff node-level calculation queries for branch")
-        await self._run_diff_calculation_query(
+        await self._run_node_scoped_calculation_queries(
             diff_parser=diff_parser,
-            query_class=DiffNodePathsQuery,
+            nodes_query_class=DiffNodeNodesQuery,
+            paths_query_class=DiffNodePathsQuery,
             calculation_request=calculation_request,
             limit=node_limit,
+            node_chunk_size=node_limit,
         )
         log.info("Diff node-level calculation queries for branch complete")
 
         log.info("Beginning diff field-level calculation queries for branch")
-        await self._run_diff_calculation_query(
+        await self._run_node_scoped_calculation_queries(
             diff_parser=diff_parser,
-            query_class=DiffFieldPathsQuery,
+            nodes_query_class=DiffFieldNodesQuery,
+            paths_query_class=DiffFieldPathsQuery,
             calculation_request=calculation_request,
             limit=fields_limit,
+            node_chunk_size=node_limit,
         )
         log.info("Diff field-level calculation queries for branch complete")
 
         log.info("Beginning diff property-level calculation queries for branch")
-        await self._run_diff_calculation_query(
+        await self._run_node_scoped_calculation_queries(
             diff_parser=diff_parser,
-            query_class=DiffPropertyPathsQuery,
+            nodes_query_class=DiffPropertyNodesQuery,
+            paths_query_class=DiffPropertyPathsQuery,
             calculation_request=calculation_request,
             limit=properties_limit,
+            node_chunk_size=node_limit,
         )
         log.info("Diff property-level calculation queries for branch complete")
 
