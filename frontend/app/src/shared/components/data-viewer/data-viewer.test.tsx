@@ -23,12 +23,16 @@ describe("DataViewer", () => {
     // GIVEN
     const component = await render(<DataViewer data={SVG_CONTENT} contentType="image/svg+xml" />);
     const content = component.container.querySelector(".react-transform-component");
-    const initialTransform = content?.getAttribute("style");
 
     // WHEN
     await component.getByRole("button", { name: "Zoom in" }).click();
 
     // THEN
-    await expect.poll(() => content?.getAttribute("style")).not.toBe(initialTransform);
+    await expect.poll(() => getScale(content)).toBeGreaterThan(1);
   });
 });
+
+function getScale(element: Element | null): number {
+  const match = element?.getAttribute("style")?.match(/scale\(([\d.]+)\)/);
+  return match ? Number(match[1]) : Number.NaN;
+}
