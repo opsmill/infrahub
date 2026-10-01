@@ -280,10 +280,14 @@ deliberately and recorded here so the omission is visible rather than looking li
 
 ## Superseded by review
 
-The shipped shape differs from this plan in five ways, all from reviewer feedback: the
-feature is named for repository sync status rather than "Git status"; the counts and the
-derivation moved out of the component into a query hook; the empty state is a dimmed link
-rather than a disabled button; the destination is filtered only while something is failing;
-and the informational pulse uses theme tokens. See the "Changed in review" section of
-spec.md. The element-type switch listed under "Known gaps carried to the PR body" above no
-longer applies.
+The shipped shape differs from this plan in eight ways, all from reviewer feedback across
+two rounds. First round: the feature is named for repository sync status rather than "Git
+status"; the counts and the derivation moved out of the component; the empty state is a
+dimmed link rather than a disabled button; the destination is filtered only while something
+is failing; and the informational pulse uses theme tokens. Second round: the two counts and
+the rule that derived a verdict from them became a single `getRepositorySyncHealth` use case
+behind one query, so the planned derivation module and its unit test no longer exist;
+loading and lookup-failure are read off the query rather than modelled as sync states; and
+the query key is declared in a key factory. See the "Changed in review" section of spec.md.
+The element-type switch listed under "Known gaps carried to the PR body" above no longer
+applies.

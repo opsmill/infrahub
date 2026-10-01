@@ -132,7 +132,7 @@ activatable, and the header layout matches a branch that has repositories.
 
 - [x] T026 [P] Assess whether `docs/` needs a user-facing page or amendment for this indicator, and either write it or record why it is not needed *(constitution documentation requirement; ship phase 4.6)*
 
-- [ ] T027 Run the full local CI gate from `frontend/app`: `pnpm exec biome ci .`, `pnpm knip`, `pnpm exec betterer ci`, `pnpm test`. All four fail CI independently; `biome:fix` alone is not the gate. `knip` matters here because the URL builder and the derivation rule each have exactly one importer *(quickstart.md; ship phase 5)*
+- [x] T027 Run the full local CI gate: `pnpm exec biome ci .` from `frontend` (the pnpm workspace root, as CI runs it), then `pnpm knip`, `pnpm exec betterer ci` and `pnpm test` from `frontend/app`. All four fail CI independently; `biome:fix` alone is not the gate. `knip` matters here because the URL builder and the sync-health use case each have exactly one importer *(quickstart.md; ship phase 5)*
 
 - [ ] T028 Confirm the three known gaps listed in `specs/005-git-status-header-ifc-3199/plan.md` are still accurate and carry them into the PR body verbatim: the refresh interval is asserted by no test (matching the existing task indicator's gap); branch-change-mid-flight relies on the query cache key rather than a test; partial-match filtering on the sync status is safe only because no enum value contains another as a substring *(plan.md known gaps)*
 

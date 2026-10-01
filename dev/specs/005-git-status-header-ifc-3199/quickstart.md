@@ -28,14 +28,16 @@ These are separate CI jobs and each fails the build independently. `pnpm biome:f
 **not** the gate.
 
 ```bash
-cd frontend/app
-pnpm exec biome ci .      # format + lint, as CI runs it
+cd frontend
+pnpm exec biome ci .      # format + lint, whole workspace, as CI runs it
+cd app
 pnpm knip                 # unused exports/files/deps
 pnpm exec betterer ci     # TypeScript regression gate (not plain tsc)
 ```
 
-`knip` matters here: this feature adds a URL builder and a derivation rule that are each
-imported from exactly one place. If either ends up unreferenced after a refactor, knip fails.
+`knip` matters here: this feature adds a URL builder and a sync-health use case that are
+each imported from exactly one place. If either ends up unreferenced after a refactor, knip
+fails.
 
 ## 3. Manual check in the running app (minutes)
 
@@ -86,7 +88,7 @@ repository they did not expect to be broken.
 ## 5. Full local CI gate before pushing
 
 ```bash
-cd frontend/app && pnpm exec biome ci . && pnpm knip && pnpm exec betterer ci && pnpm test
+cd frontend && pnpm exec biome ci . && cd app && pnpm knip && pnpm exec betterer ci && pnpm test
 ```
 
 A frontend lint job runs on every PR regardless of paths touched, so this must be green even

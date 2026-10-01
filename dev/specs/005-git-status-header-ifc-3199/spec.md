@@ -254,8 +254,9 @@ where repositories do exist.
 - **Empty state is dimmed, not hidden.** The indicator is held in place when there are no
   repositories. It was originally specified as non-activatable; review changed that to a
   dimmed but reachable link — see "Changed in review". Determining this requires knowing
-  both how many repositories are on the branch and how many are failing — two counts. The
-  user explicitly chose two separate lookups over a single combined one.
+  both how many repositories are on the branch and how many are failing — two counts. They
+  were originally two separate lookups by explicit choice; review replaced that with a
+  single combined one — see "Changed in review", second round.
 - **The branch is based on `cross-branch-repo-status-infp-671`** and the pull request will
   target that branch, not the default branch.
 - **The glyph is `mdi:source-branch`** — the ticket's "branch glyph", taken literally. This

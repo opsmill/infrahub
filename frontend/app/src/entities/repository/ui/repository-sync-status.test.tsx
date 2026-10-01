@@ -26,6 +26,7 @@ const errorResponse = () =>
 const FAILING_LABEL = "Repositories failed to import on this branch";
 const IN_SYNC_LABEL = "All Git repositories are in sync on this branch";
 const NO_REPOSITORIES_LABEL = "No Git repositories";
+const CHECK_FAILED_LABEL = "Git repository sync status could not be checked";
 
 describe("RepositorySyncStatus", () => {
   const useCurrentBranchMock = vi.mocked(useCurrentBranch);
@@ -182,11 +183,7 @@ describe("RepositorySyncStatus", () => {
     const component = await render(<RepositorySyncStatus />);
 
     // THEN
-    await expect
-      .element(
-        component.getByRole("link", { name: "Git repository sync status could not be checked" })
-      )
-      .toBeVisible();
+    await expect.element(component.getByRole("link", { name: CHECK_FAILED_LABEL })).toBeVisible();
     expect(glyphIcon(component)).toBe("mdi:error-outline");
     const glyph = component.container.querySelector(
       '[data-testid="repository-sync-status-glyph"]'
@@ -371,6 +368,26 @@ describe("RepositorySyncStatus", () => {
     // THEN the lookups ran again and the resolved state stayed put
     expect(getObjectsCountFromApiMock.mock.calls.length).toBeGreaterThan(callsBefore);
     await expect.element(indicator).toBeVisible();
+  });
+
+  test("drops a stale failure when a background refresh stops being able to check", async () => {
+    // GIVEN a resolved failing state
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    onBranch({ name: "branch1", is_default: false });
+    mockCounts({ total: 3, failing: 1 });
+    const component = await render(<RepositorySyncStatus />);
+    await expect.element(component.getByRole("link", { name: FAILING_LABEL })).toBeVisible();
+
+    // WHEN the refresh can no longer reach the counts
+    mockCounts({ total: "error", failing: "error" });
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    // THEN no alarm is left pulsing on a reading that can no longer be refreshed
+    await expect.element(component.getByRole("link", { name: CHECK_FAILED_LABEL })).toBeVisible();
+    expect(
+      component.container.querySelector('[data-testid="repository-sync-status-pulse"]')
+    ).toBeNull();
+    expect(decodeURIComponent(await hrefOf(component))).not.toContain("error-import");
   });
 
   test.each([

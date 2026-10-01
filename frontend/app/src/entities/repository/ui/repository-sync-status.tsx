@@ -10,6 +10,16 @@ import { getRepositoriesUrl } from "@/entities/repository/ui/routing/repository-
 
 const REFETCH_INTERVAL = 10_000;
 
+type IndicatorState = "pending" | "check-failed" | "none" | "failing" | "in-sync";
+
+const LABELS: Record<IndicatorState, string> = {
+  pending: "Checking Git repository sync status",
+  "check-failed": "Git repository sync status could not be checked",
+  none: "No Git repositories",
+  failing: "Repositories failed to import on this branch",
+  "in-sync": "All Git repositories are in sync on this branch",
+};
+
 export function RepositorySyncStatus() {
   const { currentBranch } = useCurrentBranch();
 
@@ -22,35 +32,32 @@ export function RepositorySyncStatus() {
     refetchInterval: REFETCH_INTERVAL,
   });
 
-  const failing = health === "failing";
-  const tooltip = isPending
-    ? "Checking Git repository sync status"
-    : error
-      ? "Git repository sync status could not be checked"
-      : failing
-        ? "Repositories failed to import on this branch"
-        : health === "none"
-          ? "No Git repositories"
-          : "All Git repositories are in sync on this branch";
+  // A failed refresh drops the verdict it can no longer vouch for: a red alarm that keeps
+  // pulsing on a reading nobody can refresh is worse than admitting the check did not run.
+  const state: IndicatorState = isPending ? "pending" : error || !health ? "check-failed" : health;
 
-  const glyph = isPending ? (
-    <Spinner />
-  ) : error ? (
-    <Icon icon="mdi:error-outline" className="size-4 text-foreground-muted" />
-  ) : (
-    <Icon icon="mdi:source-branch" className={failing ? "size-4 text-danger" : "size-4"} />
-  );
+  const failing = state === "failing";
+  const label = LABELS[state];
+
+  const glyph =
+    state === "pending" ? (
+      <Spinner />
+    ) : state === "check-failed" ? (
+      <Icon icon="mdi:error-outline" className="size-4 text-foreground-muted" />
+    ) : (
+      <Icon icon="mdi:source-branch" className={failing ? "size-4 text-danger" : "size-4"} />
+    );
 
   return (
-    <Tooltip message={tooltip}>
+    <Tooltip message={label}>
       <LinkButton
         shape="square"
         variant="outline"
         size="sm"
         href={getRepositoriesUrl(currentBranch, { onlyFailing: failing })}
-        aria-label={tooltip}
+        aria-label={label}
         data-testid="repository-sync-status"
-        className={health === "none" ? "opacity-60" : undefined}
+        className={state === "none" ? "opacity-60" : undefined}
       >
         <span
           className="flex size-4 items-center justify-center"
