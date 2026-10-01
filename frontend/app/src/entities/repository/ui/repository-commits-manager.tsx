@@ -1,4 +1,5 @@
 import { Button, Spinner } from "@infrahub/ui";
+import { useState } from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -11,8 +12,9 @@ import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-reposi
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
   getEmptyState,
+  getHistoryRetry,
   getLoadedCommits,
-  isHistoryCutShort,
+  type HistoryRetry,
 } from "@/entities/repository/ui/repository-commits.view";
 import {
   RepositoryCommitsHeader,
@@ -40,9 +42,18 @@ export function RepositoryCommitsManager({
     isFetchNextPageError,
     refetch,
   } = useGetRepositoryCommits({ repositoryId });
+  const [retryInFlight, setRetryInFlight] = useState<HistoryRetry | null>(null);
   const pages = data?.pages ?? [];
   const [log] = pages;
   const commits = getLoadedCommits(pages);
+  // Starting a retry clears the error it answers, so the notice stays up until the retry settles.
+  const historyRetry = retryInFlight ?? getHistoryRetry(pages, { isFetchNextPageError });
+
+  const retryHistory = async (retry: HistoryRetry) => {
+    setRetryInFlight(retry);
+    await (retry === "fetch-next-page" ? fetchNextPage() : refetch());
+    setRetryInFlight(null);
+  };
 
   if (error && commits.length === 0) {
     return (
@@ -85,11 +96,16 @@ export function RepositoryCommitsManager({
           gridTemplateColumns={gridTemplateColumns}
           renderEmpty={() => <NoDataFound message="This ref has no commits." />}
         />
-        {isFetchingNextPage && <Spinner className="mx-auto my-2" />}
-        {isHistoryCutShort(pages, { isFetchNextPageError }) && (
+        {isFetchingNextPage && !retryInFlight && <Spinner className="mx-auto my-2" />}
+        {historyRetry && (
           <Row className="items-center justify-center gap-2 p-2 text-foreground-muted text-sm">
             <p>Older commits could not be loaded right now.</p>
-            <Button variant="outline" size="sm" onPress={() => refetch()}>
+            <Button
+              variant="outline"
+              size="sm"
+              isPending={retryInFlight !== null}
+              onPress={() => retryHistory(historyRetry)}
+            >
               Retry
             </Button>
           </Row>

@@ -10,9 +10,9 @@ import {
   getConditionNotice,
   getEmptyState,
   getFreshness,
+  getHistoryRetry,
   getLoadedCommits,
   getStateBadges,
-  isHistoryCutShort,
 } from "@/entities/repository/ui/repository-commits.view";
 
 const IMPORTED_HASH = "a".repeat(40);
@@ -270,51 +270,62 @@ describe("getConditionNotice", () => {
   });
 });
 
-describe("isHistoryCutShort", () => {
+describe("getHistoryRetry", () => {
   const available = { condition: RepositoryGitCondition.IN_SYNC };
   const cold = { condition: RepositoryGitCondition.UNAVAILABLE };
 
-  test("is false for a single unavailable first page", () => {
+  test("offers no retry for a single unavailable first page", () => {
     // GIVEN
     const pages = [cold];
 
     // WHEN
-    const cutShort = isHistoryCutShort(pages, { isFetchNextPageError: false });
+    const retry = getHistoryRetry(pages, { isFetchNextPageError: false });
 
     // THEN
-    expect(cutShort).toBe(false);
+    expect(retry).toBeNull();
   });
 
-  test("is true when a later page answers unavailable", () => {
+  test("refetches when a later page answers unavailable", () => {
     // GIVEN
     const pages = [available, cold];
 
     // WHEN
-    const cutShort = isHistoryCutShort(pages, { isFetchNextPageError: false });
+    const retry = getHistoryRetry(pages, { isFetchNextPageError: false });
 
     // THEN
-    expect(cutShort).toBe(true);
+    expect(retry).toBe("refetch");
   });
 
-  test("is true when fetching the next page failed", () => {
+  test("fetches the next page again when fetching it failed", () => {
     // GIVEN
     const pages = [available, available];
 
     // WHEN
-    const cutShort = isHistoryCutShort(pages, { isFetchNextPageError: true });
+    const retry = getHistoryRetry(pages, { isFetchNextPageError: true });
 
     // THEN
-    expect(cutShort).toBe(true);
+    expect(retry).toBe("fetch-next-page");
   });
 
-  test("is false when every loaded page is available", () => {
+  test("prefers fetching the next page when it failed after an unavailable page", () => {
+    // GIVEN
+    const pages = [available, cold];
+
+    // WHEN
+    const retry = getHistoryRetry(pages, { isFetchNextPageError: true });
+
+    // THEN
+    expect(retry).toBe("fetch-next-page");
+  });
+
+  test("offers no retry when every loaded page is available", () => {
     // GIVEN
     const pages = [available, available];
 
     // WHEN
-    const cutShort = isHistoryCutShort(pages, { isFetchNextPageError: false });
+    const retry = getHistoryRetry(pages, { isFetchNextPageError: false });
 
     // THEN
-    expect(cutShort).toBe(false);
+    expect(retry).toBeNull();
   });
 });

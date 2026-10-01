@@ -20,13 +20,19 @@ export function getLoadedCommits(
   ];
 }
 
-export function isHistoryCutShort(
+export type HistoryRetry = "fetch-next-page" | "refetch";
+
+// A failed fetch leaves its page out of `pages`; an UNAVAILABLE answer is kept and ends paging, so only a refetch re-reads it.
+export function getHistoryRetry(
   pages: Pick<RepositoryCommitLog, "condition">[],
   { isFetchNextPageError }: { isFetchNextPageError: boolean }
-): boolean {
-  if (isFetchNextPageError) return true;
+): HistoryRetry | null {
+  if (isFetchNextPageError) return "fetch-next-page";
   const lastPage = pages.at(-1);
-  return pages.length > 1 && lastPage !== undefined && !isGitStateAvailable(lastPage);
+  if (pages.length > 1 && lastPage !== undefined && !isGitStateAvailable(lastPage)) {
+    return "refetch";
+  }
+  return null;
 }
 
 export interface CommitLogEmptyState {

@@ -403,6 +403,32 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText("Older commits could not be loaded right now.").query()).toBeNull();
   });
 
+  test("offers a retry when loading the next page fails, and loads only that page on retry", async () => {
+    // GIVEN
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
+      .mockRejectedValueOnce(new Error("Worker did not answer in time"))
+      .mockResolvedValue(apiResult(generateSecondCommitsPage()));
+    const component = await renderTab();
+    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+    await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
+    await expect
+      .element(component.getByText("Older commits could not be loaded right now."))
+      .toBeVisible();
+    expect(component.getByText(PAGE_TWO_FIRST).query()).toBeNull();
+    expect(apiMock).toHaveBeenCalledTimes(2);
+
+    // WHEN
+    await component.getByRole("button", { name: "Retry" }).click();
+
+    // THEN
+    await expect.element(component.getByText(PAGE_TWO_FIRST)).toBeVisible();
+    expect(apiMock).toHaveBeenCalledTimes(3);
+    expect(apiMock).toHaveBeenNthCalledWith(3, expect.objectContaining({ offset: 20, limit: 20 }));
+    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+    expect(component.getByText("Older commits could not be loaded right now.").query()).toBeNull();
+  });
+
   test("shows both the check time and the update time when they differ", async () => {
     // GIVEN
     apiMock.mockResolvedValue(apiResult(generateReadOnlyCommitsResponse()));
