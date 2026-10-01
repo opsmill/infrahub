@@ -779,3 +779,70 @@ async def test_related_nodes_removal_queries_do_not_grow_with_removed_nodes(
     assert many == few
     # The constraint knows the removed nodes already, so it reads only the required relationship of all of them.
     assert few[RelationshipGetPeerQuery.name] == 1
+
+
+async def test_removing_two_profiles_blocked_by_the_one_that_supplies_a_required_relationship(
+    db: InfrahubDatabase, branch: Branch, optional_thing_fields: list[Node]
+) -> None:
+    supplier = await _create_profile(
+        db=db, branch=branch, name="owner-profile", priority=1, owner=optional_thing_fields[0]
+    )
+    other = await _create_profile(db=db, branch=branch, name="other-profile", priority=2)
+    thing = await _create_thing_from_profiles(
+        db=db, branch=branch, name="thing-1", profiles=[supplier, other], color="blue"
+    )
+    await _load_thing_with_required_fields(db=db, branch=branch)
+    thing_schema = registry.schema.get_node_schema(name=TestKind.THING, branch=branch, duplicate=False)
+
+    thing = await NodeManager.get_one(db=db, branch=branch, id=thing.id, raise_on_error=True)
+    await thing.profiles.update(db=db, data=[])
+
+    constraint = RelationshipProfileRemovalConstraint(db=db, branch=branch)
+    with pytest.raises(ValidationError) as exc:
+        await constraint.check(relm=thing.profiles, node_schema=thing_schema, node=thing)
+
+    assert exc.value.message == (
+        f"Cannot remove profile '{supplier.id}' because node 'TestingThing(ID: {thing.id})' (ID: {thing.id}) "
+        "inherits required relationship 'owner' from this profile."
+    )
+
+
+async def test_removing_a_profile_allowed_when_the_same_change_sets_the_required_relationship(
+    db: InfrahubDatabase, branch: Branch
+) -> None:
+    """The check sees the changes in memory, because no required attribute of this thing supports profiles."""
+    thing_without_profile_attrs = copy.deepcopy(THING)
+    thing_without_profile_attrs.attributes[0].unique = True
+    thing_without_profile_attrs.attributes[1].optional = True
+    thing_optional_owner = copy.deepcopy(thing_without_profile_attrs)
+    thing_optional_owner.relationships[0].optional = True
+    await load_schema(db=db, schema=SchemaRoot(nodes=[CHILD, thing_optional_owner]), branch_name=branch.name)
+
+    children = []
+    for idx in range(2):
+        child = await Node.init(db=db, branch=branch, schema=TestKind.CHILD)
+        await child.new(db=db, name=f"child-{idx}")
+        await child.save(db=db)
+        children.append(child)
+    profile = await _create_profile(db=db, branch=branch, name="thing-profile", priority=1, owner=children[0])
+    thing = await _create_thing_from_profiles(db=db, branch=branch, name="thing-1", profiles=[profile])
+
+    await load_schema(db=db, schema=SchemaRoot(nodes=[CHILD, thing_without_profile_attrs]), branch_name=branch.name)
+    thing_schema = registry.schema.get_node_schema(name=TestKind.THING, branch=branch, duplicate=False)
+    constraint = RelationshipProfileRemovalConstraint(db=db, branch=branch)
+
+    profile_only = await NodeManager.get_one(db=db, branch=branch, id=thing.id, raise_on_error=True)
+    await profile_only.profiles.update(db=db, data=[])
+    with pytest.raises(ValidationError) as exc:
+        await constraint.check(relm=profile_only.profiles, node_schema=thing_schema, node=profile_only)
+    assert exc.value.message == (
+        f"Cannot remove profile '{profile.id}' because node 'TestingThing(ID: {thing.id})' (ID: {thing.id}) "
+        "inherits required relationship 'owner' from this profile."
+    )
+
+    with_owner = await NodeManager.get_one(db=db, branch=branch, id=thing.id, raise_on_error=True)
+    await with_owner.profiles.update(db=db, data=[])
+    await with_owner.owner.update(db=db, data=children[1])
+    await constraint.check(relm=with_owner.profiles, node_schema=thing_schema, node=with_owner)
+
+    assert [rel.peer_id for rel in await with_owner.owner.get_relationships(db=db)] == [children[1].id]
