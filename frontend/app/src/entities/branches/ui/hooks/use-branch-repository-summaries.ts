@@ -23,6 +23,12 @@ type RepositoryListQuery = ReturnType<typeof useGetBranchRepositories>;
 
 function toRepositoryListFetch(list: RepositoryListQuery): RepositoryStatusFetch | null {
   if (list.data?.status === "denied") return { status: "denied" };
+  if (list.data?.status === "ok" && list.data.isTruncated) {
+    return {
+      status: "error",
+      message: `Only the first ${list.data.repositories.length} of ${list.data.count} repositories were read. Open a branch for its full list.`,
+    };
+  }
   if (list.data) return null;
   if (list.error) return { status: "error", message: list.error.message };
   return { status: "pending" };

@@ -200,4 +200,24 @@ describe("getRepositoryBranchStatusQueryOptions", () => {
     expect(refetchIntervalFor(pageOf("primary", "feature"))).toBe(false);
     expect(refetchIntervalFor(undefined)).toBe(false);
   });
+
+  test("reports an error on every branch when the repository list itself was cut short", async () => {
+    // GIVEN
+    vi.mocked(getBranchRepositories).mockResolvedValue({
+      status: "ok",
+      repositories: [generateBranchRepository({ id: "repo-1", name: "one" })],
+      count: 501,
+      isTruncated: true,
+    });
+
+    // WHEN
+    const { result } = await renderSummaries();
+
+    // THEN
+    await vi.waitFor(() => expect(result.current.primary?.status).toBe("error"));
+    expect(result.current.feature).toMatchObject({
+      status: "error",
+      message: expect.stringContaining("first 1 of 501 repositories"),
+    });
+  });
 });

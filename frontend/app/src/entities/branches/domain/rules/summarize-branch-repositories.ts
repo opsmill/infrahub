@@ -36,7 +36,10 @@ const NO_SYNC_STATUS: RepositoryBranchStatusDropdown = {
 function getSharedSummary(
   fetches: readonly RepositoryStatusFetch[]
 ): BranchRepositorySummary | null {
-  if (fetches.some(({ status }) => status === "denied")) return { status: "denied" };
+  // Permission is checked per repository kind, so one denied kind only hides its own repositories.
+  if (fetches.length > 0 && fetches.every(({ status }) => status === "denied")) {
+    return { status: "denied" };
+  }
   if (fetches.some(({ status }) => status === "pending")) return { status: "pending" };
 
   const error = fetches.find((fetch) => fetch.status === "error");
