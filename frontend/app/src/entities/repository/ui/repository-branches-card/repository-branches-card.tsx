@@ -1,5 +1,5 @@
 import { Card, CardHeader } from "@infrahub/ui";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId } from "react";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
@@ -7,10 +7,11 @@ import { DataTable } from "@/shared/components/table/data-table";
 import { CELL_HEIGHT_PX } from "@/shared/components/table/style";
 import { TablePagination } from "@/shared/components/table/table-pagination";
 import { Badge } from "@/shared/components/ui/badge";
-import { type TablePaginationState, useTablePagination } from "@/shared/hooks/use-table-pagination";
+import { useTablePagination } from "@/shared/hooks/use-table-pagination";
 import { formatNumberDisplay } from "@/shared/utils/number";
 import { clampPage, getOffset, getTotalPages, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
+import { FilterScopeProvider } from "@/entities/nodes/filters/ui/filter-scope-context";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
 import { READONLY_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
@@ -40,7 +41,8 @@ import {
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
-export const PAGINATION_URL_KEY = "branches";
+/** Scopes this card's page, filters and order so no other table can read or overwrite them. */
+export const BRANCHES_URL_KEY = "branches";
 
 interface RepositoryBranchesBodyProps {
   schema: ModelSchema;
@@ -139,47 +141,17 @@ interface RepositoryBranchesCardProps {
   schema: ModelSchema;
 }
 
-/**
- * The page to ask the server for. Filters and order live on the global url keys, so they change from
- * controls this card does not own and a page can only be honoured for the query it was chosen for.
- * Deriving it rather than resetting it on arrival is what keeps a filter change from spending a
- * request on the old page window first.
- */
-function useQueryScopedPage(
-  querySignature: string,
-  { page, setPage }: Pick<TablePaginationState, "page" | "setPage">
-): Pick<TablePaginationState, "page" | "setPage"> {
-  const [signatureWhenChosen, setSignatureWhenChosen] = useState(querySignature);
-  const isChosenForThisQuery = signatureWhenChosen === querySignature;
-
-  useEffect(() => {
-    if (isChosenForThisQuery) return;
-
-    setPage(1);
-  }, [isChosenForThisQuery]);
-
-  return {
-    page: isChosenForThisQuery ? page : 1,
-    setPage: (nextPage) => {
-      setSignatureWhenChosen(querySignature);
-      setPage(nextPage);
-    },
-  };
-}
-
-export function RepositoryBranchesCard({ repositoryId, schema }: RepositoryBranchesCardProps) {
+function RepositoryBranchesCardInScope({ repositoryId, schema }: RepositoryBranchesCardProps) {
   const titleId = useId();
   const title = isOfKind(READONLY_REPOSITORY_KIND, schema)
     ? READ_ONLY_BRANCHES_TITLE
     : BRANCHES_TITLE;
-  const pagination = useTablePagination({ urlKey: PAGINATION_URL_KEY });
+  const { page, setPage, pageSize } = useTablePagination({ urlKey: BRANCHES_URL_KEY });
   const [filters] = useFilters();
   const { appliedSort } = useSort(BRANCH_ROW_SORT_SCHEMA);
 
   const queryArguments = toRepositoryBranchArguments(filters, appliedSort);
   const querySignature = JSON.stringify(queryArguments);
-  const { page, setPage } = useQueryScopedPage(querySignature, pagination);
-  const pageSize = pagination.pageSize;
 
   const { data, error, isPending } = useGetRepositoryBranchStatus({
     id: repositoryId,
@@ -226,5 +198,13 @@ export function RepositoryBranchesCard({ repositoryId, schema }: RepositoryBranc
         />
       </RepositoryBranchesCardBoundary>
     </Card>
+  );
+}
+
+export function RepositoryBranchesCard(props: RepositoryBranchesCardProps) {
+  return (
+    <FilterScopeProvider urlKey={BRANCHES_URL_KEY}>
+      <RepositoryBranchesCardInScope {...props} />
+    </FilterScopeProvider>
   );
 }
