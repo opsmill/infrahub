@@ -33,6 +33,7 @@ export function RepositoryBranchesToolbar() {
       <ActiveFilterTags
         filters={filters}
         setFilters={setFilters}
+        filterConditions={BRANCH_ROW_FILTER_CONDITIONS}
         filterDefinitions={BRANCH_ROW_FILTER_DEFINITIONS_BY_NAME}
       />
     </Col>

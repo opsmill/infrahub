@@ -364,10 +364,11 @@ total** narrow — proving the narrowing happened before the page boundary, not 
 - [x] ~~T056~~ [US3] **Superseded by T080.** Implemented `useRepositoryBranchFilters` holding
       name-fragment and branch-status state card-scoped, with the page reset inside a single
       `setFilters` wrapper. The hook and its `_name` / `_status` URL keys are gone: filters now come
-      from `useFilters()` on the product-wide key. Only paging stays card-scoped.
+      from `useFilters()`, which the card scopes to its own key through `FilterScopeProvider`.
 - [x] ~~T057~~ [US3] **Superseded by T081.** Wired the search field with the pure `SearchInput` plus
       `useDebounce` rather than `FilterSearchInput`, to keep the product-wide filter key out of the
-      card. `FilterSearchInput` is now what the card uses. Covers FR-012.
+      card. `FilterSearchInput` is now what the card uses, writing to the card's own scoped key.
+      Covers FR-012.
 - [x] ~~T058~~ [US3] **Superseded by T081.** Wired the status filter with `BranchStatusEnum` and
       card-scoped state. The status filter now goes through the same `AttributeFilterForm` as every
       other enum attribute. The restriction to the five **returnable** statuses survives the change —
@@ -403,8 +404,8 @@ total** narrow — proving the narrowing happened before the page boundary, not 
 
 The card shipped a bespoke toolbar (a plain search box and a status combobox) on card-scoped URL
 keys. It looked like nothing else in the product. These tasks replace it with the object table's own
-controls on the product-wide keys; see [plan.md](plan.md)'s "State ownership" for why the collision
-risk those keys carry is not reachable on this route.
+controls, which a filter scope keeps on keys of the card's own; see [plan.md](plan.md)'s "State
+ownership".
 
 - [x] T080 [US3] Delete
       `frontend/app/src/entities/repository/ui/repository-branches-card/use-repository-branch-filters.ts`
@@ -534,6 +535,25 @@ risk those keys carry is not reachable on this route.
       mislead the next reader.
 - [x] T070 [P] Add the Towncrier fragment
       `changelog/+ifc-3130-repository-branches-card.added.md` describing the user-facing change.
+
+### Work unit 5c — scoping the card's filter and order keys
+
+Filters and order were left on the product-wide keys while paging was card-scoped, so the card used
+two opposite conventions for the same kind of state and could not tell its own filter changes from
+another table's. It carried a stringified query signature in state, plus an effect, to notice them.
+
+- [x] T086 [US3] Add `frontend/app/src/entities/nodes/filters/ui/filter-scope-context.tsx` exporting
+      `FilterScopeProvider` and `useFilterScope`, defaulting to the product-wide keys so no existing
+      caller changes.
+- [x] T087 [US3] Read the scope in `useFilters` and `useSort`, and clear the scope's page in the
+      same write as a filter or order change. Covers FR-014.
+- [x] T088 [US3] Wrap the card in `FilterScopeProvider`, delete `useQueryScopedPage` and its effect,
+      and rename `PAGINATION_URL_KEY` to `BRANCHES_URL_KEY`. Covers FR-011.
+- [x] T089 [US3] Thread `filterConditions` through `TableColumnHeader` and `ActiveFilterTags` so the
+      column menu and the tag editor narrow their conditions the way the toolbar does. Covers
+      FR-012a.
+- [x] T090 [US3] Restrict the branch-status query's placeholder data to the same repository and
+      branch, so moving between repositories cannot show one's rows under the other's header.
 
 ### Verification and gates
 

@@ -28,8 +28,8 @@ and needs no local schema overlay.
 
 **One timestamp per request.** `backend/infrahub/graphql/queries/branch.py` rejects an order naming
 `created_at` and `updated_at` together, so `node_metadata` must carry a single key. The order
-control is the product-wide `SortPicker`, which lets a user stack several sort keys on the shared
-sort URL key, so the mapper resolves the stack to one: the **first** sort key naming a timestamp
+control is the shared `SortPicker`, which lets a user stack several sort keys on the card's sort
+URL key, so the mapper resolves the stack to one: the **first** sort key naming a timestamp
 wins and any later one is dropped. The first key is the one that decides the order the user sees —
 the rest only break its ties — so honouring it is the smallest departure from what was asked for,
 and it is stable under the reordering the sort editor allows.

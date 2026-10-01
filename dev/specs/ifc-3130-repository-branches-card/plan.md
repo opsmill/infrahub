@@ -416,7 +416,7 @@ each assumed more had to be built than actually does.
 | `default` row marker | `BranchDefaultBadge` (`entities/branches/ui/branch-list-item/branch-default-badge.tsx`) — already renders the literal `default` | **USE AS-IS** |
 | Branch link target | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` (`entities/branches/ui/routing/branch-urls.ts`) | **USE AS-IS** |
 | Branch link cell | Compose `Tooltip` + `LinkButton href={getBranchDetailsUrl(name)}`, following `branches-table/cells/branch-name-cell.tsx` | **EXTEND, do not reuse** — that cell hard-depends on `useAuth()`, `StickyLeftCell` and a selection checkbox |
-| Search field | `FilterSearchInput` (`entities/nodes/object/ui/filters/filter-search-input.tsx`) — debounced, writes the product-wide filter key through `useSearch` → `useFilters` | **USE AS-IS**, passing `aria-label` and `placeholder`. The card maps the resulting `any__value` onto the contract's `name__value` + `partial_match`, which is what "search branches" means here |
+| Search field | `FilterSearchInput` (`entities/nodes/object/ui/filters/filter-search-input.tsx`) — debounced, writes the scope's filter key through `useSearch` → `useFilters` | **USE AS-IS**, passing `aria-label` and `placeholder`. The card maps the resulting `any__value` onto the contract's `name__value` + `partial_match`, which is what "search branches" means here |
 | Filter button and forms | `FilterPicker` + `ActiveFilterTags` + `FieldFilterForm` (`entities/nodes/object/ui/filters/`, `entities/nodes/filters/ui/active-filter-tags.tsx`) | **EXTENDED, minimally** — `FilterPicker` derived its field list from a `ModelSchema` and therefore always appended the four node-metadata filters, none of which this contract can apply. It now takes the `FilterDefinition[]` directly (the object toolbar passes `getFilterDefinitions(schema)`, unchanged in effect), so a caller whose backend narrows on two fields can offer exactly two |
 | Branch-status filter | The branch row's synthetic `status` attribute schema, filtered through the same `AttributeFilterForm` every other enum attribute uses | **USE AS-IS** — `BRANCH_FIELD_SCHEMAS.status` already models it; the card narrows its `enum` to the five statuses the contract can return, because `MERGED` and `DELETING` are guaranteed never to appear and offering either yields a permanently empty result |
 | Order button and column menus | `SortPicker` (`entities/nodes/sort/ui/sort-picker.tsx`) and `TableColumnHeader` (`entities/nodes/object/ui/object-table/cells/table-column-header.tsx`) | **USE AS-IS / EXTENDED** — `TableColumnHeader` gained a `role` pass-through so a `semanticTable` grid item still carries `columnheader`; the trigger keeps its own button role inside it. `SortPicker` reads its options from a schema, so the card hands it one declaring **no** sortable field of its own, leaving exactly the two node-metadata timestamps the contract's order input can express |
@@ -444,19 +444,19 @@ primitive, so the card's table cells are its only call site here — see
 
 ### State ownership — which URL key owns what
 
-**Filters and order are product-wide; only paging is card-scoped.** This reverses an earlier reading
-of the same facts, and the reversal is deliberate:
+**Filters, order and paging are all card-scoped, and the card keeps the product's filter UI.**
 
-- `useFilters()` and `useSort()` read and write the single product-wide filter and order keys, and
-  every filterable table in the app is built on them. Giving this card its own keys bought isolation
-  at the price of a second, card-only filter UI that looked and behaved like nothing else in the
-  product. The card therefore uses the shared keys and the shared controls.
-- The collision those keys can cause is real but not reachable here: the only other filterable table
-  on this page's route family is the **Commits tab**, a sibling route, so the two are never mounted
-  together. A second filterable table added to *this* route would have to be reconciled before it
-  ships — noted as an edge case in [spec.md](spec.md).
-- **Paging stays card-scoped** (`useTablePagination({urlKey})`, FR-011). It is the one piece of state
-  a second table on the same route genuinely would share, and the legacy global `QSP.PAGINATION` is
+- `FilterScopeProvider` (`entities/nodes/filters/ui/filter-scope-context.tsx`) gives one surface its
+  own `<key>_filters`, `<key>_sort` and `<key>_page`. `useFilters()` and `useSort()` read the scope
+  from context, so a surface that declares none keeps the product-wide keys and every existing
+  caller is untouched. The card declares `branches`, and reuses the shared controls unchanged — the
+  isolation costs no card-only filter UI.
+- Scoping is what lets the card narrow the conditions it offers and trust the result. Its contract
+  takes `name__value` and `status__value` and nothing else, so a filter another table left behind —
+  or an order key naming both timestamps, which the resolver rejects — would otherwise be read as
+  the card's own and silently dropped on the way to the server.
+- Changing filters or order clears that scope's page in the same URL write (FR-014), which is why
+  the card holds no state of its own to reconcile the two. The legacy global `QSP.PAGINATION` is
   deliberately avoided (FR-017).
 - Because the filter and order controls write keys this card does not own, the first page is
   **derived** from the query the page was chosen for rather than reset on arrival — resetting it in
