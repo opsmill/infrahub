@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING, cast
 
+from opentelemetry import trace
+
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.builder import build_relationship_changelog_getter
 from infrahub.core.changelog.models import (
@@ -78,13 +80,12 @@ async def generate_node_mutation_events(
         if main_node_changed
         else None
     )
-    node_changelogs = (
-        await build_relationship_changelog_getter(db=db, branch=branch).get_changelogs(
-            primary_changelog=node.node_changelog
-        )
-        if main_node_changed
-        else []
-    )
+    node_changelogs: list[NodeChangelog] = []
+    if main_node_changed:
+        relationship_changelogs = build_relationship_changelog_getter(db=db, branch=branch)
+        with trace.get_tracer(__name__).start_as_current_span("changelog.relationship_changelogs") as span:
+            node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=node.node_changelog)
+            span.set_attribute("changelog.secondary_count", len(node_changelogs))
     events: list[NodeMutatedEvent] = [main_event] if main_event else []
 
     def child_meta() -> EventMeta:
@@ -140,7 +141,10 @@ async def generate_node_mutation_events(
             events.append(update_event)
 
     group_parser = GroupNodeMutationParser(db=db, branch=branch)
-    group_events = await group_parser.group_events_from_node_actions(events=events + recorded_events)
+    with trace.get_tracer(__name__).start_as_current_span("changelog.group_events") as span:
+        span.set_attribute("changelog.input_event_count", len(events) + len(recorded_events))
+        group_events = await group_parser.group_events_from_node_actions(events=events + recorded_events)
+        span.set_attribute("changelog.group_event_count", len(group_events))
 
     specific_events: list[InfrahubEvent] = []
     if (kind := node.get_kind()) in [
