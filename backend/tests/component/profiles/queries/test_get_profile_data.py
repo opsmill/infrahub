@@ -27,7 +27,7 @@ async def _get_profile_data(
     branch: Branch,
     profile_ids: list[str],
     attr_names: list[str],
-    relationship_filters: list[RelationshipFilter] | None = None,
+    include_relationships: list[RelationshipFilter] | None = None,
     at: Timestamp | None = None,
 ) -> list[ProfileData]:
     """Return the results sorted by profile, with sorted peers, because the query collects them in no order."""
@@ -37,7 +37,7 @@ async def _get_profile_data(
         at=at,
         profile_ids=profile_ids,
         attr_names=attr_names,
-        relationship_filters=relationship_filters,
+        include_relationships=include_relationships,
     )
     await query.execute(db=db)
     profile_data_list = sorted(query.get_profile_data(), key=lambda profile_data: profile_data.uuid)
@@ -134,7 +134,7 @@ async def test_reads_relationship_peers_in_each_direction(
         await create_node(db=db, branch=default_branch, kind="TestDevice", name=f"device-{idx}", profiles=[profile])
 
     result = await _get_profile_data(
-        db=db, branch=default_branch, profile_ids=[profile.id], attr_names=[], relationship_filters=ALL_FILTERS
+        db=db, branch=default_branch, profile_ids=[profile.id], attr_names=[], include_relationships=ALL_FILTERS
     )
 
     assert result == [
@@ -166,7 +166,7 @@ async def test_reads_only_the_filtered_relationships(
     )
 
     result = await _get_profile_data(
-        db=db, branch=default_branch, profile_ids=[profile.id], attr_names=[], relationship_filters=[RACK_FILTER]
+        db=db, branch=default_branch, profile_ids=[profile.id], attr_names=[], include_relationships=[RACK_FILTER]
     )
 
     assert result == [
@@ -196,7 +196,7 @@ async def test_skips_filters_whose_direction_does_not_match(
     ]
 
     result = await _get_profile_data(
-        db=db, branch=default_branch, profile_ids=[profile.id], attr_names=[], relationship_filters=mismatched_filters
+        db=db, branch=default_branch, profile_ids=[profile.id], attr_names=[], include_relationships=mismatched_filters
     )
 
     assert result == [ProfileData(uuid=profile.id, priority=10, attribute_values={}, relationship_peers={})]
@@ -241,7 +241,7 @@ async def test_reads_each_profile_separately(db: InfrahubDatabase, default_branc
         branch=default_branch,
         profile_ids=[first.id, second.id],
         attr_names=["description"],
-        relationship_filters=ALL_FILTERS,
+        include_relationships=ALL_FILTERS,
     )
 
     assert {profile_data.uuid: profile_data for profile_data in result} == {
@@ -288,7 +288,7 @@ async def test_excludes_deleted_profiles(db: InfrahubDatabase, default_branch: B
         branch=default_branch,
         profile_ids=[kept.id, deleted.id],
         attr_names=["description"],
-        relationship_filters=ALL_FILTERS,
+        include_relationships=ALL_FILTERS,
     )
 
     assert result == [
@@ -315,14 +315,14 @@ async def test_excludes_profile_deleted_on_branch(db: InfrahubDatabase, default_
     await profile_on_branch.delete(db=db)
 
     on_branch = await _get_profile_data(
-        db=db, branch=branch, profile_ids=[profile.id], attr_names=["description"], relationship_filters=ALL_FILTERS
+        db=db, branch=branch, profile_ids=[profile.id], attr_names=["description"], include_relationships=ALL_FILTERS
     )
     on_main = await _get_profile_data(
         db=db,
         branch=default_branch,
         profile_ids=[profile.id],
         attr_names=["description"],
-        relationship_filters=ALL_FILTERS,
+        include_relationships=ALL_FILTERS,
     )
 
     assert on_branch == []
@@ -357,14 +357,14 @@ async def test_reads_values_of_the_requested_branch(db: InfrahubDatabase, defaul
     await profile_on_branch.save(db=db)
 
     on_branch = await _get_profile_data(
-        db=db, branch=branch, profile_ids=[profile.id], attr_names=["description"], relationship_filters=ALL_FILTERS
+        db=db, branch=branch, profile_ids=[profile.id], attr_names=["description"], include_relationships=ALL_FILTERS
     )
     on_main = await _get_profile_data(
         db=db,
         branch=default_branch,
         profile_ids=[profile.id],
         attr_names=["description"],
-        relationship_filters=ALL_FILTERS,
+        include_relationships=ALL_FILTERS,
     )
 
     assert on_branch == [
@@ -412,14 +412,14 @@ async def test_reads_values_at_the_requested_time(db: InfrahubDatabase, default_
         branch=default_branch,
         profile_ids=[profile.id],
         attr_names=["description"],
-        relationship_filters=ALL_FILTERS,
+        include_relationships=ALL_FILTERS,
     )
     previous = await _get_profile_data(
         db=db,
         branch=default_branch,
         profile_ids=[profile.id],
         attr_names=["description"],
-        relationship_filters=ALL_FILTERS,
+        include_relationships=ALL_FILTERS,
         at=before_update,
     )
 

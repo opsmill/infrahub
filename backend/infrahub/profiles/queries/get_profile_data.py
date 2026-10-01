@@ -33,13 +33,13 @@ class GetProfileDataQuery(Query):
         *args: Any,
         profile_ids: list[str],
         attr_names: list[str],
-        relationship_filters: list[RelationshipFilter] | None = None,
+        include_relationships: list[RelationshipFilter] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
         self.profile_ids = profile_ids
         self.attr_names = attr_names
-        self.relationship_filters = relationship_filters or []
+        self.include_relationships = include_relationships or []
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
@@ -51,7 +51,7 @@ class GetProfileDataQuery(Query):
         outbound_identifiers = []
         inbound_identifiers = []
         bidirectional_identifiers = []
-        for rf in self.relationship_filters:
+        for rf in self.include_relationships:
             if rf.direction == RelationshipDirection.OUTBOUND:
                 outbound_identifiers.append(rf.relationship_identifier)
             elif rf.direction == RelationshipDirection.INBOUND:
@@ -116,7 +116,7 @@ WITH profile, collect(attribute_details) AS attributes
         self.add_to_query(profiles_query)
         self.return_labels = ["profile_uuid", "attributes", "relationships"]
 
-        if not self.relationship_filters:
+        if not self.include_relationships:
             self.add_to_query("RETURN profile.uuid AS profile_uuid, attributes, [] AS relationships")
             return
 

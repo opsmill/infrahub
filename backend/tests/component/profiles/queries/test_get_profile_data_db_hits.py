@@ -20,14 +20,14 @@ def _sum_db_hits(operator: dict[str, Any]) -> int:
 
 
 async def _count_db_hits(
-    db: InfrahubDatabase, branch: Branch, profile_id: str, relationship_filters: list[RelationshipFilter]
+    db: InfrahubDatabase, branch: Branch, profile_id: str, include_relationships: list[RelationshipFilter]
 ) -> int:
     query = await GetProfileDataQuery.init(
         db=db,
         branch=branch,
         profile_ids=[profile_id],
         attr_names=["description", "status"],
-        relationship_filters=relationship_filters,
+        include_relationships=include_relationships,
     )
     rendered = query.render()
     # Plan again with the current statistics: an old plan from a smaller database can scan full relationship indexes.
@@ -58,11 +58,11 @@ async def _create_linked_profile(
 
 
 @pytest.mark.parametrize(
-    "relationship_filters",
+    "include_relationships",
     [pytest.param([], id="attributes-only"), pytest.param(ALL_FILTERS, id="with-relationship-filters")],
 )
 async def test_db_hits_do_not_grow_with_linked_nodes(
-    db: InfrahubDatabase, default_branch: Branch, peers: Peers, relationship_filters: list[RelationshipFilter]
+    db: InfrahubDatabase, default_branch: Branch, peers: Peers, include_relationships: list[RelationshipFilter]
 ) -> None:
     if db.db_type != DatabaseType.NEO4J:
         pytest.skip("PROFILE and db.prepareForReplanning() exist only in Neo4j")
@@ -73,10 +73,10 @@ async def test_db_hits_do_not_grow_with_linked_nodes(
     assert len(await many.related_nodes.get_relationships(db=db)) == 10
 
     few_hits = await _count_db_hits(
-        db=db, branch=default_branch, profile_id=few.id, relationship_filters=relationship_filters
+        db=db, branch=default_branch, profile_id=few.id, include_relationships=include_relationships
     )
     many_hits = await _count_db_hits(
-        db=db, branch=default_branch, profile_id=many.id, relationship_filters=relationship_filters
+        db=db, branch=default_branch, profile_id=many.id, include_relationships=include_relationships
     )
 
     assert many_hits == few_hits
