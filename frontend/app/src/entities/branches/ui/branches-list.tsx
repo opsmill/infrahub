@@ -10,13 +10,17 @@ import { useGetBranchesCount } from "@/entities/branches/ui/queries/get-branches
 import { ActiveFilterTags } from "@/entities/nodes/filters/ui/active-filter-tags";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
+import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
 function BranchesListHeader() {
   const [filters] = useFilters();
   const { data: count, isPending, isRefetching, isError } = useGetBranchesCount(filters);
 
   const refetchBranches = async () => {
-    await queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all }),
+      queryClient.invalidateQueries({ queryKey: repositoryQueryKeys.all }),
+    ]);
   };
 
   return (

@@ -30,7 +30,8 @@ const row = (name: string, syncStatus = IN_SYNC, commit = `${name}-commit`) =>
 const fetched = (
   name: string,
   rows: ReturnType<typeof row>[],
-  isReadOnly = false
+  isReadOnly = false,
+  count = rows.length
 ): RepositoryStatusFetch => ({
   status: "ok",
   repository: {
@@ -40,6 +41,7 @@ const fetched = (
     isReadOnly,
   },
   rows,
+  count,
 });
 
 describe("summarizeBranchRepositories", () => {
@@ -135,6 +137,24 @@ describe("summarizeBranchRepositories", () => {
         { value: null, label: "Unknown", count: 1 },
         { value: "in-sync", label: "In Sync", count: 2 },
       ],
+    });
+  });
+
+  it("reports an error for a branch absent from a page the backend cut short", () => {
+    // GIVEN a repository with more branches than the page returned
+    const fetches = [
+      fetched("a", [row("main")], false, 501),
+      fetched("b", [row("main"), row("local")]),
+    ];
+
+    // WHEN
+    const summaries = summarizeBranchRepositories([main, local], fetches);
+
+    // THEN the branch on the page is summarised, the one past the cut is not guessed
+    expect(summaries.main).toMatchObject({ status: "ok" });
+    expect(summaries.local).toMatchObject({
+      status: "error",
+      message: expect.stringContaining("first 1 branches"),
     });
   });
 

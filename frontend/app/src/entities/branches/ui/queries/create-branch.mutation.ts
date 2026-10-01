@@ -5,6 +5,7 @@ import { queryClient } from "@/shared/api/rest/client";
 import { createBranch } from "@/entities/branches/domain/use-cases/create-branch";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { getBranchesInfiniteQueryOptions } from "@/entities/branches/ui/queries/get-branches.query";
+import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
 export function useCreateBranchMutation() {
   return useMutation({
@@ -25,6 +26,7 @@ export function useCreateBranchMutation() {
       });
 
       await queryClient.refetchQueries({ queryKey: branchesQueryKeys.all });
+      await queryClient.invalidateQueries({ queryKey: repositoryQueryKeys.all });
     },
   });
 }

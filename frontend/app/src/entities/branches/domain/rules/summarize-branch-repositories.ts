@@ -15,7 +15,12 @@ export type RepositoryStatusFetch =
   | { status: "pending" }
   | { status: "denied" }
   | { status: "error"; message: string }
-  | { status: "ok"; repository: BranchRepositoryRef; rows: RepositoryBranchStatusRow[] };
+  | {
+      status: "ok";
+      repository: BranchRepositoryRef;
+      rows: RepositoryBranchStatusRow[];
+      count: number;
+    };
 
 type LoadedFetch = Extract<RepositoryStatusFetch, { status: "ok" }>;
 
@@ -86,11 +91,28 @@ export function summarizeBranchRepositories(
 
   const loaded = fetches.filter((fetch): fetch is LoadedFetch => fetch.status === "ok");
   const statesByBranch = groupStatesByBranch(loaded);
+  const truncated = loaded.filter(({ rows, count }) => count > rows.length);
 
   return Object.fromEntries(
     branches.map((branch) => {
-      const repositories = [...(statesByBranch.get(branch.name) ?? [])].sort(compareStates);
+      const states = statesByBranch.get(branch.name) ?? [];
+      // A branch absent from a page the backend cut short may still have rows past the cut.
+      if (truncated.some(({ rows }) => !rows.some((row) => row.name === branch.name))) {
+        return [branch.name, truncatedSummary(truncated, states.length)];
+      }
+      const repositories = [...states].sort(compareStates);
       return [branch.name, { status: "ok", repositories, counts: countBySyncStatus(repositories) }];
     })
   );
+}
+
+function truncatedSummary(
+  truncated: readonly LoadedFetch[],
+  known: number
+): BranchRepositorySummary {
+  const names = truncated.map(({ repository }) => repository.name).join(", ");
+  return {
+    status: "error",
+    message: `Status for ${names} covers only the first ${truncated[0]?.rows.length ?? 0} branches; ${known} repositories known for this branch. Open the branch for the full list.`,
+  };
 }
