@@ -1,0 +1,63 @@
+{
+  "skill_name": "refactoring-incrementally",
+  "evals": [
+    {
+      "id": 1,
+      "name": "plan-git-integrator",
+      "prompt": "backend/infrahub/git/integrator.py is ~2300 lines \u2014 checks, transforms, artifacts and generators are all crammed into one class. I want to break it up gradually, one small PR at a time against stable, tracked in Jira. Plan it.",
+      "expected_output": "A plan file with goal/end state/invariants, a measured coverage baseline, characterization-test steps ahead of uncovered code, small expand/migrate/contract steps each with a done-check, develop-divergence notes; Jira parent + sub-tasks and a plan-only step-0 PR described (not executed).",
+      "files": [],
+      "assertions": [
+        "Plan states goal, end state, invariants and out-of-scope",
+        "Coverage of integrator.py was actually measured (pytest --cov run, numbers recorded in plan)",
+        "Characterization-test steps are scheduled before any step that modifies code the baseline shows uncovered",
+        "Every step has an executable done-check",
+        "Every step is estimated within the ~300-line budget (no oversized step)",
+        "stable vs develop divergence of the target was checked and reflected in the plan",
+        "Step 0 is a plan-only PR against stable",
+        "Jira: one parent Task plus one Sub-task per step, described in actions.md",
+        "No external writes performed (actions only described)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "next-after-drift-uncovered",
+      "prompt": "Run the next step of the cli/db.py split refactor.",
+      "expected_output": "Detects step 2 already done on stable (closes sub-task, no code), notices the 4th caller of the display helpers missed by the plan, runs the coverage gate on step 3, finds the helpers uncovered, splits step 3 into 3a/3b and ships only characterization tests (3a) with the plan update; PR body + Jira actions described.",
+      "files": [
+        "fixtures/eval-2/plan.md",
+        "fixtures/eval-2/jira_state.json",
+        "fixtures/eval-2/github_state.json"
+      ],
+      "assertions": [
+        "Recognizes step 2 is already done on stable and writes no code for it",
+        "Closes IFC-90102 as Done with a comment citing the commit/PR that did it",
+        "Detects the 4th caller of the display helpers that the plan missed (pending-migration listing near db.py:824)",
+        "Runs the coverage gate with measured output for the step-3 lines",
+        "Ships only characterization tests (patch changes no production code in cli/db.py)",
+        "Plan updated: step 2 done, step 3 split into test + move steps, log entries added",
+        "New characterization tests pass on origin/stable",
+        "Exactly one PR proposed, base stable, title in `<type>: ... [IFC-\u2026]` form",
+        "PR body has step-of-plan context, why-safe evidence, plan changes, and forward-merge status"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "next-disputed-review",
+      "prompt": "Run the next step of the cli/db.py split refactor.",
+      "expected_output": "Tends the open PR #90004 only: does not start step 4; may fix the unused-import nit but does not act on the approach dispute; labels IFC-90106 needs-human with a comment; flags step 5 (CLI rename) as a behavior change that cannot be a refactor step on stable.",
+      "files": [
+        "fixtures/eval-3/plan.md",
+        "fixtures/eval-3/jira_state.json",
+        "fixtures/eval-3/github_state.json"
+      ],
+      "assertions": [
+        "Does not start or propose a PR for step 4 or step 5",
+        "Does not act on the approach dispute in code (no move to cli/display.py, no reverting the split)",
+        "Marks IFC-90106 needs-human with a comment summarizing the reviewer's objection",
+        "Flags step 5 (CLI subcommand rename) as an observable behavior change that cannot be a stable refactor step",
+        "Report clearly states the refactor is paused pending a human decision"
+      ]
+    }
+  ]
+}
