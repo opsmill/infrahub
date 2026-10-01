@@ -127,24 +127,26 @@ backend/
 │   │   ├── repository.py            # InfrahubRepository: required default_branch + internal_status, init/new call
 │   │   │                            #   resolve_graph_settings once and set infrahub_branch_name from their parameter,
 │   │   │                            #   mapping hook implementations, skipped_branches collection;
-│   │   │                            #   validate_remote_branch moves here, returns BranchSkipReason | None (predicate
-│   │   │                            #   stays at the decision point, caller never re-tests it);
-│   │   │                            #   collect_pending_imports captures the remote heads before fetch() and records
-│   │   │                            #   which skipped branches advanced (cold clone records none);
+│   │   │                            #   CollectedImports.skipped_branches + advanced_skipped_branches (the dataclass
+│   │   │                            #   lives here, not in models.py);
+│   │   │                            #   validate_remote_branch moves here, keeps its bool return (one
+│   │   │                            #   collision predicate method, shared with the skip record);
+│   │   │                            #   collect_pending_imports records the colliding branch from the remote, reads
+│   │   │                            #   its ref before fetch() and records whether it advanced or appeared;
 │   │   │                            #   InfrahubReadOnlyRepository: identity hooks; get_initialized_repo(infrahub_branch_name)
 │   │   ├── sync.py                  # RepositoryAdder.add without trunk kwargs;
 │   │   │                            #   RepositorySyncer.sync -> SyncReport(skipped_branches, imported_branches,
-│   │   │                            #   advanced_skipped_branches), report attached to the raise so a partial import
+│   │   │                            #   failed_import_branches, advanced_skipped_branches), report attached to the
+│   │   │                            #   raise so a partial import
 │   │   │                            #   failure still reports
-│   │   ├── models.py                # CollectedImports.skipped_branches + advanced_skipped_branches;
-│   │   │                            #   remove GitRepositoryAdd.default_branch_name,
+│   │   ├── models.py                # remove GitRepositoryAdd.default_branch_name,
 │   │   │                            #   GitRepositoryMerge.default_branch
 │   │   └── tasks.py                 # add_git_repository: warning per skipped branch (already node-tagged, runs first sync);
 │   │                                #   (emitted on the failure path too); GitRepositoryAdd.internal_status stays: it is
 │   │                                #   flow control for the staging early return, not a trunk carrier;
 │   │                                #   sync child flow: no trunk/status params, construction moves INSIDE the try so a
 │   │                                #   failing node read is still node-tagged, warning + node link only when a branch was
-│   │                                #   skipped AND something was imported, single add_tags;
+│   │                                #   skipped AND something moved; add_tags repeats attempted import branches;
 │   │                                #   bootstrap/sync helpers stop forwarding node values; every get_initialized_repo
 │   │                                #   caller passes infrahub_branch_name; git_branch_create/delete resolve on
 │   │                                #   registry.default_branch (the Infrahub branch is gone when delete fans out);
@@ -174,8 +176,8 @@ backend/
     ├── unit/git/
     │   ├── test_git_repository.py               # construction rejection, read-only fetch classification, mapping hooks,
     │   │                                        #   webhook branch resolution, worktree identifier under a non-main
-    │   │                                        #   Infrahub default, validate_remote_branch's skip reasons,
-    │   │                                        #   collect_pending_imports records skipped_branches at both call sites,
+    │   │                                        #   Infrahub default, which branches validate_remote_branch rejects,
+    │   │                                        #   collect_pending_imports records skipped_branches from the remote,
     │   │                                        #   message models declare no trunk field, _update_operational_status
     │   │                                        #   writes on the branch the factory set
     │   ├── test_graph_settings.py               # NEW. resolve_graph_settings returns node values on the branch it was
@@ -257,8 +259,8 @@ factories and the connectivity flow respectively.
   message field, `ls-remote` invocation and parsing, verbatim rejection messages, flow mapping.
 - [contracts/sync-task-log.md](./contracts/sync-task-log.md): `SyncReport`, verbatim warning text,
   the two carriers (once at connect, then for a cycle that imported something or saw the skipped
-  branch advance), the pre-fetch head capture and its cold-clone rule, the node-link rule and the
-  observable outcomes.
+  branch advance), the pre-fetch head capture (a branch absent from it counts as moved), the
+  node-link rule and the observable outcomes.
 - [quickstart.md](./quickstart.md): manual scenarios per user story and the local gate to run
   before pushing.
 
@@ -321,12 +323,13 @@ factories and the connectivity flow respectively.
   status surface for this one condition is overkill.** So the task log is the intended design, the
   residual gap is accepted permanently rather than deferred, and no follow-up is owed. The PRD and the
   epic need amending to match (T071), otherwise the next reader treats it as unfinished work.
-- **The advance trigger is per worker and will look like duplication.** One push to the skipped branch
-  can produce one task-log entry per worker that later synchronises the repository, because each
-  worker compares against its own previous fetch and nothing is shared between them. An operator
-  reading the Tasks tab may read this as a bug. It is bounded by the worker count rather than the
-  cycle rate, it is recorded in the spec's Assumptions and the contract, and it belongs in the PR
-  description alongside the `operational_status` move.
+- **The advance trigger is per worker, and with several workers it is unreliable.** One push to the
+  skipped branch can produce one task-log entry per worker that later synchronises the repository,
+  because each worker compares against its own remote-tracking refs. Those refs are also moved by the
+  post-sync `RefreshGitFetch` broadcast, so the push can equally go unreported (corrected 2026-09-29;
+  research.md D6). An operator reading the Tasks tab may read either as a bug. It is bounded by the
+  worker count rather than the cycle rate, it is recorded in the spec's Assumptions and the
+  contract, and it belongs in the PR description alongside the `operational_status` move.
 - **Follow-ups to file**: an on-demand configuration-validation action for a connected repository
   (INFP-672); connect-time validation of a read-only repository's `ref`, including tag and commit-SHA
   handling; and the worktree identifier collision when Infrahub's default branch is not `main` and the

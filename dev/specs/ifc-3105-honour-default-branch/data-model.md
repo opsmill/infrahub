@@ -50,7 +50,7 @@ Signature changes on the base:
 | `_raise_enriched_error` | `branch_name or self.default_branch` | passes `branch_name` through, `None` allowed |
 | `_raise_enriched_error_static` | `branch_name: str \| None` | unchanged signature; the two messages that name a branch omit it when `None` |
 | `check_connectivity` | `(name, url) -> None` classmethod, runs `ls-remote --tags` | **removed from the class**; replaced by the module-level `remote_refs.list_remote_refs(name, url) -> RemoteRefs` (see below). Connectivity failure still raises through the static classifier, which stays on the base |
-| `validate_remote_branch` | `(branch_name: str) -> bool` on the base | **moves to `InfrahubRepository`** and returns `BranchSkipReason \| None` (see below), so the caller records a skipped branch from the decision rather than re-testing the predicate |
+| `validate_remote_branch` | `(branch_name: str) -> bool` on the base | **moves to `InfrahubRepository`** and keeps its `bool` return (see below). The collision predicate is one method, `_collides_with_infrahub_default_branch`, shared with the skip record in `collect_pending_imports`, so no caller re-derives it |
 
 ### `backend/infrahub/git/repository.py::InfrahubRepository` (read-write)
 
@@ -137,27 +137,26 @@ raises `RepositoryInvalidBranchError` when `branch_name not in refs.branches`.
 
 ## Synchronisation report (task-log warning, D6)
 
-### `backend/infrahub/git/models.py::CollectedImports`
+### `backend/infrahub/git/repository.py::CollectedImports`
 
 | Field | Type | Change |
 |---|---|---|
 | `imports` | `list[PendingObjectImport]` | unchanged |
 | `failed_imports` | `list[FailedImport]` | unchanged |
-| `skipped_branches` | `list[str]` | **new**, default empty. Remote branches not imported because their name collides with the Infrahub default branch while the trunk differs. |
-| `advanced_skipped_branches` | `list[str]` | **new**, default empty. The subset of `skipped_branches` whose remote head moved during this run's fetch. Derived by listing the remote heads immediately before `fetch` and comparing after it. A branch with no head in the pre-fetch listing is omitted, so a cold clone reports nothing on this basis. |
+| `skipped_branches` | `list[str]` | **new**, default empty. Remote branches not imported because their name collides with the Infrahub default branch while the trunk differs. Recorded whenever the remote holds the colliding branch after the fetch, on an `ACTIVE` repository, whether or not the local/remote comparison lists it. |
+| `advanced_skipped_branches` | `list[str]` | **new**, default empty. The subset of `skipped_branches` whose remote head moved during this run's fetch. Derived by reading the skipped branch's remote-tracking ref immediately before `fetch` and comparing after it. A branch with no pre-fetch ref counts as moved, since it was pushed after the clone's last fetch; a fresh worker clones before the read, so it reports nothing on this basis. |
 
-### `backend/infrahub/git/repository.py::BranchSkipReason` (new)
+### `backend/infrahub/git/repository.py::InfrahubRepository.validate_remote_branch`
 
-Enum returned by `validate_remote_branch` in place of a bare `bool`, so the reason a branch was
-skipped is available to the caller without re-deriving the predicate. `None` means "import it".
-
-| Member | Meaning |
-|---|---|
-| `DEFAULT_BRANCH_COLLISION` | The branch name equals Infrahub's default branch while the trunk differs. Recorded in `skipped_branches`. |
-| `INVALID_BRANCH_NAME` | `Branch(name=...)` failed pydantic validation. Skipped, not recorded as a collision. |
-
-`validate_remote_branch` moves from `InfrahubRepositoryBase` to `InfrahubRepository` with this
+Returns `bool`: `False` for a branch named like Infrahub's default branch while the trunk differs,
+and for a name `Branch(name=...)` rejects; `True` otherwise. The two loops in
+`collect_pending_imports` skip a rejected branch; `skipped_branches` is recorded from the remote
+instead (see above). It moves from `InfrahubRepositoryBase` to `InfrahubRepository` with this
 change; it is reached only through `collect_pending_imports` on the read-write class.
+
+(Corrected 2026-10-01, after code review: an earlier version returned a `BranchSkipReason | None`
+enum. Once the skip was recorded from the remote, no caller read the reason, so the enum was removed
+and the `bool` return kept.)
 
 ### `backend/infrahub/git/sync.py::SyncReport` (new)
 
@@ -169,7 +168,11 @@ Frozen dataclass returned by `RepositorySyncer.sync` (previously returned `None`
 |---|---|---|
 | `skipped_branches` | `tuple[str, ...]` | Copied from `CollectedImports.skipped_branches` for the run. Empty when nothing was skipped. |
 | `imported_branches` | `tuple[str, ...]` | Infrahub branch name of every import the run applied successfully. Empty when the run changed nothing, which is the case on every cycle whose only new remote branch is the permanently-skipped colliding one. |
+| `failed_import_branches` | `tuple[str, ...]` | Infrahub branch name of every import the run attempted and failed. Plays no part in deciding whether to report; it keeps those branches' run tags. |
 | `advanced_skipped_branches` | `tuple[str, ...]` | Copied from `CollectedImports.advanced_skipped_branches` for the run. Non-empty when a skipped branch received a commit since this worker's previous fetch. |
+
+`attempted_import_branches` is a property joining `imported_branches` and `failed_import_branches`,
+the branches the carrier repeats in its `add_tags` call.
 
 `imported_branches` and `advanced_skipped_branches` are the two stateless signals that separate a
 cycle worth reporting from one where nothing moved. Both empty means no warning and no node link.

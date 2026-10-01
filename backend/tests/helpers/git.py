@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import httpx
+from git import Repo
 from infrahub_sdk import Config, InfrahubClient
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
@@ -26,6 +27,56 @@ class GogsServer:
     admin: str
     password: str
     container: DockerContainer
+
+
+@dataclass(frozen=True)
+class LocalRemote:
+    """A remote on disk whose default branch is ``trunk``, with a working copy to commit through."""
+
+    directory: Path
+    trunk: str
+    repo: Repo
+
+    @classmethod
+    def create(cls, directory: Path, trunk: str, branches: list[str], head: str | None = None) -> LocalRemote:
+        """Create the remote with an empty repository configuration, forking each branch from the trunk.
+
+        The remote's HEAD, which a clone checks out as a local branch, is ``head`` when given and the
+        trunk otherwise.
+        """
+        directory.mkdir()
+        repo = Repo.init(directory, initial_branch=trunk)
+        with repo.config_writer() as cfg:
+            cfg.set_value("user", "name", "Test")
+            cfg.set_value("user", "email", "test@test.local")
+        (directory / ".infrahub.yml").write_text("---\n", encoding="utf-8")
+        (directory / "data.txt").write_text("v1\n", encoding="utf-8")
+        repo.index.add([".infrahub.yml", "data.txt"])
+        repo.index.commit("First commit")
+        for branch_name in branches:
+            repo.git.branch(branch_name)
+        if head is not None:
+            repo.git.checkout(head)
+        return cls(directory=directory, trunk=trunk, repo=repo)
+
+    def create_branch(self, branch_name: str) -> None:
+        self.repo.git.branch(branch_name, self.trunk)
+
+    def commit(self, branch_name: str, files: dict[str, str]) -> str:
+        """Commit the given files on a branch, creating it from the trunk when it does not exist yet."""
+        remote_head = self.repo.active_branch.name
+        if branch_name not in [head.name for head in self.repo.heads]:
+            self.create_branch(branch_name)
+        self.repo.git.checkout(branch_name)
+        for name, content in files.items():
+            (self.directory / name).write_text(content, encoding="utf-8")
+        self.repo.index.add(list(files))
+        commit = self.repo.index.commit(f"Update on {branch_name}").hexsha
+        self.repo.git.checkout(remote_head)
+        return commit
+
+    def delete_branch(self, branch_name: str) -> None:
+        self.repo.git.branch("-D", branch_name)
 
 
 def build_repository_client(
