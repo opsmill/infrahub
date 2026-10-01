@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Sequence
 
 from infrahub_sdk.utils import str_to_bool
+from opentelemetry import trace
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
@@ -247,20 +248,25 @@ class DiffChangelogCollector:
             One (action, changelog) pair per changed node that has recorded changes.
 
         """
-        self._populate_diff_nodes()
-        changed_nodes = [node for node in self._diff.nodes if node.action != DiffAction.UNCHANGED]
-        # A node whose kind was dropped by a schema migration in the merge has no schema to resolve
-        # labels against; leave it out of the load so one such node cannot fail the whole batch.
-        resolvable_ids = [node.uuid for node in changed_nodes if self._is_resolvable_kind(node.kind)]
-        changelogs = [
-            (node.action, node_changelog)
-            for node in changed_nodes
-            if (node_changelog := self._process_node(node=node)).has_changes
-        ]
-        await self._hfid_resolver.enrich(
-            changelogs=changelogs, resolvable_ids=resolvable_ids, is_resolvable_kind=self._is_resolvable_kind
-        )
-        return changelogs
+        with trace.get_tracer(__name__).start_as_current_span("changelog.collect_changelogs") as span:
+            self._populate_diff_nodes()
+            changed_nodes = [node for node in self._diff.nodes if node.action != DiffAction.UNCHANGED]
+            span.set_attribute("changelog.diff_node_count", len(self._diff.nodes))
+            span.set_attribute("changelog.changed_node_count", len(changed_nodes))
+            # A node whose kind was dropped by a schema migration in the merge has no schema to resolve
+            # labels against; leave it out of the load so one such node cannot fail the whole batch.
+            resolvable_ids = [node.uuid for node in changed_nodes if self._is_resolvable_kind(node.kind)]
+            with trace.get_tracer(__name__).start_as_current_span("changelog.build_from_diff"):
+                changelogs = [
+                    (node.action, node_changelog)
+                    for node in changed_nodes
+                    if (node_changelog := self._process_node(node=node)).has_changes
+                ]
+            span.set_attribute("changelog.changelog_count", len(changelogs))
+            await self._hfid_resolver.enrich(
+                changelogs=changelogs, resolvable_ids=resolvable_ids, is_resolvable_kind=self._is_resolvable_kind
+            )
+            return changelogs
 
     def _is_resolvable_kind(self, kind: str) -> bool:
         """Whether a node kind still exists on the branch, so its labels can be loaded."""

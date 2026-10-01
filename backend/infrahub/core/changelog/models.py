@@ -226,6 +226,15 @@ class RelationshipCardinalityManyChangelog(BaseModel):
         return not self.peers
 
 
+def record_new_edge_metadata(changelog: RelationshipCardinalityOneChangelog, relationship: Relationship) -> None:
+    """Record a new one-cardinality edge's source, owner and is_protected metadata on its changelog."""
+    if source_id := getattr(relationship, "source_id", None):
+        changelog.add_property(name="source", value_current=source_id, value_previous=None)
+    if owner_id := getattr(relationship, "owner_id", None):
+        changelog.add_property(name="owner", value_current=owner_id, value_previous=None)
+    changelog.add_property(name="is_protected", value_current=relationship.is_protected, value_previous=None)
+
+
 class ChangelogRelatedNode(BaseModel):
     node_id: str
     node_kind: str
@@ -283,13 +292,7 @@ class NodeChangelog(BaseModel):
                 peer_id=peer_id,
                 peer_kind=peer_kind,
             )
-            if source_id := getattr(relationship, "source_id", None):
-                changelog_relationship.add_property(name="source", value_current=source_id, value_previous=None)
-            if owner_id := getattr(relationship, "owner_id", None):
-                changelog_relationship.add_property(name="owner", value_current=owner_id, value_previous=None)
-            changelog_relationship.add_property(
-                name="is_protected", value_current=relationship.is_protected, value_previous=None
-            )
+            record_new_edge_metadata(changelog=changelog_relationship, relationship=relationship)
             self.relationships[changelog_relationship.name] = changelog_relationship
         elif relationship.schema.cardinality == RelationshipCardinality.MANY:
             if relationship.schema.name not in self.relationships:
