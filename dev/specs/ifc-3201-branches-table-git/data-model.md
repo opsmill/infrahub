@@ -2,47 +2,75 @@
 
 **Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Research**: [research.md](./research.md)
 
-This feature is frontend-only. It adds no schema, no migration, no GraphQL document, no API mapper and, since the rework of 2026-10-01 (`rework-contract.md`, research R14), no domain type: the table keeps its `BranchListItem` rows and each cell reads #10779's repository query for its row's branch. Paths are relative to `frontend/app/src/`.
+This feature is frontend-only. It adds no schema, no migration and no backend change. Since rework A (2026-10-01, `rework-contract-a.md`, research R15) the list reads the epic's `InfrahubRepositoryBranchStatus` once per repository and pivots the rows to one summary per branch in the branches domain. Paths are relative to `frontend/app/src/`.
 
-## Consumed as-is: `BranchRepository` and `BranchRepositorySyncStatus`
+## Consumed: `BranchRepository` (repository list) and `RepositoryBranchStatusRow` (status rows)
 
-These are defined in `entities/repository/domain/model/branch-repository.ts` and are not redefined here. This feature reads:
+`BranchRepository` (`entities/repository/domain/model/branch-repository.ts`, #10779) comes from `useGetBranchRepositories({ branchName: <default branch>, syncWithGit: true })`, called once. The list reads `id`, `name`, `kind` and `isReadOnly`.
+
+`RepositoryBranchStatusRow` (`entities/repository/domain/model/repository-branch-status.ts`, lifted from #10658) is one row per branch of one repository's status page:
 
 | Field | Used for |
 |---|---|
-| `BranchRepository.id` | the pill's link target |
-| `BranchRepository.kind` | the pill's link target (`getObjectDetailsUrl(kind, id, …)`) |
-| `BranchRepository.name` | the pill text; the name sort inside `rankRepositories` |
-| `BranchRepository.isReadOnly` | ` · read-only` in the pill's tooltip |
-| `BranchRepository.commit` (`string \| null`) | the 7-character commit in the pill's tooltip; `null` drops that part |
-| `BranchRepository.syncStatus` (`BranchRepositorySyncStatus`: `value`, `label`, `color`, `description`, all `string \| null`) | the pill's tooltip label; `GitStatePill`; the `n/N` count and per-label tooltip; `syncing` drives the poll |
-| `BranchRepository.operationalStatus` | ordering only (rank 1). Never rendered (FR-016) |
+| `name` | the branch the row belongs to; the pivot key |
+| `commit` (`string \| null`) | the 7-character commit in the pill's tooltip; `null` drops that part |
+| `syncStatus` (`RepositoryBranchStatusDropdown`: `value`, `label`, `color`, `description`) | the Git state: severity, `GitStatePill`, counts; `syncing` drives the poll |
+| `isDefault`, `ref` | not used |
 
-`BranchRepositoriesResult` is `{ status: "ok"; repositories; count; isTruncated } | { status: "denied" }`. It is the use-case's return value. `count` and `isTruncated` are ignored (research R11): N is `repositories.length`.
+The row set is the backend's: read/write repositories list only `sync_with_git` branches, read-only repositories list every branch; merged, deleting and global branches are excluded.
 
-## Row: `BranchListItem` (unchanged)
+## `RepositoryStatusFetch` (`entities/branches/domain/rules/summarize-branch-repositories.ts`)
 
-The table's row type is `BranchListItem` (`entities/branches/domain/model/branch.ts`), with `getRowId: (row) => row.id`, as on the base branch. Selection, pagination and ordering are unchanged.
+One per repository, built in the hook's `combine` from each `useQueries` result (plus one for the repository list):
 
-## Derived per cell (not stored)
+```ts
+export type RepositoryStatusFetch =
+  | { status: "pending" }
+  | { status: "denied" }
+  | { status: "error"; message: string }
+  | { status: "ok"; repository: Pick<BranchRepository, "id" | "name" | "kind" | "isReadOnly">; rows: RepositoryBranchStatusRow[] };
+```
 
-Each cell calls `useGetBranchRepositories({ branchName: branch.name, syncWithGit: Boolean(branch.sync_with_git) })`; both cells of a row hit the same query key, so they share one request and one result. From the query state:
+Mapping: a result with `data` is `ok` even when `isError` is set (a failed background refetch keeps the last loaded rows); else `error.code === "PERMISSION_DENIED"` → `denied`; else an error → `error` with its message; else `pending`. The repository list pending counts as `pending`.
 
-| Query state | Repositories cell | Git state cell |
-|---|---|---|
-| pending | `Spinner` | blank |
-| `data.status === "denied"` | "No permission" | blank |
-| error (no `data`) | "Could not load repositories" + message | blank |
-| `ok`, 0 repositories | "Not synced with Git" (`sync_with_git` falsy) / "No repositories" | blank |
-| `ok`, N ≥ 1 | pill for `ranked[0]`, "+N−1 more" when N > 1 | `GitStatePill` for `ranked[0]`, `n/N` + per-label tooltip when N > 1 |
+## `BranchRepositorySummary` (`entities/branches/domain/model/branch-repository-summary.ts`)
 
-where:
+```ts
+export interface BranchRepositoryState {
+  repository: Pick<BranchRepository, "id" | "name" | "kind" | "isReadOnly">;
+  commit: string | null;
+  syncStatus: RepositoryBranchStatusDropdown;
+}
+export interface SyncStatusCount { value: string | null; label: string; count: number }
+export type BranchRepositorySummary =
+  | { status: "pending" }
+  | { status: "denied" }
+  | { status: "error"; message: string }
+  | { status: "ok"; repositories: BranchRepositoryState[]; counts: SyncStatusCount[] };
+```
 
-- `ranked = rankRepositories(repositories)` (`entities/repository/domain/rules/rank-repositories.ts`): import errors first, then unreachable remotes, then by name, case-insensitive.
-- `n` = the number of repositories whose `syncStatus.value` equals `ranked[0].syncStatus.value`.
-- The per-label tooltip lists, for each distinct label, `<label>: <count>`, joined with ` · ` (for example `Import Error: 1 · In Sync: 15`).
+`repositories` is ordered worst first; `repositories[0]` is the pill, the Git state and the base of "+N more".
 
-`data` is checked before the error, so a stale success stays rendered when a background refetch fails, as #10779's card reads the same query.
+## `summarizeBranchRepositories(branches, fetches)` invariants
+
+`summarizeBranchRepositories(branches: readonly BranchListItem[], fetches: readonly RepositoryStatusFetch[]): Record<string /* branch name */, BranchRepositorySummary>` is pure and imports only its own model and `entities/repository/domain/rules/sync-status-severity.ts`.
+
+1. Any `denied` fetch → every branch `denied`.
+2. Else any `pending` fetch → every branch `pending`.
+3. Else any `error` fetch → every branch `error` with the first error's message.
+4. Else each branch collects the rows whose `name === branch.name`, across every `ok` fetch, as `BranchRepositoryState`s.
+5. The states are sorted by `compareSyncStatusSeverity` (`error-import` > `unknown` > `syncing` > `in-sync`; any other value ranks with `unknown`), then by repository name, case-insensitive.
+6. `counts` has one entry per distinct `syncStatus.value`, with `label = label || value || "Unknown"`.
+7. A branch with no rows → `{ status: "ok", repositories: [], counts: [] }`; the cell picks "Not synced with Git" or "No repositories" from `branch.sync_with_git`.
+8. The record is keyed by branch name; structural sharing in `combine` keeps untouched branches' summaries by reference.
+
+## Row: `BranchTableRow` (`entities/branches/ui/branches-table/branch-table-row.ts`)
+
+```ts
+export interface BranchTableRow extends BranchListItem { repositorySummary: BranchRepositorySummary }
+```
+
+`toBranchTableRows(branches, summaries)` adds each branch's summary. `BranchesTable` passes `data={toBranchTableRows(flatData, summaries)}`; `BranchesDataTable` and `getBranchTableColumns` are typed on `BranchTableRow`. Being a superset of `BranchListItem`, it leaves selection, the toolbar and the delete modal unchanged; `getRowId: (row) => row.id` is unchanged.
 
 ## `BRANCH_FIELD_SCHEMAS` additions (`entities/branches/ui/branches-table/branch-field-schemas.ts`)
 
@@ -55,10 +83,11 @@ git_state:    { name: "git_state",    label: "Git state",    kind: "Text" } as A
 
 Neither is added to `BRANCH_FILTER_DEFINITIONS` (FR-015). The column ids match the keys: `repositories`, `git_state`.
 
-## Superseded 2026-10-01
+## Superseded
 
-`BranchRepositoriesFetch`, `BranchTableRow`, `BranchTableRowState`, `isBranchAnchorRow`, `toBranchTableRows` and its invariants, the `repository` and `commit` schema entries, and the `tests/fake/branch-table-rows.ts` fakes (`FULL_COMMIT_HASH`, `generateBranchTableRow`) described the one-row-per-repository fan-out. They were deleted with it (research R14); git history keeps them.
+- 2026-10-01 (rework A): "Derived per cell": each cell calling `useGetBranchRepositories` for its row's branch and ranking with `rankRepositories`. `BranchRepository.operationalStatus` no longer affects order. The list no longer reads `BranchRepositoriesResult`.
+- 2026-10-01 (rework): `BranchRepositoriesFetch`, the fan-out `BranchTableRow` and `BranchTableRowState`, `isBranchAnchorRow`, the fan-out `toBranchTableRows` and its invariants, the `repository` and `commit` schema entries, and the `tests/fake/branch-table-rows.ts` fakes. Git history keeps them.
 
 ## Test fakes
 
-Reused, unchanged: `tests/fake/branch.ts::generateBranch` and `tests/fake/branch-repositories.ts::{SYNC_STATUS, OPERATIONAL_STATUS, generateBranchRepository, generateBranchRepositoriesResult}`. A colourless status (`{ value: "mystery", label: "Mystery", color: null, description: null }`) is a constant local to `get-branch-table-columns.test.tsx`.
+Reused: `tests/fake/branch.ts::generateBranch` and `tests/fake/branch-repositories.ts`. A colourless status `SYNC_STATUS_NO_COLOUR = { value: "mystery", label: null, color: null, description: null }` is a constant local to `get-branch-table-columns.test.tsx`.

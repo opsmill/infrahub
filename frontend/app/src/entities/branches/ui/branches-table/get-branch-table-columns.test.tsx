@@ -2,28 +2,29 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
+import type {
+  BranchRepositoryState,
+  BranchRepositorySummary,
+} from "@/entities/branches/domain/model/branch-repository-summary";
+import { summarizeBranchRepositories } from "@/entities/branches/domain/rules/summarize-branch-repositories";
+import { toBranchTableRows } from "@/entities/branches/ui/branches-table/branch-table-row";
 import { BranchesDataTable } from "@/entities/branches/ui/branches-table/branches-data-table";
 import { getBranchTableColumns } from "@/entities/branches/ui/branches-table/get-branch-table-columns";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 import { useGetProposedChanges } from "@/entities/proposed-changes/ui/queries/get-proposed-changes.query";
-import type { BranchRepositoriesResult } from "@/entities/repository/domain/model/branch-repository";
-import { useGetBranchRepositories } from "@/entities/repository/ui/queries/get-branch-repositories.query";
+import { mapRepositoryBranchStatusRow } from "@/entities/repository/domain/model/repository-branch-status";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 import { render } from "../../../../../tests/components/render";
 import { initPointerTracking } from "../../../../../tests/components/utils";
 import { generateBranch } from "../../../../../tests/fake/branch";
-import {
-  generateBranchRepositoriesResult,
-  generateBranchRepository,
-  SYNC_STATUS,
-} from "../../../../../tests/fake/branch-repositories";
+import { SYNC_STATUS } from "../../../../../tests/fake/branch-repositories";
+import { generateRepositoryBranchStatus } from "../../../../../tests/fake/repository";
 
 vi.mock("@/entities/authentication/ui/auth-provider");
 vi.mock("@/entities/proposed-changes/ui/queries/get-proposed-changes.query");
 vi.mock("@/entities/schema/ui/hooks/useSchema");
 vi.mock("@/entities/nodes/object/ui/queries/get-objects-count.query");
-vi.mock("@/entities/repository/ui/queries/get-branch-repositories.query");
 
 const SYNC_STATUS_NO_COLOUR = { value: "mystery", label: null, color: null, description: null };
 const FAILING_COMMIT = "1234567890abcdef1234567890abcdef12345678";
@@ -31,33 +32,45 @@ const LOAD_ERROR_MESSAGE = "Repository query timed out";
 
 const feature = generateBranch({ id: "branch-feature", name: "feature", sync_with_git: true });
 
-const threeRepositories = generateBranchRepositoriesResult([
-  generateBranchRepository({ id: "repo-a", name: "alpha-repo", commit: "8f3c2a1" }),
-  generateBranchRepository({
-    id: "repo-b",
-    name: "beta-repo",
-    commit: FAILING_COMMIT,
-    syncStatus: SYNC_STATUS.importError,
-  }),
-  generateBranchRepository({ id: "repo-c", name: "gamma-repo", commit: "61ba9c3" }),
-]);
+const state = (
+  name: string,
+  syncStatus: BranchRepositoryState["syncStatus"],
+  overrides: Partial<BranchRepositoryState> = {}
+): BranchRepositoryState => ({
+  repository: { id: `repo-${name}`, name, kind: "CoreRepository", isReadOnly: false },
+  commit: "8f3c2a1",
+  syncStatus,
+  ...overrides,
+});
 
-type QueryState = { data: BranchRepositoriesResult } | { pending: true } | { error: Error };
+const ok = (
+  repositories: BranchRepositoryState[],
+  counts = repositories.length
+    ? [{ value: repositories[0]!.syncStatus.value, label: "x", count: 1 }]
+    : []
+): BranchRepositorySummary => ({ status: "ok", repositories, counts });
 
-const mockRepositories = (state: QueryState) => {
-  vi.mocked(useGetBranchRepositories).mockReturnValue({
-    data: "data" in state ? state.data : undefined,
-    isPending: "pending" in state,
-    isError: "error" in state,
-    error: "error" in state ? state.error : null,
-  } as unknown as ReturnType<typeof useGetBranchRepositories>);
+const threeRepositories: BranchRepositorySummary = {
+  status: "ok",
+  repositories: [
+    state("beta-repo", SYNC_STATUS.importError, { commit: FAILING_COMMIT }),
+    state("alpha-repo", SYNC_STATUS.inSync),
+    state("gamma-repo", SYNC_STATUS.inSync),
+  ],
+  counts: [
+    { value: "error-import", label: "Import Error", count: 1 },
+    { value: "in-sync", label: "In Sync", count: 2 },
+  ],
 };
 
-const renderTable = (branches: BranchListItem[] = [feature]) =>
+const renderTable = (summary: BranchRepositorySummary, branches: BranchListItem[] = [feature]) =>
   render(
     <BranchesDataTable
       columns={getBranchTableColumns()}
-      data={branches}
+      data={toBranchTableRows(
+        branches,
+        Object.fromEntries(branches.map((branch) => [branch.name, summary]))
+      )}
       data-testid="branches-table"
     />
   );
@@ -96,7 +109,6 @@ describe("getBranchTableColumns", () => {
       data: 0,
       isLoading: false,
     } as unknown as ReturnType<typeof useObjectsCount>);
-    mockRepositories({ data: threeRepositories });
   });
 
   afterEach(() => {
@@ -105,7 +117,7 @@ describe("getBranchTableColumns", () => {
 
   test("places Repositories and Git state after Proposed Changes, with no filter or sort control", async () => {
     // WHEN
-    const component = await renderTable();
+    const component = await renderTable(threeRepositories);
 
     // THEN
     await expect.element(component.getByText("Repositories", { exact: true })).toBeVisible();
@@ -123,22 +135,22 @@ describe("getBranchTableColumns", () => {
     }
   });
 
-  test("shows the failing repository first, linked on the row's branch", async () => {
+  test("shows the worst repository first, linked on the row's branch", async () => {
     // WHEN
-    const component = await renderTable();
+    const component = await renderTable(threeRepositories);
 
     // THEN
     const link = component.getByRole("link", { name: "beta-repo" });
     await expect.element(link).toBeVisible();
     const href = new URL(link.element().getAttribute("href") ?? "", window.location.origin);
-    expect(href.pathname).toContain("repo-b");
+    expect(href.pathname).toContain("repo-beta-repo");
     expect(href.searchParams.get("branch")).toBe("feature");
     expect(component.getByRole("link", { name: "alpha-repo" }).query()).toBeNull();
   });
 
   test("adds no branch parameter to the repository link on the default branch's row", async () => {
     // WHEN
-    const component = await renderTable([
+    const component = await renderTable(threeRepositories, [
       generateBranch({ id: "branch-main", name: "main", is_default: true }),
     ]);
 
@@ -151,7 +163,7 @@ describe("getBranchTableColumns", () => {
 
   test("shows the Git state label and the short commit in the repository pill's tooltip", async () => {
     // GIVEN
-    const component = await renderTable();
+    const component = await renderTable(threeRepositories);
     await initPointerTracking(component.locator);
 
     // WHEN
@@ -165,12 +177,19 @@ describe("getBranchTableColumns", () => {
 
   test("leaves the commit out of the tooltip when it is null and marks read-only", async () => {
     // GIVEN
-    mockRepositories({
-      data: generateBranchRepositoriesResult([
-        generateBranchRepository({ name: "golden-configs", commit: null, isReadOnly: true }),
-      ]),
-    });
-    const component = await renderTable();
+    const component = await renderTable(
+      ok([
+        state("golden-configs", SYNC_STATUS.inSync, {
+          commit: null,
+          repository: {
+            id: "repo-golden",
+            name: "golden-configs",
+            kind: "CoreReadOnlyRepository",
+            isReadOnly: true,
+          },
+        }),
+      ])
+    );
     await initPointerTracking(component.locator);
 
     // WHEN
@@ -184,7 +203,7 @@ describe("getBranchTableColumns", () => {
 
   test("links +2 more to the branch details page", async () => {
     // WHEN
-    const component = await renderTable();
+    const component = await renderTable(threeRepositories);
 
     // THEN
     const more = component.getByRole("link", { name: "+2 more" });
@@ -194,7 +213,7 @@ describe("getBranchTableColumns", () => {
 
   test("shows the worst Git state in the schema colour with its share and per-label counts", async () => {
     // GIVEN
-    const component = await renderTable();
+    const component = await renderTable(threeRepositories);
     await initPointerTracking(component.locator);
 
     // WHEN
@@ -207,14 +226,13 @@ describe("getBranchTableColumns", () => {
     await expect
       .element(component.getByRole("tooltip", { name: "Import Error: 1 · In Sync: 2" }))
       .toBeVisible();
+    const counts = cellOf(component.container, "Git state")?.querySelector(".sr-only");
+    expect(counts?.textContent).toBe("Import Error: 1 · In Sync: 2");
   });
 
   test("shows no count and no +more for a single repository", async () => {
-    // GIVEN
-    mockRepositories({ data: generateBranchRepositoriesResult([generateBranchRepository()]) });
-
     // WHEN
-    const component = await renderTable();
+    const component = await renderTable(ok([state("solo", SYNC_STATUS.inSync)]));
 
     // THEN
     await expect.element(component.getByText("In Sync", { exact: true })).toBeVisible();
@@ -223,15 +241,8 @@ describe("getBranchTableColumns", () => {
   });
 
   test("shows a grey badge with the raw value when the status has no colour", async () => {
-    // GIVEN
-    mockRepositories({
-      data: generateBranchRepositoriesResult([
-        generateBranchRepository({ syncStatus: SYNC_STATUS_NO_COLOUR }),
-      ]),
-    });
-
     // WHEN
-    const component = await renderTable();
+    const component = await renderTable(ok([state("solo", SYNC_STATUS_NO_COLOUR)]));
 
     // THEN
     const badge = component.getByText("mystery", { exact: true });
@@ -240,11 +251,8 @@ describe("getBranchTableColumns", () => {
   });
 
   test("shows one spinner in the Repositories cell and a blank Git state while pending", async () => {
-    // GIVEN
-    mockRepositories({ pending: true });
-
     // WHEN
-    const component = await renderTable();
+    const component = await renderTable({ status: "pending" });
 
     // THEN
     await expect.element(component.getByRole("status")).toBeVisible();
@@ -257,35 +265,32 @@ describe("getBranchTableColumns", () => {
   test.each([
     {
       name: "empty, not synced",
-      state: { data: generateBranchRepositoriesResult([]) },
+      summary: ok([]),
       branch: { sync_with_git: false },
       text: "Not synced with Git",
     },
     {
       name: "empty, synced",
-      state: { data: generateBranchRepositoriesResult([]) },
+      summary: ok([]),
       branch: { sync_with_git: true },
       text: "No repositories",
     },
     {
       name: "denied",
-      state: { data: { status: "denied" } as BranchRepositoriesResult },
+      summary: { status: "denied" } as BranchRepositorySummary,
       text: "No permission",
     },
     {
       name: "error",
-      state: { error: new Error(LOAD_ERROR_MESSAGE) },
+      summary: { status: "error", message: LOAD_ERROR_MESSAGE } as BranchRepositorySummary,
       text: "Could not load repositories",
       cellText: `Could not load repositories${LOAD_ERROR_MESSAGE}`,
     },
   ])(
     "reads $text when $name, with a blank Git state",
-    async ({ state, branch = {}, text, cellText = text }) => {
-      // GIVEN
-      mockRepositories(state as QueryState);
-
+    async ({ summary, branch = {}, text, cellText = text }) => {
       // WHEN
-      const component = await renderTable([{ ...feature, ...branch }]);
+      const component = await renderTable(summary, [{ ...feature, ...branch }]);
 
       // THEN
       const label = component.getByText(text, { exact: true });
@@ -293,15 +298,16 @@ describe("getBranchTableColumns", () => {
       await expect.element(label).toHaveClass("text-foreground-muted");
       await expect.element(component.getByRole("link", { name: "feature" })).toBeVisible();
       const { container } = component;
-      expect(cellOf(container, "Repositories")?.textContent).toBe(cellText);
+      const repositoriesText = cellOf(container, "Repositories")?.textContent ?? "";
+      expect(repositoriesText).toBe(cellText);
+      expect(repositoriesText).not.toMatch(/^[-—]$/);
       expect(cellOf(container, "Git state")?.textContent).toBe("");
     }
   );
 
   test("shows the load error's message on hover and to assistive technology", async () => {
     // GIVEN
-    mockRepositories({ error: new Error(LOAD_ERROR_MESSAGE) });
-    const component = await renderTable();
+    const component = await renderTable({ status: "error", message: LOAD_ERROR_MESSAGE });
     await initPointerTracking(component.locator);
 
     // WHEN
@@ -315,9 +321,41 @@ describe("getBranchTableColumns", () => {
     expect(reason?.textContent).toBe(LOAD_ERROR_MESSAGE);
   });
 
+  test("ranks an import error above an unknown, and an unknown above in-sync", async () => {
+    // GIVEN rows as the backend returns them for one branch across three repositories
+    const row = (syncStatus: typeof SYNC_STATUS.inSync) =>
+      mapRepositoryBranchStatusRow(
+        generateRepositoryBranchStatus({ name: { value: "feature" }, sync_status: syncStatus })
+      );
+    const fetchOf = (name: string, syncStatus: typeof SYNC_STATUS.inSync) => ({
+      status: "ok" as const,
+      repository: { id: `repo-${name}`, name, kind: "CoreRepository" as const, isReadOnly: false },
+      rows: [row(syncStatus)],
+    });
+    const withImportError = summarizeBranchRepositories(
+      [feature],
+      [fetchOf("aaa-reachable", SYNC_STATUS.inSync), fetchOf("zzz-broken", SYNC_STATUS.importError)]
+    ).feature!;
+    const withUnknown = summarizeBranchRepositories(
+      [feature],
+      [fetchOf("aaa-synced", SYNC_STATUS.inSync), fetchOf("zzz-unknown", SYNC_STATUS.unknown)]
+    ).feature!;
+
+    // WHEN
+    const broken = await renderTable(withImportError);
+
+    // THEN
+    await expect.element(broken.getByRole("link", { name: "zzz-broken" })).toBeVisible();
+    await expect.element(broken.getByText("Import Error", { exact: true })).toBeVisible();
+    broken.unmount();
+    const unknown = await renderTable(withUnknown);
+    await expect.element(unknown.getByRole("link", { name: "zzz-unknown" })).toBeVisible();
+    await expect.element(unknown.getByText("Unknown", { exact: true })).toBeVisible();
+  });
+
   test("labels the row checkbox with the branch name", async () => {
     // WHEN
-    const component = await renderTable();
+    const component = await renderTable(threeRepositories);
 
     // THEN
     await expect.element(component.getByRole("checkbox", { name: "Select feature" })).toBeVisible();

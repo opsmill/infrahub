@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import contextlib
+import logging
 import re
 from typing import TYPE_CHECKING
 
@@ -11,6 +11,8 @@ from helpers import generate_random_branch_name
 from playwright.async_api import expect
 
 pytestmark = pytest.mark.shard_branches_repo
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable, Callable
@@ -40,8 +42,10 @@ class TestBranchesGitColumns:
         name = generate_random_branch_name("branches-no-git-")
         await branch_api.create(name, sync_with_git=False)
         yield name
-        with contextlib.suppress(Exception):
+        try:
             await branch_api.delete(name)
+        except Exception:
+            logger.warning("Teardown could not delete branch %s", name, exc_info=True)
 
     async def test_broken_repository_leads_its_branch_row(
         self, admin_page: Page, broken_repository: Callable[..., Awaitable[tuple[str, str, str]]]

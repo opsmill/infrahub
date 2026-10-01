@@ -155,9 +155,9 @@
 - [X] T045 [P] Restore to base `frontend/app/src/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler.ts` (delete its new test), `frontend/packages/ui/src/components/button/button.tsx` (no `excludeFromTabOrder`), `frontend/app/src/entities/branches/ui/branches-table/cells/branch-proposed-changes-cell.tsx` and `frontend/app/src/entities/branches/ui/branches-table/cells/branch-actions-cell.tsx`; delete `frontend/app/src/shared/components/display/commit-hash.tsx` and its test (no consumer).
 - [X] T046 [P] In `frontend/app/src/entities/branches/ui/branches-table/branch-field-schemas.ts::BRANCH_FIELD_SCHEMAS`, replace the `repository` and `commit` entries with `repositories` ("Repositories"); keep `git_state`; add nothing to `BRANCH_FILTER_DEFINITIONS` (FR-015).
 - [X] T047 [P] [US1] Rewrite `frontend/app/src/entities/branches/ui/branches-table/get-branch-table-columns.test.tsx` to `rework-contract.md` § Tests: header order with no filter or sort control; 3 repositories → ranked-first pill with `branch=<name>` (none on the default branch), tooltip label + 7-char commit, "+2 more" to the branch details URL, Git state schema colour, `1/3`, per-label tooltip; single repository → no count; colourless status → grey badge; `commit: null` → tooltip without commit; pending → one `role="status"`, blank Git state; denied, error (with `sr-only` message) and both empty texts in `text-foreground-muted`, Git state blank, no `-` or `—`.
-- [X] T048 [P] [US1] Rewrite `frontend/app/src/entities/branches/ui/branches-table/branches-table.test.tsx`: branch cells render while repositories are pending; `getBranchRepositories` is called once per branch with the right `branchName` and `syncWithGit`; a refocus within `staleTime` issues no extra request; a GraphQL error on one branch reads "Could not load repositories" while the others stay intact, with no toast; `PERMISSION_DENIED` reads "No permission" (FR-011–FR-013, SC-005, SC-007).
-- [X] T049 [P] [US1] Create `frontend/app/src/entities/branches/ui/branches-table/cells/branch-repositories-cell.tsx::BranchRepositoriesCell({ branch })` per `contracts/ui-cells.md` § `BranchRepositoriesCell`: `useGetBranchRepositories`, `rankRepositories`, early returns (pending `Spinner`, "No permission", "Could not load repositories" with `Tooltip` and `sr-only` message, the two empty texts), then the `LinkPill` with its one-line tooltip and the "+N more" `Link` to `getBranchDetailsUrl(branch.name)`.
-- [X] T050 [P] [US2] Create `frontend/app/src/entities/branches/ui/branches-table/cells/branch-git-state-cell.tsx::BranchGitStateCell({ branch })` per `contracts/ui-cells.md` § `BranchGitStateCell`: blank unless loaded with N ≥ 1; `GitStatePill` for `ranked[0]`; when N > 1 the `n/N` count and the per-label `Tooltip`.
+- [X] T048 [P] [US1] Rewrite `frontend/app/src/entities/branches/ui/branches-table/branches-table.test.tsx`: branch cells render while repositories are pending; `getBranchRepositories` is called once per branch with the right `branchName` and `syncWithGit`; a refocus within `staleTime` issues no extra request; a GraphQL error on one branch reads "Could not load repositories" while the others stay intact, with no toast; `PERMISSION_DENIED` reads "No permission" (FR-011–FR-013, SC-005, SC-007). — superseded by Phase 9
+- [X] T049 [P] [US1] Create `frontend/app/src/entities/branches/ui/branches-table/cells/branch-repositories-cell.tsx::BranchRepositoriesCell({ branch })` per `contracts/ui-cells.md` § `BranchRepositoriesCell`: `useGetBranchRepositories`, `rankRepositories`, early returns (pending `Spinner`, "No permission", "Could not load repositories" with `Tooltip` and `sr-only` message, the two empty texts), then the `LinkPill` with its one-line tooltip and the "+N more" `Link` to `getBranchDetailsUrl(branch.name)`. — superseded by Phase 9
+- [X] T050 [P] [US2] Create `frontend/app/src/entities/branches/ui/branches-table/cells/branch-git-state-cell.tsx::BranchGitStateCell({ branch })` per `contracts/ui-cells.md` § `BranchGitStateCell`: blank unless loaded with N ≥ 1; `GitStatePill` for `ranked[0]`; when N > 1 the `n/N` count and the per-label `Tooltip`. — superseded by Phase 9
 - [X] T051 [US1] In `frontend/app/src/entities/branches/ui/branches-table/get-branch-table-columns.tsx`, go back to `createColumnHelper<BranchListItem>()` and the base accessors, keep the original `getToggleSelectedRowHandler` call, and insert two `columnHelper.display` columns `repositories` and `git_state` after `proposed_changes` with `TableColumnHeaderSimple` headers. Depends on T046, T049, T050.
 - [X] T052 [US1] In `frontend/app/src/entities/branches/ui/branches-table/branches-data-table.tsx::BranchesDataTable`, go back to `BranchListItem` rows with `getRowId: (row) => row.id` and the base selection (no `enableRowSelection` predicate, no `isBranchAnchorRow`), and set `defaultGridTemplateColumns` to `[fit-content(WIDE_COLUMN_MAX_WIDTH), fit-content(COLUMN_MAX_WIDTH), minmax(150px, 200px), REPOSITORIES_TRACK, GIT_STATE_TRACK, repeat(columnCount - 6, fit-content(COLUMN_MAX_WIDTH)), 2.5rem]` with `REPOSITORIES_TRACK = "minmax(12rem, 18rem)"` and `GIT_STATE_TRACK = "9rem"`; `frontend/app/src/entities/branches/ui/branches-table/branches-table.tsx` passes `flatData` directly; `React.useMemo` stays removed. Depends on T044, T051.
 - [X] T053 [P] In `frontend/app/src/entities/branches/ui/branches-table/cells/branch-name-cell.tsx::BranchNameCell`, keep `aria-label={`Select ${branch.name}`}` on the checkbox and remove the `repositoryName` and `excludeFromTabOrder` props and the `tabIndex={-1}` plumbing.
@@ -168,6 +168,34 @@
 - [X] T058 CI gate, all four must pass: `cd frontend && pnpm exec biome ci .`, `cd frontend/app && pnpm knip`, `cd frontend/app && pnpm exec betterer ci`, `cd frontend/app && pnpm test`. Depends on T044–T057.
 
 **Checkpoint**: `/branches` shows one row per branch with the Repositories and Git state cells; quickstart scenarios 1–14 (rewritten 2026-10-01) are the manual check.
+
+---
+
+## Phase 9: Rework A — repository-anchored data (2026-10-01)
+
+**Purpose**: Apply `rework-contract-a.md` after the architecture review (research R15): the page reads `InfrahubRepositoryBranchStatus` once per repository, a pure rule pivots the rows per branch, and the cells render a view-model row. All tasks land in the same commit.
+
+- [X] T059 [P] Lift `frontend/app/src/entities/repository/domain/model/repository-branch-status.ts` and `frontend/app/src/entities/repository/domain/model/repository-branch-status.test.ts` byte-identical from #10658 (`git show ple-branches-card-ifc-3130:<path>`), and record the SHA and `cmp` result in `dev/specs/ifc-3201-branches-table-git/pr-notes.md`.
+- [X] T060 [P] Lift `frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts` byte-identical from #10658, recording the `cmp` result in `dev/specs/ifc-3201-branches-table-git/pr-notes.md`.
+- [X] T061 Lift `frontend/app/src/entities/repository/domain/use-cases/get-repository-branch-status.ts` and its test from #10658, adding `hasThrownCatalogueCode` to `frontend/app/src/shared/api/graphql/error-handling.ts` if absent (additive), or adapting the use case and recording that it is not byte-identical. Depends on T059, T060.
+- [X] T062 Add `branchStatus(params)` to `frontend/app/src/entities/repository/ui/queries/repository.query-keys.ts::repositoryQueryKeys` with #10658's name and key shape, and write `frontend/app/src/entities/repository/ui/queries/get-repository-branch-status.query.ts::getRepositoryBranchStatusQueryOptions(params)` (queryOptions factory, no hook). Depends on T061.
+- [X] T063 [P] Write `frontend/app/src/entities/repository/domain/rules/sync-status-severity.ts::compareSyncStatusSeverity` (`error-import` > `unknown` > `syncing` > `in-sync`; other values rank with `unknown`) with `frontend/app/src/entities/repository/domain/rules/sync-status-severity.test.ts` covering the order and unknown values.
+- [X] T064 Create `frontend/app/src/entities/branches/domain/model/branch-repository-summary.ts` with `BranchRepositoryState`, `SyncStatusCount` and `BranchRepositorySummary` per `data-model.md`. Depends on T059.
+- [X] T065 Write `frontend/app/src/entities/branches/domain/rules/summarize-branch-repositories.test.ts`: denied wins; pending wins over error; error carries the first message; rows grouped by branch name; worst-first with ties by name; counts; a branch with no rows → empty ok; a read-only repository on an unsynced branch while a read/write one is not. Depends on T063, T064.
+- [X] T066 Implement `frontend/app/src/entities/branches/domain/rules/summarize-branch-repositories.ts` (`RepositoryStatusFetch`, `summarizeBranchRepositories`) per `data-model.md` § invariants; make T065 pass. Depends on T065.
+- [X] T067 [P] Write `frontend/app/src/entities/branches/domain/rules/format-repository-summary.ts` (`<label> · <7-char commit> · read-only`, each part optional) with `frontend/app/src/entities/branches/domain/rules/format-repository-summary.test.ts`. Depends on T064.
+- [X] T068 Write `frontend/app/src/entities/branches/ui/hooks/use-branch-repository-summaries.ts::useBranchRepositorySummaries(branches)` and `frontend/app/src/entities/branches/ui/hooks/use-branch-repository-summaries.test.ts` (mocked `getBranchRepositories` and `getRepositoryBranchStatus` use cases): one repository-list request on the default branch, one status request per repository with `limit: 500`, summaries keyed by branch, data-first on a failed background refetch, `PERMISSION_DENIED` → all denied, `refetchInterval` 10 000 only while syncing and `staleTime` 60 000 on the options factory. No `useMemo`. Depends on T062, T066.
+- [X] T069 Create `frontend/app/src/entities/branches/ui/branches-table/branch-table-row.ts` (`BranchTableRow`, `toBranchTableRows`), pass `data={toBranchTableRows(flatData, summaries)}` from `frontend/app/src/entities/branches/ui/branches-table/branches-table.tsx`, and type `frontend/app/src/entities/branches/ui/branches-table/branches-data-table.tsx` and `frontend/app/src/entities/branches/ui/branches-table/get-branch-table-columns.tsx` on `BranchTableRow` (`getRowId: row.id`, grid template unchanged). Depends on T068.
+- [X] T070 [P] [US1] Rewrite `frontend/app/src/entities/branches/ui/branches-table/cells/branch-repositories-cell.tsx::BranchRepositoriesCell({ branch })` as a pure cell per `contracts/ui-cells.md`: the worst repository's `LinkPill` with the `formatRepositorySummary` tooltip and "+N more" to `getBranchDetailsUrl(branch.name)`. Depends on T067, T069.
+- [X] T071 [P] [US1] Rewrite `frontend/app/src/entities/branches/ui/branches-table/cells/branch-git-state-cell.tsx::BranchGitStateCell({ summary })` as a pure cell: `GitStatePill` for `repositories[0]`, and when N > 1 the `n/N` count with a `Tooltip` on the count only and an `sr-only` span with the same text. Depends on T069.
+- [X] T072 [US1] Rewrite `frontend/app/src/entities/branches/ui/branches-table/get-branch-table-columns.test.tsx` with summaries given as data: headers; worst-repository pill with link and branch parameter (none on the default branch); tooltip text; "+N more"; Git state colour, `n/N`, count tooltip and `sr-only` text; single repository without count; colourless status → grey badge; pending → one `role="status"`; an unreachable in-sync repository never outranks an import error, and `unknown` outranks `in-sync`. Depends on T070, T071.
+- [X] T073 [US3] Extend `frontend/app/src/entities/branches/ui/branches-table/get-branch-table-columns.test.tsx` with the states: denied, error (with the `sr-only` message) and both empty texts in `text-foreground-muted`, Git state blank, no `-` or `—`. Depends on T072.
+- [X] T074 [US3] Rewrite `frontend/app/src/entities/branches/ui/branches-table/branches-table.test.tsx` (mocked use cases): branch cells render while summaries are pending; 1 + R requests for a page of branches; a second page issues no new status request; denied → "No permission" on every row, no toast; one status error → "Could not load repositories" on every row, no toast. Depends on T069.
+- [X] T075 [P] In `tests/e2e/branches/conftest.py`, log teardown failures of the `broken_repository` fixture instead of `contextlib.suppress`; keep the assertions of `tests/e2e/branches/test_branches_git_columns.py` unchanged; run every E2E command with `-c tests/e2e/pytest.ini`.
+- [X] T076 [P] Documents: align `dev/specs/ifc-3201-branches-table-git/` (spec Session 2026-10-01 architecture review, plan, research R15, data model, contracts, quickstart, tasks, PR notes, implement report), the ordering, "No repositories" and "No permission" sentences of `docs/docs/git-integration/branch-synchronization.mdx` (run `uv run invoke docs.lint`), `dev/specs/docs/branches-list-git-state.checks.md`, `dev/knowledge/frontend/react.md` and `dev/guidelines/frontend/page-architecture.md`.
+- [X] T077 CI gate, all four must pass: `cd frontend && pnpm exec biome ci .`, `cd frontend/app && pnpm knip`, `cd frontend/app && pnpm exec betterer ci`, `cd frontend/app && pnpm test`; re-run the lifted files' `cmp`. Depends on T059–T076.
+
+**Checkpoint**: `/branches` issues 1 + R requests per page load and none on scroll; quickstart scenarios 1–14 (rework A) are the manual check.
 
 ---
 
@@ -183,6 +211,7 @@
 - **E2E (Phase 6)**: T032 first; T035 and T036 need US2 and US3 in place.
 - **Polish (Phase 7)**: after all stories; T043 last.
 - **Rework (Phase 8)**: after Phase 7; supersedes the fan-out tasks marked "superseded by Phase 8". T044 and T046 before T051–T052; T058 last.
+- **Rework A (Phase 9)**: after Phase 8; supersedes T048–T050. T059–T062 (lift) and T063–T067 (rules) before T068 (hook); T069 before the cells; T077 last.
 
 ### Story order
 
@@ -284,3 +313,18 @@ The table above maps the 2026-09-30 requirements. The rewritten spec maps to Pha
 | SC-005 one branch's failure isolated | T048 |
 | SC-006 a test per state, gates pass | T047, T048, T058 |
 | SC-007 one request per branch, none on refocus | T048 |
+
+### After rework A (2026-10-01)
+
+| Requirement | Tasks |
+|---|---|
+| FR-003 backend-authoritative set | T059–T061, T065, T066 |
+| FR-004 repository pill, tooltip, "+N more" | T067, T070, T072 |
+| FR-005 severity order | T063, T065, T072 |
+| FR-006 Git state roll-up, count tooltip | T071, T072 |
+| FR-007 empty texts | T066, T073 |
+| FR-011 page-owned fetch, 1 + R requests | T062, T068, T069, T074 |
+| FR-012, FR-013 denied, failed on every row, no toast | T066, T068, T073, T074 |
+| FR-014 poll while syncing, 60 s stale time | T068 |
+| SC-005 branch cells always render | T074 |
+| SC-007 1 + R, none on scroll, none within 60 s of refocus | T068, T074 |

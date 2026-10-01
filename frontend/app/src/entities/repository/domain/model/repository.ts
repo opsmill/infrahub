@@ -8,6 +8,7 @@ export const READONLY_REPOSITORY_KIND = "CoreReadOnlyRepository";
 
 export const REPOSITORY_SYNC_STATUS_IMPORT_ERROR = "error-import";
 export const REPOSITORY_SYNC_STATUS_SYNCING = "syncing";
+export const REPOSITORY_SYNC_STATUS_IN_SYNC = "in-sync";
 export const REPOSITORY_OPERATIONAL_ERRORS = ["error-cred", "error-connection", "error"] as const;
 export const REPOSITORY_FETCH_LIMIT = 500;
 
