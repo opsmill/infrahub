@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { mergeBranch } from "@/entities/branches/domain/use-cases/merge-branch";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
+import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 export function useMergeBranch() {
@@ -13,6 +14,7 @@ export function useMergeBranch() {
       // A merge changes branch status and enqueues a background task.
       queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: repositoryQueryKeys.all });
     },
   });
 }

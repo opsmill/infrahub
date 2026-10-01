@@ -68,7 +68,8 @@ async function fetchConnection({
   branchName,
   kind,
 }: GetBranchRepositoriesFromApiParams): Promise<BranchRepositoriesConnection> {
-  const context = { branch: branchName };
+  // Callers render their own failed state, so the shared client's error toast is suppressed.
+  const context = { branch: branchName, processErrorMessage: () => {} };
   const variables = { limit: REPOSITORY_FETCH_LIMIT };
 
   if (kind === READONLY_REPOSITORY_KIND) {

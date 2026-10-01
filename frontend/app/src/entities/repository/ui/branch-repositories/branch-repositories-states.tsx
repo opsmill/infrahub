@@ -63,11 +63,18 @@ export function BranchRepositoriesNone() {
   );
 }
 
-export function BranchRepositoriesFailed() {
+interface BranchRepositoriesFailedProps {
+  errorMessage?: string;
+}
+
+export function BranchRepositoriesFailed({ errorMessage }: BranchRepositoriesFailedProps) {
   return (
-    <div role="alert" className="flex items-center gap-2 px-4 py-4 text-danger text-sm">
-      <AlertCircleIcon className="size-4 shrink-0" aria-hidden />
-      Repositories couldn't be loaded.
+    <div role="alert" className="flex items-start gap-2 px-4 py-4 text-sm">
+      <AlertCircleIcon className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden />
+      <div>
+        <p className="text-danger">Repositories couldn't be loaded.</p>
+        {errorMessage && <p className="text-foreground-muted">{errorMessage}</p>}
+      </div>
     </div>
   );
 }

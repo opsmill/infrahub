@@ -40,6 +40,16 @@ export const BRANCH_FIELD_SCHEMAS = {
     label: "Proposed Changes",
     kind: "Text",
   } as AttributeSchema,
+  repositories: {
+    name: "repositories",
+    label: "Repositories",
+    kind: "Text",
+  } as AttributeSchema,
+  git_state: {
+    name: "git_state",
+    label: "Git state",
+    kind: "Text",
+  } as AttributeSchema,
 } as const;
 
 export const BRANCH_FILTER_DEFINITIONS: Record<string, FilterDefinition> = {

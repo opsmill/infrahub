@@ -34,7 +34,7 @@ export function BranchRepositoriesCard({
   page,
   onPageChange,
 }: BranchRepositoriesCardProps) {
-  const { data, isPending } = useGetBranchRepositories({ branchName, syncWithGit });
+  const { data, error, isPending } = useGetBranchRepositories({ branchName, syncWithGit });
   const count = data?.status === "ok" ? data.count : null;
 
   return (
@@ -50,6 +50,7 @@ export function BranchRepositoriesCard({
 
       <BranchRepositoriesBody
         data={data}
+        errorMessage={error?.message}
         isPending={isPending}
         branchName={branchName}
         isDefaultBranch={isDefaultBranch}
@@ -63,11 +64,13 @@ export function BranchRepositoriesCard({
 
 interface BranchRepositoriesBodyProps extends BranchRepositoriesCardProps {
   data: BranchRepositoriesResult | undefined;
+  errorMessage: string | undefined;
   isPending: boolean;
 }
 
 function BranchRepositoriesBody({
   data,
+  errorMessage,
   isPending,
   branchName,
   isDefaultBranch,
@@ -76,7 +79,7 @@ function BranchRepositoriesBody({
   onPageChange,
 }: BranchRepositoriesBodyProps) {
   if (isPending) return <BranchRepositoriesLoading />;
-  if (!data) return <BranchRepositoriesFailed />;
+  if (!data) return <BranchRepositoriesFailed errorMessage={errorMessage} />;
   if (data.status === "denied") return <BranchRepositoriesDenied />;
   if (data.repositories.length === 0) {
     return syncWithGit ? <BranchRepositoriesNone /> : <BranchRepositoriesNotSynced />;

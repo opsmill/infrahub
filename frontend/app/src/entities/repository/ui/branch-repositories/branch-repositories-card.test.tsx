@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { page } from "vitest/browser";
 
 import type { BranchRepositoriesResult } from "@/entities/repository/domain/model/branch-repository";
 import { useGetBranchRepositories } from "@/entities/repository/ui/queries/get-branch-repositories.query";
@@ -18,11 +19,17 @@ import { BranchRepositoriesCard } from "./branch-repositories-card";
 vi.mock("@/entities/repository/ui/queries/get-branch-repositories.query");
 vi.mock("@/entities/repository/ui/queries/get-repository-import-error.query");
 
-type QueryState = { data?: BranchRepositoriesResult; isPending?: boolean; isError?: boolean };
+type QueryState = {
+  data?: BranchRepositoriesResult;
+  error?: Error;
+  isPending?: boolean;
+  isError?: boolean;
+};
 
-const mockQuery = ({ data, isPending = false, isError = false }: QueryState) => {
+const mockQuery = ({ data, error, isPending = false, isError = false }: QueryState) => {
   vi.mocked(useGetBranchRepositories).mockReturnValue({
     data,
+    error,
     isPending,
     isError,
   } as unknown as ReturnType<typeof useGetBranchRepositories>);
@@ -59,6 +66,7 @@ describe("BranchRepositoriesCard", () => {
 
   afterEach(() => {
     window.history.replaceState(null, "", initialUrl);
+    vi.unstubAllGlobals();
   });
 
   test("lists every repository with its Git state and commit, and the count in the header", async () => {
@@ -244,15 +252,16 @@ describe("BranchRepositoriesCard", () => {
     await expect.element(component.getByText("No Git repositories")).toBeVisible();
   });
 
-  test("says the repositories couldn't be loaded when the query fails", async () => {
+  test("says the repositories couldn't be loaded, with the reason, when the query fails", async () => {
     // GIVEN
-    mockQuery({ isError: true });
+    mockQuery({ isError: true, error: new Error("Repository index unavailable") });
 
     // WHEN
     const component = await renderCard();
 
     // THEN
     await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
+    await expect.element(component.getByText("Repository index unavailable")).toBeVisible();
   });
 
   test("links repositories on the page's branch, not the selector's", async () => {
@@ -368,5 +377,42 @@ describe("BranchRepositoriesCard", () => {
       (element) => element.getAttribute("class") ?? ""
     );
     expect(classes.filter((value) => /#[0-9a-f]{3,8}\b/i.test(value))).toEqual([]);
+  });
+
+  test("shows the server message in its failed state, with no toast, when the repositories request returns a GraphQL error", async () => {
+    // GIVEN
+    const { useGetBranchRepositories: realUseGetBranchRepositories } = await vi.importActual<
+      typeof import("@/entities/repository/ui/queries/get-branch-repositories.query")
+    >("@/entities/repository/ui/queries/get-branch-repositories.query");
+    vi.mocked(useGetBranchRepositories).mockImplementation(realUseGetBranchRepositories);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          data: null,
+          errors: [
+            { message: "Repository index unavailable", extensions: { code: "NODE_NOT_FOUND" } },
+          ],
+        })
+      )
+    );
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN
+    await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
+    for (let sample = 0; sample < 5; sample += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    expect(
+      page
+        .getByRole("alert")
+        .elements()
+        .map((alert) => alert.textContent)
+    ).toEqual(["Repositories couldn't be loaded.Repository index unavailable"]);
+    await expect
+      .element(component.getByText("Repository index unavailable", { exact: true }))
+      .toBeVisible();
   });
 });
