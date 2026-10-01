@@ -1,0 +1,21 @@
+docs/docs/deploy-manage/run-observe/metrics.mdx
+  s_3238bd8523eda1::t_c5881118f0fe1f 67,71
+docs/docs/reference/metrics.mdx
+  s_3238bd8523eda1::t_c5881118f0fe1f 85,88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "128644682f3354e47d52fb4f12d25b34018b9374",
+  "prompts": {},
+  "sessions": {
+    "s_3238bd8523eda1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39cd188c-0d97-4d96-9de5-b440a14adc2b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
