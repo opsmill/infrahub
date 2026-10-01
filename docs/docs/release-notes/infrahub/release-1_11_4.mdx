@@ -1,0 +1,59 @@
+---
+title: Release 1.11.4
+release_date: 2026-10-01
+release_type: security
+description: "Infrahub now refuses to serve an artifact file that no longer matches its checksum, adds an option to skip TLS certificate validation for S3 and syslog servers, and adds a command to delete unfrozen diffs. A rebase now emits an event for each of the branch's own changes, and many fixes improve diff and rebase correctness and performance on large branches."
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.11.4</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>October 1st, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.11.4](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.11.4)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Security
+
+- Prevented Infrahub from serving an artifact file that no longer matches its checksum, for example after it was modified in the object storage; reading it now returns an error asking to regenerate the artifact, and Re-generate on the artifact page stores a correct copy.
+
+### Added
+
+- Added `INFRAHUB_STORAGE_TLS_INSECURE` to skip certificate validation of the S3 endpoint, and a per-destination `tls_insecure` setting that does the same for log-forwarding syslog servers (Enterprise), for test environments.
+- Added the `infrahub db delete-diffs` command, which deletes the stored named diffs that are not frozen, and with `--include-branch-diffs` the unfrozen branch diffs too, for every branch or for a single branch with `--branch`.
+
+### Changed
+
+- Changed the node events sent when a branch is rebased: every rebase now replays all of the branch's own changes onto the new base, and the default branch's changes only for the object types whose schema the branch changed, instead of every change made on the default branch since the branch was created or last rebased. Webhooks and action rules receive an event for each of the branch's changes on every rebase.
+
+### Fixed
+
+- Fixed the file and artifact diffs displaying the lines around hidden unchanged lines as if they were adjacent; a separator now marks each block of hidden lines and expands it on click. ([#6938](https://github.com/opsmill/infrahub/issues/6938))
+- Fixed IPHost, IPNetwork and IPAddress attribute values not being normalized when updated. This broke value filters and the Schema Integrity check on proposed changes, and let an update bypass a uniqueness constraint when the address was written without its prefix length ([#10616](https://github.com/opsmill/infrahub/issues/10616))
+- Fixed a branch with conflicts against the default branch being unable to leave the `NEED_UPGRADE_REBASE` status: a rebase now accepts a conflict on an attribute once it is resolved in favor of the branch, and its error says, for each conflict that still blocks it, whether to resolve it in favor of the branch or to update the data.
+- Fixed a conflict going unreported when the default branch changed a relationship before a branch first changed the same relationship.
+- Fixed a display label or Jinja2 computed attribute that fails to render on one node preventing the refresh of the other nodes processed with it.
+- Fixed diff updates and branch rebases slowing down sharply when the diff contains a node related to thousands of objects, such as an IP namespace after a bulk IP address import.
+- Fixed diff updates on large branches stalling for tens of seconds after the diff was computed and storing a copy of the whole diff in Redis.
+- Fixed display labels, human-friendly IDs and computed attributes taking too long to refresh on kinds with many nodes after their schema definition or their Python transform changed.
+- Fixed rebasing a branch after large changes on the default branch taking a long time and exhausting worker memory.
+- Fixed rebasing a branch with changes of its own not releasing the branch-agnostic attribute and relationship values of objects deleted on the default branch, which kept counting towards uniqueness constraints and kept resource pool values allocated.
+- Fixed recreating a branch's diff, as happens after a rebase, reading the whole default branch side of the previous diff. A diff stored by an earlier version can hold every change made on the default branch since the branch was created, so the refresh could take minutes, exhaust worker memory and hold up a merge of the branch.
+- Fixed refreshing a computed attribute for a whole kind skipping some nodes when the kind is sorted on that computed attribute.
+- Fixed startup failing on a CA bundle setting left empty, such as a blanked `INFRAHUB_TLS_CA_BUNDLE` or `AWS_CA_BUNDLE` variable; an empty value is now read as unset
+- Fixed the "Infrahub is busy" notice closing early, and reopening instead of updating, when several retried requests completed within half a second of each other
+- Fixed the artifact and file viewers showing "Sorry, no data found." when the content could not be loaded; they now show the reason returned by the server.
+- Fixed the diff of a branch showing a relationship peer as added on the default branch when the default branch had added and removed it again before the branch changed that relationship.
+- Fixed the diff of a branch without changes of its own collecting every change made on the default branch since the branch was created, which made updating its diff and rebasing it slow and could exhaust database memory.
+- Fixed the diff update of a branch with tens of thousands of changed nodes taking many minutes longer than its data justifies: the diff is now calculated one chunk of changed nodes at a time, saved in batches that cost the same at any size and are written several at a time (bounded by the new `diff_save_concurrency` database setting), and its display labels are read from the nodes instead of being recomputed for every changed node.
+- Fixed the warning logged when an artifact or Generator definition regenerates every target, which always blamed target uniqueness; it now states the actual reason, and the reason is also logged after a merge.
+- Fixed the web UI being replaced by a raw JSON error body when the server is shedding load: a page load is no longer shed, so opening or refreshing Infrahub under heavy load reaches the app and its own retry handles the requests the page then makes.
+- Sped up artifact generation and transform rendering when the GraphQL query returns a large response.
