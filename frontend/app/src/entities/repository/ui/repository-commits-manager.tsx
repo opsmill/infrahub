@@ -74,7 +74,14 @@ export function RepositoryCommitsManager({
   if (commits.length === 0) {
     const emptyState = getEmptyState(log);
     if (emptyState) {
-      return <NoDataFound title={emptyState.title} message={emptyState.message} />;
+      return (
+        <Col className="h-full gap-0">
+          <Row className="p-2">
+            <RepositoryCommitsRefreshButton />
+          </Row>
+          <NoDataFound title={emptyState.title} message={emptyState.message} />
+        </Col>
+      );
     }
   }
 

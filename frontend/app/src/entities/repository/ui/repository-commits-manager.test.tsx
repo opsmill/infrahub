@@ -206,6 +206,37 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText("Sorry, something went wrong.").query()).toBeNull();
   });
 
+  test.each<{ condition: RepositoryGitCondition; response: RepositoryCommitsWire }>([
+    { condition: "UNAVAILABLE", response: generateNotClonedCommitsResponse() },
+    {
+      condition: "NOT_TRACKED",
+      response: generateRepositoryCommitsResponse({ condition: "NOT_TRACKED", git_ref: null }),
+    },
+    {
+      condition: "NO_REMOTE",
+      response: generateRepositoryCommitsResponse({ condition: "NO_REMOTE" }),
+    },
+  ])("refetches the log when refresh is pressed on the $condition empty state", async ({
+    response,
+  }) => {
+    // GIVEN
+    apiMock
+      .mockResolvedValueOnce(apiResult(response))
+      .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+    const component = await renderTab();
+    await expect.element(component.getByRole("button", { name: "Refresh data" })).toBeVisible();
+    vi.spyOn(appQueryClient, "invalidateQueries").mockImplementation((filters) =>
+      queryClient.invalidateQueries(filters)
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Refresh data" }).click();
+
+    // THEN
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    expect(apiMock).toHaveBeenCalledTimes(2);
+  });
+
   test("renders an error screen, not the not-yet-available state, when the query fails", async () => {
     // GIVEN
     apiMock.mockRejectedValue(new Error("Worker did not answer in time"));
