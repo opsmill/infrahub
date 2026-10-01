@@ -260,8 +260,8 @@ A branch with no repository to show reads one of these texts in its **Repositori
 
 | Repositories cell | Meaning |
 |---|---|
-| **Not synced with Git** | The branch does not sync with Git, and no read-only repository exists. |
-| **No repositories** | The branch syncs with Git, but no repository is connected to Infrahub, or the branch is merged. |
+| **Not synced with Git** | The branch does not sync with Git, and no read-only repository lists it. Merged and deleting branches are listed by no repository. |
+| **No repositories** | The branch syncs with Git, but no repository lists it: none is connected to Infrahub, or the branch is merged or deleting. |
 | **No permission** | Your account is not allowed to view repositories on every branch, so every branch reads this text. |
 | **Could not load repositories** | A request for repository status failed, so every branch reads this text. Hover the text to read the error message. |
 

@@ -40,7 +40,7 @@ interface BranchRepositoriesCellProps { branch: BranchTableRow }
 | `ok`, 0 repositories, `branch.sync_with_git === true` | muted "No repositories" |
 | `ok`, N ≥ 1 | the pill, then, when N > 1, the "+N more" link (`Row className="flex-wrap"`) |
 
-**Pill**: `LinkPill` to `getObjectDetailsUrl(kind, id, [getBranchQspOverride(branch.name, Boolean(branch.is_default))])` for `repositories[0].repository`, `className="max-w-40"`, content `FolderGitIcon` (`shrink-0`) + `<span className="truncate">{name}</span>`. Wrapped in `Tooltip` whose message is `formatRepositorySummary(repositories[0])` (`entities/branches/domain/rules/format-repository-summary.ts`): `<label> · <7-char commit> · read-only`, each part omitted when absent (FR-004).
+**Pill**: `LinkPill` to `getObjectDetailsUrl(kind, id, [getBranchQspOverride(branch.name, Boolean(branch.is_default))])` for `repositories[0].repository`, `className="max-w-40"`, content `FolderGitIcon` (`shrink-0`) + `<span className="truncate">{name}</span>`. Wrapped in `Tooltip` whose message is `formatRepositoryState / formatSyncStatusCounts(repositories[0])` (`entities/branches/domain/rules/format-repository-summary.ts`): `<label> · <7-char commit> · read-only`, each part omitted when absent (FR-004).
 
 **"+N more"**: react-router `Link` to `getBranchDetailsUrl(branch.name)`, text `+{N - 1} more`, `className="shrink-0 whitespace-nowrap text-foreground-muted text-sm hover:underline"`.
 
