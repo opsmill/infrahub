@@ -27,18 +27,20 @@ const config = { installation_type: "community" } as any;
 function renderAccountMenu() {
   return render(
     <ConfigContext value={config}>
-      <AuthContext value={auth}>
-        <AccountMenu />
-      </AuthContext>
+      <ThemeProvider>
+        <AuthContext value={auth}>
+          <AccountMenu />
+        </AuthContext>
+      </ThemeProvider>
     </ConfigContext>
   );
 }
 
-function renderAccountMenuWithTheme(darkTheme: boolean) {
+function renderAccountMenuWithTheme(darkTheme: boolean, authValue = auth) {
   return render(
     <ConfigContext value={{ ...config, experimental_features: { dark_theme: darkTheme } }}>
       <ThemeProvider>
-        <AuthContext value={auth}>
+        <AuthContext value={authValue}>
           <AccountMenu />
         </AuthContext>
       </ThemeProvider>
@@ -92,29 +94,45 @@ describe("AccountMenu", () => {
     );
   });
 
-  test("tags only the option that switches into the pre-release theme", async () => {
+  test("names the choice on the Theme item and checks it in the submenu, tagging only dark", async () => {
+    // GIVEN
     vi.mocked(hasGlobalPermission).mockResolvedValue(false);
-    // Start from an explicit choice. Which item is on offer follows the theme on screen, and this
-    // test is about the tag rather than about whatever the default policy currently resolves to.
     localStorage.setItem("infrahub.theme.choice", "dark");
-
     const component = await renderAccountMenuWithTheme(true);
+
+    // WHEN
     await component.getByTestId("authenticated-menu-trigger").click();
+    const themeItem = component.getByRole("menuitem", { name: "Theme", exact: true });
+    await themeItem.click();
 
-    // The page is dark, so the switch offers the way back out — and leaving alpha is not itself an
-    // alpha step, so this item carries no tag.
-    const toLight = component.getByRole("menuitem", { name: /Light theme/ });
-    await expect.element(toLight).toBeVisible();
-    await expect.element(toLight).not.toHaveTextContent("alpha");
+    // THEN
+    await expect.element(themeItem).toHaveTextContent("Dark");
+    const dark = component.getByRole("menuitemradio", { name: "Dark", exact: true });
+    await expect.element(dark).toHaveAttribute("aria-checked", "true");
+    await expect.element(dark).toHaveTextContent("alpha");
+    for (const name of ["Light", "System"]) {
+      const option = component.getByRole("menuitemradio", { name, exact: true });
+      await expect.element(option).toHaveAttribute("aria-checked", "false");
+      await expect.element(option).not.toHaveTextContent("alpha");
+    }
+  });
 
-    await toLight.click();
+  test("choosing System follows the desktop and stores the choice", async () => {
+    // GIVEN
+    vi.mocked(hasGlobalPermission).mockResolvedValue(false);
+    expect(window.matchMedia("(prefers-color-scheme: dark)").matches).toBe(false);
+    localStorage.setItem("infrahub.theme.choice", "dark");
+    const component = await renderAccountMenuWithTheme(true);
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+
+    // WHEN
+    await component.getByTestId("authenticated-menu-trigger").click();
+    await component.getByRole("menuitem", { name: "Theme", exact: true }).click();
+    await component.getByRole("menuitemradio", { name: "System", exact: true }).click();
+
+    // THEN
     await expect.poll(() => document.documentElement.classList.contains("dark")).toBe(false);
-
-    // Now the switch offers the way in, which is the step that warrants the warning.
-    await component.getByTestId("authenticated-menu-trigger").click();
-    const toDark = component.getByRole("menuitem", { name: /Dark theme/ });
-    await expect.element(toDark).toBeVisible();
-    await expect.element(toDark).toHaveTextContent("alpha");
+    expect(localStorage.getItem("infrahub.theme.choice")).toBe("system");
   });
 
   test("hides the theme switch when the deployment does not enable it", async () => {
@@ -127,5 +145,21 @@ describe("AccountMenu", () => {
       .element(component.getByRole("menuitem", { name: "Account settings" }))
       .toBeVisible();
     expect(component.getByRole("menuitem", { name: /theme/i }).elements()).toHaveLength(0);
+  });
+
+  test("starts the anonymous menu with an item, not a divider, when the theme is off", async () => {
+    // GIVEN
+    const component = await renderAccountMenuWithTheme(false, { ...auth, isAuthenticated: false });
+
+    // WHEN
+    await component.getByTestId("unauthenticated-menu-trigger").click();
+
+    // THEN
+    await expect.element(component.getByRole("menuitem", { name: "About Infrahub" })).toBeVisible();
+    const firstEntry = component
+      .getByRole("menu")
+      .element()
+      .querySelector("[role='menuitem'], [role='separator']");
+    expect(firstEntry?.getAttribute("role")).toBe("menuitem");
   });
 });
