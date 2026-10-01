@@ -86,9 +86,9 @@ class SchemaDeclaredPythonAttributes:
             return []
 
         # A worker behind on the schema declares no Python attribute, which reads as nothing to do.
-        await wait_for_schema_to_converge(
-            branch_name=branch, component=self.component, db=self.db, log=get_run_logger()
-        )
+        # The database object can be shared by every flow a worker runs at once, and a session serves one caller.
+        async with self.db.start_session() as db:
+            await wait_for_schema_to_converge(branch_name=branch, component=self.component, db=db, log=get_run_logger())
         return [
             DeclaredAttribute(kind=kind, attribute_name=attribute.name)
             for kind, attributes in self._attributes_per_kind(branch=branch).items()
@@ -109,7 +109,9 @@ class GatheredPythonReadSets:
 
     async def analyzed(self, *, branch: str) -> dict[DeclaredAttribute, AnalyzedRead]:
         schema_branch = registry.schema.get_schema_branch(name=branch)
-        gathered = await gather_python_transform_attributes(db=self.db, branch_name=branch)
+        # The database object can be shared by every flow a worker runs at once, and a session serves one caller.
+        async with self.db.start_session(read_only=True) as db:
+            gathered = await gather_python_transform_attributes(db=db, branch_name=branch)
 
         reads: dict[DeclaredAttribute, AnalyzedRead] = {}
         for item in gathered:
@@ -212,7 +214,9 @@ class UnavailablePythonTargetResolver:
         raise RuntimeError("the Python target resolver could not be built")
 
 
-async def build_python_target_resolver(*, db: InfrahubDatabase) -> PythonTargetResolver:
+async def build_python_target_resolver(
+    *, db: InfrahubDatabase, refresh_updated_nodes: bool = False
+) -> PythonTargetResolver:
     """Build the resolver for one recompute pass."""
     return IndexedPythonTargetResolver(
         read_set_source=ComposedPythonReadSetSource(
@@ -220,4 +224,5 @@ async def build_python_target_resolver(*, db: InfrahubDatabase) -> PythonTargetR
             analyzed_reads=GatheredPythonReadSets(db=db),
         ),
         subscriber_source=ClientSubscriberSource(client=get_client()),
+        refresh_updated_nodes=refresh_updated_nodes,
     )

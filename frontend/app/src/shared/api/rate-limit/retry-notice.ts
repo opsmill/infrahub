@@ -18,6 +18,10 @@ const NOTICE_GRACE_MS = 500;
 // Replays the notice has announced that have neither fired nor been abandoned.
 let pendingReplays = 0;
 
+// The grace timer of the last replay that fired; a later one restarts it, so
+// the notice never closes before the latest grace has passed.
+let graceTimer: ReturnType<typeof setTimeout> | undefined;
+
 function retryNoticeMessage(delayMs: number): string {
   const seconds = Math.ceil(delayMs / 1000);
   const unit = seconds === 1 ? "second" : "seconds";
@@ -38,6 +42,14 @@ function showNotice(delayMs: number): void {
 
 function dismissIfIdle(): void {
   if (pendingReplays === 0) toast.dismiss(RETRY_TOAST_ID);
+}
+
+function dismissAfterGrace(): void {
+  clearTimeout(graceTimer);
+  graceTimer = setTimeout(() => {
+    graceTimer = undefined;
+    dismissIfIdle();
+  }, NOTICE_GRACE_MS);
 }
 
 /**
@@ -64,6 +76,6 @@ export function notifyRetryScheduled(delayMs: number): (outcome: RetryOutcome) =
       dismissIfIdle();
       return;
     }
-    setTimeout(dismissIfIdle, NOTICE_GRACE_MS);
+    dismissAfterGrace();
   };
 }

@@ -8,9 +8,10 @@ per affected attribute instead of one per changed node.
 
 from __future__ import annotations
 
+import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -340,6 +341,25 @@ class TestCoalescedRecomputePython(CoalescedPythonTestBase):
         )
 
         assert submissions == {OWNER_ATTRIBUTE: sorted(dataset.car_ids)}
+
+    async def test_passes_resolving_at_once_on_one_database_each_narrow(
+        self,
+        dataset: PythonRecomputeDataset,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+    ) -> None:
+        """A worker runs its flows concurrently over one database object, so no pass may read through a shared session."""
+        resolvers = [await build_python_target_resolver(db=db) for _ in range(8)]
+        change = MergeChange(
+            node_id=dataset.person_id, kind=PERSON_KIND, action="updated", changed_fields=frozenset({"name"})
+        )
+
+        results = await asyncio.gather(
+            *(resolver.resolve(changes=[change], branch=default_branch.name) for resolver in resolvers)
+        )
+
+        for targets in results:
+            assert [(target.attribute_name, target.whole_kind) for target in targets] == [(OWNER_ATTRIBUTE, False)]
 
     async def test_a_pair_the_schema_pass_refreshes_is_dropped(
         self,
@@ -704,31 +724,35 @@ class TestCoalescedRecomputePythonRebase(CoalescedPythonTestBase):
         default_branch: Branch,
         client: InfrahubClient,
         admin_account: CoreAccount,
-    ) -> tuple[PythonRecomputeDataset, str]:
-        """A branch forked before the owner is renamed on the default branch.
+    ) -> tuple[PythonRecomputeDataset, str, str]:
+        """Two branches forked before the owner is renamed on the default branch.
 
-        The rename is what the rebase replays, and the cars read the owner, so a narrowed pass
-        selects exactly those two.
+        The first changes nothing. The second holds a value of its own for the first car's
+        owner-reading attribute, derived from the owner's old name.
         """
         lock.initialize_lock(local_only=True)
         dataset = await _seed(db=db, branch=default_branch, schema=_schema_with_an_owner_reading_transform())
-        branch_name = "rebase_python"
-        await create_branch(branch_name=branch_name, db=db)
+        unchanged_branch = await create_branch(branch_name="rebase_python_unchanged", db=db)
+        derived_branch = await create_branch(branch_name="rebase_python_derived", db=db)
+
+        car = await NodeManager.get_one(db=db, id=dataset.car_ids[0], branch=derived_branch, raise_on_error=True)
+        car.get_attribute(name=OWNER_ATTRIBUTE).value = "owner01"
+        await car.save(db=db)
 
         person = await NodeManager.get_one(db=db, id=dataset.person_id, raise_on_error=True)
         person.name.value = "owner02"
         await person.save(db=db)
-        return dataset, branch_name
+        return dataset, unchanged_branch.name, derived_branch.name
 
-    async def test_the_rebase_flow_narrows_the_python_family(
+    async def _rebase(
         self,
-        rebase_dataset: tuple[PythonRecomputeDataset, str],
-        db: InfrahubDatabase,
+        *,
+        branch_name: str,
         workflow_recorder: WorkflowRecorder,
         default_branch: Branch,
         admin_account: CoreAccount,
-    ) -> None:
-        dataset, branch_name = rebase_dataset
+    ) -> tuple[dict[str, list[str]], list[dict[str, Any]]]:
+        """Rebase the branch and report the scoped submissions by attribute, and the widened ones."""
         context = InfrahubContext.init(
             branch=default_branch,
             account=AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=admin_account.id),
@@ -736,10 +760,48 @@ class TestCoalescedRecomputePythonRebase(CoalescedPythonTestBase):
 
         await rebase_branch(branch=branch_name, context=context, send_events=True)
 
-        scoped = workflow_recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM)
-        widened = workflow_recorder.get_submit_calls_for(TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES)
+        scoped = {
+            call["parameters"]["computed_attribute_name"]: sorted(call["parameters"]["object_ids"])
+            for call in workflow_recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM)
+        }
+        return scoped, workflow_recorder.get_submit_calls_for(TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES)
 
+    async def test_a_rebase_without_changes_of_its_own_recomputes_no_python_attribute(
+        self,
+        rebase_dataset: tuple[PythonRecomputeDataset, str, str],
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        """The branch reads the values the default branch recomputed after the rename."""
+        _, branch_name, _ = rebase_dataset
+
+        scoped, widened = await self._rebase(
+            branch_name=branch_name,
+            workflow_recorder=workflow_recorder,
+            default_branch=default_branch,
+            admin_account=admin_account,
+        )
+
+        assert scoped == {}
         assert widened == []
-        assert len(scoped) == 1
-        assert scoped[0]["parameters"]["computed_attribute_name"] == OWNER_ATTRIBUTE
-        assert sorted(scoped[0]["parameters"]["object_ids"]) == sorted(dataset.car_ids)
+
+    async def test_a_rebase_refreshes_every_python_value_of_an_updated_node(
+        self,
+        rebase_dataset: tuple[PythonRecomputeDataset, str, str],
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        """The car's only changed field is one no query reads, and its value still read the old owner name."""
+        dataset, _, branch_name = rebase_dataset
+
+        scoped, widened = await self._rebase(
+            branch_name=branch_name,
+            workflow_recorder=workflow_recorder,
+            default_branch=default_branch,
+            admin_account=admin_account,
+        )
+
+        assert scoped == {NAME_ATTRIBUTE: [dataset.car_ids[0]], OWNER_ATTRIBUTE: [dataset.car_ids[0]]}
+        assert widened == []

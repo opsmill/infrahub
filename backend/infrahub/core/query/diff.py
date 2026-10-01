@@ -924,9 +924,17 @@ class DiffChangedNodesQuery(DiffCalculationQuery):
 
     The paths queries page their rows with SKIP and LIMIT, so every page re-runs their match over each edge
     changed on the branch. Running them one chunk of the uuids listed here at a time keeps every match small.
-    Every condition here is one the matching paths query applies as well, so the list is a superset of the
-    nodes it returns paths for and partitioning by it loses no row.
+    Every condition here other than ``node_kinds`` is one the matching paths query applies as well, so
+    partitioning by the list loses no row of the requested kinds.
     """
+
+    def __init__(self, node_kinds: list[str] | None = None, **kwargs: Any) -> None:
+        """List the changed nodes, of the given kinds only when ``node_kinds`` is set."""
+        self.node_kinds = node_kinds
+        super().__init__(**kwargs)
+
+    def get_params(self) -> dict[str, Any]:
+        return super().get_params() | {"node_kinds": self.node_kinds}
 
     def get_node_uuids(self) -> list[str]:
         result = self.get_result()
@@ -946,6 +954,7 @@ class DiffNodeNodesQuery(DiffChangedNodesQuery):
 // -------------------------------------
 MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(p:Node)
 WHERE p.branch_support = $branch_aware
+AND ($node_kinds IS NULL OR p.kind IN $node_kinds)
 AND (
     ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
     OR ($from_time <= diff_rel.to < $to_time)
@@ -966,6 +975,7 @@ class DiffFieldNodesQuery(DiffChangedNodesQuery):
 // -------------------------------------
 MATCH (p:Node)-[diff_rel:HAS_ATTRIBUTE|IS_RELATED {branch: $branch_name}]-(q)
 WHERE q.branch_support = $branch_aware
+AND ($node_kinds IS NULL OR p.kind IN $node_kinds)
 AND (
     ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
     OR ($from_time <= diff_rel.to < $to_time)
@@ -987,6 +997,7 @@ class DiffPropertyNodesQuery(DiffChangedNodesQuery):
 MATCH (n:Node)-[:HAS_ATTRIBUTE|IS_RELATED]-(p:Attribute|Relationship)
     -[diff_rel:IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE {branch: $branch_name}]->()
 WHERE p.branch_support = $branch_aware
+AND ($node_kinds IS NULL OR n.kind IN $node_kinds)
 AND (
     ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
     OR ($from_time <= diff_rel.to < $to_time)
