@@ -49,7 +49,10 @@ export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQue
       getRepositoryCommits({ ...params, offset: pageParam, limit: REPOSITORY_COMMITS_PAGE_SIZE }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
-      if (lastPage.commits.length < REPOSITORY_COMMITS_PAGE_SIZE) {
+      if (
+        !isGitStateAvailable(lastPage) ||
+        lastPage.commits.length < REPOSITORY_COMMITS_PAGE_SIZE
+      ) {
         return;
       }
       return lastPageParam + REPOSITORY_COMMITS_PAGE_SIZE;

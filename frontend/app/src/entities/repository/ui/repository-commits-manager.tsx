@@ -1,4 +1,4 @@
-import { Spinner } from "@infrahub/ui";
+import { Button, Spinner } from "@infrahub/ui";
 
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -9,7 +9,11 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
-import { getEmptyState, getLoadedCommits } from "@/entities/repository/ui/repository-commits.view";
+import {
+  getEmptyState,
+  getLoadedCommits,
+  isHistoryCutShort,
+} from "@/entities/repository/ui/repository-commits.view";
 import {
   RepositoryCommitsHeader,
   RepositoryCommitsRefreshButton,
@@ -27,9 +31,15 @@ export function RepositoryCommitsManager({
   repositoryId,
   repositoryLocation,
 }: RepositoryCommitsManagerProps) {
-  const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetRepositoryCommits({
-    repositoryId,
-  });
+  const {
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+    refetch,
+  } = useGetRepositoryCommits({ repositoryId });
   const pages = data?.pages ?? [];
   const [log] = pages;
   const commits = getLoadedCommits(pages);
@@ -76,6 +86,14 @@ export function RepositoryCommitsManager({
           renderEmpty={() => <NoDataFound message="This ref has no commits." />}
         />
         {isFetchingNextPage && <Spinner className="mx-auto my-2" />}
+        {isHistoryCutShort(pages, { isFetchNextPageError }) && (
+          <Row className="items-center justify-center gap-2 p-2 text-foreground-muted text-sm">
+            <p>Older commits could not be loaded right now.</p>
+            <Button variant="outline" size="sm" onPress={() => refetch()}>
+              Retry
+            </Button>
+          </Row>
+        )}
       </InfiniteScroll>
     </Col>
   );

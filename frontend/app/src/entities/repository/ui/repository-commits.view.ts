@@ -7,6 +7,7 @@ import {
   RepositoryCommitState,
   RepositoryGitCondition,
 } from "@/entities/repository/domain/model/repository";
+import { isGitStateAvailable } from "@/entities/repository/domain/rules/is-git-state-available";
 
 // Offset paging over a moving log can repeat a commit at a page boundary.
 export function getLoadedCommits(
@@ -17,6 +18,15 @@ export function getLoadedCommits(
       pages.flatMap((page) => page.commits).map((commit) => [commit.hash, commit])
     ).values(),
   ];
+}
+
+export function isHistoryCutShort(
+  pages: Pick<RepositoryCommitLog, "condition">[],
+  { isFetchNextPageError }: { isFetchNextPageError: boolean }
+): boolean {
+  if (isFetchNextPageError) return true;
+  const lastPage = pages.at(-1);
+  return pages.length > 1 && lastPage !== undefined && !isGitStateAvailable(lastPage);
 }
 
 export interface CommitLogEmptyState {

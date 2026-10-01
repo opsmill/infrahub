@@ -184,6 +184,24 @@ describe("getRepositoryCommitsQueryOptions", () => {
     expect(nextOffset).toBeUndefined();
   });
 
+  test("stops paging when the last page answers unavailable", () => {
+    // GIVEN
+    const { getNextPageParam } = getRepositoryCommitsQueryOptions(PARAMS);
+    const firstPage = buildLog(RepositoryGitCondition.IN_SYNC, REPOSITORY_COMMITS_PAGE_SIZE);
+    const lastPage = buildLog(RepositoryGitCondition.UNAVAILABLE, 0);
+
+    // WHEN
+    const nextOffset = getNextPageParam(
+      lastPage,
+      [firstPage, lastPage],
+      REPOSITORY_COMMITS_PAGE_SIZE,
+      [0, REPOSITORY_COMMITS_PAGE_SIZE]
+    );
+
+    // THEN
+    expect(nextOffset).toBeUndefined();
+  });
+
   test("keys the cache by repository, branch and page size", () => {
     // GIVEN
     const params = { repositoryId: "repo-42", branchName: "feature" };

@@ -12,6 +12,7 @@ import {
   getFreshness,
   getLoadedCommits,
   getStateBadges,
+  isHistoryCutShort,
 } from "@/entities/repository/ui/repository-commits.view";
 
 const IMPORTED_HASH = "a".repeat(40);
@@ -266,5 +267,54 @@ describe("getConditionNotice", () => {
 
     // THEN
     expect(notice).toBeNull();
+  });
+});
+
+describe("isHistoryCutShort", () => {
+  const available = { condition: RepositoryGitCondition.IN_SYNC };
+  const cold = { condition: RepositoryGitCondition.UNAVAILABLE };
+
+  test("is false for a single unavailable first page", () => {
+    // GIVEN
+    const pages = [cold];
+
+    // WHEN
+    const cutShort = isHistoryCutShort(pages, { isFetchNextPageError: false });
+
+    // THEN
+    expect(cutShort).toBe(false);
+  });
+
+  test("is true when a later page answers unavailable", () => {
+    // GIVEN
+    const pages = [available, cold];
+
+    // WHEN
+    const cutShort = isHistoryCutShort(pages, { isFetchNextPageError: false });
+
+    // THEN
+    expect(cutShort).toBe(true);
+  });
+
+  test("is true when fetching the next page failed", () => {
+    // GIVEN
+    const pages = [available, available];
+
+    // WHEN
+    const cutShort = isHistoryCutShort(pages, { isFetchNextPageError: true });
+
+    // THEN
+    expect(cutShort).toBe(true);
+  });
+
+  test("is false when every loaded page is available", () => {
+    // GIVEN
+    const pages = [available, available];
+
+    // WHEN
+    const cutShort = isHistoryCutShort(pages, { isFetchNextPageError: false });
+
+    // THEN
+    expect(cutShort).toBe(false);
   });
 });
