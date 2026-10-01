@@ -8,7 +8,11 @@ import {
 import type { ContextParams, InfiniteQueryConfig, PaginationParams } from "@/shared/api/types";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import type { RepositoryCommitLog } from "@/entities/repository/domain/model/repository";
+import type {
+  RepositoryCommitLog,
+  RepositoryCommitStatus,
+} from "@/entities/repository/domain/model/repository";
+import { getCommitStatusFromLog } from "@/entities/repository/domain/rules/get-commit-status-from-log";
 import { isGitStateAvailable } from "@/entities/repository/domain/rules/is-git-state-available";
 import {
   type GetRepositoryCommitsParams,
@@ -38,6 +42,13 @@ function keepLoadedPagesOverColdAnswer(
   return replaceEqualDeep(oldData, newData);
 }
 
+function keepStatusOverColdAnswer(
+  previous: RepositoryCommitStatus | undefined,
+  next: RepositoryCommitStatus
+): RepositoryCommitStatus {
+  return previous && isGitStateAvailable(previous) && !isGitStateAvailable(next) ? previous : next;
+}
+
 export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQueryParams) {
   return infiniteQueryOptions({
     queryKey: repositoriesQueryKeys.commits({
@@ -45,8 +56,23 @@ export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQue
       branchName: params.branchName,
       limit: REPOSITORY_COMMITS_PAGE_SIZE,
     }),
-    queryFn: ({ pageParam }) =>
-      getRepositoryCommits({ ...params, offset: pageParam, limit: REPOSITORY_COMMITS_PAGE_SIZE }),
+    queryFn: async ({ pageParam, client }) => {
+      const log = await getRepositoryCommits({
+        ...params,
+        offset: pageParam,
+        limit: REPOSITORY_COMMITS_PAGE_SIZE,
+      });
+      if (pageParam === 0) {
+        client.setQueryData<RepositoryCommitStatus>(
+          repositoriesQueryKeys.commitStatus({
+            repositoryId: params.repositoryId,
+            branchName: params.branchName,
+          }),
+          (previous) => keepStatusOverColdAnswer(previous, getCommitStatusFromLog(log))
+        );
+      }
+      return log;
+    },
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
       if (

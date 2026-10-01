@@ -1,4 +1,5 @@
-import { describe, expect, test } from "vitest";
+import { QueryClient } from "@tanstack/react-query";
+import { describe, expect, test, vi } from "vitest";
 
 import {
   type RepositoryCommit,
@@ -7,11 +8,17 @@ import {
   RepositoryGitCondition,
   RepositoryGitUnavailableReason,
 } from "@/entities/repository/domain/model/repository";
+import { getRepositoryCommits } from "@/entities/repository/domain/use-cases/get-repository-commits";
 import {
   getRepositoryCommitsQueryOptions,
   REPOSITORY_COMMITS_PAGE_SIZE,
   REPOSITORY_COMMITS_POLL_INTERVAL_MS,
 } from "@/entities/repository/ui/queries/get-repository-commits.query";
+import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
+
+vi.mock("@/entities/repository/domain/use-cases/get-repository-commits");
+
+const getRepositoryCommitsMock = vi.mocked(getRepositoryCommits);
 
 const PARAMS = { repositoryId: "repo-1", branchName: "main" };
 
@@ -226,5 +233,56 @@ describe("getRepositoryCommitsQueryOptions", () => {
 
     // THEN
     expect(refetchOnWindowFocus).toBe(false);
+  });
+
+  describe("feeding the commit status", () => {
+    const statusKey = repositoriesQueryKeys.commitStatus(PARAMS);
+
+    test("writes the status of the first page", async () => {
+      // GIVEN
+      const client = new QueryClient();
+      getRepositoryCommitsMock.mockResolvedValue({
+        ...buildLog(RepositoryGitCondition.BEHIND),
+        pending_count: 4,
+      });
+
+      // WHEN
+      await client.fetchInfiniteQuery(getRepositoryCommitsQueryOptions(PARAMS));
+
+      // THEN
+      expect(client.getQueryData(statusKey)).toEqual({
+        condition: RepositoryGitCondition.BEHIND,
+        pending_count: 4,
+      });
+    });
+
+    test("leaves the status alone for a later page", async () => {
+      // GIVEN
+      const client = new QueryClient();
+      getRepositoryCommitsMock.mockResolvedValue(buildLog(RepositoryGitCondition.BEHIND));
+
+      // WHEN
+      await client.fetchInfiniteQuery({
+        ...getRepositoryCommitsQueryOptions(PARAMS),
+        initialPageParam: REPOSITORY_COMMITS_PAGE_SIZE,
+      });
+
+      // THEN
+      expect(client.getQueryData(statusKey)).toBeUndefined();
+    });
+
+    test("keeps a known status when the first page answers unavailable", async () => {
+      // GIVEN
+      const client = new QueryClient();
+      const known = { condition: RepositoryGitCondition.IN_SYNC, pending_count: null };
+      client.setQueryData(statusKey, known);
+      getRepositoryCommitsMock.mockResolvedValue(buildLog(RepositoryGitCondition.UNAVAILABLE, 0));
+
+      // WHEN
+      await client.fetchInfiniteQuery(getRepositoryCommitsQueryOptions(PARAMS));
+
+      // THEN
+      expect(client.getQueryData(statusKey)).toEqual(known);
+    });
   });
 });

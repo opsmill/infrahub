@@ -1,8 +1,12 @@
+import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { getRepositoryCommitStatusFromApi } from "@/entities/repository/api/get-repository-commit-status-from-api";
+import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
+import { getRepositoryCommitsQueryOptions } from "@/entities/repository/ui/queries/get-repository-commits.query";
 
 import { render } from "../../../../tests/components/render";
+import { generateBranch } from "../../../../tests/fake/branch";
 import {
   generateBehindCommitsResponse,
   generateInSyncCommitsResponse,
@@ -12,16 +16,35 @@ import {
 import { RepositoryCommitsTab } from "./repository-commits-tab";
 
 vi.mock("@/entities/repository/api/get-repository-commit-status-from-api");
+vi.mock("@/entities/repository/api/get-repository-commits-from-api");
 
 const apiMock = vi.mocked(getRepositoryCommitStatusFromApi);
+const commitsApiMock = vi.mocked(getRepositoryCommitsFromApi);
 
 type ApiResult = Awaited<ReturnType<typeof getRepositoryCommitStatusFromApi>>;
 
 const apiResult = ({ condition, pending_count }: RepositoryCommitsWire) =>
   ({ data: { InfrahubRepositoryCommits: { condition, pending_count } } }) as ApiResult;
 
+type CommitsApiResult = Awaited<ReturnType<typeof getRepositoryCommitsFromApi>>;
+
+const commitsApiResult = (response: RepositoryCommitsWire) =>
+  ({ data: { InfrahubRepositoryCommits: response } }) as unknown as CommitsApiResult;
+
+let queryClient: QueryClient;
+
+function CaptureQueryClient() {
+  queryClient = useQueryClient();
+  return null;
+}
+
 const renderTab = () =>
-  render(<RepositoryCommitsTab objectKind="CoreRepository" objectId="repo-1" />);
+  render(
+    <>
+      <CaptureQueryClient />
+      <RepositoryCommitsTab objectKind="CoreRepository" objectId="repo-1" />
+    </>
+  );
 
 describe("RepositoryCommitsTab", () => {
   afterEach(() => {
@@ -68,5 +91,29 @@ describe("RepositoryCommitsTab", () => {
       .toBeVisible();
     expect(component.getByText(/pending import/).query()).toBeNull();
     expect(component.getByText(/^\d+$/).query()).toBeNull();
+  });
+
+  test("follows the status the commit log brings in", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(apiResult(generateInSyncCommitsResponse()));
+    commitsApiMock.mockResolvedValue(commitsApiResult(generateBehindCommitsResponse()));
+    const component = await renderTab();
+    await expect
+      .element(component.getByRole("link", { name: "Commits 0 pending import" }))
+      .toBeVisible();
+
+    // WHEN
+    await queryClient.fetchInfiniteQuery(
+      getRepositoryCommitsQueryOptions({
+        repositoryId: "repo-1",
+        branchName: generateBranch().name,
+      })
+    );
+
+    // THEN
+    await expect
+      .element(component.getByRole("link", { name: "Commits 2 pending import" }))
+      .toBeVisible();
+    expect(apiMock).toHaveBeenCalledTimes(1);
   });
 });
