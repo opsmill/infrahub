@@ -244,11 +244,6 @@ changes which remote branch feeds Infrahub's default branch, so the graph commit
 the next cycle classifies it. That selection is needed for FR-001b regardless, so the re-target
 case costs nothing extra.
 
-**Alternative rejected**: storing the tracking target as a fifth attribute. It is the only
-timing-free answer and it removes the cache completely. Rejected because the PRD fixes the shape at
-four scalars and argues that decision explicitly. If that constraint is relaxed, this is the better
-design and the marker goes away.
-
 **Why the caller reads it and not the recorder.** The recorder writes nothing unless the
 classification is already `REWRITE`, so on a `RETARGET` it would return before reaching the marker
 and never consume it. The marker would then survive its full hour and suppress the *next*, genuine, rewrite
@@ -256,7 +251,8 @@ of that branch. Reading at classification time keeps `RETARGET` reachable in the
 tests, and deleting after the commit write keeps a failed cycle retryable.
 
 **Rationale**: the cache is how this codebase already coordinates repository state across workers,
-and the read-write edit has no in-band channel to travel on. The marker is deleted once the commit write lands, so it cannot suppress twice.
+and the read-write edit has no in-band channel to travel on. The marker is deleted once the commit
+write lands, so it cannot suppress twice.
 
 **Known failure mode, accepted and documented**: if the cache is flushed between the mutation and
 the reconciliation, a deliberate re-target is recorded as a rewrite. That costs more than a wrong
@@ -270,8 +266,12 @@ widened candidate set classifies a re-targeted trunk on the next cycle, within a
 edit.
 
 The read and the delete are separate operations, because the cache has no atomic get-and-delete.
-Nothing guards the window between them except `GIT_REPOSITORIES_SYNC` running with
-`concurrency_limit=1` and `CANCEL_NEW`.
+`GIT_REPOSITORIES_SYNC` runs with `concurrency_limit=1` and `CANCEL_NEW`, so no second cycle enters
+that window. A user edit does. A second re-target between the read and the delete writes a fresh
+marker, the cycle deletes that newer marker, and the next cycle reports the second re-target as a
+rewrite. Deleting only the value that was read would close it, and the cache API would have to grow
+a compare-and-delete to do so. Accepted: the cost is the one in the risk table, for two deliberate
+re-targets of the same repository inside one cycle.
 
 **Alternatives rejected**:
 

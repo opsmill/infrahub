@@ -83,11 +83,14 @@ dev/specs/ifc-3210-history-rewrite-reconciliation/
 ├── research.md
 ├── data-model.md
 ├── quickstart.md
+├── alignment-check.md
 ├── contracts/
 │   ├── repository_rewrite.graphql
 │   └── internal-interfaces.md
 ├── checklists/
 │   └── requirements.md
+├── critiques/
+│   └── critique-20260929-1530.md
 └── tasks.md                     # written by the tasks phase
 ```
 

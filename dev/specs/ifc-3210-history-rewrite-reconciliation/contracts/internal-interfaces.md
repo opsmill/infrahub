@@ -437,12 +437,12 @@ Changed. `backend/infrahub/message_bus/operations/git/repository.py::fetch`.
 3. When `branches` is present, it resets each pair in turn, inside that one lock hold.
 4. When `branches` is absent, it behaves exactly as it does today.
 5. It still passes `update_commit_value=False`. A broadcast never writes to the graph.
-7. **It resets with `reset_to_commit` and runs no ancestry check**, so it does not honour
+6. **It resets with `reset_to_commit` and runs no ancestry check**, so it does not honour
    `LOCAL_AHEAD`: a pinned SHA moves the worktree whether or not it holds commits the remote does
    not. That is deliberate, because the broadcast carries a SHA the sending worker already resolved
    and the receiving worker is meant to converge on exactly it. It is also why widening the
    broadcast is gated on #10465 along with every other reset.
-6. One pair failing does not stop the rest. Each failure is logged with the branch it belongs to,
+7. One pair failing does not stop the rest. Each failure is logged with the branch it belongs to,
    and that branch converges on first contact through the pull-path rule of FR-005. The broadcast
    is a pre-warm, so a pair it could not converge costs promptness and not correctness.
 

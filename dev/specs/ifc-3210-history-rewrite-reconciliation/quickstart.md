@@ -3,8 +3,9 @@
 **Feature**: `dev/specs/ifc-3210-history-rewrite-reconciliation`
 **Date**: 2026-09-29
 
-How to run the validation for this feature, and what each run must show. Every test here uses
-testcontainers. No test uses an external or locally-running Neo4j.
+How to run the validation for this feature, and what each run must show. Every component,
+integration and end-to-end test here uses testcontainers. No test uses an external or
+locally-running Neo4j. The unit tests need no database at all.
 
 ---
 
@@ -145,7 +146,7 @@ uv run invoke backend.generate
 uv run invoke schema.generate-graphqlschema
 uv run invoke schema.generate-jsonschema
 uv run invoke docs.generate
-cd frontend/app && pnpm codegen
+cd frontend/app && pnpm codegen:graphql
 ```
 
 The new event also makes the events reference documentation stale, which `docs.generate` covers.

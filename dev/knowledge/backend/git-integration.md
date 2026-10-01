@@ -203,7 +203,7 @@ individually:
 
 | Attribute | Branch support | Consequence |
 |---|---|---|
-| `commit`, `sync_status`, `internal_status` | LOCAL | Per-branch value, never diffed, never merged |
+| `CoreRepository.commit`, `sync_status`, `internal_status` | LOCAL | Per-branch value, never diffed, never merged |
 | `operational_status` | AGNOSTIC | One value shared by every branch |
 | `name`, `description`, `location` | AGNOSTIC | One value shared by every branch |
 | `CoreReadOnlyRepository.commit` and `.ref` | AWARE | Per-branch value that **does** reach diffs and merges |
