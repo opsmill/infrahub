@@ -11,6 +11,16 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.10.11](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.11) - 2026-10-01
+
+### Security
+
+- Prevented Infrahub from serving an artifact file that no longer matches its checksum, for example after it was modified in the object storage; reading it now returns an error asking to regenerate the artifact, and Re-generate on the artifact page stores a correct copy.
+
+### Fixed
+
+- Fixed the artifact and file viewers showing "Sorry, no data found." when the content could not be loaded; they now show the reason returned by the server.
+
 ## [Infrahub - v1.10.10](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.10) - 2026-08-31
 
 ### Added
