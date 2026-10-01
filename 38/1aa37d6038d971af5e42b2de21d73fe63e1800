@@ -1,0 +1,25 @@
+backend/infrahub/cli/db_commands/migration_display.py
+  s_11ab43874ad039::t_ea10587938384c 1-35
+backend/infrahub/cli/db.py
+  s_11ab43874ad039::t_0c67f90ae1f52e 77-81,242,245,283,286,802-803
+backend/tests/unit/cli/test_db_migration_display.py
+  s_11ab43874ad039::t_1a5d60076b0230 1-91
+dev/specs/ifc-90100-refactor-cli-db/plan.md
+  s_11ab43874ad039::t_2a74b27530c6b4 1-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "381aa37d6038d971af5e42b2de21d73fe63e1800",
+  "prompts": {},
+  "sessions": {
+    "s_11ab43874ad039": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14f295ea-eaaa-486b-aa0f-c1ed07b64b7a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

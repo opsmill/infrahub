@@ -1,0 +1,32 @@
+backend/tests/component/core/resource_manager/test_number_pool.py
+  s_648efdd88fc19b::t_0d968320e7f9bf 86-91
+  s_648efdd88fc19b::t_3f48adc8404d9c 61-85,92-95
+backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py
+  s_648efdd88fc19b::t_3bd42d4f32cdea 259-286
+  s_648efdd88fc19b::t_69da34edb3b7b6 14,19,22,25,65-79
+  s_648efdd88fc19b::t_b92024b7be0502 80-81
+dev/specs/ifc-3184-pool-number-attach/tasks.md
+  s_648efdd88fc19b::t_465af988ead626 340-344
+  s_648efdd88fc19b::t_6f354a32408961 367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6bf180095f3bc3932442941db1b18533170822ba",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_648efdd88fc19b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8bc079f-c974-4199-9f88-9bd5cf7e703d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
