@@ -198,9 +198,9 @@ either case.
   broadcast it missed carried no correctness weight.
 - **A worker that has never seen the repository.** It clones from the remote and is correct by
   construction.
-- **Infrahub's own unpushed merge commit.** The writeback ordering fix removes this state, so no
-  guard against it is needed. Before that fix, an unconditional reset would silently discard a
-  merge commit held by one worker only. That is why the fix is a prerequisite.
+- **Infrahub's own unpushed merge commit.** The merge path pushes the merge commit before it
+  records it and resets the destination worktree when either step fails, so this state does not
+  arise and no guard against it is needed.
 - **A rewrite of a branch that is not the trunk notifies nobody.** It writes a record and emits no
   signal. This is deliberate. By the time the record is written the branch is reset, the workers
   have converged and the re-import has run, so nothing is outstanding and there is no action to
@@ -231,8 +231,8 @@ either case.
 - **A branch left ahead of its remote.** After a rejected push the local branch holds commits the
   remote does not. The remote head is then an ancestor of the imported commit. This is not a
   rewrite. The branch MUST NOT be reset, because the reset would discard a commit that exists on
-  one worker only. The push-ordering work of IFC-1449 removes that state at its source. Until PR
-  #10465 reaches `develop`, every step that resets a worktree waits for it. See "Dependencies".
+  one worker only. The push-ordering work of IFC-1449 removes the merge path's version of that
+  state at its source. This row keeps the detector from recreating it. See "Dependencies".
 - **The commit Infrahub imported is no longer present in the local object database.** Ancestry
   cannot be tested. The branch is treated as diverged, which is the safe classification, and the
   record names the imported commit as the previous commit.
@@ -390,8 +390,6 @@ No new node kind is introduced.
   is correct behaviour and not data loss.
 - Rewriting the history of a feature branch is ordinary practice and must be absorbed quietly.
   Rewriting the trunk of a synchronised repository is abnormal and must be reported.
-- The writeback ordering fix of PR #10465 lands and forward-merges before this work begins. Without
-  it, an unconditional reset would silently discard a merge commit that exists on one worker only.
 - Losing the ability to re-derive content at a superseded commit is acceptable. This work does not
   make it worse.
 - The writeback delivery queue of the writeback PRD does not exist yet. The PRD requirements that
@@ -399,12 +397,12 @@ No new node kind is introduced.
 
 ## Dependencies
 
-- **PR opsmill/infrahub#10465 (IFC-1449)**, on `pog-fix-merge-push-ordering-IFC-1449`, targets
-  `develop`, still a draft. It moves the push ahead of the graph write and resets the destination
-  worktree on failure. This branch comes off `develop`, so it carries the old ordering: every step
-  that resets a worktree waits for #10465 to reach `develop`.
-- The Gogs-backed live-remote test harness, which is already on `develop`. Only its two
-  server-side `pre-receive` hook helpers come from #10465, and nothing here needs them.
+- **The merge ordering of IFC-1449**, on `develop`. `InfrahubRepository.merge` pushes the merge
+  commit before it records it and resets the destination worktree when either step fails. Every
+  step here that resets a worktree relies on it: without it a rejected push would leave a merge
+  commit on one worker alone for the reset to discard.
+- The Gogs-backed live-remote test harness, which is already on `develop`, including its two
+  server-side `pre-receive` hook helpers.
 - The existing hard-reset primitive that pins a branch worktree to a named commit.
 - The existing worker-convergence broadcast and its handler.
 

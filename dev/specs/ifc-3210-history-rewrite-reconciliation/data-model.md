@@ -125,8 +125,8 @@ collapse into each other at a call site.
 a state the product reaches today: after a rejected push the local branch sits ahead of `origin/`,
 `compare_local_remote` flags it every cycle, and `pull` returns `True` with no change. Without this
 member, "neither is an ancestor" would swallow that case, classify it `REWRITE`, and reset the
-branch onto the remote — discarding the very commit PR #10465 exists to protect. `LOCAL_AHEAD`
-resets nothing and records nothing, so the current behaviour is preserved exactly.
+branch onto the remote, discarding a commit that exists nowhere else. `LOCAL_AHEAD` resets nothing
+and records nothing, so the current behaviour is preserved exactly.
 
 It also closes a documented defect on its own: `dev/knowledge/backend/git-integration.md` lists "a
 branch left ahead of its remote is re-reported every cycle" under Known limitations. A branch
