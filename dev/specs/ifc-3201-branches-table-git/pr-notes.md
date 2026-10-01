@@ -85,13 +85,13 @@ Declined, with reasons that will also answer the same findings on the PR:
 
 ## Stacking and rebase
 
-This branch is stacked on #10779, which is stacked on `stable`. If #10779 is squash-merged, rebase this branch with `--onto` so its commits are not replayed:
+This branch is stacked on #10779, which targets the epic integration branch `cross-branch-repo-status-infp-671`. If #10779 is squash-merged, rebase this branch with `--onto` so its commits are not replayed:
 
 ```bash
-git rebase --onto origin/stable 88d25e50c8 ple-branches-table-git-ifc-3201
+git rebase --onto origin/cross-branch-repo-status-infp-671 b7076f29f9 ple-branches-table-git-ifc-3201
 ```
 
-`88d25e50c8` is the current merge base with `origin/ple-branch-details-repos-infp-671`. Use the branch's last commit before the squash if it has moved.
+`b7076f29f9` is #10779's tip at the time of writing; use its last commit before the squash if it has moved.
 
 ## Live-stack verification pending
 
