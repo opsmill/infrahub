@@ -7,6 +7,7 @@ import { deleteBranch } from "@/entities/branches/domain/use-cases/delete-branch
 import { branchesState } from "@/entities/branches/stores";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { getBranchesInfiniteQueryOptions } from "@/entities/branches/ui/queries/get-branches.query";
+import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
 export function useDeleteBranchMutation() {
   return useMutation({
@@ -28,6 +29,7 @@ export function useDeleteBranchMutation() {
         };
       });
       await queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
+      await queryClient.invalidateQueries({ queryKey: repositoryQueryKeys.all });
     },
   });
 }

@@ -331,6 +331,7 @@ describe("getBranchTableColumns", () => {
       status: "ok" as const,
       repository: { id: `repo-${name}`, name, kind: "CoreRepository" as const, isReadOnly: false },
       rows: [row(syncStatus)],
+      count: 1,
     });
     const withImportError = summarizeBranchRepositories(
       [feature],

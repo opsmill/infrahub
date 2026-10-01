@@ -57,9 +57,10 @@ export function useBranchRepositorySummaries(
     { branchName: defaultBranchName, syncWithGit: true },
     { enabled: Boolean(defaultBranch) }
   );
-  const listFetch = branchesError
-    ? { status: "error" as const, message: branchesError.message }
-    : toRepositoryListFetch(repositoryList);
+  const listFetch =
+    branchesError && !allBranches
+      ? { status: "error" as const, message: branchesError.message }
+      : toRepositoryListFetch(repositoryList);
   const repositories: BranchRepositoryRef[] =
     repositoryList.data?.status === "ok"
       ? repositoryList.data.repositories.map(({ id, name, kind, isReadOnly }) => ({
