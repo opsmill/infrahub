@@ -301,6 +301,25 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText(PAGE_ONE_LAST).elements()).toHaveLength(1);
   });
 
+  test("still loads the next page after a poll answered unavailable", async () => {
+    // GIVEN
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
+      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
+      .mockResolvedValue(apiResult(generateSecondCommitsPage()));
+    const component = await renderTab();
+    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+    await queryClient.refetchQueries();
+    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+
+    // WHEN
+    await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
+
+    // THEN
+    await expect.element(component.getByText(PAGE_TWO_FIRST)).toBeVisible();
+    expect(apiMock).toHaveBeenNthCalledWith(3, expect.objectContaining({ offset: 20, limit: 20 }));
+  });
+
   test("shows both the check time and the update time when they differ", async () => {
     // GIVEN
     apiMock.mockResolvedValue(apiResult(generateReadOnlyCommitsResponse()));

@@ -12,7 +12,6 @@ import {
   RepositoryGitCondition,
 } from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
-import { useLastLoadedCommitPages } from "@/entities/repository/ui/hooks/use-last-loaded-commit-pages";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import { RepositoryCommitsHeader } from "@/entities/repository/ui/repository-commits-header";
 
@@ -27,8 +26,8 @@ export function RepositoryCommitsManager({ repositoryId }: RepositoryCommitsMana
   const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetRepositoryCommits({
     repositoryId,
   });
-  const pages = useLastLoadedCommitPages(data?.pages);
-  const log = pages?.[0];
+  const pages = data?.pages ?? [];
+  const [log] = pages;
 
   if (error && !log) {
     return <ErrorScreen message={error.message} />;

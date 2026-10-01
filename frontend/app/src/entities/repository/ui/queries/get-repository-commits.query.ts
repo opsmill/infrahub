@@ -1,8 +1,14 @@
-import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+import {
+  type InfiniteData,
+  infiniteQueryOptions,
+  replaceEqualDeep,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
 
 import type { ContextParams, InfiniteQueryConfig, PaginationParams } from "@/shared/api/types";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import type { RepositoryCommitLog } from "@/entities/repository/domain/model/repository";
 import { isGitStateAvailable } from "@/entities/repository/domain/rules/is-git-state-available";
 import {
   type GetRepositoryCommitsParams,
@@ -14,6 +20,23 @@ export const REPOSITORY_COMMITS_PAGE_SIZE = 20;
 export const REPOSITORY_COMMITS_POLL_INTERVAL_MS = 10_000;
 
 type GetRepositoryCommitsQueryParams = Omit<GetRepositoryCommitsParams, keyof PaginationParams>;
+
+type RepositoryCommitPages = InfiniteData<RepositoryCommitLog, number>;
+
+function firstPageHasGitState({ pages: [firstPage] }: RepositoryCommitPages) {
+  return firstPage !== undefined && isGitStateAvailable(firstPage);
+}
+
+// A same-key refetch replaces data outright, so without this a cold poll would blank loaded pages.
+function keepLoadedPagesOverColdAnswer(
+  oldData: RepositoryCommitPages | undefined,
+  newData: RepositoryCommitPages
+): RepositoryCommitPages {
+  if (oldData && firstPageHasGitState(oldData) && !firstPageHasGitState(newData)) {
+    return oldData;
+  }
+  return replaceEqualDeep(oldData, newData);
+}
 
 export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQueryParams) {
   return infiniteQueryOptions({
@@ -37,6 +60,12 @@ export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQue
         ? REPOSITORY_COMMITS_POLL_INTERVAL_MS
         : false;
     },
+    // TanStack types structuralSharing's arguments as unknown.
+    structuralSharing: (oldData, newData) =>
+      keepLoadedPagesOverColdAnswer(
+        oldData as RepositoryCommitPages | undefined,
+        newData as RepositoryCommitPages
+      ),
     // Every loaded page is a worker round trip, and a focus refetch replays all of them.
     refetchOnWindowFocus: false,
   });
