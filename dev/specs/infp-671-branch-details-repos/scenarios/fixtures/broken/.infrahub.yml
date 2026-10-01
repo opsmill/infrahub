@@ -2,5 +2,5 @@
 # {{repo}}: declares a GraphQL query whose file does not exist, so the import fails.
 # (A missing schema file is only a warning and would leave the repository in sync.)
 queries:
-  - name: {{repo}}-broken-query
-    file_path: queries/{{repo}}-missing.gql
+  - name: "{{repo}}-broken-query"
+    file_path: "queries/{{repo}}-missing.gql"

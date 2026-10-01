@@ -63,7 +63,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     do_POST = do_GET  # noqa: N815 (BaseHTTPRequestHandler naming)
 
-    def log_message(self, *args: object) -> None:
+    def log_message(self, format: str, *args: object) -> None:
         pass
 
 
