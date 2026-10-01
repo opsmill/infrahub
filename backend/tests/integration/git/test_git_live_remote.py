@@ -16,23 +16,19 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.exceptions import RepositoryCredentialsError, RepositoryError, RepositoryPermissionError
 from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
+from infrahub.git.remote_refs import ensure_write_access, list_remote_refs
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 from tests.helpers.test_app import TestInfrahubApp
 from tests.integration.git.conftest import (
-<<<<<<< HEAD
-    bad_credentials_clone_url,
-    create_gogs_repo,
-    gogs_repo_branch_commit,
-    gogs_repo_tag,
-=======
     GOGS_ADMIN,
     bad_credentials_clone_url,
     create_gogs_repo,
     create_remote_ref,
     gogs_clone_url,
+    gogs_repo_branch_commit,
+    gogs_repo_tag,
     grant_read_access,
     readonly_clone_url,
->>>>>>> origin/develop
 )
 
 if TYPE_CHECKING:
@@ -559,6 +555,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             id=repository.id,
             name=repo_name,
             client=client,
+            infrahub_branch_name="main",
         )
 
         await infrahub_repo.create_branch_in_git(branch_name="blocked-change", push_origin=False)
@@ -619,6 +616,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             id=repository.id,
             name=repo_name,
             client=client,
+            infrahub_branch_name="main",
         )
 
         await infrahub_repo.create_branch_in_git(branch_name="retried-change", push_origin=False)
@@ -678,6 +676,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             id=protected_branch_dataset["node_id"],
             name=repo_name,
             client=client,
+            infrahub_branch_name="main",
         )
 
         await infrahub_repo.create_branch_in_git(branch_name="recorded-change", push_origin=False)
@@ -812,13 +811,13 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         """The write probe rejects a read-only credential while the read-only check accepts it.
 
         Asserting both directions on the same URL is what proves the probe, not the URL, makes the
-        difference: read access alone passes require_write=False but not require_write=True.
+        difference: read access alone passes the ref listing but not the write probe.
         """
         repo_name = write_probe_dataset["repo_name"]
         readonly_url = write_probe_dataset["readonly_url"]
 
         # Read access alone satisfies the read-gated check.
-        InfrahubRepository.check_connectivity(name=repo_name, url=readonly_url, require_write=False)
+        list_remote_refs(name=repo_name, url=readonly_url)
 
         # The same credential is rejected once write access is required.
         with pytest.raises(
@@ -828,12 +827,10 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
                 r"grant the token write access to the repository\.$"
             ),
         ):
-            InfrahubRepository.check_connectivity(name=repo_name, url=readonly_url, require_write=True)
+            ensure_write_access(name=repo_name, url=readonly_url)
 
         # A credential that can write passes the write probe on the same repository.
-        InfrahubRepository.check_connectivity(
-            name=repo_name, url=write_probe_dataset["writable_url"], require_write=True
-        )
+        ensure_write_access(name=repo_name, url=write_probe_dataset["writable_url"])
 
     async def test_write_probe_never_mutates_remote(self, write_probe_dataset: dict, gogs_server: GogsServer) -> None:
         """The write probe leaves the remote's refs untouched, even when the probe ref already exists.
@@ -849,7 +846,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         refs_before = cmd.ls_remote(writable_url)
         assert f"refs/heads/{WRITE_ACCESS_PROBE_REF}" in refs_before
 
-        InfrahubRepository.check_connectivity(name=repo_name, url=writable_url, require_write=True)
+        ensure_write_access(name=repo_name, url=writable_url)
 
         refs_after = cmd.ls_remote(writable_url)
         assert refs_after == refs_before

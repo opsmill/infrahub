@@ -29,12 +29,7 @@ from infrahub.exceptions import (
     RepositoryInvalidFileSystemError,
     RepositoryPermissionError,
 )
-from infrahub.git.constants import (
-    BRANCHES_DIRECTORY_NAME,
-    COMMITS_DIRECTORY_NAME,
-    TEMPORARY_DIRECTORY_NAME,
-    WRITE_ACCESS_PROBE_REF,
-)
+from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
 from infrahub.git.utils import branch_name_in_import_sync_branches
 from infrahub.git.worktree import Worktree
@@ -1096,55 +1091,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         return path
 
-<<<<<<< HEAD
-=======
-    @classmethod
-    def check_connectivity(cls, name: str, url: str, require_write: bool = False) -> None:
-        """Validate that the remote is reachable and the credentials suffice.
-
-        ``ls-remote`` only exercises the read-gated ``upload-pack`` service, so a read-write
-        repository whose credentials can read but not push still passes. When ``require_write``
-        is set the write-access probe is run in addition, so a missing push permission is caught
-        at connect time rather than at the first branch creation or merge.
-        """
-        # Use a neutral working directory so git doesn't discover a .git pointer
-        # from the process CWD (e.g. worktree builds where /source/.git is a
-        # pointer file referencing a host path absent from a container).
-        cmd = git.cmd.Git(working_dir=tempfile.gettempdir())
-        try:
-            cmd.ls_remote("--tags", url)
-        except GitCommandError as exc:
-            cls._raise_enriched_error_static(name=name, location=url, error=exc)
-
-        if require_write:
-            cls._check_write_access(name=name, url=url)
-
-    @classmethod
-    def _check_write_access(cls, name: str, url: str) -> None:
-        """Confirm the credentials can push, not only read.
-
-        Authorization to ``receive-pack`` is checked before refs are advertised, so a dry-run
-        delete of a throwaway ref reaches the write-gated service while ``--dry-run`` sends no
-        ref update and no pack. The remote is never mutated, even when the probe ref happens to
-        exist on it. ``git push`` needs a repository to run from - unlike ``ls-remote`` - so the
-        probe runs from a throwaway ``git init``-ed directory.
-
-        Raises:
-            RepositoryPermissionError: When the credentials authenticate but are not allowed to push.
-            RepositoryCredentialsError: When the push service rejects the credentials.
-            RepositoryConnectionError: When the remote is unreachable.
-            RepositoryError: For any other git failure.
-
-        """
-        with tempfile.TemporaryDirectory() as probe_dir:
-            cmd = git.cmd.Git(working_dir=probe_dir)
-            try:
-                cmd.init()
-                cmd.push("--dry-run", "--porcelain", "--delete", url, f"refs/heads/{WRITE_ACCESS_PROBE_REF}")
-            except GitCommandError as exc:
-                cls._raise_enriched_error_static(name=name, location=url, error=exc, is_write_operation=True)
-
->>>>>>> origin/develop
     async def _raise_enriched_error(self, error: GitCommandError, branch_name: str | None = None) -> NoReturn:
         try:
             self._raise_enriched_error_static(
