@@ -24,6 +24,7 @@ class ProfileData:
 
 
 class GetProfileDataQuery(Query):
+    name = "profile_get_data"
     type: QueryType = QueryType.READ
     insert_return: bool = False
 
@@ -61,8 +62,9 @@ class GetProfileDataQuery(Query):
         self.params["outbound_identifiers"] = outbound_identifiers
         self.params["inbound_identifiers"] = inbound_identifiers
         self.params["bidirectional_identifiers"] = bidirectional_identifiers
+        self.params["relationship_names"] = outbound_identifiers + bidirectional_identifiers + inbound_identifiers
 
-        query = """
+        profiles_query = """
 // --------------
 // get the Profile nodes
 // --------------
@@ -76,6 +78,7 @@ CALL (profile) {
     WHERE %(branch_filter)s
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     RETURN r.status = "active" AS is_active
+    LIMIT 1
 }
 WITH profile
 WHERE is_active = TRUE
@@ -109,11 +112,22 @@ WITH profile, CASE
     ELSE NULL
 END AS attribute_details
 WITH profile, collect(attribute_details) AS attributes
+        """ % {"branch_filter": branch_filter}
+        self.add_to_query(profiles_query)
+        self.return_labels = ["profile_uuid", "attributes", "relationships"]
+
+        if not self.relationship_filters:
+            self.add_to_query("RETURN profile.uuid AS profile_uuid, attributes, [] AS relationships")
+            return
+
+        relationships_query = """
 // --------------
-// get all possible relationships we might want for this profile
+// get the relationships that we want for this profile
+// start from their names, because the profile also links to each node and template that uses it
 // --------------
 OPTIONAL MATCH (profile)-[r:IS_RELATED]-(rel:Relationship)
-WHERE rel.name IN $outbound_identifiers + $bidirectional_identifiers + $inbound_identifiers
+USING INDEX rel:Relationship(name)
+WHERE rel.name IN $relationship_names
 AND %(branch_filter)s
 WITH DISTINCT profile, attributes, rel
 // --------------
@@ -168,8 +182,7 @@ END AS relationship_details
 WITH profile, attributes, collect(relationship_details) AS relationships
 RETURN profile.uuid AS profile_uuid, attributes, relationships
         """ % {"branch_filter": branch_filter}
-        self.add_to_query(query)
-        self.return_labels = ["profile_uuid", "attributes", "relationships"]
+        self.add_to_query(relationships_query)
 
     def get_profile_data(self) -> list[ProfileData]:
         profile_data_list: list[ProfileData] = []
