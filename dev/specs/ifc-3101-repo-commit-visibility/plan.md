@@ -302,7 +302,8 @@ determinism logic, no test and no documentation entry.
   broadcast against local disk made one arbitrary worker's copy answer for the pool: a worker that
   was already current saw nothing to announce and left the others behind. The key is written only
   after its broadcast succeeds, so a failed broadcast is retried by the next check rather than lost,
-  and the imported-commit fallback keeps an empty cache from announcing every repository at once.
+  and the imported-commit fallback limits an empty or expired cache to one broadcast per branch
+  whose remote has moved past its imported commit; a branch still on it announces nothing.
   Recorded as T065h.
 - **Non-accumulation (FR-025).** Before doing any remote work, the shared body claims the repository
   with `cache.set(key=<running key>, value=<this flow's run id>, expires=<per-run ceiling>,

@@ -314,8 +314,9 @@ class ReadOnlyRepositoryRefsChecker:
         """Return the head the pool was last told about on this branch, or None when there is nothing to compare.
 
         The shared value is a hint rather than the record. When it is missing the imported commit
-        stands in for it, which is what keeps an empty cache from announcing every repository at
-        once; a stand-in found equal to the remote is written back so later checks skip the graph.
+        stands in for it, so an empty or expired value announces only a branch whose remote has
+        moved past what it imported, once; a stand-in found equal to the remote is written back so
+        later checks skip the graph.
         """
         announced = await self._cache.get(
             key=refs_check_announced_key(model.repository_id, tracked.infrahub_branch_name)
