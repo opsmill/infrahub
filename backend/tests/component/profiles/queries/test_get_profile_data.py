@@ -1,100 +1,25 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-import pytest
-
-from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
+from infrahub.core.constants import RelationshipDirection
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
-from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import DatabaseType
 from infrahub.profiles.queries.get_profile_data import GetProfileDataQuery, ProfileData, RelationshipFilter
-from tests.helpers.schema import load_schema
+from tests.component.profiles.queries.helpers import (
+    ALL_FILTERS,
+    LABELS_FILTER,
+    RACK_FILTER,
+    SITE_FILTER,
+    Peers,
+    create_node,
+)
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
-
-SITE = NodeSchema(name="Site", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text", unique=True)])
-RACK = NodeSchema(name="Rack", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text", unique=True)])
-LABEL = NodeSchema(name="Label", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text", unique=True)])
-DEVICE = NodeSchema(
-    name="Device",
-    namespace="Test",
-    attributes=[
-        AttributeSchema(name="name", kind="Text", unique=True),
-        AttributeSchema(name="description", kind="Text", optional=True),
-        AttributeSchema(name="status", kind="Text", optional=True),
-    ],
-    relationships=[
-        RelationshipSchema(
-            name="site",
-            peer="TestSite",
-            identifier="device__site",
-            cardinality=RelationshipCardinality.ONE,
-            optional=True,
-        ),
-        RelationshipSchema(
-            name="rack",
-            peer="TestRack",
-            identifier="device__rack",
-            cardinality=RelationshipCardinality.ONE,
-            direction=RelationshipDirection.OUTBOUND,
-            optional=True,
-        ),
-        RelationshipSchema(
-            name="labels",
-            peer="TestLabel",
-            identifier="device__label",
-            cardinality=RelationshipCardinality.MANY,
-            direction=RelationshipDirection.INBOUND,
-            optional=True,
-        ),
-    ],
-)
-
-SITE_FILTER = RelationshipFilter(relationship_identifier="profile_device__site", direction=RelationshipDirection.BIDIR)
-RACK_FILTER = RelationshipFilter(
-    relationship_identifier="profile_device__rack", direction=RelationshipDirection.OUTBOUND
-)
-LABELS_FILTER = RelationshipFilter(
-    relationship_identifier="profile_device__label", direction=RelationshipDirection.INBOUND
-)
-ALL_FILTERS = [SITE_FILTER, RACK_FILTER, LABELS_FILTER]
-
-
-@dataclass(frozen=True)
-class Peers:
-    sites: list[Node]
-    racks: list[Node]
-    labels: list[Node]
-
-
-async def _create_node(db: InfrahubDatabase, branch: Branch, kind: str, **data: Any) -> Node:
-    node = await Node.init(db=db, schema=kind, branch=branch)
-    await node.new(db=db, **data)
-    await node.save(db=db)
-    return node
-
-
-@pytest.fixture
-async def peers(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> Peers:
-    await load_schema(db=db, schema=SchemaRoot(nodes=[SITE, RACK, LABEL, DEVICE]), branch_name=default_branch.name)
-    return Peers(
-        sites=[
-            await _create_node(db=db, branch=default_branch, kind="TestSite", name=f"site-{idx}") for idx in range(2)
-        ],
-        racks=[
-            await _create_node(db=db, branch=default_branch, kind="TestRack", name=f"rack-{idx}") for idx in range(2)
-        ],
-        labels=[
-            await _create_node(db=db, branch=default_branch, kind="TestLabel", name=f"label-{idx}") for idx in range(3)
-        ],
-    )
 
 
 async def _get_profile_data(
@@ -130,7 +55,7 @@ def _ids(*nodes: Node) -> list[str]:
 async def test_reads_requested_attributes_and_priority(
     db: InfrahubDatabase, default_branch: Branch, peers: Peers
 ) -> None:
-    profile = await _create_node(
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -156,7 +81,7 @@ async def test_reads_requested_attributes_and_priority(
 async def test_reads_priority_without_requested_attributes(
     db: InfrahubDatabase, default_branch: Branch, peers: Peers
 ) -> None:
-    profile = await _create_node(
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -173,7 +98,7 @@ async def test_reads_priority_without_requested_attributes(
 async def test_ignores_relationships_without_filters(
     db: InfrahubDatabase, default_branch: Branch, peers: Peers
 ) -> None:
-    profile = await _create_node(
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -183,7 +108,7 @@ async def test_ignores_relationships_without_filters(
         rack=peers.racks[0],
         labels=peers.labels[:2],
     )
-    await _create_node(db=db, branch=default_branch, kind="TestDevice", name="device-0", profiles=[profile])
+    await create_node(db=db, branch=default_branch, kind="TestDevice", name="device-0", profiles=[profile])
 
     result = await _get_profile_data(db=db, branch=default_branch, profile_ids=[profile.id], attr_names=["status"])
 
@@ -195,7 +120,7 @@ async def test_ignores_relationships_without_filters(
 async def test_reads_relationship_peers_in_each_direction(
     db: InfrahubDatabase, default_branch: Branch, peers: Peers
 ) -> None:
-    profile = await _create_node(
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -206,7 +131,7 @@ async def test_reads_relationship_peers_in_each_direction(
         labels=peers.labels[:2],
     )
     for idx in range(2):
-        await _create_node(db=db, branch=default_branch, kind="TestDevice", name=f"device-{idx}", profiles=[profile])
+        await create_node(db=db, branch=default_branch, kind="TestDevice", name=f"device-{idx}", profiles=[profile])
 
     result = await _get_profile_data(
         db=db, branch=default_branch, profile_ids=[profile.id], attr_names=[], relationship_filters=ALL_FILTERS
@@ -229,7 +154,7 @@ async def test_reads_relationship_peers_in_each_direction(
 async def test_reads_only_the_filtered_relationships(
     db: InfrahubDatabase, default_branch: Branch, peers: Peers
 ) -> None:
-    profile = await _create_node(
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -254,7 +179,7 @@ async def test_reads_only_the_filtered_relationships(
 async def test_skips_filters_whose_direction_does_not_match(
     db: InfrahubDatabase, default_branch: Branch, peers: Peers
 ) -> None:
-    profile = await _create_node(
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -278,7 +203,7 @@ async def test_skips_filters_whose_direction_does_not_match(
 
 
 async def test_reads_each_profile_separately(db: InfrahubDatabase, default_branch: Branch, peers: Peers) -> None:
-    first = await _create_node(
+    first = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -288,7 +213,7 @@ async def test_reads_each_profile_separately(db: InfrahubDatabase, default_branc
         site=peers.sites[0],
         labels=[peers.labels[0]],
     )
-    second = await _create_node(
+    second = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -299,7 +224,7 @@ async def test_reads_each_profile_separately(db: InfrahubDatabase, default_branc
         rack=peers.racks[0],
         labels=peers.labels[1:],
     )
-    await _create_node(
+    await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -340,7 +265,7 @@ async def test_reads_each_profile_separately(db: InfrahubDatabase, default_branc
 
 
 async def test_excludes_deleted_profiles(db: InfrahubDatabase, default_branch: Branch, peers: Peers) -> None:
-    kept = await _create_node(
+    kept = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -348,7 +273,7 @@ async def test_excludes_deleted_profiles(db: InfrahubDatabase, default_branch: B
         profile_priority=10,
         site=peers.sites[0],
     )
-    deleted = await _create_node(
+    deleted = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -377,7 +302,7 @@ async def test_excludes_deleted_profiles(db: InfrahubDatabase, default_branch: B
 
 
 async def test_excludes_profile_deleted_on_branch(db: InfrahubDatabase, default_branch: Branch, peers: Peers) -> None:
-    profile = await _create_node(
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -412,7 +337,7 @@ async def test_excludes_profile_deleted_on_branch(db: InfrahubDatabase, default_
 
 
 async def test_reads_values_of_the_requested_branch(db: InfrahubDatabase, default_branch: Branch, peers: Peers) -> None:
-    profile = await _create_node(
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -465,7 +390,7 @@ async def test_reads_values_of_the_requested_branch(db: InfrahubDatabase, defaul
 
 
 async def test_reads_values_at_the_requested_time(db: InfrahubDatabase, default_branch: Branch, peers: Peers) -> None:
-    profile = await _create_node(
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -514,70 +439,3 @@ async def test_reads_values_at_the_requested_time(db: InfrahubDatabase, default_
             relationship_peers={SITE_FILTER: _ids(peers.sites[0]), LABELS_FILTER: _ids(*peers.labels[:2])},
         )
     ]
-
-
-def _sum_db_hits(operator: dict[str, Any]) -> int:
-    return operator["dbHits"] + sum(_sum_db_hits(operator=child) for child in operator.get("children", []))
-
-
-async def _count_db_hits(
-    db: InfrahubDatabase, branch: Branch, profile_id: str, relationship_filters: list[RelationshipFilter]
-) -> int:
-    query = await GetProfileDataQuery.init(
-        db=db,
-        branch=branch,
-        profile_ids=[profile_id],
-        attr_names=["description", "status"],
-        relationship_filters=relationship_filters,
-    )
-    rendered = query.render()
-    # Plan again with the current statistics: an old plan from a smaller database can scan full relationship indexes.
-    await db.execute_query(query="CALL db.prepareForReplanning()")
-    _, metadata = await db.execute_query_with_metadata(
-        query=f"PROFILE\n{rendered.text}", params=rendered.params, name=query.name, type=query.type
-    )
-    return _sum_db_hits(operator=metadata["profile"])
-
-
-async def _create_linked_profile(
-    db: InfrahubDatabase, branch: Branch, peers: Peers, name: str, linked_nodes: int
-) -> Node:
-    profile = await _create_node(
-        db=db,
-        branch=branch,
-        kind="ProfileTestDevice",
-        profile_name=name,
-        profile_priority=10,
-        description=name,
-        site=peers.sites[0],
-        rack=peers.racks[0],
-        labels=peers.labels[:2],
-    )
-    for idx in range(linked_nodes):
-        await _create_node(db=db, branch=branch, kind="TestDevice", name=f"{name}-device-{idx}", profiles=[profile])
-    return profile
-
-
-@pytest.mark.parametrize(
-    "relationship_filters",
-    [pytest.param([], id="attributes-only"), pytest.param(ALL_FILTERS, id="with-relationship-filters")],
-)
-async def test_db_hits_do_not_grow_with_linked_nodes(
-    db: InfrahubDatabase, default_branch: Branch, peers: Peers, relationship_filters: list[RelationshipFilter]
-) -> None:
-    if db.db_type != DatabaseType.NEO4J:
-        pytest.skip("PROFILE and db.prepareForReplanning() exist only in Neo4j")
-
-    few = await _create_linked_profile(db=db, branch=default_branch, peers=peers, name="few", linked_nodes=2)
-    many = await _create_linked_profile(db=db, branch=default_branch, peers=peers, name="many", linked_nodes=10)
-    many = await NodeManager.get_one(db=db, branch=default_branch, id=many.id, raise_on_error=True)
-    assert len(await many.related_nodes.get_relationships(db=db)) == 10
-
-    few_hits = await _count_db_hits(
-        db=db, branch=default_branch, profile_id=few.id, relationship_filters=relationship_filters
-    )
-    many_hits = await _count_db_hits(
-        db=db, branch=default_branch, profile_id=many.id, relationship_filters=relationship_filters
-    )
-
-    assert many_hits == few_hits
