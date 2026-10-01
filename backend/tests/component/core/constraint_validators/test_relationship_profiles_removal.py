@@ -1,4 +1,5 @@
 import copy
+from collections import Counter
 from dataclasses import dataclass
 
 import pytest
@@ -7,6 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from infrahub.core.relationship.constraints.profiles_removal import RelationshipProfileRemovalConstraint
 from infrahub.core.schema import ProfileSchema, SchemaRoot
@@ -14,6 +16,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.constants import TestKind
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.schema import load_schema
 from tests.helpers.schema.child import CHILD
 from tests.helpers.schema.thing import THING
@@ -668,3 +671,67 @@ async def test_removing_nodes_from_profile_allowed_when_another_profile_supplies
 
     constraint = RelationshipProfileRemovalConstraint(db=db, branch=branch)
     await constraint.check(relm=profile.related_nodes, node_schema=overridden_profiles.profile_schema, node=profile)
+
+
+async def _count_profile_deletion_queries(
+    db: InfrahubDatabase, branch: Branch, profile_id: str, profile_schema: ProfileSchema
+) -> Counter[str]:
+    profile = await NodeManager.get_one(db=db, branch=branch, id=profile_id, raise_on_error=True)
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+    constraint = RelationshipProfileRemovalConstraint(db=counting_db, branch=branch)
+    await constraint.validate_profile_deletion(profile=profile, profile_schema=profile_schema)
+    return counting_db.query_counts
+
+
+async def test_profile_deletion_queries_do_not_grow_with_linked_nodes(
+    db: InfrahubDatabase, branch: Branch, overridden_profiles: OverriddenProfiles
+) -> None:
+    few = await _count_profile_deletion_queries(
+        db=db,
+        branch=branch,
+        profile_id=overridden_profiles.few_nodes.id,
+        profile_schema=overridden_profiles.profile_schema,
+    )
+    many = await _count_profile_deletion_queries(
+        db=db,
+        branch=branch,
+        profile_id=overridden_profiles.many_nodes.id,
+        profile_schema=overridden_profiles.profile_schema,
+    )
+
+    assert many == few
+    # One read for the linked nodes of the profile, and one read for the required relationship of all the nodes.
+    assert few[RelationshipGetPeerQuery.name] == 2
+
+
+async def _count_related_nodes_removal_queries(
+    db: InfrahubDatabase, branch: Branch, profile_id: str, profile_schema: ProfileSchema
+) -> Counter[str]:
+    profile = await NodeManager.get_one(db=db, branch=branch, id=profile_id, raise_on_error=True)
+    await profile.related_nodes.resolve(db=db)
+    await profile.related_nodes.update(db=db, data=[])
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+    constraint = RelationshipProfileRemovalConstraint(db=counting_db, branch=branch)
+    await constraint.check(relm=profile.related_nodes, node_schema=profile_schema, node=profile)
+    return counting_db.query_counts
+
+
+async def test_related_nodes_removal_queries_do_not_grow_with_removed_nodes(
+    db: InfrahubDatabase, branch: Branch, overridden_profiles: OverriddenProfiles
+) -> None:
+    few = await _count_related_nodes_removal_queries(
+        db=db,
+        branch=branch,
+        profile_id=overridden_profiles.few_nodes.id,
+        profile_schema=overridden_profiles.profile_schema,
+    )
+    many = await _count_related_nodes_removal_queries(
+        db=db,
+        branch=branch,
+        profile_id=overridden_profiles.many_nodes.id,
+        profile_schema=overridden_profiles.profile_schema,
+    )
+
+    assert many == few
+    # The constraint knows the removed nodes already, so it reads only the required relationship of all of them.
+    assert few[RelationshipGetPeerQuery.name] == 1
