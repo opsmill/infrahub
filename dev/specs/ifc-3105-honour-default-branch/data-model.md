@@ -137,7 +137,7 @@ raises `RepositoryInvalidBranchError` when `branch_name not in refs.branches`.
 
 ## Synchronisation report (task-log warning, D6)
 
-### `backend/infrahub/git/models.py::CollectedImports`
+### `backend/infrahub/git/repository.py::CollectedImports`
 
 | Field | Type | Change |
 |---|---|---|

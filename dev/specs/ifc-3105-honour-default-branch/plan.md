@@ -127,6 +127,8 @@ backend/
 │   │   ├── repository.py            # InfrahubRepository: required default_branch + internal_status, init/new call
 │   │   │                            #   resolve_graph_settings once and set infrahub_branch_name from their parameter,
 │   │   │                            #   mapping hook implementations, skipped_branches collection;
+│   │   │                            #   CollectedImports.skipped_branches + advanced_skipped_branches (the dataclass
+│   │   │                            #   lives here, not in models.py);
 │   │   │                            #   validate_remote_branch moves here, returns BranchSkipReason | None (one
 │   │   │                            #   collision predicate method, shared with the skip record);
 │   │   │                            #   collect_pending_imports records the colliding branch from the remote, reads
@@ -137,8 +139,7 @@ backend/
 │   │   │                            #   failed_import_branches, advanced_skipped_branches), report attached to the
 │   │   │                            #   raise so a partial import
 │   │   │                            #   failure still reports
-│   │   ├── models.py                # CollectedImports.skipped_branches + advanced_skipped_branches;
-│   │   │                            #   remove GitRepositoryAdd.default_branch_name,
+│   │   ├── models.py                # remove GitRepositoryAdd.default_branch_name,
 │   │   │                            #   GitRepositoryMerge.default_branch
 │   │   └── tasks.py                 # add_git_repository: warning per skipped branch (already node-tagged, runs first sync);
 │   │                                #   (emitted on the failure path too); GitRepositoryAdd.internal_status stays: it is

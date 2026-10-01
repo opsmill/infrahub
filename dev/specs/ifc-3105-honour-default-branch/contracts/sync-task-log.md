@@ -164,7 +164,7 @@ skipped branch move, after the proposed change merges.
 
 1. Build the repository object through the factory (no trunk or status parameters), **inside** the
    existing `try`. The construction now performs a graph read that can raise `RepositoryError`
-   (`contracts/repository-object.md`, error contract); before this change it sat outside the `try`,
+   (`contracts/repository-object.md`, error contract); before this feature it sat outside the `try`,
    so such a failure would bypass this flow's own tag-on-failure handler and leave the run unlinked
    from the repository node — invisible in the Tasks tab that SC-005 relies on. The cycle survives
    either way, because `git/tasks.py::sync_repository_from_origin` isolates it one level up; the
