@@ -1,0 +1,29 @@
+backend/tests/component/proposed_change/test_validate_artifacts_generation.py
+  s_0749c4d5bfb929::t_15aa2bf176ed1d 3-4,9,12,14,16-17,20,22,27,29-51,66-70,75-131,134,142-144,146-151,154,157-160,162-164,167,169-170,172-209,221,226,232-236,239-241,243,249,251-260,262-265,267-270,272-283,285-286
+  s_0749c4d5bfb929::t_1ad029ad2da864 210-220
+  s_7d719d42034f96::t_ecb325295f11dd 161,165-166,168,171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "19365ee61fec1d65df5090487aa6db57483fb3aa",
+  "prompts": {},
+  "sessions": {
+    "s_0749c4d5bfb929": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca8397f9-c882-4a5d-99a6-4c7998f4971c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_7d719d42034f96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "703e70b0-5c2c-470f-aa75-61897706f918",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

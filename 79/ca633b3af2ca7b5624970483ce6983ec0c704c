@@ -1,0 +1,19 @@
+backend/tests/component/proposed_change/test_validate_artifacts_generation_widening.py
+  s_e03da21de6e012::t_5d008094c70bf6 49-57,60,70,118-128,179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79ca633b3af2ca7b5624970483ce6983ec0c704c",
+  "prompts": {},
+  "sessions": {
+    "s_e03da21de6e012": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44ea8146-11c8-4cdf-9a7c-2fbc147c28cd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

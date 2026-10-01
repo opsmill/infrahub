@@ -1,0 +1,23 @@
+backend/tests/component/core/test_manager_node.py
+  s_bc9261dc1ecdb3::t_8927b1e8cf0343 624
+  s_bc9261dc1ecdb3::t_de2793f7619676 14,597,600,602-605
+  s_bc9261dc1ecdb3::t_e4f7fbd70fe299 594-596,598-599,601,606-623,625-626
+backend/infrahub/core/manager.py
+  s_bc9261dc1ecdb3::t_eff0f2b6f5afd9 1268-1270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5742ba415907c39773e3bc90d17ba3a6f4f4a719",
+  "prompts": {},
+  "sessions": {
+    "s_bc9261dc1ecdb3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0818cbd0-fdd5-4fe1-a906-3a515e96a4cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

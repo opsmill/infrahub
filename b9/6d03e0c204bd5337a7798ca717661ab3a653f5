@@ -1,0 +1,21 @@
+pyproject.toml
+  s_c4c608efd55bdc::t_6a30e6802e92d1 51
+uv.lock
+  s_c4c608efd55bdc::t_ec36cada82bd2b 1623,2775-2776,3444,3446,3448
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b96d03e0c204bd5337a7798ca717661ab3a653f5",
+  "prompts": {},
+  "sessions": {
+    "s_c4c608efd55bdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8837245-4b4d-4738-bf9a-e8a7a8de39a3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

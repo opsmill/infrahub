@@ -1,0 +1,38 @@
+backend/tests/component/core/resource_manager/test_number_pool.py
+  s_7d719d42034f96::t_16cd22367ba7c1 472
+  s_7d719d42034f96::t_38c9bc6cb6f43d 19,49,57,59,125,411,426,483,488
+backend/tests/component/core/resource_manager/test_number_pool_source.py
+  s_7d719d42034f96::t_38c9bc6cb6f43d 21,116-117,134,137
+backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py
+  s_7d719d42034f96::t_e08e2b5c1a0274 77-83,97-99,127-134,139-146,150-156
+  s_7d719d42034f96::t_38c9bc6cb6f43d 21,69-70,91,100,157
+backend/infrahub/pools/number_pool_repository.py
+  s_7d719d42034f96::t_37002270ec4f46 1-90
+backend/tests/component/core/resource_manager/test_number_pool_object_conversion.py
+  s_7d719d42034f96::t_38c9bc6cb6f43d 18,131,154,157,182,204,215,229,232
+backend/tests/component/core/resource_manager/test_number_pool_attribute_removal.py
+  s_7d719d42034f96::t_38c9bc6cb6f43d 15,51,76,79,94,124,127
+backend/tests/component/core/agnostic_retirement/test_on_node_delete.py
+  s_7d719d42034f96::t_38c9bc6cb6f43d 20,446
+  s_7d719d42034f96::t_e08e2b5c1a0274 417-419,453-455
+backend/tests/component/core/resource_manager/test_number_pool_attribute_rename.py
+  s_7d719d42034f96::t_38c9bc6cb6f43d 26,150,171,188,209,240,254,257
+backend/infrahub/core/node/resource_manager/number_pool.py
+  s_7d719d42034f96::t_1e312b72670926 7,10,46,50-51,60-61,84,114-115,153-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be3dd2ab95315f213246498799959378e227ccc5",
+  "prompts": {},
+  "sessions": {
+    "s_7d719d42034f96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "703e70b0-5c2c-470f-aa75-61897706f918",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

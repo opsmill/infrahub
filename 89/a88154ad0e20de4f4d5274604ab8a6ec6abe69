@@ -1,0 +1,25 @@
+backend/tests/component/core/migrations/graph/m079_number_pool_ranges/test_migration.py
+  s_7d719d42034f96::t_2dfab101d1ce11 1-3,65,67-68,93-105,272-290,293-295,308,322-378
+  s_7d719d42034f96::t_7bf6ef6ed3f518 291-292
+backend/tests/unit/core/migrations/graph/test_m079_number_pool_bounds.py
+  s_7d719d42034f96::t_2dfab101d1ce11 1-48
+backend/infrahub/core/migrations/graph/m079_number_pool_ranges/migration.py
+  s_7d719d42034f96::t_3ce2200dcc3560 3,8,38-41,51-53,59-67,85-104,112-115,123,125-140,144-146,150-154,160-161,196-206,209,211-214,216,226,233,235,257-279
+  s_7d719d42034f96::t_5f64a1e2364019 141-143,147-149,155-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "89a88154ad0e20de4f4d5274604ab8a6ec6abe69",
+  "prompts": {},
+  "sessions": {
+    "s_7d719d42034f96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "703e70b0-5c2c-470f-aa75-61897706f918",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

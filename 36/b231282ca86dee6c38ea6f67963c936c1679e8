@@ -1,0 +1,22 @@
+backend/tests/component/core/test_node_stored_labels_query.py
+  s_d9e4ea96a53151::t_e8e99a8ffe54eb 115-132,135-138
+  s_d9e4ea96a53151::t_136be1a38d74dd 133-134
+backend/infrahub/core/query/node.py
+  s_d9e4ea96a53151::t_81427f7152a9e2 1437-1440,1442
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36b231282ca86dee6c38ea6f67963c936c1679e8",
+  "prompts": {},
+  "sessions": {
+    "s_d9e4ea96a53151": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92c4c7dc-848d-45d9-bb7c-4c7e6fa1833a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
