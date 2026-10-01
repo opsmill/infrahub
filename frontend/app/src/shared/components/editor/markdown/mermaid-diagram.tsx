@@ -1,8 +1,7 @@
-import { Button } from "@infrahub/ui";
-import { RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import type React from "react";
 import type { ExtraProps } from "react-markdown";
-import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
+
+import { PanZoom } from "@/shared/components/display/pan-zoom";
 
 type MermaidDiagramProps = React.ComponentProps<"svg"> & ExtraProps;
 
@@ -15,45 +14,8 @@ export function MermaidDiagram({ node: _node, ...svgProps }: MermaidDiagramProps
   }
 
   return (
-    <div className="relative bg-background">
-      <TransformWrapper minScale={0.5} maxScale={8} centerOnInit wheel={{ step: 0.1 }}>
-        {({ zoomIn, zoomOut, resetTransform }) => (
-          <>
-            <div className="absolute top-1 right-1 z-10 flex gap-1">
-              <Button
-                variant="outline"
-                size="xs"
-                shape="square"
-                onPress={() => zoomIn()}
-                aria-label="Zoom in"
-              >
-                <ZoomIn />
-              </Button>
-              <Button
-                variant="outline"
-                size="xs"
-                shape="square"
-                onPress={() => zoomOut()}
-                aria-label="Zoom out"
-              >
-                <ZoomOut />
-              </Button>
-              <Button
-                variant="outline"
-                size="xs"
-                shape="square"
-                onPress={() => resetTransform()}
-                aria-label="Reset zoom"
-              >
-                <RotateCcw />
-              </Button>
-            </div>
-            <TransformComponent wrapperClass="!w-full" contentClass="!w-full">
-              <svg {...svgProps} />
-            </TransformComponent>
-          </>
-        )}
-      </TransformWrapper>
-    </div>
+    <PanZoom className="bg-background">
+      <svg {...svgProps} />
+    </PanZoom>
   );
 }

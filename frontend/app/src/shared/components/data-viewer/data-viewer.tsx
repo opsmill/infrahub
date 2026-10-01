@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
+import { PanZoom } from "@/shared/components/display/pan-zoom";
 import { Svg } from "@/shared/components/display/svg";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { CsvTable } from "@/shared/components/editor/csv-table";
@@ -55,9 +56,9 @@ function DataViewerContent({
 
     case "image/svg+xml": {
       return (
-        <ScrollArea scrollX className="rounded-lg bg-content" scrollBarClassName="bg-transparent">
-          <Svg value={content} className="mx-auto" />
-        </ScrollArea>
+        <PanZoom className="overflow-hidden rounded-lg bg-content">
+          <Svg value={content} draggable={false} className="mx-auto max-h-150 max-w-full" />
+        </PanZoom>
       );
     }
 
