@@ -55,10 +55,10 @@ export type BranchRepositorySummary =
 
 `summarizeBranchRepositories(branches: readonly BranchListItem[], fetches: readonly RepositoryStatusFetch[]): Record<string /* branch name */, BranchRepositorySummary>` is pure and imports only its own model and `entities/repository/domain/rules/sync-status-severity.ts`.
 
-1. Any `denied` fetch → every branch `denied`.
+1. Every fetch `denied` (and at least one fetch) → every branch `denied`. Permission is checked per repository kind, so a denied kind among others is left out silently.
 2. Else any `pending` fetch → every branch `pending`.
 3. Else any `error` fetch → every branch `error` with the first error's message.
-4. Else each branch collects the rows whose `name === branch.name`, across every `ok` fetch, as `BranchRepositoryState`s.
+4. Else each branch collects the rows whose `name === branch.name`, across every `ok` fetch, as `BranchRepositoryState`s. If an `ok` fetch was cut short (`count > rows.length`), a branch absent from its rows that the repository could list (read-only repositories list every branch, read/write ones only synced branches, and no repository lists a merged or deleting branch) gets `{ status: "error" }` naming the cut repositories instead of a guessed summary.
 5. The states are sorted by `compareSyncStatusSeverity` (`error-import` > `unknown` > `syncing` > `in-sync`; any other value ranks with `unknown`), then by repository name, case-insensitive.
 6. `counts` has one entry per distinct `syncStatus.value`, with `label = label || value || "Unknown"`.
 7. A branch with no rows → `{ status: "ok", repositories: [], counts: [] }`; the cell picks "Not synced with Git" or "No repositories" from `branch.sync_with_git`.

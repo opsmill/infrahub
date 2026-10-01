@@ -11,6 +11,7 @@ export const REPOSITORY_SYNC_STATUS_SYNCING = "syncing";
 export const REPOSITORY_SYNC_STATUS_IN_SYNC = "in-sync";
 export const REPOSITORY_OPERATIONAL_ERRORS = ["error-cred", "error-connection", "error"] as const;
 export const REPOSITORY_FETCH_LIMIT = 500;
+export const REPOSITORY_BRANCH_STATUS_LIMIT = 500;
 
 export const IMPORT_WORKFLOWS = [
   "git-repository-add-read-write",
