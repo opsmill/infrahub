@@ -17,9 +17,11 @@ groups those nodes subscribed to on their last successful compute. Both are runt
 So the family stayed outside the pass, and its two per-node trigger types kept matching every
 mutation origin.
 
-A merge or a rebase replays each changed node as an event. That replay started one recompute flow
-per changed node. Each flow paid its own transform-metadata query, repository resolution and
-per-node data query, to write a value the merge had already carried over. Two further loops ran on
+A merge or a rebase replays each changed node as an event. Every automation the event matched
+started its own flow. The owner axis has one per attribute, the query axis one per transform and
+read kind. On the measured datasets, where each kind declares one Python attribute, that came to
+one flow per changed node. Each flow paid its own transform-metadata query, repository resolution
+and per-node data query, to write a value the merge had already carried over. Two further loops ran on
 top. The coalesced writes of the other three families re-fired the Python automations. The Python
 writes carried the live origin back into the per-node paths of every family.
 
