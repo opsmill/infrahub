@@ -3,11 +3,12 @@ import { GraphQLError } from "graphql";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CELL_HEIGHT_PX } from "@/shared/components/table/style";
+import { QSP } from "@/shared/config/qsp";
 import { getTotalPages, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
 import { getRepositoryBranchStatusFromApi } from "@/entities/repository/api/get-repository-branch-status-from-api";
 import {
-  PAGINATION_URL_KEY,
+  BRANCHES_URL_KEY,
   RepositoryBranchesCard,
 } from "@/entities/repository/ui/repository-branches-card/repository-branches-card";
 import { RepositoryBranchesEmpty } from "@/entities/repository/ui/repository-branches-card/repository-branches-empty";
@@ -221,7 +222,7 @@ describe("RepositoryBranchesCard", () => {
     // GIVEN the last page of a set larger than one page, holding fewer rows than a full page
     const count = 45;
     const lastPage = getTotalPages(count, PAGE_SIZE);
-    window.history.replaceState(null, "", `?${PAGINATION_URL_KEY}_page=${lastPage}`);
+    window.history.replaceState(null, "", `?${BRANCHES_URL_KEY}_page=${lastPage}`);
     apiMock.mockResolvedValue(toApiResult(generateRepositoryBranchStatusPayloadBefore({ count })));
 
     // WHEN
@@ -388,7 +389,7 @@ describe("RepositoryBranchesCard", () => {
     window.history.replaceState(
       null,
       "",
-      `?${PAGINATION_URL_KEY}_page=${getTotalPages(count, PAGE_SIZE) + 1}`
+      `?${BRANCHES_URL_KEY}_page=${getTotalPages(count, PAGE_SIZE) + 1}`
     );
     apiMock.mockResolvedValue(toApiResult(generateRepositoryBranchStatusPage({ rows: [], count })));
 
@@ -410,7 +411,7 @@ describe("RepositoryBranchesCard", () => {
     const count = 45;
     const lastPage = getTotalPages(count, PAGE_SIZE);
     const lastPagePayload = generateRepositoryBranchStatusPayloadBefore({ count });
-    window.history.replaceState(null, "", `?${PAGINATION_URL_KEY}_page=${lastPage + 1}`);
+    window.history.replaceState(null, "", `?${BRANCHES_URL_KEY}_page=${lastPage + 1}`);
     apiMock
       .mockResolvedValueOnce(toApiResult(generateRepositoryBranchStatusPage({ rows: [], count })))
       .mockResolvedValue(toApiResult(lastPagePayload));
@@ -676,6 +677,54 @@ describe("RepositoryBranchesCard", () => {
         component.getByRole("option", { name: condition, exact: true }).elements()
       ).toHaveLength(0);
     }
+  });
+
+  it("ignores a filter another table left on the global url key", async () => {
+    // GIVEN the key every other table in the product filters against
+    const payload = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    apiMock.mockResolvedValue(toApiResult(payload));
+    window.history.replaceState(
+      null,
+      "",
+      `?${QSP.FILTER}=${encodeURIComponent(JSON.stringify([{ name: "name__value", value: "nothing-matches-this" }]))}`
+    );
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN the card asks for every branch, and does not claim the rows were narrowed
+    await expect.element(component.getByText("feature-auth", { exact: true })).toBeVisible();
+    expect(apiMock.mock.calls[0]?.[0]).toEqual(FIRST_PAGE_VARIABLES);
+  });
+
+  it("writes its filters to its own url key, leaving the global one alone", async () => {
+    // GIVEN
+    const unfiltered = generateRepositoryBranchStatusPayloadBefore({ count: 45 });
+    const matched = generateRepositoryBranchStatusPayloadAfter({ count: 3 });
+    apiMock.mockResolvedValueOnce(toApiResult(unfiltered)).mockResolvedValue(toApiResult(matched));
+
+    // WHEN
+    const component = await renderCard();
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 0,
+      variables: FIRST_PAGE_VARIABLES,
+      payload: toApiResult(unfiltered),
+      rowVisibleAfter: "feature-auth",
+    });
+    await applyBranchStatusFilter(component, "OPEN");
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, status__value: "OPEN" },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
+
+    // THEN
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get(`${BRANCHES_URL_KEY}_${QSP.FILTER}`)).toContain("status__value");
+    expect(params.get(QSP.FILTER)).toBeNull();
   });
 
   it("narrows the column header's filter conditions the same way the toolbar does", async () => {
