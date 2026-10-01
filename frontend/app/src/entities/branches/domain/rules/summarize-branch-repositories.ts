@@ -96,23 +96,26 @@ export function summarizeBranchRepositories(
   return Object.fromEntries(
     branches.map((branch) => {
       const states = statesByBranch.get(branch.name) ?? [];
-      // A branch absent from a page the backend cut short may still have rows past the cut.
-      if (truncated.some(({ rows }) => !rows.some((row) => row.name === branch.name))) {
-        return [branch.name, truncatedSummary(truncated, states.length)];
-      }
+      const cutBefore = truncated.filter(
+        ({ repository, rows }) =>
+          couldListBranch(repository, branch) && !rows.some((row) => row.name === branch.name)
+      );
+      if (cutBefore.length > 0) return [branch.name, truncatedSummary(cutBefore)];
       const repositories = [...states].sort(compareStates);
       return [branch.name, { status: "ok", repositories, counts: countBySyncStatus(repositories) }];
     })
   );
 }
 
-function truncatedSummary(
-  truncated: readonly LoadedFetch[],
-  known: number
-): BranchRepositorySummary {
-  const names = truncated.map(({ repository }) => repository.name).join(", ");
+// Read/write repositories list only synced branches, so an unsynced branch is never behind their cut.
+function couldListBranch(repository: BranchRepositoryRef, branch: BranchListItem): boolean {
+  return repository.isReadOnly || Boolean(branch.sync_with_git);
+}
+
+function truncatedSummary(cutBefore: readonly LoadedFetch[]): BranchRepositorySummary {
+  const names = cutBefore.map(({ repository }) => repository.name).join(", ");
   return {
     status: "error",
-    message: `Status for ${names} covers only the first ${truncated[0]?.rows.length ?? 0} branches; ${known} repositories known for this branch. Open the branch for the full list.`,
+    message: `The status list for ${names} was cut short before this branch. Open the branch for the full list.`,
   };
 }

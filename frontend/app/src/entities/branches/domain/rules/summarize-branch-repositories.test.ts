@@ -144,18 +144,29 @@ describe("summarizeBranchRepositories", () => {
     // GIVEN a repository with more branches than the page returned
     const fetches = [
       fetched("a", [row("main")], false, 501),
-      fetched("b", [row("main"), row("local")]),
+      fetched("b", [row("main"), row("feature")]),
     ];
 
     // WHEN
-    const summaries = summarizeBranchRepositories([main, local], fetches);
+    const summaries = summarizeBranchRepositories([main, feature], fetches);
 
-    // THEN the branch on the page is summarised, the one past the cut is not guessed
+    // THEN the branch on the page is summarised, the synced one past the cut is not guessed
     expect(summaries.main).toMatchObject({ status: "ok" });
-    expect(summaries.local).toMatchObject({
+    expect(summaries.feature).toMatchObject({
       status: "error",
-      message: expect.stringContaining("first 1 branches"),
+      message: expect.stringContaining("cut short before this branch"),
     });
+  });
+
+  it("does not blame a cut read/write page for an unsynced branch it could never list", () => {
+    // GIVEN a read/write repository page cut short and an unsynced branch
+    const fetches = [fetched("read-write", [row("main")], false, 501)];
+
+    // WHEN
+    const summaries = summarizeBranchRepositories([local], fetches);
+
+    // THEN the unsynced branch keeps its empty ok summary
+    expect(summaries.local).toEqual({ status: "ok", repositories: [], counts: [] });
   });
 
   it("gives a branch with no rows an empty ok summary", () => {
