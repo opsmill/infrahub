@@ -1,13 +1,24 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, replaceEqualDeep, useQuery } from "@tanstack/react-query";
 
 import type { ContextParams, QueryConfig } from "@/shared/api/types";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import type { RepositoryCommitStatus } from "@/entities/repository/domain/model/repository";
+import { isGitStateAvailable } from "@/entities/repository/domain/rules/is-git-state-available";
 import {
   type GetRepositoryCommitStatusParams,
   getRepositoryCommitStatus,
 } from "@/entities/repository/domain/use-cases/get-repository-commit-status";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
+
+export function keepStatusOverColdAnswer(
+  previous: RepositoryCommitStatus | undefined,
+  next: RepositoryCommitStatus
+): RepositoryCommitStatus {
+  return previous && isGitStateAvailable(previous) && !isGitStateAvailable(next)
+    ? previous
+    : replaceEqualDeep(previous, next);
+}
 
 export function getRepositoryCommitStatusQueryOptions(params: GetRepositoryCommitStatusParams) {
   return queryOptions({
@@ -17,6 +28,12 @@ export function getRepositoryCommitStatusQueryOptions(params: GetRepositoryCommi
     }),
     queryFn: () => getRepositoryCommitStatus(params),
     refetchOnWindowFocus: false,
+    // TanStack types structuralSharing's arguments as unknown.
+    structuralSharing: (oldData, newData) =>
+      keepStatusOverColdAnswer(
+        oldData as RepositoryCommitStatus | undefined,
+        newData as RepositoryCommitStatus
+      ),
   });
 }
 

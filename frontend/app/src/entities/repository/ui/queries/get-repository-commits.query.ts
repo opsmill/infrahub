@@ -18,6 +18,7 @@ import {
   type GetRepositoryCommitsParams,
   getRepositoryCommits,
 } from "@/entities/repository/domain/use-cases/get-repository-commits";
+import { keepStatusOverColdAnswer } from "@/entities/repository/ui/queries/get-repository-commit-status.query";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
 export const REPOSITORY_COMMITS_PAGE_SIZE = 20;
@@ -40,13 +41,6 @@ function keepLoadedPagesOverColdAnswer(
     return oldData;
   }
   return replaceEqualDeep(oldData, newData);
-}
-
-function keepStatusOverColdAnswer(
-  previous: RepositoryCommitStatus | undefined,
-  next: RepositoryCommitStatus
-): RepositoryCommitStatus {
-  return previous && isGitStateAvailable(previous) && !isGitStateAvailable(next) ? previous : next;
 }
 
 export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQueryParams) {
