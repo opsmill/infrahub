@@ -1,1 +1,0 @@
-Fixed the warning logged when an artifact or Generator definition regenerates every target, which always blamed target uniqueness; it now states the actual reason, and the reason is also logged after a merge.

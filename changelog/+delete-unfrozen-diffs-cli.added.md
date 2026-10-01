@@ -1,1 +1,0 @@
-Added the `infrahub db delete-diffs` command, which deletes the stored named diffs that are not frozen, and with `--include-branch-diffs` the unfrozen branch diffs too, for every branch or for a single branch with `--branch`.
