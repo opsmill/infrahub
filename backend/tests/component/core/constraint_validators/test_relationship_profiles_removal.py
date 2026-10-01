@@ -1,9 +1,11 @@
 import copy
 from collections import Counter
+from collections.abc import Generator
 from dataclasses import dataclass
 
 import pytest
 
+from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
@@ -606,6 +608,48 @@ async def test_profile_deletion_blocked_by_inherited_required_relationship(
     assert exc.value.message == (
         f"Cannot remove profile '{profile.id}' because node 'TestingThing(ID: {thing.id})' (ID: {thing.id}) "
         "inherits required relationship 'owner' from this profile."
+    )
+
+
+@pytest.fixture
+def restore_query_size_limit() -> Generator[None, None, None]:
+    original = config.SETTINGS.database.query_size_limit
+    yield
+    config.SETTINGS.database.query_size_limit = original
+
+
+@pytest.mark.parametrize("inheriting_index", range(10))
+async def test_profile_deletion_blocked_when_the_relationship_read_spans_several_pages(
+    db: InfrahubDatabase,
+    branch: Branch,
+    optional_thing_fields: list[Node],
+    restore_query_size_limit: None,
+    inheriting_index: int,
+) -> None:
+    """All the nodes share the required peer, but only one node gets it from the profile, at each position in turn."""
+    owner = optional_thing_fields[0]
+    profile = await _create_profile(db=db, branch=branch, name="thing-profile", priority=1000, owner=owner)
+    things = []
+    for idx in range(10):
+        user_owner = {} if idx == inheriting_index else {"owner": owner}
+        things.append(
+            await _create_thing_from_profiles(
+                db=db, branch=branch, name=f"thing-{idx}", profiles=[profile], color="blue", **user_owner
+            )
+        )
+    inheriting = things[inheriting_index]
+    profile_schema = await _load_thing_with_required_fields(db=db, branch=branch)
+    profile = await NodeManager.get_one(db=db, branch=branch, id=profile.id, raise_on_error=True)
+
+    # Pages smaller than the number of nodes, so that the read of the shared peer spans several pages.
+    config.SETTINGS.database.query_size_limit = 2
+    constraint = RelationshipProfileRemovalConstraint(db=db, branch=branch)
+    with pytest.raises(ValidationError) as exc:
+        await constraint.validate_profile_deletion(profile=profile, profile_schema=profile_schema)
+
+    assert exc.value.message == (
+        f"Cannot remove profile '{profile.id}' because node 'TestingThing(ID: {inheriting.id})' "
+        f"(ID: {inheriting.id}) inherits required relationship 'owner' from this profile."
     )
 
 
