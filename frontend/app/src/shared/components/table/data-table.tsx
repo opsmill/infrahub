@@ -27,8 +27,11 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
   columns: ColumnDef<T>[];
   count?: number;
   data: Array<T>;
+  /** Required when rows are not nodes; defaults to the node `id`. */
+  getRowId?: (row: T) => string;
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
+  /** Selection hands rows to the node toolbar, so only enable it for node rows. */
   toolbarActions?: ObjectTableSelectionToolbarProps["renderMore"];
   enableRowSelection?: RowSelectionOptions<T>["enableRowSelection"];
   gridTemplateColumns?: (columnCount: number) => string;
@@ -41,7 +44,11 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
 const defaultGridTemplateColumns = (columnCount: number) =>
   `repeat(${columnCount - 2}, fit-content(${COLUMN_MAX_WIDTH})) 1fr 2.5rem`;
 
-export function DataTable<T extends NodeCore>({
+const asNode = (row: unknown) => row as NodeCore;
+
+const getNodeId = (row: unknown) => asNode(row).id;
+
+export function DataTable<T>({
   columnOrder,
   columns,
   count,
@@ -50,6 +57,7 @@ export function DataTable<T extends NodeCore>({
   renderEmpty,
   toolbarActions,
   enableRowSelection,
+  getRowId = getNodeId,
   gridTemplateColumns = defaultGridTemplateColumns,
   ...props
 }: DataTableProps<T>) {
@@ -61,7 +69,7 @@ export function DataTable<T extends NodeCore>({
     enableRowSelection,
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
-    getRowId: (row) => row.id,
+    getRowId,
     state: {
       columnOrder,
     },
@@ -82,7 +90,7 @@ export function DataTable<T extends NodeCore>({
     [allHeaders.length, gridTemplateColumns]
   );
 
-  const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);
+  const selectedRows = table.getSelectedRowModel().flatRows.map((row) => asNode(row.original));
 
   // `min-w-max` stops the grid from being squeezed into its scroll container.
   // Without it the tracks compress until columns are unreadably narrow instead of

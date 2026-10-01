@@ -225,3 +225,42 @@ describe("DataTable first column tooltip", () => {
     await expect.element(component.getByRole("tooltip", { name: LONG_LABEL })).toBeVisible();
   });
 });
+
+describe("DataTable rows that are not nodes", () => {
+  interface CommitRow {
+    hash: string;
+    summary: string;
+  }
+
+  const commitColumns: ColumnDef<CommitRow>[] = [
+    {
+      id: "hash",
+      header: () => <div>Hash</div>,
+      cell: ({ row }) => <div>{row.original.hash}</div>,
+    },
+    {
+      id: "summary",
+      header: () => <div>Summary</div>,
+      cell: ({ row }) => <div>{row.original.summary}</div>,
+    },
+  ];
+
+  test("renders rows that carry no id when given getRowId", async () => {
+    // GIVEN
+    const commits: CommitRow[] = [
+      { hash: "a1b2c3d", summary: "Add device inventory" },
+      { hash: "e5f6a7b", summary: "Initial import" },
+    ];
+
+    // WHEN
+    const component = await render(
+      <DataTable columns={commitColumns} data={commits} getRowId={(commit) => commit.hash} />
+    );
+
+    // THEN
+    const rows = component.getByTestId("data-table-row");
+    expect(rows.elements()).toHaveLength(2);
+    await expect.element(rows.nth(0).getByText("Add device inventory")).toBeVisible();
+    await expect.element(rows.nth(1).getByText("e5f6a7b")).toBeVisible();
+  });
+});
