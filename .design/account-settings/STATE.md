@@ -1,6 +1,6 @@
 # account-settings
 
-phase: 0 — Frame
+phase: 1 — Inventory
 round: —
 base: develop
 branch: ple-design/account-settings
@@ -10,6 +10,6 @@ preview: —
 status: awaiting approval
 notes: —
 gathered: —
-last: phase 0 — brief written (product framing skipped, grilled in 8 questions)
-next: approve the brief, then inventory @infrahub/ui and the existing settings/nav patterns (phase 1)
-blocked on: user approval of 00-brief.md
+last: phase 1 — inventory written (no settings side-nav exists; empty state + callout are gaps)
+next: approve the inventory, then build 3-4 directions at /_proto/account-settings (phase 2)
+blocked on: user approval of 01-system.md
