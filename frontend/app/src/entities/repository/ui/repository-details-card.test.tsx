@@ -22,6 +22,24 @@ const objectData: NodeObjectWithMetadata = {
   commit: generateNodeAttributeWithMetadata({ value: "abc1234" }),
 };
 
+const schemaWithExtraField = generateNodeSchema({
+  attributes: [
+    generateAttributeSchema({ name: "commit", label: "Commit", order_weight: 1000 }),
+    generateAttributeSchema({
+      name: "internal_status",
+      label: "Internal status",
+      order_weight: 2000,
+      display: "extra",
+    }),
+  ],
+  relationships: [],
+});
+
+const objectDataWithExtraField: NodeObjectWithMetadata = {
+  ...objectData,
+  internal_status: generateNodeAttributeWithMetadata({ value: "active" }),
+};
+
 describe("RepositoryDetailsCard", () => {
   it("names the card by its title when no caption is given", async () => {
     const component = await render(
@@ -112,5 +130,42 @@ describe("RepositoryDetailsCard", () => {
     await expect
       .element(component.getByRole("region", { name: "On this branch main" }))
       .toBeVisible();
+  });
+
+  it("offers the extra fields behind the same toggle the object details card uses", async () => {
+    // GIVEN a schema carrying a field marked for the extra tier
+    const component = await render(
+      <RepositoryDetailsCard
+        title="Details"
+        testId="repository-details"
+        objectSchema={schemaWithExtraField}
+        objectData={objectDataWithExtraField}
+        permission={permission}
+      />
+    );
+
+    // THEN it is hidden until asked for, and the toggle is there to ask
+    expect(component.getByText("Internal status", { exact: true }).elements()).toHaveLength(0);
+
+    // WHEN
+    await component.getByRole("button", { name: "Extra" }).click();
+
+    // THEN
+    await expect.element(component.getByText("Internal status", { exact: true })).toBeVisible();
+  });
+
+  it("offers no extra toggle for a schema that has no extra field", async () => {
+    const component = await render(
+      <RepositoryDetailsCard
+        title="Details"
+        testId="repository-details"
+        objectSchema={schemaWithCommit}
+        objectData={objectData}
+        permission={permission}
+      />
+    );
+
+    await expect.element(component.getByText("Commit", { exact: true })).toBeVisible();
+    expect(component.getByRole("button", { name: "Extra" }).elements()).toHaveLength(0);
   });
 });
