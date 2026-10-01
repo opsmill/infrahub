@@ -12,10 +12,13 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from infrahub.workflows.catalogue import PROFILE_REFRESH_MULTIPLE
 from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
+    from collections import Counter
+
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
@@ -115,3 +118,74 @@ async def test_profile_update_refreshes_the_removed_peers(
         (call["workflow"], call["parameters"]["branch_name"], sorted(call["parameters"]["node_ids"]))
         for call in workflow.submit_calls
     ] == [(PROFILE_REFRESH_MULTIPLE, default_branch.name, sorted([peers[1].id, peers[2].id]))]
+
+
+@dataclass(frozen=True)
+class CountedMutation:
+    query_counts: Counter[str]
+    row_counts: Counter[str]
+    workflow: WorkflowRecorder
+
+
+async def _rename_profile(
+    db: InfrahubDatabase, branch: Branch, mutation: str, profile: Node, new_name: str
+) -> CountedMutation:
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+    workflow = await _run_mutation(
+        db=counting_db,
+        branch=branch,
+        query=f"""
+        mutation {{
+            ProfileTestDevice{mutation}(data: {{ id: "{profile.id}", profile_name: {{ value: "{new_name}" }} }}) {{
+                ok
+            }}
+        }}
+        """,
+    )
+    return CountedMutation(query_counts=counting_db.query_counts, row_counts=counting_db.row_counts, workflow=workflow)
+
+
+@dataclass
+class RenameTestCase:
+    name: str
+    mutation: str
+
+
+RENAME_TEST_CASES: list[RenameTestCase] = [
+    RenameTestCase(name="update", mutation="Update"),
+    RenameTestCase(name="upsert", mutation="Upsert"),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in RENAME_TEST_CASES])
+async def test_profile_update_without_peers_in_payload_does_not_read_them(
+    db: InfrahubDatabase, default_branch: Branch, device_schema: None, test_case: RenameTestCase
+) -> None:
+    profiles: dict[int, Node] = {}
+    for linked_nodes in (2, 6):
+        profile = await _create_node(
+            db=db,
+            branch=default_branch,
+            kind="ProfileTestDevice",
+            profile_name=f"profile-{linked_nodes}",
+            profile_priority=10,
+        )
+        for idx in range(linked_nodes):
+            await _create_node(
+                db=db, branch=default_branch, kind="TestDevice", name=f"device-{linked_nodes}-{idx}", profiles=[profile]
+            )
+        profiles[linked_nodes] = profile
+
+    few = await _rename_profile(
+        db=db, branch=default_branch, mutation=test_case.mutation, profile=profiles[2], new_name="renamed-2"
+    )
+    many = await _rename_profile(
+        db=db, branch=default_branch, mutation=test_case.mutation, profile=profiles[6], new_name="renamed-6"
+    )
+
+    assert many.row_counts == few.row_counts
+    assert many.query_counts == few.query_counts
+    assert few.workflow.submit_calls == []
+    assert many.workflow.submit_calls == []
+    renamed = await NodeManager.get_one(db=db, branch=default_branch, id=profiles[6].id, raise_on_error=True)
+    assert renamed.profile_name.value == "renamed-6"
