@@ -1,3 +1,5 @@
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
+
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import type {
   BranchRepositoryRef,
@@ -107,8 +109,11 @@ export function summarizeBranchRepositories(
   );
 }
 
-// Read/write repositories list only synced branches, so an unsynced branch is never behind their cut.
+// The status query lists no merged or deleting branch, and read/write repositories list only synced
+// ones, so such a branch is never behind a cut page.
 function couldListBranch(repository: BranchRepositoryRef, branch: BranchListItem): boolean {
+  if (branch.status === BranchStatus.MERGED || branch.status === BranchStatus.DELETING)
+    return false;
   return repository.isReadOnly || Boolean(branch.sync_with_git);
 }
 
