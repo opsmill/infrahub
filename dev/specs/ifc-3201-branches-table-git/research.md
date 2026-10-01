@@ -1,6 +1,6 @@
 # Research: Repository, Git state and Commit columns on the branches table
 
-**Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Date**: 2026-09-30
+**Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Date**: 2026-09-30, rework 2026-10-01 (R14)
 
 Code references name the module and symbol; line numbers are left out on purpose. Paths are relative to `frontend/app/` unless stated. Every decision below comes from `plan-synthesis.md`; this file records the reasoning and the code it was checked against.
 
@@ -9,33 +9,18 @@ Code references name the module and symbol; line numbers are left out on purpose
 | Needed | On this base? | Consequence |
 |---|---|---|
 | Per-branch repository query, model, pill, ranking | Yes: `entities/repository/ui/queries/get-branch-repositories.query.ts::getBranchRepositoriesQueryOptions`, `domain/model/branch-repository.ts`, `ui/branch-repositories/git-state-pill.tsx::GitStatePill`, `domain/rules/rank-repositories.ts::rankRepositories` | Reused unchanged. |
-| Repository fakes | Yes: `tests/fake/branch-repositories.ts` (`SYNC_STATUS`, `OPERATIONAL_STATUS`, `generateBranchRepository`, `generateBranchRepositoriesResult`) | Reused; this feature's extra fakes go in a new local file (R12). |
-| `CommitHash` | **No** (PR #10658 only) | Lifted (R8). `CopyToClipboardButton`, its only dependency, is byte-identical on this base and on #10658. |
+| Repository fakes | Yes: `tests/fake/branch-repositories.ts` (`SYNC_STATUS`, `OPERATIONAL_STATUS`, `generateBranchRepository`, `generateBranchRepositoriesResult`) | Reused; no extra fake file since R14. |
+| `CommitHash` | **No** (PR #10658 only) | Lifted (R8), then dropped with the Commit column (R14). |
 | Branches table tests | **None** under `entities/branches/ui/branches-table/` | Both component test files are new. |
 | Deterministic import-error E2E fixture | Class-local: `tests/e2e/branches/test_branch_details_repositories.py::TestBranchDetailsRepositoryImportError::broken_repository` | In scope: promoted to `tests/e2e/branches/conftest.py` as a function-scoped fixture with a `sync_with_git` parameter (plan IV). |
 
 ## R1 — Selection: the anchor row
 
-**Decision**: The first row of each branch has id `branch.id` and every later row has id `${branch.id}:${repository.id}`. The table sets `enableRowSelection: (row) => isBranchAnchorRow(row.original)`. The identifier cell resolves `anchor = table.getRow(row.original.branch.id)` and reads `anchor.getIsSelected()`. It also passes `{ row: anchor, table }` to the shared shift-range handler. `selectedRows = table.getSelectedRowModel().flatRows.map((r) => r.original.branch)`. The row `Checkbox` in `branch-name-cell.tsx::BranchNameCell` gains `aria-label={`Select ${branch.name}`}` on the anchor row and `aria-label={`Select ${branch.name} (${repository.name})`}` plus exclusion from the tab order on every other row (spec FR-008). After review, the branch name link, the proposed-changes pill and the actions menu trigger are also out of the tab order on non-anchor rows; the commit copy button is not. The shared shift-range handler stores the last-selected row **id** instead of `row.index`, and resolves both indexes at shift time.
-
-**Rationale**: these TanStack Table 8.21.3 semantics were checked in `table-core/src/features/RowSelection.ts`:
-
-- `toggleAllRowsSelected(true)` skips rows whose `getCanSelect()` is false. `toggleAllRowsSelected(false)` deletes the ids of every row in the current row model.
-- `getIsAllRowsSelected` and `getIsSomePageRowsSelected` only consider selectable rows. So the header checkbox reflects branches.
-- `row.toggleSelected(value)` goes through `mutateRowIsSelected`. That writes the id only when `getCanSelect()` is true and otherwise deletes it, so toggling a non-anchor row is a no-op.
-- `getSelectedRowModel()` filters by the ids in `rowSelection`, so it contains anchors only. The toolbar count, the delete modal list and the logout reset (`toggleAllRowsSelected(false)`) therefore see one entry per branch without change (FR-008, SC-003).
-- `getToggleSelectedRowHandler` slices `getRowModel().flatRows` between two indexes and calls `toggleSelected(!isCellSelected)`. With the anchor passed in, `index` and `getIsSelected()` are the anchor's. Non-anchor rows inside the range are no-ops, so a range counts branches (FR-009).
-- Today the handler stores the last-selected `row.index` (`lastSelectedIndexByTable`). Fan-out moves indexes asynchronously: a branch above can expand from pending to N rows between the click and the shift-click, so a stored index would point at another branch and the range would feed unintended branches to bulk Delete. The handler therefore stores the last-selected row **id** and resolves both indexes at shift time via `table.getRow(id).index`; if the id no longer exists it falls back to a plain toggle. Object tables behave identically because their rows never move.
-- Selection survives pending → N: the anchor keeps id `branch.id` in every state (data-model).
-
-**Alternatives considered**:
-
-- (ii) Controlled `rowSelection` keyed by branch id, plus a mapping from row to branch. This needs two rules, a hook and state for the same observable result.
-- (iii) Every row selectable, then dedup `selectedRows` by `branch.id`. The header checkbox then counts rows, and shift-range needs a forked handler.
-
-**Cost**: the anchor convention is implicit, so it is named by `isBranchAnchorRow`. Each checkbox reads another row's state.
+Superseded by R14 (2026-10-01): one row per branch uses the base branch's ordinary per-row selection; the anchor row, the `enableRowSelection` predicate and the id-keyed shift-range handler are removed.
 
 ## R2 — Fan-out location and layering
+
+Superseded 2026-10-01: the rule and its row model are deleted (R14). Kept as history.
 
 **Decision**: `entities/branches/domain/rules/to-branch-table-rows.ts::toBranchTableRows({ branches, fetchByBranchId, orderRepositories })` does the fan-out. It gets the ordering as an injected parameter. The row types live in `entities/branches/domain/model/branch-table-row.ts`, built on `entities/repository/domain/model/branch-repository.ts`.
 
@@ -53,19 +38,11 @@ Injecting `orderRepositories` keeps the rule pure and inside its layer. The test
 
 ## R3 — Ordering: `rankRepositories`, and the spec correction
 
-**Decision**: Within a branch, rows follow `rankRepositories`. Import errors come first (rank 2). Unreachable remotes come next (rank 1, from `operationalStatus`). The rest follow (0). Each group is sorted by `name.localeCompare(…, { sensitivity: "base" })`.
-
-**Rationale**: FR-006a requires the branch details page's order, and this is that rule, reused, not re-implemented. The phase 1 brief said "keeps backend order", which was wrong. The spec's FR-006a, US2-AS5 and the ordering clarification were corrected to this rule (synthesis §2). The unreachable status only affects order; it is not displayed (FR-016).
-
-**Alternatives**: backend order was rejected because it contradicts FR-006a and differs from branch details.
+Superseded by R14 (2026-10-01): `rankRepositories` is still the rule, but it now only picks the repository shown first and the worst Git state (spec FR-005) instead of ordering rows.
 
 ## R4 — Grid template: fixed tracks for the new columns
 
-**Decision**: the three columns are inserted after `proposed_changes`, so there are 11 columns: `id`, `status`, `proposed_changes`, `repository`, `git_state`, `commit`, `branched_from`, `updated_at`, `created_at`, `created_by`, `actions`. `branches-data-table.tsx::defaultGridTemplateColumns` becomes `[fit-content(WIDE_COLUMN_MAX_WIDTH), fit-content(COLUMN_MAX_WIDTH), minmax(150px, 200px), REPOSITORY_TRACK, GIT_STATE_TRACK, COMMIT_TRACK, repeat(columnCount - 7, fit-content(COLUMN_MAX_WIDTH)), 2.5rem]`, with the constants declared next to the template: `REPOSITORY_TRACK = "minmax(12rem, 18rem)"`, `GIT_STATE_TRACK = "9rem"`, `COMMIT_TRACK = "8rem"`.
-
-**Rationale**: SC-004 forbids horizontal shifts while data arrives. Inside the positional `repeat(n-4, fit-content(…))` track, each new column would grow from spinner width to name, pill or hash width as its cells fill in, and every column to its right would shift sideways. `proposed_changes` avoids this today only because it has a fixed `minmax(150px, 200px)` track; the new columns follow the same approach. A test asserts the template has one track per column and that the three new tracks are fixed.
-
-**Alternatives**: keeping the positional template (rejected: it breaks SC-004); a per-column tracks map (deferred to IFC-3146/3147, when more columns arrive; VII, YAGNI).
+Superseded by R14 (2026-10-01): two fixed tracks (`REPOSITORIES_TRACK = "minmax(12rem, 18rem)"`, `GIT_STATE_TRACK = "9rem"`, `repeat(columnCount - 6, …)`) replace the three, and the one-track-per-column test is gone with `branches-data-table.test.tsx`.
 
 ## R5 — Data-fetch strategy: (a) one request per branch
 
@@ -87,6 +64,8 @@ The options compared (P = pages loaded, 40 branches per page, R = number of repo
 
 ## R6 — Hook location
 
+Superseded 2026-10-01: `useBranchTableRows` is deleted; each cell calls `useGetBranchRepositories` directly (R14). Kept as history.
+
 **Decision**: `entities/branches/ui/hooks/use-branch-table-rows.ts::useBranchTableRows(branches): BranchTableRow[]`. It maps each `useQueries` result to a `BranchRepositoriesFetch`: `data` present → `data`; else `isError` → `{ status: "error" }`; else `{ status: "pending" }` (R10). It then calls `toBranchTableRows` with `orderRepositories: rankRepositories`, through a `combine` (R13).
 
 **Rationale**: it produces branches-table rows, so it belongs to branches. `branches/ui` may import `repository/ui/queries` and `repository/domain/rules`.
@@ -94,6 +73,8 @@ The options compared (P = pages loaded, 40 branches per page, R = number of repo
 **Alternatives**: `repository/ui/queries/get-branches-repositories.query.ts`. Rejected because it would couple the repository entity to branches-table row shapes.
 
 ## R7 — Extract `RepositoryNameLink`
+
+After R14 the table no longer uses it; whether the extraction stays is the rework implementer's call (reverted). Kept as history.
 
 **Decision**: add `entities/repository/ui/branch-repositories/repository-name-link.tsx::RepositoryNameLink({ repository, branchName, isDefaultBranch })`. It holds the `FolderGitIcon`, a `Link` to `getObjectDetailsUrl(kind, id, [getBranchQspOverride(branchName, isDefaultBranch)])` with `title={name}`, and the "Read-only" chip. `repository-row.tsx::RepositoryRow` uses it and keeps the unreachable icon and the `—` commit fallback. The native `title` stays after review (accepted); aligning it with `Tooltip` is a follow-up.
 
@@ -103,11 +84,7 @@ The options compared (P = pages loaded, 40 branches per page, R = number of repo
 
 ## R8 — Lift `CommitHash`
 
-**Decision**: copy `src/shared/components/display/commit-hash.tsx` and `commit-hash.test.tsx` byte-identical from `git -C /Users/paul/Projects/infrahub show ple-branches-card-ifc-3130:frontend/app/src/shared/components/display/…` (#10658's current head). The PR body mentions the lift. Usage: `<CommitHash hash={commit} copyable />`, which renders a 7-character mono hash with `title={hash}` and `CopyToClipboardButton` labelled `Copy commit <hash>`.
-
-**Rationale**: the owner's decision (spec Clarifications). An identical add/add merges cleanly. The synthesis named `baecf35c7d`; the test file differs between that commit and the branch head (6 lines), so the branch head is the source, matching what #10658 will merge.
-
-**Alternatives**: rewriting it means a conflict later. Rendering the hash inline in the cell duplicates #10658.
+Superseded by R14 (2026-10-01): the Commit column is dropped, so `CommitHash` has no consumer and is no longer lifted.
 
 ## R9 — Polling
 
@@ -119,7 +96,7 @@ The options compared (P = pages loaded, 40 branches per page, R = number of repo
 
 **Decision**: each state renders per branch, and the branch cells always render:
 
-| State | Repository cell | Git state and Commit cells |
+| State | Repositories cell | Git state cell |
 |---|---|---|
 | `pending` | `Spinner` (the `branch-proposed-changes-cell.tsx` pattern) | blank |
 | `denied` (use-case returns `{ status: "denied" }` when every GraphQL error is `PERMISSION_DENIED`) | muted "No permission" | blank |
@@ -127,7 +104,7 @@ The options compared (P = pages loaded, 40 branches per page, R = number of repo
 
 **Rationale**: FR-011 to FR-013 and SC-005. The query client default is `retry: false` (`shared/api/rest/client.ts::queryClient`), so a failure settles immediately. One spinner per pending branch keeps first paint calm (spec FR-011).
 
-**Mapping order**: the hook maps `data` first, then `isError`, then pending. A failed background refetch (the 10 s syncing poll, or a window refocus) therefore keeps the last loaded rows rendered instead of collapsing a loaded branch to one error row, which is also how #10779's card reads its query.
+**Mapping order**: the cells read `data` first, then the error, then pending (the hook did so before R14). A failed background refetch (the 10 s syncing poll, or a window refocus) therefore keeps the last loaded result rendered, which is also how #10779's card reads its query.
 
 **Finding (toast)**: the shared GraphQL client routes errors through `shared/api/graphql/error-handling.ts::handleGraphQLErrors`:
 
@@ -135,17 +112,17 @@ The options compared (P = pages loaded, 40 branches per page, R = number of repo
 - Network errors throw without a toast.
 - Any other GraphQL error calls `notifyUser`, which toasts, deduplicated by `toastId: "alert-error"`, unless the request context supplies `processErrorMessage`.
 
-`get-branch-repositories-from-api.ts::fetchConnection` passes only `{ branch }`, so FR-013's "no toast" does not hold for GraphQL-level errors. The minimal fix is to pass a no-op `processErrorMessage` in that context. That is a one-line change to a #10779 file, and it also affects the branch details card, which renders its own failed state. **Decision: make the change.** FR-013 is explicit, and a page-level toast for a per-row degraded cell is the wrong surface on both pages. Nothing is lost: the use-case's thrown `Error` joins the backend messages, and the Repository cell shows that message as the tooltip of "Could not load repositories" (and as visually hidden text). The card's failed state renders the same server message and is asserted to render without a toast.
+`get-branch-repositories-from-api.ts::fetchConnection` passes only `{ branch }`, so FR-013's "no toast" does not hold for GraphQL-level errors. The minimal fix is to pass a no-op `processErrorMessage` in that context. That is a one-line change to a #10779 file, and it also affects the branch details card, which renders its own failed state. **Decision: make the change.** FR-013 is explicit, and a page-level toast for a per-row degraded cell is the wrong surface on both pages. Nothing is lost: the use-case's thrown `Error` joins the backend messages, and the Repositories cell shows that message as the tooltip of "Could not load repositories" (and as visually hidden text). The card's failed state renders the same server message and is asserted to render without a toast.
 
 ## R11 — `isTruncated` ignored
 
-**Decision**: when `status === "ok"`, only `repositories` is used. `count` and `isTruncated` are not rendered. **Rationale**: spec Assumptions ("no more marker"). `REPOSITORY_FETCH_LIMIT = 500` is far above realistic per-branch counts.
+**Decision**: when `status === "ok"`, only `repositories` is used (N = `repositories.length`). `count` and `isTruncated` are not rendered. **Rationale**: spec Assumptions ("no more marker"). `REPOSITORY_FETCH_LIMIT = 500` is far above realistic per-branch counts.
 
 ## R12 — Remove `React.useMemo`; local fakes
 
 **Decision**: remove `React.useMemo` from `branches-table.tsx::BranchesTable` (`columns`, `flatData`) and from `branches-data-table.tsx::BranchesDataTable` (`style`). The React Compiler memoizes (`dev/knowledge/frontend/react.md`, "React Compiler").
 
-New fakes go in `tests/fake/branch-table-rows.ts`:
+Superseded 2026-10-01 for the fakes: `tests/fake/branch-table-rows.ts` is deleted (R14). The 2026-09-30 decision was that new fakes go in `tests/fake/branch-table-rows.ts`:
 
 - `FULL_COMMIT_HASH`: 40 characters.
 - `generateBranchTableRow(overrides)`.
@@ -160,45 +137,45 @@ That file imports `BranchListItem` from `entities/branches/domain/model/branch`.
 
 ## R13 — Per-branch row reuse with `combine`
 
-**Decision**: `useBranchTableRows` calls `useQueries({ queries, combine })`. The `combine` returns a stable per-branch record (branch id → result), and rows are rebuilt only for branches whose result reference changed; the other branches' row objects are reused. No `useMemo`.
+Superseded by R14 (2026-10-01): with no table-level `useQueries` there is no `combine`; the structural-sharing finding is kept in `dev/knowledge/frontend/react.md`.
 
-**Rationale**: without `combine`, `useQueries` returns a new array on every observer update, so every row object is rebuilt, TanStack Table rebuilds its core row model, and every cell re-renders: about 40 times per page load and 120 times per window refocus after three pages. TanStack Query's structural sharing keeps a branch's `data` reference stable while it is unchanged, which makes reference comparison enough. This meets SC-007.
+## R14 — Why one row per branch
 
-**Alternatives**: `useMemo` over the results array (forbidden by the React Compiler rule, and it would still rebuild every branch on each update).
+**Decision** (owner, 2026-10-01, after trying the fan-out on a dev stack): the list goes back to one row per branch. The Repositories cell shows the first repository in `rankRepositories` order (failed imports first) as a pill, then "+N more" linking to the branch details page; the Git state cell shows that repository's pill (the worst state) with an `n/N` count and a per-label tooltip. The Commit column is dropped; the commit is in the pill's tooltip and on the branch details page. Each cell reads #10779's `useGetBranchRepositories`, one request per branch shared by key.
 
-### R13 addendum (review, 2026-09-30) — one rule call per branch
+**Measurements** (24 branches × 16 repositories): the fan-out rendered 279 rows, 280 checkboxes, about 15 000 DOM nodes and about 200 console warnings, and was visibly slow. The 24 per-branch repository requests completed in 0.36 s in total, so the cost was rendering, not fetching. The ticket's "one row per repository" assumed one or two repositories per branch.
 
-**Decision**: `combine` calls `toBranchTableRows` once over all loaded branches and returns the rows as a record keyed by branch id; the hook flattens that record in branch order outside `combine`. No module-level caches.
+**Single-request finding**: one request for every branch is not available today. Aliasing 16 `InfrahubRepositoryBranchStatus` fields (one per repository) into one GraphQL document returns HTTP 500 `read() called while another coroutine is already waiting for incoming data`, and `Branch` has no repositories field. The backend follow-up is either a `repository_ids` list argument on `InfrahubRepositoryBranchStatus` or a fix to the concurrent-resolver path that the aliased document hits.
 
-**Rationale**: `query-core`'s `QueriesObserver` runs `replaceEqualDeep(previous, combine(input))` on the combined result. `replaceEqualDeep` pairs array entries by index and object entries by key, so a flat array loses identity for every row below a branch that grows, while a record keyed by branch id keeps each unchanged branch's row array (and its row objects) by reference. A per-branch `WeakMap` cache was tried first and did not survive the shift either, because `replaceEqualDeep` copies mismatched array entries instead of returning the cached object; the identity test added in the review pass caught it.
+**Consequences**: R1, R3, R4, R8 and R13 are superseded; R2 and R6 (the fan-out rule and the table hook) have no code left; R5's per-branch strategy stands, now measured.
 
-**Alternatives**: module-level `WeakMap` caches keyed by branch and fetch object (first implementation; failed the shift case above). Calling the rule once per branch (contract deviation, no longer needed).
+**Alternatives considered**: a stacked cell listing every repository, which the ticket rules out ("no stacking inside a cell") and whose height grows with the repository count. The roll-up follows the Proposed changes cell's existing "first item + N more" pattern instead.
 
 ## Risks
 
 1. The GraphQL-level error toast (R10) is closed by the no-op `processErrorMessage`; the branch details card loses a toast it never needed, and its failed state now shows the server message instead.
-2. Unreachable repositories rank up without the reason shown (FR-016), so rows can look out of order.
-3. ≈40 queries per page (N+1 over HTTP). Accepted as a Constitution V deviation, bounded by SC-007, with a backend list-of-ids variant as the follow-up (R5).
+2. Unreachable repositories rank up without the reason shown (FR-016), so the "worst" repository can be an unreachable one in sync; the count and tooltip still list every state.
+3. ≈40 queries per page (N+1 over HTTP). Accepted as a Constitution V deviation, measured at 0.36 s for 24 branches, with the single-request follow-ups in R14.
 4. `isTruncated` is ignored, so a truncated list is silently partial (R11).
 5. The page's reload button refreshes branch queries only.
-6. Pending → N rows pushes lower branches down (spec edge case).
-7. The PR touches three #10779 files and changes the shared toggle handler (generic widened, id-keyed anchor) (plan Complexity Tracking and Risks).
-8. Anchor selection relies on the row order matching the data order, which `manualSorting: true` guarantees today; index drift after expansion is handled by the id-keyed anchor (R1).
-9. E2E is in scope: one `/branches` case over the `broken_repository` fixture promoted from `test_branch_details_repositories.py` to `tests/e2e/branches/conftest.py` (plan IV). The promotion touches a #10779 test file. The fixture's branch is created with `sync_with_git=False` today, so the branch details test's premise is verified on a live stack first (plan IV pre-step).
+6. ~~Pending → N rows pushes lower branches down.~~ Superseded 2026-10-01: one row per branch.
+7. The PR touches #10779 files (fetcher no-op, card message, E2E fixture; `RepositoryNameLink`: reverted; `repository-row.tsx` is back to base. ~~It changes the shared toggle handler.~~ Superseded 2026-10-01: the handler is back to base.
+8. ~~Anchor selection relies on row order.~~ Superseded 2026-10-01 (R1).
+9. E2E is in scope: one `/branches` case over the `broken_repository` fixture promoted from `test_branch_details_repositories.py` to `tests/e2e/branches/conftest.py` (plan IV). The fixture's branch is created with `sync_with_git=False` today, so the branch details test's premise is verified on a live stack first (plan IV pre-step).
 
 ## E2E premise verification
 
 **Status**: code-derived expectation, to be confirmed on a live stack (T032 ⚠️ partial: no stack was available in the implementing run).
 
-**Expectation**: the branch details card and the `/branches` rows list repositories through `entities/repository/domain/use-cases/get-branch-repositories.ts::getRepositoryListKind(syncWithGit)`. `getRepositoryListKind(false)` returns `CoreReadOnlyRepository`, so a `sync_with_git=False` branch lists only read-only repositories and its card should NOT list the broken `CoreRepository` the fixture creates. `getRepositoryListKind(true)` returns `CoreGenericRepository`, which includes it.
+**Expectation**: the branch details card and the `/branches` cells list repositories through `entities/repository/domain/use-cases/get-branch-repositories.ts::getRepositoryListKind(syncWithGit)`. `getRepositoryListKind(false)` returns `CoreReadOnlyRepository`, so a `sync_with_git=False` branch lists only read-only repositories and its card should NOT list the broken `CoreRepository` the fixture creates. `getRepositoryListKind(true)` returns `CoreGenericRepository`, which includes it.
 
 **Consequence for the E2E cases**:
 
 | Test | `sync_with_git` |
 |---|---|
 | `tests/e2e/branches/test_branch_details_repositories.py::test_import_error_band_links_to_the_task_page` | `True` (was `False` through `BranchAPI.create`'s default; changes #10779's premise) |
-| `tests/e2e/branches/test_branches_git_columns.py::test_broken_repository_row_shows_its_git_state_and_commit` | `True` |
-| `tests/e2e/branches/test_branches_git_columns.py::test_branch_without_git_sync_reads_not_synced` | `False`, no fixture repository |
+| `tests/e2e/branches/test_branches_git_columns.py`, broken-branch case (repository pill, "Import Error") | `True` |
+| `tests/e2e/branches/test_branches_git_columns.py`, "Not synced with Git" case | `False`, no fixture repository |
 
 **Commit on a failed import**: expected to be set. `backend/infrahub/git/base.py` records the commit value when the repository is cloned (`update_commit_value`), before `.infrahub.yml` is read and the import fails. Also to be confirmed live.
 

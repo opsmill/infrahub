@@ -40,19 +40,14 @@ export const BRANCH_FIELD_SCHEMAS = {
     label: "Proposed Changes",
     kind: "Text",
   } as AttributeSchema,
-  repository: {
-    name: "repository",
-    label: "Repository",
+  repositories: {
+    name: "repositories",
+    label: "Repositories",
     kind: "Text",
   } as AttributeSchema,
   git_state: {
     name: "git_state",
     label: "Git state",
-    kind: "Text",
-  } as AttributeSchema,
-  commit: {
-    name: "commit",
-    label: "Commit",
     kind: "Text",
   } as AttributeSchema,
 } as const;

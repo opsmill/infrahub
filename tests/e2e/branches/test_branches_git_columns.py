@@ -1,4 +1,4 @@
-"""Repository, Git state and Commit columns on the branches list."""
+"""Repositories and Git state columns on the branches list."""
 
 from __future__ import annotations
 
@@ -20,16 +20,14 @@ if TYPE_CHECKING:
 
 # The table is a flat CSS grid with no row element, so a row's cells are the siblings that follow
 # its identifier cell, in column order.
-REPOSITORY_OFFSET = 3
+REPOSITORIES_OFFSET = 3
 GIT_STATE_OFFSET = 4
-COMMIT_OFFSET = 5
 
 
-def _identifier_cell(page: Page, branch: str, repository_name: str | None = None) -> Locator:
-    xpath = f"//*[@data-testid='branch-identifier-cell'][.//a[normalize-space()='{branch}']]"
-    if repository_name is not None:
-        xpath += f"[following-sibling::*[{REPOSITORY_OFFSET}][.//a[normalize-space()='{repository_name}']]]"
-    return page.get_by_test_id("branches-table").locator(f"xpath={xpath}")
+def _identifier_cell(page: Page, branch: str) -> Locator:
+    return page.get_by_test_id("branch-identifier-cell").filter(
+        has=page.get_by_role("checkbox", name=f"Select {branch}", exact=True)
+    )
 
 
 def _row_cell(identifier_cell: Locator, offset: int) -> Locator:
@@ -45,24 +43,25 @@ class TestBranchesGitColumns:
         with contextlib.suppress(Exception):
             await branch_api.delete(name)
 
-    async def test_broken_repository_row_shows_its_git_state_and_commit(
+    async def test_broken_repository_leads_its_branch_row(
         self, admin_page: Page, broken_repository: Callable[..., Awaitable[tuple[str, str, str]]]
     ) -> None:
         branch, repository_name, _ = await broken_repository(sync_with_git=True)
 
         await admin_page.goto("/branches")
 
-        identifier_cell = _identifier_cell(admin_page, branch, repository_name)
+        identifier_cell = _identifier_cell(admin_page, branch)
         await expect(identifier_cell).to_have_count(1)
 
-        await expect(
-            _row_cell(identifier_cell, REPOSITORY_OFFSET).get_by_role("link", name=repository_name, exact=True)
-        ).to_be_visible()
-        await expect(_row_cell(identifier_cell, GIT_STATE_OFFSET)).to_have_text("Import Error")
+        repository_link = _row_cell(identifier_cell, REPOSITORIES_OFFSET).get_by_role(
+            "link", name=repository_name, exact=True
+        )
+        await expect(repository_link).to_be_visible()
+        await expect(repository_link).to_have_attribute("href", re.compile(rf"branch={re.escape(branch)}"))
 
-        commit_cell = _row_cell(identifier_cell, COMMIT_OFFSET)
-        await expect(commit_cell.get_by_text(re.compile(r"^[0-9a-f]{7}$"))).to_be_visible()
-        await expect(commit_cell.get_by_role("button", name=re.compile(r"^Copy commit [0-9a-f]{40}$"))).to_be_visible()
+        await expect(
+            _row_cell(identifier_cell, GIT_STATE_OFFSET).get_by_text("Import Error", exact=True)
+        ).to_be_visible()
 
     async def test_branch_without_git_sync_reads_not_synced(
         self, admin_page: Page, branch_without_git_sync: str
@@ -71,4 +70,4 @@ class TestBranchesGitColumns:
 
         identifier_cell = _identifier_cell(admin_page, branch_without_git_sync)
         await expect(identifier_cell).to_have_count(1)
-        await expect(_row_cell(identifier_cell, REPOSITORY_OFFSET)).to_have_text("Not synced with Git")
+        await expect(_row_cell(identifier_cell, REPOSITORIES_OFFSET)).to_have_text("Not synced with Git")

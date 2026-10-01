@@ -85,3 +85,19 @@ Post-fix gate: `biome ci .` → `Checked 1643 files … No fixes applied.` (dire
 1. Done: phase 4 review fix pass (§4), phase 4.5 knowledge, phase 4.6 docs, phase 5 gate (green after the fix pass), rebase onto the moved base.
 2. Phase 5.5 cubic loop, then the PR (see `pr-notes.md`).
 3. Before merge: run the three E2E files against a stack (T032/T034), and quickstart scenarios (T042).
+
+## 7. Rework (2026-10-01)
+
+The owner tried the fan-out on a dev stack (24 branches × 16 repositories: 279 rows, 280 checkboxes, about 15 000 DOM nodes, about 200 console warnings, visibly slow; the 24 repository requests took 0.36 s in total) and reversed the one-row-per-repository decision. Binding contract: `rework-contract.md`; reasoning: research R14; spec: Clarifications "Session 2026-10-01".
+
+| Area | Change |
+|---|---|
+| Layout | One row per branch. **Repositories**: first repository by `rankRepositories` (failed first) as a `LinkPill` with a `<state> · <commit>` tooltip, then "+N more" to the branch details page. **Git state**: worst state's `GitStatePill` with an `n/N` count and a per-label tooltip. Commit column dropped. |
+| Data | Each cell calls #10779's `useGetBranchRepositories`; one request per branch, shared by key with the other cell and the branch details card. No table-level `useQueries`. |
+| Removed | Row model, fan-out rule, table hook and their tests; repository and commit cells; `branches-data-table.test.tsx`; `tests/fake/branch-table-rows.ts`; anchor-row selection and mirror-row tab-order exclusion; the shared `getToggleSelectedRowHandler` change; the `packages/ui` `LinkButton` change; the proposed-changes and actions cell touches; the `CommitHash` lift; the `test_branches.py` locator scoping. |
+| Kept | `fetchConnection` no-op `processErrorMessage`; card failed state with the server message; `RepositoryNameLink`: reverted; `repository-row.tsx` is back to base. |
+| Tests | `get-branch-table-columns.test.tsx` and `branches-table.test.tsx` rewritten to the contract; card and fetcher no-toast cases unchanged; `test_branches_git_columns.py` asserts the repository pill and the "Import Error" pill. |
+| Documents | Spec, plan, research (R14; R1/R3/R4/R8/R13 superseded), data model, contracts, quickstart, tasks (Phase 8, superseded tasks marked), PR notes, the docs section, the prose checks, the changelog fragment, and `dev/knowledge/frontend/{shared-components,react}.md`. |
+| Backend follow-ups | A `repository_ids` list variant of `InfrahubRepositoryBranchStatus`; the aliased-resolver HTTP 500 (`read() called while another coroutine is already waiting for incoming data`) when 16 `InfrahubRepositoryBranchStatus` fields share one document. `Branch` has no repositories field. |
+
+Still pending from §2: T032, T034 and T042 (live stack), now against the rewritten quickstart scenarios.

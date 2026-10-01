@@ -4,7 +4,6 @@ import { sortByName } from "@/shared/utils/common";
 import { BranchesEmpty } from "@/entities/branches/ui/branches-empty";
 import { BranchesDataTable } from "@/entities/branches/ui/branches-table/branches-data-table";
 import { getBranchTableColumns } from "@/entities/branches/ui/branches-table/get-branch-table-columns";
-import { useBranchTableRows } from "@/entities/branches/ui/hooks/use-branch-table-rows";
 import { useGetBranchesPaginated } from "@/entities/branches/ui/queries/get-branches.query";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 
@@ -20,8 +19,6 @@ export function BranchesTable() {
   const sortedBranches = sortByName(allBranches.filter((b) => !b.is_default));
   const flatData = [...allBranches.filter((b) => b.is_default), ...sortedBranches];
 
-  const rows = useBranchTableRows(flatData);
-
   const isLoading = isPending || isFetchingNextPage;
 
   return (
@@ -33,7 +30,7 @@ export function BranchesTable() {
     >
       <BranchesDataTable
         columns={columns}
-        data={rows}
+        data={flatData}
         isLoading={isLoading}
         renderEmpty={() => <BranchesEmpty />}
         data-testid="branches-table"

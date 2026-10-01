@@ -4,24 +4,21 @@ import React from "react";
 import { COLUMN_MAX_WIDTH, WIDE_COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
-import {
-  type BranchTableRow,
-  isBranchAnchorRow,
-} from "@/entities/branches/domain/model/branch-table-row";
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { BranchesToolbar } from "@/entities/branches/ui/branches-table/branches-toolbar";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
 
 export interface BranchesDataTableProps extends React.HTMLAttributes<HTMLDivElement> {
-  columns: ColumnDef<BranchTableRow>[];
-  data: Array<BranchTableRow>;
+  columns: ColumnDef<BranchListItem>[];
+  data: Array<BranchListItem>;
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
   gridTemplateColumns?: (columnCount: number) => string;
 }
 
-export const REPOSITORY_TRACK = "minmax(12rem, 18rem)";
-export const GIT_STATE_TRACK = "9rem";
-export const COMMIT_TRACK = "8rem";
+// Fixed so the cells filling in as repositories load do not shift the columns.
+const REPOSITORIES_TRACK = "minmax(12rem, 18rem)";
+const GIT_STATE_TRACK = "9rem";
 
 // Same capping rule as the shared DataTable: `fit-content` so short columns shrink
 // to fit, with a ceiling so one long value cannot stretch the column off-screen.
@@ -30,10 +27,9 @@ const defaultGridTemplateColumns = (columnCount: number) =>
     `fit-content(${WIDE_COLUMN_MAX_WIDTH})`,
     `fit-content(${COLUMN_MAX_WIDTH})`,
     "minmax(150px, 200px)",
-    REPOSITORY_TRACK,
+    REPOSITORIES_TRACK,
     GIT_STATE_TRACK,
-    COMMIT_TRACK,
-    `repeat(${columnCount - 7}, fit-content(${COLUMN_MAX_WIDTH}))`,
+    `repeat(${columnCount - 6}, fit-content(${COLUMN_MAX_WIDTH}))`,
     "2.5rem",
   ].join(" ");
 
@@ -50,7 +46,7 @@ export function BranchesDataTable({
   const table = useReactTable({
     columns,
     data,
-    enableRowSelection: (row) => isBranchAnchorRow(row.original),
+    enableRowSelection: true,
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
     getRowId: (row) => row.id,
@@ -68,7 +64,7 @@ export function BranchesDataTable({
     gridTemplateColumns: gridTemplateColumns(allHeaders.length),
   };
 
-  const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original.branch);
+  const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);
 
   return (
     // See DataTable: `min-w-max` keeps the columns at their own width and lets the

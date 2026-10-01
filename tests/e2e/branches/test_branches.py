@@ -25,17 +25,7 @@ if TYPE_CHECKING:
 
     from data.handles import ScenarioBranchesHandle
     from helpers import BranchAPI
-    from playwright.async_api import Locator, Page
-
-
-def _anchor_branch_link(page: Page, branch: str) -> Locator:
-    # A branch spans one row per repository and each row repeats its name link; its first row
-    # alone carries the "Select <branch>" checkbox.
-    return (
-        page.get_by_test_id("branch-identifier-cell")
-        .filter(has=page.get_by_role("checkbox", name=f"Select {branch}", exact=True))
-        .get_by_role("link", name=branch, exact=True)
-    )
+    from playwright.async_api import Page
 
 
 class TestBranchesCreationDeletion:
@@ -141,13 +131,13 @@ class TestBranchesCreationDeletion:
 
     async def test_search_for_a_branch(self, admin_page: Page, data_scenario_branches: ScenarioBranchesHandle) -> None:
         await admin_page.goto("/branches")
-        await expect(_anchor_branch_link(admin_page, "main")).to_be_visible()
-        await expect(_anchor_branch_link(admin_page, "den1-maintenance-conflict")).to_be_visible()
-        await expect(_anchor_branch_link(admin_page, "atl1-delete-upstream")).to_be_visible()
+        await expect(admin_page.get_by_role("link", name="main", exact=True)).to_be_visible()
+        await expect(admin_page.get_by_role("link", name="den1-maintenance-conflict")).to_be_visible()
+        await expect(admin_page.get_by_role("link", name="atl1-delete-upstream")).to_be_visible()
         await admin_page.get_by_role("searchbox", name="Search").fill("main")
-        await expect(_anchor_branch_link(admin_page, "main")).to_be_visible()
-        await expect(_anchor_branch_link(admin_page, "den1-maintenance-conflict")).to_be_visible()
-        await expect(_anchor_branch_link(admin_page, "atl1-delete-upstream")).not_to_be_visible()
+        await expect(admin_page.get_by_role("link", name="main", exact=True)).to_be_visible()
+        await expect(admin_page.get_by_role("link", name="den1-maintenance-conflict")).to_be_visible()
+        await expect(admin_page.get_by_role("link", name="atl1-delete-upstream")).not_to_be_visible()
 
         await admin_page.get_by_role("searchbox", name="Search").fill("")
-        await expect(_anchor_branch_link(admin_page, "atl1-delete-upstream")).to_be_visible()
+        await expect(admin_page.get_by_role("link", name="atl1-delete-upstream")).to_be_visible()
