@@ -127,7 +127,9 @@ describe("BranchRepositoriesCard", () => {
     await expect
       .element(component.getByTestId("branch-repositories-table"))
       .toHaveStyle({ minHeight: "440px" });
-    await expect.element(component.getByRole("navigation", { name: "Pagination" })).toBeVisible();
+    await expect
+      .element(component.getByRole("navigation", { name: "Repositories pagination" }))
+      .toBeVisible();
   });
 
   test("asks for the next page through the pager", async () => {

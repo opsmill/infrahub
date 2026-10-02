@@ -72,6 +72,7 @@ export function BranchRepositoriesTable({
       {hasPager && (
         <TablePagination
           className="border-t"
+          aria-label="Repositories pagination"
           page={currentPage}
           pageSize={TABLE_PAGE_SIZE}
           totalCount={ranked.length}

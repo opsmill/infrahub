@@ -132,7 +132,9 @@ describe("BranchTasksCard", () => {
     expect(bodyRows(component.container)).toHaveLength(10);
     await expect.element(component.getByText("12", { exact: true }).first()).toBeVisible();
     await expect.element(component.getByRole("link", { name: "1 failed" })).toBeVisible();
-    await expect.element(component.getByRole("navigation", { name: "Pagination" })).toBeVisible();
+    await expect
+      .element(component.getByRole("navigation", { name: "Tasks pagination" }))
+      .toBeVisible();
   });
 
   test("hides the failed count when no task failed", async () => {
@@ -271,7 +273,9 @@ describe("BranchTasksCard", () => {
     // THEN
     expect(bodyRows(component.container)).toHaveLength(1);
     await expect.element(component.getByTestId("tasks-table")).toHaveStyle({ minHeight: "440px" });
-    await expect.element(component.getByRole("navigation", { name: "Pagination" })).toBeVisible();
+    await expect
+      .element(component.getByRole("navigation", { name: "Tasks pagination" }))
+      .toBeVisible();
   });
 
   test("asks for the next page through the pager", async () => {

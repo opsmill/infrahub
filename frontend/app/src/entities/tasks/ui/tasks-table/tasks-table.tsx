@@ -98,6 +98,7 @@ export function TasksTable({
       {hasPager && (
         <TablePagination
           className="border-t"
+          aria-label="Tasks pagination"
           page={clampPage(page, totalPages)}
           pageSize={TABLE_PAGE_SIZE}
           totalCount={totalCount}

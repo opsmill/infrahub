@@ -70,4 +70,22 @@ describe("TablePagination", () => {
     expect(ellipses).toHaveLength(2);
     expect(component.getByRole("button", { name: /^Page / }).elements()).toHaveLength(5);
   });
+
+  it("names the landmark after the table it pages", async () => {
+    // WHEN
+    const component = await render(
+      <TablePagination
+        page={1}
+        pageSize={10}
+        totalCount={35}
+        onPageChange={vi.fn()}
+        aria-label="Tasks pagination"
+      />
+    );
+
+    // THEN
+    await expect
+      .element(component.getByRole("navigation", { name: "Tasks pagination", exact: true }))
+      .toBeVisible();
+  });
 });
