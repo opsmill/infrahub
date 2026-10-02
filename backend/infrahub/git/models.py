@@ -93,7 +93,6 @@ class GitRepositoryAdd(BaseModel):
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the repository")
     created_by: str | None = Field(default=None, description="The user ID of the user that created the repository")
-    default_branch_name: str | None = Field(None, description="Default branch for this repository")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
     infrahub_branch_id: str = Field(..., description="Id of the Infrahub branch on which to sync the remote repository")
     internal_status: str = Field(..., description="Administrative status of the repository")
@@ -133,7 +132,6 @@ class GitRepositoryMerge(BaseModel):
     source_branch: str = Field(..., description="The source branch")
     destination_branch: str = Field(..., description="The destination branch")
     destination_branch_id: str = Field(..., description="The ID of the destination branch")
-    default_branch: str | None = Field(default=None, description="The default branch in Git")
     repository_kind: str = Field(..., description="The kind of the repository.")
 
 
@@ -163,6 +161,7 @@ class GitDiffNamesOnly(BaseModel):
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the repository")
     repository_kind: str = Field(..., description="The kind of the repository")
+    infrahub_branch_name: str = Field(..., description="Infrahub branch the diff is calculated for")
     first_commit: str = Field(..., description="The first commit")
     second_commit: str | None = Field(None, description="The second commit")
 
@@ -182,6 +181,7 @@ class UserCheckDefinitionData(BaseModel):
     commit: str = Field(..., description="The commit to target")
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the Repository")
+    repository_kind: str = Field(..., description="The kind of the repository")
     branch_name: str = Field(..., description="The branch where the check is run")
     file_path: str = Field(..., description="The path and filename of the check")
     class_name: str = Field(..., description="The name of the class containing the check")
@@ -201,6 +201,7 @@ class UserCheckData(BaseModel):
     commit: str = Field(..., description="The commit to target")
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the Repository")
+    repository_kind: str = Field(..., description="The kind of the repository")
     branch_name: str = Field(..., description="The branch where the check is run")
     file_path: str = Field(..., description="The path and filename of the check")
     class_name: str = Field(..., description="The name of the class containing the check")
@@ -219,6 +220,7 @@ class TriggerRepositoryUserChecks(BaseModel):
     proposed_change: str = Field(..., description="The unique ID of the Proposed Change")
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the Repository")
+    repository_kind: str = Field(..., description="The kind of the repository")
     source_branch: str = Field(..., description="The source branch")
     source_branch_sync_with_git: bool = Field(..., description="Indicates if the source branch should sync with git")
     target_branch: str = Field(..., description="The target branch")

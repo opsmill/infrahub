@@ -11,11 +11,12 @@ import git
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
-from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.exceptions import RepositoryCredentialsError, RepositoryError, RepositoryPermissionError
 from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
+from infrahub.git.remote_refs import ensure_write_access, list_remote_refs
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 from tests.helpers.test_app import TestInfrahubApp
 from tests.integration.git.conftest import (
@@ -24,6 +25,8 @@ from tests.integration.git.conftest import (
     create_gogs_repo,
     create_remote_ref,
     gogs_clone_url,
+    gogs_repo_branch_commit,
+    gogs_repo_tag,
     grant_read_access,
     readonly_clone_url,
 )
@@ -237,6 +240,131 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         await node.save()
         return {"repo_name": repo_name, "node_id": node.id, "branch_name": branch.name}
 
+    @pytest.fixture(scope="class")
+    async def master_only_dataset(
+        self,
+        initialize_registry: None,
+        git_repos_dir_module_scope: Path,
+        gogs_server: GogsServer,
+    ) -> dict:
+        repo_name = "master-only-repo"
+        repo_url = create_gogs_repo(
+            gogs_server.base_url,
+            gogs_server.token,
+            repo_name,
+            gogs_server.container,
+            create_main=False,
+        )
+        return {
+            "repo_name": repo_name,
+            "repo_url": repo_url,
+            "master_commit": gogs_repo_branch_commit(gogs_server.container, repo_name, "master"),
+        }
+
+    @pytest.fixture(scope="class")
+    async def tag_pinned_dataset(
+        self,
+        initialize_registry: None,
+        git_repos_dir_module_scope: Path,
+        gogs_server: GogsServer,
+    ) -> dict:
+        repo_name = "tag-pinned-repo"
+        tag_name = "v1.0.0"
+        repo_url = create_gogs_repo(
+            gogs_server.base_url,
+            gogs_server.token,
+            repo_name,
+            gogs_server.container,
+            create_main=False,
+        )
+        gogs_repo_tag(gogs_server.container, repo_name, tag_name)
+
+        return {"repo_name": repo_name, "repo_url": repo_url, "tag_name": tag_name}
+
+    async def test_connecting_with_a_default_branch_absent_from_the_remote_is_rejected(
+        self,
+        master_only_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ) -> None:
+        """A default branch the remote does not have is rejected, leaves nothing behind, and a corrected retry connects."""
+        repo_name = master_only_dataset["repo_name"]
+        repo_url = master_only_dataset["repo_url"]
+
+        rejected = await client.create(
+            kind=InfrahubKind.REPOSITORY,
+            data={"name": repo_name, "location": repo_url},
+        )
+        with pytest.raises(GraphQLError) as exc:
+            await rejected.save()
+
+        assert [error["message"] for error in exc.value.errors] == [
+            f"Branch 'main' does not exist on the remote repository {repo_name}; "
+            "the remote's default branch is 'master'."
+        ]
+        assert await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, filters={"name__value": repo_name}) == []
+
+        retried = await client.create(
+            kind=InfrahubKind.REPOSITORY,
+            data={"name": repo_name, "location": repo_url, "default_branch": "master"},
+        )
+        await retried.save()
+
+        repository: CoreRepository = await NodeManager.get_one(
+            db=db, id=retried.id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        assert repository.default_branch.value == "master"
+        assert repository.commit.value == master_only_dataset["master_commit"]
+        assert repository.internal_status.value == RepositoryInternalStatus.ACTIVE.value
+        assert repository.operational_status.value == RepositoryOperationalStatus.ONLINE.value
+
+    async def test_connecting_a_read_only_repository_pinned_to_a_tag_is_not_branch_checked(
+        self,
+        tag_pinned_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ) -> None:
+        """A read-only repository tracks a ref no branch listing can confirm, so it is connected unchecked."""
+        node = await client.create(
+            kind=InfrahubKind.READONLYREPOSITORY,
+            data={
+                "name": tag_pinned_dataset["repo_name"],
+                "location": tag_pinned_dataset["repo_url"],
+                "ref": tag_pinned_dataset["tag_name"],
+            },
+        )
+        await node.save()
+
+        repository: CoreReadOnlyRepository = await NodeManager.get_one(
+            db=db, id=node.id, kind=InfrahubKind.READONLYREPOSITORY, raise_on_error=True
+        )
+        assert repository.ref.value == tag_pinned_dataset["tag_name"]
+        assert repository.operational_status.value == RepositoryOperationalStatus.ONLINE.value
+
+    async def test_unreachable_remote_reports_a_connectivity_error(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ) -> None:
+        """An unreachable remote is reported as a connectivity failure, never as a missing-branch failure."""
+        repo_name = "unreachable-repo"
+
+        node = await client.create(
+            kind=InfrahubKind.REPOSITORY,
+            data={
+                "name": repo_name,
+                "location": "http://localhost:1/nonexistent.git",
+                "default_branch": "master",
+            },
+        )
+        with pytest.raises(GraphQLError) as exc:
+            await node.save()
+
+        assert [error["message"] for error in exc.value.errors] == [
+            f"Unable to clone the repository {repo_name}, please check the address and the credential"
+        ]
+        assert await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, filters={"name__value": repo_name}) == []
+
     async def test_clone_with_wrong_credentials_raises_credentials_error(
         self,
         auth_failure_dataset: dict,
@@ -257,6 +385,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
                 name=auth_failure_dataset["repo_name"],
                 location=auth_failure_dataset["bad_url"],
                 client=client,
+                infrahub_branch_name="main",
             )
 
         updated: CoreRepository = await NodeManager.get_one(
@@ -326,6 +455,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             id=repository.id,
             name=repo_name,
             client=client,
+            infrahub_branch_name="main",
         )
 
         _push_commit_to_remote(gogs_server.container, repo_name, "remote_advance.txt")
@@ -374,6 +504,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             id=repository.id,
             name=repo_name,
             client=client,
+            infrahub_branch_name="main",
         )
 
         # push_origin=False keeps the remote clean; the conflict is purely local.
@@ -424,6 +555,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             id=repository.id,
             name=repo_name,
             client=client,
+            infrahub_branch_name="main",
         )
 
         await infrahub_repo.create_branch_in_git(branch_name="blocked-change", push_origin=False)
@@ -484,6 +616,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             id=repository.id,
             name=repo_name,
             client=client,
+            infrahub_branch_name="main",
         )
 
         await infrahub_repo.create_branch_in_git(branch_name="retried-change", push_origin=False)
@@ -543,6 +676,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             id=protected_branch_dataset["node_id"],
             name=repo_name,
             client=client,
+            infrahub_branch_name="main",
         )
 
         await infrahub_repo.create_branch_in_git(branch_name="recorded-change", push_origin=False)
@@ -677,13 +811,13 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         """The write probe rejects a read-only credential while the read-only check accepts it.
 
         Asserting both directions on the same URL is what proves the probe, not the URL, makes the
-        difference: read access alone passes require_write=False but not require_write=True.
+        difference: read access alone passes the ref listing but not the write probe.
         """
         repo_name = write_probe_dataset["repo_name"]
         readonly_url = write_probe_dataset["readonly_url"]
 
         # Read access alone satisfies the read-gated check.
-        InfrahubRepository.check_connectivity(name=repo_name, url=readonly_url, require_write=False)
+        list_remote_refs(name=repo_name, url=readonly_url)
 
         # The same credential is rejected once write access is required.
         with pytest.raises(
@@ -693,12 +827,10 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
                 r"grant the token write access to the repository\.$"
             ),
         ):
-            InfrahubRepository.check_connectivity(name=repo_name, url=readonly_url, require_write=True)
+            ensure_write_access(name=repo_name, url=readonly_url)
 
         # A credential that can write passes the write probe on the same repository.
-        InfrahubRepository.check_connectivity(
-            name=repo_name, url=write_probe_dataset["writable_url"], require_write=True
-        )
+        ensure_write_access(name=repo_name, url=write_probe_dataset["writable_url"])
 
     async def test_write_probe_never_mutates_remote(self, write_probe_dataset: dict, gogs_server: GogsServer) -> None:
         """The write probe leaves the remote's refs untouched, even when the probe ref already exists.
@@ -714,7 +846,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         refs_before = cmd.ls_remote(writable_url)
         assert f"refs/heads/{WRITE_ACCESS_PROBE_REF}" in refs_before
 
-        InfrahubRepository.check_connectivity(name=repo_name, url=writable_url, require_write=True)
+        ensure_write_access(name=repo_name, url=writable_url)
 
         refs_after = cmd.ls_remote(writable_url)
         assert refs_after == refs_before

@@ -47,7 +47,6 @@ from prefect.logging import get_run_logger
 from prefect.utilities.annotations import quote
 from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
-from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.auth.session import AnonymousSession
@@ -265,9 +264,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             return True
         return False
 
-    @classmethod
-    async def init(cls, commit: str | None = None, **kwargs: Any) -> Self:
-        self = cls(**kwargs)
+    async def initialize_local(self, commit: str | None = None) -> None:
+        """Bring this worker's local copy in line with the repository, cloning it if it is missing.
+
+        Raises:
+            CommitNotFoundError: When the requested commit is absent from the local clone and cannot
+                be fetched from the remote.
+
+        """
         log = get_logger()
         if not self._has_valid_local_directories():
             await self.ensure_location_is_defined()
@@ -311,7 +315,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         log.debug(
             f"Initiated the object on an existing directory for {self.name}",
         )
-        return self
 
     async def ensure_location_is_defined(self) -> None:
         if self.location:
