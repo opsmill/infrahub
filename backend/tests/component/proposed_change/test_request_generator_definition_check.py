@@ -65,6 +65,15 @@ query GetDeviceWithTags($ids: [ID!]!) {
 }
 """
 
+# Reads the tag name through an inline fragment, a hop that cannot be mapped back to the owning device.
+QUERY_UNIQUE_WITH_FRAGMENT_TAGS = """
+query GetDeviceWithFragmentTags($ids: [ID!]!) {
+    TestNetworkDevice(ids: $ids) {
+        edges { node { name { value } tags { edges { node { ... on BuiltinTag { name { value } } } } } } }
+    }
+}
+"""
+
 GENERATOR_SCHEMA = SchemaRoot(
     nodes=[
         NodeSchema(
@@ -206,7 +215,7 @@ GENERATOR_WIDENING_LOG_CASES = [
     ),
     GeneratorWideningLogCase(
         name="change_on_a_related_kind_names_that_kind_not_target_uniqueness",
-        definition_key="gendef_tags",
+        definition_key="gendef_fragment_tags",
         diff=[
             DiffEntry(
                 id_key="00000000-0000-0000-0000-000000000000", kind=InfrahubKind.TAG, fields=["name"], literal_id=True
@@ -324,6 +333,10 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
         query_tags = await Node.init(db=db, schema="CoreGraphQLQuery")
         await query_tags.new(db=db, name="GetDeviceWithTags", query=QUERY_UNIQUE_WITH_TAGS)
         await query_tags.save(db=db)
+
+        query_fragment_tags = await Node.init(db=db, schema="CoreGraphQLQuery")
+        await query_fragment_tags.new(db=db, name="GetDeviceWithFragmentTags", query=QUERY_UNIQUE_WITH_FRAGMENT_TAGS)
+        await query_fragment_tags.save(db=db)
 
         # --- Target group with the four devices that have instances ---
         targets_group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
@@ -454,6 +467,9 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
             ),
             "gendef_tags": build_definition(
                 "GetDeviceWithTags", query_tags.id, QUERY_UNIQUE_WITH_TAGS, targets_group.id
+            ),
+            "gendef_fragment_tags": build_definition(
+                "GetDeviceWithFragmentTags", query_fragment_tags.id, QUERY_UNIQUE_WITH_FRAGMENT_TAGS, targets_group.id
             ),
             "gendef_new": build_definition("GetNetworkDevice", query_unique.id, QUERY_UNIQUE_TARGETS, new_group.id),
         }
