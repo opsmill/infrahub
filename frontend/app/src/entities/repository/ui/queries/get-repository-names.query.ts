@@ -1,4 +1,4 @@
-import { keepPreviousData, queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import {
   type GetRepositoryNamesParams,
@@ -11,7 +11,8 @@ export function getRepositoryNamesQueryOptions(params: GetRepositoryNamesParams)
     queryKey: repositoryQueryKeys.names(params),
     queryFn: () => getRepositoryNames(params),
     enabled: params.ids.length > 0,
-    placeholderData: keepPreviousData,
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[2].branchName === params.branchName ? previousData : undefined,
   });
 }
 
