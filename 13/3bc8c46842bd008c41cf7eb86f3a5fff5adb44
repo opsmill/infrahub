@@ -1,6 +1,7 @@
 dev/knowledge/backend/database-schema.md
   s_23dc2e42aa32ae::t_cf8e4b45540b50 370
   s_23dc2e42aa32ae::t_13784e23975085 210-211
+  s_f31d636a409cb9::t_5b3c2a16dbb051 223
 backend/infrahub/core/query/node_agnostic_retirement.py
   s_23dc2e42aa32ae::t_fa8727e90ba619 123-126
   s_23dc2e42aa32ae::t_1dd383d64abf91 90-98,101-112
@@ -25,6 +26,7 @@ backend/tests/component/core/resource_manager/test_number_pool_attribute_rename.
   s_23dc2e42aa32ae::t_139160a4e0775f 444-445
   s_4a7266f2095b3c::t_6dda9bb1f2ca29 414,423-424,429,436,438
   s_4a7266f2095b3c::t_b528982a8d55f3 30-31,43
+  s_f31d636a409cb9::t_5b3c2a16dbb051 430-435,437
 backend/tests/component/core/resource_manager/test_number_pool_attribute_removal.py
   s_4a7266f2095b3c::t_fa08528645e674 8,16-17,28-29,126-133,137-139,142-166
   s_4a7266f2095b3c::t_5799ca8009b4be 67
@@ -36,6 +38,7 @@ backend/tests/helpers/agnostic_edges.py
 dev/specs/ifc-3184-pool-number-attach/tasks.md
   s_23dc2e42aa32ae::t_13784e23975085 238,249,277-294
   s_4a7266f2095b3c::t_d1c8d7a0b50cbe 295
+  s_f31d636a409cb9::t_5b3c2a16dbb051 239-240
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -60,6 +63,14 @@ dev/specs/ifc-3184-pool-number-attach/tasks.md
       "agent_id": {
         "tool": "claude",
         "id": "569b2441-9739-450d-838a-8fc2c7c8c662",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    },
+    "s_f31d636a409cb9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b6150a2-8628-4e11-b2cf-494490120aec",
         "model": "claude-opus-5-5"
       },
       "human_author": "Aaron McCarty <aaron@opsmill.com>"
