@@ -52,8 +52,11 @@ export function RepositoryCommitsManager({
 
   const retryHistory = async (retry: HistoryRetry) => {
     setRetryInFlight(retry);
-    await (retry === "fetch-next-page" ? fetchNextPage() : refetch());
-    setRetryInFlight(null);
+    try {
+      await (retry === "fetch-next-page" ? fetchNextPage() : refetch());
+    } finally {
+      setRetryInFlight(null);
+    }
   };
 
   if (error && commits.length === 0) {

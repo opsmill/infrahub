@@ -461,6 +461,30 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText("Older commits could not be loaded right now.").query()).toBeNull();
   });
 
+  test("settles the retry and offers it again when the retry fails too", async () => {
+    // GIVEN
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
+      .mockRejectedValue(new Error("Worker did not answer in time"));
+    const component = await renderTab();
+    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+    await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
+    await expect.element(component.getByRole("button", { name: "Retry" })).toBeVisible();
+
+    // WHEN
+    await component.getByRole("button", { name: "Retry" }).click();
+
+    // THEN
+    await expect.poll(() => apiMock.mock.calls.length).toBe(3);
+    await expect
+      .element(component.getByRole("button", { name: "Retry" }))
+      .not.toHaveAttribute("data-pending");
+    await expect
+      .element(component.getByText("Older commits could not be loaded right now."))
+      .toBeVisible();
+    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+  });
+
   test("hides the retry notice while a scroll-triggered page load is in flight", async () => {
     // GIVEN
     let answerNextPage: (result: ApiResult) => void = () => {};
