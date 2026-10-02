@@ -6,49 +6,31 @@ import {
 } from "@/entities/tasks/ui/queries/get-branch-tasks.query";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
+const params = { branchName: "feature", offset: 0, limit: 10 };
+
 describe("getBranchTasksQueryOptions", () => {
   it("polls page 1 every 10 seconds", () => {
-    expect(getBranchTasksQueryOptions({ branchName: "feature", page: 1 }).refetchInterval).toBe(
-      10_000
-    );
+    expect(getBranchTasksQueryOptions(params).refetchInterval).toBe(10_000);
   });
 
   it("doesn't poll other pages", () => {
-    expect(getBranchTasksQueryOptions({ branchName: "feature", page: 2 }).refetchInterval).toBe(
-      false
-    );
+    expect(getBranchTasksQueryOptions({ ...params, offset: 10 }).refetchInterval).toBe(false);
   });
 
-  it("requests the page's offset", () => {
-    expect(getBranchTasksQueryOptions({ branchName: "feature", page: 3 }).queryKey).toEqual(
+  it("keys the page on the branch and its window", () => {
+    expect(getBranchTasksQueryOptions({ ...params, offset: 20 }).queryKey).toEqual(
       tasksQueryKeys.branchList({ branchName: "feature", offset: 20, limit: 10 })
-    );
-  });
-
-  it("requests page 1 for a page below 1", () => {
-    const options = getBranchTasksQueryOptions({ branchName: "feature", page: 0 });
-
-    expect(options.queryKey).toEqual(
-      tasksQueryKeys.branchList({ branchName: "feature", offset: 0, limit: 10 })
-    );
-    expect(options.refetchInterval).toBe(10_000);
-    expect(getBranchTasksQueryOptions({ branchName: "feature", page: -4 }).queryKey).toEqual(
-      tasksQueryKeys.branchList({ branchName: "feature", offset: 0, limit: 10 })
     );
   });
 
   describe("placeholder data", () => {
     const placeholderFor = (branchName: string, previousBranchName: string) => {
-      const { placeholderData } = getBranchTasksQueryOptions({ branchName, page: 2 });
+      const { placeholderData } = getBranchTasksQueryOptions({ ...params, branchName, offset: 10 });
       if (typeof placeholderData !== "function") throw new Error("expected a placeholder function");
       type Args = Parameters<typeof placeholderData>;
       const previousData = { previous: true } as unknown as Args[0];
       const previousQuery = {
-        queryKey: tasksQueryKeys.branchList({
-          branchName: previousBranchName,
-          offset: 0,
-          limit: 10,
-        }),
+        queryKey: tasksQueryKeys.branchList({ ...params, branchName: previousBranchName }),
       } as unknown as Args[1];
       return { previousData, placeholder: placeholderData(previousData, previousQuery) };
     };

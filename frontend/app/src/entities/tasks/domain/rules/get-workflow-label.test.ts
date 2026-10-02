@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getWorkflowLabel } from "./workflow-labels";
+import { getWorkflowLabel } from "./get-workflow-label";
 
 describe("getWorkflowLabel", () => {
   it.each([

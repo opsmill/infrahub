@@ -4,7 +4,7 @@ import {
   BRANCH_VALIDATE_WORKFLOW,
 } from "@/entities/tasks/domain/model/task";
 
-const WORKFLOW_LABELS: Record<string, string> = {
+export const WORKFLOW_LABELS: Record<string, string> = {
   "git-repository-add-read-write": "Import",
   "git-repository-add-read-only": "Import",
   "git-repository-import-object": "Import",
@@ -35,25 +35,10 @@ const WORKFLOW_LABELS: Record<string, string> = {
   "trigger-update-hfid": "HFID",
 };
 
-const PREFIX_LABELS: [prefix: string, label: string][] = [
+export const WORKFLOW_PREFIX_LABELS: [prefix: string, label: string][] = [
   ["proposed-change", "Proposed change"],
   ["computed-attribute", "Computed attribute"],
   ["computed_attribute", "Computed attribute"],
   ["trigger_update_python_computed_attributes", "Computed attribute"],
   ["webhook", "Webhook"],
 ];
-
-const humanize = (workflow: string) => {
-  const words = workflow.replace(/[-_]+/g, " ").trim();
-  return words.charAt(0).toUpperCase() + words.slice(1);
-};
-
-export function getWorkflowLabel(workflow: string | null): string {
-  if (!workflow) return "—";
-
-  return (
-    WORKFLOW_LABELS[workflow] ??
-    PREFIX_LABELS.find(([prefix]) => workflow.startsWith(prefix))?.[1] ??
-    humanize(workflow)
-  );
-}

@@ -19,7 +19,14 @@ const task: TaskListItem = {
 };
 
 const renderTable = (props: Partial<Parameters<typeof TasksTable>[0]> = {}) =>
-  render(<TasksTable tasks={[task]} totalCount={1} page={1} onPageChange={() => {}} {...props} />);
+  render(
+    <TasksTable
+      tasks={[task]}
+      relatedNames={new Map()}
+      emptyRelatedLabel="This branch"
+      {...props}
+    />
+  );
 
 describe("TasksTable", () => {
   beforeEach(() => {
@@ -28,30 +35,37 @@ describe("TasksTable", () => {
     >);
   });
 
-  test("shows every column by default, with the branch and the workflow label", async () => {
+  test("shows the title, state, workflow label, related node and update time", async () => {
     const component = await renderTable();
 
-    for (const header of ["Title", "Branch", "State", "Workflow", "Related", "Updated"]) {
-      await expect.element(component.getByRole("columnheader", { name: header })).toBeVisible();
-    }
-    await expect.element(component.getByRole("cell", { name: "ple-branch" })).toBeVisible();
+    const headers = component.getByRole("columnheader").elements();
+    expect(headers.map((h) => h.textContent)).toEqual([
+      "Title",
+      "State",
+      "Workflow",
+      "Related",
+      "Updated",
+    ]);
     await expect
       .element(component.getByRole("cell", { name: "Import", exact: true }))
       .toBeVisible();
-    await expect.element(component.getByRole("cell", { name: "—" })).toBeVisible();
-  });
-
-  test("shows only the requested columns, in order", async () => {
-    const component = await renderTable({ columns: ["title", "state"] });
-
-    const headers = component.getByRole("columnheader").elements();
-    expect(headers.map((h) => h.textContent)).toEqual(["Title", "State"]);
   });
 
   test("uses the caller's label for a task with no related node", async () => {
-    const component = await renderTable({ emptyRelatedLabel: "This branch" });
+    const component = await renderTable({ emptyRelatedLabel: "Nothing related" });
 
-    await expect.element(component.getByRole("cell", { name: "This branch" })).toBeVisible();
+    await expect.element(component.getByRole("cell", { name: "Nothing related" })).toBeVisible();
+  });
+
+  test("names a related node from the names given", async () => {
+    const component = await renderTable({
+      tasks: [{ ...task, relatedNodes: [{ id: "repo-1", kind: "CoreRepository" }] }],
+      relatedNames: new Map([["repo-1", "infrastructure-templates"]]),
+    });
+
+    await expect
+      .element(component.getByRole("cell", { name: "infrastructure-templates" }))
+      .toBeVisible();
   });
 
   test("links the title to the task details page", async () => {
