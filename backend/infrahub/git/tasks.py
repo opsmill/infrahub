@@ -78,6 +78,7 @@ from .models import (
     UserCheckData,
     UserCheckDefinitionData,
 )
+from .refs_check.announced import record_announced_head
 from .refs_check.checker import ReadOnlyRepositoryRefsChecker
 from .refs_check.constants import REFS_CHECK_CONCURRENCY
 from .refs_check.factory import build_check_refs_model, build_refs_checker, build_refs_scheduler
@@ -743,6 +744,7 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
     if not model.ref and not model.commit:
         log.warning("No commit or ref in GitRepositoryPullReadOnly message")
         return
+    cache = await get_cache()
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
         init_failed = False
         try:
@@ -790,6 +792,14 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
         )
         message_bus = await get_message_bus()
         await message_bus.send(message=message)
+        if pinned_commit is not None:
+            await record_announced_head(
+                cache=cache,
+                repository_id=model.repository_id,
+                repository_name=model.repository_name,
+                branch_name=model.infrahub_branch_name,
+                head=pinned_commit,
+            )
 
 
 @flow(
@@ -901,6 +911,7 @@ async def import_read_only_repository_last_commit(model: GitReadOnlyRepositoryIm
         raise RepositoryError(identifier=model.repository_name, message="Repository is not a read only repository")
 
     client = get_client()
+    cache = await get_cache()
 
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
         repo = await InfrahubReadOnlyRepository.init(
@@ -925,6 +936,13 @@ async def import_read_only_repository_last_commit(model: GitReadOnlyRepositoryIm
         )
         message_bus = await get_message_bus()
         await message_bus.send(message=message)
+        await record_announced_head(
+            cache=cache,
+            repository_id=model.repository_id,
+            repository_name=model.repository_name,
+            branch_name=model.infrahub_branch_name,
+            head=imported_commit,
+        )
 
 
 @flow(name="git-repository-warm-up", flow_run_name="Warm up the local copy of repository {repository_id}")

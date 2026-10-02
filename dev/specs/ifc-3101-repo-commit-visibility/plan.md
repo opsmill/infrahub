@@ -31,8 +31,9 @@ worker read and the refs check.
 `Repo.iter_commits`, `git.rev_list`), Prefect via `infrahub.workflows` (existing), the RabbitMQ
 message bus (existing; the NATS adapter is edited for signature parity only and is not a supported
 driver, see research.md), TanStack Query v5 and gql.tada (existing)
-**Storage**: none new. Four short-lived cache keys in the existing `service.cache`: warm-up
-collapsing, the refs-check due marker, the in-flight guard, and the last-checked timestamp
+**Storage**: none new. Five cache keys in the existing `service.cache`: warm-up collapsing, the
+refs-check due marker, the in-flight guard, the last-checked timestamp, and the remote head last
+announced per branch
 **Testing**: pytest unit (`backend/tests/unit/`), component with testcontainers
 (`backend/tests/component/`), integration with a Gogs remote (`backend/tests/integration/git/`),
 Vitest browser mode, pytest-playwright e2e (`tests/e2e/`)

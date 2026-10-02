@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING
 from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import RepositoryError
 from infrahub.git.state.cache_keys import (
-    REFS_CHECK_ANNOUNCED_TTL_SECONDS,
     REFS_CHECK_LAST_TTL_SECONDS,
     refs_check_announced_key,
     refs_check_due_key,
@@ -27,6 +26,7 @@ from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.worker import WORKER_IDENTITY
 
+from .announced import record_announced_head
 from .models import RefMovement, RefsCheckOutcome, RefsCheckResult
 
 if TYPE_CHECKING:
@@ -173,18 +173,19 @@ class ReadOnlyRepositoryRefsChecker:
                 log.warning("Refs check refused", repository=model.repository_name, reason=reason)
                 return await self._record_failure(model, reason=reason, contacted_remote=False)
 
-            # The bound covers the listing only. Convergence takes the repository lock, which
-            # carries no expiry, so a cancellation landing inside it could leave that lock held
-            # for good and block every later operation on the repository.
+            # The bound covers the listing and the planning, which hold no lock and fit inside the
+            # claim's lease. Convergence takes the repository lock, which carries no expiry, so a
+            # cancellation landing inside it could leave that lock held for good and block every
+            # later operation on the repository.
             try:
                 async with asyncio.timeout(self._detect_timeout_seconds):
                     heads = await self._gateway.read_heads(model, self._tracked_ref_names(model))
+                    convergence = await self._plan_convergence(model, heads)
             except TimeoutError:
-                reason = f"Timed out after {self._detect_timeout_seconds}s reading the remote refs."
+                reason = f"Timed out after {self._detect_timeout_seconds}s checking the remote refs."
                 log.warning("Refs check timed out", repository=model.repository_name, reason=reason)
                 return await self._record_failure(model, reason=reason, contacted_remote=True)
 
-            convergence = await self._plan_convergence(model, heads)
             if convergence.needed:
                 # Convergence is unbounded, so take the claim's lease again rather than spending
                 # what the listing left of it.
@@ -311,29 +312,24 @@ class ReadOnlyRepositoryRefsChecker:
     async def _announced_head(
         self, model: GitReadOnlyRepositoryCheckRefs, *, tracked: TrackedRef, remote_head: str
     ) -> str | None:
-        """Return the head the pool is known to hold on this branch, or None when there is nothing to compare.
+        """Return the head the pool was last told about on this branch, or None when there is nothing to compare.
 
-        The shared value is a hint rather than the record, so only a value equal to the remote is
-        taken without reading the graph. An imported commit equal to the remote means the import
-        that put it there has already converged the pool, so it is written back and nothing is
-        announced. Otherwise the shared value is the baseline, and when that is missing the
-        imported commit stands in for it: an empty or expired value announces only a branch whose
-        remote has moved past what it imported, once.
+        Every sender of a convergence broadcast records the head only after its broadcast went out,
+        so a stored value is the baseline even when the imported commit has caught up with the
+        remote: that is the case an import whose broadcast failed leaves behind. When nothing is
+        stored the imported commit stands in, so an empty or expired value announces only a branch
+        whose remote has moved past what it imported, once; a stand-in found equal to the remote is
+        written back so later checks skip the graph.
         """
         announced = await self._cache.get(
             key=refs_check_announced_key(model.repository_id, tracked.infrahub_branch_name)
         )
-        if announced == remote_head:
+        if announced is not None:
             return announced
 
         imported = await self._tracked_commit_reader.read(
             repository_id=model.repository_id, branch_name=tracked.infrahub_branch_name
         )
-        if imported == remote_head:
-            await self._record_announced(model, branch_name=tracked.infrahub_branch_name, head=remote_head)
-            return imported
-        if announced is not None:
-            return announced
         if imported is None:
             log.info(
                 "Not announcing a branch with no imported commit",
@@ -341,28 +337,18 @@ class ReadOnlyRepositoryRefsChecker:
                 branch=tracked.infrahub_branch_name,
                 ref=tracked.ref,
             )
+        elif imported == remote_head:
+            await self._record_announced(model, branch_name=tracked.infrahub_branch_name, head=remote_head)
         return imported
 
     async def _record_announced(self, model: GitReadOnlyRepositoryCheckRefs, *, branch_name: str, head: str) -> None:
-        """Remember the head the pool now knows about, best effort.
-
-        A value that could not be written costs one repeated broadcast on a later check, which every
-        recipient absorbs by resetting to the commit it is already on. Letting it raise would instead
-        leave the remaining branches of this check unannounced.
-        """
-        try:
-            await self._cache.set(
-                key=refs_check_announced_key(model.repository_id, branch_name),
-                value=head,
-                expires=REFS_CHECK_ANNOUNCED_TTL_SECONDS,
-            )
-        except Exception as exc:  # noqa: BLE001
-            log.warning(
-                "Could not record the announced head",
-                repository=model.repository_name,
-                branch=branch_name,
-                reason=str(exc),
-            )
+        await record_announced_head(
+            cache=self._cache,
+            repository_id=model.repository_id,
+            repository_name=model.repository_name,
+            branch_name=branch_name,
+            head=head,
+        )
 
     @staticmethod
     def _tracked_ref_names(model: GitReadOnlyRepositoryCheckRefs) -> tuple[str, ...]:

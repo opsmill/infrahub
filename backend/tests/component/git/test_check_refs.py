@@ -189,6 +189,14 @@ class SequencedTrackedCommitReader:
         return self.answers.pop(0)
 
 
+class HangingTrackedCommitReader:
+    """Never answers, the way a graph read stalled behind a slow database would."""
+
+    async def read(self, *, repository_id: str, branch_name: str) -> str | None:
+        await asyncio.sleep(30)
+        return IMPORTED_COMMIT
+
+
 def build_model(
     *,
     repository_id: str = REPOSITORY_ID,
@@ -306,8 +314,8 @@ async def test_a_worker_behind_a_move_already_announced_fetches_without_announci
     assert reader.reads == []
 
 
-async def test_an_import_that_caught_up_with_the_remote_is_not_announced_again() -> None:
-    """The import broadcast the commit it moved the pool to, so the stale announced head is not a movement."""
+async def test_a_stale_announced_head_is_announced_even_when_the_import_caught_up_with_the_remote() -> None:
+    """An import records the head only after its own broadcast, so a stale value means that broadcast never went out."""
     timeline = LockTimeline()
     bus = BusRecorder()
     cache = ClaimAwareCache()
@@ -315,38 +323,18 @@ async def test_an_import_that_caught_up_with_the_remote_is_not_announced_again()
     gateway = RecordingRefsGateway(
         timeline=timeline, local_heads={"stable": REMOTE_HEAD}, remote_heads={"stable": REMOTE_HEAD}
     )
-    checker = build_checker(
-        cache=cache,
-        bus=bus,
-        timeline=timeline,
-        gateway=gateway,
-        tracked_commit_reader=RecordingTrackedCommitReader({"main": REMOTE_HEAD}),
-    )
-
-    result = await checker.check(build_model(), run_id="run-1")
-
-    assert result.movements == ()
-    assert bus.messages == []
-    assert timeline.acquire_sequence(prefix=f"repository.{REPOSITORY_NAME}") == []
-    assert cache.storage[ANNOUNCED_KEY] == REMOTE_HEAD
-
-
-async def test_a_stale_announced_head_is_still_the_baseline_while_the_import_lags_the_remote() -> None:
-    timeline = LockTimeline()
-    bus = BusRecorder()
-    cache = ClaimAwareCache()
-    await cache.set(key=ANNOUNCED_KEY, value=LOCAL_HEAD)
-    gateway = RecordingRefsGateway(
-        timeline=timeline, local_heads={"stable": REMOTE_HEAD}, remote_heads={"stable": REMOTE_HEAD}
-    )
-    checker = build_checker(cache=cache, bus=bus, timeline=timeline, gateway=gateway)
+    reader = RecordingTrackedCommitReader({"main": REMOTE_HEAD})
+    checker = build_checker(cache=cache, bus=bus, timeline=timeline, gateway=gateway, tracked_commit_reader=reader)
 
     result = await checker.check(build_model(), run_id="run-1")
 
     assert result.movements == (
         RefMovement(ref="stable", infrahub_branch_name="main", previous_head=LOCAL_HEAD, new_head=REMOTE_HEAD),
     )
-    assert [message.commit for message in bus.messages] == [IMPORTED_COMMIT]
+    assert [message.commit for message in bus.messages] == [REMOTE_HEAD]
+    assert cache.storage[ANNOUNCED_KEY] == REMOTE_HEAD
+    # The stored value answered the question, so the graph was read only to pin the broadcast.
+    assert reader.reads == ["main"]
 
 
 async def test_a_cold_cache_remembers_the_imported_commit_when_the_remote_is_still_on_it() -> None:
@@ -844,7 +832,7 @@ async def test_an_unexpected_programming_error_is_not_recorded_as_a_repository_f
 
 
 async def test_an_unresponsive_remote_is_abandoned_without_taking_the_repository_lock() -> None:
-    """The wall-clock bound sits on the listing, which is the step that can wait on a remote.
+    """The wall-clock bound sits on the listing and the planning, the steps that can wait on a remote or the graph.
 
     It deliberately does not wrap the convergence: that holds the repository lock, and this lock
     carries no expiry, so cancelling a run part-way through releasing it would leave every later
@@ -870,12 +858,41 @@ async def test_an_unresponsive_remote_is_abandoned_without_taking_the_repository
     result = await checker.check(build_model(), run_id="run-1")
 
     assert result.failed is True
-    assert result.failure_reason == "Timed out after 0.05s reading the remote refs."
+    assert result.failure_reason == "Timed out after 0.05s checking the remote refs."
     assert gateway.fetches == []
     assert bus.messages == []
     assert timeline.acquire_sequence(prefix=f"repository.{REPOSITORY_NAME}") == []
     assert refs_check_running_key(REPOSITORY_ID) not in cache.storage
     assert cache.expires[refs_check_due_key(REPOSITORY_ID)] == RETRY_SECONDS
+
+
+async def test_a_slow_baseline_read_is_abandoned_before_the_claim_can_lapse() -> None:
+    """The baseline reads share the listing's bound, so a slow graph cannot outlast the claim's lease."""
+    cache = ClaimAwareCache()
+    timeline = LockTimeline()
+    bus = BusRecorder()
+    gateway = RecordingRefsGateway(
+        timeline=timeline, local_heads={"stable": LOCAL_HEAD}, remote_heads={"stable": REMOTE_HEAD}
+    )
+    checker = ReadOnlyRepositoryRefsChecker(
+        cache=cache,
+        message_bus=bus,
+        lock_registry=RecordingLockRegistry(timeline=timeline),
+        gateway=gateway,
+        ref_validator=RefNameValidator(check_ref_format=lambda _: True),
+        scheduler=build_scheduler(cache),
+        tracked_commit_reader=HangingTrackedCommitReader(),
+        claim_ttl_seconds=180,
+        detect_timeout_seconds=0.05,
+    )
+
+    result = await checker.check(build_model(), run_id="run-1")
+
+    assert result.failure_reason == "Timed out after 0.05s checking the remote refs."
+    assert gateway.fetches == []
+    assert bus.messages == []
+    assert timeline.acquire_sequence(prefix=f"repository.{REPOSITORY_NAME}") == []
+    assert refs_check_running_key(REPOSITORY_ID) not in cache.storage
 
 
 async def test_the_cycle_record_counts_each_repository_by_what_happened_to_it() -> None:
