@@ -49,12 +49,8 @@ from infrahub.git.tasks import merge_git_repository
 from infrahub.git.worktree import Worktree
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.utils import find_first_file_in_directory
-<<<<<<< HEAD
-from infrahub.workers.dependencies import build_client, build_message_bus
-=======
-from infrahub.workers.dependencies import build_event_service
+from infrahub.workers.dependencies import build_client, build_event_service, build_message_bus
 from tests.adapters.event import MemoryInfrahubEvent
->>>>>>> origin/stable
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import MultipleStagesFileRepo

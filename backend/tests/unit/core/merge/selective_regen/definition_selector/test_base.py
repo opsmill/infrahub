@@ -11,12 +11,8 @@ from infrahub.core.merge.selective_regen.fallbacks import repositories_forcing_f
 from infrahub.core.merge.selective_regen.gate import DefinitionGate
 from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResolver
 from infrahub.core.merge.selective_regen.models import GateResult, LoadedDefinition
-<<<<<<< HEAD
 from infrahub.core.regeneration.members import run_generator
-from infrahub.core.regeneration.models import TargetSelection
-=======
 from infrahub.core.regeneration.models import TargetSelection, Widening, WideningReason
->>>>>>> origin/stable
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 
 if TYPE_CHECKING:
