@@ -40,15 +40,15 @@ its own.
 
 **Purpose**: prepare the worktree so the tests can run at all.
 
-- [ ] T001 Initialise the submodules in this worktree and reinstall the SDK in editable mode, so
+- [x] T001 Initialise the submodules in this worktree and reinstall the SDK in editable mode, so
       `backend/tests/` can import `infrahub_sdk`. Run `git submodule update --init --recursive`
       then `uv sync --all-groups`.
-- [ ] T002 Confirm the test environment is clean: unset every `INFRAHUB_*` variable inherited from
+- [x] T002 Confirm the test environment is clean: unset every `INFRAHUB_*` variable inherited from
       the dev shell, then set `INFRAHUB_USE_TEST_CONTAINERS=1`. A leftover
       `INFRAHUB_USE_TEST_CONTAINERS=false` sends the suite at an external Neo4j. See
       [quickstart.md](quickstart.md).
-- [ ] T003 [P] Create the package `backend/infrahub/git/divergence/` with an empty `__init__.py`.
-- [ ] T004 [P] Create the test package `backend/tests/unit/git/divergence/` with an empty
+- [x] T003 [P] Create the package `backend/infrahub/git/divergence/` with an empty `__init__.py`.
+- [x] T004 [P] Create the test package `backend/tests/unit/git/divergence/` with an empty
       `__init__.py`.
 
 ---
@@ -59,32 +59,33 @@ its own.
 
 **Blocks**: every phase from 3 onwards.
 
-- [ ] T005 [P] Define `RefClassification` and `RefDivergence` in
+- [x] T005 [P] Define `RefClassification` and `RefDivergence` in
       `backend/infrahub/git/divergence/models.py`, per
       [data-model.md](data-model.md), "New in-process types". `RefClassification` is a `StrEnum`
       with `UNCHANGED`, `FAST_FORWARD`, `LOCAL_AHEAD`, `REWRITE`, `RETARGET` and `REMOTE_ABSENT`.
       `RefDivergence` holds a nullable `remote_head` and enforces the three validation rules in
       that section.
-- [ ] T006 [P] Define `ReconciledBranch` in `backend/infrahub/git/divergence/models.py`. It carries
+- [x] T006 [P] Define `ReconciledBranch` in `backend/infrahub/git/divergence/models.py`. It carries
       the Infrahub branch name, the branch UUID, the commit, and an optional `RefDivergence`.
-- [ ] T007 Write the ancestry gateway in `backend/infrahub/git/divergence/gateway.py`. It exposes
+- [x] T007 Write the ancestry gateway in `backend/infrahub/git/divergence/gateway.py`. It exposes
       `is_ancestor` and `has_commit` as a `Protocol`, plus a GitPython implementation over
       `Repo.is_ancestor`. Every git failure leaves as a `RepositoryError`, so the detector imports no
-      git library. Mirror the shape of `backend/infrahub/git/refs_check/gateway.py` from PR #10669.
-- [ ] T008 Make `has_commit` distinguish a missing object from a failed git call. Without it both
+      git library. Bind the implementation to one repository at construction, so neither call takes
+      a repository argument and the `Protocol` names no git type.
+- [x] T008 Make `has_commit` distinguish a missing object from a failed git call. Without it both
       arrive as `RepositoryError`, so a garbage-collected commit raises on every cycle and the
       branch never classifies. The absent-object rows of the contract table depend on this.
-- [ ] T009 Write `RemoteDivergenceDetector.classify` in
+- [x] T009 Write `RemoteDivergenceDetector.classify` in
       `backend/infrahub/git/divergence/detector.py`, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 1. It takes
       `target_changed` from its caller and never reads the cache itself.
-- [ ] T010 [P] Write unit tests for the detector in
+- [x] T010 [P] Write unit tests for the detector in
       `backend/tests/unit/git/divergence/test_detector.py`. Cover every row of the contract table.
       The negative cases carry the most weight: a fast-forward, a deliberate re-target, a branch
       that is only ahead of its remote, and an absent remote ref must all come out clean. The
       locally-ahead case is the one that would discard an unpushed commit if it were wrong, so
       assert it names `LOCAL_AHEAD` and not `REWRITE`. No database.
-- [ ] T011 [P] Write unit tests for the models in
+- [x] T011 [P] Write unit tests for the models in
       `backend/tests/unit/git/divergence/test_models.py`. Assert that a `REWRITE` without an
       `imported_commit` is rejected.
 
