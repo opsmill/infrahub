@@ -27,7 +27,7 @@ type CoreRepository {
   """Why the last push of merged changes failed. Live on the default branch only; another branch holds a copy from its fork point."""
   delivery_failure_cause: Dropdown
 
-  """The remote's message for the last failed push, verbatim. Live on the default branch only; another branch holds a copy from its fork point."""
+  """The remote's message for the last failed push, verbatim, with credentials removed. Live on the default branch only; another branch holds a copy from its fork point."""
   delivery_error: TextAttribute
 
   """Merges waiting to be pushed, in order. Live on the default branch only; another branch holds a copy from its fork point."""
@@ -48,9 +48,9 @@ type CoreRepository {
 
 # delivery_status values:          none | pending | action-required
 # delivery_failure_cause values:   remote-unreachable | remote-advanced | record-failed |
-#                                  certificate | credentials | permission | import-failed |
-#                                  replay-conflict | source-discarded | destination-rewritten |
-#                                  unclassified
+#                                  not-found | certificate | credentials | permission |
+#                                  import-failed | replay-conflict | source-discarded |
+#                                  destination-rewritten | unclassified
 #
 # The JSON shapes are the Pydantic models of data-model.md, each with "format": 1.
 #
@@ -65,9 +65,15 @@ type CoreRepository {
 #       "source_branch": "feature-a",
 #       "source_git_branch": "feature-a",
 #       "source_commit": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
-#       "merged_at": "2026-10-02T09:14:03.120000+00:00"
+#       "merged_at": "2026-10-02T09:14:03.120000+00:00",
+#       "delete_source_git_branch": false
 #     }
-#   ]
+#   ],
+#   "removed_entry_ids": [],
+#   "last_progress_at": "2026-10-02T09:14:05.410000+00:00",
+#   "attempt_started_at": "2026-10-02T09:14:05.410000+00:00",
+#   "retry_due_at": null,
+#   "import_owed_commit": null
 # }
 
 # ---------------------------------------------------------------------------------------------
@@ -78,13 +84,21 @@ type CoreRepository {
 # beside InfrahubRepositoryProcess. Both submit a workflow and return its task, so the client
 # follows the task for the result.
 #
-# Authorization (both): object `update` on CoreRepository with ALLOW_DEFAULT, plus the global
-# `manage_repositories` permission. `edit_default_branch` is enforced by the existing default
-# branch checker, because the client sends both mutations on the default branch.
+# Branch: both refuse a request sent on any branch other than the default branch. They act on the
+# default branch's state, and the default-branch permission checker acts only on requests that
+# name the default branch.
 #
-# Availability (both), checked in the mutation and again in the workflow under the locks:
+# Authorization (both), checked explicitly in the mutation:
+#   - object `update` on CoreRepository, with ALLOW_DEFAULT;
+#   - the global `manage_repositories` permission;
+#   - the global `edit_default_branch` permission.
+#
+# Availability (both), per the table "Actions by status" of data-model.md, checked in the mutation
+# and again in the workflow under the locks:
 #   - the repository is a CoreRepository and its internal status is not `staging`;
-#   - the queue is not empty.
+#   - the queue is not empty;
+#   - retry only: no attempt is running, unless the delivery is stale;
+#   - abandon only: the named queue version is the current one.
 # A refusal is a ValidationError with a message a user can act on.
 
 input RepositoryDeliveryRetryInput {
@@ -113,15 +127,17 @@ type Mutation {
   """Push every pending merge of a repository to its remote, in order, in a single push."""
   InfrahubRepositoryDeliveryRetry(data: RepositoryDeliveryRetryInput!): RepositoryDeliveryRetry
 
-  """Abandon every pending merge of a repository. Nothing is removed from the remote. The repository objects on the default branch return to the content of the commit recorded for it."""
+  """Abandon every pending merge of a repository. Nothing is removed from the remote, and no remote branch is deleted. Repository objects of the abandoned merges can stay on the default branch until the current commit is reimported."""
   InfrahubRepositoryDeliveryAbandon(data: RepositoryDeliveryAbandonInput!): RepositoryDeliveryAbandon
 }
 
 # Refusal messages (ValidationError):
 #
+#   "Send this request on the default branch <name>; the pending pushes live there."
 #   "Repository <name> has nothing pending to push."
 #   "Repository <name> is read-only and never pushes to its remote."
 #   "Repository <name> is staging; its changes are pushed when its proposed change merges."
+#   "A push of repository <name> is running; wait for it to finish."
 #   "The pending pushes of repository <name> changed since version <n>; reload and try again."
 #
 # The last one is also the failure message of the abandon workflow when the queue changed between
@@ -131,11 +147,12 @@ type Mutation {
 # 3. Changed behaviour of an existing mutation
 # ---------------------------------------------------------------------------------------------
 #
-# InfrahubRepositoryProcess ("Reimport current commit") refuses on the default branch while the
+# InfrahubRepositoryProcess ("Reimport current commit") refuses on every branch while the
 # repository has a pending delivery, because the desired-state import would delete the repository
 # objects of the pending merges (FR-023):
 #
-#   "Repository <name> has pending pushes; reimporting the default branch now would remove the
-#    objects they added. Retry or abandon the pending pushes first."
+#   "Repository <name> has pending pushes; a reimport now would remove the objects they added.
+#    Retry or abandon the pending pushes first."
 #
-# On any other branch it is unchanged.
+# With nothing pending it is unchanged. After an abandonment it is the action the repository
+# section advises (FR-024).

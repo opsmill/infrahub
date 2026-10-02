@@ -1,7 +1,7 @@
 # Internal interfaces: Git remote writeback failure handling
 
 **Feature**: `dev/specs/ifc-3220-writeback-failure-handling`
-**Date**: 2026-10-02
+**Date**: 2026-10-02, revised after [critiques/critique-20261002-1500.md](../critiques/critique-20261002-1500.md)
 
 The signatures below are the contract between the components. Bodies are left out. Every component
 follows `dev/guidelines/backend/component-design.md`: collaborators are required constructor
@@ -14,76 +14,97 @@ parameters, per-run values are entry-point arguments, and each flow builds the g
 ```text
 backend/infrahub/git/writeback/          # NEW
 ├── __init__.py
+├── constants.py     # retry bounds, Git timeouts, STALE_AFTER, cache time to live and size bound
 ├── models.py        # DeliveryQueue, PendingMerge, HeldRegeneration, AbandonmentRecord,
-│                    # RevertedDelivery, WritebackIntent, DeliveryFailure, DeliveryAttemptResult
-├── classifier.py    # classify_delivery_failure
+│                    # RevertedDelivery, WritebackIntent, DeliveryFailure, DeliveryAttemptResult, Actor
+├── classifier.py    # classify_delivery_failure, scrub_credentials
+├── ports.py         # DeliveryStatePort, DeliveryGitPort, RegenerationReleasePort
 ├── store.py         # WritebackIntentStore, the only read and write path
-├── ports.py         # DeliveryGitPort, RegenerationReleasePort
 ├── git_adapter.py   # RepositoryDeliveryGitAdapter, the only Git code here
 ├── service.py       # RepositoryWritebackService
 ├── abandoner.py     # WritebackAbandoner
-└── factory.py       # build_writeback_service, build_writeback_abandoner
+├── recovery.py      # DeliveryRecoveryCheck
+└── factory.py       # build_writeback_service, build_writeback_abandoner, build_recovery_check
 
 backend/infrahub/core/merge/
-├── regeneration_barrier.py   # NEW: RegenerationBarrier, OwnedRegeneration
+├── regeneration_barrier.py   # NEW: RegenerationBarrier, OwnedRegeneration, NarrowedHoldCache
 └── regeneration_release.py   # NEW: HeldRegenerationReleaser
 ```
 
-`models.py`, `classifier.py`, `service.py` and `abandoner.py` import no Git library and no database
-code, so their tests need neither.
+`models.py`, `classifier.py`, `service.py`, `abandoner.py` and `recovery.py` import no Git library
+and no database code, so their tests need neither.
 
 ---
 
-## 2. `WritebackIntentStore`
+## 2. `DeliveryStatePort` and `WritebackIntentStore`
 
 ```python
-class WritebackIntentStore:
-    def __init__(self, db: InfrahubDatabase, lock_registry: InfrahubLockRegistry, default_branch: Branch) -> None: ...
-
+class DeliveryStatePort(Protocol):
     async def read(self, *, repository_id: str) -> WritebackIntent: ...
     async def pending_repository_ids(self) -> frozenset[str]: ...
     async def references_source_branch(self, *, repository_id: str, git_branch: str) -> bool: ...
 
     async def enqueue(self, *, repository_id: str, entry: PendingMerge) -> WritebackIntent: ...
     async def start_attempt(self, *, repository_id: str) -> WritebackIntent: ...
-    async def record_failure(self, *, repository_id: str, failure: DeliveryFailure, final: bool) -> None: ...
-    async def hold(self, *, repository_id: str, held: HeldRegeneration) -> bool: ...
+    async def record_failure(
+        self, *, repository_id: str, failure: DeliveryFailure, final: bool, retry_due_at: datetime | None
+    ) -> None: ...
+    async def owe_import(self, *, repository_id: str, commit: str) -> None: ...
+    async def settle_import(self, *, repository_id: str, commit: str, snapshot: WritebackIntent) -> bool: ...
+    async def request_branch_deletion(self, *, repository_id: str, git_branch: str) -> bool: ...
+    async def hold(self, *, repository_id: str, held: HeldRegeneration) -> int | None: ...
     async def complete_delivery(
         self, *, repository_id: str, snapshot: WritebackIntent, delivered_commit: str | None
     ) -> WritebackIntent: ...
-    async def complete_abandonment(
-        self, *, repository_id: str, snapshot: WritebackIntent, record: AbandonmentRecord
+    async def abandon(
+        self, *, repository_id: str, queue_version: int, record: AbandonmentRecord, actor: Actor
     ) -> WritebackIntent: ...
+    async def clear_released(self, *, repository_id: str, up_to_seq: int) -> None: ...
+    async def touch(self, *, repository_id: str) -> None: ...
     async def record_reverted(self, *, repository_id: str, reverted: RevertedDelivery) -> None: ...
+
+
+class WritebackIntentStore:  # implements DeliveryStatePort
+    def __init__(self, db: InfrahubDatabase, lock_registry: InfrahubLockRegistry, default_branch: Branch) -> None: ...
 ```
 
-| Method | Lock | Contract |
-|---|---|---|
-| `read` | none | A consistent snapshot of one node on the default branch. |
-| `pending_repository_ids` | none | One query: every `CoreRepository` on the default branch whose status is not `none`. The barrier's fast path. |
-| `references_source_branch` | none | The guard of FR-011. |
-| `enqueue` | state | Appends unless an entry with the same `entry_id` exists. Bumps the version. Sets `pending`. Idempotent. |
-| `start_attempt` | state | Returns the snapshot. Sets `pending`. Does not clear the cause, so a waiting retry still shows the last failure. |
-| `record_failure` | state | Writes the cause and the message. `final=True` sets `action-required`. |
-| `hold` | state | Returns `False` and writes nothing when the queue is empty. Otherwise unions `held` into the held set and returns `True`. |
-| `complete_delivery` | state | Removes the snapshot's entries and the snapshot's held identifiers, in one save. Writes `delivered_commit` when it is not `None`. Sets the status from what remains. |
-| `complete_abandonment` | state | Refuses with `DeliveryQueueChangedError` when the version moved since the snapshot. Otherwise as `complete_delivery`, plus the record, in one save. |
-| `record_reverted` | state | Overwrites `delivery_reverted`. |
+Every method except the first three runs under the delivery-state lock (30-second time to live,
+10-second bounded acquire). A timed-out acquire raises `DeliveryStateUnavailableError`.
+
+| Method | Contract |
+|---|---|
+| `read` | A consistent snapshot of one node on the default branch. |
+| `pending_repository_ids` | One query: every `CoreRepository` on the default branch whose status is not `none`, or whose held set or owed import is not empty. The barrier's fast path and the recovery check's input. |
+| `references_source_branch` | The guard of FR-011. |
+| `enqueue` | Appends unless the id is present or in `removed_entry_ids`. Bumps the version. Sets `pending` and `last_progress_at`. Idempotent. |
+| `start_attempt` | Returns the snapshot. Sets `pending`, `attempt_started_at` and `last_progress_at`, and clears `retry_due_at`. Keeps the cause, so a waiting retry still shows the last failure. |
+| `record_failure` | Writes the cause, the scrubbed message, `last_progress_at`, and `retry_due_at`. `final=True` sets `action-required` and clears `retry_due_at`. |
+| `owe_import` | Sets `import_owed_commit`. Called before the commit is recorded. |
+| `settle_import` | Clears `import_owed_commit` when it still names `commit` **and** the queue did not grow past the snapshot. Returns whether it cleared it. |
+| `request_branch_deletion` | Sets `delete_source_git_branch` on every entry that names the branch. Returns whether any did. |
+| `hold` | Returns `None` and writes nothing when the queue is empty and no import is owed. Otherwise adds or refreshes the items with the next sequence and returns that sequence. |
+| `complete_delivery` | Removes the snapshot's entries into `removed_entry_ids` and bumps the version, removes held items up to the snapshot's highest sequence, writes `delivered_commit` when it is not `None`, and sets the status from what remains. One save. |
+| `abandon` | Refuses with `DeliveryQueueChangedError` when `queue_version` is not the current version, and with `NothingPendingError` when the queue is empty. Otherwise removes every entry into `removed_entry_ids`, bumps the version, clears the owed import, writes the record, and sets `none`, in one save that passes `actor.account_id` as `user_id`. The held set stays. |
+| `clear_released` | Removes held items up to `up_to_seq`, and the `widen` marker when its sequence is not above it. |
+| `touch` | Moves `last_progress_at`. The recovery check calls it after it submits. |
+| `record_reverted` | Overwrites `delivery_reverted`. |
 
 The store is the only code that writes the eight attributes. A test asserts that no other module
 names them in a write.
 
 ---
 
-## 3. `classify_delivery_failure`
+## 3. The classifier
 
 ```python
-def classify_delivery_failure(*, error: BaseException, pushed: bool) -> DeliveryFailure: ...
+def classify_delivery_failure(*, error: BaseException, stage: DeliveryStage) -> DeliveryFailure: ...
+def scrub_credentials(*, text: str) -> str: ...
 ```
 
-Pure. The table of `research.md` R5 is its full contract. `pushed=True` always gives
-`record-failed`, retryable. A `RepositoryPushRejectedError` gives its `remote_message` as the
-message, and any other `RepositoryError` gives `str(error)`.
+Pure. The table of `research.md` R5 is the full contract of `classify_delivery_failure`. A
+`RepositoryPushRejectedError` gives its `remote_message` and ref summary as the message. Any other
+error gives its typed message, never raw stderr. Every message passes through `scrub_credentials`,
+which removes `user:password@` and `user@` from every URL it finds.
 
 ---
 
@@ -97,9 +118,10 @@ class DeliveryGitPort(Protocol):
     def replay(self, *, base: str, commits: Sequence[str]) -> ReplayResult: ...
     async def push(self) -> None: ...
     def reset(self, *, commit: str) -> None: ...
-    async def import_at(self, *, commit: str) -> None: ...
     async def record(self, *, commit: str) -> None: ...
+    async def import_at(self, *, commit: str) -> None: ...
     async def broadcast(self, *, commit: str) -> None: ...
+    async def delete_remote_branch(self, *, git_branch: str) -> None: ...
 
 
 class RegenerationReleasePort(Protocol):
@@ -110,9 +132,14 @@ class RegenerationReleasePort(Protocol):
 conflicted. `replay` resets to `base` first, and on a conflict aborts the merge and resets to
 `base` again.
 
-`is_ancestor` returns `True` for equal commits, and `False` when either object is missing locally.
+`is_ancestor` returns `True` for equal commits. It returns `False` when the answer is no, or when
+either object is missing locally. It raises `RepositoryError` for every other failure, which the
+service classifies as `unclassified`. The same contract binds IFC-3210's gateway.
 
-`RepositoryDeliveryGitAdapter` implements `DeliveryGitPort` over one `InfrahubRepository` and the
+`fetch` and `push` are bounded by `FETCH_TIMEOUT_SECONDS` and `PUSH_TIMEOUT_SECONDS`, passed as
+GitPython's `kill_after_timeout`. A timeout raises `RepositoryConnectionError`.
+
+`RepositoryDeliveryGitAdapter` implements `DeliveryGitPort` over one `InfrahubRepository` and its
 destination worktree. `HeldRegenerationReleaser` implements `RegenerationReleasePort`. Both are
 shapes the service defines, so neither the Git adapter nor the merge layer is imported by
 `service.py`.
@@ -125,30 +152,37 @@ shapes the service defines, so neither the Git adapter nor the merge layer is im
 class RepositoryWritebackService:
     def __init__(
         self,
-        store: WritebackIntentStore,
+        repository: RepositoryRef,
+        state: DeliveryStatePort,
         git: DeliveryGitPort,
         releaser: RegenerationReleasePort,
         lock_registry: InfrahubLockRegistry,
+        clock: Clock,
     ) -> None: ...
 
-    async def deliver(self, *, repository: RepositoryRef) -> DeliveryAttemptResult: ...
+    async def deliver(self, *, final_attempt: bool, manual: bool) -> DeliveryAttemptResult: ...
 ```
 
-`RepositoryRef` is a frozen dataclass: `id`, `name`, `destination_git_branch`.
+`RepositoryRef` is a frozen dataclass: `id`, `name`, `destination_git_branch`. The factory builds
+one service per repository, with the adapter bound to the same repository, so the two cannot
+disagree.
 
-`deliver` runs the algorithm of `research.md` R4 under the repository lock. It never raises for a
-classified failure: it records the failure and returns `failed` or `unreplayable`. It re-raises a
-retryable failure as `RetryableDeliveryError` after it recorded it, so the task's
-`retry_condition_fn` can retry it.
+`deliver` runs the algorithm of `research.md` R4:
 
-The same instance shape serves both callers (FR-007):
+- Steps 1 to 13 under the repository lock. Steps 14 and 15 after it is released.
+- When `manual` is `False` and a retry of another chain is due in the future, it returns
+  `deferred` at once (one chain per repository).
+- It never raises for a classified failure that is final: it records it and returns `failed` or
+  `unreplayable`. A retryable failure on a non-final attempt is recorded with `retry_due_at`, then
+  re-raised as `RetryableDeliveryError`, so the task's `retry_condition_fn` retries it.
+- A `DeliveryStateUnavailableError` is re-raised as retryable.
+
+Three callers, one task:
 
 | Flow | Caller |
 |---|---|
-| `git-repository-merge` (`merge_git_repository`) | first attempt, after it re-enqueues `model.pending_merge` |
-| `git-repository-delivery-retry` (`retry_repository_delivery`) | manual retry |
-
-Both call one task:
+| `git-repository-merge` (`merge_git_repository`) | first attempt, after it enqueues `model.pending_merge`, or the entry it builds when that is `None` |
+| `git-repository-delivery-retry` (`retry_repository_delivery`) | manual retry (`manual=True`), and the recovery check (`manual=False`) |
 
 ```python
 @task(
@@ -158,13 +192,16 @@ Both call one task:
     retry_delay_seconds=DELIVERY_RETRY_DELAYS_SECONDS,
     retry_condition_fn=is_retryable_delivery_failure,
 )
-async def deliver_pending_merges(service: RepositoryWritebackService, repository: RepositoryRef) -> None: ...
+async def deliver_pending_merges(service: RepositoryWritebackService, manual: bool) -> DeliveryOutcome: ...
 ```
 
-`DELIVERY_RETRIES = 3` and `DELIVERY_RETRY_DELAYS_SECONDS = [30, 120, 300]` live in
-`git/writeback/constants.py`. Before the last attempt, `record_failure` is called with
-`final=False`. On the last attempt the task records `final=True`. The task reads the attempt number
-from the Prefect run context, the way `webhook/log_formatter.py` reads it.
+The task computes `final_attempt` from `task_run.run_count` and `DELIVERY_RETRIES`. The flow sets
+its own final state from the outcome (`research.md` R21). `DELIVERY_RETRIES = 3` and
+`DELIVERY_RETRY_DELAYS_SECONDS = [30, 120, 300]`. Tests pass shorter delays through
+`deliver_pending_merges.with_options(retry_delay_seconds=...)`.
+
+A repository with no remote never reaches the task: `merge_git_repository` keeps today's local merge
+and record through `InfrahubRepository.merge`.
 
 ---
 
@@ -174,25 +211,43 @@ from the Prefect run context, the way `webhook/log_formatter.py` reads it.
 class WritebackAbandoner:
     def __init__(
         self,
-        store: WritebackIntentStore,
-        git: DeliveryGitPort,
+        repository: RepositoryRef,
+        state: DeliveryStatePort,
         releaser: RegenerationReleasePort,
         lock_registry: InfrahubLockRegistry,
+        clock: Clock,
     ) -> None: ...
 
-    async def abandon(self, *, repository: RepositoryRef, queue_version: int, actor: Actor) -> AbandonmentRecord: ...
+    async def abandon(self, *, queue_version: int, actor: Actor) -> AbandonmentRecord: ...
 ```
 
-`Actor` is a frozen dataclass: `account_id`, `account_name`, taken from the workflow's
-`InfrahubContext`.
+`Actor` comes from the workflow's `InfrahubContext`.
 
-Runs `research.md` R8 under the repository lock. Raises `DeliveryQueueChangedError` when the version
-moved, and `NothingPendingError` when the queue is empty. Both subclass `ValidationError`, so the
-task run fails with the message of the GraphQL contract.
+Runs `research.md` R8: under the repository lock, `state.abandon(...)`; then, with the lock
+released, `releaser.release(...)` on the held snapshot, then `state.clear_released(...)`. It needs no
+Git port: it changes no Git state and imports nothing. `DeliveryQueueChangedError` and
+`NothingPendingError` subclass `ValidationError`, so the task run fails with the message of the
+GraphQL contract.
 
 ---
 
-## 7. `RegenerationBarrier`
+## 7. `DeliveryRecoveryCheck` (FR-027)
+
+```python
+class DeliveryRecoveryCheck:
+    def __init__(self, state: DeliveryStatePort, workflow: InfrahubWorkflow, clock: Clock) -> None: ...
+
+    async def run(self, *, repository: RepositoryRef) -> bool: ...
+```
+
+Called by the periodic synchronisation flow for each repository, after the sync. It submits
+`GIT_REPOSITORY_DELIVERY_RETRY` with a system context, then calls `state.touch(...)`, when the
+state is stale, or when held work or an owed import waits behind an empty queue. It returns whether
+it submitted. It never raises: a failure is logged and the next cycle checks again.
+
+---
+
+## 8. `RegenerationBarrier`
 
 ```python
 @dataclass(frozen=True)
@@ -202,8 +257,19 @@ class OwnedRegeneration(Generic[RequestT]):
     request: RequestT
 
 
+class NarrowedHoldCache:
+    def __init__(self, cache: InfrahubCache, ttl_seconds: int, max_bytes: int) -> None: ...
+
+    async def put(self, *, repository_id: str, hold_seq: int, identifier: str, request: BaseModel) -> None: ...
+    async def get(
+        self, *, repository_id: str, hold_seq: int, identifier: str, model: type[ModelT]
+    ) -> ModelT | None: ...
+
+
 class RegenerationBarrier:
-    def __init__(self, store: WritebackIntentStore, default_branch_name: str) -> None: ...
+    def __init__(
+        self, state: DeliveryStatePort, narrowed: NarrowedHoldCache, default_branch_name: str
+    ) -> None: ...
 
     async def admit(
         self,
@@ -214,16 +280,19 @@ class RegenerationBarrier:
     ) -> list[OwnedRegeneration[RequestT]]: ...
 ```
 
-Contract:
+Contract of `admit`:
 
 1. `branch` is not the default branch → return every candidate. No read.
 2. `pending_repository_ids()` is empty → return every candidate. One read.
 3. A candidate whose owner is `releasing`, or is not pending → admitted.
-4. A candidate whose owner is pending → `store.hold(...)`. Admitted only if `hold` returns `False`,
-   which means the queue cleared in between.
+4. A candidate whose owner is pending → `state.hold(...)`. Admitted only if `hold` returns `None`,
+   which means the queue cleared in between. Otherwise its narrowed request goes to the cache under
+   the returned sequence.
 5. A candidate whose owner is `None` → held under every pending repository except `releasing`.
-   Admitted as well when every `hold` returned `False`.
+   Admitted as well when every `hold` returned `None`.
 6. Candidates of one repository are held in one `hold` call.
+7. If the state raises, or the state lock cannot be acquired → admit every candidate and log at
+   error level. A cache write failure is logged and does not change the decision.
 
 `releasing` has no default. Every non-release site passes `None` explicitly, so a release site
 cannot forget it.
@@ -234,16 +303,18 @@ cannot forget it.
 |---|---|---|
 | `PostMergeRegenerationDispatcher.dispatch`, on the built plan | `RequestGeneratorDefinitionRun`, `RequestArtifactDefinitionGenerate` | `generator_definition.repository_id`, `repository_id` |
 | `PostMergeRegenerationDispatcher._submit`, after the cascade | `RequestArtifactDefinitionGenerate` | `repository_id` |
-| `PostMergeRegenerationDispatcher._full_regeneration` and the flag-off path of `post_process_branch_merge` | a `widen` marker per pending repository | the repository |
+| `PostMergeRegenerationDispatcher._full_regeneration`, `_submit_full_terminal_regeneration`, and the flag-off path of `post_process_branch_merge` | a `widen` marker per pending repository, then the blanket triggers with `exclude_repository_ids` | the repository |
 | `recompute_coalescing.py::_resolve_python_targets` | `AffectedTarget` of the Python family | `PythonTargetSource.owner_of(kind, attribute)` |
+| `computed_attribute/tasks.py::computed_attribute_setup_python`, on the default branch | the selected `(kind, attribute)` pairs | the same owner map |
 
-`PostMergeRegenerationDispatcher`, `MergeRecomputeCoordinator` and `RecomputeChainSubmitter` each
-gain a required `barrier: RegenerationBarrier` constructor parameter. The rebase builder and every
-test pass one too: on a non-default branch it admits everything without a read.
+`PostMergeRegenerationDispatcher`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter` and the
+schema-scoped recompute each gain a required `barrier: RegenerationBarrier` constructor parameter.
+The rebase builder and every test pass one too: on a non-default branch it admits everything without
+a read.
 
 ---
 
-## 8. `HeldRegenerationReleaser`
+## 9. `HeldRegenerationReleaser`
 
 ```python
 class HeldRegenerationReleaser:
@@ -252,6 +323,7 @@ class HeldRegenerationReleaser:
         dispatcher: PostMergeRegenerationDispatcher,
         python_submitter: CoalescedRecomputeSubmitter,
         definitions: HeldDefinitionResolver,
+        narrowed: NarrowedHoldCache,
         default_branch_name: str,
         context: InfrahubContext,
     ) -> None: ...
@@ -264,31 +336,41 @@ queries the selectors use (`GATHER_ARTIFACT_DEFINITIONS`, `client.filters(kind=C
 
 Contract:
 
-1. Resolve every held identifier. If any does not resolve, or `held.widen` is set, run a full
-   regeneration with reason `HELD_SET_UNRESOLVED` and stop.
-2. Build a `SelectiveRegenerationPlan` from the resolved definitions, with no member or target
-   narrowing, and dispatch it through `PostMergeRegenerationDispatcher` with
-   `releasing=repository_id`. The cascade runs as on a merge.
-3. Submit each held Python attribute as a whole-kind recompute, `coalesced=True`, `widened=True`.
-4. Raise on a dispatch failure. The caller has not cleared anything yet, so the next clearing
+1. If `held.widen_seq` is set, or any held identifier does not resolve, run the `widen` release of
+   the repository with reason `HELD_SET_UNRESOLVED` and stop: the blanket triggers with
+   `include_repository_ids=[repository_id]`, plus a whole-kind recompute of every Python computed
+   attribute whose transform the repository owns.
+2. For each held item, take the narrowed request from the cache under its `hold_seq`, or build the
+   request with no member or target narrowing when the cache misses.
+3. Dispatch the generator and artifact requests through `PostMergeRegenerationDispatcher`, with
+   `releasing=repository_id`, so the cascade runs as on a merge and every dispatch passes through the
+   barrier.
+4. Submit each Python attribute: the cached narrowed submission, or a whole-kind recompute with
+   `coalesced=True` and `widened=True`.
+5. Raise on a dispatch failure. The caller has not cleared anything yet, so the next clearing
    releases again (`research.md` R10).
 
 ---
 
-## 9. Changes to existing components
+## 10. Changes to existing components
 
 | Component | Change |
 |---|---|
-| `git/repository.py::InfrahubRepository.push` | Passes a `RemoteProgress`. A per-ref rejection raises `RepositoryPushRejectedError` with the reason and the joined `remote:` lines. Message wording unchanged. |
-| `git/base.py::InfrahubRepositoryBase._raise_enriched_error_static` | Raises `RepositoryTLSError` for the TLS markers. |
-| `git/base.py::InfrahubRepositoryBase._raise_enriched_error` | Maps `RepositoryTLSError` to `ERROR_CONNECTION`. |
-| `git/repository.py::InfrahubRepository.collect_pending_imports` | Skips the default branch while `store.read(...)` is not `none` (`research.md` R11). Takes the store as a parameter from the sync flow. |
-| `git/tasks.py::merge_git_repository` | The default path builds the service and calls `deliver_pending_merges`. The read-only and staging paths are unchanged. |
-| `git/tasks.py::git_branch_delete` | Skips the remote deletion when `references_source_branch` is true. |
-| `core/merge/repository_merge_dispatcher.py::RepositoryMergeDispatcher.merge_core_repositories` | Builds the `PendingMerge`, enqueues it (unless the source commit equals the recorded commit), passes it in the model, and passes the merge's `context`. |
-| `core/merge/regeneration_dispatcher.py::PostMergeRegenerationDispatcher` | Consults the barrier at the three sites of section 7. |
+| `git/repository.py::InfrahubRepository.push` | Passes a `RemoteProgress` and `kill_after_timeout`. A per-ref rejection raises `RepositoryPushRejectedError`, with the reason from the `PushInfo` flags and the joined `remote:` lines. Message wording unchanged. |
+| `git/base.py::InfrahubRepositoryBase.fetch` | Accepts a timeout and passes it as `kill_after_timeout`. |
+| `git/base.py::InfrahubRepositoryBase._raise_enriched_error_static` | Raises `RepositoryTLSError` for the TLS markers and `RepositoryNotFoundError` for "Repository not found". |
+| `git/base.py::InfrahubRepositoryBase._raise_enriched_error` | Resolves the status with `isinstance`, most specific first. |
+| `message_bus/operations/git/repository.py::connectivity` | Same `isinstance` resolution. |
+| `git/repository.py::InfrahubRepository.collect_pending_imports` | In the active loop, skips the default branch, and every new remote branch that a pending entry names, while the state is not `none`. Takes the state port as a parameter from the sync flow. `_collect_staging_imports` is unchanged. |
+| `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch while the state is not `none`. |
+| `git/tasks.py::sync_repository_from_origin`, the per-repository sync flow | Runs `DeliveryRecoveryCheck.run` after the sync. |
+| `git/tasks.py::merge_git_repository` | The default path, with a remote, builds the service and calls `deliver_pending_merges`. The read-only path, the staging path and the no-remote path are unchanged. When `pending_merge` is `None`, it builds the entry from the source branch's graph commit. |
+| `git/tasks.py::git_branch_delete` | When `references_source_branch` is true: calls `request_branch_deletion`, skips the remote deletion, and does not send `RefreshGitRepositoryBranchDeleted`. |
+| `core/merge/repository_merge_dispatcher.py::RepositoryMergeDispatcher.merge_core_repositories` | For an `active` repository with a remote, on a branch that syncs with Git, whose source commit carries content (`research.md` R3): builds the `PendingMerge`, enqueues it under its own guard, passes it in the model, and passes the merge's `context`. |
+| `core/merge/regeneration_dispatcher.py::PostMergeRegenerationDispatcher` | Consults the barrier at the sites of section 8. `dispatch` and `_dispatch_plan` take `releasing`. |
 | `core/merge/python_target_sources.py::GatheredPythonReadSets` | Keeps the repository id per attribute and exposes `owner_of`. |
 | `core/merge/selective_regen/definition_selector/artifact_selector.py::ArtifactSelector._build_request` | Fills `repository_id`. |
-| `git/tasks.py::generate_artifact_definition`, `generators/tasks.py::run_generator_definition` | Accept `exclude_repository_ids`. |
-| `graphql/mutations/repository.py::ProcessRepository` | Refuses on the default branch while a delivery is pending. |
-| IFC-3210's reconciliation | Calls `store.record_reverted` when the condition of `research.md` R13 holds. Gated on IFC-3210. |
+| `git/tasks.py::generate_artifact_definition`, `generators/tasks.py::run_generator_definition` | Accept `exclude_repository_ids` and `include_repository_ids`. |
+| `computed_attribute/tasks.py::computed_attribute_setup_python` | On the default branch, passes the selected pairs through the barrier. |
+| `graphql/mutations/repository.py::ProcessRepository` | Refuses on every branch while the state is not `none`. |
+| IFC-3210's reconciliation | Calls `state.record_reverted` when the condition of `research.md` R13 holds. Gated on IFC-3210. |
