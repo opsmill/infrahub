@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPoolRange
 from infrahub.core.query.resource_manager import (
     NumberPoolGetFree,
@@ -37,6 +38,15 @@ class NumberPoolRepository:
             branch_agnostic=True,
         )
         return sorted(pool_ranges, key=lambda pool_range: int(pool_range.start.value))
+
+    async def create_range(
+        self, pool_id: str, start: int, end: int, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID
+    ) -> CoreNumberPoolRange:
+        """Add a range without weight to the pool."""
+        pool_range = await Node.init(db=self.db, schema=CoreNumberPoolRange)
+        await pool_range.new(db=self.db, start=start, end=end, pool=pool_id)
+        await pool_range.save(db=self.db, at=at, user_id=user_id)
+        return pool_range
 
     async def get_used(self, pool: CoreNumberPool, branch: Branch) -> list[int]:
         """Return the numbers the pool currently accounts for."""

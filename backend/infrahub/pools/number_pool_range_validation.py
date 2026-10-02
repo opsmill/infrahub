@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from infrahub.exceptions import ValidationError
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Collection, Iterable
 
 
 @dataclass(frozen=True)
@@ -47,3 +47,14 @@ def validate_number_pool_range(candidate: NumberRangeBounds, others: Iterable[Nu
     if clashes:
         clash_labels = ", ".join(f"{clash.label} ({clash.id})" for clash in clashes)
         raise ValidationError(input_value=f"Range {candidate.label} overlaps {clash_labels}")
+
+
+def validate_number_pool_ranges(ranges: Collection[NumberRangeBounds]) -> None:
+    """Refuse a pool's range set when one of its ranges is backwards or overlaps another.
+
+    Raises:
+        ValidationError: For the lowest offending range, naming the ranges it overlaps.
+
+    """
+    for candidate in sorted(ranges, key=lambda pool_range: (pool_range.start, pool_range.end)):
+        validate_number_pool_range(candidate=candidate, others=ranges)

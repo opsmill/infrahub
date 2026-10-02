@@ -95,7 +95,7 @@ Task identifiers are stable references, not an execution order: phases run in th
 ### Implementation
 
 - [X] T032 [US3] Add `InfrahubNumberPoolRangeMutation` in `backend/infrahub/graphql/mutations/resource_manager/number_pools/pool_range.py`: pool lock (`resource_pool.<pool_id>`), parent pool lookup, `start <= end`, overlap check naming clashing ranges, `NumberPoolShorthandMirror.sync` after create/update/delete; register it under `InfrahubKind.NUMBERPOOLRANGE` in the `mutation_map` of `backend/infrahub/graphql/manager.py`
-- [ ] T033 [US2] In `InfrahubNumberPoolMutation.mutate_create`: drop the T008 guard; accept shorthand, `ranges`, or neither; refuse shorthand combined with `ranges`; create the single range from the shorthand; keep the existing bound checks; take the pool lock when the shorthand or `ranges` is present
+- [X] T033 [US2] In `InfrahubNumberPoolMutation.mutate_create`: drop the T008 guard; accept shorthand, `ranges`, or neither; refuse shorthand combined with `ranges`; create the single range from the shorthand; keep the existing bound checks; take the pool lock when the shorthand or `ranges` is present
 - [ ] T034 [US3] In `InfrahubNumberPoolMutation.mutate_update`: pool lock; range-count rule for the shorthand (0 creates, 1 rewrites in place, more than 1 refused with the range list per contract); refuse shorthand combined with `ranges`; overlap validation after a `ranges` edit; `NumberPoolShorthandMirror.sync`
 
 **Checkpoint**: user-created pools fully manageable through GraphQL; a user pool holding one range allocates as before from the mirrored shorthand

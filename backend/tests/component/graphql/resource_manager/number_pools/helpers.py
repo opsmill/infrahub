@@ -1,12 +1,21 @@
 from dataclasses import dataclass
+from typing import Any
+
+from graphql import ExecutionResult
+
+from infrahub.core.branch import Branch
+from infrahub.database import InfrahubDatabase
+from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.pools.number_pool_repository import NumberPoolRepository
+from tests.helpers.graphql import graphql
 
 CREATE_NUMBER_POOL = """
 mutation CreateNumberPool(
     $name: String!,
     $node: String!,
     $node_attribute: String!,
-    $start_range: BigInt!,
-    $end_range: BigInt!
+    $start_range: BigInt,
+    $end_range: BigInt
   ) {
   CoreNumberPoolCreate(
     data: {
@@ -94,16 +103,37 @@ mutation CreateNumberPool($name: String!) {
     }
   ) {
     ok
-    object { id start_range { value } end_range { value } }
+    object { id start_range { value } end_range { value } ranges { count } }
   }
 }
 """
-
-
-UNKNOWN_RANGE_ID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
 
 @dataclass
 class BoundsCase:
     name: str
     bounds: str
+
+
+async def execute(db: InfrahubDatabase, branch: Branch, source: str, variables: dict[str, Any]) -> ExecutionResult:
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+    return await graphql(
+        schema=gql_params.schema,
+        source=source,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values=variables,
+    )
+
+
+async def range_bounds(db: InfrahubDatabase, pool_id: str) -> list[tuple[int, int]]:
+    ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
+    return [(pool_range.start.value, pool_range.end.value) for pool_range in ranges]
+
+
+async def range_details(db: InfrahubDatabase, pool_id: str) -> list[tuple[str, int, int, int | None]]:
+    ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
+    return [
+        (pool_range.get_id(), pool_range.start.value, pool_range.end.value, pool_range.allocation_weight.value)
+        for pool_range in ranges
+    ]
