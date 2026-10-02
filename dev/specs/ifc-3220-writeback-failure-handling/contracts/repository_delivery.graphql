@@ -12,7 +12,7 @@
 # 1. New fields on CoreRepository
 # ---------------------------------------------------------------------------------------------
 #
-# Generated from the schema attributes of data-model.md. All eight are branch-local, read-only
+# Generated from the schema attributes of data-model.md. All nine are branch-local, read-only
 # and optional, so none of them appears in CoreRepositoryCreateInput, CoreRepositoryUpdateInput or
 # CoreRepositoryUpsertInput. They are not on CoreGenericRepository and not on
 # CoreReadOnlyRepository.
@@ -93,12 +93,15 @@ type CoreRepository {
 #   - the global `manage_repositories` permission;
 #   - the global `edit_default_branch` permission.
 #
-# Availability (both), per the table "Actions by status" of data-model.md, checked in the mutation
-# and again in the workflow under the locks:
+# Availability (both), per the table "Actions by status" of data-model.md, checked in the mutation:
 #   - the repository is a CoreRepository and its internal status is not `staging`;
 #   - the queue is not empty;
-#   - retry only: no attempt is running, unless the delivery is stale;
 #   - abandon only: the named queue version is the current one.
+# A retry is allowed in every status other than `none`, a running attempt included: the retry
+# workflow waits for the repository lock and finds nothing if that attempt delivered.
+# The workflows re-check differently. The retry workflow calls `deliver`, whose first step decides,
+# and also releases held work behind an empty queue. The abandon workflow re-checks the version and
+# the queue inside its store transition, under both locks.
 # A refusal is a ValidationError with a message a user can act on.
 
 input RepositoryDeliveryRetryInput {
@@ -137,7 +140,6 @@ type Mutation {
 #   "Repository <name> has nothing pending to push."
 #   "Repository <name> is read-only and never pushes to its remote."
 #   "Repository <name> is staging; its changes are pushed when its proposed change merges."
-#   "A push of repository <name> is running; wait for it to finish."
 #   "The pending pushes of repository <name> changed since version <n>; reload and try again."
 #
 # The last one is also the failure message of the abandon workflow when the queue changed between
