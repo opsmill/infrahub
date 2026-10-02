@@ -301,3 +301,36 @@ async def test_enrich_dropped_kind_node_is_not_read_from_the_diff() -> None:
     # A node whose kind is gone stays unresolved, like a peer of that kind does.
     assert node.hfid is None
     assert reader.hfid_calls == []
+
+
+async def test_enrich_removed_node_hfid_from_diff_also_fills_it_as_a_peer() -> None:
+    resolver, reader = _resolver({"n1": ["A"]})
+    removed = _node("n2")
+    removed.add_attribute(attribute=_hfid_attribute(value=None, value_previous='["Gone"]'))
+    node = _node("n1")
+    node.relationships["owner"] = RelationshipCardinalityOneChangelog(name="owner", peer_id="n2")
+
+    await resolver.enrich(
+        changelogs=[(DiffAction.UPDATED, node), (DiffAction.REMOVED, removed)],
+        resolvable_ids=["n1", "n2"],
+        is_resolvable_kind=_any_kind_resolvable,
+    )
+
+    owner = node.relationships["owner"]
+    assert isinstance(owner, RelationshipCardinalityOneChangelog)
+    assert removed.hfid == ["Gone"]
+    assert owner.peer_hfid == ["Gone"]
+    assert reader.hfid_calls == [["n1", "n2"]]
+
+
+async def test_enrich_removed_dropped_kind_node_is_not_read_from_the_diff() -> None:
+    resolver, reader = _resolver({})
+    node = NodeChangelog(node_id="n1", node_kind="Dropped", display_label="label")
+    node.add_attribute(attribute=_hfid_attribute(value=None, value_previous='["From", "Diff"]'))
+
+    await resolver.enrich(
+        changelogs=[(DiffAction.REMOVED, node)], resolvable_ids=[], is_resolvable_kind=lambda kind: kind != "Dropped"
+    )
+
+    assert node.hfid is None
+    assert reader.hfid_calls == []
