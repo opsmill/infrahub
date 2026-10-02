@@ -12,7 +12,7 @@ import { SinglePageRev02 } from "./single-page/rev-02";
 import { TabsRev01 } from "./tabs/rev-01";
 import { TabsRev02 } from "./tabs/rev-02";
 
-const PR_URL: string | undefined = undefined;
+const PR_URL: string | undefined = "https://github.com/opsmill/infrahub/pull/10825";
 
 const KNOBS: Knob[] = [
   { key: "p2", label: "P2: sections fit their job", type: "toggle", value: true },
