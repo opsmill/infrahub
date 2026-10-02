@@ -150,7 +150,10 @@ on a running instance. The rollback is instead a code revert plus an automation 
 
 Deferred. An owner update can fire both the owner trigger and the query-group trigger for its own
 kind. That needs the query to read a field of that kind, and the update to touch that field.
-Matching creations only would remove the duplicate. It would also route every owner update through the query-group reverse
-index, which can lag the value it indexes. An update that lands in that window would be lost rather
-than late. The owner trigger submits by node id and has no such window, so it keeps matching
-updates until that lag is closed.
+Matching creations only would remove the duplicate. It would also leave the owner trigger covering
+creations alone, and the two kinds of update it drops today fare differently. An update to a field
+the query reads would go through the query-group reverse index. That index can lag the value, which
+opens a window where an update is lost rather than late. An update to any other field would lose
+its path altogether. No query-group trigger is built for a kind the query reads no field from. The
+owner trigger submits by node id and has neither problem, so it keeps matching updates until that
+lag is closed.
