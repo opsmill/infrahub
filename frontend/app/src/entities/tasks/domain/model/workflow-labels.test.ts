@@ -24,10 +24,22 @@ describe("getWorkflowLabel", () => {
     ["branch-merge", "Merge"],
     ["git-repository-merge", "Merge"],
     ["create-branch", "Create branch"],
+    ["branch-delete", "Delete branch"],
     ["git-repository-trigger-user-checks", "Checks"],
+    ["git-repository-user-checks-definition-trigger", "Checks"],
+    ["git-repository-trigger-internal-checks", "Checks"],
+    ["git-repository-check-merge-conflict", "Checks"],
     ["schema_validate_migrations", "Schema"],
+    ["trigger-update-display-labels", "Display labels"],
+    ["trigger-update-hfid", "HFID"],
     ["proposed-changed-run-generator", "Proposed change"],
+    ["proposed-change-merge", "Proposed change"],
+    ["proposed-change-validate-repository-conflicts", "Proposed change"],
+    ["proposed-changes-cancel-branch", "Proposed change"],
+    ["computed-attribute-setup-python", "Computed attribute"],
     ["computed_attribute_process_transform", "Computed attribute"],
+    ["trigger_update_python_computed_attributes", "Computed attribute"],
+    ["webhook-send", "Webhook"],
   ])("maps %s to %s", (workflow, label) => {
     expect(getWorkflowLabel(workflow)).toBe(label);
   });

@@ -36,7 +36,7 @@ const WORKFLOW_LABELS: Record<string, string> = {
 };
 
 const PREFIX_LABELS: [prefix: string, label: string][] = [
-  ["proposed-changed-", "Proposed change"],
+  ["proposed-change", "Proposed change"],
   ["computed-attribute", "Computed attribute"],
   ["computed_attribute", "Computed attribute"],
   ["trigger_update_python_computed_attributes", "Computed attribute"],
