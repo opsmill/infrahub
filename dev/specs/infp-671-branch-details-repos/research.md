@@ -17,6 +17,9 @@ Code references name the module and symbol. Line numbers are left out on purpose
 
 ## R1 — Repositories on the branch
 
+> **Superseded 2026-10-02** by § "Restructure (2026-10-02)" D1–D2: one server page ordered by name, plus a server-filtered failing/syncing query. The failing-first rank is dropped from the table; the bands carry it. The deviation from "backend is authoritative" recorded below no longer exists.
+
+
 **Decision**: One request per page view: the generic object list for `CoreGenericRepository` (or `CoreReadOnlyRepository` when the branch has Sync with Git off), sent with the **page's** branch as the GraphQL branch context (`graphqlClient.query({ context: { branch } })`), selecting `id`, `__typename`, `display_label`, `name { value }`, `commit { value }`, `sync_status { value label color description }`, `operational_status { value label color }`, and `count`. `limit = REPOSITORY_FETCH_LIMIT` (500). Ranking (import error → unreachable → rest, then name) and the 10-row pagination run on the client over that one result.
 
 **Rationale**:
@@ -33,6 +36,9 @@ Code references name the module and symbol. Line numbers are left out on purpose
 **Deviation recorded**: `dev/guidelines/frontend/page-architecture.md` § "Backend is authoritative" puts sort order and pagination on the server. This is a knowing, bounded exception (plan § Complexity Tracking).
 
 ## R2 — Latest import task and its last error line
+
+> **Amended 2026-10-02** by § "Restructure (2026-10-02)" D3: the lookup asks for the newest **failed** (`FAILED`, `CRASHED`) import, not the newest import, and the log is a second request keyed on the task id, fetched once.
+
 
 **Decision**: For each failing repository **whose band is rendered** (the first 3; the rest once "Show all" is used), one request:
 `InfrahubTask(branch: <page branch>, related_node__ids: [<repo id>], workflow: IMPORT_WORKFLOWS, limit: 1, log_limit: IMPORT_LOG_LIMIT)` selecting `count`, `id`, `state`, `updated_at`, `logs { edges { node { message severity timestamp } } }`.
@@ -75,9 +81,15 @@ The band's text is the **last** log whose `severity` is `error` or `critical` (t
 
 ## R4 — Freshness
 
+> **Amended 2026-10-02**: the syncing flag comes from the health query's server-filtered `syncing` count (`isAnyRepositorySyncing`), not from scanning the fetched list; the tasks query polls when `offset === 0`; a task's log is never polled.
+
+
 **Decision** (revised by critique P4/E6): the tasks query refetches every 10s **on page 1 only** (`refetchInterval: page === 1 ? 10_000 : false`), and the failed count every 10s. The repositories and import-band queries refetch every 10s **only while a listed repository's `sync_status` is `syncing`** (`refetchInterval: (query) => anySyncing(query.state.data) ? 10_000 : false`; the band queries take the flag from the repositories result), and otherwise on Refresh and window refocus (TanStack's default). Intervals pause in background tabs by default. Today's `TaskDisplay` polls every 5s; 10s matches the cadence IFC-3199 chose for repository state.
 
 ## R5 — Table pagination
+
+> **Superseded 2026-10-02** by § "Restructure (2026-10-02)" D4: IFC-3130's `table-pagination.tsx`, `table-pagination.ts`, `use-table-pagination.ts` and `CELL_HEIGHT_PX` are taken verbatim; `TABLE_PAGE_SIZE`, `TABLE_ROW_HEIGHT_PX` and the lucide chevrons are gone.
+
 
 **Decision**: Add `shared/components/table/table-pagination.tsx` (`TablePagination`) and `shared/utils/table-pagination.ts` (`TABLE_PAGE_SIZE = 10`, `TABLE_ROW_HEIGHT_PX = 40`, `getTotalPages`, `clampPage`, `getPageItems`, `formatPageWindow`), from the prototype's copy of IFC-3130's component, with the prototype's neutral classes replaced by theme tokens and `lucide` chevrons kept (the shared `Icon` token set isn't needed). Unit tests for the utils.
 
@@ -85,9 +97,15 @@ The band's text is the **last** log whose `severity` is `error` or `critical` (t
 
 ## R6 — Page state in the URL
 
+> **Superseded 2026-10-02** by § "Restructure (2026-10-02)" D4–D5: each card owns its page through `useTablePagination` (`repositories_page`, `tasks_page`), and `useCountClampedQuery` clamps it in the data hook instead of `usePageInRange` writing it back from an effect.
+
+
 **Decision**: Two new keys in `shared/config/qsp.ts::QSP`: `REPOSITORIES_PAGE: "repos_page"` and `TASKS_PAGE: "tasks_page"`, read with `nuqs` `parseAsInteger.withDefault(1)` in the Details tab page component (`pages/branches/branch-details/details-tab.tsx`), clamped with `clampPage`, passed down as `page`/`onPageChange`. The card components stay controlled (page-architecture: pages own URL sync). The "Show all" band toggle is local UI state (not shareable).
 
 ## R7 — Query keys and Refresh
+
+> **Amended 2026-10-02**: the root is `["repository"]` (IFC-3130 and IFC-3199's), keys are `branchRepositories`, `branchHealth`, `importTask`, `importLog`, `names` next to IFC-3199's `syncHealth`; `RefreshButton` has a single `queryKeys` prop and scopes its last-update time to those keys.
+
 
 **Decision**:
 - `entities/repository/ui/queries/repository.query-keys.ts::repositoryQueryKeys` (new): `all: ["repositories"]`, `branch: ({ branchName, kind }) => [...all, "branch", branchName, kind]`, `importError: ({ branchName, repositoryId }) => [...all, "import-error", branchName, repositoryId]`.
@@ -113,6 +131,9 @@ Exact token names are checked against `frontend/packages/ui/src/styles/theme.css
 
 ## R9 — Workflow labels
 
+> **Amended 2026-10-02**: the maps stay in `domain/model/workflow-labels.ts` (vocabulary); `getWorkflowLabel` moves to `domain/rules/get-workflow-label.ts` (a pure function).
+
+
 **Decision**: `entities/tasks/domain/model/workflow-labels.ts::getWorkflowLabel(workflow)` with a static map, raw id as fallback:
 
 | Label | Workflows |
@@ -129,9 +150,15 @@ It's presentation copy, not a filter, so it doesn't break "backend is authoritat
 
 ## R10 — Related column
 
+> **Amended 2026-10-02**: the names come from a small `CoreGenericRepository(ids: …)` query over the page's related node ids (§ "Restructure (2026-10-02)" D6), not from the repositories card's list.
+
+
 **Decision**: pure function `getTaskRelatedLabel(task, repositoriesById)`: first related node that is a listed repository → its name; no related nodes → "This branch"; otherwise the first node's kind, shown with the schema's label when `useSchema` knows it. Generator child runs are tagged with the definition and target, not the repository, so they show the definition's kind; placing them under a repository through `GeneratorDefinition.repository` is left out (another query per row, and the handoff lists it as a gap).
 
 ## R11 — No-permission detection
+
+> **Amended 2026-10-02**: the api layer no longer imports `CombinedError`; the use case reads the code with IFC-3130's `hasThrownCatalogueCode` and rejects with `BranchRepositoriesError("PERMISSION_DENIED")`. The state stays: see D7 below.
+
 
 **Decision**: The repositories use case inspects the GraphQL `errors` array: an error whose `extensions` parse (`shared/api/errors::parseCatalogueError`) to `ERROR_CODES.PERMISSION_DENIED` returns `{ status: "denied" }` instead of throwing; any other error throws (FR-020). The client already doesn't toast 403s (`shared/api/graphql/error-handling.ts`). `useGetObjectPermissions` isn't used: it reads the **current** branch from the branch selector, not the page's branch.
 
@@ -172,3 +199,34 @@ Read-only repositories are not synced periodically: `git_repositories_sync` only
 **Remaining gap**: the worker-bootstrap import (default branch only, after a worker re-clones) is not findable. The band's FR-022 fallback covers it. Backend ask in `follow-ups.md`.
 
 **T058 seeding**: use the initial add (`git-repository-add-read-write`). On a test branch, create a `CoreRepository` (`CoreRepositoryCreate`, as `tests/e2e/conftest.py` does for `demo-edge`) pointing at a local fixture repo whose default branch has an invalid `.infrahub.yml`. The flow is tagged at its start, fails deterministically and sets `error-import` on that branch. "Import current commit" (`RepositoryProcess` on the branch) is an equally resolvable second option. Avoid periodic sync: its timing isn't deterministic and its message lists every failing branch.
+
+## Restructure (2026-10-02)
+
+An architecture review of PR #10779, accepted by the owner, changed the data design and the shared pieces. The UX and the copy stay; the one visible change is that failing repositories no longer sort first in the table.
+
+**D1 — Server page for the table.** `CoreGenericRepository` (or `CoreReadOnlyRepository` when Sync with Git is off) with `limit`, `offset`, `count` and `order: { by: [{ field: "name__value", direction: ASC }] }`. The review's point: page-architecture puts sort and pagination on the server, and the bands already put failures in front of the reader, so the table doesn't need to rank. Empty states read `count`.
+
+**D2 — Server filter for the bands and for polling.** One request with three aliased lists: `importErrors` (`sync_status__values: ["error-import"]`), `unreachable` (`operational_status__values: [error-cred, error-connection, error]`) and `syncing` (`sync_status__values: ["syncing"]`, count only). GraphQL can't OR two attribute filters, so the two failing lists are deduplicated by `getFailingRepositories` (import error wins). This is IFC-3199's approach (`get-repository-sync-counts-from-api.ts` aliases filtered counts), with typed documents instead of `jsonToGraphQLQuery`. Bands are independent of the table page. `isAnyRepositorySyncing(health)` is the one polling decision, computed once in the card.
+
+**D3 — Failed import lookup.** `InfrahubTask(branch, related_node__ids: [repo], workflow: IMPORT_WORKFLOWS, state: [FAILED, CRASHED], limit: 1)` gives the newest failed import (`state` is a `[StateType]` argument on `InfrahubTask`). The log is a second request, `InfrahubTask(ids: [taskId], log_limit: IMPORT_LOG_LIMIT)`, keyed on the task id with `staleTime: Infinity` and no polling: a finished task's log doesn't change, so polling re-asks only for the task id and refetches the log only when it changes. Hidden bands aren't mounted, so logs are fetched for shown bands only. `IMPORT_LOG_LIMIT` stays: logs still come oldest first.
+
+Tasks that fail **before the run is tagged with the repository** stay unfindable. Checked in the backend:
+
+- `git-repository-import-object` (`import_objects_from_git_repository`) tags only the branch at start; the repository tag comes from `InfrahubRepositoryIntegrator.build_import_plan`, after `get_initialized_repo`. A failure in between leaves a run with no repository tag.
+- `sync-git-repo-with-origin` adds the repository tag on failure only when the repository was `online` before the sync; `build_import_plan` adds it otherwise, but the seeded stack showed periodic-sync failures tagged with `main` only (follow-ups.md).
+
+The frontend could match `parameters.model.repository_id` on untagged runs, since `TaskNode.parameters` is exposed. Rejected as in R2: it reads an untyped `GenericScalar`, couples the UI to each flow's parameter shape (`model.repository_id` for import-object, a top-level `repository_id` for the sync) and pages through unrelated failed tasks on the client. The "details couldn't be found" fallback stays, and follow-ups.md asks the backend to tag the repository at the start of every repository flow.
+
+**D4 — IFC-3130's shared pieces, verbatim.** `shared/utils/table-pagination.ts` (+ test), `shared/hooks/use-table-pagination.ts` (+ test), `shared/components/table/style.tsx` (`CELL_HEIGHT_PX`), `shared/api/graphql/error-handling.ts` (`hasThrownCatalogueCode`) and `shared/components/table/table-pagination.tsx` (+ test) come from `ple-branches-card-ifc-3130`. Two additive differences in `TablePagination`, which must also land in IFC-3130: the `aria-label` prop and `focusVisibleStyle` on its buttons (plus one test). `TABLE_ROW_HEIGHT_PX` is IFC-3130's `CELL_HEIGHT_PX`, same value.
+
+**D5 — Clamping without an effect.** IFC-3130's `useTablePagination` doesn't clamp; its card writes the clamped page back from an effect, and IFC-3200 plans a `clampToCount` on the hook. This PR adds `shared/hooks/use-count-clamped-query.ts`: the data hook asks for the requested page, and when the server's count says it is past the end, asks for the last real page with a second observer. Both cards use it. The URL keeps the out-of-range number until the next page change, which the review accepted (react.md: no effect-driven redirects).
+
+**D6 — Related names by id.** The Tasks card used to get repository names from a second `useGetBranchRepositories` call in `BranchDetails`. It now asks `CoreGenericRepository(ids: …)` for the related node ids of the page shown (≤ 10 tasks). Chosen over the kind label plus a link because it keeps today's copy, and over `useNodeLabel` per row because it is one request per page instead of one per node.
+
+**D7 — Permission denied is real.** `ObjectPermissionChecker.check` calls `raise_for_permissions` with `view` for every kind the query reads, so a user without view permission on the repository kinds gets `PERMISSION_DENIED` for the whole request. Rows are never silently dropped. IFC-3200's critique E3 ("a permission-restricted repository is simply an absent row") doesn't match this code; the denied state stays, now based on that catalogue code.
+
+**D8 — Tables stay hand-written.** IFC-3130 builds its card on `DataTable` with a `semanticTable` mode, `gridTemplateColumns`, skeleton props and a reworked `ObjectTableSkeleton`, none of which are on this base. Taking them means taking IFC-3130's 107-line `data-table.tsx` change while it is still under review, and the grid cells' borders and sticky columns would change this card's look, which the review keeps. IFC-3200's plan-synthesis also declines a shared `PaginatedTable` until a third consumer. The two tables stay plain `<table>`s; `TasksTable` drops its one-caller column API so IFC-3245 can generalise it.
+
+**D9 — URL keys.** `useTablePagination({ urlKey: "repositories" })` and `({ urlKey: "tasks" })` give `repositories_page` and `tasks_page`. `repos_page` links stop working; they never shipped (this PR is unmerged), so no alias is kept.
+
+**D10 — Test fixture root cause.** `test_import_error_band_links_to_the_task_page` failed twice in CI because `BranchAPI.create` defaults to `sync_with_git=False`: the card listed read-only repositories only and showed "Not synchronised with Git" (count 0), so the fixture's `CoreRepository` never got a row. Not a product bug under the current rule; the test now creates a Sync-with-Git branch and asserts on the band. The case does show that a `CoreRepository` created on a Sync-off branch still imports there (it reached `error-import`), so that empty state's "imports don't run on it" isn't always true. Raised for the owner in tasks.md.

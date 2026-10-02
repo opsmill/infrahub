@@ -21,7 +21,7 @@
 |---|---|---|---|
 | 1 | Open `/branches/bdr-demo` | Header: name, copy (screen reader: "Copy branch name"), metadata, status badge, description, Refresh at the right. Notice above it. Tabs, then the body card. | FR-001–005 |
 | 2 | Look at the Details tab | Details card → Git repositories → the five buttons → Tasks. | FR-005 |
-| 3 | Git repositories card | The broken repository is row 1, with the schema's "Import Error" pill; the unreachable one is next, with a warning icon; the read-only one has its tag; commits in monospace. | FR-010–013 |
+| 3 | Git repositories card | Rows in name order (2026-10-02: failing ones no longer first; their bands are); the broken repository has the schema's "Import Error" pill; the unreachable one a warning icon; the read-only one has its tag; commits in monospace. | FR-010–013 |
 | 4 | Bands | Red band "<repo> — import failed" with the raw error line; "View task log" opens `/tasks/<id>` for that import. Amber band for the unreachable one with "Open repository". | FR-021–023 |
 | 5 | Click Merge | Merges as today; nothing on the button changes because of the failures. | FR-030–031 |
 | 6 | Tasks card | Validate and import tasks, newest first; count and "N failed" in the header; a title opens its task page. | FR-040–042 |
@@ -31,7 +31,7 @@
 | 10 | Create `bdr-nosync` with Sync with Git off | Only read-only repositories, or "Not synchronised with Git". | FR-010, FR-019 |
 | 11 | Open the default branch | Details card only, no tabs, no actions, no tasks. | FR-005 |
 
-Pagination (10/11 boundaries, fixed height, URL `repos_page`/`tasks_page`, invalid page values) and the "3 bands + Show all" rule are covered by component tests with fixtures; to see them live, connect 11+ repositories or use the fixtures in Storybook-less mode via the component tests.
+Pagination (10/11 boundaries, fixed height, URL `repositories_page`/`tasks_page`, invalid page values) and the "3 bands + Show all" rule are covered by component tests with fixtures; to see them live, connect 11+ repositories or use the fixtures in Storybook-less mode via the component tests.
 
 ## Automated checks (before pushing)
 

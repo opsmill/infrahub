@@ -56,6 +56,15 @@ Details in `follow-ups.md`:
 4. Newest logs first for `InfrahubTask` (a log order argument or a "last N logs" option), so the
    band can ask for the last few lines instead of up to 10,000.
 
+## Restructure and IFC-3130 alignment (2026-10-02)
+
+- The shared pagination files are IFC-3130's (#10658), verbatim: `shared/utils/table-pagination.ts` (+ test), `shared/hooks/use-table-pagination.ts` (+ test), `shared/components/table/style.tsx`, `shared/api/graphql/error-handling.ts`.
+- `shared/components/table/table-pagination.tsx` (+ test) differs from IFC-3130's by two additions that should land there too: an `aria-label` prop (two pagers on one page need distinct landmark names) and `focusVisibleStyle` on its buttons.
+- `repository.query-keys.ts` uses the `["repository"]` root and keeps IFC-3199's `syncHealth` key verbatim; merging IFC-3130 adds its `branchStatus` key next to them.
+- URL change: `repos_page` → `repositories_page` (`tasks_page` unchanged).
+- UX change: failing repositories no longer sort first in the table; the bands show them on every page.
+- E2E: the import-error test failed twice because its branch had Sync with Git off (`BranchAPI.create` default); fixed in the test.
+
 ## Sign-off request: INFP-670
 
 @INFP-670 owner: this PR ships Merge **ungated**. Import errors, unreachable repositories and failed

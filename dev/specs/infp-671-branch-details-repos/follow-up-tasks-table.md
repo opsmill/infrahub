@@ -13,8 +13,11 @@ The app lists tasks in two ways:
   has the columns Title, Branch, State, Related nodes, Progress, Workflow and Updated at, and a
   search filter. It uses the older `Table` and a URL-driven `Pagination`.
 - **`TasksTable`** is the branch details page's table. It has the columns Title, State, Workflow,
-  Related and Updated. The column set is configurable, it uses IFC-3130 pagination at a fixed
-  height, and it shows short workflow labels ("Import", "Generator", "Proposed change").
+  Related and Updated, and shows short workflow labels ("Import", "Generator", "Proposed change").
+  It is a plain table: the card around it renders IFC-3130's `TablePagination` at a fixed height
+  and owns its page through `useTablePagination`. _(2026-10-02: its column configuration API
+  (`columns`, `ALL_TASK_COLUMNS`) was removed because it had one caller. This ticket brings back
+  whatever column selection the three pages need, designed for those callers.)_
 
 The same task looks different depending on the page, and improvements land in one place only.
 
@@ -22,13 +25,14 @@ The same task looks different depending on the page, and improvements land in on
 
 Move the three `TaskItems` pages onto `TasksTable`, and improve it once:
 
-1. **Columns per page:**
+1. **Columns per page** (add a column API to `TasksTable` for this; it has none today):
    - /tasks: all columns.
    - Object Tasks tab: no Related column (the page is the related node).
    - Proposed change Tasks tab: no Branch column.
    - Branch details: no Branch column (already done).
-2. **Pagination:** IFC-3130 `TablePagination` everywhere, server-side (`limit`, `offset`, `count`).
-   Each table keeps its own page parameter, so two tables on one page don't share it.
+2. **Pagination:** IFC-3130 `TablePagination` and `useTablePagination` everywhere, server-side
+   (`limit`, `offset`, `count`), clamped with `useCountClampedQuery` like the branch page. Each
+   table has its own `urlKey`, so two tables on one page don't share a page.
 3. **Filters on /tasks:** keep the search and the existing **state filter** (`TaskFilters` →
    `TasksFilterForm`'s State dropdown, read from the `state__value` URL filter) through the
    `TasksTable` migration; the branch page's "N failed" link relies on it. Consider a workflow
@@ -38,6 +42,9 @@ Move the three `TaskItems` pages onto `TasksTable`, and improve it once:
 5. **Related column:** make it stable. It shows the first related node's kind, and the backend's
    order changes: generator runs show "Generator Instance" on some rows and "Device" on others.
    Prefer a fixed priority (repository, then definition, then target), and link to the node.
+   `TasksTable` takes the names as a `relatedNames` map; the branch page fills it with one
+   `CoreGenericRepository(ids: …)` query over the page's related node ids
+   (`useGetRepositoryNames`). Other pages can do the same, or resolve every kind.
 6. **States:** use the same loading skeleton, empty state and "couldn't load" state as the branch
    page.
 7. **Workflow labels:** extend `getWorkflowLabel`. Unknown ids fall back to humanized text. List

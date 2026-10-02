@@ -30,7 +30,7 @@ const scenarios = [
       readOnlyTag: t.includes("Read-only"),
     }),
   },
-  { branch: "scn-all-clear", query: "?repos_page=2", shot: "scn-all-clear-repos-page-2", checks: (t) => ({ page2: /Showing 11 to 1\d of 1\d/.test(t) }) },
+  { branch: "scn-all-clear", query: "?repositories_page=2", shot: "scn-all-clear-repos-page-2", checks: (t) => ({ page2: /Showing 11 to 1\d of 1\d/.test(t) }) },
   {
     branch: "scn-import-error",
     checks: (t) => ({

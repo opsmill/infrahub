@@ -4,6 +4,8 @@
 
 Frontend-only. No schema, no migration, no new GraphQL field. These are the **domain** shapes the entity layer maps API results into (`entities/<entity>/domain/model/`), and the pure rules over them (`domain/rules/`).
 
+> **2026-10-02, restructure.** The repositories card no longer loads up to 500 rows and ranks, slices and scans them on the client. The table is one server page ordered by name; a separate health query filters failing and syncing repositories on the server. `BranchRepositoriesResult`, `REPOSITORY_FETCH_LIMIT`, `isTruncated`, `getRepositoryRank` and `rankRepositories` are gone. This file describes the restructured model; the decisions are in research.md § "Restructure (2026-10-02)".
+
 ## BranchRepository (`entities/repository/domain/model/branch-repository.ts`)
 
 One repository as seen from one branch.
@@ -18,48 +20,52 @@ One repository as seen from one branch.
 | `syncStatus` | `{ value: string \| null; label: string \| null; color: string \| null; description: string \| null }` | `sync_status` (Dropdown) on the branch | rendered from the schema's label/colour; raw value in a neutral tag when label/colour are missing |
 | `operationalStatus` | `{ value: string \| null; label: string \| null }` | `operational_status` (Dropdown), branch-agnostic | |
 
-### Constants (`domain/model/repository.ts`, existing file extended)
+The wire → domain mapping is `toBranchRepository` / `toBranchRepositories` in `api/branch-repository.mappers.ts` (entities-structure: mappers live in `api/`).
 
-- `REPOSITORY_SYNC_STATUS_IMPORT_ERROR = "error-import"`
+```ts
+interface BranchRepositoryPage {
+  repositories: BranchRepository[]; // one server page, ordered by name
+  count: number;                    // the server's total, which drives the badge, the pager and the empty states
+}
+
+interface BranchRepositoryHealth {
+  importErrors: BranchRepository[]; // sync_status__values: ["error-import"], ordered by name
+  unreachable: BranchRepository[];  // operational_status__values: REPOSITORY_OPERATIONAL_ERRORS, ordered by name
+  syncingCount: number;             // sync_status__values: ["syncing"], count only
+}
+
+type BranchRepositoriesErrorCode = "PERMISSION_DENIED" | "UNKNOWN";
+class BranchRepositoriesError extends Error { readonly code: BranchRepositoriesErrorCode }
+
+type RepositoryImportError =
+  | { status: "found"; taskId: string; message: string }
+  | { status: "not-found"; taskId: string | null }; // no failed task, or no error-level line
+```
+
+### Vocabulary (`domain/model/repository.ts`)
+
+- `REPOSITORY_SYNC_STATUS_IMPORT_ERROR = "error-import"`, `REPOSITORY_SYNC_STATUS_SYNCING = "syncing"`
 - `REPOSITORY_OPERATIONAL_ERRORS = ["error-cred", "error-connection", "error"] as const`
-- `REPOSITORY_FETCH_LIMIT = 500`
-- `IMPORT_WORKFLOWS` (research R2), `IMPORT_LOG_LIMIT = 10_000` (backend cap)
+- `IMPORT_WORKFLOWS` (research R2), `IMPORT_FAILED_TASK_STATES = [FAILED, CRASHED]`
+- `IMPORT_LOG_LIMIT = 10_000` (backend cap; still needed because logs come oldest first)
 - `MAX_VISIBLE_BANDS = 3`
 
 ### Rules (`entities/repository/domain/rules/`)
 
-- `hasImportError(repo): boolean` — `syncStatus.value === "error-import"`.
-- `isRepositoryUnreachable(repo): boolean` — `operationalStatus.value` ∈ `REPOSITORY_OPERATIONAL_ERRORS`. `unknown` and `online` are not failing.
-- `getRepositoryRank(repo): 2 | 1 | 0` — 2 import error, 1 unreachable, 0 otherwise.
-- `rankRepositories(repos): BranchRepository[]` — stable sort by rank desc, then `name` with `localeCompare` (case-insensitive). Pure; returns a new array.
-- `getFailingRepositories(repos): BranchRepository[]` — `rankRepositories(repos).filter(rank > 0)`; the band list (FR-024).
-- `getBandKind(repo): "import-error" | "unreachable"` — import error wins (spec US2 scenario 5).
+- `getRepositoryListKind(syncWithGit)` (`get-repository-list-kind.ts`) — `CoreReadOnlyRepository` when Sync with Git is off, else `CoreGenericRepository`. The GraphQL kind both queries list; not `BranchRepository.kind`.
+- `hasImportError(repo)`, `isRepositoryUnreachable(repo)` (`repository-failures.ts`) — `unknown` and `online` are not failing.
+- `getFailingRepositories(health)` — the band list: `importErrors`, then `unreachable` minus any already listed as an import error (one band per repository, import error wins: spec US2 scenario 5). Server order (name) within each group.
+- `getBandKind(repo): "import-error" | "unreachable"`.
+- `isAnyRepositorySyncing(health)` (`is-any-repository-syncing.ts`) — `syncingCount > 0`. The single polling decision for the page query, the health query and the band lookups.
+- `getLastErrorLine(logs): string | null` (`get-last-error-line.ts`) — last log with `severity` `error` or `critical`, verbatim, except Prefect's final-state wrapper `Finished in state <State>('…'[, type=<TYPE>])`, which is unwrapped to the exception it carries. A stopgap until `TaskError` is filled for git imports (IFC-3034; follow-ups.md).
 
-## BranchRepositoriesResult (`domain/use-cases/get-branch-repositories.ts`)
+### Use cases (`entities/repository/domain/use-cases/`)
 
-```ts
-type BranchRepositoriesResult =
-  | { status: "ok"; repositories: BranchRepository[]; count: number; isTruncated: boolean }
-  | { status: "denied" };
-```
-
-- Input: `{ branchName: string; syncWithGit: boolean }`. The **repository list kind** (`BranchRepositoryListKind`, the GraphQL kind queried and the "View all repositories" target) is `CoreReadOnlyRepository` when `syncWithGit === false`, else `CoreGenericRepository`. It is not `BranchRepository.kind`, which is always a concrete kind (table above).
-- `isTruncated = count > repositories.length`.
-- Non-permission GraphQL errors throw (the card's failed state).
-
-## RepositoryImportError (`domain/use-cases/get-repository-import-error.ts`)
-
-The band's content for one failing repository.
-
-```ts
-type RepositoryImportError =
-  | { status: "found"; taskId: string; message: string }
-  | { status: "not-found"; taskId: string | null };   // task missing, or no error-level line
-```
-
-- Input: `{ branchName, repositoryId }`.
-- `getLastErrorLine(logs): string | null` (rule, `domain/rules/get-last-error-line.ts`) — last log with `severity` `error` or `critical` (case-insensitive), message verbatim (no trim of inner newlines; trailing whitespace trimmed), except Prefect's final-state wrapper `Finished in state <State>('…'[, type=<TYPE>])`, which is unwrapped to the exception it carries (research "R2 verification results").
-- `taskId` is kept in `not-found` when a task exists without an error line, so the band links to its log; when `null`, the band links to the repository (FR-022).
+- `getBranchRepositories({ branchName, syncWithGit, limit, offset }) → BranchRepositoryPage`. Rejects with `BranchRepositoriesError("PERMISSION_DENIED")` when the GraphQL error carries that catalogue code (read with `hasThrownCatalogueCode`), else `"UNKNOWN"`.
+- `getBranchRepositoryHealth({ branchName, syncWithGit }) → BranchRepositoryHealth`.
+- `getRepositoryImportTask({ branchName, repositoryId }) → string | null` — the newest FAILED or CRASHED import task's id. A failed lookup returns `null` (the band never disappears).
+- `getImportTaskErrorMessage(taskId) → string | null` — `getLastErrorLine` over that task's log.
+- `getRepositoryNames({ branchName, ids }) → Record<string, string>` — for the Tasks card's Related column; ids that aren't repositories are absent.
 
 ## TaskListItem (`entities/tasks/domain/model/task-list-item.ts`)
 
@@ -80,25 +86,28 @@ type TaskListPage = { tasks: TaskListItem[]; count: number };
 - Use case `getBranchTasks({ branchName, offset, limit })` over `GET_TASK_LIST` (research R3).
 - Failed count: existing `getTaskCount({ branchName, state: [FAILED] })`. FAILED only: the Tasks page filters on a single state, so the count matches what the link opens.
 
-### Rules (`entities/tasks/domain/`)
+### Vocabulary and rules (`entities/tasks/domain/`)
 
-- `getWorkflowLabel(workflow: string | null): string` (`model/workflow-labels.ts`) — map in research R9; `null` → "—"; unknown → the id humanized (separators to spaces, first letter capitalised: `some_workflow` → "Some workflow").
-- `getTaskRelatedLabel(task, repositoriesById: Map<string, string>, getKindLabel?: (kind) => string): string` (`rules/get-task-related-label.ts`) — research R10. Lives in `tasks` domain and takes the repository names as a plain map, so `tasks` doesn't import `repository`.
+- `WORKFLOW_LABELS`, `WORKFLOW_PREFIX_LABELS` (`model/workflow-labels.ts`) — the label vocabulary (research R9).
+- `getWorkflowLabel(workflow)` (`rules/get-workflow-label.ts`) — `null` → "—"; unknown → the id humanized. _(2026-10-02: moved from `domain/model/` to `domain/rules/`; `model/` keeps only the maps.)_
+- `getTaskRelatedLabel(task, namesById, getKindLabel?, emptyLabel?)` (`rules/get-task-related-label.ts`) — research R10.
+- `getRelatedNodeIds(tasks)` (`rules/get-related-node-ids.ts`) — sorted, unique related node ids of a page; the input of the names lookup.
 
-## Pagination state (`shared/utils/table-pagination.ts`)
+## Pagination state
 
-- `TABLE_PAGE_SIZE = 10`, `TABLE_ROW_HEIGHT_PX = 40`.
-- `getTotalPages(totalCount, pageSize) = max(1, ceil(max(totalCount, 0) / pageSize))`.
-- `clampPage(page, totalPages)` — non-finite → 1, truncates, clamps to `[1, totalPages]`.
-- `getPageItems(page, totalPages, siblingCount = 1): (number | "ellipsis")[]`.
-- `formatPageWindow(page, pageSize, totalCount): string` — "Showing X to Y of Z" / "Showing X of Z".
-- Fixed height: when `totalPages > 1`, the table container's min-height is `(TABLE_PAGE_SIZE + 1) × TABLE_ROW_HEIGHT_PX` (header + 10 rows).
+Shared with IFC-3130 (`shared/utils/table-pagination.ts`, `shared/hooks/use-table-pagination.ts`, taken verbatim):
 
-URL: `repos_page`, `tasks_page` (positive integers, default 1), owned by the Details tab page.
+- `PAGE_SIZE = 10`; `getOffset(page, pageSize)`; `getTotalPages`; `clampPage`; `getPageItems`; `formatPageWindow`; `getPageUrlKey(urlKey) = "${urlKey}_page"`.
+- `useTablePagination({ urlKey }) → { page, pageSize, offset, setPage }`; dev-only warning when two mounted tables share a `urlKey`.
+- `useCountClampedQuery({ page, pageSize }, getQueryOptions)` (`shared/hooks/use-count-clamped-query.ts`, this PR) — asks for the requested page and, when the server's count puts it past the end, for the last real page. The clamp happens in the data hook; the URL isn't written back.
+- Fixed height: when `count > PAGE_SIZE`, the table container's min-height is `(PAGE_SIZE + 1) × CELL_HEIGHT_PX` (header + 10 rows). `CELL_HEIGHT_PX = 40` lives in `shared/components/table/style.tsx` (IFC-3130).
+
+URL: `repositories_page`, `tasks_page` (`useTablePagination` with `urlKey` `repositories` and `tasks`), owned by each card. _(2026-10-02: was `repos_page` / `tasks_page`, owned by the Details tab page.)_
 
 ## State transitions
 
-- Repositories card: `loading → ok | denied | failed`; `ok` renders `empty-not-synced | empty-none | table(+bands)`.
-- Band: `loading → found | not-found`; failure of the band query behaves as `not-found` (the band never disappears).
-- Bands list: `collapsed (≤3 visible) ⇄ expanded (all)` — only when more than 3.
+- Repositories card: `loading → ok | denied | failed`; `ok` renders `empty-not-synced | empty-none` when `count === 0`, else `table(+pager)` and the bands.
+- Bands: from the health query, independent of the table page. Hidden until it loads; a failed health query shows no band.
+- Band: `loading → found | not-found`; failure of either lookup behaves as `not-found` (the band never disappears).
+- Bands list: `collapsed (≤3 visible) ⇄ expanded (all)` — only when more than 3; resets on another branch.
 - Tasks card: `loading → ok(empty | table) | failed`.

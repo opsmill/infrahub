@@ -59,9 +59,9 @@ writable repositories to your network.
 
 | Branch | Shows | URL |
 |---|---|---|
-| `scn-all-clear` | Every repository in sync, Read-only tag, repositories pager (page 2: `?repos_page=2`) | http://localhost:8080/branches/scn-all-clear |
+| `scn-all-clear` | Every repository in sync, Read-only tag, repositories pager (page 2: `?repositories_page=2`) | http://localhost:8080/branches/scn-all-clear |
 | `scn-import-error` | One red band `scn-fixtures — import failed`, raw error line, View task log | http://localhost:8080/branches/scn-import-error |
-| `scn-many-errors` | Five import errors first in the table: 3 bands, "N more repositories with errors", Show all / Collapse; `scn-repo-02` says the error details couldn't be found | http://localhost:8080/branches/scn-many-errors |
+| `scn-many-errors` | Five import errors: 3 bands (the table keeps name order), "N more repositories with errors", Show all / Collapse; `scn-repo-02` says the error details couldn't be found | http://localhost:8080/branches/scn-many-errors |
 | `scn-generator-failed` | 20 generator runs, the 10 `scn-gen-fail` ones FAILED, "11 failed" in the header, tasks pager | http://localhost:8080/branches/scn-generator-failed |
 | `scn-many-tasks` | Tasks table over 10 rows (12 Validate runs), tasks pager (`?tasks_page=2`) | http://localhost:8080/branches/scn-many-tasks |
 | `scn-no-git` | Sync with Git off: only the read-only repository is listed | http://localhost:8080/branches/scn-no-git |

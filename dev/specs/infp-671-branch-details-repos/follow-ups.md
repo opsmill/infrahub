@@ -30,6 +30,24 @@ commit" on the branch does produce a findable task.
 **Ask**: tag the sync run with every branch it imports, before the import can fail, or run each
 branch's import in its own tagged subflow.
 
+## Tag the repository at the start of every repository flow
+
+_Added 2026-10-02 (restructure)._
+
+**Where**: `backend/infrahub/git/tasks.py::import_objects_from_git_repository` (`git-repository-import-object`) and `sync_git_repo_with_origin_and_tag_on_failure` (`sync-git-repo-with-origin`); `backend/infrahub/workflows/utils.py::add_tags`.
+
+**Problem**: the band looks up `InfrahubTask(branch, related_node__ids: [repository], workflow, state: [FAILED, CRASHED])`. `git-repository-import-object` tags only the branch at start (`add_branch_tag`); the repository tag is added later, in `InfrahubRepositoryIntegrator.build_import_plan`. A run that fails before that (for example in `get_initialized_repo`) has no repository tag, so the band can't find it and says the error details couldn't be found. `sync-git-repo-with-origin` adds the repository tag on failure only when the repository was `online` beforehand. The frontend could match `TaskNode.parameters` instead, but that couples it to each flow's parameter shape; not done (research § "Restructure (2026-10-02)" D3).
+
+**Ask**: call `add_tags(branches=[<branch>], nodes=[<repository id>])` as the first statement of every flow that imports or syncs a repository, so every failure is findable by branch and repository.
+
+## Fill `TaskError` for git imports (IFC-3034)
+
+_Added 2026-10-02 (restructure)._
+
+**Problem**: the band takes the last `error`/`critical` log line and unwraps Prefect's `Finished in state Failed('Flow run encountered an exception: …')` wrapper (`entities/repository/domain/rules/get-last-error-line.ts`). That parsing is a stopgap: it depends on Prefect's wording and on reading up to 10,000 log lines.
+
+**Ask**: fill `TaskNode.error` (`TaskError`, today filled for webhook tasks only) for git import flows, as IFC-3034 plans. The band can then read the classified error and drop `getLastErrorLine`'s wrapper parsing and the log fetch.
+
 ## Structured "last import" on the repository
 
 **Problem**: the frontend finds an import failure indirectly. It looks up the latest import flow run by tags, then takes the last `error`/`critical` log line, which is Prefect's `Finished in state Failed('Flow run encountered an exception: …')` wrapper. A periodic-sync failure message also lists every failing branch, not only the one being viewed.
@@ -43,3 +61,5 @@ branch's import in its own tagged subflow.
 **Problem**: logs come back oldest first, with no sort option, and `logs.count` is the number returned rather than the total. To read the last error line of an import, the frontend has to ask for up to `NB_LOGS_LIMIT` (10,000) lines, and a longer log still loses its tail.
 
 **Ask**: a log order argument (e.g. `log_order: DESC`) or a "last N logs" option on `InfrahubTask`, so the band can ask for the last few lines.
+
+_(2026-10-02: since the restructure the log is fetched once per failed task and never polled, so the cost is one large read per band rather than one every 10 seconds. The ask stands.)_

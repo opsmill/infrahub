@@ -161,6 +161,33 @@
 
 ---
 
+## Restructure (2026-10-02)
+
+Follows the accepted architecture review of PR #10779 (research.md § "Restructure (2026-10-02)", D1–D10). UX and copy unchanged, except that failing repositories no longer sort first in the table. Earlier tasks that describe the replaced design (T002 QSP keys, T003 `TABLE_PAGE_SIZE`, T006 `getBranchQspOverride`, the 500-row fetch and ranking, `usePageInRange`) are kept as history.
+
+- [X] R001 Take IFC-3130's shared pagination verbatim: `table-pagination.ts` (+ test), `use-table-pagination.ts` (+ test), `CELL_HEIGHT_PX`, `hasThrownCatalogueCode`, `TablePagination` (+ test) with this PR's `aria-label` prop and focus ring added. Commit `5be40fe1c7`.
+- [X] R002 Replace `usePageInRange` with `useCountClampedQuery` (clamp in the data hook, no effect); drop the `REPOSITORIES_PAGE`/`TASKS_PAGE` QSP keys. Commit `5be40fe1c7`.
+- [X] R003 Server page for the repositories table (`limit`, `offset`, `count`, `order` by name); drop `REPOSITORY_FETCH_LIMIT`, `isTruncated` and the truncation notice, `rankRepositories` and `getRepositoryRank`. Commit `d865a236cc`.
+- [X] R004 Server-filtered health query (import errors, unreachable, syncing count) feeding the bands and the single polling decision `isAnyRepositorySyncing`. Commit `d865a236cc`.
+- [X] R005 Newest FAILED/CRASHED import task, and its log in a second query keyed on the task id, fetched once, never polled. Commit `d865a236cc`.
+- [X] R006 Layering: mapper to `api/branch-repository.mappers.ts`, no `@urql/core` outside `client.ts`, `BranchRepositoriesError` for the (real) denied state, list-kind rule to `domain/rules`, query keys on the `["repository"]` root with IFC-3199's `syncHealth`. Commit `d865a236cc`.
+- [X] R007 Cards own their page (`repositories_page`, `tasks_page`); `BranchTasksSection` and its second repositories query removed; Related names from one `ids` query over the page; `isDefaultBranch` drilling replaced by `getBranchQsp`; `TasksTable` without its column API; `getWorkflowLabel` to `domain/rules`. Commit `1431dddf00`.
+- [X] R008 `RefreshButton`: single `queryKeys` prop, last-update time scoped to its keys; Tasks page updated. Commit `f0c9f4586c`.
+- [X] R009 e2e: create the import-error branch with Sync with Git on (root cause of the two CI failures) and assert on the band, not the row. Commit `32a28e5163`.
+- [X] R010 Spec docs (plan, research, data-model, contracts, follow-ups, follow-up-tasks-table, scenarios) aligned with the restructure.
+
+### Open decisions for the owner
+
+1. **File paths shared with IFC-3200's plan.** IFC-3200 (`plan-synthesis.md` N2, N3, N4, N6) plans `entities/repository/api/get-branch-repositories-from-api.ts`, `domain/model/branch-repository.ts`, `domain/use-cases/get-branch-repositories.ts` and `ui/queries/get-branch-repositories.query.ts`, the paths this PR uses, with different shapes (its own `hasFailedImport`, `SYNC_STATUS_ERROR_IMPORT`, a `ref`/`default_branch` Tracking column). Pick one owner per file before IFC-3200 starts, or have IFC-3200 build on these.
+2. **`clampToCount` vs `useCountClampedQuery`.** IFC-3200 (T001) plans a `clampToCount` on `use-table-pagination.ts` and to collapse IFC-3130's effect onto it. This PR keeps that file verbatim and adds a separate hook. One of the two should become the shared answer, and IFC-3130's card should use it.
+3. **Two `TablePagination` additions** (`aria-label`, focus ring) need to land in IFC-3130, or this PR's version wins the merge.
+4. **IFC-3130's `DataTable` vs hand-written tables** (D8). If the branches card's look should become the standard, both tables here move onto `DataTable` once IFC-3130 lands.
+5. **Sync-off branch with a `CoreRepository` created on it** (D10). The card lists read-only repositories only and says "imports and generators don't run on it", yet such a repository does import there and can fail. Keep the rule, or list every kind when the branch has its own repositories.
+6. **Failing repositories are unbounded in the health query.** No `limit`: fine for a handful, heavy if hundreds fail. A limit would need the summary line to use the server's count instead of listing names.
+7. **URL keys** (D9): `repos_page` is now `repositories_page`; no alias kept, since the feature hasn't shipped.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phases
