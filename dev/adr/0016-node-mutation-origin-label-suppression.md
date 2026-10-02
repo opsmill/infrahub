@@ -29,7 +29,8 @@ Keep emitting one `NodeMutatedEvent` per changed node, but stamp each with an `o
 (`infrahub.node.origin`). The three coalesced families' cross-node trigger builders add a match
 so their per-node flows fire only on `live` events; the coalesced pass becomes their single
 dispatcher for merge and rebase; the Python-transform family joined later
-([ADR 0020](0020-python-transform-recompute-targets.md)), as the Neutral section records. The bulk writer stamps `recompute` on its own writes so a chained recompute does not
+([ADR 0020](0020-python-transform-recompute-targets.md)), as the Neutral section records.
+The bulk writer stamps `recompute` on its own writes so a chained recompute does not
 re-enter the per-node path either.
 
 Families that are not coalesced in this pass keep receiving every event whatever the origin:
