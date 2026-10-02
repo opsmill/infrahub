@@ -166,11 +166,11 @@ FR-005a therefore covers both worktrees. **It refuses the merge rather than reco
 FR-005c says why that distinction matters.
 
 Reconciling inside the merge path looks tempting and destroys the evidence.
-`InfrahubRepository.merge` calls `update_commit_value` on the destination before it pushes, so a
-reset-then-merge writes the merge commit to the graph. The next cycle then compares the graph
-against the remote, finds them equal, and classifies `UNCHANGED`. No record, no trunk signal, no
-re-import of the rewritten content. Resetting the source is worse still: it pulls in the rewritten
-history and merges objects the graph never imported.
+`InfrahubRepository.merge` pushes the merge commit before it records it on the destination, so a
+reset-then-merge puts the merge commit on the remote and in the graph. The next cycle then compares
+the graph against the remote, finds them equal, and classifies `UNCHANGED`. No record, no trunk
+signal, no re-import of the rewritten content. Resetting the source is worse still: it pulls in
+the rewritten history and merges objects the graph never imported.
 
 Refusing keeps one owner for reconciliation. The synchronisation cycle resets, records, signals and
 re-imports, in that order, under the repository lock. The merge fails with a typed error, the next
@@ -544,7 +544,12 @@ feature. Tasks cover all three.
 
 Two of the four "Volatile section" notes in `git-integration.md` need rewriting. The one under
 "How git errors are classified" describes this feature as planned. The one on the merge ordering
-describes push-before-graph-write as intended, and it shipped with IFC-1449, so the paragraph above
-it still says a merge commit "exists on exactly one worker's disk", which is no longer true.
+describes push-before-graph-write as intended, and it shipped with IFC-1449, so the section it sits
+in, "The writeback direction has no reconciliation", is stale around it. Its first bullet still
+states that `InfrahubRepository.merge` writes the new commit to the graph before pushing. Its third
+bullet, "Re-running the merge no-ops", still describes a local merge commit that stays on disk
+after a rejected push, which the reset now removes, so a retry re-derives the merge and reaches the
+push again. The paragraph below the bullets still says a merge commit "exists on exactly one
+worker's disk". Only the second bullet, "Nothing ever re-pushes", stays accurate.
 **Leave the other two alone.** They cover the trunk fallback (PR #10542) and the persisted
 writeback state (IFC-3220). Rewriting those would claim two other fixes shipped.

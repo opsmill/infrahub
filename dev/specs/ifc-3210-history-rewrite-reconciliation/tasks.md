@@ -316,12 +316,11 @@ emits no signal.
       nothing is lost, and refusing there would refuse again on every retry, because the cron heals
       whichever worker runs it rather than the one the merge lands on. A refusal raises a typed
       error naming a divergent remote history.
-      **In that refusing case, do not reset and merge instead.** `merge` calls
-      `update_commit_value` on the destination before it
-      pushes, so a reset-then-merge writes the merge commit to the graph. The next cycle then finds
-      the graph and the remote in agreement, classifies `UNCHANGED`, and the rewrite is never
-      recorded, never signalled and never re-imported. Resetting the source is worse: it merges
-      objects the graph never imported.
+      **In that refusing case, do not reset and merge instead.** `merge` pushes the merge commit
+      before it records it on the destination, so a reset-then-merge puts the merge commit on the
+      remote and in the graph. The next cycle then finds the graph and the remote in agreement,
+      classifies `UNCHANGED`, and the rewrite is never recorded, never signalled and never
+      re-imported. Resetting the source is worse: it merges objects the graph never imported.
       The source side is the dangerous one either way. `merge` reads the commit it merges from the
       local source ref via `get_commit_value(..., remote=False)`, and nothing fetches first, so a
       worker holding a stale source branch would merge the pre-rewrite history into the trunk and
@@ -610,10 +609,16 @@ read-write repository's configured default branch. Neither writes a record.
       `dev/knowledge/backend/git-integration.md`. The one under "How git errors are classified"
       describes this feature as planned; it now describes what shipped: the ancestry detection, the
       pull-path reset, the widened broadcast and the record. The one on the merge ordering
-      describes push-before-graph-write as intended, and IFC-1449 shipped it, so the paragraph
-      above it still claims a merge commit "exists on exactly one worker's disk". Correct both.
-      Leave the other two alone: they cover the trunk fallback (PR #10542) and the persisted
-      writeback state (IFC-3220). Rewriting those would claim two other fixes shipped.
+      describes push-before-graph-write as intended, and IFC-1449 shipped it, so the section it
+      sits in, "The writeback direction has no reconciliation", is stale around it. Correct the
+      note and that section together. Its first bullet still states that
+      `InfrahubRepository.merge` writes the new commit to the graph before pushing. Its third
+      bullet, "Re-running the merge no-ops", still describes a local merge commit that stays on
+      disk after a rejected push, which the reset now removes, so a retry re-derives the merge and
+      reaches the push again. The paragraph below the bullets still claims a merge commit "exists
+      on exactly one worker's disk". Leave the second bullet, "Nothing ever re-pushes", as it is.
+      Leave the other two volatile notes alone: they cover the trunk fallback (PR #10542) and the
+      persisted writeback state (IFC-3220). Rewriting those would claim two other fixes shipped.
 - [ ] T090 [P] Document the two limitations under `docs/docs/git-integration/`, which is the
       published section. Do not edit `docs/archive/topics/repository.mdx`: neither
       `docusaurus.config.ts` nor `sidebars.ts` references it, so an edit there ships nothing. The
@@ -682,8 +687,8 @@ ordering arrived with IFC-1449.
 nothing, whatever put it there. Treat the row as a correctness rule in the detector, not as cover
 for the merge path.
 
-T012's force-push helper, the Gogs harness, `_push_commit_to_remote` and the two `pre-receive` hook
-helpers are all on `develop`.
+The Gogs harness, `_push_commit_to_remote` and the two `pre-receive` hook helpers are already on
+`develop`. The force-push helper is not. T012 adds it.
 
 Inside Phase 3, T016 (build the candidate set), T017 (classify), T020 and T021 to T024 change no
 worktree. T026 asserts that a rewritten branch reconciles, which only T018 delivers, so it moves
