@@ -1,5 +1,5 @@
 import { Button, type ButtonProps, Tooltip } from "@infrahub/ui";
-import { matchQuery, useIsFetching } from "@tanstack/react-query";
+import { matchQuery, type Query, useIsFetching } from "@tanstack/react-query";
 import { CheckIcon, RefreshCwIcon } from "lucide-react";
 import React from "react";
 
@@ -9,40 +9,40 @@ import { classNames } from "@/shared/utils/common";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
+type QueryKeyPrefix = readonly unknown[];
+
 export interface RefreshButtonProps extends ButtonProps {
-  queryKey?: readonly unknown[];
-  queryKeys?: ReadonlyArray<readonly unknown[]>;
+  queryKeys?: ReadonlyArray<QueryKeyPrefix>;
 }
 
-function getLastUpdateTime() {
-  const queries = queryClient.getQueryCache().findAll({ type: "active" });
+const DEFAULT_QUERY_KEYS = [objectQueryKeys.all];
+
+const isWatched = (queryKeys: ReadonlyArray<QueryKeyPrefix>, query: Query) =>
+  queryKeys.some((queryKey) => matchQuery({ queryKey }, query));
+
+function getLastUpdateTime(queryKeys: ReadonlyArray<QueryKeyPrefix>) {
+  const queries = queryClient
+    .getQueryCache()
+    .findAll({ type: "active", predicate: (query) => isWatched(queryKeys, query) });
   if (queries.length === 0) return null;
   return Math.max(...queries.map((q) => q.state.dataUpdatedAt));
 }
 
-export function RefreshButton({ queryKey, queryKeys, ...props }: RefreshButtonProps) {
-  const watchedQueryKeys = queryKeys ?? [queryKey ?? objectQueryKeys.all];
+export function RefreshButton({ queryKeys = DEFAULT_QUERY_KEYS, ...props }: RefreshButtonProps) {
   const [isRefreshSuccess, setIsRefreshSuccess] = React.useState(false);
-  const [dataUpdatedAt, setDataUpdatedAt] = React.useState(getLastUpdateTime());
-  const isFetching = useIsFetching({
-    predicate: (query) =>
-      watchedQueryKeys.some((watchedQueryKey) => matchQuery({ queryKey: watchedQueryKey }, query)),
-  });
+  const [dataUpdatedAt, setDataUpdatedAt] = React.useState(() => getLastUpdateTime(queryKeys));
+  const isFetching = useIsFetching({ predicate: (query) => isWatched(queryKeys, query) });
   const isRefetching = isFetching > 0;
   const { formatDate } = useFormatDate();
 
   React.useEffect(() => {
     if (isFetching > 0) return;
-    const lastUpdateTime = getLastUpdateTime();
+    const lastUpdateTime = getLastUpdateTime(queryKeys);
     if (lastUpdateTime !== null) setDataUpdatedAt(lastUpdateTime);
-  }, [isFetching]);
+  }, [isFetching, queryKeys]);
 
   const handleRefresh = async () => {
-    await Promise.all(
-      watchedQueryKeys.map((watchedQueryKey) =>
-        queryClient.invalidateQueries({ queryKey: watchedQueryKey })
-      )
-    );
+    await Promise.all(queryKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
     setIsRefreshSuccess(true);
     setTimeout(() => setIsRefreshSuccess(false), 2000);
   };

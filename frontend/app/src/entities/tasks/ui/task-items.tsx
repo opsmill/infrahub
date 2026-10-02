@@ -168,7 +168,10 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
   return (
     <Col className="gap-0">
       <Row className="p-2">
-        <RefreshButton className="rounded-md border-border-strong" queryKey={tasksQueryKeys.all} />
+        <RefreshButton
+          className="rounded-md border-border-strong"
+          queryKeys={[tasksQueryKeys.all]}
+        />
         <FilterSearchInput placeholder="Filter tasks..." />
         <TaskFilters />
       </Row>
