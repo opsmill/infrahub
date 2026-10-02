@@ -848,7 +848,21 @@ async def import_read_only_repository_last_commit(model: GitReadOnlyRepositoryIm
             infrahub_branch_name=model.infrahub_branch_name,
             ref=model.ref,
         )
-        await repo.update_latest_commit()
+        imported_commit = await repo.update_latest_commit()
+
+        # Only this worker fetched; the rest of the pool has to be told to pick up the same commit.
+        message = messages.RefreshGitFetch(
+            meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+            location=model.location,
+            repository_id=model.repository_id,
+            repository_name=model.repository_name,
+            repository_kind=InfrahubKind.READONLYREPOSITORY,
+            infrahub_branch_name=model.infrahub_branch_name,
+            infrahub_branch_id=model.infrahub_branch_id,
+            commit=imported_commit,
+        )
+        message_bus = await get_message_bus()
+        await message_bus.send(message=message)
 
 
 @flow(name="git-repository-warm-up", flow_run_name="Warm up the local copy of repository {repository_id}")

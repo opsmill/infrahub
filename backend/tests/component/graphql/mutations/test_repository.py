@@ -272,7 +272,9 @@ async def test_import_read_only_repository_last_commit(
                         repository_id=repo.id,
                         repository_name=str(repo.name.value),
                         repository_kind=repo.get_kind(),
+                        location="/tmp/repo",
                         infrahub_branch_name=default_branch.name,
+                        infrahub_branch_id=str(default_branch.get_uuid()),
                         ref="main",
                     )
                 },

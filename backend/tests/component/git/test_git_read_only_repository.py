@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import anyio
 import pytest
+from fast_depends import Provider
 from git import Repo  # type: ignore[attr-defined]
 from git.exc import GitCommandError
 from infrahub_sdk.client import Config, InfrahubClient
@@ -13,8 +14,11 @@ from infrahub.exceptions import RepositoryError
 from infrahub.git.models import GitReadOnlyRepositoryImportCommit
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.git.tasks import import_read_only_repository_last_commit
+from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.services import InfrahubServices
 from infrahub.utils import find_first_file_in_directory
+from infrahub.workers.dependencies import build_message_bus
+from tests.adapters.message_bus import BusRecorder
 from tests.helpers.test_client import dummy_async_request
 
 
@@ -186,11 +190,13 @@ async def test_import_read_only_repository_last_commit(
     mock_get_client: MagicMock,
     git_repo_01_read_only: InfrahubReadOnlyRepository,
     git_upstream_repo_01: dict[str, str | Path],
+    dependency_provider: Provider,
 ) -> None:
     repo = git_repo_01_read_only
     repo.client = AsyncMock()
     repo.ref = "main"
     initial_commit_id = repo.get_commit_value(branch_name="main")
+    bus = BusRecorder()
 
     upstream = Repo(git_upstream_repo_01["path"])
     upstream.git.checkout("main")
@@ -209,11 +215,21 @@ async def test_import_read_only_repository_last_commit(
         repository_id=str(repo.id),
         repository_name=str(repo.name),
         repository_kind=InfrahubKind.READONLYREPOSITORY,
+        location=str(git_upstream_repo_01["path"]),
         infrahub_branch_name="main",
+        infrahub_branch_id="8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba",
         ref="main",
     )
-    await import_read_only_repository_last_commit(model=model)
+    with dependency_provider.scope(build_message_bus, lambda: bus):
+        await import_read_only_repository_last_commit(model=model)
 
     new_commit_id = repo.get_commit_value(branch_name="main")
     assert initial_commit_id != new_commit_id
     assert new_commit_id == str(upstream.head.commit)
+    # Only this worker fetched, so the rest of the pool is told to check out the same commit.
+    assert [
+        (message.infrahub_branch_name, message.infrahub_branch_id, message.commit, message.repository_kind)
+        for message in bus.messages
+        if isinstance(message, RefreshGitFetch)
+    ] == [("main", "8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba", new_commit_id, InfrahubKind.READONLYREPOSITORY)]
+    assert len(bus.messages) == 1
