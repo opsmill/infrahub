@@ -1,4 +1,4 @@
-import { QueryClient, useIsFetching } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import BranchesList from "@/entities/branches/ui/branches-list";
@@ -6,11 +6,6 @@ import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-k
 import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
 import { render } from "../../../../tests/components/render";
-
-vi.mock("@tanstack/react-query", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
-  return { ...actual, useIsFetching: vi.fn(() => 0) };
-});
 
 vi.mock("@/entities/branches/ui/branches-table/branches-table", () => ({
   BranchesTable: () => <div>branches table</div>,
@@ -50,15 +45,21 @@ describe("BranchesList", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: repositoryQueryKeys.all });
   });
 
-  test("keeps the reload indicator busy while repositories are still refreshing", async () => {
+  test("keeps the reload indicator busy until both refreshes finish, and only for a reload", async () => {
     // GIVEN
-    vi.mocked(useIsFetching).mockReturnValue(1);
+    const pending: Array<() => void> = [];
+    vi.spyOn(QueryClient.prototype, "invalidateQueries").mockImplementation(
+      () => new Promise<void>((resolve) => pending.push(resolve))
+    );
+    const { container } = await render(<BranchesList />);
+    expect(findReloadControl(container)?.className).not.toContain("animate-spin");
 
     // WHEN
-    const { container } = await render(<BranchesList />);
+    findReloadControl(container)?.click();
 
     // THEN
-    expect(useIsFetching).toHaveBeenCalledWith({ queryKey: repositoryQueryKeys.all });
-    expect(findReloadControl(container)?.className).toContain("animate-spin");
+    await expect.poll(() => findReloadControl(container)?.className).toContain("animate-spin");
+    for (const resolve of pending) resolve();
+    await expect.poll(() => findReloadControl(container)?.className).not.toContain("animate-spin");
   });
 });

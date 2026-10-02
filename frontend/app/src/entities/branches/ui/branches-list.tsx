@@ -1,4 +1,5 @@
-import { useIsFetching, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import Content from "@/shared/components/layout/content";
@@ -16,21 +17,26 @@ import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository
 function BranchesListHeader() {
   const [filters] = useFilters();
   const { data: count, isPending, isRefetching, isError } = useGetBranchesCount(filters);
-  const repositoriesFetching = useIsFetching({ queryKey: repositoryQueryKeys.all });
+  const [isReloading, setIsReloading] = useState(false);
   const queryClient = useQueryClient();
 
   const refetchBranches = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all }),
-      queryClient.invalidateQueries({ queryKey: repositoryQueryKeys.all }),
-    ]);
+    setIsReloading(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: repositoryQueryKeys.all }),
+      ]);
+    } finally {
+      setIsReloading(false);
+    }
   };
 
   return (
     <Content.CardTitle
       title="Branches"
       badgeContent={isPending ? "..." : isError ? "-" : count}
-      isReloadLoading={isRefetching || repositoriesFetching > 0}
+      isReloadLoading={isRefetching || isReloading}
       reload={refetchBranches}
     />
   );

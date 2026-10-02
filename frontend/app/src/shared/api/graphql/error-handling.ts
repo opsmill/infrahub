@@ -17,11 +17,15 @@ export function hasCatalogueCode(error: CombinedError | undefined, code: string)
 
 // The transport rethrows the GraphQL detail as a bare `Error` carrying it on `.cause`, so anything
 // caught outside this module has to be unwrapped before its catalogue code can be read.
-export function hasThrownCatalogueCode(error: unknown, code: string): boolean {
-  if (error instanceof CombinedError) return hasCatalogueCode(error, code);
-
-  const cause = error instanceof Error ? error.cause : null;
-  return cause instanceof CombinedError && hasCatalogueCode(cause, code);
+export function hasOnlyThrownCatalogueCode(error: unknown, code: string): boolean {
+  const combined =
+    error instanceof CombinedError
+      ? error
+      : error instanceof Error && error.cause instanceof CombinedError
+        ? error.cause
+        : null;
+  const errors = combined?.graphQLErrors ?? [];
+  return errors.length > 0 && errors.every((e) => parseCatalogueError(e.extensions).code === code);
 }
 
 function notifyUser(message: string | undefined, context?: GraphQLRequestContext): void {
