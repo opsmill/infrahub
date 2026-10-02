@@ -27,9 +27,11 @@ class AttributeNumberPoolUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         if not isinstance(self.attribute_schema.parameters, NumberPoolParameters):
             raise ValueError("attribute parameters are not a NumberPoolParameters")
 
+        effective_ranges = self.attribute_schema.parameters.effective_ranges()
         self.params["attr_name"] = self.attribute_schema.name
-        self.params["start_range"] = self.attribute_schema.parameters.start_range
-        self.params["end_range"] = self.attribute_schema.parameters.end_range
+        # The bounds span every declared range, so only a value outside that whole span is reported.
+        self.params["start_range"] = min((r.start for r in effective_ranges), default=None)
+        self.params["end_range"] = max((r.end for r in effective_ranges), default=None)
 
         query = """
         MATCH (n:%(node_kind)s)

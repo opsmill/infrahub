@@ -7,6 +7,7 @@ from infrahub_sdk.graphql import Query
 
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
@@ -27,7 +28,14 @@ REQUEST = NodeSchema(
     label="Request",
     attributes=[
         AttributeSchema(name="title", kind="Text", unique=False, optional=False),
-        AttributeSchema(name="number", kind="NumberPool", optional=False, read_only=True, unique=True),
+        AttributeSchema(
+            name="number",
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            unique=True,
+            parameters=NumberPoolParameters(start_range=1, end_range=1000),
+        ),
     ],
 )
 
@@ -37,7 +45,14 @@ INCIDENT = NodeSchema(
     label="Incident",
     attributes=[
         AttributeSchema(name="title", kind="Text", unique=False, optional=False),
-        AttributeSchema(name="number", kind="NumberPool", optional=False, read_only=True, unique=True),
+        AttributeSchema(
+            name="number",
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            unique=True,
+            parameters=NumberPoolParameters(start_range=1, end_range=1000),
+        ),
     ],
 )
 

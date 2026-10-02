@@ -1,3 +1,4 @@
+import sys
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -25,6 +26,7 @@ from infrahub.core.query.resource_manager import (
     PoolRecordProvenance,
 )
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -39,7 +41,14 @@ REQUEST = NodeSchema(
     label="Request",
     attributes=[
         AttributeSchema(name="title", kind="Text", unique=False, optional=False),
-        AttributeSchema(name="number", kind="NumberPool", optional=False, read_only=True, unique=True),
+        AttributeSchema(
+            name="number",
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            unique=True,
+            parameters=NumberPoolParameters(start_range=1, end_range=sys.maxsize),
+        ),
     ],
 )
 
@@ -49,7 +58,14 @@ INCIDENT = NodeSchema(
     label="Incident",
     attributes=[
         AttributeSchema(name="title", kind="Text", unique=False, optional=False),
-        AttributeSchema(name="number", kind="NumberPool", optional=False, read_only=True, unique=True),
+        AttributeSchema(
+            name="number",
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            unique=True,
+            parameters=NumberPoolParameters(start_range=1, end_range=sys.maxsize),
+        ),
     ],
 )
 
