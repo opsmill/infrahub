@@ -63,11 +63,11 @@ CALL (origin_name, fork_at) {
       AND is_reserved.from <= $at
       AND is_reserved.to IS NULL
       AND owning.status = "active"
-      AND (owning.branch = $branch_name
+      AND ((owning.branch = $branch_name AND owning.to IS NULL)
           OR (owning.branch = origin_name
               AND owning.from <= fork_at
               AND owning.to > fork_at))
-    RETURN reachable_node
+    RETURN DISTINCT reachable_node
 }
 WITH reachable_node, branch_windows
 // -----------------

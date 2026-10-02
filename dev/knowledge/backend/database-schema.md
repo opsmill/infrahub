@@ -220,7 +220,9 @@ deleted branch; a `-global-` owning or value edge is data on every branch and ke
 Renaming a
 branch-agnostic attribute is not handled yet: the old vertex's global edges stay open for branches
 that have not taken the rename, and nothing retires it once no branch uses the old name, so its
-`IS_RESERVED` edge stays open.
+`IS_RESERVED` edge stays open. A rename also leaves the pool's `node_attribute` naming the old
+attribute, and the pool's used and free reads match its reserved attributes by that name, so a value
+held through the renamed vertex is unaccounted for until the pool is pointed at the new name.
 
 ## Determining Edge Activity
 
