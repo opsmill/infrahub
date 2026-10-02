@@ -28,10 +28,12 @@ Request count: 1 + R (16 on the dev stack), independent of how many branch pages
 
 - `frontend/app/src/entities/repository/domain/model/repository-branch-status.ts`
 - `frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts`
-- `frontend/app/src/entities/repository/domain/use-cases/get-repository-branch-status.ts` (needs
-  `shared/api/graphql/error-handling.ts::hasThrownCatalogueCode`; if that helper is not on this
-  base, lift it too if the change is additive, otherwise adapt the use case to the base's
-  `CombinedError` unwrapping and record that the file is not byte-identical).
+- `frontend/app/src/entities/repository/domain/use-cases/get-repository-branch-status.ts`. #10658's
+  version calls `shared/api/graphql/error-handling.ts::hasThrownCatalogueCode`, which this base
+  already has (its `get-branch-repositories.ts` uses it). This PR adds
+  `hasOnlyThrownCatalogueCode` next to it (a denial only when every GraphQL error carries the code)
+  and the use case calls that instead, so neither the use case nor `error-handling.ts` is
+  byte-identical to #10658.
 - Their tests from #10658 where they exist (`repository-branch-status.test.ts`, use-case test).
 - NOT the hook `get-repository-branch-status.query.ts` (it forces the current branch). Instead add
   to this base's `entities/repository/ui/queries/repository.query-keys.ts` a `branchStatus(params)`
@@ -166,8 +168,8 @@ command carries `-c tests/e2e/pytest.ini`); the knowledge note drops the ticket 
 
 ## Spec consequences
 
-Permission: the status query needs repository view permission on all branches; a denial blanks the
-Repositories column for every row ("No permission") rather than one row. Merged branches, if the
+Permission is checked per repository kind: when every kind is denied, every row reads "No
+permission"; a denied kind among readable ones is left out silently. Merged branches, if the
 list filter shows them, read "No repositories". The commit shown for a fresh synced branch is the
 fork-point commit, as the backend resolves it. Cache is no longer shared with the branch details
 page (different query); the backend `repository_ids` follow-up collapses 1 + R to 2 requests

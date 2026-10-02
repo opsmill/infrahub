@@ -1,4 +1,4 @@
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, useQueryClient } from "@tanstack/react-query";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import BranchesList from "@/entities/branches/ui/branches-list";
@@ -22,6 +22,11 @@ vi.mock("@/entities/nodes/filters/ui/hooks/use-filters", () => ({
 // Retry renders a bare clickable div with no role or accessible name.
 const findReloadControl = (container: HTMLElement) =>
   container.querySelector<HTMLElement>(':has(> iconify-icon[icon="mdi:reload"])');
+
+function CaptureQueryClient({ onClient }: { onClient: (client: QueryClient) => void }) {
+  onClient(useQueryClient());
+  return null;
+}
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -59,7 +64,32 @@ describe("BranchesList", () => {
 
     // THEN
     await expect.poll(() => findReloadControl(container)?.className).toContain("animate-spin");
-    for (const resolve of pending) resolve();
+    await expect.poll(() => pending.length).toBe(2);
+    pending[0]?.();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(findReloadControl(container)?.className).toContain("animate-spin");
+    pending[1]?.();
     await expect.poll(() => findReloadControl(container)?.className).not.toContain("animate-spin");
+  });
+
+  test("does not spin the reload indicator for a background repository fetch", async () => {
+    // GIVEN
+    let client: QueryClient | undefined;
+    const { container } = await render(
+      <>
+        <BranchesList />
+        <CaptureQueryClient onClient={(c) => (client = c)} />
+      </>
+    );
+
+    // WHEN
+    client?.prefetchQuery({
+      queryKey: [...repositoryQueryKeys.all, "background"],
+      queryFn: () => new Promise<never>(() => {}),
+    });
+
+    // THEN
+    await expect.poll(() => client?.isFetching({ queryKey: repositoryQueryKeys.all })).toBe(1);
+    expect(findReloadControl(container)?.className).not.toContain("animate-spin");
   });
 });

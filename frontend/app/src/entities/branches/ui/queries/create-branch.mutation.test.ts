@@ -21,6 +21,7 @@ const branchInput = { name: "feature-1" } as Parameters<typeof createBranch>[0];
 
 afterEach(() => {
   vi.restoreAllMocks();
+  queryClient.clear();
 });
 
 describe("useCreateBranchMutation", () => {

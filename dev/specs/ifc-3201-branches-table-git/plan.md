@@ -102,7 +102,7 @@ All paths are under `frontend/app/`.
 
 ```text
 src/shared/api/graphql/
-└── error-handling.ts                             # CHANGED + hasThrownCatalogueCode (lifted from #10658, additive)
+└── error-handling.ts                             # CHANGED + hasOnlyThrownCatalogueCode (hasThrownCatalogueCode is already on the base)
 
 src/entities/repository/
 ├── api/

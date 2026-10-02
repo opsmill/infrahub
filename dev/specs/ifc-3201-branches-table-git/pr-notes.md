@@ -21,15 +21,15 @@ Binding contract: `rework-contract-a.md`; reasoning: research R15; spec: Clarifi
 | `frontend/app/src/entities/repository/domain/model/repository-branch-status.ts` | `identical (`cmp` against `git show`, re-checked after formatting)` |
 | `frontend/app/src/entities/repository/domain/model/repository-branch-status.test.ts` | `identical (`cmp` against `git show`, re-checked after formatting)` |
 | `frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts` | `identical except a no-op `processErrorMessage` in the request context (added after cubic found the status request still toasted; #10658's card may want the same)` |
-| `frontend/app/src/entities/repository/domain/use-cases/get-repository-branch-status.ts` | `identical (`cmp` against `git show`, re-checked after formatting)` |
-| `frontend/app/src/entities/repository/domain/use-cases/get-repository-branch-status.test.ts` | `identical (`cmp` against `git show`, re-checked after formatting)` |
-| `frontend/app/src/shared/api/graphql/error-handling.ts` (`hasThrownCatalogueCode`, additive) | `identical (`cmp` against `git show`, re-checked after formatting)` |
+| `frontend/app/src/entities/repository/domain/use-cases/get-repository-branch-status.ts` | differs: calls `hasOnlyThrownCatalogueCode` instead of #10658's `hasThrownCatalogueCode`, so a denial mixed with another failure reads as UNKNOWN |
+| `frontend/app/src/entities/repository/domain/use-cases/get-repository-branch-status.test.ts` | differs: one added case, a denial mixed with another failure maps to UNKNOWN |
+| `frontend/app/src/shared/api/graphql/error-handling.ts` | not lifted: `hasThrownCatalogueCode` is already on the base (as in #10658); this PR adds `hasOnlyThrownCatalogueCode`, true only when every GraphQL error carries the code |
 
 Not lifted: #10658's `get-repository-branch-status.query.ts` hook, which forces the current branch. This base gets a factory-only file at the same path (`getRepositoryBranchStatusQueryOptions`).
 
 **Merge note, `branchStatus` key**: `repositoryQueryKeys.branchStatus(params)` is added to #10779's `repository.query-keys.ts` with #10658's member name and key shape. Both PRs touch that file, so merging #10658 gives one small, visible conflict there; resolve it by keeping one `branchStatus` member. #10658's `all` is `["repository"]`, this base's is `["repositories"]`; pick one when resolving.
 
-**Consequences for users**: the status query needs repository view permission on all branches, so a denial reads "No permission" on every row instead of one; one failed status request reads "Could not load repositories" on every row. Merged branches, if the list filter shows them, read "No repositories". The commit shown for a fresh synced branch is the fork-point commit. The cache is no longer shared with the branch details page.
+**Consequences for users**: permission is checked per repository kind, so a denial of every kind reads "No permission" on every row, and a denied kind among readable ones is left out silently; one failed status request reads "Could not load repositories" on every row. Merged branches, if the list filter shows them, read "No repositories". The commit shown for a fresh synced branch is the fork-point commit. The cache is no longer shared with the branch details page.
 
 **Cubic findings folded in** (local run 2026-10-01):
 

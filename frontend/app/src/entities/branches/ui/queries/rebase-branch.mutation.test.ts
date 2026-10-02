@@ -18,6 +18,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) =>
 
 afterEach(() => {
   vi.restoreAllMocks();
+  queryClient.clear();
 });
 
 describe("useRebaseBranch", () => {

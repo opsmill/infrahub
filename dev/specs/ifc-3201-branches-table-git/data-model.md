@@ -85,7 +85,7 @@ Neither is added to `BRANCH_FILTER_DEFINITIONS` (FR-015). The column ids match t
 
 ## Superseded
 
-- 2026-10-01 (rework A): "Derived per cell": each cell calling `useGetBranchRepositories` for its row's branch and ranking with `rankRepositories`. `BranchRepository.operationalStatus` no longer affects order. The list no longer reads `BranchRepositoriesResult`.
+- 2026-10-01 (the one-row-per-branch rework, before rework A): "Derived per cell": each cell calling `useGetBranchRepositories` for its row's branch and ranking with `rankRepositories`. `BranchRepository.operationalStatus` no longer affects order. The list no longer reads `BranchRepositoriesResult`.
 - 2026-10-01 (rework): `BranchRepositoriesFetch`, the fan-out `BranchTableRow` and `BranchTableRowState`, `isBranchAnchorRow`, the fan-out `toBranchTableRows` and its invariants, the `repository` and `commit` schema entries, and the `frontend/app/tests/fake/branch-table-rows.ts` fakes. Git history keeps them.
 
 ## Test fakes
