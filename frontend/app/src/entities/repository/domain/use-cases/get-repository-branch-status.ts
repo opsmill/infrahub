@@ -1,5 +1,5 @@
 import { ERROR_CODES } from "@/shared/api/errors";
-import { hasThrownCatalogueCode } from "@/shared/api/graphql/error-handling";
+import { hasOnlyThrownCatalogueCode } from "@/shared/api/graphql/error-handling";
 
 import {
   type GetRepositoryBranchStatusFromApiParams,
@@ -14,7 +14,7 @@ import {
 export type GetRepositoryBranchStatusParams = GetRepositoryBranchStatusFromApiParams;
 
 function toRepositoryBranchStatusError(error: unknown): RepositoryBranchStatusError {
-  const code = hasThrownCatalogueCode(error, ERROR_CODES.PERMISSION_DENIED)
+  const code = hasOnlyThrownCatalogueCode(error, ERROR_CODES.PERMISSION_DENIED)
     ? "PERMISSION_DENIED"
     : "UNKNOWN";
   const message =

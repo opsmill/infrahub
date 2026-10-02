@@ -56,6 +56,23 @@ describe("getRepositoryBranchStatus", () => {
     await expect(codeOf(getRepositoryBranchStatus(PARAMS))).resolves.toBe("PERMISSION_DENIED");
   });
 
+  it("maps a denial mixed with another failure to the UNKNOWN code", async () => {
+    vi.mocked(getRepositoryBranchStatusFromApi).mockRejectedValue(
+      new Error("nope", {
+        cause: new CombinedError({
+          graphQLErrors: [
+            new GraphQLError("denied", {
+              extensions: { code: "PERMISSION_DENIED", http_status: 403 },
+            }),
+            new GraphQLError("boom", { extensions: { code: "NODE_NOT_FOUND", http_status: 404 } }),
+          ],
+        }),
+      })
+    );
+
+    await expect(codeOf(getRepositoryBranchStatus(PARAMS))).resolves.toBe("UNKNOWN");
+  });
+
   it("maps any other catalogue payload to the UNKNOWN code", async () => {
     rejectWithExtensions({ code: "NODE_NOT_FOUND", http_status: 404, data: {} });
 

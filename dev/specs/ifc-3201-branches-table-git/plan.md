@@ -151,7 +151,7 @@ Outside `frontend/app/`: `changelog/+ifc-3201-branches-table-git.added.md`; `doc
 | One status denial or failure blanks the whole column. | Spec consequence, accepted by the owner (spec Session 2026-10-01, architecture review). The branch cells always render; the message stays reachable on "Could not load repositories". |
 | A non-permission GraphQL error toasts through the shared client (`error-handling.ts::handleGraphQLErrors`) unless the request opts out. | The status use case maps errors to `RepositoryBranchStatusError` (`code`, `message`); the rendered failure is "Could not load repositories" with that message. `branches-table.test.tsx` asserts no toast on a status error. |
 | `limit: 500` (`REPOSITORY_BRANCH_STATUS_LIMIT`) truncates a list of more than 500 branches per repository. | Far above real counts; `count > rows.length` is detected and the branches the cut could hide read "Could not load repositories" with the reason. |
-| The branches page reload button refreshes branch queries only. | The 10 s poll covers syncing repositories; refocus after 60 s and remount refresh. |
+| The branches page reload button refreshes branch queries and repository status. | Its busy indicator covers that reload only; the 10 s syncing poll does not spin it. |
 | The PR rebases whenever #10779 changes. | The base is a double stack (#10779 on the epic branch), so a squash-merge of #10779 requires `git rebase --onto` (`pr-notes.md`). |
 | The lifted #10658 files drift before #10658 merges. | SHAs and `cmp` results in `pr-notes.md`; the `branchStatus` key is the one deliberate conflict. |
 

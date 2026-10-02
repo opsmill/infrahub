@@ -179,7 +179,7 @@ Superseded by R15 for the per-branch data path (cells calling `useGetBranchRepos
 2. ~~Unreachable repositories rank up without the reason shown.~~ Superseded by R15: severity ignores operational status.
 3. ~~≈40 queries per page (N+1 over HTTP).~~ Superseded by R15: 1 + R requests.
 4. `isTruncated` is ignored, so a truncated list is silently partial (R11).
-5. The page's reload button refreshes branch queries only.
+5. The page's reload button refreshes branch queries and repository status; its busy indicator covers that reload only, not background polls.
 6. ~~Pending → N rows pushes lower branches down.~~ Superseded 2026-10-01: one row per branch.
 7. The PR touches #10779 files (fetcher no-op, card message, E2E fixture; `RepositoryNameLink`: reverted; `repository-row.tsx` is back to base. ~~It changes the shared toggle handler.~~ Superseded 2026-10-01: the handler is back to base.
 8. ~~Anchor selection relies on row order.~~ Superseded 2026-10-01 (R1).
