@@ -115,6 +115,13 @@ Two signs that you are reaching for the escape hatch instead of the fix:
 - **The suppression needs a paragraph.** A `# type: ignore[code]` carries its reason on the same
   line; when justifying one takes a docstring, remove it instead of documenting it.
 
+Narrowing is the fix only while the union is the real contract. The `redis.Redis | InfrahubServices`
+connection above is not one: it exists because the component picks between two backends for the same
+role, so narrowing it — or splitting it into one optional parameter per backend — satisfies the
+checker while the component stays tied to each backend. That union is a missing interface
+([Interfaces for multiple implementations](component-design.md#interfaces-for-multiple-implementations));
+when adding one is more than the change can take, raise it rather than re-typing the union.
+
 ## Don't write "one or many" unions — take the plural form and let callers wrap
 
 A parameter typed `T | Sequence[T]` forces runtime `isinstance` dispatch on every consumer, and when `T` includes `str` the dispatch is a trap: a bare string satisfies `Sequence[str]`, so it falls into the "many" branch and gets iterated character-by-character. Declare the plural form only — `list[str]` or `tuple[str]` — and have callers pass `[value]`.

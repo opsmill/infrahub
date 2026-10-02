@@ -70,6 +70,32 @@ A single implementation does not need an interface yet; introduce one when the s
 can be either a no-op version (such as in the case of an enterprise-only feature) or a testing version of a component (such as in the case of an
 in-memory version of a component typically backed by the database).
 
+A second backend is where this goes wrong most often. The first backend's client is already wired in, so the second gets attached to it rather than both going behind an interface: the component reads the configured driver and branches on it, takes a union of the backends' clients, and the new implementation imitates the first client's API (its method signatures and defaults) while the shared path still catches the first client's exceptions. The backend is never chosen at the wiring layer, and the component knows every backend by type:
+
+```python
+# ❌ Bad - written for Redis with NATS attached: the lock picks its backend itself
+class InfrahubLock:
+    def __init__(self, name: str, connection: redis.Redis | InfrahubServices | None = None) -> None:
+        if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
+            self.remote = GlobalLock(redis=connection, name=name)
+        else:
+            self.remote = NATSLock(service=connection, name=name)
+
+# ✅ Good - the lock codes against an interface it owns, and the wiring layer picks the backend
+class LockBackend(ABC):
+    @abstractmethod
+    async def acquire(self, name: str, token: str) -> None: ...
+    @abstractmethod
+    async def release(self, name: str, token: str) -> None: ...
+
+class InfrahubLock:
+    def __init__(self, name: str, backend: LockBackend) -> None:
+        self.name = name
+        self.backend = backend
+```
+
+The cache and message-bus adapters already have this shape: an ABC in `services/adapters/<kind>/__init__.py`, one module per backend, and the driver setting resolved once where the service is built (`build_cache()` in `workers/dependencies.py`). `backend/infrahub/lock.py` still has the attached shape; do not copy it. When a type checker flags a component like this, the missing interface is the defect: narrowing the union, or splitting it into one optional parameter per backend, satisfies the checker and keeps the coupling. If adding the interface is more than the change at hand can take, raise that before re-typing the union (see [Existing code](#existing-code)).
+
 ## Interfaces to keep an out-of-domain dependency out
 
 The other reason to declare a `Protocol` is to invert a dependency direction, and there **one implementation is enough**. The situation: a component's logic has no business knowing about some out-of-domain concern — metrics, tracing, analytics, an audit trail, a notification service — but something has to feed that concern from inside the component's flow. Importing the client directly is what you are avoiding: it makes the dependency viral, drags a third-party package into the import chain of pure logic, and means the component can no longer be constructed in a test without it.
