@@ -37,6 +37,15 @@ query GetDeviceWithTags($ids: [ID!]!) {
 }
 """
 
+# Reads the tag name through an inline fragment, a hop that cannot be mapped back to the owning device.
+QUERY_UNIQUE_WITH_FRAGMENT_TAGS = """
+query GetDeviceWithFragmentTags($ids: [ID!]!) {
+    TestNetworkDevice(ids: $ids) {
+        edges { node { name { value } tags { edges { node { ... on BuiltinTag { name { value } } } } } } }
+    }
+}
+"""
+
 # No filter pins a single device, so the query answers from every device.
 QUERY_ALL_DEVICES = """
 query GetAllDevices {
@@ -106,11 +115,11 @@ ARTIFACT_WIDENING_LOG_CASES = [
     ),
     ArtifactWideningLogCase(
         name="change_on_a_related_kind_names_that_kind_not_target_uniqueness",
-        definition_name="artifact-with-tags",
+        definition_name="artifact-with-fragment-tags",
         changed_device=None,
         changed_kind=InfrahubKind.TAG,
         expected_warnings=[
-            f"Artifact definition artifact-with-tags: the query reads {InfrahubKind.TAG} through a relationship, "
+            f"Artifact definition artifact-with-fragment-tags: the query reads {InfrahubKind.TAG} through a relationship, "
             "and a change there cannot be traced back to specific targets. All targets will be processed."
         ],
         expected_devices=DEVICES,
@@ -173,6 +182,12 @@ class TestValidateArtifactsGenerationWidening(ArtifactRegenTestBase):
                 "artifact-with-tags",
                 "GetDeviceWithTags",
                 QUERY_UNIQUE_WITH_TAGS,
+                ["TestNetworkDevice", InfrahubKind.TAG],
+            ),
+            (
+                "artifact-with-fragment-tags",
+                "GetDeviceWithFragmentTags",
+                QUERY_UNIQUE_WITH_FRAGMENT_TAGS,
                 ["TestNetworkDevice", InfrahubKind.TAG],
             ),
             ("artifact-all-devices", "GetAllDevices", QUERY_ALL_DEVICES, ["TestNetworkDevice"]),
