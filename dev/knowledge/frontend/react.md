@@ -48,6 +48,8 @@ const [filtered, setFiltered] = useState([]);
 useEffect(() => setFiltered(items.filter(i => i.active)), [items]);
 ```
 
+**Keeping loaded data across a cold poll.** TanStack's `placeholderData: keepPreviousData` only fills in while `data` is `undefined` after a query-key change. A refetch on the *same* key replaces `data` outright, so a poll that answers "not available yet" blanks a list that was already loaded. Keep the loaded rows inside the query with a `structuralSharing` callback: when the old data holds loaded rows and the new answer is cold, return the old pages with the first page's availability fields (`condition`, `unavailable`, `pending_count`) taken from the new answer, and `replaceEqualDeep(oldData, newData)` otherwise. Returning `oldData` untouched hides the cold answer: no stale notice shows, and `refetchInterval` reads the retained data as available and stops polling. Recording the latest availability keeps the rows on screen, lets the view say they are stale, and keeps polling until a worker answers. Test "old has loaded rows", not "old was available", so a second cold answer still keeps them. Doing it in the query rather than in a component hook keeps `pages`, `pageParams` and `hasNextPage` consistent for every consumer, so paging still works after a cold poll; a key change starts with no `oldData`, so a branch or object switch never shows the old list. `entities/repository/ui/queries/get-repository-commits.query.ts` is the reference.
+
 ## URL is the source of truth for shareable state
 
 Anything a user might bookmark, share, or refresh-and-resume (filters, current selection, mode toggle) lives in the URL — not in `useState`. Use `nuqs` for typed URL params, or `useFilters` for the standard filter pattern.

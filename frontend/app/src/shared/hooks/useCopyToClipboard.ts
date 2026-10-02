@@ -19,11 +19,26 @@ const COPIED_FEEDBACK_DURATION = 2000;
 
 export function useCopyToClipboard() {
   const [isCopied, setIsCopied] = React.useState(false);
+  const [copyCount, setCopyCount] = React.useState(0);
+  const feedbackTimeout = React.useRef<ReturnType<typeof setTimeout>>(undefined);
+  const isMounted = React.useRef(false);
+
+  React.useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      clearTimeout(feedbackTimeout.current);
+    };
+  }, []);
 
   const copyToClipboard = React.useCallback(async (value: string) => {
     function confirmCopied() {
+      // The clipboard write can settle after unmount, past the cleanup that clears the timer.
+      if (!isMounted.current) return;
       setIsCopied(true);
-      setTimeout(() => setIsCopied(false), COPIED_FEEDBACK_DURATION);
+      setCopyCount((count) => count + 1);
+      clearTimeout(feedbackTimeout.current);
+      feedbackTimeout.current = setTimeout(() => setIsCopied(false), COPIED_FEEDBACK_DURATION);
     }
 
     if (!window.isSecureContext || !navigator.clipboard) {
@@ -41,5 +56,5 @@ export function useCopyToClipboard() {
     }
   }, []);
 
-  return { isCopied, copyToClipboard };
+  return { isCopied, copyCount, copyToClipboard };
 }
