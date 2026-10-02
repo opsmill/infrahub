@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import shlex
+import sys
 from typing import TYPE_CHECKING
 
 from invoke.tasks import task
@@ -29,10 +31,11 @@ from .shared import (
     get_compose_cmd,
     get_env_vars,
 )
-from .utils import ESCAPED_REPO_PATH, check_if_command_available
+from .utils import ESCAPED_REPO_PATH, REPO_BASE, check_if_command_available
 
 if TYPE_CHECKING:
     from invoke.context import Context
+    from invoke.runners import Result
 
 NAMESPACE = Namespace.DEV
 
@@ -293,3 +296,84 @@ def test_branch_graph_version(context: Context, branch: str) -> None:  # noqa: A
         raise AssertionError(
             f"Branch '{branch}' with graph version {b.graph_version} has not been rebased and upgrade properly"
         )
+
+
+CUBIC_CHECK_SCRIPT = ".agents/skills/reviewing-local-changes/scripts/check-cubic.sh"
+CUBIC_BASE_CANDIDATES = ("stable", "develop")
+
+# Mirrors the include/exclude filters in cubic.yaml.
+CUBIC_CHECKLISTS: tuple[tuple[str, tuple[str, ...], tuple[str, ...]], ...] = (
+    (".cubic/frontend.md", ("frontend/app/",), ()),
+    (
+        ".cubic/backend.md",
+        ("backend/infrahub/", "python_testcontainers/", "tasks/"),
+        ("python_testcontainers/tests/",),
+    ),
+    (".cubic/testing.md", ("backend/tests/", "python_testcontainers/tests/"), ()),
+)
+
+
+def _run(context: Context, command: str, hide: bool | str = False, warn: bool = False, pty: bool = False) -> Result:
+    result = context.run(command, hide=hide, warn=warn, pty=pty)
+    if result is None:
+        raise RuntimeError(f"Failed to run: {command}")
+    return result
+
+
+def _git_output(context: Context, command: str) -> str:
+    return _run(context=context, command=f"git {command}", hide=True).stdout.strip()
+
+
+def _closest_base(context: Context) -> str:
+    ahead = {
+        candidate: int(_git_output(context=context, command=f"rev-list --count origin/{candidate}..HEAD"))
+        for candidate in CUBIC_BASE_CANDIDATES
+    }
+    return min(ahead, key=lambda candidate: ahead[candidate])
+
+
+def _checklists_for(changed_files: list[str]) -> list[str]:
+    return [
+        checklist
+        for checklist, includes, excludes in CUBIC_CHECKLISTS
+        if any(path.startswith(includes) and not path.startswith(excludes) for path in changed_files)
+    ]
+
+
+@task(
+    help={
+        "base": "Branch to review against; defaults to the closest of stable and develop",
+        "json": "Print cubic's JSON result",
+    }
+)
+def cubic_review(context: Context, base: str = "", json: bool = False) -> None:
+    """Review the current branch with the cubic CLI and the Infrahub checklists that match its diff.
+
+    Raises:
+        SystemExit: With cubic's exit code, which is 1 when it reports findings or fails.
+
+    """
+    with context.cd(ESCAPED_REPO_PATH):
+        check = _run(context=context, command=f"bash {CUBIC_CHECK_SCRIPT}", warn=True, hide="stdout")
+        if check.failed:
+            sys.exit(check.exited)
+        cubic_bin = check.stdout.strip()
+
+        base = base or _closest_base(context=context)
+        changed_files = _git_output(context=context, command=f"diff --name-only origin/{base}...HEAD").splitlines()
+        checklists = _checklists_for(changed_files=changed_files)
+
+        command = f"{shlex.quote(cubic_bin)} review --base {shlex.quote(base)}"
+        if checklists:
+            rules = "\n\n".join((REPO_BASE / checklist).read_text() for checklist in checklists)
+            prompt = (
+                "Also enforce these Infrahub rules. Report only findings a reviewer on this team would ask to "
+                f"change; respect each Do NOT flag section.\n\n{rules}"
+            )
+            command += f" --prompt {shlex.quote(prompt)}"
+        if json:
+            command += " --json"
+
+        print(f"cubic review against origin/{base} with: {', '.join(checklists) or 'no checklist'}", file=sys.stderr)
+        result = _run(context=context, command=command, warn=True, pty=not json)
+        sys.exit(result.exited)
