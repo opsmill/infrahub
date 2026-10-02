@@ -79,16 +79,15 @@ path leaves the graph holding a commit the remote never had, so a remote head th
 of the imported commit means a force push, or a ref moved backwards. That discards content exactly
 as a rewrite does, so it is reconciled and recorded.
 
-**An unpushed commit is still safe, through the other comparison.** The worktree, not the graph,
-is what sits ahead of the remote after a rejected push. The reset table below does nothing when
-the remote head is an ancestor of the worktree. Graph against remote decides the record. Worktree
-against remote decides the reset. The protection lives in the second comparison, so the
-classification does not have to carry it.
+**The worktree comparison reaches the same conclusion.** It used to leave a worktree ahead of its
+remote alone, to protect a commit a rejected push had left behind. That state no longer arises:
+`InfrahubRepository.merge` pushes before it records and resets the destination when either step
+fails, `rebase` delegates to `merge`, and a branch whose creation push failed leaves the remote
+with no such ref at all, which is a different row. So a worktree ahead of its remote also means a
+rewind, and it resets.
 
-A worktree that is both ahead of the remote and rewritten away from it does reset, because neither
-head is an ancestor of the other. That is safe for the merge path: `InfrahubRepository.merge`
-pushes the merge commit before it records it and resets the destination worktree when either step
-fails, so no merge commit survives on one worker alone.
+Graph against remote still decides the record. Worktree against remote still decides the reset.
+Keeping them apart is what lets one worker record while every other worker converges.
 
 `REMOTE_ABSENT` likewise keeps current behaviour: a tracked ref that disappeared from the remote is
 not a lineage break. `spec.md` names it as an edge case.
@@ -178,7 +177,7 @@ Reset, from this worker's worktree against the remote, decided independently:
 | Equal | equals the remote head | nothing |
 | Equal | **differs from the remote head** | **write the commit, queue the import, and record if the classification is `REWRITE`** |
 | Worktree is an ancestor of the remote head | any | pull, as today |
-| Remote head is an ancestor of the worktree | any | nothing. The worktree is ahead, not diverged |
+| Remote head is an ancestor of the worktree | any | reset onto the remote head. The remote was rewound |
 | Neither is an ancestor | any | reset onto the remote head |
 | The remote carries no such ref | any | nothing |
 
@@ -328,16 +327,14 @@ hard-resets onto the remote head only when **neither** is an ancestor of the oth
 | Neither is an ancestor of the other | Hard-resets onto the remote head and creates the commit worktree. |
 | No worktree, `create_if_missing` and a branch id | Creates the worktree, unchanged. |
 
-**The worktree-is-ahead row is where an unpushed commit is protected.** FR-001b forbids resetting
-such a worktree. A rule keyed on "not an ancestor" would catch it, because a worktree that is
-ahead of its remote is also not an ancestor of it, and the reset would discard the unpushed commit
-this whole feature is careful about. The classification carries no equivalent row, so this row is
-the only place that protection lives.
+**The rule is "the worktree does not lead to the remote head".** Reset unless the worktree already
+is the remote head, is an ancestor of it, or the remote carries no such ref. A worktree ahead of
+its remote resets like any other, because nothing leaves a commit there that exists nowhere else.
 
-The pull path answers this without any classification context: "is the remote head an ancestor of
-the worktree head" is a pure ancestry question, the same gateway call the detector makes. What the
-pull path cannot do is tell a rewrite from a deliberate re-target, because that needs the
-suppression marker. It does not need to: both reset, and neither records.
+The pull path answers this without any classification context: both ancestry questions are the
+same gateway call the detector makes. What the pull path cannot do is tell a rewrite from a
+deliberate re-target, because that needs the suppression marker. It does not need to: both reset,
+and neither records.
 
 ### Rules
 
@@ -642,7 +639,7 @@ reaches it. This guard closes that.
    "conflict" (FR-003, FR-017).
 4. Never reset a branch whose **graph commit** is stale and then merge it (FR-005c). That is the
    case where the merge commit would hide the rewrite.
-5. A worktree that is ahead of its remote is not diverged. It merges as it does today.
+5. A worktree ahead of its remote has been rewound. It is reset before the merge, like any other.
 
 ### Why it refuses instead of reconciling
 

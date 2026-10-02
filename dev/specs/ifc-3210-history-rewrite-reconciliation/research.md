@@ -83,13 +83,13 @@ read-only paths record what they read from the remote. So the remote head sittin
 of the imported commit has one cause: the remote was rewound, by a force push or a ref moved
 backwards. It discards content exactly as a rewrite does, so it is reconciled and recorded.
 
-**The unpushed commit is protected by the other comparison.** The worktree, not the graph, is what
-sits ahead of `origin/` after a rejected push; `git-integration.md` lists that under Known
-limitations, and `compare_local_remote` flags the branch every cycle. The reset reads the worktree
-against the remote head and does nothing when the remote head is an ancestor of the worktree, so
-the protection never depended on the classification. It also removes the once-a-minute "update was
-detected but the commit remained the same after pull()" log line, because that branch is not
-pulled.
+**The worktree comparison reaches the same conclusion.** A worktree ahead of `origin/` used to
+mean a commit a rejected push had left behind, which `git-integration.md` lists under Known
+limitations and `compare_local_remote` flags every cycle. `merge` now pushes before it records and
+resets the destination when either step fails, and `rebase` delegates to `merge`, so that state no
+longer arises and such a worktree has been rewound. The reset moves it onto the remote head, which
+also removes the once-a-minute "update was detected but the commit remained the same after
+pull()" log line.
 
 **The missing-object case.** If the imported commit is no longer in the local object database, the
 ancestry test cannot run. `Repo.is_ancestor` raises rather than answering. The branch is then
@@ -138,14 +138,13 @@ the per-branch failure isolation that is already there: a branch that fails clas
 
 ## R3. Where the self-healing reset runs
 
-**Decision**: inside `git/base.py::InfrahubRepositoryBase.pull`, before the `origin.pull` call. When
-**neither** the worktree head nor the remote head is an ancestor of the other, hard-reset onto the
-remote head instead of pulling. When the remote head is an ancestor of the worktree head, do
-nothing: the worktree is ahead, not diverged.
+**Decision**: inside `git/base.py::InfrahubRepositoryBase.pull`, before the `origin.pull` call.
+Hard-reset onto the remote head unless the worktree head already is it, is an ancestor of it, or
+the remote carries no such ref.
 
-The "neither is an ancestor" wording is load-bearing. A rule keyed on "the worktree head is not an
-ancestor of the remote head" also fires on a worktree that is ahead of its remote, and the reset
-would discard the unpushed commit. FR-001b forbids exactly that.
+A worktree ahead of its remote resets too. The state that argued against it, a commit left behind
+by a rejected push, no longer arises: `merge` pushes before it records and resets the destination
+when either step fails, and `rebase` delegates to `merge`.
 
 **Rationale**: FR-005 requires convergence to hold for a worker that received no broadcast. Every
 path that advances a branch worktree **from the remote** goes through `pull`: the sync collector,

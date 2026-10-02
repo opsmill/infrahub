@@ -231,9 +231,8 @@ either case.
 - **A remote rewound onto an ancestor of the imported commit.** A force push, or a ref moved
   backwards, can leave the remote head inside the history Infrahub already recorded. No write path
   records a commit the remote never carried, so the remote discarded content here exactly as a
-  rewrite does. It is reconciled and recorded like any other rewrite. A worker whose own worktree
-  holds commits the remote does not is a separate comparison. FR-001b keeps that worktree from
-  being reset.
+  rewrite does. It is reconciled and recorded like any other rewrite, on every worker: a worktree
+  the remote head is an ancestor of was rewound too, and FR-001b resets it.
 - **The commit Infrahub imported is no longer present in the local object database.** Ancestry
   cannot be tested. The branch is treated as diverged, which is the safe classification, and the
   record names the imported commit as the previous commit.
@@ -257,8 +256,9 @@ here. See "Out of Scope".
 - **FR-001b**: The system MUST keep two comparisons apart. Whether the history was rewritten is
   decided from the commit **recorded in the graph** for that branch. Whether a given worker's clone
   must move is decided from **that worker's own branch worktree**. The first drives the record and
-  the signal. The second drives the reset. A worktree that already contains the remote head MUST
-  NOT be reset, because the reset would discard a commit that exists on one worker only.
+  the signal. The second drives the reset. A worktree that already is the remote head, or is an
+  ancestor of it, MUST NOT be reset. A worktree the remote head is an ancestor of MUST be reset,
+  because the remote was rewound and nothing leaves a commit there that exists nowhere else.
 - **FR-001c**: A worker whose clone is stale MUST reset even when the graph already holds the
   remote's commit, and MUST record nothing when it does. Without this, every worker except the one
   that ran the reconciliation keeps the discarded history. Recording from it would produce one

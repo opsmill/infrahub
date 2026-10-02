@@ -161,11 +161,10 @@ push leaves the destination either at its pre-merge state, where a later attempt
 merge, or trailing the remote, which the periodic synchronisation repairs. That ordering arrived
 with IFC-1449.
 
-The reset rule carries its own weight on top of that. The reset reads this worker's worktree
-against the remote head, and it does nothing when the remote head is an ancestor of the worktree,
-so no slice resets a branch that is merely ahead. An unpushed commit from any other source is
-preserved too. Keep that row: it is a correctness rule in the reset, not a workaround for the
-merge path.
+The reset reads this worker's worktree against the remote head, never the classification. It
+resets whenever the worktree does not lead to the remote head. That covers a parted history and a
+worktree the remote was rewound behind, and the same audit applies: no path leaves a commit on a
+worktree that exists nowhere else.
 
 ## Risks
 
