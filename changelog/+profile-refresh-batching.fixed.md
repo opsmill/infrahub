@@ -1,0 +1,1 @@
+Fixed the refresh of objects after a change to a Profile. A Profile used by many objects now refreshes all of them, and the object templates that use the Profile now get the new values too. The refresh now runs one task for each batch of objects, and these tasks show on the task list of the Profile instead of the task list of each object.
