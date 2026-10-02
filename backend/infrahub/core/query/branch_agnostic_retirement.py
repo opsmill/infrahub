@@ -67,7 +67,7 @@ CALL (origin_name, fork_at) {
           OR (owning.branch = origin_name
               AND owning.from <= fork_at
               AND owning.to > fork_at))
-    RETURN reachable_node
+    RETURN DISTINCT reachable_node
 }
 WITH reachable_node, branch_windows
 // -----------------
