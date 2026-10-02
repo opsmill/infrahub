@@ -17,26 +17,16 @@ from tests.helpers.graphql import graphql
 from tests.helpers.number_pool import add_pool_range
 from tests.helpers.schema import TICKET, load_schema
 
-from .helpers import load_pool
-
-CREATE_RANGE = """
-mutation CreateRange($pool_id: String!, $start: BigInt!, $end: BigInt!, $weight: BigInt) {
-    CoreNumberPoolRangeCreate(data: {
-        start: { value: $start }
-        end: { value: $end }
-        allocation_weight: { value: $weight }
-        pool: { id: $pool_id }
-    }) {
-        ok
-        object {
-            id
-            start { value }
-            end { value }
-            allocation_weight { value }
-        }
-    }
-}
-"""
+from .helpers import (
+    CREATE_RANGE,
+    DELETE_RANGE,
+    UPDATE_POOL_RANGES,
+    UPDATE_POOL_SHORTHAND,
+    UPDATE_RANGE,
+    UPSERT_NEW_RANGE,
+    UPSERT_RANGE,
+    load_pool,
+)
 
 DELETE_POOL = """
 mutation DeletePool($pool_id: String!) {
@@ -46,46 +36,9 @@ mutation DeletePool($pool_id: String!) {
 }
 """
 
-UPDATE_RANGE = """
-mutation UpdateRange($range_id: String!, $start: BigInt!, $end: BigInt!) {
-    CoreNumberPoolRangeUpdate(data: { id: $range_id, start: { value: $start }, end: { value: $end } }) {
-        ok
-    }
-}
-"""
-
-UPSERT_RANGE = """
-mutation UpsertRange($range_id: String!, $pool_id: String!, $start: BigInt!, $end: BigInt!) {
-    CoreNumberPoolRangeUpsert(data: {
-        id: $range_id
-        start: { value: $start }
-        end: { value: $end }
-        pool: { id: $pool_id }
-    }) {
-        ok
-    }
-}
-"""
-
-UPSERT_NEW_RANGE = """
-mutation UpsertNewRange($pool_id: String!, $start: BigInt!, $end: BigInt!) {
-    CoreNumberPoolRangeUpsert(data: { start: { value: $start }, end: { value: $end }, pool: { id: $pool_id } }) {
-        ok
-    }
-}
-"""
-
 MOVE_RANGE = """
 mutation MoveRange($range_id: String!, $pool_id: String!) {
     CoreNumberPoolRangeUpdate(data: { id: $range_id, pool: { id: $pool_id } }) {
-        ok
-    }
-}
-"""
-
-DELETE_RANGE = """
-mutation DeleteRange($range_id: String!) {
-    CoreNumberPoolRangeDelete(data: { id: $range_id }) {
         ok
     }
 }
@@ -541,22 +494,6 @@ mutation CreatePool {
         node_attribute: { value: "ticket_id" }
     }) {
         object { id }
-    }
-}
-"""
-
-UPDATE_POOL_SHORTHAND = """
-mutation UpdatePoolShorthand($pool_id: String!, $start: BigInt!, $end: BigInt!) {
-    CoreNumberPoolUpdate(data: { id: $pool_id, start_range: { value: $start }, end_range: { value: $end } }) {
-        ok
-    }
-}
-"""
-
-UPDATE_POOL_RANGES = """
-mutation UpdatePoolRanges($pool_id: String!, $ranges: [RelatedNodeInput]) {
-    CoreNumberPoolUpdate(data: { id: $pool_id, ranges: $ranges }) {
-        ok
     }
 }
 """
