@@ -23,6 +23,8 @@ import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 import { TaskFilters } from "@/entities/tasks/ui/task-filters";
 import { getStateBadge } from "@/entities/tasks/ui/task-item-details";
 
+const REFRESHED_QUERY_KEYS = [tasksQueryKeys.all];
+
 interface TaskItemsProps {
   relatedNodeId?: string;
 }
@@ -170,7 +172,7 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
       <Row className="p-2">
         <RefreshButton
           className="rounded-md border-border-strong"
-          queryKeys={[tasksQueryKeys.all]}
+          queryKeys={REFRESHED_QUERY_KEYS}
         />
         <FilterSearchInput placeholder="Filter tasks..." />
         <TaskFilters />

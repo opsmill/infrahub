@@ -10,6 +10,9 @@ import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh
 import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
+// `all` rather than `details`: the header itself reads the all-branches query.
+const REFRESHED_QUERY_KEYS = [branchesQueryKeys.all, repositoryQueryKeys.all, tasksQueryKeys.all];
+
 interface BranchDetailsHeaderProps {
   branch: BranchListItem;
 }
@@ -30,8 +33,7 @@ export function BranchDetailsHeader({ branch }: BranchDetailsHeaderProps) {
         )}
         <RefreshButton
           className="ml-auto"
-          // `all` rather than `details`: the header itself reads the all-branches query.
-          queryKeys={[branchesQueryKeys.all, repositoryQueryKeys.all, tasksQueryKeys.all]}
+          queryKeys={REFRESHED_QUERY_KEYS}
         />
       </HeaderContainer>
       {branch.description && (
