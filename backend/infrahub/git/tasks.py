@@ -75,6 +75,7 @@ from .models import (
 )
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
 from .sync import RepositoryAdder, RepositoryBranchesFailedError, RepositoryFileImporter, RepositorySyncer, SyncReport
+from .sync_status import RepositoryBranchSyncStatusReader
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
 
 
@@ -112,8 +113,11 @@ class ImportStatusOutcome:
     message: str
 
 
-def evaluate_import_status(*, sync_status: str, repository_name: str, branch_name: str) -> ImportStatusOutcome:
-    """Decide whether the objects of a repository are usable on a branch, given its sync status."""
+def evaluate_import_status(*, sync_status: str | None, repository_name: str, branch_name: str) -> ImportStatusOutcome:
+    """Decide whether the objects of a repository are usable on a branch.
+
+    `sync_status` is the status written on the branch itself, or None when the branch only inherits one.
+    """
     if sync_status != RepositorySyncStatus.ERROR_IMPORT.value:
         return ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity=Severity.INFO, message="")
 
@@ -1223,16 +1227,19 @@ async def run_check_repository_import_status(model: CheckRepositoryImportStatus)
 
     log = get_run_logger()
     client = get_client()
+    database = await get_database()
 
     validator = await client.get(kind=CoreRepositoryValidator, id=model.validator_id)
     await validator.checks.fetch()
 
-    repository = await client.get(
-        kind=CoreGenericRepository, id=model.repository_id, branch=model.source_branch, fragment=True
-    )
+    async with database.start_session(read_only=True) as db:
+        source_branch = await registry.get_branch(db=db, branch=model.source_branch)
+        sync_status = await RepositoryBranchSyncStatusReader(db=db).get_status_written_on_branch(
+            repository_id=model.repository_id, branch=source_branch
+        )
 
     outcome = evaluate_import_status(
-        sync_status=repository.sync_status.value,
+        sync_status=sync_status,
         repository_name=model.repository_name,
         branch_name=model.source_branch,
     )

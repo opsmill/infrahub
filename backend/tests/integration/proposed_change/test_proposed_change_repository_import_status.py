@@ -7,7 +7,7 @@ import pytest
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.protocols import CoreGenericRepository, CoreProposedChange, CoreStandardCheck
 
-from infrahub.core.constants import InfrahubKind, RepositorySyncStatus, ValidatorConclusion
+from infrahub.core.constants import InfrahubKind, RepositorySyncStatus, ValidatorConclusion, ValidatorState
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreValidator
 from infrahub.git.constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME
@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from tests.adapters.message_bus import BusSimulator
 
 BRANCH_NAME = "repository-import-status"
+INHERITED_BRANCH_NAME = "repository-import-status-inherited"
 MANAGED_REPOSITORY = "core-repo"
 READ_ONLY_REPOSITORY = "read-only-repo"
 RERUN_REPOSITORY_CHECKS = """
@@ -87,7 +88,10 @@ class TestProposedChangeRepositoryImportStatus(TestInfrahubApp):
         await client.branch.create(branch_name=BRANCH_NAME, sync_with_git=True)
         for repository_id in repository_ids.values():
             await self._set_sync_status(
-                client=client, repository_id=repository_id, status=RepositorySyncStatus.ERROR_IMPORT
+                client=client,
+                repository_id=repository_id,
+                branch=BRANCH_NAME,
+                status=RepositorySyncStatus.ERROR_IMPORT,
             )
 
         proposed_change = await client.create(
@@ -98,10 +102,20 @@ class TestProposedChangeRepositoryImportStatus(TestInfrahubApp):
         return proposed_change.id
 
     @staticmethod
-    async def _set_sync_status(client: InfrahubClient, repository_id: str, status: RepositorySyncStatus) -> None:
-        repository = await client.get(kind=CoreGenericRepository, id=repository_id, branch=BRANCH_NAME)
+    async def _set_sync_status(
+        client: InfrahubClient, repository_id: str, branch: str, status: RepositorySyncStatus
+    ) -> None:
+        repository = await client.get(kind=CoreGenericRepository, id=repository_id, branch=branch)
         repository.sync_status.value = status.value
         await repository.save()
+
+    @staticmethod
+    async def _get_validator_states(db: InfrahubDatabase, proposed_change_id: str) -> dict[str | None, tuple[str, str]]:
+        proposed_change: InternalCoreProposedChange = await NodeManager.get_one(
+            db=db, id=proposed_change_id, kind=InfrahubKind.PROPOSEDCHANGE, raise_on_error=True
+        )
+        peers = await proposed_change.validations.get_peers(db=db, peer_type=CoreValidator)
+        return {peer.label.value: (peer.state.value.value, peer.conclusion.value.value) for peer in peers.values()}
 
     @staticmethod
     async def _wait_for_repository_validator(
@@ -146,7 +160,19 @@ class TestProposedChangeRepositoryImportStatus(TestInfrahubApp):
             _expected_message(repository_name),
         )
 
-    async def test_proposed_change_refuses_to_merge(self, proposed_change_id: str, client: InfrahubClient) -> None:
+    async def test_proposed_change_refuses_to_merge(
+        self, db: InfrahubDatabase, proposed_change_id: str, client: InfrahubClient
+    ) -> None:
+        states = await self._get_validator_states(db=db, proposed_change_id=proposed_change_id)
+        assert {state for state, _ in states.values()} == {ValidatorState.COMPLETED.value}
+        failing = {
+            label for label, (_, conclusion) in states.items() if conclusion != ValidatorConclusion.SUCCESS.value
+        }
+        assert failing == {
+            f"Repository Validator: {MANAGED_REPOSITORY}",
+            f"Repository Validator: {READ_ONLY_REPOSITORY}",
+        }
+
         proposed_change = await client.get(kind=CoreProposedChange, id=proposed_change_id)
         proposed_change.state.value = ProposedChangeState.MERGED.value
 
@@ -164,7 +190,9 @@ class TestProposedChangeRepositoryImportStatus(TestInfrahubApp):
         client: InfrahubClient,
     ) -> None:
         for repository_id in repository_ids.values():
-            await self._set_sync_status(client=client, repository_id=repository_id, status=RepositorySyncStatus.IN_SYNC)
+            await self._set_sync_status(
+                client=client, repository_id=repository_id, branch=BRANCH_NAME, status=RepositorySyncStatus.IN_SYNC
+            )
         await client.execute_graphql(query=RERUN_REPOSITORY_CHECKS, variables={"id": proposed_change_id})
 
         for repository_name in repository_ids:
@@ -190,3 +218,39 @@ class TestProposedChangeRepositoryImportStatus(TestInfrahubApp):
 
         proposed_change_after = await client.get(kind=CoreProposedChange, id=proposed_change_id)
         assert proposed_change_after.state.value == ProposedChangeState.MERGED.value
+
+    async def test_status_inherited_from_the_default_branch_is_ignored(
+        self, db: InfrahubDatabase, repository_ids: dict[str, str], client: InfrahubClient
+    ) -> None:
+        """A branch created while the default branch was in error keeps reading that frozen status."""
+        for repository_id in repository_ids.values():
+            await self._set_sync_status(
+                client=client, repository_id=repository_id, branch="main", status=RepositorySyncStatus.ERROR_IMPORT
+            )
+        await client.branch.create(branch_name=INHERITED_BRANCH_NAME, sync_with_git=False)
+        for repository_id in repository_ids.values():
+            await self._set_sync_status(
+                client=client, repository_id=repository_id, branch="main", status=RepositorySyncStatus.IN_SYNC
+            )
+
+        for repository_id in repository_ids.values():
+            repository = await client.get(kind=CoreGenericRepository, id=repository_id, branch=INHERITED_BRANCH_NAME)
+            assert repository.sync_status.value == RepositorySyncStatus.ERROR_IMPORT.value
+
+        proposed_change = await client.create(
+            kind=CoreProposedChange,
+            data={"source_branch": INHERITED_BRANCH_NAME, "destination_branch": "main", "name": "inherited-status"},
+        )
+        await proposed_change.save()
+
+        for repository_name in repository_ids:
+            validator = await self._wait_for_repository_validator(
+                db=db,
+                proposed_change_id=proposed_change.id,
+                name=repository_name,
+                conclusion=ValidatorConclusion.SUCCESS,
+            )
+            checks = await client.filters(kind=CoreStandardCheck, validator__ids=validator.id)
+            assert [(check.name.value, check.conclusion.value) for check in checks] == [
+                (IMPORT_STATUS_CHECK_NAME, ValidatorConclusion.SUCCESS.value)
+            ]

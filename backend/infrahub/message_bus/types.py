@@ -82,6 +82,11 @@ class ProposedChangeRepository(BaseModel):
         return False
 
     @property
+    def is_inactive(self) -> bool:
+        """Indicates if the repository is disabled, so nothing on the branch syncs it."""
+        return self.internal_status == RepositoryInternalStatus.INACTIVE.value
+
+    @property
     def kind(self) -> str:
         if self.read_only:
             return InfrahubKind.READONLYREPOSITORY

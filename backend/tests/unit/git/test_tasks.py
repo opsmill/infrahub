@@ -117,10 +117,11 @@ def test_format_check_log_entry_produces_single_line_per_entry() -> None:
 @dataclass(frozen=True, kw_only=True)
 class ImportStatusCase:
     name: str
-    sync_status: str
+    sync_status: str | None
 
 
 PASSING_IMPORT_STATUS_CASES = [
+    ImportStatusCase(name="not_written_on_branch", sync_status=None),
     ImportStatusCase(name="in_sync", sync_status=RepositorySyncStatus.IN_SYNC.value),
     ImportStatusCase(name="syncing", sync_status=RepositorySyncStatus.SYNCING.value),
     ImportStatusCase(name="unknown", sync_status=RepositorySyncStatus.UNKNOWN.value),
