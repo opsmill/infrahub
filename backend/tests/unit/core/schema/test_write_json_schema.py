@@ -246,6 +246,14 @@ def test_display_labels_is_deprecated(write_json_schema: dict[str, Any]) -> None
     assert display_labels["deprecationMessage"] == "display_labels are deprecated use display_label instead"
 
 
+@pytest.mark.parametrize("field_name", ["start_range", "end_range"])
+def test_number_pool_shorthand_is_deprecated(write_json_schema: dict[str, Any], field_name: str) -> None:
+    declared = write_json_schema["$defs"]["NumberPoolParametersWrite"]["properties"][field_name]
+
+    assert declared["deprecated"] is True
+    assert declared["deprecationMessage"] == f"{field_name} is deprecated, use ranges instead"
+
+
 @pytest.mark.parametrize("case", [pytest.param(tc, id=tc.name) for tc in WRITE_JSON_SCHEMA_CASES])
 def test_published_schema_verdict(validator: Validator, case: WriteJsonSchemaCase) -> None:
     messages = {nested.message for error in validator.iter_errors(case.payload) for nested in _flatten(error=error)}
