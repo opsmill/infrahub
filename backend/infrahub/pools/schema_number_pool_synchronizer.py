@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+from itertools import zip_longest
 from typing import TYPE_CHECKING, cast
 
-from infrahub.core.constants import SYSTEM_USER_ID, NumberPoolType
+from infrahub import lock
+from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
+from infrahub.core.node.lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.timestamp import Timestamp
+from infrahub.database import within_transaction
 from infrahub.log import get_logger
+from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 
 if TYPE_CHECKING:
@@ -83,33 +89,92 @@ class SchemaNumberPoolSynchronizer:
                 self.log.info(
                     f"Deleting number pool (id={schema_number_pool.id}) as it is no longer defined in the schema"
                 )
-                await schema_number_pool.delete(db=self.db, user_id=user_id)
+                await self._delete_pool(schema_number_pool, user_id=user_id)
+
+    async def _delete_pool(self, schema_number_pool: CoreNumberPool, user_id: str = SYSTEM_USER_ID) -> None:
+        """Delete a pool together with its ranges, so no range outlives the pool it belongs to."""
+        pool_id = schema_number_pool.get_id()
+        async with (
+            lock.registry.get(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE),
+            within_transaction(db=self.db) as dbt,
+        ):
+            pool_node = await NodeManager.get_one(
+                db=dbt, id=pool_id, kind=InfrahubKind.NUMBERPOOL, branch_agnostic=True
+            )
+            if pool_node is None:
+                return
+            await NodeManager.delete(
+                db=dbt, nodes=[pool_node], branch=registry.default_branch, at=Timestamp(), user_id=user_id
+            )
 
     async def _update_pool_from_schema(self, schema_number_pool: CoreNumberPool, user_id: str = SYSTEM_USER_ID) -> None:
-        """Update a pool's range parameters if they differ from the schema."""
+        """Reconcile a pool's ranges with the declaration on the default branch.
+
+        Declared and existing ranges, both ordered by start, are matched by position: a matched range is
+        rewritten in place so it keeps its identity, a declared range without a match is created and an
+        existing range without a match is deleted. The numbers the pool has handed out are left untouched.
+        """
         schema = self.schema_manager.get(
             name=schema_number_pool.node.value, branch=registry.default_branch, duplicate=False
         )
         attribute = schema.get_attribute(name=schema_number_pool.node_attribute.value)
-        number_pool_updated = False
+        if not isinstance(attribute.parameters, NumberPoolParameters):
+            return
 
-        if isinstance(attribute.parameters, NumberPoolParameters):
-            effective_ranges = attribute.parameters.effective_ranges()
-            single_range = effective_ranges[0] if len(effective_ranges) == 1 else None
-            start_range = single_range.start if single_range else None
-            end_range = single_range.end if single_range else None
-            if schema_number_pool.start_range.value != start_range:
-                schema_number_pool.start_range.value = start_range
-                number_pool_updated = True
-            if schema_number_pool.end_range.value != end_range:
-                schema_number_pool.end_range.value = end_range
-                number_pool_updated = True
+        declared_ranges = attribute.parameters.effective_ranges()
+        pool_id = schema_number_pool.get_id()
 
-        if number_pool_updated:
-            self.log.info(
-                f"Updating NumberPool={schema_number_pool.id} based on changes in the schema on {registry.default_branch}"
+        # One timestamp and one transaction, so the pool never shows a half-reconciled range set.
+        async with (
+            lock.registry.get(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE),
+            within_transaction(db=self.db) as dbt,
+        ):
+            at = Timestamp()
+            repository = self._range_store_factory(db=dbt)
+            # Read inside the lock so the mirror compares against the shorthand any earlier writer left.
+            pool_node = await NodeManager.get_one(
+                db=dbt, id=pool_id, kind=InfrahubKind.NUMBERPOOL, branch_agnostic=True, raise_on_error=True
             )
-            await schema_number_pool.save(db=self.db, user_id=user_id)
+            existing_ranges = await repository.get_ranges(pool_id=pool_id)
+            changed = False
+            for declared, existing in zip_longest(declared_ranges, existing_ranges):
+                if declared is None:
+                    await repository.delete_range(pool_range=existing, at=at, user_id=user_id)
+                    changed = True
+                elif existing is None:
+                    await repository.create_range(
+                        pool=pool_node,
+                        start=declared.start,
+                        end=declared.end,
+                        weight=declared.weight,
+                        at=at,
+                        user_id=user_id,
+                    )
+                    changed = True
+                elif (existing.start.value, existing.end.value, existing.allocation_weight.value) != (
+                    declared.start,
+                    declared.end,
+                    declared.weight,
+                ):
+                    await repository.save_range(
+                        pool_range=existing,
+                        start=declared.start,
+                        end=declared.end,
+                        weight=declared.weight,
+                        at=at,
+                        user_id=user_id,
+                    )
+                    changed = True
+
+            if changed:
+                self.log.info(
+                    f"Updating NumberPool={pool_id} based on changes in the schema on {registry.default_branch}"
+                )
+                existing_ranges = await repository.get_ranges(pool_id=pool_id)
+
+            await NumberPoolShorthandMirror(db=dbt, repository=repository).sync(
+                pool=pool_node, ranges=existing_ranges, at=at, user_id=user_id
+            )
 
     async def _process_all_branches(self, user_id: str) -> set[str]:
         """Process all branches to create any missing number pools.

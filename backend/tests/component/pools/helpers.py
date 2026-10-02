@@ -25,3 +25,12 @@ class NumberPoolRepositoryFailingOnRange(NumberPoolRepository):
         if start == self.failing_start:
             raise RuntimeError("range write failed")
         return await super().create_range(pool=pool, start=start, end=end, weight=weight, at=at, user_id=user_id)
+
+
+class NumberPoolRepositoryFailingOnDelete(NumberPoolRepository):
+    """Writes ranges to the database but refuses to delete any."""
+
+    async def delete_range(
+        self, pool_range: CoreNumberPoolRange, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID
+    ) -> None:
+        raise RuntimeError("range delete failed")
