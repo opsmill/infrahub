@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.protocols import CoreNumberPoolRange
+    from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
 
     from ....initialization import GraphqlContext
@@ -68,52 +69,9 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         database: InfrahubDatabase | None = None,  # noqa: ARG003
     ) -> Any:
         graphql_context: GraphqlContext = info.context
-        try:
-            schema_node = registry.schema.get(name=data["node"].value)
-            if not schema_node.is_generic_schema and not schema_node.is_node_schema:
-                raise ValidationError(input_value="The selected model is not a Node or a Generic")
-        except SchemaNotFoundError as exc:
-            exc.message = "The selected model does not exist"
-            raise exc
-
-        attributes = [
-            attribute for attribute in schema_node.attributes if attribute.name == data["node_attribute"].value
-        ]
-        if not attributes:
-            raise ValidationError(input_value="The selected attribute doesn't exist in the selected model")
-
-        attribute = attributes[0]
-        if attribute.kind != "Number":
-            raise ValidationError(input_value="The selected attribute is not of the kind Number")
-
-        start_range_input = data.get("start_range")
-        end_range_input = data.get("end_range")
-        start_range = start_range_input.value if start_range_input else None
-        end_range = end_range_input.value if end_range_input else None
+        attribute = cls._resolve_target_attribute(data=data)
         ranges_supplied = "ranges" in data.keys()
-        if (start_range is not None or end_range is not None) and ranges_supplied:
-            raise ValidationError(input_value=SHORTHAND_WITH_RANGES)
-
-        shorthand: NumberRangeBounds | None = None
-        if start_range is not None or end_range is not None:
-            if start_range is None or end_range is None:
-                raise ValidationError(input_value=BOUNDS_REQUIRED)
-
-            if start_range > end_range:
-                raise ValidationError(input_value="start_range can't be larger than end_range")
-
-            if not isinstance(attribute.parameters, NumberAttributeParameters):
-                raise ValidationError(
-                    input_value="The selected attribute parameters are not of the kind NumberAttributeParameters"
-                )
-
-            if attribute.parameters.min_value is not None and start_range < attribute.parameters.min_value:
-                raise ValidationError(input_value="start_range can't be less than min_value")
-
-            if attribute.parameters.max_value is not None and end_range > attribute.parameters.max_value:
-                raise ValidationError(input_value="end_range can't be larger than max_value")
-
-            shorthand = NumberRangeBounds(start=start_range, end=end_range)
+        shorthand = cls._parse_shorthand(data=data, attribute=attribute, ranges_supplied=ranges_supplied)
 
         if shorthand is None and not ranges_supplied:
             return await super().mutate_create(info=info, data=data, branch=branch)
@@ -135,6 +93,72 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
                 await sync_shorthand(db=dbt, pool_id=pool_id, ranges=ranges, user_id=graphql_context.assigned_user_id)
 
         return number_pool, result
+
+    @classmethod
+    def _resolve_target_attribute(cls, data: InputObjectType) -> AttributeSchema:
+        """Return the Number attribute the pool allocates for.
+
+        Raises:
+            SchemaNotFoundError: When the selected model does not exist.
+            ValidationError: When the model is not a node or a generic, or the attribute is missing or not a Number.
+
+        """
+        try:
+            schema_node = registry.schema.get(name=data["node"].value)
+            if not schema_node.is_generic_schema and not schema_node.is_node_schema:
+                raise ValidationError(input_value="The selected model is not a Node or a Generic")
+        except SchemaNotFoundError as exc:
+            exc.message = "The selected model does not exist"
+            raise exc
+
+        attributes = [
+            attribute for attribute in schema_node.attributes if attribute.name == data["node_attribute"].value
+        ]
+        if not attributes:
+            raise ValidationError(input_value="The selected attribute doesn't exist in the selected model")
+
+        attribute = attributes[0]
+        if attribute.kind != "Number":
+            raise ValidationError(input_value="The selected attribute is not of the kind Number")
+        return attribute
+
+    @classmethod
+    def _parse_shorthand(
+        cls, data: InputObjectType, attribute: AttributeSchema, ranges_supplied: bool
+    ) -> NumberRangeBounds | None:
+        """Return the single range the shorthand describes, or None when neither bound is supplied.
+
+        Raises:
+            ValidationError: When the shorthand comes with `ranges`, misses a bound, is backwards, or falls outside
+                the attribute's `min_value` / `max_value`.
+
+        """
+        start_range_input = data.get("start_range")
+        end_range_input = data.get("end_range")
+        start_range = start_range_input.value if start_range_input else None
+        end_range = end_range_input.value if end_range_input else None
+        if start_range is None and end_range is None:
+            return None
+        if ranges_supplied:
+            raise ValidationError(input_value=SHORTHAND_WITH_RANGES)
+        if start_range is None or end_range is None:
+            raise ValidationError(input_value=BOUNDS_REQUIRED)
+
+        if start_range > end_range:
+            raise ValidationError(input_value="start_range can't be larger than end_range")
+
+        if not isinstance(attribute.parameters, NumberAttributeParameters):
+            raise ValidationError(
+                input_value="The selected attribute parameters are not of the kind NumberAttributeParameters"
+            )
+
+        if attribute.parameters.min_value is not None and start_range < attribute.parameters.min_value:
+            raise ValidationError(input_value="start_range can't be less than min_value")
+
+        if attribute.parameters.max_value is not None and end_range > attribute.parameters.max_value:
+            raise ValidationError(input_value="end_range can't be larger than max_value")
+
+        return NumberRangeBounds(start=start_range, end=end_range)
 
     @classmethod
     @retry_db_transaction(name="resource_manager_update")
@@ -182,12 +206,9 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
                 info=info, data=data, branch=branch, db=db, obj=obj, skip_uniqueness_check=skip_uniqueness_check
             )
 
-        if shorthand_supplied and obj.get_attribute("pool_type").get_value() == NumberPoolType.SCHEMA.value:
-            raise ValidationError(
-                input_value="start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
-            )
-        if shorthand_supplied and ranges_supplied:
-            raise ValidationError(input_value=SHORTHAND_WITH_RANGES)
+        cls._refuse_shorthand_conflicts(
+            pool=obj, shorthand_supplied=shorthand_supplied, ranges_supplied=ranges_supplied
+        )
 
         graphql_context: GraphqlContext = info.context
         pool_id = obj.get_id()
@@ -218,6 +239,23 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
             await sync_shorthand(db=dbt, pool_id=pool_id, ranges=ranges, user_id=graphql_context.assigned_user_id)
 
         return number_pool, result
+
+    @classmethod
+    def _refuse_shorthand_conflicts(cls, pool: Node, shorthand_supplied: bool, ranges_supplied: bool) -> None:
+        """Refuse a shorthand write on a schema-created pool, or alongside `ranges`.
+
+        Raises:
+            ValidationError: On either refusal, the schema-created pool one first.
+
+        """
+        if not shorthand_supplied:
+            return
+        if pool.get_attribute("pool_type").get_value() == NumberPoolType.SCHEMA.value:
+            raise ValidationError(
+                input_value="start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
+            )
+        if ranges_supplied:
+            raise ValidationError(input_value=SHORTHAND_WITH_RANGES)
 
     @classmethod
     async def _write_shorthand_range(
