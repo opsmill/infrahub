@@ -185,9 +185,13 @@ Reading a LOCAL value on a branch does not tell you whether the branch wrote it.
 isolated by default (`Branch.is_isolated`), so a branch that never imported a repository reads the
 value its base branch held at `branched_from`, frozen there: a branch created while the default
 branch was in `error-import` keeps reading `error-import` after the default branch recovers, until
-it is rebased. The import check therefore only counts a value whose `HAS_VALUE` edge is on the
-source branch itself (`git/sync_status.py::RepositoryBranchSyncStatusReader`); an inherited value
-passes.
+it is rebased. The import check therefore only counts a value the source branch wrote
+(`git/sync_status.py::RepositoryBranchSyncStatusReader`), recognised by the attribute's `updated_at`
+being at or after `branched_from`; an inherited value is older and passes.
+
+The comparison must be `>=`, not `>`. A rebase (`RebaseBranchQuery`) sets `from` on every live edge
+of the branch to the rebase time and moves `branched_from` to that same time, so a value the branch
+wrote before the rebase ends up with `updated_at == branched_from`.
 
 AGNOSTIC buys conflict-freedom but **not** invisibility: agnostic nodes do reach the diff, forced
 to `DiffAction.UPDATED` because a globally-stored node has no created/deleted distinction on a branch

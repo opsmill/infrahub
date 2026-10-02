@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
 BRANCH_NAME = "repository-import-status"
 INHERITED_BRANCH_NAME = "repository-import-status-inherited"
+REBASED_BRANCH_NAME = "repository-import-status-rebased"
 MANAGED_REPOSITORY = "core-repo"
 READ_ONLY_REPOSITORY = "read-only-repo"
 RERUN_REPOSITORY_CHECKS = """
@@ -253,4 +254,40 @@ class TestProposedChangeRepositoryImportStatus(TestInfrahubApp):
             checks = await client.filters(kind=CoreStandardCheck, validator__ids=validator.id)
             assert [(check.name.value, check.conclusion.value) for check in checks] == [
                 (IMPORT_STATUS_CHECK_NAME, ValidatorConclusion.SUCCESS.value)
+            ]
+
+    async def test_status_recorded_on_the_branch_survives_a_rebase(
+        self, db: InfrahubDatabase, repository_ids: dict[str, str], client: InfrahubClient
+    ) -> None:
+        """A rebase moves the branch's own edges to `branched_from`, so the recorded failure must still count."""
+        await client.branch.create(branch_name=REBASED_BRANCH_NAME, sync_with_git=False)
+        for repository_id in repository_ids.values():
+            await self._set_sync_status(
+                client=client,
+                repository_id=repository_id,
+                branch=REBASED_BRANCH_NAME,
+                status=RepositorySyncStatus.ERROR_IMPORT,
+            )
+        await client.branch.rebase(branch_name=REBASED_BRANCH_NAME)
+
+        for repository_id in repository_ids.values():
+            repository = await client.get(kind=CoreGenericRepository, id=repository_id, branch=REBASED_BRANCH_NAME)
+            assert repository.sync_status.value == RepositorySyncStatus.ERROR_IMPORT.value
+
+        proposed_change = await client.create(
+            kind=CoreProposedChange,
+            data={"source_branch": REBASED_BRANCH_NAME, "destination_branch": "main", "name": "rebased-status"},
+        )
+        await proposed_change.save()
+
+        for repository_name in repository_ids:
+            validator = await self._wait_for_repository_validator(
+                db=db,
+                proposed_change_id=proposed_change.id,
+                name=repository_name,
+                conclusion=ValidatorConclusion.FAILURE,
+            )
+            checks = await client.filters(kind=CoreStandardCheck, validator__ids=validator.id)
+            assert [(check.name.value, check.conclusion.value) for check in checks] == [
+                (IMPORT_STATUS_CHECK_NAME, ValidatorConclusion.FAILURE.value)
             ]

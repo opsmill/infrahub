@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.query.node import NodeListGetAttributeQuery
+from infrahub.core.constants import MetadataOptions
+from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreGenericRepository
+from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-
-SYNC_STATUS_ATTRIBUTE = "sync_status"
 
 
 class RepositoryBranchSyncStatusReader:
@@ -23,16 +24,23 @@ class RepositoryBranchSyncStatusReader:
         self.db = db
 
     async def get_status_written_on_branch(self, repository_id: str, branch: Branch) -> str | None:
-        """Return the sync status written on `branch`, or None when the branch only inherits one."""
-        query = await NodeListGetAttributeQuery.init(
-            db=self.db, ids=[repository_id], fields={SYNC_STATUS_ATTRIBUTE: True}, branch=branch
+        """Return the sync status written on `branch`, or None when the branch only inherits one.
+
+        A value the branch wrote is at least as recent as `branched_from`: a rebase moves both the branch's
+        own edges and `branched_from` to the rebase time, so the two are equal afterwards and the comparison
+        must not be strict. An inherited value is frozen before `branched_from`.
+        """
+        repository = await NodeManager.get_one(
+            db=self.db,
+            id=repository_id,
+            kind=CoreGenericRepository,
+            branch=branch,
+            include_metadata=MetadataOptions.UPDATED_AT,
         )
-        await query.execute(db=self.db)
-        try:
-            attribute, result = query.get_result_by_id_and_name(repository_id, SYNC_STATUS_ATTRIBUTE)
-        except IndexError:
+        if repository is None:
             return None
 
-        if result.get("r2").get("branch") != branch.name:
+        updated_at = repository.sync_status._get_updated_at()
+        if updated_at is None or updated_at < Timestamp(branch.get_branched_from()):
             return None
-        return attribute.value
+        return repository.sync_status.value
