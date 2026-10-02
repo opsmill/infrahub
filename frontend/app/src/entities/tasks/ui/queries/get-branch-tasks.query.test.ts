@@ -36,6 +36,35 @@ describe("getBranchTasksQueryOptions", () => {
       tasksQueryKeys.branchList({ branchName: "feature", offset: 0, limit: 10 })
     );
   });
+
+  describe("placeholder data", () => {
+    const placeholderFor = (branchName: string, previousBranchName: string) => {
+      const { placeholderData } = getBranchTasksQueryOptions({ branchName, page: 2 });
+      if (typeof placeholderData !== "function") throw new Error("expected a placeholder function");
+      type Args = Parameters<typeof placeholderData>;
+      const previousData = { previous: true } as unknown as Args[0];
+      const previousQuery = {
+        queryKey: tasksQueryKeys.branchList({
+          branchName: previousBranchName,
+          offset: 0,
+          limit: 10,
+        }),
+      } as unknown as Args[1];
+      return { previousData, placeholder: placeholderData(previousData, previousQuery) };
+    };
+
+    it("keeps the previous page's rows while the same branch's next page loads", () => {
+      const { previousData, placeholder } = placeholderFor("feature", "feature");
+
+      expect(placeholder).toBe(previousData);
+    });
+
+    it("doesn't show another branch's rows while the new branch loads", () => {
+      const { placeholder } = placeholderFor("feature", "other-branch");
+
+      expect(placeholder).toBeUndefined();
+    });
+  });
 });
 
 describe("getBranchFailedTaskCountQueryOptions", () => {

@@ -1,4 +1,4 @@
-import { keepPreviousData, queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { TABLE_PAGE_SIZE, toPageNumber } from "@/shared/utils/table-pagination";
 
@@ -26,7 +26,8 @@ export function getBranchTasksQueryOptions({ branchName, page }: GetBranchTasksQ
     queryKey: tasksQueryKeys.branchList(params),
     queryFn: () => getBranchTasks(params),
     refetchInterval: currentPage === 1 ? BRANCH_TASKS_REFETCH_INTERVAL_MS : false,
-    placeholderData: keepPreviousData,
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[2].branchName === branchName ? previousData : undefined,
   });
 }
 
