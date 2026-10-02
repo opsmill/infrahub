@@ -16,10 +16,12 @@ describe("getRepositoryCommitStatus", () => {
     apiMock.mockReset();
   });
 
-  test("returns the condition and pending count", async () => {
+  test("returns the condition, pending count and unavailable reason", async () => {
     // GIVEN
     apiMock.mockResolvedValueOnce({
-      data: { InfrahubRepositoryCommits: { condition: "BEHIND", pending_count: 2 } },
+      data: {
+        InfrahubRepositoryCommits: { condition: "BEHIND", pending_count: 2, unavailable: null },
+      },
     } as ApiResponse);
 
     // WHEN
@@ -27,7 +29,7 @@ describe("getRepositoryCommitStatus", () => {
 
     // THEN
     expect(apiMock).toHaveBeenCalledWith(PARAMS);
-    expect(status).toEqual({ condition: "BEHIND", pending_count: 2 });
+    expect(status).toEqual({ condition: "BEHIND", pending_count: 2, unavailable: null });
   });
 
   test("throws with every message when the response carries errors", async () => {

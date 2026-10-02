@@ -4,6 +4,7 @@ import {
   type RepositoryCommitLog,
   RepositoryCommitState,
   RepositoryGitCondition,
+  RepositoryGitUnavailableReason,
 } from "@/entities/repository/domain/model/repository";
 import { getCommitStatusFromLog } from "@/entities/repository/domain/rules/get-commit-status-from-log";
 
@@ -31,20 +32,29 @@ const LOG: RepositoryCommitLog = {
 };
 
 describe("getCommitStatusFromLog", () => {
-  test("keeps only the condition and the pending count", () => {
+  test("keeps only the condition, the pending count and the unavailable reason", () => {
     expect(getCommitStatusFromLog(LOG)).toEqual({
       condition: RepositoryGitCondition.BEHIND,
       pending_count: 3,
+      unavailable: null,
     });
   });
 
-  test("carries an unavailable condition through", () => {
+  test("carries an unavailable condition and its reason through", () => {
     expect(
       getCommitStatusFromLog({
         ...LOG,
         condition: RepositoryGitCondition.UNAVAILABLE,
         pending_count: null,
+        unavailable: {
+          reason: RepositoryGitUnavailableReason.NOT_IMPLEMENTED,
+          message: "Not implemented",
+        },
       })
-    ).toEqual({ condition: RepositoryGitCondition.UNAVAILABLE, pending_count: null });
+    ).toEqual({
+      condition: RepositoryGitCondition.UNAVAILABLE,
+      pending_count: null,
+      unavailable: { reason: RepositoryGitUnavailableReason.NOT_IMPLEMENTED },
+    });
   });
 });

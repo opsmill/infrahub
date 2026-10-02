@@ -24,7 +24,7 @@ describe("isGitStateAvailable", () => {
     RepositoryGitCondition.ORPHANED,
     RepositoryGitCondition.NO_REMOTE,
     RepositoryGitCondition.NOT_TRACKED,
-  ])("%s is an answer, so polling stops", (condition) => {
+  ])("%s carries a git state", (condition) => {
     expect(isGitStateAvailable({ condition })).toBe(true);
   });
 
@@ -32,11 +32,11 @@ describe("isGitStateAvailable", () => {
     RepositoryGitUnavailableReason.NOT_CLONED,
     RepositoryGitUnavailableReason.NOT_IMPLEMENTED,
     RepositoryGitUnavailableReason.TIMEOUT,
-  ])("UNAVAILABLE with reason %s keeps polling", (reason) => {
+  ])("UNAVAILABLE with reason %s carries no git state", (reason) => {
     expect(isGitStateAvailable(unavailableLog(reason))).toBe(false);
   });
 
-  test("UNAVAILABLE without a reason still keeps polling", () => {
+  test("UNAVAILABLE without a reason carries no git state", () => {
     expect(isGitStateAvailable(unavailableLog(null))).toBe(false);
   });
 });

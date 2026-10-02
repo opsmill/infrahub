@@ -6,6 +6,7 @@ import type {
 export function getCommitStatusFromLog({
   condition,
   pending_count,
+  unavailable,
 }: RepositoryCommitLog): RepositoryCommitStatus {
-  return { condition, pending_count };
+  return { condition, pending_count, unavailable: unavailable && { reason: unavailable.reason } };
 }

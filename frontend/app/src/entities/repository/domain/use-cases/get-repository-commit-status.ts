@@ -21,6 +21,6 @@ export const getRepositoryCommitStatus: GetRepositoryCommitStatus = async (param
     throw new Error("The commit log response carried no status");
   }
 
-  const { condition, pending_count } = data.InfrahubRepositoryCommits;
-  return { condition, pending_count };
+  const { condition, pending_count, unavailable } = data.InfrahubRepositoryCommits;
+  return { condition, pending_count, unavailable };
 };

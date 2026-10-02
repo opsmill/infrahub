@@ -52,4 +52,6 @@ export type RepositoryCommitLog = Pick<
   commits: RepositoryCommit[];
 };
 
-export type RepositoryCommitStatus = Pick<RepositoryCommitLog, "condition" | "pending_count">;
+export type RepositoryCommitStatus = Pick<RepositoryCommitLog, "condition" | "pending_count"> & {
+  unavailable: Pick<RepositoryGitUnavailable, "reason"> | null;
+};

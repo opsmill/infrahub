@@ -6,6 +6,9 @@ const REPOSITORY_COMMIT_STATUS = graphql(`
     InfrahubRepositoryCommits(repository_id: $repositoryId, limit: 1) {
       condition
       pending_count
+      unavailable {
+        reason
+      }
     }
   }
 `);

@@ -6,7 +6,7 @@ import {
 export function getPendingImportCount({
   condition,
   pending_count,
-}: RepositoryCommitStatus): number | null {
+}: Pick<RepositoryCommitStatus, "condition" | "pending_count">): number | null {
   if (condition === RepositoryGitCondition.IN_SYNC) return 0;
   if (condition === RepositoryGitCondition.BEHIND) return pending_count;
   return null;

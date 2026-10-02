@@ -14,15 +14,18 @@ import type {
 } from "@/entities/repository/domain/model/repository";
 import { getCommitStatusFromLog } from "@/entities/repository/domain/rules/get-commit-status-from-log";
 import { isGitStateAvailable } from "@/entities/repository/domain/rules/is-git-state-available";
+import { shouldPollGitState } from "@/entities/repository/domain/rules/should-poll-git-state";
 import {
   type GetRepositoryCommitsParams,
   getRepositoryCommits,
 } from "@/entities/repository/domain/use-cases/get-repository-commits";
-import { keepStatusOverColdAnswer } from "@/entities/repository/ui/queries/get-repository-commit-status.query";
+import {
+  keepStatusOverColdAnswer,
+  REPOSITORY_COMMITS_POLL_INTERVAL_MS,
+} from "@/entities/repository/ui/queries/get-repository-commit-status.query";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
 export const REPOSITORY_COMMITS_PAGE_SIZE = 20;
-export const REPOSITORY_COMMITS_POLL_INTERVAL_MS = 10_000;
 export const REPOSITORY_COMMITS_STALE_TIME_MS = 60_000;
 
 type GetRepositoryCommitsQueryParams = Omit<GetRepositoryCommitsParams, keyof PaginationParams>;
@@ -80,7 +83,7 @@ export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQue
     },
     refetchInterval: (query) => {
       const firstPage = query.state.data?.pages[0];
-      return firstPage && !isGitStateAvailable(firstPage)
+      return firstPage && shouldPollGitState(firstPage)
         ? REPOSITORY_COMMITS_POLL_INTERVAL_MS
         : false;
     },

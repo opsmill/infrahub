@@ -23,8 +23,16 @@ const commitsApiMock = vi.mocked(getRepositoryCommitsFromApi);
 
 type ApiResult = Awaited<ReturnType<typeof getRepositoryCommitStatusFromApi>>;
 
-const apiResult = ({ condition, pending_count }: RepositoryCommitsWire) =>
-  ({ data: { InfrahubRepositoryCommits: { condition, pending_count } } }) as ApiResult;
+const apiResult = ({ condition, pending_count, unavailable }: RepositoryCommitsWire) =>
+  ({
+    data: {
+      InfrahubRepositoryCommits: {
+        condition,
+        pending_count,
+        unavailable: unavailable && { reason: unavailable.reason },
+      },
+    },
+  }) as ApiResult;
 
 type CommitsApiResult = Awaited<ReturnType<typeof getRepositoryCommitsFromApi>>;
 

@@ -9,10 +9,10 @@ import {
   RepositoryGitUnavailableReason,
 } from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommits } from "@/entities/repository/domain/use-cases/get-repository-commits";
+import { REPOSITORY_COMMITS_POLL_INTERVAL_MS } from "@/entities/repository/ui/queries/get-repository-commit-status.query";
 import {
   getRepositoryCommitsQueryOptions,
   REPOSITORY_COMMITS_PAGE_SIZE,
-  REPOSITORY_COMMITS_POLL_INTERVAL_MS,
   REPOSITORY_COMMITS_STALE_TIME_MS,
 } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
@@ -50,6 +50,13 @@ function buildLog(condition: RepositoryGitCondition, commitCount = 1): Repositor
         ? { reason: RepositoryGitUnavailableReason.NOT_CLONED, message: "not cloned" }
         : null,
     commits: Array.from({ length: commitCount }, (_, index) => buildCommit(index)),
+  };
+}
+
+function buildUnavailableLog(reason: RepositoryGitUnavailableReason | null): RepositoryCommitLog {
+  return {
+    ...buildLog(RepositoryGitCondition.UNAVAILABLE, 0),
+    unavailable: reason === null ? null : { reason, message: reason },
   };
 }
 
@@ -140,9 +147,13 @@ describe("getRepositoryCommitsQueryOptions", () => {
     expect(result).toEqual(newData);
   });
 
-  test("polls while the first page is still unavailable", () => {
+  test.each([
+    RepositoryGitUnavailableReason.NOT_CLONED,
+    RepositoryGitUnavailableReason.TIMEOUT,
+    null,
+  ])("polls while the first page is unavailable with reason %s", (reason) => {
     // GIVEN
-    const pages = [buildLog(RepositoryGitCondition.UNAVAILABLE)];
+    const pages = [buildUnavailableLog(reason)];
 
     // WHEN
     const interval = resolveRefetchInterval(pages);
@@ -151,9 +162,27 @@ describe("getRepositoryCommitsQueryOptions", () => {
     expect(interval).toBe(REPOSITORY_COMMITS_POLL_INTERVAL_MS);
   });
 
-  test("stops polling once the first page carries a git state", () => {
+  test("does not poll when reading commits is not implemented", () => {
     // GIVEN
-    const pages = [buildLog(RepositoryGitCondition.BEHIND)];
+    const pages = [buildUnavailableLog(RepositoryGitUnavailableReason.NOT_IMPLEMENTED)];
+
+    // WHEN
+    const interval = resolveRefetchInterval(pages);
+
+    // THEN
+    expect(interval).toBe(false);
+  });
+
+  test.each([
+    RepositoryGitCondition.IN_SYNC,
+    RepositoryGitCondition.BEHIND,
+    RepositoryGitCondition.REWRITTEN,
+    RepositoryGitCondition.ORPHANED,
+    RepositoryGitCondition.NO_REMOTE,
+    RepositoryGitCondition.NOT_TRACKED,
+  ])("does not poll once the first page answers %s", (condition) => {
+    // GIVEN
+    const pages = [buildLog(condition)];
 
     // WHEN
     const interval = resolveRefetchInterval(pages);
@@ -259,6 +288,7 @@ describe("getRepositoryCommitsQueryOptions", () => {
       expect(client.getQueryData(statusKey)).toEqual({
         condition: RepositoryGitCondition.BEHIND,
         pending_count: 4,
+        unavailable: null,
       });
     });
 
@@ -280,7 +310,11 @@ describe("getRepositoryCommitsQueryOptions", () => {
     test("keeps a known status when the first page answers unavailable", async () => {
       // GIVEN
       const client = new QueryClient();
-      const known = { condition: RepositoryGitCondition.IN_SYNC, pending_count: null };
+      const known = {
+        condition: RepositoryGitCondition.IN_SYNC,
+        pending_count: null,
+        unavailable: null,
+      };
       client.setQueryData(statusKey, known);
       getRepositoryCommitsMock.mockResolvedValue(buildLog(RepositoryGitCondition.UNAVAILABLE, 0));
 
