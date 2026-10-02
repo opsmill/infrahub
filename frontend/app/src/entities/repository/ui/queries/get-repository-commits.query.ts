@@ -24,9 +24,10 @@ import {
   REPOSITORY_COMMITS_POLL_INTERVAL_MS,
 } from "@/entities/repository/ui/queries/get-repository-commit-status.query";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
-import { REPOSITORY_COMMITS_PAGE_SIZE } from "@/entities/repository/ui/queries/repository-commits.constants";
-
-export const REPOSITORY_COMMITS_STALE_TIME_MS = 60_000;
+import {
+  REPOSITORY_COMMITS_PAGE_SIZE,
+  REPOSITORY_COMMITS_STALE_TIME_MS,
+} from "@/entities/repository/ui/queries/repository-commits.constants";
 
 type GetRepositoryCommitsQueryParams = Omit<GetRepositoryCommitsParams, keyof PaginationParams>;
 

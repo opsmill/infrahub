@@ -10,12 +10,12 @@ import {
 } from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommits } from "@/entities/repository/domain/use-cases/get-repository-commits";
 import { REPOSITORY_COMMITS_POLL_INTERVAL_MS } from "@/entities/repository/ui/queries/get-repository-commit-status.query";
-import {
-  getRepositoryCommitsQueryOptions,
-  REPOSITORY_COMMITS_STALE_TIME_MS,
-} from "@/entities/repository/ui/queries/get-repository-commits.query";
+import { getRepositoryCommitsQueryOptions } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
-import { REPOSITORY_COMMITS_PAGE_SIZE } from "@/entities/repository/ui/queries/repository-commits.constants";
+import {
+  REPOSITORY_COMMITS_PAGE_SIZE,
+  REPOSITORY_COMMITS_STALE_TIME_MS,
+} from "@/entities/repository/ui/queries/repository-commits.constants";
 
 vi.mock("@/entities/repository/domain/use-cases/get-repository-commits");
 

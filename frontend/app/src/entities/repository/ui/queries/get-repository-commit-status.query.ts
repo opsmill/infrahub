@@ -21,7 +21,10 @@ import {
   type RepositoryCommitStatusKeyParams,
   repositoriesQueryKeys,
 } from "@/entities/repository/ui/queries/repository.query-keys";
-import { REPOSITORY_COMMITS_PAGE_SIZE } from "@/entities/repository/ui/queries/repository-commits.constants";
+import {
+  REPOSITORY_COMMITS_PAGE_SIZE,
+  REPOSITORY_COMMITS_STALE_TIME_MS,
+} from "@/entities/repository/ui/queries/repository-commits.constants";
 
 export const REPOSITORY_COMMITS_POLL_INTERVAL_MS = 10_000;
 
@@ -63,6 +66,8 @@ export function getRepositoryCommitStatusQueryOptions(params: GetRepositoryCommi
     queryFn: () => getRepositoryCommitStatus(params),
     refetchInterval: (query) => getStatusPollInterval(query.state.data),
     refetchOnWindowFocus: false,
+    // The open Commits tab writes this status, so leaving the tab must not read it again at once.
+    staleTime: REPOSITORY_COMMITS_STALE_TIME_MS,
     // TanStack types structuralSharing's arguments as unknown.
     structuralSharing: (oldData, newData) =>
       keepStatusOverColdAnswer(

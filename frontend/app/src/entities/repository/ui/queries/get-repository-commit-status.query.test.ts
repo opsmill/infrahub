@@ -1,14 +1,18 @@
-import { describe, expect, test } from "vitest";
+import { QueryClient } from "@tanstack/react-query";
+import { describe, expect, test, vi } from "vitest";
 
 import {
   type RepositoryCommitStatus,
   RepositoryGitCondition,
   RepositoryGitUnavailableReason,
 } from "@/entities/repository/domain/model/repository";
+import { getRepositoryCommitStatus } from "@/entities/repository/domain/use-cases/get-repository-commit-status";
 import {
   getRepositoryCommitStatusQueryOptions,
   REPOSITORY_COMMITS_POLL_INTERVAL_MS,
 } from "@/entities/repository/ui/queries/get-repository-commit-status.query";
+
+vi.mock("@/entities/repository/domain/use-cases/get-repository-commit-status");
 
 const PARAMS = { repositoryId: "repo-1", branchName: "main" };
 
@@ -118,5 +122,22 @@ describe("getRepositoryCommitStatusQueryOptions", () => {
 
     // THEN
     expect(shared).toEqual(next);
+  });
+
+  test("does not read again a status the commit log has just written", async () => {
+    // GIVEN
+    const client = new QueryClient();
+    const options = getRepositoryCommitStatusQueryOptions(PARAMS);
+    client.setQueryData(options.queryKey, {
+      condition: RepositoryGitCondition.BEHIND,
+      pending_count: 2,
+      unavailable: null,
+    });
+
+    // WHEN
+    await client.fetchQuery(options);
+
+    // THEN
+    expect(vi.mocked(getRepositoryCommitStatus)).not.toHaveBeenCalled();
   });
 });
