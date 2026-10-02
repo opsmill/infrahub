@@ -71,6 +71,7 @@ from .models import (
     GitRepositoryImportObjects,
     GitRepositoryMerge,
     GitRepositoryPullReadOnly,
+    GitRepositoryWarmUp,
     RequestArtifactDefinitionGenerate,
     RequestArtifactGenerate,
     TriggerRepositoryInternalChecks,
@@ -84,6 +85,7 @@ from .refs_check.factory import build_check_refs_model, build_refs_checker, buil
 from .refs_check.models import RefsCheckCycleSummary, RefsCheckOutcome, RefsCheckResult
 from .refs_check.tracked_commit import GraphTrackedCommitReader
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
+from .state.warm_up import RepositoryWarmUp
 from .sync import RepositoryAdder, RepositoryBranchesFailedError, RepositoryFileImporter, RepositorySyncer, SyncReport
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
 
@@ -914,10 +916,18 @@ async def import_read_only_repository_last_commit(model: GitReadOnlyRepositoryIm
         await repo.update_latest_commit()
 
 
-@flow(name="git-repository-warm-up", flow_run_name="Warm up the local copy of repository {repository_id}")
-async def warm_up_git_repository(repository_id: str) -> None:
-    log = get_run_logger()
-    log.info(f"Warm up of repository {repository_id} is not implemented yet")
+@flow(name="git-repository-warm-up", flow_run_name="Warm up the local copy of repository {model.repository_name}")
+async def warm_up_git_repository(model: GitRepositoryWarmUp) -> None:
+    # A read starts this, not a person, so it stays out of the namespace-filtered task list.
+    await add_tags(nodes=[model.repository_id], namespace=False)
+
+    warm_up = RepositoryWarmUp(
+        client=get_client(),
+        message_bus=await get_message_bus(),
+        lock_registry=lock.registry,
+        worker_identity=WORKER_IDENTITY,
+    )
+    await warm_up.warm_up(model=model)
 
 
 @task(

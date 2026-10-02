@@ -18,13 +18,17 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import ValidationError, WorkerTimeoutError
+from infrahub.git.state.cache_keys import refs_check_last_key
 from infrahub.git.state.models import CommitEntry, CommitLogRequest, CommitLogResult
+from infrahub.git.state.reader import UnavailableRepositoryGitStateReader
+from infrahub.graphql.error_formatter import format_graphql_errors
 from infrahub.graphql.queries.repository_git_state import _drift_read
 from infrahub.services import InfrahubServices
+from tests.adapters.cache import MemoryCache, UnreachableCache
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql_query
-from tests.helpers.repository_git_state import RecordingRepositoryGitStateReader
+from tests.helpers.repository_git_state import FailingRepositoryGitStateReader, RecordingRepositoryGitStateReader
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -40,6 +44,7 @@ READ_ONLY_REPOSITORY_NAME = "test-commit-visibility-read-only"
 READ_ONLY_REPOSITORY_LOCATION = "/tmp/test-commit-visibility-read-only"
 READ_ONLY_REF = "v1.0"
 READ_ONLY_BRANCH_REF = "v2.0"
+CHECKED_AT = datetime(2026, 9, 8, 11, 45, tzinfo=UTC)
 MAIN_COMMIT = "1111111111111111111111111111111111111111"
 BRANCH_COMMIT = "2222222222222222222222222222222222222222"
 REMOTE_HEAD = "3333333333333333333333333333333333333333"
@@ -161,7 +166,7 @@ async def untracked_read_only_repository(db: InfrahubDatabase, default_branch: B
 
 @pytest.fixture
 async def service(db: InfrahubDatabase) -> InfrahubServices:
-    return await InfrahubServices.new(database=db, message_bus=BusRecorder())
+    return await InfrahubServices.new(database=db, message_bus=BusRecorder(), cache=MemoryCache())
 
 
 @pytest.fixture
@@ -171,6 +176,32 @@ def recording_reader() -> Iterator[RecordingRepositoryGitStateReader]:
     config.OVERRIDE.repository_git_state_reader = reader
     yield reader
     config.OVERRIDE.repository_git_state_reader = original
+
+
+@pytest.fixture
+def unavailable_reader() -> Iterator[UnavailableRepositoryGitStateReader]:
+    reader = UnavailableRepositoryGitStateReader()
+    original = config.OVERRIDE.repository_git_state_reader
+    config.OVERRIDE.repository_git_state_reader = reader
+    yield reader
+    config.OVERRIDE.repository_git_state_reader = original
+
+
+@pytest.fixture
+def timing_out_reader() -> Iterator[FailingRepositoryGitStateReader]:
+    reader = FailingRepositoryGitStateReader(
+        error=WorkerTimeoutError(operation="git.commit_log.get", timeout_seconds=30)
+    )
+    original = config.OVERRIDE.repository_git_state_reader
+    config.OVERRIDE.repository_git_state_reader = reader
+    yield reader
+    config.OVERRIDE.repository_git_state_reader = original
+
+
+@pytest.fixture
+async def service_with_cache(db: InfrahubDatabase) -> tuple[InfrahubServices, MemoryCache]:
+    cache = MemoryCache()
+    return await InfrahubServices.new(database=db, message_bus=BusRecorder(), cache=cache), cache
 
 
 @pytest.fixture
@@ -739,6 +770,7 @@ async def test_commit_log_reports_the_unavailable_placeholder(
     session_admin: AccountSession,
     service: InfrahubServices,
     repository: Node,
+    unavailable_reader: UnavailableRepositoryGitStateReader,
 ) -> None:
     response = await graphql_query(
         query=COMMITS_QUERY,
@@ -1089,3 +1121,191 @@ async def test_drift_refuses_a_kind_with_no_git_state(
     """Both concrete repository kinds are handled, so this pins what a third one would surface."""
     with pytest.raises(ValidationError, match=r"^Reading git state is not supported for a CoreAccount$"):
         _drift_read(repository=create_test_admin, branches=[])
+
+
+async def test_commit_log_surfaces_a_worker_timeout_with_its_retry_hint(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service: InfrahubServices,
+    repository: Node,
+    timing_out_reader: FailingRepositoryGitStateReader,
+) -> None:
+    """The commit log has nothing to show without a worker answer, so a timeout is an error, not a state."""
+    response = await graphql_query(
+        query=COMMITS_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session_admin,
+    )
+
+    assert response.data is None
+    assert response.errors
+    assert format_graphql_errors(errors=response.errors) == [
+        {
+            "message": "No worker answered git.commit_log.get within 30 seconds",
+            "locations": [{"line": 3, "column": 3}],
+            "path": ["InfrahubRepositoryCommits"],
+            "extensions": {
+                "code": "WORKER_TIMEOUT",
+                "http_status": 504,
+                "data": {"operation": "git.commit_log.get", "timeout_seconds": 30, "retry_after_seconds": 30},
+            },
+        }
+    ]
+
+
+async def test_commit_log_reports_when_a_read_only_remote_was_last_checked(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service_with_cache: tuple[InfrahubServices, MemoryCache],
+    read_only_repository: Node,
+    recording_reader: RecordingRepositoryGitStateReader,
+) -> None:
+    service, cache = service_with_cache
+    await cache.set(key=refs_check_last_key(repository_id=read_only_repository.id), value=CHECKED_AT.isoformat())
+
+    response = await graphql_query(
+        query=COMMITS_QUERY_INFRAHUB_SIDE_ONLY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": read_only_repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert response.data["InfrahubRepositoryCommits"] == {
+        "repository_id": read_only_repository.id,
+        "branch_name": default_branch.name,
+        "git_ref": READ_ONLY_REF,
+        "imported_commit": MAIN_COMMIT,
+        "checked_at": CHECKED_AT.isoformat(),
+    }
+    assert recording_reader.commit_requests == []
+
+
+async def test_drift_reports_when_a_read_only_remote_was_last_checked(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service_with_cache: tuple[InfrahubServices, MemoryCache],
+    read_only_repository: Node,
+) -> None:
+    service, cache = service_with_cache
+    await cache.set(key=refs_check_last_key(repository_id=read_only_repository.id), value=CHECKED_AT.isoformat())
+
+    response = await graphql_query(
+        query=DRIFT_QUERY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": read_only_repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert response.data["InfrahubRepositoryBranchDrift"]["checked_at"] == CHECKED_AT.isoformat()
+
+
+@dataclass
+class UnknownCheckTimeCase:
+    name: str
+    cached_value: str | None
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        pytest.param(UnknownCheckTimeCase(name="never_checked", cached_value=None), id="never_checked"),
+        pytest.param(UnknownCheckTimeCase(name="unreadable_value", cached_value="not-a-date"), id="unreadable_value"),
+    ],
+)
+async def test_a_read_only_remote_with_no_readable_check_reports_no_check_time(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service_with_cache: tuple[InfrahubServices, MemoryCache],
+    read_only_repository: Node,
+    case: UnknownCheckTimeCase,
+) -> None:
+    service, cache = service_with_cache
+    if case.cached_value is not None:
+        await cache.set(key=refs_check_last_key(repository_id=read_only_repository.id), value=case.cached_value)
+
+    response = await graphql_query(
+        query=COMMITS_QUERY_INFRAHUB_SIDE_ONLY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": read_only_repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert response.data["InfrahubRepositoryCommits"]["checked_at"] is None
+
+
+async def test_an_unreachable_cache_leaves_the_query_answered_without_a_check_time(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    read_only_repository: Node,
+) -> None:
+    service = await InfrahubServices.new(database=db, message_bus=BusRecorder(), cache=UnreachableCache())
+
+    response = await graphql_query(
+        query=COMMITS_QUERY_INFRAHUB_SIDE_ONLY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": read_only_repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert response.data["InfrahubRepositoryCommits"] == {
+        "repository_id": read_only_repository.id,
+        "branch_name": default_branch.name,
+        "git_ref": READ_ONLY_REF,
+        "imported_commit": MAIN_COMMIT,
+        "checked_at": None,
+    }
+
+
+async def test_a_read_write_repository_never_reports_a_check_time(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    service_with_cache: tuple[InfrahubServices, MemoryCache],
+    repository: Node,
+) -> None:
+    """Its sync fetches the remote, so a check time recorded against it is ignored."""
+    service, cache = service_with_cache
+    await cache.set(key=refs_check_last_key(repository_id=repository.id), value=CHECKED_AT.isoformat())
+
+    response = await graphql_query(
+        query=COMMITS_QUERY_INFRAHUB_SIDE_ONLY,
+        db=db,
+        branch=default_branch,
+        service=service,
+        variables={"id": repository.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+    assert response.data["InfrahubRepositoryCommits"]["checked_at"] is None

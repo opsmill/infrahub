@@ -246,6 +246,7 @@ class RepositoryGitCondition(InfrahubStringEnum):
     BEHIND = "behind"
     REWRITTEN = "rewritten"
     ORPHANED = "orphaned"
+    REF_MISSING = "ref_missing"
     NO_REMOTE = "no_remote"
     NOT_TRACKED = "not_tracked"
     UNAVAILABLE = "unavailable"

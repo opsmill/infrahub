@@ -189,6 +189,16 @@ class GitReadOnlyRepositoryCheckRefs(BaseModel):
     )
 
 
+class GitRepositoryWarmUp(BaseModel):
+    """Create a repository's local copy on every worker, after a read found a worker without one."""
+
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the repository")
+    repository_kind: str = Field(..., description="The kind of the repository")
+    location: str = Field(..., min_length=1, description="The external URL of the repository")
+    infrahub_branch_name: str = Field(..., description="Infrahub branch the read was made for")
+
+
 class GitDiffNamesOnly(BaseModel):
     """Request a list of modified files between two commits."""
 
