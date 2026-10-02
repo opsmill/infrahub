@@ -228,12 +228,12 @@ either case.
   is reconciled and not reported. User Story 6 covers it.
 - **A tracked ref that disappears from the remote.** This is an absent ref, not a lineage break. It
   keeps its current behaviour and writes no record.
-- **A branch left ahead of its remote.** After a rejected push the local branch holds commits the
-  remote does not. The remote head is then an ancestor of the imported commit. This is not a
-  rewrite. The branch MUST NOT be reset, because the reset would discard a commit that exists on
-  one worker only. The push-ordering work of IFC-1449 removes the merge path's version of that
-  state at its source. This classification is what stops the reconciliation from resetting such a
-  branch, whatever else left it ahead. See "Dependencies".
+- **A remote rewound onto an ancestor of the imported commit.** A force push, or a ref moved
+  backwards, can leave the remote head inside the history Infrahub already recorded. No write path
+  records a commit the remote never carried, so the remote discarded content here exactly as a
+  rewrite does. It is reconciled and recorded like any other rewrite. A worker whose own worktree
+  holds commits the remote does not is a separate comparison. FR-001b keeps that worktree from
+  being reset.
 - **The commit Infrahub imported is no longer present in the local object database.** Ancestry
   cannot be tested. The branch is treated as diverged, which is the safe classification, and the
   record names the imported commit as the previous commit.
@@ -248,15 +248,17 @@ here. See "Out of Scope".
 #### Detection
 
 - **FR-001**: The system MUST classify a tracked ref's remote head against the imported commit by
-  ancestry. The classification MUST distinguish unchanged, fast-forward, local-ahead and diverged.
-  Equality alone MUST NOT be used.
-- **FR-001a**: The system MUST NOT treat a branch whose remote head is an ancestor of the imported
-  commit as a rewrite. Such a branch holds commits the remote does not. It MUST NOT be reset and
-  MUST NOT be recorded. Resetting it would discard a commit that exists on one worker only.
+  ancestry. The classification MUST distinguish unchanged, fast-forward and diverged. Equality
+  alone MUST NOT be used.
+- **FR-001a**: The system MUST treat a remote head that is an ancestor of the imported commit as a
+  lineage break, and MUST NOT treat it as unchanged or as a fast-forward. No write path records a
+  commit the remote never carried, so such a remote was rewound and content was discarded. The
+  branch MUST be reconciled and recorded like any other rewrite.
 - **FR-001b**: The system MUST keep two comparisons apart. Whether the history was rewritten is
   decided from the commit **recorded in the graph** for that branch. Whether a given worker's clone
   must move is decided from **that worker's own branch worktree**. The first drives the record and
-  the signal. The second drives the reset.
+  the signal. The second drives the reset. A worktree that already contains the remote head MUST
+  NOT be reset, because the reset would discard a commit that exists on one worker only.
 - **FR-001c**: A worker whose clone is stale MUST reset even when the graph already holds the
   remote's commit, and MUST record nothing when it does. Without this, every worker except the one
   that ran the reconciliation keeps the discarded history. Recording from it would produce one
@@ -348,10 +350,10 @@ here. See "Out of Scope".
 - **`CoreReadOnlyRepository`**: detected and recorded, never reconciled. It resolves a commit and
   creates a commit worktree instead of pulling a branch. The divergence failure this work removes
   cannot occur there.
-- **Ref classification**: a typed value with six cases. Unchanged, fast-forward, locally-ahead,
-  rewrite, re-target and remote-absent. It is a type and not a boolean, so that "diverged",
-  "re-targeted" and "ahead of the remote" cannot collapse into each other at a call site.
-  Locally-ahead is the one that protects an unpushed commit from being reset away.
+- **Ref classification**: a typed value with five cases. Unchanged, fast-forward, rewrite,
+  re-target and remote-absent. It is a type and not a boolean, so that "diverged" and
+  "re-targeted" cannot collapse into each other at a call site. Both reconcile the same way, and
+  only a rewrite is recorded and signalled.
 - **Trunk-rewrite signal**: one outbound event per rewrite of the configured default branch.
 - **Repository operational status**: unchanged. It describes whether the remote is reachable, which
   is a different phase.

@@ -62,7 +62,7 @@ its own.
 - [x] T005 [P] Define `RefClassification` and `RefDivergence` in
       `backend/infrahub/git/divergence/models.py`, per
       [data-model.md](data-model.md), "New in-process types". `RefClassification` is a `StrEnum`
-      with `UNCHANGED`, `FAST_FORWARD`, `LOCAL_AHEAD`, `REWRITE`, `RETARGET` and `REMOTE_ABSENT`.
+      with `UNCHANGED`, `FAST_FORWARD`, `REWRITE`, `RETARGET` and `REMOTE_ABSENT`.
       `RefDivergence` holds a nullable `remote_head` and enforces the three validation rules in
       that section.
 - [x] T006 [P] Define `ReconciledBranch` in `backend/infrahub/git/divergence/models.py`. It carries
@@ -81,10 +81,10 @@ its own.
       `target_changed` from its caller and never reads the cache itself.
 - [x] T010 [P] Write unit tests for the detector in
       `backend/tests/unit/git/divergence/test_detector.py`. Cover every row of the contract table.
-      The negative cases carry the most weight: a fast-forward, a deliberate re-target, a branch
-      that is only ahead of its remote, and an absent remote ref must all come out clean. The
-      locally-ahead case is the one that would discard an unpushed commit if it were wrong, so
-      assert it names `LOCAL_AHEAD` and not `REWRITE`. No database.
+      The negative cases carry the most weight: a fast-forward, a deliberate re-target and an
+      absent remote ref must all come out clean. Cover the rewound remote too: a remote head that
+      is an ancestor of the imported commit names `REWRITE`, and `RETARGET` when the target
+      changed. No database.
 - [x] T011 [P] Write unit tests for the models in
       `backend/tests/unit/git/divergence/test_models.py`. Assert that a `REWRITE` without an
       `imported_commit` is rejected.
@@ -402,7 +402,7 @@ emits no signal.
       needs no change.
 - [ ] T059 [P] [US1] Unit-test the recorder in
       `backend/tests/unit/git/divergence/test_recorder.py` against in-memory ports: last-write-wins,
-      the increment from absent to 1 and 1 to 2, a `RETARGET`, a `LOCAL_AHEAD` and a
+      the increment from absent to 1 and 1 to 2, a `RETARGET`, a `FAST_FORWARD` and a
       `REMOTE_ABSENT` each writing nothing, and a rejected divergence whose two commits are equal.
       No database, no mocks.
 - [ ] T060 [US1] Component-test the read inheritance in
@@ -619,6 +619,11 @@ read-write repository's configured default branch. Neither writes a record.
       on exactly one worker's disk". Leave the second bullet, "Nothing ever re-pushes", as it is.
       Leave the other two volatile notes alone: they cover the trunk fallback (PR #10542) and the
       persisted writeback state (IFC-3220). Rewriting those would claim two other fixes shipped.
+      Correct the Known limitation in the same file as well, the one that says a branch left ahead
+      of its remote is re-reported every cycle because `pull()` returns `True` with no change. The
+      reset now reads the worktree against the remote head and does nothing when the remote head is
+      an ancestor of the worktree, so that branch is no longer pulled and the once-a-minute log
+      line stops.
 - [ ] T090 [P] Document the two limitations under `docs/docs/git-integration/`, which is the
       published section. Do not edit `docs/archive/topics/repository.mdx`: neither
       `docusaurus.config.ts` nor `sidebars.ts` references it, so an edit there ships nothing. The
@@ -683,9 +688,10 @@ fails. A rejected push leaves the destination either at its pre-merge state, whe
 re-derives the merge, or trailing the remote, which the periodic synchronisation repairs. That
 ordering arrived with IFC-1449.
 
-`LOCAL_AHEAD` still earns its place. A branch merely ahead of its remote resets nothing and records
-nothing, whatever put it there. Treat the row as a correctness rule in the detector, not as cover
-for the merge path.
+The reset rule still earns its place. It reads this worker's worktree against the remote head and
+does nothing when the remote head is an ancestor of the worktree, so a branch merely ahead of its
+remote resets nothing, whatever put it there. Treat that row as a correctness rule in the reset,
+not as cover for the merge path.
 
 The Gogs harness, `_push_commit_to_remote` and the two `pre-receive` hook helpers are already on
 `develop`. The force-push helper is not. T012 adds it.

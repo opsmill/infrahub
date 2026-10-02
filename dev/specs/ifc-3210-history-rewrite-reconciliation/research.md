@@ -67,22 +67,29 @@ classification is:
 |---|---|
 | Equal | `UNCHANGED` |
 | Imported is an ancestor of remote head | `FAST_FORWARD` |
-| **Remote head is an ancestor of imported** | **`LOCAL_AHEAD`** |
-| Neither is an ancestor, tracking target unchanged | `REWRITE` |
-| Neither is an ancestor, tracking target changed | `RETARGET` |
+| The remote head does not contain the imported commit, tracking target unchanged | `REWRITE` |
+| The remote head does not contain the imported commit, tracking target changed | `RETARGET` |
 | The remote carries no such ref | `REMOTE_ABSENT` |
 | Imported commit is not present locally, tracking target unchanged | `REWRITE` (safe classification, see below) |
 | Imported commit is not present locally, tracking target changed | `RETARGET` |
 
-**`LOCAL_AHEAD` is not symmetry for its own sake.** After a rejected push the local branch sits ahead of
-`origin/`; `git-integration.md` lists it under Known limitations, and `compare_local_remote` flags
-the branch every cycle. Collapse that into "not an ancestor" and the branch classifies `REWRITE`,
-the sync resets it, and the unpushed commit is gone. That is the loss IFC-1449 removed at the
-merge layer, reintroduced at the detection layer.
+**A remote head behind the imported commit is a rewound remote.** The imported commit comes from
+the graph, and an audit of every `update_commit_value` write site found no path that records a
+commit the remote lacks. `create_locally` records straight after a clone. `pull` records a commit
+the fetch brought in. `reset_to_commit` records the SHA it pinned. The synchronisation's
+new-branch path pushes first, and a rejected push raises into `failed_imports` before the record
+is reached. `merge` pushes before it records and resets the worktree when either step fails. The
+read-only paths record what they read from the remote. So the remote head sitting on an ancestor
+of the imported commit has one cause: the remote was rewound, by a force push or a ref moved
+backwards. It discards content exactly as a rewrite does, so it is reconciled and recorded.
 
-With the row, a locally-ahead branch resets nothing and records nothing, so today's behaviour is
-preserved. It also removes the once-a-minute "update was detected but the commit remained the same
-after pull()" log line, because no pull is attempted.
+**The unpushed commit is protected by the other comparison.** The worktree, not the graph, is what
+sits ahead of `origin/` after a rejected push; `git-integration.md` lists that under Known
+limitations, and `compare_local_remote` flags the branch every cycle. The reset reads the worktree
+against the remote head and does nothing when the remote head is an ancestor of the worktree, so
+the protection never depended on the classification. It also removes the once-a-minute "update was
+detected but the commit remained the same after pull()" log line, because that branch is not
+pulled.
 
 **The missing-object case.** If the imported commit is no longer in the local object database, the
 ancestry test cannot run. `Repo.is_ancestor` raises rather than answering. The branch is then
@@ -137,8 +144,8 @@ remote head instead of pulling. When the remote head is an ancestor of the workt
 nothing: the worktree is ahead, not diverged.
 
 The "neither is an ancestor" wording is load-bearing. A rule keyed on "the worktree head is not an
-ancestor of the remote head" also fires on a locally-ahead branch, and the reset would discard the
-unpushed commit. FR-001a forbids exactly that.
+ancestor of the remote head" also fires on a worktree that is ahead of its remote, and the reset
+would discard the unpushed commit. FR-001b forbids exactly that.
 
 **Rationale**: FR-005 requires convergence to hold for a worker that received no broadcast. Every
 path that advances a branch worktree **from the remote** goes through `pull`: the sync collector,

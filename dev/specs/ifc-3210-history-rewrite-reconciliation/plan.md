@@ -56,7 +56,7 @@ work. The task count is in the table at the end of [tasks.md](tasks.md).
 |---|---|
 | **I. Schema-Driven Integrity** | Pass. The four attributes are declared in the schema layer. The generated schema, protocols and GraphQL schema are regenerated, never hand-edited. |
 | **II. Branch-Safe by Default** | Pass, and it is the central design decision. `BranchSupportType.LOCAL` makes the record per branch, diff-invisible and never merged. The principle requires that merge behaviour be specified and tested rather than assumed, so a dedicated branch-safety test asserts it. |
-| **III. Type Safety & Explicit Contracts** | Pass. The detector returns a six-member enum, not a boolean, so that `REWRITE`, `RETARGET` and `LOCAL_AHEAD` cannot collapse at a call site. The last of those is the one that would discard a user's unpushed commit if it collapsed into `REWRITE`. The message change and the new event are Pydantic models. |
+| **III. Type Safety & Explicit Contracts** | Pass. The detector returns a five-member enum, not a boolean, so that `REWRITE` and `RETARGET` cannot collapse at a call site. Both reconcile the same way, but only `REWRITE` writes a record and fires the trunk signal, so a collapse would report an ordinary change of tracking target as a rewrite. The message change and the new event are Pydantic models. |
 | **IV. Test Discipline** | Pass. Three modules are unit-testable without a database, which is what makes the no-mocking rule practical. Every other test uses testcontainers. |
 | **V. Query Performance** | Pass. One extra graph read per rewritten branch, on a rare path. No new query pattern. |
 | **VI. Security & Input Boundaries** | Pass. No new mutation, no new permission. Read access to the record follows read access to the repository. |
@@ -161,9 +161,11 @@ push leaves the destination either at its pre-merge state, where a later attempt
 merge, or trailing the remote, which the periodic synchronisation repairs. That ordering arrived
 with IFC-1449.
 
-`LOCAL_AHEAD` carries its own weight on top of that. A branch merely ahead of its remote classifies
-`LOCAL_AHEAD` and no slice resets it, so an unpushed commit from any other source is preserved too.
-Keep the row: it is a correctness rule in the detector, not a workaround for the merge path.
+The reset rule carries its own weight on top of that. The reset reads this worker's worktree
+against the remote head, and it does nothing when the remote head is an ancestor of the worktree,
+so no slice resets a branch that is merely ahead. An unpushed commit from any other source is
+preserved too. Keep that row: it is a correctness rule in the reset, not a workaround for the
+merge path.
 
 ## Risks
 

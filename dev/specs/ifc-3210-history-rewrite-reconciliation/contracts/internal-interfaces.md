@@ -60,23 +60,33 @@ Rows are evaluated in order. The first match wins.
 | **The imported commit is absent from the local object database, `target_changed` is false** | **`REWRITE`** (see below) |
 | **The imported commit is absent, `target_changed` is true** | **`RETARGET`** |
 | `imported_commit` is an ancestor of `remote_head` | `FAST_FORWARD` |
-| `remote_head` is an ancestor of `imported_commit` | `LOCAL_AHEAD` |
-| Neither is an ancestor, `target_changed` is false | `REWRITE` |
-| Neither is an ancestor, `target_changed` is true | `RETARGET` |
+| The remote head does not contain the imported commit, `target_changed` is false | `REWRITE` |
+| The remote head does not contain the imported commit, `target_changed` is true | `RETARGET` |
 | Any other git failure | propagates as `RepositoryError`; the branch joins `failed_imports` |
 
-The absent-object rows come **before** the three ancestry rows because those rows cannot be
+The absent-object rows come **before** the ancestry rows because those rows cannot be
 evaluated at all when the object is gone: the ancestry call raises instead of answering. They also
 honour `target_changed`, so a deliberate re-target whose old commit has been garbage-collected is
 still a re-target rather than a recorded rewrite.
 
-**`LOCAL_AHEAD` is load-bearing.** A branch left ahead of its remote is a state the product
-reaches. Without that row it falls into "neither is an ancestor", classifies `REWRITE`, and the
-reset discards the unpushed commit. With it, that branch resets nothing and keeps today's
-behaviour.
+**A remote head behind the graph commit means the remote was rewound.** Every write of the graph
+commit records a commit the remote already carries. `create_locally` records straight after a
+clone. `pull` records a commit the fetch brought in. `reset_to_commit` records the SHA it pinned.
+The synchronisation's new-branch path pushes first, and a rejected push raises into
+`failed_imports` before the record is reached. `merge` pushes before it records and resets the
+worktree when either step fails. The read-only paths record what they read from the remote. No
+path leaves the graph holding a commit the remote never had, so a remote head that is an ancestor
+of the imported commit means a force push, or a ref moved backwards. That discards content exactly
+as a rewrite does, so it is reconciled and recorded.
 
-A branch that is **both** ahead locally and rewritten remotely still classifies `REWRITE`, and the
-reset moves it to the remote head. That is safe for the merge path: `InfrahubRepository.merge`
+**An unpushed commit is still safe, through the other comparison.** The worktree, not the graph,
+is what sits ahead of the remote after a rejected push. The reset table below does nothing when
+the remote head is an ancestor of the worktree. Graph against remote decides the record. Worktree
+against remote decides the reset. The protection lives in the second comparison, so the
+classification does not have to carry it.
+
+A worktree that is both ahead of the remote and rewritten away from it does reset, because neither
+head is an ancestor of the other. That is safe for the merge path: `InfrahubRepository.merge`
 pushes the merge commit before it records it and resets the destination worktree when either step
 fails, so no merge commit survives on one worker alone.
 
@@ -145,7 +155,7 @@ commit.
   the detector nor the recorder reads the cache. See section 8.
 - **Reset and record are two different decisions.** `REWRITE` and `RETARGET` both reset: both
   describe a branch whose local history no longer leads to the remote's, and both must end with
-  the worktree on the remote head. Only `REWRITE` records. `LOCAL_AHEAD`, `REMOTE_ABSENT` and
+  the worktree on the remote head. Only `REWRITE` records. `FAST_FORWARD`, `REMOTE_ABSENT` and
   `UNCHANGED` do neither.
 
 **The classification decides the record. It does not decide the reset.** They read different
@@ -157,7 +167,6 @@ Record and signal, from the classification (graph against remote):
 |---|---|---|
 | `UNCHANGED` | no | no |
 | `FAST_FORWARD` | no | no |
-| `LOCAL_AHEAD` | no | no |
 | `REWRITE` | yes | trunk only |
 | `RETARGET` | no | no |
 | `REMOTE_ABSENT` | no | no |
@@ -319,10 +328,11 @@ hard-resets onto the remote head only when **neither** is an ancestor of the oth
 | Neither is an ancestor of the other | Hard-resets onto the remote head and creates the commit worktree. |
 | No worktree, `create_if_missing` and a branch id | Creates the worktree, unchanged. |
 
-**The locally-ahead row is mandatory here, not only in the detector.** FR-001a forbids resetting
-such a branch. A rule keyed on "not an ancestor" would catch it, because a branch that is ahead of
-its remote is also not an ancestor of it, and the reset would discard the unpushed commit this
-whole feature is careful about.
+**The worktree-is-ahead row is where an unpushed commit is protected.** FR-001b forbids resetting
+such a worktree. A rule keyed on "not an ancestor" would catch it, because a worktree that is
+ahead of its remote is also not an ancestor of it, and the reset would discard the unpushed commit
+this whole feature is careful about. The classification carries no equivalent row, so this row is
+the only place that protection lives.
 
 The pull path answers this without any classification context: "is the remote head an ancestor of
 the worktree head" is a pure ancestry question, the same gateway call the detector makes. What the
@@ -441,10 +451,11 @@ Changed. `backend/infrahub/message_bus/operations/git/repository.py::fetch`.
 3. When `branches` is present, it resets each pair in turn, inside that one lock hold.
 4. When `branches` is absent, it behaves exactly as it does today.
 5. It still passes `update_commit_value=False`. A broadcast never writes to the graph.
-6. **It resets with `reset_to_commit` and runs no ancestry check**, so it does not honour
-   `LOCAL_AHEAD`: a pinned SHA moves the worktree whether or not it holds commits the remote does
-   not. That is deliberate, because the broadcast carries a SHA the sending worker already resolved
-   and the receiving worker is meant to converge on exactly it.
+6. **It resets with `reset_to_commit` and runs no ancestry check.** A pinned SHA moves the
+   worktree whether or not it holds commits the remote does not, so the broadcast skips the
+   worktree-is-ahead row of the reset table in section 1. That is deliberate, because the
+   broadcast carries a SHA the sending worker already resolved and the receiving worker is meant
+   to converge on exactly it.
 7. One pair failing does not stop the rest. Each failure is logged with the branch it belongs to,
    and that branch converges on first contact through the pull-path rule of FR-005. The broadcast
    is a pre-warm, so a pair it could not converge costs promptness and not correctness.
@@ -631,7 +642,7 @@ reaches it. This guard closes that.
    "conflict" (FR-003, FR-017).
 4. Never reset a branch whose **graph commit** is stale and then merge it (FR-005c). That is the
    case where the merge commit would hide the rewrite.
-5. A locally-ahead branch is not diverged. It merges as it does today.
+5. A worktree that is ahead of its remote is not diverged. It merges as it does today.
 
 ### Why it refuses instead of reconciling
 
