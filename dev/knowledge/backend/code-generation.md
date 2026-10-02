@@ -96,6 +96,8 @@ uv run invoke docs.validate    # regenerate, then fail on any uncommitted diff (
 
 Adding or changing a field on an event class, a schema model, a CLI command, or a config setting changes the rendered output. Regenerate and commit, or the `validate-generated-documentation` CI job fails. As with the other validators, when `docs.validate` fails the corrected files are already written to disk — just stage and commit them.
 
+The rendering templates live in `docs/_templates/*.j2`. In a template, guard an optional value with `is not none`, never truthiness: `field.default if field.default else "None"` documents a genuine `False`, `0` or `""` default as `None`.
+
 ## Frontend Codegen
 
 Configured in `frontend/app/graphql.config.ts`. Uses `@graphql-codegen/cli` with:
