@@ -68,10 +68,9 @@ class FieldLevelImpactResolver:
         )
         assessment = classifier.assess(diff_summary=diff_summary)
 
-<<<<<<< HEAD
         match assessment:
-            case EveryTarget():
-                return TargetSelection(ids=every_target, widened=True)
+            case EveryTarget(widening=widening):
+                return TargetSelection(ids=every_target, widening=widening)
             case ChangedNodes(node_ids=node_ids):
                 member_ids = node_ids
             case RelationshipReachedChanges():
@@ -82,19 +81,7 @@ class FieldLevelImpactResolver:
 
         subscribers = await fetch_subscriber_refs(client=self.client, node_ids=member_ids, branch=query_branch)
         ids = [subscriber.id for subscriber in subscribers if subscriber.kind == subscriber_kind]
-        return TargetSelection(ids=ids, widened=False)
-=======
-    match assessment:
-        case EveryTarget(widening=widening):
-            return TargetSelection(ids=every_target, widening=widening)
-        case ChangedNodes(node_ids=node_ids):
-            subscribers = await _get_subscribers_for_nodes(node_ids=node_ids, branch=query_branch, client=client)
-            ids = [subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == subscriber_kind]
-            log.debug(f"SELECTIVE_REGEN field-impact resolved subscribers: {len(ids)}")
-            return TargetSelection(ids=ids)
-        case _ as unreachable:
-            assert_never(unreachable)
->>>>>>> origin/stable
+        return TargetSelection(ids=ids)
 
 
 class ReachedMemberResolver:

@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntFlag, StrEnum
-<<<<<<< HEAD
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, assert_never
 
 if TYPE_CHECKING:
     from infrahub.core.constants import RelationshipDirection
@@ -27,8 +26,6 @@ class ReachedPath:
     """The relationship chain a query follows from a root object down to a related kind."""
 
     hops: tuple[RelationshipHop, ...]
-=======
-from typing import Protocol, assert_never
 
 
 class WideningReason(StrEnum):
@@ -64,7 +61,6 @@ class Widening:
                 )
             case _ as unreachable:
                 assert_never(unreachable)
->>>>>>> origin/stable
 
 
 @dataclass(frozen=True, slots=True)
