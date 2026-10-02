@@ -84,6 +84,93 @@ def test_number_pool_get_pool_size() -> None:
     assert NumberPoolParameters(end_range=25).get_pool_size() == 25
 
 
+def build_number_pool_node_schema(parameters: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "name": "NumberAttribute",
+        "namespace": "Test",
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {
+                "name": "assigned_number",
+                "kind": "NumberPool",
+                "optional": False,
+                "unique": True,
+                "read_only": True,
+                "parameters": parameters,
+            },
+        ],
+    }
+
+
+def load_number_pool_parameters(parameters: dict[str, Any]) -> NumberPoolParameters:
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(nodes=[NodeSchema(**build_number_pool_node_schema(parameters))]))
+    schema_branch.process()
+    loaded = schema_branch.get_node(name="TestNumberAttribute").get_attribute("assigned_number").parameters
+    assert isinstance(loaded, NumberPoolParameters)
+    return loaded
+
+
+@pytest.mark.parametrize(
+    "parameters",
+    [
+        pytest.param({"start_range": 10, "ranges": [{"start": 100, "end": 200}]}, id="start_range_with_ranges"),
+        pytest.param({"end_range": 25, "ranges": [{"start": 100, "end": 200}]}, id="end_range_with_ranges"),
+    ],
+)
+def test_number_pool_both_spellings_refused_at_load(parameters: dict[str, Any]) -> None:
+    with pytest.raises(pydantic.ValidationError, match="start_range/end_range cannot be combined with ranges"):
+        SchemaRoot(nodes=[build_number_pool_node_schema(parameters)])
+
+
+@pytest.mark.parametrize(
+    ("parameters", "expected_bounds"),
+    [
+        pytest.param({"start_range": 10}, (10, sys.maxsize), id="start_range_only"),
+        pytest.param({"end_range": 25}, (1, 25), id="end_range_only"),
+    ],
+)
+def test_number_pool_single_bound_loads_with_default_for_missing_bound(
+    parameters: dict[str, Any], expected_bounds: tuple[int, int]
+) -> None:
+    loaded = load_number_pool_parameters(parameters)
+
+    assert [(r.start, r.end) for r in loaded.effective_ranges()] == [expected_bounds]
+    assert loaded.get_pool_size() == expected_bounds[1] - expected_bounds[0] + 1
+
+
+def test_number_pool_ranges_declaration_loads() -> None:
+    loaded = load_number_pool_parameters(
+        {"ranges": [{"start": 205, "end": 300}, {"start": 100, "end": 200, "weight": 10}]}
+    )
+
+    assert loaded.start_range is None
+    assert loaded.end_range is None
+    assert [(r.start, r.end, r.weight) for r in loaded.effective_ranges()] == [(100, 200, 10), (205, 300, None)]
+
+
+async def test_number_pool_ranges_declaration_round_trips_through_database(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    node_schema = NodeSchema(
+        **build_number_pool_node_schema(
+            {"ranges": [{"start": 100, "end": 200, "weight": 10}, {"start": 205, "end": 300}]}
+        )
+    )
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(nodes=[node_schema]))
+
+    await registry.schema.load_schema_to_db(
+        db=db, branch=default_branch, schema=schema_branch, limit=["TestNumberAttribute"]
+    )
+    reloaded_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+
+    reloaded = reloaded_branch.get_node(name="TestNumberAttribute").get_attribute("assigned_number").parameters
+    assert isinstance(reloaded, NumberPoolParameters)
+    assert reloaded.start_range is None
+    assert reloaded.end_range is None
+    assert [(r.start, r.end, r.weight) for r in reloaded.effective_ranges()] == [(100, 200, 10), (205, 300, None)]
+
+
 def test_number_pool_optional() -> None:
     node_schema_definition: dict[str, Any] = {
         "name": "NumberAttribute",

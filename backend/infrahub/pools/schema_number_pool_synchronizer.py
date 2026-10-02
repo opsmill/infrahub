@@ -89,11 +89,15 @@ class SchemaNumberPoolSynchronizer:
         number_pool_updated = False
 
         if isinstance(attribute.parameters, NumberPoolParameters):
-            if schema_number_pool.start_range.value != attribute.parameters.start_range:
-                schema_number_pool.start_range.value = attribute.parameters.start_range
+            effective_ranges = attribute.parameters.effective_ranges()
+            single_range = effective_ranges[0] if len(effective_ranges) == 1 else None
+            start_range = single_range.start if single_range else None
+            end_range = single_range.end if single_range else None
+            if schema_number_pool.start_range.value != start_range:
+                schema_number_pool.start_range.value = start_range
                 number_pool_updated = True
-            if schema_number_pool.end_range.value != attribute.parameters.end_range:
-                schema_number_pool.end_range.value = attribute.parameters.end_range
+            if schema_number_pool.end_range.value != end_range:
+                schema_number_pool.end_range.value = end_range
                 number_pool_updated = True
 
         if number_pool_updated:

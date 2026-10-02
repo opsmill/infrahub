@@ -162,6 +162,8 @@ class SchemaNumberPoolUpserter:
                 return pool
 
             # Create new pool
+            effective_ranges = attribute.parameters.effective_ranges()
+            single_range = effective_ranges[0] if len(effective_ranges) == 1 else None
             number_pool_id = str(uuid4())
             number_pool = await Node.init(db=self.db, schema=InfrahubKind.NUMBERPOOL)
             await number_pool.new(
@@ -170,8 +172,8 @@ class SchemaNumberPoolUpserter:
                 name=f"{pool_kind}.{attribute.name} [{number_pool_id}]",
                 node=pool_kind,
                 node_attribute=attribute.name,
-                start_range=attribute.parameters.start_range,
-                end_range=attribute.parameters.end_range,
+                start_range=single_range.start if single_range else None,
+                end_range=single_range.end if single_range else None,
                 pool_type=NumberPoolType.SCHEMA.value,
             )
             await number_pool.save(db=self.db, at=at, user_id=user_id)
