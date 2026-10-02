@@ -64,7 +64,7 @@ export function TablePagination({
           }}
           type="button"
         >
-          <Icon icon="mdi:chevron-left" />
+          <Icon className="text-base" icon="mdi:chevron-left" />
         </button>
 
         {getPageItems(currentPage, totalPages).map((item, index) =>
@@ -101,7 +101,7 @@ export function TablePagination({
           }}
           type="button"
         >
-          <Icon icon="mdi:chevron-right" />
+          <Icon className="text-base" icon="mdi:chevron-right" />
         </button>
       </div>
     </nav>
