@@ -41,17 +41,17 @@ Decisions taken autonomously for this run, from the design handoff's open questi
 
 ### User Story 1 - See every repository's Git state before merging (Priority: P1)
 
-An engineer opens the branch they are about to merge. Below the branch's details, a Git repositories card lists every repository on that branch with its name, a Read-only tag where it applies, its Git state on this branch and the commit it has imported. Repositories in trouble come first, so a failed import is on the first page even when the branch has 40 repositories.
+An engineer opens the branch they are about to merge. Below the branch's details, a Git repositories card lists every repository on that branch with its name, a Read-only tag where it applies, its Git state on this branch and the commit it has imported. Repositories in trouble show in bands under the table, so a failed import is in view even when the branch has 40 repositories and it sits on another page.
 
 **Why this priority**: This is the evidence people collect by hand today, one repository page at a time. Without it nothing else on the page helps.
 
-**Independent Test**: Seed a branch with 12 repositories, one of them in Import Error and one read-only. Open the branch page: the failing repository is the first row, the read-only one carries its tag, every row shows its Git state label and colour from the schema and its commit, and the table shows 10 rows with a pager.
+**Independent Test**: Seed a branch with 12 repositories, one of them in Import Error and one read-only. Open the branch page: the failing repository has a band under the table, the read-only one carries its tag, every row shows its Git state label and colour from the schema and its commit, and the table shows 10 rows with a pager.
 
 **Acceptance Scenarios**:
 
 1. **Given** a non-default branch that syncs with Git and has 4 repositories, **When** the user opens its Details tab, **Then** the Git repositories card lists 4 rows, each with the repository name (linking to the repository's page), its Git state on this branch (the label and colour defined for that `sync_status` value in the schema), and its commit, and the card header shows the count 4.
 2. **Given** a read-only repository, **When** it is listed, **Then** its row carries a "Read-only" tag next to the name.
-3. **Given** 40 repositories of which the 17th by name is in Import Error, **When** the page opens, **Then** that repository is on page 1, above every repository that is not failing.
+3. **Given** 40 repositories of which the 17th by name is in Import Error, **When** the page opens, **Then** page 1 lists the first 10 by name and that repository's import error band shows under the table.
 4. **Given** 11 repositories, **When** the user moves from page 1 to page 2, **Then** page 2 shows 1 row, the table keeps the same height as page 1, and the controls below the card do not move.
 5. **Given** exactly 10 repositories, **When** the page opens, **Then** all 10 rows show and there is no pager.
 6. **Given** the repositories are still loading, **When** the page renders, **Then** the card shows placeholder rows at the real row height and no count.
@@ -166,7 +166,7 @@ The branch page header matches the object details page: the branch name, a copy 
 - **FR-010**: The card MUST list one row per repository on the branch. On a branch with Sync with Git on, that is every repository (read-write and read-only). On a branch with Sync with Git off, that is the read-only repositories only.
 - **FR-011**: Each row MUST show: the repository name, linking to the repository's details page; a "Read-only" tag when the repository is read-only; its Git state on this branch, rendered with the label and colour the schema defines for that `sync_status` value; its commit on this branch, in monospace, truncated with the full value available on hover.
 - **FR-012**: A row whose `operational_status` is `error-cred`, `error-connection` or `error` MUST show a warning icon next to its Git state, with an accessible label naming the problem.
-- **FR-013**: Rows MUST be ordered: repositories in Import Error first, then unreachable repositories (FR-012), then the rest; by name within each group. _(Amended 2026-10-02 by the accepted architecture review: rows are ordered by name on the server, and the bands (FR-024) put failing repositories in front of the reader. See research.md § "Restructure (2026-10-02)" D1.)_
+- **FR-013**: Rows MUST be ordered by repository name, by the server. Failing repositories are not moved up the table; the bands (FR-024) show them whatever page the table is on. See research.md § "Restructure (2026-10-02)" D1.
 - **FR-014**: The table MUST show at most 10 rows per page. When there is more than one page, it MUST show a pager (previous, next, page numbers, and "Showing X to Y of Z"), and the table MUST keep the height of a full page on every page. With 10 rows or fewer there MUST be no pager.
 - **FR-015**: The current page MUST be kept in the URL, so reloading or sharing the link opens the same page. An invalid or out-of-range page MUST resolve to the nearest valid page.
 - **FR-016**: The card header MUST show the number of repositories once they have loaded.
@@ -180,7 +180,7 @@ The branch page header matches the object details page: the branch name, a copy 
 - **FR-021**: For each repository in Import Error, the card MUST show a red band under the table with the repository name, "import failed", the last error-level log line of the repository's latest import task on this branch shown verbatim in monospace with line breaks kept (Prefect's `Finished in state <State>(…)` wrapper is unwrapped to the exception it carries), and a "View task log" link to that task's details page (`/tasks/<task id>`, which is not branch-scoped, FR-053).
 - **FR-022**: When no import task, or no error-level log line, is found for a failing repository, its band MUST still show and say that the error details couldn't be found. If an import task was found without an error line, the band MUST link to that task's log ("View task log"); if no task was found, it MUST link to the repository's page ("Open repository").
 - **FR-023**: For each unreachable repository (FR-012) that is not in Import Error, the card MUST show an amber band with the repository name, the problem, the sentence "Infrahub can't fetch new commits, so the commit shown may be out of date." and an "Open repository" link.
-- **FR-024**: Bands MUST follow the row order of FR-013 and MUST cover every failing repository, not only those on the current page. _(Amended 2026-10-02: import errors first, then unreachable repositories, by name within each group, from a server-filtered query independent of the table page.)_
+- **FR-024**: Bands MUST list import errors first, then unreachable repositories, by name within each group, and MUST cover every failing repository, not only those on the current page. They come from a server-filtered query independent of the table page, capped at 50 per group; failing repositories past the cap are counted in the summary ("and N more").
 - **FR-025**: When there are more than 3 bands, only the first 3 MUST show, followed by a summary line "<N> more repositories with errors: <names>" (singular for 1) and a "Show all" control, which expands every band and then reads "Collapse".
 - **FR-026**: An error line still loading MUST NOT hold back the table or the other bands; its band shows a loading line until it arrives.
 
@@ -218,7 +218,7 @@ The branch page header matches the object details page: the branch name, a copy 
 ### Measurable Outcomes
 
 - **SC-001**: From the branch page, an engineer can name every repository in Import Error on the branch and read its last error line without navigating anywhere (0 extra pages, down from 1 per repository plus the Tasks page today).
-- **SC-002**: A failing repository is on the first page of the repositories table for any number of repositories up to the fetch limit.
+- **SC-002**: A failing repository is shown in a band under the repositories table, whatever page the table is on.
 - **SC-003**: Paging through either table never moves the elements below it (0px shift between pages).
 - **SC-004**: Every task that ran on the branch is reachable from the page in one click from its row.
 - **SC-005**: Merge behaves identically to today in every repository and task state: no added clicks, and no disabled state beyond today's rules (FR-031).
@@ -227,7 +227,7 @@ The branch page header matches the object details page: the branch name, a copy 
 ## Assumptions
 
 - The repository nodes are visible from every branch, and `sync_status` and `commit` resolve per branch, as the cross-branch status spec establishes.
-- A branch has at most a few hundred repositories, so the card can load them in one request and order them on the client (see `plan.md`); the fetch limit is a planning constant with a visible notice when exceeded.
+- The table is paged and ordered by the server, so the number of repositories on a branch has no limit; the bands list at most 50 failing repositories per group and count the rest.
 - The task details page (`/tasks/<id>`) already shows a task's logs.
 - The existing action buttons and their permission handling are reused unchanged.
 - The theme tokens and theme provider exist on this base branch (`frontend/packages/ui/src/theme`, `styles/theme.css`).

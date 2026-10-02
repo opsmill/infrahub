@@ -4,7 +4,7 @@
 
 Frontend-only. No schema, no migration, no new GraphQL field. These are the **domain** shapes the entity layer maps API results into (`entities/<entity>/domain/model/`), and the pure rules over them (`domain/rules/`).
 
-> **2026-10-02, restructure.** The repositories card no longer loads up to 500 rows and ranks, slices and scans them on the client. The table is one server page ordered by name; a separate health query filters failing and syncing repositories on the server. `BranchRepositoriesResult`, `REPOSITORY_FETCH_LIMIT`, `isTruncated`, `getRepositoryRank` and `rankRepositories` are gone. This file describes the restructured model; the decisions are in research.md § "Restructure (2026-10-02)".
+The repositories table is one server page ordered by name. A separate health query filters failing and syncing repositories on the server, independent of the page; each failing list stops at `REPOSITORY_HEALTH_LIST_LIMIT` (50) and carries the server's count. The decisions are in research.md § "Restructure (2026-10-02)".
 
 ## BranchRepository (`entities/repository/domain/model/branch-repository.ts`)
 
@@ -29,8 +29,10 @@ interface BranchRepositoryPage {
 }
 
 interface BranchRepositoryHealth {
-  importErrors: BranchRepository[]; // sync_status__values: ["error-import"], ordered by name
-  unreachable: BranchRepository[];  // operational_status__values: REPOSITORY_OPERATIONAL_ERRORS, ordered by name
+  importErrors: BranchRepository[]; // sync_status__values: ["error-import"], ordered by name, at most 50
+  importErrorCount: number;         // the server's total for that filter
+  unreachable: BranchRepository[];  // operational_status__values: REPOSITORY_OPERATIONAL_ERRORS, ordered by name, at most 50
+  unreachableCount: number;         // the server's total for that filter
   syncingCount: number;             // sync_status__values: ["syncing"], count only
 }
 
@@ -55,6 +57,7 @@ type RepositoryImportError =
 - `getRepositoryListKind(syncWithGit)` (`get-repository-list-kind.ts`) — `CoreReadOnlyRepository` when Sync with Git is off, else `CoreGenericRepository`. The GraphQL kind both queries list; not `BranchRepository.kind`.
 - `hasImportError(repo)`, `isRepositoryUnreachable(repo)` (`repository-failures.ts`) — `unknown` and `online` are not failing.
 - `getFailingRepositories(health)` — the band list: `importErrors`, then `unreachable` minus any already listed as an import error (one band per repository, import error wins: spec US2 scenario 5). Server order (name) within each group.
+- `countUnlistedFailures(health)` — failing repositories past the list limit (`importErrorCount + unreachableCount` minus the listed rows); the bands summary adds them as "and N more".
 - `getBandKind(repo): "import-error" | "unreachable"`.
 - `isAnyRepositorySyncing(health)` (`is-any-repository-syncing.ts`) — `syncingCount > 0`. The single polling decision for the page query, the health query and the band lookups.
 - `getLastErrorLine(logs): string | null` (`get-last-error-line.ts`) — last log with `severity` `error` or `critical`, verbatim, except Prefect's final-state wrapper `Finished in state <State>('…'[, type=<TYPE>])`, which is unwrapped to the exception it carries. A stopgap until `TaskError` is filled for git imports (IFC-3034; follow-ups.md).
