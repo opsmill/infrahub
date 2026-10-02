@@ -4,7 +4,6 @@ title: Schema migration
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import VideoPlayer from '../../src/components/VideoPlayer';
 
 # Schema migration
 
@@ -25,10 +24,6 @@ While a new version of the schema can be directly loaded into the main branch,
 the recommendation is to create a new branch and to integrate the changes into the main branch via a Proposed Change.
 
 :::
-
-<center>
-  <VideoPlayer url='https://www.youtube.com/watch?v=1ZWznJga1Tc' light />
-</center>
 
 ## State: absent or present
 
@@ -52,6 +47,8 @@ Without this flag the element will be ignored but it will not be removed.
 The default value is `state: present` and doesn't have to be provided on all elements of the schema.
 
 :::
+
+Removing a branch-agnostic attribute or relationship this way releases its value without deleting any object, as long as no branch can still read the objects that hold it. See [Branch-agnostic data](../branches/branch-agnostic-data.mdx).
 
 ## Remove existing text field values
 

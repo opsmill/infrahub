@@ -29,6 +29,7 @@ export function CommandInput({ className, ref, ...props }: CommandInputProps) {
       <Icon icon="mdi:search" className="mx-2.5 shrink-0 text-lg" />
       <CommandPrimitive.Input
         ref={ref}
+        // biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: shadow-none is not equivalent here, it sets --tw-shadow and recomposes the ring chain
         className="grow border-none bg-transparent pl-0 text-sm outline-hidden placeholder:text-subtle-muted disabled:cursor-not-allowed disabled:opacity-50 focus:[box-shadow:none]"
         {...props}
       />

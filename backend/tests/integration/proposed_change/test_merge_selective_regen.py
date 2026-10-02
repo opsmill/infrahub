@@ -26,7 +26,6 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.git import InfrahubRepository
-from infrahub.workers.dependencies import build_workflow
 from infrahub.workflows.catalogue import (
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_GENERATOR_DEFINITION_RUN,
@@ -38,6 +37,7 @@ from tests.helpers.diff_summary import node_diff
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
@@ -111,12 +111,8 @@ class _MergeSelectiveRegenBase(TestInfrahubApp):
     ) -> AsyncGenerator[WorkflowRecorder, None]:
         # workflow_local scopes build_workflow to the live local backend; depend on it so it runs
         # first, then re-scope to the recorder as the inner (active) provider for the follow-up.
-        original = config.OVERRIDE.workflow
-        recorder = WorkflowRecorder()
-        config.OVERRIDE.workflow = recorder
-        with dependency_provider.scope(build_workflow, lambda: recorder):
+        with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
             yield recorder
-        config.OVERRIDE.workflow = original
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:
@@ -155,11 +151,15 @@ class _MergeSelectiveRegenBase(TestInfrahubApp):
         sources_dir = git_sources_dir / self.__class__.__name__
         git_repo = FileRepo(name="artifact-regen-e2e", sources_directory=sources_dir)
         repo_node = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
-        await repo_node.new(
-            db=db, name=git_repo.name, description="test repository", location="git@github.com:mock/test.git"
-        )
+        await repo_node.new(db=db, name=git_repo.name, description="test repository", location=git_repo.path)
         await repo_node.save(db=db)
-        repo = await InfrahubRepository.new(id=repo_node.id, name=git_repo.name, location=git_repo.path, client=client)
+        repo = await InfrahubRepository.new(
+            id=repo_node.id,
+            name=git_repo.name,
+            location=git_repo.path,
+            client=client,
+            infrahub_branch_name="main",
+        )
         commit = repo.get_commit_value(branch_name="main")
         config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
         assert config_file

@@ -1,6 +1,9 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 
 import MarkdownWithMermaid from "@/shared/components/editor/markdown/markdown-with-mermaid";
+
+import type { ResolvedTheme } from "@/entities/config/domain/model/theme";
+import { ThemeContext } from "@/entities/config/ui/theme-provider";
 
 import { render } from "../../../../../tests/components/render";
 
@@ -27,35 +30,42 @@ const shapeLuminance = () => {
   return luminance(getComputedStyle(shape).fill);
 };
 
+const MermaidWithTheme = (theme: ResolvedTheme, markdownText = DIAGRAM) => (
+  <ThemeContext value={{ theme, resolvedTheme: theme, setTheme: () => {} }}>
+    <MarkdownWithMermaid markdownText={markdownText} fallback={null} />
+  </ThemeContext>
+);
+
 describe("MarkdownWithMermaid", () => {
-  afterEach(() => {
-    document.documentElement.classList.remove("dark");
-  });
-
   test("renders a light diagram in the light theme", async () => {
-    await render(<MarkdownWithMermaid markdownText={DIAGRAM} fallback={null} />);
+    // WHEN
+    await render(MermaidWithTheme("light"));
 
+    // THEN
     await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
     expect(shapeLuminance()).toBeGreaterThan(0.5);
   });
 
   test("renders a dark diagram in the dark theme", async () => {
-    document.documentElement.classList.add("dark");
+    // WHEN
+    await render(MermaidWithTheme("dark"));
 
-    await render(<MarkdownWithMermaid markdownText={DIAGRAM} fallback={null} />);
-
+    // THEN
     await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
     expect(shapeLuminance()).toBeLessThan(0.5);
   });
 
   test("re-renders the diagram when the theme changes while mounted", async () => {
-    await render(<MarkdownWithMermaid markdownText={DIAGRAM} fallback={null} />);
+    // GIVEN
+    const component = await render(MermaidWithTheme("light"));
     await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
     const light = shapeLuminance();
 
-    document.documentElement.classList.add("dark");
+    // WHEN
+    await component.rerender(MermaidWithTheme("dark"));
 
-    // The flip remounts the pipeline; poll until the freshly baked SVG replaces the light one.
+    // THEN
+    // The flip re-runs the pipeline; poll until the freshly baked SVG replaces the light one.
     await expect
       .poll(
         () => {
@@ -69,12 +79,13 @@ describe("MarkdownWithMermaid", () => {
   });
 
   test("a diagram's own init directive beats the application theme", async () => {
-    document.documentElement.classList.add("dark");
+    // GIVEN
     const source = '```mermaid\n%%{init: {"theme":"default"}}%%\ngraph TD\n  A --> B\n```';
 
-    await render(<MarkdownWithMermaid markdownText={source} fallback={null} />);
+    // WHEN
+    await render(MermaidWithTheme("dark", source));
 
-    // GIVEN dark is active, THEN the author's explicit light palette still wins.
+    // THEN
     await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
     expect(shapeLuminance()).toBeGreaterThan(0.5);
   });

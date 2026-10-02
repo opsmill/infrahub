@@ -45,6 +45,7 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
       // content-visibility skips layout/paint for offscreen cards; the intrinsic
       // size (collapsed card height) keeps scrollbar and anchor positions stable
       className={classNames(
+        // biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: content-visibility and contain-intrinsic-size have no Tailwind utility or theme namespace
         "[contain-intrinsic-size:auto_68px] [content-visibility:auto]",
         isSelectedOnNavigation && "ring-2 ring-custom-blue-500"
       )}

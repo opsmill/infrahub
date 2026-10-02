@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.workflow import InfrahubWorkflow
     from infrahub.workflows.models import WorkflowDefinition
 
+    from .recompute_coalescing import PythonTargetResolver
     from .repository_merge_dispatcher import RepositoryMergeDispatcher
 
 
@@ -54,12 +55,14 @@ class PostMergeDispatcher:
         workflow: InfrahubWorkflow,
         event_service: InfrahubEventService,
         default_branch: Branch,
+        python_resolver: PythonTargetResolver,
         logger: InfrahubLogger | None = None,
     ) -> None:
         self.repository_merge_dispatcher = repository_merge_dispatcher
         self.workflow = workflow
         self.event_service = event_service
         self.default_branch = default_branch
+        self.python_resolver = python_resolver
         self.log = logger or get_logger()
 
     async def run_follow_ups(
@@ -175,6 +178,7 @@ class PostMergeDispatcher:
             coordinator = MergeRecomputeCoordinator(
                 builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
                 submitter=CoalescedRecomputeSubmitter(workflow=self.workflow),
+                python_resolver=self.python_resolver,
             )
             await coordinator.run(changes=changes, branch=self.default_branch.name, context=event_context)
 

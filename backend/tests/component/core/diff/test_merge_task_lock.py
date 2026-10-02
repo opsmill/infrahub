@@ -18,6 +18,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.workers.dependencies import build_database
+from tests.helpers.dependency_override import override_dependency
 
 
 class TestMergeTaskLock:
@@ -68,7 +69,7 @@ class TestMergeTaskLock:
         body_mock = AsyncMock(side_effect=fake_merge_body)
 
         with (
-            dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
+            override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
             patch("infrahub.core.branch.tasks._do_merge_branch", body_mock),
         ):
             await asyncio.gather(
@@ -107,7 +108,7 @@ class TestMergeTaskLock:
         body_mock = AsyncMock(side_effect=fake_merge_body)
 
         with (
-            dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
+            override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
             patch("infrahub.core.branch.tasks._do_merge_branch", body_mock),
         ):
             await asyncio.gather(

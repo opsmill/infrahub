@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from infrahub_sdk.protocols import CoreTransformJinja2
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
@@ -74,7 +74,8 @@ class TestWatchConfigImport(TestInfrahubApp):
             db=db,
             name=git_repo.name,
             description="test repository",
-            location="git@github.com:mock/test.git",
+            location=git_repo.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 
@@ -83,6 +84,7 @@ class TestWatchConfigImport(TestInfrahubApp):
             name=git_repo.name,
             location=git_repo.path,
             client=client,
+            infrahub_branch_name="main",
         )
 
     async def test_watch_declared_transform_imports_with_full_closure(
@@ -108,10 +110,9 @@ class TestWatchConfigImport(TestInfrahubApp):
         assert watched.dependencies_complete.value is True
 
         # The watched directory is expanded recursively and unioned with the auto-detected
-        # closure (the manifest and the template itself); the partials are present even though
-        # nothing in the template references them.
+        # closure (the template itself); the partials are present even though nothing in the
+        # template references them.
         assert set(watched.dependencies.value) == {
-            ".infrahub.yml",
             "templates/report.j2",
             "templates/partials/helper.j2",
             "templates/partials/extra.j2",
@@ -153,7 +154,8 @@ class TestWatchConfigRegen(ArtifactRegenGateHarness):
             db=db,
             name=git_repo.name,
             description="test repository",
-            location="git@github.com:mock/test.git",
+            location=git_repo.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await repo_node.save(db=db)
 
@@ -162,6 +164,7 @@ class TestWatchConfigRegen(ArtifactRegenGateHarness):
             name=git_repo.name,
             location=git_repo.path,
             client=client,
+            infrahub_branch_name="main",
         )
 
         commit = repo.get_commit_value(branch_name="main")

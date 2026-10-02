@@ -136,7 +136,7 @@ another's); holding the repository lock in the handler and cloning (rejected by 
 
 **Decision**: The API resolver reads Infrahub's side from the graph on the request branch:
 `commit.value` and, per kind, `default_branch.value` (mapped to the remote branch through
-`InfrahubRepositoryBase._get_mapped_remote_branch`) or `ref.value`. It sends
+`infrahub.git.branch_mapping.get_mapped_remote_branch`) or `ref.value`. It sends
 `imported_commit` and `git_ref` to the worker. The worker computes everything else on the main
 clone (`get_git_repo_main()`), read-only and with no fetch:
 

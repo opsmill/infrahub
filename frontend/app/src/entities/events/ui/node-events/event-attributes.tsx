@@ -9,6 +9,7 @@ export const EventAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attribut
 
   return (
     <Card className="bg-background">
+      {/* biome-ignore lint/nursery/noTailwindArbitraryValue: structure: single-site intrinsic track list; min-content is structural, not a design value */}
       <CardContent className="grid grid-cols-[min-content_auto] gap-1.5 text-xs">
         {attributes.map(({ action, name, value, value_previous }) => {
           return (

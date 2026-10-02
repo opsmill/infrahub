@@ -8,6 +8,7 @@ from git import Repo
 from infrahub_sdk.schema.repository import (
     InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
+    InfrahubWatchConfig,
 )
 
 from infrahub.git.closure_builder.dispatcher import build_default_closure_builder
@@ -25,11 +26,10 @@ def _write(root: Path, rel: str, content: str = "") -> None:
 
 
 def test_jinja2_config_dispatches_to_jinja2_closure(tmp_path: Path) -> None:
-    """A Jinja2 transform config is dispatched to the Jinja2 builder and the manifest path is appended.
+    """A Jinja2 transform config is dispatched to the Jinja2 builder.
 
     The dispatcher is the single integration boundary between the per-language
-    builders and the integrator, so this checks both dispatch correctness and
-    the post-processing step in one place.
+    builders and the integrator, so dispatch correctness is checked here.
     """
     _write(tmp_path, "templates/device.j2", "static body\n")
 
@@ -41,13 +41,12 @@ def test_jinja2_config_dispatches_to_jinja2_closure(tmp_path: Path) -> None:
 
     result = build_default_closure_builder(logger=LOGGER).build(transform_config=config, worktree_root=tmp_path)
 
-    assert "templates/device.j2" in result.dependencies
-    assert ".infrahub.yml" in result.dependencies
+    assert result.dependencies == ("templates/device.j2",)
     assert result.complete is True
 
 
 def test_python_config_dispatches_to_python_closure(tmp_path: Path) -> None:
-    """A Python transform config is dispatched to the Python builder and the manifest path is appended.
+    """A Python transform config is dispatched to the Python builder.
 
     The undeclared sibling stays out: neither builder treats co-location as a dependency,
     so the Python closure is the entry file alone until `watch.files` says otherwise.
@@ -65,8 +64,38 @@ def test_python_config_dispatches_to_python_closure(tmp_path: Path) -> None:
 
     result = build_default_closure_builder(logger=LOGGER).build(transform_config=config, worktree_root=tmp_path)
 
-    assert result.dependencies == (".infrahub.yml", "transforms/network/main.py")
+    assert result.dependencies == ("transforms/network/main.py",)
     assert result.complete is True
+
+
+def test_manifest_is_absent_from_a_closure_unless_watch_names_it(tmp_path: Path) -> None:
+    """`.infrahub.yml` reaches a closure only through an explicit `watch.files` entry.
+
+    Nothing merges it in on its own, so an edit to the manifest no longer regenerates
+    every definition in the repository. Naming it is the way to opt back in.
+    """
+    repo = Repo.init(tmp_path)
+    _write(tmp_path, "transforms/net.py", "")
+    _write(tmp_path, ".infrahub.yml", "python_transforms: []\n")
+    repo.index.add(["transforms/net.py", ".infrahub.yml"])
+    repo.index.commit("seed")
+
+    builder = build_default_closure_builder(logger=LOGGER)
+    undeclared = builder.build(
+        transform_config=InfrahubPythonTransformConfig(name="net", file_path=Path("transforms/net.py")),
+        worktree_root=tmp_path,
+    )
+    declared = builder.build(
+        transform_config=InfrahubPythonTransformConfig(
+            name="net",
+            file_path=Path("transforms/net.py"),
+            watch=InfrahubWatchConfig(files=[".infrahub.yml"]),
+        ),
+        worktree_root=tmp_path,
+    )
+
+    assert undeclared.dependencies == ("transforms/net.py",)
+    assert declared.dependencies == (".infrahub.yml", "transforms/net.py")
 
 
 def test_jinja2_failure_is_isolated_and_logged(

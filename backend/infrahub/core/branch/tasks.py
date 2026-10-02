@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import uuid4
 
 from prefect import flow, get_run_logger
 from prefect.client.schemas.objects import State  # noqa: TC002
@@ -16,10 +15,16 @@ from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.delete_coordinator import BranchDeleteOrchestrator
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
-from infrahub.core.constants import MutationAction
+from infrahub.core.constants import PROFILES_RELATIONSHIP_NAME, SYSTEM_USER_ID, DiffAction, MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
-from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, EnrichedDiffRootMetadata
+from infrahub.core.diff.model.path import (
+    BranchTrackingId,
+    ConflictLevel,
+    ConflictSelection,
+    EnrichedDiffConflict,
+    EnrichedDiffRoot,
+)
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.diff.summary_cache import DiffSummaryCache
@@ -27,6 +32,10 @@ from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge.builder import build_branch_merge_orchestrator
 from infrahub.core.merge.merge_locker import MergeLocker
+from infrahub.core.merge.python_target_sources import (
+    UnavailablePythonTargetResolver,
+    build_python_target_resolver,
+)
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
@@ -43,6 +52,7 @@ from infrahub.core.merge.selective_regen.orchestrator import build_merge_selecti
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.runner import MigrationRunner
+from infrahub.core.query.node_agnostic_retirement import NodesDeletedOnBranchQuery, RetireNodeAgnosticFieldsQuery
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
@@ -73,6 +83,7 @@ from infrahub.workflows.catalogue import (
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
     IPAM_RECONCILIATION,
+    PROFILE_REFRESH_MULTIPLE,
 )
 from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.utils import add_tags
@@ -80,9 +91,38 @@ from infrahub.workflows.utils import add_tags
 if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
 
+    from infrahub.core.merge.recompute_coalescing import PythonTargetResolver
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+
+RETIREMENT_BATCH_SIZE = 500
+"""How many deleted-node uuids one retirement query evaluates at a time."""
+
+
+def _rebase_keeps_branch_side(conflict_level: ConflictLevel, conflict: EnrichedDiffConflict) -> bool:
+    """Whether a rebase, which keeps the branch's edges, leaves the branch with its side of the conflict.
+
+    The default branch can disconnect a relationship's vertex, which the branch's edges on that relationship hang
+    from, and an attribute it removed leaves the branch's value edge on nothing.
+    """
+    return conflict_level is ConflictLevel.ATTRIBUTE_PROPERTY and conflict.base_branch_action is not DiffAction.REMOVED
+
+
+def _build_unrebasable_conflicts_message(
+    branch_name: str, conflicts_to_resolve: list[str], conflicts_to_update: list[str]
+) -> str:
+    """Tell the user what each conflict blocking a rebase of the branch needs."""
+    message = f"Branch {branch_name} contains conflicts with the default branch that must be addressed before rebasing."
+    if conflicts_to_resolve:
+        message += (
+            " Resolve these conflicts in favor of the branch, in a proposed change or with the ResolveDiffConflict"
+            " mutation, or update the data so that both branches agree:"
+            f" {', '.join(sorted(conflicts_to_resolve))}."
+        )
+    if conflicts_to_update:
+        message += f" Update the data so that both branches agree on these conflicts: {', '.join(sorted(conflicts_to_update))}."
+    return message
 
 
 @flow(name="branch-migrate", flow_run_name="Apply migrations to branch {branch}")
@@ -147,6 +187,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
     medium_context = context.model_copy(update={"priority": WorkflowPriority.MEDIUM})
     low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
+    user_id = context.account.account_id or SYSTEM_USER_ID
 
     async with database.start_session() as db:
         log = get_run_logger()
@@ -181,18 +222,34 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=base_branch, diff_branch=user_branch
         )
-        async for _ in diff_repository.get_all_conflicts_for_diff(
+        # A rebase keeps the branch's edges, so it cannot apply a resolution in favor of the default branch.
+        conflicts_to_resolve: list[str] = []
+        conflicts_to_update: list[str] = []
+        async for conflict_path, conflict_level, conflict in diff_repository.get_all_conflicts_with_level_for_diff(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         ):
-            # if there are any conflicts, raise the error
+            if not _rebase_keeps_branch_side(conflict_level=conflict_level, conflict=conflict):
+                conflicts_to_update.append(conflict_path)
+            elif conflict.selected_branch is not ConflictSelection.DIFF_BRANCH:
+                conflicts_to_resolve.append(conflict_path)
+        if conflicts_to_resolve or conflicts_to_update:
             raise ValidationError(
-                f"Branch {user_branch.name} contains conflicts with the default branch that must be addressed."
-                " Please review the diff for details and manually update the conflicts before rebasing."
+                _build_unrebasable_conflicts_message(
+                    branch_name=user_branch.name,
+                    conflicts_to_resolve=conflicts_to_resolve,
+                    conflicts_to_update=conflicts_to_update,
+                )
             )
 
         # rebase to the end time of the diff in case conflicting changes happen on
         # either branch while rebasing and migrating
         rebase_at = enriched_diff_metadata.to_time
+        # Only the events sent below read the branch's changes, and a diff update after the rebase replaces this diff.
+        branch_diff: EnrichedDiffRoot | None = None
+        if send_events:
+            branch_diff = await diff_repository.get_one(
+                diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
+            )
         node_diff_field_summaries = await diff_repository.get_node_field_summaries(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
@@ -228,6 +285,11 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
         migrations = []
         async with lock.registry.global_graph_lock():
+            base_deletions_query = await NodesDeletedOnBranchQuery.init(
+                db=db, branch_name=base_branch.name, from_time=initial_from_time, to_time=rebase_at
+            )
+            await base_deletions_query.execute(db=db)
+            base_deleted_node_uuids = base_deletions_query.get_node_uuids()
             # Both baselines are resolved under the lock and before the rebase: the common ancestor
             # resolves against branched_from, which the rebase advances, and the rollback snapshot
             # must not predate a schema update that landed while the pre-lock validation ran.
@@ -238,8 +300,15 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 pre_rebase_schema = registry.schema.get_schema_branch(name=user_branch.name).duplicate()
 
             async with db.start_transaction() as dbt:
-                await user_branch.rebase(db=dbt, user_id=context.account.account_id, at=rebase_at)
+                await user_branch.rebase(db=dbt, user_id=user_id, at=rebase_at)
                 log.info("Branch graph rebased")
+                await _retire_agnostic_fields_of_base_deletions(
+                    db=dbt,
+                    node_uuids=base_deleted_node_uuids,
+                    at=rebase_at,
+                    user_id=user_id,
+                    log=log,
+                )
 
             # Only update registry after txn commit. Otherwise, branch status and branched_from
             # could diverge between registry and database during a failed txn commit.
@@ -266,18 +335,26 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                     migrations=migrations,
                     update_db=False,
                     update_registry=True,
-                    user_id=context.account.account_id,
+                    user_id=user_id,
                     manage_rollback=True,
                 )
                 log.info("Migrations completed")
 
-        default_branch_diff = await _get_diff_root(
-            diff_coordinator=diff_coordinator,
-            enriched_diff_metadata=enriched_diff_metadata,
-            diff_repository=diff_repository,
-            base_branch=base_branch,
-            target_from=initial_from_time,
-        )
+        # Replay the default branch's changes to the kinds whose schema this branch changed, so their derived values
+        # are computed again with the branch's schema.
+        default_branch_diff: EnrichedDiffRoot | None = None
+        if send_events and user_branch.name in registry.get_altered_schema_branches():
+            branch_schema_kinds = registry.schema.get_schema_branch(
+                name=user_branch.name
+            ).get_object_kinds_different_from(registry.schema.get_schema_branch(name=registry.default_branch))
+            if branch_schema_kinds:
+                default_branch_diff = await diff_coordinator.calculate_arbitrary_timeframe_diff(
+                    base_branch=base_branch,
+                    diff_branch=base_branch,
+                    from_time=initial_from_time,
+                    to_time=rebase_at,
+                    node_kinds=branch_schema_kinds,
+                )
 
         # -------------------------------------------------------------
         # Trigger the reconciliation of IPAM data after the rebase
@@ -313,10 +390,22 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     )
     events: list[InfrahubEvent] = [rebase_event]
     changes: list[MergeChange] = []
-    changelog_collector = DiffChangelogCollector(
-        diff=default_branch_diff, branch=user_branch, db=db, migration_tracker=MigrationTracker(migrations=migrations)
+    branch_changelogs = (
+        DiffChangelogCollector(diff=branch_diff, branch=user_branch, db=db).collect_changelogs()
+        if branch_diff is not None
+        else []
     )
-    for action, node_changelog in changelog_collector.collect_changelogs():
+    default_branch_changelogs = (
+        DiffChangelogCollector(
+            diff=default_branch_diff,
+            branch=user_branch,
+            db=db,
+            migration_tracker=MigrationTracker(migrations=migrations),
+        ).collect_changelogs()
+        if default_branch_diff is not None
+        else []
+    )
+    for action, node_changelog in [*branch_changelogs, *default_branch_changelogs]:
         mutation_action = MutationAction.from_diff_action(diff_action=action)
         meta = EventMeta.from_parent(parent=rebase_event, branch=user_branch)
         meta.origin = NodeMutationOrigin.REBASE
@@ -336,21 +425,49 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 changed_fields=frozenset(node_changelog.updated_fields),
             )
         )
+    # Refresh the nodes whose profiles the branch changed, since the profile values they applied predate the rebase.
+    profile_refresh_node_ids = [
+        node_changelog.node_id
+        for action, node_changelog in branch_changelogs
+        if action is not DiffAction.REMOVED and PROFILES_RELATIONSHIP_NAME in node_changelog.relationships
+    ]
 
     event_service = await get_event_service()
     for event in events:
         await event_service.send(event)
 
-    with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
-        schema_name = (
-            user_branch.name if user_branch.name in registry.get_altered_schema_branches() else registry.default_branch
-        )
-        schema_branch = registry.schema.get_schema_branch(name=schema_name)
-        coordinator = MergeRecomputeCoordinator(
-            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-            submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
-        )
-        await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
+    # The rebase session closed further up, and this pass runs queries of its own.
+    async with database.start_session() as recompute_db:
+        python_resolver: PythonTargetResolver
+        try:
+            python_resolver = await build_python_target_resolver(db=recompute_db, refresh_updated_nodes=True)
+        except Exception:
+            # Handed on as a resolver that raises, which widens every declared attribute. Skipping
+            # the family instead would leave the replayed changes with nothing to refresh them.
+            log.exception("Widening the post-rebase Python recompute: its resolver could not be built")
+            python_resolver = UnavailablePythonTargetResolver()
+
+        with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
+            schema_name = (
+                user_branch.name
+                if user_branch.name in registry.get_altered_schema_branches()
+                else registry.default_branch
+            )
+            schema_branch = registry.schema.get_schema_branch(name=schema_name)
+            coordinator = MergeRecomputeCoordinator(
+                builder=CoalescedRecomputeBuilder(schema_branch=schema_branch, refresh_updated_nodes=True),
+                submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
+                python_resolver=python_resolver,
+            )
+            await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
+
+    if profile_refresh_node_ids:
+        with log_exception_guard(log, "Failed to submit the post-rebase profile refresh"):
+            await workflow.submit_workflow(
+                workflow=PROFILE_REFRESH_MULTIPLE,
+                context=low_context,
+                parameters={"branch_name": user_branch.name, "node_ids": profile_refresh_node_ids},
+            )
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
@@ -474,27 +591,42 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
         await creator.create(model=model, context=context)
 
 
-async def _get_diff_root(
-    diff_coordinator: DiffCoordinator,
-    enriched_diff_metadata: EnrichedDiffRootMetadata,
-    diff_repository: DiffRepository,
-    base_branch: Branch,
-    target_from: Timestamp,
-) -> EnrichedDiffRoot:
-    default_branch_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
-        base_branch=base_branch,
-        diff_branch=base_branch,
-        from_time=target_from,
-        to_time=enriched_diff_metadata.to_time,
-        name=str(uuid4()),
-    )
-    # make sure we have the actual diff with data and not just the metadata
-    if not isinstance(default_branch_diff, EnrichedDiffRoot):
-        default_branch_diff = await diff_repository.get_one(
-            diff_branch_name=base_branch.name, diff_id=default_branch_diff.uuid
-        )
+async def _retire_agnostic_fields_of_base_deletions(
+    db: InfrahubDatabase,
+    node_uuids: list[str],
+    at: Timestamp,
+    user_id: str,
+    log: Logger | LoggerAdapter[Logger],
+) -> None:
+    """Re-evaluate branch-agnostic retention for the base-branch deletions this rebase absorbs.
 
-    return default_branch_diff
+    Look at every object deleted as part of this rebase and check any branch-agnostic fields on each
+    object, deleting them on the global branch if the field is no longer reachable from any branch.
+
+    Must run after the branch has been rebased.
+
+    Args:
+        db: The transaction the rebase itself runs in.
+        node_uuids: The nodes deleted on the base branch within the rebased window.
+        at: The rebase timestamp; closed edges are stamped with it.
+        user_id: The account the rebase runs as, recorded on the edges the re-evaluation closes.
+        log: The flow's run logger.
+
+    """
+    if not node_uuids:
+        return
+    log.info(f"Re-evaluating branch-agnostic retirement for {len(node_uuids)} deletions absorbed by the rebase")
+    for batch_start in range(0, len(node_uuids), RETIREMENT_BATCH_SIZE):
+        batch_uuids = node_uuids[batch_start : batch_start + RETIREMENT_BATCH_SIZE]
+        retirement_query = await RetireNodeAgnosticFieldsQuery.init(
+            db=db, node_uuids=batch_uuids, at=at, user_id=user_id
+        )
+        await retirement_query.execute(db=db)
+        retired = retirement_query.get_data()
+        log.info(
+            "Branch-agnostic retirement re-evaluated for base-branch deletions: "
+            f"candidates={len(batch_uuids)} edges_closed={retired.edges_closed} at={at.to_string()}"
+        )
 
 
 async def _build_post_merge_regeneration_dispatcher(
@@ -515,7 +647,9 @@ async def _build_post_merge_regeneration_dispatcher(
     generator_output = GeneratorCascadeOutput(capturer=output_capturer)
     return PostMergeRegenerationDispatcher(
         workflow=get_workflow(),
-        planner=build_merge_selective_regeneration(client=get_client(), log=log, generator_output=generator_output),
+        planner=build_merge_selective_regeneration(
+            db=db, client=get_client(), log=log, generator_output=generator_output
+        ),
         summary_cache=DiffSummaryCache(
             cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
         ),

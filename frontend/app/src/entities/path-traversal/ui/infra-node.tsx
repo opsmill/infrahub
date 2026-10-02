@@ -57,7 +57,7 @@ export function InfraNode({ data }: NodeProps) {
 
   return (
     <div
-      className={`relative min-w-[150px] max-w-[220px] cursor-pointer rounded-lg border-2 px-3 py-2 text-center shadow-sm transition-all hover:shadow-md ${borderClass} ${bgClass}
+      className={`relative min-w-37.5 max-w-55 cursor-pointer rounded-lg border-2 px-3 py-2 text-center shadow-sm transition-all hover:shadow-md ${borderClass} ${bgClass}
         ${dimmed ? "opacity-40" : ""}
       `}
       style={borderStyle ? { borderColor: borderStyle } : undefined}
@@ -69,18 +69,18 @@ export function InfraNode({ data }: NodeProps) {
 
       {/* Endpoint badge */}
       {isSource && (
-        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-emerald-500 px-2 py-0.5 font-bold text-[10px] text-white leading-none">
+        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-emerald-500 px-2 py-0.5 font-bold text-white text-xxs leading-none">
           SOURCE
         </div>
       )}
       {isDestination && (
-        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-orange-500 px-2 py-0.5 font-bold text-[10px] text-white leading-none">
+        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-orange-500 px-2 py-0.5 font-bold text-white text-xxs leading-none">
           DEST
         </div>
       )}
 
       <div className="mt-1 truncate font-medium text-sm">{nodeData.label}</div>
-      <div className="truncate text-[11px] text-foreground-muted">{nodeData.kind}</div>
+      <div className="truncate text-foreground-muted text-xxs">{nodeData.kind}</div>
 
       <Handle type="source" position={sourcePosition} className="!bg-subtle-muted" />
 
@@ -88,8 +88,8 @@ export function InfraNode({ data }: NodeProps) {
         <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md border bg-popover px-3 py-2 text-left shadow-lg backdrop-blur-lg">
           <div className="font-medium text-sm">{nodeData.label}</div>
           <div className="text-foreground-muted text-xs">{nodeData.kind}</div>
-          <div className="mt-1 font-mono text-[10px] text-subtle-muted">{nodeData.nodeId}</div>
-          <div className="mt-1 text-[10px] text-accent">Click to open details</div>
+          <div className="mt-1 font-mono text-subtle-muted text-xxs">{nodeData.nodeId}</div>
+          <div className="mt-1 text-accent text-xxs">Click to open details</div>
         </div>
       )}
     </div>

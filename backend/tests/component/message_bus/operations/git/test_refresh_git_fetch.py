@@ -15,6 +15,8 @@ from infrahub.git import InfrahubRepository
 from infrahub.message_bus import messages
 from infrahub.message_bus.operations.git.repository import fetch
 from infrahub.workers.dependencies import build_client
+from tests.helpers.dependency_override import override_dependency
+from tests.helpers.git import build_repository_client
 
 
 @pytest.mark.httpx_mock(should_mock=lambda request: request.url.host == "mock")
@@ -23,6 +25,7 @@ async def test_fan_out_pins_to_orchestrator_commit_when_upstream_advances(
     git_sources_dir: Path,
     dependency_provider: Provider,
     httpx_mock: HTTPXMock,
+    register_core_models_schema: None,
 ) -> None:
     """Fan-out workers must land on the SHA pinned by the sync orchestrator.
 
@@ -61,7 +64,13 @@ async def test_fan_out_pins_to_orchestrator_commit_when_upstream_advances(
         commit=pinned_sha,
     )
 
-    with dependency_provider.scope(build_client, lambda: git_fixture_repo.sdk):
+    client = build_repository_client(
+        repository_id=str(git_fixture_repo.id),
+        name=git_fixture_repo.name,
+        location=git_fixture_repo.get_location(),
+        default_branch="main",
+    )
+    with override_dependency(build_client, lambda: client, dependency_provider=dependency_provider):
         await fetch.fn(message=message)
 
     worktree = git_fixture_repo.get_git_repo_worktree(identifier=branch_name)
@@ -179,6 +188,7 @@ async def test_fan_out_raises_when_pinned_commit_unreachable(
     git_sources_dir: Path,
     dependency_provider: Provider,
     httpx_mock: HTTPXMock,
+    register_core_models_schema: None,
 ) -> None:
     """Worker must raise when the broadcasted SHA is not reachable after fetch."""
     httpx_mock.add_response(
@@ -206,7 +216,13 @@ async def test_fan_out_raises_when_pinned_commit_unreachable(
         commit=unreachable_sha,
     )
 
-    with dependency_provider.scope(build_client, lambda: git_fixture_repo.sdk):
+    client = build_repository_client(
+        repository_id=str(git_fixture_repo.id),
+        name=git_fixture_repo.name,
+        location=git_fixture_repo.get_location(),
+        default_branch="main",
+    )
+    with override_dependency(build_client, lambda: client, dependency_provider=dependency_provider):
         with pytest.raises(RepositoryError, match=r"Commit not found in the local clone"):
             await fetch.fn(message=message)
 

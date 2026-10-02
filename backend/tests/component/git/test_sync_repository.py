@@ -1,24 +1,45 @@
-from collections.abc import Generator
+import logging
+import shutil
+from collections.abc import AsyncGenerator, Generator
 from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 from git import Repo
-from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk import InfrahubClient
+from infrahub_sdk.protocols import CoreRepository
+from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
+from prefect.client.orchestration import PrefectClient, get_client
+from prefect.client.schemas.objects import State
 
-from infrahub import config
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
+from infrahub import config, lock
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
+from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
+from infrahub.git.sync import RepositoryBranchesFailedError, RepositoryFileImporter, RepositorySyncer, SyncReport
 from infrahub.git.tasks import sync_repository_from_origin
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.workers.dependencies import clear_singletons
+from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 from tests.adapters.message_bus import BusRecorder
 from tests.conftest import TestHelper
-from tests.helpers.test_client import dummy_async_request
+from tests.helpers.git import LocalRemote, build_repository_client, clone_repository
+from tests.helpers.repository_sync import (
+    FLOW_RUN_LOGGER,
+    create_repository_node,
+    flow_run_tags,
+    is_linked_to_node,
+    run_add_flow,
+    run_sync_flow,
+    skipped_branch_warning,
+    skipped_branch_warnings,
+)
+from tests.helpers.test_app import TestInfrahubApp
 
 
 @dataclass
@@ -92,13 +113,21 @@ async def _build_repository(
     )
     await node.save(db=db)
 
-    repo = await InfrahubRepository.new(
+    client = build_repository_client(
+        repository_id=node.id,
+        name="test-repository",
+        location=str(source_dir),
+        default_branch=git_default_branch,
+        internal_status=RepositoryInternalStatus(internal_status),
+        query_branches=("main", "staging-x"),
+    )
+    repo = await clone_repository(
         id=node.id,
         name="test-repository",
         location=str(source_dir),
-        default_branch_name=git_default_branch,
-        internal_status=internal_status,
-        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        default_branch=git_default_branch,
+        internal_status=RepositoryInternalStatus(internal_status),
+        client=client,
         update_commit_value=False,
     )
     return node, repo
@@ -137,7 +166,6 @@ async def test_sync_broadcasts_synced_commit(
         await sync_repository_from_origin(
             repository=node,
             repo=repo,
-            active_internal_status=scenario.active_internal_status,
             staging_branch=scenario.staging_branch,
             infrahub_branch=infrahub_branch,
             infrahub_branch_id="branch-id",
@@ -151,3 +179,505 @@ async def test_sync_broadcasts_synced_commit(
 
     expected_commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
     assert fetch_messages[0].commit == expected_commit
+
+
+TRUNK = "develop"
+
+
+@dataclass
+class FailedReadCase:
+    name: str
+    operational_status: str
+    expected_linked: bool
+
+
+FAILED_READ_CASES = [
+    FailedReadCase(
+        name="online_repository", operational_status=RepositoryOperationalStatus.ONLINE.value, expected_linked=True
+    ),
+    FailedReadCase(
+        name="repository_already_in_error",
+        operational_status=RepositoryOperationalStatus.ERROR.value,
+        expected_linked=False,
+    ),
+]
+
+OPERATIONAL_STATUSES = [RepositoryOperationalStatus.ONLINE.value, RepositoryOperationalStatus.ERROR.value]
+
+
+def run_tags(branches: list[str], node_id: str) -> set[str]:
+    """The complete tag set of a sync run linked to one repository and tagged with these branches."""
+    return {
+        TAG_NAMESPACE,
+        WorkflowTag.RELATED_NODE.render(identifier=node_id),
+        *(WorkflowTag.BRANCH.render(identifier=branch) for branch in branches),
+    }
+
+
+class TestSkippedBranchTaskLog(TestInfrahubApp):
+    """A remote branch named like Infrahub's default branch is reported in the repository's task log.
+
+    The repository's trunk is not Infrahub's default branch, and the remote also carries a branch named
+    like Infrahub's default branch, which is the one that collides.
+    """
+
+    @pytest.fixture(scope="class")
+    async def prefect_client(self, prefect: str) -> AsyncGenerator[PrefectClient, None]:
+        async with get_client(sync_client=False) as client:
+            yield client
+
+    @pytest.fixture(autouse=True)
+    def no_import_sync_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Every remote branch is a candidate for import, whatever the environment configures."""
+        monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", [])
+
+    @pytest.fixture(autouse=True)
+    def capture_run_logs(self, caplog: pytest.LogCaptureFixture) -> None:
+        caplog.set_level(logging.WARNING, logger=FLOW_RUN_LOGGER)
+
+    @pytest.fixture(autouse=True)
+    def infrahub_default_branch_is_main(self, initialize_registry: None) -> None:
+        """Every remote below carries a `main` branch, which only collides while that is Infrahub's default."""
+        assert registry.default_branch == "main"
+
+    @pytest.fixture
+    def fresh_worker_dir(self, git_repos_dir: Path, tmp_path: Path) -> Generator[Path, None, None]:
+        """An empty repositories directory for the test to switch to, restored before the regular one is."""
+        directory = tmp_path / "fresh-worker-repositories"
+        directory.mkdir()
+        original = config.SETTINGS.git.repositories_directory
+        yield directory
+        config.SETTINGS.git.repositories_directory = original
+
+    async def _connect(
+        self, db: InfrahubDatabase, tmp_path: Path, name: str, branches: list[str], head: str | None = None
+    ) -> tuple[LocalRemote, Node, State]:
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=branches, head=head)
+        node = await create_repository_node(
+            db=db,
+            name=name,
+            location=str(remote.directory),
+            default_branch=TRUNK,
+            operational_status=RepositoryOperationalStatus.ONLINE.value,
+        )
+        state = await run_add_flow(node=node, name=name, location=str(remote.directory))
+        assert state.is_completed()
+        return remote, node, state
+
+    async def test_connect_records_one_warning(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        _, _, state = await self._connect(db=db, tmp_path=tmp_path, name="connect-repo", branches=["main"])
+
+        assert skipped_branch_warnings(caplog, state) == [
+            skipped_branch_warning(branch_name="main", repository_name="connect-repo", default_branch=TRUNK)
+        ]
+
+    async def test_connect_records_the_warning_when_the_remote_head_is_the_colliding_branch(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The clone checks the remote's HEAD out as a local branch, which must not hide the collision."""
+        name = "connect-head-repo"
+        _, _, state = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=["main"], head="main")
+
+        assert skipped_branch_warnings(caplog, state) == [
+            skipped_branch_warning(branch_name="main", repository_name=name, default_branch=TRUNK)
+        ]
+
+    async def test_connect_records_the_warning_when_another_branch_fails(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """A first sync that fails on some other branch still reports the skipped branch before failing."""
+        name = "connect-failing-repo"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=["main"])
+        remote.commit(branch_name="broken", files={".infrahub.yml": "schemas: [unclosed\n"})
+        await create_branch(branch_name="broken", db=db)
+        node = await create_repository_node(
+            db=db,
+            name=name,
+            location=str(remote.directory),
+            default_branch=TRUNK,
+            operational_status=RepositoryOperationalStatus.ONLINE.value,
+        )
+
+        state = await run_add_flow(node=node, name=name, location=str(remote.directory))
+
+        assert state.is_failed()
+        error = await state.aresult(raise_on_failure=False)
+        assert isinstance(error, RepositoryBranchesFailedError)
+        assert error.message.startswith(
+            f"Unable to synchronize the following branches of repository {name}: broken (step=import): "
+        )
+        assert error.report == SyncReport(
+            skipped_branches=("main",),
+            imported_branches=(),
+            failed_import_branches=("broken",),
+            advanced_skipped_branches=(),
+        )
+        assert skipped_branch_warnings(caplog, state) == [
+            skipped_branch_warning(branch_name="main", repository_name=name, default_branch=TRUNK)
+        ]
+
+    async def test_cycles_report_only_when_something_moved(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        prefect_client: PrefectClient,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """Idle cycles stay silent; an import or a commit on the skipped branch each report once.
+
+        The second and third cycles pair up: one imports a changed trunk, the other imports nothing and
+        only sees the skipped branch move, and each reports the skipped branch for that reason alone.
+        """
+        name = "cycling-repo"
+        remote, node, _ = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=["main"])
+        location = str(remote.directory)
+        expected_warning = [skipped_branch_warning(branch_name="main", repository_name=name, default_branch=TRUNK)]
+
+        idle = await run_sync_flow(client=client, repository_id=node.id, name=name, location=location)
+        assert idle.is_completed()
+        assert skipped_branch_warnings(caplog, idle) == []
+        assert not await is_linked_to_node(prefect_client, idle, node.id)
+
+        remote.commit(branch_name=TRUNK, files={"data.txt": "trunk v2\n"})
+        imported = await run_sync_flow(client=client, repository_id=node.id, name=name, location=location)
+        assert imported.is_completed()
+        assert skipped_branch_warnings(caplog, imported) == expected_warning
+
+        remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+        advanced = await run_sync_flow(client=client, repository_id=node.id, name=name, location=location)
+        assert advanced.is_completed()
+        assert skipped_branch_warnings(caplog, advanced) == expected_warning
+        # Nothing was imported, so only reporting the skipped branch can have linked this run.
+        assert await is_linked_to_node(prefect_client, advanced, node.id)
+
+        idle_again = await run_sync_flow(client=client, repository_id=node.id, name=name, location=location)
+        assert idle_again.is_completed()
+        assert skipped_branch_warnings(caplog, idle_again) == []
+        assert not await is_linked_to_node(prefect_client, idle_again, node.id)
+
+    async def test_colliding_branch_pushed_after_connect_is_reported(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        prefect_client: PrefectClient,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        name = "late-collision-repo"
+        remote, node, connect = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=[])
+        remote.create_branch("main")
+
+        state = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
+
+        assert state.is_completed()
+        assert skipped_branch_warnings(caplog, connect) == []
+        assert skipped_branch_warnings(caplog, state) == [
+            skipped_branch_warning(branch_name="main", repository_name=name, default_branch=TRUNK)
+        ]
+        # Nothing was imported, so only reporting the skipped branch can have linked this run.
+        assert await flow_run_tags(prefect_client, state) == run_tags(branches=["main"], node_id=node.id)
+
+    async def test_first_sync_on_a_fresh_worker_does_not_report_an_unchanged_colliding_branch(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        prefect_client: PrefectClient,
+        tmp_path: Path,
+        fresh_worker_dir: Path,
+    ) -> None:
+        """The worker clones before the sync reads the remote heads, so the branch is not new to it."""
+        name = "fresh-worker-repo"
+        remote, node, _ = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=["main"])
+        config.SETTINGS.git.repositories_directory = str(fresh_worker_dir)
+
+        state = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
+
+        assert state.is_completed()
+        assert skipped_branch_warnings(caplog, state) == []
+        assert not await is_linked_to_node(prefect_client, state, node.id)
+
+    async def test_idle_sync_reports_no_import_and_no_advance(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        name = "idle-report-repo"
+        remote, node, _ = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=["main"])
+        repo = await InfrahubRepository.init(
+            id=node.id,
+            name=name,
+            location=str(remote.directory),
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+
+        report = await RepositorySyncer(lock_registry=lock.registry, importer=RepositoryFileImporter()).sync(repo)
+
+        assert report == SyncReport(
+            skipped_branches=("main",), imported_branches=(), failed_import_branches=(), advanced_skipped_branches=()
+        )
+
+    async def test_no_warning_once_the_colliding_branch_is_deleted(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        prefect_client: PrefectClient,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        name = "deleted-collision-repo"
+        remote, node, _ = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=["main"])
+        remote.delete_branch("main")
+        remote.commit(branch_name=TRUNK, files={"data.txt": "trunk v2\n"})
+
+        state = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
+
+        assert state.is_completed()
+        assert skipped_branch_warnings(caplog, state) == []
+        # The import links the run by itself, which shows the silence is not an idle cycle's.
+        assert await is_linked_to_node(prefect_client, state, node.id)
+
+    async def test_no_warning_once_the_trunk_is_the_infrahub_default_branch(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        prefect_client: PrefectClient,
+        tmp_path: Path,
+        fresh_worker_dir: Path,
+    ) -> None:
+        """Once `main` is the trunk it is imported like any trunk, so a cycle that imports it reports nothing.
+
+        The clone is taken fresh on the new trunk, as a worker that never saw the old one would have it.
+        """
+        name = "retrunked-repo"
+        remote, node, _ = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=["main"])
+        repository = await client.get(kind=CoreRepository, id=node.id)
+        repository.default_branch.value = "main"
+        await repository.save()
+        await create_branch(branch_name=TRUNK, db=db)
+
+        config.SETTINGS.git.repositories_directory = str(fresh_worker_dir)
+        await InfrahubRepository.init(
+            id=node.id,
+            name=name,
+            location=str(remote.directory),
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+        remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+
+        state = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
+
+        assert state.is_completed()
+        assert skipped_branch_warnings(caplog, state) == []
+        assert await is_linked_to_node(prefect_client, state, node.id)
+
+    async def test_no_warning_without_a_colliding_branch(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        prefect_client: PrefectClient,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        name = "no-collision-repo"
+        remote, node, connect = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=[])
+        remote.commit(branch_name=TRUNK, files={"data.txt": "trunk v2\n"})
+
+        state = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
+
+        assert state.is_completed()
+        assert skipped_branch_warnings(caplog, connect) == []
+        assert skipped_branch_warnings(caplog, state) == []
+        assert await is_linked_to_node(prefect_client, state, node.id)
+
+    @pytest.mark.parametrize("operational_status", OPERATIONAL_STATUSES)
+    async def test_cycle_that_imports_one_branch_and_fails_another_reports_the_skipped_branch(
+        self,
+        operational_status: str,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        prefect_client: PrefectClient,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The warning does not depend on the repository being online, and no branch loses its tag."""
+        name = f"partly-failing-cycle-repo-{operational_status}"
+        failing_branch = f"broken-on-cycle-{operational_status}"
+        remote, node, _ = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=["main"])
+        await create_branch(branch_name=failing_branch, db=db)
+        remote.commit(branch_name=failing_branch, files={".infrahub.yml": "schemas: [unclosed\n"})
+        remote.commit(branch_name=TRUNK, files={"data.txt": "trunk v2\n"})
+
+        state = await run_sync_flow(
+            client=client,
+            repository_id=node.id,
+            name=name,
+            location=str(remote.directory),
+            operational_status=operational_status,
+        )
+
+        assert state.is_failed()
+        error = await state.aresult(raise_on_failure=False)
+        assert isinstance(error, RepositoryBranchesFailedError)
+        assert error.report == SyncReport(
+            skipped_branches=("main",),
+            imported_branches=("main",),
+            failed_import_branches=(failing_branch,),
+            advanced_skipped_branches=(),
+        )
+        assert skipped_branch_warnings(caplog, state) == [
+            skipped_branch_warning(branch_name="main", repository_name=name, default_branch=TRUNK)
+        ]
+        assert await flow_run_tags(prefect_client, state) == run_tags(
+            branches=["main", failing_branch], node_id=node.id
+        )
+
+    async def test_failed_cycle_where_nothing_else_moved_does_not_report_the_skipped_branch(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        prefect_client: PrefectClient,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The failure links the run while the repository is online, but it is not a reason to report."""
+        name = "failing-trunk-cycle-repo"
+        remote, node, _ = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=["main"])
+        remote.commit(branch_name=TRUNK, files={".infrahub.yml": "schemas: [unclosed\n"})
+
+        state = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
+
+        assert state.is_failed()
+        error = await state.aresult(raise_on_failure=False)
+        assert isinstance(error, RepositoryBranchesFailedError)
+        assert error.report == SyncReport(
+            skipped_branches=("main",),
+            imported_branches=(),
+            failed_import_branches=("main",),
+            advanced_skipped_branches=(),
+        )
+        assert skipped_branch_warnings(caplog, state) == []
+        assert await flow_run_tags(prefect_client, state) == run_tags(branches=["main"], node_id=node.id)
+
+    @pytest.mark.parametrize("case", FAILED_READ_CASES, ids=[case.name for case in FAILED_READ_CASES])
+    async def test_failed_fetch_links_the_run_while_online(
+        self,
+        case: FailedReadCase,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        prefect_client: PrefectClient,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """A remote that disappears fails the sync itself, after the repository object was built."""
+        name = f"vanished-remote-repo-{case.name}"
+        remote, node, _ = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=["main"])
+        shutil.rmtree(remote.directory)
+
+        state = await run_sync_flow(
+            client=client,
+            repository_id=node.id,
+            name=name,
+            location=str(remote.directory),
+            operational_status=case.operational_status,
+        )
+
+        assert state.is_failed()
+        error = await state.aresult(raise_on_failure=False)
+        assert isinstance(error, RepositoryError)
+        assert not isinstance(error, RepositoryBranchesFailedError)
+        assert skipped_branch_warnings(caplog, state) == []
+        assert await is_linked_to_node(prefect_client, state, node.id) is case.expected_linked
+
+    async def test_reporting_the_skipped_branch_keeps_the_tags_of_the_imported_branches(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        prefect_client: PrefectClient,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        name = "feature-import-repo"
+        remote, node, _ = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=["main"])
+        await create_branch(branch_name="feature-import", db=db)
+        remote.commit(branch_name="feature-import", files={"data.txt": "feature\n"})
+
+        state = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
+
+        assert state.is_completed()
+        assert skipped_branch_warnings(caplog, state) == [
+            skipped_branch_warning(branch_name="main", repository_name=name, default_branch=TRUNK)
+        ]
+        assert await flow_run_tags(prefect_client, state) == run_tags(
+            branches=["main", "feature-import"], node_id=node.id
+        )
+
+    @pytest.mark.parametrize("case", FAILED_READ_CASES, ids=[case.name for case in FAILED_READ_CASES])
+    async def test_failing_node_read_links_the_run_while_online(
+        self,
+        case: FailedReadCase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        prefect_client: PrefectClient,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """A repository whose node cannot be read fails the run, which is linked to it like any sync failure."""
+        repository_id = str(UUIDT())
+
+        state = await run_sync_flow(
+            client=client,
+            repository_id=repository_id,
+            name="unreadable-repo",
+            location=str(tmp_path / "missing-remote"),
+            operational_status=case.operational_status,
+        )
+
+        assert state.is_failed()
+        assert isinstance(await state.aresult(raise_on_failure=False), RepositoryError)
+        assert await is_linked_to_node(prefect_client, state, repository_id) is case.expected_linked

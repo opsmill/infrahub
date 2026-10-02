@@ -1,0 +1,19 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreGeneratorAction
+  data:
+    - name: run-tags-generator
+      generator: tags_generator
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreNodeTriggerRule
+  data:
+    - name: trigger-tags-generator-update
+      node_kind: CoreStandardGroup
+      mutation_action: updated
+      action: run-tags-generator
+      branch_scope: other_branches

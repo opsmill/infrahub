@@ -24,6 +24,11 @@ When NOT to use: the project doesn't use Towncrier; pure internal refactors with
 shipped in any release is not user-observable: the feature's own `added` fragment already covers
 everything a user will ever see, and a `fixed` entry for something never released is noise.
 
+**Exception — a stacked PR series carries one fragment, on the top PR.** Intermediate PRs in a stack
+skip the fragment: per-PR fragments collide on the same issue-number stem and describe a surface the
+later PRs change again. State the deliberate skip in the intermediate PR's checklist instead of
+leaving the box silently unticked.
+
 **`housekeeping` is not a catch-all.** It covers internal work a user could still notice — a
 build, tooling, or CI change. A change with no user-facing effect at all (an internal
 type annotation, a behavior-preserving refactor, a lint or type-checker config cleanup that touches
@@ -38,7 +43,7 @@ uv run towncrier create -c "content of changelog entry" ${ISSUE}.${TYPE}.md
 
 These commands use `uv run`, which runs the project's pinned Towncrier and is the convention across these Python projects. If your project doesn't use uv, drop the prefix (`towncrier create ...`) or use its runner (e.g. `poetry run towncrier ...`).
 
-- **ISSUE** — issue ID, or `+` when no issue exists (e.g. `+pnpm-workspaces`).
+- **ISSUE** — issue ID, or `+` when no issue exists (e.g. `+pnpm-workspaces`). With an issue, the stem is the bare number and nothing else: Towncrier renders the whole stem through `issue_format`, so `1234-short-slug.fixed.md` links to issue `1234-short-slug` — a 404. Only orphan (`+`) fragments take a descriptive slug. Verify with `towncrier build --draft` when unsure.
 - **TYPE** — one of the change types below.
 
 | Type | Use For |
@@ -89,7 +94,10 @@ uv run towncrier create -c "Migrated the frontend build to pnpm workspaces" +pnp
   number or a `+`-prefixed slug, because `issue_format` turns a bare name straight into a GitHub
   issue URL: `IFC-2747.fixed.md` ships a link to an issue that does not exist. The `+` marks the
   entry as an orphan and suppresses the link, so `+ifc-2546-lorem-ipsum.changed.md` is valid — but
-  the ticket ID never appears in the output, so spend the slug on a description instead.
+  the ticket ID never appears in the output, so spend the slug on a description instead. Use a bare
+  issue number only when the release note should link that GitHub issue; a change merely related to
+  an issue — a follow-up, a separate fix found along the way — takes an orphan `+slug`, and the slug
+  carries no metadata, so there is nothing to "fix" in an orphan name that lacks an issue ID.
 - **Hand-writing the fragment file.** Use `towncrier create` so the name and location are correct.
 - **Placing it in a sub-package directory** (e.g. `backend/changelog/`) instead of the configured fragments directory.
 - **Describing the implementation.** "Refactored the auth-token cache layer" → instead say what the user sees: "Fixed users being unexpectedly logged out".

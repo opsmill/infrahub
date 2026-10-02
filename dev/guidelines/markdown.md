@@ -32,6 +32,15 @@ Markdown formatting rules enforced by markdownlint and project conventions.
 - No trailing spaces
 - No multiple consecutive blank lines
 
+### Line Wrapping
+
+- Match the file's existing wrap style: most `dev/` and `.agents/` prose wraps near 100 characters;
+  break at the column, not at clause or sentence boundaries short of it
+- Never end a line early because a phrase ended — phrasing-shaped breaks read as generated output,
+  and every later edit re-breaks the paragraph
+- MD013 (line length) is disabled, so wrap style is a convention, not a lint gate — pick up whichever
+  style the file already uses instead of reflowing it
+
 ### Headings
 
 - Use sentence case (first word capitalized, rest lowercase)
@@ -209,5 +218,4 @@ Only keep imports the page uses — no linter flags unused MDX imports, so check
 ## See Also
 
 - [Documentation Guidelines](documentation.md) - Documentation writing guidelines
-- `docs/AGENTS.md` - Documentation-specific guidelines for user-facing docs
 - [Git Workflow](git-workflow.md) - Git workflow and commit conventions

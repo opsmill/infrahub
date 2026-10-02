@@ -42,7 +42,6 @@ class TestAllocateIpPrefixWithPool:
         await admin_page.get_by_test_id("create-object-button").click()
 
         await select_pool(admin_page, "External prefixes pool")
-        await expect(admin_page.get_by_label("Prefix *")).to_contain_text("Allocated by pool")
         await expect(admin_page.get_by_test_id("source-pool-badge")).to_contain_text("External prefixes pool")
         await admin_page.get_by_role("textbox", name="Description").fill("prefix from pool")
         await admin_page.get_by_role("button", name="Save").click()
@@ -62,7 +61,7 @@ class TestAllocateIpPrefixWithPool:
         await admin_page.get_by_test_id("create-object-button").click()
 
         await select_pool(admin_page, "External prefixes pool")
-        await expect(admin_page.get_by_label("Prefix *")).to_contain_text("Allocated by pool")
+        await expect(admin_page.get_by_test_id("source-pool-badge")).to_contain_text("External prefixes pool")
 
         # The pool's default prefix length is surfaced as a placeholder.
         await expect(admin_page.get_by_test_id("pool-prefix-length-input")).to_have_attribute("placeholder", "29")

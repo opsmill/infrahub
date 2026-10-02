@@ -50,7 +50,7 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
   }
 
   if (isLoading) {
-    return <LoadingIndicator message="Loading task..." className="h-[400px]" />;
+    return <LoadingIndicator message="Loading task..." className="h-100" />;
   }
 
   const edges = data ?? [];

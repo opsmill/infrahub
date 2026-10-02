@@ -72,17 +72,17 @@ async def save_screenshot_for_docs(page: Page, filename: str) -> None:
     """
     if not os.environ.get("UPDATE_DOCS_SCREENSHOTS"):
         return
-    # The published documentation is written against the light theme, while a development stack now
-    # starts dark. Without pinning it here, a regeneration run would quietly turn every screenshot
-    # in the docs dark.
+    # The published documentation is written against the light theme, while a test on a development
+    # stack may have chosen or emulated dark. Without pinning it here, a regeneration run would
+    # quietly turn those screenshots dark.
     await page.evaluate(
         """() => {
             localStorage.setItem("infrahub.theme.choice", "light");
-            document.documentElement.classList.remove("dark");
+            window.dispatchEvent(new StorageEvent("storage", { key: "infrahub.theme.choice" }));
         }"""
     )
-    # The flip triggers observer-driven re-renders (diagrams and the sandbox rebuild whole
-    # subtrees), so settle the network and let two frames paint before capturing.
+    # The flip re-renders every theme consumer (diagrams and the sandbox rebuild whole subtrees),
+    # so settle the network and let two frames paint before capturing.
     await page.wait_for_load_state("networkidle")
     await page.evaluate("() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
     await page.screenshot(path=str(_DOCS_MEDIA_DIR / f"{filename}.png"), animations="disabled")
@@ -94,13 +94,14 @@ def get_data_table_row(page: Page, name: str) -> Locator:
 
 
 async def select_pool(page: Page, pool_name: str) -> None:
-    """Open a from-pool field's pool picker and select the pool by name.
+    """Switch a pool-backed field to its pool tab and select the pool by name.
 
     The "open the resource-pool dropdown, then click the named pool" pair is
     identical across every from-pool allocation flow (IPAM create, object
     create / relationship / bulk-edit, object templates), so it lives here once.
     Callers keep their own surrounding navigation, field fills and assertions.
     """
+    await page.get_by_role("tab", name="From pool").click()
     await page.get_by_test_id("select-open-pool-option-button").click()
     await page.get_by_role("option", name=pool_name).click()
 

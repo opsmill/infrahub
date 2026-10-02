@@ -28,11 +28,14 @@ COMPONENT_TEST_DIRECTORY = f"{MAIN_DIRECTORY}/tests/component"
 # Directories listed here are run by their named shard; everything else falls into the
 # "other" catch-all shard, which ignores exactly the directories assigned below so new
 # test directories are picked up automatically. The partition is verified by
-# backend.validate-component-shards. Shard contents are sized from measured durations,
-# rebalance when they drift apart.
+# backend.validate-component-shards.
+#
+# Shard names are labels, not a taxonomy: contents are balanced from measured CI
+# durations so the jobs finish together, which is why suites unrelated to a shard's
+# name sit in it. The catch-all is the one that grows; rebalance when it pulls ahead.
 COMPONENT_TEST_SHARDS: dict[str, list[str]] = {
     "graphql": ["graphql"],
-    "core-diff": ["core/diff", "core/migrations", "core/changelog"],
+    "core-diff": ["core/diff", "core/migrations", "core/changelog", "merge_recompute_coalescing"],
     "core-schema": [
         "core/schema",
         "core/schema_manager",
@@ -44,6 +47,8 @@ COMPONENT_TEST_SHARDS: dict[str, list[str]] = {
         "core/node",
         "core/hierarchy",
         "core/graph",
+        "api",
+        "computed_attribute",
     ],
 }
 COMPONENT_TEST_CATCHALL_SHARD = "other"

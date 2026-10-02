@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from infrahub_sdk.protocols import CoreTransformJinja2, CoreTransformPython
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
@@ -77,7 +77,8 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
             db=db,
             name=git_repo.name,
             description="test repository",
-            location="git@github.com:mock/test.git",
+            location=git_repo.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await repo_node.save(db=db)
 
@@ -86,6 +87,7 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
             name=git_repo.name,
             location=git_repo.path,
             client=client,
+            infrahub_branch_name="main",
         )
 
         commit = repo.get_commit_value(branch_name="main")
@@ -154,7 +156,6 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
 
         assert transform_jinja.dependencies_complete.value is True
         assert set(transform_jinja.dependencies.value) == {
-            ".infrahub.yml",
             "templates/device.j2",
             "partials/header.j2",
         }
@@ -163,7 +164,6 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
         # sit in the same directory and stay out of the closure.
         assert transform_python.dependencies_complete.value is True
         assert set(transform_python.dependencies.value) == {
-            ".infrahub.yml",
             "transforms/foo/foo.py",
             "transforms/foo/helpers.py",
         }
@@ -184,6 +184,29 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
             memory_cache=memory_cache,
             workflow_recorder=workflow_recorder,
             files_changed=["README.md"],
+        )
+        assert selected == []
+
+    async def test_manifest_edit_regenerates_nothing(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+    ) -> None:
+        """Editing the repository manifest dispatches no regeneration on the file gate.
+
+        The closures here are built by the real integrator, so this pins that the manifest is
+        absent from every one of them and a manifest edit no longer selects the whole repository.
+        """
+        selected = await self._selected_definitions(
+            dataset=dataset,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            memory_cache=memory_cache,
+            workflow_recorder=workflow_recorder,
+            files_changed=[".infrahub.yml"],
         )
         assert selected == []
 
