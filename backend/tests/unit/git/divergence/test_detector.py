@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from infrahub.exceptions import RepositoryError
 from infrahub.git.divergence.detector import RemoteDivergenceDetector
+from infrahub.git.divergence.gateway import GitPythonAncestryGateway
 from infrahub.git.divergence.models import RefClassification, RefDivergence
+from tests.unit.git.divergence.conftest import break_object_database, commit_file
+
+if TYPE_CHECKING:
+    from git import Repo
 
 IMPORTED = "a" * 40
 REMOTE = "b" * 40
@@ -147,3 +154,44 @@ def test_result_carries_the_branch_and_both_commits() -> None:
     assert result.infrahub_branch_name == "main"
     assert result.imported_commit == IMPORTED
     assert result.remote_head == REMOTE
+
+
+def detect(repo: Repo, imported: str | None, remote: str | None, target_changed: bool = False) -> RefDivergence:
+    gateway = GitPythonAncestryGateway(repository_name="test-repository", repo=repo)
+    return RemoteDivergenceDetector(gateway=gateway).classify(
+        branch_name="main",
+        infrahub_branch_name="main",
+        imported_commit=imported,
+        remote_head=remote,
+        target_changed=target_changed,
+    )
+
+
+def test_a_real_repository_whose_remote_advanced_fast_forwards(repo: Repo) -> None:
+    imported = commit_file(repo=repo, content="one")
+    remote = commit_file(repo=repo, content="two")
+
+    assert detect(repo, imported=imported, remote=remote).classification is RefClassification.FAST_FORWARD
+
+
+def test_a_real_repository_rewound_onto_an_ancestor_is_a_rewrite(repo: Repo) -> None:
+    remote = commit_file(repo=repo, content="one")
+    imported = commit_file(repo=repo, content="two")
+
+    assert detect(repo, imported=imported, remote=remote).classification is RefClassification.REWRITE
+
+
+def test_a_remote_head_missing_from_the_object_database_reaches_the_caller(repo: Repo) -> None:
+    imported = commit_file(repo=repo, content="one")
+
+    with pytest.raises(RepositoryError, match=r"Unable to compare"):
+        detect(repo, imported=imported, remote="0" * 40)
+
+
+def test_a_broken_object_database_reaches_the_caller(repo: Repo) -> None:
+    imported = commit_file(repo=repo, content="one")
+    remote = commit_file(repo=repo, content="two")
+    break_object_database(repo=repo)
+
+    with pytest.raises(RepositoryError, match=r"Unable to read"):
+        detect(repo, imported=imported, remote=remote)

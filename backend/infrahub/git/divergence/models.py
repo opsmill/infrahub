@@ -12,7 +12,6 @@ class RefClassification(StrEnum):
     REMOTE_ABSENT = "remote-absent"
 
 
-NEEDS_BOTH_COMMITS = frozenset({RefClassification.REWRITE, RefClassification.RETARGET})
 ALLOWED_WITHOUT_IMPORTED_COMMIT = frozenset({RefClassification.UNCHANGED, RefClassification.FAST_FORWARD})
 ALLOWED_WITHOUT_REMOTE_HEAD = frozenset({RefClassification.REMOTE_ABSENT, RefClassification.UNCHANGED})
 
@@ -32,11 +31,6 @@ class RefDivergence:
     classification: RefClassification
 
     def __post_init__(self) -> None:
-        if self.classification in NEEDS_BOTH_COMMITS and (self.imported_commit is None or self.remote_head is None):
-            raise ValueError(
-                f"{self.classification} requires both an imported commit and a remote head, got "
-                f"imported_commit={self.imported_commit!r} remote_head={self.remote_head!r}"
-            )
         if self.imported_commit is None and self.classification not in ALLOWED_WITHOUT_IMPORTED_COMMIT:
             raise ValueError(f"A branch with no imported commit cannot be {self.classification}")
         if self.remote_head is None:
