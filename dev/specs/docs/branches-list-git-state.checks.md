@@ -18,14 +18,14 @@ Re-walked 2026-10-01 after the rework to one row per branch (Repositories and Gi
 12. A branch with no repository to show / reads — ok (UI property; the cell shows the text)
 13. [Not synced with Git] The branch / does not sync — ok
 14. [No repositories] The branch / syncs …, or the branch / is merged — ok (rework A)
-15. [No permission] Your account / is not allowed …, so every branch / reads — ok (rework A)
-16. [Could not load repositories] A request for repository status / failed, so every branch / reads — ok (rework A)
+15. [No permission] Your account / cannot view any repository kind …, so every branch / reads; the repositories you cannot view / are left out — ok (per-kind denial, 2026-10-01)
+16. [Could not load repositories] The branch list, the repository list or a repository's status / could not be read, or the list / was cut short, so every branch / reads; or one status list / was cut short before this branch — ok (truncation cases, 2026-10-01)
 17. (you) / Hover the text — ok
 18. The branch columns / load normally — ok (rework A; replaces "These states apply to one branch at a time")
 19. Infrahub / refreshes — ok (the UI polls, `get-repository-branch-status.query.ts`)
 20. The branches list / is organized by branch — property, ok (next section, unchanged)
 
-Rewrites: 0. The 2026-09-30 rewrites ("occupies", "shows the reason") went with the per-repository rows.
+Rewrites: 2 (rows 15 and 16, rewritten when per-kind denial and truncation landed). The 2026-09-30 rewrites ("occupies", "shows the reason") went with the per-repository rows.
 
 ## Verb walk (non-technical verbs: 13)
 
