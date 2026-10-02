@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import {
   type RepositoryCommit,
@@ -80,6 +80,11 @@ function resolveStructuralSharing(
 }
 
 describe("getRepositoryCommitsQueryOptions", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetAllMocks();
+  });
+
   test("keeps the loaded pages when a refetch answers unavailable", () => {
     // GIVEN
     const loaded = [
@@ -287,14 +292,21 @@ describe("getRepositoryCommitsQueryOptions", () => {
     });
   });
 
-  test("does not replay every loaded page on a quick remount", () => {
+  test("does not replay every loaded page on a quick remount", async () => {
+    // GIVEN
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const client = new QueryClient();
+    getRepositoryCommitsMock.mockResolvedValue(buildLog(RepositoryGitCondition.IN_SYNC));
+    await client.fetchInfiniteQuery(getRepositoryCommitsQueryOptions(PARAMS));
+
     // WHEN
-    const { staleTime } = getRepositoryCommitsQueryOptions({
-      repositoryId: "repo-42",
-      branchName: "feature",
-    });
+    vi.advanceTimersByTime(REPOSITORY_COMMITS_STALE_TIME_MS - 1);
+    await client.fetchInfiniteQuery(getRepositoryCommitsQueryOptions(PARAMS));
 
     // THEN
-    expect(staleTime).toBe(REPOSITORY_COMMITS_STALE_TIME_MS);
+    expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1);
+    await client.fetchInfiniteQuery(getRepositoryCommitsQueryOptions(PARAMS));
+    expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(2);
   });
 });
