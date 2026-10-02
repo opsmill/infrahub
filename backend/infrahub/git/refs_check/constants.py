@@ -6,10 +6,11 @@ from types import MappingProxyType
 from typing import Final, Mapping
 
 REFS_CHECK_TIMEOUT_SECONDS: Final = 120
-"""Wall-clock ceiling for reading one repository's remote refs. Convergence is not covered by it."""
+"""Wall-clock ceiling for reading one repository's remote refs and the heads to compare them with.
+Convergence is not covered by it."""
 
 REFS_CHECK_CLAIM_MARGIN_SECONDS: Final = 60
-"""Added to the listing ceiling so a claim outlives the step that can wait on an unresponsive host."""
+"""Added to the ceiling above so a claim outlives the steps that can wait on a remote or the graph."""
 
 REFS_CHECK_GIT_KILL_MARGIN_SECONDS: Final = 10
 """How much sooner the listing subprocess is killed than the wall-clock ceiling above it."""

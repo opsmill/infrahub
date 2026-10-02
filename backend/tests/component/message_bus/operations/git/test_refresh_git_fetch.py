@@ -140,6 +140,48 @@ async def test_fan_out_converges_the_local_copy_without_writing_the_tracked_comm
     assert "mutation-repository-update-commit" not in requester.trackers
 
 
+async def test_fan_out_to_a_read_only_repository_follows_a_tag_that_moved_upstream(
+    git_fixture_repo: InfrahubRepository,
+    git_sources_dir: Path,
+    dependency_provider: Provider,
+) -> None:
+    """A read-only repository may track a tag, and git refuses to move an existing tag without being forced."""
+    recording_client = InfrahubClient(config=Config(requester=RecordingRequester(), insert_tracker=True))
+
+    branch_name = "main"
+    branch_id = "8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba"
+
+    upstream = Repo(str(git_sources_dir / "test_base"))
+    upstream.create_tag("release", message="Release")
+    local = git_fixture_repo.get_git_repo_main()
+    local.remotes.origin.fetch(tags=True)
+    tagged_before = str(local.commit("release"))
+
+    new_file = git_sources_dir / "test_base" / "tagged_change.txt"
+    new_file.write_text("the release tag moved upstream", encoding="utf-8")
+    upstream.index.add(["tagged_change.txt"])
+    upstream.index.commit("Change the release tag now points at")
+    moved_sha = str(upstream.head.commit)
+    upstream.create_tag("release", message="Release", force=True)
+    assert tagged_before != moved_sha
+
+    message = messages.RefreshGitFetch(
+        location=str(git_sources_dir / "test_base"),
+        repository_id=str(git_fixture_repo.id),
+        repository_name=git_fixture_repo.name,
+        repository_kind=InfrahubKind.READONLYREPOSITORY,
+        infrahub_branch_name=branch_name,
+        infrahub_branch_id=branch_id,
+        commit=moved_sha,
+    )
+
+    with dependency_provider.scope(build_client, lambda: recording_client):
+        await fetch.fn(message=message)
+
+    assert str(git_fixture_repo.get_git_repo_main().commit("release")) == moved_sha
+    assert str(git_fixture_repo.get_git_repo_worktree(identifier=branch_name).head.commit) == moved_sha
+
+
 @pytest.mark.httpx_mock(should_mock=lambda request: request.url.host == "mock")
 async def test_fan_out_raises_when_pinned_commit_unreachable(
     git_fixture_repo: InfrahubRepository,

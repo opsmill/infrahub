@@ -847,15 +847,25 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         self.relocate_directory_root()
 
-        repo = self.get_git_repo_main()
         try:
-            repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True)
+            self.fetch_from_origin(git_repo=self.get_git_repo_main())
         except GitCommandError as exc:
             await self._raise_enriched_error(error=exc)
 
         await self._update_operational_status(status=RepositoryOperationalStatus.ONLINE)
 
         return True
+
+    def fetch_from_origin(self, git_repo: Repo) -> None:
+        """Fetch every branch and tag from origin into the main clone.
+
+        Raises:
+            GitCommandError: When git cannot complete the fetch.
+
+        """
+        # A read-only repository may track a tag, and git refuses to move an existing tag unless
+        # forced; the commit it used to point at stays readable through its own worktree.
+        git_repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True, force=self.is_read_only)
 
     async def get_filtered_remote_branches(self) -> dict[str, BranchInRemote]:
         branches = self.get_branches_from_remote()

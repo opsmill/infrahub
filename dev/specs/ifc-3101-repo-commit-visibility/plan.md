@@ -31,8 +31,9 @@ worker read and the refs check.
 `Repo.iter_commits`, `git.rev_list`), Prefect via `infrahub.workflows` (existing), the RabbitMQ
 message bus (existing; the NATS adapter is edited for signature parity only and is not a supported
 driver, see research.md), TanStack Query v5 and gql.tada (existing)
-**Storage**: none new. Four short-lived cache keys in the existing `service.cache`: warm-up
-collapsing, the refs-check due marker, the in-flight guard, and the last-checked timestamp
+**Storage**: none new. Five cache keys in the existing `service.cache`: warm-up collapsing, the
+refs-check due marker, the in-flight guard, the last-checked timestamp, and the remote head last
+announced per branch
 **Testing**: pytest unit (`backend/tests/unit/`), component with testcontainers
 (`backend/tests/component/`), integration with a Gogs remote (`backend/tests/integration/git/`),
 Vitest browser mode, pytest-playwright e2e (`tests/e2e/`)
@@ -295,6 +296,16 @@ determinism logic, no test and no documentation entry.
   reaching the command line, and the network call runs with git's low-speed abort configured
   (`GIT_HTTP_LOW_SPEED_LIMIT` / `GIT_HTTP_LOW_SPEED_TIME` in the subprocess environment) so an
   unresponsive remote fails instead of hanging for the life of the tick.
+- **Movement decision (FR-017, SC-009).** The listing answers two separate questions. Whether this
+  worker fetches is decided against its own `origin/<ref>`. Whether the pool is told is decided per
+  Infrahub branch against `git:refs_check:announced:<id>:<branch>`, the remote head last broadcast
+  for that branch, falling back to the branch's imported commit when the key is absent. Deciding the
+  broadcast against local disk made one arbitrary worker's copy answer for the pool: a worker that
+  was already current saw nothing to announce and left the others behind. The key is written only
+  after its broadcast succeeds, so a failed broadcast is retried by the next check rather than lost,
+  and the imported-commit fallback limits an empty or expired cache to one broadcast per branch
+  whose remote has moved past its imported commit; a branch still on it announces nothing.
+  Recorded as T065h.
 - **Non-accumulation (FR-025).** Before doing any remote work, the shared body claims the repository
   with `cache.set(key=<running key>, value=<this flow's run id>, expires=<per-run ceiling>,
   not_exists=True)` and returns the recorded run id without contacting the remote when the claim
