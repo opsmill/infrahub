@@ -36,12 +36,8 @@ export async function getRepositoryImportTask({
   }
 }
 
+// Throws when the log can't be fetched, so a failed request isn't mistaken for a log with no error line.
 export async function getImportTaskErrorMessage(taskId: string): Promise<string | null> {
-  try {
-    const logs = await getImportTaskLogsFromApi({ taskId, logLimit: IMPORT_LOG_LIMIT });
-    return getLastErrorLine(logs);
-  } catch (error) {
-    console.error(`An error occurred while fetching the log of task ${taskId}:`, error);
-    return null;
-  }
+  const logs = await getImportTaskLogsFromApi({ taskId, logLimit: IMPORT_LOG_LIMIT });
+  return getLastErrorLine(logs);
 }

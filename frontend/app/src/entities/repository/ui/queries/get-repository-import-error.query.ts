@@ -24,13 +24,15 @@ export function getRepositoryImportTaskQueryOptions({
   });
 }
 
-// A finished task's log doesn't change, so it is fetched once per task.
+// A finished task's log doesn't change, so it is fetched once per task; a failed fetch is retried.
 export function getImportTaskErrorMessageQueryOptions(taskId: string | null | undefined) {
   return queryOptions({
     queryKey: repositoryQueryKeys.importLog(taskId ?? ""),
     queryFn: () => getImportTaskErrorMessage(taskId ?? ""),
     enabled: !!taskId,
     staleTime: Number.POSITIVE_INFINITY,
+    refetchInterval: (query) =>
+      query.state.status === "error" ? REPOSITORY_SYNC_REFETCH_INTERVAL_MS : false,
   });
 }
 
@@ -43,7 +45,7 @@ export function useGetRepositoryImportError(
 
   if (taskId === undefined) return undefined;
   if (taskId === null) return { status: "not-found", taskId: null };
-  if (log.data === undefined) return undefined;
+  if (log.data === undefined) return log.isError ? { status: "not-found", taskId } : undefined;
 
   return log.data === null
     ? { status: "not-found", taskId }

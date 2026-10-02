@@ -75,8 +75,8 @@ describe("getImportTaskErrorMessage", () => {
   it("returns the last error line of the task's log", async () => {
     // GIVEN
     vi.mocked(getImportTaskLogsFromApi).mockResolvedValue([
-      { severity: "info", message: "Importing" },
       { severity: "error", message: "Unable to load the schema" },
+      { severity: "info", message: "Importing" },
     ]);
 
     // WHEN
@@ -100,14 +100,12 @@ describe("getImportTaskErrorMessage", () => {
     await expect(getImportTaskErrorMessage("task-1")).resolves.toBeNull();
   });
 
-  it("returns null when the api fails, and logs the error", async () => {
+  it("rejects when the api fails, so the failure isn't read as a log with no error line", async () => {
     // GIVEN
     const error = new Error("Network error");
     vi.mocked(getImportTaskLogsFromApi).mockRejectedValue(error);
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
     // WHEN / THEN
-    await expect(getImportTaskErrorMessage("task-1")).resolves.toBeNull();
-    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("task task-1"), error);
+    await expect(getImportTaskErrorMessage("task-1")).rejects.toBe(error);
   });
 });
