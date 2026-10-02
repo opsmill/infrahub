@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Protocol
 
-from git import BadName
 from git.exc import GitCommandError, GitError
 
 from infrahub.exceptions import RepositoryError
@@ -15,6 +14,9 @@ COMMIT_SHA_PATTERN = re.compile(r"[0-9a-fA-F]{40}")
 
 OBJECT_ABSENT_STATUS = 1
 """What `git cat-file -e` returns for a well-formed name no object answers to."""
+
+NOT_AN_ANCESTOR_STATUS = 1
+"""What `git merge-base --is-ancestor` returns for a true comparison with a false answer."""
 
 
 class AncestryGateway(Protocol):
@@ -42,17 +44,20 @@ class GitPythonAncestryGateway:
 
         """
         try:
-            return self.repo.is_ancestor(
-                ancestor_rev=self.repo.commit(ancestor_commit), rev=self.repo.commit(descendant_commit)
-            )
+            # Run as a plain command rather than through resolved objects: resolving them first
+            # goes through the shared reader, which fails on its own terms.
+            self.repo.git.merge_base("--is-ancestor", ancestor_commit, descendant_commit)
         except GitCommandError as exc:
+            if exc.status == NOT_AN_ANCESTOR_STATUS:
+                return False
             raise self._comparison_failed(
                 ancestor_commit=ancestor_commit, descendant_commit=descendant_commit, detail=exc.stderr or str(exc)
             ) from exc
-        except (BadName, ValueError) as exc:
+        except (OSError, GitError) as exc:
             raise self._comparison_failed(
                 ancestor_commit=ancestor_commit, descendant_commit=descendant_commit, detail=str(exc)
             ) from exc
+        return True
 
     def _comparison_failed(self, ancestor_commit: str, descendant_commit: str, detail: str) -> RepositoryError:
         return RepositoryError(

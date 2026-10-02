@@ -29,6 +29,14 @@ def test_an_unreachable_commit_leaves_as_a_repository_error(repo: Repo, gateway:
         gateway.is_ancestor(ancestor_commit=absent, descendant_commit=present)
 
 
+def test_a_broken_repository_fails_the_comparison(repo: Repo, gateway: GitPythonAncestryGateway) -> None:
+    commit = commit_file(repo=repo, content="one")
+    break_object_database(repo=repo)
+
+    with pytest.raises(RepositoryError, match=r"Unable to compare"):
+        gateway.is_ancestor(ancestor_commit=commit, descendant_commit=commit)
+
+
 def test_a_commit_in_the_object_database_is_present(repo: Repo, gateway: GitPythonAncestryGateway) -> None:
     assert gateway.has_commit(commit=commit_file(repo=repo, content="one")) is True
 
