@@ -2,20 +2,35 @@
 
 from __future__ import annotations
 
+import re
+import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import git
 import pytest
+from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.exceptions import RepositoryCredentialsError, RepositoryError
+from infrahub.exceptions import RepositoryCredentialsError, RepositoryError, RepositoryPermissionError
+from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 from tests.helpers.test_app import TestInfrahubApp
-from tests.integration.git.conftest import bad_credentials_clone_url, create_gogs_repo
+from tests.integration.git.conftest import (
+    GOGS_ADMIN,
+    bad_credentials_clone_url,
+    create_gogs_repo,
+    create_remote_ref,
+    gogs_clone_url,
+    grant_read_access,
+    readonly_clone_url,
+)
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
+
     from infrahub_sdk import InfrahubClient
     from testcontainers.core.container import DockerContainer
 
@@ -41,6 +56,42 @@ def _push_commit_to_remote(container: DockerContainer, repo_name: str, filename:
     )
     result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
     assert result.exit_code == 0, f"Remote commit failed (exit {result.exit_code}): {result.output.decode()}"
+
+
+def _install_remote_branch_rejection_hook(container: DockerContainer, repo_name: str, branch: str = "main") -> None:
+    """Install a pre-receive hook in the remote bare repository that rejects updates to one branch.
+
+    Reproduces server-side branch protection or a missing push permission: the push is accepted
+    at the transport level and the rejection arrives as a per-ref status.
+    """
+    script = f"""set -e
+cd /data/git/repositories/{GOGS_ADMIN}/{repo_name}.git/hooks
+if [ -f pre-receive ] && [ ! -f pre-receive.orig ]; then mv pre-receive pre-receive.orig; fi
+cat > pre-receive <<'HOOK'
+#!/bin/sh
+while read old new ref; do
+    if [ "$ref" = "refs/heads/{branch}" ]; then
+        echo "branch {branch} is protected" >&2
+        exit 1
+    fi
+done
+exit 0
+HOOK
+chmod +x pre-receive
+"""
+    result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
+    assert result.exit_code == 0, f"Hook install failed (exit {result.exit_code}): {result.output.decode()}"
+
+
+def _remove_remote_branch_rejection_hook(container: DockerContainer, repo_name: str) -> None:
+    """Remove the rejecting pre-receive hook, restoring the hook that was in place before."""
+    script = f"""set -e
+cd /data/git/repositories/{GOGS_ADMIN}/{repo_name}.git/hooks
+rm -f pre-receive
+if [ -f pre-receive.orig ]; then mv pre-receive.orig pre-receive; fi
+"""
+    result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
+    assert result.exit_code == 0, f"Hook removal failed (exit {result.exit_code}): {result.output.decode()}"
 
 
 class TestRepositoryRemoteOperations(TestInfrahubApp):
@@ -114,6 +165,56 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         )
         await node.save()
         return {"repo_name": repo_name, "node_id": node.id}
+
+    @pytest.fixture(scope="class")
+    async def protected_branch_dataset(
+        self,
+        initialize_registry: None,
+        git_repos_dir_module_scope: Path,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> dict:
+        repo_name = "protected-branch-repo"
+        repo_url = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+        node = await client.create(
+            kind=InfrahubKind.REPOSITORY,
+            data={"name": repo_name, "location": repo_url},
+        )
+        await node.save()
+        return {"repo_name": repo_name, "node_id": node.id}
+
+    @pytest.fixture
+    def rejected_push_to_main(
+        self, protected_branch_dataset: dict, gogs_server: GogsServer
+    ) -> Generator[Callable[[], None], None, None]:
+        """Make the remote reject pushes to main, yielding a callable that lifts the rejection."""
+        repo_name = protected_branch_dataset["repo_name"]
+        _install_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
+
+        def lift_rejection() -> None:
+            _remove_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
+
+        yield lift_rejection
+        lift_rejection()
+
+    @pytest.fixture
+    def block_commit_worktree(self) -> Generator[Callable[[Path], Callable[[], None]], None, None]:
+        """Yield a callable that occupies a commit worktree directory, returning a callable that releases it."""
+        blocked: list[Path] = []
+
+        def block(directory: Path) -> Callable[[], None]:
+            directory.mkdir()
+            (directory / "blocker.txt").write_text("blocking worktree creation\n")
+            blocked.append(directory)
+
+            def release() -> None:
+                shutil.rmtree(directory, ignore_errors=True)
+
+            return release
+
+        yield block
+        for directory in blocked:
+            shutil.rmtree(directory, ignore_errors=True)
 
     @pytest.fixture(scope="class")
     async def readonly_sync_dataset(
@@ -238,7 +339,11 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
 
         with pytest.raises(
             RepositoryError,
-            match=rf"^Unable to push the branch main to the remote for repository {repo_name}: \[rejected\] \(fetch first\)$",
+            match=(
+                rf"^Unable to push the branch main to the remote for repository {repo_name}: "
+                r"the remote branch has commits that are missing locally \(non-fast-forward\): "
+                r"\[rejected\] \(fetch first\)$"
+            ),
         ):
             await infrahub_repo.push("main")
 
@@ -294,6 +399,192 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
                 dest_branch="conflict-branch-b",
                 push_remote=False,
             )
+
+    async def test_merge_push_rejected_leaves_state_unchanged(
+        self,
+        protected_branch_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        rejected_push_to_main: Callable[[], None],
+    ) -> None:
+        """A merge whose push is rejected raises and leaves everything at the pre-merge state.
+
+        The destination worktree, the commit recorded in the graph and the remote branch must
+        all still point at the pre-merge commit.
+        """
+        repo_name = protected_branch_dataset["repo_name"]
+
+        repository: CoreRepository = await NodeManager.get_one(
+            db=db,
+            id=protected_branch_dataset["node_id"],
+            kind=InfrahubKind.REPOSITORY,
+            raise_on_error=True,
+        )
+        infrahub_repo = await InfrahubRepository.init(
+            id=repository.id,
+            name=repo_name,
+            client=client,
+        )
+
+        await infrahub_repo.create_branch_in_git(branch_name="blocked-change", push_origin=False)
+        branch_repo = infrahub_repo.get_git_repo_worktree(identifier="blocked-change")
+        (Path(str(branch_repo.working_dir)) / "blocked_change.txt").write_text("blocked change\n")
+        branch_repo.index.add(["blocked_change.txt"])
+        branch_repo.index.commit("blocked-change: add blocked_change.txt")
+
+        main_repo = infrahub_repo.get_git_repo_worktree(identifier="main")
+        commit_before = str(main_repo.head.commit)
+        graph_commit_before = repository.commit.value
+
+        with pytest.raises(
+            RepositoryError,
+            match=(
+                rf"^Unable to push the branch main to the remote for repository {repo_name}: "
+                r"the remote refused the update \(for example missing push permission or branch protection\): "
+                r"\[remote rejected\] \(pre-receive hook declined\)$"
+            ),
+        ):
+            await infrahub_repo.merge(source_branch="blocked-change", dest_branch="main")
+
+        assert str(main_repo.head.commit) == commit_before
+
+        main_repo.remotes.origin.fetch()
+        assert str(main_repo.commit("origin/main")) == commit_before
+
+        updated: CoreRepository = await NodeManager.get_one(
+            db=db,
+            id=protected_branch_dataset["node_id"],
+            kind=InfrahubKind.REPOSITORY,
+            raise_on_error=True,
+        )
+        assert updated.commit.value == graph_commit_before
+
+    async def test_merge_retry_succeeds_after_push_rejection_lifted(
+        self,
+        protected_branch_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        rejected_push_to_main: Callable[[], None],
+    ) -> None:
+        """After a rejected push, lifting the rejection and merging again delivers the merge everywhere.
+
+        This only works when the failed attempt left the destination worktree on its pre-merge
+        commit: left on the unpushed merge commit, the retry would find nothing to merge and
+        never reach the push.
+        """
+        repo_name = protected_branch_dataset["repo_name"]
+
+        repository: CoreRepository = await NodeManager.get_one(
+            db=db,
+            id=protected_branch_dataset["node_id"],
+            kind=InfrahubKind.REPOSITORY,
+            raise_on_error=True,
+        )
+        infrahub_repo = await InfrahubRepository.init(
+            id=repository.id,
+            name=repo_name,
+            client=client,
+        )
+
+        await infrahub_repo.create_branch_in_git(branch_name="retried-change", push_origin=False)
+        branch_repo = infrahub_repo.get_git_repo_worktree(identifier="retried-change")
+        (Path(str(branch_repo.working_dir)) / "retried_change.txt").write_text("retried change\n")
+        branch_repo.index.add(["retried_change.txt"])
+        branch_repo.index.commit("retried-change: add retried_change.txt")
+
+        main_repo = infrahub_repo.get_git_repo_worktree(identifier="main")
+        commit_before = str(main_repo.head.commit)
+
+        with pytest.raises(
+            RepositoryError,
+            match=(
+                rf"^Unable to push the branch main to the remote for repository {repo_name}: "
+                r"the remote refused the update \(for example missing push permission or branch protection\): "
+                r"\[remote rejected\] \(pre-receive hook declined\)$"
+            ),
+        ):
+            await infrahub_repo.merge(source_branch="retried-change", dest_branch="main")
+
+        rejected_push_to_main()
+
+        merged_commit = await infrahub_repo.merge(source_branch="retried-change", dest_branch="main")
+
+        assert merged_commit == str(main_repo.head.commit)
+        assert merged_commit != commit_before
+
+        main_repo.remotes.origin.fetch()
+        assert str(main_repo.commit("origin/main")) == merged_commit
+
+        updated: CoreRepository = await NodeManager.get_one(
+            db=db,
+            id=protected_branch_dataset["node_id"],
+            kind=InfrahubKind.REPOSITORY,
+            raise_on_error=True,
+        )
+        assert updated.commit.value == merged_commit
+
+    async def test_merge_writeback_failure_after_push_resets_worktree_for_sync_repair(
+        self,
+        protected_branch_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        fast_forward_merges: None,
+        block_commit_worktree: Callable[[Path], Callable[[], None]],
+    ) -> None:
+        """A failure recording the merge after a successful push resets the worktree behind the remote.
+
+        The pushed merge commit exists only on the remote afterwards, which is the state the
+        periodic synchronization repairs: it detects the destination branch as updated, pulls the
+        merge commit and records it in the graph.
+        """
+        repo_name = protected_branch_dataset["repo_name"]
+
+        infrahub_repo = await InfrahubRepository.init(
+            id=protected_branch_dataset["node_id"],
+            name=repo_name,
+            client=client,
+        )
+
+        await infrahub_repo.create_branch_in_git(branch_name="recorded-change", push_origin=False)
+        branch_repo = infrahub_repo.get_git_repo_worktree(identifier="recorded-change")
+        (Path(str(branch_repo.working_dir)) / "recorded_change.txt").write_text("recorded change\n")
+        branch_repo.index.add(["recorded_change.txt"])
+        merge_commit = str(branch_repo.index.commit("recorded-change: add recorded_change.txt"))
+
+        main_repo = infrahub_repo.get_git_repo_worktree(identifier="main")
+        commit_before = str(main_repo.head.commit)
+
+        # The merge fast-forwards the destination to the source tip, so the commit worktree
+        # directory is known ahead of time and can be blocked to fail the writeback after the push.
+        blocked_directory = infrahub_repo.directory_commits / merge_commit
+        release_blocked_directory = block_commit_worktree(blocked_directory)
+
+        with pytest.raises(RepositoryError, match=rf"'{re.escape(str(blocked_directory))}' already exists"):
+            await infrahub_repo.merge(source_branch="recorded-change", dest_branch="main")
+
+        # The synchronization below records the pushed merge commit, which needs this worktree.
+        release_blocked_directory()
+
+        assert str(main_repo.head.commit) == commit_before
+
+        main_repo.remotes.origin.fetch()
+        assert str(main_repo.commit("origin/main")) == merge_commit
+
+        await infrahub_repo.fetch()
+        _, updated_branches = await infrahub_repo.compare_local_remote()
+        assert updated_branches == ["main"]
+
+        pulled_commit = await infrahub_repo.pull(branch_name="main")
+        assert pulled_commit == merge_commit
+        assert str(main_repo.head.commit) == merge_commit
+
+        updated: CoreRepository = await NodeManager.get_one(
+            db=db,
+            id=protected_branch_dataset["node_id"],
+            kind=InfrahubKind.REPOSITORY,
+            raise_on_error=True,
+        )
+        assert updated.commit.value == merge_commit
 
     async def test_sync_from_remote_detects_new_commit(
         self,
@@ -363,3 +654,127 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         synced = await infrahub_repo.sync_from_remote(commit=current_commit)
 
         assert synced is False
+
+    @pytest.fixture(scope="class")
+    async def write_probe_dataset(
+        self,
+        initialize_registry: None,
+        git_repos_dir_module_scope: Path,
+        gogs_server: GogsServer,
+    ) -> dict:
+        repo_name = "write-probe-repo"
+        # Private repo + a read-only collaborator: the collaborator can clone but not push,
+        # which is the shape of a read-write repository whose credentials lack write access.
+        create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container, private=True)
+        grant_read_access(gogs_server.base_url, gogs_server.token, repo_name)
+        return {
+            "repo_name": repo_name,
+            "writable_url": gogs_clone_url(gogs_server.base_url, repo_name),
+            "readonly_url": readonly_clone_url(gogs_server.base_url, repo_name),
+        }
+
+    async def test_write_probe_discriminates_read_from_write_access(self, write_probe_dataset: dict) -> None:
+        """The write probe rejects a read-only credential while the read-only check accepts it.
+
+        Asserting both directions on the same URL is what proves the probe, not the URL, makes the
+        difference: read access alone passes require_write=False but not require_write=True.
+        """
+        repo_name = write_probe_dataset["repo_name"]
+        readonly_url = write_probe_dataset["readonly_url"]
+
+        # Read access alone satisfies the read-gated check.
+        InfrahubRepository.check_connectivity(name=repo_name, url=readonly_url, require_write=False)
+
+        # The same credential is rejected once write access is required.
+        with pytest.raises(
+            RepositoryPermissionError,
+            match=(
+                rf"^Write access to repository {repo_name} was denied\. The credentials can read but not push; "
+                r"grant the token write access to the repository\.$"
+            ),
+        ):
+            InfrahubRepository.check_connectivity(name=repo_name, url=readonly_url, require_write=True)
+
+        # A credential that can write passes the write probe on the same repository.
+        InfrahubRepository.check_connectivity(
+            name=repo_name, url=write_probe_dataset["writable_url"], require_write=True
+        )
+
+    async def test_write_probe_never_mutates_remote(self, write_probe_dataset: dict, gogs_server: GogsServer) -> None:
+        """The write probe leaves the remote's refs untouched, even when the probe ref already exists.
+
+        This is the assertion that stops a later refactor from dropping --dry-run: a non-dry-run
+        delete of the probe ref would remove it here.
+        """
+        repo_name = write_probe_dataset["repo_name"]
+        writable_url = write_probe_dataset["writable_url"]
+
+        create_remote_ref(gogs_server.container, repo_name, WRITE_ACCESS_PROBE_REF)
+        cmd = git.cmd.Git()
+        refs_before = cmd.ls_remote(writable_url)
+        assert f"refs/heads/{WRITE_ACCESS_PROBE_REF}" in refs_before
+
+        InfrahubRepository.check_connectivity(name=repo_name, url=writable_url, require_write=True)
+
+        refs_after = cmd.ls_remote(writable_url)
+        assert refs_after == refs_before
+
+    async def test_create_read_write_repository_without_push_access_is_rejected(
+        self,
+        initialize_registry: None,
+        git_repos_dir_module_scope: Path,
+        gogs_server: GogsServer,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ) -> None:
+        """Creating a read-write repository whose credentials cannot push fails and leaves no node behind."""
+        repo_name = "reject-write-repo"
+        create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container, private=True)
+        grant_read_access(gogs_server.base_url, gogs_server.token, repo_name)
+        readonly_url = readonly_clone_url(gogs_server.base_url, repo_name)
+
+        node = await client.create(kind=InfrahubKind.REPOSITORY, data={"name": repo_name, "location": readonly_url})
+        with pytest.raises(
+            GraphQLError,
+            match=(
+                rf"Write access to repository {repo_name} was denied\. The credentials can read but not push; "
+                r"grant the token write access to the repository\."
+            ),
+        ):
+            await node.save()
+
+        leftover = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, filters={"name__value": repo_name})
+        assert leftover == []
+
+    async def test_create_read_only_repository_with_read_only_credentials_succeeds(
+        self,
+        initialize_registry: None,
+        git_repos_dir_module_scope: Path,
+        gogs_server: GogsServer,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ) -> None:
+        """A read-only repository created with read-only credentials succeeds; it is never write-probed."""
+        repo_name = "readonly-creds-repo"
+        create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container, private=True)
+        grant_read_access(gogs_server.base_url, gogs_server.token, repo_name)
+        readonly_url = readonly_clone_url(gogs_server.base_url, repo_name)
+
+        branch = await client.branch.create(branch_name="ro_readonly_creds", sync_with_git=False)
+        node = await client.create(
+            kind=InfrahubKind.READONLYREPOSITORY,
+            branch=branch.name,
+            name=repo_name,
+            location=readonly_url,
+            ref="main",
+        )
+        await node.save()
+
+        created: CoreReadOnlyRepository = await NodeManager.get_one(
+            db=db,
+            id=node.id,
+            kind=InfrahubKind.READONLYREPOSITORY,
+            branch=branch.name,
+            raise_on_error=True,
+        )
+        assert created.name.value == repo_name

@@ -24,6 +24,52 @@ WORKER_MATCH = re.compile(r":worker:([^:]+)")
 log = get_logger()
 
 
+def get_component_names(component_type: ComponentType) -> list[str]:
+    """Return the component labels a worker of this type reports under in the cache."""
+    names = []
+    if component_type == ComponentType.API_SERVER:
+        names.append("api_server")
+    elif component_type == ComponentType.GIT_AGENT:
+        names.append("git_agent")
+    return names
+
+
+async def refresh_worker_heartbeat(cache: InfrahubCache, component_type: ComponentType) -> None:
+    """Publish this worker's liveness to the cache.
+
+    Writes the ``workers:active:*`` key whose 15-second expiry defines the active-worker set, keeps
+    the primary API-server election alive, and refreshes the two-hour ``workers:worker:*`` presence
+    key. The function only touches ``cache``, so it can run on any event loop as long as ``cache``
+    was created on that loop; ``WorkerHeartbeat`` relies on this to beat from its own thread.
+
+    Args:
+        cache: Cache connection to write through.
+        component_type: Type of the running process, which selects the keys to write.
+
+    """
+    for component in get_component_names(component_type):
+        await cache.set(
+            key=f"workers:active:{component}:worker:{WORKER_IDENTITY}",
+            value=Timestamp().to_string(),
+            expires=KVTTL.FIFTEEN,
+        )
+    if component_type == ComponentType.API_SERVER:
+        await _set_primary_api_server(cache=cache)
+    await cache.set(key=f"workers:worker:{WORKER_IDENTITY}", value=Timestamp().to_string(), expires=KVTTL.TWO_HOURS)
+
+
+async def _set_primary_api_server(cache: InfrahubCache) -> None:
+    result = await cache.set(key=PRIMARY_API_SERVER, value=WORKER_IDENTITY, expires=KVTTL.FIFTEEN, not_exists=True)
+    if result:
+        log.info("api_worker promoted to primary", worker_id=WORKER_IDENTITY)
+    else:
+        log.debug("Primary node already set")
+        primary_id = await cache.get(key=PRIMARY_API_SERVER)
+        if primary_id == WORKER_IDENTITY:
+            log.debug("Primary node set but same as ours, refreshing lifetime")
+            await cache.set(key=PRIMARY_API_SERVER, value=WORKER_IDENTITY, expires=KVTTL.FIFTEEN)
+
+
 @dataclass
 class InfrahubComponent:
     cache: InfrahubCache
@@ -41,12 +87,7 @@ class InfrahubComponent:
 
     @property
     def component_names(self) -> list[str]:
-        names = []
-        if self.component_type == ComponentType.API_SERVER:
-            names.append("api_server")
-        elif self.component_type == ComponentType.GIT_AGENT:
-            names.append("git_agent")
-        return names
+        return get_component_names(self.component_type)
 
     async def is_primary_gunicorn_worker(self) -> bool:
         primary_identity = await self.cache.get(PRIMARY_API_SERVER)
@@ -109,30 +150,12 @@ class InfrahubComponent:
                     )
 
     async def refresh_heartbeat(self) -> None:
-        for component in self.component_names:
-            await self.cache.set(
-                key=f"workers:active:{component}:worker:{WORKER_IDENTITY}",
-                value=Timestamp().to_string(),
-                expires=KVTTL.FIFTEEN,
-            )
-        if self.component_type == ComponentType.API_SERVER:
-            await self._set_primary_api_server()
-        await self.cache.set(
-            key=f"workers:worker:{WORKER_IDENTITY}", value=Timestamp().to_string(), expires=KVTTL.TWO_HOURS
-        )
+        """Publish this worker's liveness once, through the main-loop cache connection.
 
-    async def _set_primary_api_server(self) -> None:
-        result = await self.cache.set(
-            key=PRIMARY_API_SERVER, value=WORKER_IDENTITY, expires=KVTTL.FIFTEEN, not_exists=True
-        )
-        if result:
-            log.info("api_worker promoted to primary", worker_id=WORKER_IDENTITY)
-        else:
-            log.debug("Primary node already set")
-            primary_id = await self.cache.get(key=PRIMARY_API_SERVER)
-            if primary_id == WORKER_IDENTITY:
-                log.debug("Primary node set but same as ours, refreshing lifetime")
-                await self.cache.set(key=PRIMARY_API_SERVER, value=WORKER_IDENTITY, expires=KVTTL.FIFTEEN)
+        The recurring refresh runs on the ``WorkerHeartbeat`` thread; this is for the one-off writes
+        at startup, before that thread exists.
+        """
+        await refresh_worker_heartbeat(cache=self.cache, component_type=self.component_type)
 
 
 class WorkerInfo:

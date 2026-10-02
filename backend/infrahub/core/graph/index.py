@@ -17,8 +17,16 @@ node_indexes: list[IndexItem] = [
     IndexItem(name="attr_value_indexed_text", label="AttributeValueIndexed", properties=["value"], type=IndexType.TEXT),
     IndexItem(name="branch_name", label="Branch", properties=["name"], type=IndexType.RANGE),
     # diff indices
-    IndexItem(name="diff_uuid", label="DiffRoot", properties=["uuid"], type=IndexType.TEXT),
-    IndexItem(name="diff_node_uuid", label="DiffNode", properties=["uuid"], type=IndexType.TEXT),
+    IndexItem(name="diff_uuid", label="DiffRoot", properties=["uuid"], type=IndexType.RANGE),
+    IndexItem(name="diff_node_uuid", label="DiffNode", properties=["uuid"], type=IndexType.RANGE),
+    IndexItem(
+        name="diff_rel_element_path_peer",
+        label="DiffRelationshipElement",
+        properties=["path_identifier", "peer_id"],
+        type=IndexType.RANGE,
+    ),
+    IndexItem(name="diff_branch", label="DiffRoot", properties=["diff_branch"], type=IndexType.RANGE),
+    IndexItem(name="diff_tracking_id", label="DiffRoot", properties=["tracking_id"], type=IndexType.RANGE),
 ]
 
 rel_indexes: list[IndexItem] = [

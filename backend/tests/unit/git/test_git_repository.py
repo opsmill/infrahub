@@ -1,22 +1,32 @@
+import asyncio
 import logging
 import re
 from collections.abc import Iterator
 from contextlib import nullcontext as does_not_raise
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
 import pytest
 from git import Repo
+from git.exc import GitCommandError
 from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.branch import BranchData
 from infrahub_sdk.uuidt import UUIDT
+from pydantic import Field
 
 from infrahub import config
+from infrahub.core.constants import RepositoryOperationalStatus
 from infrahub.core.registry import registry
-from infrahub.exceptions import RepositoryError
+from infrahub.exceptions import (
+    RepositoryConnectionError,
+    RepositoryCredentialsError,
+    RepositoryError,
+    RepositoryInvalidBranchError,
+)
 from infrahub.git import InfrahubRepository
-from infrahub.git.repository import FailedImport, ImportStep
+from infrahub.git.repository import FailedImport, ImportStep, PendingObjectImport
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.test_client import dummy_async_request
 
@@ -252,6 +262,113 @@ async def test_pull_infrahub_default_branch_pulls_repository_default_branch(
     assert commit_after == new_commit
 
 
+def _init_source_repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Point the repositories directory into `tmp_path` and create a one-commit source repository on `main`."""
+    repos_dir = tmp_path / "repositories"
+    repos_dir.mkdir()
+    monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
+    monkeypatch.setattr(registry, "_default_branch", "main")
+
+    source_dir = tmp_path / "source-repo"
+    source_dir.mkdir()
+    source = Repo.init(source_dir, initial_branch="main")
+    with source.config_writer() as cfg:
+        cfg.set_value("user", "name", "Test")
+        cfg.set_value("user", "email", "test@test.local")
+    (source_dir / "data.txt").write_text("v1\n", encoding="utf-8")
+    source.index.add(["data.txt"])
+    source.index.commit("commit 1")
+    return source_dir
+
+
+@dataclass
+class _CloneSpy:
+    """Counts clone attempts and records, for each failed one, whether it left a local copy behind."""
+
+    attempts: int = 0
+    failed_attempts_left_a_copy: list[bool] = field(default_factory=list)
+
+    def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        create_locally = InfrahubRepository.create_locally
+
+        async def spying_create_locally(repository: InfrahubRepository, *args: Any, **kwargs: Any) -> bool:
+            self.attempts += 1
+            # Hand control back to the event loop so concurrent initializations actually interleave.
+            await asyncio.sleep(0)
+            try:
+                return await create_locally(repository, *args, **kwargs)
+            except RepositoryError:
+                self.failed_attempts_left_a_copy.append(repository.directory_default.is_dir())
+                raise
+
+        monkeypatch.setattr(InfrahubRepository, "create_locally", spying_create_locally)
+
+
+async def test_concurrent_init_clones_the_missing_directory_once(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Concurrent initializations of an absent clone must produce exactly one clone.
+
+    Cloning deletes whatever is on disk first, so a second clone running alongside would wipe the
+    directory the first one just built and invalidate the git objects opened against it.
+    """
+    source_dir = _init_source_repository(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    clones = _CloneSpy()
+    clones.install(monkeypatch=monkeypatch)
+
+    init_kwargs: dict[str, Any] = {
+        "id": UUIDT.new(),
+        "name": "concurrently-initialized-repo",
+        "location": str(source_dir),
+        "default_branch_name": "main",
+        "client": InfrahubClient(config=Config(requester=dummy_async_request)),
+    }
+    first, second = await asyncio.gather(
+        InfrahubRepository.init(**init_kwargs),
+        InfrahubRepository.init(**init_kwargs),
+    )
+
+    assert clones.attempts == 1
+    assert [first.reinitialized, second.reinitialized].count(True) == 1
+    for repository in (first, second):
+        assert repository.validate_local_directories()
+
+
+async def test_concurrent_init_clones_over_the_copy_a_failed_clone_left(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An initialization waiting on a concurrent clone that fails part-way must clone over what it left.
+
+    The failed clone leaves a copy on disk that no longer validates; rejecting that copy would fail the
+    waiting initialization along with the one that actually broke.
+    """
+    source_dir = _init_source_repository(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    clones = _CloneSpy()
+    clones.install(monkeypatch=monkeypatch)
+
+    shared_kwargs: dict[str, Any] = {
+        "id": UUIDT.new(),
+        "name": "concurrently-initialized-repo",
+        "location": str(source_dir),
+        "client": InfrahubClient(config=Config(requester=dummy_async_request)),
+    }
+    # The first clone succeeds, but checking out a branch the remote lacks fails and leaves it half-built.
+    failed, waiting = await asyncio.gather(
+        InfrahubRepository.init(**shared_kwargs, default_branch_name="missing-branch"),
+        InfrahubRepository.init(**shared_kwargs, default_branch_name="main"),
+        return_exceptions=True,
+    )
+
+    assert isinstance(failed, RepositoryInvalidBranchError)
+    assert clones.failed_attempts_left_a_copy == [True]
+    assert isinstance(waiting, InfrahubRepository)
+    assert waiting.reinitialized is True
+    assert waiting.validate_local_directories()
+    assert clones.attempts == 2
+
+
 def test_check_connectivity_ignores_cwd_git_pointer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Git operations must not be affected by a broken .git worktree pointer in the process current working directory."""
     source_dir = tmp_path / "source-repo"
@@ -265,6 +382,179 @@ def test_check_connectivity_ignores_cwd_git_pointer(tmp_path: Path, monkeypatch:
     monkeypatch.chdir(cwd)
 
     InfrahubRepository.check_connectivity(name="test", url=f"file://{source_dir}")
+
+
+class _RaisingOrigin:
+    """Stand-in for GitPython's `origin` remote whose push always raises a transport-level error."""
+
+    def __init__(self, error: GitCommandError) -> None:
+        self._error = error
+
+    def push(self, *args: Any, **kwargs: Any) -> None:
+        raise self._error
+
+
+class _RaisingWorktree:
+    def __init__(self, error: GitCommandError) -> None:
+        self.remotes = type("_Remotes", (), {"origin": _RaisingOrigin(error)})()
+
+
+class _FailingPushRepository(InfrahubRepository):
+    """An InfrahubRepository whose worktree's origin push always fails with a preset transport error.
+
+    Records every operational status write so the test can assert a transient push failure leaves the
+    recorded status untouched. The double keeps it in memory; it does not persist.
+    """
+
+    push_error: GitCommandError
+    recorded_statuses: list[RepositoryOperationalStatus] = Field(default_factory=list)
+
+    def get_git_repo_worktree(self, identifier: str) -> Any:
+        return _RaisingWorktree(self.push_error)
+
+    async def _update_operational_status(self, status: RepositoryOperationalStatus) -> None:
+        self.recorded_statuses.append(status)
+
+
+@dataclass
+class PushErrorCase:
+    name: str
+    stderr: str
+    expected: type[RepositoryError]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        PushErrorCase(
+            name="credentials",
+            stderr="fatal: Authentication failed for 'https://gitlab.example.com/net/repo.git/'",
+            expected=RepositoryCredentialsError,
+        ),
+        PushErrorCase(
+            name="connection",
+            stderr="fatal: unable to access 'https://gitlab.example.com/net/repo.git/': "
+            "Could not resolve host: gitlab.example.com",
+            expected=RepositoryConnectionError,
+        ),
+    ],
+    ids=lambda c: c.name,
+)
+async def test_push_classifies_transport_error(case: PushErrorCase) -> None:
+    """A transport-level push GitCommandError is classified into a typed RepositoryError without writing status."""
+    repository = _FailingPushRepository(
+        id=UUIDT.new(),
+        name="push-repo",
+        default_branch_name="main",
+        location="https://gitlab.example.com/net/repo.git",
+        has_origin=True,
+        cache_repo=None,
+        is_read_only=False,
+        internal_status="active",
+        reinitialized=False,
+        infrahub_branch_name="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        push_error=GitCommandError(command=["git", "push"], status=128, stderr=case.stderr),
+    )
+
+    with pytest.raises(case.expected):
+        await repository.push("main")
+
+    assert repository.recorded_statuses == []
+
+
+class _BranchSyncRepository(InfrahubRepository):
+    """Stubs every collaborator of the collection loop with an in-memory result.
+
+    One new branch's git push raises a connection error; the other succeeds. ``git_pushed_branches``
+    holds the branches whose push succeeded.
+    """
+
+    connection_error_branch: str
+    git_pushed_branches: list[str] = Field(default_factory=list)
+
+    async def fetch(self) -> bool:
+        return True
+
+    async def compare_local_remote(self) -> tuple[list[str], list[str]]:
+        return (["branch01", "branch02"], [])
+
+    async def _exclude_read_only_branches(
+        self, new_branches: list[str], updated_branches: list[str]
+    ) -> tuple[list[str], list[str]]:
+        return (new_branches, updated_branches)
+
+    def validate_remote_branch(self, branch_name: str) -> bool:
+        return True
+
+    def _get_mapped_target_branch(self, branch_name: str) -> str:
+        return branch_name
+
+    async def create_branch_in_graph(self, branch_name: str) -> BranchData:
+        return BranchData(
+            id=str(UUIDT.new()),
+            name=branch_name,
+            description=None,
+            sync_with_git=True,
+            is_default=False,
+            has_schema_changes=False,
+            graph_version=1,
+            status="OPEN",
+            origin_branch="main",
+            branched_from="2024-01-01",
+        )
+
+    async def create_branch_in_git(
+        self, branch_name: str, branch_id: str | None = None, push_origin: bool = True
+    ) -> bool:
+        if branch_name == self.connection_error_branch:
+            raise RepositoryConnectionError(identifier=self.name)
+        self.git_pushed_branches.append(branch_name)
+        return True
+
+    def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
+        return f"commit-{branch_name}"
+
+    def create_commit_worktree(self, commit: str) -> bool:
+        return True
+
+    async def update_commit_value(self, branch_name: str, commit: str) -> bool:
+        return True
+
+    async def _collect_staging_imports(
+        self, staging_branch: str | None, updated_branches: list[str]
+    ) -> list[PendingObjectImport]:
+        return []
+
+
+async def test_collect_pending_imports_isolates_per_branch_push_failure() -> None:
+    """A connection failure while pushing one new branch is recorded, not raised over the others."""
+    repository = _BranchSyncRepository(
+        id=UUIDT.new(),
+        name="sync-repo",
+        default_branch_name="main",
+        location="https://gitlab.example.com/net/repo.git",
+        has_origin=True,
+        cache_repo=None,
+        is_read_only=False,
+        internal_status="active",
+        reinitialized=False,
+        infrahub_branch_name="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        connection_error_branch="branch01",
+    )
+
+    collected = await repository.collect_pending_imports()
+
+    assert collected.imports == [PendingObjectImport(infrahub_branch_name="branch02", commit="commit-branch02")]
+    assert collected.failed_imports == [
+        FailedImport(
+            branch_name="branch01",
+            step=ImportStep.COLLECTION,
+            reason=str(RepositoryConnectionError(identifier="sync-repo")),
+        )
+    ]
+    assert repository.git_pushed_branches == ["branch02"]
 
 
 @pytest.fixture

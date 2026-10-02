@@ -7,6 +7,7 @@ from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.query.diff import DiffNodeNodesQuery
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -437,3 +438,43 @@ async def test_create_aware_and_agnostic_nodes_on_branch(
     rel_diff = node_diff.relationships.pop()
     assert rel_diff.name == "cars"
     assert rel_diff.action is DiffAction.UPDATED
+
+
+async def test_node_nodes_query_lists_branch_aware_nodes_added_or_removed_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_branch_local: SchemaBranch
+) -> None:
+    john_main = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await john_main.new(db=db, name="John", height=180)
+    await john_main.save(db=db)
+    jane_main = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await jane_main.new(db=db, name="Jane", height=170)
+    await jane_main.save(db=db)
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+    new_person = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await new_person.new(db=db, name="Stokely", height=175)
+    await new_person.save(db=db)
+    john_branch = await NodeManager.get_one(db=db, branch=branch, id=john_main.id)
+    await john_branch.delete(db=db)
+    # an attribute update on the branch is a field-level change, not a node-level one
+    jane_branch = await NodeManager.get_one(db=db, branch=branch, id=jane_main.id)
+    jane_branch.name.value = "Janet"
+    await jane_branch.save(db=db)
+    # TestCar is branch-local, so the paths query never returns its nodes
+    local_car = await Node.init(db=db, schema="TestCar", branch=branch)
+    await local_car.new(db=db, name="camry", owner=new_person.id)
+    await local_car.save(db=db)
+
+    query = await DiffNodeNodesQuery.init(
+        db=db,
+        branch=branch,
+        base_branch=default_branch,
+        diff_branch_from_time=from_time,
+        diff_from=from_time,
+        diff_to=Timestamp(),
+    )
+    await query.execute(db=db)
+
+    node_uuids = query.get_node_uuids()
+    assert len(node_uuids) == 2
+    assert set(node_uuids) == {new_person.id, john_main.id}

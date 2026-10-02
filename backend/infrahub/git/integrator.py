@@ -44,6 +44,7 @@ from infrahub_sdk.yaml import InfrahubFile, SchemaFile
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
+from prefect.utilities.annotations import quote
 from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
@@ -60,6 +61,7 @@ from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
     RepositoryConfigurationError,
+    RepositoryError,
     RepositoryInvalidFileSystemError,
     TransformError,
 )
@@ -80,6 +82,7 @@ from infrahub.workers.dependencies import get_event_service
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
+    import builtins
     import types
 
     from infrahub_sdk.checks import InfrahubCheck
@@ -243,21 +246,46 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     class that uses an "InfrahubRepository" or "InfrahubReadOnlyRepository" as input
     """
 
+    def _has_valid_local_directories(self) -> bool:
+        """Return whether the local clone is usable, without raising when it is simply absent."""
+        try:
+            self.validate_local_directories()
+        except RepositoryInvalidFileSystemError:
+            return False
+        return True
+
+    def _local_copy_needs_cloning(self) -> bool:
+        """Return whether the local copy has to be cloned, because it is absent or present but unusable."""
+        try:
+            self.validate_local_directories()
+        except RepositoryInvalidFileSystemError:
+            return True
+        except RepositoryError as exc:
+            get_logger().warning("Replacing an unusable local copy", repository=self.name, reason=exc.message)
+            return True
+        return False
+
     @classmethod
     async def init(cls, commit: str | None = None, **kwargs: Any) -> Self:
         self = cls(**kwargs)
         log = get_logger()
-        try:
-            self.validate_local_directories()
-        except RepositoryInvalidFileSystemError:
+        if not self._has_valid_local_directories():
             await self.ensure_location_is_defined()
-            await self.create_locally(
-                checkout_ref=await self.resolve_checkout_ref(),
-                infrahub_branch_name=self.infrahub_branch_name,
-                update_commit_value=False,
-            )
-            self.reinitialized = True
-            log.info(f"Initialized the local directory for {self.name} because it was missing.")
+            # Cloning deletes and rebuilds the shared on-disk copy, so it has to be serialized.
+            async with lock.registry.get(name=self.name, namespace="repository"):
+                # The copy was absent a moment ago, so a broken one now was left by a failed concurrent clone.
+                if self._local_copy_needs_cloning():
+                    # A Repo opened on the copy being replaced would keep reading its deleted object store.
+                    if self.cache_repo is not None:
+                        self.cache_repo.close()
+                        self.cache_repo = None
+                    await self.create_locally(
+                        checkout_ref=await self.resolve_checkout_ref(),
+                        infrahub_branch_name=self.infrahub_branch_name,
+                        update_commit_value=False,
+                    )
+                    self.reinitialized = True
+                    log.info(f"Initialized the local directory for {self.name}.")
 
         # An existing clone keeps whatever origin URL it was first cloned with, so re-point it when the
         # configured location has since changed, so subsequent fetches target the current remote.
@@ -1497,7 +1525,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             log.info(f"TransformPython {transform_name!r} not found locally, deleting")
             await transform_definition_in_graph[transform_name].delete()
 
-    async def _load_yamlfile_from_disk(self, paths: list[Path], file_type: type[YamlFileVar]) -> list[YamlFileVar]:
+    async def _load_yamlfile_from_disk(
+        self, paths: list[Path], file_type: builtins.type[YamlFileVar]
+    ) -> list[YamlFileVar]:
         data_files = file_type.load_from_disk(paths=paths)
 
         for data_file in data_files:
@@ -1526,7 +1556,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         self,
         paths: list[Path],
         branch: str,
-        file_type: type[InfrahubFile],
+        file_type: builtins.type[InfrahubFile],
         defer: bool | None = None,
     ) -> None:
         """Load one or multiple objects files into Infrahub.
@@ -1935,6 +1965,16 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     @task(name="jinja2-template-render", task_run_name="Render Jinja2 template", cache_policy=NONE)
     async def render_jinja2_template(self, commit: str, location: str, data: dict) -> str:
+        """Render a Jinja2 template from the repository with ``data`` as its context.
+
+        Callers wrap ``data`` in Prefect's ``quote()``: Prefect otherwise walks every element of a
+        task argument twice before the task starts, which costs seconds on a large query response.
+        The task body always receives the plain value.
+
+        Raises:
+            TransformError: When the template cannot be rendered.
+
+        """
         log = get_run_logger()
         commit_worktree = self.get_commit_worktree(commit=commit)
 
@@ -2031,6 +2071,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     ) -> Any:
         """Execute A Python Transform stored in the repository.
 
+        Callers wrap ``data`` in Prefect's ``quote()``: Prefect otherwise walks every element of a
+        task argument twice before the task starts, which costs seconds on a large query response.
+        The task body always receives the plain value.
+
         Raises:
             ValueError: When ``location`` does not contain the expected ``module::class`` separator.
             TransformError: When the transform module cannot be loaded, the class is missing or running the transform raises an unexpected exception.
@@ -2115,7 +2159,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             transformation_location = transformation.template_path.value
             artifact_content = await self.render_jinja2_template.with_options(
                 timeout_seconds=transformation.timeout.value
-            )(commit=commit, location=transformation_location, data=response)  # type: ignore[call-overload]
+            )(commit=commit, location=transformation_location, data=quote(response))  # type: ignore[call-overload]
         elif transformation.typename == InfrahubKind.TRANSFORMPYTHON:
             transformation_location = f"{transformation.file_path.value}::{transformation.class_name.value}"
             artifact_content = await self.execute_python_transform.with_options(
@@ -2125,7 +2169,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 branch_name=branch_name,
                 commit=commit,
                 location=transformation_location,
-                data=response,
+                data=quote(response),
                 convert_query_response=transformation.convert_query_response.value,
             )  # type: ignore[call-overload]
 
@@ -2178,7 +2222,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         if message.transform_type == InfrahubKind.TRANSFORMJINJA2:
             artifact_content = await self.render_jinja2_template.with_options(timeout_seconds=message.timeout)(
-                commit=message.commit, location=message.transform_location, data=response
+                commit=message.commit, location=message.transform_location, data=quote(response)
             )  # type: ignore[call-overload]
         elif message.transform_type == InfrahubKind.TRANSFORMPYTHON:
             artifact_content = await self.execute_python_transform.with_options(timeout_seconds=message.timeout)(
@@ -2186,7 +2230,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 branch_name=message.branch_name,
                 commit=message.commit,
                 location=message.transform_location,
-                data=response,
+                data=quote(response),
                 convert_query_response=message.convert_query_response,
             )  # type: ignore[call-overload]
 

@@ -19,17 +19,30 @@ from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.exceptions import (
     CommitNotFoundError,
-    RepositoryConnectionError,
-    RepositoryCredentialsError,
     RepositoryError,
 )
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_run_logger
 
 if TYPE_CHECKING:
+    from git import Repo
     from infrahub_sdk.client import InfrahubClient
 
 log = get_run_logger()
+
+
+def _describe_push_rejection(summary: str) -> str:
+    """Prefix a per-ref push rejection summary with the likely reason the remote refused it.
+
+    A rejected ref is not a failed ``git push`` command, so the ref's status summary is the
+    only signal available to classify.
+    """
+    lowered = summary.lower()
+    if any(marker in lowered for marker in ("hook declined", "protected branch", "permission denied", "not allowed")):
+        return f"the remote refused the update (for example missing push permission or branch protection): {summary}"
+    if any(marker in lowered for marker in ("non-fast-forward", "fetch first")):
+        return f"the remote branch has commits that are missing locally (non-fast-forward): {summary}"
+    return summary
 
 
 @dataclass
@@ -203,10 +216,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     commit = self.get_commit_value(branch_name=branch_name, remote=False)
                     self.create_commit_worktree(commit=commit)
                     await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
-                except (RepositoryConnectionError, RepositoryCredentialsError):
-                    # The remote itself is unreachable or unauthorized; iterating the remaining
-                    # branches is pointless, so let it abort the whole sync.
-                    raise
                 except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
                     # Isolate per-branch git failures so the other branches are still collected;
                     # graph errors are left to propagate.
@@ -226,8 +235,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
                 try:
                     commit_after = await self.pull(branch_name=branch_name)
-                except (RepositoryConnectionError, RepositoryCredentialsError):
-                    raise
                 except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
                     # Isolate per-branch git failures so the other branches are still collected;
                     # graph errors are left to propagate.
@@ -299,7 +306,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         """Push a given branch to the remote Origin repository.
 
         Raises:
-            RepositoryError: When the remote rejects the push.
+            RepositoryError: When the remote rejects the push at the ref level.
+            RepositoryConnectionError: When the push fails to reach the remote.
+            RepositoryCredentialsError: When authentication fails at push time.
+            RepositoryPermissionError: When the credentials authenticate but lack write access.
 
         """
         if not self.has_origin:
@@ -316,12 +326,21 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         # Push the worktree HEAD, not the bare branch name: the local branch checked out in this
         # worktree may not be named after the remote branch (it differs when the repository's
         # default branch is not the Infrahub default), so a bare refspec would have no local source.
-        push_infos = repo.remotes.origin.push(refspec=f"HEAD:refs/heads/{remote_branch}")
+        try:
+            push_infos = repo.remotes.origin.push(refspec=f"HEAD:refs/heads/{remote_branch}")
+        except GitCommandError as exc:
+            # A transport-level failure raises here with no porcelain status line to classify from flags.
+            self._raise_enriched_error_static(
+                error=exc, name=self.name, location=self.location, branch_name=branch_name, is_write_operation=True
+            )
         for push_info in push_infos:
             if push_info.flags & push_info.ERROR:
                 raise RepositoryError(
                     identifier=self.name,
-                    message=f"Unable to push the branch {remote_branch} to the remote for repository {self.name}: {push_info.summary.strip()}",
+                    message=(
+                        f"Unable to push the branch {remote_branch} to the remote for repository {self.name}: "
+                        f"{_describe_push_rejection(summary=push_info.summary.strip())}"
+                    ),
                 )
 
         return True
@@ -331,14 +350,18 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         After the rebase we need to resync the data
 
+        On any failure the destination worktree is reset to its pre-merge commit. Whether the remote
+        received the merge is not always knowable, since a push can be accepted just before the
+        connection drops, so the reset leaves the destination either at the pre-merge state, where a
+        later merge attempt re-derives the merge, or trailing the remote, which the periodic
+        synchronization repairs by pulling the pushed merge commit and recording it.
+
         Raises:
-            ValueError: When no worktree exists for the destination branch.
-            RepositoryError: When the underlying ``git merge`` command fails.
+            RepositoryError: When no worktree exists for the destination branch, when the
+                underlying ``git merge`` command fails, or when the remote rejects the push.
 
         """
         repo = self.get_git_repo_worktree(identifier=dest_branch)
-        if not repo:
-            raise ValueError(f"Unable to identify the worktree for the branch : {dest_branch}")
 
         commit_before = str(repo.head.commit)
         commit = self.get_commit_value(branch_name=source_branch, remote=False)
@@ -357,12 +380,49 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         if commit_after == commit_before:
             return False
 
-        self.create_commit_worktree(commit_after)
-        await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
         if self.has_origin and push_remote:
-            await self.push(branch_name=dest_branch)
+            pushed = False
+            try:
+                await self.push(branch_name=dest_branch)
+                pushed = True
+            finally:
+                if not pushed:
+                    # Left on the unpushed merge commit, a retry would find nothing to merge
+                    # and return before ever reaching the push again.
+                    self._reset_to_pre_merge_commit(repo=repo, dest_branch=dest_branch, commit_before=commit_before)
+
+        recorded = False
+        try:
+            self.create_commit_worktree(commit_after)
+            await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
+            recorded = True
+        finally:
+            if not recorded:
+                # Trailing the remote is a state the periodic synchronization repairs by pulling
+                # and recording the missing commit; a worktree left on a merge commit that is
+                # recorded nowhere is never revisited.
+                self._reset_to_pre_merge_commit(repo=repo, dest_branch=dest_branch, commit_before=commit_before)
 
         return str(commit_after)
+
+    def _reset_to_pre_merge_commit(self, repo: Repo, dest_branch: str, commit_before: str) -> None:
+        """Best-effort reset of a merge destination worktree while recovering from a failed merge.
+
+        This never raises: the failure being recovered from is the one that explains why the merge
+        was not delivered, and it must propagate unmasked.
+        """
+        try:
+            repo.git.reset("--hard", commit_before)
+        except Exception:
+            # Raising here would replace the failure being recovered from with a less useful one.
+            log.exception(
+                "Failed to reset the worktree of branch %s of repository %s to %s while recovering from a "
+                "failed merge; manual reconciliation may be required before the merge can be retried.",
+                dest_branch,
+                self.name,
+                commit_before,
+                extra={"repository": self.name, "branch": dest_branch},
+            )
 
     async def rebase(
         self, branch_name: str, source_branch: str = "main", push_remote: bool = True

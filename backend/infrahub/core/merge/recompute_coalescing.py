@@ -24,7 +24,6 @@ log = get_logger()
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
-    from infrahub.computed_attribute.scoping import ChangedElementSet
     from infrahub.core.recompute.bulk_write import WrittenNode
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.events.models import EventContext
@@ -140,20 +139,9 @@ class CoalescedRecompute:
 
 
 class PythonTargetResolver(Protocol):
-    """The Python transform computed attributes a merge or rebase change set affects.
+    """The Python transform computed attributes a merge or rebase change set affects."""
 
-    ``schema_changed_elements`` names the schema elements a merge changed, so the resolver can drop
-    the pairs the schema-driven backfill already refreshes. It is ``None`` wherever no schema change
-    is replayed, which is every rebase and every chained level.
-    """
-
-    async def resolve(
-        self,
-        *,
-        changes: Iterable[MergeChange],
-        branch: str,
-        schema_changed_elements: ChangedElementSet | None,
-    ) -> list[AffectedTarget]: ...
+    async def resolve(self, *, changes: Iterable[MergeChange], branch: str) -> list[AffectedTarget]: ...
 
 
 @dataclass
@@ -221,10 +209,15 @@ class CoalescedSubmission:
 
 
 class CoalescedRecomputeBuilder:
-    """Derive the deduplicated recompute for a merge or rebase change set from one schema branch."""
+    """Derive the deduplicated recompute for a merge or rebase change set from one schema branch.
 
-    def __init__(self, schema_branch: SchemaBranch) -> None:
+    ``refresh_updated_nodes`` also recomputes an updated node's own derived values, for a change set replayed onto
+    a base that moved under the values the node derived when it was saved.
+    """
+
+    def __init__(self, schema_branch: SchemaBranch, refresh_updated_nodes: bool = False) -> None:
         self.schema_branch = schema_branch
+        self.refresh_updated_nodes = refresh_updated_nodes
 
     def build(self, *, changes: Iterable[MergeChange], branch: str) -> CoalescedRecompute:
         """Derive the deduplicated set of derived values to recompute for a merge or rebase.
@@ -289,6 +282,12 @@ class CoalescedRecomputeBuilder:
                 include_cross=True,
                 precise=True,
             )
+            if self.refresh_updated_nodes:
+                # Every value the node derived read the old base, including one that reads no changed field.
+                yield from self._derive_family_targets(
+                    kind=signature.kind, fields=None, include_self=True, include_cross=False, precise=True
+                )
+                return
             # A relationship change that doesn't save the reader (e.g. a peer deleted on another branch)
             # skips the reader's inline recompute, so refresh its own values here.
             relationship_fields = self._changed_relationship_fields(
@@ -566,7 +565,6 @@ async def _resolve_python_targets(
     resolver: PythonTargetResolver,
     changes: list[MergeChange],
     branch: str,
-    schema_changed_elements: ChangedElementSet | None,
     schema_branch: SchemaBranch,
 ) -> list[AffectedTarget]:
     """The affected Python targets, or every declared one widened when the resolution fails.
@@ -581,7 +579,7 @@ async def _resolve_python_targets(
         return []
 
     try:
-        return await resolver.resolve(changes=changes, branch=branch, schema_changed_elements=schema_changed_elements)
+        return await resolver.resolve(changes=changes, branch=branch)
     except Exception:
         log.exception(
             "Widening every Python computed attribute on branch %s to its whole kind: the resolution failed", branch
@@ -613,7 +611,6 @@ class MergeRecomputeCoordinator:
         changes: Iterable[MergeChange],
         branch: str,
         context: EventContext,
-        schema_changed_elements: ChangedElementSet | None = None,
     ) -> list[CoalescedSubmission]:
         change_list = list(changes)
         coalesced = self.builder.build(changes=change_list, branch=branch)
@@ -621,7 +618,6 @@ class MergeRecomputeCoordinator:
             resolver=self.python_resolver,
             changes=change_list,
             branch=branch,
-            schema_changed_elements=schema_changed_elements,
             schema_branch=self.builder.schema_branch,
         )
         return await self.submitter.submit(coalesced=coalesced.with_targets(python_targets), context=context)
@@ -696,7 +692,6 @@ class RecomputeChainSubmitter:
             resolver=self.python_resolver,
             changes=changes,
             branch=branch,
-            schema_changed_elements=None,
             schema_branch=self.builder.schema_branch,
         )
         return await self.submitter.submit(

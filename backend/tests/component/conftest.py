@@ -75,6 +75,8 @@ from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workers.dependencies import build_cache
+from tests.adapters.cache import MemoryCache
 from tests.adapters.workflow import WorkflowRecorder
 from tests.conftest import TestHelper
 from tests.helpers.constants import (
@@ -83,6 +85,7 @@ from tests.helpers.constants import (
     PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
     PREFECT_TEST_SERVER_PORT_RANGE,
 )
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.prefect_diagnostics import register_prefect_test_server, timeout_diagnostics_section
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
@@ -3169,6 +3172,14 @@ def workflow_recorder(dependency_provider: Provider) -> Generator[WorkflowRecord
     """Record workflow submissions instead of running them."""
     with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
         yield recorder
+
+
+@pytest.fixture
+def memory_cache(dependency_provider: Provider) -> Generator[MemoryCache, None, None]:
+    """Serve the cache from one in-memory instance rather than from a cache another module's app left running."""
+    cache = MemoryCache()
+    with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
+        yield cache
 
 
 @pytest.fixture

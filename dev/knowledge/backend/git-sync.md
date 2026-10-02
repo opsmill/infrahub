@@ -106,6 +106,27 @@ is present with a value of `None`. A branch whose `internal_status` does not res
 chunk loop, rather than one per repository-and-branch pair inside it. A failing chunk raises rather
 than being caught, so the read never returns a `RepositoryData` that silently omits branches.
 
+## Cloning and the repository lock
+
+Creating the local copy deletes whatever is already at the repository directory before cloning
+into it. The creation primitive does not take the repository lock itself, so every caller that
+reaches it holds that lock; `init()`, which clones only when it finds no usable copy, also
+re-checks once the lock is held and clones only if the copy is still absent or unusable. Two flows
+on the same worker can otherwise ask for the same repository at the same time — a periodic sync
+and a refresh request, say — and the second clone wipes the directory the first one just built,
+invalidating the git objects already opened against it and leaving the sync unable to resolve a
+commit.
+
+The re-check treats a copy that fails validation like an absent one. The copy was absent before
+the lock was taken, so a copy that is present but broken once the lock is held was left by a
+concurrent clone that failed part-way (the clone succeeded but the checkout did not, say), and
+cloning over it is the only way back to a usable copy. A `Repo` already opened on that broken copy
+is closed first: once the directory is replaced it would keep reading the deleted object store.
+The check before the lock still raises on a broken copy rather than replacing it.
+
+The lock is reentrant per context, so a caller that already holds it for a wider critical section
+pays nothing extra.
+
 ## Git error surfacing
 
 `git merge` writes conflict output to **stdout**, not stderr. GitPython's `GitCommandError.stderr`

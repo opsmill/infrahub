@@ -1,35 +1,30 @@
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
-import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
+import { Button } from "react-aria-components";
+import { getChangeKey } from "react-diff-view";
+import { useParams } from "react-router";
+import { toast } from "react-toastify";
 
+import { Row } from "@/shared/components/container";
 import Accordion from "@/shared/components/display/accordion";
 import ErrorScreen from "@/shared/components/errors/error-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import type { FileDiffFile } from "@/entities/diff/domain/use-cases/get-files-diff";
+import { ContentDiff } from "@/entities/diff/ui/content-diff/content-diff";
+import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
 import { useGetFile } from "@/entities/diff/ui/queries/get-file.query";
 import { useGetFileContentDiff } from "@/entities/diff/ui/queries/get-file-content-diff.query";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
 import {
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/entities/proposed-changes/domain/model/proposed-change-thread";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
-import "react-diff-view/style/index.css";
-
-import { Button } from "react-aria-components";
-import { useParams } from "react-router";
-import { toast } from "react-toastify";
-import sha from "sha1";
-import { diffLines, formatLines } from "unidiff";
-
-import { Row } from "@/shared/components/container";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-
-import { useAuth } from "@/entities/authentication/ui/auth-provider";
-import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
-import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
-import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
 
 interface FileContentDiffProps {
   repositoryId: string;
@@ -38,20 +33,6 @@ interface FileContentDiffProps {
   commitFrom: string;
   commitTo: string;
 }
-
-const fakeIndex = () => {
-  return sha(Math.random() * 100_000).slice(0, 9);
-};
-
-const appendGitDiffHeaderIfNeeded = (diffText: string) => {
-  if (diffText.startsWith("diff --git")) {
-    return diffText;
-  }
-
-  const segments = ["diff --git a/a b/b", `index ${fakeIndex()}..${fakeIndex()} 100644`, diffText];
-
-  return segments.join("\n");
-};
 
 const shouldDisplayAddComment = (state: any, change: any) => {
   const { side, newLineNumber, oldLineNumber, lineNumber, isInsert, isDelete } = state;
@@ -317,16 +298,6 @@ export function FileContentDiff({
     return null;
   }
 
-  const diff = formatLines(diffLines(previousFile ?? "", newFile ?? ""), {
-    context: 3,
-    aname: commitFrom,
-    bname: commitTo,
-  });
-
-  const [fileContent] = parseDiff(appendGitDiffHeaderIfNeeded(diff), {
-    nearbySequences: "zip",
-  });
-
   return (
     <div className={"m-4 rounded-lg bg-content p-2 shadow-sm"}>
       <Accordion
@@ -348,17 +319,12 @@ export function FileContentDiff({
         </div>
 
         <div className="ml-2 bg-content-muted">
-          <Diff
-            key={`${sha(diff)}${previousFile ? sha(previousFile) : ""}${newFile ? sha(newFile) : ""}`}
-            hunks={fileContent.hunks}
-            viewType="split"
-            diffType={fileContent.type}
+          <ContentDiff
+            previousContent={previousFile ?? ""}
+            newContent={newFile ?? ""}
             renderGutter={renderGutter}
-            widgets={getWidgets(fileContent.hunks)}
-            optimizeSelection
-          >
-            {(hunks) => hunks.map((hunk) => <Hunk key={hunk.content} hunk={hunk} />)}
-          </Diff>
+            getWidgets={getWidgets}
+          />
         </div>
       </Accordion>
     </div>
