@@ -142,7 +142,7 @@ where nothing else has moved the numbers.
       `IS_RESERVED` edge on that branch. Every other edge keeps the rename's pre-existing handling,
       including the demotion of a branch-agnostic attribute's own `-global-` edges onto the renaming
       branch, which is out of scope here. Covered by two default-branch and two branch-rename tests,
-      one per branch support. Retiring the orphan left behind is separate work.
+      one per branch support. Retiring the orphan left behind is handled by T017a.
 
 - [X] T016 [US1] Re-target `::PoolChangeReserved` to the **new node's `Attribute`**, matched by the
       pool's `node_attribute`. **It is shared by all three pool shapes** (`(pool:Node)` with both ends
@@ -151,7 +151,7 @@ where nothing else has moved the numbers.
 
       **Amended 2026-09-28 — a move never closes a record.** The number-pool move writes the new
       `-global-` record and leaves the old one open, on every branch. Covered by a branch-conversion
-      test. Retiring the orphan left behind is separate work.
+      test. Retiring the orphan left behind is handled by T017a.
 
 - [X] T017 [P] [US1] Component test: attribute **removal** closes the record via
       `AttributeRemoveQuery`'s existing `close_unretained_agnostic_fields` call. No code change
@@ -163,46 +163,119 @@ where nothing else has moved the numbers.
       carries that edge on its own branch, so the sweep never reaches it and the record survives.
       Keep this task scoped to the agnostic case it already covers; the aware case is T017a.
 
-- [ ] T017a [US1] **Retire reservation records that no branch can reach, whatever the attribute's
-      branch support.** A record is written on `-global-` and nothing closes it once its attribute is
-      unreachable, so an orphan accumulates for the lifetime of the pool. Three changes leave one
-      behind:
+- [X] T017a [US1] **Close the `IS_RESERVED` edges that no branch can reach, whatever the
+      attribute's branch support.** A pool's `IS_RESERVED` edge is written on `-global-` and nothing
+      closes it once its attribute is unreachable, so an orphan accumulates for the lifetime of the
+      pool. Three changes leave one behind:
 
       - **Object delete, branch-aware attribute.** Measured on a `TestingTicket` whose `ticket_id`
-        inherits `AWARE`: the delete closes `HAS_ATTRIBUTE` and `HAS_VALUE` and leaves the reservation
-        edge active and open. `core/query/node_agnostic_retirement.py` gates its sweep on
-        `anchor.branch = $global_branch_name`, where `anchor` is the `HAS_ATTRIBUTE` edge, so it never
-        reaches a branch-aware attribute.
+        inherits `AWARE`: the delete closes `HAS_ATTRIBUTE` and `HAS_VALUE` and leaves the
+        `IS_RESERVED` edge active and open. `core/query/node_agnostic_retirement.py` gates its sweep
+        on `anchor.branch = $global_branch_name`, where `anchor` is the `HAS_ATTRIBUTE` edge, so it
+        never reaches a branch-aware attribute.
         `component/core/agnostic_retirement/test_on_node_delete.py::…::test_a_value_freed_by_retirement_is_allocatable_again_from_its_pool`
         uses an agnostic schema, so it passes while the aware case leaks.
-      - **Attribute rename.** The rename copies the record onto the new attribute vertex and leaves
-        the one on the old vertex open, on every branch, because a branch that has not taken the
-        rename — including one created before a rename on the default branch — still holds its value
-        through the old vertex. Once no such branch remains, the old record is an orphan.
-      - **Object conversion.** Same shape: the move writes a record on the replacement and leaves the
-        one on the replaced object open for branches that still hold that object.
+      - **Attribute rename.** The rename copies the `IS_RESERVED` edge onto the new attribute vertex
+        and leaves the one on the old vertex open, on every branch, because a branch that has not
+        taken the rename — including one created before a rename on the default branch — still holds
+        its value through the old vertex. Once no such branch remains, the old edge is an orphan.
+      - **Object conversion.** Same shape: the move writes an `IS_RESERVED` edge on the replacement
+        and leaves the one on the replaced object open for branches that still hold that object.
 
-      None of these is a reporting defect: reads resolve each record forward to the values its
-      attribute holds, so an orphan counts nothing and no number is handed out twice. It matters for
-      two reasons. The record's remaining job is attribution, and an orphan says a pool accounts for
-      a number on an object no branch can see. And every read walks all of a pool's records, so read
-      cost grows with the orphans.
+      None of these is a reporting defect: reads resolve each `IS_RESERVED` edge forward to the values
+      its attribute holds, so an orphan counts nothing and no number is handed out twice. It matters
+      for two reasons. The edge's remaining job is attribution, and an orphan says a pool accounts for
+      a number on an object no branch can see. And every read walks all of a pool's `IS_RESERVED`
+      edges, so read cost grows with the orphans.
 
-      The hard part is the reachability test, not the close. A record is retirable only when no
-      branch can reach its attribute vertex: not the default branch, not any non-deleting branch,
-      and not a branch created before the change, which still sees the vertex as of its branch point.
-      Closing a record any earlier frees a number a branch still holds. The retention predicate the
-      agnostic sweep uses for fields answers the same question and is the model to follow, but the
-      reservation edge is `-global-` regardless of the attribute's branch support, so this likely
-      needs its own arm rather than a relaxed `anchor.branch` condition. Decide where the sweep runs:
-      a hook on each of the three changes, or one sweep over all records, run where a vertex can
-      become unreachable (object delete, branch delete, merge).
-
-      Records already leaked need a migration behaviour to clear them — `m079`'s orphan sweep only
-      covers the legacy shape.
+      The hard part is the reachability test, not the close. An `IS_RESERVED` edge may be closed only
+      when no branch can reach its attribute vertex: not the default branch, not any non-deleting
+      branch, and not a branch created before the change, which still sees the vertex as of its
+      branch point. Closing it any earlier frees a number a branch still holds.
 
       Test every source above, with both branch supports and with a branch created before the change,
       so neither the agnostic case nor a default-branch-only run can stand in for the rest.
+
+      **Amended 2026-09-29 — the existing agnostic retirement queries' candidate set is widened to
+      fields carrying an open `-global-` `IS_RESERVED` edge; no separate query closes the edge; no migration.**
+      `UNRETAINED_AGNOSTIC_FIELD_PREDICATE` already resolves each branch's own view of the owning and
+      existence edges, so it answers the reachability question for a branch-aware attribute too, and
+      its quick filter (an open global edge on the field) already admits one through its
+      `IS_RESERVED` edge. Only the candidate set blocked it. The close ends every open `-global-` edge
+      on an unretained field, and on a branch-aware attribute the `IS_RESERVED` edge is the only one,
+      so the same close is correct; a test asserts the attribute's other edges are untouched.
+
+      - `RetireNodeAgnosticFieldsQuery` (object delete, conversion, merge and rebase of a delete)
+        admits any field of the given nodes that carries an open `-global-` `HAS_ATTRIBUTE`,
+        `IS_RELATED` or `IS_RESERVED` edge.
+      - `RetireBranchAgnosticFieldsQuery` (branch delete) keeps its `-global-` owning-edge arm and adds
+        a second arm that starts from the open `-global-` `IS_RESERVED` edges, which are few: an
+        attribute qualifies when its `HAS_ATTRIBUTE` edge is on the deleted branch or was closed on
+        the origin branch after the fork. Both arms start from rare edges, never from the default
+        branch's owning or existence edges.
+      - `AttributeRenameQuery` ends by handing the old attribute vertices to
+        `CLOSE_UNRETAINED_AGNOSTIC_FIELDS`, the way `AttributeRemoveQuery` does, so the rename and the
+        close are one query and one transaction. Its two branch-dependent tails are one rendering,
+        switched by in-query flags (`$shadow_other_branch_edges`, `$set_metadata`).
+
+      - `DeleteBranchReservedAttributesQuery` (branch delete), run by
+        `BranchDataDeleter._delete_agnostic_peers` before the branch's edges are removed, deletes an
+        attribute that has an owning edge on the deleted branch and no edge outside it apart from
+        `IS_RESERVED` edges. Closing its `IS_RESERVED` edge instead would leave the pool pointing at
+        an otherwise empty vertex once the branch's edges are gone: an object created on the branch,
+        or the new vertex of an attribute renamed on it. It starts from the `IS_RESERVED` edges, and
+        a `-global-` owning or value edge keeps the vertex, so the old vertex of a branch-agnostic
+        attribute renamed on the branch survives.
+
+      No migration: the `(:CoreNumberPool)-[:IS_RESERVED]->(:Attribute)` shape is new in this release,
+      so no upgraded database holds a leaked edge in it.
+
+      **Left out:** renaming a branch-agnostic attribute. The rename copies the attribute's
+      `-global-` edges onto the new vertex as edges of the renaming branch (the demotion T015 left out
+      of scope), and leaves the old vertex's `-global-` edges open, because a branch that has not
+      taken the rename still reads the value through it. Nothing yet detects when no branch uses the
+      old name, so the old vertex and its `IS_RESERVED` edge are never retired. The correct behaviour
+      is undecided and belongs with a follow-up on branch-agnostic renames; no test pins it. **Also
+      left out:** a rename on the default branch followed by a rebase of an older branch leaves the
+      old `IS_RESERVED` edge open for good, because the rebase only re-evaluates nodes the base branch
+      removed and the rebased branch holds no edges on the old vertex, so its later delete never
+      reaches that edge; a strict `xfail` pins the goal, and T017b fixes it. **Also left out:** a
+      rename leaves the pool's `node_attribute` naming the old attribute, and both pool reads
+      (`reserved_values_query`, used by `get_used` and `get_free`) match the reserved attributes by
+      that name. Verified 2026-10-02: after a rename on the default branch, `get_used` reports the
+      number only while an older branch still reads the old vertex and reports nothing once that
+      branch is deleted, until the pool is pointed at the new name by hand; and a number set on the
+      attribute renamed on a branch is reported on no branch at all, so the pool can hand it out
+      again. Pre-existing, and it belongs with the follow-up on renaming pooled attributes; two
+      strict `xfail` tests in `test_number_pool_attribute_rename.py` pin the goal.
+
+- [ ] T017b [US1] **Close the old `IS_RESERVED` edge when an older branch rebases past a rename.**
+      **Blocked:** bring the pending changes on `develop` forward first; do not start before they
+      land on this branch.
+
+      After a rename on the default branch, the old attribute vertex's `IS_RESERVED` edge stays open
+      while a branch created before the rename still reads the old vertex at its fork point. Once
+      that branch rebases past the rename no branch reaches the old vertex, but nothing closes the
+      edge: the rebase hook (`core/branch/tasks.py::_retire_agnostic_fields_of_base_deletions`) hands
+      `RetireNodeAgnosticFieldsQuery` only the nodes the base branch diff marks `REMOVED`
+      (`get_affected_node_uuids(include_actions=[DiffAction.REMOVED])`), and a rename removes no node.
+      A later delete of the rebased branch does not reach it either, because that branch holds no
+      edges on the old vertex.
+
+      Likely fix: widen the hook's candidates to nodes the base diff marks `UPDATED` as well. The
+      retention predicate still decides what closes, so extra candidates are safe. Before changing
+      it:
+
+      - Confirm the base branch diff reports the renamed attribute's node as `UPDATED`; a schema
+        migration writes the graph directly.
+      - Measure the candidate count. `UPDATED` covers every node the default branch changed since the
+        fork, not only renamed ones; if that is too broad, look up nodes with a removed attribute
+        through a field-level diff query instead, which the node-level lookup cannot do today.
+
+      Drop the `xfail` marker from
+      `test_number_pool_attribute_rename.py::test_rebasing_the_last_older_branch_past_a_rename_closes_the_old_is_reserved_edge`,
+      which already asserts the old `IS_RESERVED` edge is closed after the rebase, and drop the
+      rebase-past-rename gap from T017a's *Left out* and from `dev/knowledge/backend/database-schema.md`.
 
 - [X] T018 [US1] Implement cross-branch liveness as a **union** (FR-036a) in the queries from T007,
       reusing the *shape* of `UNRETAINED_AGNOSTIC_FIELD_PREDICATE`: per-branch window
@@ -222,6 +295,39 @@ where nothing else has moved the numbers.
       through the value edge instead of back through the object. The only branch predicate left is
       the `DELETING` exclusion, which the task also called for. FR-036a stays one-sided by the same
       construction: omitting a filter can only add numbers to the taken set, never remove one.
+
+      **Amended 2026-09-29 — the 2026-09-18 claim was wrong for edges closed on the origin after a
+      fork.** A branch reads its origin's edges as of its fork point, so a `HAS_VALUE` edge the default
+      branch closed after the fork (an object delete, or a new value) is still live for the older
+      branch, but it is not open at `$at` and the unfiltered read dropped it. The pool then reported
+      the number free and could hand it out again.
+
+      `reserved_values_query` now reads the `Branch` vertices once, into the names of the `DELETING`
+      branches and a fork window (`name`, `origin_name`, `fork_at`) for every other user branch, and
+      counts a value two ways:
+
+      - Its `HAS_VALUE` edge is open now and not on a `DELETING` branch, as before.
+      - Its `HAS_VALUE` edge is on the default branch, was closed since some window's branch forked
+        (`hv.from <= fork_at < hv.to`), and that branch has no `HAS_VALUE` edge of its own on the
+        attribute that is open at `$at`, whatever its status. At the fork the default branch's edge was
+        that branch's value; the branch stops holding it only by writing its own edge, which always
+        outranks its origin's: an `active` one when it changes the value (a value update never writes
+        a `deleted` edge to the old value) or a `deleted` one when it deletes the object or renames the
+        attribute. A closed own edge hides nothing, because closing an edge on a branch always writes
+        that branch a new open one.
+
+      The branches that hide a value are gathered in one `COLLECT {}` subquery per closed value edge,
+      and the windows are checked in memory, so the cost does not grow with the number of branches
+      beyond list checks. The per-branch resolution of the object's, the owning edge's and the value
+      edge's latest state is not needed. Owning edges are deliberately not read: a kind or inheritance
+      migration closes or deletes the old `Node` vertex's `HAS_ATTRIBUTE` edges while the attribute
+      stays held through the duplicate vertex. Branches forked from another user branch are not
+      handled, the same limit `UNRETAINED_AGNOSTIC_FIELD_PREDICATE` has.
+
+      T003's cases all changed or deleted on a user branch, which never closes the default branch's
+      edge, so they missed it. `TestOlderBranchLiveness` in `test_number_pool_branch_liveness.py`
+      covers the default-branch direction (a delete and a value change), a rebase past the change, a
+      branch being deleted, and an older branch that moved the number itself.
 - [ ] T019 [P] [US1] Property-style unit test for one-sidedness (invariant I3): for any branch set,
       the union result is a superset of every single-branch result. *(Critique E10.)*
 
@@ -275,8 +381,11 @@ where nothing else has moved the numbers.
       pre-filtering status, keep only if active, then `ORDER BY branch_level DESC, from DESC LIMIT 1`);
       find the `Attribute` by the pool's `node_attribute`; `CREATE … SET new = properties(old) …
       DELETE old` per `m066::_reassign_has_source`, which preserves `-global-`.
-- [ ] T027 [US1] Behaviour 2 — drop orphaned records whose object no longer exists. **Reports a
-      pre-count and a post-count.**
+- [ ] T027 [US1] Behaviour 2 — drop orphaned `IS_RESERVED` edges whose object no longer exists.
+      **Reports a pre-count and a post-count.** Orphan detection for re-anchored `IS_RESERVED` edges
+      must use the same reachability predicate as T017a (`UNRETAINED_AGNOSTIC_FIELD_PREDICATE`), not
+      existence on the default branch alone: an object deleted on the default branch can still be held
+      by an older branch, and dropping its `IS_RESERVED` edge would free a number that branch holds.
 - [ ] T028 [US1] Behaviour 4 — delete **every** `(attr)-[:HAS_SOURCE]->(:CoreNumberPool)` edge,
       unconditionally. FR-030b says the pool is never a stored source, so a stored one is legacy
       whatever state that pool's record for the attribute is in; scoping the sweep to a live record

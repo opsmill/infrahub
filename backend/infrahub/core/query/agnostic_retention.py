@@ -1,8 +1,12 @@
-"""The one predicate that decides whether a branch-agnostic field is still retained by any branch.
+"""The one predicate that decides whether a field with global edges is still retained by any branch.
 
 A branch-agnostic field keeps its value on edges carrying the global branch name, which every branch
 reads. Those edges may only be closed once **NO** branch can still reach a live owner over a live field
 edge. Cypher for this is consolidated here to ensure consistency.
+
+A branch-aware attribute a number pool tracks carries one global edge too: the pool's IS_RESERVED
+edge. The predicate reads each branch's own view of the owning and existence edges, so it answers the
+same question for that attribute, and the retirement queries hand it such attributes as candidates.
 
 Retention is decided per branch **and** per linked vertex: under that branch's view, the vertex's
 existence edge and its edge to the field must both resolve to `active`. Surviving edges are summed

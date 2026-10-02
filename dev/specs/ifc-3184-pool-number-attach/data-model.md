@@ -158,8 +158,8 @@ re-attach may recreate.
 | Object deleted | Record retained; liveness join fails | none |
 | Branch deleted (object existed only there) | Same mechanism | none |
 | Attach or detach on a branch, branch then deleted | Permanent — global and immediate, like allocation | n/a |
-| Object converted to another type, on any branch | New `-global-` record on the new object's attribute; the old record stays open for branches that still hold the replaced object | create |
-| Attribute renamed in schema, on any branch | Record copied `-global-` onto the new attribute; the old record stays open for branches that still read the old attribute | create |
+| Object converted to another type, on any branch | New `-global-` `IS_RESERVED` edge on the new object's attribute; the old one stays open for branches that still hold the replaced object, and is closed once no branch reaches the old vertex (T017a) | create |
+| Attribute renamed in schema, on any branch | `IS_RESERVED` edge copied `-global-` onto the new attribute; the old one stays open for branches that still read the old attribute, and is closed once no branch reaches the old vertex (T017a). Not yet closed after a branch-agnostic rename, or when the last older branch rebases past the rename (T017b); and the pool keeps naming the old attribute, so its reads miss the renamed one | create |
 | Attribute removed from schema | Record closed by retirement's sweep | close |
 | Two branches allocate from one pool | Records are global and reads branch-agnostic; the second branch cannot get the same number | create ×2 |
 | Two branches hand-set the same number, both attached | Both records exist; a uniqueness constraint refuses at merge, otherwise both survive and the free-number query collapses them | create ×2 |

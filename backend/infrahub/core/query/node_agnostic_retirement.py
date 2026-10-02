@@ -22,15 +22,22 @@ class NodeAgnosticRetirementResult:
 
 _RETIRE_UNRETAINED_FIELDS_OF_NODES = """
 // -----------------
-// MATCH on the branch-agnostic edges we care about to start with.
+// Start with all fields on the objects we care about
 // -----------------
-MATCH (anchor_node:Node)-[anchor:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
-WHERE anchor_node.uuid IN $node_uuids
-  AND anchor.branch = $global_branch_name
-  AND anchor.status = "active"
-  AND anchor.from <= $at
-  AND anchor.to IS NULL
-WITH collect(DISTINCT field) AS agnostic_candidates
+MATCH (node:Node)-[:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
+WHERE node.uuid IN $node_uuids
+WITH DISTINCT field
+// -----------------
+// Filter to only those fields that have an open global edge
+// -----------------
+WHERE EXISTS {
+    MATCH (field)-[global_edge:HAS_ATTRIBUTE|IS_RELATED|IS_RESERVED]-()
+    WHERE global_edge.branch = $global_branch_name
+      AND global_edge.status = "active"
+      AND global_edge.from <= $at
+      AND global_edge.to IS NULL
+}
+WITH collect(field) AS agnostic_candidates
 %(unretained_predicate)s
 
 MATCH (field)-[e]-()
@@ -44,10 +51,12 @@ RETURN count(e) AS edges_closed
 
 
 class RetireNodeAgnosticFieldsQuery(Query):
-    """Close the open global edges of the given nodes' branch-agnostic fields that no branch retains.
+    """Close the open global edges of the given nodes' fields that no branch retains.
 
-    Checks if the field is reachable from ANY branch. It is only deleted if it is completely
-    unreachable.
+    The fields are the nodes' branch-agnostic fields plus any global IS_RESERVED edges linked to
+    those fields. Checks if the field is reachable from ANY branch, and closes its global edges
+    only if it is completely unreachable. A branch-aware attribute's only global edge is a pool's
+    IS_RESERVED edge, so that is all this closes on it.
     """
 
     name: str = "retire_node_agnostic_fields"

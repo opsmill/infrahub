@@ -1,20 +1,34 @@
-"""A conversion moves the pool's record onto the object that replaces the converted one."""
+"""A conversion moves the pool's IS_RESERVED edge onto the object that replaces the converted one.
+
+The IS_RESERVED edge on the replaced object stays open while any branch still reaches that object,
+and is closed once none does.
+"""
 
 from __future__ import annotations
 
+from copy import deepcopy
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_sdk.convert_object_type import ConversionFieldInput
 
 from infrahub.core import registry
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, InfrahubKind
 from infrahub.core.convert_object_type.object_conversion import convert_object_type
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
+from tests.component.core.resource_manager.conftest import delete_branch
+from tests.helpers.agnostic_edges import (
+    IsReservedEdge,
+    active_is_reserved_edges_on,
+    is_reserved_edge_on,
+    open_is_reserved_edge_on,
+    set_open_is_reserved_edge_provenance,
+)
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
@@ -101,26 +115,10 @@ async def convert_to(db: InfrahubDatabase, branch: Branch, node: Node, target_ki
     )
 
 
-async def live_record(db: InfrahubDatabase, node_id: str) -> dict:
-    """The open record on this object's tracked attribute, with every property it carries."""
-    results = await db.execute_query(
-        query="""
-        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
-        WITH DISTINCT a
-        MATCH ()-[record:IS_RESERVED]->(a)
-        WHERE record.status = "active" AND record.to IS NULL
-        RETURN properties(record) AS record
-        """,
-        params={"node_id": node_id, "attribute_name": TRACKED_ATTRIBUTE_NAME},
-    )
-    assert len(results) == 1
-    return dict(results[0]["record"])
-
-
-async def test_converting_an_object_carries_its_record_onto_the_replacement_intact(
+async def test_converting_an_object_carries_its_is_reserved_edge_onto_the_replacement_intact(
     db: InfrahubDatabase, default_branch: Branch, convert_pool: CoreNumberPool
 ) -> None:
-    """The pool keeps accounting for the number, through a record that says what it said before.
+    """The pool keeps accounting for the number, through an IS_RESERVED edge that says what it said before.
 
     The IS_RESERVED edge's provenance is preserved.
     """
@@ -129,19 +127,11 @@ async def test_converting_an_object_carries_its_record_onto_the_replacement_inta
     assert allocated == POOL_START
     assert await convert_pool.get_used(db=db, branch=default_branch) == [allocated]
 
-    await db.execute_query(
-        query="""
-        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
-        WITH DISTINCT a
-        MATCH ()-[record:IS_RESERVED]->(a)
-        WHERE record.status = "active" AND record.to IS NULL
-        SET record.provenance = $provenance
-        """,
-        params={
-            "node_id": holder.get_id(),
-            "attribute_name": TRACKED_ATTRIBUTE_NAME,
-            "provenance": PoolRecordProvenance.PROVIDED.value,
-        },
+    await set_open_is_reserved_edge_provenance(
+        db=db,
+        node_id=holder.get_id(),
+        attribute_name=TRACKED_ATTRIBUTE_NAME,
+        provenance=PoolRecordProvenance.PROVIDED.value,
     )
 
     converted = await convert_to(db=db, branch=default_branch, node=holder, target_kind=TARGET_KIND)
@@ -157,22 +147,24 @@ async def test_converting_an_object_carries_its_record_onto_the_replacement_inta
         "a number an object still holds must never be offered again"
     )
 
-    kept = await live_record(db=db, node_id=holder.get_id())
-    assert kept["identifier"] == holder.get_id(), (
-        "the record on the replaced object stays open for branches that predate the conversion"
-    )
+    assert (
+        await active_is_reserved_edges_on(
+            db=db, node_id=holder.get_id(), attribute_name=TRACKED_ATTRIBUTE_NAME, open_only=True
+        )
+        == []
+    ), "no branch predates the conversion, so the IS_RESERVED edge on the replaced object is closed"
 
-    moved = await live_record(db=db, node_id=converted.get_id())
+    moved = await open_is_reserved_edge_on(db=db, node_id=converted.get_id(), attribute_name=TRACKED_ATTRIBUTE_NAME)
     assert moved["provenance"] == PoolRecordProvenance.PROVIDED.value, (
         "the move must carry the provenance across rather than assume the pool chose the number"
     )
     assert moved["identifier"] == converted.get_id()
     assert moved["branch"] == GLOBAL_BRANCH_NAME
     assert moved["status"] == "active"
-    assert "to" not in moved, "a moved record is open, whatever state the one it came from was in"
+    assert "to" not in moved, "a moved IS_RESERVED edge is open, whatever state the one it came from was in"
 
 
-async def test_a_pool_does_not_follow_its_record_onto_a_kind_it_does_not_track(
+async def test_a_pool_does_not_follow_its_is_reserved_edge_onto_a_kind_it_does_not_track(
     db: InfrahubDatabase, default_branch: Branch, convert_pool: CoreNumberPool
 ) -> None:
     """A pool tracks a kind. Sharing an attribute name with some other kind is not a claim on it."""
@@ -185,27 +177,20 @@ async def test_a_pool_does_not_follow_its_record_onto_a_kind_it_does_not_track(
     assert converted.get_attribute(TRACKED_ATTRIBUTE_NAME).value == allocated, (
         "the conversion still carries the number across"
     )
-    records = await db.execute_query(
-        query="""
-        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
-        WITH DISTINCT a
-        MATCH (:Node {uuid: $pool_id})-[record:IS_RESERVED]->(a)
-        WHERE record.status = "active" AND record.to IS NULL
-        RETURN count(record) AS live
-        """,
-        params={
-            "node_id": converted.get_id(),
-            "attribute_name": TRACKED_ATTRIBUTE_NAME,
-            "pool_id": convert_pool.get_id(),
-        },
+    is_reserved_edges = await active_is_reserved_edges_on(
+        db=db,
+        node_id=converted.get_id(),
+        attribute_name=TRACKED_ATTRIBUTE_NAME,
+        pool_id=convert_pool.get_id(),
+        open_only=True,
     )
-    assert records[0]["live"] == 0, "the pool must not account for an attribute of a kind it does not track"
+    assert is_reserved_edges == [], "the pool must not account for an attribute of a kind it does not track"
     assert await convert_pool.get_used(db=db, branch=default_branch) == [], (
         "and the number it held is released rather than left charged to an object outside the pool"
     )
 
 
-async def test_converting_an_object_on_a_branch_leaves_its_record_open(
+async def test_converting_an_object_on_a_branch_leaves_its_is_reserved_edge_open(
     db: InfrahubDatabase, default_branch: Branch, convert_pool: CoreNumberPool
 ) -> None:
     """The object is only replaced on the branch; on the default branch it still holds its number."""
@@ -217,11 +202,11 @@ async def test_converting_an_object_on_a_branch_leaves_its_record_open(
     on_branch = await registry.manager.get_one(db=db, id=holder.get_id(), branch=branch, raise_on_error=True)
     converted = await convert_to(db=db, branch=branch, node=on_branch, target_kind=TARGET_KIND)
 
-    kept = await live_record(db=db, node_id=holder.get_id())
+    kept = await open_is_reserved_edge_on(db=db, node_id=holder.get_id(), attribute_name=TRACKED_ATTRIBUTE_NAME)
     assert kept["identifier"] == holder.get_id(), (
-        "the default branch's object still holds the number, so its record must stay open"
+        "the default branch's object still holds the number, so its IS_RESERVED edge must stay open"
     )
-    moved = await live_record(db=db, node_id=converted.get_id())
+    moved = await open_is_reserved_edge_on(db=db, node_id=converted.get_id(), attribute_name=TRACKED_ATTRIBUTE_NAME)
     assert moved["identifier"] == converted.get_id()
     assert moved["branch"] == GLOBAL_BRANCH_NAME
 
@@ -230,4 +215,102 @@ async def test_converting_an_object_on_a_branch_leaves_its_record_open(
     )
     assert await convert_pool.get_free(db=db, branch=default_branch) != allocated, (
         "a conversion on a branch must not offer the default branch's number again"
+    )
+
+
+@dataclass
+class SupportCase:
+    name: str
+    branch_support: BranchSupportType
+
+
+SUPPORT_CASES = [
+    SupportCase(name="branch-aware", branch_support=BranchSupportType.AWARE),
+    SupportCase(name="branch-agnostic", branch_support=BranchSupportType.AGNOSTIC),
+]
+
+
+def convert_base(support: BranchSupportType) -> GenericSchema:
+    base = deepcopy(CONVERT_BASE)
+    base.get_attribute(name=TRACKED_ATTRIBUTE_NAME).branch = support
+    return base
+
+
+async def pooled_convertible(
+    db: InfrahubDatabase, default_branch: Branch, support: BranchSupportType
+) -> tuple[CoreNumberPool, Node]:
+    """A pool on the generic whose tracked attribute has the given branch support, and an object holding a number."""
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(
+            generics=[convert_base(support=support)], nodes=[deepcopy(CONVERT_SOURCE), deepcopy(CONVERT_TARGET)]
+        ),
+    )
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+    await pool.new(
+        db=db,
+        name="convert-pool",
+        node=GENERIC_KIND,
+        node_attribute=TRACKED_ATTRIBUTE_NAME,
+        start_range=POOL_START,
+        end_range=POOL_END,
+    )
+    await pool.save(db=db)
+    holder = await holder_holding_a_pooled_number(db=db, branch=default_branch, pool=pool)
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=holder.id, attribute_name=TRACKED_ATTRIBUTE_NAME)
+        == IsReservedEdge.OPEN
+    )
+    return pool, holder
+
+
+@pytest.mark.parametrize("case", SUPPORT_CASES, ids=lambda case: case.name)
+async def test_converting_closes_the_is_reserved_edge_on_the_replaced_object(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    case: SupportCase,
+) -> None:
+    pool, holder = await pooled_convertible(db=db, default_branch=default_branch, support=case.branch_support)
+
+    converted = await convert_to(db=db, branch=default_branch, node=holder, target_kind=TARGET_KIND)
+
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=holder.id, attribute_name=TRACKED_ATTRIBUTE_NAME)
+        == IsReservedEdge.CLOSED
+    ), "no branch reaches the replaced object"
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=converted.id, attribute_name=TRACKED_ATTRIBUTE_NAME)
+        == IsReservedEdge.OPEN
+    ), "the replacement carries the reservation on"
+    assert await pool.get_used(db=db, branch=default_branch) == [POOL_START]
+
+
+@pytest.mark.parametrize("case", SUPPORT_CASES, ids=lambda case: case.name)
+async def test_an_older_branch_keeps_the_replaced_is_reserved_edge_open_until_it_is_deleted(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    case: SupportCase,
+) -> None:
+    pool, holder = await pooled_convertible(db=db, default_branch=default_branch, support=case.branch_support)
+    older = await create_branch(db=db, branch_name="predates-the-conversion")
+
+    converted = await convert_to(db=db, branch=default_branch, node=holder, target_kind=TARGET_KIND)
+
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=holder.id, attribute_name=TRACKED_ATTRIBUTE_NAME)
+        == IsReservedEdge.OPEN
+    ), "the older branch still holds the replaced object"
+
+    await delete_branch(db=db, branch=older)
+
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=holder.id, attribute_name=TRACKED_ATTRIBUTE_NAME)
+        == IsReservedEdge.CLOSED
+    )
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=converted.id, attribute_name=TRACKED_ATTRIBUTE_NAME)
+        == IsReservedEdge.OPEN
     )

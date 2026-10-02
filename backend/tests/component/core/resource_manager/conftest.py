@@ -5,8 +5,11 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core import registry
+from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from tests.helpers.agnostic_edges import TEST_ACTOR_ID, IsReservedEdge, is_reserved_edge_on
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, WIDGET_KIND
 
 if TYPE_CHECKING:
@@ -44,3 +47,20 @@ async def serial_pool(
     )
     await pool.save(db=db)
     return pool
+
+
+async def pooled_holder(db: InfrahubDatabase, branch: Branch, kind: str, pool: CoreNumberPool, name: str) -> Node:
+    """An object of the kind holding a `serial` the pool allocated, with the pool's IS_RESERVED edge open on it."""
+    holder = await Node.init(db=db, schema=kind, branch=branch)
+    await holder.new(db=db, name=name, serial={"from_pool": {"id": pool.id}})
+    await holder.save(db=db)
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=holder.id, attribute_name=SERIAL_ATTRIBUTE_NAME)
+        == IsReservedEdge.OPEN
+    )
+    return holder
+
+
+async def delete_branch(db: InfrahubDatabase, branch: Branch) -> None:
+    result = await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch, user_id=TEST_ACTOR_ID)
+    assert result.branch_deleted

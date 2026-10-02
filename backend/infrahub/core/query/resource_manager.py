@@ -321,10 +321,10 @@ class NumberPoolGetReserved(Query):
         self.return_labels = ["value", "identifier"]
 
     def get_reservation(self) -> int | None:
-        """Return the value a single record resolves to.
+        """Return the value a single IS_RESERVED edge resolves to.
 
         Returns:
-            The reserved integer value, or None if no live record resolves to one.
+            The reserved integer value, or None if no live IS_RESERVED edge resolves to one.
 
         """
         result = self.get_result()
@@ -349,10 +349,10 @@ class NumberPoolGetReserved(Query):
 
 
 class IPPoolChangeReserved(Query):
-    """Point an IP pool's records at a new identifier.
+    """Point an IP pool's IS_RESERVED edges at a new identifier.
 
     Used when a node is converted to a different type and its id changes. An IP pool reserves the
-    allocated `:Node` itself, so the record keeps its target and only the identifier moves.
+    allocated `:Node` itself, so the IS_RESERVED edge keeps its target and only the identifier moves.
     """
 
     name = "ip_pool_change_reserved"
@@ -411,8 +411,8 @@ class NumberPoolChangeReserved(Query):
 
     The IS_RESERVED edges are moved from the `:Attribute` vertices of the old object to the
     `:Attribute` vertices of the replacement object. Handles multiple pools for different Attributes.
-    The record on the old attribute is left open, because any branch created before the conversion still
-    holds the replaced object.
+    The IS_RESERVED edge on the old attribute is left as it is: it stays open while any branch can
+    still reach the old attribute and is closed once none can.
     """
 
     name = "number_pool_change_reserved"
@@ -471,7 +471,7 @@ class NumberPoolChangeReserved(Query):
           AND old_rel.status = "active"
           AND (old_rel.to IS NULL OR old_rel.to >= $not_closed_before)
         // --------------
-        // The old edge stays open: branches that predate the conversion still hold the replaced object
+        // Not closed here: object-delete and branch-delete retirement close it once no branch reaches it
         // --------------
         WITH DISTINCT pool, properties(old_rel) AS old_props
         // --------------
@@ -488,7 +488,7 @@ class NumberPoolChangeReserved(Query):
         WITH pool, old_props, tracked_attribute_name
         WHERE is_active = TRUE
         // --------------
-        // And the kind it tracks, so a pool cannot follow the record onto a kind it knows nothing about.
+        // And the kind it tracks, so a pool cannot follow the IS_RESERVED edge onto a kind it knows nothing about.
         // --------------
         CALL (pool) {
             MATCH (pool)-[:HAS_ATTRIBUTE]->(:Attribute { name: "node" })-[hv:HAS_VALUE]->(av)
@@ -527,31 +527,89 @@ class NumberPoolChangeReserved(Query):
         self.return_labels = ["pool.uuid AS pool_id", "new_attr.uuid AS attribute_id", "new_rel"]
 
 
-def reserved_values_query() -> str:
-    """Cypher fragment to find all Attributes reserved for a given NumberPool
+def reserved_values_query(
+    pool_id: str, attribute_name: str, at: str, default_branch_name: str
+) -> tuple[str, dict[str, Any]]:
+    """Cypher fragment to find all Attributes reserved for a given NumberPool, with the parameters it reads.
 
-    Finds every active value of each reserved Attribute on every non-deleting branch.
+    Finds every value some non-deleting branch holds on each reserved Attribute. A value counts when
+    its HAS_VALUE edge is open now, or when a branch forked from the edge's branch while the edge was
+    open and has written no edge of its own that hides the default-branch version.
 
     Final values are res (IS_RESERVED edge) and value (an active Attribute value).
     """
-    return """
+    params: dict[str, Any] = {
+        "pool_id": pool_id,
+        "attribute_name": attribute_name,
+        "at": at,
+        "default_branch_name": default_branch_name,
+    }
+    query = """
+    // --------------
+    // Read the branches once: the ones being deleted, and the fork window of every other user branch
+    // --------------
+    MATCH (branch:Branch)
+    WITH collect(branch) AS branches
+    WITH
+        [b IN branches WHERE b.status = "DELETING" | b.name] AS deleting_branches,
+        [b IN branches
+            WHERE b.status <> "DELETING" AND NOT b.is_default AND NOT b.is_global
+            | {name: b.name, origin_name: b.origin_branch, fork_at: b.branched_from}] AS branch_windows
+    // --------------
+    // Start with all the Attributes currently reserved for this pool
+    // --------------
     MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(attr:Attribute { name: $attribute_name })
     WHERE res.status = "active" AND res.from <= $at AND (res.to IS NULL OR res.to > $at)
-    MATCH (attr)-[hv:HAS_VALUE]->(av:AttributeValueIndexed)
-    WHERE hv.status = "active"
-      AND hv.from <= $at AND (hv.to IS NULL OR hv.to > $at)
-      AND NOT EXISTS {
-          MATCH (deleting:Branch { name: hv.branch })
-          WHERE deleting.status = "DELETING"
-      }
-    WITH DISTINCT res, av.value AS value
+    CALL (attr, deleting_branches, branch_windows) {
+        // --------------
+        // Every value edge open now, on any branch that is not being deleted
+        // --------------
+        MATCH (attr)-[hv:HAS_VALUE]->(av)
+        WHERE hv.status = "active"
+          AND hv.from <= $at AND (hv.to IS NULL OR hv.to > $at)
+          AND NOT hv.branch IN deleting_branches
+        RETURN av.value AS value
+        UNION
+        // --------------
+        // For any edges closed on the default branch, check if they are still reachable
+        // on other branches.
+        // Start with closed edges on the default branch that user branches might still see as active.
+        // --------------
+        MATCH (attr)-[hv:HAS_VALUE {branch: $default_branch_name}]->(av)
+        WHERE hv.status = "active"
+        AND hv.to <= $at
+        AND any(
+            window IN branch_windows WHERE window.origin_name = hv.branch
+            AND hv.from <= window.fork_at AND window.fork_at < hv.to
+        )
+        WITH hv, av, COLLECT {
+            // --------------
+            // Find any branches with edges that override the default branch HAS_VALUE edge.
+            // Any value edge the branch wrote that is open now hides the origin's value: an active one
+            // (the branch changed the value) or a deleted one (it removed the object or the attribute).
+            // --------------
+            MATCH (attr)-[hiding:HAS_VALUE]->()
+            WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+            RETURN hiding.branch AS branch_name
+        } AS hiding_branches
+        // --------------
+        // If all the branches that this HAS_VALUE edge are visible on have overridden the value,
+        // then leave it out b/c it is no longer active.
+        // --------------
+        WHERE any(window IN branch_windows WHERE window.origin_name = hv.branch
+            AND hv.from <= window.fork_at AND window.fork_at < hv.to
+            AND NOT window.name IN hiding_branches)
+        RETURN av.value AS value
+    }
+    WITH DISTINCT res, value
     """ % {"number_pool": InfrahubKind.NUMBERPOOL}
+    return query, params
 
 
 class NumberPoolGetUsed(Query):
     """A pool is branch-agnostic, and so is the set of numbers it accounts for.
 
-    The read carries no branch filter at all: the record is global, and a value counts while any
+    The read carries no branch filter at all: the IS_RESERVED edge is global, and a value counts while any
     branch holds it.
     """
 
@@ -568,18 +626,22 @@ class NumberPoolGetUsed(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params["pool_id"] = self.pool.get_id()
         self.params["start_range"] = self.pool.start_range.value
         self.params["end_range"] = self.pool.end_range.value
 
-        self.params["attribute_name"] = self.pool.node_attribute.value
-        self.params["at"] = self.at.to_string()
+        reserved_values, reserved_values_params = reserved_values_query(
+            pool_id=self.pool.get_id(),
+            attribute_name=self.pool.node_attribute.value,
+            at=self.at.to_string(),
+            default_branch_name=registry.default_branch,
+        )
+        self.params.update(reserved_values_params)
 
         query = """
         %(reserved_values)s
         WHERE toInteger(value) >= $start_range and toInteger(value) <= $end_range
         """ % {
-            "reserved_values": reserved_values_query(),
+            "reserved_values": reserved_values,
         }
 
         self.add_to_query(query)
@@ -603,7 +665,7 @@ class NumberPoolGetUsed(Query):
 class NumberPoolGetFree(Query):
     """A pool is branch-agnostic, and so is the set of numbers it accounts for.
 
-    The read carries no branch filter at all: the record is global, and a value counts while any
+    The read carries no branch filter at all: the IS_RESERVED edge is global, and a value counts while any
     branch holds it.
     """
 
@@ -624,14 +686,18 @@ class NumberPoolGetFree(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params["pool_id"] = self.pool.get_id()
         # Use min_value/max_value if provided, otherwise use pool's start_range/end_range
         self.params["start_range"] = self.min_value if self.min_value is not None else self.pool.start_range.value
         self.params["end_range"] = self.max_value if self.max_value is not None else self.pool.end_range.value
         self.limit = 1  # Query only works at returning a single, free entry
 
-        self.params["attribute_name"] = self.pool.node_attribute.value
-        self.params["at"] = self.at.to_string()
+        reserved_values, reserved_values_params = reserved_values_query(
+            pool_id=self.pool.get_id(),
+            attribute_name=self.pool.node_attribute.value,
+            at=self.at.to_string(),
+            default_branch_name=registry.default_branch,
+        )
+        self.params.update(reserved_values_params)
 
         query = """
         %(reserved_values)s
@@ -648,7 +714,7 @@ class NumberPoolGetFree(Query):
         WHERE is_free = true OR is_last = true
         WITH number AS free_number, is_free, is_last
         """ % {
-            "reserved_values": reserved_values_query(),
+            "reserved_values": reserved_values,
         }
 
         self.add_to_query(query)
@@ -778,7 +844,7 @@ class NumberPoolSetReserved(Query):
         self.params["identifier"] = self.identifier
         self.params["at"] = self.at.to_string()
         self.params["provenance"] = self.provenance.value
-        # A record written before provenance existed carries none, and an absent provenance already
+        # An IS_RESERVED edge written before provenance existed carries none, and an absent provenance already
         # reads as an allocation.
         self.params["allocated_provenance"] = PoolRecordProvenance.ALLOCATED.value
         self.params["attribute_id"] = self.attribute_id
