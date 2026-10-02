@@ -7110,16 +7110,36 @@
             "NumberPoolParametersRead": {
                 "properties": {
                     "end_range": {
-                        "type": "integer",
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "End Range",
-                        "description": "End range for numbers for the associated NumberPool",
-                        "default": 9223372036854775807
+                        "description": "Deprecated, use ranges instead. End of the single range, defaults to the largest supported number when only start_range is set"
                     },
                     "start_range": {
-                        "type": "integer",
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Start Range",
-                        "description": "Start range for numbers for the associated NumberPool",
-                        "default": 1
+                        "description": "Deprecated, use ranges instead. Start of the single range, defaults to 1 when only end_range is set"
+                    },
+                    "ranges": {
+                        "items": {
+                            "$ref": "#/components/schemas/NumberPoolRangeRead"
+                        },
+                        "type": "array",
+                        "title": "Ranges",
+                        "description": "Ranges of numbers the associated NumberPool allocates from, they must not overlap"
                     },
                     "number_pool_id": {
                         "anyOf": [
@@ -7140,16 +7160,36 @@
             "NumberPoolParametersWrite": {
                 "properties": {
                     "end_range": {
-                        "type": "integer",
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "End Range",
-                        "description": "End range for numbers for the associated NumberPool",
-                        "default": 9223372036854775807
+                        "description": "Deprecated, use ranges instead. End of the single range, defaults to the largest supported number when only start_range is set"
                     },
                     "start_range": {
-                        "type": "integer",
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Start Range",
-                        "description": "Start range for numbers for the associated NumberPool",
-                        "default": 1
+                        "description": "Deprecated, use ranges instead. Start of the single range, defaults to 1 when only end_range is set"
+                    },
+                    "ranges": {
+                        "items": {
+                            "$ref": "#/components/schemas/NumberPoolRangeWrite"
+                        },
+                        "type": "array",
+                        "title": "Ranges",
+                        "description": "Ranges of numbers the associated NumberPool allocates from, they must not overlap"
                     },
                     "number_pool_id": {
                         "anyOf": [
@@ -7166,6 +7206,70 @@
                 },
                 "type": "object",
                 "title": "NumberPoolParametersWrite"
+            },
+            "NumberPoolRangeRead": {
+                "properties": {
+                    "start": {
+                        "type": "integer",
+                        "title": "Start",
+                        "description": "First number of the range"
+                    },
+                    "end": {
+                        "type": "integer",
+                        "title": "End",
+                        "description": "Last number of the range"
+                    },
+                    "weight": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Weight",
+                        "description": "Ranges with a higher weight are allocated from first"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "start",
+                    "end"
+                ],
+                "title": "NumberPoolRangeRead"
+            },
+            "NumberPoolRangeWrite": {
+                "properties": {
+                    "start": {
+                        "type": "integer",
+                        "title": "Start",
+                        "description": "First number of the range"
+                    },
+                    "end": {
+                        "type": "integer",
+                        "title": "End",
+                        "description": "Last number of the range"
+                    },
+                    "weight": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Weight",
+                        "description": "Ranges with a higher weight are allocated from first"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "start",
+                    "end"
+                ],
+                "title": "NumberPoolRangeWrite"
             },
             "PasswordCredential": {
                 "properties": {
