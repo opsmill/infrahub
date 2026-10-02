@@ -19,7 +19,61 @@ A duplicate value in a unique attribute is a constraint violation, not a conflic
 
 :::
 
-![Branch conflict](../media/branch_conflict.excalidraw.svg)
+The example below follows one attribute, `A`. Both the default branch and `branch-a` change it after `branch-a` is created, to different values. Infrahub can't tell which value is right, so it reports a conflict, and a merge or a rebase of `branch-a` can't complete until you decide.
+
+**1. The conflict.** `branch-a` is created while `A` is `1`, which sets its `branched_from`. After that point, `A` changes to `3` on the default branch and to `4` on `branch-a`. Both changes come after `branched_from` and the values differ, so when `branch-a` is compared with the default branch, Infrahub reports a conflict on `A`: 3 against 4. Until you resolve it, the merge stops at that point.
+
+<div style={{zoom: 1.3, textAlign: 'center'}}>
+
+```mermaid
+%%{init: {"gitGraph": {"rotateCommitLabel": false}, "themeVariables": {"fontSize": "14px", "git0": "#2f9e44", "git1": "#3b5bdb", "gitBranchLabel0": "#ffffff", "gitBranchLabel1": "#ffffff", "gitInv0": "#ffffff", "gitInv1": "#ffffff", "tagLabelColor": "#1a1a1a", "tagLabelBackground": "#ffffff", "tagLabelBorder": "#868e96", "tagLabelFontSize": "13px", "commitLabelBackground": "transparent", "commitLabelFontSize": "13px"}}}%%
+gitGraph
+  commit id: " " tag: "A: 1, branched_from"
+  branch branch-a
+  checkout main
+  commit id: "A: 3"
+  checkout branch-a
+  commit id: "A: 4"
+  checkout main
+  merge branch-a id: "  " type: REVERSE tag: "conflict: 3 vs 4"
+```
+
+</div>
+
+**2. Resolve it in a merge: keep either value.** In a Proposed Change, choose the branch whose value the default branch keeps. Choose `main` and `A` stays `3`; choose `branch-a` and the merge sets `A` to `4`.
+
+<div style={{zoom: 1.3, textAlign: 'center'}}>
+
+```mermaid
+%%{init: {"gitGraph": {"rotateCommitLabel": false}, "themeVariables": {"fontSize": "14px", "git0": "#2f9e44", "git1": "#3b5bdb", "gitBranchLabel0": "#ffffff", "gitBranchLabel1": "#ffffff", "gitInv0": "#ffffff", "gitInv1": "#ffffff", "tagLabelColor": "#1a1a1a", "tagLabelBackground": "#ffffff", "tagLabelBorder": "#868e96", "tagLabelFontSize": "13px", "commitLabelBackground": "transparent", "commitLabelFontSize": "13px"}}}%%
+gitGraph
+  commit id: " " tag: "A: 1"
+  branch branch-a
+  checkout main
+  commit id: "A: 3"
+  checkout branch-a
+  commit id: "A: 4"
+  checkout main
+  merge branch-a id: "  " tag: "merge, A: 3 or 4"
+```
+
+</div>
+
+**3. Resolve it in a rebase: keep the branch value.** Choose `branch-a` for `A`, and the rebase moves `branched_from` to the latest state of the default branch. `branch-a` then starts from `A: 3` and keeps its own `A: 4`. To take the default branch value instead, set `A` to `3` on `branch-a`: both branches agree, the conflict goes away and the rebase goes through. Choosing the default branch for `A` refuses the rebase.
+
+<div style={{zoom: 1.3, textAlign: 'center'}}>
+
+```mermaid
+%%{init: {"gitGraph": {"rotateCommitLabel": false}, "themeVariables": {"fontSize": "14px", "git0": "#2f9e44", "git1": "#3b5bdb", "gitBranchLabel0": "#ffffff", "gitBranchLabel1": "#ffffff", "gitInv0": "#ffffff", "gitInv1": "#ffffff", "tagLabelColor": "#1a1a1a", "tagLabelBackground": "#ffffff", "tagLabelBorder": "#868e96", "tagLabelFontSize": "13px", "commitLabelBackground": "transparent", "commitLabelFontSize": "13px"}}}%%
+gitGraph
+  commit id: "A: 1"
+  commit id: " " tag: "A: 3, new branched_from"
+  branch branch-a
+  checkout branch-a
+  commit id: "A: 4, kept"
+```
+
+</div>
 
 ## How to resolve conflicts
 
