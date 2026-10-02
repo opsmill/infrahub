@@ -7,13 +7,12 @@ from enum import StrEnum
 class RefClassification(StrEnum):
     UNCHANGED = "unchanged"
     FAST_FORWARD = "fast-forward"
-    LOCAL_AHEAD = "local-ahead"
     REWRITE = "rewrite"
     RETARGET = "retarget"
     REMOTE_ABSENT = "remote-absent"
 
 
-NEEDS_BOTH_COMMITS = frozenset({RefClassification.REWRITE, RefClassification.RETARGET, RefClassification.LOCAL_AHEAD})
+NEEDS_BOTH_COMMITS = frozenset({RefClassification.REWRITE, RefClassification.RETARGET})
 ALLOWED_WITHOUT_IMPORTED_COMMIT = frozenset({RefClassification.UNCHANGED, RefClassification.FAST_FORWARD})
 ALLOWED_WITHOUT_REMOTE_HEAD = frozenset({RefClassification.REMOTE_ABSENT, RefClassification.UNCHANGED})
 
