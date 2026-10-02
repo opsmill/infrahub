@@ -194,6 +194,9 @@ Here are some example payloads of some events that may be sent.
         }
       },
       "display_label": "Google Fibre",
+      "hfid": [
+        "Google Fibre"
+      ],
       "relationships": {}
     }
   },
@@ -216,7 +219,8 @@ Here are some example payloads of some events that may be sent.
     "action": "updated",
     "fields": [
       "description",
-      "role"
+      "role",
+      "tags"
     ],
     "node_id": "182c697c-9915-aa00-39b7-c5181aeb3367",
     "changelog": {
@@ -241,7 +245,26 @@ Here are some example payloads of some events that may be sent.
         }
       },
       "display_label": "Ethernet1",
-      "relationships": {}
+      "hfid": [
+        "atl1-edge1",
+        "Ethernet1"
+      ],
+      "relationships": {
+        "tags": {
+          "name": "tags",
+          "peers": [
+            {
+              "peer_id": "182c6980-3c4e-6a1d-39b0-c51f2e4d7a10",
+              "peer_kind": "BuiltinTag",
+              "peer_display_label": "peering",
+              "peer_hfid": null,
+              "peer_status": "added",
+              "properties": {}
+            }
+          ],
+          "cardinality": "many"
+        }
+      }
     }
   },
   "id": "67acc7ea-93b1-4175-a69b-801c869aea07",
@@ -255,6 +278,24 @@ Here are some example payloads of some events that may be sent.
   </TabItem>
 </Tabs>
 <!-- vale on -->
+
+### Identifying objects in node events
+
+The `changelog` of a node event identifies every object it mentions in two ways: by ID and kind, and by the labels a person or an external system recognizes. With the labels, your receiver does not need to query Infrahub to resolve an ID.
+
+| Field | Where | Value |
+|-------|-------|-------|
+| `node_id`, `node_kind` | The changelog | The ID and kind of the node that changed |
+| `display_label` | The changelog | The node's [display label](../schema/display_label) |
+| `hfid` | The changelog | The node's [human-friendly ID](../schema/nodes-and-attributes#human-friendly-identifier-hfid), or `null` when its kind defines none |
+| `peer_id`, `peer_kind` | Each relationship peer | The ID and kind of the peer |
+| `peer_display_label`, `peer_hfid` | Each relationship peer | The peer's display label and human-friendly ID; `peer_hfid` is `null` when the peer's kind defines none, as for a tag |
+
+For a relationship that holds a single peer, only the current peer includes labels. When the peer changes, the previous one is identified by `peer_id_previous` and `peer_kind_previous` alone.
+
+Node events emitted by a branch merge or rebase contain the same fields as those emitted by a mutation.
+
+Treat the label fields as optional. A peer's labels are `null` when Infrahub could not read them, for example because the peer was deleted by the same operation, and the event is still delivered. To match an object against your own records, use `hfid`, which follows the naming your schema defines. The `hfid` changes when the attributes it is built from change, while `node_id` never changes.
 
 ## Custom headers
 

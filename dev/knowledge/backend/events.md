@@ -205,5 +205,6 @@ Events can be queried through:
 - [Creating Events Guide](../../guides/backend/creating-events.md) - How to create a new event
 - [Authentication](authentication.md) - SSO group resolution and auto-create group events
 - [Webhooks](webhooks.md) - HTTP notification delivery triggered by events
+- [Changelog Enrichment](changelog-enrichment.md) - how node event changelogs get their display labels and HFIDs
 - [Merge/Rebase Recompute](merge-recompute.md) - node mutation origin and how it suppresses recompute triggers
 - [Backend Architecture](architecture.md) - Overall backend structure
