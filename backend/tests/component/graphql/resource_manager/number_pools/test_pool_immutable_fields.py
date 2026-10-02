@@ -3,6 +3,7 @@ import pytest
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -10,7 +11,14 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import TICKET, load_schema
 
-from .helpers import CREATE_NUMBER_POOL, DELETE_NUMBER_POOL, QUERY_NUMBER_POOL, UPDATE_NUMBER_POOL
+from .helpers import (
+    CREATE_NUMBER_POOL,
+    DELETE_NUMBER_POOL,
+    QUERY_NUMBER_POOL,
+    UPDATE_NUMBER_POOL,
+    execute,
+    range_bounds,
+)
 
 UPSERT_NUMBER_POOL = """
 mutation UpsertNumberPool(
@@ -37,6 +45,11 @@ mutation UpsertNumberPool(
   }
 }
 """
+
+
+async def _shorthand(db: InfrahubDatabase, pool_id: str) -> tuple[int | None, int | None]:
+    pool = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
+    return pool.start_range.value, pool.end_range.value
 
 
 async def test_number_pool_update(
@@ -241,6 +254,31 @@ class TestNumberPoolUpsertImmutableFields:
         pool = await NodeManager.get_one(id=pool_id, db=db, branch=default_branch_scope_class)
         assert pool is not None
         assert pool.get_attribute("end_range").value == 30
+
+    async def test_upsert_creating_a_pool_with_bounds_creates_its_range(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        ticket_schema: None,
+    ) -> None:
+        result = await execute(
+            db=db,
+            branch=default_branch_scope_class,
+            source=UPSERT_NUMBER_POOL,
+            variables={
+                "name": "pool-upsert-new",
+                "node": "TestingTicket",
+                "node_attribute": "ticket_id",
+                "start_range": 40,
+                "end_range": 60,
+            },
+        )
+
+        assert not result.errors
+        assert result.data
+        pool_id = result.data["CoreNumberPoolUpsert"]["object"]["id"]
+        assert await _shorthand(db=db, pool_id=pool_id) == (40, 60)
+        assert await range_bounds(db=db, pool_id=pool_id) == [(40, 60)]
 
     async def test_update_with_unchanged_node_fields(
         self,

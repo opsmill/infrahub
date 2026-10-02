@@ -7,6 +7,7 @@ from infrahub.exceptions import ValidationError
 from infrahub.pools.number_pool_range_validation import (
     NumberRangeBounds,
     validate_number_pool_range,
+    validate_number_pool_ranges,
 )
 
 STORED = [NumberRangeBounds(start=100, end=200, id="low"), NumberRangeBounds(start=300, end=400, id="high")]
@@ -68,3 +69,42 @@ def test_backwards_or_overlapping_range_is_refused(case: RefusedCandidateCase) -
         validate_number_pool_range(candidate=case.candidate, others=STORED)
 
     assert exc_info.value.message == case.message
+
+
+@dataclass
+class RangeSetCase:
+    name: str
+    ranges: list[NumberRangeBounds]
+
+
+ACCEPTED_RANGE_SET_CASES: list[RangeSetCase] = [
+    RangeSetCase(name="no_range", ranges=[]),
+    RangeSetCase(name="one_range", ranges=[NumberRangeBounds(start=100, end=200, id="only")]),
+    RangeSetCase(
+        name="adjacent_ranges",
+        ranges=[NumberRangeBounds(start=100, end=200, id="low"), NumberRangeBounds(start=201, end=300, id="high")],
+    ),
+    RangeSetCase(
+        name="unsorted_ranges",
+        ranges=[NumberRangeBounds(start=300, end=400, id="high"), NumberRangeBounds(start=100, end=200, id="low")],
+    ),
+    RangeSetCase(
+        name="single_value_ranges",
+        ranges=[NumberRangeBounds(start=5, end=5, id="five"), NumberRangeBounds(start=6, end=6, id="six")],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", ACCEPTED_RANGE_SET_CASES, ids=lambda case: case.name)
+def test_range_set_without_overlap_is_accepted(case: RangeSetCase) -> None:
+    with does_not_raise():
+        validate_number_pool_ranges(ranges=case.ranges)
+
+
+def test_range_set_with_an_overlap_is_refused_from_its_lowest_range() -> None:
+    ranges = [*STORED, NumberRangeBounds(start=150, end=320, id="middle")]
+
+    with pytest.raises(ValidationError) as exc_info:
+        validate_number_pool_ranges(ranges=ranges)
+
+    assert exc_info.value.message == "Range 100-200 overlaps 150-320 (middle)"

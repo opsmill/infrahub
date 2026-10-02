@@ -15,6 +15,7 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import TICKET, load_schema
 
@@ -818,16 +819,8 @@ async def test_number_pool_utilization(
 
     pool_id = create_ok.data["CoreNumberPoolCreate"]["object"]["id"]
 
-    range_created = await graphql(
-        schema=gql_params.schema,
-        source=CREATE_NUMBER_POOL_RANGE,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={"pool_id": pool_id, "start": 1, "end": 10},
-    )
-    assert not range_created.errors
-    assert range_created.data
-    range_id = range_created.data["CoreNumberPoolRangeCreate"]["object"]["id"]
+    (pool_range,) = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
+    range_id = pool_range.get_id()
 
     first = await graphql(
         schema=gql_params.schema,
@@ -968,18 +961,6 @@ mutation CreateNumberPool(
       display_label
       id
     }
-  }
-}
-"""
-
-
-CREATE_NUMBER_POOL_RANGE = """
-mutation CreateNumberPoolRange($pool_id: String!, $start: BigInt!, $end: BigInt!) {
-  CoreNumberPoolRangeCreate(
-    data: { start: { value: $start }, end: { value: $end }, pool: { id: $pool_id } }
-  ) {
-    ok
-    object { id }
   }
 }
 """

@@ -12,9 +12,12 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
+from infrahub.pools.number_pool_range_validation import NumberRangeBounds, validate_number_pool_ranges
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 
 from ...main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
+from .common import pool_lock, range_bounds, sync_shorthand
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -29,6 +32,7 @@ if TYPE_CHECKING:
 BOUNDS_DESCRIBE_ONE_RANGE = "start_range and end_range are the two bounds of a single range"
 BOUNDS_REQUIRED = f"{BOUNDS_DESCRIBE_ONE_RANGE}, both are required"
 BOUNDS_NOT_CLEARABLE = f"{BOUNDS_DESCRIBE_ONE_RANGE}, neither can be cleared"
+SHORTHAND_WITH_RANGES = "start_range/end_range cannot be combined with ranges"
 
 
 class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
@@ -58,6 +62,7 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         database: InfrahubDatabase | None = None,  # noqa: ARG003
     ) -> Any:
+        graphql_context: GraphqlContext = info.context
         try:
             schema_node = registry.schema.get(name=data["node"].value)
             if not schema_node.is_generic_schema and not schema_node.is_node_schema:
@@ -80,24 +85,51 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         end_range_input = data.get("end_range")
         start_range = start_range_input.value if start_range_input else None
         end_range = end_range_input.value if end_range_input else None
-        if start_range is None or end_range is None:
-            raise ValidationError(input_value=BOUNDS_REQUIRED)
+        ranges_supplied = "ranges" in data.keys()
+        if (start_range is not None or end_range is not None) and ranges_supplied:
+            raise ValidationError(input_value=SHORTHAND_WITH_RANGES)
 
-        if start_range > end_range:
-            raise ValidationError(input_value="start_range can't be larger than end_range")
+        shorthand: NumberRangeBounds | None = None
+        if start_range is not None or end_range is not None:
+            if start_range is None or end_range is None:
+                raise ValidationError(input_value=BOUNDS_REQUIRED)
 
-        if not isinstance(attribute.parameters, NumberAttributeParameters):
-            raise ValidationError(
-                input_value="The selected attribute parameters are not of the kind NumberAttributeParameters"
-            )
+            if start_range > end_range:
+                raise ValidationError(input_value="start_range can't be larger than end_range")
 
-        if attribute.parameters.min_value is not None and start_range < attribute.parameters.min_value:
-            raise ValidationError(input_value="start_range can't be less than min_value")
+            if not isinstance(attribute.parameters, NumberAttributeParameters):
+                raise ValidationError(
+                    input_value="The selected attribute parameters are not of the kind NumberAttributeParameters"
+                )
 
-        if attribute.parameters.max_value is not None and end_range > attribute.parameters.max_value:
-            raise ValidationError(input_value="end_range can't be larger than max_value")
+            if attribute.parameters.min_value is not None and start_range < attribute.parameters.min_value:
+                raise ValidationError(input_value="start_range can't be less than min_value")
 
-        return await super().mutate_create(info=info, data=data, branch=branch)
+            if attribute.parameters.max_value is not None and end_range > attribute.parameters.max_value:
+                raise ValidationError(input_value="end_range can't be larger than max_value")
+
+            shorthand = NumberRangeBounds(start=start_range, end=end_range)
+
+        if shorthand is None and not ranges_supplied:
+            return await super().mutate_create(info=info, data=data, branch=branch)
+
+        async with graphql_context.db.start_transaction() as dbt:
+            number_pool, result = await super().mutate_create(info=info, data=data, branch=branch, database=dbt)
+            pool_id = number_pool.get_id()
+            async with pool_lock(pool_id=pool_id):
+                repository = NumberPoolRepository(db=dbt)
+                if shorthand is not None:
+                    await repository.create_range(
+                        pool_id=pool_id,
+                        start=shorthand.start,
+                        end=shorthand.end,
+                        user_id=graphql_context.assigned_user_id,
+                    )
+                ranges = await repository.get_ranges(pool_id=pool_id)
+                validate_number_pool_ranges(ranges=range_bounds(ranges))
+                await sync_shorthand(db=dbt, pool_id=pool_id, ranges=ranges, user_id=graphql_context.assigned_user_id)
+
+        return number_pool, result
 
     @classmethod
     @retry_db_transaction(name="resource_manager_update")
