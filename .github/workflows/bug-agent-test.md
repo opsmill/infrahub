@@ -208,6 +208,10 @@ Use the "When to use" / "When NOT to use" guidance in
 - **Frontend:** Vitest for unit/component tests (colocated with source as `.test.ts`),
   pytest-playwright for E2E (`tests/e2e/` at the repo root, see its README).
   Use BDD GIVEN/WHEN/THEN structure. Use factories from `tests/fake/`.
+  For the E2E tier, place exactly ONE new test file under `tests/e2e/<domain>/test_*.py`
+  with exactly one module-level shard marker -- `pytestmark = pytest.mark.shard_<name>`,
+  picking the shard from the markers in `tests/e2e/pytest.ini`. E2E reproductions are
+  verified in CI by the `bug-agent-e2e-proof` job, not locally (see Step 7).
 
 ### Step 6: Write the test
 
@@ -233,12 +237,34 @@ Write a single targeted test that reproduces the bug:
 **CRITICAL: Verify the test FAILS on the current code.** Run it:
 - Backend: `uv run pytest path/to/test_file.py::TestClass::test_name -x -v`
 - Frontend unit/component: `cd frontend/app && pnpm run test path/to/test`
-- Frontend E2E (repo root; needs a locally built image: `uv run invoke dev.build`): `INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest -c tests/e2e/pytest.ini tests/e2e/path/to/test.py -x -v`
+- Frontend E2E: do NOT run it locally -- see the E2E carve-out below.
 - If a test run takes more than 5 minutes, kill it and investigate why.
 - The test must fail with an **assertion error that directly relates to the root cause**.
 - If the test **PASSES**, your assertions are wrong -- flip them to assert what SHOULD happen.
 - If the test fails for the **wrong reason** (import error, fixture missing, syntax error),
   fix those issues and re-run until it fails for the reason described in the root cause.
+
+**E2E carve-out -- do NOT run an e2e test locally.** For a test under `tests/e2e/`,
+failure verification is CI's job: push the branch and open the PR (Steps 9--10), and the
+`bug-agent-e2e-proof` job runs exactly your test against the current product and confirms
+it fails on its assertion (verdict `red_confirmed`). Before pushing, verify the test
+COLLECTS -- collection needs no Docker and catches shard-marker and import errors:
+
+```bash
+uv run pytest -c tests/e2e/pytest.ini tests/e2e/path/to/test.py --collect-only
+```
+
+In the PR body's Replication test section, set **Verification** to
+"Deferred to the `bug-agent-e2e-proof` CI job (RED phase)" and put "N/A -- verified in CI"
+in the failure-output block; do NOT invent local failure output. If the job reports
+`does_not_reproduce`, the test passed on buggy code -- treat it like a locally passing
+test and fix your assertions. If it reports `inconclusive` (setup error, timeout,
+collection failure), do NOT loop pushing retries: a human or the reviewer re-runs the
+job, and after two consecutive `inconclusive` runs on the same commit you must escalate:
+post a comment explaining what was tried, add the label `state/needs-human-test`, and
+**STOP**. Separately, adding more than one e2e test file (or zero) fails the proof job's
+detection step outright, before any verdict exists -- fix the PR diff so it adds exactly
+one file.
 
 ### Step 8: Format and lint
 
@@ -303,12 +329,12 @@ Push the branch and open a **draft Pull Request**:
 
 <what the test asserts and any edge cases it covers -- NOT how to fix the bug>
 
-AGENT_TEST_COMPLETE
+<!-- AGENT_TEST_COMPLETE -->
 ````
 
-The literal text `AGENT_TEST_COMPLETE` MUST appear in the PR body. The downstream
-`/bug-fix` gate scans the PR body for this exact substring; if it is missing, the
-pipeline halts.
+The hidden marker `<!-- AGENT_TEST_COMPLETE -->` MUST appear in the PR body. The
+downstream `/bug-fix` gate scans the PR body for the `AGENT_TEST_COMPLETE` substring;
+if it is missing, the pipeline halts.
 
 Post a short comment on the issue linking to the draft PR. Do NOT include
 `AGENT_TEST_COMPLETE` in that issue comment -- it belongs only in the PR body.
