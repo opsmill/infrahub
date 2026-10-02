@@ -20,12 +20,16 @@ const COPIED_FEEDBACK_DURATION = 2000;
 export function useCopyToClipboard() {
   const [isCopied, setIsCopied] = React.useState(false);
   const [copyCount, setCopyCount] = React.useState(0);
+  const feedbackTimeout = React.useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  React.useEffect(() => () => clearTimeout(feedbackTimeout.current), []);
 
   const copyToClipboard = React.useCallback(async (value: string) => {
     function confirmCopied() {
       setIsCopied(true);
       setCopyCount((count) => count + 1);
-      setTimeout(() => setIsCopied(false), COPIED_FEEDBACK_DURATION);
+      clearTimeout(feedbackTimeout.current);
+      feedbackTimeout.current = setTimeout(() => setIsCopied(false), COPIED_FEEDBACK_DURATION);
     }
 
     if (!window.isSecureContext || !navigator.clipboard) {
