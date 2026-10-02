@@ -529,3 +529,116 @@ async def test_removing_the_last_range_leaves_an_empty_pool(
     assert node["ranges"]["count"] == 0
     assert node["start_range"]["value"] is None
     assert node["end_range"]["value"] is None
+
+
+CREATE_POOL_WITHOUT_RANGE = """
+mutation CreatePool {
+    CoreNumberPoolCreate(data: {
+        name: { value: "mirrored-pool" }
+        node: { value: "TestingTicket" }
+        node_attribute: { value: "ticket_id" }
+    }) {
+        object { id }
+    }
+}
+"""
+
+UPDATE_POOL_SHORTHAND = """
+mutation UpdatePoolShorthand($pool_id: String!, $start: BigInt!, $end: BigInt!) {
+    CoreNumberPoolUpdate(data: { id: $pool_id, start_range: { value: $start }, end_range: { value: $end } }) {
+        ok
+    }
+}
+"""
+
+UPDATE_POOL_RANGES = """
+mutation UpdatePoolRanges($pool_id: String!, $ranges: [RelatedNodeInput]) {
+    CoreNumberPoolUpdate(data: { id: $pool_id, ranges: $ranges }) {
+        ok
+    }
+}
+"""
+
+
+async def _shorthand_and_ranges(
+    db: InfrahubDatabase, pool_id: str
+) -> tuple[tuple[int | None, int | None], list[tuple[int, int]]]:
+    pool = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
+    ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
+    return (
+        (pool.start_range.value, pool.end_range.value),
+        [(pool_range.start.value, pool_range.end.value) for pool_range in ranges],
+    )
+
+
+async def test_shorthand_mirrors_the_range_set_after_every_write(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+
+    async def run(source: str, variables: dict[str, Any]) -> dict[str, Any]:
+        result = await _execute(db=db, branch=default_branch, source=source, variables=variables)
+        assert not result.errors
+        assert result.data
+        return result.data
+
+    created = await run(CREATE_POOL_WITHOUT_RANGE, {})
+    pool_id = created["CoreNumberPoolCreate"]["object"]["id"]
+    assert await _shorthand_and_ranges(db=db, pool_id=pool_id) == ((None, None), [])
+
+    await run(UPDATE_POOL_SHORTHAND, {"pool_id": pool_id, "start": 10, "end": 20})
+    assert await _shorthand_and_ranges(db=db, pool_id=pool_id) == ((10, 20), [(10, 20)])
+
+    created_range = await run(CREATE_RANGE, {"pool_id": pool_id, "start": 30, "end": 40, "weight": None})
+    second_range_id = created_range["CoreNumberPoolRangeCreate"]["object"]["id"]
+    assert await _shorthand_and_ranges(db=db, pool_id=pool_id) == ((None, None), [(10, 20), (30, 40)])
+
+    first_range_id = (await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id))[0].get_id()
+    await run(UPDATE_POOL_RANGES, {"pool_id": pool_id, "ranges": [{"id": first_range_id}, {"id": second_range_id}]})
+    assert await _shorthand_and_ranges(db=db, pool_id=pool_id) == ((None, None), [(10, 20), (30, 40)])
+
+    await run(DELETE_RANGE, {"range_id": second_range_id})
+    assert await _shorthand_and_ranges(db=db, pool_id=pool_id) == ((10, 20), [(10, 20)])
+
+    await run(UPDATE_RANGE, {"range_id": first_range_id, "start": 12, "end": 22})
+    assert await _shorthand_and_ranges(db=db, pool_id=pool_id) == ((12, 22), [(12, 22)])
+
+    await run(UPDATE_POOL_RANGES, {"pool_id": pool_id, "ranges": [{"id": first_range_id}]})
+    assert await _shorthand_and_ranges(db=db, pool_id=pool_id) == ((12, 22), [(12, 22)])
+
+
+async def test_pool_ranges_edit_brings_the_shorthand_back_in_step(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    pool, low = await _create_pool_with_range(db=db, start=10, end=20)
+    high = await add_pool_range(db=db, pool=pool, start=30, end=40)
+    assert await _shorthand_and_ranges(db=db, pool_id=pool.get_id()) == ((10, 20), [(10, 20), (30, 40)])
+
+    result = await _execute(
+        db=db,
+        branch=default_branch,
+        source=UPDATE_POOL_RANGES,
+        variables={"pool_id": pool.get_id(), "ranges": [{"id": low.get_id()}, {"id": high.get_id()}]},
+    )
+
+    assert not result.errors
+    assert await _shorthand_and_ranges(db=db, pool_id=pool.get_id()) == ((None, None), [(10, 20), (30, 40)])
+
+
+async def test_pool_ranges_edit_is_refused_while_its_ranges_overlap(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    pool, low = await _create_pool_with_range(db=db, start=10, end=20)
+    high = await add_pool_range(db=db, pool=pool, start=15, end=25)
+
+    result = await _execute(
+        db=db,
+        branch=default_branch,
+        source=UPDATE_POOL_RANGES,
+        variables={"pool_id": pool.get_id(), "ranges": [{"id": low.get_id()}, {"id": high.get_id()}]},
+    )
+
+    assert [error.message for error in result.errors or []] == [f"Range 10-20 overlaps 15-25 ({high.get_id()})"]
+    assert await _shorthand_and_ranges(db=db, pool_id=pool.get_id()) == ((10, 20), [(10, 20), (15, 25)])
