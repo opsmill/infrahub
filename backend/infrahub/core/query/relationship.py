@@ -1043,6 +1043,8 @@ RETURN updated_at, updated_by
         # ----------------------------------------------------------------------------
         await self._add_peer_order_by(db=db, peer_schema=peer_schema, branch_filter=branch_filter)
         self.order_by.append("peer.uuid ASC")
+        # Source nodes can share a peer, and a read in pages needs a total order to not skip rows.
+        self.order_by.append("source_node.uuid ASC")
 
     def get_peer_ids(self) -> list[str]:
         """Return a list of UUID of nodes associated with this relationship."""

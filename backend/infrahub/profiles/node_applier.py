@@ -106,7 +106,7 @@ class NodeProfilesApplier:
         if node_attr.is_from_profile is not True:
             node_attr.is_from_profile = True
             is_changed = True
-        if node_attr.source_id != profile_id:  # type: ignore[attr-defined]
+        if node_attr.source_id != profile_id:
             node_attr.set_source(value=profile_id)
             is_changed = True
         return is_changed
