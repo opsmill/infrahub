@@ -628,6 +628,7 @@ state from the repository node.
 - Holding recomputes that live events of other writers start, and webhooks that run a transform.
 - Dead-worker concurrency-slot recovery (IFC-2912) and scheduled-task recreation.
 - A pull-request-based delivery mode for protected remotes.
+- Repository type naming (INFP-95).
 - Delivering a replayable prefix of an unreplayable queue, or skipping one entry. See decision 1.
 - Decomposing the Git modules as an end in itself (INFP-546). New components follow the
   component-design rule. Existing code is not refactored opportunistically.
