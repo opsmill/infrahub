@@ -4,7 +4,7 @@ title: Use artifacts
 
 # Use artifacts
 
-Generate configuration files and other artifacts by combining Infrahub data with templates. This guide shows you how to create artifacts that automatically update when your infrastructure data changes.
+Generate configuration files and other artifacts by combining Infrahub data with templates. This guide shows you how to define an artifact for every member of a group, and how to read the generated content. For what starts a regeneration, see [when artifacts regenerate](./overview#when-artifacts-regenerate).
 
 For conceptual information about artifacts and their architecture, see [Artifacts](./overview).
 
@@ -137,6 +137,15 @@ Copy the artifact ID from the artifact menu:
 
 Query artifacts through the GraphQL API for automation workflows.
 
+## Regenerate an artifact
+
+Infrahub does not regenerate an artifact when the data behind it changes. To pick up a change without opening a Proposed Change, request a run:
+
+1. To regenerate every member of the group, open the artifact definition and click **Generate**.
+2. To regenerate one artifact, open that artifact and click **Re-generate**.
+
+For everything else that starts a run, see [when artifacts regenerate](./overview#when-artifacts-regenerate).
+
 ## Validation
 
 Confirm your artifact generation is working:
@@ -144,7 +153,7 @@ Confirm your artifact generation is working:
 - ✓ artifact definitions appear in the web interface
 - ✓ artifacts are generated for all group members
 - ✓ Generated content matches your template expectations
-- ✓ artifacts update when source data changes
+- ✓ after you change an object the artifact's query reads, clicking **Generate** produces content that reflects the change (with nothing changed, a run produces identical content and the artifact is left as it is)
 
 ## Troubleshooting
 
