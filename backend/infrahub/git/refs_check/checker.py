@@ -311,22 +311,29 @@ class ReadOnlyRepositoryRefsChecker:
     async def _announced_head(
         self, model: GitReadOnlyRepositoryCheckRefs, *, tracked: TrackedRef, remote_head: str
     ) -> str | None:
-        """Return the head the pool was last told about on this branch, or None when there is nothing to compare.
+        """Return the head the pool is known to hold on this branch, or None when there is nothing to compare.
 
-        The shared value is a hint rather than the record. When it is missing the imported commit
-        stands in for it, so an empty or expired value announces only a branch whose remote has
-        moved past what it imported, once; a stand-in found equal to the remote is written back so
-        later checks skip the graph.
+        The shared value is a hint rather than the record, so only a value equal to the remote is
+        taken without reading the graph. An imported commit equal to the remote means the import
+        that put it there has already converged the pool, so it is written back and nothing is
+        announced. Otherwise the shared value is the baseline, and when that is missing the
+        imported commit stands in for it: an empty or expired value announces only a branch whose
+        remote has moved past what it imported, once.
         """
         announced = await self._cache.get(
             key=refs_check_announced_key(model.repository_id, tracked.infrahub_branch_name)
         )
-        if announced is not None:
+        if announced == remote_head:
             return announced
 
         imported = await self._tracked_commit_reader.read(
             repository_id=model.repository_id, branch_name=tracked.infrahub_branch_name
         )
+        if imported == remote_head:
+            await self._record_announced(model, branch_name=tracked.infrahub_branch_name, head=remote_head)
+            return imported
+        if announced is not None:
+            return announced
         if imported is None:
             log.info(
                 "Not announcing a branch with no imported commit",
@@ -334,8 +341,6 @@ class ReadOnlyRepositoryRefsChecker:
                 branch=tracked.infrahub_branch_name,
                 ref=tracked.ref,
             )
-        elif imported == remote_head:
-            await self._record_announced(model, branch_name=tracked.infrahub_branch_name, head=remote_head)
         return imported
 
     async def _record_announced(self, model: GitReadOnlyRepositoryCheckRefs, *, branch_name: str, head: str) -> None:

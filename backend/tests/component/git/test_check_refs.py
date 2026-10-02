@@ -306,6 +306,49 @@ async def test_a_worker_behind_a_move_already_announced_fetches_without_announci
     assert reader.reads == []
 
 
+async def test_an_import_that_caught_up_with_the_remote_is_not_announced_again() -> None:
+    """The import broadcast the commit it moved the pool to, so the stale announced head is not a movement."""
+    timeline = LockTimeline()
+    bus = BusRecorder()
+    cache = ClaimAwareCache()
+    await cache.set(key=ANNOUNCED_KEY, value=LOCAL_HEAD)
+    gateway = RecordingRefsGateway(
+        timeline=timeline, local_heads={"stable": REMOTE_HEAD}, remote_heads={"stable": REMOTE_HEAD}
+    )
+    checker = build_checker(
+        cache=cache,
+        bus=bus,
+        timeline=timeline,
+        gateway=gateway,
+        tracked_commit_reader=RecordingTrackedCommitReader({"main": REMOTE_HEAD}),
+    )
+
+    result = await checker.check(build_model(), run_id="run-1")
+
+    assert result.movements == ()
+    assert bus.messages == []
+    assert timeline.acquire_sequence(prefix=f"repository.{REPOSITORY_NAME}") == []
+    assert cache.storage[ANNOUNCED_KEY] == REMOTE_HEAD
+
+
+async def test_a_stale_announced_head_is_still_the_baseline_while_the_import_lags_the_remote() -> None:
+    timeline = LockTimeline()
+    bus = BusRecorder()
+    cache = ClaimAwareCache()
+    await cache.set(key=ANNOUNCED_KEY, value=LOCAL_HEAD)
+    gateway = RecordingRefsGateway(
+        timeline=timeline, local_heads={"stable": REMOTE_HEAD}, remote_heads={"stable": REMOTE_HEAD}
+    )
+    checker = build_checker(cache=cache, bus=bus, timeline=timeline, gateway=gateway)
+
+    result = await checker.check(build_model(), run_id="run-1")
+
+    assert result.movements == (
+        RefMovement(ref="stable", infrahub_branch_name="main", previous_head=LOCAL_HEAD, new_head=REMOTE_HEAD),
+    )
+    assert [message.commit for message in bus.messages] == [IMPORTED_COMMIT]
+
+
 async def test_a_cold_cache_remembers_the_imported_commit_when_the_remote_is_still_on_it() -> None:
     """With nothing cached the imported commit is the baseline, so a fresh instance announces nothing."""
     timeline = LockTimeline()
