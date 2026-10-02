@@ -12,7 +12,7 @@ export interface PanZoomProps {
 
 export function PanZoom({ children, className }: PanZoomProps) {
   return (
-    <div className={classNames("relative", className)}>
+    <div className={classNames("relative flex flex-col", className)}>
       <TransformWrapper minScale={0.5} maxScale={8} centerOnInit wheel={{ step: 0.1 }}>
         {({ zoomIn, zoomOut, resetTransform }) => (
           <>
@@ -45,7 +45,10 @@ export function PanZoom({ children, className }: PanZoomProps) {
                 <RotateCcw />
               </Button>
             </div>
-            <TransformComponent wrapperClass="!w-full" contentClass="!w-full">
+            <TransformComponent
+              wrapperClass="!w-full grow"
+              contentClass="!h-full !w-full items-start justify-center"
+            >
               {children}
             </TransformComponent>
           </>

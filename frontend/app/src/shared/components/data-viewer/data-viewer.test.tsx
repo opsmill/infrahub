@@ -19,6 +19,19 @@ describe("DataViewer", () => {
     await expect.element(component.getByRole("button", { name: "Reset zoom" })).toBeVisible();
   });
 
+  test("stretches the svg viewport to the height available to the viewer", async () => {
+    // WHEN
+    const component = await render(
+      <div className="flex h-150 flex-col">
+        <DataViewer data={SVG_CONTENT} contentType="image/svg+xml" />
+      </div>
+    );
+
+    // THEN
+    const viewport = component.container.querySelector(".react-transform-wrapper");
+    await expect.poll(() => viewport?.getBoundingClientRect().height ?? 0).toBeGreaterThan(400);
+  });
+
   test("zooms the svg in when pressing zoom in", async () => {
     // GIVEN
     const component = await render(<DataViewer data={SVG_CONTENT} contentType="image/svg+xml" />);

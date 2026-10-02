@@ -56,8 +56,8 @@ function DataViewerContent({
 
     case "image/svg+xml": {
       return (
-        <PanZoom className="overflow-hidden rounded-lg bg-content">
-          <Svg value={content} draggable={false} className="mx-auto max-h-150 max-w-full" />
+        <PanZoom className="min-h-0 grow overflow-hidden rounded-lg bg-content">
+          <Svg value={content} draggable={false} className="max-h-full max-w-full" />
         </PanZoom>
       );
     }
