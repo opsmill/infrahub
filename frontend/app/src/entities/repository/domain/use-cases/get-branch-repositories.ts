@@ -24,7 +24,8 @@ export type GetBranchRepositories = (
 // The transport throws a bare `Error` carrying the GraphQL errors on `.cause`. Denied only when
 // every one of them is a permission denial, so any other failure still reads as a failure.
 function isPermissionDenied(error: unknown): boolean {
-  const combined = error instanceof CombinedError || !(error instanceof Error) ? error : error.cause;
+  const combined =
+    error instanceof CombinedError || !(error instanceof Error) ? error : error.cause;
   const graphQLErrors = combined instanceof CombinedError ? combined.graphQLErrors : [];
 
   return (

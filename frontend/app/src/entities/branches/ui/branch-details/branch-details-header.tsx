@@ -31,10 +31,7 @@ export function BranchDetailsHeader({ branch }: BranchDetailsHeaderProps) {
         ) : (
           <BranchStatusBadge status={branch.status} className="text-sm" />
         )}
-        <RefreshButton
-          className="ml-auto"
-          queryKeys={REFRESHED_QUERY_KEYS}
-        />
+        <RefreshButton className="ml-auto" queryKeys={REFRESHED_QUERY_KEYS} />
       </HeaderContainer>
       {branch.description && (
         <p className="-mt-1 max-w-prose text-pretty px-3 pb-1 text-sm">{branch.description}</p>
