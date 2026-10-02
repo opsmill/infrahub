@@ -685,6 +685,7 @@ async def generate_request_artifact_definition(
             timeout=transform.timeout.value,
             convert_query_response=convert_query_response,
             context=context,
+            check_stored_file=bool(model.limit),
         )
 
         batch.add(

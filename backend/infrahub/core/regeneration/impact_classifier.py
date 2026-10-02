@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from .models import Widening, WideningReason
 from .predicates import relevant_node_changes
 
 if TYPE_CHECKING:
@@ -15,9 +16,11 @@ if TYPE_CHECKING:
 class EveryTarget:
     """The changed nodes cannot be traced back to specific targets, so every one must be processed.
 
-    Carries no ids because there are none to carry: the affected targets are unknown at this point,
-    which is why the caller has to fall back to its own full set.
+    Carries why, but no ids because there are none to carry: the affected targets are unknown at this
+    point, which is why the caller has to fall back to its own full set.
     """
+
+    widening: Widening
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,23 +89,42 @@ class QueryImpactClassifier:
     depends_on_everything: bool = False
 
     def assess(self, diff_summary: list[NodeDiff]) -> ImpactAssessment:
+<<<<<<< HEAD
+=======
+        changed_node_ids = self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind)
+        if widening := self._widening(diff_summary=diff_summary, changed_node_ids=changed_node_ids):
+            return EveryTarget(widening=widening)
+
+        return ChangedNodes(node_ids=changed_node_ids)
+
+    def _widening(self, *, diff_summary: list[NodeDiff], changed_node_ids: list[str]) -> Widening | None:
+>>>>>>> origin/stable
         if self.depends_on_everything:
             # The read surface cannot be pinned to specific kinds: the change that moves the derived
             # value can land on a peer the read set never names. Widen unconditionally rather than
             # risk leaving the reader stale.
+<<<<<<< HEAD
             return EveryTarget()
+=======
+            return Widening(reason=WideningReason.UNSCOPABLE_DERIVED_READ)
+>>>>>>> origin/stable
 
         if not self.only_has_unique_targets:
             # A changed node cannot be traced back to the targets reading it: the query answers from
             # an unbounded set.
+<<<<<<< HEAD
             has_relevant_change = bool(
                 self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind)
             )
             return EveryTarget() if has_relevant_change else ChangedNodes(node_ids=[])
+=======
+            return Widening(reason=WideningReason.NON_UNIQUE_TARGETS) if changed_node_ids else None
+>>>>>>> origin/stable
 
         root_fields_by_kind = {
             kind: fields for kind, fields in self.readable_fields_by_kind.items() if kind not in self.traversed_kinds
         }
+<<<<<<< HEAD
         member_node_ids = self._changed_node_ids(diff_summary=diff_summary, kinds=root_fields_by_kind)
 
         reached: list[ReachedChange] = []
@@ -123,6 +145,15 @@ class QueryImpactClassifier:
         if reached:
             return RelationshipReachedChanges(direct_member_node_ids=member_node_ids, reached=reached)
         return ChangedNodes(node_ids=member_node_ids)
+=======
+        changed_traversed_ids = set(self._changed_node_ids(diff_summary=diff_summary, kinds=traversed_fields_by_kind))
+        if not changed_traversed_ids:
+            return None
+        changed_kinds = sorted(
+            {node_diff["kind"] for node_diff in diff_summary if node_diff["id"] in changed_traversed_ids}
+        )
+        return Widening(reason=WideningReason.RELATIONSHIP_REACHED_CHANGE, kinds=tuple(changed_kinds))
+>>>>>>> origin/stable
 
     def _changed_node_ids(self, *, diff_summary: list[NodeDiff], kinds: dict[str, set[str]]) -> list[str]:
         return relevant_node_changes(

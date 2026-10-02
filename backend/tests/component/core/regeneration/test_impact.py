@@ -6,8 +6,13 @@ import pytest
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+<<<<<<< HEAD
 from infrahub.core.regeneration.impact import FieldLevelImpactResolver
 from infrahub.core.regeneration.models import TargetSelection
+=======
+from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
+from infrahub.core.regeneration.models import TargetSelection, Widening, WideningReason
+>>>>>>> origin/stable
 from tests.constants import TestKind
 from tests.helpers.diff_summary import node_diff
 from tests.helpers.schema import CAR_SCHEMA, RACK_SCHEMA, load_schema
@@ -166,7 +171,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
                 )
             ],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
 
     async def test_display_label_backing_change_selects_subscriber(
         self,
@@ -195,7 +200,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
             subscriber_kind=SUBSCRIBER_KIND,
             every_target=[dataset["subscriber_id"]],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
 
     async def test_related_node_change_narrows_to_the_owning_member(
         self,
@@ -224,6 +229,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
                 )
             ],
         )
+<<<<<<< HEAD
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
 
     async def test_unread_related_field_change_selects_nothing(
@@ -384,3 +390,9 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
             every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
+=======
+        assert resolved == TargetSelection(
+            ids=[dataset["subscriber_id"]],
+            widening=Widening(reason=WideningReason.RELATIONSHIP_REACHED_CHANGE, kinds=(TestKind.PERSON,)),
+        )
+>>>>>>> origin/stable

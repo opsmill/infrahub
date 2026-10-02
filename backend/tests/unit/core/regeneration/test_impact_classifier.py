@@ -14,7 +14,11 @@ from infrahub.core.regeneration.impact_classifier import (
     ReachedChange,
     RelationshipReachedChanges,
 )
+<<<<<<< HEAD
 from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
+=======
+from infrahub.core.regeneration.models import Widening, WideningReason
+>>>>>>> origin/stable
 from tests.helpers.diff_summary import node_diff
 
 if TYPE_CHECKING:
@@ -28,6 +32,7 @@ BRANCH = "feature/regen"
 TRAVERSED_KINDS = {"TestInterface"}
 READABLE_FIELDS = {"TestDevice": {"name", "interfaces"}, "TestInterface": {"description"}}
 
+<<<<<<< HEAD
 # The interface is reached from the device by traversing the ``interfaces`` relationship, so a change
 # to an interface resolves back to its owning device through this single hop.
 INTERFACE_PATH = ReachedPath(
@@ -55,6 +60,14 @@ IP_PATH = ReachedPath(
         ),
     )
 )
+=======
+NON_UNIQUE_TARGETS = EveryTarget(widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS))
+UNSCOPABLE_DERIVED_READ = EveryTarget(widening=Widening(reason=WideningReason.UNSCOPABLE_DERIVED_READ))
+
+
+def relationship_reached(*kinds: str) -> EveryTarget:
+    return EveryTarget(widening=Widening(reason=WideningReason.RELATIONSHIP_REACHED_CHANGE, kinds=kinds))
+>>>>>>> origin/stable
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -80,7 +93,7 @@ ASSESS_CASES = [
         name="unique_targets_related_change_widens",
         only_has_unique_targets=True,
         diff_summary=[node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"])],
-        expected=EveryTarget(),
+        expected=relationship_reached("TestInterface"),
     ),
     AssessCase(
         name="unique_targets_root_and_related_change_widens",
@@ -89,7 +102,25 @@ ASSESS_CASES = [
             node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["name"]),
             node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"]),
         ],
-        expected=EveryTarget(),
+        expected=relationship_reached("TestInterface"),
+    ),
+    AssessCase(
+        name="unique_targets_related_changes_report_each_changed_kind_once",
+        only_has_unique_targets=True,
+        diff_summary=[
+            node_diff(node_id="ip1", kind="TestIP", branch=BRANCH, field_names=["address"]),
+            node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"]),
+            node_diff(node_id="intf2", kind="TestInterface", branch=BRANCH, field_names=["description"]),
+            node_diff(node_id="vlan1", kind="TestVlan", branch=BRANCH, field_names=["name"]),
+        ],
+        expected=relationship_reached("TestIP", "TestInterface"),
+        traversed_kinds={"TestInterface", "TestIP", "TestVlan"},
+        readable_fields_by_kind={
+            "TestDevice": {"name", "interfaces"},
+            "TestInterface": {"description", "ip_addresses"},
+            "TestIP": {"address"},
+            "TestVlan": {"vlan_id"},
+        },
     ),
     AssessCase(
         name="unique_targets_unread_field_narrows_to_nothing",
@@ -109,7 +140,7 @@ ASSESS_CASES = [
         name="unique_targets_kind_read_at_root_and_through_a_relationship_widens",
         only_has_unique_targets=True,
         diff_summary=[node_diff(node_id="dev2", kind="TestDevice", branch=BRANCH, field_names=["name"])],
-        expected=EveryTarget(),
+        expected=relationship_reached("TestDevice"),
         traversed_kinds={"TestDevice"},
         readable_fields_by_kind={"TestDevice": {"name", "peers"}},
     ),
@@ -125,13 +156,13 @@ ASSESS_CASES = [
         name="without_unique_targets_relevant_change_widens",
         only_has_unique_targets=False,
         diff_summary=[node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["name"])],
-        expected=EveryTarget(),
+        expected=NON_UNIQUE_TARGETS,
     ),
     AssessCase(
         name="without_unique_targets_related_change_widens",
         only_has_unique_targets=False,
         diff_summary=[node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"])],
-        expected=EveryTarget(),
+        expected=NON_UNIQUE_TARGETS,
     ),
     AssessCase(
         name="without_unique_targets_unread_field_selects_nothing",
@@ -231,11 +262,15 @@ ASSESS_CASES = [
         only_has_unique_targets=True,
         diff_summary=[node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["name"])],
         readable_fields_by_kind={"TestDevice": {"name"}, "TestInterface": {"display_label"}},
+<<<<<<< HEAD
         reached_paths_by_kind={"TestInterface": (INTERFACE_PATH,)},
         expected=RelationshipReachedChanges(
             direct_member_node_ids=[],
             reached=[ReachedChange(node_ids=["intf1"], paths=(INTERFACE_PATH,))],
         ),
+=======
+        expected=relationship_reached("TestInterface"),
+>>>>>>> origin/stable
     ),
     # A query that reads a derived value composed from a peer the read set cannot name cannot be
     # narrowed, so any change widens to every target.
@@ -245,7 +280,7 @@ ASSESS_CASES = [
         diff_summary=[node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["name"])],
         readable_fields_by_kind={"TestDevice": {"display_label"}},
         depends_on_everything=True,
-        expected=EveryTarget(),
+        expected=UNSCOPABLE_DERIVED_READ,
     ),
     AssessCase(
         name="depends_on_everything_peer_kind_change_widens",
@@ -253,7 +288,7 @@ ASSESS_CASES = [
         diff_summary=[node_diff(node_id="owner1", kind="TestOwner", branch=BRANCH, field_names=["name"])],
         readable_fields_by_kind={"TestCar": {"display_label"}},
         depends_on_everything=True,
-        expected=EveryTarget(),
+        expected=UNSCOPABLE_DERIVED_READ,
     ),
 ]
 
