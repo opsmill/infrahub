@@ -78,13 +78,21 @@ def test_advanced_remote_is_a_fast_forward() -> None:
     assert result.classification is RefClassification.FAST_FORWARD
 
 
-def test_branch_ahead_of_its_remote_is_not_a_rewrite() -> None:
-    """The reset discards an unpushed commit if this comes out REWRITE."""
+def test_a_remote_rewound_onto_an_ancestor_is_a_rewrite() -> None:
+    """No path records a commit the remote never had, so a graph commit ahead means a rewind."""
     gateway = FakeAncestryGateway(ancestors={(REMOTE, IMPORTED)})
 
     result = classify(gateway, imported=IMPORTED, remote=REMOTE)
 
-    assert result.classification is RefClassification.LOCAL_AHEAD
+    assert result.classification is RefClassification.REWRITE
+
+
+def test_a_rewind_after_a_retarget_is_not_a_rewrite() -> None:
+    gateway = FakeAncestryGateway(ancestors={(REMOTE, IMPORTED)})
+
+    result = classify(gateway, imported=IMPORTED, remote=REMOTE, target_changed=True)
+
+    assert result.classification is RefClassification.RETARGET
 
 
 def test_unrelated_histories_are_a_rewrite() -> None:

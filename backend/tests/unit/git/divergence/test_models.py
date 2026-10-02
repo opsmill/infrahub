@@ -22,7 +22,7 @@ def build(
 
 @pytest.mark.parametrize(
     "classification",
-    [RefClassification.REWRITE, RefClassification.RETARGET, RefClassification.LOCAL_AHEAD],
+    [RefClassification.REWRITE, RefClassification.RETARGET],
 )
 def test_a_lineage_decision_needs_the_commit_it_compared(classification: RefClassification) -> None:
     with pytest.raises(ValueError, match=rf"^{classification} requires both an imported commit and a remote head"):
@@ -31,7 +31,7 @@ def test_a_lineage_decision_needs_the_commit_it_compared(classification: RefClas
 
 @pytest.mark.parametrize(
     "classification",
-    [RefClassification.REWRITE, RefClassification.RETARGET, RefClassification.LOCAL_AHEAD],
+    [RefClassification.REWRITE, RefClassification.RETARGET],
 )
 def test_a_lineage_decision_needs_the_remote_head_it_compared(classification: RefClassification) -> None:
     with pytest.raises(ValueError, match=rf"^{classification} requires both an imported commit and a remote head"):

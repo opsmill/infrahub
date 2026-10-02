@@ -73,9 +73,8 @@ class RemoteDivergenceDetector:
         if self.gateway.is_ancestor(ancestor_commit=imported_commit, descendant_commit=remote_head):
             return RefClassification.FAST_FORWARD
 
-        if self.gateway.is_ancestor(ancestor_commit=remote_head, descendant_commit=imported_commit):
-            return RefClassification.LOCAL_AHEAD
-
+        # Anything else lost the imported commit: either the histories parted, or the remote was
+        # rewound onto an ancestor of it. No path writes a graph commit the remote never had.
         return self._diverged(target_changed=target_changed)
 
     def _diverged(self, target_changed: bool) -> RefClassification:
