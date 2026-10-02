@@ -15,6 +15,8 @@ import textwrap
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -482,8 +484,6 @@ def render_bindings(catalogue: dict[str, Any], adopted: dict[str, str], defined:
         ErrorCatalogueGenerationError: when the render does not parse.
 
     """
-    from jinja2 import Environment, FileSystemLoader, StrictUndefined  # noqa: PLC0415
-
     # autoescape stays off: the output is Python source, not markup, and HTML-escaping it would
     # corrupt every quote and operator in the rendered module.
     environment = Environment(  # noqa: S701
