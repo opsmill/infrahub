@@ -28,8 +28,8 @@ Keep emitting one `NodeMutatedEvent` per changed node, but stamp each with an `o
 (`live` | `merge` | `rebase` | `recompute`, default `live`) surfaced as a Prefect match label
 (`infrahub.node.origin`). The three coalesced families' cross-node trigger builders add a match
 so their per-node flows fire only on `live` events; the coalesced pass becomes their single
-dispatcher for merge and rebase; the Python-transform family joined later, as the Neutral section
-records. The bulk writer stamps `recompute` on its own writes so a chained recompute does not
+dispatcher for merge and rebase; the Python-transform family joined later
+([ADR 0020](0020-python-transform-recompute-targets.md)), as the Neutral section records. The bulk writer stamps `recompute` on its own writes so a chained recompute does not
 re-enter the per-node path either.
 
 Families that are not coalesced in this pass keep receiving every event whatever the origin:
@@ -41,7 +41,7 @@ profile refresh, user action rules, and webhooks.
 
 - Action rules and webhooks keep working across merge and rebase; nothing is silently broken by
   dropping events.
-- The three families are dispatched exactly once, by the coalesced pass, with no
+- Each coalesced family is dispatched exactly once, by the coalesced pass, with no
   double-processing.
 - The label is an explicit, matchable signal. It is cleaner than deriving origin from event
   lineage (`meta.parent` / `meta.ancestors`), which Prefect cannot match on.
@@ -57,8 +57,9 @@ profile refresh, user action rules, and webhooks.
 
 - The origin is stamped at three sites: the merge post-process, the rebase flow, and the bulk
   writer (for `recompute`).
-- The Python family joined after this decision. Its owner trigger is a real same-kind trigger,
-  not a neutralized one, so both of its trigger types carry the match.
+- The Python family joined after this decision
+  ([ADR 0020](0020-python-transform-recompute-targets.md)). Its owner trigger is a real same-kind
+  trigger, not a neutralized one, so both of its trigger types carry the match.
 
 ## Alternatives Considered
 
