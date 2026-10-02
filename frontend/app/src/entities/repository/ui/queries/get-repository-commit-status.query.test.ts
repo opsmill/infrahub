@@ -1,14 +1,21 @@
-import { describe, expect, test } from "vitest";
+import { InfiniteQueryObserver } from "@tanstack/react-query";
+import { afterEach, describe, expect, test, vi } from "vitest";
+
+import { queryClient } from "@/shared/api/rest/client";
 
 import {
   type RepositoryCommitStatus,
   RepositoryGitCondition,
   RepositoryGitUnavailableReason,
 } from "@/entities/repository/domain/model/repository";
+import { getRepositoryCommits } from "@/entities/repository/domain/use-cases/get-repository-commits";
 import {
   getRepositoryCommitStatusQueryOptions,
   REPOSITORY_COMMITS_POLL_INTERVAL_MS,
 } from "@/entities/repository/ui/queries/get-repository-commit-status.query";
+import { getRepositoryCommitsQueryOptions } from "@/entities/repository/ui/queries/get-repository-commits.query";
+
+vi.mock("@/entities/repository/domain/use-cases/get-repository-commits");
 
 const PARAMS = { repositoryId: "repo-1", branchName: "main" };
 
@@ -28,7 +35,19 @@ function unavailableStatus(reason: RepositoryGitUnavailableReason | null): Repos
   };
 }
 
+function observeCommitLog() {
+  vi.mocked(getRepositoryCommits).mockReturnValue(new Promise(() => {}));
+  return new InfiniteQueryObserver(queryClient, getRepositoryCommitsQueryOptions(PARAMS)).subscribe(
+    () => {}
+  );
+}
+
 describe("getRepositoryCommitStatusQueryOptions", () => {
+  afterEach(() => {
+    queryClient.clear();
+    vi.resetAllMocks();
+  });
+
   test("does not refetch on window focus", () => {
     // WHEN
     const { refetchOnWindowFocus } = getRepositoryCommitStatusQueryOptions(PARAMS);
@@ -44,6 +63,33 @@ describe("getRepositoryCommitStatusQueryOptions", () => {
   ])("polls while the status is unavailable with reason %s", (reason) => {
     // WHEN
     const interval = resolveRefetchInterval(unavailableStatus(reason));
+
+    // THEN
+    expect(interval).toBe(REPOSITORY_COMMITS_POLL_INTERVAL_MS);
+  });
+
+  test("leaves polling to the commit log while it is on screen", () => {
+    // GIVEN
+    const unsubscribe = observeCommitLog();
+
+    // WHEN
+    const interval = resolveRefetchInterval(
+      unavailableStatus(RepositoryGitUnavailableReason.NOT_CLONED)
+    );
+
+    // THEN
+    expect(interval).toBe(false);
+    unsubscribe();
+  });
+
+  test("polls again once the commit log leaves the screen", () => {
+    // GIVEN
+    observeCommitLog()();
+
+    // WHEN
+    const interval = resolveRefetchInterval(
+      unavailableStatus(RepositoryGitUnavailableReason.NOT_CLONED)
+    );
 
     // THEN
     expect(interval).toBe(REPOSITORY_COMMITS_POLL_INTERVAL_MS);
