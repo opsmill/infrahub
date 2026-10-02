@@ -1,0 +1,70 @@
+Timestamp: 2026-09-28T12:55:54.229462+00:00
+Environment: Darwin arm64, Python 3.14.5, Node v26.1.0
+STALE_SOURCE_DIR=/tmp; existing separately downloaded hash-verified sources; no network transport.
+
+$ .venv/bin/python -m unittest discover -s utilities/tests -p test_pr_lifecycle.py -v
+test_apply_mode_is_rejected_before_transport (test_pr_lifecycle.TestCliSkeleton.test_apply_mode_is_rejected_before_transport) ... ok
+test_fixture_files_are_valid_json (test_pr_lifecycle.TestCliSkeleton.test_fixture_files_are_valid_json) ... ok
+test_mismatched_server_identity_is_rejected (test_pr_lifecycle.TestCliSkeleton.test_mismatched_server_identity_is_rejected) ... ok
+test_naive_clock_is_rejected_before_transport (test_pr_lifecycle.TestCliSkeleton.test_naive_clock_is_rejected_before_transport) ... ok
+test_observe_default_reports_incomplete_without_writes (test_pr_lifecycle.TestCliSkeleton.test_observe_default_reports_incomplete_without_writes) ... ok
+test_repository_guard_precedes_transport (test_pr_lifecycle.TestCliSkeleton.test_repository_guard_precedes_transport) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.004s
+
+OK
+
+Exit: 0
+
+$ .venv/bin/ruff check utilities/pr_lifecycle.py utilities/tests/test_pr_lifecycle.py utilities/tests/__init__.py
+All checks passed!
+
+Exit: 0
+
+$ .venv/bin/ruff format --check utilities/pr_lifecycle.py utilities/tests/test_pr_lifecycle.py utilities/tests/__init__.py
+3 files already formatted
+
+Exit: 0
+
+$ .venv/bin/ty check utilities/pr_lifecycle.py utilities/tests/test_pr_lifecycle.py
+All checks passed!
+
+Exit: 0
+
+$ /Users/Dimitris/.local/share/mise/installs/node/26.1.0/bin/node utilities/tests/pr_lifecycle_upstream.mjs
+Verifying actions/stale source at 4391f3da665fdf50b6810c1a66712fb9ba21aa93
+PASS 61-day inactive PR exceeds 60-day threshold
+PASS weekly bot comment prevents 60-day stale threshold
+PASS no updates after warning allows closure
+PASS bot reminder blocks closure even if only label events are returned
+PASS bot reminder with an additional event removes stale label
+PASS disabling stale removal still lets bot reminder postpone closure
+PASS human comment cancels warning
+PASS commit/update with non-label event cancels warning
+PASS freshly marked timestamp prevents same-run closure
+9 assertions passed against pinned upstream method bodies; API responses are fixtures, no GitHub writes.
+PASS low-budget first scan persists progress
+PASS second scan advances to previously unprocessed items
+PASS third scan reaches tail
+PASS complete scan resets saved state
+PASS lost cache with sufficient budget covers all items
+PASS failed cache replacement processes same slice first time
+PASS failed cache replacement processes same slice again
+16 total fixture assertions passed. Cache service/token permissions remain unverified locally.
+PASS fresh gate allows stock zero-day closure after bot reminder
+PASS human comment after gate prevents stock closure
+PASS arbitrary recent update does not stop zero-day closer
+PASS future updated timestamp defers closure
+20 assertions passed including gate integration
+PASS full processor closes a currently gated PR
+PASS full processor excludes legacy stale-only PR
+PASS full processor excludes prior-attempt gate
+PASS full processor keep-open label prevents closure
+PASS full processor human comment since gate vetoes closure
+PASS full processor cached ID skips newly eligible gate
+26 assertions passed including full processor gating
+(node:31680) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Exit: 0

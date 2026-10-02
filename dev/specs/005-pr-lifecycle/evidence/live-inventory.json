@@ -1,0 +1,16 @@
+{
+  "collector_commit": "db2685437",
+  "capture_started_at": "2026-09-28T13:08:21.967171+00:00",
+  "capture_completed_by": "2026-09-28T13:24:02.947073+00:00",
+  "inventory_count": 117,
+  "evaluated_count": 117,
+  "human_count": 112,
+  "bot_count": 5,
+  "logical_requests": 1018,
+  "rest_reads": 906,
+  "graphql_queries": 112,
+  "complete": true,
+  "errors": [],
+  "lifecycle_mutations": 0,
+  "note": "One read was interrupted to checkpoint the scan; resume reused the saved responses and fetched only missing paths. Total HTTP attempts include that one interrupted request. Raw API responses remain local and are not committed. Token had 5000 core allowance; hosted GITHUB_TOKEN behavior remains unverified."
+}
