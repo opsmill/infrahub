@@ -14,6 +14,10 @@ interface ObjectDetailsCardProps {
   permission: Permission;
   className?: string;
   excludeRelationships?: string[];
+  title?: string;
+  /** A second line beneath the title, included in the card's accessible name. */
+  caption?: string;
+  testId?: string;
 }
 
 export function ObjectDetailsCard({
@@ -22,14 +26,33 @@ export function ObjectDetailsCard({
   permission,
   className,
   excludeRelationships,
+  title = "Details",
+  caption,
+  testId = "object-details",
 }: ObjectDetailsCardProps) {
+  const id = React.useId();
+  const titleId = `${id}-title`;
+  const captionId = `${id}-caption`;
   const [showExtra, setShowExtra] = React.useState(false);
   const schemaHasExtraFields = hasExtraFields(objectSchema);
 
   return (
-    <Card className={className} data-testid="object-details">
+    <Card
+      className={className}
+      role="region"
+      aria-labelledby={caption ? `${titleId} ${captionId}` : titleId}
+      data-testid={testId}
+    >
       <CardHeader className="flex justify-between">
-        Details
+        <div>
+          <h2 id={titleId}>{title}</h2>
+          {caption && (
+            <p id={captionId} className="font-normal text-foreground-muted text-xs">
+              {caption}
+            </p>
+          )}
+        </div>
+
         {schemaHasExtraFields && (
           <Button
             variant="ghost"

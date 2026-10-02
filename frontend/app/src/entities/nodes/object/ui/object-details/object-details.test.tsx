@@ -77,7 +77,7 @@ describe("ObjectDetails repository kind gate", () => {
 
     expect(component.getByText("Details", { exact: true }).elements()).toHaveLength(1);
     expect(component.getByText("On this branch", { exact: true }).elements()).toHaveLength(0);
-    expect(component.getByRole("region", { name: "Details" }).elements()).toHaveLength(0);
+    expect(component.getByRole("region", { name: "Details" }).elements()).toHaveLength(1);
   });
 
   it("renders the two-card split for the read-write repository kind", async () => {
