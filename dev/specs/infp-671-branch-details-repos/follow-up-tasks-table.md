@@ -29,8 +29,10 @@ Move the three `TaskItems` pages onto `TasksTable`, and improve it once:
    - Branch details: no Branch column (already done).
 2. **Pagination:** IFC-3130 `TablePagination` everywhere, server-side (`limit`, `offset`, `count`).
    Each table keeps its own page parameter, so two tables on one page don't share it.
-3. **Filters on /tasks:** keep the search. Add a **state filter**; the branch page's "N failed" link
-   already relies on one. Consider a workflow filter based on the short labels.
+3. **Filters on /tasks:** keep the search and the existing **state filter** (`TaskFilters` →
+   `TasksFilterForm`'s State dropdown, read from the `state__value` URL filter) through the
+   `TasksTable` migration; the branch page's "N failed" link relies on it. Consider a workflow
+   filter based on the short labels.
 4. **Progress:** show it only for running tasks, inside the State cell, instead of as a column that
    is empty most of the time.
 5. **Related column:** make it stable. It shows the first related node's kind, and the backend's

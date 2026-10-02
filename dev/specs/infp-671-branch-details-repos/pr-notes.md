@@ -53,6 +53,8 @@ Details in `follow-ups.md`:
    `git-repository-import-object` with the repository id at flow start, and
    `sync-git-repo-with-origin` with the branch it imports, instead of relying on
    `build_import_plan`'s tags.
+4. Newest logs first for `InfrahubTask` (a log order argument or a "last N logs" option), so the
+   band can ask for the last few lines instead of up to 10,000.
 
 ## Sign-off request: INFP-670
 
@@ -65,7 +67,7 @@ gate? The default stands until you answer: ship ungated, visibility only.
 
 They need the compose `/remote` directory, and the only local stack belongs to another worktree,
 so they were not run locally. CI runs them in the `shard_branches_repo` shard:
-`uv run pytest tests/e2e/branches/ -m shard_branches_repo`.
+`uv run pytest -c tests/e2e/pytest.ini tests/e2e/branches/ -m shard_branches_repo`.
 
 - `tests/e2e/branches/test_branch_details_repositories.py::TestBranchDetailsRepositoryImportError::test_import_error_band_links_to_the_task_page`
   (new): adds a `CoreRepository` on a throwaway branch from a fixture repo without an

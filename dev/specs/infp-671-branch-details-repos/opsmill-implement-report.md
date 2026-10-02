@@ -45,9 +45,9 @@ All vitest runs are browser mode (chromium, vitest 4.1.10), run from `frontend/a
 | branches/ui/branch-details/branch-details-header.test.tsx | component | `vitest run <file>` | 2026-09-29T18:46:02Z | same | `Tests  6 passed (6)` |
 | repository-error-bands.test.tsx › switches both band colours with the dark theme | component | `vitest run <file>` | 2026-09-29T18:52:44Z | same | `Tests  14 passed (14)` |
 | Review-fix tests (get-branch-repositories-from-api.test.ts, query-option polling tests, out-of-range page tests, denied rule) | unit/component | `vitest run --reporter=verbose <13 files>` | 2026-09-29T19:08:00Z | same | `Tests  103 passed (103)` |
-| tests/e2e/branches/test_branch_details.py (layout, card above Merge, `branch-tasks-card`, Validate row, header copy/refresh) | e2e | `uv run pytest tests/e2e/branches/test_branch_details.py` | deferred — local E2E not supported | needs a dedicated stack | – |
-| tests/e2e/branches/test_branch_details_repositories.py::TestBranchDetailsRepositoryImportError::test_import_error_band_links_to_the_task_page | e2e | `uv run pytest tests/e2e/branches/ -m shard_branches_repo` | deferred — local E2E not supported | needs a dedicated stack | – |
-| tests/e2e/tutorial/tutorials/test_tutorial_1_object_create_update_diff_and_merge.py::…::test_4_view_diff_and_merge_into_main | e2e | `uv run pytest <file>` | deferred — local E2E not supported | needs a dedicated stack | – |
+| tests/e2e/branches/test_branch_details.py (layout, card above Merge, `branch-tasks-card`, Validate row, header copy/refresh) | e2e | `uv run pytest -c tests/e2e/pytest.ini tests/e2e/branches/test_branch_details.py` | deferred — local E2E not supported | needs a dedicated stack | – |
+| tests/e2e/branches/test_branch_details_repositories.py::TestBranchDetailsRepositoryImportError::test_import_error_band_links_to_the_task_page | e2e | `uv run pytest -c tests/e2e/pytest.ini tests/e2e/branches/ -m shard_branches_repo` | deferred — local E2E not supported | needs a dedicated stack | – |
+| tests/e2e/tutorial/tutorials/test_tutorial_1_object_create_update_diff_and_merge.py::…::test_4_view_diff_and_merge_into_main | e2e | `uv run pytest -c tests/e2e/pytest.ini <file>` | deferred — local E2E not supported | needs a dedicated stack | – |
 
 The e2e files pass `py_compile`, `ruff check` and `ruff format --check`.
 

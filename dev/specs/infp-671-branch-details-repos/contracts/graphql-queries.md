@@ -37,17 +37,18 @@ query GetBranchRepositories($limit: Int!) {
 File: `frontend/app/src/entities/repository/api/get-repository-import-task-from-api.ts` (lives in `repository` because the answer is about a repository; it doesn't import from `tasks/api`).
 
 ```graphql
-query GetRepositoryImportTask(
+query GET_REPOSITORY_IMPORT_TASK(
   $branch: String!
   $repositoryId: String!
   $workflows: [String]!
+  $limit: Int!
   $logLimit: Int!
 ) {
   InfrahubTask(
     branch: $branch
     related_node__ids: [$repositoryId]
     workflow: $workflows
-    limit: 1
+    limit: $limit
     log_limit: $logLimit
   ) {
     count
@@ -63,10 +64,10 @@ query GetRepositoryImportTask(
 }
 ```
 
-- Variables: `{ branch, repositoryId, workflows: IMPORT_WORKFLOWS, logLimit: IMPORT_LOG_LIMIT }`.
+- Variables: `{ branch, repositoryId, workflows: IMPORT_WORKFLOWS, limit: 1, logLimit: IMPORT_LOG_LIMIT }` (the use case passes `limit: 1`).
 - Issued only for rendered bands (≤ 3 until "Show all").
 - Query key: `repositoryQueryKeys.importError({ branchName, repositoryId })`. `refetchInterval`: same rule as Q1 (the band receives the flag).
-- Known gap: see research R2 (import-object and periodic sync tagging). A miss yields `not-found`, never an error state.
+- Known gap: see research "R2 verification results" (the worker-bootstrap import inside `git_repositories_sync` isn't findable). A miss yields `not-found`, never an error state.
 
 ## Q3 — Tasks page on a branch
 

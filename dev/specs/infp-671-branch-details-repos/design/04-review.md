@@ -20,7 +20,7 @@ Reviewed: Object layout rev 5 → fixes shipped as **rev 6**
 | Finding | Outcome |
 |---|---|
 | The header lost the branch description that today's page shows under the title. | **Fixed:** the description is shown under the title, as on today's page. |
-| No branch status next to the title (today: `BranchStatusBadge`). | **Fixed:** uses the real `BranchStatusBadge`. It renders nothing for an open branch, as today, and shows Need rebase / Merging etc. |
+| No branch status next to the title (today: `BranchStatusBadge`). | **Fixed:** uses the real `BranchStatusBadge`. It renders nothing for an open branch, as today, and shows "Rebase needed", "Rebase needed (upgrade)", "Deleting" or "Merged"; any other status (`MERGE_FAILED` included) renders nothing. *(Corrected 2026-10-02: this said "Need rebase / Merging", labels the badge doesn't have.)* |
 | "Name" in Details repeats the title. | **Accepted:** the brief keeps today's attribute card unchanged. |
 | Hierarchy: errors (bands) → Merge → tasks. | **No change:** the owner asked for the buttons below the repositories (round 6), and a problem is read before the button that ignores it. |
 

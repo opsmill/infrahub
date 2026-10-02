@@ -11,7 +11,7 @@ One repository as seen from one branch.
 | Field | Type | Source | Notes |
 |---|---|---|---|
 | `id` | `string` | node `id` | |
-| `kind` | `"CoreRepository" \| "CoreReadOnlyRepository"` | `__typename` | |
+| `kind` | `"CoreRepository" \| "CoreReadOnlyRepository"` | `__typename` | any type other than `CoreReadOnlyRepository` is normalised to `CoreRepository`; never `CoreGenericRepository` |
 | `name` | `string` | `name.value`, fallback `display_label`, fallback `id` | |
 | `isReadOnly` | `boolean` | `kind === READONLY_REPOSITORY_KIND` | drives the "Read-only" tag |
 | `commit` | `string \| null` | `commit.value` on the branch | `null` → empty-value placeholder |
@@ -43,7 +43,7 @@ type BranchRepositoriesResult =
   | { status: "denied" };
 ```
 
-- Input: `{ branchName: string; syncWithGit: boolean }`. `syncWithGit === false` → kind `CoreReadOnlyRepository`, else `CoreGenericRepository`.
+- Input: `{ branchName: string; syncWithGit: boolean }`. The **repository list kind** (`BranchRepositoryListKind`, the GraphQL kind queried and the "View all repositories" target) is `CoreReadOnlyRepository` when `syncWithGit === false`, else `CoreGenericRepository`. It is not `BranchRepository.kind`, which is always a concrete kind (table above).
 - `isTruncated = count > repositories.length`.
 - Non-permission GraphQL errors throw (the card's failed state).
 
@@ -58,7 +58,7 @@ type RepositoryImportError =
 ```
 
 - Input: `{ branchName, repositoryId }`.
-- `getLastErrorLine(logs): string | null` (rule, `domain/rules/get-last-error-line.ts`) — last log with `severity` `error` or `critical` (case-insensitive), message verbatim (no trim of inner newlines; trailing whitespace trimmed).
+- `getLastErrorLine(logs): string | null` (rule, `domain/rules/get-last-error-line.ts`) — last log with `severity` `error` or `critical` (case-insensitive), message verbatim (no trim of inner newlines; trailing whitespace trimmed), except Prefect's final-state wrapper `Finished in state <State>('…'[, type=<TYPE>])`, which is unwrapped to the exception it carries (research "R2 verification results").
 - `taskId` is kept in `not-found` when a task exists without an error line, so the band links to its log; when `null`, the band links to the repository (FR-022).
 
 ## TaskListItem (`entities/tasks/domain/model/task-list-item.ts`)
@@ -82,7 +82,7 @@ type TaskListPage = { tasks: TaskListItem[]; count: number };
 
 ### Rules (`entities/tasks/domain/`)
 
-- `getWorkflowLabel(workflow: string | null): string` (`model/workflow-labels.ts`) — map in research R9; `null` → "—"; unknown → the id.
+- `getWorkflowLabel(workflow: string | null): string` (`model/workflow-labels.ts`) — map in research R9; `null` → "—"; unknown → the id humanized (separators to spaces, first letter capitalised: `some_workflow` → "Some workflow").
 - `getTaskRelatedLabel(task, repositoriesById: Map<string, string>, getKindLabel?: (kind) => string): string` (`rules/get-task-related-label.ts`) — research R10. Lives in `tasks` domain and takes the repository names as a plain map, so `tasks` doesn't import `repository`.
 
 ## Pagination state (`shared/utils/table-pagination.ts`)

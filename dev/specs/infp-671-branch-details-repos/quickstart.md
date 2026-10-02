@@ -40,7 +40,7 @@ cd frontend/app && pnpm exec biome ci .
 cd frontend/app && pnpm knip
 cd frontend/app && pnpm exec betterer ci
 cd frontend/app && pnpm test
-uv run pytest tests/e2e/branches/test_branch_details.py   # with the e2e stack up, see dev/guides/frontend/writing-e2e-tests.md
+uv run pytest -c tests/e2e/pytest.ini tests/e2e/branches/test_branch_details.py   # with the e2e stack up, see dev/guides/frontend/writing-e2e-tests.md
 ```
 
 ## R2 verification (import task lookup)

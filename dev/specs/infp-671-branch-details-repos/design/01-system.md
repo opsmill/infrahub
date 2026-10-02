@@ -93,9 +93,9 @@ and `workflows/catalogue.py`.
 |---|---|---|
 | Sync / import | `git_repositories_sync`, `git-repository-add-read-write`, `git-repository-add-read-only`, `git-repository-pull-read-only`, import last commit / import objects | `related_node` = repository ID |
 | Checks | `git-repository-user-checks-definition-trigger`, `git-repository-trigger-user-checks`, `git-repository-trigger-internal-checks`, `git-repository-check-merge-conflict` | `related_node` = repository ID (mostly; confirm per flow) |
-| Generators | `generator-definition-run`, `request-generator-definition-run`, `generator-run`, `run-generator-as-check` | generator definition ID → `GeneratorDefinition.repository`; some are tagged with the branch only (`generators/tasks.py:153`) and can't be placed |
+| Generators | `generator-definition-run`, `request-generator-definition-run`, `generator-run`, `run-generator-as-check` | generator definition ID → `GeneratorDefinition.repository`; some are tagged with the branch only (`add_tags(branches=[branch])` in `generators/tasks.py::run_generator_definition`) and can't be placed |
 | Artifacts | `artifact-definition-generate`, `request_artifact_definitions_generate`, `artifact-generate` | Target node only. Goes in its own **Artifacts row**, not under a repo (per the brief). |
-| Transforms | `transform_render_jinja2_template`, `transform_render_python` | `related_node` = transform ID (`computed_attribute/tasks.py:667`). Probably out of the warning. **Open.** |
+| Transforms | `transform_render_jinja2_template`, `transform_render_python` | Branch only: both flows call `add_branch_tag` (`transformations/tasks.py::transform_python`, `::transform_render_jinja2_template`), so they can't be tied to a repository. Probably out of the warning. **Open.** *(Corrected 2026-10-02: this row said `related_node` = transform ID and cited `computed_attribute/tasks.py:667`, which defines neither flow.)* |
 
 ## Worst-case data the prototype must render
 

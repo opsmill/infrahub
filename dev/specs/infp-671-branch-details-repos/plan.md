@@ -118,7 +118,7 @@ dev/knowledge/frontend/shared-components.md              # + TablePagination row
 
 ### Page and URL ownership
 
-`pages/branches/branch-details/details-tab.tsx` reads `repos_page` and `tasks_page` with `nuqs` (`parseAsInteger.withDefault(1)`), and passes `page`/`onPageChange` into `BranchDetails` → cards. Cards clamp with `clampPage` for display and don't write back an out-of-range page (the URL keeps the user's value; the view shows the nearest valid page). This follows `dev/guidelines/frontend/page-architecture.md` § "Pages own URL sync".
+`pages/branches/branch-details/details-tab.tsx` reads `repos_page` and `tasks_page` with `nuqs` (`parseAsInteger.withDefault(1)`), and passes `page`/`onPageChange` into `BranchDetails` → cards. Cards clamp with `clampPage` for display, and `usePageInRange` writes the clamped page back through `onPageChange` once the total is known, so the URL names the page shown. _(2026-10-02: this note first said the cards don't write back an out-of-range page; the code does. Page handling is due to change in a follow-up restructure.)_ This follows `dev/guidelines/frontend/page-architecture.md` § "Pages own URL sync".
 
 ### Repositories card render tree
 

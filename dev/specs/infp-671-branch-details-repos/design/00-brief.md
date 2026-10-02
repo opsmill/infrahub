@@ -23,6 +23,11 @@ has failed or is still running, a warning names it before the merge goes through
 can't tell, it says so and doesn't show green. Every repository on the branch has a row showing
 its commit, its sync time and the latest run of each workflow, linked to that run's logs.
 
+> **Correction (2026-10-02):** decision #3 below, revised twice on 2026-09-23, supersedes the
+> first sentence: a repository in Import Error **blocks** Merge by default (an explicit "I
+> understand" checkbox overrides it, and the button then reads "Merge anyway"). Only a failed or
+> running generator, a running import, or an unknown state **warns**.
+
 ## Who reaches this page, and what they were doing before
 
 An engineer who pushed changes to a Git repo tracked by Infrahub, or edited data on a branch, and
@@ -50,9 +55,9 @@ Before phase 4 we need a real person to put the prototype in front of.
 **That the frontend can reliably tie a task to a repository.** Git import, sync and merge tasks
 are tagged with the repository ID (`backend/infrahub/git/tasks.py`). Generator runs are tagged
 with the generator definition, the target nodes, or only the branch
-(`backend/infrahub/generators/tasks.py:79,153,202`), so they reach a repo only through
+(`backend/infrahub/generators/tasks.py`: `run_generator`, `run_generator_definition`, `request_generator_definition_run`), so they reach a repo only through
 `GeneratorDefinition.repository` (`backend/infrahub/core/schema/definitions/core/generator.py:87`).
-Artifact tasks are tagged only with the target node (`backend/infrahub/artifacts/tasks.py:14`). If
+Artifact tasks are tagged only with the target node (the `add_tags` call in `backend/infrahub/artifacts/tasks.py::create`). If
 the grouping misses any of these, the warning stays silent on the exact failure from the incident.
 
 **Cheapest test:** seed a branch with one failed generator and one failed artifact task, and check

@@ -4,7 +4,7 @@ Props contracts for the components this feature adds or changes, so IFC-3200 and
 
 ## Link rule (all components below)
 
-Every link to branch-scoped data carries the **page's** branch, not the branch selector's: `constructPath(path, [{ name: QSP.BRANCH, value: branchName }])`, with no `branch` parameter for the default branch (spec FR-053). Applies to the repository name, "Open repository", "Open in Tasks" and the failed-tasks link. `/tasks/<id>` links use plain `constructPath`.
+Every link to branch-scoped data carries the **page's** branch, not the branch selector's (spec FR-053): `constructPath(path, [getBranchQspOverride(branchName, isDefaultBranch)])`. `getBranchQspOverride` (`entities/branches/ui/routing/branch-urls.ts`) sets `{ name: QSP.BRANCH, value: branchName }` on a non-default branch and drops the `branch` parameter on the default branch. Applies to the repository name, "Open repository", "Open in Tasks" and the failed-tasks link. `/tasks/<id>` links use plain `constructPath`.
 
 ## `TablePagination` — `shared/components/table/table-pagination.tsx` (new, shared)
 
@@ -15,10 +15,11 @@ interface TablePaginationProps {
   totalCount: number;
   onPageChange: (page: number) => void;
   className?: string;
+  "aria-label"?: string;   // the nav landmark's name, default "Pagination"
 }
 ```
 
-- Renders `<nav aria-label="Pagination">` with a `role="status"` window text ("Showing X to Y of Z"), previous/next buttons (`aria-label` "Previous page"/"Next page", disabled at the ends) and page buttons (`aria-label="Page N"`, `aria-current="page"` on the current one), ellipses `aria-hidden`.
+- Renders `<nav aria-label={ariaLabel}>` (the branch page passes "Repositories pagination" and "Tasks pagination", so its two pagers are distinct landmarks) with a `role="status"` window text ("Showing X to Y of Z"), previous/next buttons (`aria-label` "Previous page"/"Next page", disabled at the ends) and page buttons (`aria-label="Page N"`, `aria-current="page"` on the current one), ellipses `aria-hidden`. The native buttons get the design system's `focus-visible:` ring (`focusVisibleStyle` from `shared/components/ui/style.ts`).
 - Callers render it only when `getTotalPages(...) > 1`.
 - Same path and props as IFC-3130's component; on merge, IFC-3130's version wins.
 
@@ -38,6 +39,7 @@ interface BranchRepositoriesCardProps {
 - Children (same folder): `branch-repositories-table.tsx` (rows + fixed height + pager), `repository-row.tsx`, `git-state-pill.tsx`, `repository-error-bands.tsx` (list + summary line + toggle), `import-error-band.tsx`, `unreachable-band.tsx`, `branch-repositories-states.tsx` (loading, denied, empty, failed).
 - Siblings that need the repositories (the Tasks card's Related column) read the same query through `BranchDetails`, never through this card's props.
 - Test ids: `branch-repositories-card`, `repository-error-band`.
+- Each band is a `role="status"` (polite) region: bands render as the page loads, so an assertive alert would interrupt on every visit. The row's unreachable icon shows its reason in a `Tooltip` as well as its `aria-label`.
 
 ## `BranchTasksCard` — `entities/tasks/ui/branch-tasks/branch-tasks-card.tsx` (new)
 
@@ -53,7 +55,7 @@ interface BranchTasksCardProps {
 
 - `repositoryNames` is built by `BranchDetails` (which reads `useGetBranchRepositories` with the same params as the card; TanStack dedupes the request), so `tasks/ui` never imports `repository`.
 - Children: the shared `TasksTable` (`entities/tasks/ui/tasks-table/tasks-table.tsx`, columns `title, state, workflow, related, updated`, empty Related label "This branch") and `branch-tasks-states.tsx`. `TasksTable` is meant to replace `TaskItems` on /tasks, the object Tasks tab and the proposed change Tasks tab: see `follow-up-tasks-table.md`.
-- Header: title "Tasks", count badge (after load), "<N> failed" (N > 0), `LinkButton` "Open in Tasks" → `constructPath("/tasks")`.
+- Header: title "Tasks", count badge (after load), "<N> failed" (N > 0), `LinkButton` "Open in Tasks" → `constructPath("/tasks", [getBranchQspOverride(branchName, isDefaultBranch), <branch__value filter>])` per the link rule; the "<N> failed" link adds the `state__value` = `FAILED` filter.
 - Title cell: `Link to={constructPath(\`/tasks/${id}\`)}` filling the cell.
 - Test id: `branch-tasks-card` (replaces `tasks-accordion` in e2e).
 
