@@ -37,6 +37,20 @@ class NumberPoolRangeStore(Protocol):
         user_id: str = SYSTEM_USER_ID,
     ) -> CoreNumberPoolRange: ...
 
+    async def save_range(
+        self,
+        pool_range: CoreNumberPoolRange,
+        start: int,
+        end: int,
+        weight: int | None,
+        at: Timestamp | None = None,
+        user_id: str = SYSTEM_USER_ID,
+    ) -> None: ...
+
+    async def delete_range(
+        self, pool_range: CoreNumberPoolRange, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID
+    ) -> None: ...
+
 
 class NumberPoolRangeStoreFactory(Protocol):
     """Builds a range store writing through the given database."""
