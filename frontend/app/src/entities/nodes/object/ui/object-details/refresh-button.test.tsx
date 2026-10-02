@@ -109,13 +109,26 @@ describe("RefreshButton", () => {
     expect(isWatched(["objects", "CoreRepository"])).toBe(false);
   });
 
-  it("is busy while any of the given keys is fetching", async () => {
+  it("is busy only while a query under one of the given keys is fetching", async () => {
     // GIVEN
-    vi.mocked(useIsFetching).mockReturnValue(1);
+    const fetchingQueryKey = (queryKey: readonly unknown[]) =>
+      vi
+        .mocked(useIsFetching)
+        .mockImplementation((filters) => (filters?.predicate?.({ queryKey } as Query) ? 1 : 0));
 
-    const component = await render(<RefreshButton queryKeys={[["repositories"], ["tasks"]]} />);
+    // WHEN
+    fetchingQueryKey(["objects", "CoreRepository"]);
+    const idle = await render(<RefreshButton queryKeys={[["repositories"], ["tasks"]]} />);
 
     // THEN
-    await expect.element(component.getByRole("button")).toBeDisabled();
+    await expect.element(idle.getByRole("button")).toBeEnabled();
+    await idle.unmount();
+
+    // WHEN
+    fetchingQueryKey(["tasks", "branch-list", "feature"]);
+    const busy = await render(<RefreshButton queryKeys={[["repositories"], ["tasks"]]} />);
+
+    // THEN
+    await expect.element(busy.getByRole("button")).toBeDisabled();
   });
 });

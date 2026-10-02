@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getRepositoryImportTaskFromApi } from "@/entities/repository/api/get-repository-import-task-from-api";
 import { IMPORT_LOG_LIMIT, IMPORT_WORKFLOWS } from "@/entities/repository/domain/model/repository";
@@ -31,6 +31,10 @@ function mockTasks(
 describe("getRepositoryImportError", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("queries the latest import task of the repository on the branch", async () => {
@@ -96,7 +100,5 @@ describe("getRepositoryImportError", () => {
       expect.stringContaining("repository repo-1 on branch feature"),
       error
     );
-
-    consoleError.mockRestore();
   });
 });

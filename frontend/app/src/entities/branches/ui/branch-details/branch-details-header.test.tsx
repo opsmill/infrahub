@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { BranchStatus } from "@/shared/api/graphql/generated/types";
 
@@ -20,6 +20,10 @@ vi.mock("@/entities/nodes/object/ui/object-details/refresh-button", () => ({
 }));
 
 describe("BranchDetailsHeader", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   test("renders name, copy, metadata, status badge and refresh in that order", async () => {
     // GIVEN
     const branch = generateBranch({ name: "feature-x", status: BranchStatus.NEED_REBASE });

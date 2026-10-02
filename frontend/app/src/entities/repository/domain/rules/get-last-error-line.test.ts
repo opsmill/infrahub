@@ -72,6 +72,13 @@ describe("getLastErrorLine", () => {
     ).toBe("Execution was cancelled");
   });
 
+  it("unwraps a final state that names its type", () => {
+    const message =
+      "Finished in state TimedOut('Flow run encountered an exception: TimeoutError: clone took too long', type=FAILED)";
+
+    expect(getLastErrorLine([log("error", message)])).toBe("TimeoutError: clone took too long");
+  });
+
   it("returns the wrapper as is when unwrapping yields nothing", () => {
     const message = "Finished in state Failed('Flow run encountered an exception: ')";
 
