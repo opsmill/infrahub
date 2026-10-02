@@ -19,6 +19,7 @@ from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.branch_action import BranchRebasedEvent
+from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeCreatedEvent, NodeMutatedEvent, NodeUpdatedEvent
 from infrahub.workers.dependencies import (
     build_cache,
@@ -32,6 +33,7 @@ from infrahub.workflows.catalogue import (
     HFID_PROCESS,
     PROFILE_REFRESH_MULTIPLE,
 )
+from infrahub.workflows.constants import WorkflowPriority, WorkflowTag
 from tests.adapters.cache import MemoryCache
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
@@ -283,8 +285,20 @@ async def test_rebase_refreshes_the_profiles_assigned_on_the_branch(
     ):
         await rebase_branch(branch=seeded.branch_name, context=context, send_events=True)
 
-    assert [call["parameters"] for call in workflow_recorder.get_submit_calls_for(PROFILE_REFRESH_MULTIPLE)] == [
-        {"branch_name": seeded.branch_name, "node_ids": [profiled_node.id]}
+    low_event_context = EventContext(
+        branch=EventBranchContext(name=default_branch.name, id=str(default_branch.uuid)),
+        account_id=context.account.account_id,
+        priority=WorkflowPriority.LOW,
+    )
+    assert [
+        (call["parameters"], call["tags"], call["context"])
+        for call in workflow_recorder.get_submit_calls_for(PROFILE_REFRESH_MULTIPLE)
+    ] == [
+        (
+            {"branch_name": seeded.branch_name, "node_ids": [profiled_node.id], "context": low_event_context},
+            [WorkflowTag.BRANCH.render(identifier=seeded.branch_name)],
+            low_event_context,
+        )
     ]
 
 
