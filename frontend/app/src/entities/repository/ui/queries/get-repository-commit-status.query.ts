@@ -1,7 +1,12 @@
-import { queryOptions, replaceEqualDeep, useQuery } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  queryOptions,
+  replaceEqualDeep,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
 
-import { queryClient } from "@/shared/api/rest/client";
 import type { ContextParams, QueryConfig } from "@/shared/api/types";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
@@ -29,18 +34,24 @@ export function keepStatusOverColdAnswer(
     : replaceEqualDeep(previous, next);
 }
 
-// The commit log's first page writes the status, so its poll covers both.
-function isCommitLogActive({ repositoryId, branchName }: RepositoryCommitStatusKeyParams) {
-  const commitLogKey = repositoriesQueryKeys.commits({
-    repositoryId,
-    branchName,
-    limit: REPOSITORY_COMMITS_PAGE_SIZE,
+// An open Commits tab writes the status from its log's first page, so its fetch and poll cover both
+// — unless that log failed before loading anything.
+function hasCommitLogFailedToLoad(
+  client: QueryClient,
+  { repositoryId, branchName }: RepositoryCommitStatusKeyParams
+) {
+  const commitLog = client.getQueryCache().find({
+    queryKey: repositoriesQueryKeys.commits({
+      repositoryId,
+      branchName,
+      limit: REPOSITORY_COMMITS_PAGE_SIZE,
+    }),
   });
-  return queryClient.getQueryCache().find({ queryKey: commitLogKey, type: "active" }) !== undefined;
+  return commitLog?.state.status === "error" && commitLog.state.data === undefined;
 }
 
-function subscribeToQueryCache(onChange: () => void) {
-  return queryClient.getQueryCache().subscribe(onChange);
+function getStatusPollInterval(status: RepositoryCommitStatus | undefined) {
+  return status && shouldPollGitState(status) ? REPOSITORY_COMMITS_POLL_INTERVAL_MS : false;
 }
 
 export function getRepositoryCommitStatusQueryOptions(params: GetRepositoryCommitStatusParams) {
@@ -50,12 +61,7 @@ export function getRepositoryCommitStatusQueryOptions(params: GetRepositoryCommi
       branchName: params.branchName,
     }),
     queryFn: () => getRepositoryCommitStatus(params),
-    refetchInterval: (query) => {
-      const status = query.state.data;
-      return status && shouldPollGitState(status) && !isCommitLogActive(params)
-        ? REPOSITORY_COMMITS_POLL_INTERVAL_MS
-        : false;
-    },
+    refetchInterval: (query) => getStatusPollInterval(query.state.data),
     refetchOnWindowFocus: false,
     // TanStack types structuralSharing's arguments as unknown.
     structuralSharing: (oldData, newData) =>
@@ -70,17 +76,30 @@ export type UseGetRepositoryCommitStatusConfig = QueryConfig<
   typeof getRepositoryCommitStatusQueryOptions
 >;
 
+export interface UseGetRepositoryCommitStatusParams
+  extends Omit<GetRepositoryCommitStatusParams, keyof ContextParams> {
+  isCommitLogOpen: boolean;
+}
+
 export function useGetRepositoryCommitStatus(
-  params: Omit<GetRepositoryCommitStatusParams, keyof ContextParams>,
+  { repositoryId, isCommitLogOpen }: UseGetRepositoryCommitStatusParams,
   config: UseGetRepositoryCommitStatusConfig = {}
 ) {
   const { currentBranch } = useCurrentBranch();
-  const keyParams = { repositoryId: params.repositoryId, branchName: currentBranch.name };
-  // An observer re-reads refetchInterval only on render or on its own query's updates, so leaving the Commits tab must re-render it.
-  useSyncExternalStore(subscribeToQueryCache, () => isCommitLogActive(keyParams));
+  const client = useQueryClient();
+  const keyParams = { repositoryId, branchName: currentBranch.name };
+  // An observer re-reads its options only on render or on its own query's updates, so a change in the commit log must re-render it.
+  const hasLogFailed = useSyncExternalStore(
+    (onChange) => client.getQueryCache().subscribe(onChange),
+    () => hasCommitLogFailedToLoad(client, keyParams)
+  );
+  const isFedByCommitLog = isCommitLogOpen && !hasLogFailed;
 
   return useQuery({
-    ...getRepositoryCommitStatusQueryOptions({ ...params, branchName: currentBranch.name }),
+    ...getRepositoryCommitStatusQueryOptions(keyParams),
+    enabled: !isFedByCommitLog,
+    refetchInterval: (query) =>
+      isFedByCommitLog ? false : getStatusPollInterval(query.state.data),
     ...config,
   });
 }

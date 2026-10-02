@@ -1,6 +1,8 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+import { queryClient as appQueryClient } from "@/shared/api/rest/client";
+
 import { getRepositoryCommitStatusFromApi } from "@/entities/repository/api/get-repository-commit-status-from-api";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
 import { getRepositoryCommitsQueryOptions } from "@/entities/repository/ui/queries/get-repository-commits.query";
@@ -13,6 +15,7 @@ import {
   generateNotClonedCommitsResponse,
   type RepositoryCommitsWire,
 } from "../../../../tests/fake/repository-commit";
+import { RepositoryCommitsManager } from "./repository-commits-manager";
 import { RepositoryCommitsTab } from "./repository-commits-tab";
 
 vi.mock("@/entities/repository/api/get-repository-commit-status-from-api");
@@ -54,9 +57,24 @@ const renderTab = () =>
     </>
   );
 
+const COMMITS_TAB_PATH = "/objects/CoreRepository/repo-1/repository_commits";
+
+const renderTabWithCommitLog = () => {
+  window.history.pushState({}, "", COMMITS_TAB_PATH);
+  return render(
+    <>
+      <CaptureQueryClient />
+      <RepositoryCommitsTab objectKind="CoreRepository" objectId="repo-1" />
+      <RepositoryCommitsManager repositoryId="repo-1" repositoryLocation="/remote/repo" />
+    </>
+  );
+};
+
 describe("RepositoryCommitsTab", () => {
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.resetAllMocks();
+    window.history.pushState({}, "", "/");
   });
 
   test("shows the pending-import count when the branch is behind", async () => {
@@ -117,6 +135,55 @@ describe("RepositoryCommitsTab", () => {
         branchName: generateBranch().name,
       })
     );
+
+    // THEN
+    await expect
+      .element(component.getByRole("link", { name: "Commits 2 pending import" }))
+      .toBeVisible();
+    expect(apiMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("reads the status from the commit log while it is on screen", async () => {
+    // GIVEN
+    commitsApiMock.mockResolvedValue(commitsApiResult(generateBehindCommitsResponse()));
+
+    // WHEN
+    const component = await renderTabWithCommitLog();
+
+    // THEN
+    await expect
+      .element(component.getByRole("link", { name: "Commits 2 pending import" }))
+      .toBeVisible();
+    expect(apiMock).not.toHaveBeenCalled();
+  });
+
+  test("refreshes the commit log without a separate status read", async () => {
+    // GIVEN
+    commitsApiMock.mockResolvedValue(commitsApiResult(generateBehindCommitsResponse()));
+    const component = await renderTabWithCommitLog();
+    await expect
+      .element(component.getByRole("link", { name: "Commits 2 pending import" }))
+      .toBeVisible();
+
+    vi.spyOn(appQueryClient, "invalidateQueries").mockImplementation((filters) =>
+      queryClient.invalidateQueries(filters)
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Refresh data" }).click();
+
+    // THEN
+    await expect.poll(() => commitsApiMock.mock.calls.length).toBe(2);
+    expect(apiMock).not.toHaveBeenCalled();
+  });
+
+  test("reads the status itself when the commit log failed to load", async () => {
+    // GIVEN
+    commitsApiMock.mockRejectedValue(new Error("No worker answered"));
+    apiMock.mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+
+    // WHEN
+    const component = await renderTabWithCommitLog();
 
     // THEN
     await expect

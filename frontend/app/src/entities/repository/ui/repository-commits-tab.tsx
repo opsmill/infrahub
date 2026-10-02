@@ -1,4 +1,5 @@
 import { Spinner } from "@infrahub/ui";
+import { useMatch } from "react-router";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
@@ -14,14 +15,19 @@ export interface RepositoryCommitsTabProps {
 }
 
 export function RepositoryCommitsTab({ objectKind, objectId }: RepositoryCommitsTabProps) {
-  const { isPending, data: status } = useGetRepositoryCommitStatus({ repositoryId: objectId });
+  const tabUrl = getObjectDetailsUrl(objectKind, objectId, undefined, REPOSITORY_COMMITS_TAB);
+  const isCommitLogOpen = !!useMatch({
+    path: new URL(tabUrl, window.location.origin).pathname,
+    end: true,
+  });
+  const { isPending, data: status } = useGetRepositoryCommitStatus({
+    repositoryId: objectId,
+    isCommitLogOpen,
+  });
   const pendingImportCount = status ? getPendingImportCount(status) : null;
 
   return (
-    <LinkTab
-      to={getObjectDetailsUrl(objectKind, objectId, undefined, REPOSITORY_COMMITS_TAB)}
-      scrollIntoViewOnActive
-    >
+    <LinkTab to={tabUrl} scrollIntoViewOnActive>
       Commits
       {isPending ? (
         <Spinner />
