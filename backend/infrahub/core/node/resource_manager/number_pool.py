@@ -4,16 +4,10 @@ from typing import TYPE_CHECKING
 
 from infrahub import lock
 from infrahub.core import registry
-from infrahub.core.query.resource_manager import (
-    NumberPoolGetFree,
-    NumberPoolGetReserved,
-    NumberPoolGetTaken,
-    NumberPoolGetUsed,
-    NumberPoolSetReserved,
-    PoolRecordProvenance,
-)
+from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.exceptions import PoolExhaustedError
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 
 from .. import Node
 from ..lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
@@ -40,67 +34,6 @@ class CoreNumberPool(Node):
 
         return len(attribute.parameters.get_excluded_single_values()) + sum_excluded_values
 
-    async def get_used(
-        self,
-        db: InfrahubDatabase,
-        branch: Branch,
-    ) -> list[int]:
-        """Returns a list of used numbers in the pool."""
-        query = await NumberPoolGetUsed.init(db=db, branch=branch, pool=self, branch_agnostic=True)
-        await query.execute(db=db)
-        used = [result.value for result in query.iter_results()]
-        return [item for item in used if item is not None]
-
-    async def get_free(
-        self, db: InfrahubDatabase, branch: Branch, min_value: int | None = None, max_value: int | None = None
-    ) -> int | None:
-        """Returns the next free number in the pool.
-
-        Args:
-            db: Database connection.
-            branch: Branch to query.
-            min_value: Minimum value to start searching from.
-            max_value: Maximum value to search up to.
-
-        Returns:
-            The next free number, or None if no free numbers are available.
-
-        """
-        query = await NumberPoolGetFree.init(
-            db=db, branch=branch, pool=self, branch_agnostic=True, min_value=min_value, max_value=max_value
-        )
-        await query.execute(db=db)
-
-        return query.get_result_value()
-
-    async def get_taken(
-        self, db: InfrahubDatabase, branch: Branch, min_value: int | None = None, max_value: int | None = None
-    ) -> set[int]:
-        """Values already present on the target kind for the pool's attribute, within range."""
-        query = await NumberPoolGetTaken.init(db=db, branch=branch, pool=self, min_value=min_value, max_value=max_value)
-        await query.execute(db=db)
-
-        return query.get_taken_values()
-
-    async def reserve(
-        self,
-        db: InfrahubDatabase,
-        identifier: str,
-        attribute_id: str,
-        provenance: PoolRecordProvenance,
-        at: Timestamp | None = None,
-    ) -> None:
-        """Record that this pool accounts for the attribute, whatever value it holds."""
-        query = await NumberPoolSetReserved.init(
-            db=db,
-            pool_id=self.get_id(),
-            identifier=identifier,
-            attribute_id=attribute_id,
-            provenance=provenance,
-            at=at,
-        )
-        await query.execute(db=db)
-
     async def get_resource(
         self,
         db: InfrahubDatabase,
@@ -110,14 +43,13 @@ class CoreNumberPool(Node):
         attribute_id: str | None = None,
         at: Timestamp | None = None,
     ) -> int:
+        repository = NumberPoolRepository(db=db)
         async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
             # If the attribute already exists, try to get its pool reservation
             if attribute_id is not None:
-                query_get = await NumberPoolGetReserved.init(
-                    db=db, branch=branch, pool_id=self.id, identifier=identifier
+                reservation = await repository.get_reservation(
+                    pool_id=self.get_id(), branch=branch, identifier=identifier
                 )
-                await query_get.execute(db=db)
-                reservation = query_get.get_reservation()
                 if reservation is not None:
                     return reservation
 
@@ -125,8 +57,8 @@ class CoreNumberPool(Node):
             number = await self.get_next(db=db, branch=branch, attribute=attribute)
             if attribute_id is not None:
                 # Cannot reserve without an Attribute to link
-                await self.reserve(
-                    db=db,
+                await repository.reserve(
+                    pool_id=self.get_id(),
                     identifier=identifier,
                     attribute_id=attribute_id,
                     provenance=PoolRecordProvenance.ALLOCATED,
@@ -162,6 +94,9 @@ class CoreNumberPool(Node):
         # Compute effective range by combining pool range with min/max constraints
         pool_start = self.start_range.value  # type: ignore[attr-defined]
         pool_end = self.end_range.value  # type: ignore[attr-defined]
+        # A pool holding no range or several ranges carries no shorthand bounds to allocate between.
+        if pool_start is None or pool_end is None:
+            raise PoolExhaustedError("There are no more values available in this pool.")
 
         effective_start = pool_start
         effective_end = pool_end
@@ -178,8 +113,8 @@ class CoreNumberPool(Node):
 
         # Only a globally unique attribute rejects a duplicate, so skip existing values only then.
         if attribute.unique:
-            excluded_values |= await self.get_taken(
-                db=db, branch=branch, min_value=effective_start, max_value=effective_end
+            excluded_values |= await NumberPoolRepository(db=db).get_taken(
+                pool=self, branch=branch, min_value=effective_start, max_value=effective_end
             )
 
         def skip_excluded(value: int) -> int | None:
@@ -217,7 +152,9 @@ class CoreNumberPool(Node):
 
         # Re-run the query until we find a non-excluded value or exhaust the pool
         while True:
-            candidate = await self.get_free(db=db, branch=branch, min_value=min_value, max_value=effective_end)
+            candidate = await NumberPoolRepository(db=db).get_free(
+                pool=self, branch=branch, min_value=min_value, max_value=effective_end
+            )
             if candidate is None:
                 raise PoolExhaustedError("There are no more values available in this pool.")
 
