@@ -2,6 +2,8 @@
 title: Production deployment
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 import ReferenceLink from "../../../../src/components/Card";
 import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
 
@@ -73,6 +75,160 @@ For high availability deployments on Kubernetes, use the HA manifest which inclu
 :::success
 Navigate to `https://your-server-address` in your browser. You should see the Infrahub login page.
 :::
+
+### Production values for Helm
+
+A production deployment with Helm needs:
+
+- Data persistence for the Neo4j database and the task manager PostgreSQL database
+- Multiple replicas of the Infrahub API server and task workers, spread across zones with the `affinity` setting
+- S3 storage for the Infrahub API server, which is required when it runs more than one replica
+
+The dependencies bundled with the chart (Neo4j, PostgreSQL, RabbitMQ, Redis) are intended for non-production environments. In the example below, the bundled Neo4j and PostgreSQL run with persistent volumes. To remove them as single points of failure, run the dependencies outside the chart, as in the [high availability examples](./high-availability.mdx).
+
+<Tabs groupId="edition" queryString>
+<TabItem value="community" label="Community" default>
+
+```yaml
+infrahubServer:
+  replicas: 3
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: service
+              operator: In
+              values:
+              - infrahub-server
+          topologyKey: topology.kubernetes.io/zone
+  persistence:
+    enabled: false
+  ingress:
+    enabled: true
+  infrahubServer:
+    env:
+      INFRAHUB_ALLOW_ANONYMOUS_ACCESS: "false"
+      INFRAHUB_CACHE_PORT: 6379
+      INFRAHUB_DB_TYPE: neo4j
+      INFRAHUB_LOG_LEVEL: INFO
+      INFRAHUB_PRODUCTION: "true"
+      INFRAHUB_INITIAL_ADMIN_TOKEN: <generate-uuid>
+      INFRAHUB_SECURITY_SECRET_KEY: <strong-random-string-at-least-32-chars>
+      INFRAHUB_STORAGE_DRIVER: s3
+      AWS_ACCESS_KEY_ID: xxxx
+      AWS_SECRET_ACCESS_KEY: xxxx
+      AWS_S3_BUCKET_NAME: infrahub-data
+      AWS_S3_ENDPOINT_URL: https://s3
+
+infrahubTaskWorker:
+  replicas: 3
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: service
+              operator: In
+              values:
+              - infrahub-task-worker
+          topologyKey: topology.kubernetes.io/zone
+
+neo4j:
+  services:
+    admin:
+      enabled: true
+  volumes:
+    data:
+      mode: dynamic
+      dynamic:
+        storageClassName: premium-rwo
+        requests:
+          storage: 100Gi
+
+prefect-server:
+  postgresql:
+    primary:
+      persistence:
+        enabled: true
+        storageClass: premium-rwo
+        size: 100Gi
+```
+
+</TabItem>
+<TabItem value="enterprise" label="Enterprise">
+
+```yaml
+infrahub:
+  infrahubServer:
+    replicas: 3
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: service
+                operator: In
+                values:
+                - infrahub-server
+            topologyKey: topology.kubernetes.io/zone
+    persistence:
+      enabled: false
+    ingress:
+      enabled: true
+    infrahubServer:
+      env:
+        INFRAHUB_ALLOW_ANONYMOUS_ACCESS: "false"
+        INFRAHUB_CACHE_PORT: 6379
+        INFRAHUB_DB_TYPE: neo4j
+        INFRAHUB_LOG_LEVEL: INFO
+        INFRAHUB_PRODUCTION: "true"
+        INFRAHUB_INITIAL_ADMIN_TOKEN: <generate-uuid>
+        INFRAHUB_SECURITY_SECRET_KEY: <strong-random-string-at-least-32-chars>
+        INFRAHUB_STORAGE_DRIVER: s3
+        AWS_ACCESS_KEY_ID: xxxx
+        AWS_SECRET_ACCESS_KEY: xxxx
+        AWS_S3_BUCKET_NAME: infrahub-data
+        AWS_S3_ENDPOINT_URL: https://s3
+
+  infrahubTaskWorker:
+    replicas: 3
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: service
+                operator: In
+                values:
+                - infrahub-task-worker
+            topologyKey: topology.kubernetes.io/zone
+
+  neo4j:
+    services:
+      admin:
+        enabled: true
+    volumes:
+      data:
+        mode: dynamic
+        dynamic:
+          storageClassName: premium-rwo
+          requests:
+            storage: 100Gi
+
+  prefect-server:
+    postgresql:
+      primary:
+        persistence:
+          enabled: true
+          storageClass: premium-rwo
+          size: 100Gi
+```
+
+</TabItem>
+</Tabs>
+
+Replace the placeholder values with your own. See the [configuration reference](/reference/configuration) for all available environment variables, and [Install Infrahub with Helm](../install/helm.mdx) for the chart versions and installation commands.
 
 ## Step 3: Configure SSO (recommended)
 

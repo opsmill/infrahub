@@ -386,8 +386,8 @@ const sidebars: SidebarsConfig = {
               label: 'Installation',
               link: { type: 'doc', id: 'deploy-manage/install-configure/install/overview' },
               items: [
-                { type: 'doc', id: 'deploy-manage/install-configure/install/community', label: 'Community' },
-                { type: 'doc', id: 'deploy-manage/install-configure/install/enterprise', label: 'Enterprise' },
+                { type: 'doc', id: 'deploy-manage/install-configure/install/docker-compose', label: 'Docker Compose' },
+                { type: 'doc', id: 'deploy-manage/install-configure/install/helm', label: 'Helm' },
                 { type: 'doc', id: 'deploy-manage/install-configure/install/observability-stack', label: 'Observability stack' },
               ],
             },

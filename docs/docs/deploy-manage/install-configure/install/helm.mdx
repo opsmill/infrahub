@@ -1,0 +1,248 @@
+---
+title: Install Infrahub with Helm
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import ReferenceLink from "../../../../src/components/Card";
+import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
+
+# Install Infrahub with Helm
+
+OpsMill publishes two Helm charts for installing Infrahub on Kubernetes: `infrahub` for Infrahub Community and `infrahub-enterprise` for Infrahub Enterprise. The Enterprise chart includes the Community chart as a dependency, so most settings in an Enterprise values file are nested under the `infrahub` top-level key.
+
+Besides the Infrahub components, both charts include Neo4j, PostgreSQL for the task manager, Redis, and RabbitMQ as bundled dependencies, intended for evaluation and lab environments. For production, see [Prepare for production](#prepare-for-production).
+
+<Tabs groupId="edition" queryString>
+<TabItem value="community" label="Community" default>
+
+<ReferenceLink title="Infrahub Helm Chart" url="https://github.com/opsmill/infrahub-helm/tree/stable/charts/infrahub" openInNewTab />
+<ReferenceLink title="ArtifactHub" url="https://artifacthub.io/packages/helm/infrahub/infrahub" openInNewTab />
+
+</TabItem>
+<TabItem value="enterprise" label="Enterprise">
+
+<ReferenceLink title="Infrahub Enterprise Helm Chart" url="https://github.com/opsmill/infrahub-helm/tree/stable/charts/infrahub-enterprise" openInNewTab />
+<ReferenceLink title="ArtifactHub" url="https://artifacthub.io/packages/helm/infrahub-enterprise/infrahub-enterprise" openInNewTab />
+
+</TabItem>
+</Tabs>
+
+## Prerequisites
+
+- A Kubernetes cluster
+- [Helm](https://helm.sh/docs/intro/install/) installed on your system
+- A storage class that can provision persistent volumes, to enable storage persistence
+
+## Choose a chart
+
+Install Infrahub Community from the `infrahub` chart, and Infrahub Enterprise from the `infrahub-enterprise` chart at either of two kinds of version:
+
+- A base version, such as `4.19.3`. You provide the replica counts and resource allocations in your values file.
+- A sizing preset version, such as `4.19.3-medium`. It includes the replica counts and resource allocations of a sizing plan for each component.
+
+### Enterprise sizing presets <EnterpriseBadge />
+
+Starting with version 4.0.0 of the Enterprise chart, each release is also published with a sizing preset suffix:
+
+| Preset      | Chart version example | Required memory |
+|-------------|-----------------------|-----------------|
+| small       | 4.19.3-small          | 16 GB           |
+| medium      | 4.19.3-medium         | 32 GB           |
+| medium-data | 4.19.3-medium-data    | 32 GB           |
+| large       | 4.19.3-large          | 64 GB           |
+| large-data  | 4.19.3-large-data     | 64 GB           |
+
+You can review the configuration values for each sizing preset here:
+
+<ReferenceLink title="Small size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.small.yaml" openInNewTab />
+<ReferenceLink title="Medium size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium.yaml" openInNewTab />
+<ReferenceLink title="Medium (data) size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium-data.yaml" openInNewTab />
+<ReferenceLink title="Large size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large.yaml" openInNewTab />
+<ReferenceLink title="Large (data) size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large-data.yaml" openInNewTab />
+
+## Step 1: Create a values file
+
+Create a `values.yml` file for the settings of your environment. For the environment variables Infrahub reads, see the [configuration reference](/reference/configuration).
+
+### Enable storage persistence
+
+By default, the bundled components (Neo4j, the task manager PostgreSQL database, RabbitMQ, Redis) store their data in `emptyDir` volumes. `emptyDir` volumes make deployments quicker and reduce the requirements of test installations, but they are deleted with their pod: if Kubernetes reschedules a pod, its data is lost. Kubernetes can reschedule a pod at any time, for node maintenance, under resource pressure, or during a cluster update.
+
+For long-running tests and lab environments, enable storage persistence for the Neo4j database and the task manager PostgreSQL database at minimum. The PostgreSQL database stores task execution history, logs, and workflow state. Persist Redis and RabbitMQ as well where possible. If the environment does not need Kubernetes, use [Docker Compose](./docker-compose.mdx) instead, which behaves more predictably for non-production environments.
+
+Add the following to your `values.yml` file to store the data of the bundled components on persistent volumes provisioned from the default storage class of your cluster. The `neo4j` and `prefect-server` sections are the minimum; the `redis` and `rabbitmq` sections are optional but recommended.
+
+<Tabs groupId="edition" queryString>
+<TabItem value="community" label="Community" default>
+
+```yaml
+neo4j:
+  volumes:
+    data:
+      mode: defaultStorageClass
+      defaultStorageClass:
+        requests:
+          storage: 20Gi
+
+prefect-server:
+  postgresql:
+    primary:
+      persistence:
+        enabled: true
+        size: 20Gi
+
+redis:
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+rabbitmq:
+  persistence:
+    enabled: true
+    size: 8Gi
+```
+
+</TabItem>
+<TabItem value="enterprise" label="Enterprise">
+
+```yaml
+infrahub:
+  neo4j:
+    volumes:
+      data:
+        mode: defaultStorageClass
+        defaultStorageClass:
+          requests:
+            storage: 20Gi
+
+  prefect-server:
+    postgresql:
+      primary:
+        persistence:
+          enabled: true
+          size: 20Gi
+
+  redis:
+    master:
+      persistence:
+        enabled: true
+        size: 8Gi
+
+  rabbitmq:
+    persistence:
+      enabled: true
+      size: 8Gi
+```
+
+</TabItem>
+</Tabs>
+
+To use a storage class other than the cluster default, add `storageClass: <name>` to the `persistence` sections of PostgreSQL, Redis, and RabbitMQ, and set Neo4j to `mode: dynamic` with a `dynamic.storageClassName`, as in the [production values example](../production-deployment/overview.mdx#production-values-for-helm). See [Task manager database (PostgreSQL) storage](../hardware-requirements.mdx#task-manager-database-postgresql-storage) to size the PostgreSQL volume.
+
+### Set the Redis host for a sizing preset <EnterpriseBadge />
+
+When you install a sizing preset, also configure the Redis host for the Prefect background services:
+
+```yaml
+infrahub:
+  prefect-server:
+    backgroundServices:
+      messaging:
+        redis:
+          host: "infrahub-cache-master"
+```
+
+The `host` value must match your Redis service name. With the bundled Redis, the service name is `infrahub-cache-master`. The base chart (for example, `4.19.3`) does not require this setting.
+
+## Step 2: Install the chart
+
+<Tabs groupId="edition" queryString>
+<TabItem value="community" label="Community" default>
+
+Install the chart from the OpsMill registry:
+
+```bash
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub
+```
+
+</TabItem>
+<TabItem value="enterprise" label="Enterprise">
+
+Install a sizing preset from the OpsMill registry (recommended for production):
+
+```bash
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.19.3-medium
+```
+
+Or install the base chart and provide your own sizing configuration:
+
+```bash
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.19.3
+```
+
+</TabItem>
+</Tabs>
+
+To install from a local copy of the chart, pass its path instead of the registry URL:
+
+```bash
+helm install infrahub -f values.yml path/to/chart
+```
+
+## Step 3: Verify the installation
+
+:::success
+
+Check that all pods are running in the namespace you installed the release in:
+
+```bash
+kubectl get pods
+```
+
+:::
+
+## Upgrade from chart versions before 4.0.0 <EnterpriseBadge />
+
+If you are upgrading from an Enterprise chart version earlier than 4.0.0, update your `values.yml` file:
+
+1. **Remove old configuration preset values:** Delete any environment variables and settings that were previously copied from sizing presets (for example, `INFRAHUB_CACHE_ADDRESS`, `PREFECT_REDIS_MESSAGING_HOST`, replica counts, resource limits). The sizing presets set these values.
+
+2. **Add the Redis host configuration:** Add the following to your `values.yml` file:
+
+```yaml
+infrahub:
+  prefect-server:
+    backgroundServices:
+      messaging:
+        redis:
+          host: "infrahub-cache-master" # Use the value previously set in INFRAHUB_CACHE_ADDRESS or PREFECT_REDIS_MESSAGING_HOST
+```
+
+## Prepare for production
+
+The chart defaults and the bundled dependencies are intended for evaluation and lab environments. A production deployment also needs data persistence for both databases, multiple replicas of the Infrahub API server and task workers, and S3 storage for the API server. For the requirements and an example values file, see [Production deployment](../production-deployment/overview.mdx#production-values-for-helm). To run every dependency redundantly, see [High availability](../production-deployment/high-availability.mdx).
+
+## Observability (optional)
+
+To deploy the observability stack (Grafana, Prometheus, Loki, Tempo, Alloy) on Kubernetes, enable it on this release or install the `infrahub-observability` Helm chart alongside it. See [Observability stack](./observability-stack.mdx).
+
+## Load a schema
+
+Infrahub ships with a minimal built-in schema. After installation, load a domain schema to model your infrastructure.
+
+:::tip Use the Marketplace for pre-built schemas
+
+The [Infrahub Marketplace](https://marketplace.infrahub.app) hosts ready-to-use schemas for common domains such as DCIM, IPAM, locations, and routing.
+Fetch a schema with `infrahubctl marketplace get infrahub/dcim`, then load it with `infrahubctl schema load schemas/dcim.yml`.
+See [Infrahub Marketplace](../../../schema/marketplace/) for the complete workflow.
+
+:::
+
+## Related resources
+
+- [Install Infrahub with Docker Compose](./docker-compose.mdx) — Run Infrahub on a single host instead of a Kubernetes cluster
+- [Upgrade Infrahub](../../maintain-upgrade/upgrade/overview.mdx) — Upgrade a Helm release to a new Infrahub version
+- [Database backup and restore](../../maintain-upgrade/database-backup/backup-and-restore) — Back up the Neo4j and task manager databases before an upgrade
+- [High availability](../production-deployment/high-availability.mdx) — Deploy Infrahub without single points of failure
