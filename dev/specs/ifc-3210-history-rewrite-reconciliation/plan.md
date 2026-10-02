@@ -170,7 +170,6 @@ worktree that exists nowhere else.
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| **PR #10542 (IFC-3105) rewrites `git/base.py`.** | A rebase conflict in `pull` and in the error classifier, the two places slice D and slice A touch. | Patrick owns both branches. Agree the merge order before slice D starts. #10542 removes the trunk fallback this epic would otherwise inherit, so landing it first is the better order. |
 | **The suppression marker is lost.** | A deliberate re-target is recorded as a rewrite, the count goes one too high, **and the trunk signal fires**, so whatever a customer has wired to that webhook receives a security-remediation notice for an ordinary configuration change. | Accepted and documented. The reconciliation is identical either way. A test covers the marker being present; a second test covers it being absent, and asserts the record is written, so the behaviour is stated rather than assumed. |
 | **The widened broadcast increases lock contention.** | Slower merges and syncs under load. | One coalesced message per repository per cycle, one lock hold, one fetch. A unit test asserts the fan-out over N pairs happens inside one acquisition. |
 | **PR #10669 changes the read-only attachment point.** | Slice G attaches in one of two places. | Both attachment points are named in `contracts/internal-interfaces.md` section 7. The record and the precondition are identical either way. |

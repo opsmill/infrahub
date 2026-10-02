@@ -31,7 +31,6 @@ its own.
 |---|---|---|
 | **Schema and GraphQL sign-off** ("Ask First" under `AGENTS.md`) | Phase 6 | A maintainer |
 | **The FR-014 consumer confirmed** | Phase 7 | Patrick Ogenstad |
-| **Merge order agreed against PR #10542** | Phase 5 | Patrick Ogenstad |
 | **Whether to wait for PR #10669 to reach `develop`** | Phase 8, and only which file it attaches to | Patrick Ogenstad |
 
 ---
@@ -293,8 +292,10 @@ emits no signal.
 
 **Maps to**: FR-005, FR-007, SC-004.
 
-> **Check the merge order against PR #10542**, which rewrites `backend/infrahub/git/base.py`
-> heavily. Landing #10542 first removes the trunk fallback this phase would otherwise inherit.
+> **PR #10542 landed first**, so this phase builds on its `backend/infrahub/git/base.py`. It
+> removed `default_branch` and added `_get_mapped_remote_branch`, `_get_mapped_target_branch` and
+> `_resolve_worktree_identifier`, and the trunk fallback this phase would otherwise have inherited
+> is gone. Read `pull` as it stands before changing it.
 
 - [ ] T041 [US2] Reset on divergence in `backend/infrahub/git/base.py::InfrahubRepositoryBase.pull`,
       before the `origin.pull` call, per
@@ -606,7 +607,7 @@ read-write repository's configured default branch. Neither writes a record.
       `dev/knowledge/backend/merge-failure-recovery.md`. It attributes the merge-start logic to
       `core/branch/tasks.py::_do_merge_branch`. That logic now lives in
       `core/merge/orchestrator.py`. Check the surrounding prose for the same claim.
-- [ ] T089 Rewrite **two** of the four "Volatile section" notes in
+- [ ] T089 Rewrite **two** of the three "Volatile section" notes in
       `dev/knowledge/backend/git-integration.md`. The one under "How git errors are classified"
       describes this feature as planned; it now describes what shipped: the ancestry detection, the
       pull-path reset, the widened broadcast and the record. The one on the merge ordering
@@ -618,8 +619,9 @@ read-write repository's configured default branch. Neither writes a record.
       disk after a rejected push, which the reset now removes, so a retry re-derives the merge and
       reaches the push again. The paragraph below the bullets still claims a merge commit "exists
       on exactly one worker's disk". Leave the second bullet, "Nothing ever re-pushes", as it is.
-      Leave the other two volatile notes alone: they cover the trunk fallback (PR #10542) and the
-      persisted writeback state (IFC-3220). Rewriting those would claim two other fixes shipped.
+      There are three such notes, not four: PR #10542 removed the trunk-fallback one when it
+      landed. Leave the remaining one alone, the persisted writeback state (IFC-3220). Rewriting it
+      would claim another fix shipped.
       Correct the Known limitation in the same file as well, the one that says a branch left ahead
       of its remote is re-reported every cycle because `pull()` returns `True` with no change. The
       reset reads the worktree against the remote head and moves such a branch onto it, so the
@@ -704,7 +706,6 @@ with T018 rather than shipping with the rest of the phase.
 
 | Tasks | Waiting on | Who |
 |---|---|---|
-| Phase 5 | The merge order agreed against PR #10542 | Patrick Ogenstad |
 | Phase 6 | Schema and GraphQL sign-off | A maintainer |
 | Phase 7 | The FR-014 consumer confirmed | Patrick Ogenstad |
 | Phase 8 | Whether to wait for PR #10669 to reach `develop` | Patrick Ogenstad |
