@@ -50,6 +50,7 @@ def _build(
     *,
     branch_deleted: bool,
     delete_git_branch_after_merge: bool = False,
+    deletion_task_id: str | None = None,
 ) -> tuple[
     BranchDeleteOrchestrator,
     RecordingDataDeleter,
@@ -73,6 +74,7 @@ def _build(
         log=log,
         global_branch=Branch(name=GLOBAL_BRANCH_NAME, is_global=True, uuid=uuid4()),
         delete_git_branch_after_merge=delete_git_branch_after_merge,
+        deletion_task_id=deletion_task_id,
     )
     return orchestrator, data_deleter, diff_freezer, workflow, events, log
 
@@ -99,6 +101,17 @@ async def test_delete_runs_post_delete_work(context: InfrahubContext) -> None:
     assert [call["parameters"] for call in workflow.get_submit_calls_for(GIT_REPOSITORIES_DELETE_BRANCH)] == [
         {"branch": branch.name}
     ]
+
+
+async def test_delete_names_the_task_that_removed_the_branch(context: InfrahubContext) -> None:
+    """The announcement names the deleting task, so the cleanup it sets off can spare that task."""
+    orchestrator, _, _, _, events, _ = _build(branch_deleted=True, deletion_task_id="task-1")
+
+    await orchestrator.delete(branch=_branch(), context=context)
+
+    event = events.events[0]
+    assert isinstance(event, BranchDeletedEvent)
+    assert event.deletion_task_id == "task-1"
 
 
 async def test_delete_names_the_requesting_account_to_the_data_deleter(context: InfrahubContext) -> None:

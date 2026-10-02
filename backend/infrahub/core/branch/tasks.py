@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from prefect import flow, get_run_logger
 from prefect.client.schemas.objects import State  # noqa: TC002
+from prefect.runtime import flow_run
 from prefect.states import Completed, Failed
 
 from infrahub import config, lock
@@ -516,6 +517,7 @@ async def delete_branch(
             log=log,
             global_branch=registry.get_global_branch(),
             delete_git_branch_after_merge=config.SETTINGS.git.delete_git_branch_after_merge,
+            deletion_task_id=flow_run.id,
         )
         low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
         await orchestrator.delete(

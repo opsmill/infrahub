@@ -39,14 +39,21 @@ class FlowRunFilterBuilder:
 
         flow_run_filter = FlowRunFilter(tags=FlowRunFilterTags(all_=filter_tags))
 
-        if criteria.ids:
-            flow_run_filter.id = FlowRunFilterId(any_=[self._to_uuid(id) for id in criteria.ids])
+        if criteria.ids or criteria.excluded_ids:
+            flow_run_filter.id = FlowRunFilterId(
+                any_=self._to_uuids(criteria.ids), not_any_=self._to_uuids(criteria.excluded_ids)
+            )
         if criteria.statuses:
             flow_run_filter.state = FlowRunFilterState(type=FlowRunFilterStateType(any_=criteria.statuses))
         if criteria.q:
             flow_run_filter.name = FlowRunFilterName(like_=criteria.q)
 
         return flow_run_filter
+
+    def _to_uuids(self, values: list[str] | None) -> list[UUID] | None:
+        if not values:
+            return None
+        return [self._to_uuid(value) for value in values]
 
     @staticmethod
     def _to_uuid(value: str) -> UUID:
