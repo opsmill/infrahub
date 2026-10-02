@@ -4,7 +4,8 @@ import re
 from typing import TYPE_CHECKING, Protocol
 
 from git import BadName
-from git.exc import GitCommandError
+from git.exc import GitCommandError, GitError
+from gitdb.exc import ODBError
 
 from infrahub.exceptions import RepositoryError
 
@@ -78,7 +79,9 @@ class GitPythonAncestryGateway:
         except ValueError:
             # The object database reports an absent object by refusing to resolve its sha.
             return False
-        except Exception as exc:
+        except (OSError, GitError, ODBError) as exc:
+            # The reader is a long-lived `git cat-file` process, so the pipe and the spawn fail
+            # separately from the object being missing.
             raise RepositoryError(
                 identifier=self.repository_name,
                 message=f"Unable to read {commit} from the object database: {exc}",
